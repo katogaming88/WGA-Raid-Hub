@@ -267,7 +267,7 @@ function renderAttendanceOverview() {
 }
   for (var r = 0; r < order.length; r++) {
     groups[order[r]].sort(function(a, b) {
-      return (parseInt(b.attendance) || 0) - (parseInt(a.attendance) || 0);
+      return (a.nick || a.firstName).localeCompare(b.nick || b.firstName);
     });
   }
   var html = '<div style="display:flex;flex-direction:column;gap:1.5rem;">';
