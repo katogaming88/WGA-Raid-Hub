@@ -272,6 +272,51 @@ function rankPillHTML(rank) {
   return `<span class="rank-pill ${cls}">#${rank}</span>`;
 }
 
+function renderAttendanceOverview() {
+  const profile = document.getElementById('profile');
+  const order = ['Tank', 'Heal', 'Melee', 'Ranged'];
+  const labels = { Tank: '🛡 Tanks', Heal: '💚 Healers', Melee: '⚔️ Melee', Ranged: '🏹 Ranged' };
+  const groups = {};
+  for (const role of order) groups[role] = [];
+  for (const p of DATA.roster) {
+    if (groups[p.role]) groups[p.role].push(p);
+  }
+  for (const role of order) {
+    groups[role].sort((a, b) => {
+      const ap = parseInt(a.attendance) || 0;
+      const bp = parseInt(b.attendance) || 0;
+      return bp - ap;
+    });
+  }
+
+  let html = '<div style="display:flex;flex-direction:column;gap:1.5rem;">';
+  for (const role of order) {
+    if (!groups[role].length) continue;
+    html += `<div>
+      <div style="font-size:0.72rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim);font-weight:600;margin-bottom:0.6rem;">${labels[role]}</div>
+      <div style="display:flex;flex-direction:column;gap:0.4rem;">`;
+    for (const p of groups[role]) {
+      const name = p.nick || p.firstName;
+      const pct  = parseInt(p.attendance) || 0;
+      const bar  = p.attendance || '0%';
+      const color = pct >= 90 ? 'var(--heal)' : pct >= 75 ? 'var(--gold)' : 'var(--melee)';
+      html += `
+        <div style="display:grid;grid-template-columns:110px 1fr 44px;align-items:center;gap:0.75rem;padding:0.5rem 0.75rem;background:var(--bg-card);border:1px solid var(--border);border-radius:3px;">
+          <span style="font-size:0.88rem;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</span>
+          <div style="height:5px;background:var(--bg-elevated);border-radius:3px;overflow:hidden;border:1px solid var(--border);">
+            <div style="height:100%;width:${bar};background:${color};border-radius:3px;"></div>
+          </div>
+          <span style="font-size:0.82rem;font-weight:600;color:${color};text-align:right;">${p.attendance || '—'}</span>
+        </div>`;
+    }
+    html += '</div></div>';
+  }
+  html += '</div>';
+
+  profile.innerHTML = html;
+  profile.style.display = '';
+}
+ 
 function renderProfile(firstName) {
   const profile = document.getElementById('profile');
   if (!firstName) { profile.style.display = 'none'; return; }
