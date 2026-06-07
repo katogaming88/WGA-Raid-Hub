@@ -259,9 +259,11 @@ function getRank(firstName, itemName) {
 // Match BiS list using normalised first name to handle special characters
 function getBisItems(firstName) {
   const bisMap = DATA.bisList || {};
-  const normFirst = normalise(firstName);
-  const key = Object.keys(bisMap).find(k => normalise(k) === normFirst);
-  return key ? bisMap[key] : [];
+ const normFirst = normalise(firstname);
+ const key = Object.keys(bisMap).find(k => normalise(k) === normFirst);
+ const entries = key ? bisMap[key] : [];
+ // Normalise to always return array of {item, slot} objects
+ return entries.map(e => typeof e === 'string' ? { item: e, slot: '' } : e);
 }
 
 function rankPillHTML(rank) {
