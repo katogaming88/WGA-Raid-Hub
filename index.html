@@ -340,7 +340,10 @@ function renderProfile(firstName) {
     ? '<div class="priority-list">' + rows + '</div>'
     : '<p class="no-items-msg">No BiS items on record yet.</p>';
 
- var lootCount = (DATA.lootCounts || {})[player.firstName] || 0; 
+ var lootMap = DATA.lootCounts || {};
+ var normFirst = normalise(player.firstName);
+ var lootKey = Object.keys(lootMap).find(function(k) { return normalise(k) === normFirst; });
+ var lootCount = lootKey ? lootMap[lootKey] : 0; 
  var barWidth = player.attendance ? player.attendance : '0%';
 
   profile.innerHTML =
