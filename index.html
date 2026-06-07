@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Phoenix — My Priority</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:          #0d0e12;
+    --bg-card:     #13151c;
+    --bg-elevated: #1a1d27;
+    --bg-input:    #0f1118;
+    --border:      rgba(255,255,255,0.07);
+    --border-mid:  rgba(255,255,255,0.12);
+    --gold:        #d6a344;
+    --gold-dim:    #9e742a;
+    --gold-light:  #f0c870;
+    --text:        #e8e3d8;
+    --text-muted:  #7a7568;
+    --text-dim:    #3e3c39;
+    --tank:        #4a9eff;
+    --heal:        #3ddc84;
+    --ranged:      #bf8cff;
+    --melee:       #ff7c5c;
+    --rank1-bg:    rgba(214,163,68,0.15);
+    --rank1-text:  #d6a344;
+    --rank1-border:rgba(214,163,68,0.4);
+    --rank2-bg:    rgba(176,190,197,0.1);
+    --rank2-text:  #b0bec5;
+    --rank2-border:rgba(176,190,197,0.3);
+    --rank3-bg:    rgba(205,127,74,0.1);
+    --rank3-text:  #cd7f4a;
+    --rank3-border:rgba(205,127,74,0.3);
+    --rankn-bg:    rgba(255,255,255,0.04);
+    --rankn-text:  #7a7568;
+    --rankn-border:rgba(255,255,255,0.08);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .header {
+    position: relative;
+    padding: 2.5rem 2rem 2rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 140% at 50% 0%, rgba(214,163,68,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .header-emblem { font-size: 2rem; display: block; margin-bottom: 0.4rem; filter: drop-shadow(0 0 10px rgba(214,163,68,0.35)); }
+  .header h1 { font-family: 'Cinzel', serif; font-size: 1.7rem; font-weight: 700; letter-spacing: 0.12em; color: var(--gold-light); text-shadow: 0 0 24px rgba(214,163,68,0.25); }
+  .header-sub { font-size: 0.75rem; color: var(--text-muted); letter-spacing: 0.18em; text-transform: uppercase; margin-top: 0.3rem; }
+  .header-divider { width: 100px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold-dim), transparent); margin: 1rem auto 0; }
+
+  .selector-wrap { display: flex; flex-direction: column; align-items: center; padding: 2.5rem 2rem; gap: 0.6rem; }
+  .selector-label { font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+  .selector-outer { position: relative; width: 100%; max-width: 360px; }
+  .selector-outer::after { content: '▾'; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--gold-dim); pointer-events: none; font-size: 0.9rem; }
+  select#playerSelect {
+    width: 100%; appearance: none; background: var(--bg-input); border: 1px solid var(--border-mid);
+    color: var(--text); font-family: 'Rajdhani', sans-serif; font-size: 1rem; font-weight: 500;
+    padding: 0.65rem 2.2rem 0.65rem 1rem; border-radius: 3px; cursor: pointer;
+    transition: border-color 0.15s; outline: none;
+  }
+  select#playerSelect:hover { border-color: var(--gold-dim); }
+  select#playerSelect:focus { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(214,163,68,0.12); }
+  select#playerSelect option { background: #1a1d27; }
+
+  .state-msg { text-align: center; padding: 3rem 2rem; color: var(--text-muted); font-size: 0.85rem; letter-spacing: 0.05em; }
+  .state-msg.error { color: #ff7c5c; }
+  .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border-mid); border-top-color: var(--gold-dim); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 0.75rem; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #profile { flex: 1; padding: 0 2rem 3rem; max-width: 680px; width: 100%; margin: 0 auto; }
+
+  .profile-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; animation: fadeUp 0.25s ease; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .role-bar { height: 3px; width: 100%; }
+  .role-bar-Tank   { background: var(--tank); }
+  .role-bar-Heal   { background: var(--heal); }
+  .role-bar-Ranged { background: var(--ranged); }
+  .role-bar-Melee  { background: var(--melee); }
+
+  .profile-header { display: flex; align-items: center; gap: 1rem; padding: 1.25rem 1.25rem 1rem; border-bottom: 1px solid var(--border); }
+  .profile-avatar { width: 52px; height: 52px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-family: 'Cinzel', serif; font-size: 1.15rem; font-weight: 600; flex-shrink: 0; }
+  .avatar-Tank   { background: rgba(74,158,255,0.12);  color: var(--tank);   border: 1px solid rgba(74,158,255,0.25); }
+  .avatar-Heal   { background: rgba(61,220,132,0.12);  color: var(--heal);   border: 1px solid rgba(61,220,132,0.25); }
+  .avatar-Ranged { background: rgba(191,140,255,0.12); color: var(--ranged); border: 1px solid rgba(191,140,255,0.25); }
+  .avatar-Melee  { background: rgba(255,124,92,0.12);  color: var(--melee);  border: 1px solid rgba(255,124,92,0.25); }
+
+  .profile-identity { flex: 1; min-width: 0; }
+  .profile-name { font-family: 'Cinzel', serif; font-size: 1.2rem; font-weight: 700; color: var(--text); line-height: 1.2; }
+  .profile-realm { font-size: 0.72rem; color: var(--text-dim); letter-spacing: 0.04em; margin-top: 2px; }
+  .profile-badges { display: flex; gap: 0.4rem; margin-top: 0.5rem; flex-wrap: wrap; align-items: center; }
+
+  .badge { font-size: 0.62rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; padding: 2px 8px; border-radius: 2px; }
+  .badge-Tank   { background: rgba(74,158,255,0.12);  color: var(--tank);   border: 1px solid rgba(74,158,255,0.2); }
+  .badge-Heal   { background: rgba(61,220,132,0.12);  color: var(--heal);   border: 1px solid rgba(61,220,132,0.2); }
+  .badge-Ranged { background: rgba(191,140,255,0.12); color: var(--ranged); border: 1px solid rgba(191,140,255,0.2); }
+  .badge-Melee  { background: rgba(255,124,92,0.12);  color: var(--melee);  border: 1px solid rgba(255,124,92,0.2); }
+  .badge-trial  { background: rgba(240,200,112,0.1);  color: #f0c870;       border: 1px solid rgba(240,200,112,0.2); }
+  .badge-class  { background: rgba(255,255,255,0.04); color: var(--text-muted); border: 1px solid var(--border); }
+
+  .profile-section { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+  .profile-section:last-child { border-bottom: none; }
+  .section-label { font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-dim); font-weight: 600; margin-bottom: 0.75rem; }
+
+  /* BiS link */
+  .bis-row { display: flex; align-items: center; gap: 0.65rem; }
+  .bis-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .bis-dot.yes { background: #3ddc84; box-shadow: 0 0 6px rgba(61,220,132,0.35); }
+  .bis-dot.no  { background: var(--text-dim); }
+  .bis-link {
+    font-size: 0.85rem; font-weight: 500; color: var(--gold);
+    text-decoration: none; border-bottom: 1px solid rgba(214,163,68,0.3);
+    transition: color 0.15s, border-color 0.15s;
+    word-break: break-all;
+  }
+  .bis-link:hover { color: var(--gold-light); border-color: var(--gold); }
+  .bis-none { font-size: 0.85rem; color: var(--text-muted); }
+
+  /* Priority rows */
+  .priority-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .priority-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 3px; padding: 0.6rem 0.8rem; }
+  .priority-item-name { font-size: 0.88rem; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .priority-item-slot { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.07em; white-space: nowrap; }
+  .rank-pill { font-family: 'Cinzel', serif; font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 2px; min-width: 40px; text-align: center; white-space: nowrap; }
+  .rank-1 { background: var(--rank1-bg); color: var(--rank1-text); border: 1px solid var(--rank1-border); }
+  .rank-2 { background: var(--rank2-bg); color: var(--rank2-text); border: 1px solid var(--rank2-border); }
+  .rank-3 { background: var(--rank3-bg); color: var(--rank3-text); border: 1px solid var(--rank3-border); }
+  .rank-n { background: var(--rankn-bg); color: var(--rankn-text); border: 1px solid var(--rankn-border); }
+  .rank-unranked { background: transparent; color: var(--text-dim); border: 1px solid var(--border); font-size: 0.65rem; font-family: 'Rajdhani', sans-serif; letter-spacing: 0.04em; }
+  .no-items-msg { font-size: 0.8rem; color: var(--text-dim); font-style: italic; }
+
+  .footer { text-align: center; padding: 1.5rem; font-size: 0.65rem; color: var(--text-dim); letter-spacing: 0.12em; text-transform: uppercase; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <span class="header-emblem">🔥</span>
+  <h1>Team Phoenix</h1>
+  <p class="header-sub">Season 2 · Loot Priority</p>
+  <div class="header-divider"></div>
+</header>
+
+<div class="selector-wrap">
+  <span class="selector-label">Who are you?</span>
+  <div class="selector-outer">
+    <select id="playerSelect">
+      <option value="">— Select your character —</option>
+    </select>
+  </div>
+</div>
+
+<div id="statusMsg" class="state-msg">
+  <div class="spinner"></div><br>Loading roster data…
+</div>
+
+<main id="profile" style="display:none"></main>
+
+<footer class="footer">Team Phoenix · Season 2</footer>
+
+<script>
+const WEB_APP_URL = 'YOUR_WEB_APP_URL_HERE';
+
+let DATA = null;
+
+// Strips accents so Katorrí matches Katorri, Twañ matches Twan, etc.
+function normalise(str) {
+  return String(str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+function loadData() {
+  // Use no-cors mode via a script tag to avoid CORS issues with Apps Script
+  window._rosterCallback = function(data) {
+    try {
+      if (data.error) throw new Error(data.error);
+      DATA = data;
+      populateDropdown();
+      setStatus('');
+    } catch (e) {
+      setStatus(`Could not load roster data. ${e.message}`, true);
+    }
+  };
+
+  const script = document.createElement('script');
+  script.src = WEB_APP_URL + '?callback=_rosterCallback';
+  script.onerror = () => setStatus('Could not load roster data. Check Web App URL and deployment.', true);
+  document.head.appendChild(script);
+
+  // Timeout if no response after 10 seconds
+  setTimeout(() => {
+    if (!DATA) setStatus('Could not load roster data. Request timed out — check Web App deployment.', true);
+  }, 10000);
+}
+
+function populateDropdown() {
+  const sel = document.getElementById('playerSelect');
+  const groups = { Tank: [], Heal: [], Ranged: [], Melee: [] };
+  for (const p of DATA.roster) {
+    if (groups[p.role]) groups[p.role].push(p);
+  }
+  const roleLabels = { Tank: '🛡 Tanks', Heal: '💚 Healers', Ranged: '🏹 Ranged', Melee: '⚔️ Melee' };
+  for (const [role, players] of Object.entries(groups)) {
+    if (!players.length) continue;
+    const group = document.createElement('optgroup');
+    group.label = roleLabels[role];
+    players.sort((a, b) => (a.nick || a.firstName).localeCompare(b.nick || b.firstName));
+    for (const p of players) {
+      const opt = document.createElement('option');
+      opt.value = p.firstName;
+      opt.textContent = p.nick ? `${p.nick} (${p.firstName})` : p.firstName;
+      group.appendChild(opt);
+    }
+    sel.appendChild(group);
+  }
+}
+
+function setStatus(msg, isError = false) {
+  const el = document.getElementById('statusMsg');
+  if (!msg) { el.style.display = 'none'; return; }
+  el.className = 'state-msg' + (isError ? ' error' : '');
+  el.innerHTML = msg;
+  el.style.display = '';
+}
+
+function getRank(firstName, itemName) {
+  const list = (DATA.priorityOrder || {})[itemName];
+  if (!list) return null;
+  const normFirst = normalise(firstName);
+  const idx = list.findIndex(n => normalise(n) === normFirst);
+  return idx === -1 ? null : idx + 1;
+}
+
+// Match BiS list using normalised first name to handle special characters
+function getBisItems(firstName) {
+  const bisMap = DATA.bisList || {};
+  const normFirst = normalise(firstName);
+  const key = Object.keys(bisMap).find(k => normalise(k) === normFirst);
+  return key ? bisMap[key] : [];
+}
+
+function rankPillHTML(rank) {
+  if (rank === null) return `<span class="rank-pill rank-unranked">Not ranked</span>`;
+  const cls = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-n';
+  return `<span class="rank-pill ${cls}">#${rank}</span>`;
+}
+
+function renderProfile(firstName) {
+  const profile = document.getElementById('profile');
+  if (!firstName) { profile.style.display = 'none'; return; }
+
+  const normFirst = normalise(firstName);
+  const player = DATA.roster.find(p => normalise(p.firstName) === normFirst);
+  if (!player) { profile.style.display = 'none'; return; }
+
+  const displayName = player.nick || player.firstName;
+  const initials    = displayName.slice(0, 2).toUpperCase();
+  const bisItems    = getBisItems(player.firstName);
+  const classLine   = player.class
+    ? `<span class="badge badge-class">${player.class}${player.spec ? ' · ' + player.spec : ''}</span>`
+    : '';
+  const trialBadge  = player.isTrial ? `<span class="badge badge-trial">Trial</span>` : '';
+
+  // BiS link section
+  let bisHTML;
+  if (player.bisLink) {
+    bisHTML = `
+      <div class="bis-row">
+        <div class="bis-dot yes"></div>
+        <a class="bis-link" href="${player.bisLink}" target="_blank" rel="noopener">View my BiS list →</a>
+      </div>`;
+  } else {
+    bisHTML = `
+      <div class="bis-row">
+        <div class="bis-dot no"></div>
+        <span class="bis-none">No BiS list submitted yet</span>
+      </div>`;
+  }
+
+  // Priority section
+  let priorityHTML;
+  if (bisItems.length) {
+    const rows = bisItems.map(item => {
+      const rank = getRank(player.firstName, item);
+      const slot = (DATA.itemSlots || {})[item] || '';
+      return `
+        <div class="priority-row">
+          <span class="priority-item-name" title="${item}">${item}</span>
+          <span class="priority-item-slot">${slot}</span>
+          ${rankPillHTML(rank)}
+        </div>`;
+    }).join('');
+    priorityHTML = `<div class="priority-list">${rows}</div>`;
+  } else {
+    priorityHTML = `<p class="no-items-msg">No BiS items on record yet.</p>`;
+  }
+
+  profile.innerHTML = `
+    <div class="profile-card">
+      <div class="role-bar role-bar-${player.role}"></div>
+      <div class="profile-header">
+        <div class="profile-avatar avatar-${player.role}">${initials}</div>
+        <div class="profile-identity">
+          <div class="profile-name">${displayName}</div>
+          <div class="profile-realm">${player.firstName}-${player.realm}</div>
+          <div class="profile-badges">
+            <span class="badge badge-${player.role}">${player.role}</span>
+            ${trialBadge}
+            ${classLine}
+          </div>
+        </div>
+      </div>
+      <div class="profile-section">
+        <div class="section-label">BiS List</div>
+        ${bisHTML}
+      </div>
+      <div class="profile-section">
+        <div class="section-label">Loot Priority</div>
+        ${priorityHTML}
+      </div>
+    </div>`;
+
+  profile.style.display = '';
+}
+
+document.getElementById('playerSelect').addEventListener('change', e => {
+  renderProfile(e.target.value);
+});
+
+loadData();
+</script>
+</body>
+</html>
