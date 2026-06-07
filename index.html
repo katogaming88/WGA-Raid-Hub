@@ -202,6 +202,7 @@ function loadData() {
       DATA = data;
       populateDropdown();
       setStatus('');
+      renderAttendanceOverview();
     } catch (e) {
       setStatus(`Could not load roster data. ${e.message}`, true);
     }
@@ -407,7 +408,10 @@ function renderProfile(firstName) {
 }
 
 document.getElementById('playerSelect').addEventListener('change', e => {
+ if (e.target.value) {
   renderProfile(e.target.value);
+ } else {
+  renderAttendanceOverview();
 });
 
 loadData();
