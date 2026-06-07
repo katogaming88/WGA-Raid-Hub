@@ -220,7 +220,7 @@ function loadData() {
 
 function populateDropdown() {
   const sel = document.getElementById('playerSelect');
-  const groups = { Tank: [], Heal: [], Ranged: [], Melee: [] };
+  const groups = { Tank: [], Heal: [], Melee: [], Ranged: [] };
   for (const p of DATA.roster) {
     if (groups[p.role]) groups[p.role].push(p);
   }
