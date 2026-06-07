@@ -367,10 +367,13 @@ function renderProfile(firstName) {
           '<span class="attend-label">' + attendPct + '</span>' +
         '</div>' +
       '</div>' +
-      '<div class="profile-section">' +
-        '<div class="section-label">Items Received</div>' +
-        '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">' + lootCount + ' item' + (lootCount !== 1 ? 's' : '') + ' this tier</div>' +
+     '<div class="profile-section" onclick="var l=document.getElementById(\'loot-list\');l.style.display=l.style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer;">' +
+      '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Items Received <span style="font-size:0.7rem;color:var(--text-dim);">tap to expand</span></div>' +
+      '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">' + lootCount + ' item' + (lootCount !== 1 ? 's' : '') + ' this tier</div>' +
+      '<div id="loot-list" style="display:none;margin-top:0.75rem;display:flex;flex-direction:column;gap:0.35rem;">' +
+        lootItemsHTML +
       '</div>' +
+    '</div>' +
       '<div class="profile-section">' +
         '<div class="section-label">BiS List</div>' +
         bisHTML +
