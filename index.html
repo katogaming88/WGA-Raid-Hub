@@ -276,7 +276,7 @@ function renderAttendanceOverview() {
     var players = groups[role];
     if (!players.length) continue;
     html += '<div>';
-    html += '<div style="font-size:0.72rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim);font-weight:600;margin-bottom:0.6rem;">' + labels[role] + '</div>';
+    html += '<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'flex\':\'none\'" style="font-size:0.72rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim);font-weight:600;margin-bottom:0.6rem;cursor:pointer;display:flex;align-items:center;gap:0.5rem;">' + labels[role] + '<span style="font-size:0.6rem;color:var(--text-dim);">▼</span></div>';
     html += '<div style="display:flex;flex-direction:column;gap:0.4rem;">';
     for (var j = 0; j < players.length; j++) {
       var p = players[j];
