@@ -340,7 +340,8 @@ function renderProfile(firstName) {
     ? '<div class="priority-list">' + rows + '</div>'
     : '<p class="no-items-msg">No BiS items on record yet.</p>';
 
-  var barWidth = player.attendance ? player.attendance : '0%';
+ var lootCount = (DATA.lootCounts || {})[player.firstName] || 0; 
+ var barWidth = player.attendance ? player.attendance : '0%';
 
   profile.innerHTML =
     '<div class="profile-card">' +
@@ -362,6 +363,10 @@ function renderProfile(firstName) {
           '<div class="attend-bar-wrap"><div class="attend-bar" style="width:' + barWidth + '"></div></div>' +
           '<span class="attend-label">' + attendPct + '</span>' +
         '</div>' +
+      '</div>' +
+      '<div class="profile-section">' +
+        '<div class="section-label">Items Received</div>' +
+        '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">' + lootCount + ' item' + (lootCount !== 1 ? 's' : '') + ' this tier</div>' +
       '</div>' +
       '<div class="profile-section">' +
         '<div class="section-label">BiS List</div>' +
