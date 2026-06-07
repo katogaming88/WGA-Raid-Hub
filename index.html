@@ -342,8 +342,13 @@ function renderProfile(firstName) {
 
  var lootMap = DATA.lootCounts || {};
  var normFirst = normalise(player.firstName);
- var lootKey = Object.keys(lootMap).find(function(k) { return normalise(k) === normFirst; });
- var lootCount = lootKey ? lootMap[lootKey] : 0; 
+ var lootMap   = DATA.lootCounts || {};
+ var lootKey   = Object.keys(lootMap).find(function(k) { return normalise(k) === normFirst; });
+ var lootEntry = lootKey ? lootMap[lootKey] : null;
+ var lootCount = lootEntry ? lootEntry.count : 0;
+ var lootItemsHTML = lootEntry ? lootEntry.items.map(function(item) {
+   return '<div style="font-size:0.82rem;color:var(--text-muted);padding:0.3rem 0;border-bottom:1px solid var(--border);">' + item + '</div>';
+ }).join('') : '';
  var barWidth = player.attendance ? player.attendance : '0%';
 
   profile.innerHTML =
