@@ -354,6 +354,10 @@ function renderProfile(firstName) {
   profile.innerHTML =
     '<div class="profile-card">' +
       '<div class="role-bar role-bar-' + player.role + '"></div>' +
+      '<div class="role-bar role-bar-' + player.role + '"></div>' +
+      '<div style="padding:0.6rem 1.25rem;border-bottom:1px solid var(--border);">' +
+        '<button onclick="document.getElementById(\'playerSelect\').value=\'\';renderAttendanceOverview();" style="background:none;border:none;color:var(--text-dim);font-family:\'Rajdhani\',sans-serif;font-size:0.78rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;padding:0;">← Back to roster</button>' +
+      '</div>' +
       '<div class="profile-header">' +
         '<div class="profile-avatar avatar-' + player.role + '">' + initials + '</div>' +
         '<div class="profile-identity">' +
