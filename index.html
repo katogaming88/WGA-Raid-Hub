@@ -312,11 +312,10 @@ function renderProfile(firstName) {
      const rank = getRank(player.firstName, item);
      const slot = (DATA.itemSlots || {})[item] || bisSlot || '';
       const isGeneric = ['M+', 'Crafted', 'Catalyst'].includes(item);
-      const displayName = isGeneric && slot ? `${item} — ${slot}` : item;
       return `
         <div class="priority-row">
-          <span class="priority-item-name" title="${displayName}">${displayName}</span>
-          <span class="priority-item-slot">${isGeneric ? '' : slot}</span>
+          <span class="priority-item-name" title="${item}">${item}</span>
+          <span class="priority-item-slot">${slot}</span>
           ${isGeneric ? '' : rankPillHTML(rank)}
         </div>`;
     }).join('');
