@@ -340,7 +340,7 @@ function renderProfile(firstName) {
        <div class="section-label">Attendance</div>
        <div class="attend-row">
          <div class="attend-bar-wrap">
-           <div class="attend-bar" style="width:${attendPct}"></div>
+           <div class="attend-bar" style="width:${player.attendance ? player.attendance : '0%'}"></div>
          </div>
          <span class="attend-label">${attendPct}</span>
        </div>
