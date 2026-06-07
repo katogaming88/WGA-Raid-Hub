@@ -306,9 +306,9 @@ function renderProfile(firstName) {
   // Priority section
   let priorityHTML;
   if (bisItems.length) {
-    const rows = bisItems.map(item => {
-      const rank = getRank(player.firstName, item);
-      const slot = (DATA.itemSlots || {})[item] || '';
+    const rows = bisItems.map(({item, slot: bisSlot}) => {
+     const rank = getRank(player.firstName, item);
+     const slot = (DATA.itemSlots || {})[item] || bisSlot || '';
       const isGeneric = ['M+', 'Crafted', 'Catalyst'].includes(item);
       const displayName = isGeneric && slot ? `${item} — ${slot}` : item;
       return `
