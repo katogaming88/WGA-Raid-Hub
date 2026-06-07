@@ -309,11 +309,13 @@ function renderProfile(firstName) {
     const rows = bisItems.map(item => {
       const rank = getRank(player.firstName, item);
       const slot = (DATA.itemSlots || {})[item] || '';
+      const isGeneric = ['M+', 'Crafted', 'Catalyst'].includes(item);
+      const displayName = isGeneric && slot ? `${item} — ${slot}` : item;
       return `
         <div class="priority-row">
-          <span class="priority-item-name" title="${item}">${item}</span>
-          <span class="priority-item-slot">${slot}</span>
-          ${rankPillHTML(rank)}
+          <span class="priority-item-name" title="${displayName}">${displayName}</span>
+          <span class="priority-item-slot">${isGeneric ? '' : slot}</span>
+          ${isGeneric ? '' : rankPillHTML(rank)}
         </div>`;
     }).join('');
     priorityHTML = `<div class="priority-list">${rows}</div>`;
