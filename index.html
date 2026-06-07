@@ -150,6 +150,11 @@
   .rank-unranked { background: transparent; color: var(--text-dim); border: 1px solid var(--border); font-size: 0.65rem; font-family: 'Rajdhani', sans-serif; letter-spacing: 0.04em; }
   .no-items-msg { font-size: 0.8rem; color: var(--text-dim); font-style: italic; }
 
+  .attend-row { display: flex; align-items: center; gap: 0.75rem; }
+  .attend-bar-wrap { flex: 1; height: 6px; background: var(--bg-elevated); border-radius: 3px; overflow: hidden; border: 1px solid var(--border); }
+  .attend-bar { height: 100%; border-radius: 3px; background: var(--heal); transition: width 0.4s ease; }
+  .attend-label { font-size: 0.88rem; font-weight: 600; color: var(--text); min-width: 42px; text-align: right; }
+ 
   .footer { text-align: center; padding: 1.5rem; font-size: 0.65rem; color: var(--text-dim); letter-spacing: 0.12em; text-transform: uppercase; border-top: 1px solid var(--border); }
 </style>
 </head>
@@ -274,6 +279,7 @@ function renderProfile(firstName) {
   if (!player) { profile.style.display = 'none'; return; }
 
   const displayName = player.nick || player.firstName;
+  const attendPct = player.attendance || '—';
   const initials    = displayName.slice(0, 2).toUpperCase();
   const bisItems    = getBisItems(player.firstName);
   const classLine   = player.class
@@ -330,6 +336,15 @@ function renderProfile(firstName) {
           </div>
         </div>
       </div>
+      <div class="profile-section">
+       <div class="section-label">Attendance</div>
+       <div class="attend-row">
+         <div class="attend-bar-wrap">
+           <div class="attend-bar" style="width:${attendPct}"></div>
+         </div>
+         <span class="attend-label">${attendPct}</span>
+       </div>
+     </div>
       <div class="profile-section">
         <div class="section-label">BiS List</div>
         ${bisHTML}
