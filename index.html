@@ -408,15 +408,14 @@ function renderProfile(firstName) {
 }
 
 document.getElementById('playerSelect').addEventListener('change', e => {
- if (e.target.value) {
-  renderProfile(e.target.value);
- } else {
-  renderAttendanceOverview();
- }
+  if (e.target.value) {
+    renderProfile(e.target.value);
+  } else {
+    renderAttendanceOverview();
+  }
 });
 
 loadData();
 </script>
 </body>
 </html>
-
