@@ -110,7 +110,7 @@
 
   /* Priority */
   .priority-list { display:flex; flex-direction:column; gap:0.5rem; }
-  .priority-row { display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:0.75rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; padding:0.6rem 0.8rem; }
+  .priority-row { display:grid; grid-template-columns:auto auto 1fr; align-items:center; gap:0.75rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; padding:0.6rem 0.8rem; }
   .priority-item-name { font-size:1.2rem; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .priority-item-slot { font-size:0.88rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.07em; white-space:nowrap; }
   .rank-pill { font-family:'Cinzel',serif; font-size:0.72rem; font-weight:600; padding:3px 10px; border-radius:2px; min-width:40px; text-align:center; white-space:nowrap; }
@@ -251,8 +251,17 @@ function getBisItems(firstName) {
 
 function rankPillHTML(rank) {
   if (rank === null) return '<span class="rank-pill rank-unranked">Not ranked</span>';
-  var cls = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-n';
-  return '<span class="rank-pill ' + cls + '">#' + rank + '</span>';
+  // Gradient from gold (#1) fading to grey as rank increases
+  var maxRank = 15;
+  var t = Math.min((rank - 1) / (maxRank - 1), 1);
+  var r = Math.round(214 + (100 - 214) * t);
+  var g = Math.round(163 + (100 - 163) * t);
+  var b = Math.round(68  + (100 - 68)  * t);
+  var alpha = Math.max(0.08, 0.18 - t * 0.1);
+  var color = 'rgb(' + r + ',' + g + ',' + b + ')';
+  var bg    = 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+  var border = 'rgba(' + r + ',' + g + ',' + b + ',' + Math.max(0.2, 0.4 - t * 0.2) + ')';
+  return '<span class="rank-pill" style="background:' + bg + ';color:' + color + ';border:1px solid ' + border + ';">#' + rank + '</span>';
 }
 
 function renderAttendanceOverview() {
@@ -330,10 +339,13 @@ function renderProfile(firstName) {
     var rank     = getRank(player.firstName, item);
     var slot     = (DATA.itemSlots || {})[item] || bisSlot || '';
     var isGeneric = (item === 'M+' || item === 'Crafted' || item === 'Catalyst');
-    rows += '<div class="priority-row">';
-    rows += '<span class="priority-item-name" title="' + item + '">' + item + '</span>';
+    var leftLabel = isGeneric
+      ? '<span class="priority-item-slot" style="text-transform:uppercase;letter-spacing:0.07em;white-space:nowrap;">' + item + '</span>'
+      : rankPillHTML(rank);
+    rows += '<div class="priority-row" style="grid-template-columns:auto auto 1fr;">';
+    rows += leftLabel;
     rows += '<span class="priority-item-slot">' + slot + '</span>';
-    rows += isGeneric ? '' : rankPillHTML(rank);
+    rows += '<span class="priority-item-name" style="text-align:right;" title="' + item + '">' + (isGeneric ? '' : item) + '</span>';
     rows += '</div>';
   }
   var priorityHTML = bisItems.length
