@@ -1,19 +1,26 @@
 # Phoenix Roster
 
-A live raider-facing web page for Team Phoenix that displays attendance, loot priority, and BiS list information pulled directly from the Phoenix Loot Priority Google Sheet.
+A live web page for Team Phoenix that gives raiders a personal loot priority view and officers a full dashboard — all pulled directly from the Phoenix Loot Priority Google Sheet.
 
 ---
 
 ## What it does
 
-Raiders open the page, select their character from the dropdown, and see:
+### Raider view
+Raiders open the page, select their character from the dropdown, and see their personal profile:
 
-- **Attendance** — full-tier attendance percentage with a colour-coded progress bar
+- **Attendance** — full-tier attendance percentage with a colour-coded progress bar, expandable to show any Excused/No Show dates
 - **Items Received** — total items received this tier, expandable to show the full list
 - **BiS List** — a link to their submitted BiS list (if provided)
 - **Loot Priority** — every item on their BiS list with their current priority rank, slot, and source (raid item, M+, Crafted, or Catalyst)
 
-The landing page (before selecting a character) shows an attendance overview for the full roster, grouped by role (Tank → Healer → Melee → Ranged → Bench), sorted highest to lowest.
+### Officer dashboard
+Officers log in with a separate password and get a tabbed dashboard:
+
+- **Roster** — full player table with attendance, items received, BiS link status, and trial/bench tags. Filterable by Low Attendance (<90%), No BiS Link, Trials Only, or Bench Only. Click any player row to expand their full profile inline.
+- **BiS Conflicts** — every raid item sorted by how many players want it. Shows each player's name and their current priority rank. Helps officers identify contested items quickly.
+- **Loot Fairness** — every roster member shown as a bar chart sorted by items received this tier, coloured by role. Makes distribution fairness visible at a glance.
+- **Attendance** — all players below 90% attendance, sorted lowest first, with their penalty dates listed.
 
 ---
 
@@ -21,8 +28,8 @@ The landing page (before selecting a character) shows an attendance overview for
 
 | File | Purpose |
 |------|---------|
-| `index.html` | The raider-facing web page hosted on GitHub Pages |
-| `PhoenixRosterWebApp.gs` | Apps Script Web App that reads the spreadsheet and serves data as JSON |
+| `index.html` | The web page hosted on GitHub Pages (raider + officer views) |
+| `PhoenixRosterWebApp.gs` | Google Apps Script that reads the spreadsheet and serves data as JSON |
 | `syncClassSpecFromApplicants.gs` | Apps Script function that syncs Class/Spec from Roster Applicants into the Roster tab |
 | `AttendanceFormula.txt` | The attendance % formula for Roster tab column C |
 
@@ -31,17 +38,17 @@ The landing page (before selecting a character) shows an attendance overview for
 ## How it works
 
 1. The **Google Sheet** is the source of truth — officers update the Roster, BiS List, Priority Order, Scoring, and Loot Data tabs as normal
-2. The **Web App** (`PhoenixRosterWebApp.gs`) reads those tabs and returns a JSON payload when requested
-3. The **HTML page** fetches that JSON on load and renders the raider's profile dynamically
+2. The **Google Apps Script** (`PhoenixRosterWebApp.gs`) reads those tabs and returns a JSON payload when the page requests it
+3. The **GitHub index** (`index.html`) fetches that JSON on load and renders all views dynamically
 4. The page is hosted on **GitHub Pages** and the URL is shared with raiders via Discord
 
-Data is cached for 5 minutes on the Web App side for fast load times. Run **Clear Roster Page Cache** from the Phoenix Prio Loot menu to force a refresh after making sheet changes.
+Data is cached for 5 minutes on the Apps Script side for fast load times. Run **Clear Roster Page Cache** from the Phoenix Prio Loot menu to force a refresh after making sheet changes.
 
 ---
 
 ## Setup
 
-### 1. Web App (one time)
+### 1. Google Apps Script Web App (one time)
 
 1. Open the Google Sheet → **Extensions → Apps Script**
 2. Create a new file and paste in `PhoenixRosterWebApp.gs`
@@ -50,8 +57,9 @@ Data is cached for 5 minutes on the Web App side for fast load times. Run **Clea
    - Execute as: **Me**
    - Who has access: **Anyone**
 4. Copy the Web App URL (`https://script.google.com/macros/s/.../exec`)
-5. Open `index.html`, find `const WEB_APP_URL = '...'` and paste the URL in
-6. Upload `index.html` to GitHub (renamed as `index.html`) and enable GitHub Pages
+5. Open `index.html`, find `var WEB_APP_URL = '...'` and paste the URL in
+6. Set `var OFFICER_PASS = '...'` to your chosen officer password
+7. Upload `index.html` to GitHub as `index.html`
 
 ### 2. GitHub Pages (one time)
 
@@ -62,7 +70,7 @@ Data is cached for 5 minutes on the Web App side for fast load times. Run **Clea
 
 ### 3. Roster tab columns
 
-The Roster tab must have this column layout for the Web App to read correctly:
+The Roster tab must have this column layout for the Apps Script to read correctly:
 
 | Col | Header |
 |-----|--------|
@@ -81,9 +89,9 @@ The Roster tab must have this column layout for the Web App to read correctly:
 
 Paste the formula from `AttendanceFormula.txt` into **C4** and drag down. Format column C as custom number format `0"%"`.
 
-### 4. Sync scripts
+### 4. Apps Script menu items
 
-Add these to your Apps Script menu in `Code.gs`:
+Add these to your menu in `Code.gs`:
 
 ```js
 .addItem('Sync Class/Spec from Applicants', 'syncClassSpecFromApplicants')
@@ -105,24 +113,32 @@ Add these to your Apps Script menu in `Code.gs`:
 
 ---
 
-## Redeploying the Web App
+## Redeploying the Google Apps Script
 
-Only needed when the Apps Script code itself changes (not for sheet data changes).
+Only needed when the Apps Script code itself changes — not for sheet data changes.
 
 1. Apps Script → **Deploy → Manage Deployments**
 2. Click the pencil icon on the existing deployment
 3. Set version to **New version**
-4. Click **Deploy** — the URL stays the same
+4. Click **Deploy** — the URL stays the same, no need to update `index.html`
 
 ---
 
-## Sheet tabs read by the Web App
+## Sheet tabs read by the Apps Script
 
 | Tab | What's read |
 |-----|------------|
-| Roster | Player list, roles, trial status, bench status, BiS links, Class/Spec |
+| Roster | Player list, roles, trial/bench status, BiS links, Class/Spec, Sort Key |
 | Scoring | Attendance scores (column D, 1–10 scale) |
 | BiS List | Each player's BiS items per slot |
 | Priority Order | Ranked player lists per item |
 | Item Lookup | Item names and slot types |
 | Loot Data | All loot awarded this tier (column A = player) |
+| Attendance | Per-night attendance statuses for penalty date tracking |
+
+---
+
+## Passwords
+
+- **Officer password** — set in `index.html` as `var OFFICER_PASS = '...'`. Change it by editing the file and re-uploading to GitHub. Officers stay logged in for their browser session.
+- There is no raider login — the dropdown acts as the selector. The page URL itself is the only gate for raiders.
