@@ -250,7 +250,7 @@ function getBisItems(firstName) {
 }
 
 function rankPillHTML(rank) {
-  if (rank === null) return '<span class="rank-pill rank-unranked">Not ranked</span>';
+  if (rank === null) return '<span style="font-size:0.72rem;color:var(--text-dim);min-width:40px;text-align:center;">—</span>';
   // Gradient from gold (#1) fading to grey as rank increases
   var maxRank = 15;
   var t = Math.min((rank - 1) / (maxRank - 1), 1);
@@ -306,6 +306,17 @@ function renderAttendanceOverview() {
   profile.style.display = '';
 }
 
+function getSlotColor(slot) {
+  var s = (slot || '').toUpperCase();
+  if (s === 'TRINKET' || s === 'TRINKET 1' || s === 'TRINKET 2') return 'var(--gold)';
+  if (s === 'NECK' || s === 'RING 1' || s === 'RING 2')          return 'var(--ranged)';
+  if (s === '1H/2H' || s === 'OH')                                return 'var(--melee)';
+  if (s === 'HEAD' || s === 'SHOULDERS' || s === 'CHEST' ||
+      s === 'GLOVES' || s === 'LEGS' || s === 'CLOAK' ||
+      s === 'BRACERS' || s === 'BELT' || s === 'BOOTS')           return 'var(--tank)';
+  return 'var(--text-dim)';
+}
+ 
 function renderProfile(firstName) {
   var profile = document.getElementById('profile');
   if (!firstName) { renderAttendanceOverview(); return; }
@@ -341,7 +352,7 @@ function renderProfile(firstName) {
     var isGeneric = (item === 'M+' || item === 'Crafted' || item === 'Catalyst');
     rows += '<div class="priority-row" style="grid-template-columns:auto auto 1fr;">';
     rows += isGeneric ? '<span style="font-size:0.72rem;color:var(--text-dim);min-width:40px;text-align:center;">—</span>' : rankPillHTML(rank);
-    rows += '<span class="priority-item-slot">' + slot + '</span>';
+    rows += '<span class="priority-item-slot" style="color:' + getSlotColor(slot) + ';">' + slot + '</span>';
     rows += '<span class="priority-item-name" style="text-align:right;" title="' + item + '">' + item + '</span>';
     rows += '</div>';
   }
