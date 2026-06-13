@@ -357,8 +357,15 @@ function renderProfile(firstName) {
     rows += '</div>';
   }
   var priorityHTML = bisItems.length
-    ? '<div class="priority-list">' + rows + '</div>'
-    : '<p class="no-items-msg">No BiS items on record yet.</p>';
+  ? '<div class="priority-list">' +
+      '<div class="priority-row" style="grid-template-columns:auto auto 1fr;background:transparent;border:none;padding:0.2rem 0.8rem;">' +
+        '<span style="font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);">Prio</span>' +
+        '<span style="font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);">Slot</span>' +
+        '<span style="font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);text-align:right;">Item / Source</span>' +
+      '</div>' +
+      rows +
+    '</div>'
+  : '<p class="no-items-msg">No BiS items on record yet.</p>';
 
  var lootMap = DATA.lootCounts || {};
  var normFirst = normalise(player.firstName);
