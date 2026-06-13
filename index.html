@@ -528,7 +528,7 @@ function renderProfile(firstName, backTo, container) {
           '<div class="profile-badges"><span class="badge badge-'+player.role+'">'+player.role+'</span>'+trialBadge+benchBadge+classLine+'</div>' +
         '</div>' +
       '</div>' +
-      '<div class="profile-section"'+(hasPenalties?' onclick="var d=document.getElementById(\'attend-detail\');d.style.display=d.style.display===\'none\'?\'flex\':\'none\';" style="cursor:pointer;"':')+'>' +
+      '<div class="profile-section"'+(hasPenalties?' onclick="var d=document.getElementById(\'attend-detail\');d.style.display=d.style.display===\'none\'?\'flex\':\'none\';" style="cursor:pointer;"':'')+'>' +
         '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Attendance'+(hasPenalties?'<span style="font-size:0.7rem;color:var(--text-dim);">tap to expand</span>':'')+'</div>' +
         '<div class="attend-row"><div class="attend-bar-wrap"><div class="attend-bar" style="width:'+barWidth+'"></div></div><span class="attend-label">'+attendPct+'</span></div>' +
         attendExtra +
