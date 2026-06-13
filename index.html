@@ -445,10 +445,12 @@ function renderProfile(firstName) {
       '</div>' +
 
       // Loot priority
-      '<div class="profile-section">' +
-        '<div class="section-label">Loot Priority</div>' +
-        priorityHTML +
-      '</div>' +
+      '<div class="profile-section" onclick="var l=document.getElementById(\'prio-list\');l.style.display=l.style.display===\'none\'?\'block\':\'none\';" style="cursor:pointer;">' +
+       '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Loot Priority <span style="font-size:0.7rem;color:var(--text-dim);">tap to expand</span></div>' +
+       '<div id="prio-list" style="display:none;">' +
+         priorityHTML +
+       '</div>' +
+     '</div>' +
 
     '</div>';
 
