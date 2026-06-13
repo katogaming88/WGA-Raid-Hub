@@ -339,13 +339,10 @@ function renderProfile(firstName) {
     var rank     = getRank(player.firstName, item);
     var slot     = (DATA.itemSlots || {})[item] || bisSlot || '';
     var isGeneric = (item === 'M+' || item === 'Crafted' || item === 'Catalyst');
-    var leftLabel = isGeneric
-      ? '<span class="priority-item-slot" style="text-transform:uppercase;letter-spacing:0.07em;white-space:nowrap;">' + item + '</span>'
-      : rankPillHTML(rank);
     rows += '<div class="priority-row" style="grid-template-columns:auto auto 1fr;">';
-    rows += leftLabel;
+    rows += isGeneric ? '<span style="font-size:0.72rem;color:var(--text-dim);min-width:40px;text-align:center;">—</span>' : rankPillHTML(rank);
     rows += '<span class="priority-item-slot">' + slot + '</span>';
-    rows += '<span class="priority-item-name" style="text-align:right;" title="' + item + '">' + (isGeneric ? '' : item) + '</span>';
+    rows += '<span class="priority-item-name" style="text-align:right;" title="' + item + '">' + item + '</span>';
     rows += '</div>';
   }
   var priorityHTML = bisItems.length
