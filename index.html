@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Team Phoenix — My Priority</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -25,18 +26,6 @@
     --heal:        #3ddc84;
     --ranged:      #bf8cff;
     --melee:       #ff7c5c;
-    --rank1-bg:    rgba(214,163,68,0.15);
-    --rank1-text:  #d6a344;
-    --rank1-border:rgba(214,163,68,0.4);
-    --rank2-bg:    rgba(176,190,197,0.1);
-    --rank2-text:  #b0bec5;
-    --rank2-border:rgba(176,190,197,0.3);
-    --rank3-bg:    rgba(205,127,74,0.1);
-    --rank3-text:  #cd7f4a;
-    --rank3-border:rgba(205,127,74,0.3);
-    --rankn-bg:    rgba(255,255,255,0.04);
-    --rankn-text:  #7a7568;
-    --rankn-border:rgba(255,255,255,0.08);
   }
   body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:16px; min-height:100vh; display:flex; flex-direction:column; }
 
@@ -114,11 +103,6 @@
   .priority-item-name { font-size:1.2rem; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .priority-item-slot { font-size:0.88rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.07em; white-space:nowrap; }
   .rank-pill { font-family:'Cinzel',serif; font-size:0.72rem; font-weight:600; padding:3px 10px; border-radius:2px; min-width:40px; text-align:center; white-space:nowrap; }
-  .rank-1 { background:var(--rank1-bg); color:var(--rank1-text); border:1px solid var(--rank1-border); }
-  .rank-2 { background:var(--rank2-bg); color:var(--rank2-text); border:1px solid var(--rank2-border); }
-  .rank-3 { background:var(--rank3-bg); color:var(--rank3-text); border:1px solid var(--rank3-border); }
-  .rank-n { background:var(--rankn-bg); color:var(--rankn-text); border:1px solid var(--rankn-border); }
-  .rank-unranked { background:transparent; color:var(--text-dim); border:1px solid var(--border); font-size:0.65rem; font-family:'Rajdhani',sans-serif; letter-spacing:0.04em; }
   .no-items-msg { font-size:0.8rem; color:var(--text-dim); font-style:italic; }
 
   /* Attendance */
@@ -157,9 +141,8 @@
 <footer class="footer">Team Phoenix · Season 2</footer>
 
 <script>
-const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-
-let DATA = null;
+var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
+var DATA = null;
 
 function normalise(str) {
   return String(str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
@@ -177,7 +160,7 @@ function loadData() {
       setStatus('Could not load roster data. ' + e.message, true);
     }
   };
-  const script = document.createElement('script');
+  var script = document.createElement('script');
   script.src = WEB_APP_URL + '?callback=_rosterCallback';
   script.onerror = function() {
     setStatus('Could not load roster data. Check Web App URL and deployment.', true);
@@ -189,10 +172,10 @@ function loadData() {
 }
 
 function populateDropdown() {
-  const sel = document.getElementById('playerSelect');
-  const order = ['Tank', 'Heal', 'Melee', 'Ranged'];
-  const labels = { Tank: '🛡 Tanks', Heal: '💚 Healers', Melee: '⚔️ Melee', Ranged: '🏹 Ranged' };
-  const groups = { Tank: [], Heal: [], Melee: [], Ranged: [] };
+  var sel = document.getElementById('playerSelect');
+  var order = ['Tank', 'Heal', 'Melee', 'Ranged'];
+  var labels = { Tank: '🛡 Tanks', Heal: '💚 Healers', Melee: '⚔️ Melee', Ranged: '🏹 Ranged' };
+  var groups = { Tank: [], Heal: [], Melee: [], Ranged: [] };
   for (var i = 0; i < DATA.roster.length; i++) {
     var p = DATA.roster[i];
     if (groups[p.role]) groups[p.role].push(p);
@@ -251,17 +234,27 @@ function getBisItems(firstName) {
 
 function rankPillHTML(rank) {
   if (rank === null) return '<span style="font-size:0.72rem;color:var(--text-dim);min-width:40px;text-align:center;">—</span>';
-  // Gradient from gold (#1) fading to grey as rank increases
   var maxRank = 15;
   var t = Math.min((rank - 1) / (maxRank - 1), 1);
-  var r = Math.round(214 + (100 - 214) * t);
-  var g = Math.round(163 + (100 - 163) * t);
-  var b = Math.round(68  + (100 - 68)  * t);
-  var alpha = Math.max(0.08, 0.18 - t * 0.1);
-  var color = 'rgb(' + r + ',' + g + ',' + b + ')';
-  var bg    = 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
-  var border = 'rgba(' + r + ',' + g + ',' + b + ',' + Math.max(0.2, 0.4 - t * 0.2) + ')';
+  var rv = Math.round(214 + (100 - 214) * t);
+  var gv = Math.round(163 + (100 - 163) * t);
+  var bv = Math.round(68  + (100 - 68)  * t);
+  var alpha  = Math.max(0.08, 0.18 - t * 0.1);
+  var color  = 'rgb(' + rv + ',' + gv + ',' + bv + ')';
+  var bg     = 'rgba(' + rv + ',' + gv + ',' + bv + ',' + alpha + ')';
+  var border = 'rgba(' + rv + ',' + gv + ',' + bv + ',' + Math.max(0.2, 0.4 - t * 0.2) + ')';
   return '<span class="rank-pill" style="background:' + bg + ';color:' + color + ';border:1px solid ' + border + ';">#' + rank + '</span>';
+}
+
+function getSlotColor(slot) {
+  var s = (slot || '').toUpperCase();
+  if (s === 'TRINKET' || s === 'TRINKET 1' || s === 'TRINKET 2') return 'var(--gold)';
+  if (s === 'NECK' || s === 'RING 1' || s === 'RING 2')          return 'var(--ranged)';
+  if (s === '1H/2H' || s === 'OH')                                return 'var(--melee)';
+  if (s === 'HEAD' || s === 'SHOULDERS' || s === 'CHEST' ||
+      s === 'GLOVES' || s === 'LEGS' || s === 'CLOAK' ||
+      s === 'BRACERS' || s === 'BELT' || s === 'BOOTS')           return 'var(--tank)';
+  return 'var(--text-dim)';
 }
 
 function renderAttendanceOverview() {
@@ -270,10 +263,10 @@ function renderAttendanceOverview() {
   var labels = { Tank: '🛡 Tanks', Heal: '💚 Healers', Melee: '⚔️ Melee', Ranged: '🏹 Ranged', Bench: '🪑 Bench' };
   var groups = { Tank: [], Heal: [], Melee: [], Ranged: [], Bench: [] };
   for (var i = 0; i < DATA.roster.length; i++) {
-  var p = DATA.roster[i];
-  if (p.isBench) { groups['Bench'].push(p); }
-  else if (groups[p.role]) { groups[p.role].push(p); }
-}
+    var p = DATA.roster[i];
+    if (p.isBench) { groups['Bench'].push(p); }
+    else if (groups[p.role]) { groups[p.role].push(p); }
+  }
   for (var r = 0; r < order.length; r++) {
     groups[order[r]].sort(function(a, b) {
       return (a.nick || a.firstName).localeCompare(b.nick || b.firstName);
@@ -285,13 +278,13 @@ function renderAttendanceOverview() {
     var players = groups[role];
     if (!players.length) continue;
     html += '<div>';
-    html += '<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'flex\':\'none\'" style="font-size:0.72rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim);font-weight:600;margin-bottom:0.6rem;cursor:pointer;display:flex;align-items:center;gap:0.5rem;">' + labels[role] + '<span style="font-size:0.6rem;color:var(--text-dim);">▼</span></div>';
+    html += '<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'flex\':\'none\'" style="font-size:0.72rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim);font-weight:600;margin-bottom:0.6rem;cursor:pointer;display:flex;align-items:center;gap:0.5rem;">' + labels[role] + '<span style="font-size:0.6rem;">▼</span></div>';
     html += '<div style="display:flex;flex-direction:column;gap:0.4rem;">';
     for (var j = 0; j < players.length; j++) {
       var p = players[j];
-      var name = p.nick || p.firstName;
-      var pct = parseInt(p.attendance) || 0;
-      var bar = p.attendance || '0%';
+      var name  = p.nick || p.firstName;
+      var pct   = parseInt(p.attendance) || 0;
+      var bar   = p.attendance || '0%';
       var color = pct >= 90 ? 'var(--heal)' : pct >= 75 ? 'var(--gold)' : 'var(--melee)';
       html += '<div style="display:grid;grid-template-columns:110px 1fr 44px;align-items:center;gap:0.75rem;padding:0.5rem 0.75rem;background:var(--bg-card);border:1px solid var(--border);border-radius:3px;">';
       html += '<span style="font-size:0.88rem;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</span>';
@@ -306,17 +299,6 @@ function renderAttendanceOverview() {
   profile.style.display = '';
 }
 
-function getSlotColor(slot) {
-  var s = (slot || '').toUpperCase();
-  if (s === 'TRINKET' || s === 'TRINKET 1' || s === 'TRINKET 2') return 'var(--gold)';
-  if (s === 'NECK' || s === 'RING 1' || s === 'RING 2')          return 'var(--ranged)';
-  if (s === '1H/2H' || s === 'OH')                                return 'var(--melee)';
-  if (s === 'HEAD' || s === 'SHOULDERS' || s === 'CHEST' ||
-      s === 'GLOVES' || s === 'LEGS' || s === 'CLOAK' ||
-      s === 'BRACERS' || s === 'BELT' || s === 'BOOTS')           return 'var(--tank)';
-  return 'var(--text-dim)';
-}
- 
 function renderProfile(firstName) {
   var profile = document.getElementById('profile');
   if (!firstName) { renderAttendanceOverview(); return; }
@@ -328,77 +310,97 @@ function renderProfile(firstName) {
   }
   if (!player) { renderAttendanceOverview(); return; }
 
+  // ── Identity ──────────────────────────────────────────────────────────
   var displayName = player.nick || player.firstName;
-  var attendPct   = player.attendance || '—';
   var initials    = displayName.slice(0, 2).toUpperCase();
-  var bisItems    = getBisItems(player.firstName);
   var classLine   = player.class ? '<span class="badge badge-class">' + player.class + (player.spec ? ' · ' + player.spec : '') + '</span>' : '';
   var trialBadge  = player.isTrial ? '<span class="badge badge-trial">Trial</span>' : '';
 
-  var bisHTML;
-  if (player.bisLink) {
-    bisHTML = '<div class="bis-row"><div class="bis-dot yes"></div><a class="bis-link" href="' + player.bisLink + '" target="_blank" rel="noopener">View my BiS list →</a></div>';
-  } else {
-    bisHTML = '<div class="bis-row"><div class="bis-dot no"></div><span class="bis-none">No BiS list submitted yet</span></div>';
+  // ── Attendance ────────────────────────────────────────────────────────
+  var attendPct    = player.attendance || '—';
+  var barWidth     = player.attendance || '0%';
+  var attendDetail = (DATA.attendanceDetails || {})[player.firstName] || [];
+  var hasPenalties = attendDetail.length > 0;
+  var attendExtra  = '';
+  if (hasPenalties) {
+    attendExtra += '<div id="attend-detail" style="display:none;margin-top:0.75rem;flex-direction:column;gap:0.3rem;">';
+    for (var ai = 0; ai < attendDetail.length; ai++) {
+      var ae     = attendDetail[ai];
+      var scolor = ae.status === 'No Show' ? 'var(--melee)' : 'var(--text-muted)';
+      attendExtra += '<div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.25rem 0;border-bottom:1px solid var(--border);">';
+      attendExtra += '<span style="color:var(--text-muted);">' + ae.date + '</span>';
+      attendExtra += '<span style="color:' + scolor + ';font-weight:600;">' + ae.status + '</span>';
+      attendExtra += '</div>';
+    }
+    attendExtra += '</div>';
   }
 
+  // ── Loot counts ───────────────────────────────────────────────────────
+  var lootMap   = DATA.lootCounts || {};
+  var lootKey   = null;
+  var lootKeys  = Object.keys(lootMap);
+  for (var li = 0; li < lootKeys.length; li++) {
+    if (normalise(lootKeys[li]) === normFirst) { lootKey = lootKeys[li]; break; }
+  }
+  var lootEntry     = lootKey ? lootMap[lootKey] : null;
+  var lootCount     = lootEntry ? lootEntry.count : 0;
+  var lootItemsHTML = '';
+  if (lootEntry && lootEntry.items) {
+    for (var li2 = 0; li2 < lootEntry.items.length; li2++) {
+      lootItemsHTML += '<div style="font-size:0.82rem;color:var(--text-muted);padding:0.3rem 0;border-bottom:1px solid var(--border);">' + lootEntry.items[li2] + '</div>';
+    }
+  }
+
+  // ── BiS link ──────────────────────────────────────────────────────────
+  var bisHTML = player.bisLink
+    ? '<div class="bis-row"><div class="bis-dot yes"></div><a class="bis-link" href="' + player.bisLink + '" target="_blank" rel="noopener">View my BiS list →</a></div>'
+    : '<div class="bis-row"><div class="bis-dot no"></div><span class="bis-none">No BiS list submitted yet</span></div>';
+
+  // ── Loot priority rows ────────────────────────────────────────────────
+  var bisItems = getBisItems(player.firstName);
   var rows = '';
-  for (var i = 0; i < bisItems.length; i++) {
-    var entry    = bisItems[i];
-    var item     = entry.item;
-    var bisSlot  = entry.slot;
-    var rank     = getRank(player.firstName, item);
-    var slot     = (DATA.itemSlots || {})[item] || bisSlot || '';
+  for (var bi = 0; bi < bisItems.length; bi++) {
+    var entry     = bisItems[bi];
+    var item      = entry.item;
+    var bisSlot   = entry.slot;
+    var rank      = getRank(player.firstName, item);
+    var slot      = (DATA.itemSlots || {})[item] || bisSlot || '';
     var isGeneric = (item === 'M+' || item === 'Crafted' || item === 'Catalyst');
     rows += '<div class="priority-row" style="grid-template-columns:auto auto 1fr;">';
-    rows += isGeneric ? '<span style="font-size:0.72rem;color:var(--text-dim);min-width:40px;text-align:center;">—</span>' : rankPillHTML(rank);
+    rows += isGeneric
+      ? '<span style="font-size:0.72rem;color:var(--text-dim);min-width:40px;text-align:center;">—</span>'
+      : rankPillHTML(rank);
     rows += '<span class="priority-item-slot" style="color:' + getSlotColor(slot) + ';">' + slot + '</span>';
     rows += '<span class="priority-item-name" style="text-align:right;" title="' + item + '">' + item + '</span>';
     rows += '</div>';
   }
   var priorityHTML = bisItems.length
-  ? '<div class="priority-list">' +
-      '<div class="priority-row" style="grid-template-columns:auto auto 1fr;background:transparent;border:none;padding:0.2rem 0.8rem;">' +
-        '<span style="font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);">Prio</span>' +
-        '<span style="font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);">Slot</span>' +
-        '<span style="font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);text-align:right;">Item / Source</span>' +
-      '</div>' +
-      rows +
-    '</div>'
-  : '<p class="no-items-msg">No BiS items on record yet.</p>';
+    ? '<div class="priority-list">' +
+        '<div class="priority-row" style="grid-template-columns:auto auto 1fr;background:transparent;border:none;padding:0.2rem 0.8rem;">' +
+          '<span style="font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);">Prio</span>' +
+          '<span style="font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);">Slot</span>' +
+          '<span style="font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);text-align:right;">Item / Source</span>' +
+        '</div>' +
+        rows +
+      '</div>'
+    : '<p class="no-items-msg">No BiS items on record yet.</p>';
 
- var lootMap = DATA.lootCounts || {};
- var normFirst = normalise(player.firstName);
- var lootMap   = DATA.lootCounts || {};
- var lootKey   = Object.keys(lootMap).find(function(k) { return normalise(k) === normFirst; });
- var lootEntry = lootKey ? lootMap[lootKey] : null;
- var lootCount = lootEntry ? lootEntry.count : 0;
- var lootItemsHTML = lootEntry ? lootEntry.items.map(function(item) {
-   return '<div style="font-size:0.82rem;color:var(--text-muted);padding:0.3rem 0;border-bottom:1px solid var(--border);">' + item + '</div>';
- }).join('') : '';
- var barWidth = player.attendance ? player.attendance : '0%';
-var attendDetails = (DATA.attendanceDetails || {})[player.firstName] || [];
-      var hasPenalties  = attendDetails.length > 0;
-      var attendExtra   = '';
-      if (hasPenalties) {
-        attendExtra = '<div id="attend-detail" style="display:none;margin-top:0.75rem;flex-direction:column;gap:0.3rem;">';
-        for (var ai = 0; ai < attendDetails.length; ai++) {
-          var entry  = attendDetails[ai];
-          var scolor = entry.status === 'No Show' ? 'var(--melee)' : 'var(--text-muted)';
-          attendExtra += '<div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.25rem 0;border-bottom:1px solid var(--border);">' +
-            '<span style="color:var(--text-muted);">' + entry.date + '</span>' +
-            '<span style="color:' + scolor + ';font-weight:600;">' + entry.status + '</span>' +
-          '</div>';
-        }
-        attendExtra += '</div>';
-      }
+  // ── Render ────────────────────────────────────────────────────────────
   profile.innerHTML =
     '<div class="profile-card">' +
+
+      // Role colour bar
       '<div class="role-bar role-bar-' + player.role + '"></div>' +
-      '<div class="role-bar role-bar-' + player.role + '"></div>' +
+
+      // Back button
       '<div style="padding:0.6rem 1.25rem;border-bottom:1px solid var(--border);">' +
-        '<button onclick="document.getElementById(\'playerSelect\').value=\'\';renderAttendanceOverview();" style="background:none;border:none;color:var(--text-dim);font-family:\'Rajdhani\',sans-serif;font-size:0.78rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;padding:0;">← Back to roster</button>' +
+        '<button onclick="document.getElementById(\'playerSelect\').value=\'\';renderAttendanceOverview();" ' +
+          'style="background:none;border:none;color:var(--text-dim);font-family:\'Rajdhani\',sans-serif;font-size:0.78rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;padding:0;">' +
+          '← Back to roster' +
+        '</button>' +
       '</div>' +
+
+      // Header
       '<div class="profile-header">' +
         '<div class="profile-avatar avatar-' + player.role + '">' + initials + '</div>' +
         '<div class="profile-identity">' +
@@ -410,10 +412,12 @@ var attendDetails = (DATA.attendanceDetails || {})[player.firstName] || [];
           '</div>' +
         '</div>' +
       '</div>' +
-      
-      
-      '<div class="profile-section"' + (hasPenalties ? ' onclick="var d=document.getElementById(\'attend-detail\');d.style.display=d.style.display===\'none\'?\'flex\':\'none\'" style="cursor:pointer;"' : '') + '>' +
-        '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Attendance' +
+
+      // Attendance
+      '<div class="profile-section"' +
+        (hasPenalties ? ' onclick="var d=document.getElementById(\'attend-detail\');d.style.display=d.style.display===\'none\'?\'flex\':\'none\';" style="cursor:pointer;"' : '') + '>' +
+        '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">' +
+          'Attendance' +
           (hasPenalties ? '<span style="font-size:0.7rem;color:var(--text-dim);">tap to expand</span>' : '') +
         '</div>' +
         '<div class="attend-row">' +
@@ -422,21 +426,30 @@ var attendDetails = (DATA.attendanceDetails || {})[player.firstName] || [];
         '</div>' +
         attendExtra +
       '</div>' +
-     '<div class="profile-section" onclick="var l=document.getElementById(\'loot-list\');l.style.display=l.style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer;">' +
-      '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Items Received <span style="font-size:0.7rem;color:var(--text-dim);">tap to expand</span></div>' +
-      '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">' + lootCount + ' item' + (lootCount !== 1 ? 's' : '') + ' this tier</div>' +
-      '<div id="loot-list" style="display:none;margin-top:0.75rem;flex-direction:column;gap:0.35rem;">' +
-        lootItemsHTML +
+
+      // Items received
+      '<div class="profile-section" onclick="var l=document.getElementById(\'loot-list\');l.style.display=l.style.display===\'none\'?\'flex\':\'none\';" style="cursor:pointer;">' +
+        '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">' +
+          'Items Received <span style="font-size:0.7rem;color:var(--text-dim);">tap to expand</span>' +
+        '</div>' +
+        '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">' + lootCount + ' item' + (lootCount !== 1 ? 's' : '') + ' this tier</div>' +
+        '<div id="loot-list" style="display:none;margin-top:0.75rem;flex-direction:column;gap:0.35rem;">' +
+          lootItemsHTML +
+        '</div>' +
       '</div>' +
-    '</div>' +
+
+      // BiS list
       '<div class="profile-section">' +
         '<div class="section-label">BiS List</div>' +
         bisHTML +
       '</div>' +
+
+      // Loot priority
       '<div class="profile-section">' +
         '<div class="section-label">Loot Priority</div>' +
         priorityHTML +
       '</div>' +
+
     '</div>';
 
   profile.style.display = '';
