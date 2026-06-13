@@ -333,7 +333,7 @@ function renderProfile(firstName) {
     rows += '<div class="priority-row">';
     rows += '<span class="priority-item-name" title="' + item + '">' + item + '</span>';
     rows += '<span class="priority-item-slot">' + slot + '</span>';
-    rows += isGeneric ? '<span class="rank-pill rank-unranked">' + (slot || '—') + '</span>' : rankPillHTML(rank);
+    rows += isGeneric ? '' : rankPillHTML(rank);
     rows += '</div>';
   }
   var priorityHTML = bisItems.length
