@@ -396,12 +396,31 @@ function renderProfile(firstName) {
           '</div>' +
         '</div>' +
       '</div>' +
-      '<div class="profile-section">' +
-        '<div class="section-label">Attendance</div>' +
+      var attendDetails = (DATA.attendanceDetails || {})[player.firstName] || [];
+      var hasPenalties  = attendDetails.length > 0;
+      var attendExtra   = '';
+      if (hasPenalties) {
+        attendExtra = '<div id="attend-detail" style="display:none;margin-top:0.75rem;flex-direction:column;gap:0.3rem;">';
+        for (var ai = 0; ai < attendDetails.length; ai++) {
+          var entry  = attendDetails[ai];
+          var scolor = entry.status === 'No Show' ? 'var(--melee)' : 'var(--text-muted)';
+          attendExtra += '<div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.25rem 0;border-bottom:1px solid var(--border);">' +
+            '<span style="color:var(--text-muted);">' + entry.date + '</span>' +
+            '<span style="color:' + scolor + ';font-weight:600;">' + entry.status + '</span>' +
+          '</div>';
+        }
+        attendExtra += '</div>';
+      }
+      
+      '<div class="profile-section"' + (hasPenalties ? ' onclick="var d=document.getElementById(\'attend-detail\');d.style.display=d.style.display===\'none\'?\'flex\':\'none\'" style="cursor:pointer;"' : '') + '>' +
+        '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Attendance' +
+          (hasPenalties ? '<span style="font-size:0.7rem;color:var(--text-dim);">tap to expand</span>' : '') +
+        '</div>' +
         '<div class="attend-row">' +
           '<div class="attend-bar-wrap"><div class="attend-bar" style="width:' + barWidth + '"></div></div>' +
           '<span class="attend-label">' + attendPct + '</span>' +
         '</div>' +
+        attendExtra +
       '</div>' +
      '<div class="profile-section" onclick="var l=document.getElementById(\'loot-list\');l.style.display=l.style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer;">' +
       '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Items Received <span style="font-size:0.7rem;color:var(--text-dim);">tap to expand</span></div>' +
