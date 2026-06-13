@@ -125,17 +125,17 @@
   .officer-toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:0.75rem; }
   .officer-toolbar h2 { font-family:'Cinzel',serif; font-size:1rem; color:var(--gold-light); letter-spacing:0.1em; }
   .roster-table { width:100%; border-collapse:collapse; }
-  .roster-table th { font-size:0.65rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-dim); font-weight:600; padding:0.5rem 0.75rem; border-bottom:1px solid var(--border); text-align:left; }
+  .roster-table th { font-size:0.82rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text); font-weight:600; padding:0.6rem 0.75rem; border-bottom:1px solid var(--border); text-align:left; }
   .roster-table th:not(:first-child) { text-align:center; }
-  .roster-table td { padding:0.55rem 0.75rem; border-bottom:1px solid var(--border); font-size:0.88rem; vertical-align:middle; }
-  .roster-table td:not(:first-child) { text-align:center; }
-  .roster-table tr.group-header td { font-size:0.62rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-dim); font-weight:600; padding:0.75rem 0.75rem 0.3rem; background:transparent; border-bottom:none; cursor:pointer; }
+  .roster-table td { padding:0.6rem 0.75rem; border-bottom:1px solid var(--border); font-size:1rem; vertical-align:middle; color:var(--text); }
+  .roster-table td:not(:first-child) { text-align:center; color:var(--text); }
+  .roster-table tr.group-header td { font-size:0.72rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-muted); font-weight:600; padding:0.75rem 0.75rem 0.3rem; background:transparent; border-bottom:none; cursor:pointer; }
   .roster-table tr.player-row { cursor:pointer; transition:background 0.1s; }
   .roster-table tr.player-row:hover { background:var(--bg-elevated); }
   .roster-table tr.player-row.selected { background:rgba(214,163,68,0.06); }
   .player-name-cell { display:flex; align-items:center; gap:0.5rem; }
   .mini-avatar { width:28px; height:28px; border-radius:3px; display:flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-size:0.65rem; font-weight:600; flex-shrink:0; }
-  .attend-mini { font-size:0.82rem; font-weight:600; }
+  .attend-mini { font-size:1rem; font-weight:600; }
   .tag { font-size:0.6rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:1px 6px; border-radius:2px; }
   .tag-trial { background:rgba(240,200,112,0.1); color:#f0c870; border:1px solid rgba(240,200,112,0.2); }
   .tag-bench { background:rgba(255,255,255,0.04); color:var(--text-muted); border:1px solid var(--border); }
@@ -571,17 +571,17 @@ function buildOfficerTable() {
       var statusTags = '';
       if (p.isTrial) statusTags += '<span class="tag tag-trial">Trial</span> ';
       if (p.isBench) statusTags += '<span class="tag tag-bench">Bench</span>';
-      if (!statusTags) statusTags = '<span style="color:var(--text-dim);font-size:0.8rem;">—</span>';
+      if (!statusTags) statusTags = '<span style="color:var(--text);font-size:1rem;">—</span>';
 
       html += '<tr class="player-row" onclick="officerSelectPlayer(\'' + p.firstName + '\')" data-player="' + p.firstName + '">' +
         '<td><div class="player-name-cell">' +
           '<div class="mini-avatar" style="background:rgba(0,0,0,0.2);color:' + roleColor + ';border:1px solid ' + roleColor + '33;">' + name.slice(0,2).toUpperCase() + '</div>' +
-          '<span style="font-weight:500;">' + name + '</span>' +
+          '<span style="font-weight:600;color:var(--text);">' + name + '</span>' +
           (p.firstName !== name ? '<span style="font-size:0.72rem;color:var(--text-dim);">(' + p.firstName + ')</span>' : '') +
         '</div></td>' +
         '<td><span class="attend-mini" style="color:' + color + ';">' + (p.attendance || '—') + '</span></td>' +
-        '<td style="color:var(--text-muted);">' + lootCount + '</td>' +
-        '<td>' + (hasBis ? '<span style="color:var(--heal);">✓</span>' : '<span style="color:var(--text-dim);">—</span>') + '</td>' +
+        '<td style="color:var(--text);">' + lootCount + '</td>' +
+        '<td>' + (hasBis ? '<span style="color:var(--heal);">✓</span>' : '<span style="color:var(--text);">—</span>') + '</td>' +
         '<td>' + statusTags + '</td>' +
         '</tr>';
     }
