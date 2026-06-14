@@ -42,8 +42,25 @@ Items marked `[x]` are shipped. Items marked `[ ]` are planned. Partially-built 
 - [x] Sort roster table by attendance, items received, or name
 - [x] Search by player name
 
+## Loot History
+
+- [ ] Voluntary pass log -- officer marks that a raider passed on a piece; logged and factored positively into their loot priority standing
+
+## Raider Profile (read-only, no login required)
+
+- [ ] Visual BiS checklist on the character page -- each slot shown as received or still needed
+- [ ] BiS completion percentage on each player's profile
+- [ ] "Fully BiS" badge when a player has received every raid-source BiS item
+- [ ] Last received item highlighted prominently on the profile ("Last received: X on date Y")
+- [ ] Attendance trend on the character page -- recent-weeks indicator so raiders can self-monitor
+- [ ] Public leaderboard -- sortable by attendance %, BiS completion %, items received
+
 ## Future / Larger Features
 
 - [ ] Officer write functionality -- update BiS links, nicknames, trial/bench status directly from the page back to the Google Sheet *(requires a POST endpoint on the Apps Script side)*
-- [ ] Per-raider BiS change request system -- raider submits a change request, officer approves before it updates the sheet
-- [ ] Raider login system tied to character name or nickname
+- [ ] Per-raider BiS change request system -- raider submits an updated BiS link plus a diff of which items changed; officer approves before the sheet updates
+- [ ] Raider login via Discord OAuth -- Apps Script handles the OAuth callback and token exchange; no new infrastructure required. On first login, raider claims their character (one claim per character). Unlocks self-marking received items (crafted, catalyzed, M+) and personalized priority standing view.
+- [ ] App role system -- a separate "App Role" column in the Roster sheet (admin-managed only) controls in-app permissions: blank = raider view, `officer` = officer dashboard + write access, `admin` = full control. Deliberately separate from guild officer status so non-team officers don't get write access.
+- [ ] Officer claim management -- in-app UI listing all claimed characters with reassign/release controls, for handling player turnover or claim conflicts.
+- [ ] Replace officer password with Discord login -- once the login system ships, remove the hardcoded password entirely.
+- [ ] Priority standing on BiS items -- raiders see their rank for each contested raid item on their profile *(readable without login, but personalized view requires raider login)*
