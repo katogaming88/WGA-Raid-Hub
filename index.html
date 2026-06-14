@@ -77,6 +77,19 @@
         <button class="filter-chip" onclick="toggleRole('Melee')" id="chip-role-Melee">Melee</button>
         <button class="filter-chip" onclick="toggleRole('Ranged')" id="chip-role-Ranged">Ranged</button>
       </div>
+      <div class="filter-bar" style="margin-bottom:0.35rem;">
+        <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
+        <button class="filter-chip" onclick="toggleSort('name')" id="chip-sort-name">Name</button>
+        <button class="filter-chip" onclick="toggleSort('attendance')" id="chip-sort-attendance">Attendance</button>
+        <button class="filter-chip" onclick="toggleSort('items')" id="chip-sort-items">Items</button>
+      </div>
+      <div class="roster-search-row">
+        <input type="text" id="rosterSearch" class="roster-search-input" placeholder="Search player..." oninput="buildRosterTable()">
+        <div class="bis-search-wrap">
+          <input type="text" id="bisItemSearch" class="roster-search-input" placeholder="Has BiS item..." oninput="buildRosterTable()">
+          <span id="bisItemCount" class="bis-item-count"></span>
+        </div>
+      </div>
       <table class="roster-table" id="rosterTable"></table>
       <div id="officerProfile"></div>
     </div>
