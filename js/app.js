@@ -197,7 +197,7 @@ function renderProfile(firstName, backTo, container) {
   var lootItemsHTML = '';
   if (lootEntry && lootEntry.items) {
     for (var li = 0; li < lootEntry.items.length; li++) {
-      lootItemsHTML += '<div style="font-size:0.88rem;color:var(--text);padding:0.3rem 0;border-bottom:1px solid var(--border);">'+lootEntry.items[li]+'</div>';
+      lootItemsHTML += '<div style="font-size:1rem;color:var(--text);padding:0.3rem 0;border-bottom:1px solid var(--border);">'+lootEntry.items[li]+'</div>';
     }
   }
 
@@ -253,10 +253,10 @@ function renderProfile(firstName, backTo, container) {
         '<div class="attend-row"><div class="attend-bar-wrap"><div class="attend-bar" style="width:'+barWidth+'"></div></div><span class="attend-label">'+attendPct+'</span></div>' +
         attendExtra +
       '</div>' +
-      '<div class="profile-section" onclick="var l=document.getElementById(\'loot-list-'+player.firstName+'\');l.style.display=l.style.display===\'none\'?\'flex\':\'none\';" style="cursor:pointer;">' +
+      '<div class="profile-section" onclick="var l=document.getElementById(\'loot-list-'+player.firstName+'\');l.style.display=l.style.display===\'none\'?\'grid\':\'none\';" style="cursor:pointer;">' +
         '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Items Received <span style="font-size:0.7rem;color:var(--text-dim);">tap to expand</span></div>' +
         '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">'+lootCount+' item'+(lootCount!==1?'s':'')+' this tier</div>' +
-        '<div id="loot-list-'+player.firstName+'" style="display:none;margin-top:0.75rem;flex-direction:column;gap:0.35rem;">'+lootItemsHTML+'</div>' +
+        '<div id="loot-list-'+player.firstName+'" style="display:none;margin-top:0.75rem;grid-template-columns:1fr 1fr;gap:0 1rem;">'+lootItemsHTML+'</div>' +
       '</div>' +
       '<div class="profile-section"><div class="section-label">BiS List</div>'+bisHTML+'</div>' +
       '<div class="profile-section" onclick="var l=document.getElementById(\'prio-list-'+player.firstName+'\');l.style.display=l.style.display===\'none\'?\'block\':\'none\';" style="cursor:pointer;">' +
