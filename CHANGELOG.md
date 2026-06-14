@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.0] - 2026-06-14
+
+### Added
+- Priority tab in the officer dashboard — full ranked list for every item, grouped by type (Trinkets, Armor by slot, Weapons, Jewelry)
+- Player names in priority lists are role-coloured with a role badge (TANK / HEAL / MELEE / RANGED) to the right
+- By Raid sort placeholder (disabled until raid source data is available)
+
+---
+
 ## [1.1.0] - 2026-06-14
 
 ### Added

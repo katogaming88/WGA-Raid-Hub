@@ -20,7 +20,7 @@ Items marked `[x]` are shipped. Items marked `[ ]` are planned. Partially-built 
 
 ## Priority Management
 
-- [ ] Full priority order for every item on one page without opening the sheet
+- [x] Full priority order for every item on one page without opening the sheet
 - [ ] Highlight conflicts where a player is high priority on multiple items
 - [ ] Show which items have no one ranked yet
 
