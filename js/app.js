@@ -7,6 +7,39 @@ var activeSort = { key: null, dir: 1 };
 var selectedOfficerPlayer = null;
 var activeDiffFilter = 'all';
 
+var CLASS_COLORS = {
+  'Death Knight': '#C41E3A',
+  'Demon Hunter': '#A330C9',
+  'Druid':        '#FF7C0A',
+  'Evoker':       '#33937F',
+  'Hunter':       '#AAD372',
+  'Mage':         '#3FC7EB',
+  'Monk':         '#00FF98',
+  'Paladin':      '#F48CBA',
+  'Priest':       '#FFFFFF',
+  'Rogue':        '#FFF468',
+  'Shaman':       '#0070DD',
+  'Warlock':      '#8788EE',
+  'Warrior':      '#C69B3A'
+};
+
+function classColor(cls) {
+  return CLASS_COLORS[cls] || 'var(--text)';
+}
+
+function classHexToRgba(hex, a) {
+  var r = parseInt(hex.slice(1,3), 16);
+  var g = parseInt(hex.slice(3,5), 16);
+  var b = parseInt(hex.slice(5,7), 16);
+  return 'rgba('+r+','+g+','+b+','+a+')';
+}
+
+function classBadgeStyle(cls) {
+  var hex = CLASS_COLORS[cls];
+  if (!hex) return '';
+  return 'color:'+hex+';background:'+classHexToRgba(hex,0.1)+';border-color:'+classHexToRgba(hex,0.25)+';';
+}
+
 function normalise(str) {
   return String(str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 }
@@ -208,7 +241,7 @@ function renderProfile(firstName, backTo, container) {
 
   var displayName = player.nick || player.firstName;
   var initials    = displayName.slice(0,2).toUpperCase();
-  var classLine   = player.class ? '<span class="badge badge-class">'+player.class+(player.spec?' · '+player.spec:'')+'</span>' : '';
+  var classLine   = player.class ? '<span class="badge badge-class" style="'+classBadgeStyle(player.class)+'">'+player.class+(player.spec?' · '+player.spec:'')+'</span>' : '';
   var trialBadge  = player.isTrial ? '<span class="badge badge-trial">Trial</span>' : '';
   var benchBadge  = player.isBench ? '<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text);border:1px solid var(--border);">Bench</span>' : '';
 
@@ -473,11 +506,17 @@ function buildRosterTable() {
       if (p.isBench) statusTags += '<span class="tag tag-bench">Bench</span>';
       if (!statusTags) statusTags = '<span style="color:var(--text);">—</span>';
       var barPct = pct + '%';
+      var clsColor = classColor(p.class);
       html += '<tr class="player-row'+(selectedOfficerPlayer===p.firstName?' selected':'')+'" onclick="officerSelectPlayer(\''+p.firstName+'\')" data-player="'+p.firstName+'">' +
         '<td><div class="player-name-cell">' +
           '<div class="mini-avatar" style="background:rgba(0,0,0,0.25);color:'+roleColor+';border:2px solid '+roleColor+';">'+name.slice(0,2).toUpperCase()+'</div>' +
-          '<span style="font-weight:600;color:var(--text);">'+name+'</span>' +
-          (p.firstName!==name?'<span style="font-size:0.82rem;color:var(--text-muted);">('+p.firstName+')</span>':'') +
+          '<div style="display:flex;flex-direction:column;gap:0.1rem;">' +
+            '<div style="display:flex;align-items:center;gap:0.4rem;">' +
+              '<span style="font-weight:600;color:var(--text);">'+name+'</span>' +
+              (p.firstName!==name?'<span style="font-size:0.82rem;color:var(--text-muted);">('+p.firstName+')</span>':'') +
+            '</div>' +
+            (p.class?'<span style="font-size:0.75rem;color:'+clsColor+';letter-spacing:0.03em;">'+p.class+(p.spec?' · '+p.spec:'')+'</span>':'') +
+          '</div>' +
         '</div></td>' +
         '<td><div class="attend-mini-cell"><span class="attend-mini" style="color:'+color+';">'+(p.attendance||'—')+'</span>' +
           (pct?'<div class="attend-mini-bar-wrap"><div class="attend-mini-bar" style="width:'+barPct+';background:'+color+';"></div></div>':'') +
