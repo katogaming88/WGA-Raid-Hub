@@ -29,6 +29,7 @@ function switchTab(name) {
   if (name === 'conflicts')  buildConflicts();
   if (name === 'fairness')   buildFairness();
   if (name === 'attendance') buildAttendanceTab();
+  if (name === 'priority')   buildPriorityTab();
 }
 
 // -- Load data --------------------------------------------------------------
@@ -151,7 +152,7 @@ function rankPillHTML(rank) {
 function getSlotColor(slot) {
   var s = (slot||'').toUpperCase();
   if (s==='TRINKET'||s==='TRINKET 1'||s==='TRINKET 2') return 'var(--gold)';
-  if (s==='NECK'||s==='RING 1'||s==='RING 2')          return 'var(--ranged)';
+  if (s==='NECK'||s==='RING'||s==='RING 1'||s==='RING 2') return 'var(--ranged)';
   if (s==='1H/2H'||s==='OH')                            return 'var(--melee)';
   if (['HEAD','SHOULDERS','CHEST','GLOVES','LEGS','CLOAK','BRACERS','BELT','BOOTS'].indexOf(s)>=0) return 'var(--tank)';
   return 'var(--text)';
@@ -541,6 +542,106 @@ function buildAttendanceTab() {
     }
   }
   document.getElementById('attendanceContent').innerHTML = html;
+}
+
+// -- Priority tab -----------------------------------------------------------
+var ARMOR_SLOT_ORDER = ['HEAD','SHOULDERS','CHEST','GLOVES','LEGS','CLOAK','BRACERS','BELT','BOOTS'];
+
+function getItemGroup(slot) {
+  var s = (slot || '').toUpperCase();
+  if (s === 'TRINKET' || s === 'TRINKET 1' || s === 'TRINKET 2') return 'Trinket';
+  if (s === '1H/2H' || s === 'OH')                               return 'Weapon';
+  if (s === 'NECK' || s === 'RING' || s === 'RING 1' || s === 'RING 2') return 'Jewelry';
+  if (ARMOR_SLOT_ORDER.indexOf(s) >= 0)                          return 'Armor';
+  return 'Other';
+}
+
+function buildPriorityTab() {
+  var prioOrder = DATA.priorityOrder || {};
+  var itemSlots = DATA.itemSlots     || {};
+  var roster    = DATA.roster        || [];
+
+  var rosterMap = {};
+  for (var i = 0; i < roster.length; i++) {
+    rosterMap[normalise(roster[i].firstName)] = roster[i];
+  }
+
+  var items = Object.keys(prioOrder).filter(function(i) { return (itemSlots[i] || '').toLowerCase() !== 'slot'; }).sort(function(a, b) { return a.localeCompare(b); });
+
+  if (!items.length) {
+    document.getElementById('priorityContent').innerHTML = '<p style="color:var(--text);padding:1rem;">No priority data found.</p>';
+    return;
+  }
+
+  // Group items
+  var groups = { Trinket: [], Armor: {}, Weapon: [], Jewelry: [], Other: [] };
+  for (var i = 0; i < items.length; i++) {
+    var item  = items[i];
+    var slot  = itemSlots[item] || '';
+    var group = getItemGroup(slot);
+    if (group === 'Armor') {
+      var s = slot.toUpperCase();
+      if (!groups.Armor[s]) groups.Armor[s] = [];
+      groups.Armor[s].push(item);
+    } else {
+      groups[group].push(item);
+    }
+  }
+
+  function renderItem(item) {
+    var ranked = prioOrder[item];
+    if (!ranked || !ranked.length) return '';
+    var slot = itemSlots[item] || '';
+    var out  = '<div class="prio-item">';
+    out += '<div class="prio-item-header">';
+    out += '<span class="prio-item-name">' + item + '</span>';
+    if (slot) out += '<span class="prio-item-slot" style="color:' + getSlotColor(slot) + ';">' + slot + '</span>';
+    out += '<span class="prio-item-count">' + ranked.length + ' ranked</span>';
+    out += '</div><div class="prio-ranked-list">';
+    for (var j = 0; j < ranked.length; j++) {
+      var firstName = ranked[j];
+      var player    = rosterMap[normalise(firstName)];
+      var display   = player ? (player.nick || player.firstName) : firstName;
+      var role      = player ? player.role : '';
+      var roleColor = role === 'Tank' ? 'var(--tank)' : role === 'Heal' ? 'var(--heal)' : role === 'Ranged' ? 'var(--ranged)' : role === 'Melee' ? 'var(--melee)' : 'var(--text)';
+      out += '<div class="prio-rank-row">';
+      out += '<span class="prio-rank-num">' + (j + 1) + '</span>';
+      out += '<span class="prio-rank-name" style="color:' + roleColor + ';">' + display + '</span>';
+      if (role) out += '<span class="prio-role-badge prio-role-' + role + '">' + role.toUpperCase() + '</span>';
+      out += '</div>';
+    }
+    out += '</div></div>';
+    return out;
+  }
+
+  var GROUP_ORDER = ['Trinket', 'Armor', 'Weapon', 'Jewelry', 'Other'];
+  var GROUP_LABELS = { Trinket: 'Trinkets', Armor: 'Armor', Weapon: 'Weapons', Jewelry: 'Jewelry', Other: 'Other' };
+
+  var html = '';
+  for (var g = 0; g < GROUP_ORDER.length; g++) {
+    var groupKey = GROUP_ORDER[g];
+    if (groupKey === 'Armor') {
+      var hasArmor = false;
+      for (var si = 0; si < ARMOR_SLOT_ORDER.length; si++) {
+        if (groups.Armor[ARMOR_SLOT_ORDER[si]] && groups.Armor[ARMOR_SLOT_ORDER[si]].length) { hasArmor = true; break; }
+      }
+      if (!hasArmor) continue;
+      html += '<div class="prio-section-header">' + GROUP_LABELS.Armor + '</div>';
+      for (var si = 0; si < ARMOR_SLOT_ORDER.length; si++) {
+        var slotKey = ARMOR_SLOT_ORDER[si];
+        var slotItems = groups.Armor[slotKey];
+        if (!slotItems || !slotItems.length) continue;
+        html += '<div class="prio-sub-header" style="color:' + getSlotColor(slotKey) + ';">' + slotKey.charAt(0) + slotKey.slice(1).toLowerCase() + '</div>';
+        for (var k = 0; k < slotItems.length; k++) html += renderItem(slotItems[k]);
+      }
+    } else {
+      if (!groups[groupKey].length) continue;
+      html += '<div class="prio-section-header">' + GROUP_LABELS[groupKey] + '</div>';
+      for (var k = 0; k < groups[groupKey].length; k++) html += renderItem(groups[groupKey][k]);
+    }
+  }
+
+  document.getElementById('priorityContent').innerHTML = html;
 }
 
 loadData();
