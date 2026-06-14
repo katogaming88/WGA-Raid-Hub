@@ -177,5 +177,26 @@ select#playerSelect option { background:#1a1d27; }
 .attend-penalty-list { display:flex; flex-direction:column; gap:0.25rem; margin-top:0.5rem; }
 .attend-penalty-entry { display:flex; justify-content:space-between; font-size:0.88rem; padding:0.2rem 0; border-bottom:1px solid var(--border); }
 
+/* Priority tab */
+.prio-section-header { font-size:0.72rem; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-muted); padding:0.5rem 0 0.35rem; margin-top:1rem; border-bottom:1px solid var(--border-mid); margin-bottom:0.6rem; }
+.prio-section-header:first-child { margin-top:0; }
+.prio-sub-header { font-size:0.68rem; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; padding:0.4rem 0 0.25rem; margin-top:0.5rem; margin-bottom:0.3rem; }
+.prio-item { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1rem 1.25rem; margin-bottom:0.5rem; }
+.prio-item-header { display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem; flex-wrap:wrap; }
+.prio-item-name { font-size:1.05rem; font-weight:600; color:var(--text); flex:1; }
+.prio-item-slot { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; }
+.prio-item-count { font-size:0.72rem; font-weight:600; padding:2px 8px; border-radius:2px; background:rgba(255,255,255,0.05); color:var(--text-muted); border:1px solid var(--border); }
+.prio-ranked-list { display:flex; flex-direction:column; gap:0.2rem; }
+.prio-rank-row { display:flex; align-items:center; gap:0.6rem; padding:0.25rem 0; border-bottom:1px solid var(--border); }
+.prio-rank-row:last-child { border-bottom:none; }
+.prio-rank-num { font-size:0.72rem; font-weight:700; color:var(--text-dim); min-width:22px; text-align:right; flex-shrink:0; }
+.prio-rank-name { font-size:0.95rem; font-weight:600; flex:1; }
+.prio-role-badge { font-size:0.65rem; font-weight:700; letter-spacing:0.1em; padding:1px 6px; border-radius:2px; flex-shrink:0; }
+.prio-role-Tank   { color:var(--tank);   background:rgba(74,158,255,0.1);  border:1px solid rgba(74,158,255,0.3); }
+.prio-role-Heal   { color:var(--heal);   background:rgba(61,220,132,0.1);  border:1px solid rgba(61,220,132,0.3); }
+.prio-role-Melee  { color:var(--melee);  background:rgba(255,124,92,0.1);  border:1px solid rgba(255,124,92,0.3); }
+.prio-role-Ranged { color:var(--ranged); background:rgba(191,140,255,0.1); border:1px solid rgba(191,140,255,0.3); }
+.prio-chip-disabled { opacity:0.35; cursor:not-allowed; }
+
 /* Footer */
 .footer { text-align:center; padding:1.5rem; font-size:0.65rem; color:var(--text-dim); letter-spacing:0.12em; text-transform:uppercase; border-top:1px solid var(--border); margin-top:auto; }
