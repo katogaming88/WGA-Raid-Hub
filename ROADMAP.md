@@ -13,10 +13,10 @@ Items marked `[x]` are shipped. Items marked `[ ]` are planned. Partially-built 
 
 ## Loot Tracking
 
-- [ ] Full loot history per player (expandable detailed log — currently shows count only)
-- [ ] Flag items as contested where multiple players have it in their BiS
+- [x] Full loot history per player (expandable detailed log)
+- [x] Flag items as contested where multiple players have it in their BiS
 - [ ] See who is missing loot for each slot (e.g. who still needs a trinket)
-- [ ] Loot distribution fairness view — who has received the most vs least *(partially built)*
+- [x] Loot distribution fairness view — who has received the most vs least
 
 ## Priority Management
 
@@ -27,18 +27,18 @@ Items marked `[x]` are shipped. Items marked `[ ]` are planned. Partially-built 
 ## Attendance
 
 - [ ] Full attendance history per player expandable in the officer dashboard
-- [ ] Filter roster by players below an attendance threshold *(colour coding exists, filter not yet built)*
+- [x] Filter roster by players below an attendance threshold
 - [ ] See who was benched most often vs absent
 
 ## BiS Tracking
 
-- [ ] Flag players who have not submitted a BiS list yet *(partially visible in officer roster table)*
-- [ ] Show which items are most contested across the whole raid *(partially built in BiS Conflicts tab)*
+- [x] Flag players who have not submitted a BiS list yet
+- [x] Show which items are most contested across the whole raid
 - [ ] Filter roster by who has a specific item in their BiS list
 
 ## Filters and Sorting
 
-- [ ] Filter roster table by role, trial status, bench status *(partially built)*
+- [x] Filter roster table by role, trial status, bench status
 - [ ] Sort roster table by attendance, items received, or name
 - [ ] Search by player name
 
