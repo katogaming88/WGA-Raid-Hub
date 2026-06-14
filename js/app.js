@@ -211,19 +211,42 @@ function renderProfile(firstName, backTo, container) {
     ? '<div class="bis-row"><div class="bis-dot yes"></div><a class="bis-link" href="'+player.bisLink+'" target="_blank" rel="noopener">View BiS list →</a></div>'
     : '<div class="bis-row"><div class="bis-dot no"></div><span class="bis-none">No BiS list submitted yet</span></div>';
 
+  // Build received lookup from loot history
+  var receivedMap = {};
+  if (lootEntry && lootEntry.items) {
+    for (var ri = 0; ri < lootEntry.items.length; ri++) {
+      var ri_obj  = lootEntry.items[ri];
+      var ri_name = typeof ri_obj === 'string' ? ri_obj : ri_obj.name;
+      var ri_key  = normalise(ri_name);
+      if (!receivedMap[ri_key]) receivedMap[ri_key] = [];
+      receivedMap[ri_key].push(typeof ri_obj === 'object' ? ri_obj : { name: ri_name });
+    }
+  }
+
   // Priority
   var bisItems = getBisItems(player.firstName);
   var rows = '';
   for (var bi = 0; bi < bisItems.length; bi++) {
-    var entry = bisItems[bi];
-    var item  = entry.item, bisSlot = entry.slot;
-    var rank  = getRank(player.firstName, item);
-    var slot  = (DATA.itemSlots||{})[item] || bisSlot || '';
-    var isGen = (item==='M+'||item==='Crafted'||item==='Catalyst');
-    rows += '<div class="priority-row" style="grid-template-columns:auto auto 1fr;">';
+    var entry    = bisItems[bi];
+    var item     = entry.item, bisSlot = entry.slot;
+    var rank     = getRank(player.firstName, item);
+    var slot     = (DATA.itemSlots||{})[item] || bisSlot || '';
+    var isGen    = (item==='M+'||item==='Crafted'||item==='Catalyst');
+    var received = receivedMap[normalise(item)] || null;
+    rows += '<div class="priority-row' + (received ? ' bis-received' : '') + '" style="grid-template-columns:auto auto 1fr' + (received ? ' auto' : '') + ';">';
     rows += isGen ? '<span style="font-size:0.72rem;color:var(--text-dim);min-width:40px;text-align:center;">—</span>' : rankPillHTML(rank);
     rows += '<span class="priority-item-slot" style="color:'+getSlotColor(slot)+';">'+slot+'</span>';
-    rows += '<span class="priority-item-name" style="text-align:right;" title="'+item+'">'+item+'</span></div>';
+    rows += '<span class="priority-item-name" style="text-align:right;" title="'+item+'">'+item+'</span>';
+    if (received) {
+      var badges = '';
+      for (var rv = 0; rv < received.length; rv++) {
+        var rv_diff = received[rv].difficulty || '';
+        var rv_date = received[rv].date || '';
+        badges += '<span class="bis-received-badge">' + (rv_diff ? rv_diff + ' · ' : '') + rv_date + '</span>';
+      }
+      rows += '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;">' + badges + '</div>';
+    }
+    rows += '</div>';
   }
   var priorityHTML = bisItems.length
     ? '<div class="priority-list">' +
