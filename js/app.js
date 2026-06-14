@@ -2,6 +2,7 @@ var WEB_APP_URL  = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWC
 var OFFICER_PASS = 'phoenix2'; // change this
 var DATA         = null;
 var activeFilters = {};
+var activeSort = { key: null, dir: 1 };
 var selectedOfficerPlayer = null;
 
 function normalise(str) {
@@ -287,11 +288,30 @@ function toggleRole(role) {
   buildRosterTable();
 }
 
+function toggleSort(key) {
+  if (activeSort.key === key) {
+    activeSort.dir *= -1;
+  } else {
+    activeSort.key = key;
+    activeSort.dir = 1;
+  }
+  ['name','attendance','items'].forEach(function(k) {
+    var chip = document.getElementById('chip-sort-' + k);
+    var isActive = activeSort.key === k;
+    chip.classList.toggle('active', isActive);
+    chip.textContent = { name:'Name', attendance:'Attendance', items:'Items' }[k] + (isActive ? (activeSort.dir === 1 ? ' ^' : ' v') : '');
+  });
+  buildRosterTable();
+}
+
 // -- Roster table -----------------------------------------------------------
 function buildRosterTable() {
   var order  = ['Tank','Heal','Melee','Ranged','Bench'];
   var labels = { Tank:'🛡 Tanks', Heal:'💚 Healers', Melee:'⚔️ Melee', Ranged:'🏹 Ranged', Bench:'🪑 Bench' };
   var groups = { Tank:[], Heal:[], Melee:[], Ranged:[], Bench:[] };
+
+  var searchTerm  = normalise((document.getElementById('rosterSearch')  || {}).value || '');
+  var bisItemTerm = normalise((document.getElementById('bisItemSearch') || {}).value || '');
 
   for (var i = 0; i < DATA.roster.length; i++) {
     var p = DATA.roster[i];
@@ -300,11 +320,36 @@ function buildRosterTable() {
     if (activeFilters.trial && !p.isTrial) continue;
     if (activeFilters.bench && !p.isBench) continue;
     if (activeFilters.role && p.role !== activeFilters.role) continue;
+    if (searchTerm && normalise(p.nick||'').indexOf(searchTerm) === -1 && normalise(p.firstName||'').indexOf(searchTerm) === -1) continue;
+    if (bisItemTerm) {
+      var bisItems = getBisItems(p.firstName);
+      var hasBisMatch = false;
+      for (var bi = 0; bi < bisItems.length; bi++) {
+        if (normalise(bisItems[bi].item).indexOf(bisItemTerm) !== -1) { hasBisMatch = true; break; }
+      }
+      if (!hasBisMatch) continue;
+    }
     if (p.isBench) groups['Bench'].push(p);
     else if (groups[p.role]) groups[p.role].push(p);
   }
+
+  var sortFn;
+  if (activeSort.key === 'name') {
+    sortFn = function(a,b) { return activeSort.dir * (a.nick||a.firstName).localeCompare(b.nick||b.firstName); };
+  } else if (activeSort.key === 'attendance') {
+    sortFn = function(a,b) { return activeSort.dir * ((parseInt(a.attendance)||0) - (parseInt(b.attendance)||0)); };
+  } else if (activeSort.key === 'items') {
+    sortFn = function(a,b) {
+      var ac = (getLootEntry(a.firstName)||{count:0}).count;
+      var bc = (getLootEntry(b.firstName)||{count:0}).count;
+      return activeSort.dir * (ac - bc);
+    };
+  } else {
+    sortFn = function(a,b) { return (a.nick||a.firstName).localeCompare(b.nick||b.firstName); };
+  }
+
   for (var r = 0; r < order.length; r++) {
-    groups[order[r]].sort(function(a,b) { return (a.nick||a.firstName).localeCompare(b.nick||b.firstName); });
+    groups[order[r]].sort(sortFn);
   }
 
   var html = '<thead><tr><th>Player</th><th>Attendance</th><th>Items</th><th>BiS Link</th><th>Status</th></tr></thead><tbody>';
@@ -345,6 +390,11 @@ function buildRosterTable() {
   if (totalRows === 0) html += '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem;">No players match the current filters.</td></tr>';
   html += '</tbody>';
   document.getElementById('rosterTable').innerHTML = html;
+
+  var countEl = document.getElementById('bisItemCount');
+  if (countEl) {
+    countEl.textContent = bisItemTerm ? totalRows + ' player' + (totalRows !== 1 ? 's' : '') : '';
+  }
 }
 
 function officerSelectPlayer(firstName) {
