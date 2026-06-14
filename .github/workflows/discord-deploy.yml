@@ -5,7 +5,7 @@ on:
 
 jobs:
   notify:
-    if: github.event.deployment_status.state == 'success' || github.event.deployment_status.state == 'failure'
+    if: contains(fromJson('["success","failure","error"]'), github.event.deployment_status.state)
     runs-on: ubuntu-latest
     steps:
       - name: Post to Discord
@@ -21,11 +21,9 @@ jobs:
           if [ "$STATE" = "success" ]; then
             COLOR=3066993
             TITLE="Deployment succeeded"
-            EMOJI="Green Circle"
           else
             COLOR=15158332
-            TITLE="Deployment failed"
-            EMOJI="Red Circle"
+            TITLE="Deployment failed ($STATE)"
           fi
 
           SHORT_SHA="${COMMIT_SHA:0:7}"
