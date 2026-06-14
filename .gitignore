@@ -1,0 +1,16 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/extensions.json
+*.swp
+*.swo
+
+# Local env / secrets
+.env
+.env.local
+
+# Node (if a build step is added later)
+node_modules/
+npm-debug.log*
