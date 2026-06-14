@@ -42,8 +42,9 @@ const CFG = {
 
   // ── Loot Sheet ───────────────────────────────────────────────────
   lootSheet:         'Loot Data',
-  lootPlayerCol:     1, // A - Player (Name-Realm)
-  lootDataStart:     2, // First Data row (row 1 = headers)
+  lootPlayerCol:     1,  // A - Player (Name-Realm)
+  lootInstanceCol:   10, // J - Instance (e.g. "The Voidspire-Heroic")
+  lootDataStart:     2,  // First Data row (row 1 = headers)
 
   // ── Attendance Sheet ───────────────────────────────────────────────────
   attendanceSheet:  'Attendance',
@@ -295,16 +296,23 @@ function getLootCounts(sheets) {
   }
 
   for (let i = CFG.lootDataStart - 1; i < data.length; i++) {
-    const row    = data[i];
-    const player = String(row[CFG.lootPlayerCol - 1] || '').trim();
-    const item   = String(row[3] || '').trim().replace(/^\[|\]$/g, ''); // col D, strip brackets
+    const row      = data[i];
+    const player   = String(row[CFG.lootPlayerCol    - 1] || '').trim();
+    const item     = String(row[3]                        || '').trim().replace(/^\[|\]$/g, ''); // col D, strip brackets
+    const instance = String(row[CFG.lootInstanceCol  - 1] || '').trim();
     if (!player || !item) continue;
 
     const name = normName(player.split('-')[0]);
     if (!name) continue;
-    if (!result[name]) result[name] = { count: 0, items: [] };
+
+    const diffRaw    = instance.split('-').pop().trim().toLowerCase();
+    const difficulty = diffRaw === 'mythic' ? 'Mythic' : diffRaw === 'heroic' ? 'Heroic' : 'Other';
+
+    if (!result[name]) result[name] = { count: 0, heroicCount: 0, mythicCount: 0, items: [] };
     result[name].count++;
-    result[name].items.push(item);
+    if (difficulty === 'Heroic') result[name].heroicCount++;
+    else if (difficulty === 'Mythic') result[name].mythicCount++;
+    result[name].items.push({ name: item, difficulty: difficulty });
   }
 
   return result;

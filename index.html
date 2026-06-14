@@ -46,78 +46,99 @@
 <div id="officerViewWrap" class="view">
   <div id="officerView">
     <div class="officer-toolbar">
-      <h2>Officer Dashboard</h2>
+      <div>
+        <h2>Officer Dashboard</h2>
+        <span id="dataTimestamp" class="data-timestamp"></span>
+      </div>
       <div style="display:flex;gap:0.5rem;">
         <button class="btn btn-muted" onclick="showView('landing')">← Back</button>
         <button class="btn btn-muted" onclick="officerLogout()">Log out</button>
       </div>
     </div>
 
-    <!-- Tabs -->
-    <div class="tab-bar">
-      <button class="tab-btn active" onclick="switchTab('roster')">Roster</button>
-      <button class="tab-btn" onclick="switchTab('conflicts')">BiS Conflicts</button>
-      <button class="tab-btn" onclick="switchTab('fairness')">Loot Fairness</button>
-      <button class="tab-btn" onclick="switchTab('attendance')">Attendance</button>
-      <button class="tab-btn" onclick="switchTab('priority')">Priority</button>
-    </div>
+    <!-- Stats bar -->
+    <div id="officerStats" class="officer-stats"></div>
 
-    <!-- Roster tab -->
-    <div id="tab-roster" class="tab-panel active">
-      <div class="filter-bar" style="margin-bottom:0.35rem;">
-        <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Filter:</span>
-        <button class="filter-chip" onclick="toggleFilter('lowAttend')" id="chip-lowAttend">Low Attendance (&lt;90%)</button>
-        <button class="filter-chip" onclick="toggleFilter('noBis')" id="chip-noBis">No BiS Link</button>
-        <button class="filter-chip" onclick="toggleFilter('trial')" id="chip-trial">Trials Only</button>
-        <button class="filter-chip" onclick="toggleFilter('bench')" id="chip-bench">Bench Only</button>
-      </div>
-      <div class="filter-bar">
-        <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Role:</span>
-        <button class="filter-chip" onclick="toggleRole('Tank')" id="chip-role-Tank">Tanks</button>
-        <button class="filter-chip" onclick="toggleRole('Heal')" id="chip-role-Heal">Healers</button>
-        <button class="filter-chip" onclick="toggleRole('Melee')" id="chip-role-Melee">Melee</button>
-        <button class="filter-chip" onclick="toggleRole('Ranged')" id="chip-role-Ranged">Ranged</button>
-      </div>
-      <div class="filter-bar" style="margin-bottom:0.35rem;">
-        <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
-        <button class="filter-chip" onclick="toggleSort('name')" id="chip-sort-name">Name</button>
-        <button class="filter-chip" onclick="toggleSort('attendance')" id="chip-sort-attendance">Attendance</button>
-        <button class="filter-chip" onclick="toggleSort('items')" id="chip-sort-items">Items</button>
-      </div>
-      <div class="roster-search-row">
-        <input type="text" id="rosterSearch" class="roster-search-input" placeholder="Search player..." oninput="buildRosterTable()">
-        <div class="bis-search-wrap">
-          <input type="text" id="bisItemSearch" class="roster-search-input" placeholder="Has BiS item..." oninput="buildRosterTable()">
-          <span id="bisItemCount" class="bis-item-count"></span>
+    <!-- Sidebar + content -->
+    <div class="officer-body">
+      <nav class="officer-sidebar">
+        <button class="nav-item active" onclick="switchTab('roster')">Roster</button>
+        <button class="nav-item" onclick="switchTab('conflicts')">Contested Items</button>
+        <button class="nav-item" onclick="switchTab('fairness')">Loot Fairness</button>
+        <button class="nav-item" onclick="switchTab('attendance')">Attendance</button>
+        <button class="nav-item" onclick="switchTab('priority')">Priority</button>
+      </nav>
+
+      <div class="officer-main">
+        <!-- Roster tab -->
+        <div id="tab-roster" class="tab-panel active">
+          <div class="roster-search-row">
+            <input type="text" id="rosterSearch" class="roster-search-input" placeholder="Search player..." oninput="buildRosterTable()">
+            <div class="bis-search-wrap">
+              <input type="text" id="bisItemSearch" class="roster-search-input" placeholder="Has BiS item..." oninput="buildRosterTable()">
+              <span id="bisItemCount" class="bis-item-count"></span>
+            </div>
+          </div>
+          <div class="filter-bar" style="margin-bottom:0.35rem;">
+            <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Filter:</span>
+            <button class="filter-chip" onclick="toggleFilter('lowAttend')" id="chip-lowAttend">Low Attendance (&lt;90%)</button>
+            <button class="filter-chip" onclick="toggleFilter('noBis')" id="chip-noBis">No BiS Link</button>
+            <button class="filter-chip" onclick="toggleFilter('trial')" id="chip-trial">Trials Only</button>
+            <button class="filter-chip" onclick="toggleFilter('bench')" id="chip-bench">Bench Only</button>
+          </div>
+          <div class="filter-bar">
+            <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Role:</span>
+            <button class="filter-chip" onclick="toggleRole('Tank')" id="chip-role-Tank">Tanks</button>
+            <button class="filter-chip" onclick="toggleRole('Heal')" id="chip-role-Heal">Healers</button>
+            <button class="filter-chip" onclick="toggleRole('Melee')" id="chip-role-Melee">Melee</button>
+            <button class="filter-chip" onclick="toggleRole('Ranged')" id="chip-role-Ranged">Ranged</button>
+          </div>
+          <div class="filter-bar" style="margin-bottom:0.35rem;">
+            <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
+            <button class="filter-chip" onclick="toggleSort('name')" id="chip-sort-name">Name</button>
+            <button class="filter-chip" onclick="toggleSort('attendance')" id="chip-sort-attendance">Attendance</button>
+            <button class="filter-chip" onclick="toggleSort('items')" id="chip-sort-items">Items</button>
+          </div>
+          <table class="roster-table" id="rosterTable"></table>
+          <div id="officerProfile"></div>
+        </div>
+
+        <!-- BiS Conflicts tab -->
+        <div id="tab-conflicts" class="tab-panel">
+          <div id="conflictsContent"></div>
+        </div>
+
+        <!-- Loot Fairness tab -->
+        <div id="tab-fairness" class="tab-panel">
+          <div class="filter-bar" style="margin-bottom:1rem;">
+            <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Difficulty:</span>
+            <button class="filter-chip active" id="diff-chip-all" onclick="setDiffFilter('all')">All</button>
+            <button class="filter-chip" id="diff-chip-heroic" onclick="setDiffFilter('heroic')">Heroic</button>
+            <button class="filter-chip" id="diff-chip-mythic" onclick="setDiffFilter('mythic')">Mythic</button>
+          </div>
+          <div id="fairnessContent"></div>
+        </div>
+
+        <!-- Attendance tab -->
+        <div id="tab-attendance" class="tab-panel">
+          <div class="attend-threshold-row">
+            <span class="attend-threshold-label">Show at or below <strong id="attendThresholdVal">90%</strong></span>
+            <input type="range" id="attendThreshold" class="attend-slider" min="0" max="100" value="90" oninput="document.getElementById('attendThresholdVal').textContent=this.value+'%';buildAttendanceTab();">
+          </div>
+          <div id="attendanceContent"></div>
+        </div>
+
+        <!-- Priority tab -->
+        <div id="tab-priority" class="tab-panel">
+          <div class="filter-bar" style="margin-bottom:0.75rem;">
+            <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
+            <button class="filter-chip active" id="chip-prio-type">By Type</button>
+            <button class="filter-chip prio-chip-disabled" title="Raid source data not yet available">By Raid</button>
+          </div>
+          <input type="text" id="prioSearch" class="roster-search-input" placeholder="Search items..." oninput="buildPriorityTab()" style="margin-bottom:1rem;">
+          <div id="priorityContent"></div>
         </div>
       </div>
-      <table class="roster-table" id="rosterTable"></table>
-      <div id="officerProfile"></div>
-    </div>
-
-    <!-- BiS Conflicts tab -->
-    <div id="tab-conflicts" class="tab-panel">
-      <div id="conflictsContent"></div>
-    </div>
-
-    <!-- Loot Fairness tab -->
-    <div id="tab-fairness" class="tab-panel">
-      <div id="fairnessContent"></div>
-    </div>
-
-    <!-- Attendance tab -->
-    <div id="tab-attendance" class="tab-panel">
-      <div id="attendanceContent"></div>
-    </div>
-
-    <!-- Priority tab -->
-    <div id="tab-priority" class="tab-panel">
-      <div class="filter-bar" style="margin-bottom:0.75rem;">
-        <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
-        <button class="filter-chip active" id="chip-prio-type">By Type</button>
-        <button class="filter-chip prio-chip-disabled" title="Raid source data not yet available">By Raid</button>
-      </div>
-      <div id="priorityContent"></div>
     </div>
   </div>
   <div class="footer">We Go Again · Team Phoenix</div>

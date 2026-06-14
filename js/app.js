@@ -1,10 +1,11 @@
 var WEB_APP_URL  = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
 var OFFICER_PASS = 'phoenix2'; // change this
-var VERSION      = '1.2.0';
+var VERSION      = '1.3.0';
 var DATA         = null;
 var activeFilters = {};
 var activeSort = { key: null, dir: 1 };
 var selectedOfficerPlayer = null;
+var activeDiffFilter = 'all';
 
 function normalise(str) {
   return String(str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
@@ -23,7 +24,7 @@ function showView(name) {
 
 // -- Tabs -------------------------------------------------------------------
 function switchTab(name) {
-  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(b) { b.classList.remove('active'); });
   document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
   event.target.classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
@@ -39,6 +40,7 @@ function loadData() {
     try {
       if (data.error) throw new Error(data.error);
       DATA = data;
+      DATA._loadedAt = new Date();
       populateDropdown();
       if (sessionStorage.getItem('phoenix_officer') === '1') {
         buildOfficerDashboard();
@@ -197,7 +199,10 @@ function renderProfile(firstName, backTo, container) {
   var lootItemsHTML = '';
   if (lootEntry && lootEntry.items) {
     for (var li = 0; li < lootEntry.items.length; li++) {
-      lootItemsHTML += '<div style="font-size:1rem;color:var(--text);padding:0.3rem 0;border-bottom:1px solid var(--border);">'+lootEntry.items[li]+'</div>';
+      var li_obj  = lootEntry.items[li];
+      var li_name = typeof li_obj === 'string' ? li_obj : li_obj.name;
+      var li_diff = typeof li_obj === 'object' && li_obj.difficulty ? li_obj.difficulty : '';
+      lootItemsHTML += '<div style="font-size:1rem;color:var(--text);padding:0.3rem 0;border-bottom:1px solid var(--border);">'+li_name+(li_diff?' <span style="font-size:0.7rem;color:var(--text-muted);">('+li_diff+')</span>':'')+'</div>';
     }
   }
 
@@ -271,7 +276,39 @@ function renderProfile(firstName, backTo, container) {
 
 // -- Officer dashboard ------------------------------------------------------
 function buildOfficerDashboard() {
+  buildStatsBar();
   buildRosterTable();
+  if (DATA._loadedAt) {
+    var t = DATA._loadedAt;
+    var h = t.getHours(), m = t.getMinutes();
+    var ts = (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+    var el = document.getElementById('dataTimestamp');
+    if (el) el.textContent = 'Data as of ' + ts;
+  }
+}
+
+function buildStatsBar() {
+  var roster  = DATA.roster || [];
+  var raiders = roster.filter(function(p) { return !p.isBench; });
+  var totalAttend = 0, attendCount = 0, bisCount = 0;
+  for (var i = 0; i < raiders.length; i++) {
+    var p = raiders[i];
+    var pct = parseInt(p.attendance);
+    if (!isNaN(pct)) { totalAttend += pct; attendCount++; }
+    if (p.bisLink) bisCount++;
+  }
+  var avgAttend = attendCount ? Math.round(totalAttend / attendCount) : 0;
+  var avgColor = attendColor(avgAttend);
+  var totalItems = 0;
+  var lootMap = DATA.lootCounts || {};
+  var lootKeys = Object.keys(lootMap);
+  for (var j = 0; j < lootKeys.length; j++) { if (lootMap[lootKeys[j]]) totalItems += lootMap[lootKeys[j]].count || 0; }
+
+  document.getElementById('officerStats').innerHTML =
+    '<div class="stat-card"><div class="stat-value">'+raiders.length+'</div><div class="stat-label">Raiders</div></div>' +
+    '<div class="stat-card"><div class="stat-value" style="color:'+avgColor+';">'+avgAttend+'%</div><div class="stat-label">Avg Attendance</div></div>' +
+    '<div class="stat-card"><div class="stat-value">'+totalItems+'</div><div class="stat-label">Items Distributed</div></div>' +
+    '<div class="stat-card"><div class="stat-value">'+bisCount+'<span style="font-size:1.2rem;color:var(--text-muted);">/'+raiders.length+'</span></div><div class="stat-label">BiS Submitted</div></div>';
 }
 
 // -- Filters ----------------------------------------------------------------
@@ -375,15 +412,18 @@ function buildRosterTable() {
       if (p.isTrial) statusTags += '<span class="tag tag-trial">Trial</span> ';
       if (p.isBench) statusTags += '<span class="tag tag-bench">Bench</span>';
       if (!statusTags) statusTags = '<span style="color:var(--text);">—</span>';
+      var barPct = pct + '%';
       html += '<tr class="player-row'+(selectedOfficerPlayer===p.firstName?' selected':'')+'" onclick="officerSelectPlayer(\''+p.firstName+'\')" data-player="'+p.firstName+'">' +
         '<td><div class="player-name-cell">' +
-          '<div class="mini-avatar" style="background:rgba(0,0,0,0.2);color:'+roleColor+';border:1px solid '+roleColor+'33;">'+name.slice(0,2).toUpperCase()+'</div>' +
+          '<div class="mini-avatar" style="background:rgba(0,0,0,0.25);color:'+roleColor+';border:2px solid '+roleColor+';">'+name.slice(0,2).toUpperCase()+'</div>' +
           '<span style="font-weight:600;color:var(--text);">'+name+'</span>' +
           (p.firstName!==name?'<span style="font-size:0.82rem;color:var(--text-muted);">('+p.firstName+')</span>':'') +
         '</div></td>' +
-        '<td><span class="attend-mini" style="color:'+color+';">'+(p.attendance||'—')+'</span></td>' +
+        '<td><div class="attend-mini-cell"><span class="attend-mini" style="color:'+color+';">'+(p.attendance||'—')+'</span>' +
+          (pct?'<div class="attend-mini-bar-wrap"><div class="attend-mini-bar" style="width:'+barPct+';background:'+color+';"></div></div>':'') +
+        '</div></td>' +
         '<td>'+lootCount+'</td>' +
-        '<td>'+(hasBis?'<span style="color:var(--heal);">✓</span>':'<span style="color:var(--text);">—</span>')+'</td>' +
+        '<td>'+(hasBis?'<span style="color:var(--heal);font-size:1.1rem;">✓</span>':'<span style="color:var(--text-dim);">—</span>')+'</td>' +
         '<td>'+statusTags+'</td>' +
         '</tr>';
       totalRows++;
@@ -447,7 +487,21 @@ function buildConflicts() {
       var display = pData ? (pData.nick || pData.firstName) : pName;
       var rankPos = ranked.findIndex ? ranked.findIndex(function(r){return normalise(r)===normalise(pName);}) : -1;
       var isRanked = rankPos >= 0;
-      html += '<span class="conflict-player-tag'+(isRanked?' ranked':'')+'">'+display+(isRanked?' #'+(rankPos+1):'')+'</span>';
+      var lootEntry = getLootEntry(pName);
+      var received = false, receivedDiff = '';
+      if (lootEntry && lootEntry.items) {
+        for (var m = 0; m < lootEntry.items.length; m++) {
+          var itemObj  = lootEntry.items[m];
+          var itemName = typeof itemObj === 'string' ? itemObj : itemObj.name;
+          if (normalise(itemName) === normalise(item)) {
+            received     = true;
+            receivedDiff = typeof itemObj === 'object' ? itemObj.difficulty : '';
+            break;
+          }
+        }
+      }
+      var badge = received ? ' <span class="received-badge">Received' + (receivedDiff ? ' (' + receivedDiff + ')' : '') + '</span>' : '';
+      html += '<span class="conflict-player-tag'+(isRanked?' ranked':'')+(received?' received':'')+'">'+display+(isRanked?' #'+(rankPos+1):'')+badge+'</span>';
     }
     html += '</div></div>';
   }
@@ -456,38 +510,68 @@ function buildConflicts() {
 }
 
 // -- Loot Fairness ----------------------------------------------------------
+function setDiffFilter(val) {
+  activeDiffFilter = val;
+  ['all','heroic','mythic'].forEach(function(v) {
+    var el = document.getElementById('diff-chip-' + v);
+    if (el) el.classList.toggle('active', v === val);
+  });
+  buildFairness();
+}
+
 function buildFairness() {
   var roster  = DATA.roster || [];
+  var roleOrder  = ['Tank','Heal','Melee','Ranged','Bench'];
+  var roleLabels = { Tank:'Tanks', Heal:'Healers', Melee:'Melee', Ranged:'Ranged', Bench:'Bench' };
+  var roleColors = { Tank:'var(--tank)', Heal:'var(--heal)', Melee:'var(--melee)', Ranged:'var(--ranged)', Bench:'var(--text-dim)' };
 
-  var entries = [];
+  var allEntries = [];
   for (var i = 0; i < roster.length; i++) {
     var p     = roster[i];
     var entry = getLootEntry(p.firstName);
-    entries.push({ name: p.nick||p.firstName, firstName: p.firstName, count: entry?entry.count:0, role: p.role, isBench: p.isBench });
+    var count = 0;
+    if (entry) {
+      if (activeDiffFilter === 'heroic')      count = entry.heroicCount || 0;
+      else if (activeDiffFilter === 'mythic') count = entry.mythicCount || 0;
+      else                                    count = entry.count || 0;
+    }
+    allEntries.push({ name: p.nick||p.firstName, count: count, role: p.isBench?'Bench':p.role });
   }
-  entries.sort(function(a,b) { return b.count - a.count; });
-
-  var max = entries.length ? entries[0].count : 1;
+  var max = 0, totalCount = 0;
+  for (var i = 0; i < allEntries.length; i++) { if (allEntries[i].count > max) max = allEntries[i].count; totalCount += allEntries[i].count; }
   if (max === 0) max = 1;
+  var avg = allEntries.length ? totalCount / allEntries.length : 0;
+  var avgPct = Math.round((avg / max) * 100) + '%';
 
-  var html = '<div style="margin-bottom:1rem;">' +
-    '<div class="fairness-row" style="border-bottom:1px solid var(--border-mid);padding-bottom:0.5rem;margin-bottom:0.5rem;">' +
-      '<span style="font-size:0.78rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text);">Player</span>' +
-      '<span style="font-size:0.78rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text);">Items received</span>' +
-      '<span style="font-size:0.78rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text);text-align:right;">#</span>' +
-    '</div>';
-
-  for (var i = 0; i < entries.length; i++) {
-    var e     = entries[i];
-    var width = Math.round((e.count/max)*100) + '%';
-    var color = e.isBench ? 'var(--text-dim)' : e.role==='Tank'?'var(--tank)':e.role==='Heal'?'var(--heal)':e.role==='Ranged'?'var(--ranged)':'var(--melee)';
-    html += '<div class="fairness-row">';
-    html += '<span style="font-size:0.95rem;color:var(--text);font-weight:500;">'+e.name+'</span>';
-    html += '<div class="fairness-bar-wrap"><div class="fairness-bar" style="width:'+width+';background:'+color+';"></div></div>';
-    html += '<span class="fairness-count">'+e.count+'</span>';
-    html += '</div>';
+  var grouped = {};
+  for (var i = 0; i < roleOrder.length; i++) grouped[roleOrder[i]] = [];
+  for (var i = 0; i < allEntries.length; i++) {
+    var e = allEntries[i];
+    if (grouped[e.role]) grouped[e.role].push(e);
   }
-  html += '</div>';
+  for (var r = 0; r < roleOrder.length; r++) {
+    grouped[roleOrder[r]].sort(function(a,b) { return b.count - a.count; });
+  }
+
+  var html = '';
+  for (var r = 0; r < roleOrder.length; r++) {
+    var role    = roleOrder[r];
+    var players = grouped[role];
+    if (!players.length) continue;
+    var color = roleColors[role];
+    html += '<div class="fairness-section-header" style="color:'+color+';">'+roleLabels[role]+'</div>';
+    for (var i = 0; i < players.length; i++) {
+      var e     = players[i];
+      var width = Math.round((e.count/max)*100) + '%';
+      html += '<div class="fairness-row">';
+      html += '<span style="font-size:0.9rem;color:var(--text);font-weight:500;">'+e.name+'</span>';
+      html += '<div class="fairness-bar-wrap"><div class="fairness-bar" style="width:'+width+';background:'+color+';"></div><div class="fairness-avg-line" style="left:'+avgPct+';"></div></div>';
+      html += '<span class="fairness-count">'+e.count+'</span>';
+      html += '</div>';
+    }
+  }
+  var diffLabel = activeDiffFilter === 'heroic' ? 'Heroic' : activeDiffFilter === 'mythic' ? 'Mythic' : 'All';
+  html += '<div class="fairness-avg-legend"><span class="fairness-avg-line-swatch"></span>'+diffLabel+' avg: '+Math.round(avg)+' items</div>';
   document.getElementById('fairnessContent').innerHTML = html;
 }
 
@@ -495,13 +579,13 @@ function buildFairness() {
 function buildAttendanceTab() {
   var details = DATA.attendanceDetails || {};
   var roster  = DATA.roster || [];
-  var THRESHOLD = 90;
+  var THRESHOLD = parseInt((document.getElementById('attendThreshold') || {value:'90'}).value) || 90;
 
   var below = [];
   for (var i = 0; i < roster.length; i++) {
     var p   = roster[i];
     var pct = parseInt(p.attendance) || 0;
-    if (pct < THRESHOLD) below.push(p);
+    if (pct <= THRESHOLD) below.push(p);
   }
   below.sort(function(a,b) { return (parseInt(a.attendance)||0) - (parseInt(b.attendance)||0); });
 
@@ -509,7 +593,7 @@ function buildAttendanceTab() {
   if (!below.length) {
     html = '<p style="color:var(--text);padding:1rem;">All raiders are at or above '+THRESHOLD+'% attendance.</p>';
   } else {
-    html += '<p style="font-size:0.88rem;color:var(--text);margin-bottom:1rem;">'+below.length+' raider'+(below.length!==1?'s':'')+' below '+THRESHOLD+'% attendance</p>';
+    html += '<p style="font-size:0.88rem;color:var(--text);margin-bottom:1rem;">'+below.length+' raider'+(below.length!==1?'s':'')+' at or below '+THRESHOLD+'% attendance</p>';
     for (var i = 0; i < below.length; i++) {
       var p       = below[i];
       var name    = p.nick || p.firstName;
@@ -546,6 +630,14 @@ function buildAttendanceTab() {
 }
 
 // -- Priority tab -----------------------------------------------------------
+function togglePrioSection(id) {
+  var el = document.getElementById(id);
+  var chevron = event.currentTarget.querySelector('.prio-chevron');
+  var collapsed = el.style.display === 'none';
+  el.style.display = collapsed ? '' : 'none';
+  if (chevron) chevron.textContent = collapsed ? '-' : '+';
+}
+
 var ARMOR_SLOT_ORDER = ['HEAD','SHOULDERS','CHEST','GLOVES','LEGS','CLOAK','BRACERS','BELT','BOOTS'];
 
 function getItemGroup(slot) {
@@ -567,7 +659,12 @@ function buildPriorityTab() {
     rosterMap[normalise(roster[i].firstName)] = roster[i];
   }
 
-  var items = Object.keys(prioOrder).filter(function(i) { return (itemSlots[i] || '').toLowerCase() !== 'slot'; }).sort(function(a, b) { return a.localeCompare(b); });
+  var prioSearchTerm = normalise((document.getElementById('prioSearch') || {}).value || '');
+  var items = Object.keys(prioOrder).filter(function(i) {
+    if ((itemSlots[i] || '').toLowerCase() === 'slot') return false;
+    if (prioSearchTerm && normalise(i).indexOf(prioSearchTerm) === -1) return false;
+    return true;
+  }).sort(function(a, b) { return a.localeCompare(b); });
 
   if (!items.length) {
     document.getElementById('priorityContent').innerHTML = '<p style="color:var(--text);padding:1rem;">No priority data found.</p>';
@@ -619,15 +716,18 @@ function buildPriorityTab() {
   var GROUP_LABELS = { Trinket: 'Trinkets', Armor: 'Armor', Weapon: 'Weapons', Jewelry: 'Jewelry', Other: 'Other' };
 
   var html = '';
+  var secId = 0;
   for (var g = 0; g < GROUP_ORDER.length; g++) {
     var groupKey = GROUP_ORDER[g];
+    var gid = 'prio-sec-' + (secId++);
     if (groupKey === 'Armor') {
       var hasArmor = false;
       for (var si = 0; si < ARMOR_SLOT_ORDER.length; si++) {
         if (groups.Armor[ARMOR_SLOT_ORDER[si]] && groups.Armor[ARMOR_SLOT_ORDER[si]].length) { hasArmor = true; break; }
       }
       if (!hasArmor) continue;
-      html += '<div class="prio-section-header">' + GROUP_LABELS.Armor + '</div>';
+      html += '<div class="prio-section-header prio-collapsible" onclick="togglePrioSection(\'' + gid + '\')">' + GROUP_LABELS.Armor + '<span class="prio-chevron">-</span></div>';
+      html += '<div id="' + gid + '">';
       for (var si = 0; si < ARMOR_SLOT_ORDER.length; si++) {
         var slotKey = ARMOR_SLOT_ORDER[si];
         var slotItems = groups.Armor[slotKey];
@@ -635,10 +735,13 @@ function buildPriorityTab() {
         html += '<div class="prio-sub-header" style="color:' + getSlotColor(slotKey) + ';">' + slotKey.charAt(0) + slotKey.slice(1).toLowerCase() + '</div>';
         for (var k = 0; k < slotItems.length; k++) html += renderItem(slotItems[k]);
       }
+      html += '</div>';
     } else {
       if (!groups[groupKey].length) continue;
-      html += '<div class="prio-section-header">' + GROUP_LABELS[groupKey] + '</div>';
+      html += '<div class="prio-section-header prio-collapsible" onclick="togglePrioSection(\'' + gid + '\')">' + GROUP_LABELS[groupKey] + '<span class="prio-chevron">-</span></div>';
+      html += '<div id="' + gid + '">';
       for (var k = 0; k < groups[groupKey].length; k++) html += renderItem(groups[groupKey][k]);
+      html += '</div>';
     }
   }
 

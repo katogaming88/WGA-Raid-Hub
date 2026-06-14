@@ -6,6 +6,31 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.3.0] - 2026-06-14
+
+### Added
+- Officer view sidebar navigation — vertical nav replaces flat tab bar, sticky on desktop and collapses to horizontal row on mobile
+- Stats bar at the top of the officer dashboard showing Raiders count, Avg Attendance, Items Distributed, and BiS Submitted ratio
+- "Data as of HH:MM" timestamp in the officer toolbar showing when the roster was last fetched
+- Attendance tab threshold slider — filter players at or below any attendance %, defaulting to 90%
+- Priority tab item search — live filter across all items by name
+- Collapsible priority sections — click any section header (Trinkets, Armor, Weapons, etc.) to collapse or expand
+- Loot Fairness difficulty filter — All / Heroic / Mythic chips filter the bar chart and average line
+- Average line marker on the Loot Fairness chart with a legend showing the roster average item count
+- "Received (Heroic)" / "Received (Mythic)" badge on contested items for players who already got that item, with strikethrough styling
+- Difficulty shown per item in player profile Items Received section
+- Backend: `lootCounts` now includes `heroicCount`, `mythicCount`, and per-item `difficulty` field
+
+### Changed
+- Loot Fairness bars are now grouped by role (Tanks / Healers / Melee / Ranged / Bench) with coloured section headers
+- Loot Fairness bars increased from 6px to 10px height
+- Roster attendance column now shows a mini progress bar below the percentage
+- Roster player avatars now use a solid 2px role-coloured border
+- Search bars moved above filter chips on the roster tab for better flow
+- "BiS Conflicts" tab renamed to "Contested Items"
+
+---
+
 ## [1.2.0] - 2026-06-14
 
 ### Added
