@@ -68,6 +68,43 @@ function loadData() {
   }, 15000);
 }
 
+// -- Cache ------------------------------------------------------------------
+function clearCache() {
+  var btn = document.getElementById('clearCacheBtn');
+  btn.disabled = true;
+  btn.textContent = 'Clearing...';
+
+  var cbName = '_clearCacheCallback';
+  window[cbName] = function(data) {
+    delete window[cbName];
+    if (data && data.success) {
+      btn.textContent = 'Cleared!';
+      setTimeout(function() {
+        btn.textContent = 'Clear Cache';
+        btn.disabled = false;
+      }, 2000);
+    } else {
+      btn.textContent = 'Error';
+      setTimeout(function() {
+        btn.textContent = 'Clear Cache';
+        btn.disabled = false;
+      }, 2000);
+    }
+  };
+
+  var script = document.createElement('script');
+  script.src = WEB_APP_URL + '?action=clearCache&callback=' + cbName;
+  script.onerror = function() {
+    delete window[cbName];
+    btn.textContent = 'Error';
+    setTimeout(function() {
+      btn.textContent = 'Clear Cache';
+      btn.disabled = false;
+    }, 2000);
+  };
+  document.head.appendChild(script);
+}
+
 // -- Dropdown ---------------------------------------------------------------
 function populateDropdown() {
   var sel    = document.getElementById('playerSelect');

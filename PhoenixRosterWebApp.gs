@@ -57,7 +57,22 @@ const CFG = {
 
 function doGet(e) {
   try {
-    const cache  = CacheService.getScriptCache();
+    const cache = CacheService.getScriptCache();
+
+    if (e && e.parameter && e.parameter.action === 'clearCache') {
+      cache.remove('rosterPayload');
+      const result   = JSON.stringify({ success: true });
+      const callback = e.parameter.callback;
+      if (callback) {
+        return ContentService
+          .createTextOutput(`${callback}(${result})`)
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      return ContentService
+        .createTextOutput(result)
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     const cached = cache.get('rosterPayload');
     const json   = cached || (() => {
       const fresh = JSON.stringify(buildPayload());
