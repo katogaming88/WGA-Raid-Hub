@@ -1,0 +1,53 @@
+name: Discord Deploy Notification
+
+on:
+  deployment_status:
+
+jobs:
+  notify:
+    if: github.event.deployment_status.state == 'success' || github.event.deployment_status.state == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          STATE:        ${{ github.event.deployment_status.state }}
+          ENVIRONMENT:  ${{ github.event.deployment.environment }}
+          DEPLOY_URL:   ${{ github.event.deployment_status.target_url }}
+          COMMIT_SHA:   ${{ github.event.deployment.sha }}
+          ACTOR:        ${{ github.event.deployment.creator.login }}
+          REPO:         ${{ github.repository }}
+        run: |
+          if [ "$STATE" = "success" ]; then
+            COLOR=3066993
+            TITLE="Deployment succeeded"
+            EMOJI="Green Circle"
+          else
+            COLOR=15158332
+            TITLE="Deployment failed"
+            EMOJI="Red Circle"
+          fi
+
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          COMMIT_URL="https://github.com/${REPO}/commit/${COMMIT_SHA}"
+
+          PAYLOAD=$(cat <<EOF
+          {
+            "embeds": [{
+              "title": "${TITLE}",
+              "color": ${COLOR},
+              "fields": [
+                { "name": "Environment", "value": "${ENVIRONMENT}", "inline": true },
+                { "name": "Triggered by", "value": "${ACTOR}", "inline": true },
+                { "name": "Commit", "value": "[${SHORT_SHA}](${COMMIT_URL})", "inline": true }
+              ],
+              "url": "${DEPLOY_URL}"
+            }]
+          }
+          EOF
+          )
+
+          curl -s -o /dev/null -w "%{http_code}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK_URL"
