@@ -149,7 +149,7 @@ select#playerSelect option { background:#1a1d27; }
 .filter-chip:hover { border-color:var(--border-mid); }
 
 /* Roster search */
-.roster-search-row { display:flex; gap:0.5rem; margin-bottom:0.75rem; flex-wrap:wrap; }
+.roster-search-row { display:flex; gap:0.5rem; margin-bottom:0.75rem; flex-wrap:wrap; align-items:flex-start; }
 .roster-search-input { font-family:'Rajdhani',sans-serif; font-size:0.9rem; font-weight:500; padding:0.3rem 0.75rem; border-radius:3px; border:1px solid var(--border); background:var(--bg-input); color:var(--text); outline:none; transition:border-color 0.15s; flex:1; min-width:140px; width:100%; }
 .roster-search-input::placeholder { color:var(--text-muted); }
 .roster-search-input:focus { border-color:var(--gold-dim); }
