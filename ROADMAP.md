@@ -34,13 +34,13 @@ Items marked `[x]` are shipped. Items marked `[ ]` are planned. Partially-built 
 
 - [x] Flag players who have not submitted a BiS list yet
 - [x] Show which items are most contested across the whole raid
-- [ ] Filter roster by who has a specific item in their BiS list
+- [x] Filter roster by who has a specific item in their BiS list
 
 ## Filters and Sorting
 
 - [x] Filter roster table by role, trial status, bench status
-- [ ] Sort roster table by attendance, items received, or name
-- [ ] Search by player name
+- [x] Sort roster table by attendance, items received, or name
+- [x] Search by player name
 
 ## Future / Larger Features
 

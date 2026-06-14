@@ -6,13 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [Unreleased]
+## [1.1.0] - 2026-06-14
 
 ### Added
-- CHANGELOG, CONTRIBUTING, PR template, and issue templates
-- ROADMAP.md with planned features
-- .gitignore and VS Code workspace settings
+- Sort chips on the officer roster (Name / Attendance / Items) — clicking twice reverses order
+- Player name search filters the roster live as you type
+- BiS item search filters roster to players who have a specific item in their BiS list, with a player count badge
 - Role filter chips on the officer roster (Tank / Healers / Melee / Ranged) — clicking a second time deselects
+- CHANGELOG, CONTRIBUTING, PR template, issue templates, ROADMAP, .gitignore, and VS Code workspace settings
 
 ---
 
