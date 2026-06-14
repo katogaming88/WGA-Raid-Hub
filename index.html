@@ -63,12 +63,19 @@
 
     <!-- Roster tab -->
     <div id="tab-roster" class="tab-panel active">
-      <div class="filter-bar">
+      <div class="filter-bar" style="margin-bottom:0.35rem;">
         <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Filter:</span>
         <button class="filter-chip" onclick="toggleFilter('lowAttend')" id="chip-lowAttend">Low Attendance (&lt;90%)</button>
         <button class="filter-chip" onclick="toggleFilter('noBis')" id="chip-noBis">No BiS Link</button>
         <button class="filter-chip" onclick="toggleFilter('trial')" id="chip-trial">Trials Only</button>
         <button class="filter-chip" onclick="toggleFilter('bench')" id="chip-bench">Bench Only</button>
+      </div>
+      <div class="filter-bar">
+        <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Role:</span>
+        <button class="filter-chip" onclick="toggleRole('Tank')" id="chip-role-Tank">Tanks</button>
+        <button class="filter-chip" onclick="toggleRole('Heal')" id="chip-role-Heal">Healers</button>
+        <button class="filter-chip" onclick="toggleRole('Melee')" id="chip-role-Melee">Melee</button>
+        <button class="filter-chip" onclick="toggleRole('Ranged')" id="chip-role-Ranged">Ranged</button>
       </div>
       <table class="roster-table" id="rosterTable"></table>
       <div id="officerProfile"></div>

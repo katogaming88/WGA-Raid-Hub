@@ -12,6 +12,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - CHANGELOG, CONTRIBUTING, PR template, and issue templates
 - ROADMAP.md with planned features
 - .gitignore and VS Code workspace settings
+- Role filter chips on the officer roster (Tank / Healers / Melee / Ranged) — clicking a second time deselects
 
 ---
 

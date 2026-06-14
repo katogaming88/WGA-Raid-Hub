@@ -278,6 +278,15 @@ function toggleFilter(name) {
   buildRosterTable();
 }
 
+function toggleRole(role) {
+  var current = activeFilters.role;
+  activeFilters.role = (current === role) ? null : role;
+  ['Tank','Heal','Melee','Ranged'].forEach(function(r) {
+    document.getElementById('chip-role-'+r).classList.toggle('active', activeFilters.role === r);
+  });
+  buildRosterTable();
+}
+
 // -- Roster table -----------------------------------------------------------
 function buildRosterTable() {
   var order  = ['Tank','Heal','Melee','Ranged','Bench'];
@@ -290,6 +299,7 @@ function buildRosterTable() {
     if (activeFilters.noBis && p.bisLink) continue;
     if (activeFilters.trial && !p.isTrial) continue;
     if (activeFilters.bench && !p.isBench) continue;
+    if (activeFilters.role && p.role !== activeFilters.role) continue;
     if (p.isBench) groups['Bench'].push(p);
     else if (groups[p.role]) groups[p.role].push(p);
   }
