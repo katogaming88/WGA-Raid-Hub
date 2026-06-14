@@ -24,7 +24,7 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 .header::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse 60% 140% at 50% 0%, rgba(214,163,68,0.07) 0%, transparent 70%); pointer-events:none; }
 .header-emblem { font-size:2rem; display:block; margin-bottom:0.4rem; filter:drop-shadow(0 0 10px rgba(214,163,68,0.35)); }
 .header h1 { font-family:'Cinzel',serif; font-size:1.7rem; font-weight:700; letter-spacing:0.12em; color:var(--gold-light); text-shadow:0 0 24px rgba(214,163,68,0.25); }
-.header-sub { font-size:0.75rem; color:var(--text-muted); letter-spacing:0.18em; text-transform:uppercase; margin-top:0.3rem; }
+.header-sub { font-size:1rem; color:var(--text); letter-spacing:0.18em; text-transform:uppercase; margin-top:0.3rem; }
 .header-divider { width:100px; height:1px; background:linear-gradient(90deg,transparent,var(--gold-dim),transparent); margin:1rem auto 0; }
 
 /* States */
@@ -199,4 +199,4 @@ select#playerSelect option { background:#1a1d27; }
 .prio-chip-disabled { opacity:0.35; cursor:not-allowed; }
 
 /* Footer */
-.footer { text-align:center; padding:1.5rem; font-size:0.65rem; color:var(--text-dim); letter-spacing:0.12em; text-transform:uppercase; border-top:1px solid var(--border); margin-top:auto; }
+.footer { text-align:center; padding:1.5rem; font-size:0.8rem; color:var(--text); letter-spacing:0.12em; text-transform:uppercase; border-top:1px solid var(--border); margin-top:auto; }
