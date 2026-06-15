@@ -8,6 +8,15 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 
 - [ ] Officer approve/reject writes approved applicant to Roster sheet (#56)
 
+## M+ Exclusion Requests
+
+- [ ] Raider submits Raider.io profile link + optional exception notes to request exclusion from dungeon loot consideration (#57)
+- [ ] Officer reviews profile and approves or rejects -- approved players are marked M+ excluded in the sheet
+
+## BiS List Submission
+
+- [ ] Raiders submit or update their BiS list URL directly from their profile page (#58)
+
 ## Roster Management
 
 - [ ] Add/remove players from the roster directly from the page (#3)
