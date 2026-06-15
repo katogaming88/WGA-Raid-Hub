@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Phoenix -- Officer</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/officer.css">
+</head>
+<body>
+
+<header class="header">
+  <span class="header-emblem">🔥</span>
+  <h1>Team Phoenix</h1>
+  <p class="header-sub">Officer Dashboard</p>
+  <div class="header-divider"></div>
+</header>
+
+<div id="loadingMsg" class="state-msg">
+  <div class="spinner"></div><br>Loading roster data...
+</div>
+
+<div id="officerViewWrap" class="view">
+  <div id="officerView">
+    <div class="officer-toolbar">
+      <div>
+        <h2>Officer Dashboard</h2>
+        <span id="dataTimestamp" class="data-timestamp"></span>
+      </div>
+      <div style="display:flex;gap:0.5rem;">
+        <button id="clearCacheBtn" class="btn btn-muted" onclick="clearCache()">Clear Cache</button>
+        <a href="index.html" class="btn btn-muted">Back to Roster</a>
+        <button class="btn btn-muted" onclick="officerLogout()">Log out</button>
+      </div>
+    </div>
+
+    <div id="officerStats" class="officer-stats"></div>
+
+    <div class="officer-body">
+      <nav class="officer-sidebar">
+        <button class="nav-item active" onclick="switchTab('roster')">Roster</button>
+        <button class="nav-item" onclick="switchTab('conflicts')">Contested Items</button>
+        <button class="nav-item" onclick="switchTab('fairness')">Loot Fairness</button>
+        <button class="nav-item" onclick="switchTab('attendance')">Attendance</button>
+        <button class="nav-item" onclick="switchTab('priority')">Priority</button>
+        <button class="nav-item" onclick="switchTab('signups')">Signups</button>
+        <button class="nav-item" onclick="switchTab('requests')">Received Item Requests</button>
+        <button class="nav-item" onclick="switchTab('bis')">BiS Submissions</button>
+      </nav>
+
+      <div class="officer-main">
+        <!-- Roster tab -->
+        <div id="tab-roster" class="tab-panel active">
+          <div class="roster-search-row">
+            <input type="text" id="rosterSearch" class="roster-search-input" placeholder="Search player..." oninput="buildRosterTable()">
+            <div class="bis-search-wrap">
+              <input type="text" id="bisItemSearch" class="roster-search-input" placeholder="Has BiS item..." oninput="buildRosterTable()">
+              <span id="bisItemCount" class="bis-item-count"></span>
+            </div>
+          </div>
+          <div class="filter-bar" style="margin-bottom:0.35rem;">
+            <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Filter:</span>
+            <button class="filter-chip" onclick="toggleFilter('lowAttend')" id="chip-lowAttend">Low Attendance (&lt;90%)</button>
+            <button class="filter-chip" onclick="toggleFilter('noBis')" id="chip-noBis">No BiS Link</button>
+            <button class="filter-chip" onclick="toggleFilter('trial')" id="chip-trial">Trials Only</button>
+            <button class="filter-chip" onclick="toggleFilter('bench')" id="chip-bench">Bench Only</button>
+          </div>
+          <div class="filter-bar">
+            <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Role:</span>
+            <button class="filter-chip" onclick="toggleRole('Tank')" id="chip-role-Tank">Tanks</button>
+            <button class="filter-chip" onclick="toggleRole('Heal')" id="chip-role-Heal">Healers</button>
+            <button class="filter-chip" onclick="toggleRole('Melee')" id="chip-role-Melee">Melee</button>
+            <button class="filter-chip" onclick="toggleRole('Ranged')" id="chip-role-Ranged">Ranged</button>
+          </div>
+          <div class="filter-bar" style="margin-bottom:0.35rem;">
+            <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
+            <button class="filter-chip" onclick="toggleSort('name')" id="chip-sort-name">Name</button>
+            <button class="filter-chip" onclick="toggleSort('attendance')" id="chip-sort-attendance">Attendance</button>
+            <button class="filter-chip" onclick="toggleSort('items')" id="chip-sort-items">Items</button>
+          </div>
+          <table class="roster-table" id="rosterTable"></table>
+          <div id="officerProfile"></div>
+        </div>
+
+        <!-- BiS Conflicts tab -->
+        <div id="tab-conflicts" class="tab-panel">
+          <div id="conflictsContent"></div>
+        </div>
+
+        <!-- Loot Fairness tab -->
+        <div id="tab-fairness" class="tab-panel">
+          <div class="filter-bar" style="margin-bottom:1rem;">
+            <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Difficulty:</span>
+            <button class="filter-chip active" id="diff-chip-all" onclick="setDiffFilter('all')">All</button>
+            <button class="filter-chip" id="diff-chip-heroic" onclick="setDiffFilter('heroic')">Heroic</button>
+            <button class="filter-chip" id="diff-chip-mythic" onclick="setDiffFilter('mythic')">Mythic</button>
+          </div>
+          <div id="fairnessContent"></div>
+        </div>
+
+        <!-- Attendance tab -->
+        <div id="tab-attendance" class="tab-panel">
+          <div class="attend-threshold-row">
+            <span class="attend-threshold-label">Show at or below <strong id="attendThresholdVal">90%</strong></span>
+            <input type="range" id="attendThreshold" class="attend-slider" min="0" max="100" value="90" oninput="document.getElementById('attendThresholdVal').textContent=this.value+'%';buildAttendanceTab();">
+          </div>
+          <div id="attendanceContent"></div>
+        </div>
+
+        <!-- Signups tab -->
+        <div id="tab-signups" class="tab-panel">
+          <div class="signup-officer-panel">
+            <div class="signup-status-row">
+              <span class="signup-status-label">Roster Signups</span>
+              <span class="signup-status-badge signup-status-closed" id="signupStatusBadge">CLOSED</span>
+            </div>
+            <div style="margin-top:1rem;">
+              <button class="btn btn-muted" id="signupToggleBtn" onclick="toggleSignupsOpen()">Open Signups</button>
+            </div>
+            <p class="signup-officer-note">Toggling signups shows or hides the Sign Up button for applicants.</p>
+          </div>
+          <div id="signupsResponsesContainer"></div>
+        </div>
+
+        <!-- Self Received Requests tab -->
+        <div id="tab-requests" class="tab-panel">
+          <div id="requestsContainer"></div>
+        </div>
+
+        <!-- BiS Submissions tab -->
+        <div id="tab-bis" class="tab-panel">
+          <div class="signup-officer-panel">
+            <div class="signup-status-row">
+              <span class="signup-status-label">BiS Submissions</span>
+              <span class="signup-status-badge signup-status-closed" id="bisStatusBadge">CLOSED</span>
+            </div>
+            <div style="margin-top:1rem;">
+              <button class="btn btn-muted" id="bisToggleBtn" onclick="toggleBisSubmissionsOpen()">Open Submissions</button>
+            </div>
+            <p class="signup-officer-note">Toggling submissions shows or hides the BiS list submit form for raiders.</p>
+          </div>
+          <div id="bisContainer"></div>
+        </div>
+
+        <!-- Priority tab -->
+        <div id="tab-priority" class="tab-panel">
+          <div class="filter-bar" style="margin-bottom:0.75rem;">
+            <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
+            <button class="filter-chip active" id="chip-prio-type">By Type</button>
+            <button class="filter-chip prio-chip-disabled" title="Raid source data not yet available">By Raid</button>
+          </div>
+          <input type="text" id="prioSearch" class="roster-search-input" placeholder="Search items..." oninput="buildPriorityTab()" style="margin-bottom:1rem;">
+          <div id="priorityContent"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">We Go Again &middot; Team Phoenix &middot; v<span id="versionNum"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
+</div>
+
+<!-- Add Player modal -->
+<div id="addPlayerModal" class="officer-prompt">
+  <div class="officer-prompt-box" style="max-width:400px;">
+    <h2>Add Player</h2>
+    <div style="display:flex;flex-direction:column;gap:0.6rem;">
+      <div>
+        <label class="add-player-label">Character Name</label>
+        <input id="addPlayerName" type="text" class="add-player-input" placeholder="Katorri" autocomplete="off">
+      </div>
+      <div style="position:relative;">
+        <label class="add-player-label">Realm</label>
+        <input id="addPlayerRealm" type="text" class="add-player-input" placeholder="Barthilas" autocomplete="off">
+        <div id="addPlayerRealmDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:160px;overflow-y:auto;background:var(--bg-elevated);border:1px solid var(--border-mid);border-top:none;border-radius:0 0 3px 3px;z-index:200;"></div>
+      </div>
+      <div>
+        <label class="add-player-label">Nickname (optional)</label>
+        <input id="addPlayerNick" type="text" class="add-player-input" placeholder="Kato" autocomplete="off">
+      </div>
+      <div>
+        <label class="add-player-label">Class</label>
+        <select id="addPlayerClass" class="add-player-input" onchange="addPlayerClassChanged()">
+          <option value="">-- Select class --</option>
+        </select>
+      </div>
+      <div>
+        <label class="add-player-label">Spec</label>
+        <select id="addPlayerSpec" class="add-player-input">
+          <option value="">-- Select spec --</option>
+        </select>
+      </div>
+      <div>
+        <label class="add-player-label">Role</label>
+        <select id="addPlayerRole" class="add-player-input">
+          <option value="Tank">Tank</option>
+          <option value="Heal">Heal</option>
+          <option value="Melee" selected>Melee</option>
+          <option value="Ranged">Ranged</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.2rem;">
+        <input id="addPlayerTrial" type="checkbox" style="width:auto;accent-color:var(--gold);">
+        <label style="font-size:0.92rem;color:var(--text-muted);letter-spacing:0.06em;">Mark as Trial</label>
+      </div>
+    </div>
+    <p id="addPlayerError" style="display:none;font-size:0.88rem;color:var(--melee);margin-top:0.25rem;"></p>
+    <div class="prompt-buttons" style="margin-top:0.5rem;">
+      <button class="btn btn-gold" onclick="submitAddPlayer()">Add Player</button>
+      <button class="btn btn-muted" onclick="hideAddPlayerModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Officer password prompt -->
+<div id="officerPrompt" class="officer-prompt">
+  <div class="officer-prompt-box">
+    <h2>Officer Access</h2>
+    <input id="officerPassword" type="password" placeholder="Password"
+      onkeydown="if(event.key==='Enter')submitOfficerPassword();" />
+    <p id="officerError" style="display:none;font-size:0.88rem;color:var(--melee);">Incorrect password</p>
+    <div class="prompt-buttons">
+      <button class="btn btn-gold" onclick="submitOfficerPassword()">Enter</button>
+      <a href="index.html" class="btn btn-muted">Cancel</a>
+    </div>
+  </div>
+</div>
+
+<script src="js/common.js"></script>
+<script src="js/officer.js"></script>
+<script src="js/tabs/tab-roster.js"></script>
+<script src="js/tabs/tab-conflicts.js"></script>
+<script src="js/tabs/tab-fairness.js"></script>
+<script src="js/tabs/tab-attendance.js"></script>
+<script src="js/tabs/tab-signups.js"></script>
+<script src="js/tabs/tab-requests.js"></script>
+<script src="js/tabs/tab-bis.js"></script>
+<script src="js/tabs/tab-priority.js"></script>
+<script>document.getElementById('versionNum').textContent = VERSION;</script>
+</body>
+</html>

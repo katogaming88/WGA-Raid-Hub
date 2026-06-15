@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.0.0] - 2026-06-15
+
+### Changed
+- Split monolithic `app.js` (2130 lines) into 12 focused modules: `common.js`, `roster.js`, `signup.js`, `officer.js`, and 8 tab-specific files under `js/tabs/`
+- Officer panel moved to a dedicated `officer.html` page; `index.html` now serves public views only (roster, profile, signup)
+- Officer password gate now appears immediately on `officer.html` load -- no data is fetched until authentication succeeds
+- Officer sessions expire after 2 hours; re-visiting the page after expiry prompts for the password again
+- `css/officer.css` stub added for a future officer-styles split pass
+
+---
+
 ## [1.8.0] - 2026-06-15
 
 ### Added
