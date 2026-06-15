@@ -45,8 +45,64 @@ document.getElementById('playerSelect').addEventListener('change', function(e) {
   if (e.target.value) { showView('profile'); renderProfile(e.target.value, 'landing'); }
 });
 
+function buildPublicStats() {
+  var loot       = DATA.lootCounts || {};
+  var totalItems = 0;
+  var keys       = Object.keys(loot);
+  for (var i = 0; i < keys.length; i++) totalItems += loot[keys[i]].count || 0;
+
+  var el = document.getElementById('landingStats');
+  if (!el) return;
+  el.innerHTML =
+    '<div class="pub-stat"><span class="pub-stat-num">' + (DATA.roster || []).length + '</span><span class="pub-stat-label">Raiders</span></div>' +
+    '<div class="pub-stat"><span class="pub-stat-num">' + totalItems + '</span><span class="pub-stat-label">Items This Tier</span></div>';
+}
+
+function buildRecentLoot() {
+  var loot   = DATA.lootCounts || {};
+  var roster = DATA.roster     || [];
+
+  var nameMap = {};
+  for (var i = 0; i < roster.length; i++) {
+    nameMap[normalise(roster[i].firstName)] = roster[i].nick || roster[i].firstName;
+  }
+
+  var all  = [];
+  var keys = Object.keys(loot);
+  for (var i = 0; i < keys.length; i++) {
+    var key     = keys[i];
+    var items   = loot[key].items || [];
+    var display = nameMap[key] || (key.charAt(0).toUpperCase() + key.slice(1));
+    for (var j = 0; j < items.length; j++) {
+      all.push({ player: display, item: items[j].name, difficulty: items[j].difficulty, date: items[j].date, _d: new Date(items[j].date) });
+    }
+  }
+
+  all.sort(function(a, b) { return b._d - a._d; });
+  var recent = all.slice(0, 10);
+
+  var el = document.getElementById('landingLoot');
+  if (!el || !recent.length) return;
+
+  var html = '<div class="pub-loot-title">Recent Loot</div>';
+  for (var i = 0; i < recent.length; i++) {
+    var e         = recent[i];
+    var diffClass = e.difficulty === 'Mythic' ? 'diff-mythic' : e.difficulty === 'Heroic' ? 'diff-heroic' : 'diff-other';
+    html +=
+      '<div class="pub-loot-row">' +
+        '<span class="pub-loot-player">' + e.player + '</span>' +
+        '<span class="pub-loot-item">' + e.item + '</span>' +
+        '<span class="pub-loot-diff ' + diffClass + '">' + e.difficulty + '</span>' +
+        '<span class="pub-loot-date">' + e.date + '</span>' +
+      '</div>';
+  }
+  el.innerHTML = html;
+}
+
 // Boot
 loadData(function() {
   populateDropdown();
+  buildPublicStats();
+  buildRecentLoot();
   showView('landing');
 });

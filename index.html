@@ -12,9 +12,11 @@
 <body>
 
 <header class="header">
-  <span class="header-emblem">🔥</span>
-  <h1>Team Phoenix</h1>
-  <p class="header-sub">Loot Priority</p>
+  <a href="index.html" class="header-link">
+    <span class="header-emblem">🔥</span>
+    <h1>Team Phoenix</h1>
+    <p class="header-sub">Raid Hub</p>
+  </a>
   <div class="header-divider"></div>
 </header>
 
@@ -25,16 +27,20 @@
 <!-- Landing -->
 <div id="landingView" class="view">
   <div class="landing-body">
-    <span class="selector-label">Who are you?</span>
-    <div class="selector-outer">
-      <select id="playerSelect">
-        <option value="">-- Select your character --</option>
-      </select>
+    <div class="landing-card">
+      <span class="selector-label">Who are you?</span>
+      <div class="selector-outer">
+        <select id="playerSelect">
+          <option value="">-- Select your character --</option>
+        </select>
+      </div>
+      <span class="signup-cta" id="signupLink" onclick="showSignupView()" style="display:none;">Sign Up for Next Season</span>
+      <a href="officer.html" class="officer-link">Officer Access</a>
     </div>
-    <a href="officer.html" class="officer-link">Officer Access</a>
-    <span class="signup-cta" id="signupLink" onclick="showSignupView()" style="display:none;">Sign Up for Next Season</span>
+    <div id="landingStats" class="pub-stats"></div>
+    <div id="landingLoot" class="pub-loot"></div>
   </div>
-  <div class="footer">We Go Again &middot; Team Phoenix &middot; <a class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
+  <div class="footer">We Go Again &middot; Team Phoenix &middot; v<span id="versionNum"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
 </div>
 
 <!-- Profile -->
@@ -56,5 +62,6 @@
 <script src="js/common.js"></script>
 <script src="js/roster.js"></script>
 <script src="js/signup.js"></script>
+<script>document.getElementById('versionNum').textContent = VERSION;</script>
 </body>
 </html>
