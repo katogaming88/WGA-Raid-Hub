@@ -71,6 +71,7 @@
         <button class="nav-item" onclick="switchTab('priority')">Priority</button>
         <button class="nav-item" onclick="switchTab('signups')">Signups</button>
         <button class="nav-item" onclick="switchTab('requests')">Requests</button>
+        <button class="nav-item" onclick="switchTab('bis')">BiS Submissions</button>
       </nav>
 
       <div class="officer-main">
@@ -150,6 +151,21 @@
         <!-- Self Received Requests tab -->
         <div id="tab-requests" class="tab-panel">
           <div id="requestsContainer"></div>
+        </div>
+
+        <!-- BiS Submissions tab -->
+        <div id="tab-bis" class="tab-panel">
+          <div class="signup-officer-panel">
+            <div class="signup-status-row">
+              <span class="signup-status-label">BiS Submissions</span>
+              <span class="signup-status-badge signup-status-closed" id="bisStatusBadge">CLOSED</span>
+            </div>
+            <div style="margin-top:1rem;">
+              <button class="btn btn-muted" id="bisToggleBtn" onclick="toggleBisSubmissionsOpen()">Open Submissions</button>
+            </div>
+            <p class="signup-officer-note">Toggling submissions shows or hides the BiS list submit form for raiders.</p>
+          </div>
+          <div id="bisContainer"></div>
         </div>
 
         <!-- Priority tab -->

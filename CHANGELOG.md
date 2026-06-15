@@ -6,6 +6,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.6.0] - 2026-06-15
+
+### Added
+- BiS list URL submission built into the webapp -- raiders submit from their character profile (replaces the Google Form)
+- Officers can open/close BiS submissions globally from the new "BiS Submissions" officer dashboard tab
+- Officers can grant per-player BiS submission access from the raider's profile card, independent of the global toggle
+- Per-player access is automatically revoked after the player submits
+- Officer profile view: "Update BiS Link" form to set a player's BiS URL directly without the approval queue
+- BiS Submissions tab: pending submissions listed as cards with Approve and Reject buttons; approving writes the URL to the Roster sheet
+- Apps Script: setBisSubmissionsOpen, submitBiS, getPendingBiS, approveBiS, rejectBiS, updateBisLink, allowBisForPlayer, revokeBisForPlayer actions; bisSubmissionsOpen and bisAllowedPlayers included in buildPayload
+
+### Changed
+- Muted and dim text colors lightened (--text-muted: #c4bdb2, --text-dim: #aea9a0) for better readability on dark backgrounds
+- Base font size increased to 18px with a comprehensive rem-scale bump across all small text
+- Stat card number size reduced to 1.8rem; stat label to 0.8rem to prevent oversizing at new base
+- Officer sidebar tab text reduced to 0.82rem
+
+---
+
 ## [1.5.0] - 2026-06-15
 
 ### Added

@@ -1,6 +1,6 @@
 var WEB_APP_URL  = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
 var OFFICER_PASS = 'phoenix2'; // change this
-var VERSION      = '1.5.0';
+var VERSION      = '1.6.0';
 var DATA         = null;
 var activeFilters = {};
 var activeSort = { key: null, dir: 1 };
@@ -124,6 +124,7 @@ function switchTab(name) {
   if (name === 'priority')   buildPriorityTab();
   if (name === 'signups')    buildSignupsTab();
   if (name === 'requests')   buildRequestsTab();
+  if (name === 'bis')        buildBisTab();
 }
 
 // -- Load data --------------------------------------------------------------
@@ -284,7 +285,7 @@ function getLootEntry(firstName) {
   return null;
 }
 function rankPillHTML(rank) {
-  if (rank === null) return '<span style="font-size:0.72rem;color:var(--text-dim);min-width:40px;text-align:center;">—</span>';
+  if (rank === null) return '<span style="font-size:0.97rem;color:var(--text-dim);min-width:40px;text-align:center;">—</span>';
   var t  = Math.min((rank-1)/14, 1);
   var rv = Math.round(214+(100-214)*t), gv = Math.round(163+(100-163)*t), bv = Math.round(68+(100-68)*t);
   var a  = Math.max(0.08, 0.18-t*0.1);
@@ -341,14 +342,49 @@ function renderProfile(firstName, backTo, container) {
       var li_obj  = lootEntry.items[li];
       var li_name = typeof li_obj === 'string' ? li_obj : li_obj.name;
       var li_diff = typeof li_obj === 'object' && li_obj.difficulty ? li_obj.difficulty : '';
-      lootItemsHTML += '<div style="font-size:1rem;color:var(--text);padding:0.3rem 0;border-bottom:1px solid var(--border);">'+li_name+(li_diff?' <span style="font-size:0.7rem;color:var(--text-muted);">('+li_diff+')</span>':'')+'</div>';
+      lootItemsHTML += '<div style="font-size:1rem;color:var(--text);padding:0.3rem 0;border-bottom:1px solid var(--border);">'+li_name+(li_diff?' <span style="font-size:0.95rem;color:var(--text-muted);">('+li_diff+')</span>':'')+'</div>';
     }
   }
 
   // BiS link
-  var bisHTML = player.bisLink
+  var bisStatusHTML = player.bisLink
     ? '<div class="bis-row"><div class="bis-dot yes"></div><a class="bis-link" href="'+player.bisLink+'" target="_blank" rel="noopener">View BiS list →</a></div>'
     : '<div class="bis-row"><div class="bis-dot no"></div><span class="bis-none">No BiS list submitted yet</span></div>';
+
+  var bisActionHTML;
+  if (backTo === 'officer') {
+    var bisAllowed = bisAllowedFor(player.nameRealm);
+    bisActionHTML =
+      '<div style="margin-top:0.75rem;">' +
+        '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="toggleBisForm(\''+player.firstName.replace(/'/g,"\\'")+'\')">Update BiS Link</button>' +
+        '<div id="bisForm-'+player.firstName+'" style="display:none;margin-top:0.75rem;">' +
+          '<input type="url" id="bisUrl-'+player.firstName+'" placeholder="Paste BiS list URL" class="self-received-source" style="max-width:100%;font-size:1rem;">' +
+          '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
+            '<button class="btn request-approve-btn" onclick="officerUpdateBisLink(\''+player.nameRealm.replace(/'/g,"\\'")+'\',\''+player.firstName.replace(/'/g,"\\'")+'\')">Save</button>' +
+            '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.25rem 0.75rem;" onclick="document.getElementById(\'bisForm-'+player.firstName+'\').style.display=\'none\'">Cancel</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div id="bisAllowDiv-'+player.firstName+'" style="margin-top:0.5rem;"></div>';
+  } else if (bisSubmissionsOpen() || bisAllowedFor(player.nameRealm)) {
+    var bisBtnLabel = player.bisLink ? 'Update BiS List' : 'Submit BiS List';
+    bisActionHTML =
+      '<div style="margin-top:0.75rem;">' +
+        '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="toggleBisForm(\''+player.firstName.replace(/'/g,"\\'")+'\')">'+bisBtnLabel+'</button>' +
+        '<div id="bisForm-'+player.firstName+'" style="display:none;margin-top:0.75rem;">' +
+          '<input type="url" id="bisUrl-'+player.firstName+'" placeholder="Paste your BiS list URL" class="self-received-source" style="max-width:100%;font-size:1rem;">' +
+          '<textarea id="bisNotes-'+player.firstName+'" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
+          '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
+            '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="submitBiSForm(\''+player.nameRealm.replace(/'/g,"\\'")+'\',\''+player.firstName.replace(/'/g,"\\'")+'\')">Submit</button>' +
+            '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'bisForm-'+player.firstName+'\').style.display=\'none\'">Cancel</button>' +
+          '</div>' +
+          '<p class="self-received-note">An officer will review your submission. Once approved it will appear on your profile.</p>' +
+        '</div>' +
+      '</div>';
+  } else {
+    bisActionHTML = '';
+  }
+  var bisHTML = bisStatusHTML + bisActionHTML;
 
   // Build received lookup from loot history
   var receivedMap = {};
@@ -383,7 +419,7 @@ function renderProfile(firstName, backTo, container) {
     var isReceived = received || selfRec;
     var rowId    = 'bisrow-' + player.firstName + '-' + bi;
     rows += '<div class="priority-row' + (isReceived ? ' bis-received' : '') + '" id="' + rowId + '" style="grid-template-columns:auto auto 1fr auto;">';
-    rows += isGen ? '<span style="font-size:0.72rem;color:var(--text-dim);min-width:40px;text-align:center;">-</span>' : rankPillHTML(rank);
+    rows += isGen ? '<span style="font-size:0.97rem;color:var(--text-dim);min-width:40px;text-align:center;">-</span>' : rankPillHTML(rank);
     rows += '<span class="priority-item-slot" style="color:'+getSlotColor(slot)+';">'+slot+'</span>';
     rows += '<span class="priority-item-name" style="text-align:right;" title="'+item+'">'+item+'</span>';
     if (received) {
@@ -423,7 +459,7 @@ function renderProfile(firstName, backTo, container) {
     '<div class="profile-card">' +
       '<div class="role-bar role-bar-'+player.role+'"></div>' +
       '<div style="padding:0.6rem 1.25rem;border-bottom:1px solid var(--border);">' +
-        '<button onclick="'+backAction+'" style="background:none;border:none;color:var(--text);font-family:\'Rajdhani\',sans-serif;font-size:0.78rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;padding:0;">'+backLabel+'</button>' +
+        '<button onclick="'+backAction+'" style="background:none;border:none;color:var(--text);font-family:\'Rajdhani\',sans-serif;font-size:0.9rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;padding:0;">'+backLabel+'</button>' +
       '</div>' +
       '<div class="profile-header">' +
         '<div class="profile-avatar avatar-'+player.role+'">'+initials+'</div>' +
@@ -434,24 +470,25 @@ function renderProfile(firstName, backTo, container) {
         '</div>' +
       '</div>' +
       '<div class="profile-section"'+(hasPenalties?' onclick="var d=document.getElementById(\'attend-detail-'+player.firstName+'\');d.style.display=d.style.display===\'none\'?\'flex\':\'none\';" style="cursor:pointer;"':'')+'>' +
-        '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Attendance'+(hasPenalties?'<span style="font-size:0.7rem;color:var(--text-dim);">tap to expand</span>':'')+'</div>' +
+        '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Attendance'+(hasPenalties?'<span style="font-size:0.95rem;color:var(--text-dim);">tap to expand</span>':'')+'</div>' +
         '<div class="attend-row"><div class="attend-bar-wrap"><div class="attend-bar" style="width:'+barWidth+'"></div></div><span class="attend-label">'+attendPct+'</span></div>' +
         attendExtra +
       '</div>' +
       '<div class="profile-section" onclick="var l=document.getElementById(\'loot-list-'+player.firstName+'\');l.style.display=l.style.display===\'none\'?\'grid\':\'none\';" style="cursor:pointer;">' +
-        '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Items Received <span style="font-size:0.7rem;color:var(--text-dim);">tap to expand</span></div>' +
+        '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Items Received <span style="font-size:0.95rem;color:var(--text-dim);">tap to expand</span></div>' +
         '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">'+lootCount+' item'+(lootCount!==1?'s':'')+' this tier</div>' +
         '<div id="loot-list-'+player.firstName+'" style="display:none;margin-top:0.75rem;grid-template-columns:1fr 1fr;gap:0 1rem;">'+lootItemsHTML+'</div>' +
       '</div>' +
       '<div class="profile-section"><div class="section-label">BiS List</div>'+bisHTML+'</div>' +
       '<div class="profile-section" onclick="var l=document.getElementById(\'prio-list-'+player.firstName+'\');l.style.display=l.style.display===\'none\'?\'block\':\'none\';" style="cursor:pointer;">' +
-        '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Loot Priority <span style="font-size:0.7rem;color:var(--text-dim);">tap to expand</span></div>' +
+        '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Loot Priority <span style="font-size:0.95rem;color:var(--text-dim);">tap to expand</span></div>' +
         '<div id="prio-list-'+player.firstName+'" style="display:none;">'+priorityHTML+'</div>' +
       '</div>' +
     '</div>';
 
   if (container) { container.innerHTML = html; }
   else { document.getElementById('profileView').innerHTML = html; }
+  if (backTo === 'officer') updateBisAllowDiv(player.nameRealm, player.firstName);
 }
 
 // -- Season Signup ----------------------------------------------------------
@@ -756,7 +793,7 @@ function buildSignupsTab() {
   renderSignupToggle();
   var container = document.getElementById('signupsResponsesContainer');
   if (!container) return;
-  container.innerHTML = '<p style="color:var(--text-muted);font-size:0.88rem;margin-top:1.5rem;">Loading submissions...</p>';
+  container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">Loading submissions...</p>';
 
   var cbName = '_getSignupsCb';
   window[cbName] = function(result) {
@@ -767,7 +804,7 @@ function buildSignupsTab() {
   script.onerror = function() {
     delete window[cbName];
     var c = document.getElementById('signupsResponsesContainer');
-    if (c) c.innerHTML = '<p style="color:var(--melee);font-size:0.88rem;margin-top:1.5rem;">Failed to load submissions.</p>';
+    if (c) c.innerHTML = '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">Failed to load submissions.</p>';
   };
   script.src = WEB_APP_URL + '?action=getSignups&callback=' + cbName;
   document.head.appendChild(script);
@@ -778,12 +815,12 @@ function renderSignupResponses(signups) {
   if (!container) return;
 
   if (!signups.length) {
-    container.innerHTML = '<p style="color:var(--text-muted);font-size:0.88rem;margin-top:1.5rem;">No signups submitted yet.</p>';
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No signups submitted yet.</p>';
     return;
   }
 
   var html = '<div style="margin-top:1.5rem;">' +
-    '<div style="font-size:0.68rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:0.75rem;">' +
+    '<div style="font-size:0.9rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:0.75rem;">' +
     signups.length + ' submission' + (signups.length !== 1 ? 's' : '') + '</div>';
 
   signups.forEach(function(s) {
@@ -796,13 +833,13 @@ function renderSignupResponses(signups) {
           '<button class="signup-delete-btn" onclick="deleteSignupRow(' + s.rowIndex + ', this)" title="Delete signup">x</button>' +
         '</div>' +
       '</div>' +
-      '<div style="font-size:0.88rem;color:' + clsColor + ';margin-top:0.35rem;font-weight:600;">' +
+      '<div style="font-size:1rem;color:' + clsColor + ';margin-top:0.35rem;font-weight:600;">' +
         s.className + ' &middot; ' + s.mainSpec +
         (s.offSpecs ? '<span style="color:var(--text-muted);font-weight:400;"> / ' + s.offSpecs + '</span>' : '') +
       '</div>';
-    if (s.role) html += '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">Role: <span style="color:var(--text);">' + s.role + '</span></div>';
-    if (s.discord) html += '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">Discord: <span style="color:var(--text);">' + s.discord + '</span></div>';
-    if (s.notes) html += '<div style="font-size:0.85rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' + s.notes + '</div>';
+    if (s.role) html += '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Role: <span style="color:var(--text);">' + s.role + '</span></div>';
+    if (s.discord) html += '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Discord: <span style="color:var(--text);">' + s.discord + '</span></div>';
+    if (s.notes) html += '<div style="font-size:0.97rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' + s.notes + '</div>';
     html += '</div>';
   });
 
@@ -821,7 +858,7 @@ function deleteSignupRow(rowIndex, btnEl) {
     if (card) card.remove();
     var container = document.getElementById('signupsResponsesContainer');
     if (container && !container.querySelector('.signup-response-card')) {
-      container.innerHTML = '<p style="color:var(--text-muted);font-size:0.88rem;margin-top:1.5rem;">No signups submitted yet.</p>';
+      container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No signups submitted yet.</p>';
     }
   };
   var script = document.createElement('script');
@@ -848,9 +885,9 @@ function showSelfReceivedForm(firstName, item, slot, rowId) {
       '</select>' +
       '<textarea class="self-received-notes" id="notes-' + rowId + '" placeholder="Notes (optional)" rows="2"></textarea>' +
       '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
-        '<button class="btn btn-gold" style="font-size:0.8rem;padding:0.3rem 0.8rem;" onclick="event.stopPropagation();submitSelfReceivedRequest(\'' +
+        '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="event.stopPropagation();submitSelfReceivedRequest(\'' +
           firstName.replace(/'/g, "\\'") + '\',\'' + item.replace(/'/g, "\\'") + '\',\'' + slot.replace(/'/g, "\\'") + '\',\'' + rowId + '\')">Submit request</button>' +
-        '<button class="btn btn-muted" style="font-size:0.8rem;padding:0.3rem 0.8rem;" onclick="event.stopPropagation();document.getElementById(\'form-' + rowId + '\').style.display=\'none\'">Cancel</button>' +
+        '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="event.stopPropagation();document.getElementById(\'form-' + rowId + '\').style.display=\'none\'">Cancel</button>' +
       '</div>' +
       '<p class="self-received-note">An officer will review and approve this. Once approved it will appear on your profile.</p>' +
     '</div>';
@@ -864,15 +901,15 @@ function submitSelfReceivedRequest(firstName, item, slot, rowId) {
   if (!sourceEl || !sourceEl.value) { sourceEl && (sourceEl.style.borderColor = 'var(--melee)'); return; }
   var data = { player: firstName, item: item, slot: slot, source: sourceEl.value, notes: notesEl ? notesEl.value : '' };
   var formEl = document.getElementById('form-' + rowId);
-  if (formEl) formEl.innerHTML = '<p style="font-size:0.82rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
+  if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
   var cbName = '_selfRecCb' + rowId.replace(/[^a-zA-Z0-9]/g, '_');
   window[cbName] = function(result) {
     delete window[cbName];
     if (formEl) {
       if (result.error) {
-        formEl.innerHTML = '<p style="font-size:0.82rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+        formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
       } else {
-        formEl.innerHTML = '<p style="font-size:0.82rem;color:var(--text-muted);padding:0.5rem 0;">Request submitted -- pending officer approval.</p>';
+        formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Request submitted -- pending officer approval.</p>';
         var btn = document.querySelector('#bisrow-' + firstName + '-' + rowId.split('-').pop() + ' .mark-received-btn');
         if (btn) btn.style.display = 'none';
       }
@@ -881,7 +918,7 @@ function submitSelfReceivedRequest(firstName, item, slot, rowId) {
   var script = document.createElement('script');
   script.onerror = function() {
     delete window[cbName];
-    if (formEl) formEl.innerHTML = '<p style="font-size:0.82rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+    if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
   };
   script.src = WEB_APP_URL + '?action=requestSelfReceived&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
   document.head.appendChild(script);
@@ -890,7 +927,7 @@ function submitSelfReceivedRequest(firstName, item, slot, rowId) {
 function buildRequestsTab() {
   var container = document.getElementById('requestsContainer');
   if (!container) return;
-  container.innerHTML = '<p style="color:var(--text-muted);font-size:0.88rem;margin-top:1.5rem;">Loading requests...</p>';
+  container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">Loading requests...</p>';
   var cbName = '_getPendingReqCb';
   window[cbName] = function(result) {
     delete window[cbName];
@@ -900,7 +937,7 @@ function buildRequestsTab() {
   script.onerror = function() {
     delete window[cbName];
     var c = document.getElementById('requestsContainer');
-    if (c) c.innerHTML = '<p style="color:var(--melee);font-size:0.88rem;margin-top:1.5rem;">Failed to load requests.</p>';
+    if (c) c.innerHTML = '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">Failed to load requests.</p>';
   };
   script.src = WEB_APP_URL + '?action=getPendingRequests&callback=' + cbName;
   document.head.appendChild(script);
@@ -910,11 +947,11 @@ function renderPendingRequests(requests) {
   var container = document.getElementById('requestsContainer');
   if (!container) return;
   if (!requests.length) {
-    container.innerHTML = '<p style="color:var(--text-muted);font-size:0.88rem;margin-top:1.5rem;">No pending requests.</p>';
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No pending requests.</p>';
     return;
   }
   var html = '<div style="margin-top:1.5rem;">' +
-    '<div style="font-size:0.68rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:0.75rem;">' +
+    '<div style="font-size:0.9rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:0.75rem;">' +
     requests.length + ' pending request' + (requests.length !== 1 ? 's' : '') + '</div>';
   requests.forEach(function(r) {
     html += '<div class="request-card" data-row="' + r.rowIndex + '">' +
@@ -923,8 +960,8 @@ function renderPendingRequests(requests) {
         '<span class="signup-response-time">' + r.timestamp + '</span>' +
       '</div>' +
       '<div class="request-item">' + r.item + (r.slot ? ' <span style="color:var(--text-muted);font-weight:400;">(' + r.slot + ')</span>' : '') + '</div>' +
-      '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">Source: <span style="color:var(--text);">' + r.source + '</span></div>' +
-      (r.notes ? '<div style="font-size:0.85rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' + r.notes + '</div>' : '') +
+      '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Source: <span style="color:var(--text);">' + r.source + '</span></div>' +
+      (r.notes ? '<div style="font-size:0.97rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' + r.notes + '</div>' : '') +
       '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
         '<button class="btn request-approve-btn" onclick="approveRequest(' + r.rowIndex + ', this)">Approve</button>' +
         '<button class="btn request-reject-btn" onclick="rejectRequest(' + r.rowIndex + ', this)">Reject</button>' +
@@ -971,7 +1008,209 @@ function rejectRequest(rowIndex, btnEl) {
 function checkEmptyRequests() {
   var container = document.getElementById('requestsContainer');
   if (container && !container.querySelector('.request-card')) {
-    container.innerHTML = '<p style="color:var(--text-muted);font-size:0.88rem;margin-top:1.5rem;">No pending requests.</p>';
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No pending requests.</p>';
+  }
+}
+
+// -- BiS submission (raider) and direct update (officer) --------------------
+function toggleBisForm(firstName) {
+  var form = document.getElementById('bisForm-' + firstName);
+  if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+function submitBiSForm(nameRealm, firstName) {
+  var urlEl   = document.getElementById('bisUrl-' + firstName);
+  var notesEl = document.getElementById('bisNotes-' + firstName);
+  if (!urlEl || !urlEl.value.trim()) { if (urlEl) urlEl.style.borderColor = 'var(--melee)'; return; }
+  var data   = { nameRealm: nameRealm, bisLink: urlEl.value.trim(), notes: notesEl ? notesEl.value.trim() : '' };
+  var formEl = document.getElementById('bisForm-' + firstName);
+  if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
+  var cbName = '_submitBisCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (formEl) {
+      formEl.innerHTML = result.error
+        ? '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>'
+        : '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitted -- pending officer review.</p>';
+    }
+  };
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+  };
+  script.src = WEB_APP_URL + '?action=submitBiS&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function officerUpdateBisLink(nameRealm, firstName) {
+  var urlEl = document.getElementById('bisUrl-' + firstName);
+  if (!urlEl || !urlEl.value.trim()) { if (urlEl) urlEl.style.borderColor = 'var(--melee)'; return; }
+  var data   = { nameRealm: nameRealm, url: urlEl.value.trim() };
+  var formEl = document.getElementById('bisForm-' + firstName);
+  if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Saving...</p>';
+  var cbName = '_updateBisCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (formEl) {
+      formEl.innerHTML = result.error
+        ? '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to save. Try again.</p>'
+        : '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">BiS link updated. Clear cache to refresh.</p>';
+    }
+  };
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to save. Try again.</p>';
+  };
+  script.src = WEB_APP_URL + '?action=updateBisLink&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function updateBisAllowDiv(nameRealm, firstName) {
+  var divEl = document.getElementById('bisAllowDiv-' + firstName);
+  if (!divEl) return;
+  var allowed = bisAllowedFor(nameRealm);
+  divEl.innerHTML = '';
+  var btn = document.createElement('button');
+  btn.className = 'btn btn-muted';
+  btn.style.cssText = 'font-size:0.92rem;padding:0.25rem 0.75rem;';
+  if (allowed) {
+    btn.textContent = 'Revoke BiS Access';
+    btn.onclick = function() { revokeBisForPlayer(nameRealm, firstName); };
+    var badge = document.createElement('span');
+    badge.style.cssText = 'font-size:0.9rem;color:var(--heal);margin-left:0.5rem;';
+    badge.textContent = 'Submission open';
+    divEl.appendChild(btn);
+    divEl.appendChild(badge);
+  } else {
+    btn.textContent = 'Allow BiS Submission';
+    btn.onclick = function() { allowBisForPlayer(nameRealm, firstName); };
+    divEl.appendChild(btn);
+  }
+}
+
+function allowBisForPlayer(nameRealm, firstName) {
+  var divEl = document.getElementById('bisAllowDiv-' + firstName);
+  if (divEl) divEl.innerHTML = '<span style="font-size:0.95rem;color:var(--text-muted);">Saving...</span>';
+  var cbName = '_allowBisCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (result && result.success && DATA) DATA.bisAllowedPlayers = result.bisAllowedPlayers;
+    updateBisAllowDiv(nameRealm, firstName);
+  };
+  var script = document.createElement('script');
+  script.onerror = function() { delete window[cbName]; updateBisAllowDiv(nameRealm, firstName); };
+  script.src = WEB_APP_URL + '?action=allowBisForPlayer&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })) + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function revokeBisForPlayer(nameRealm, firstName) {
+  var divEl = document.getElementById('bisAllowDiv-' + firstName);
+  if (divEl) divEl.innerHTML = '<span style="font-size:0.95rem;color:var(--text-muted);">Saving...</span>';
+  var cbName = '_revokeBisCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (result && result.success && DATA) DATA.bisAllowedPlayers = result.bisAllowedPlayers;
+    updateBisAllowDiv(nameRealm, firstName);
+  };
+  var script = document.createElement('script');
+  script.onerror = function() { delete window[cbName]; updateBisAllowDiv(nameRealm, firstName); };
+  script.src = WEB_APP_URL + '?action=revokeBisForPlayer&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })) + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+// -- BiS Submissions tab (officer) ------------------------------------------
+function buildBisTab() {
+  var container = document.getElementById('bisContainer');
+  if (!container) return;
+  container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">Loading submissions...</p>';
+  var cbName = '_getPendingBisCb';
+  window[cbName] = function(result) {
+    delete window[cbName];
+    renderBisSubmissions(result.submissions || []);
+  };
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    var c = document.getElementById('bisContainer');
+    if (c) c.innerHTML = '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">Failed to load submissions.</p>';
+  };
+  script.src = WEB_APP_URL + '?action=getPendingBiS&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function renderBisSubmissions(submissions) {
+  var container = document.getElementById('bisContainer');
+  if (!container) return;
+  if (!submissions.length) {
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No pending BiS submissions.</p>';
+    return;
+  }
+  var html = '<div style="margin-top:1.5rem;">' +
+    '<div style="font-size:0.9rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:0.75rem;">' +
+    submissions.length + ' pending submission' + (submissions.length !== 1 ? 's' : '') + '</div>';
+  submissions.forEach(function(s) {
+    html +=
+      '<div class="request-card" data-row="' + s.rowIndex + '" data-name-realm="' + s.nameRealm.replace(/"/g,'&quot;') + '" data-bis-link="' + s.bisLink.replace(/"/g,'&quot;') + '">' +
+        '<div class="request-card-header">' +
+          '<span class="request-player">' + s.nameRealm + '</span>' +
+          '<span class="signup-response-time">' + s.timestamp + '</span>' +
+        '</div>' +
+        '<div class="request-item" style="word-break:break-all;margin-top:0.35rem;">' +
+          '<a href="' + s.bisLink + '" target="_blank" rel="noopener" style="color:var(--gold);font-size:1rem;">' + s.bisLink + '</a>' +
+        '</div>' +
+        (s.notes ? '<div style="font-size:0.97rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' + s.notes + '</div>' : '') +
+        '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
+          '<button class="btn request-approve-btn" onclick="approveBisSubmission(' + s.rowIndex + ', this)">Approve</button>' +
+          '<button class="btn request-reject-btn" onclick="rejectBisSubmission(' + s.rowIndex + ', this)">Reject</button>' +
+        '</div>' +
+      '</div>';
+  });
+  container.innerHTML = html + '</div>';
+}
+
+function approveBisSubmission(rowIndex, btnEl) {
+  var card      = document.querySelector('.request-card[data-row="' + rowIndex + '"]');
+  var nameRealm = card ? card.getAttribute('data-name-realm') : '';
+  var bisLink   = card ? card.getAttribute('data-bis-link')   : '';
+  btnEl.disabled = true;
+  btnEl.textContent = '...';
+  var data   = { row: rowIndex, nameRealm: nameRealm, url: bisLink };
+  var cbName = '_approveBisCb' + rowIndex;
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (result.error) { btnEl.disabled = false; btnEl.textContent = 'Approve'; return; }
+    if (card) card.remove();
+    checkEmptyBisSubmissions();
+  };
+  var script = document.createElement('script');
+  script.onerror = function() { delete window[cbName]; btnEl.disabled = false; btnEl.textContent = 'Approve'; };
+  script.src = WEB_APP_URL + '?action=approveBiS&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function rejectBisSubmission(rowIndex, btnEl) {
+  btnEl.disabled = true;
+  btnEl.textContent = '...';
+  var cbName = '_rejectBisCb' + rowIndex;
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (result.error) { btnEl.disabled = false; btnEl.textContent = 'Reject'; return; }
+    var card = document.querySelector('.request-card[data-row="' + rowIndex + '"]');
+    if (card) card.remove();
+    checkEmptyBisSubmissions();
+  };
+  var script = document.createElement('script');
+  script.onerror = function() { delete window[cbName]; btnEl.disabled = false; btnEl.textContent = 'Reject'; };
+  script.src = WEB_APP_URL + '?action=rejectBiS&row=' + rowIndex + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function checkEmptyBisSubmissions() {
+  var container = document.getElementById('bisContainer');
+  if (container && !container.querySelector('.request-card')) {
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No pending BiS submissions.</p>';
   }
 }
 
@@ -989,11 +1228,55 @@ function toggleSignupsOpen() {
   setSignupsOpen(!signupsOpen());
 }
 
+function bisSubmissionsOpen() {
+  return !!(DATA && DATA.bisSubmissionsOpen);
+}
+
+function bisAllowedFor(nameRealm) {
+  var allowed = DATA && DATA.bisAllowedPlayers;
+  return !!(allowed && allowed.indexOf(nameRealm) !== -1);
+}
+
+function setBisSubmissionsOpen(open) {
+  var btn = document.getElementById('bisToggleBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  var cbName = '_setBisOpenCb';
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (btn) btn.disabled = false;
+    if (DATA) DATA.bisSubmissionsOpen = open;
+    renderBisToggle();
+  };
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    if (btn) btn.disabled = false;
+    renderBisToggle();
+  };
+  script.src = WEB_APP_URL + '?action=setBisSubmissionsOpen&value=' + (open ? 'true' : 'false') + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function renderBisToggle() {
+  var badge = document.getElementById('bisStatusBadge');
+  var btn   = document.getElementById('bisToggleBtn');
+  if (!badge || !btn) return;
+  var open = bisSubmissionsOpen();
+  badge.textContent = open ? 'OPEN' : 'CLOSED';
+  badge.className = 'signup-status-badge ' + (open ? 'signup-status-open' : 'signup-status-closed');
+  btn.textContent = open ? 'Close Submissions' : 'Open Submissions';
+}
+
+function toggleBisSubmissionsOpen() {
+  setBisSubmissionsOpen(!bisSubmissionsOpen());
+}
+
 // -- Officer dashboard ------------------------------------------------------
 function buildOfficerDashboard() {
   buildStatsBar();
   buildRosterTable();
   renderSignupToggle();
+  renderBisToggle();
   if (DATA._loadedAt) {
     var t = DATA._loadedAt;
     var h = t.getHours(), m = t.getMinutes();
@@ -1136,9 +1419,9 @@ function buildRosterTable() {
           '<div style="display:flex;flex-direction:column;gap:0.1rem;">' +
             '<div style="display:flex;align-items:center;gap:0.4rem;">' +
               '<span style="font-weight:600;color:var(--text);">'+name+'</span>' +
-              (p.firstName!==name?'<span style="font-size:0.82rem;color:var(--text-muted);">('+p.firstName+')</span>':'') +
+              (p.firstName!==name?'<span style="font-size:0.95rem;color:var(--text-muted);">('+p.firstName+')</span>':'') +
             '</div>' +
-            (p.class?'<span style="font-size:0.75rem;color:'+clsColor+';letter-spacing:0.03em;">'+p.class+(p.spec?' · '+p.spec:'')+'</span>':'') +
+            (p.class?'<span style="font-size:1rem;color:'+clsColor+';letter-spacing:0.03em;">'+p.class+(p.spec?' · '+p.spec:'')+'</span>':'') +
           '</div>' +
         '</div></td>' +
         '<td><div class="attend-mini-cell"><span class="attend-mini" style="color:'+color+';">'+(p.attendance||'—')+'</span>' +
@@ -1198,7 +1481,7 @@ function buildConflicts() {
     html += '<div class="conflict-item">';
     html += '<div class="conflict-item-name">';
     html += '<span>'+item+'</span>';
-    if (slot) html += '<span style="font-size:0.72rem;color:'+getSlotColor(slot)+';text-transform:uppercase;letter-spacing:0.08em;">'+slot+'</span>';
+    if (slot) html += '<span style="font-size:0.97rem;color:'+getSlotColor(slot)+';text-transform:uppercase;letter-spacing:0.08em;">'+slot+'</span>';
     html += '<span class="conflict-count">'+players.length+' player'+(players.length!==1?'s':'')+'</span>';
     html += '</div>';
     html += '<div class="conflict-players">';
@@ -1315,7 +1598,7 @@ function buildAttendanceTab() {
   if (!below.length) {
     html = '<p style="color:var(--text);padding:1rem;">All raiders are at or above '+THRESHOLD+'% attendance.</p>';
   } else {
-    html += '<p style="font-size:0.88rem;color:var(--text);margin-bottom:1rem;">'+below.length+' raider'+(below.length!==1?'s':'')+' at or below '+THRESHOLD+'% attendance</p>';
+    html += '<p style="font-size:1rem;color:var(--text);margin-bottom:1rem;">'+below.length+' raider'+(below.length!==1?'s':'')+' at or below '+THRESHOLD+'% attendance</p>';
     for (var i = 0; i < below.length; i++) {
       var p       = below[i];
       var name    = p.nick || p.firstName;
@@ -1325,7 +1608,7 @@ function buildAttendanceTab() {
 
       html += '<div class="attend-player-row">';
       html += '<div class="attend-player-header">';
-      html += '<span class="attend-player-name">'+name+(p.firstName!==name?' <span style="font-size:0.82rem;color:var(--text-muted);">('+p.firstName+')</span>':'')+'</span>';
+      html += '<span class="attend-player-name">'+name+(p.firstName!==name?' <span style="font-size:0.95rem;color:var(--text-muted);">('+p.firstName+')</span>':'')+'</span>';
       html += '<span style="font-size:1rem;font-weight:700;color:'+color+';">'+( p.attendance||'—')+'</span>';
       html += '</div>';
 

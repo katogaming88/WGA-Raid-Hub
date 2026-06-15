@@ -46,6 +46,9 @@ const CFG = {
   // ── Self Received Requests tab ────────────────────────────────────
   selfReceivedSheet: 'Self Received Requests',
 
+  // ── BiS Responses tab ────────────────────────────────────────────────
+  bisResponsesSheet: 'BiS Responses',
+
   // ── Loot Sheet ───────────────────────────────────────────────────
   lootSheet:         'Loot Data',
   lootPlayerCol:     1,  // A - Player (Name-Realm)
@@ -78,6 +81,13 @@ function doGet(e) {
       props.setProperty('signupsOpen', open ? 'true' : 'false');
       cache.remove('rosterPayload');
       return jsonpResponse(callback, { success: true, signupsOpen: open });
+    }
+
+    if (action === 'setBisSubmissionsOpen') {
+      const open = e.parameter.value === 'true';
+      props.setProperty('bisSubmissionsOpen', open ? 'true' : 'false');
+      cache.remove('rosterPayload');
+      return jsonpResponse(callback, { success: true, bisSubmissionsOpen: open });
     }
 
     if (action === 'submitSignup') {
@@ -114,6 +124,65 @@ function doGet(e) {
       const row = parseInt(e.parameter.row, 10);
       if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
       updateRequestStatus(row, 'Rejected');
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'submitBiS') {
+      const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      writeBiSSubmission(data);
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'getPendingBiS') {
+      return jsonpResponse(callback, { submissions: getBiSSubmissions('Pending') });
+    }
+
+    if (action === 'approveBiS') {
+      const data      = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      const row       = parseInt(data.row, 10);
+      const nameRealm = String(data.nameRealm || '');
+      const url       = String(data.url || '');
+      if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
+      updateBisLinkInRoster(nameRealm, url);
+      updateBiSStatus(row, 'Approved');
+      cache.remove('rosterPayload');
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'rejectBiS') {
+      const row = parseInt(e.parameter.row, 10);
+      if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
+      updateBiSStatus(row, 'Rejected');
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'allowBisForPlayer') {
+      const data      = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      const nameRealm = String(data.nameRealm || '');
+      const allowed   = getBisAllowedPlayers();
+      if (nameRealm && allowed.indexOf(nameRealm) === -1) {
+        allowed.push(nameRealm);
+        setBisAllowedPlayers(allowed);
+      }
+      cache.remove('rosterPayload');
+      return jsonpResponse(callback, { success: true, bisAllowedPlayers: allowed });
+    }
+
+    if (action === 'revokeBisForPlayer') {
+      const data      = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      const nameRealm = String(data.nameRealm || '');
+      const allowed   = getBisAllowedPlayers().filter(function(n) { return n !== nameRealm; });
+      setBisAllowedPlayers(allowed);
+      cache.remove('rosterPayload');
+      return jsonpResponse(callback, { success: true, bisAllowedPlayers: allowed });
+    }
+
+    if (action === 'updateBisLink') {
+      const data      = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      const nameRealm = String(data.nameRealm || '');
+      const url       = String(data.url || '');
+      updateBisLinkInRoster(nameRealm, url);
+      cache.remove('rosterPayload');
       return jsonpResponse(callback, { success: true });
     }
 
@@ -296,11 +365,15 @@ function buildPayload() {
     sheets[sheet.getName()] = sheet;
   }
 
-  const signupsOpen = PropertiesService.getScriptProperties().getProperty('signupsOpen') === 'true';
+  const scriptProps       = PropertiesService.getScriptProperties();
+  const signupsOpen       = scriptProps.getProperty('signupsOpen')       === 'true';
+  const bisSubmissionsOpen = scriptProps.getProperty('bisSubmissionsOpen') === 'true';
 
   return {
-    generatedAt:   new Date().toISOString(),
-    signupsOpen:   signupsOpen,
+    generatedAt:          new Date().toISOString(),
+    signupsOpen:          signupsOpen,
+    bisSubmissionsOpen:    bisSubmissionsOpen,
+    bisAllowedPlayers:     getBisAllowedPlayers(),
     roster:        getRoster(sheets),
     priorityOrder: getPriorityOrder(sheets),
     bisList:       getBisList(sheets),
@@ -523,6 +596,88 @@ function getLootCounts(sheets) {
   }
 
   return result;
+}
+
+function getBisAllowedPlayers() {
+  const val = PropertiesService.getScriptProperties().getProperty('bisAllowedPlayers');
+  try { return JSON.parse(val || '[]'); } catch(e) { return []; }
+}
+
+function setBisAllowedPlayers(arr) {
+  PropertiesService.getScriptProperties().setProperty('bisAllowedPlayers', JSON.stringify(arr));
+}
+
+function writeBiSSubmission(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(CFG.bisResponsesSheet);
+  if (!sheet) {
+    sheet = ss.insertSheet(CFG.bisResponsesSheet);
+    sheet.appendRow(['Timestamp', 'Name-Realm', 'BiS List Link', 'Notes', 'Status']);
+    sheet.setFrozenRows(1);
+  }
+  sheet.appendRow([
+    new Date(),
+    data.nameRealm || '',
+    data.bisLink   || '',
+    data.notes     || '',
+    'Pending'
+  ]);
+
+  // Remove player from individual allow list now that they've submitted
+  const nameRealm = String(data.nameRealm || '');
+  if (nameRealm) {
+    const allowed = getBisAllowedPlayers().filter(function(n) { return n !== nameRealm; });
+    setBisAllowedPlayers(allowed);
+  }
+}
+
+function getBiSSubmissions(statusFilter) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.bisResponsesSheet);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+
+  const data    = sheet.getDataRange().getValues();
+  const results = [];
+  for (let i = 1; i < data.length; i++) {
+    const row    = data[i];
+    const status = String(row[4] || '').trim();
+    if (statusFilter && status !== statusFilter) continue;
+    if (!row[1] || !row[2]) continue;
+    const ts = row[0] instanceof Date
+      ? Utilities.formatDate(row[0], Session.getScriptTimeZone(), 'MMM d, yyyy HH:mm')
+      : String(row[0] || '');
+    results.push({
+      rowIndex:  i + 1,
+      timestamp: ts,
+      nameRealm: String(row[1] || ''),
+      bisLink:   String(row[2] || ''),
+      notes:     String(row[3] || ''),
+      status:    status
+    });
+  }
+  return results.reverse();
+}
+
+function updateBiSStatus(row, status) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.bisResponsesSheet);
+  if (!sheet) return;
+  sheet.getRange(row, 5).setValue(status);
+}
+
+function updateBisLinkInRoster(nameRealm, url) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.rosterSheet);
+  if (!sheet) return;
+  const data = sheet.getDataRange().getValues();
+  for (let i = CFG.rosterDataStart - 1; i < data.length; i++) {
+    const row       = data[i];
+    const rowPlayer = String(row[CFG.rosterPlayerCol - 1] || '').trim();
+    if (rowPlayer.toLowerCase() === nameRealm.toLowerCase()) {
+      sheet.getRange(i + 1, CFG.rosterBisLinkCol).setValue(url);
+      return;
+    }
+  }
 }
 
 function clearRosterCache() {
