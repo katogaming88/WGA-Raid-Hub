@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.8.0] - 2026-06-15
+
+### Added
+- Items Received on player profiles now shows the slot and difficulty for each item
+- Slot label uses the same color coding as the BiS priority list
+- Tier token names (e.g. "Voidcast Fanatical Nullcore") resolve correctly via prefix match against Item Lookup, handling the armor-type suffix added in the sheet
+
+---
+
 ## [1.7.0] - 2026-06-15
 
 ### Added
