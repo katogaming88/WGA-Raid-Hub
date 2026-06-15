@@ -49,7 +49,7 @@ select#playerSelect { width:100%; appearance:none; background:var(--bg-input); b
 select#playerSelect:hover { border-color:var(--gold-dim); }
 select#playerSelect:focus { border-color:var(--gold); box-shadow:0 0 0 2px rgba(214,163,68,0.12); }
 select#playerSelect option { background:#1a1d27; }
-.officer-link { margin-top:1.25rem; font-size:0.95rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-dim); cursor:pointer; border-bottom:1px solid transparent; transition:color 0.15s,border-color 0.15s; }
+.officer-link { margin-top:0.5rem; font-size:0.95rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-dim); cursor:pointer; border-bottom:1px solid transparent; transition:color 0.15s,border-color 0.15s; }
 .officer-link:hover { color:var(--text-muted); border-color:var(--text-dim); }
 
 /* Officer password prompt */
