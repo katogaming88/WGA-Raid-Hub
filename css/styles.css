@@ -251,6 +251,16 @@ select#playerSelect option { background:#1a1d27; }
 .signup-radio-label:hover { border-color:var(--border-mid); }
 .signup-radio-label input { display:none; }
 .signup-radio-label:has(input:checked) { background:rgba(214,163,68,0.1); border-color:var(--gold-dim); color:var(--gold-light); }
+.signup-checkbox-group { display:flex; flex-wrap:wrap; gap:0.4rem; }
+.signup-checkbox-label { display:flex; align-items:center; gap:0.4rem; font-size:0.88rem; font-weight:500; padding:0.35rem 0.85rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; cursor:pointer; transition:all 0.12s; user-select:none; }
+.signup-checkbox-label:hover { border-color:var(--border-mid); }
+.signup-checkbox-label input { display:none; }
+.signup-checkbox-label:has(input:checked) { background:rgba(214,163,68,0.1); border-color:var(--gold-dim); color:var(--gold-light); }
+.realm-combobox { position:relative; }
+.realm-input { margin-bottom:0; }
+.realm-dropdown { display:none; position:absolute; top:100%; left:0; right:0; background:var(--bg-card); border:1px solid var(--border-mid); border-top:none; border-radius:0 0 3px 3px; max-height:220px; overflow-y:auto; z-index:50; }
+.realm-option { padding:0.5rem 0.9rem; font-size:0.95rem; font-family:'Rajdhani',sans-serif; font-weight:500; cursor:pointer; color:var(--text); transition:background 0.1s; }
+.realm-option:hover { background:var(--bg-elevated); color:var(--gold-light); }
 .signup-class-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:0.5rem; margin-bottom:1.5rem; }
 .signup-class-btn { font-family:'Rajdhani',sans-serif; font-size:0.88rem; font-weight:600; letter-spacing:0.06em; padding:0.65rem 0.5rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; color:var(--cls-color,var(--text)); cursor:pointer; transition:all 0.12s; text-align:center; }
 .signup-class-btn:hover { border-color:var(--cls-color,var(--border-mid)); background:var(--bg-card); }
@@ -259,6 +269,7 @@ select#playerSelect option { background:#1a1d27; }
 .signup-error { font-size:0.85rem; color:var(--melee); margin-bottom:0.75rem; min-height:1.2em; }
 .signup-confirm { text-align:center; padding:2rem 0; }
 .signup-confirm-check { width:56px; height:56px; border-radius:50%; background:rgba(61,220,132,0.12); border:2px solid rgba(61,220,132,0.3); color:var(--heal); font-size:1.6rem; display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem; }
+.signup-confirm .signup-step-desc { color:var(--text); }
 .signup-cta { margin-top:1.25rem; font-size:0.88rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); cursor:pointer; border-bottom:1px solid rgba(214,163,68,0.3); transition:color 0.15s,border-color 0.15s; }
 .signup-cta:hover { color:var(--gold-light); border-color:var(--gold); }
 .signup-officer-panel { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1.25rem; max-width:400px; }
@@ -268,6 +279,10 @@ select#playerSelect option { background:#1a1d27; }
 .signup-status-open { background:rgba(61,220,132,0.12); color:var(--heal); border:1px solid rgba(61,220,132,0.3); }
 .signup-status-closed { background:rgba(255,124,92,0.1); color:var(--melee); border:1px solid rgba(255,124,92,0.25); }
 .signup-officer-note { font-size:0.82rem; color:var(--text-muted); margin-top:1rem; line-height:1.5; }
+.signup-response-card { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1rem 1.25rem; margin-bottom:0.75rem; }
+.signup-response-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+.signup-response-name { font-family:'Cinzel',serif; font-size:0.95rem; font-weight:700; color:var(--text); }
+.signup-response-time { font-size:0.72rem; color:var(--text-muted); letter-spacing:0.04em; white-space:nowrap; }
 
 /* Responsive */
 @media (max-width:640px) {

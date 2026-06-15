@@ -40,6 +40,9 @@ const CFG = {
   itemSlotCol:       3,
   itemDataStart:     2,
 
+  // ── Roster Responses tab ─────────────────────────────────────────
+  responsesSheet:    'Roster Responses',
+
   // ── Loot Sheet ───────────────────────────────────────────────────
   lootSheet:         'Loot Data',
   lootPlayerCol:     1,  // A - Player (Name-Realm)
@@ -57,20 +60,31 @@ const CFG = {
 
 function doGet(e) {
   try {
-    const cache = CacheService.getScriptCache();
+    const cache    = CacheService.getScriptCache();
+    const props    = PropertiesService.getScriptProperties();
+    const action   = e && e.parameter && e.parameter.action;
+    const callback = e && e.parameter && e.parameter.callback;
 
-    if (e && e.parameter && e.parameter.action === 'clearCache') {
+    if (action === 'clearCache') {
       cache.remove('rosterPayload');
-      const result   = JSON.stringify({ success: true });
-      const callback = e.parameter.callback;
-      if (callback) {
-        return ContentService
-          .createTextOutput(`${callback}(${result})`)
-          .setMimeType(ContentService.MimeType.JAVASCRIPT);
-      }
-      return ContentService
-        .createTextOutput(result)
-        .setMimeType(ContentService.MimeType.JSON);
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'setSignupsOpen') {
+      const open = e.parameter.value === 'true';
+      props.setProperty('signupsOpen', open ? 'true' : 'false');
+      cache.remove('rosterPayload');
+      return jsonpResponse(callback, { success: true, signupsOpen: open });
+    }
+
+    if (action === 'submitSignup') {
+      const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      writeSignup(data);
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'getSignups') {
+      return jsonpResponse(callback, { signups: getSignupResponses() });
     }
 
     const cached = cache.get('rosterPayload');
@@ -80,7 +94,6 @@ function doGet(e) {
       return fresh;
     })();
 
-    const callback = e && e.parameter && e.parameter.callback;
     if (callback) {
       return ContentService
         .createTextOutput(`${callback}(${json})`)
@@ -92,16 +105,69 @@ function doGet(e) {
 
   } catch (err) {
     const callback = e && e.parameter && e.parameter.callback;
-    const errJson  = JSON.stringify({ error: err.message });
-    if (callback) {
-      return ContentService
-        .createTextOutput(`${callback}(${errJson})`)
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    }
-    return ContentService
-      .createTextOutput(errJson)
-      .setMimeType(ContentService.MimeType.JSON);
+    return jsonpResponse(callback, { error: err.message });
   }
+}
+
+function jsonpResponse(callback, data) {
+  const json = JSON.stringify(data);
+  if (callback) {
+    return ContentService
+      .createTextOutput(`${callback}(${json})`)
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService
+    .createTextOutput(json)
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getSignupResponses() {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.responsesSheet);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+
+  const data    = sheet.getDataRange().getValues();
+  const results = [];
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (!row[1]) continue;
+    const ts = row[0] instanceof Date
+      ? Utilities.formatDate(row[0], Session.getScriptTimeZone(), 'MMM d, yyyy HH:mm')
+      : String(row[0] || '');
+    results.push({
+      timestamp: ts,
+      charName:  String(row[1] || ''),
+      realm:     String(row[2] || ''),
+      className: String(row[3] || ''),
+      mainSpec:  String(row[4] || ''),
+      offSpecs:  String(row[5] || ''),
+      role:      String(row[6] || ''),
+      discord:   String(row[7] || ''),
+      notes:     String(row[8] || '')
+    });
+  }
+  return results.reverse();
+}
+
+function writeSignup(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(CFG.responsesSheet);
+  if (!sheet) {
+    sheet = ss.insertSheet(CFG.responsesSheet);
+    sheet.appendRow(['Timestamp', 'Character', 'Realm', 'Class', 'Main Spec', 'Off Specs', 'Role', 'Discord', 'Notes']);
+    sheet.setFrozenRows(1);
+  }
+  sheet.appendRow([
+    new Date(),
+    data.charName  || '',
+    data.realm     || '',
+    data.className || '',
+    data.mainSpec  || '',
+    (data.offSpecs || []).join(', '),
+    data.role      || '',
+    data.discord   || '',
+    data.notes     || ''
+  ]);
 }
 
 function buildPayload() {
@@ -113,8 +179,11 @@ function buildPayload() {
     sheets[sheet.getName()] = sheet;
   }
 
+  const signupsOpen = PropertiesService.getScriptProperties().getProperty('signupsOpen') === 'true';
+
   return {
     generatedAt:   new Date().toISOString(),
+    signupsOpen:   signupsOpen,
     roster:        getRoster(sheets),
     priorityOrder: getPriorityOrder(sheets),
     bisList:       getBisList(sheets),
