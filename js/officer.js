@@ -1,4 +1,5 @@
 var OFFICER_PASS          = 'phoenix2';
+var SESSION_DURATION_MS   = 2 * 60 * 60 * 1000; // 2 hours
 var selectedOfficerPlayer = null;
 var activeFilters         = {};
 var activeSort            = { key: null, dir: 1 };
@@ -36,9 +37,14 @@ function hideOfficerPrompt() {
 function submitOfficerPassword() {
   if (document.getElementById('officerPassword').value === OFFICER_PASS) {
     sessionStorage.setItem('phoenix_officer', '1');
+    sessionStorage.setItem('phoenix_officer_ts', String(Date.now()));
     hideOfficerPrompt();
-    buildOfficerDashboard();
-    showView('officer');
+    document.getElementById('loadingMsg').style.display = '';
+    loadData(function() {
+      buildOfficerDashboard();
+      document.getElementById('officerViewWrap').classList.add('active');
+      document.getElementById('loadingMsg').style.display = 'none';
+    });
   } else {
     document.getElementById('officerError').style.display = '';
   }
@@ -46,7 +52,14 @@ function submitOfficerPassword() {
 
 function officerLogout() {
   sessionStorage.removeItem('phoenix_officer');
+  sessionStorage.removeItem('phoenix_officer_ts');
   window.location.href = 'index.html';
+}
+
+function isOfficerSessionValid() {
+  if (sessionStorage.getItem('phoenix_officer') !== '1') return false;
+  var ts = parseInt(sessionStorage.getItem('phoenix_officer_ts') || '0', 10);
+  return ts > 0 && (Date.now() - ts) < SESSION_DURATION_MS;
 }
 
 function buildOfficerDashboard() {
@@ -85,13 +98,16 @@ function clearCache() {
   document.head.appendChild(script);
 }
 
-// Boot: require password before showing any content
-loadData(function() {
-  if (sessionStorage.getItem('phoenix_officer') !== '1') {
-    showOfficerPrompt();
-    return;
-  }
-  buildOfficerDashboard();
-  document.getElementById('officerViewWrap').classList.add('active');
+// Boot: require password before loading any data; clear expired sessions
+if (!isOfficerSessionValid()) {
+  sessionStorage.removeItem('phoenix_officer');
+  sessionStorage.removeItem('phoenix_officer_ts');
   document.getElementById('loadingMsg').style.display = 'none';
-});
+  showOfficerPrompt();
+} else {
+  loadData(function() {
+    buildOfficerDashboard();
+    document.getElementById('officerViewWrap').classList.add('active');
+    document.getElementById('loadingMsg').style.display = 'none';
+  });
+}
