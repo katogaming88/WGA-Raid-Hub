@@ -272,48 +272,47 @@ function showAddPlayerModal() {
     classSel.appendChild(opt);
   }
 
-  hideRealmList();
+  var apdd = document.getElementById('addPlayerRealmDropdown');
+  if (apdd) apdd.style.display = 'none';
 
   document.getElementById('addPlayerModal').classList.add('active');
   setTimeout(function() { document.getElementById('addPlayerName').focus(); }, 50);
 }
 
 function hideAddPlayerModal() {
-  hideRealmList();
+  var apdd = document.getElementById('addPlayerRealmDropdown');
+  if (apdd) apdd.style.display = 'none';
   document.getElementById('addPlayerModal').classList.remove('active');
 }
 
-function filterRealmList(val) {
-  var dd = document.getElementById('realmDropdown');
-  var term = (val || '').trim().toLowerCase();
-  var matches = term
-    ? WOW_REALMS.filter(function(r) { return r.toLowerCase().indexOf(term) === 0; }).slice(0, 12)
-    : [];
-  if (!matches.length) { dd.style.display = 'none'; return; }
-  dd.innerHTML = '';
-  for (var i = 0; i < matches.length; i++) {
-    (function(realm) {
-      var div = document.createElement('div');
-      div.className = 'realm-option';
-      div.textContent = realm;
-      div.addEventListener('mousedown', function(e) {
-        e.preventDefault();
-        pickRealm(realm);
-      });
-      dd.appendChild(div);
-    })(matches[i]);
+function initAddPlayerRealmCombobox() {
+  var input    = document.getElementById('addPlayerRealm');
+  var dropdown = document.getElementById('addPlayerRealmDropdown');
+  if (!input || !dropdown) return;
+
+  function showMatches(query) {
+    var q = query.toLowerCase().trim();
+    if (!q) { dropdown.style.display = 'none'; return; }
+    var matches = WOW_REALMS.filter(function(r) {
+      return r.toLowerCase().indexOf(q) !== -1;
+    }).slice(0, 12);
+    if (!matches.length) { dropdown.style.display = 'none'; return; }
+    dropdown.innerHTML = matches.map(function(r) {
+      return '<div class="realm-option" onmousedown="pickAddPlayerRealm(\'' + r.replace(/'/g, "\\'") + '\')">' + r + '</div>';
+    }).join('');
+    dropdown.style.display = 'block';
   }
-  dd.style.display = '';
+
+  input.addEventListener('input',  function() { showMatches(this.value); });
+  input.addEventListener('focus',  function() { showMatches(this.value); });
+  input.addEventListener('blur',   function() { setTimeout(function() { dropdown.style.display = 'none'; }, 150); });
 }
 
-function hideRealmList() {
-  var dd = document.getElementById('realmDropdown');
-  if (dd) dd.style.display = 'none';
-}
-
-function pickRealm(realm) {
-  document.getElementById('addPlayerRealm').value = realm;
-  hideRealmList();
+function pickAddPlayerRealm(realm) {
+  var input = document.getElementById('addPlayerRealm');
+  if (input) input.value = realm;
+  var dropdown = document.getElementById('addPlayerRealmDropdown');
+  if (dropdown) dropdown.style.display = 'none';
 }
 
 function addPlayerClassChanged() {
@@ -2127,4 +2126,5 @@ document.querySelectorAll('.footer').forEach(function(el) {
   el.innerHTML = 'We Go Again · Team Phoenix · v' + VERSION + ' · <a class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a>';
 });
 
+initAddPlayerRealmCombobox();
 loadData();
