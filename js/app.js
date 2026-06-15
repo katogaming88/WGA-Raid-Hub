@@ -397,7 +397,7 @@ function renderProfile(firstName, backTo, container) {
     } else if (selfRec) {
       rows += '<span class="bis-self-received-badge">' + (selfRec.source || 'Self-reported') + '</span>';
     } else if (!isGen) {
-      rows += '<button class="mark-received-btn" onclick="showSelfReceivedForm(' +
+      rows += '<button class="mark-received-btn" onclick="event.stopPropagation();showSelfReceivedForm(' +
         JSON.stringify(player.firstName) + ',' + JSON.stringify(item) + ',' + JSON.stringify(slot) + ',' + JSON.stringify(rowId) +
         ')">Mark received</button>';
     } else {
@@ -832,6 +832,7 @@ function deleteSignupRow(rowIndex, btnEl) {
 }
 
 function showSelfReceivedForm(firstName, item, slot, rowId) {
+  if (event) event.stopPropagation();
   var formEl = document.getElementById('form-' + rowId);
   if (!formEl) return;
   if (formEl.style.display !== 'none') { formEl.style.display = 'none'; return; }
@@ -848,10 +849,10 @@ function showSelfReceivedForm(firstName, item, slot, rowId) {
       '</select>' +
       '<textarea class="self-received-notes" id="notes-' + rowId + '" placeholder="Notes (optional)" rows="2"></textarea>' +
       '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
-        '<button class="btn btn-gold" style="font-size:0.8rem;padding:0.3rem 0.8rem;" onclick="submitSelfReceivedRequest(' +
+        '<button class="btn btn-gold" style="font-size:0.8rem;padding:0.3rem 0.8rem;" onclick="event.stopPropagation();submitSelfReceivedRequest(' +
           JSON.stringify(firstName) + ',' + JSON.stringify(item) + ',' + JSON.stringify(slot) + ',' + JSON.stringify(rowId) +
         ')">Submit request</button>' +
-        '<button class="btn btn-muted" style="font-size:0.8rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'form-' + rowId + '\').style.display=\'none\'">Cancel</button>' +
+        '<button class="btn btn-muted" style="font-size:0.8rem;padding:0.3rem 0.8rem;" onclick="event.stopPropagation();document.getElementById(\'form-' + rowId + '\').style.display=\'none\'">Cancel</button>' +
       '</div>' +
       '<p class="self-received-note">An officer will review and approve this. Once approved it will appear on your profile.</p>' +
     '</div>';
