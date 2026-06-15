@@ -836,7 +836,7 @@ function showSelfReceivedForm(firstName, item, slot, rowId) {
   if (!formEl) return;
   if (formEl.style.display !== 'none') { formEl.style.display = 'none'; return; }
   var formHtml =
-    '<div class="self-received-form-inner">' +
+    '<div class="self-received-form-inner" onclick="event.stopPropagation()">' +
       '<select class="self-received-source" id="src-' + rowId + '">' +
         '<option value="">-- How did you get it? --</option>' +
         '<option value="M+">M+</option>' +
