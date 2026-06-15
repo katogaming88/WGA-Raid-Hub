@@ -290,9 +290,19 @@ function filterRealmList(val) {
     ? WOW_REALMS.filter(function(r) { return r.toLowerCase().indexOf(term) === 0; }).slice(0, 12)
     : [];
   if (!matches.length) { dd.style.display = 'none'; return; }
-  dd.innerHTML = matches.map(function(r) {
-    return '<div class="realm-option" onmousedown="pickRealm(\'' + r.replace(/'/g, "\\'") + '\')">' + r + '</div>';
-  }).join('');
+  dd.innerHTML = '';
+  for (var i = 0; i < matches.length; i++) {
+    (function(realm) {
+      var div = document.createElement('div');
+      div.className = 'realm-option';
+      div.textContent = realm;
+      div.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        pickRealm(realm);
+      });
+      dd.appendChild(div);
+    })(matches[i]);
+  }
   dd.style.display = '';
 }
 

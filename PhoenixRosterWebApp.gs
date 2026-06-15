@@ -779,16 +779,24 @@ function addPlayerToRoster(data) {
   const role     = String(data.role     || 'Melee').trim();
   const priority = roleToPriority(role);
 
-  // Build a row with enough columns to reach col K (index 10)
-  const row = new Array(CFG.rosterPriorityCol).fill('');
-  row[CFG.rosterTrialCol   - 1] = isTrial;
-  row[CFG.rosterPlayerCol  - 1] = nameRealm;
-  row[CFG.rosterNickCol    - 1] = nick;
-  row[CFG.rosterClassCol   - 1] = cls;
-  row[CFG.rosterSpecCol    - 1] = spec;
-  row[CFG.rosterRoleCol    - 1] = role;
-  row[CFG.rosterPriorityCol - 1] = priority;
-  sheet.appendRow(row);
+  // Find the last row that has a player name in col D, then write to the row after it.
+  // Avoids appendRow which would land after pre-populated checkbox rows below the data.
+  const lastRow = sheet.getLastRow();
+  const colD    = sheet.getRange(CFG.rosterDataStart, CFG.rosterPlayerCol,
+                    lastRow - CFG.rosterDataStart + 1, 1).getValues();
+  let targetRow = CFG.rosterDataStart;
+  for (let r = 0; r < colD.length; r++) {
+    if (String(colD[r][0] || '').trim()) targetRow = CFG.rosterDataStart + r + 1;
+  }
+
+  // Write only the columns this app owns — don't touch col A or any formula columns.
+  sheet.getRange(targetRow, CFG.rosterTrialCol).setValue(isTrial);
+  sheet.getRange(targetRow, CFG.rosterPlayerCol).setValue(nameRealm);
+  sheet.getRange(targetRow, CFG.rosterNickCol).setValue(nick);
+  sheet.getRange(targetRow, CFG.rosterClassCol).setValue(cls);
+  sheet.getRange(targetRow, CFG.rosterSpecCol).setValue(spec);
+  sheet.getRange(targetRow, CFG.rosterRoleCol).setValue(role);
+  sheet.getRange(targetRow, CFG.rosterPriorityCol).setValue(priority);
 }
 
 function removePlayerFromRoster(nameRealm) {
