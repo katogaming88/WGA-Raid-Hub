@@ -194,6 +194,58 @@
   <div class="footer">We Go Again · Team Phoenix · <a class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
 </div>
 
+<!-- Add Player modal -->
+<div id="addPlayerModal" class="officer-prompt">
+  <div class="officer-prompt-box" style="max-width:400px;">
+    <h2>Add Player</h2>
+    <div style="display:flex;flex-direction:column;gap:0.6rem;">
+      <div>
+        <label class="add-player-label">Character Name</label>
+        <input id="addPlayerName" type="text" class="add-player-input" placeholder="Katorri" autocomplete="off">
+      </div>
+      <div>
+        <label class="add-player-label">Realm</label>
+        <input id="addPlayerRealm" type="text" class="add-player-input" placeholder="Barthilas" list="realmList" autocomplete="off">
+        <datalist id="realmList"></datalist>
+      </div>
+      <div>
+        <label class="add-player-label">Nickname (optional)</label>
+        <input id="addPlayerNick" type="text" class="add-player-input" placeholder="Kato" autocomplete="off">
+      </div>
+      <div>
+        <label class="add-player-label">Class</label>
+        <select id="addPlayerClass" class="add-player-input" onchange="addPlayerClassChanged()">
+          <option value="">-- Select class --</option>
+        </select>
+      </div>
+      <div>
+        <label class="add-player-label">Spec</label>
+        <select id="addPlayerSpec" class="add-player-input">
+          <option value="">-- Select spec --</option>
+        </select>
+      </div>
+      <div>
+        <label class="add-player-label">Role</label>
+        <select id="addPlayerRole" class="add-player-input">
+          <option value="Tank">Tank</option>
+          <option value="Heal">Heal</option>
+          <option value="Melee" selected>Melee</option>
+          <option value="Ranged">Ranged</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.2rem;">
+        <input id="addPlayerTrial" type="checkbox" style="width:auto;accent-color:var(--gold);">
+        <label style="font-size:0.92rem;color:var(--text-muted);letter-spacing:0.06em;">Mark as Trial</label>
+      </div>
+    </div>
+    <p id="addPlayerError" style="display:none;font-size:0.88rem;color:var(--melee);margin-top:0.25rem;"></p>
+    <div class="prompt-buttons" style="margin-top:0.5rem;">
+      <button class="btn btn-gold" onclick="submitAddPlayer()">Add Player</button>
+      <button class="btn btn-muted" onclick="hideAddPlayerModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Officer password prompt -->
 <div id="officerPrompt" class="officer-prompt">
   <div class="officer-prompt-box">

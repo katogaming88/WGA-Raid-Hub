@@ -311,6 +311,14 @@ select#playerSelect option { background:#1a1d27; }
 .request-reject-btn:hover { background:rgba(255,124,92,0.15); }
 .request-reject-btn:disabled { opacity:0.4; cursor:default; }
 
+/* Add/Remove player */
+.add-player-label { display:block; font-size:0.85rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.2rem; }
+.add-player-input { width:100%; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1rem; padding:0.45rem 0.75rem; border-radius:3px; outline:none; }
+.add-player-input:focus { border-color:var(--gold); }
+.add-player-input option { background:#1a1d27; }
+.btn-danger { background:rgba(255,124,92,0.1); border:1px solid rgba(255,124,92,0.35); color:var(--melee); }
+.btn-danger:hover { background:rgba(255,124,92,0.2); }
+
 /* Responsive */
 @media (max-width:640px) {
   #officerView { padding:1rem 1rem 2rem; }

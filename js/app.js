@@ -1,6 +1,6 @@
 var WEB_APP_URL  = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
 var OFFICER_PASS = 'phoenix2'; // change this
-var VERSION      = '1.8.0';
+var VERSION      = '1.9.0';
 var DATA         = null;
 var activeFilters = {};
 var activeSort = { key: null, dir: 1 };
@@ -250,6 +250,182 @@ function submitOfficerPassword() {
 }
 function officerLogout() { sessionStorage.removeItem('phoenix_officer'); showView('landing'); }
 
+// -- Add / Remove player (officer) ------------------------------------------
+function showAddPlayerModal() {
+  document.getElementById('addPlayerName').value  = '';
+  document.getElementById('addPlayerRealm').value = '';
+  document.getElementById('addPlayerNick').value  = '';
+  document.getElementById('addPlayerClass').value = '';
+  document.getElementById('addPlayerSpec').innerHTML = '<option value="">-- Select spec --</option>';
+  document.getElementById('addPlayerRole').value  = 'Melee';
+  document.getElementById('addPlayerTrial').checked = false;
+  document.getElementById('addPlayerError').style.display = 'none';
+
+  // Populate class dropdown
+  var classSel = document.getElementById('addPlayerClass');
+  classSel.innerHTML = '<option value="">-- Select class --</option>';
+  var classes = Object.keys(CLASS_SPECS).sort();
+  for (var i = 0; i < classes.length; i++) {
+    var opt = document.createElement('option');
+    opt.value = classes[i];
+    opt.textContent = classes[i];
+    classSel.appendChild(opt);
+  }
+
+  // Populate realm datalist
+  var dl = document.getElementById('realmList');
+  dl.innerHTML = '';
+  for (var j = 0; j < WOW_REALMS.length; j++) {
+    var o = document.createElement('option');
+    o.value = WOW_REALMS[j];
+    dl.appendChild(o);
+  }
+
+  document.getElementById('addPlayerModal').classList.add('active');
+  setTimeout(function() { document.getElementById('addPlayerName').focus(); }, 50);
+}
+
+function hideAddPlayerModal() {
+  document.getElementById('addPlayerModal').classList.remove('active');
+}
+
+function addPlayerClassChanged() {
+  var cls      = document.getElementById('addPlayerClass').value;
+  var specSel  = document.getElementById('addPlayerSpec');
+  var roleSel  = document.getElementById('addPlayerRole');
+  specSel.innerHTML = '<option value="">-- Select spec --</option>';
+  if (!cls || !CLASS_SPECS[cls]) return;
+  var specs = CLASS_SPECS[cls].specs;
+  for (var i = 0; i < specs.length; i++) {
+    var opt = document.createElement('option');
+    opt.value = specs[i];
+    opt.textContent = specs[i];
+    specSel.appendChild(opt);
+  }
+  // Pre-select role options based on class
+  var roles = CLASS_SPECS[cls].roles;
+  if (roles) {
+    // Class has fixed roles — pick first available
+    roleSel.value = roles[0] === 'Healer' ? 'Heal' : roles[0];
+  }
+}
+
+function submitAddPlayer() {
+  var nameVal  = (document.getElementById('addPlayerName').value  || '').trim();
+  var realmVal = (document.getElementById('addPlayerRealm').value || '').trim();
+  var nickVal  = (document.getElementById('addPlayerNick').value  || '').trim();
+  var cls      = document.getElementById('addPlayerClass').value;
+  var spec     = document.getElementById('addPlayerSpec').value;
+  var role     = document.getElementById('addPlayerRole').value;
+  var isTrial  = document.getElementById('addPlayerTrial').checked;
+  var errEl    = document.getElementById('addPlayerError');
+
+  if (!nameVal || !realmVal || !cls || !spec || !role) {
+    errEl.textContent = 'Please fill in all required fields.';
+    errEl.style.display = '';
+    return;
+  }
+
+  var nameRealm = nameVal + '-' + realmVal;
+  var duplicate = false;
+  if (DATA && DATA.roster) {
+    for (var i = 0; i < DATA.roster.length; i++) {
+      if (normalise(DATA.roster[i].nameRealm) === normalise(nameRealm)) { duplicate = true; break; }
+    }
+  }
+  if (duplicate) {
+    errEl.textContent = nameRealm + ' is already on the roster.';
+    errEl.style.display = '';
+    return;
+  }
+
+  errEl.style.display = 'none';
+  var submitBtn = document.querySelector('#addPlayerModal .btn-gold');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Adding...'; }
+
+  var data = { nameRealm: nameRealm, nick: nickVal, class: cls, spec: spec, role: role, isTrial: isTrial };
+  var cbName = '_addPlayerCb';
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Add Player'; }
+    if (result && result.error) {
+      errEl.textContent = 'Failed to add player: ' + result.error;
+      errEl.style.display = '';
+      return;
+    }
+    // Optimistically add to local DATA.roster so the table updates immediately
+    if (DATA && DATA.roster) {
+      var parts = nameRealm.split('-');
+      DATA.roster.push({
+        nameRealm: nameRealm,
+        firstName: parts[0],
+        realm:     parts.slice(1).join('-'),
+        nick:      nickVal,
+        class:     cls,
+        spec:      spec,
+        role:      role,
+        isTrial:   isTrial,
+        isBench:   false,
+        attendance: '',
+        bisLink:   ''
+      });
+    }
+    hideAddPlayerModal();
+    buildOfficerDashboard();
+  };
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Add Player'; }
+    errEl.textContent = 'Network error. Try again.';
+    errEl.style.display = '';
+  };
+  script.src = WEB_APP_URL + '?action=addPlayer&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function confirmRemovePlayer(nameRealm, firstName) {
+  var confirmDiv = document.getElementById('removePlayerConfirm-' + firstName);
+  if (confirmDiv) confirmDiv.style.display = 'flex';
+  var removeBtn = document.getElementById('removePlayerBtn-' + firstName);
+  if (removeBtn) removeBtn.style.display = 'none';
+}
+
+function cancelRemovePlayer(firstName) {
+  var confirmDiv = document.getElementById('removePlayerConfirm-' + firstName);
+  if (confirmDiv) confirmDiv.style.display = 'none';
+  var removeBtn = document.getElementById('removePlayerBtn-' + firstName);
+  if (removeBtn) removeBtn.style.display = '';
+}
+
+function executeRemovePlayer(nameRealm, firstName) {
+  var msgEl = document.getElementById('removePlayerMsg-' + firstName);
+  if (msgEl) { msgEl.textContent = 'Removing...'; msgEl.style.color = 'var(--text-muted)'; msgEl.style.display = ''; }
+
+  var cbName = '_removePlayerCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (result && result.error) {
+      if (msgEl) { msgEl.textContent = 'Failed: ' + result.error; msgEl.style.color = 'var(--melee)'; }
+      return;
+    }
+    // Remove from local DATA and refresh
+    if (DATA && DATA.roster) {
+      DATA.roster = DATA.roster.filter(function(p) { return p.nameRealm !== nameRealm; });
+    }
+    document.getElementById('officerProfile').innerHTML = '';
+    selectedOfficerPlayer = null;
+    buildOfficerDashboard();
+  };
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    if (msgEl) { msgEl.textContent = 'Network error. Try again.'; msgEl.style.color = 'var(--melee)'; }
+  };
+  script.src = WEB_APP_URL + '?action=removePlayer&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })) + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
 // -- Helpers ----------------------------------------------------------------
 function getRank(firstName, itemName) {
   var list = (DATA.priorityOrder || {})[itemName];
@@ -492,6 +668,16 @@ function renderProfile(firstName, backTo, container) {
             '<button id="benchToggle-'+player.firstName+'" class="btn '+(player.isBench?'btn-gold':'btn-muted')+'" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="togglePlayerBench(\''+nrSafe+'\',\''+fnSafe+'\')">'+(player.isBench?'Remove from Bench':'Move to Bench')+'</button>' +
           '</div>' +
           '<div id="playerSettingsMsg-'+player.firstName+'" style="font-size:0.92rem;color:var(--text-muted);min-height:1.2rem;"></div>' +
+          '<div style="display:flex;align-items:center;gap:0.75rem;padding-top:0.25rem;border-top:1px solid var(--border);margin-top:0.5rem;">' +
+            '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Remove</span>' +
+            '<button id="removePlayerBtn-'+player.firstName+'" class="btn btn-danger" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="confirmRemovePlayer(\''+nrSafe+'\',\''+fnSafe+'\')">Remove Player</button>' +
+            '<div id="removePlayerConfirm-'+player.firstName+'" style="display:none;gap:0.5rem;align-items:center;">' +
+              '<span style="font-size:0.92rem;color:var(--melee);">Confirm?</span>' +
+              '<button class="btn btn-danger" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="executeRemovePlayer(\''+nrSafe+'\',\''+fnSafe+'\')">Yes, Remove</button>' +
+              '<button class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="cancelRemovePlayer(\''+fnSafe+'\')">Cancel</button>' +
+            '</div>' +
+            '<span id="removePlayerMsg-'+player.firstName+'" style="display:none;font-size:0.92rem;"></span>' +
+          '</div>' +
         '</div>' +
         '<div style="margin-top:1rem;">' +
           '<div style="font-size:0.88rem;color:var(--text-muted);margin-bottom:0.35rem;text-transform:uppercase;letter-spacing:0.08em;">Officer Notes</div>' +
@@ -1546,14 +1732,14 @@ function buildRosterTable() {
     groups[order[r]].sort(sortFn);
   }
 
-  var html = '<thead><tr><th>Player</th><th>Attendance</th><th>Items</th><th>BiS Link</th><th>Status</th></tr></thead><tbody>';
+  var html = '<thead><tr><th>Player</th><th>Attendance</th><th>Items</th><th>BiS Link</th><th>Status</th><th><button class="btn btn-gold" style="font-size:0.82rem;padding:0.25rem 0.75rem;white-space:nowrap;" onclick="showAddPlayerModal()">+ Add Player</button></th></tr></thead><tbody>';
   var totalRows = 0;
 
   for (var r = 0; r < order.length; r++) {
     var role    = order[r];
     var players = groups[role];
     if (!players.length) continue;
-    html += '<tr class="group-header"><td colspan="5">'+labels[role]+'</td></tr>';
+    html += '<tr class="group-header"><td colspan="6">'+labels[role]+'</td></tr>';
     for (var j = 0; j < players.length; j++) {
       var p         = players[j];
       var name      = p.nick || p.firstName;
@@ -1586,11 +1772,12 @@ function buildRosterTable() {
         '<td>'+lootCount+'</td>' +
         '<td>'+(hasBis?'<span style="color:var(--heal);font-size:1.1rem;">✓</span>':'<span style="color:var(--text-dim);">—</span>')+'</td>' +
         '<td>'+statusTags+'</td>' +
+        '<td></td>' +
         '</tr>';
       totalRows++;
     }
   }
-  if (totalRows === 0) html += '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem;">No players match the current filters.</td></tr>';
+  if (totalRows === 0) html += '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem;">No players match the current filters.</td></tr>';
   html += '</tbody>';
   document.getElementById('rosterTable').innerHTML = html;
 

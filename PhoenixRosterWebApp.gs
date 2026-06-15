@@ -209,6 +209,22 @@ function doGet(e) {
       return jsonpResponse(callback, { success: true });
     }
 
+    if (action === 'addPlayer') {
+      const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      addPlayerToRoster(data);
+      cache.remove('rosterPayload');
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'removePlayer') {
+      const data      = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      const nameRealm = String(data.nameRealm || '').trim();
+      if (!nameRealm) return jsonpResponse(callback, { error: 'Missing nameRealm' });
+      removePlayerFromRoster(nameRealm);
+      cache.remove('rosterPayload');
+      return jsonpResponse(callback, { success: true });
+    }
+
     if (action === 'deleteSignup') {
       const row = parseInt(e.parameter.row, 10);
       if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
@@ -744,6 +760,46 @@ function updateBisLinkInRoster(nameRealm, url) {
     const rowPlayer = String(row[CFG.rosterPlayerCol - 1] || '').trim();
     if (rowPlayer.toLowerCase() === nameRealm.toLowerCase()) {
       sheet.getRange(i + 1, CFG.rosterBisLinkCol).setValue(url);
+      return;
+    }
+  }
+}
+
+function addPlayerToRoster(data) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.rosterSheet);
+  if (!sheet) return;
+
+  const nameRealm = String(data.nameRealm || '').trim();
+  if (!nameRealm) return;
+  const isTrial  = data.isTrial === true || data.isTrial === 'true';
+  const nick     = String(data.nick     || '').trim();
+  const cls      = String(data.class    || '').trim();
+  const spec     = String(data.spec     || '').trim();
+  const role     = String(data.role     || 'Melee').trim();
+  const priority = roleToPriority(role);
+
+  // Build a row with enough columns to reach col K (index 10)
+  const row = new Array(CFG.rosterPriorityCol).fill('');
+  row[CFG.rosterTrialCol   - 1] = isTrial;
+  row[CFG.rosterPlayerCol  - 1] = nameRealm;
+  row[CFG.rosterNickCol    - 1] = nick;
+  row[CFG.rosterClassCol   - 1] = cls;
+  row[CFG.rosterSpecCol    - 1] = spec;
+  row[CFG.rosterRoleCol    - 1] = role;
+  row[CFG.rosterPriorityCol - 1] = priority;
+  sheet.appendRow(row);
+}
+
+function removePlayerFromRoster(nameRealm) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.rosterSheet);
+  if (!sheet) return;
+  const data = sheet.getDataRange().getValues();
+  for (let i = CFG.rosterDataStart - 1; i < data.length; i++) {
+    const rowPlayer = String(data[i][CFG.rosterPlayerCol - 1] || '').trim();
+    if (rowPlayer.toLowerCase() === nameRealm.toLowerCase()) {
+      sheet.deleteRow(i + 1);
       return;
     }
   }
