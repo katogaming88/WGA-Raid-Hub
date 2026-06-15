@@ -9,20 +9,58 @@ var activeDiffFilter = 'all';
 var signupStep = 1;
 var signupData = {};
 
+var WOW_REALMS = [
+  // NA
+  'Aegwynn','Aggramar','Akama','Alexstrasza','Alleria','Altar of Storms','Alterac Mountains',
+  'Andorhal','Anetheron','Antonidas',"Anub'arak",'Anvilmar','Arathor','Archimonde',
+  'Area 52','Argent Dawn','Arthas','Arygos','Auchindoun','Azgalor','Azjol-Nerub','Azralon',
+  'Azshara','Azuremyst','Baelgun','Black Dragonflight','Blackhand','Blackrock',
+  'Blackwater Raiders','Blackwing Lair',"Blade's Edge",'Bladefist','Bleeding Hollow',
+  'Blood Furnace','Bloodhoof','Bloodscalp','Bonechewer','Borean Tundra','Boulderfist',
+  'Bronze Dragonflight','Bronzebeard','Burning Blade','Burning Legion','Cairne',
+  'Cenarion Circle','Cenarius',"Cho'gall",'Chromaggus','Crushridge','Daggerspine','Dalaran',
+  'Dalvengyr','Dark Iron','Darrowmere','Dawnbringer','Deathwing','Demon Soul','Destromath',
+  'Detheroc','Doomhammer','Dragonblight','Dragonmaw',"Drak'Tharon","Drak'thul",
+  'Drenden','Dunemaul','Durotan','Duskwood','Earthen Ring','Echo Isles','Eitrigg',
+  "Eldre'Thalas",'Elune','Emerald Dream','Eonar','Eredar','Executus','Exodar','Farstriders',
+  'Feathermoon','Fenris','Fizzcrank','Frostmane','Frostwolf','Garithos','Garona','Garrosh',
+  'Ghostlands','Gilneas','Gnomeregan','Gorefiend','Greymane','Grizzly Hills',"Gul'dan",
+  'Gurubashi','Hakkar','Haomarush','Hellscream','Hydraxis','Hyjal','Icecrown',
+  'Illidan','Jaedenar',"Kael'thas",'Kalecgos','Kargath',"Kel'Thuzad",
+  'Khaz Modan',"Kil'jaeden",'Kilrogg','Kirin Tor','Korgath','Korialstrasz',
+  'Kul Tiras','Laughing Skull','Lethon','Lightbringer',"Lightning's Blade",'Lightninghoof',
+  'Llane','Lothar','Madoran','Maelstrom','Magtheridon','Maiev',"Mal'Ganis",'Malorne',
+  'Malygos','Mannoroth','Medivh','Misha',"Mok'Nathal",'Moon Guard','Moonrunner',"Mug'thol",
+  'Muradin','Nathrezim','Nazgrel','Nazjatar','Nesingwary','Norgannon','Nordrassil',
+  'Onyxia','Perenolde','Proudmoore',"Quel'dorei",'Ravenholdt','Rexxar',
+  'Rivendare','Runetotem','Scarlet Crusade','Scilla',"Sen'jin",'Sentinels','Shadow Council',
+  'Shadowmoon','Shadowsong','Shattered Halls','Shattered Hand',"Shu'halo",'Silver Hand',
+  'Silvermoon','Sisters of Elune','Skullcrusher','Skywall','Smolderthorn','Spinebreaker',
+  'Spirestone','Staghelm','Steamwheedle Cartel','Stonemaul','Stormrage','Stormreaver',
+  'Stormscale','Sulfuras','Tanaris','Terenas','Terokkar','Thorium Brotherhood','Thrall',
+  'Thunderhorn','Thunderlord','Tichondrius','Tirion','Tortheldrin','Trollbane','Turalyon',
+  'Twisting Nether','Uther','Vashj','Velen','Venture Co','Whisperwind','Wildhammer',
+  'Windrunner','Winterhoof','Wyrmrest Accord','Ysera','Ysondre','Zangarmarsh',"Zul'jin",
+  'Zuluhed',
+  // OCE
+  "Aman'Thul",'Barthilas','Caelestrasz',"Dath'Remar",'Dreadmaul','Frostmourne',
+  'Gundrak',"Jubei'Thos","Khaz'goroth",'Nagrand','Saurfang','Thaurissan'
+].sort();
+
 var CLASS_SPECS = {
-  'Death Knight': { specs: ['Blood','Frost','Unholy'],                         offSpec: ['None','Blood','Frost','Unholy'],                         roles: ['Tank','DPS'] },
-  'Demon Hunter': { specs: ['Havoc','Vengeance','Devourer'],                   offSpec: ['None','Havoc','Vengeance','Devourer'],                   roles: ['Tank','DPS'] },
-  'Druid':        { specs: ['Balance','Feral','Guardian','Restoration'],       offSpec: ['None','Balance','Feral','Guardian','Restoration'],       roles: ['Tank','Healer','DPS'] },
-  'Evoker':       { specs: ['Augmentation','Devastation','Preservation'],      offSpec: ['None','Augmentation','Devastation','Preservation'],      roles: ['Healer','DPS'] },
-  'Hunter':       { specs: ['Beast Mastery','Marksmanship','Survival'],        offSpec: ['None','Beast Mastery','Marksmanship','Survival'],        roles: null },
-  'Mage':         { specs: ['Arcane','Fire','Frost'],                          offSpec: ['None','Arcane','Fire','Frost'],                          roles: null },
-  'Monk':         { specs: ['Brewmaster','Mistweaver','Windwalker'],           offSpec: ['None','Brewmaster','Mistweaver','Windwalker'],           roles: ['Tank','Healer','DPS'] },
-  'Paladin':      { specs: ['Holy','Protection','Retribution'],                offSpec: ['None','Holy','Protection','Retribution'],                roles: ['Tank','Healer','DPS'] },
-  'Priest':       { specs: ['Discipline','Holy','Shadow'],                     offSpec: ['None','Discipline','Holy','Shadow'],                     roles: ['Healer','DPS'] },
-  'Rogue':        { specs: ['Assassination','Outlaw','Subtlety'],              offSpec: ['None','Assassination','Outlaw','Subtlety'],              roles: null },
-  'Shaman':       { specs: ['Elemental','Enhancement','Restoration'],          offSpec: ['None','Elemental','Enhancement','Restoration'],          roles: ['Healer','DPS'] },
-  'Warlock':      { specs: ['Affliction','Demonology','Destruction'],          offSpec: ['None','Affliction','Demonology','Destruction'],          roles: null },
-  'Warrior':      { specs: ['Arms','Fury','Protection'],                       offSpec: ['None','Arms','Fury','Protection'],                       roles: ['Tank','DPS'] }
+  'Death Knight': { specs: ['Blood','Frost','Unholy'],                   roles: ['Tank','DPS'] },
+  'Demon Hunter': { specs: ['Havoc','Vengeance','Devourer'],             roles: ['Tank','DPS'] },
+  'Druid':        { specs: ['Balance','Feral','Guardian','Restoration'], roles: ['Tank','Healer','DPS'] },
+  'Evoker':       { specs: ['Augmentation','Devastation','Preservation'],roles: ['Healer','DPS'] },
+  'Hunter':       { specs: ['Beast Mastery','Marksmanship','Survival'],  roles: null },
+  'Mage':         { specs: ['Arcane','Fire','Frost'],                    roles: null },
+  'Monk':         { specs: ['Brewmaster','Mistweaver','Windwalker'],     roles: ['Tank','Healer','DPS'] },
+  'Paladin':      { specs: ['Holy','Protection','Retribution'],          roles: ['Tank','Healer','DPS'] },
+  'Priest':       { specs: ['Discipline','Holy','Shadow'],               roles: ['Healer','DPS'] },
+  'Rogue':        { specs: ['Assassination','Outlaw','Subtlety'],        roles: null },
+  'Shaman':       { specs: ['Elemental','Enhancement','Restoration'],    roles: ['Healer','DPS'] },
+  'Warlock':      { specs: ['Affliction','Demonology','Destruction'],    roles: null },
+  'Warrior':      { specs: ['Arms','Fury','Protection'],                 roles: ['Tank','DPS'] }
 };
 
 var CLASS_COLORS = {
@@ -84,7 +122,7 @@ function switchTab(name) {
   if (name === 'fairness')   buildFairness();
   if (name === 'attendance') buildAttendanceTab();
   if (name === 'priority')   buildPriorityTab();
-  if (name === 'signups')    renderSignupToggle();
+  if (name === 'signups')    buildSignupsTab();
 }
 
 // -- Load data --------------------------------------------------------------
@@ -389,13 +427,32 @@ function renderProfile(firstName, backTo, container) {
 
 // -- Season Signup ----------------------------------------------------------
 function signupsOpen() {
-  return localStorage.getItem('phoenix_signupsOpen') === 'true';
+  return !!(DATA && DATA.signupsOpen);
 }
 
 function setSignupsOpen(open) {
-  localStorage.setItem('phoenix_signupsOpen', open ? 'true' : 'false');
-  renderSignupToggle();
-  renderSignupLandingLink();
+  var btn = document.getElementById('signupToggleBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+  var cbName = '_setSignupsOpenCb';
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (btn) btn.disabled = false;
+    if (result && result.success) {
+      if (DATA) DATA.signupsOpen = result.signupsOpen;
+    }
+    renderSignupToggle();
+    renderSignupLandingLink();
+  };
+
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    if (btn) { btn.disabled = false; }
+    renderSignupToggle();
+  };
+  script.src = WEB_APP_URL + '?action=setSignupsOpen&value=' + (open ? 'true' : 'false') + '&callback=' + cbName;
+  document.head.appendChild(script);
 }
 
 function renderSignupLandingLink() {
@@ -418,8 +475,18 @@ function renderSignupStep() {
     html =
       '<div class="signup-step-label">Step 1 of 4</div>' +
       '<h2 class="signup-step-title">Sign Up for Next Season</h2>' +
-      '<p class="signup-step-desc">Enter your exact in-game character name and realm. Must match exactly as it appears in game (e.g. Katorri-Stormrage).</p>' +
-      '<input type="text" id="signupCharName" class="signup-input" placeholder="CharacterName-Realm" value="' + (signupData.charName || '') + '">' +
+      '<p class="signup-step-desc">Enter your exact in-game character name and select your realm.</p>' +
+      '<div class="signup-field">' +
+        '<span class="signup-label">Character Name</span>' +
+        '<input type="text" id="signupCharName" class="signup-input" placeholder="Katorri" value="' + (signupData.charName || '') + '" autocomplete="off">' +
+      '</div>' +
+      '<div class="signup-field">' +
+        '<span class="signup-label">Realm</span>' +
+        '<div class="realm-combobox">' +
+          '<input type="text" id="signupRealm" class="signup-input realm-input" placeholder="Type to search..." autocomplete="off" value="' + (signupData.realm || '') + '">' +
+          '<div class="realm-dropdown" id="realmDropdown"></div>' +
+        '</div>' +
+      '</div>' +
       '<p id="signupError" class="signup-error"></p>' +
       '<div class="signup-actions">' +
         '<button class="btn btn-muted" onclick="showView(\'landing\')">Cancel</button>' +
@@ -453,19 +520,15 @@ function renderSignupStep() {
         '<span class="signup-label">Main Spec</span>' +
         '<div class="signup-radio-group">';
     specData.specs.forEach(function(s) {
-      html += '<label class="signup-radio-label"><input type="radio" name="mainSpec" value="' + s + '"' + (signupData.mainSpec === s ? ' checked' : '') + '>' + s + '</label>';
+      html += '<label class="signup-radio-label"><input type="radio" name="mainSpec" value="' + s + '"' + (signupData.mainSpec === s ? ' checked' : '') + ' onchange="updateOffSpecList()">' + s + '</label>';
     });
     html +=
         '</div>' +
       '</div>' +
       '<div class="signup-field">' +
-        '<span class="signup-label">Off Spec <span class="signup-optional">(optional)</span></span>' +
-        '<div class="signup-radio-group">';
-    specData.offSpec.forEach(function(s) {
-      var isDefault = s === 'None' && !signupData.offSpec;
-      html += '<label class="signup-radio-label"><input type="radio" name="offSpec" value="' + s + '"' + ((signupData.offSpec === s || isDefault) ? ' checked' : '') + '>' + s + '</label>';
-    });
-    html += '</div></div>';
+        '<span class="signup-label">Off Spec <span class="signup-optional">(optional -- select all that apply)</span></span>' +
+        '<div class="signup-checkbox-group" id="offSpecGroup">' + buildOffSpecHTML(specData.specs, signupData.mainSpec, signupData.offSpecs) + '</div>' +
+      '</div>';
     if (specData.roles) {
       html +=
         '<div class="signup-field">' +
@@ -495,9 +558,10 @@ function renderSignupStep() {
         '<span class="signup-label">Anything else officers should know? <span class="signup-optional">(optional)</span></span>' +
         '<textarea id="signupNotes" class="signup-textarea" placeholder="e.g. applying as a trial, recently changed mains, availability caveats...">' + (signupData.notes || '') + '</textarea>' +
       '</div>' +
+      '<p id="signupError" class="signup-error"></p>' +
       '<div class="signup-actions">' +
         '<button class="btn btn-muted" onclick="signupBack()">Back</button>' +
-        '<button class="btn btn-gold" onclick="submitSignup()">Submit</button>' +
+        '<button class="btn btn-gold" id="signupSubmitBtn" onclick="submitSignup()">Submit</button>' +
       '</div>';
 
   } else if (signupStep === 5) {
@@ -511,14 +575,68 @@ function renderSignupStep() {
   }
 
   container.innerHTML = html;
+  if (signupStep === 1) initRealmCombobox();
   var firstInput = container.querySelector('input[type="text"]');
   if (firstInput) setTimeout(function() { firstInput.focus(); }, 50);
+}
+
+function initRealmCombobox() {
+  var input    = document.getElementById('signupRealm');
+  var dropdown = document.getElementById('realmDropdown');
+  if (!input || !dropdown) return;
+
+  function showMatches(query) {
+    var q = query.toLowerCase().trim();
+    if (!q) { dropdown.style.display = 'none'; return; }
+    var matches = WOW_REALMS.filter(function(r) {
+      return r.toLowerCase().indexOf(q) !== -1;
+    }).slice(0, 12);
+    if (!matches.length) { dropdown.style.display = 'none'; return; }
+    dropdown.innerHTML = matches.map(function(r) {
+      return '<div class="realm-option" onmousedown="pickRealm(\'' + r.replace(/'/g, "\\'") + '\')">' + r + '</div>';
+    }).join('');
+    dropdown.style.display = 'block';
+  }
+
+  input.addEventListener('input', function() { showMatches(this.value); });
+  input.addEventListener('focus', function() { showMatches(this.value); });
+  input.addEventListener('blur',  function() { setTimeout(function() { dropdown.style.display = 'none'; }, 150); });
+}
+
+function pickRealm(realm) {
+  var input = document.getElementById('signupRealm');
+  if (input) input.value = realm;
+  var dropdown = document.getElementById('realmDropdown');
+  if (dropdown) dropdown.style.display = 'none';
+  signupData.realm = realm;
+}
+
+function buildOffSpecHTML(specs, mainSpec, selectedOffSpecs) {
+  var html = '';
+  specs.filter(function(s) { return s !== mainSpec; }).forEach(function(s) {
+    var checked = selectedOffSpecs && selectedOffSpecs.indexOf(s) !== -1 ? ' checked' : '';
+    html += '<label class="signup-checkbox-label"><input type="checkbox" name="offSpec" value="' + s + '"' + checked + '>' + s + '</label>';
+  });
+  return html;
+}
+
+function updateOffSpecList() {
+  var mainSpecEl = document.querySelector('input[name="mainSpec"]:checked');
+  var mainSpec   = mainSpecEl ? mainSpecEl.value : '';
+  var specData   = CLASS_SPECS[signupData.className];
+  var group      = document.getElementById('offSpecGroup');
+  if (!group || !specData) return;
+  var currentChecked = Array.prototype.map.call(
+    document.querySelectorAll('input[name="offSpec"]:checked'),
+    function(el) { return el.value; }
+  );
+  group.innerHTML = buildOffSpecHTML(specData.specs, mainSpec, currentChecked);
 }
 
 function signupSelectClass(cls) {
   signupData.className = cls;
   signupData.mainSpec  = '';
-  signupData.offSpec   = '';
+  signupData.offSpecs  = [];
   signupData.role      = '';
   signupStep = 3;
   renderSignupStep();
@@ -526,19 +644,25 @@ function signupSelectClass(cls) {
 
 function signupNext() {
   if (signupStep === 1) {
-    var val = (document.getElementById('signupCharName').value || '').trim();
-    if (!val || val.indexOf('-') === -1) {
-      document.getElementById('signupError').textContent = 'Please enter your character name and realm (e.g. Katorri-Stormrage).';
+    var charName = (document.getElementById('signupCharName').value || '').trim();
+    var realm    = (document.getElementById('signupRealm').value || '').trim();
+    if (!charName) {
+      document.getElementById('signupError').textContent = 'Please enter your character name.';
       return;
     }
-    signupData.charName = val;
+    if (!realm) {
+      document.getElementById('signupError').textContent = 'Please select your realm.';
+      return;
+    }
+    signupData.charName = charName;
+    signupData.realm    = realm;
     signupStep = 2;
 
   } else if (signupStep === 3) {
-    var mainSpecEl = document.querySelector('input[name="mainSpec"]:checked');
-    var offSpecEl  = document.querySelector('input[name="offSpec"]:checked');
-    var roleEl     = document.querySelector('input[name="primaryRole"]:checked');
-    var specData   = CLASS_SPECS[signupData.className];
+    var mainSpecEl  = document.querySelector('input[name="mainSpec"]:checked');
+    var offSpecEls  = document.querySelectorAll('input[name="offSpec"]:checked');
+    var roleEl      = document.querySelector('input[name="primaryRole"]:checked');
+    var specData    = CLASS_SPECS[signupData.className];
     if (!mainSpecEl) {
       document.getElementById('signupError').textContent = 'Please select your main spec.';
       return;
@@ -547,9 +671,9 @@ function signupNext() {
       document.getElementById('signupError').textContent = 'Please select your primary role.';
       return;
     }
-    signupData.mainSpec = mainSpecEl.value;
-    signupData.offSpec  = offSpecEl ? offSpecEl.value : 'None';
-    signupData.role     = roleEl ? roleEl.value : null;
+    signupData.mainSpec  = mainSpecEl.value;
+    signupData.offSpecs  = Array.prototype.map.call(offSpecEls, function(el) { return el.value; });
+    signupData.role      = roleEl ? roleEl.value : null;
     signupStep = 4;
 
   } else {
@@ -571,9 +695,86 @@ function submitSignup() {
   signupData.discord     = (document.getElementById('signupDiscord').value || '').trim();
   signupData.notes       = (document.getElementById('signupNotes').value || '').trim();
   signupData.submittedAt = new Date().toISOString();
-  // TODO: POST signupData to Apps Script write endpoint when available
-  signupStep = 5;
-  renderSignupStep();
+
+  var btn = document.getElementById('signupSubmitBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Submitting...'; }
+
+  var cbName = '_submitSignupCb';
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (result && result.success) {
+      signupStep = 5;
+      renderSignupStep();
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = 'Submit'; }
+      var err = document.getElementById('signupError');
+      if (err) err.textContent = 'Submission failed. Please try again or contact an officer on Discord.';
+    }
+  };
+
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit'; }
+    var err = document.getElementById('signupError');
+    if (err) err.textContent = 'Submission failed. Please try again or contact an officer on Discord.';
+  };
+  script.src = WEB_APP_URL + '?action=submitSignup&data=' + encodeURIComponent(JSON.stringify(signupData)) + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function buildSignupsTab() {
+  renderSignupToggle();
+  var container = document.getElementById('signupsResponsesContainer');
+  if (!container) return;
+  container.innerHTML = '<p style="color:var(--text-muted);font-size:0.88rem;margin-top:1.5rem;">Loading submissions...</p>';
+
+  var cbName = '_getSignupsCb';
+  window[cbName] = function(result) {
+    delete window[cbName];
+    renderSignupResponses(result.signups || []);
+  };
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    var c = document.getElementById('signupsResponsesContainer');
+    if (c) c.innerHTML = '<p style="color:var(--melee);font-size:0.88rem;margin-top:1.5rem;">Failed to load submissions.</p>';
+  };
+  script.src = WEB_APP_URL + '?action=getSignups&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function renderSignupResponses(signups) {
+  var container = document.getElementById('signupsResponsesContainer');
+  if (!container) return;
+
+  if (!signups.length) {
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:0.88rem;margin-top:1.5rem;">No signups submitted yet.</p>';
+    return;
+  }
+
+  var html = '<div style="margin-top:1.5rem;">' +
+    '<div style="font-size:0.68rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:0.75rem;">' +
+    signups.length + ' submission' + (signups.length !== 1 ? 's' : '') + '</div>';
+
+  signups.forEach(function(s) {
+    var clsColor = classColor(s.className);
+    html += '<div class="signup-response-card">' +
+      '<div class="signup-response-header">' +
+        '<span class="signup-response-name">' + s.charName + '-' + s.realm + '</span>' +
+        '<span class="signup-response-time">' + s.timestamp + '</span>' +
+      '</div>' +
+      '<div style="font-size:0.88rem;color:' + clsColor + ';margin-top:0.35rem;font-weight:600;">' +
+        s.className + ' &middot; ' + s.mainSpec +
+        (s.offSpecs ? '<span style="color:var(--text-muted);font-weight:400;"> / ' + s.offSpecs + '</span>' : '') +
+      '</div>';
+    if (s.role) html += '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">Role: <span style="color:var(--text);">' + s.role + '</span></div>';
+    if (s.discord) html += '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">Discord: <span style="color:var(--text);">' + s.discord + '</span></div>';
+    if (s.notes) html += '<div style="font-size:0.85rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' + s.notes + '</div>';
+    html += '</div>';
+  });
+
+  container.innerHTML = html + '</div>';
 }
 
 function renderSignupToggle() {
