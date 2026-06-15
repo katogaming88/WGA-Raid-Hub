@@ -407,7 +407,7 @@ function submitAddPlayer() {
     errEl.textContent = 'Network error. Try again.';
     errEl.style.display = '';
   };
-  script.src = WEB_APP_URL + '?action=addPlayer&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
+  script.src = WEB_APP_URL + '?action=addPlayer&data=' + encodeURIComponent(JSON.stringify(data)).replace(/'/g, '%27') + '&callback=' + cbName;
   document.head.appendChild(script);
 }
 
@@ -449,7 +449,7 @@ function executeRemovePlayer(nameRealm, firstName) {
     delete window[cbName];
     if (msgEl) { msgEl.textContent = 'Network error. Try again.'; msgEl.style.color = 'var(--melee)'; }
   };
-  script.src = WEB_APP_URL + '?action=removePlayer&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })) + '&callback=' + cbName;
+  script.src = WEB_APP_URL + '?action=removePlayer&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })).replace(/'/g, '%27') + '&callback=' + cbName;
   document.head.appendChild(script);
 }
 
