@@ -43,6 +43,9 @@ const CFG = {
   // ── Roster Responses tab ─────────────────────────────────────────
   responsesSheet:    'Roster Responses',
 
+  // ── Self Received Requests tab ────────────────────────────────────
+  selfReceivedSheet: 'Self Received Requests',
+
   // ── Loot Sheet ───────────────────────────────────────────────────
   lootSheet:         'Loot Data',
   lootPlayerCol:     1,  // A - Player (Name-Realm)
@@ -85,6 +88,33 @@ function doGet(e) {
 
     if (action === 'getSignups') {
       return jsonpResponse(callback, { signups: getSignupResponses() });
+    }
+
+    if (action === 'requestSelfReceived') {
+      const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      // TODO(auth): once Discord OAuth ships, bypass officer approval for verified players:
+      //   if (isPlayerVerified(data.player)) { approveSelfReceivedDirect(data); cache.remove('rosterPayload'); return jsonpResponse(callback, { success: true }); }
+      writeSelfReceivedRequest(data);
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'getPendingRequests') {
+      return jsonpResponse(callback, { requests: getSelfReceivedRequests('Pending') });
+    }
+
+    if (action === 'approveRequest') {
+      const row = parseInt(e.parameter.row, 10);
+      if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
+      updateRequestStatus(row, 'Approved');
+      cache.remove('rosterPayload');
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'rejectRequest') {
+      const row = parseInt(e.parameter.row, 10);
+      if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
+      updateRequestStatus(row, 'Rejected');
+      return jsonpResponse(callback, { success: true });
     }
 
     if (action === 'deleteSignup') {
@@ -181,6 +211,82 @@ function writeSignup(data) {
   ]);
 }
 
+function writeSelfReceivedRequest(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(CFG.selfReceivedSheet);
+  if (!sheet) {
+    sheet = ss.insertSheet(CFG.selfReceivedSheet);
+    sheet.appendRow(['Timestamp', 'Player', 'Item', 'Slot', 'Source', 'Notes', 'Status']);
+    sheet.setFrozenRows(1);
+  }
+  sheet.appendRow([
+    new Date(),
+    data.player  || '',
+    data.item    || '',
+    data.slot    || '',
+    data.source  || '',
+    data.notes   || '',
+    'Pending'
+  ]);
+}
+
+function getSelfReceivedRequests(statusFilter) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.selfReceivedSheet);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+
+  const data    = sheet.getDataRange().getValues();
+  const results = [];
+  for (let i = 1; i < data.length; i++) {
+    const row    = data[i];
+    const status = String(row[6] || '').trim();
+    if (statusFilter && status !== statusFilter) continue;
+    if (!row[1] || !row[2]) continue;
+    const ts = row[0] instanceof Date
+      ? Utilities.formatDate(row[0], Session.getScriptTimeZone(), 'MMM d, yyyy HH:mm')
+      : String(row[0] || '');
+    results.push({
+      rowIndex:  i + 1,
+      timestamp: ts,
+      player:    String(row[1] || ''),
+      item:      String(row[2] || ''),
+      slot:      String(row[3] || ''),
+      source:    String(row[4] || ''),
+      notes:     String(row[5] || ''),
+      status:    status
+    });
+  }
+  return results.reverse();
+}
+
+function updateRequestStatus(row, status) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.selfReceivedSheet);
+  if (!sheet) return;
+  sheet.getRange(row, 7).setValue(status);
+}
+
+function getSelfReceived(sheets) {
+  const sheet = sheets[CFG.selfReceivedSheet];
+  if (!sheet || sheet.getLastRow() < 2) return {};
+
+  const data   = sheet.getDataRange().getValues();
+  const result = {};
+  for (let i = 1; i < data.length; i++) {
+    const row    = data[i];
+    const status = String(row[6] || '').trim();
+    if (status !== 'Approved') continue;
+    const player = String(row[1] || '').trim();
+    const item   = String(row[2] || '').trim();
+    const slot   = String(row[3] || '').trim();
+    const source = String(row[4] || '').trim();
+    if (!player || !item) continue;
+    if (!result[player]) result[player] = [];
+    result[player].push({ item, slot, source });
+  }
+  return result;
+}
+
 function buildPayload() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
@@ -199,8 +305,9 @@ function buildPayload() {
     priorityOrder: getPriorityOrder(sheets),
     bisList:       getBisList(sheets),
     itemSlots:     getItemSlots(sheets),
-    lootCounts:    getLootCounts(sheets),
-    attendanceDetails:  getAttendanceDetails(sheets),
+    lootCounts:        getLootCounts(sheets),
+    attendanceDetails: getAttendanceDetails(sheets),
+    selfReceived:      getSelfReceived(sheets),
   };
 }
 

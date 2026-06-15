@@ -123,6 +123,7 @@ function switchTab(name) {
   if (name === 'attendance') buildAttendanceTab();
   if (name === 'priority')   buildPriorityTab();
   if (name === 'signups')    buildSignupsTab();
+  if (name === 'requests')   buildRequestsTab();
 }
 
 // -- Load data --------------------------------------------------------------
@@ -265,6 +266,16 @@ function getBisItems(firstName) {
   var entries = key ? bisMap[key] : [];
   return entries.map(function(e) { return (typeof e === 'string') ? {item:e,slot:''} : e; });
 }
+function getSelfReceivedItems(firstName) {
+  var map  = DATA.selfReceived || {};
+  var norm = normalise(firstName);
+  var keys = Object.keys(map);
+  for (var i = 0; i < keys.length; i++) {
+    if (normalise(keys[i]) === norm) return map[keys[i]];
+  }
+  return [];
+}
+
 function getLootEntry(firstName) {
   var lootMap = DATA.lootCounts || {};
   var norm    = normalise(firstName);
@@ -351,6 +362,13 @@ function renderProfile(firstName, backTo, container) {
     }
   }
 
+  // Self-received (officer-approved) lookup
+  var selfRecItems = getSelfReceivedItems(player.firstName);
+  var selfRecMap   = {};
+  for (var sr = 0; sr < selfRecItems.length; sr++) {
+    selfRecMap[normalise(selfRecItems[sr].item)] = selfRecItems[sr];
+  }
+
   // Priority
   var bisItems = getBisItems(player.firstName);
   var rows = '';
@@ -361,8 +379,11 @@ function renderProfile(firstName, backTo, container) {
     var slot     = (DATA.itemSlots||{})[item] || bisSlot || '';
     var isGen    = (item==='M+'||item==='Crafted'||item==='Catalyst');
     var received = receivedMap[normalise(item)] || null;
-    rows += '<div class="priority-row' + (received ? ' bis-received' : '') + '" style="grid-template-columns:auto auto 1fr' + (received ? ' auto' : '') + ';">';
-    rows += isGen ? '<span style="font-size:0.72rem;color:var(--text-dim);min-width:40px;text-align:center;">—</span>' : rankPillHTML(rank);
+    var selfRec  = selfRecMap[normalise(item)] || null;
+    var isReceived = received || selfRec;
+    var rowId    = 'bisrow-' + player.firstName + '-' + bi;
+    rows += '<div class="priority-row' + (isReceived ? ' bis-received' : '') + '" id="' + rowId + '" style="grid-template-columns:auto auto 1fr auto;">';
+    rows += isGen ? '<span style="font-size:0.72rem;color:var(--text-dim);min-width:40px;text-align:center;">-</span>' : rankPillHTML(rank);
     rows += '<span class="priority-item-slot" style="color:'+getSlotColor(slot)+';">'+slot+'</span>';
     rows += '<span class="priority-item-name" style="text-align:right;" title="'+item+'">'+item+'</span>';
     if (received) {
@@ -373,8 +394,17 @@ function renderProfile(firstName, backTo, container) {
         badges += '<span class="bis-received-badge">' + (rv_diff ? rv_diff + ' · ' : '') + rv_date + '</span>';
       }
       rows += '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;">' + badges + '</div>';
+    } else if (selfRec) {
+      rows += '<span class="bis-self-received-badge">' + (selfRec.source || 'Self-reported') + '</span>';
+    } else if (!isGen) {
+      rows += '<button class="mark-received-btn" onclick="showSelfReceivedForm(' +
+        JSON.stringify(player.firstName) + ',' + JSON.stringify(item) + ',' + JSON.stringify(slot) + ',' + JSON.stringify(rowId) +
+        ')">Mark received</button>';
+    } else {
+      rows += '<span></span>';
     }
     rows += '</div>';
+    rows += '<div class="self-received-form" id="form-' + rowId + '" style="display:none;"></div>';
   }
   var priorityHTML = bisItems.length
     ? '<div class="priority-list">' +
@@ -799,6 +829,151 @@ function deleteSignupRow(rowIndex, btnEl) {
   script.onerror = function() { delete window[cbName]; btnEl.disabled = false; btnEl.textContent = 'x'; };
   script.src = WEB_APP_URL + '?action=deleteSignup&row=' + rowIndex + '&callback=' + cbName;
   document.head.appendChild(script);
+}
+
+function showSelfReceivedForm(firstName, item, slot, rowId) {
+  var formEl = document.getElementById('form-' + rowId);
+  if (!formEl) return;
+  if (formEl.style.display !== 'none') { formEl.style.display = 'none'; return; }
+  var formHtml =
+    '<div class="self-received-form-inner">' +
+      '<select class="self-received-source" id="src-' + rowId + '">' +
+        '<option value="">-- How did you get it? --</option>' +
+        '<option value="M+">M+</option>' +
+        '<option value="Great Vault">Great Vault</option>' +
+        '<option value="Crafted">Crafted</option>' +
+        '<option value="Catalyst">Catalyst</option>' +
+        '<option value="World Drop">World Drop</option>' +
+        '<option value="Other">Other</option>' +
+      '</select>' +
+      '<textarea class="self-received-notes" id="notes-' + rowId + '" placeholder="Notes (optional)" rows="2"></textarea>' +
+      '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
+        '<button class="btn btn-gold" style="font-size:0.8rem;padding:0.3rem 0.8rem;" onclick="submitSelfReceivedRequest(' +
+          JSON.stringify(firstName) + ',' + JSON.stringify(item) + ',' + JSON.stringify(slot) + ',' + JSON.stringify(rowId) +
+        ')">Submit request</button>' +
+        '<button class="btn btn-muted" style="font-size:0.8rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'form-' + rowId + '\').style.display=\'none\'">Cancel</button>' +
+      '</div>' +
+      '<p class="self-received-note">An officer will review and approve this. Once approved it will appear on your profile.</p>' +
+    '</div>';
+  formEl.innerHTML = formHtml;
+  formEl.style.display = 'block';
+}
+
+function submitSelfReceivedRequest(firstName, item, slot, rowId) {
+  var sourceEl = document.getElementById('src-' + rowId);
+  var notesEl  = document.getElementById('notes-' + rowId);
+  if (!sourceEl || !sourceEl.value) { sourceEl && (sourceEl.style.borderColor = 'var(--melee)'); return; }
+  var data = { player: firstName, item: item, slot: slot, source: sourceEl.value, notes: notesEl ? notesEl.value : '' };
+  var formEl = document.getElementById('form-' + rowId);
+  if (formEl) formEl.innerHTML = '<p style="font-size:0.82rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
+  var cbName = '_selfRecCb' + rowId.replace(/[^a-zA-Z0-9]/g, '_');
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (formEl) {
+      if (result.error) {
+        formEl.innerHTML = '<p style="font-size:0.82rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+      } else {
+        formEl.innerHTML = '<p style="font-size:0.82rem;color:var(--text-muted);padding:0.5rem 0;">Request submitted -- pending officer approval.</p>';
+        var btn = document.querySelector('#bisrow-' + firstName + '-' + rowId.split('-').pop() + ' .mark-received-btn');
+        if (btn) btn.style.display = 'none';
+      }
+    }
+  };
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    if (formEl) formEl.innerHTML = '<p style="font-size:0.82rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+  };
+  script.src = WEB_APP_URL + '?action=requestSelfReceived&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function buildRequestsTab() {
+  var container = document.getElementById('requestsContainer');
+  if (!container) return;
+  container.innerHTML = '<p style="color:var(--text-muted);font-size:0.88rem;margin-top:1.5rem;">Loading requests...</p>';
+  var cbName = '_getPendingReqCb';
+  window[cbName] = function(result) {
+    delete window[cbName];
+    renderPendingRequests(result.requests || []);
+  };
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    var c = document.getElementById('requestsContainer');
+    if (c) c.innerHTML = '<p style="color:var(--melee);font-size:0.88rem;margin-top:1.5rem;">Failed to load requests.</p>';
+  };
+  script.src = WEB_APP_URL + '?action=getPendingRequests&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function renderPendingRequests(requests) {
+  var container = document.getElementById('requestsContainer');
+  if (!container) return;
+  if (!requests.length) {
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:0.88rem;margin-top:1.5rem;">No pending requests.</p>';
+    return;
+  }
+  var html = '<div style="margin-top:1.5rem;">' +
+    '<div style="font-size:0.68rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:0.75rem;">' +
+    requests.length + ' pending request' + (requests.length !== 1 ? 's' : '') + '</div>';
+  requests.forEach(function(r) {
+    html += '<div class="request-card" data-row="' + r.rowIndex + '">' +
+      '<div class="request-card-header">' +
+        '<span class="request-player">' + r.player + '</span>' +
+        '<span class="signup-response-time">' + r.timestamp + '</span>' +
+      '</div>' +
+      '<div class="request-item">' + r.item + (r.slot ? ' <span style="color:var(--text-muted);font-weight:400;">(' + r.slot + ')</span>' : '') + '</div>' +
+      '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">Source: <span style="color:var(--text);">' + r.source + '</span></div>' +
+      (r.notes ? '<div style="font-size:0.85rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' + r.notes + '</div>' : '') +
+      '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
+        '<button class="btn request-approve-btn" onclick="approveRequest(' + r.rowIndex + ', this)">Approve</button>' +
+        '<button class="btn request-reject-btn" onclick="rejectRequest(' + r.rowIndex + ', this)">Reject</button>' +
+      '</div>' +
+    '</div>';
+  });
+  container.innerHTML = html + '</div>';
+}
+
+function approveRequest(rowIndex, btnEl) {
+  btnEl.disabled = true;
+  btnEl.textContent = '...';
+  var cbName = '_approveReqCb' + rowIndex;
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (result.error) { btnEl.disabled = false; btnEl.textContent = 'Approve'; return; }
+    var card = document.querySelector('.request-card[data-row="' + rowIndex + '"]');
+    if (card) card.remove();
+    checkEmptyRequests();
+  };
+  var script = document.createElement('script');
+  script.onerror = function() { delete window[cbName]; btnEl.disabled = false; btnEl.textContent = 'Approve'; };
+  script.src = WEB_APP_URL + '?action=approveRequest&row=' + rowIndex + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function rejectRequest(rowIndex, btnEl) {
+  btnEl.disabled = true;
+  btnEl.textContent = '...';
+  var cbName = '_rejectReqCb' + rowIndex;
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (result.error) { btnEl.disabled = false; btnEl.textContent = 'Reject'; return; }
+    var card = document.querySelector('.request-card[data-row="' + rowIndex + '"]');
+    if (card) card.remove();
+    checkEmptyRequests();
+  };
+  var script = document.createElement('script');
+  script.onerror = function() { delete window[cbName]; btnEl.disabled = false; btnEl.textContent = 'Reject'; };
+  script.src = WEB_APP_URL + '?action=rejectRequest&row=' + rowIndex + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function checkEmptyRequests() {
+  var container = document.getElementById('requestsContainer');
+  if (container && !container.querySelector('.request-card')) {
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:0.88rem;margin-top:1.5rem;">No pending requests.</p>';
+  }
 }
 
 function renderSignupToggle() {
