@@ -209,6 +209,22 @@ function doGet(e) {
       return jsonpResponse(callback, { success: true });
     }
 
+    if (action === 'addPlayer') {
+      const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      addPlayerToRoster(data);
+      cache.remove('rosterPayload');
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'removePlayer') {
+      const data      = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      const nameRealm = String(data.nameRealm || '').trim();
+      if (!nameRealm) return jsonpResponse(callback, { error: 'Missing nameRealm' });
+      removePlayerFromRoster(nameRealm);
+      cache.remove('rosterPayload');
+      return jsonpResponse(callback, { success: true });
+    }
+
     if (action === 'deleteSignup') {
       const row = parseInt(e.parameter.row, 10);
       if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
@@ -744,6 +760,58 @@ function updateBisLinkInRoster(nameRealm, url) {
     const rowPlayer = String(row[CFG.rosterPlayerCol - 1] || '').trim();
     if (rowPlayer.toLowerCase() === nameRealm.toLowerCase()) {
       sheet.getRange(i + 1, CFG.rosterBisLinkCol).setValue(url);
+      return;
+    }
+  }
+}
+
+function addPlayerToRoster(data) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.rosterSheet);
+  if (!sheet) return;
+
+  const nameRealm = String(data.nameRealm || '').trim();
+  if (!nameRealm) return;
+  const isTrial  = data.isTrial === true || data.isTrial === 'true';
+  const nick     = String(data.nick     || '').trim();
+  const cls      = String(data.class    || '').trim();
+  const spec     = String(data.spec     || '').trim();
+  const role     = String(data.role     || 'Melee').trim();
+  const priority = roleToPriority(role);
+
+  // Find the last row that has a valid role in col H, then write to the row after it.
+  // Scanning col H (not col D) avoids being fooled by legend/note rows that have text
+  // in the player-name column but are not actual player entries.
+  const VALID_ROLES = new Set(['Tank', 'Heal', 'Melee', 'Ranged']);
+  const lastRow = sheet.getLastRow();
+  const colH    = sheet.getRange(CFG.rosterDataStart, CFG.rosterRoleCol,
+                    lastRow - CFG.rosterDataStart + 1, 1).getValues();
+  let targetRow = CFG.rosterDataStart;
+  for (let r = 0; r < colH.length; r++) {
+    if (VALID_ROLES.has(String(colH[r][0] || '').trim())) {
+      targetRow = CFG.rosterDataStart + r + 1;
+    }
+  }
+
+  // Write only the columns this app owns — don't touch col A or any formula columns.
+  sheet.getRange(targetRow, CFG.rosterTrialCol).setValue(isTrial);
+  sheet.getRange(targetRow, CFG.rosterPlayerCol).setValue(nameRealm);
+  sheet.getRange(targetRow, CFG.rosterNickCol).setValue(nick);
+  sheet.getRange(targetRow, CFG.rosterClassCol).setValue(cls);
+  sheet.getRange(targetRow, CFG.rosterSpecCol).setValue(spec);
+  sheet.getRange(targetRow, CFG.rosterRoleCol).setValue(role);
+  sheet.getRange(targetRow, CFG.rosterPriorityCol).setValue(priority);
+}
+
+function removePlayerFromRoster(nameRealm) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.rosterSheet);
+  if (!sheet) return;
+  const data = sheet.getDataRange().getValues();
+  for (let i = CFG.rosterDataStart - 1; i < data.length; i++) {
+    const rowPlayer = String(data[i][CFG.rosterPlayerCol - 1] || '').trim();
+    if (rowPlayer.toLowerCase() === nameRealm.toLowerCase()) {
+      sheet.deleteRow(i + 1);
       return;
     }
   }
