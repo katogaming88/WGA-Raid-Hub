@@ -12,9 +12,11 @@
 <body>
 
 <header class="header">
-  <span class="header-emblem">🔥</span>
-  <h1>Team Phoenix</h1>
-  <p class="header-sub">Loot Priority</p>
+  <a href="index.html" class="header-link">
+    <span class="header-emblem">🔥</span>
+    <h1>Team Phoenix</h1>
+    <p class="header-sub">Loot Priority</p>
+  </a>
   <div class="header-divider"></div>
 </header>
 
@@ -25,14 +27,16 @@
 <!-- Landing -->
 <div id="landingView" class="view">
   <div class="landing-body">
-    <span class="selector-label">Who are you?</span>
-    <div class="selector-outer">
-      <select id="playerSelect">
-        <option value="">-- Select your character --</option>
-      </select>
+    <div class="landing-card">
+      <span class="selector-label">Who are you?</span>
+      <div class="selector-outer">
+        <select id="playerSelect">
+          <option value="">-- Select your character --</option>
+        </select>
+      </div>
+      <a href="officer.html" class="officer-link">Officer Access</a>
+      <span class="signup-cta" id="signupLink" onclick="showSignupView()" style="display:none;">Sign Up for Next Season</span>
     </div>
-    <a href="officer.html" class="officer-link">Officer Access</a>
-    <span class="signup-cta" id="signupLink" onclick="showSignupView()" style="display:none;">Sign Up for Next Season</span>
   </div>
   <div class="footer">We Go Again &middot; Team Phoenix &middot; <a class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
 </div>
