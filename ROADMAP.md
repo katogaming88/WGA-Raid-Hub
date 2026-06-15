@@ -1,8 +1,15 @@
 # Phoenix-Roster Roadmap
 
-Items marked `[x]` are shipped. Items marked `[ ]` are planned. Partially-built features are noted inline.
+Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for completed features.
 
 ---
+
+## Season Signup
+
+- [ ] Public signup form -- members submit character name, class/spec, role, and BiS link for the upcoming season
+- [ ] Officer review queue -- submitted signups appear in the officer dashboard for approve/reject before landing on the roster sheet
+- [ ] Confirmation flow -- applicant sees a "submitted" state and gets notified (or instructed to watch Discord) after submitting
+- [ ] Requires the Apps Script POST endpoint (see Officer write functionality below) to write approved signups back to the sheet
 
 ## Roster Management
 
@@ -13,34 +20,17 @@ Items marked `[x]` are shipped. Items marked `[ ]` are planned. Partially-built 
 
 ## Loot Tracking
 
-- [x] Full loot history per player (expandable detailed log)
-- [x] Flag items as contested where multiple players have it in their BiS
 - [ ] See who is missing loot for each slot (e.g. who still needs a trinket)
-- [x] Loot distribution fairness view — who has received the most vs least
 
 ## Priority Management
 
-- [x] Full priority order for every item on one page without opening the sheet
 - [ ] Highlight conflicts where a player is high priority on multiple items
 - [ ] Show which items have no one ranked yet
 
 ## Attendance
 
 - [ ] Full attendance history per player expandable in the officer dashboard
-- [x] Filter roster by players below an attendance threshold
 - [ ] See who was benched most often vs absent
-
-## BiS Tracking
-
-- [x] Flag players who have not submitted a BiS list yet
-- [x] Show which items are most contested across the whole raid
-- [x] Filter roster by who has a specific item in their BiS list
-
-## Filters and Sorting
-
-- [x] Filter roster table by role, trial status, bench status
-- [x] Sort roster table by attendance, items received, or name
-- [x] Search by player name
 
 ## Loot History
 
@@ -64,3 +54,19 @@ Items marked `[x]` are shipped. Items marked `[ ]` are planned. Partially-built 
 - [ ] Officer claim management -- in-app UI listing all claimed characters with reassign/release controls, for handling player turnover or claim conflicts.
 - [ ] Replace officer password with Discord login -- once the login system ships, remove the hardcoded password entirely.
 - [ ] Priority standing on BiS items -- raiders see their rank for each contested raid item on their profile *(readable without login, but personalized view requires raider login)*
+
+---
+
+## Shipped
+
+- [x] Full loot history per player (expandable detailed log)
+- [x] Flag items as contested where multiple players have it in their BiS
+- [x] Loot distribution fairness view -- who has received the most vs least
+- [x] Full priority order for every item on one page without opening the sheet
+- [x] Filter roster by players below an attendance threshold
+- [x] Flag players who have not submitted a BiS list yet
+- [x] Show which items are most contested across the whole raid
+- [x] Filter roster by who has a specific item in their BiS list
+- [x] Filter roster table by role, trial status, bench status
+- [x] Sort roster table by attendance, items received, or name
+- [x] Search by player name
