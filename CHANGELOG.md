@@ -6,6 +6,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.0] - 2026-06-15
+
+### Added
+- Season signup form -- multi-step flow (character/realm, class grid, spec/off-specs/role, Discord/notes, confirmation) accessible from the landing page
+- Custom realm combobox with live filtering across all NA and OCE realms
+- Off-spec checkboxes exclude whichever main spec is selected and update live on change
+- Role selector shown only for hybrid classes (Death Knight, Demon Hunter, Druid, Evoker, Monk, Paladin, Priest, Shaman, Warrior)
+- Officers can open/close signups from the Signups tab -- state persists server-side via Apps Script ScriptProperties and is reflected in the landing page CTA
+- Submissions are written to a "Roster Responses" sheet (auto-created if missing)
+- Officer Signups tab fetches and displays all submissions as cards, newest first
+- Delete button on each submission card -- removes the row from the sheet and the card from the DOM without a full reload
+- Clear Cache button in the officer dashboard toolbar
+- Color-coded class and spec display on player profiles and the roster table
+
+### Changed
+- Apps Script write pattern established: GET-based `?action=...` JSONP calls handle all writes (`submitSignup`, `deleteSignup`, `setSignupsOpen`) -- no POST endpoint required
+
+---
+
 ## [1.3.0] - 2026-06-14
 
 ### Added
