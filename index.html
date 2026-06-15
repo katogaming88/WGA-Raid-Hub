@@ -32,6 +32,7 @@
       </select>
     </div>
     <span class="officer-link" onclick="showOfficerPrompt()">Officer Access</span>
+    <span class="signup-cta" id="signupLink" onclick="showSignupView()" style="display:none;">Sign Up for Next Season</span>
   </div>
   <div class="footer">We Go Again · Team Phoenix</div>
 </div>
@@ -68,6 +69,7 @@
         <button class="nav-item" onclick="switchTab('fairness')">Loot Fairness</button>
         <button class="nav-item" onclick="switchTab('attendance')">Attendance</button>
         <button class="nav-item" onclick="switchTab('priority')">Priority</button>
+        <button class="nav-item" onclick="switchTab('signups')">Signups</button>
       </nav>
 
       <div class="officer-main">
@@ -129,6 +131,20 @@
           <div id="attendanceContent"></div>
         </div>
 
+        <!-- Signups tab -->
+        <div id="tab-signups" class="tab-panel">
+          <div class="signup-officer-panel">
+            <div class="signup-status-row">
+              <span class="signup-status-label">Roster Signups</span>
+              <span class="signup-status-badge signup-status-closed" id="signupStatusBadge">CLOSED</span>
+            </div>
+            <div style="margin-top:1rem;">
+              <button class="btn btn-muted" id="signupToggleBtn" onclick="toggleSignupsOpen()">Open Signups</button>
+            </div>
+            <p class="signup-officer-note">Toggling signups shows or hides the Sign Up button for applicants. The submission review queue will appear here once the write endpoint is connected.</p>
+          </div>
+        </div>
+
         <!-- Priority tab -->
         <div id="tab-priority" class="tab-panel">
           <div class="filter-bar" style="margin-bottom:0.75rem;">
@@ -140,6 +156,16 @@
           <div id="priorityContent"></div>
         </div>
       </div>
+    </div>
+  </div>
+  <div class="footer">We Go Again · Team Phoenix</div>
+</div>
+
+<!-- Signup -->
+<div id="signupViewWrap" class="view">
+  <div id="signupView">
+    <div class="signup-wrap">
+      <div id="signupForm"></div>
     </div>
   </div>
   <div class="footer">We Go Again · Team Phoenix</div>

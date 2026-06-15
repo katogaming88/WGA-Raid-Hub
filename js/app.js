@@ -6,6 +6,24 @@ var activeFilters = {};
 var activeSort = { key: null, dir: 1 };
 var selectedOfficerPlayer = null;
 var activeDiffFilter = 'all';
+var signupStep = 1;
+var signupData = {};
+
+var CLASS_SPECS = {
+  'Death Knight': { specs: ['Blood','Frost','Unholy'],                         offSpec: ['None','Blood','Frost','Unholy'],                         roles: ['Tank','DPS'] },
+  'Demon Hunter': { specs: ['Havoc','Vengeance','Devourer'],                   offSpec: ['None','Havoc','Vengeance','Devourer'],                   roles: ['Tank','DPS'] },
+  'Druid':        { specs: ['Balance','Feral','Guardian','Restoration'],       offSpec: ['None','Balance','Feral','Guardian','Restoration'],       roles: ['Tank','Healer','DPS'] },
+  'Evoker':       { specs: ['Augmentation','Devastation','Preservation'],      offSpec: ['None','Augmentation','Devastation','Preservation'],      roles: ['Healer','DPS'] },
+  'Hunter':       { specs: ['Beast Mastery','Marksmanship','Survival'],        offSpec: ['None','Beast Mastery','Marksmanship','Survival'],        roles: null },
+  'Mage':         { specs: ['Arcane','Fire','Frost'],                          offSpec: ['None','Arcane','Fire','Frost'],                          roles: null },
+  'Monk':         { specs: ['Brewmaster','Mistweaver','Windwalker'],           offSpec: ['None','Brewmaster','Mistweaver','Windwalker'],           roles: ['Tank','Healer','DPS'] },
+  'Paladin':      { specs: ['Holy','Protection','Retribution'],                offSpec: ['None','Holy','Protection','Retribution'],                roles: ['Tank','Healer','DPS'] },
+  'Priest':       { specs: ['Discipline','Holy','Shadow'],                     offSpec: ['None','Discipline','Holy','Shadow'],                     roles: ['Healer','DPS'] },
+  'Rogue':        { specs: ['Assassination','Outlaw','Subtlety'],              offSpec: ['None','Assassination','Outlaw','Subtlety'],              roles: null },
+  'Shaman':       { specs: ['Elemental','Enhancement','Restoration'],          offSpec: ['None','Elemental','Enhancement','Restoration'],          roles: ['Healer','DPS'] },
+  'Warlock':      { specs: ['Affliction','Demonology','Destruction'],          offSpec: ['None','Affliction','Demonology','Destruction'],          roles: null },
+  'Warrior':      { specs: ['Arms','Fury','Protection'],                       offSpec: ['None','Arms','Fury','Protection'],                       roles: ['Tank','DPS'] }
+};
 
 var CLASS_COLORS = {
   'Death Knight': '#C41E3A',
@@ -47,12 +65,13 @@ function normalise(str) {
 // -- Views ------------------------------------------------------------------
 function showView(name) {
   document.getElementById('loadingMsg').style.display = 'none';
-  ['landingView','profileViewWrap','officerViewWrap'].forEach(function(id) {
+  ['landingView','profileViewWrap','officerViewWrap','signupViewWrap'].forEach(function(id) {
     document.getElementById(id).classList.remove('active');
   });
-  if (name === 'landing') document.getElementById('landingView').classList.add('active');
+  if (name === 'landing') { document.getElementById('landingView').classList.add('active'); renderSignupLandingLink(); }
   if (name === 'profile') document.getElementById('profileViewWrap').classList.add('active');
   if (name === 'officer') document.getElementById('officerViewWrap').classList.add('active');
+  if (name === 'signup')  document.getElementById('signupViewWrap').classList.add('active');
 }
 
 // -- Tabs -------------------------------------------------------------------
@@ -65,6 +84,7 @@ function switchTab(name) {
   if (name === 'fairness')   buildFairness();
   if (name === 'attendance') buildAttendanceTab();
   if (name === 'priority')   buildPriorityTab();
+  if (name === 'signups')    renderSignupToggle();
 }
 
 // -- Load data --------------------------------------------------------------
@@ -367,10 +387,214 @@ function renderProfile(firstName, backTo, container) {
   else { document.getElementById('profileView').innerHTML = html; }
 }
 
+// -- Season Signup ----------------------------------------------------------
+function signupsOpen() {
+  return localStorage.getItem('phoenix_signupsOpen') === 'true';
+}
+
+function setSignupsOpen(open) {
+  localStorage.setItem('phoenix_signupsOpen', open ? 'true' : 'false');
+  renderSignupToggle();
+  renderSignupLandingLink();
+}
+
+function renderSignupLandingLink() {
+  var el = document.getElementById('signupLink');
+  if (el) el.style.display = signupsOpen() ? '' : 'none';
+}
+
+function showSignupView() {
+  signupStep = 1;
+  signupData = {};
+  showView('signup');
+  renderSignupStep();
+}
+
+function renderSignupStep() {
+  var container = document.getElementById('signupForm');
+  var html = '';
+
+  if (signupStep === 1) {
+    html =
+      '<div class="signup-step-label">Step 1 of 4</div>' +
+      '<h2 class="signup-step-title">Sign Up for Next Season</h2>' +
+      '<p class="signup-step-desc">Enter your exact in-game character name and realm. Must match exactly as it appears in game (e.g. Katorri-Stormrage).</p>' +
+      '<input type="text" id="signupCharName" class="signup-input" placeholder="CharacterName-Realm" value="' + (signupData.charName || '') + '">' +
+      '<p id="signupError" class="signup-error"></p>' +
+      '<div class="signup-actions">' +
+        '<button class="btn btn-muted" onclick="showView(\'landing\')">Cancel</button>' +
+        '<button class="btn btn-gold" onclick="signupNext()">Next</button>' +
+      '</div>';
+
+  } else if (signupStep === 2) {
+    html =
+      '<div class="signup-step-label">Step 2 of 4</div>' +
+      '<h2 class="signup-step-title">Select Your Class</h2>' +
+      '<div class="signup-class-grid">';
+    Object.keys(CLASS_SPECS).forEach(function(cls) {
+      var hex = CLASS_COLORS[cls] || '#888888';
+      var sel = signupData.className === cls ? ' signup-class-btn-selected' : '';
+      html += '<button class="signup-class-btn' + sel + '" style="--cls-color:' + hex + ';" onclick="signupSelectClass(\'' + cls.replace(/'/g, "\\'") + '\')">' + cls + '</button>';
+    });
+    html +=
+      '</div>' +
+      '<p id="signupError" class="signup-error"></p>' +
+      '<div class="signup-actions">' +
+        '<button class="btn btn-muted" onclick="signupBack()">Back</button>' +
+      '</div>';
+
+  } else if (signupStep === 3) {
+    var specData = CLASS_SPECS[signupData.className];
+    var clsColor = CLASS_COLORS[signupData.className] || 'var(--gold-light)';
+    html =
+      '<div class="signup-step-label">Step 3 of 4</div>' +
+      '<h2 class="signup-step-title" style="color:' + clsColor + ';">' + signupData.className + '</h2>' +
+      '<div class="signup-field">' +
+        '<span class="signup-label">Main Spec</span>' +
+        '<div class="signup-radio-group">';
+    specData.specs.forEach(function(s) {
+      html += '<label class="signup-radio-label"><input type="radio" name="mainSpec" value="' + s + '"' + (signupData.mainSpec === s ? ' checked' : '') + '>' + s + '</label>';
+    });
+    html +=
+        '</div>' +
+      '</div>' +
+      '<div class="signup-field">' +
+        '<span class="signup-label">Off Spec <span class="signup-optional">(optional)</span></span>' +
+        '<div class="signup-radio-group">';
+    specData.offSpec.forEach(function(s) {
+      var isDefault = s === 'None' && !signupData.offSpec;
+      html += '<label class="signup-radio-label"><input type="radio" name="offSpec" value="' + s + '"' + ((signupData.offSpec === s || isDefault) ? ' checked' : '') + '>' + s + '</label>';
+    });
+    html += '</div></div>';
+    if (specData.roles) {
+      html +=
+        '<div class="signup-field">' +
+          '<span class="signup-label">Primary Role</span>' +
+          '<div class="signup-radio-group">';
+      specData.roles.forEach(function(r) {
+        html += '<label class="signup-radio-label"><input type="radio" name="primaryRole" value="' + r + '"' + (signupData.role === r ? ' checked' : '') + '>' + r + '</label>';
+      });
+      html += '</div></div>';
+    }
+    html +=
+      '<p id="signupError" class="signup-error"></p>' +
+      '<div class="signup-actions">' +
+        '<button class="btn btn-muted" onclick="signupBack()">Back</button>' +
+        '<button class="btn btn-gold" onclick="signupNext()">Next</button>' +
+      '</div>';
+
+  } else if (signupStep === 4) {
+    html =
+      '<div class="signup-step-label">Step 4 of 4</div>' +
+      '<h2 class="signup-step-title">Additional Information</h2>' +
+      '<div class="signup-field">' +
+        '<span class="signup-label">Discord Name <span class="signup-optional">(optional -- only if different from your character name)</span></span>' +
+        '<input type="text" id="signupDiscord" class="signup-input" placeholder="YourDiscord" value="' + (signupData.discord || '') + '">' +
+      '</div>' +
+      '<div class="signup-field">' +
+        '<span class="signup-label">Anything else officers should know? <span class="signup-optional">(optional)</span></span>' +
+        '<textarea id="signupNotes" class="signup-textarea" placeholder="e.g. applying as a trial, recently changed mains, availability caveats...">' + (signupData.notes || '') + '</textarea>' +
+      '</div>' +
+      '<div class="signup-actions">' +
+        '<button class="btn btn-muted" onclick="signupBack()">Back</button>' +
+        '<button class="btn btn-gold" onclick="submitSignup()">Submit</button>' +
+      '</div>';
+
+  } else if (signupStep === 5) {
+    html =
+      '<div class="signup-confirm">' +
+        '<div class="signup-confirm-check">&#10003;</div>' +
+        '<h2 class="signup-step-title">Signup Submitted</h2>' +
+        '<p class="signup-step-desc">Your signup has been submitted. Officers will review your application and be in touch. If you need to update anything, message Katorri or Rod on Discord -- do not resubmit without officer approval.</p>' +
+        '<button class="btn btn-gold" onclick="showView(\'landing\')" style="margin-top:1.5rem;">Back to Roster</button>' +
+      '</div>';
+  }
+
+  container.innerHTML = html;
+  var firstInput = container.querySelector('input[type="text"]');
+  if (firstInput) setTimeout(function() { firstInput.focus(); }, 50);
+}
+
+function signupSelectClass(cls) {
+  signupData.className = cls;
+  signupData.mainSpec  = '';
+  signupData.offSpec   = '';
+  signupData.role      = '';
+  signupStep = 3;
+  renderSignupStep();
+}
+
+function signupNext() {
+  if (signupStep === 1) {
+    var val = (document.getElementById('signupCharName').value || '').trim();
+    if (!val || val.indexOf('-') === -1) {
+      document.getElementById('signupError').textContent = 'Please enter your character name and realm (e.g. Katorri-Stormrage).';
+      return;
+    }
+    signupData.charName = val;
+    signupStep = 2;
+
+  } else if (signupStep === 3) {
+    var mainSpecEl = document.querySelector('input[name="mainSpec"]:checked');
+    var offSpecEl  = document.querySelector('input[name="offSpec"]:checked');
+    var roleEl     = document.querySelector('input[name="primaryRole"]:checked');
+    var specData   = CLASS_SPECS[signupData.className];
+    if (!mainSpecEl) {
+      document.getElementById('signupError').textContent = 'Please select your main spec.';
+      return;
+    }
+    if (specData.roles && !roleEl) {
+      document.getElementById('signupError').textContent = 'Please select your primary role.';
+      return;
+    }
+    signupData.mainSpec = mainSpecEl.value;
+    signupData.offSpec  = offSpecEl ? offSpecEl.value : 'None';
+    signupData.role     = roleEl ? roleEl.value : null;
+    signupStep = 4;
+
+  } else {
+    signupStep++;
+  }
+  renderSignupStep();
+}
+
+function signupBack() {
+  if (signupStep === 3) {
+    signupStep = 2;
+  } else if (signupStep > 1) {
+    signupStep--;
+  }
+  renderSignupStep();
+}
+
+function submitSignup() {
+  signupData.discord     = (document.getElementById('signupDiscord').value || '').trim();
+  signupData.notes       = (document.getElementById('signupNotes').value || '').trim();
+  signupData.submittedAt = new Date().toISOString();
+  // TODO: POST signupData to Apps Script write endpoint when available
+  signupStep = 5;
+  renderSignupStep();
+}
+
+function renderSignupToggle() {
+  var badge = document.getElementById('signupStatusBadge');
+  var btn   = document.getElementById('signupToggleBtn');
+  if (!badge || !btn) return;
+  var open = signupsOpen();
+  badge.textContent = open ? 'OPEN' : 'CLOSED';
+  badge.className = 'signup-status-badge ' + (open ? 'signup-status-open' : 'signup-status-closed');
+  btn.textContent = open ? 'Close Signups' : 'Open Signups';
+}
+
+function toggleSignupsOpen() {
+  setSignupsOpen(!signupsOpen());
+}
+
 // -- Officer dashboard ------------------------------------------------------
 function buildOfficerDashboard() {
   buildStatsBar();
   buildRosterTable();
+  renderSignupToggle();
   if (DATA._loadedAt) {
     var t = DATA._loadedAt;
     var h = t.getHours(), m = t.getMinutes();
