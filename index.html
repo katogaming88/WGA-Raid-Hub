@@ -70,6 +70,7 @@
         <button class="nav-item" onclick="switchTab('attendance')">Attendance</button>
         <button class="nav-item" onclick="switchTab('priority')">Priority</button>
         <button class="nav-item" onclick="switchTab('signups')">Signups</button>
+        <button class="nav-item" onclick="switchTab('requests')">Requests</button>
       </nav>
 
       <div class="officer-main">
@@ -144,6 +145,11 @@
             <p class="signup-officer-note">Toggling signups shows or hides the Sign Up button for applicants.</p>
           </div>
           <div id="signupsResponsesContainer"></div>
+        </div>
+
+        <!-- Self Received Requests tab -->
+        <div id="tab-requests" class="tab-panel">
+          <div id="requestsContainer"></div>
         </div>
 
         <!-- Priority tab -->
