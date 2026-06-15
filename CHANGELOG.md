@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.7.0] - 2026-06-15
+
+### Added
+- Officer profile view: "Player Settings" section to change a player's role, trial status, and bench status without editing the sheet directly
+- Role change also updates the Priority column (Tank=3, Heal=4, DPS=5); Raid Leader and Officer priorities (1-2) are left untouched
+- Bench toggle writes priority 6 when benching; derives the correct priority from the player's role when un-benching
+- Officer notes per player -- free-text, stored server-side, visible only in the officer dashboard
+
+### Changed
+- "Requests" nav tab renamed to "Received Item Requests" for clarity
+
+---
+
 ## [1.6.0] - 2026-06-15
 
 ### Added
