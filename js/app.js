@@ -1,6 +1,6 @@
 var WEB_APP_URL  = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
 var OFFICER_PASS = 'phoenix2'; // change this
-var VERSION      = '1.4.0';
+var VERSION      = '1.5.0';
 var DATA         = null;
 var activeFilters = {};
 var activeSort = { key: null, dir: 1 };

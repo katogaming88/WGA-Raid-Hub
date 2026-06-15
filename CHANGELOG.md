@@ -6,6 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.0] - 2026-06-15
+
+### Added
+- Raiders can mark BiS items as received outside of raid (M+, Great Vault, Crafted, Catalyst, World Drop) directly from their character profile
+- Inline source picker form expands per item -- source required, notes optional
+- Submissions go to a new "Self Received Requests" sheet with status Pending/Approved/Rejected
+- Officer dashboard: new "Requests" tab lists all pending requests with Approve and Reject buttons
+- Approving a request busts the roster cache and shows a gold source badge on the player's profile
+- Apps Script: requestSelfReceived, getPendingRequests, approveRequest, rejectRequest actions; getSelfReceived included in buildPayload
+- TODO(auth) markers in both Apps Script and JS indicate where Discord OAuth will bypass officer approval
+
+### Notes
+- Self-reported items are excluded from Loot Fairness -- that tab reflects RCLootCouncil raid distributions only
+
+---
+
 ## [1.4.0] - 2026-06-15
 
 ### Added
