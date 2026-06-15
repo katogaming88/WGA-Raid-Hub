@@ -233,6 +233,42 @@ select#playerSelect option { background:#1a1d27; }
 /* Footer */
 .footer { text-align:center; padding:1.5rem; font-size:0.8rem; color:var(--text); letter-spacing:0.12em; text-transform:uppercase; border-top:1px solid var(--border); margin-top:auto; }
 
+/* Season Signup */
+#signupView { padding:2rem 2rem 3rem; max-width:560px; width:100%; margin:0 auto; }
+.signup-wrap { flex:1; }
+.signup-step-label { font-size:0.68rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-muted); font-weight:600; margin-bottom:0.75rem; }
+.signup-step-title { font-family:'Cinzel',serif; font-size:1.3rem; font-weight:700; color:var(--gold-light); margin-bottom:0.75rem; letter-spacing:0.06em; }
+.signup-step-desc { font-size:0.92rem; color:var(--text-muted); line-height:1.55; margin-bottom:1.5rem; }
+.signup-input { width:100%; font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:500; padding:0.6rem 0.9rem; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; outline:none; transition:border-color 0.15s; margin-bottom:1rem; }
+.signup-input:focus { border-color:var(--gold); }
+.signup-textarea { width:100%; font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:500; padding:0.6rem 0.9rem; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; outline:none; resize:vertical; min-height:90px; transition:border-color 0.15s; }
+.signup-textarea:focus { border-color:var(--gold); }
+.signup-field { margin-bottom:1.25rem; }
+.signup-label { display:block; font-size:0.8rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.5rem; }
+.signup-optional { font-size:0.72rem; font-weight:400; text-transform:none; letter-spacing:0; color:var(--text-muted); opacity:0.6; }
+.signup-radio-group { display:flex; flex-wrap:wrap; gap:0.4rem; }
+.signup-radio-label { display:flex; align-items:center; gap:0.4rem; font-size:0.88rem; font-weight:500; padding:0.35rem 0.85rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; cursor:pointer; transition:all 0.12s; user-select:none; }
+.signup-radio-label:hover { border-color:var(--border-mid); }
+.signup-radio-label input { display:none; }
+.signup-radio-label:has(input:checked) { background:rgba(214,163,68,0.1); border-color:var(--gold-dim); color:var(--gold-light); }
+.signup-class-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:0.5rem; margin-bottom:1.5rem; }
+.signup-class-btn { font-family:'Rajdhani',sans-serif; font-size:0.88rem; font-weight:600; letter-spacing:0.06em; padding:0.65rem 0.5rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; color:var(--cls-color,var(--text)); cursor:pointer; transition:all 0.12s; text-align:center; }
+.signup-class-btn:hover { border-color:var(--cls-color,var(--border-mid)); background:var(--bg-card); }
+.signup-class-btn-selected { border-color:var(--cls-color,var(--gold-dim)) !important; background:var(--bg-card); box-shadow:0 0 0 1px var(--cls-color,var(--gold-dim)); }
+.signup-actions { display:flex; gap:0.75rem; justify-content:flex-end; margin-top:1.5rem; }
+.signup-error { font-size:0.85rem; color:var(--melee); margin-bottom:0.75rem; min-height:1.2em; }
+.signup-confirm { text-align:center; padding:2rem 0; }
+.signup-confirm-check { width:56px; height:56px; border-radius:50%; background:rgba(61,220,132,0.12); border:2px solid rgba(61,220,132,0.3); color:var(--heal); font-size:1.6rem; display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem; }
+.signup-cta { margin-top:1.25rem; font-size:0.88rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); cursor:pointer; border-bottom:1px solid rgba(214,163,68,0.3); transition:color 0.15s,border-color 0.15s; }
+.signup-cta:hover { color:var(--gold-light); border-color:var(--gold); }
+.signup-officer-panel { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1.25rem; max-width:400px; }
+.signup-status-row { display:flex; align-items:center; justify-content:space-between; }
+.signup-status-label { font-size:0.9rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--text); }
+.signup-status-badge { font-size:0.72rem; font-weight:700; letter-spacing:0.12em; padding:3px 10px; border-radius:2px; }
+.signup-status-open { background:rgba(61,220,132,0.12); color:var(--heal); border:1px solid rgba(61,220,132,0.3); }
+.signup-status-closed { background:rgba(255,124,92,0.1); color:var(--melee); border:1px solid rgba(255,124,92,0.25); }
+.signup-officer-note { font-size:0.82rem; color:var(--text-muted); margin-top:1rem; line-height:1.5; }
+
 /* Responsive */
 @media (max-width:640px) {
   #officerView { padding:1rem 1rem 2rem; }
