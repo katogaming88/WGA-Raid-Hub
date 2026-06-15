@@ -87,6 +87,16 @@ function doGet(e) {
       return jsonpResponse(callback, { signups: getSignupResponses() });
     }
 
+    if (action === 'deleteSignup') {
+      const row = parseInt(e.parameter.row, 10);
+      if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
+      const ss    = SpreadsheetApp.getActiveSpreadsheet();
+      const sheet = ss.getSheetByName(CFG.responsesSheet);
+      if (!sheet) return jsonpResponse(callback, { error: 'Sheet not found' });
+      sheet.deleteRow(row);
+      return jsonpResponse(callback, { success: true });
+    }
+
     const cached = cache.get('rosterPayload');
     const json   = cached || (() => {
       const fresh = JSON.stringify(buildPayload());
@@ -135,6 +145,7 @@ function getSignupResponses() {
       ? Utilities.formatDate(row[0], Session.getScriptTimeZone(), 'MMM d, yyyy HH:mm')
       : String(row[0] || '');
     results.push({
+      rowIndex:  i + 1,
       timestamp: ts,
       charName:  String(row[1] || ''),
       realm:     String(row[2] || ''),

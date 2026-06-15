@@ -759,10 +759,13 @@ function renderSignupResponses(signups) {
 
   signups.forEach(function(s) {
     var clsColor = classColor(s.className);
-    html += '<div class="signup-response-card">' +
+    html += '<div class="signup-response-card" data-row="' + s.rowIndex + '">' +
       '<div class="signup-response-header">' +
         '<span class="signup-response-name">' + s.charName + '-' + s.realm + '</span>' +
-        '<span class="signup-response-time">' + s.timestamp + '</span>' +
+        '<div style="display:flex;align-items:center;gap:0.75rem;">' +
+          '<span class="signup-response-time">' + s.timestamp + '</span>' +
+          '<button class="signup-delete-btn" onclick="deleteSignupRow(' + s.rowIndex + ', this)" title="Delete signup">x</button>' +
+        '</div>' +
       '</div>' +
       '<div style="font-size:0.88rem;color:' + clsColor + ';margin-top:0.35rem;font-weight:600;">' +
         s.className + ' &middot; ' + s.mainSpec +
@@ -775,6 +778,27 @@ function renderSignupResponses(signups) {
   });
 
   container.innerHTML = html + '</div>';
+}
+
+function deleteSignupRow(rowIndex, btnEl) {
+  if (!confirm('Delete this signup? This cannot be undone.')) return;
+  btnEl.disabled = true;
+  btnEl.textContent = '...';
+  var cbName = '_deleteSignupCb' + rowIndex;
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (result.error) { btnEl.disabled = false; btnEl.textContent = 'x'; return; }
+    var card = document.querySelector('.signup-response-card[data-row="' + rowIndex + '"]');
+    if (card) card.remove();
+    var container = document.getElementById('signupsResponsesContainer');
+    if (container && !container.querySelector('.signup-response-card')) {
+      container.innerHTML = '<p style="color:var(--text-muted);font-size:0.88rem;margin-top:1.5rem;">No signups submitted yet.</p>';
+    }
+  };
+  var script = document.createElement('script');
+  script.onerror = function() { delete window[cbName]; btnEl.disabled = false; btnEl.textContent = 'x'; };
+  script.src = WEB_APP_URL + '?action=deleteSignup&row=' + rowIndex + '&callback=' + cbName;
+  document.head.appendChild(script);
 }
 
 function renderSignupToggle() {
