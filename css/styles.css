@@ -283,6 +283,9 @@ select#playerSelect option { background:#1a1d27; }
 .signup-response-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
 .signup-response-name { font-family:'Cinzel',serif; font-size:0.95rem; font-weight:700; color:var(--text); }
 .signup-response-time { font-size:0.72rem; color:var(--text-muted); letter-spacing:0.04em; white-space:nowrap; }
+.signup-delete-btn { background:none; border:1px solid var(--border); border-radius:3px; color:var(--text-muted); font-size:0.75rem; line-height:1; padding:0.2rem 0.45rem; cursor:pointer; transition:border-color 0.15s,color 0.15s; }
+.signup-delete-btn:hover { border-color:var(--melee); color:var(--melee); }
+.signup-delete-btn:disabled { opacity:0.4; cursor:default; }
 
 /* Responsive */
 @media (max-width:640px) {
