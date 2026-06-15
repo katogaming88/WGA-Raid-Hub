@@ -1,6 +1,6 @@
 var WEB_APP_URL  = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
 var OFFICER_PASS = 'phoenix2'; // change this
-var VERSION      = '1.7.0';
+var VERSION      = '1.8.0';
 var DATA         = null;
 var activeFilters = {};
 var activeSort = { key: null, dir: 1 };
@@ -292,6 +292,15 @@ function rankPillHTML(rank) {
   var c  = 'rgb('+rv+','+gv+','+bv+')', bg = 'rgba('+rv+','+gv+','+bv+','+a+')', bd = 'rgba('+rv+','+gv+','+bv+','+ Math.max(0.2,0.4-t*0.2)+')';
   return '<span class="rank-pill" style="background:'+bg+';color:'+c+';border:1px solid '+bd+';">#'+rank+'</span>';
 }
+function lookupItemSlot(itemName) {
+  var slots = DATA.itemSlots || {};
+  if (slots[itemName]) return slots[itemName];
+  for (var key in slots) {
+    if (key.indexOf(itemName) === 0) return slots[key];
+  }
+  return '';
+}
+
 function getSlotColor(slot) {
   var s = (slot||'').toUpperCase();
   if (s==='TRINKET'||s==='TRINKET 1'||s==='TRINKET 2') return 'var(--gold)';
@@ -342,7 +351,8 @@ function renderProfile(firstName, backTo, container) {
       var li_obj  = lootEntry.items[li];
       var li_name = typeof li_obj === 'string' ? li_obj : li_obj.name;
       var li_diff = typeof li_obj === 'object' && li_obj.difficulty ? li_obj.difficulty : '';
-      lootItemsHTML += '<div style="font-size:1rem;color:var(--text);padding:0.3rem 0;border-bottom:1px solid var(--border);">'+li_name+(li_diff?' <span style="font-size:0.95rem;color:var(--text-muted);">('+li_diff+')</span>':'')+'</div>';
+      var li_slot = lookupItemSlot(li_name);
+      lootItemsHTML += '<div style="font-size:1rem;color:var(--text);padding:0.3rem 0;border-bottom:1px solid var(--border);">'+li_name+'<div style="font-size:0.88rem;color:var(--text-muted);margin-top:0.1rem;">'+(li_slot?'<span style="color:'+getSlotColor(li_slot)+';">'+li_slot+'</span>':'')+( li_slot && li_diff?' · ':'' )+(li_diff?'<span>'+li_diff+'</span>':'')+'</div></div>';
     }
   }
 
