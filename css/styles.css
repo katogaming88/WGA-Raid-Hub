@@ -88,7 +88,7 @@ select#playerSelect option { background:#1a1d27; }
 .badge-Ranged { background:rgba(191,140,255,0.12); color:var(--ranged); border:1px solid rgba(191,140,255,0.2); }
 .badge-Melee  { background:rgba(255,124,92,0.12);  color:var(--melee);  border:1px solid rgba(255,124,92,0.2); }
 .badge-trial  { background:rgba(240,200,112,0.1);  color:#f0c870;       border:1px solid rgba(240,200,112,0.2); }
-.badge-class  { background:rgba(255,255,255,0.04); color:var(--text);   border:1px solid var(--border); }
+.badge-class  { border:1px solid transparent; }
 .profile-section { padding:1rem 1.25rem; border-bottom:1px solid var(--border); }
 .profile-section:last-child { border-bottom:none; }
 .section-label { font-size:1rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-dim); font-weight:600; margin-bottom:0.75rem; }
