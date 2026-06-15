@@ -13,12 +13,6 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 - [ ] Raider submits Raider.io profile link + optional exception notes to request exclusion from dungeon loot consideration (#57)
 - [ ] Officer reviews profile and approves or rejects -- approved players are marked M+ excluded in the sheet
 
-## Roster Management
-
-- [ ] Add/remove players from the roster directly from the page (#3)
-- [ ] Change a player's role, trial status, or bench status (#4)
-- [ ] Add officer notes per player (visible only in officer view) (#6)
-
 ## Loot Tracking
 
 - [ ] See who is missing loot for each slot (e.g. who still needs a trinket) (#9)
@@ -77,3 +71,6 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 - [x] Apps Script GET-based write pattern -- no POST endpoint required
 - [x] Self-mark items as received outside of raid (M+, Great Vault, Crafted, Catalyst, World Drop) -- officer approval queue
 - [x] BiS list URL submission from the raider profile -- officer approval queue, per-player access toggle, officer direct update (#5, #58)
+- [x] Add/remove players from the roster directly from the page (#3)
+- [x] Change a player's role, trial status, or bench status from the page (#4)
+- [x] Officer notes per player -- free-text, stored server-side, visible only in officer view (#6)
