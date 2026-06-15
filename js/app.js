@@ -1471,7 +1471,7 @@ function buildPriorityTab() {
 }
 
 document.querySelectorAll('.footer').forEach(function(el) {
-  el.textContent = 'We Go Again · Team Phoenix · v' + VERSION;
+  el.innerHTML = 'We Go Again · Team Phoenix · v' + VERSION + ' · <a class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a>';
 });
 
 loadData();
