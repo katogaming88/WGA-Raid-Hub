@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.0.2] - 2026-06-15
+
+### Changed
+- Officer dashboard switched back to centered layout at `max-width:1600px` so the header and content share the same centre column on wide screens
+- Officer mobile layout: toolbar now stacks title above buttons (no more mid-word button wrapping); nav tabs replaced wrapping rows with a single horizontal scroll strip
+
+---
+
 ## [2.0.1] - 2026-06-15
 
 ### Added

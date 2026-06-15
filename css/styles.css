@@ -345,11 +345,23 @@ select#playerSelect option { background:#1a1d27; }
 /* Responsive */
 @media (max-width:640px) {
   #officerView { padding:1rem 1rem 2rem; }
+
+  /* Toolbar: stack title above buttons, buttons in a wrapping row */
+  .officer-toolbar { flex-direction:column; align-items:flex-start; gap:0.5rem; }
+  .officer-toolbar > div:last-child { display:flex; gap:0.4rem; flex-wrap:wrap; }
+  .officer-toolbar .btn { font-size:0.78rem; padding:0.3rem 0.6rem; white-space:nowrap; }
+
+  /* Stats: 2-column grid */
   .officer-stats { grid-template-columns:repeat(2,1fr); }
+
+  /* Body: sidebar stacks above main content */
   .officer-body { flex-direction:column; }
-  .officer-sidebar { width:100%; flex-direction:row; flex-wrap:wrap; position:static; border-bottom:1px solid var(--border); padding-bottom:0.5rem; margin-bottom:1rem; gap:0; }
-  .nav-item { width:auto; border-left:none; border-bottom:2px solid transparent; border-radius:0; padding:0.5rem 0.75rem; }
+
+  /* Nav: horizontal scrolling strip instead of wrapping rows */
+  .officer-sidebar { width:100%; flex-direction:row; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; position:static; border-bottom:1px solid var(--border); padding-bottom:0; margin-bottom:1rem; gap:0; }
+  .nav-item { flex-shrink:0; width:auto; border-left:none; border-bottom:2px solid transparent; border-radius:0; padding:0.6rem 0.85rem; font-size:0.82rem; }
   .nav-item.active { border-left-color:transparent; border-bottom-color:var(--gold); }
   .nav-item:hover { border-left-color:transparent; }
+
   .fairness-row { grid-template-columns:100px 1fr 30px; gap:0.5rem; }
 }
