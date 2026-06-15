@@ -779,14 +779,18 @@ function addPlayerToRoster(data) {
   const role     = String(data.role     || 'Melee').trim();
   const priority = roleToPriority(role);
 
-  // Find the last row that has a player name in col D, then write to the row after it.
-  // Avoids appendRow which would land after pre-populated checkbox rows below the data.
+  // Find the last row that has a valid role in col H, then write to the row after it.
+  // Scanning col H (not col D) avoids being fooled by legend/note rows that have text
+  // in the player-name column but are not actual player entries.
+  const VALID_ROLES = new Set(['Tank', 'Heal', 'Melee', 'Ranged']);
   const lastRow = sheet.getLastRow();
-  const colD    = sheet.getRange(CFG.rosterDataStart, CFG.rosterPlayerCol,
+  const colH    = sheet.getRange(CFG.rosterDataStart, CFG.rosterRoleCol,
                     lastRow - CFG.rosterDataStart + 1, 1).getValues();
   let targetRow = CFG.rosterDataStart;
-  for (let r = 0; r < colD.length; r++) {
-    if (String(colD[r][0] || '').trim()) targetRow = CFG.rosterDataStart + r + 1;
+  for (let r = 0; r < colH.length; r++) {
+    if (VALID_ROLES.has(String(colH[r][0] || '').trim())) {
+      targetRow = CFG.rosterDataStart + r + 1;
+    }
   }
 
   // Write only the columns this app owns — don't touch col A or any formula columns.
