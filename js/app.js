@@ -272,21 +272,38 @@ function showAddPlayerModal() {
     classSel.appendChild(opt);
   }
 
-  // Populate realm datalist
-  var dl = document.getElementById('realmList');
-  dl.innerHTML = '';
-  for (var j = 0; j < WOW_REALMS.length; j++) {
-    var o = document.createElement('option');
-    o.value = WOW_REALMS[j];
-    dl.appendChild(o);
-  }
+  hideRealmList();
 
   document.getElementById('addPlayerModal').classList.add('active');
   setTimeout(function() { document.getElementById('addPlayerName').focus(); }, 50);
 }
 
 function hideAddPlayerModal() {
+  hideRealmList();
   document.getElementById('addPlayerModal').classList.remove('active');
+}
+
+function filterRealmList(val) {
+  var dd = document.getElementById('realmDropdown');
+  var term = (val || '').trim().toLowerCase();
+  var matches = term
+    ? WOW_REALMS.filter(function(r) { return r.toLowerCase().indexOf(term) === 0; }).slice(0, 12)
+    : [];
+  if (!matches.length) { dd.style.display = 'none'; return; }
+  dd.innerHTML = matches.map(function(r) {
+    return '<div class="realm-option" onmousedown="pickRealm(\'' + r.replace(/'/g, "\\'") + '\')">' + r + '</div>';
+  }).join('');
+  dd.style.display = '';
+}
+
+function hideRealmList() {
+  var dd = document.getElementById('realmDropdown');
+  if (dd) dd.style.display = 'none';
+}
+
+function pickRealm(realm) {
+  document.getElementById('addPlayerRealm').value = realm;
+  hideRealmList();
 }
 
 function addPlayerClassChanged() {

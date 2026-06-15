@@ -318,6 +318,8 @@ select#playerSelect option { background:#1a1d27; }
 .add-player-input option { background:#1a1d27; }
 .btn-danger { background:rgba(255,124,92,0.1); border:1px solid rgba(255,124,92,0.35); color:var(--melee); }
 .btn-danger:hover { background:rgba(255,124,92,0.2); }
+.realm-option { padding:0.4rem 0.75rem; font-size:1rem; color:var(--text); cursor:pointer; }
+.realm-option:hover { background:var(--bg-input); color:var(--gold-light); }
 
 /* Responsive */
 @media (max-width:640px) {

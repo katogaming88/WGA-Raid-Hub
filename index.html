@@ -203,10 +203,11 @@
         <label class="add-player-label">Character Name</label>
         <input id="addPlayerName" type="text" class="add-player-input" placeholder="Katorri" autocomplete="off">
       </div>
-      <div>
+      <div style="position:relative;">
         <label class="add-player-label">Realm</label>
-        <input id="addPlayerRealm" type="text" class="add-player-input" placeholder="Barthilas" list="realmList" autocomplete="off">
-        <datalist id="realmList"></datalist>
+        <input id="addPlayerRealm" type="text" class="add-player-input" placeholder="Barthilas" autocomplete="off"
+          oninput="filterRealmList(this.value)" onblur="hideRealmList()" onfocus="filterRealmList(this.value)">
+        <div id="realmDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:160px;overflow-y:auto;background:var(--bg-elevated);border:1px solid var(--border-mid);border-top:none;border-radius:0 0 3px 3px;z-index:200;"></div>
       </div>
       <div>
         <label class="add-player-label">Nickname (optional)</label>
