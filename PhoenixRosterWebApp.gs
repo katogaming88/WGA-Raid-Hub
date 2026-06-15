@@ -13,6 +13,7 @@ const CFG = {
   rosterRoleCol:     8,   // H — Role
   rosterBisLinkCol:  9,   // I — BiS Link
   rosterSortKeyCol:  10,  // J - Sort Key (auto)
+  rosterPriorityCol: 11,  // K - Priority (1=RL,2=Officer,3=Tank,4=Heal,5=DPS,6=Bench)
   rosterDataStart:   4,   // First data row (rows 1-3 are title/subtitle/header)
 
   // ── Scoring tab ──────────────────────────────────────────────────────
@@ -183,6 +184,28 @@ function doGet(e) {
       const url       = String(data.url || '');
       updateBisLinkInRoster(nameRealm, url);
       cache.remove('rosterPayload');
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'updatePlayerField') {
+      const data      = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      const nameRealm = String(data.nameRealm || '');
+      const field     = String(data.field     || '');
+      const value     = data.value;
+      if (!nameRealm || !field) return jsonpResponse(callback, { error: 'Missing params' });
+      updateRosterField(nameRealm, field, value);
+      cache.remove('rosterPayload');
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'savePlayerNote') {
+      const data      = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      const nameRealm = String(data.nameRealm || '');
+      const note      = String(data.note      || '');
+      if (!nameRealm) return jsonpResponse(callback, { error: 'Missing nameRealm' });
+      const notes = getPlayerNotes();
+      if (note) { notes[nameRealm] = note; } else { delete notes[nameRealm]; }
+      setPlayerNotes(notes);
       return jsonpResponse(callback, { success: true });
     }
 
@@ -374,6 +397,7 @@ function buildPayload() {
     signupsOpen:          signupsOpen,
     bisSubmissionsOpen:    bisSubmissionsOpen,
     bisAllowedPlayers:     getBisAllowedPlayers(),
+    playerNotes:           getPlayerNotes(),
     roster:        getRoster(sheets),
     priorityOrder: getPriorityOrder(sheets),
     bisList:       getBisList(sheets),
@@ -605,6 +629,51 @@ function getBisAllowedPlayers() {
 
 function setBisAllowedPlayers(arr) {
   PropertiesService.getScriptProperties().setProperty('bisAllowedPlayers', JSON.stringify(arr));
+}
+
+function getPlayerNotes() {
+  const val = PropertiesService.getScriptProperties().getProperty('playerNotes');
+  try { return JSON.parse(val || '{}'); } catch(e) { return {}; }
+}
+
+function setPlayerNotes(notes) {
+  PropertiesService.getScriptProperties().setProperty('playerNotes', JSON.stringify(notes));
+}
+
+function roleToPriority(role) {
+  if (role === 'Tank')  return 3;
+  if (role === 'Heal')  return 4;
+  return 5; // Melee / Ranged / DPS
+}
+
+function updateRosterField(nameRealm, field, value) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.rosterSheet);
+  if (!sheet) return;
+  const data = sheet.getDataRange().getValues();
+  for (let i = CFG.rosterDataStart - 1; i < data.length; i++) {
+    const rowPlayer = String(data[i][CFG.rosterPlayerCol - 1] || '').trim();
+    if (rowPlayer.toLowerCase() !== nameRealm.toLowerCase()) continue;
+    const sheetRow = i + 1;
+    if (field === 'isTrial') {
+      sheet.getRange(sheetRow, CFG.rosterTrialCol).setValue(value === true || value === 'true');
+    } else if (field === 'role') {
+      sheet.getRange(sheetRow, CFG.rosterRoleCol).setValue(String(value || ''));
+      // Update priority unless player is Raid Leader (1) or Officer (2)
+      const currentPriority = Number(data[i][CFG.rosterPriorityCol - 1] || 0);
+      if (currentPriority !== 1 && currentPriority !== 2) {
+        sheet.getRange(sheetRow, CFG.rosterPriorityCol).setValue(roleToPriority(String(value)));
+      }
+    } else if (field === 'isBench') {
+      if (value === true || value === 'true') {
+        sheet.getRange(sheetRow, CFG.rosterPriorityCol).setValue(6);
+      } else {
+        const role = String(data[i][CFG.rosterRoleCol - 1] || '').trim();
+        sheet.getRange(sheetRow, CFG.rosterPriorityCol).setValue(roleToPriority(role));
+      }
+    }
+    return;
+  }
 }
 
 function writeBiSSubmission(data) {

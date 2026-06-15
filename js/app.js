@@ -1,6 +1,6 @@
 var WEB_APP_URL  = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
 var OFFICER_PASS = 'phoenix2'; // change this
-var VERSION      = '1.6.0';
+var VERSION      = '1.7.0';
 var DATA         = null;
 var activeFilters = {};
 var activeSort = { key: null, dir: 1 };
@@ -455,6 +455,45 @@ function renderProfile(firstName, backTo, container) {
     ? 'document.getElementById(\'officerProfile\').innerHTML=\'\';selectedOfficerPlayer=null;document.querySelectorAll(\'.player-row\').forEach(function(r){r.classList.remove(\'selected\')});'
     : 'showView(\'landing\');document.getElementById(\'playerSelect\').value=\'\';';
 
+  var officerActionsHTML = '';
+  if (backTo === 'officer') {
+    var currentNote = ((DATA && DATA.playerNotes) || {})[player.nameRealm] || '';
+    var fnSafe = player.firstName.replace(/'/g, "\\'");
+    var nrSafe = player.nameRealm.replace(/'/g, "\\'");
+    officerActionsHTML =
+      '<div class="profile-section">' +
+        '<div class="section-label">Player Settings</div>' +
+        '<div style="display:flex;flex-direction:column;gap:0.75rem;margin-top:0.5rem;">' +
+          '<div style="display:flex;align-items:center;gap:0.75rem;">' +
+            '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Role</span>' +
+            '<select id="roleSelect-'+player.firstName+'" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:10rem;" onchange="savePlayerField(\''+nrSafe+'\',\''+fnSafe+'\',\'role\',this.value)">' +
+              '<option value="Tank"'+(player.role==='Tank'?' selected':'')+'>Tank</option>' +
+              '<option value="Heal"'+(player.role==='Heal'?' selected':'')+'>Heal</option>' +
+              '<option value="Melee"'+(player.role==='Melee'?' selected':'')+'>Melee</option>' +
+              '<option value="Ranged"'+(player.role==='Ranged'?' selected':'')+'>Ranged</option>' +
+            '</select>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:0.75rem;">' +
+            '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Trial</span>' +
+            '<button id="trialToggle-'+player.firstName+'" class="btn '+(player.isTrial?'btn-gold':'btn-muted')+'" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="togglePlayerTrial(\''+nrSafe+'\',\''+fnSafe+'\')">'+(player.isTrial?'Remove Trial':'Mark as Trial')+'</button>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:0.75rem;">' +
+            '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Bench</span>' +
+            '<button id="benchToggle-'+player.firstName+'" class="btn '+(player.isBench?'btn-gold':'btn-muted')+'" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="togglePlayerBench(\''+nrSafe+'\',\''+fnSafe+'\')">'+(player.isBench?'Remove from Bench':'Move to Bench')+'</button>' +
+          '</div>' +
+          '<div id="playerSettingsMsg-'+player.firstName+'" style="font-size:0.92rem;color:var(--text-muted);min-height:1.2rem;"></div>' +
+        '</div>' +
+        '<div style="margin-top:1rem;">' +
+          '<div style="font-size:0.88rem;color:var(--text-muted);margin-bottom:0.35rem;text-transform:uppercase;letter-spacing:0.08em;">Officer Notes</div>' +
+          '<textarea id="playerNote-'+player.firstName+'" rows="3" class="self-received-notes" style="width:100%;box-sizing:border-box;font-size:0.92rem;">'+currentNote.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</textarea>' +
+          '<div style="display:flex;gap:0.5rem;margin-top:0.4rem;align-items:center;">' +
+            '<button class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="savePlayerNote(\''+nrSafe+'\',\''+fnSafe+'\')">Save Note</button>' +
+            '<span id="playerNoteMsg-'+player.firstName+'" style="font-size:0.92rem;color:var(--text-muted);"></span>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
   var html =
     '<div class="profile-card">' +
       '<div class="role-bar role-bar-'+player.role+'"></div>' +
@@ -484,6 +523,7 @@ function renderProfile(firstName, backTo, container) {
         '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Loot Priority <span style="font-size:0.95rem;color:var(--text-dim);">tap to expand</span></div>' +
         '<div id="prio-list-'+player.firstName+'" style="display:none;">'+priorityHTML+'</div>' +
       '</div>' +
+      officerActionsHTML +
     '</div>';
 
   if (container) { container.innerHTML = html; }
@@ -1117,6 +1157,112 @@ function revokeBisForPlayer(nameRealm, firstName) {
   var script = document.createElement('script');
   script.onerror = function() { delete window[cbName]; updateBisAllowDiv(nameRealm, firstName); };
   script.src = WEB_APP_URL + '?action=revokeBisForPlayer&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })) + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+// -- Player settings (officer) -----------------------------------------------
+function savePlayerField(nameRealm, firstName, field, value) {
+  var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
+  if (msgEl) msgEl.textContent = 'Saving...';
+  var cbName = '_saveFieldCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (result && result.success && DATA) {
+      var player = DATA.roster.find(function(p) { return p.nameRealm === nameRealm; });
+      if (player) player[field] = value;
+    }
+    if (msgEl) {
+      msgEl.textContent = result && result.error ? 'Failed to save.' : 'Saved.';
+      setTimeout(function() { if (msgEl) msgEl.textContent = ''; }, 2000);
+    }
+  };
+  var script = document.createElement('script');
+  script.onerror = function() { delete window[cbName]; if (msgEl) msgEl.textContent = 'Failed to save.'; };
+  script.src = WEB_APP_URL + '?action=updatePlayerField&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: field, value: value })) + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function togglePlayerTrial(nameRealm, firstName) {
+  var player = DATA && DATA.roster.find(function(p) { return p.nameRealm === nameRealm; });
+  if (!player) return;
+  var newVal = !player.isTrial;
+  var btn = document.getElementById('trialToggle-' + firstName);
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  var cbName = '_trialCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (result && result.success && DATA) {
+      var p = DATA.roster.find(function(p) { return p.nameRealm === nameRealm; });
+      if (p) p.isTrial = newVal;
+    }
+    if (btn) {
+      btn.disabled = false;
+      btn.className = 'btn ' + (newVal ? 'btn-gold' : 'btn-muted');
+      btn.textContent = newVal ? 'Remove Trial' : 'Mark as Trial';
+    }
+    var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
+    if (msgEl) {
+      msgEl.textContent = result && result.error ? 'Failed to save.' : 'Saved.';
+      setTimeout(function() { if (msgEl) msgEl.textContent = ''; }, 2000);
+    }
+  };
+  var script = document.createElement('script');
+  script.onerror = function() { delete window[cbName]; if (btn) { btn.disabled = false; } };
+  script.src = WEB_APP_URL + '?action=updatePlayerField&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: 'isTrial', value: newVal })) + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function togglePlayerBench(nameRealm, firstName) {
+  var player = DATA && DATA.roster.find(function(p) { return p.nameRealm === nameRealm; });
+  if (!player) return;
+  var newVal = !player.isBench;
+  var btn = document.getElementById('benchToggle-' + firstName);
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  var cbName = '_benchCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (result && result.success && DATA) {
+      var p = DATA.roster.find(function(p) { return p.nameRealm === nameRealm; });
+      if (p) p.isBench = newVal;
+    }
+    if (btn) {
+      btn.disabled = false;
+      btn.className = 'btn ' + (newVal ? 'btn-gold' : 'btn-muted');
+      btn.textContent = newVal ? 'Remove from Bench' : 'Move to Bench';
+    }
+    var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
+    if (msgEl) {
+      msgEl.textContent = result && result.error ? 'Failed to save.' : 'Saved.';
+      setTimeout(function() { if (msgEl) msgEl.textContent = ''; }, 2000);
+    }
+  };
+  var script = document.createElement('script');
+  script.onerror = function() { delete window[cbName]; if (btn) { btn.disabled = false; } };
+  script.src = WEB_APP_URL + '?action=updatePlayerField&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: 'isBench', value: newVal })) + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function savePlayerNote(nameRealm, firstName) {
+  var noteEl = document.getElementById('playerNote-' + firstName);
+  var msgEl  = document.getElementById('playerNoteMsg-' + firstName);
+  if (!noteEl) return;
+  var note = noteEl.value.trim();
+  if (msgEl) msgEl.textContent = 'Saving...';
+  var cbName = '_noteCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (result && result.success && DATA) {
+      if (!DATA.playerNotes) DATA.playerNotes = {};
+      if (note) { DATA.playerNotes[nameRealm] = note; } else { delete DATA.playerNotes[nameRealm]; }
+    }
+    if (msgEl) {
+      msgEl.textContent = result && result.error ? 'Failed to save.' : 'Saved.';
+      setTimeout(function() { if (msgEl) msgEl.textContent = ''; }, 2000);
+    }
+  };
+  var script = document.createElement('script');
+  script.onerror = function() { delete window[cbName]; if (msgEl) msgEl.textContent = 'Failed to save.'; };
+  script.src = WEB_APP_URL + '?action=savePlayerNote&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, note: note })) + '&callback=' + cbName;
   document.head.appendChild(script);
 }
 
