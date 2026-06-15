@@ -6,6 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.0.1] - 2026-06-15
+
+### Added
+- Landing page stats row: Raiders count and Items This Tier, displayed below the selection card
+- Landing page Recent Loot: last 10 items distributed across all players, sorted by date, showing player name, item, difficulty badge, and date
+- Clicking the header on any page navigates back to the roster
+
+### Changed
+- Officer dashboard is now left-aligned so the sidebar sits near the left edge on wide screens; max-width raised to 1400px
+- Landing content wrapped in a card panel (dark background, gold top accent border) for visual presence on wide screens
+- Header subtitle changed from "Loot Priority" to "Raid Hub" on both pages
+- Officer Access link moved to the bottom of the landing card
+- Version number now appears in the `index.html` footer
+
+---
+
 ## [2.0.0] - 2026-06-15
 
 ### Changed
