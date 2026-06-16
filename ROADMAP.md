@@ -33,7 +33,6 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 
 ## Future / Larger Features
 
-- [ ] Officer write functionality -- update BiS links, nicknames, trial/bench status directly from the page back to the Google Sheet (#23)
 - [ ] Per-raider BiS change request system -- raider submits an updated BiS link plus a diff of which items changed; officer approves before the sheet updates (#24)
 - [ ] Raider login via Discord OAuth -- Apps Script handles the OAuth callback and token exchange; no new infrastructure required. On first login, raider claims their character (one claim per character). Unlocks self-marking received items (crafted, catalyzed, M+) and personalized priority standing view. (#25)
 - [ ] Personalized raider landing -- after Discord login and character claim, the app always opens directly on the raider's character card. Navigation links available from there to the main roster and other public views. Unauthenticated visitors see the existing generic flow unchanged. (#74)
@@ -68,3 +67,4 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 - [x] Officer notes per player -- free-text, stored server-side, visible only in officer view (#6)
 - [x] Officer approve/reject writes approved applicant to Roster sheet (#56, closed by PR #73)
 - [x] M+ exclusion request form -- raider submits Raider.io profile + notes; officer approval queue; approved players marked M+ excluded in sheet (#57, closed by PR #73)
+- [x] Officer write functionality -- update BiS links, nicknames, trial/bench status directly from the page back to the Google Sheet (#23, shipped across multiple PRs)
