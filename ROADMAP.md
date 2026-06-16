@@ -10,8 +10,8 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 
 ## Priority Management
 
-- [ ] Highlight conflicts where a player is high priority on multiple items (#12)
-- [ ] Show which items have no one ranked yet (#13)
+- [ ] Highlight conflicts where a player has been given top priority on multiple items by officers (#12)
+- [ ] Show which items have no players assigned a priority yet (#13)
 
 ## Attendance
 
