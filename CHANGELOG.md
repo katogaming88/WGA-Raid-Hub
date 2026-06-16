@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.0.4] - 2026-06-15
+
+### Fixed
+- Page-level horizontal scroll on mobile suppressed; only the roster table container scrolls horizontally
+
+---
+
 ## [2.0.3] - 2026-06-15
 
 ### Changed
