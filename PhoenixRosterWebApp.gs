@@ -65,6 +65,27 @@ const CFG = {
   attendDataStart:  2,  // First data row
 };
 
+var BOT_BASE_URL     = 'https://team-phoenix-qx42.onrender.com';
+var BOT_WEBHOOK_SECRET = 'teamPhoenixPPCBot';
+
+function sendToBot(path, payload) {
+  try {
+    var options = {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'x-webhook-secret': BOT_WEBHOOK_SECRET },
+      payload: payload,
+      muteHttpExceptions: true
+    };
+    var response = UrlFetchApp.fetch(BOT_BASE_URL + path, options);
+    if (response.getResponseCode() !== 200) {
+      Logger.log('Bot error on ' + path + ': ' + response.getResponseCode() + ' - ' + response.getContentText());
+    }
+  } catch (err) {
+    Logger.log('sendToBot failed for ' + path + ': ' + err);
+  }
+}
+
 function doGet(e) {
   try {
     const cache    = CacheService.getScriptCache();
@@ -94,6 +115,17 @@ function doGet(e) {
     if (action === 'submitSignup') {
       const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
       writeSignup(data);
+      sendToBot('/signup', JSON.stringify({
+        charName:    data.charName    || '',
+        realm:       data.realm       || '',
+        className:   data.className   || '',
+        mainSpec:    data.mainSpec    || '',
+        offSpecs:    (data.offSpecs || []).join(', '),
+        role:        data.role        || '',
+        discord:     data.discord     || '',
+        notes:       data.notes       || '',
+        submittedAt: new Date().toISOString()
+      }));
       return jsonpResponse(callback, { success: true });
     }
 
@@ -106,6 +138,14 @@ function doGet(e) {
       // TODO(auth): once Discord OAuth ships, bypass officer approval for verified players:
       //   if (isPlayerVerified(data.player)) { approveSelfReceivedDirect(data); cache.remove('rosterPayload'); return jsonpResponse(callback, { success: true }); }
       writeSelfReceivedRequest(data);
+      sendToBot('/selfreceived', JSON.stringify({
+        player:      data.player  || '',
+        item:        data.item    || '',
+        slot:        data.slot    || '',
+        source:      data.source  || '',
+        notes:       data.notes   || '',
+        submittedAt: new Date().toISOString()
+      }));
       return jsonpResponse(callback, { success: true });
     }
 
@@ -131,6 +171,12 @@ function doGet(e) {
     if (action === 'submitBiS') {
       const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
       writeBiSSubmission(data);
+      sendToBot('/bis', JSON.stringify({
+        nameRealm:   data.nameRealm || '',
+        bisLink:     data.bisLink   || '',
+        notes:       data.notes     || '',
+        submittedAt: new Date().toISOString()
+      }));
       return jsonpResponse(callback, { success: true });
     }
 
