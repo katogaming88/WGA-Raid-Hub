@@ -4,15 +4,6 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 
 ---
 
-## Season Signup
-
-- [ ] Officer approve/reject writes approved applicant to Roster sheet (#56)
-
-## M+ Exclusion Requests
-
-- [ ] Raider submits Raider.io profile link + optional exception notes to request exclusion from dungeon loot consideration (#57)
-- [ ] Officer reviews profile and approves or rejects -- approved players are marked M+ excluded in the sheet
-
 ## Loot Tracking
 
 - [ ] See who is missing loot for each slot (e.g. who still needs a trinket) (#9)
@@ -75,3 +66,5 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 - [x] Add/remove players from the roster directly from the page (#3)
 - [x] Change a player's role, trial status, or bench status from the page (#4)
 - [x] Officer notes per player -- free-text, stored server-side, visible only in officer view (#6)
+- [x] Officer approve/reject writes approved applicant to Roster sheet (#56, closed by PR #73)
+- [x] M+ exclusion request form -- raider submits Raider.io profile + notes; officer approval queue; approved players marked M+ excluded in sheet (#57, closed by PR #73)
