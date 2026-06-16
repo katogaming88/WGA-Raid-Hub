@@ -290,6 +290,10 @@ function submitAddPlayer() {
     }
     hideAddPlayerModal();
     buildOfficerDashboard();
+    if (typeof window._pendingRosterOnSuccess === 'function') {
+      window._pendingRosterOnSuccess();
+      window._pendingRosterOnSuccess = null;
+    }
   };
   var script = document.createElement('script');
   script.onerror = function() {
@@ -297,6 +301,7 @@ function submitAddPlayer() {
     if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Add Player'; }
     errEl.textContent = 'Network error. Try again.';
     errEl.style.display = '';
+    window._pendingRosterOnSuccess = null;
   };
   script.src = WEB_APP_URL + '?action=addPlayer&data=' + encodeURIComponent(JSON.stringify(data)).replace(/'/g, '%27') + '&callback=' + cbName;
   document.head.appendChild(script);

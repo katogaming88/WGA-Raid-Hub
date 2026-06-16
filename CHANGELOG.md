@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.2.0] - 2026-06-16
+
+### Added
+- Signup approve/deny: officer approve writes applicant to Pending Roster sheet and marks status in Roster Responses; deny marks the row as Denied. Status badges shown on all signup cards.
+- Pending Roster tab in the officer dashboard: lists approved applicants awaiting formal roster placement, with Add to Roster (pre-fills the Add Player modal) and Remove buttons.
+- M+ Exclusion system: raiders submit a Raider.io profile link from their character profile to request exclusion from dungeon loot consideration. Officers open/close the form via a toggle in the M+ Exclusions tab. Approved players are flagged in the Roster sheet (col L) and shown an Excluded badge on their profile.
+- Discord bot notifications for M+ exclusion submissions via the `/mplus` endpoint.
+
+---
+
 ## [2.1.0] - 2026-06-15
 
 ### Added

@@ -1,5 +1,5 @@
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION     = '2.1.0';
+var VERSION     = '2.2.0';
 var DATA        = null;
 
 var WOW_REALMS = [
@@ -203,6 +203,37 @@ function bisAllowedFor(nameRealm) {
 function toggleBisForm(firstName) {
   var form = document.getElementById('bisForm-' + firstName);
   if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+// -- M+ exclusion form actions ---------------------------------------------
+function toggleMPlusForm(firstName) {
+  var form = document.getElementById('mplusForm-' + firstName);
+  if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+function submitMPlusExclusionForm(nameRealm, firstName) {
+  var urlEl   = document.getElementById('mplusUrl-' + firstName);
+  var notesEl = document.getElementById('mplusNotes-' + firstName);
+  var formEl  = document.getElementById('mplusForm-' + firstName);
+  if (!urlEl || !urlEl.value.trim()) { if (urlEl) urlEl.style.borderColor = 'var(--melee)'; return; }
+  var data   = { nameRealm: nameRealm, raiderioUrl: urlEl.value.trim(), notes: notesEl ? notesEl.value.trim() : '' };
+  if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
+  var cbName = '_submitMPlusCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (result && result.success) {
+      if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Request submitted! An officer will review it shortly.</p>';
+    } else {
+      if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+    }
+  };
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+  };
+  script.src = WEB_APP_URL + '?action=submitMPlusExclusion&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
+  document.head.appendChild(script);
 }
 
 function submitBiSForm(nameRealm, firstName) {
@@ -453,6 +484,35 @@ function renderProfile(firstName, backTo, container) {
   }
   var bisHTML = bisStatusHTML + bisActionHTML;
 
+  // M+ exclusion section
+  var mplusHTML = '';
+  if (player.mPlusExcluded) {
+    mplusHTML =
+      '<div style="display:flex;align-items:center;gap:0.5rem;">' +
+        '<span class="signup-status-badge signup-status-open" style="font-size:0.8rem;">Excluded</span>' +
+        '<span style="font-size:0.92rem;color:var(--text-muted);">Excluded from dungeon loot consideration.</span>' +
+      '</div>';
+  } else if (backTo !== 'officer') {
+    if (DATA && DATA.mPlusExclusionsOpen) {
+      var fnMplus = player.firstName.replace(/'/g, "\\'");
+      var nrMplus = player.nameRealm.replace(/'/g, "\\'");
+      mplusHTML =
+        '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="toggleMPlusForm(\'' + fnMplus + '\')">Request M+ Exclusion</button>' +
+        '<div id="mplusForm-' + player.firstName + '" style="display:none;margin-top:0.75rem;">' +
+          '<div style="font-size:0.92rem;color:var(--text-muted);margin-bottom:0.5rem;">Submit your Raider.io profile to request exclusion from dungeon loot priority.</div>' +
+          '<input type="url" id="mplusUrl-' + player.firstName + '" placeholder="https://raider.io/characters/..." class="self-received-source" style="max-width:100%;font-size:1rem;">' +
+          '<textarea id="mplusNotes-' + player.firstName + '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
+          '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
+            '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="submitMPlusExclusionForm(\'' + nrMplus + '\',\'' + fnMplus + '\')">Submit</button>' +
+            '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'mplusForm-' + player.firstName + '\').style.display=\'none\'">Cancel</button>' +
+          '</div>' +
+          '<p class="self-received-note">An officer will review your request. Once approved you will be excluded from M+ loot consideration.</p>' +
+        '</div>';
+    } else {
+      mplusHTML = '<span style="font-size:0.92rem;color:var(--text-muted);">M+ exclusion requests are currently closed.</span>';
+    }
+  }
+
   // Build received lookup from loot history
   var receivedMap = {};
   if (lootEntry && lootEntry.items) {
@@ -596,6 +656,7 @@ function renderProfile(firstName, backTo, container) {
         '<div id="loot-list-'+player.firstName+'" style="display:none;margin-top:0.75rem;grid-template-columns:1fr 1fr;gap:0 1rem;">'+lootItemsHTML+'</div>' +
       '</div>' +
       '<div class="profile-section"><div class="section-label">BiS List</div>'+bisHTML+'</div>' +
+      (mplusHTML ? '<div class="profile-section"><div class="section-label">M+ Exclusion</div>'+mplusHTML+'</div>' : '') +
       '<div class="profile-section" onclick="var l=document.getElementById(\'prio-list-'+player.firstName+'\');l.style.display=l.style.display===\'none\'?\'block\':\'none\';" style="cursor:pointer;">' +
         '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Loot Priority <span style="font-size:0.95rem;color:var(--text-dim);">tap to expand</span></div>' +
         '<div id="prio-list-'+player.firstName+'" style="display:none;">'+priorityHTML+'</div>' +

@@ -71,10 +71,22 @@ function renderSignupResponses(signups) {
     signups.length + ' submission' + (signups.length !== 1 ? 's' : '') + '</div>';
 
   signups.forEach(function(s) {
-    var clsColor = classColor(s.className);
+    var clsColor  = classColor(s.className);
+    var isPending = s.status === 'Pending' || !s.status;
+    var statusBadge = isPending ? '' :
+      '<span class="signup-status-badge ' + (s.status === 'Approved' ? 'signup-status-open' : 'signup-status-closed') + '" style="font-size:0.7rem;padding:0.1rem 0.5rem;margin-left:0.4rem;">' + s.status + '</span>';
+    var actionBtns = isPending
+      ? '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);">' +
+          '<button class="btn request-approve-btn" onclick="approveSignupRow(' + s.rowIndex + ',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Approve</button>' +
+          '<button class="btn btn-danger" onclick="denySignupRow(' + s.rowIndex + ',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Deny</button>' +
+        '</div>'
+      : '';
     html += '<div class="signup-response-card" data-row="' + s.rowIndex + '">' +
       '<div class="signup-response-header">' +
-        '<span class="signup-response-name">' + s.charName + '-' + s.realm + '</span>' +
+        '<div style="display:flex;align-items:center;">' +
+          '<span class="signup-response-name">' + s.charName + '-' + s.realm + '</span>' +
+          statusBadge +
+        '</div>' +
         '<div style="display:flex;align-items:center;gap:0.75rem;">' +
           '<span class="signup-response-time">' + s.timestamp + '</span>' +
           '<button class="signup-delete-btn" onclick="deleteSignupRow(' + s.rowIndex + ', this)" title="Delete signup">x</button>' +
@@ -87,7 +99,7 @@ function renderSignupResponses(signups) {
     if (s.role)    html += '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Role: <span style="color:var(--text);">' + s.role + '</span></div>';
     if (s.discord) html += '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Discord: <span style="color:var(--text);">' + s.discord + '</span></div>';
     if (s.notes)   html += '<div style="font-size:0.97rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' + s.notes + '</div>';
-    html += '</div>';
+    html += actionBtns + '</div>';
   });
 
   container.innerHTML = html + '</div>';
@@ -111,5 +123,80 @@ function deleteSignupRow(rowIndex, btnEl) {
   var script = document.createElement('script');
   script.onerror = function() { delete window[cbName]; btnEl.disabled = false; btnEl.textContent = 'x'; };
   script.src = WEB_APP_URL + '?action=deleteSignup&row=' + rowIndex + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function approveSignupRow(rowIndex, btnEl) {
+  btnEl.disabled = true;
+  btnEl.textContent = '...';
+  var denyBtn = btnEl.nextElementSibling;
+  if (denyBtn) denyBtn.disabled = true;
+  var cbName = '_approveSignupCb' + rowIndex;
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (result.error) {
+      btnEl.disabled = false; btnEl.textContent = 'Approve';
+      if (denyBtn) denyBtn.disabled = false;
+      return;
+    }
+    var card = document.querySelector('.signup-response-card[data-row="' + rowIndex + '"]');
+    if (card) {
+      var nameEl = card.querySelector('.signup-response-name');
+      if (nameEl && nameEl.parentNode) {
+        var badge = document.createElement('span');
+        badge.className = 'signup-status-badge signup-status-open';
+        badge.style.cssText = 'font-size:0.7rem;padding:0.1rem 0.5rem;margin-left:0.4rem;';
+        badge.textContent = 'Approved';
+        nameEl.parentNode.appendChild(badge);
+      }
+      var actionRow = btnEl.parentNode;
+      if (actionRow) actionRow.remove();
+    }
+  };
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    btnEl.disabled = false; btnEl.textContent = 'Approve';
+    if (denyBtn) denyBtn.disabled = false;
+  };
+  script.src = WEB_APP_URL + '?action=approveSignup&row=' + rowIndex + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function denySignupRow(rowIndex, btnEl) {
+  if (!confirm('Deny this signup?')) return;
+  btnEl.disabled = true;
+  btnEl.textContent = '...';
+  var approveBtn = btnEl.previousElementSibling;
+  if (approveBtn) approveBtn.disabled = true;
+  var cbName = '_denySignupCb' + rowIndex;
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (result.error) {
+      btnEl.disabled = false; btnEl.textContent = 'Deny';
+      if (approveBtn) approveBtn.disabled = false;
+      return;
+    }
+    var card = document.querySelector('.signup-response-card[data-row="' + rowIndex + '"]');
+    if (card) {
+      var nameEl = card.querySelector('.signup-response-name');
+      if (nameEl && nameEl.parentNode) {
+        var badge = document.createElement('span');
+        badge.className = 'signup-status-badge signup-status-closed';
+        badge.style.cssText = 'font-size:0.7rem;padding:0.1rem 0.5rem;margin-left:0.4rem;';
+        badge.textContent = 'Denied';
+        nameEl.parentNode.appendChild(badge);
+      }
+      var actionRow = btnEl.parentNode;
+      if (actionRow) actionRow.remove();
+    }
+  };
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    btnEl.disabled = false; btnEl.textContent = 'Deny';
+    if (approveBtn) approveBtn.disabled = false;
+  };
+  script.src = WEB_APP_URL + '?action=denySignup&row=' + rowIndex + '&callback=' + cbName;
   document.head.appendChild(script);
 }

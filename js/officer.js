@@ -14,13 +14,15 @@ function switchTab(name) {
   document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
   event.target.classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
-  if (name === 'conflicts')  buildConflicts();
-  if (name === 'fairness')   buildFairness();
-  if (name === 'attendance') buildAttendanceTab();
-  if (name === 'priority')   buildPriorityTab();
-  if (name === 'signups')    buildSignupsTab();
-  if (name === 'requests')   buildRequestsTab();
-  if (name === 'bis')        buildBisTab();
+  if (name === 'conflicts')     buildConflicts();
+  if (name === 'fairness')      buildFairness();
+  if (name === 'attendance')    buildAttendanceTab();
+  if (name === 'priority')      buildPriorityTab();
+  if (name === 'signups')       buildSignupsTab();
+  if (name === 'pendingRoster') buildPendingRosterTab();
+  if (name === 'requests')      buildRequestsTab();
+  if (name === 'bis')           buildBisTab();
+  if (name === 'mplus')         buildMPlusTab();
 }
 
 function showOfficerPrompt() {
@@ -67,6 +69,7 @@ function buildOfficerDashboard() {
   buildRosterTable();
   renderSignupToggle();
   renderBisToggle();
+  renderMPlusToggle();
   if (DATA._loadedAt) {
     var t  = DATA._loadedAt;
     var h  = t.getHours(), m = t.getMinutes();

@@ -44,11 +44,18 @@ const CFG = {
   // ── Roster Responses tab ─────────────────────────────────────────
   responsesSheet:    'Roster Responses',
 
+  // ── Pending Roster tab ───────────────────────────────────────────
+  applicantsSheet:   'Pending Roster',
+
   // ── Self Received Requests tab ────────────────────────────────────
   selfReceivedSheet: 'Self Received Requests',
 
   // ── BiS Responses tab ────────────────────────────────────────────────
   bisResponsesSheet: 'BiS Responses',
+
+  // ── M+ Exclusion Requests tab ─────────────────────────────────────
+  mPlusExclusionSheet:    'M+ Exclusion Requests',
+  rosterMPlusExcludedCol: 12,  // L -- M+ Excluded flag
 
   // ── Loot Sheet ───────────────────────────────────────────────────
   lootSheet:         'Loot Data',
@@ -110,6 +117,13 @@ function doGet(e) {
       props.setProperty('bisSubmissionsOpen', open ? 'true' : 'false');
       cache.remove('rosterPayload');
       return jsonpResponse(callback, { success: true, bisSubmissionsOpen: open });
+    }
+
+    if (action === 'setMPlusExclusionsOpen') {
+      const open = e.parameter.value === 'true';
+      props.setProperty('mPlusExclusionsOpen', open ? 'true' : 'false');
+      cache.remove('rosterPayload');
+      return jsonpResponse(callback, { success: true, mPlusExclusionsOpen: open });
     }
 
     if (action === 'submitSignup') {
@@ -281,6 +295,82 @@ function doGet(e) {
       return jsonpResponse(callback, { success: true });
     }
 
+    if (action === 'approveSignup') {
+      const row = parseInt(e.parameter.row, 10);
+      if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
+      const ss    = SpreadsheetApp.getActiveSpreadsheet();
+      const sheet = ss.getSheetByName(CFG.responsesSheet);
+      if (!sheet) return jsonpResponse(callback, { error: 'Sheet not found' });
+      const rowData = sheet.getRange(row, 1, 1, 9).getValues()[0];
+      writeToApplicants({
+        charName:  String(rowData[1] || ''),
+        realm:     String(rowData[2] || ''),
+        className: String(rowData[3] || ''),
+        mainSpec:  String(rowData[4] || ''),
+        offSpecs:  String(rowData[5] || ''),
+        role:      String(rowData[6] || ''),
+        discord:   String(rowData[7] || ''),
+        notes:     String(rowData[8] || '')
+      });
+      updateSignupStatus(row, 'Approved');
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'denySignup') {
+      const row = parseInt(e.parameter.row, 10);
+      if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
+      updateSignupStatus(row, 'Denied');
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'submitMPlusExclusion') {
+      const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      writeMPlusExclusionRequest(data);
+      sendToBot('/mplus', JSON.stringify({
+        nameRealm:   data.nameRealm   || '',
+        raiderioUrl: data.raiderioUrl || '',
+        notes:       data.notes       || '',
+        submittedAt: new Date().toISOString()
+      }));
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'getPendingRoster') {
+      return jsonpResponse(callback, { entries: getPendingRosterEntries() });
+    }
+
+    if (action === 'removePendingRoster') {
+      const row = parseInt(e.parameter.row, 10);
+      if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
+      const ss    = SpreadsheetApp.getActiveSpreadsheet();
+      const sheet = ss.getSheetByName(CFG.applicantsSheet);
+      if (!sheet) return jsonpResponse(callback, { error: 'Sheet not found' });
+      sheet.deleteRow(row);
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'getMPlusExclusions') {
+      return jsonpResponse(callback, { submissions: getMPlusExclusionRequests('Pending') });
+    }
+
+    if (action === 'approveMPlusExclusion') {
+      const data      = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      const row       = parseInt(data.row, 10);
+      const nameRealm = String(data.nameRealm || '');
+      if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
+      setMPlusExcludedInRoster(nameRealm, true);
+      updateMPlusExclusionStatus(row, 'Approved');
+      cache.remove('rosterPayload');
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'rejectMPlusExclusion') {
+      const row = parseInt(e.parameter.row, 10);
+      if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
+      updateMPlusExclusionStatus(row, 'Rejected');
+      return jsonpResponse(callback, { success: true });
+    }
+
     const cached = cache.get('rosterPayload');
     const json   = cached || (() => {
       const fresh = JSON.stringify(buildPayload());
@@ -338,7 +428,8 @@ function getSignupResponses() {
       offSpecs:  String(row[5] || ''),
       role:      String(row[6] || ''),
       discord:   String(row[7] || ''),
-      notes:     String(row[8] || '')
+      notes:     String(row[8] || ''),
+      status:    String(row[9] || 'Pending')
     });
   }
   return results.reverse();
@@ -349,7 +440,7 @@ function writeSignup(data) {
   let sheet = ss.getSheetByName(CFG.responsesSheet);
   if (!sheet) {
     sheet = ss.insertSheet(CFG.responsesSheet);
-    sheet.appendRow(['Timestamp', 'Character', 'Realm', 'Class', 'Main Spec', 'Off Specs', 'Role', 'Discord', 'Notes']);
+    sheet.appendRow(['Timestamp', 'Character', 'Realm', 'Class', 'Main Spec', 'Off Specs', 'Role', 'Discord', 'Notes', 'Status']);
     sheet.setFrozenRows(1);
   }
   sheet.appendRow([
@@ -361,7 +452,8 @@ function writeSignup(data) {
     (data.offSpecs || []).join(', '),
     data.role      || '',
     data.discord   || '',
-    data.notes     || ''
+    data.notes     || '',
+    'Pending'
   ]);
 }
 
@@ -450,14 +542,16 @@ function buildPayload() {
     sheets[sheet.getName()] = sheet;
   }
 
-  const scriptProps       = PropertiesService.getScriptProperties();
-  const signupsOpen       = scriptProps.getProperty('signupsOpen')       === 'true';
+  const scriptProps        = PropertiesService.getScriptProperties();
+  const signupsOpen        = scriptProps.getProperty('signupsOpen')        === 'true';
   const bisSubmissionsOpen = scriptProps.getProperty('bisSubmissionsOpen') === 'true';
+  const mPlusExclusionsOpen = scriptProps.getProperty('mPlusExclusionsOpen') === 'true';
 
   return {
-    generatedAt:          new Date().toISOString(),
-    signupsOpen:          signupsOpen,
+    generatedAt:           new Date().toISOString(),
+    signupsOpen:           signupsOpen,
     bisSubmissionsOpen:    bisSubmissionsOpen,
+    mPlusExclusionsOpen:   mPlusExclusionsOpen,
     bisAllowedPlayers:     getBisAllowedPlayers(),
     playerNotes:           getPlayerNotes(),
     roster:        getRoster(sheets),
@@ -508,12 +602,14 @@ function getRoster(sheets) {
     const spec      = String(row[CFG.rosterSpecCol    - 1] || '').trim();
     const role      = String(row[CFG.rosterRoleCol    - 1] || '').trim();
     const bisLink   = String(row[CFG.rosterBisLinkCol - 1] || '').trim();
-    const sortKey = String(row[CFG.rosterSortKeyCol - 1] || '').trim();
-    const isBench = String(Math.floor(Number(sortKey) / 1000)) === '6';
+    const sortKey   = String(row[CFG.rosterSortKeyCol - 1] || '').trim();
+    const isBench   = String(Math.floor(Number(sortKey) / 1000)) === '6';
+    const mPlusExcluded = row[CFG.rosterMPlusExcludedCol - 1] === true ||
+                          String(row[CFG.rosterMPlusExcludedCol - 1]).toLowerCase() === 'true';
 
     if (!role) continue;
 
-    players.push({ nameRealm, firstName, realm, isTrial, isBench, attendance: attendMap[firstName] || '', nick, class: charClass, spec, role, bisLink });
+    players.push({ nameRealm, firstName, realm, isTrial, isBench, attendance: attendMap[firstName] || '', nick, class: charClass, spec, role, bisLink, mPlusExcluded });
   }
 
   return players;
@@ -902,6 +998,122 @@ function testAttendanceRows() {
     if (row[0] || row[1] || row[2]) {
       Logger.log('Row ' + (i+1) + ': A=' + row[0] + ' | B=' + row[1] + ' | C=' + row[2]);
       count++;
+    }
+  }
+}
+
+// ── Signup helpers ────────────────────────────────────────────────────────────
+
+function updateSignupStatus(row, status) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.responsesSheet);
+  if (!sheet) return;
+  sheet.getRange(row, 10).setValue(status);
+}
+
+function writeToApplicants(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(CFG.applicantsSheet);
+  if (!sheet) {
+    sheet = ss.insertSheet(CFG.applicantsSheet);
+    sheet.appendRow(['Character-Realm', 'Class', 'Main Spec', 'Off Specs', 'Role', 'Discord']);
+    sheet.setFrozenRows(1);
+  }
+  sheet.appendRow([
+    (data.charName || '') + (data.realm ? '-' + data.realm : ''),
+    data.className || '',
+    data.mainSpec  || '',
+    data.offSpecs  || '',
+    data.role      || '',
+    data.discord   || ''
+  ]);
+}
+
+function getPendingRosterEntries() {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.applicantsSheet);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  const data    = sheet.getDataRange().getValues();
+  const results = [];
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (!row[0]) continue;
+    results.push({
+      rowIndex:  i + 1,
+      nameRealm: String(row[0] || ''),
+      className: String(row[1] || ''),
+      mainSpec:  String(row[2] || ''),
+      offSpecs:  String(row[3] || ''),
+      role:      String(row[4] || ''),
+      discord:   String(row[5] || '')
+    });
+  }
+  return results.reverse();
+}
+
+// ── M+ Exclusion helpers ──────────────────────────────────────────────────────
+
+function writeMPlusExclusionRequest(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(CFG.mPlusExclusionSheet);
+  if (!sheet) {
+    sheet = ss.insertSheet(CFG.mPlusExclusionSheet);
+    sheet.appendRow(['Timestamp', 'Name-Realm', 'Raider.io URL', 'Notes', 'Status']);
+    sheet.setFrozenRows(1);
+  }
+  sheet.appendRow([
+    new Date(),
+    data.nameRealm   || '',
+    data.raiderioUrl || '',
+    data.notes       || '',
+    'Pending'
+  ]);
+}
+
+function getMPlusExclusionRequests(statusFilter) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.mPlusExclusionSheet);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+
+  const data    = sheet.getDataRange().getValues();
+  const results = [];
+  for (let i = 1; i < data.length; i++) {
+    const row    = data[i];
+    const status = String(row[4] || '').trim();
+    if (statusFilter && status !== statusFilter) continue;
+    if (!row[1]) continue;
+    const ts = row[0] instanceof Date
+      ? Utilities.formatDate(row[0], Session.getScriptTimeZone(), 'MMM d, yyyy HH:mm')
+      : String(row[0] || '');
+    results.push({
+      rowIndex:    i + 1,
+      timestamp:   ts,
+      nameRealm:   String(row[1] || ''),
+      raiderioUrl: String(row[2] || ''),
+      notes:       String(row[3] || ''),
+      status:      status
+    });
+  }
+  return results.reverse();
+}
+
+function updateMPlusExclusionStatus(row, status) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.mPlusExclusionSheet);
+  if (!sheet) return;
+  sheet.getRange(row, 5).setValue(status);
+}
+
+function setMPlusExcludedInRoster(nameRealm, excluded) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.rosterSheet);
+  if (!sheet) return;
+  const data = sheet.getDataRange().getValues();
+  for (let i = CFG.rosterDataStart - 1; i < data.length; i++) {
+    const nr = String(data[i][CFG.rosterPlayerCol - 1] || '').trim();
+    if (nr.toLowerCase() === nameRealm.toLowerCase()) {
+      sheet.getRange(i + 1, CFG.rosterMPlusExcludedCol).setValue(excluded ? true : false);
+      return;
     }
   }
 }
