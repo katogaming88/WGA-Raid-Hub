@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.0.3] - 2026-06-15
+
+### Changed
+- Roster table on mobile: BiS Link column hidden to reduce width; table wrapped in a horizontal scroll container so only the table scrolls, not the whole page
+
+---
+
 ## [2.0.2] - 2026-06-15
 
 ### Changed
