@@ -32,6 +32,28 @@ function toggleMPlusOpen() {
   document.head.appendChild(script);
 }
 
+function confirmClearAllMPlusExclusions() {
+  var el = document.getElementById('mplusClearConfirm');
+  if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+function executeClearAllMPlusExclusions() {
+  var confirmEl = document.getElementById('mplusClearConfirm');
+  if (confirmEl) confirmEl.style.display = 'none';
+
+  var cbName = '_clearMPlusCb';
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (result && result.success && DATA && DATA.roster) {
+      DATA.roster.forEach(function(p) { p.mPlusExcluded = false; });
+    }
+  };
+  var script = document.createElement('script');
+  script.onerror = function() { delete window[cbName]; };
+  script.src = WEB_APP_URL + '?action=clearAllMPlusExclusions&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
 function buildMPlusTab() {
   renderMPlusToggle();
   var container = document.getElementById('mplusContainer');
@@ -92,18 +114,48 @@ function renderMPlusSubmissions(submissions) {
 }
 
 function approveMPlusExclusion(rowIndex, nameRealm, btnEl) {
+  var actionsDiv = btnEl.parentNode;
+  var noteId     = '_mplusNote' + rowIndex;
+  actionsDiv.innerHTML =
+    '<div style="width:100%;">' +
+      '<div style="font-size:0.92rem;color:var(--text-muted);margin-bottom:0.4rem;">Officer note (optional):</div>' +
+      '<textarea id="' + noteId + '" rows="2" placeholder="e.g. Focus on getting sockets this week instead" style="width:100%;box-sizing:border-box;background:var(--bg-alt);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:0.4rem 0.5rem;font-size:0.88rem;resize:vertical;"></textarea>' +
+      '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
+        '<button id="_mplusApproveConfirm' + rowIndex + '" class="btn request-approve-btn" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Approve</button>' +
+        '<button id="_mplusApproveCancel' + rowIndex + '" class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Cancel</button>' +
+      '</div>' +
+    '</div>';
+
+  var noteInput  = document.getElementById(noteId);
+  var confirmBtn = document.getElementById('_mplusApproveConfirm' + rowIndex);
+  var cancelBtn  = document.getElementById('_mplusApproveCancel' + rowIndex);
+
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', function() {
+      var note = noteInput ? noteInput.value.trim() : '';
+      confirmApproveMPlusExclusion(rowIndex, nameRealm, note, confirmBtn);
+    });
+  }
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function() {
+      var nrSafe = nameRealm.replace(/'/g, "\\'");
+      actionsDiv.innerHTML =
+        '<button class="btn request-approve-btn" onclick="approveMPlusExclusion(' + rowIndex + ',\'' + nrSafe + '\',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Approve</button>' +
+        '<button class="btn btn-danger" onclick="rejectMPlusExclusion(' + rowIndex + ',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Reject</button>';
+    });
+  }
+}
+
+function confirmApproveMPlusExclusion(rowIndex, nameRealm, note, btnEl) {
   btnEl.disabled = true;
   btnEl.textContent = '...';
-  var rejectBtn = btnEl.nextElementSibling;
-  if (rejectBtn) rejectBtn.disabled = true;
 
-  var data   = { row: rowIndex, nameRealm: nameRealm };
+  var data   = { row: rowIndex, nameRealm: nameRealm, note: note };
   var cbName = '_approveMPlusCb' + rowIndex;
   window[cbName] = function(result) {
     delete window[cbName];
     if (result.error) {
       btnEl.disabled = false; btnEl.textContent = 'Approve';
-      if (rejectBtn) rejectBtn.disabled = false;
       return;
     }
     var card = document.querySelector('.request-card[data-row="' + rowIndex + '"]');
@@ -117,7 +169,6 @@ function approveMPlusExclusion(rowIndex, nameRealm, btnEl) {
   script.onerror = function() {
     delete window[cbName];
     btnEl.disabled = false; btnEl.textContent = 'Approve';
-    if (rejectBtn) rejectBtn.disabled = false;
   };
   script.src = WEB_APP_URL + '?action=approveMPlusExclusion&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
   document.head.appendChild(script);

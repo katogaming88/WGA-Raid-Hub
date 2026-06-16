@@ -54,8 +54,7 @@ const CFG = {
   bisResponsesSheet: 'BiS Responses',
 
   // ── M+ Exclusion Requests tab ─────────────────────────────────────
-  mPlusExclusionSheet:    'M+ Exclusion Requests',
-  rosterMPlusExcludedCol: 12,  // L -- M+ Excluded flag
+  mPlusExclusionSheet: 'M+ Exclusion Requests',
 
   // ── Loot Sheet ───────────────────────────────────────────────────
   lootSheet:         'Loot Data',
@@ -349,6 +348,32 @@ function doGet(e) {
       return jsonpResponse(callback, { success: true });
     }
 
+    if (action === 'setMPlusExcluded') {
+      const nameRealm = String(e.parameter.nameRealm || '').trim();
+      const excluded  = e.parameter.value === 'true';
+      if (!nameRealm) return jsonpResponse(callback, { error: 'Missing nameRealm' });
+      const list = getMPlusManualExcluded().filter(function(n) { return n !== nameRealm; });
+      if (excluded) list.push(nameRealm);
+      setMPlusManualExcluded(list);
+      cache.remove('rosterPayload');
+      return jsonpResponse(callback, { success: true, excluded: excluded });
+    }
+
+    if (action === 'clearAllMPlusExclusions') {
+      setMPlusManualExcluded([]);
+      const exSheet = ss.getSheetByName(CFG.mPlusExclusionSheet);
+      if (exSheet && exSheet.getLastRow() >= 2) {
+        const exData = exSheet.getDataRange().getValues();
+        for (let i = 1; i < exData.length; i++) {
+          if (String(exData[i][4] || '').trim() === 'Approved') {
+            exSheet.getRange(i + 1, 5).setValue('Reset');
+          }
+        }
+      }
+      cache.remove('rosterPayload');
+      return jsonpResponse(callback, { success: true });
+    }
+
     if (action === 'getMPlusExclusions') {
       return jsonpResponse(callback, { submissions: getMPlusExclusionRequests('Pending') });
     }
@@ -357,9 +382,13 @@ function doGet(e) {
       const data      = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
       const row       = parseInt(data.row, 10);
       const nameRealm = String(data.nameRealm || '');
+      const note      = String(data.note || '');
       if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
-      setMPlusExcludedInRoster(nameRealm, true);
       updateMPlusExclusionStatus(row, 'Approved');
+      if (note) {
+        const exSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CFG.mPlusExclusionSheet);
+        if (exSheet) exSheet.getRange(row, 6).setValue(note);
+      }
       cache.remove('rosterPayload');
       return jsonpResponse(callback, { success: true });
     }
@@ -564,9 +593,46 @@ function buildPayload() {
   };
 }
 
+function getMPlusManualExcluded() {
+  const val = PropertiesService.getScriptProperties().getProperty('mPlusManualExcluded');
+  try { return JSON.parse(val || '[]'); } catch(e) { return []; }
+}
+
+function setMPlusManualExcluded(arr) {
+  PropertiesService.getScriptProperties().setProperty('mPlusManualExcluded', JSON.stringify(arr));
+}
+
+function getApprovedMPlusExcludedSet(sheets) {
+  const excluded = {};
+  const notes    = {};
+  // From approved requests
+  const sheet = sheets[CFG.mPlusExclusionSheet];
+  if (sheet && sheet.getLastRow() >= 2) {
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      const status    = String(data[i][4] || '').trim();
+      const nameRealm = String(data[i][1] || '').trim();
+      const note      = String(data[i][5] || '').trim();
+      if (status === 'Approved' && nameRealm) {
+        excluded[nameRealm.toLowerCase()] = true;
+        if (note) notes[nameRealm.toLowerCase()] = note;
+      }
+    }
+  }
+  // From manual overrides
+  for (const nr of getMPlusManualExcluded()) {
+    if (nr) excluded[nr.toLowerCase()] = true;
+  }
+  return { excluded, notes };
+}
+
 function getRoster(sheets) {
   const sheet = sheets[CFG.rosterSheet];
   if (!sheet) return [];
+
+  const mPlusData = getApprovedMPlusExcludedSet(sheets);
+  const mPlusExcludedSet = mPlusData.excluded;
+  const mPlusNoteMap     = mPlusData.notes;
 
   // Build attendance lookup from Scoring tab: firstName -> attendance string
   const attendMap = {};
@@ -603,13 +669,13 @@ function getRoster(sheets) {
     const role      = String(row[CFG.rosterRoleCol    - 1] || '').trim();
     const bisLink   = String(row[CFG.rosterBisLinkCol - 1] || '').trim();
     const sortKey   = String(row[CFG.rosterSortKeyCol - 1] || '').trim();
-    const isBench   = String(Math.floor(Number(sortKey) / 1000)) === '6';
-    const mPlusExcluded = row[CFG.rosterMPlusExcludedCol - 1] === true ||
-                          String(row[CFG.rosterMPlusExcludedCol - 1]).toLowerCase() === 'true';
+    const isBench       = String(Math.floor(Number(sortKey) / 1000)) === '6';
+    const mPlusExcluded = !!mPlusExcludedSet[nameRealm.toLowerCase()];
+    const mPlusNote     = mPlusNoteMap[nameRealm.toLowerCase()] || '';
 
     if (!role) continue;
 
-    players.push({ nameRealm, firstName, realm, isTrial, isBench, attendance: attendMap[firstName] || '', nick, class: charClass, spec, role, bisLink, mPlusExcluded });
+    players.push({ nameRealm, firstName, realm, isTrial, isBench, attendance: attendMap[firstName] || '', nick, class: charClass, spec, role, bisLink, mPlusExcluded, mPlusNote });
   }
 
   return players;
@@ -1062,7 +1128,7 @@ function writeMPlusExclusionRequest(data) {
   let sheet = ss.getSheetByName(CFG.mPlusExclusionSheet);
   if (!sheet) {
     sheet = ss.insertSheet(CFG.mPlusExclusionSheet);
-    sheet.appendRow(['Timestamp', 'Name-Realm', 'Raider.io URL', 'Notes', 'Status']);
+    sheet.appendRow(['Timestamp', 'Name-Realm', 'Raider.io URL', 'Notes', 'Status', 'Officer Note']);
     sheet.setFrozenRows(1);
   }
   sheet.appendRow([
@@ -1095,7 +1161,8 @@ function getMPlusExclusionRequests(statusFilter) {
       nameRealm:   String(row[1] || ''),
       raiderioUrl: String(row[2] || ''),
       notes:       String(row[3] || ''),
-      status:      status
+      status:      status,
+      officerNote: String(row[5] || '')
     });
   }
   return results.reverse();
@@ -1108,16 +1175,3 @@ function updateMPlusExclusionStatus(row, status) {
   sheet.getRange(row, 5).setValue(status);
 }
 
-function setMPlusExcludedInRoster(nameRealm, excluded) {
-  const ss    = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(CFG.rosterSheet);
-  if (!sheet) return;
-  const data = sheet.getDataRange().getValues();
-  for (let i = CFG.rosterDataStart - 1; i < data.length; i++) {
-    const nr = String(data[i][CFG.rosterPlayerCol - 1] || '').trim();
-    if (nr.toLowerCase() === nameRealm.toLowerCase()) {
-      sheet.getRange(i + 1, CFG.rosterMPlusExcludedCol).setValue(excluded ? true : false);
-      return;
-    }
-  }
-}

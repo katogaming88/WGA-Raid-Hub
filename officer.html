@@ -161,8 +161,16 @@
               <span class="signup-status-label">M+ Exclusion Requests</span>
               <span class="signup-status-badge signup-status-closed" id="mplusStatusBadge">CLOSED</span>
             </div>
-            <div style="margin-top:1rem;">
+            <div style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center;">
               <button class="btn btn-muted" id="mplusToggleBtn" onclick="toggleMPlusOpen()">Open Requests</button>
+              <button class="btn btn-danger" onclick="confirmClearAllMPlusExclusions()">Clear All Exclusions</button>
+            </div>
+            <div id="mplusClearConfirm" style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
+              <span style="font-size:0.92rem;color:var(--melee);">This will remove all M+ exclusions for all players. Use at season reset.</span>
+              <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                <button class="btn btn-danger" onclick="executeClearAllMPlusExclusions()">Yes, Clear All</button>
+                <button class="btn btn-muted" onclick="document.getElementById('mplusClearConfirm').style.display='none'">Cancel</button>
+              </div>
             </div>
             <p class="signup-officer-note">Toggling opens or closes the M+ exclusion request form for raiders.</p>
           </div>

@@ -486,13 +486,18 @@ function renderProfile(firstName, backTo, container) {
 
   // M+ exclusion section
   var mplusHTML = '';
-  if (player.mPlusExcluded) {
+  if (backTo === 'officer') {
+    mplusHTML = '';
+  } else if (player.mPlusExcluded) {
     mplusHTML =
       '<div style="display:flex;align-items:center;gap:0.5rem;">' +
       '<span class="signup-status-badge signup-status-open" style="font-size:0.8rem;">Excluded</span>' +
       '<span style="font-size:0.92rem;color:var(--text-muted);">No longer required to do weekly M+ dungeons.</span>' +
-      '</div>';
-  } else if (backTo !== 'officer') {
+      '</div>' +
+      (player.mPlusNote
+        ? '<div style="font-size:0.92rem;color:var(--text);margin-top:0.4rem;font-style:italic;">' + player.mPlusNote + '</div>'
+        : '');
+  } else {
     if (DATA && DATA.mPlusExclusionsOpen) {
       var fnMplus = player.firstName.replace(/'/g, "\\'");
       var nrMplus = player.nameRealm.replace(/'/g, "\\'");
@@ -607,6 +612,10 @@ function renderProfile(firstName, backTo, container) {
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
       '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Bench</span>' +
       '<button id="benchToggle-' + player.firstName + '" class="btn ' + (player.isBench ? 'btn-gold' : 'btn-muted') + '" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="togglePlayerBench(\'' + nrSafe + '\',\'' + fnSafe + '\')">' + (player.isBench ? 'Remove from Bench' : 'Move to Bench') + '</button>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:0.75rem;">' +
+      '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">M+ Excl.</span>' +
+      '<button id="mplusExclToggle-' + player.firstName + '" class="btn ' + (player.mPlusExcluded ? 'btn-gold' : 'btn-muted') + '" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="toggleMPlusExcluded(\'' + nrSafe + '\',\'' + fnSafe + '\')">' + (player.mPlusExcluded ? 'Remove Exclusion' : 'Mark as Excluded') + '</button>' +
       '</div>' +
       '<div id="playerSettingsMsg-' + player.firstName + '" style="font-size:0.92rem;color:var(--text-muted);min-height:1.2rem;"></div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;padding-top:0.25rem;border-top:1px solid var(--border);margin-top:0.5rem;">' +
