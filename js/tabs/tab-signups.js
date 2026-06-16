@@ -61,6 +61,8 @@ function renderSignupResponses(signups) {
   var container = document.getElementById('signupsResponsesContainer');
   if (!container) return;
 
+  signups = signups.filter(function(s) { return s.status !== 'Approved'; });
+
   if (!signups.length) {
     container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No signups submitted yet.</p>';
     return;
@@ -140,17 +142,10 @@ function approveSignupRow(rowIndex, btnEl) {
       return;
     }
     var card = document.querySelector('.signup-response-card[data-row="' + rowIndex + '"]');
-    if (card) {
-      var nameEl = card.querySelector('.signup-response-name');
-      if (nameEl && nameEl.parentNode) {
-        var badge = document.createElement('span');
-        badge.className = 'signup-status-badge signup-status-open';
-        badge.style.cssText = 'font-size:0.7rem;padding:0.1rem 0.5rem;margin-left:0.4rem;';
-        badge.textContent = 'Approved';
-        nameEl.parentNode.appendChild(badge);
-      }
-      var actionRow = btnEl.parentNode;
-      if (actionRow) actionRow.remove();
+    if (card) card.remove();
+    var container = document.getElementById('signupsResponsesContainer');
+    if (container && !container.querySelector('.signup-response-card')) {
+      container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No signups submitted yet.</p>';
     }
   };
   var script = document.createElement('script');

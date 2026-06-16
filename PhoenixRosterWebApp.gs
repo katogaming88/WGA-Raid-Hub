@@ -813,7 +813,9 @@ function updateRosterField(nameRealm, field, value) {
     const rowPlayer = String(data[i][CFG.rosterPlayerCol - 1] || '').trim();
     if (rowPlayer.toLowerCase() !== nameRealm.toLowerCase()) continue;
     const sheetRow = i + 1;
-    if (field === 'isTrial') {
+    if (field === 'spec') {
+      sheet.getRange(sheetRow, CFG.rosterSpecCol).setValue(String(value || ''));
+    } else if (field === 'isTrial') {
       sheet.getRange(sheetRow, CFG.rosterTrialCol).setValue(value === true || value === 'true');
     } else if (field === 'role') {
       sheet.getRange(sheetRow, CFG.rosterRoleCol).setValue(String(value || ''));
@@ -1037,15 +1039,17 @@ function getPendingRosterEntries() {
   const results = [];
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    if (!row[0]) continue;
+    // Old format had Timestamp in col A; detect by checking if col A is a Date
+    const o = (row[0] instanceof Date) ? 1 : 0;
+    if (!row[0 + o]) continue;
     results.push({
       rowIndex:  i + 1,
-      nameRealm: String(row[0] || ''),
-      className: String(row[1] || ''),
-      mainSpec:  String(row[2] || ''),
-      offSpecs:  String(row[3] || ''),
-      role:      String(row[4] || ''),
-      discord:   String(row[5] || '')
+      nameRealm: String(row[0 + o] || ''),
+      className: String(row[1 + o] || ''),
+      mainSpec:  String(row[2 + o] || ''),
+      offSpecs:  String(row[3 + o] || ''),
+      role:      String(row[4 + o] || ''),
+      discord:   String(row[5 + o] || '')
     });
   }
   return results.reverse();
