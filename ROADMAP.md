@@ -47,6 +47,10 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 - [ ] Attendance trend on the character page -- recent-weeks indicator so raiders can self-monitor (#42)
 - [ ] Public leaderboard -- sortable by attendance %, BiS completion %, items received (#43)
 
+## Pre-Launch
+
+- [ ] Move Discord bot from personal server to guild server -- set up officer notification channel so all officers can see app notifications (#84)
+
 ## Future / Larger Features
 
 - [ ] Bench rotation fairness view -- bench rate per player (times benched vs. raids attended) to ensure fair rotation; similar to loot fairness view (#82)
