@@ -1,5 +1,5 @@
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION     = '2.0.6';
+var VERSION     = '2.1.0';
 var DATA        = null;
 
 var WOW_REALMS = [
