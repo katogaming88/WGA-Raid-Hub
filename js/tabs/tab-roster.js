@@ -95,14 +95,14 @@ function buildRosterTable() {
   }
   for (var r = 0; r < order.length; r++) { groups[order[r]].sort(sortFn); }
 
-  var html = '<thead><tr><th>Player</th><th>Attendance</th><th>Items</th><th>BiS Link</th><th>Status</th><th><button class="btn btn-gold" style="font-size:0.82rem;padding:0.25rem 0.75rem;white-space:nowrap;" onclick="showAddPlayerModal()">+ Add Player</button></th></tr></thead><tbody>';
+  var html = '<thead><tr><th>Player</th><th>Attendance</th><th>Items</th><th>BiS Link</th><th>M+ Excl.</th><th>Status</th><th><button class="btn btn-gold" style="font-size:0.82rem;padding:0.25rem 0.75rem;white-space:nowrap;" onclick="showAddPlayerModal()">+ Add Player</button></th></tr></thead><tbody>';
   var totalRows = 0;
 
   for (var r = 0; r < order.length; r++) {
     var role    = order[r];
     var players = groups[role];
     if (!players.length) continue;
-    html += '<tr class="group-header"><td colspan="6">'+labels[role]+'</td></tr>';
+    html += '<tr class="group-header"><td colspan="7">'+labels[role]+'</td></tr>';
     for (var j = 0; j < players.length; j++) {
       var p         = players[j];
       var name      = p.nick || p.firstName;
@@ -134,13 +134,14 @@ function buildRosterTable() {
         '</div></td>' +
         '<td>'+lootCount+'</td>' +
         '<td>'+(hasBis?'<span style="color:var(--heal);font-size:1.1rem;">&#10003;</span>':'<span style="color:var(--text-dim);">-</span>')+'</td>' +
+        '<td>'+(p.mPlusExcluded?'<span style="color:var(--heal);font-size:1.1rem;">&#10003;</span>':'<span style="color:var(--text-dim);">-</span>')+'</td>' +
         '<td>'+statusTags+'</td>' +
         '<td></td>' +
         '</tr>';
       totalRows++;
     }
   }
-  if (totalRows === 0) html += '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem;">No players match the current filters.</td></tr>';
+  if (totalRows === 0) html += '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem;">No players match the current filters.</td></tr>';
   html += '</tbody>';
   document.getElementById('rosterTable').innerHTML = html;
 
@@ -290,6 +291,10 @@ function submitAddPlayer() {
     }
     hideAddPlayerModal();
     buildOfficerDashboard();
+    if (typeof window._pendingRosterOnSuccess === 'function') {
+      window._pendingRosterOnSuccess();
+      window._pendingRosterOnSuccess = null;
+    }
   };
   var script = document.createElement('script');
   script.onerror = function() {
@@ -297,6 +302,7 @@ function submitAddPlayer() {
     if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Add Player'; }
     errEl.textContent = 'Network error. Try again.';
     errEl.style.display = '';
+    window._pendingRosterOnSuccess = null;
   };
   script.src = WEB_APP_URL + '?action=addPlayer&data=' + encodeURIComponent(JSON.stringify(data)).replace(/'/g, '%27') + '&callback=' + cbName;
   document.head.appendChild(script);
@@ -422,6 +428,36 @@ function togglePlayerBench(nameRealm, firstName) {
   var script = document.createElement('script');
   script.onerror = function() { delete window[cbName]; if (btn) { btn.disabled = false; } };
   script.src = WEB_APP_URL + '?action=updatePlayerField&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: 'isBench', value: newVal })) + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function toggleMPlusExcluded(nameRealm, firstName) {
+  var player = DATA && DATA.roster.find(function(p) { return p.nameRealm === nameRealm; });
+  if (!player) return;
+  var newVal = !player.mPlusExcluded;
+  var btn = document.getElementById('mplusExclToggle-' + firstName);
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  var cbName = '_mplusExclCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (result && result.success && DATA) {
+      var p = DATA.roster.find(function(p) { return p.nameRealm === nameRealm; });
+      if (p) p.mPlusExcluded = newVal;
+    }
+    if (btn) {
+      btn.disabled = false;
+      btn.className = 'btn ' + (newVal ? 'btn-gold' : 'btn-muted');
+      btn.textContent = newVal ? 'Remove Exclusion' : 'Mark as Excluded';
+    }
+    var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
+    if (msgEl) {
+      msgEl.textContent = result && result.error ? 'Failed to save.' : 'Saved.';
+      setTimeout(function() { if (msgEl) msgEl.textContent = ''; }, 2000);
+    }
+  };
+  var script = document.createElement('script');
+  script.onerror = function() { delete window[cbName]; if (btn) { btn.disabled = false; } };
+  script.src = WEB_APP_URL + '?action=setMPlusExcluded&nameRealm=' + encodeURIComponent(nameRealm) + '&value=' + (newVal ? 'true' : 'false') + '&callback=' + cbName;
   document.head.appendChild(script);
 }
 

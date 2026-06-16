@@ -49,8 +49,10 @@
         <button class="nav-item" onclick="switchTab('attendance')">Attendance</button>
         <button class="nav-item" onclick="switchTab('priority')">Priority</button>
         <button class="nav-item" onclick="switchTab('signups')">Signups</button>
+        <button class="nav-item" onclick="switchTab('pendingRoster')">Pending Roster</button>
         <button class="nav-item" onclick="switchTab('requests')">Received Item Requests</button>
         <button class="nav-item" onclick="switchTab('bis')">BiS Submissions</button>
+        <button class="nav-item" onclick="switchTab('mplus')">M+ Exclusions</button>
       </nav>
 
       <div class="officer-main">
@@ -127,6 +129,11 @@
           <div id="signupsResponsesContainer"></div>
         </div>
 
+        <!-- Pending Roster tab -->
+        <div id="tab-pendingRoster" class="tab-panel">
+          <div id="pendingRosterContainer"></div>
+        </div>
+
         <!-- Self Received Requests tab -->
         <div id="tab-requests" class="tab-panel">
           <div id="requestsContainer"></div>
@@ -145,6 +152,29 @@
             <p class="signup-officer-note">Toggling submissions shows or hides the BiS list submit form for raiders.</p>
           </div>
           <div id="bisContainer"></div>
+        </div>
+
+        <!-- M+ Exclusions tab -->
+        <div id="tab-mplus" class="tab-panel">
+          <div class="signup-officer-panel">
+            <div class="signup-status-row">
+              <span class="signup-status-label">M+ Exclusion Requests</span>
+              <span class="signup-status-badge signup-status-closed" id="mplusStatusBadge">CLOSED</span>
+            </div>
+            <div style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center;">
+              <button class="btn btn-muted" id="mplusToggleBtn" onclick="toggleMPlusOpen()">Open Requests</button>
+              <button class="btn btn-danger" onclick="confirmClearAllMPlusExclusions()">Clear All Exclusions</button>
+            </div>
+            <div id="mplusClearConfirm" style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
+              <span style="font-size:0.92rem;color:var(--melee);">This will remove all M+ exclusions for all players. Use at season reset.</span>
+              <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                <button class="btn btn-danger" onclick="executeClearAllMPlusExclusions()">Yes, Clear All</button>
+                <button class="btn btn-muted" onclick="document.getElementById('mplusClearConfirm').style.display='none'">Cancel</button>
+              </div>
+            </div>
+            <p class="signup-officer-note">Toggling opens or closes the M+ exclusion request form for raiders.</p>
+          </div>
+          <div id="mplusContainer"></div>
         </div>
 
         <!-- Priority tab -->
@@ -238,6 +268,8 @@
 <script src="js/tabs/tab-signups.js"></script>
 <script src="js/tabs/tab-requests.js"></script>
 <script src="js/tabs/tab-bis.js"></script>
+<script src="js/tabs/tab-pending-roster.js"></script>
+<script src="js/tabs/tab-mplus.js"></script>
 <script src="js/tabs/tab-priority.js"></script>
 <script>document.getElementById('versionNum').textContent = VERSION;</script>
 </body>
