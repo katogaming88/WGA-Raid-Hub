@@ -166,6 +166,13 @@ function doGet(e) {
       return jsonpResponse(callback, { requests: getSelfReceivedRequests('Pending') });
     }
 
+    if (action === 'directMarkReceived') {
+      const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      writeSelfReceivedRequest(data, 'Approved');
+      cache.remove('rosterPayload');
+      return jsonpResponse(callback, { success: true });
+    }
+
     if (action === 'approveRequest') {
       const row = parseInt(e.parameter.row, 10);
       if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
@@ -486,7 +493,7 @@ function writeSignup(data) {
   ]);
 }
 
-function writeSelfReceivedRequest(data) {
+function writeSelfReceivedRequest(data, status) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(CFG.selfReceivedSheet);
   if (!sheet) {
@@ -501,7 +508,7 @@ function writeSelfReceivedRequest(data) {
     data.slot    || '',
     data.source  || '',
     data.notes   || '',
-    'Pending'
+    status || 'Pending'
   ]);
 }
 

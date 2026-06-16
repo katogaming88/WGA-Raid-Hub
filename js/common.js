@@ -1,5 +1,5 @@
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION = '2.2.0';
+var VERSION = '2.3.0';
 var DATA = null;
 
 var WOW_REALMS = [
@@ -339,29 +339,33 @@ function revokeBisForPlayer(nameRealm, firstName) {
 }
 
 // -- Self-received (raider marks item from profile) ------------------------
-function showSelfReceivedForm(firstName, item, slot, rowId) {
+function showSelfReceivedForm(firstName, item, slot, rowId, defaultSource, isOfficer) {
   if (event) event.stopPropagation();
   var formEl = document.getElementById('form-' + rowId);
   if (!formEl) return;
   if (formEl.style.display !== 'none') { formEl.style.display = 'none'; return; }
+  var sources = ['M+', 'Great Vault', 'Crafted', 'Catalyst', 'World Drop', 'Other'];
+  var opts = '<option value="">-- How did you get it? --</option>';
+  for (var si = 0; si < sources.length; si++) {
+    opts += '<option value="' + sources[si] + '"' + (sources[si] === defaultSource ? ' selected' : '') + '>' + sources[si] + '</option>';
+  }
+  var fnSafe   = firstName.replace(/'/g, "\\'");
+  var itemSafe = item.replace(/'/g, "\\'");
+  var slotSafe = slot.replace(/'/g, "\\'");
+  var submitFn = isOfficer
+    ? 'submitDirectMarkReceived(\'' + fnSafe + '\',\'' + itemSafe + '\',\'' + slotSafe + '\',\'' + rowId + '\')'
+    : 'submitSelfReceivedRequest(\'' + fnSafe + '\',\'' + itemSafe + '\',\'' + slotSafe + '\',\'' + rowId + '\')';
+  var submitLabel = isOfficer ? 'Mark received' : 'Submit request';
+  var noteText    = isOfficer ? '' : '<p class="self-received-note">An officer will review and approve this. Once approved it will appear on your profile.</p>';
   var formHtml =
     '<div class="self-received-form-inner" onclick="event.stopPropagation()">' +
-    '<select class="self-received-source" id="src-' + rowId + '">' +
-    '<option value="">-- How did you get it? --</option>' +
-    '<option value="M+">M+</option>' +
-    '<option value="Great Vault">Great Vault</option>' +
-    '<option value="Crafted">Crafted</option>' +
-    '<option value="Catalyst">Catalyst</option>' +
-    '<option value="World Drop">World Drop</option>' +
-    '<option value="Other">Other</option>' +
-    '</select>' +
+    '<select class="self-received-source" id="src-' + rowId + '">' + opts + '</select>' +
     '<textarea class="self-received-notes" id="notes-' + rowId + '" placeholder="Notes (optional)" rows="2"></textarea>' +
     '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
-    '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="event.stopPropagation();submitSelfReceivedRequest(\'' +
-    firstName.replace(/'/g, "\\'") + '\',\'' + item.replace(/'/g, "\\'") + '\',\'' + slot.replace(/'/g, "\\'") + '\',\'' + rowId + '\')">Submit request</button>' +
+    '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="event.stopPropagation();' + submitFn + '">' + submitLabel + '</button>' +
     '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="event.stopPropagation();document.getElementById(\'form-' + rowId + '\').style.display=\'none\'">Cancel</button>' +
     '</div>' +
-    '<p class="self-received-note">An officer will review and approve this. Once approved it will appear on your profile.</p>' +
+    noteText +
     '</div>';
   formEl.innerHTML = formHtml;
   formEl.style.display = 'block';
@@ -393,6 +397,44 @@ function submitSelfReceivedRequest(firstName, item, slot, rowId) {
     if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
   };
   script.src = WEB_APP_URL + '?action=requestSelfReceived&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function submitDirectMarkReceived(firstName, item, slot, rowId) {
+  var sourceEl = document.getElementById('src-' + rowId);
+  var notesEl  = document.getElementById('notes-' + rowId);
+  if (!sourceEl || !sourceEl.value) { if (sourceEl) sourceEl.style.borderColor = 'var(--melee)'; return; }
+  var source  = sourceEl.value;
+  var data    = { player: firstName, item: item, slot: slot, source: source, notes: notesEl ? notesEl.value : '' };
+  var formEl  = document.getElementById('form-' + rowId);
+  if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Saving...</p>';
+  var cbName = '_directRecCb' + rowId.replace(/[^a-zA-Z0-9]/g, '_');
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (formEl) {
+      if (result.error) {
+        formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed. Try again.</p>';
+      } else {
+        formEl.style.display = 'none';
+        var rowEl = document.getElementById(rowId);
+        if (rowEl) {
+          rowEl.classList.add('bis-received');
+          var btn = rowEl.querySelector('.mark-received-btn');
+          if (btn) btn.outerHTML = '<span class="bis-self-received-badge">' + source + '</span>';
+        }
+        if (DATA && DATA.selfReceived) {
+          if (!DATA.selfReceived[firstName]) DATA.selfReceived[firstName] = [];
+          DATA.selfReceived[firstName].push({ item: item, slot: slot, source: source });
+        }
+      }
+    }
+  };
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed. Try again.</p>';
+  };
+  script.src = WEB_APP_URL + '?action=directMarkReceived&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
   document.head.appendChild(script);
 }
 
@@ -564,11 +606,11 @@ function renderProfile(firstName, backTo, container) {
       rows += '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;">' + badges + '</div>';
     } else if (selfRec) {
       rows += '<span class="bis-self-received-badge">' + (selfRec.source || 'Self-reported') + '</span>';
-    } else if (!isGen) {
-      rows += '<button class="mark-received-btn" onclick="event.stopPropagation();showSelfReceivedForm(\'' +
-        player.firstName.replace(/'/g, "\\'") + '\',\'' + item.replace(/'/g, "\\'") + '\',\'' + slot.replace(/'/g, "\\'") + '\',\'' + rowId + '\')">Mark received</button>';
     } else {
-      rows += '<span></span>';
+      var defaultSrc  = isGen ? item : '';
+      var officerFlag = backTo === 'officer' ? 'true' : 'false';
+      rows += '<button class="mark-received-btn" onclick="event.stopPropagation();showSelfReceivedForm(\'' +
+        player.firstName.replace(/'/g, "\\'") + '\',\'' + item.replace(/'/g, "\\'") + '\',\'' + slot.replace(/'/g, "\\'") + '\',\'' + rowId + '\',\'' + defaultSrc.replace(/'/g, "\\'") + '\',' + officerFlag + ')">Mark received</button>';
     }
     rows += '</div>';
     rows += '<div class="self-received-form" id="form-' + rowId + '" style="display:none;"></div>';
@@ -584,7 +626,7 @@ function renderProfile(firstName, backTo, container) {
 
   var backLabel = backTo === 'officer' ? '<- Back to dashboard' : '<- Back to roster';
   var backAction = backTo === 'officer'
-    ? 'document.getElementById(\'officerProfile\').innerHTML=\'\';selectedOfficerPlayer=null;document.querySelectorAll(\'.player-row\').forEach(function(r){r.classList.remove(\'selected\')});'
+    ? 'var ir=document.getElementById(\'inlineProfileRow\');if(ir)ir.remove();selectedOfficerPlayer=null;document.querySelectorAll(\'.player-row\').forEach(function(r){r.classList.remove(\'selected\')});'
     : 'showView(\'landing\');document.getElementById(\'playerSelect\').value=\'\';';
 
   var officerActionsHTML = '';
@@ -594,7 +636,8 @@ function renderProfile(firstName, backTo, container) {
     var nrSafe = player.nameRealm.replace(/'/g, "\\'");
     officerActionsHTML =
       '<div class="profile-section">' +
-      '<div class="section-label">Player Settings</div>' +
+      '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var d=document.getElementById(\'player-settings-' + fnSafe + '\');var hint=document.getElementById(\'player-settings-hint-' + fnSafe + '\');var open=d.style.display!==\'none\';d.style.display=open?\'none\':\'\';hint.textContent=open?\'click to expand\':\'click to collapse\';">Player Settings<span id="player-settings-hint-' + fnSafe + '" style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
+      '<div id="player-settings-' + fnSafe + '" style="display:none;">' +
       '<div style="display:flex;flex-direction:column;gap:0.75rem;margin-top:0.5rem;">' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
       '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Role</span>' +
@@ -637,6 +680,7 @@ function renderProfile(firstName, backTo, container) {
       '<span id="playerNoteMsg-' + player.firstName + '" style="font-size:0.92rem;color:var(--text-muted);"></span>' +
       '</div>' +
       '</div>' +
+      '</div>' +
       '</div>';
   }
 
@@ -655,19 +699,19 @@ function renderProfile(firstName, backTo, container) {
     '</div>' +
     '</div>' +
     '<div class="profile-section"' + (hasPenalties ? ' onclick="var d=document.getElementById(\'attend-detail-' + player.firstName + '\');d.style.display=d.style.display===\'none\'?\'flex\':\'none\';" style="cursor:pointer;"' : '') + '>' +
-    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Attendance' + (hasPenalties ? '<span style="font-size:0.95rem;color:var(--text-dim);">tap to expand</span>' : '') + '</div>' +
+    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Attendance' + (hasPenalties ? '<span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span>' : '') + '</div>' +
     '<div class="attend-row"><div class="attend-bar-wrap"><div class="attend-bar" style="width:' + barWidth + '"></div></div><span class="attend-label">' + attendPct + '</span></div>' +
     attendExtra +
     '</div>' +
     '<div class="profile-section" onclick="var l=document.getElementById(\'loot-list-' + player.firstName + '\');l.style.display=l.style.display===\'none\'?\'grid\':\'none\';" style="cursor:pointer;">' +
-    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Items Received <span style="font-size:0.95rem;color:var(--text-dim);">tap to expand</span></div>' +
+    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Items Received <span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
     '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">' + lootCount + ' item' + (lootCount !== 1 ? 's' : '') + ' this tier</div>' +
     '<div id="loot-list-' + player.firstName + '" style="display:none;margin-top:0.75rem;grid-template-columns:1fr 1fr;gap:0 1rem;">' + lootItemsHTML + '</div>' +
     '</div>' +
     '<div class="profile-section"><div class="section-label">BiS List</div>' + bisHTML + '</div>' +
     (mplusHTML ? '<div class="profile-section"><div class="section-label">M+ Exclusion</div>' + mplusHTML + '</div>' : '') +
     '<div class="profile-section" onclick="var l=document.getElementById(\'prio-list-' + player.firstName + '\');l.style.display=l.style.display===\'none\'?\'block\':\'none\';" style="cursor:pointer;">' +
-    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Loot Priority <span style="font-size:0.95rem;color:var(--text-dim);">tap to expand</span></div>' +
+    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Loot Priority <span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
     '<div id="prio-list-' + player.firstName + '" style="display:none;">' + priorityHTML + '</div>' +
     '</div>' +
     officerActionsHTML +

@@ -150,11 +150,37 @@ function buildRosterTable() {
 }
 
 function officerSelectPlayer(firstName) {
+  var existingRow = document.getElementById('inlineProfileRow');
+
+  // Toggle closed if clicking the already-open player
+  if (selectedOfficerPlayer === firstName && existingRow) {
+    selectedOfficerPlayer = null;
+    existingRow.remove();
+    buildRosterTable();
+    return;
+  }
+
   selectedOfficerPlayer = firstName;
   buildRosterTable();
-  var container = document.getElementById('officerProfile');
-  renderProfile(firstName, 'officer', container);
-  container.scrollIntoView({ behavior:'smooth', block:'start' });
+
+  // Remove any existing inline row (buildRosterTable wipes the tbody but keep this as safety)
+  existingRow = document.getElementById('inlineProfileRow');
+  if (existingRow) existingRow.remove();
+
+  var playerRow = document.querySelector('.player-row[data-player="' + firstName + '"]');
+  if (!playerRow) return;
+
+  var inlineRow = document.createElement('tr');
+  inlineRow.id = 'inlineProfileRow';
+  var inlineCell = document.createElement('td');
+  inlineCell.colSpan = 7;
+  inlineCell.style.padding = '0';
+  inlineCell.style.border = 'none';
+  inlineRow.appendChild(inlineCell);
+  playerRow.parentNode.insertBefore(inlineRow, playerRow.nextSibling);
+
+  renderProfile(firstName, 'officer', inlineCell);
+  inlineRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 // -- Add player modal -------------------------------------------------------
@@ -443,11 +469,13 @@ function toggleMPlusExcluded(nameRealm, firstName) {
     if (result && result.success && DATA) {
       var p = DATA.roster.find(function(p) { return p.nameRealm === nameRealm; });
       if (p) p.mPlusExcluded = newVal;
+      buildRosterTable();
     }
-    if (btn) {
-      btn.disabled = false;
-      btn.className = 'btn ' + (newVal ? 'btn-gold' : 'btn-muted');
-      btn.textContent = newVal ? 'Remove Exclusion' : 'Mark as Excluded';
+    var newBtn = document.getElementById('mplusExclToggle-' + firstName);
+    if (newBtn) {
+      newBtn.disabled = false;
+      newBtn.className = 'btn ' + (newVal ? 'btn-gold' : 'btn-muted');
+      newBtn.textContent = newVal ? 'Remove Exclusion' : 'Mark as Excluded';
     }
     var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
     if (msgEl) {

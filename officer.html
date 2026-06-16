@@ -44,15 +44,13 @@
     <div class="officer-body">
       <nav class="officer-sidebar">
         <button class="nav-item active" onclick="switchTab('roster')">Roster</button>
-        <button class="nav-item" onclick="switchTab('conflicts')">Contested Items</button>
-        <button class="nav-item" onclick="switchTab('fairness')">Loot Fairness</button>
-        <button class="nav-item" onclick="switchTab('attendance')">Attendance</button>
+        <button class="nav-item" onclick="switchTab('loot')">Loot</button>
         <button class="nav-item" onclick="switchTab('priority')">Priority</button>
+        <button class="nav-item" onclick="switchTab('attendance')">Attendance</button>
         <button class="nav-item" onclick="switchTab('signups')">Signups</button>
-        <button class="nav-item" onclick="switchTab('pendingRoster')">Pending Roster</button>
-        <button class="nav-item" onclick="switchTab('requests')">Received Item Requests</button>
         <button class="nav-item" onclick="switchTab('bis')">BiS Submissions</button>
         <button class="nav-item" onclick="switchTab('mplus')">M+ Exclusions</button>
+        <button class="nav-item" onclick="switchTab('requests')">Received Item Requests</button>
       </nav>
 
       <div class="officer-main">
@@ -89,20 +87,35 @@
           <div id="officerProfile"></div>
         </div>
 
-        <!-- BiS Conflicts tab -->
-        <div id="tab-conflicts" class="tab-panel">
-          <div id="conflictsContent"></div>
+        <!-- Loot tab (Contested Items + Loot Fairness + Priority sub-tabs) -->
+        <div id="tab-loot" class="tab-panel">
+          <div class="filter-bar" style="margin-bottom:1rem;">
+            <button class="filter-chip active" id="loot-subtab-btn-conflicts" onclick="switchLootSubTab('conflicts', this)">Contested Items</button>
+            <button class="filter-chip" id="loot-subtab-btn-fairness" onclick="switchLootSubTab('fairness', this)">Loot Fairness</button>
+          </div>
+          <div id="loot-sub-conflicts">
+            <div id="conflictsContent"></div>
+          </div>
+          <div id="loot-sub-fairness" style="display:none;">
+            <div class="filter-bar" style="margin-bottom:1rem;">
+              <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Difficulty:</span>
+              <button class="filter-chip active" id="diff-chip-all" onclick="setDiffFilter('all')">All</button>
+              <button class="filter-chip" id="diff-chip-heroic" onclick="setDiffFilter('heroic')">Heroic</button>
+              <button class="filter-chip" id="diff-chip-mythic" onclick="setDiffFilter('mythic')">Mythic</button>
+            </div>
+            <div id="fairnessContent"></div>
+          </div>
         </div>
 
-        <!-- Loot Fairness tab -->
-        <div id="tab-fairness" class="tab-panel">
-          <div class="filter-bar" style="margin-bottom:1rem;">
-            <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Difficulty:</span>
-            <button class="filter-chip active" id="diff-chip-all" onclick="setDiffFilter('all')">All</button>
-            <button class="filter-chip" id="diff-chip-heroic" onclick="setDiffFilter('heroic')">Heroic</button>
-            <button class="filter-chip" id="diff-chip-mythic" onclick="setDiffFilter('mythic')">Mythic</button>
+        <!-- Priority tab -->
+        <div id="tab-priority" class="tab-panel">
+          <div class="filter-bar" style="margin-bottom:0.75rem;">
+            <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
+            <button class="filter-chip active" id="chip-prio-type">By Type</button>
+            <button class="filter-chip prio-chip-disabled" title="Raid source data not yet available">By Raid</button>
           </div>
-          <div id="fairnessContent"></div>
+          <input type="text" id="prioSearch" class="roster-search-input" placeholder="Search items..." oninput="buildPriorityTab()" style="margin-bottom:1rem;">
+          <div id="priorityContent"></div>
         </div>
 
         <!-- Attendance tab -->
@@ -116,22 +129,26 @@
 
         <!-- Signups tab -->
         <div id="tab-signups" class="tab-panel">
-          <div class="signup-officer-panel">
-            <div class="signup-status-row">
-              <span class="signup-status-label">Roster Signups</span>
-              <span class="signup-status-badge signup-status-closed" id="signupStatusBadge">CLOSED</span>
-            </div>
-            <div style="margin-top:1rem;">
-              <button class="btn btn-muted" id="signupToggleBtn" onclick="toggleSignupsOpen()">Open Signups</button>
-            </div>
-            <p class="signup-officer-note">Toggling signups shows or hides the Sign Up button for applicants.</p>
+          <div class="filter-bar" style="margin-bottom:1rem;">
+            <button class="filter-chip active" id="signups-subtab-btn-signups" onclick="switchSignupsSubTab('signups', this)">Signups</button>
+            <button class="filter-chip" id="signups-subtab-btn-pendingRoster" onclick="switchSignupsSubTab('pendingRoster', this)">Pending Roster</button>
           </div>
-          <div id="signupsResponsesContainer"></div>
-        </div>
-
-        <!-- Pending Roster tab -->
-        <div id="tab-pendingRoster" class="tab-panel">
-          <div id="pendingRosterContainer"></div>
+          <div id="signups-sub-signups">
+            <div class="signup-officer-panel">
+              <div class="signup-status-row">
+                <span class="signup-status-label">Roster Signups</span>
+                <span class="signup-status-badge signup-status-closed" id="signupStatusBadge">CLOSED</span>
+              </div>
+              <div style="margin-top:1rem;">
+                <button class="btn btn-muted" id="signupToggleBtn" onclick="toggleSignupsOpen()">Open Signups</button>
+              </div>
+              <p class="signup-officer-note">Toggling signups shows or hides the Sign Up button for applicants.</p>
+            </div>
+            <div id="signupsResponsesContainer"></div>
+          </div>
+          <div id="signups-sub-pendingRoster" style="display:none;">
+            <div id="pendingRosterContainer"></div>
+          </div>
         </div>
 
         <!-- Self Received Requests tab -->
@@ -177,16 +194,6 @@
           <div id="mplusContainer"></div>
         </div>
 
-        <!-- Priority tab -->
-        <div id="tab-priority" class="tab-panel">
-          <div class="filter-bar" style="margin-bottom:0.75rem;">
-            <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
-            <button class="filter-chip active" id="chip-prio-type">By Type</button>
-            <button class="filter-chip prio-chip-disabled" title="Raid source data not yet available">By Raid</button>
-          </div>
-          <input type="text" id="prioSearch" class="roster-search-input" placeholder="Search items..." oninput="buildPriorityTab()" style="margin-bottom:1rem;">
-          <div id="priorityContent"></div>
-        </div>
       </div>
     </div>
   </div>
