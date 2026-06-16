@@ -344,6 +344,9 @@ select#playerSelect option { background:#1a1d27; }
 
 /* Responsive */
 @media (max-width:640px) {
+  /* Prevent any element from causing page-level horizontal scroll */
+  body { overflow-x:hidden; }
+
   #officerView { padding:1rem 1rem 2rem; }
 
   /* Toolbar: stack title above buttons, buttons in a wrapping row */
