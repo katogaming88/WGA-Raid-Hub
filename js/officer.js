@@ -14,15 +14,55 @@ function switchTab(name) {
   document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
   event.target.classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
-  if (name === 'conflicts')     buildConflicts();
-  if (name === 'fairness')      buildFairness();
-  if (name === 'attendance')    buildAttendanceTab();
-  if (name === 'priority')      buildPriorityTab();
+  if (name === 'loot')       { resetLootSubTab(); buildConflicts(); }
+  if (name === 'attendance') buildAttendanceTab();
+  if (name === 'priority')   buildPriorityTab();
+  if (name === 'signups')    { resetSignupsSubTab(); buildSignupsTab(); }
+  if (name === 'requests')   buildRequestsTab();
+  if (name === 'bis')        buildBisTab();
+  if (name === 'mplus')      buildMPlusTab();
+}
+
+function resetSignupsSubTab() {
+  document.querySelectorAll('[id^="signups-subtab-btn-"]').forEach(function(b) { b.classList.remove('active'); });
+  var defaultBtn = document.getElementById('signups-subtab-btn-signups');
+  if (defaultBtn) defaultBtn.classList.add('active');
+  var subSignups  = document.getElementById('signups-sub-signups');
+  var subPending  = document.getElementById('signups-sub-pendingRoster');
+  if (subSignups) subSignups.style.display = '';
+  if (subPending) subPending.style.display = 'none';
+}
+
+function switchSignupsSubTab(name, btnEl) {
+  document.querySelectorAll('[id^="signups-subtab-btn-"]').forEach(function(b) { b.classList.remove('active'); });
+  if (btnEl) btnEl.classList.add('active');
+  var subSignups = document.getElementById('signups-sub-signups');
+  var subPending = document.getElementById('signups-sub-pendingRoster');
+  if (subSignups) subSignups.style.display = name === 'signups'       ? '' : 'none';
+  if (subPending) subPending.style.display = name === 'pendingRoster' ? '' : 'none';
   if (name === 'signups')       buildSignupsTab();
   if (name === 'pendingRoster') buildPendingRosterTab();
-  if (name === 'requests')      buildRequestsTab();
-  if (name === 'bis')           buildBisTab();
-  if (name === 'mplus')         buildMPlusTab();
+}
+
+function resetLootSubTab() {
+  document.querySelectorAll('[id^="loot-subtab-btn-"]').forEach(function(b) { b.classList.remove('active'); });
+  var defaultBtn = document.getElementById('loot-subtab-btn-conflicts');
+  if (defaultBtn) defaultBtn.classList.add('active');
+  var subConflicts = document.getElementById('loot-sub-conflicts');
+  var subFairness  = document.getElementById('loot-sub-fairness');
+  if (subConflicts) subConflicts.style.display = '';
+  if (subFairness)  subFairness.style.display  = 'none';
+}
+
+function switchLootSubTab(name, btnEl) {
+  document.querySelectorAll('[id^="loot-subtab-btn-"]').forEach(function(b) { b.classList.remove('active'); });
+  if (btnEl) btnEl.classList.add('active');
+  var subConflicts = document.getElementById('loot-sub-conflicts');
+  var subFairness  = document.getElementById('loot-sub-fairness');
+  if (subConflicts) subConflicts.style.display = name === 'conflicts' ? '' : 'none';
+  if (subFairness)  subFairness.style.display  = name === 'fairness'  ? '' : 'none';
+  if (name === 'conflicts') buildConflicts();
+  if (name === 'fairness')  buildFairness();
 }
 
 function showOfficerPrompt() {
