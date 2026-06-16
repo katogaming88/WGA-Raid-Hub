@@ -65,7 +65,7 @@ const CFG = {
   attendDataStart:  2,  // First data row
 };
 
-var BOT_BASE_URL     = 'https://team-phoenix-qx42.onrender.com';
+var BOT_BASE_URL = 'http://129.80.178.227:3000';
 var BOT_WEBHOOK_SECRET = 'teamPhoenixPPCBot';
 
 function sendToBot(path, payload) {
