@@ -364,4 +364,9 @@ select#playerSelect option { background:#1a1d27; }
   .nav-item:hover { border-left-color:transparent; }
 
   .fairness-row { grid-template-columns:100px 1fr 30px; gap:0.5rem; }
+
+  /* Roster table: scroll container + hide BiS Link column */
+  .roster-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .roster-table th:nth-child(4),
+  .roster-table td:nth-child(4) { display:none; }
 }
