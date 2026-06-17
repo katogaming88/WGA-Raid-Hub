@@ -47,6 +47,10 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 - [ ] Attendance trend on the character page -- recent-weeks indicator so raiders can self-monitor (#42)
 - [ ] Public leaderboard -- sortable by attendance %, BiS completion %, items received (#43)
 
+## Discord Bot
+
+- [ ] `/pending-roster` command -- lists all pending signup applicants with their name, class, spec, and role; intended for use during season signup windows so officers can review who is queued (#86)
+
 ## Pre-Launch
 
 - [ ] Move Discord bot from personal server to guild server -- set up officer notification channel so all officers can see app notifications (#84)
