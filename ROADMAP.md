@@ -40,7 +40,7 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 
 ## Raider Profile (read-only, no login required)
 
-- [ ] Visual BiS checklist on the character page -- each slot shown as received or still needed (#38)
+- [x] Visual BiS checklist on the character page -- each slot shown as received or still needed; section renamed from "Loot Priority" to "BiS Checklist" (#38)
 - [ ] BiS completion percentage on each player's profile (#39)
 - [ ] "Fully BiS" badge when a player has received every raid-source BiS item (#40)
 - [ ] Last received item highlighted prominently on the profile ("Last received: X on date Y") (#41)

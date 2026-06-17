@@ -708,10 +708,10 @@ function renderProfile(firstName, backTo, container) {
     '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">' + lootCount + ' item' + (lootCount !== 1 ? 's' : '') + ' this tier</div>' +
     '<div id="loot-list-' + player.firstName + '" style="display:none;margin-top:0.75rem;grid-template-columns:1fr 1fr;gap:0 1rem;">' + lootItemsHTML + '</div>' +
     '</div>' +
-    '<div class="profile-section"><div class="section-label">BiS List</div>' + bisHTML + '</div>' +
+    '<div class="profile-section"><div class="section-label">BiS Link</div>' + bisHTML + '</div>' +
     (mplusHTML ? '<div class="profile-section"><div class="section-label">M+ Exclusion</div>' + mplusHTML + '</div>' : '') +
     '<div class="profile-section" onclick="var l=document.getElementById(\'prio-list-' + player.firstName + '\');l.style.display=l.style.display===\'none\'?\'block\':\'none\';" style="cursor:pointer;">' +
-    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Loot Priority <span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
+    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">BiS Checklist <span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
     '<div id="prio-list-' + player.firstName + '" style="display:none;">' + priorityHTML + '</div>' +
     '</div>' +
     officerActionsHTML +
