@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.3.1] - 2026-06-16
+
+### Fixed
+- Version number now appears in the footer on the profile and signup views (was only shown on the landing view).
+
+### Changed
+- Player card section labels renamed for clarity: "BiS Checklist" -> "BiS List", "BiS Link" -> "BiS Source".
+- M+ Exclusion section moved below BiS List on the player card.
+
+---
+
 ## [2.3.0] - 2026-06-16
 
 ### Added

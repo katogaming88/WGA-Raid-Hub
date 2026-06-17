@@ -4,23 +4,14 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 
 ---
 
-## Season Signup
-
-- [ ] Officer approve/reject writes approved applicant to Roster sheet (#56)
-
-## M+ Exclusion Requests
-
-- [ ] Raider submits Raider.io profile link + optional exception notes to request exclusion from dungeon loot consideration (#57)
-- [ ] Officer reviews profile and approves or rejects -- approved players are marked M+ excluded in the sheet
-
 ## Loot Tracking
 
 - [ ] See who is missing loot for each slot (e.g. who still needs a trinket) (#9)
 
 ## Priority Management
 
-- [ ] Highlight conflicts where a player is high priority on multiple items (#12)
-- [ ] Show which items have no one ranked yet (#13)
+- [ ] Highlight conflicts where a player has been given top priority on multiple items by officers (#12)
+- [ ] Show which items have no players assigned a priority yet (#13)
 
 ## Attendance
 
@@ -30,20 +21,40 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 ## Loot History
 
 - [ ] Voluntary pass log -- officer marks that a raider passed on a piece; logged and factored positively into their loot priority standing (#37)
+- [ ] Loot council decision notes -- officer attaches a reason to a loot award; officer-only, stored on the loot history entry (#81)
+
+## Officer Dashboard
+
+- [ ] Roster health summary -- pending action count badges on each officer tab (signups, pending roster, BiS requests, M+ exclusions, self-received) (#76)
+- [ ] Officer action audit log -- append-only log of every officer change (player added/removed, status changes, approvals, loot marks) stored in the Sheet (#83)
+
+## Roster / Player Management
+
+- [ ] Join date tracking per player -- set on add, visible on profile and roster table; foundation for trial promotion and season archive (#77)
+- [ ] Trial promotion tracking -- surface trials who have been on the roster long enough and have sufficient attendance to warrant review (#78, depends on #77)
+- [ ] Season archive -- end-of-season roster snapshot triggered by officers; read-only archive view with previous seasons selectable (#79, depends on #77)
+
+## Boss Progression
+
+- [ ] Boss progression tracker on the landing page -- officers set farm/progression/not yet reached status per boss; first-kill dates for farm bosses (#80)
 
 ## Raider Profile (read-only, no login required)
 
-- [ ] Visual BiS checklist on the character page -- each slot shown as received or still needed (#38)
+- [x] Visual BiS checklist on the character page -- each slot shown as received or still needed; section renamed from "Loot Priority" to "BiS Checklist" (#38)
 - [ ] BiS completion percentage on each player's profile (#39)
 - [ ] "Fully BiS" badge when a player has received every raid-source BiS item (#40)
 - [ ] Last received item highlighted prominently on the profile ("Last received: X on date Y") (#41)
 - [ ] Attendance trend on the character page -- recent-weeks indicator so raiders can self-monitor (#42)
 - [ ] Public leaderboard -- sortable by attendance %, BiS completion %, items received (#43)
 
+## Pre-Launch
+
+- [ ] Move Discord bot from personal server to guild server -- set up officer notification channel so all officers can see app notifications (#84)
+
 ## Future / Larger Features
 
-- [ ] Officer write functionality -- update BiS links, nicknames, trial/bench status directly from the page back to the Google Sheet (#23)
-- [ ] Per-raider BiS change request system -- raider submits an updated BiS link plus a diff of which items changed; officer approves before the sheet updates (#24)
+- [ ] Bench rotation fairness view -- bench rate per player (times benched vs. raids attended) to ensure fair rotation; similar to loot fairness view (#82)
+
 - [ ] Raider login via Discord OAuth -- Apps Script handles the OAuth callback and token exchange; no new infrastructure required. On first login, raider claims their character (one claim per character). Unlocks self-marking received items (crafted, catalyzed, M+) and personalized priority standing view. (#25)
 - [ ] Personalized raider landing -- after Discord login and character claim, the app always opens directly on the raider's character card. Navigation links available from there to the main roster and other public views. Unauthenticated visitors see the existing generic flow unchanged. (#74)
 - [ ] App role system -- a separate "App Role" column in the Roster sheet (admin-managed only) controls in-app permissions: blank = raider view, `officer` = officer dashboard + write access, `admin` = full control. Deliberately separate from guild officer status so non-team officers don't get write access. (#44)
@@ -75,3 +86,7 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 - [x] Add/remove players from the roster directly from the page (#3)
 - [x] Change a player's role, trial status, or bench status from the page (#4)
 - [x] Officer notes per player -- free-text, stored server-side, visible only in officer view (#6)
+- [x] Officer approve/reject writes approved applicant to Roster sheet (#56, closed by PR #73)
+- [x] M+ exclusion request form -- raider submits Raider.io profile + notes; officer approval queue; approved players marked M+ excluded in sheet (#57, closed by PR #73)
+- [x] Officer write functionality -- update BiS links, nicknames, trial/bench status directly from the page back to the Google Sheet (#23, shipped across multiple PRs)
+- [x] Per-raider BiS change request system -- raider submits an updated BiS link plus notes on what changed; officer approves before the sheet updates (#24, closed by PR #73)
