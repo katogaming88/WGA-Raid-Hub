@@ -52,6 +52,7 @@
         <button class="nav-item" onclick="switchTab('mplus')">M+ Exclusions<span class="nav-notif nav-notif-abs" id="mplusNavBadge" style="display:none;"></span></button>
         <button class="nav-item" onclick="switchTab('requests')">Received Item Requests<span class="nav-notif nav-notif-abs" id="requestsNavBadge" style="display:none;"></span></button>
         <button class="nav-item" onclick="switchTab('audit')">Audit Log</button>
+        <button class="nav-item" onclick="switchTab('season')">Season Settings</button>
       </nav>
 
       <div class="officer-main">
@@ -203,6 +204,22 @@
           <div id="auditContainer"></div>
         </div>
 
+        <!-- Season Settings tab -->
+        <div id="tab-season" class="tab-panel">
+          <div class="signup-officer-panel">
+            <div class="signup-status-row">
+              <span class="signup-status-label">Season Start Date</span>
+            </div>
+            <p class="signup-officer-note" style="margin-top:0.25rem;">Set the date this raid season began. Raids before this date are excluded from attendance scoring. Players who joined after this date have their personal attendance window start from their join date instead.</p>
+            <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+              <input type="date" id="seasonStartInput" class="add-player-input" style="max-width:180px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+              <button class="btn btn-gold" id="seasonStartSaveBtn" onclick="saveSeasonStart()">Save</button>
+              <span id="seasonStartStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+            </div>
+            <p class="signup-officer-note" style="margin-top:0.75rem;">Leave blank to include all raids in attendance scoring (no season filter).</p>
+          </div>
+        </div>
+
         <!-- M+ Exclusions tab -->
         <div id="tab-mplus" class="tab-panel">
           <div class="signup-officer-panel">
@@ -271,6 +288,10 @@
           <option value="Ranged">Ranged</option>
         </select>
       </div>
+      <div>
+        <label class="add-player-label">Join Date</label>
+        <input id="addPlayerJoinDate" type="date" class="add-player-input">
+      </div>
       <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.2rem;">
         <input id="addPlayerTrial" type="checkbox" style="width:auto;accent-color:var(--gold);">
         <label style="font-size:0.92rem;color:var(--text-muted);letter-spacing:0.06em;">Mark as Trial</label>
@@ -311,6 +332,7 @@
 <script src="js/tabs/tab-mplus.js"></script>
 <script src="js/tabs/tab-priority.js"></script>
 <script src="js/tabs/tab-audit.js"></script>
+<script src="js/tabs/tab-season.js"></script>
 <script>document.getElementById('versionNum').textContent = VERSION;</script>
 </body>
 </html>

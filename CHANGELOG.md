@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.11.0] - 2026-06-18
+
+### Added
+- Season start date setting in a new Season Settings tab on the officer dashboard. Officers can set (or clear) the date the current raid season began; the value persists in Script Properties and is included in the core payload for all clients.
+- Mid-season join exclusion: raids between the season start date and a player's personal join date are excluded from their attendance penalty list and attendance percentage. The full attendance history view (expandable per-player) labels those excluded raids as "Not on Roster" in a greyed style so officers can still see the full timeline.
+- Attendance percentage now computed directly from the Attendance sheet rather than the Scoring sheet formula, giving accurate per-player denominators that respect both the season start and each player's join date. Closes #107.
+- Add Player modal now includes an editable Join Date field (defaults to today) so officers can backdate a player's join date at the time of adding them.
+
+---
+
 ## [2.10.0] - 2026-06-18
 
 ### Performance

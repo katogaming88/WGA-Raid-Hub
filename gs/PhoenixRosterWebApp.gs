@@ -159,6 +159,15 @@ function doGet(e) {
       return jsonpResponse(callback, { success: true, mPlusExclusionsOpen: open });
     }
 
+    if (action === 'setSeasonStart') {
+      const val = String(e.parameter.value || '').trim();
+      props.setProperty('seasonStart', val);
+      cache.remove('rosterCore');
+      cache.remove('rosterHeavy');
+      appendAuditLog('Season Start Set', '', '', val);
+      return jsonpResponse(callback, { success: true, seasonStart: val });
+    }
+
     if (action === 'submitSignup') {
       const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
       writeSignup(data);
@@ -684,14 +693,16 @@ function buildCorePayload(sheets, scriptProps) {
   const signupsOpen         = scriptProps.getProperty('signupsOpen')         === 'true';
   const bisSubmissionsOpen  = scriptProps.getProperty('bisSubmissionsOpen')  === 'true';
   const mPlusExclusionsOpen = scriptProps.getProperty('mPlusExclusionsOpen') === 'true';
+  const seasonStart         = scriptProps.getProperty('seasonStart')         || '';
   return {
     generatedAt:          new Date().toISOString(),
     signupsOpen:          signupsOpen,
     bisSubmissionsOpen:   bisSubmissionsOpen,
     mPlusExclusionsOpen:  mPlusExclusionsOpen,
+    seasonStart:          seasonStart,
     bisAllowedPlayers:    getBisAllowedPlayers(),
     playerNotes:          getPlayerNotes(),
-    roster:               getRoster(sheets),
+    roster:               getRoster(sheets, seasonStart),
   };
 }
 
@@ -752,31 +763,109 @@ function getApprovedMPlusExcludedSet(sheets) {
   return { excluded, notes };
 }
 
-function getRoster(sheets) {
+function buildJoinDateMap(sheets) {
+  const sheet = sheets[CFG.rosterSheet];
+  if (!sheet) return {};
+  const data = sheet.getDataRange().getValues();
+  const map  = {};
+  for (let i = CFG.rosterDataStart - 1; i < data.length; i++) {
+    const nameRealm = String(data[i][CFG.rosterPlayerCol - 1] || '').trim();
+    if (!nameRealm) continue;
+    const firstName   = nameRealm.split('-')[0].trim();
+    const rawJoinDate = data[i][CFG.rosterJoinDateCol - 1];
+    map[firstName] = rawJoinDate instanceof Date
+      ? Utilities.formatDate(rawJoinDate, Session.getScriptTimeZone(), 'yyyy-MM-dd')
+      : String(rawJoinDate || '').trim();
+  }
+  return map;
+}
+
+function buildAttendanceMap(sheets, seasonStart, joinDateMap) {
+  const sheet = sheets[CFG.attendanceSheet];
+  if (!sheet) return {};
+
+  const data       = sheet.getDataRange().getValues();
+  const raidDates  = [];
+  const playerData = {};
+  const penalizing = new Set(['No Show', 'Excused']);
+  var skipReport   = false;
+  var currentDate  = null;
+
+  for (let i = CFG.attendDataStart - 1; i < data.length; i++) {
+    const row     = data[i];
+    const rawDate = row[CFG.attendDateCol    - 1];
+    const name    = String(row[CFG.attendNameCol    - 1] || '').trim();
+    const status  = String(row[CFG.attendStatusCol  - 1] || '').trim();
+    const exclude = row[5];
+    const dateStr = String(rawDate || '').trim();
+
+    if (dateStr.startsWith('──') || dateStr === 'Report Title') break;
+
+    if (!name) {
+      skipReport = (exclude === true);
+      if (!skipReport && rawDate) {
+        currentDate = rawDate instanceof Date
+          ? Utilities.formatDate(rawDate, Session.getScriptTimeZone(), 'yyyy-MM-dd')
+          : dateStr;
+        if (!seasonStart || currentDate >= seasonStart) {
+          raidDates.push(currentDate);
+        } else {
+          currentDate = null;
+        }
+      } else {
+        currentDate = null;
+      }
+      continue;
+    }
+
+    if (skipReport || !currentDate || !status) continue;
+    if (!playerData[name]) playerData[name] = [];
+    playerData[name].push({ date: currentDate, status });
+  }
+
+  const attendMap = {};
+  const allNames  = new Set([...Object.keys(joinDateMap), ...Object.keys(playerData)]);
+
+  for (const firstName of allNames) {
+    const joinDate       = joinDateMap[firstName] || '';
+    const effectiveStart = (joinDate && (!seasonStart || joinDate > seasonStart)) ? joinDate : seasonStart;
+    const eligible       = effectiveStart ? raidDates.filter(d => d >= effectiveStart) : raidDates;
+    const total          = eligible.length;
+    if (!total) continue;
+
+    const rows      = playerData[firstName] || [];
+    const penalties = rows.filter(r => (!effectiveStart || r.date >= effectiveStart) && penalizing.has(r.status)).length;
+    const pct       = Math.round((1 - penalties / total) * 1000) / 10;
+    attendMap[firstName] = pct.toFixed(1) + '%';
+  }
+
+  return attendMap;
+}
+
+function getRoster(sheets, seasonStart) {
   const sheet = sheets[CFG.rosterSheet];
   if (!sheet) return [];
 
-  const mPlusData = getApprovedMPlusExcludedSet(sheets);
+  const mPlusData        = getApprovedMPlusExcludedSet(sheets);
   const mPlusExcludedSet = mPlusData.excluded;
   const mPlusNoteMap     = mPlusData.notes;
 
-  // Build attendance lookup from Scoring tab: firstName -> attendance string
-  const attendMap = {};
-  const scoringSheet = sheets[CFG.scoringSheet];
-  if (scoringSheet) {
-    const scoringData = scoringSheet.getDataRange().getValues();
-    for (let i = CFG.scoringDataStart - 1; i < scoringData.length; i++) {
-      const row       = scoringData[i];
-      const nameRealm = String(row[CFG.scoringPlayerCol - 1] || '').trim();
-      const score     = row[CFG.scoringAttendCol - 1];
-      if (!nameRealm || score === '' || score === null) continue;
-      const firstName = nameRealm.split('-')[0].trim();
-      const pct = parseFloat(score);
-      if (!isNaN(pct)) attendMap[firstName] = (Math.round(pct * 10)).toFixed(1) + '%';
-    }
+  const data = sheet.getDataRange().getValues();
+
+  // First pass: build join date map needed for attendance computation
+  const joinDateMap = {};
+  for (let i = CFG.rosterDataStart - 1; i < data.length; i++) {
+    const nameRealm = String(data[i][CFG.rosterPlayerCol - 1] || '').trim();
+    if (!nameRealm) continue;
+    const firstName   = nameRealm.split('-')[0].trim();
+    const rawJoinDate = data[i][CFG.rosterJoinDateCol - 1];
+    joinDateMap[firstName] = rawJoinDate instanceof Date
+      ? Utilities.formatDate(rawJoinDate, Session.getScriptTimeZone(), 'yyyy-MM-dd')
+      : String(rawJoinDate || '').trim();
   }
 
-  const data    = sheet.getDataRange().getValues();
+  // Compute attendance from Attendance sheet, respecting season start and join dates
+  const attendMap = buildAttendanceMap(sheets, seasonStart || '', joinDateMap);
   const players = [];
 
   for (let i = CFG.rosterDataStart - 1; i < data.length; i++) {
@@ -874,6 +963,9 @@ function getBisList(sheets) {
 }
 
 function getAttendanceDetails(sheets) {
+  const seasonStart = PropertiesService.getScriptProperties().getProperty('seasonStart') || '';
+  const joinDateMap = buildJoinDateMap(sheets);
+
   const sheet = sheets[CFG.attendanceSheet];
   if (!sheet) return {};
 
@@ -887,14 +979,14 @@ function getAttendanceDetails(sheets) {
     const rawDate = row[CFG.attendDateCol    - 1];
     const name    = String(row[CFG.attendNameCol    - 1] || '').trim();
     const status  = String(row[CFG.attendStatusCol  - 1] || '').trim();
-    const exclude = row[5]; // column F — Exclude Report checkbox
+    const exclude = row[5]; // column F -- Exclude Report checkbox
 
     const dateStr = String(rawDate || '').trim();
 
     // Stop at the excluded section divider at the bottom
     if (dateStr.startsWith('──') || dateStr === 'Report Title') break;
 
-    // Report header row — check the exclude checkbox
+    // Report header row -- check the exclude checkbox
     if (!name) {
       skipReport = (exclude === true);
       continue;
@@ -914,6 +1006,11 @@ function getAttendanceDetails(sheets) {
       formattedDate = dateStr;
     }
 
+    // Skip raids before the player's effective start (max of seasonStart and joinDate)
+    const joinDate       = joinDateMap[name] || '';
+    const effectiveStart = (joinDate && (!seasonStart || joinDate > seasonStart)) ? joinDate : seasonStart;
+    if (effectiveStart && formattedDate < effectiveStart) continue;
+
     if (!result[name]) result[name] = [];
     result[name].push({ date: formattedDate, status });
   }
@@ -922,6 +1019,9 @@ function getAttendanceDetails(sheets) {
 }
 
 function getFullAttendanceDetails(sheets) {
+  const seasonStart = PropertiesService.getScriptProperties().getProperty('seasonStart') || '';
+  const joinDateMap = buildJoinDateMap(sheets);
+
   const sheet = sheets[CFG.attendanceSheet];
   if (!sheet) return {};
 
@@ -955,8 +1055,13 @@ function getFullAttendanceDetails(sheets) {
       formattedDate = dateStr;
     }
 
+    // Label raids before effective start as "Not on Roster" so officers see the full timeline
+    const joinDate       = joinDateMap[name] || '';
+    const effectiveStart = (joinDate && (!seasonStart || joinDate > seasonStart)) ? joinDate : seasonStart;
+    const entryStatus    = (effectiveStart && formattedDate < effectiveStart) ? 'Not on Roster' : status;
+
     if (!result[name]) result[name] = [];
-    result[name].push({ date: formattedDate, status });
+    result[name].push({ date: formattedDate, status: entryStatus });
   }
 
   return result;
@@ -1177,9 +1282,11 @@ function addPlayerToRoster(data) {
   }
 
   const now      = new Date();
-  const joinDate = now.getFullYear() + '-' +
+  const todayStr = now.getFullYear() + '-' +
                    String(now.getMonth() + 1).padStart(2, '0') + '-' +
                    String(now.getDate()).padStart(2, '0');
+  const rawJoin  = String(data.joinDate || '').trim();
+  const joinDate = /^\d{4}-\d{2}-\d{2}$/.test(rawJoin) ? rawJoin : todayStr;
 
   // Write only the columns this app owns — don't touch col A or any formula columns.
   sheet.getRange(targetRow, CFG.rosterTrialCol).setValue(isTrial);

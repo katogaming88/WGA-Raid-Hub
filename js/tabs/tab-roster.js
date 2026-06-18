@@ -195,6 +195,11 @@ function showAddPlayerModal() {
   document.getElementById('addPlayerTrial').checked = false;
   document.getElementById('addPlayerError').style.display = 'none';
 
+  var today = new Date();
+  var mm = today.getMonth() + 1; var dd = today.getDate();
+  document.getElementById('addPlayerJoinDate').value =
+    today.getFullYear() + '-' + (mm < 10 ? '0' : '') + mm + '-' + (dd < 10 ? '0' : '') + dd;
+
   var classSel = document.getElementById('addPlayerClass');
   classSel.innerHTML = '<option value="">-- Select class --</option>';
   var classes = Object.keys(CLASS_SPECS).sort();
@@ -281,6 +286,8 @@ function submitAddPlayer() {
     return;
   }
 
+  var joinDateVal = (document.getElementById('addPlayerJoinDate').value || '').trim();
+
   var nameRealm = nameVal + '-' + realmVal;
   var duplicate = false;
   if (DATA && DATA.roster) {
@@ -298,7 +305,7 @@ function submitAddPlayer() {
   var submitBtn = document.querySelector('#addPlayerModal .btn-gold');
   if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Adding...'; }
 
-  var data   = { nameRealm: nameRealm, nick: nickVal, class: cls, spec: spec, role: role, isTrial: isTrial };
+  var data   = { nameRealm: nameRealm, nick: nickVal, class: cls, spec: spec, role: role, isTrial: isTrial, joinDate: joinDateVal };
   var cbName = '_addPlayerCb';
   window[cbName] = function(result) {
     delete window[cbName];
@@ -310,12 +317,10 @@ function submitAddPlayer() {
     }
     if (DATA && DATA.roster) {
       var parts = nameRealm.split('-');
-      var today = new Date(); var mm = today.getMonth() + 1; var dd = today.getDate();
-      var todayStr = today.getFullYear() + '-' + (mm < 10 ? '0' : '') + mm + '-' + (dd < 10 ? '0' : '') + dd;
       DATA.roster.push({
         nameRealm: nameRealm, firstName: parts[0], realm: parts.slice(1).join('-'),
         nick: nickVal, class: cls, spec: spec, role: role,
-        isTrial: isTrial, isBench: false, attendance: '', bisLink: '', joinDate: todayStr
+        isTrial: isTrial, isBench: false, attendance: '', bisLink: '', joinDate: joinDateVal
       });
     }
     hideAddPlayerModal();

@@ -1,5 +1,5 @@
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION = '2.10.0';
+var VERSION = '2.11.0';
 var DATA = null;
 
 var WOW_REALMS = [
@@ -876,9 +876,10 @@ function loadAttendanceHistory(firstName) {
     }
 
     function statusColor(s) {
-      if (s === 'Present') return 'var(--heal)';
-      if (s === 'Late')    return 'var(--gold)';
-      if (s === 'No Show') return 'var(--melee)';
+      if (s === 'Present')       return 'var(--heal)';
+      if (s === 'Late')          return 'var(--gold)';
+      if (s === 'No Show')       return 'var(--melee)';
+      if (s === 'Not on Roster') return 'var(--text-muted)';
       return 'var(--gold-light)';
     }
 
