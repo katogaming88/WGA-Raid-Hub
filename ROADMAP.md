@@ -22,6 +22,8 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 
 - [x] Roster health summary -- pending action count badges on each officer tab (signups, pending roster, BiS requests, M+ exclusions, self-received) (#76)
 - [x] Officer action audit log -- append-only log of every officer change (player added/removed, status changes, approvals, loot marks) stored in the Sheet (#83)
+- [ ] Priority export string accessible from the officer dashboard -- read the cached export string from the sheet and display it with a one-click copy, so officers never need to open the spreadsheet to grab the RCLootCouncil import string (#98)
+- [ ] Officer quick-actions bar on the index page -- small bar visible only to authenticated officers (post Discord auth) with fast access to high-frequency tasks like grabbing the priority export string (#99, depends on #25)
 
 ## Roster / Player Management
 
