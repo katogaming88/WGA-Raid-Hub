@@ -16,6 +16,34 @@ function executeClearSeasonStart() {
   saveSeasonStart();
 }
 
+function syncAttendancePct() {
+  var btn    = document.getElementById('syncAttendPctBtn');
+  var status = document.getElementById('syncAttendPctStatus');
+  if (btn) { btn.disabled = true; btn.textContent = 'Syncing...'; }
+
+  var cbName = '_syncAttendPctCb';
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (btn) { btn.disabled = false; btn.textContent = 'Sync to Roster Sheet'; }
+    if (result && result.success) {
+      if (status) {
+        status.textContent = 'Synced!';
+        setTimeout(function() { if (status) status.textContent = ''; }, 2000);
+      }
+    } else {
+      if (status) { status.textContent = 'Error syncing.'; }
+    }
+  };
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    if (btn) { btn.disabled = false; btn.textContent = 'Sync to Roster Sheet'; }
+    if (status) { status.textContent = 'Error syncing.'; }
+  };
+  script.src = WEB_APP_URL + '?action=syncAttendancePct&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
 function saveSeasonStart() {
   var input = document.getElementById('seasonStartInput');
   var val   = input ? input.value.trim() : '';

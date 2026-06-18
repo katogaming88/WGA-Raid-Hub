@@ -879,12 +879,13 @@ function loadAttendanceHistory(firstName) {
       if (s === 'Present')       return 'var(--heal)';
       if (s === 'Late')          return 'var(--gold)';
       if (s === 'No Show')       return 'var(--melee)';
+      if (s === 'Medical Leave') return '#7EC8E3';
       if (s === 'Not on Roster') return 'var(--text-muted)';
       return 'var(--gold-light)';
     }
 
     var summaryParts = [];
-    var order = ['Present', 'Late', 'No Show', 'Excused'];
+    var order = ['Present', 'Late', 'No Show', 'Excused', 'Medical Leave'];
     for (var oi = 0; oi < order.length; oi++) {
       var st = order[oi];
       if (counts[st]) summaryParts.push('<span style="color:' + statusColor(st) + ';">' + counts[st] + ' ' + st + '</span>');
