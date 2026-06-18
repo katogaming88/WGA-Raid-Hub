@@ -7,7 +7,7 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 ## Priority Management
 
 - [ ] Highlight conflicts where a player has been given top priority on multiple items by officers (#12)
-- [ ] Show which items have no players assigned a priority yet (#13)
+- [x] Show which items have no players assigned a priority yet (#13)
 
 ## Attendance
 
@@ -16,8 +16,6 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 
 ## Loot History
 
-- [ ] Voluntary pass log -- officer marks that a raider passed on a piece; logged and factored positively into their loot priority standing (#37)
-- [ ] Loot council decision notes -- officer attaches a reason to a loot award; officer-only, stored on the loot history entry (#81)
 
 ## Officer Dashboard
 
@@ -60,7 +58,6 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 - [ ] App role system -- a separate "App Role" column in the Roster sheet (admin-managed only) controls in-app permissions: blank = raider view, `officer` = officer dashboard + write access, `admin` = full control. Deliberately separate from guild officer status so non-team officers don't get write access. (#44)
 - [ ] Officer claim management -- in-app UI listing all claimed characters with reassign/release controls, for handling player turnover or claim conflicts. (#45)
 - [ ] Replace officer password with Discord login -- once the login system ships, remove the hardcoded password entirely. (#46)
-- [ ] Priority standing on BiS items -- raiders see their rank for each contested raid item on their profile *(readable without login, but personalized view requires raider login)* (#47)
 
 ---
 
