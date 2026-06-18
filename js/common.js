@@ -660,11 +660,7 @@ function renderProfile(firstName, backTo, container) {
     ? '<span id="bis-completion-' + player.firstName + '" style="font-size:0.95rem;"><span style="color:var(--gold-light);font-weight:600;">' + Math.round((bisReceivedCount / bisItems.length) * 100) + '%</span><span style="color:var(--text-muted);font-weight:400;"> (' + bisReceivedCount + '/' + bisItems.length + ')</span></span>'
     : '';
 
-  var raidBisCount = 0;
-  for (var rbi = 0; rbi < bisItems.length; rbi++) {
-    if (receivedMap[normalise(bisItems[rbi].item)]) raidBisCount++;
-  }
-  var fullyBisBadge = (bisItems.length > 0 && raidBisCount === bisItems.length)
+  var fullyBisBadge = (bisItems.length > 0 && bisReceivedCount === bisItems.length)
     ? '<span class="badge" style="background:rgba(212,175,55,0.15);color:var(--gold);border:1px solid rgba(212,175,55,0.45);font-weight:700;">Fully BiS</span>'
     : '';
 
