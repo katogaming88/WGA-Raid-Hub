@@ -784,18 +784,17 @@ function buildAttendanceMap(sheets, seasonStart, joinDateMap) {
   const sheet = sheets[CFG.attendanceSheet];
   if (!sheet) return {};
 
-  const data       = sheet.getDataRange().getValues();
-  const raidDates  = [];
-  const playerData = {};
-  const penalizing = new Set(['No Show', 'Excused']);
-  var skipReport   = false;
-  var currentDate  = null;
+  const data        = sheet.getDataRange().getValues();
+  const raidDateSet = new Set();
+  const playerData  = {};
+  const penalizing  = new Set(['No Show', 'Excused']);
+  var skipReport    = false;
 
   for (let i = CFG.attendDataStart - 1; i < data.length; i++) {
     const row     = data[i];
-    const rawDate = row[CFG.attendDateCol    - 1];
-    const name    = String(row[CFG.attendNameCol    - 1] || '').trim();
-    const status  = String(row[CFG.attendStatusCol  - 1] || '').trim();
+    const rawDate = row[CFG.attendDateCol   - 1];
+    const name    = String(row[CFG.attendNameCol   - 1] || '').trim();
+    const status  = String(row[CFG.attendStatusCol - 1] || '').trim();
     const exclude = row[5];
     const dateStr = String(rawDate || '').trim();
 
@@ -803,26 +802,23 @@ function buildAttendanceMap(sheets, seasonStart, joinDateMap) {
 
     if (!name) {
       skipReport = (exclude === true);
-      if (!skipReport && rawDate) {
-        currentDate = rawDate instanceof Date
-          ? Utilities.formatDate(rawDate, Session.getScriptTimeZone(), 'yyyy-MM-dd')
-          : dateStr;
-        if (!seasonStart || currentDate >= seasonStart) {
-          raidDates.push(currentDate);
-        } else {
-          currentDate = null;
-        }
-      } else {
-        currentDate = null;
-      }
       continue;
     }
 
-    if (skipReport || !currentDate || !status) continue;
+    if (skipReport || !rawDate || !status) continue;
+
+    const formattedDate = rawDate instanceof Date
+      ? Utilities.formatDate(rawDate, Session.getScriptTimeZone(), 'yyyy-MM-dd')
+      : dateStr;
+
+    if (seasonStart && formattedDate < seasonStart) continue;
+
+    raidDateSet.add(formattedDate);
     if (!playerData[name]) playerData[name] = [];
-    playerData[name].push({ date: currentDate, status });
+    playerData[name].push({ date: formattedDate, status });
   }
 
+  const raidDates = Array.from(raidDateSet);
   const attendMap = {};
   const allNames  = new Set([...Object.keys(joinDateMap), ...Object.keys(playerData)]);
 
