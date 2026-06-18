@@ -16,7 +16,7 @@ function switchTab(name) {
   document.getElementById('tab-' + name).classList.add('active');
   if (name === 'loot')       { resetLootSubTab(); buildConflicts(); }
   if (name === 'attendance') buildAttendanceTab();
-  if (name === 'priority')   buildPriorityTab();
+  if (name === 'priority')   { resetPrioritySubTab(); buildPriorityTab(); }
   if (name === 'signups')    { resetSignupsSubTab(); buildSignupsTab(); }
   if (name === 'requests')   buildRequestsTab();
   if (name === 'bis')        buildBisTab();
@@ -42,6 +42,27 @@ function switchSignupsSubTab(name, btnEl) {
   if (subPending) subPending.style.display = name === 'pendingRoster' ? '' : 'none';
   if (name === 'signups')       buildSignupsTab();
   if (name === 'pendingRoster') buildPendingRosterTab();
+}
+
+function resetPrioritySubTab() {
+  document.querySelectorAll('[id^="prio-subtab-btn-"]').forEach(function(b) { b.classList.remove('active'); });
+  var defaultBtn = document.getElementById('prio-subtab-btn-list');
+  if (defaultBtn) defaultBtn.classList.add('active');
+  var subList      = document.getElementById('prio-sub-list');
+  var subUnmanaged = document.getElementById('prio-sub-unmanaged');
+  if (subList)      subList.style.display      = '';
+  if (subUnmanaged) subUnmanaged.style.display = 'none';
+}
+
+function switchPrioritySubTab(name, btnEl) {
+  document.querySelectorAll('[id^="prio-subtab-btn-"]').forEach(function(b) { b.classList.remove('active'); });
+  if (btnEl) btnEl.classList.add('active');
+  var subList      = document.getElementById('prio-sub-list');
+  var subUnmanaged = document.getElementById('prio-sub-unmanaged');
+  if (subList)      subList.style.display      = name === 'list'      ? '' : 'none';
+  if (subUnmanaged) subUnmanaged.style.display = name === 'unmanaged' ? '' : 'none';
+  if (name === 'list')      buildPriorityTab();
+  if (name === 'unmanaged') buildUnmanagedTab();
 }
 
 function resetLootSubTab() {
@@ -110,6 +131,7 @@ function buildOfficerDashboard() {
   renderSignupToggle();
   renderBisToggle();
   renderMPlusToggle();
+  updateUnmanagedBadge();
   if (DATA._loadedAt) {
     var t  = DATA._loadedAt;
     var h  = t.getHours(), m = t.getMinutes();

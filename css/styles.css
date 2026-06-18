@@ -149,9 +149,11 @@ select#playerSelect option { background:#1a1d27; }
 .officer-body { display:flex; gap:1.5rem; align-items:flex-start; }
 .officer-sidebar { width:152px; flex-shrink:0; display:flex; flex-direction:column; gap:2px; position:sticky; top:1.5rem; }
 .officer-main { flex:1; min-width:0; }
-.nav-item { display:block; width:100%; text-align:left; font-family:'Rajdhani',sans-serif; font-size:0.82rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.6rem 0.85rem; background:transparent; border:none; border-left:2px solid transparent; border-radius:0 3px 3px 0; color:var(--text-muted); cursor:pointer; transition:all 0.15s; }
+.nav-item { display:block; position:relative; width:100%; text-align:left; font-family:'Rajdhani',sans-serif; font-size:0.82rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.6rem 0.85rem; background:transparent; border:none; border-left:2px solid transparent; border-radius:0 3px 3px 0; color:var(--text-muted); cursor:pointer; transition:all 0.15s; }
 .nav-item:hover { background:var(--bg-elevated); color:var(--text); border-left-color:var(--border-mid); }
 .nav-item.active { background:rgba(214,163,68,0.08); color:var(--gold-light); border-left-color:var(--gold); }
+.nav-notif { display:inline-flex; align-items:center; justify-content:center; background:#c0392b; color:#fff; font-size:0.65rem; font-weight:700; min-width:16px; height:16px; border-radius:8px; padding:0 4px; line-height:1; vertical-align:middle; margin-left:4px; }
+.nav-notif-abs { position:absolute; top:5px; right:6px; margin:0; }
 
 /* Tab panels */
 .tab-panel { display:none; }
