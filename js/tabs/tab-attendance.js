@@ -1,7 +1,7 @@
 function buildAttendanceTab() {
   var details   = DATA.attendanceDetails || {};
   var roster    = DATA.roster || [];
-  var THRESHOLD = parseInt((document.getElementById('attendThreshold') || { value: '90' }).value) || 90;
+  var THRESHOLD = parseInt((document.getElementById('attendThreshold') || { value: '95' }).value) || 95;
 
   var below = [];
   for (var i = 0; i < roster.length; i++) {

@@ -152,11 +152,9 @@ function getReportParticipants(token, reportCode) {
     }
   }
 
-  if (players.size === 0) {
-    Logger.log(`Rankings empty for ${reportCode}, trying combatants fallback`);
-    const fallback = getReportCombatants(token, reportCode);
-    for (const name of fallback) players.add(name);
-  }
+  // Always supplement with masterData to catch players not in ranked fights
+  const combatants = getReportCombatants(token, reportCode);
+  for (const name of combatants) players.add(name);
 
   return players;
 }
