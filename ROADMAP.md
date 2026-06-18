@@ -10,7 +10,8 @@ Performance fixes and officer dashboard completions that don't require new infra
 
 - [x] Fix payload load timeouts -- split into fast core chunk (roster, priority) and lazy heavy chunk (loot, attendance) so the page is usable before all data arrives (#104)
 - [ ] Paste RCLootCouncil loot history directly in the web app -- officers paste the RC export once per season; app parses and stores it, replacing the manual sheet workflow (#101)
-- [ ] Attendance entry from the officer dashboard -- trigger WCL refresh and fill in Bench/Excused/No Show statuses without opening the spreadsheet; commit scores to Scoring sheet from the UI (#94)
+- [x] Attendance entry from the officer dashboard -- trigger WCL refresh and fill in Bench/Excused/No Show statuses without opening the spreadsheet; commit scores to Scoring sheet from the UI (#94)
+- [ ] Priority order management from the web app -- dedicated UI to assign and reorder player priorities per item, with a priority generator that suggests an order based on BiS lists, role, and loot fairness data; writes back to the Priority Order sheet (#111)
 - [ ] Move Discord bot from personal server to guild server -- set up officer notification channel so all officers can see app notifications (#84)
 - [ ] `/pending-roster` bot command -- lists all pending signup applicants with their name, class, spec, and role (#86)
 - [ ] Highlight conflicts where a player has been given top priority on multiple items by officers (#12)
@@ -75,3 +76,4 @@ Everything gated on Discord OAuth shipping (#25).
 - [x] RCLootCouncil priority export string -- generated from the Priority tab and displayed with one-click copy in the officer dashboard (#98)
 - [x] Join date tracking per player -- set automatically on add, editable in officer profile, visible on roster table (#77)
 - [x] Trial promotion tracking -- officer roster tab surfaces trials who have been on the roster long enough with sufficient attendance to warrant a promotion review (#78)
+- [x] Attendance entry from the officer dashboard -- Refresh from WCL, night-by-night status grid with editable dropdowns, per-player card editing, and Commit Scores to Scoring sheet; all changes logged to audit log (#94)
