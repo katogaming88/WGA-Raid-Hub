@@ -20,6 +20,7 @@ function saveSeasonStart() {
     if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
     if (result && result.success) {
       if (DATA) DATA.seasonStart = result.seasonStart;
+      if (input) input.value = result.seasonStart || '';
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function() { if (status) status.textContent = ''; }, 2000);
