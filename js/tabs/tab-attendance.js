@@ -142,6 +142,7 @@ function renderNightGrid(index) {
     var p = raid.players[i];
     html += '<div class="attend-grid-row">';
     html += '<span class="attend-grid-name">' + escHtml(p.name) + '</span>';
+    var isOfficer = p.source === 'Officer';
     html += '<span class="attend-grid-source">' + escHtml(p.source || '') + '</span>';
     html += '<div class="attend-status-wrap">';
     html += '<select class="attend-status-select" data-date="' + escHtml(raid.date) + '" data-name="' + escHtml(p.name) + '" data-old="' + escHtml(p.status) + '" onchange="setPlayerStatus(this)">';
@@ -152,7 +153,7 @@ function renderNightGrid(index) {
     }
     html += '</select>';
     html += '</div>';
-    html += '<span class="attend-save-ind"></span>';
+    html += '<span class="attend-save-ind" style="color:var(--heal);">' + (isOfficer ? '&#10003;' : '') + '</span>';
     html += '</div>';
   }
 
@@ -192,9 +193,8 @@ function setPlayerStatus(selectEl) {
         }
       }
       if (indicator) {
-        indicator.textContent = 'Saved';
+        indicator.innerHTML = '&#10003;';
         indicator.style.color = 'var(--heal)';
-        setTimeout(function() { if (indicator) indicator.textContent = ''; }, 2000);
       }
     } else {
       selectEl.value = oldStatus || '';
