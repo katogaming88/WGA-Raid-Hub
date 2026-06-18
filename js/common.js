@@ -228,7 +228,7 @@ function getSlotColor(slot) {
   return 'var(--text)';
 }
 
-function attendColor(pct) { return pct >= 90 ? 'var(--heal)' : pct >= 75 ? 'var(--gold)' : 'var(--melee)'; }
+function attendColor(pct) { return pct >= 95 ? 'var(--heal)' : pct >= 75 ? 'var(--gold)' : 'var(--melee)'; }
 
 function formatJoinDate(dateStr) {
   if (!dateStr) return '';

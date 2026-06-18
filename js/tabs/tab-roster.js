@@ -61,7 +61,7 @@ function buildRosterTable() {
 
   for (var i = 0; i < DATA.roster.length; i++) {
     var p = DATA.roster[i];
-    if (activeFilters.lowAttend && (parseInt(p.attendance)||0) >= 90) continue;
+    if (activeFilters.lowAttend && (parseInt(p.attendance)||0) >= 95) continue;
     if (activeFilters.noBis && p.bisLink) continue;
     if (activeFilters.trial && !p.isTrial) continue;
     if (activeFilters.bench && !p.isBench) continue;

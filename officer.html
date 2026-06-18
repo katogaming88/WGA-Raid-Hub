@@ -67,7 +67,7 @@
           </div>
           <div class="filter-bar" style="margin-bottom:0.35rem;">
             <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Filter:</span>
-            <button class="filter-chip" onclick="toggleFilter('lowAttend')" id="chip-lowAttend">Low Attendance (&lt;90%)</button>
+            <button class="filter-chip" onclick="toggleFilter('lowAttend')" id="chip-lowAttend">Low Attendance (&lt;95%)</button>
             <button class="filter-chip" onclick="toggleFilter('noBis')" id="chip-noBis">No BiS Link</button>
             <button class="filter-chip" onclick="toggleFilter('trial')" id="chip-trial">Trials Only</button>
             <button class="filter-chip" onclick="toggleFilter('bench')" id="chip-bench">Bench Only</button>
@@ -146,8 +146,8 @@
         <!-- Attendance tab -->
         <div id="tab-attendance" class="tab-panel">
           <div class="attend-threshold-row">
-            <span class="attend-threshold-label">Show at or below <strong id="attendThresholdVal">90%</strong></span>
-            <input type="range" id="attendThreshold" class="attend-slider" min="0" max="100" value="90" oninput="document.getElementById('attendThresholdVal').textContent=this.value+'%';buildAttendanceTab();">
+            <span class="attend-threshold-label">Show at or below <strong id="attendThresholdVal">95%</strong></span>
+            <input type="range" id="attendThreshold" class="attend-slider" min="0" max="100" value="95" oninput="document.getElementById('attendThresholdVal').textContent=this.value+'%';buildAttendanceTab();">
             <button class="btn btn-gold" id="syncAttendPctBtn" onclick="syncAttendancePct()" style="margin-left:auto;">Sync % to Roster Sheet</button>
             <span id="syncAttendPctStatus" style="font-size:0.92rem;color:var(--heal);"></span>
           </div>
