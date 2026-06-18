@@ -409,7 +409,7 @@ function doGet(e) {
 
     if (action === 'getPendingCounts') {
       return jsonpResponse(callback, {
-        signups:       getSignupResponses().filter(s => s.status !== 'Approved').length,
+        signups:       getSignupResponses().filter(s => s.status === 'Pending' || !s.status).length,
         pendingRoster: getPendingRosterEntries().length,
         bis:           getBiSSubmissions('Pending').length,
         mplus:         getMPlusExclusionRequests('Pending').length,
