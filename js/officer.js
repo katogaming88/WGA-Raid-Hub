@@ -104,11 +104,17 @@ function submitOfficerPassword() {
     sessionStorage.setItem('phoenix_officer_ts', String(Date.now()));
     hideOfficerPrompt();
     document.getElementById('loadingMsg').style.display = '';
-    loadData(function() {
-      buildOfficerDashboard();
-      document.getElementById('officerViewWrap').classList.add('active');
-      document.getElementById('loadingMsg').style.display = 'none';
-    });
+    loadData(
+      function() {
+        buildOfficerDashboard();
+        document.getElementById('officerViewWrap').classList.add('active');
+        document.getElementById('loadingMsg').style.display = 'none';
+      },
+      function() {
+        buildStatsBar();
+        buildRosterTable();
+      }
+    );
   } else {
     document.getElementById('officerError').style.display = '';
   }
@@ -196,9 +202,15 @@ if (!isOfficerSessionValid()) {
   document.getElementById('loadingMsg').style.display = 'none';
   showOfficerPrompt();
 } else {
-  loadData(function() {
-    buildOfficerDashboard();
-    document.getElementById('officerViewWrap').classList.add('active');
-    document.getElementById('loadingMsg').style.display = 'none';
-  });
+  loadData(
+    function() {
+      buildOfficerDashboard();
+      document.getElementById('officerViewWrap').classList.add('active');
+      document.getElementById('loadingMsg').style.display = 'none';
+    },
+    function() {
+      buildStatsBar();
+      buildRosterTable();
+    }
+  );
 }
