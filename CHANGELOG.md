@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.7.2] - 2026-06-18
+
+### Fixed
+- Clicking anywhere inside the BiS List, Items Received, or Attendance sections no longer collapses them. The toggle is now scoped to the section header row only for all three sections.
+
+---
+
 ## [2.7.0] - 2026-06-18
 
 ### Added

@@ -1,5 +1,5 @@
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION = '2.7.0';
+var VERSION = '2.7.2';
 var DATA = null;
 
 var WOW_REALMS = [
@@ -747,11 +747,12 @@ function renderProfile(firstName, backTo, container) {
     '<div class="profile-badges"><span class="badge badge-' + player.role + '">' + player.role + '</span>' + trialBadge + benchBadge + classLine + fullyBisBadge + '</div>' +
     '</div>' +
     '</div>' +
-    '<div class="profile-section"' +
+    '<div class="profile-section">' +
+    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;' +
+    (backTo === 'officer' || hasPenalties ? 'cursor:pointer;"' : '"') +
     (backTo === 'officer'
-      ? ' onclick="loadAttendanceHistory(\'' + player.firstName.replace(/'/g, "\\'") + '\')" style="cursor:pointer;"'
-      : (hasPenalties ? ' onclick="var d=document.getElementById(\'attend-detail-' + player.firstName + '\');d.style.display=d.style.display===\'none\'?\'flex\':\'none\';" style="cursor:pointer;"' : '')) + '>' +
-    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Attendance' +
+      ? ' onclick="loadAttendanceHistory(\'' + player.firstName.replace(/'/g, "\\'") + '\')"'
+      : (hasPenalties ? ' onclick="var d=document.getElementById(\'attend-detail-' + player.firstName + '\');d.style.display=d.style.display===\'none\'?\'flex\':\'none\';"' : '')) + '>Attendance' +
     (backTo === 'officer'
       ? '<span class="attend-history-hint" style="font-size:0.95rem;color:var(--text-dim);">click to expand</span>'
       : (hasPenalties ? '<span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span>' : '')) +
@@ -761,8 +762,8 @@ function renderProfile(firstName, backTo, container) {
       ? '<div id="attend-history-' + player.firstName + '" style="display:none;margin-top:0.6rem;"></div>'
       : attendExtra) +
     '</div>' +
-    '<div class="profile-section" onclick="var l=document.getElementById(\'loot-list-' + player.firstName + '\');l.style.display=l.style.display===\'none\'?\'grid\':\'none\';" style="cursor:pointer;">' +
-    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Items Received <span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
+    '<div class="profile-section">' +
+    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var l=document.getElementById(\'loot-list-' + player.firstName + '\');l.style.display=l.style.display===\'none\'?\'grid\':\'none\';">Items Received <span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
     '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">' + lootCount + ' item' + (lootCount !== 1 ? 's' : '') + ' this tier</div>' +
     (lastItems.length
       ? (function() {
@@ -776,7 +777,7 @@ function renderProfile(firstName, backTo, container) {
               (lxi.difficulty ? '<div style="font-size:0.88rem;color:var(--text-muted);margin-top:0.1rem;">' + lxi.difficulty + '</div>' : '') +
               '</div>';
           }
-          return '<div style="margin-top:0.6rem;padding:0.5rem 0.75rem;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:space-between;" onclick="event.stopPropagation();">' +
+          return '<div style="margin-top:0.6rem;padding:0.5rem 0.75rem;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:space-between;">' +
             '<div style="flex:1;min-width:0;">' +
             '<div style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Last received' + (lastDate ? ' - ' + lastDate : '') + '</div>' +
             itemLines +
@@ -788,8 +789,8 @@ function renderProfile(firstName, backTo, container) {
     '<div id="loot-list-' + player.firstName + '" style="display:none;margin-top:0.75rem;grid-template-columns:1fr 1fr;gap:0 1rem;">' + lootItemsHTML + '</div>' +
     '</div>' +
     '<div class="profile-section"><div class="section-label">BiS Link</div>' + bisHTML + '</div>' +
-    '<div class="profile-section" onclick="var l=document.getElementById(\'prio-list-' + player.firstName + '\');l.style.display=l.style.display===\'none\'?\'block\':\'none\';" style="cursor:pointer;">' +
-    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">BiS List' + bisCompletionHTML + '<span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
+    '<div class="profile-section">' +
+    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var l=document.getElementById(\'prio-list-' + player.firstName + '\');l.style.display=l.style.display===\'none\'?\'block\':\'none\';">BiS List' + bisCompletionHTML + '<span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
     '<div id="prio-list-' + player.firstName + '" style="display:none;">' + priorityHTML + '</div>' +
     '</div>' +
     (mplusHTML ? '<div class="profile-section"><div class="section-label">M+ Exclusion</div>' + mplusHTML + '</div>' : '') +
