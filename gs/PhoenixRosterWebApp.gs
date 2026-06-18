@@ -847,16 +847,20 @@ function buildAttendanceMap(sheets, seasonStart, joinDateMap) {
     const joinDate       = joinDateMap[firstName] || '';
     const effectiveStart = (joinDate && (!seasonStart || joinDate > seasonStart)) ? joinDate : seasonStart;
     const eligible       = effectiveStart ? raidDates.filter(d => d >= effectiveStart) : raidDates;
-    const total          = eligible.length;
-    if (!total) continue;
+    if (!eligible.length) continue;
 
     const rows         = playerData[firstName] || [];
     const eligibleRows = rows.filter(r => !effectiveStart || r.date >= effectiveStart);
-    const sum          = eligibleRows.reduce((acc, r) => {
+    const norDates     = new Set(eligibleRows.filter(r => r.status === 'Not on Roster').map(r => r.date));
+    const countable    = eligible.filter(d => !norDates.has(d)).length;
+    if (!countable) continue;
+
+    const sum = eligibleRows.reduce((acc, r) => {
+      if (r.status === 'Not on Roster') return acc;
       const w = ATTENDANCE_WEIGHTS[r.status];
       return acc + (w != null ? w : 0);
     }, 0);
-    const pct = Math.round((sum / total) * 1000) / 10;
+    const pct = Math.round((sum / countable) * 1000) / 10;
     attendMap[firstName] = pct.toFixed(1) + '%';
   }
 
