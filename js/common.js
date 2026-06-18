@@ -1,5 +1,5 @@
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION = '2.6.0';
+var VERSION = '2.6.1';
 var DATA = null;
 
 var WOW_REALMS = [
@@ -475,7 +475,7 @@ function renderProfile(firstName, backTo, container) {
 
   var displayName = player.nick || player.firstName;
   var initials = displayName.slice(0, 2).toUpperCase();
-  var classLine = player.class ? '<span class="badge badge-class" style="' + classBadgeStyle(player.class) + '">' + player.class + (player.spec ? ' - ' + player.spec : '') + '</span>' : '';
+  var classLine = player.class ? '<span class="badge badge-class" style="' + classBadgeStyle(player.class) + '">' + (player.spec || player.class) + '</span>' : '';
   var trialBadge = player.isTrial ? '<span class="badge badge-trial">Trial</span>' : '';
   var benchBadge = player.isBench ? '<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text);border:1px solid var(--border);">Bench</span>' : '';
 

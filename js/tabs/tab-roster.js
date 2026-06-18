@@ -126,7 +126,7 @@ function buildRosterTable() {
               '<span style="font-weight:600;color:var(--text);">'+name+'</span>' +
               (p.firstName!==name?'<span style="font-size:0.95rem;color:var(--text-muted);">('+p.firstName+')</span>':'') +
             '</div>' +
-            (p.class?'<span style="font-size:1rem;color:'+clsColor+';letter-spacing:0.03em;">'+p.class+(p.spec?' - '+p.spec:'')+'</span>':'') +
+            (p.class?'<span class="badge badge-class" style="'+classBadgeStyle(p.class)+';align-self:flex-start;">'+(p.spec||p.class)+'</span>':'') +
           '</div>' +
         '</div></td>' +
         '<td><div class="attend-mini-cell"><span class="attend-mini" style="color:'+color+';">'+(p.attendance||'-')+'</span>' +
