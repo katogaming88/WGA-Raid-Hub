@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.9.0] - 2026-06-18
+
+### Added
+- Join date per player tracked in Roster sheet column M. Automatically set to the current date when a player is added via the officer dashboard or approved from Pending Roster. Visible on the player profile (below the role/class badges) and in the officer roster table (below the class badge in the Player cell). Officers can manually set or correct a join date from the Player Settings panel on any profile. Changes are logged in the Officer Audit Log. Closes #77.
+- Officer Audit Log now records an entry whenever an RCLootCouncil export string is generated from the Priority tab.
+
+---
+
 ## [2.8.0] - 2026-06-18
 
 ### Added

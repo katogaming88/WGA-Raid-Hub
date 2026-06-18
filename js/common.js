@@ -1,5 +1,5 @@
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION = '2.8.0';
+var VERSION = '2.9.0';
 var DATA = null;
 
 var WOW_REALMS = [
@@ -212,6 +212,16 @@ function getSlotColor(slot) {
 }
 
 function attendColor(pct) { return pct >= 90 ? 'var(--heal)' : pct >= 75 ? 'var(--gold)' : 'var(--melee)'; }
+
+function formatJoinDate(dateStr) {
+  if (!dateStr) return '';
+  var parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var m = parseInt(parts[1], 10) - 1;
+  if (m < 0 || m > 11) return dateStr;
+  return months[m] + ' ' + parseInt(parts[2], 10) + ', ' + parts[0];
+}
 
 // -- BiS state helpers ------------------------------------------------------
 function bisSubmissionsOpen() {
@@ -709,6 +719,11 @@ function renderProfile(firstName, backTo, container) {
       '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">M+ Excl.</span>' +
       '<button id="mplusExclToggle-' + player.firstName + '" class="btn ' + (player.mPlusExcluded ? 'btn-gold' : 'btn-muted') + '" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="toggleMPlusExcluded(\'' + nrSafe + '\',\'' + fnSafe + '\')">' + (player.mPlusExcluded ? 'Remove Exclusion' : 'Mark as Excluded') + '</button>' +
       '</div>' +
+      '<div style="display:flex;align-items:center;gap:0.75rem;">' +
+      '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Joined</span>' +
+      '<input type="date" id="joinDateInput-' + player.firstName + '" value="' + (player.joinDate || '') + '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:12rem;">' +
+      '<button class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="saveJoinDate(\'' + nrSafe + '\',\'' + fnSafe + '\')">Save</button>' +
+      '</div>' +
       '<div id="playerSettingsMsg-' + player.firstName + '" style="font-size:0.92rem;color:var(--text-muted);min-height:1.2rem;"></div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;padding-top:0.25rem;border-top:1px solid var(--border);margin-top:0.5rem;">' +
       '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Remove</span>' +
@@ -745,6 +760,7 @@ function renderProfile(firstName, backTo, container) {
     '<div class="profile-name">' + displayName + '</div>' +
     '<div class="profile-realm">' + player.firstName + '-' + player.realm + '</div>' +
     '<div class="profile-badges"><span class="badge badge-' + player.role + '">' + player.role + '</span>' + trialBadge + benchBadge + classLine + fullyBisBadge + '</div>' +
+    (player.joinDate ? '<div style="font-size:0.9rem;color:var(--text-muted);margin-top:0.35rem;">Joined: ' + formatJoinDate(player.joinDate) + '</div>' : '') +
     '</div>' +
     '</div>' +
     '<div class="profile-section">' +

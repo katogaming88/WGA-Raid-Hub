@@ -127,6 +127,7 @@ function buildRosterTable() {
               (p.firstName!==name?'<span style="font-size:0.95rem;color:var(--text-muted);">('+p.firstName+')</span>':'') +
             '</div>' +
             (p.class?'<span class="badge badge-class" style="'+classBadgeStyle(p.class)+';align-self:flex-start;">'+(p.spec||p.class)+'</span>':'') +
+            (p.joinDate?'<span style="font-size:0.82rem;color:var(--text-dim);">Joined: '+formatJoinDate(p.joinDate)+'</span>':'') +
           '</div>' +
         '</div></td>' +
         '<td><div class="attend-mini-cell"><span class="attend-mini" style="color:'+color+';">'+(p.attendance||'-')+'</span>' +
@@ -395,6 +396,12 @@ function savePlayerField(nameRealm, firstName, field, value) {
   script.onerror = function() { delete window[cbName]; if (msgEl) msgEl.textContent = 'Failed to save.'; };
   script.src = WEB_APP_URL + '?action=updatePlayerField&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: field, value: value })) + '&callback=' + cbName;
   document.head.appendChild(script);
+}
+
+function saveJoinDate(nameRealm, firstName) {
+  var input = document.getElementById('joinDateInput-' + firstName);
+  if (!input) return;
+  savePlayerField(nameRealm, firstName, 'joinDate', input.value);
 }
 
 function togglePlayerTrial(nameRealm, firstName) {
