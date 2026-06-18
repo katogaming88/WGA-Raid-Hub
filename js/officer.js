@@ -125,6 +125,29 @@ function isOfficerSessionValid() {
   return ts > 0 && (Date.now() - ts) < SESSION_DURATION_MS;
 }
 
+function setNavBadge(id, count) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = count;
+  el.style.display = count > 0 ? '' : 'none';
+}
+
+function updateNavBadges() {
+  var cbName = '_getPendingCountsCb';
+  window[cbName] = function(result) {
+    delete window[cbName];
+    setNavBadge('signupsNavBadge', (result.signups || 0) + (result.pendingRoster || 0));
+    setNavBadge('pendingRosterSubBadge', result.pendingRoster || 0);
+    setNavBadge('bisNavBadge', result.bis || 0);
+    setNavBadge('mplusNavBadge', result.mplus || 0);
+    setNavBadge('requestsNavBadge', result.requests || 0);
+  };
+  var script = document.createElement('script');
+  script.onerror = function() { delete window[cbName]; };
+  script.src = WEB_APP_URL + '?action=getPendingCounts&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
 function buildOfficerDashboard() {
   buildStatsBar();
   buildRosterTable();
@@ -132,6 +155,7 @@ function buildOfficerDashboard() {
   renderBisToggle();
   renderMPlusToggle();
   updateUnmanagedBadge();
+  updateNavBadges();
   if (DATA._loadedAt) {
     var t  = DATA._loadedAt;
     var h  = t.getHours(), m = t.getMinutes();
