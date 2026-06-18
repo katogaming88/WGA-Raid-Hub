@@ -195,6 +195,24 @@ select#playerSelect option { background:#1a1d27; }
 .bis-search-wrap { position:relative; flex:1; min-width:140px; display:flex; flex-direction:column; gap:0.25rem; }
 .bis-item-count { font-size:0.97rem; font-weight:600; letter-spacing:0.08em; color:var(--gold); padding-left:0.25rem; min-height:1em; }
 
+/* Trial promotion alert */
+.trial-promo-card { background:rgba(240,200,112,0.04); border:1px solid rgba(240,200,112,0.2); border-left:3px solid var(--gold-dim); border-radius:4px; padding:0.85rem 1.1rem; margin-bottom:1rem; }
+.trial-promo-header { display:flex; align-items:center; gap:0.75rem; margin-bottom:0.6rem; flex-wrap:wrap; }
+.trial-promo-title { font-size:0.88rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold-light); }
+.trial-promo-count { font-size:0.9rem; font-weight:600; padding:2px 8px; border-radius:2px; background:rgba(240,200,112,0.1); color:var(--gold); border:1px solid rgba(240,200,112,0.25); }
+.trial-promo-thresholds { display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; margin-bottom:0.7rem; }
+.trial-promo-thresh-label { font-size:0.85rem; color:var(--text-muted); }
+.trial-promo-input { width:42px; font-family:'Rajdhani',sans-serif; font-size:0.9rem; font-weight:600; text-align:center; padding:0.2rem 0.3rem; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; outline:none; }
+.trial-promo-input:focus { border-color:var(--gold-dim); }
+.trial-promo-table { width:100%; border-collapse:collapse; }
+.trial-promo-table th { font-size:0.82rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); font-weight:600; padding:0.3rem 0.6rem; border-bottom:1px solid rgba(240,200,112,0.15); text-align:left; }
+.trial-promo-table th:not(:first-child) { text-align:center; }
+.trial-promo-table td { padding:0.4rem 0.6rem; border-bottom:1px solid var(--border); font-size:0.97rem; vertical-align:middle; }
+.trial-promo-table td:not(:first-child) { text-align:center; }
+.trial-promo-row { cursor:pointer; transition:background 0.1s; }
+.trial-promo-row:hover { background:rgba(214,163,68,0.05); }
+.trial-promo-row:last-child td { border-bottom:none; }
+
 /* BiS conflicts */
 .conflict-item { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1rem 1.25rem; margin-bottom:0.75rem; }
 .conflict-item-name { font-size:1.1rem; font-weight:600; color:var(--text); margin-bottom:0.5rem; display:flex; align-items:center; gap:0.75rem; }
