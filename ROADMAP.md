@@ -8,7 +8,7 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 
 Performance fixes and officer dashboard completions that don't require new infrastructure.
 
-- [ ] Fix payload load timeouts -- split into fast core chunk (roster, priority) and lazy heavy chunk (loot, attendance) so the page is usable before all data arrives (#104)
+- [x] Fix payload load timeouts -- split into fast core chunk (roster, priority) and lazy heavy chunk (loot, attendance) so the page is usable before all data arrives (#104)
 - [ ] Paste RCLootCouncil loot history directly in the web app -- officers paste the RC export once per season; app parses and stores it, replacing the manual sheet workflow (#101)
 - [ ] Attendance entry from the officer dashboard -- trigger WCL refresh and fill in Bench/Excused/No Show statuses without opening the spreadsheet; commit scores to Scoring sheet from the UI (#94)
 - [ ] Move Discord bot from personal server to guild server -- set up officer notification channel so all officers can see app notifications (#84)

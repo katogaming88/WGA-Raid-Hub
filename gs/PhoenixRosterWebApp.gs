@@ -104,7 +104,8 @@ function doGet(e) {
     const callback = e && e.parameter && e.parameter.callback;
 
     if (action === 'clearCache') {
-      cache.remove('rosterPayload');
+      cache.remove('rosterCore');
+      cache.remove('rosterHeavy');
       return jsonpResponse(callback, { success: true });
     }
 
@@ -137,7 +138,7 @@ function doGet(e) {
     if (action === 'setSignupsOpen') {
       const open = e.parameter.value === 'true';
       props.setProperty('signupsOpen', open ? 'true' : 'false');
-      cache.remove('rosterPayload');
+      cache.remove('rosterCore');
       appendAuditLog(open ? 'Signups Opened' : 'Signups Closed', '', '', '');
       return jsonpResponse(callback, { success: true, signupsOpen: open });
     }
@@ -145,7 +146,7 @@ function doGet(e) {
     if (action === 'setBisSubmissionsOpen') {
       const open = e.parameter.value === 'true';
       props.setProperty('bisSubmissionsOpen', open ? 'true' : 'false');
-      cache.remove('rosterPayload');
+      cache.remove('rosterCore');
       appendAuditLog(open ? 'BiS Submissions Opened' : 'BiS Submissions Closed', '', '', '');
       return jsonpResponse(callback, { success: true, bisSubmissionsOpen: open });
     }
@@ -153,7 +154,7 @@ function doGet(e) {
     if (action === 'setMPlusExclusionsOpen') {
       const open = e.parameter.value === 'true';
       props.setProperty('mPlusExclusionsOpen', open ? 'true' : 'false');
-      cache.remove('rosterPayload');
+      cache.remove('rosterCore');
       appendAuditLog(open ? 'M+ Exclusions Opened' : 'M+ Exclusions Closed', '', '', '');
       return jsonpResponse(callback, { success: true, mPlusExclusionsOpen: open });
     }
@@ -182,7 +183,7 @@ function doGet(e) {
     if (action === 'requestSelfReceived') {
       const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
       // TODO(auth): once Discord OAuth ships, bypass officer approval for verified players:
-      //   if (isPlayerVerified(data.player)) { approveSelfReceivedDirect(data); cache.remove('rosterPayload'); return jsonpResponse(callback, { success: true }); }
+      //   if (isPlayerVerified(data.player)) { approveSelfReceivedDirect(data); cache.remove('rosterHeavy'); return jsonpResponse(callback, { success: true }); }
       writeSelfReceivedRequest(data);
       sendToBot('/selfreceived', JSON.stringify({
         player:      data.player  || '',
@@ -202,7 +203,7 @@ function doGet(e) {
     if (action === 'directMarkReceived') {
       const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
       writeSelfReceivedRequest(data, 'Approved');
-      cache.remove('rosterPayload');
+      cache.remove('rosterHeavy');
       appendAuditLog('Loot Marked Received', String(data.player || ''), '', String(data.item || ''));
       return jsonpResponse(callback, { success: true });
     }
@@ -212,7 +213,7 @@ function doGet(e) {
       if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
       const reqData = getSelfReceivedRowSummary(row);
       updateRequestStatus(row, 'Approved');
-      cache.remove('rosterPayload');
+      cache.remove('rosterHeavy');
       appendAuditLog('Self-Received Approved', reqData.player, '', reqData.item);
       return jsonpResponse(callback, { success: true });
     }
@@ -251,7 +252,7 @@ function doGet(e) {
       const oldUrl = getRosterBisLink(nameRealm);
       updateBisLinkInRoster(nameRealm, url);
       updateBiSStatus(row, 'Approved');
-      cache.remove('rosterPayload');
+      cache.remove('rosterHeavy');
       appendAuditLog('BiS Approved', nameRealm, oldUrl, url);
       return jsonpResponse(callback, { success: true });
     }
@@ -273,7 +274,7 @@ function doGet(e) {
         allowed.push(nameRealm);
         setBisAllowedPlayers(allowed);
       }
-      cache.remove('rosterPayload');
+      cache.remove('rosterCore');
       appendAuditLog('BiS Submission Enabled', nameRealm, '', '');
       return jsonpResponse(callback, { success: true, bisAllowedPlayers: allowed });
     }
@@ -283,7 +284,7 @@ function doGet(e) {
       const nameRealm = String(data.nameRealm || '');
       const allowed   = getBisAllowedPlayers().filter(function(n) { return n !== nameRealm; });
       setBisAllowedPlayers(allowed);
-      cache.remove('rosterPayload');
+      cache.remove('rosterCore');
       appendAuditLog('BiS Submission Revoked', nameRealm, '', '');
       return jsonpResponse(callback, { success: true, bisAllowedPlayers: allowed });
     }
@@ -294,7 +295,7 @@ function doGet(e) {
       const url       = String(data.url || '');
       const oldUrl    = getRosterBisLink(nameRealm);
       updateBisLinkInRoster(nameRealm, url);
-      cache.remove('rosterPayload');
+      cache.remove('rosterHeavy');
       appendAuditLog('BiS Link Updated', nameRealm, oldUrl, url);
       return jsonpResponse(callback, { success: true });
     }
@@ -307,7 +308,7 @@ function doGet(e) {
       if (!nameRealm || !field) return jsonpResponse(callback, { error: 'Missing params' });
       const oldVal = getRosterFieldValue(nameRealm, field);
       updateRosterField(nameRealm, field, value);
-      cache.remove('rosterPayload');
+      cache.remove('rosterCore');
       const actionLabel = field === 'spec'     ? 'Spec Changed'
                         : field === 'isTrial'  ? 'Trial Status Changed'
                         : field === 'role'     ? 'Role Changed'
@@ -334,7 +335,7 @@ function doGet(e) {
     if (action === 'addPlayer') {
       const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
       addPlayerToRoster(data);
-      cache.remove('rosterPayload');
+      cache.remove('rosterCore');
       const details = [data.class, data.spec, data.role].filter(Boolean).join(' ');
       appendAuditLog('Player Added', String(data.nameRealm || ''), '', details);
       return jsonpResponse(callback, { success: true });
@@ -345,7 +346,7 @@ function doGet(e) {
       const nameRealm = String(data.nameRealm || '').trim();
       if (!nameRealm) return jsonpResponse(callback, { error: 'Missing nameRealm' });
       removePlayerFromRoster(nameRealm);
-      cache.remove('rosterPayload');
+      cache.remove('rosterCore');
       appendAuditLog('Player Removed', nameRealm, '', '');
       return jsonpResponse(callback, { success: true });
     }
@@ -425,7 +426,7 @@ function doGet(e) {
       const list = getMPlusManualExcluded().filter(function(n) { return n !== nameRealm; });
       if (excluded) list.push(nameRealm);
       setMPlusManualExcluded(list);
-      cache.remove('rosterPayload');
+      cache.remove('rosterCore');
       appendAuditLog(excluded ? 'M+ Exclusion Toggled On' : 'M+ Exclusion Toggled Off', nameRealm, '', '');
       return jsonpResponse(callback, { success: true, excluded: excluded });
     }
@@ -441,7 +442,7 @@ function doGet(e) {
           }
         }
       }
-      cache.remove('rosterPayload');
+      cache.remove('rosterCore');
       appendAuditLog('All M+ Exclusions Cleared', '', '', '');
       return jsonpResponse(callback, { success: true });
     }
@@ -461,7 +462,7 @@ function doGet(e) {
         const exSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CFG.mPlusExclusionSheet);
         if (exSheet) exSheet.getRange(row, 6).setValue(note);
       }
-      cache.remove('rosterPayload');
+      cache.remove('rosterCore');
       appendAuditLog('M+ Exclusion Approved', nameRealm, '', note || '');
       return jsonpResponse(callback, { success: true });
     }
@@ -483,6 +484,38 @@ function doGet(e) {
         mplus:         getMPlusExclusionRequests('Pending').length,
         requests:      getSelfReceivedRequests('Pending').length
       });
+    }
+
+    const chunk = e && e.parameter && e.parameter.chunk;
+
+    if (chunk === 'core') {
+      const coreJson = cache.get('rosterCore') || (() => {
+        const ss = SpreadsheetApp.getActiveSpreadsheet();
+        const sheets = {};
+        for (const sheet of ss.getSheets()) { sheets[sheet.getName()] = sheet; }
+        const fresh = JSON.stringify(buildCorePayload(sheets, PropertiesService.getScriptProperties()));
+        cache.put('rosterCore', fresh, 300);
+        return fresh;
+      })();
+      if (callback) {
+        return ContentService.createTextOutput(callback + '(' + coreJson + ')').setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      return ContentService.createTextOutput(coreJson).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (chunk === 'heavy') {
+      const heavyJson = cache.get('rosterHeavy') || (() => {
+        const ss = SpreadsheetApp.getActiveSpreadsheet();
+        const sheets = {};
+        for (const sheet of ss.getSheets()) { sheets[sheet.getName()] = sheet; }
+        const fresh = JSON.stringify(buildHeavyPayload(sheets));
+        cache.put('rosterHeavy', fresh, 900);
+        return fresh;
+      })();
+      if (callback) {
+        return ContentService.createTextOutput(callback + '(' + heavyJson + ')').setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      return ContentService.createTextOutput(heavyJson).setMimeType(ContentService.MimeType.JSON);
     }
 
     const cached = cache.get('rosterPayload');
@@ -647,35 +680,43 @@ function getSelfReceived(sheets) {
   return result;
 }
 
-function buildPayload() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-
-  // Pre-load all sheets in one pass to minimise Sheets API calls
-  const sheets = {};
-  for (const sheet of ss.getSheets()) {
-    sheets[sheet.getName()] = sheet;
-  }
-
-  const scriptProps        = PropertiesService.getScriptProperties();
-  const signupsOpen        = scriptProps.getProperty('signupsOpen')        === 'true';
-  const bisSubmissionsOpen = scriptProps.getProperty('bisSubmissionsOpen') === 'true';
+function buildCorePayload(sheets, scriptProps) {
+  const signupsOpen         = scriptProps.getProperty('signupsOpen')         === 'true';
+  const bisSubmissionsOpen  = scriptProps.getProperty('bisSubmissionsOpen')  === 'true';
   const mPlusExclusionsOpen = scriptProps.getProperty('mPlusExclusionsOpen') === 'true';
-
   return {
-    generatedAt:           new Date().toISOString(),
-    signupsOpen:           signupsOpen,
-    bisSubmissionsOpen:    bisSubmissionsOpen,
-    mPlusExclusionsOpen:   mPlusExclusionsOpen,
-    bisAllowedPlayers:     getBisAllowedPlayers(),
-    playerNotes:           getPlayerNotes(),
-    roster:        getRoster(sheets),
-    priorityOrder: getPriorityOrder(sheets),
-    bisList:       getBisList(sheets),
-    itemSlots:     getItemSlots(sheets),
+    generatedAt:          new Date().toISOString(),
+    signupsOpen:          signupsOpen,
+    bisSubmissionsOpen:   bisSubmissionsOpen,
+    mPlusExclusionsOpen:  mPlusExclusionsOpen,
+    bisAllowedPlayers:    getBisAllowedPlayers(),
+    playerNotes:          getPlayerNotes(),
+    roster:               getRoster(sheets),
+  };
+}
+
+function buildHeavyPayload(sheets) {
+  return {
+    generatedAt:       new Date().toISOString(),
+    priorityOrder:     getPriorityOrder(sheets),
+    bisList:           getBisList(sheets),
+    itemSlots:         getItemSlots(sheets),
     lootCounts:        getLootCounts(sheets),
     attendanceDetails: getAttendanceDetails(sheets),
     selfReceived:      getSelfReceived(sheets),
   };
+}
+
+function buildPayload() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = {};
+  for (const sheet of ss.getSheets()) {
+    sheets[sheet.getName()] = sheet;
+  }
+  const scriptProps = PropertiesService.getScriptProperties();
+  const core  = buildCorePayload(sheets, scriptProps);
+  const heavy = buildHeavyPayload(sheets);
+  return Object.assign({}, core, heavy);
 }
 
 function getMPlusManualExcluded() {
@@ -1166,7 +1207,9 @@ function removePlayerFromRoster(nameRealm) {
 }
 
 function clearRosterCache() {
-  CacheService.getScriptCache().remove('rosterPayload');
+  const cache = CacheService.getScriptCache();
+  cache.remove('rosterCore');
+  cache.remove('rosterHeavy');
   SpreadsheetApp.getUi().alert('Roster page cache cleared. The next page load will fetch fresh data.');
 }
 

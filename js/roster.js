@@ -100,9 +100,14 @@ function buildRecentLoot() {
 }
 
 // Boot
-loadData(function() {
-  populateDropdown();
-  buildPublicStats();
-  buildRecentLoot();
-  showView('landing');
-});
+loadData(
+  function() {
+    populateDropdown();
+    buildPublicStats();
+    showView('landing');
+  },
+  function() {
+    buildPublicStats();
+    buildRecentLoot();
+  }
+);

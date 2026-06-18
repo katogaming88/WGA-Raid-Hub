@@ -94,31 +94,48 @@ function normalise(str) {
 }
 
 // -- Data loading -----------------------------------------------------------
-// onSuccess is called after DATA is populated; each page passes its own boot fn.
-function loadData(onSuccess) {
-  window._rosterCallback = function (data) {
-    try {
-      if (data.error) throw new Error(data.error);
-      DATA = data;
-      DATA._loadedAt = new Date();
-      onSuccess();
-    } catch (e) {
-      document.getElementById('loadingMsg').className = 'state-msg error';
-      document.getElementById('loadingMsg').innerHTML = 'Could not load roster data. ' + e.message;
-    }
+// onCoreReady fires once the fast core chunk is loaded and the page can render.
+// onHeavyReady (optional) fires once loot/attendance/BiS/priority data arrives.
+function loadData(onCoreReady, onHeavyReady) {
+  var loadingEl = document.getElementById('loadingMsg');
+  function showError(msg) {
+    if (loadingEl) { loadingEl.className = 'state-msg error'; loadingEl.innerHTML = msg; }
+  }
+
+  window._rosterCoreCallback = function (data) {
+    delete window._rosterCoreCallback;
+    if (data.error) { showError('Could not load roster data. ' + data.error); return; }
+    DATA = data;
+    DATA._loadedAt = new Date();
+    try { onCoreReady(); } catch (e) { showError('Could not load roster data. ' + e.message); return; }
+
+    var heavyScript = document.createElement('script');
+    heavyScript.onerror = function () { delete window._rosterHeavyCallback; };
+    window._rosterHeavyCallback = function (heavy) {
+      delete window._rosterHeavyCallback;
+      if (!heavy || heavy.error) return;
+      DATA.lootCounts        = heavy.lootCounts;
+      DATA.attendanceDetails = heavy.attendanceDetails;
+      DATA.bisList           = heavy.bisList;
+      DATA.priorityOrder     = heavy.priorityOrder;
+      DATA.itemSlots         = heavy.itemSlots;
+      DATA.selfReceived      = heavy.selfReceived;
+      if (onHeavyReady) onHeavyReady();
+    };
+    heavyScript.src = WEB_APP_URL + '?chunk=heavy&callback=_rosterHeavyCallback';
+    document.head.appendChild(heavyScript);
   };
-  var script = document.createElement('script');
-  script.src = WEB_APP_URL + '?callback=_rosterCallback';
-  script.onerror = function () {
-    document.getElementById('loadingMsg').className = 'state-msg error';
-    document.getElementById('loadingMsg').innerHTML = 'Could not load roster data.';
+
+  var coreScript = document.createElement('script');
+  coreScript.onerror = function () {
+    delete window._rosterCoreCallback;
+    showError('Could not load roster data.');
   };
-  document.head.appendChild(script);
+  coreScript.src = WEB_APP_URL + '?chunk=core&callback=_rosterCoreCallback';
+  document.head.appendChild(coreScript);
+
   setTimeout(function () {
-    if (!DATA) {
-      document.getElementById('loadingMsg').className = 'state-msg error';
-      document.getElementById('loadingMsg').innerHTML = 'Request timed out.';
-    }
+    if (!DATA) { showError('Request timed out.'); }
   }, 15000);
 }
 
