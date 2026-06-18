@@ -13,6 +13,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Players present in a WCL log but not in any ranked fight (e.g. joined mid-raid, sat out boss attempts) are now correctly detected as present. The combatants list (`masterData.actors`) is now always merged with rankings rather than used only as a last resort when rankings are completely empty.
 - Players with "Not on Roster" entries no longer have those raids counted in their attendance denominator, fixing badly deflated percentages for mid-season additions (e.g. showing 26.9% instead of 100%).
 
+### Changed
+- Low-attendance threshold raised from 90% to 95% across the filter chip, attendance tab slider default, roster filter logic, and color bands.
+
 ---
 
 ## [2.11.0] - 2026-06-18
