@@ -388,6 +388,7 @@ function savePlayerField(nameRealm, firstName, field, value) {
     if (result && result.success && DATA) {
       var player = DATA.roster.find(function(p) { return p.nameRealm === nameRealm; });
       if (player) player[field] = value;
+      if (field === 'joinDate') buildTrialPromoAlert();
     }
     if (msgEl) {
       msgEl.textContent = result && result.error ? 'Failed to save.' : 'Saved.';
@@ -418,6 +419,7 @@ function togglePlayerTrial(nameRealm, firstName) {
     if (result && result.success && DATA) {
       var p = DATA.roster.find(function(p) { return p.nameRealm === nameRealm; });
       if (p) p.isTrial = newVal;
+      buildTrialPromoAlert();
     }
     if (btn) {
       btn.disabled = false;
