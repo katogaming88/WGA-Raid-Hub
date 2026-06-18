@@ -14,6 +14,7 @@ const CFG = {
   rosterBisLinkCol:  9,   // I — BiS Link
   rosterSortKeyCol:  10,  // J - Sort Key (auto)
   rosterPriorityCol: 11,  // K - Priority (1=RL,2=Officer,3=Tank,4=Heal,5=DPS,6=Bench)
+  rosterJoinDateCol: 13,  // M - Join Date (YYYY-MM-DD string)
   rosterDataStart:   4,   // First data row (rows 1-3 are title/subtitle/header)
 
   // ── Scoring tab ──────────────────────────────────────────────────────
@@ -119,6 +120,7 @@ function doGet(e) {
       const encoded    = Utilities.base64Encode(JSON.stringify({ players, priority }), Utilities.Charset.UTF_8);
       const expSheet   = ss.getSheetByName('Export');
       if (expSheet) expSheet.getRange('A11').setValue(encoded);
+      appendAuditLog('Export String Generated', '', '', '');
       return jsonpResponse(callback, { exportString: encoded });
     }
 
@@ -306,10 +308,11 @@ function doGet(e) {
       const oldVal = getRosterFieldValue(nameRealm, field);
       updateRosterField(nameRealm, field, value);
       cache.remove('rosterPayload');
-      const actionLabel = field === 'spec'    ? 'Spec Changed'
-                        : field === 'isTrial' ? 'Trial Status Changed'
-                        : field === 'role'    ? 'Role Changed'
-                        : field === 'isBench' ? 'Bench Status Changed'
+      const actionLabel = field === 'spec'     ? 'Spec Changed'
+                        : field === 'isTrial'  ? 'Trial Status Changed'
+                        : field === 'role'     ? 'Role Changed'
+                        : field === 'isBench'  ? 'Bench Status Changed'
+                        : field === 'joinDate' ? 'Join Date Changed'
                         : 'Field Changed: ' + field;
       appendAuditLog(actionLabel, nameRealm, oldVal, String(value));
       return jsonpResponse(callback, { success: true });
@@ -749,15 +752,19 @@ function getRoster(sheets) {
     const charClass = String(row[CFG.rosterClassCol   - 1] || '').trim();
     const spec      = String(row[CFG.rosterSpecCol    - 1] || '').trim();
     const role      = String(row[CFG.rosterRoleCol    - 1] || '').trim();
-    const bisLink   = String(row[CFG.rosterBisLinkCol - 1] || '').trim();
-    const sortKey   = String(row[CFG.rosterSortKeyCol - 1] || '').trim();
+    const bisLink       = String(row[CFG.rosterBisLinkCol  - 1] || '').trim();
+    const rawJoinDate   = row[CFG.rosterJoinDateCol - 1];
+    const joinDate      = rawJoinDate instanceof Date
+                          ? Utilities.formatDate(rawJoinDate, Session.getScriptTimeZone(), 'yyyy-MM-dd')
+                          : String(rawJoinDate || '').trim();
+    const sortKey       = String(row[CFG.rosterSortKeyCol  - 1] || '').trim();
     const isBench       = String(Math.floor(Number(sortKey) / 1000)) === '6';
     const mPlusExcluded = !!mPlusExcludedSet[nameRealm.toLowerCase()];
     const mPlusNote     = mPlusNoteMap[nameRealm.toLowerCase()] || '';
 
     if (!role) continue;
 
-    players.push({ nameRealm, firstName, realm, isTrial, isBench, attendance: attendMap[firstName] || '', nick, class: charClass, spec, role, bisLink, mPlusExcluded, mPlusNote });
+    players.push({ nameRealm, firstName, realm, isTrial, isBench, attendance: attendMap[firstName] || '', nick, class: charClass, spec, role, bisLink, joinDate, mPlusExcluded, mPlusNote });
   }
 
   return players;
@@ -1020,6 +1027,8 @@ function updateRosterField(nameRealm, field, value) {
         const role = String(data[i][CFG.rosterRoleCol - 1] || '').trim();
         sheet.getRange(sheetRow, CFG.rosterPriorityCol).setValue(roleToPriority(role));
       }
+    } else if (field === 'joinDate') {
+      sheet.getRange(sheetRow, CFG.rosterJoinDateCol).setValue(String(value || ''));
     }
     return;
   }
@@ -1126,6 +1135,11 @@ function addPlayerToRoster(data) {
     }
   }
 
+  const now      = new Date();
+  const joinDate = now.getFullYear() + '-' +
+                   String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                   String(now.getDate()).padStart(2, '0');
+
   // Write only the columns this app owns — don't touch col A or any formula columns.
   sheet.getRange(targetRow, CFG.rosterTrialCol).setValue(isTrial);
   sheet.getRange(targetRow, CFG.rosterPlayerCol).setValue(nameRealm);
@@ -1134,6 +1148,7 @@ function addPlayerToRoster(data) {
   sheet.getRange(targetRow, CFG.rosterSpecCol).setValue(spec);
   sheet.getRange(targetRow, CFG.rosterRoleCol).setValue(role);
   sheet.getRange(targetRow, CFG.rosterPriorityCol).setValue(priority);
+  sheet.getRange(targetRow, CFG.rosterJoinDateCol).setValue(joinDate);
 }
 
 function removePlayerFromRoster(nameRealm) {
@@ -1357,10 +1372,11 @@ function getRosterFieldValue(nameRealm, field) {
   for (let i = CFG.rosterDataStart - 1; i < data.length; i++) {
     const rowPlayer = String(data[i][CFG.rosterPlayerCol - 1] || '').trim();
     if (rowPlayer.toLowerCase() !== nameRealm.toLowerCase()) continue;
-    if (field === 'spec')    return String(data[i][CFG.rosterSpecCol - 1]  || '');
-    if (field === 'isTrial') return String(data[i][CFG.rosterTrialCol - 1] || '');
-    if (field === 'role')    return String(data[i][CFG.rosterRoleCol - 1]  || '');
-    if (field === 'isBench') return Number(data[i][CFG.rosterPriorityCol - 1] || 0) === 6 ? 'true' : 'false';
+    if (field === 'spec')     return String(data[i][CFG.rosterSpecCol     - 1] || '');
+    if (field === 'isTrial')  return String(data[i][CFG.rosterTrialCol    - 1] || '');
+    if (field === 'role')     return String(data[i][CFG.rosterRoleCol     - 1] || '');
+    if (field === 'joinDate') { const v = data[i][CFG.rosterJoinDateCol - 1]; return v instanceof Date ? Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(v || ''); }
+    if (field === 'isBench')  return Number(data[i][CFG.rosterPriorityCol - 1] || 0) === 6 ? 'true' : 'false';
     return '';
   }
   return '';

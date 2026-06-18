@@ -203,11 +203,13 @@ function directAddFromPending(entry, nameRealm, nick, btnEl) {
     }
     var parts = nameRealm.split('-');
     if (DATA && DATA.roster) {
+      var today = new Date(); var mm = today.getMonth() + 1; var dd = today.getDate();
+      var todayStr = today.getFullYear() + '-' + (mm < 10 ? '0' : '') + mm + '-' + (dd < 10 ? '0' : '') + dd;
       DATA.roster.push({
         nameRealm: nameRealm, firstName: parts[0], realm: parts.slice(1).join('-'),
         nick: nick || '', class: entry.className, spec: entry.mainSpec,
         role: entry.role || 'Melee', isTrial: false, isBench: false,
-        attendance: '', bisLink: ''
+        attendance: '', bisLink: '', joinDate: todayStr
       });
       if (typeof buildRosterTable === 'function') buildRosterTable();
       if (typeof buildStatsBar    === 'function') buildStatsBar();
