@@ -1,5 +1,5 @@
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION = '2.4.0';
+var VERSION = '2.4.1';
 var DATA = null;
 
 var WOW_REALMS = [
@@ -149,6 +149,30 @@ function getSelfReceivedItems(firstName) {
     if (normalise(keys[i]) === norm) return map[keys[i]];
   }
   return [];
+}
+
+function refreshBisCompletion(firstName) {
+  var el = document.getElementById('bis-completion-' + firstName);
+  if (!el) return;
+  var bisItems     = getBisItems(firstName);
+  if (!bisItems.length) return;
+  var selfRecItems = getSelfReceivedItems(firstName);
+  var selfRecMap   = {};
+  for (var i = 0; i < selfRecItems.length; i++) selfRecMap[normalise(selfRecItems[i].item)] = true;
+  var lootEntry = getLootEntry(firstName);
+  var receivedMap = {};
+  if (lootEntry && lootEntry.items) {
+    for (var j = 0; j < lootEntry.items.length; j++) {
+      var n = typeof lootEntry.items[j] === 'string' ? lootEntry.items[j] : lootEntry.items[j].name;
+      receivedMap[normalise(n)] = true;
+    }
+  }
+  var count = 0;
+  for (var k = 0; k < bisItems.length; k++) {
+    if (receivedMap[normalise(bisItems[k].item)] || selfRecMap[normalise(bisItems[k].item)]) count++;
+  }
+  var pct = Math.round((count / bisItems.length) * 100);
+  el.innerHTML = '<span style="color:var(--gold-light);font-weight:600;">' + pct + '%</span><span style="color:var(--text-muted);font-weight:400;"> (' + count + '/' + bisItems.length + ')</span>';
 }
 
 function getLootEntry(firstName) {
@@ -426,6 +450,7 @@ function submitDirectMarkReceived(firstName, item, slot, rowId) {
           if (!DATA.selfReceived[firstName]) DATA.selfReceived[firstName] = [];
           DATA.selfReceived[firstName].push({ item: item, slot: slot, source: source });
         }
+        refreshBisCompletion(firstName);
       }
     }
   };
@@ -615,6 +640,15 @@ function renderProfile(firstName, backTo, container) {
     rows += '</div>';
     rows += '<div class="self-received-form" id="form-' + rowId + '" style="display:none;"></div>';
   }
+  var bisReceivedCount = 0;
+  for (var bci = 0; bci < bisItems.length; bci++) {
+    var bci_key = normalise(bisItems[bci].item);
+    if (receivedMap[bci_key] || selfRecMap[bci_key]) bisReceivedCount++;
+  }
+  var bisCompletionHTML = bisItems.length
+    ? '<span id="bis-completion-' + player.firstName + '" style="font-size:0.95rem;"><span style="color:var(--gold-light);font-weight:600;">' + Math.round((bisReceivedCount / bisItems.length) * 100) + '%</span><span style="color:var(--text-muted);font-weight:400;"> (' + bisReceivedCount + '/' + bisItems.length + ')</span></span>'
+    : '';
+
   var priorityHTML = bisItems.length
     ? '<div class="priority-list">' +
     '<div class="priority-row" style="grid-template-columns:auto auto 1fr;background:transparent;border:none;padding:0.2rem 0.8rem;">' +
@@ -710,7 +744,7 @@ function renderProfile(firstName, backTo, container) {
     '</div>' +
     '<div class="profile-section"><div class="section-label">BiS Link</div>' + bisHTML + '</div>' +
     '<div class="profile-section" onclick="var l=document.getElementById(\'prio-list-' + player.firstName + '\');l.style.display=l.style.display===\'none\'?\'block\':\'none\';" style="cursor:pointer;">' +
-    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">BiS List <span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
+    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">BiS List' + bisCompletionHTML + '<span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
     '<div id="prio-list-' + player.firstName + '" style="display:none;">' + priorityHTML + '</div>' +
     '</div>' +
     (mplusHTML ? '<div class="profile-section"><div class="section-label">M+ Exclusion</div>' + mplusHTML + '</div>' : '') +
