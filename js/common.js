@@ -151,6 +151,30 @@ function getSelfReceivedItems(firstName) {
   return [];
 }
 
+function refreshBisCompletion(firstName) {
+  var el = document.getElementById('bis-completion-' + firstName);
+  if (!el) return;
+  var bisItems     = getBisItems(firstName);
+  if (!bisItems.length) return;
+  var selfRecItems = getSelfReceivedItems(firstName);
+  var selfRecMap   = {};
+  for (var i = 0; i < selfRecItems.length; i++) selfRecMap[normalise(selfRecItems[i].item)] = true;
+  var lootEntry = getLootEntry(firstName);
+  var receivedMap = {};
+  if (lootEntry && lootEntry.items) {
+    for (var j = 0; j < lootEntry.items.length; j++) {
+      var n = typeof lootEntry.items[j] === 'string' ? lootEntry.items[j] : lootEntry.items[j].name;
+      receivedMap[normalise(n)] = true;
+    }
+  }
+  var count = 0;
+  for (var k = 0; k < bisItems.length; k++) {
+    if (receivedMap[normalise(bisItems[k].item)] || selfRecMap[normalise(bisItems[k].item)]) count++;
+  }
+  var pct = Math.round((count / bisItems.length) * 100);
+  el.innerHTML = '<span style="color:var(--gold-light);font-weight:600;">' + pct + '%</span><span style="color:var(--text-muted);font-weight:400;"> (' + count + '/' + bisItems.length + ')</span>';
+}
+
 function getLootEntry(firstName) {
   var lootMap = DATA.lootCounts || {};
   var norm = normalise(firstName);
@@ -426,6 +450,7 @@ function submitDirectMarkReceived(firstName, item, slot, rowId) {
           if (!DATA.selfReceived[firstName]) DATA.selfReceived[firstName] = [];
           DATA.selfReceived[firstName].push({ item: item, slot: slot, source: source });
         }
+        refreshBisCompletion(firstName);
       }
     }
   };
@@ -621,7 +646,7 @@ function renderProfile(firstName, backTo, container) {
     if (receivedMap[bci_key] || selfRecMap[bci_key]) bisReceivedCount++;
   }
   var bisCompletionHTML = bisItems.length
-    ? '<div style="font-size:0.9rem;color:var(--text-muted);margin-top:0.3rem;">BiS <span style="color:var(--gold-light);font-weight:600;">' + Math.round((bisReceivedCount / bisItems.length) * 100) + '%</span> complete (' + bisReceivedCount + '/' + bisItems.length + ')</div>'
+    ? '<span id="bis-completion-' + player.firstName + '" style="font-size:0.95rem;"><span style="color:var(--gold-light);font-weight:600;">' + Math.round((bisReceivedCount / bisItems.length) * 100) + '%</span><span style="color:var(--text-muted);font-weight:400;"> (' + bisReceivedCount + '/' + bisItems.length + ')</span></span>'
     : '';
 
   var priorityHTML = bisItems.length
@@ -705,7 +730,6 @@ function renderProfile(firstName, backTo, container) {
     '<div class="profile-name">' + displayName + '</div>' +
     '<div class="profile-realm">' + player.firstName + '-' + player.realm + '</div>' +
     '<div class="profile-badges"><span class="badge badge-' + player.role + '">' + player.role + '</span>' + trialBadge + benchBadge + classLine + '</div>' +
-    bisCompletionHTML +
     '</div>' +
     '</div>' +
     '<div class="profile-section"' + (hasPenalties ? ' onclick="var d=document.getElementById(\'attend-detail-' + player.firstName + '\');d.style.display=d.style.display===\'none\'?\'flex\':\'none\';" style="cursor:pointer;"' : '') + '>' +
@@ -720,7 +744,7 @@ function renderProfile(firstName, backTo, container) {
     '</div>' +
     '<div class="profile-section"><div class="section-label">BiS Link</div>' + bisHTML + '</div>' +
     '<div class="profile-section" onclick="var l=document.getElementById(\'prio-list-' + player.firstName + '\');l.style.display=l.style.display===\'none\'?\'block\':\'none\';" style="cursor:pointer;">' +
-    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">BiS List <span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
+    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">BiS List' + bisCompletionHTML + '<span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
     '<div id="prio-list-' + player.firstName + '" style="display:none;">' + priorityHTML + '</div>' +
     '</div>' +
     (mplusHTML ? '<div class="profile-section"><div class="section-label">M+ Exclusion</div>' + mplusHTML + '</div>' : '') +
