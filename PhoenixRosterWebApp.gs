@@ -115,6 +115,7 @@ function doGet(e) {
       const open = e.parameter.value === 'true';
       props.setProperty('signupsOpen', open ? 'true' : 'false');
       cache.remove('rosterPayload');
+      appendAuditLog(open ? 'Signups Opened' : 'Signups Closed', '', '', '');
       return jsonpResponse(callback, { success: true, signupsOpen: open });
     }
 
@@ -122,6 +123,7 @@ function doGet(e) {
       const open = e.parameter.value === 'true';
       props.setProperty('bisSubmissionsOpen', open ? 'true' : 'false');
       cache.remove('rosterPayload');
+      appendAuditLog(open ? 'BiS Submissions Opened' : 'BiS Submissions Closed', '', '', '');
       return jsonpResponse(callback, { success: true, bisSubmissionsOpen: open });
     }
 
@@ -129,6 +131,7 @@ function doGet(e) {
       const open = e.parameter.value === 'true';
       props.setProperty('mPlusExclusionsOpen', open ? 'true' : 'false');
       cache.remove('rosterPayload');
+      appendAuditLog(open ? 'M+ Exclusions Opened' : 'M+ Exclusions Closed', '', '', '');
       return jsonpResponse(callback, { success: true, mPlusExclusionsOpen: open });
     }
 
