@@ -1,5 +1,5 @@
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION = '2.7.1';
+var VERSION = '2.7.2';
 var DATA = null;
 
 var WOW_REALMS = [
@@ -747,11 +747,12 @@ function renderProfile(firstName, backTo, container) {
     '<div class="profile-badges"><span class="badge badge-' + player.role + '">' + player.role + '</span>' + trialBadge + benchBadge + classLine + fullyBisBadge + '</div>' +
     '</div>' +
     '</div>' +
-    '<div class="profile-section"' +
+    '<div class="profile-section">' +
+    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;' +
+    (backTo === 'officer' || hasPenalties ? 'cursor:pointer;"' : '"') +
     (backTo === 'officer'
-      ? ' onclick="loadAttendanceHistory(\'' + player.firstName.replace(/'/g, "\\'") + '\')" style="cursor:pointer;"'
-      : (hasPenalties ? ' onclick="var d=document.getElementById(\'attend-detail-' + player.firstName + '\');d.style.display=d.style.display===\'none\'?\'flex\':\'none\';" style="cursor:pointer;"' : '')) + '>' +
-    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Attendance' +
+      ? ' onclick="loadAttendanceHistory(\'' + player.firstName.replace(/'/g, "\\'") + '\')"'
+      : (hasPenalties ? ' onclick="var d=document.getElementById(\'attend-detail-' + player.firstName + '\');d.style.display=d.style.display===\'none\'?\'flex\':\'none\';"' : '')) + '>Attendance' +
     (backTo === 'officer'
       ? '<span class="attend-history-hint" style="font-size:0.95rem;color:var(--text-dim);">click to expand</span>'
       : (hasPenalties ? '<span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span>' : '')) +
