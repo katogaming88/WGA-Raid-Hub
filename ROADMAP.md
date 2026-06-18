@@ -4,63 +4,41 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 
 ---
 
-## Priority Management
+## Phase 4: Stability & Officer Tooling
 
+Performance fixes and officer dashboard completions that don't require new infrastructure.
+
+- [ ] Fix payload load timeouts -- split into fast core chunk (roster, priority) and lazy heavy chunk (loot, attendance) so the page is usable before all data arrives (#104)
+- [ ] Paste RCLootCouncil loot history directly in the web app -- officers paste the RC export once per season; app parses and stores it, replacing the manual sheet workflow (#101)
+- [ ] Attendance entry from the officer dashboard -- trigger WCL refresh and fill in Bench/Excused/No Show statuses without opening the spreadsheet; commit scores to Scoring sheet from the UI (#94)
+- [ ] Move Discord bot from personal server to guild server -- set up officer notification channel so all officers can see app notifications (#84)
+- [ ] `/pending-roster` bot command -- lists all pending signup applicants with their name, class, spec, and role (#86)
 - [ ] Highlight conflicts where a player has been given top priority on multiple items by officers (#12)
-- [x] Show which items have no players assigned a priority yet (#13)
-
-## Attendance
-
-- [x] Full attendance history per player expandable in the officer dashboard (#14)
 - [ ] See who was benched most often vs absent (#16)
-- [ ] Attendance management from the officer dashboard -- trigger WCL refresh and fill in Bench/Excused/No Show statuses without opening the spreadsheet; commit scores to Scoring sheet from the UI. WCL fetch logic already exists as a standalone Apps Script. (#94)
+- [ ] Bench rotation fairness view -- bench rate per player (times benched vs. raids attended) to ensure fair rotation; similar to loot fairness view (#82)
+- [ ] Season archive -- end-of-season roster snapshot triggered by officers; read-only archive view with previous seasons selectable (#79)
 
-## Loot History
+---
 
+## Phase 5: Raider & Public Views
 
-## Officer Dashboard
-
-- [x] Roster health summary -- pending action count badges on each officer tab (signups, pending roster, BiS requests, M+ exclusions, self-received) (#76)
-- [x] Officer action audit log -- append-only log of every officer change (player added/removed, status changes, approvals, loot marks) stored in the Sheet (#83)
-- [x] Priority export string accessible from the officer dashboard -- read the cached export string from the sheet and display it with a one-click copy, so officers never need to open the spreadsheet to grab the RCLootCouncil import string (#98)
-- [ ] Officer quick-actions bar on the index page -- small bar visible only to authenticated officers (post Discord auth) with fast access to high-frequency tasks like grabbing the priority export string (#99, depends on #25)
-
-## Roster / Player Management
-
-- [x] Join date tracking per player -- set on add, visible on profile and roster table; foundation for trial promotion and season archive (#77)
-- [x] Trial promotion tracking -- surface trials who have been on the roster long enough and have sufficient attendance to warrant review (#78, depends on #77)
-- [ ] Season archive -- end-of-season roster snapshot triggered by officers; read-only archive view with previous seasons selectable (#79, depends on #77)
-
-## Boss Progression
+Public-facing and raider-visible features that don't require login.
 
 - [ ] Boss progression tracker on the landing page -- officers set farm/progression/not yet reached status per boss; first-kill dates for farm bosses (#80)
-
-## Raider Profile (read-only, no login required)
-
-- [x] Visual BiS checklist on the character page -- each slot shown as received or still needed; section renamed from "Loot Priority" to "BiS Checklist" (#38)
-- [x] BiS completion percentage on each player's profile (#39)
-- [x] "Fully BiS" badge when a player has received every raid-source BiS item (#40)
-- [x] Last received item highlighted prominently on the profile ("Last received: X on date Y") (#41)
 - [ ] Attendance trend on the character page -- recent-weeks indicator so raiders can self-monitor (#42)
-- ~~Public leaderboard -- closed, drama risk outweighs the benefit (#43)~~
 
-## Discord Bot
+---
 
-- [ ] `/pending-roster` command -- lists all pending signup applicants with their name, class, spec, and role; intended for use during season signup windows so officers can review who is queued (#86)
+## Phase 6: Discord Auth & Post-Auth Features
 
-## Pre-Launch
+Everything gated on Discord OAuth shipping (#25).
 
-- [ ] Move Discord bot from personal server to guild server -- set up officer notification channel so all officers can see app notifications (#84)
-
-## Future / Larger Features
-
-- [ ] Bench rotation fairness view -- bench rate per player (times benched vs. raids attended) to ensure fair rotation; similar to loot fairness view (#82)
-
-- [ ] Raider login via Discord OAuth -- Apps Script handles the OAuth callback and token exchange; no new infrastructure required. On first login, raider claims their character (one claim per character). Unlocks self-marking received items (crafted, catalyzed, M+) and personalized priority standing view. (#25)
-- [ ] Personalized raider landing -- after Discord login and character claim, the app always opens directly on the raider's character card. Navigation links available from there to the main roster and other public views. Unauthenticated visitors see the existing generic flow unchanged. (#74)
-- [ ] App role system -- a separate "App Role" column in the Roster sheet (admin-managed only) controls in-app permissions: blank = raider view, `officer` = officer dashboard + write access, `admin` = full control. Deliberately separate from guild officer status so non-team officers don't get write access. (#44)
-- [ ] Officer claim management -- in-app UI listing all claimed characters with reassign/release controls, for handling player turnover or claim conflicts. (#45)
-- [ ] Replace officer password with Discord login -- once the login system ships, remove the hardcoded password entirely. (#46)
+- [ ] Raider login via Discord OAuth -- Apps Script handles the OAuth callback and token exchange; no new infrastructure required. On first login, raider claims their character. Unlocks self-marking received items and personalized priority standing view. (#25)
+- [ ] Officer quick-actions bar on the index page -- small bar visible only to authenticated officers with fast access to high-frequency tasks (#99, depends on #25)
+- [ ] Personalized raider landing -- after Discord login and character claim, the app always opens directly on the raider's character card (#74, depends on #25)
+- [ ] App role system -- a separate "App Role" column in the Roster sheet controls in-app permissions: blank = raider view, `officer` = officer dashboard + write access, `admin` = full control (#44, depends on #25)
+- [ ] Officer claim management -- in-app UI listing all claimed characters with reassign/release controls (#45, depends on #25)
+- [ ] Replace officer password with Discord login -- once the login system ships, remove the hardcoded password entirely (#46, depends on #25)
 
 ---
 
@@ -90,7 +68,9 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 - [x] M+ exclusion request form -- raider submits Raider.io profile + notes; officer approval queue; approved players marked M+ excluded in sheet (#57, closed by PR #73)
 - [x] Officer write functionality -- update BiS links, nicknames, trial/bench status directly from the page back to the Google Sheet (#23, shipped across multiple PRs)
 - [x] Per-raider BiS change request system -- raider submits an updated BiS link plus notes on what changed; officer approves before the sheet updates (#24, closed by PR #73)
+- [x] Show which items have no players assigned a priority yet (#13)
 - [x] Officer action audit log -- append-only log sheet capturing every officer mutation (player add/remove, field changes, BiS/signup/M+/loot-mark approvals, notes) with old->new values; dedicated Audit Log tab in the officer dashboard (#83)
+- [x] Roster health summary -- pending action count badges on each officer tab (#76)
 - [x] Full attendance history per player in the officer profile panel -- expandable date-by-date log with all statuses, summary line, and status colour-coding (#14)
 - [x] RCLootCouncil priority export string -- generated from the Priority tab and displayed with one-click copy in the officer dashboard (#98)
 - [x] Join date tracking per player -- set automatically on add, editable in officer profile, visible on roster table (#77)
