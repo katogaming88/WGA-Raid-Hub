@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.5.1] - 2026-06-17
+
+### Changed
+- Class/spec badge on the player profile and officer roster now shows spec name only (e.g., "Demonology" instead of "Warlock - Demonology"); badge color remains the class color. Falls back to class name if no spec is set.
+
+---
+
 ## [2.5.0] - 2026-06-17
 
 ### Added
