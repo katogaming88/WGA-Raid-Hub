@@ -9,7 +9,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [2.4.2] - 2026-06-17
 
 ### Added
-- Last received item highlight on the player profile -- shows the most recent loot item (by date), its difficulty, and date received, always visible without expanding the full history. Closes #41.
+- Last received item highlight on the player profile -- shows the most recent loot upgrade(s) prominently with item name colored by difficulty, date, and a gold accent, always visible without expanding the full history. Groups multiple items received on the same night. Closes #41.
+- Date now shown on every entry in the expanded Items Received list alongside slot and difficulty.
 
 ---
 
