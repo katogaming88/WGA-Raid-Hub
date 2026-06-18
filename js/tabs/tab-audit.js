@@ -42,16 +42,13 @@ function renderAuditLog() {
   }
 
   var rows = entries.map(function(e) {
-    var change = '';
-    if (e.oldVal && e.newVal) change = auditEsc(e.oldVal) + ' &rarr; ' + auditEsc(e.newVal);
-    else if (e.newVal)        change = auditEsc(e.newVal);
-    else if (e.oldVal)        change = auditEsc(e.oldVal);
     return '<tr>'
-      + '<td class="audit-ts">'     + auditEsc(e.ts)     + '</td>'
-      + '<td class="audit-changedby">' + auditEsc(e.changedBy) + '</td>'
-      + '<td class="audit-action">' + auditEsc(e.action) + '</td>'
-      + '<td class="audit-target">' + auditEsc(e.target) + '</td>'
-      + '<td class="audit-change">' + change             + '</td>'
+      + '<td class="audit-ts">'        + auditEsc(e.ts)              + '</td>'
+      + '<td class="audit-changedby">' + auditEsc(e.changedBy)       + '</td>'
+      + '<td class="audit-action">'    + auditEsc(e.action)          + '</td>'
+      + '<td class="audit-target">'    + auditEsc(e.target)          + '</td>'
+      + '<td class="audit-from">'      + auditFormatVal(e.oldVal)    + '</td>'
+      + '<td class="audit-to">'        + auditFormatVal(e.newVal)    + '</td>'
       + '</tr>';
   }).join('');
 
@@ -64,7 +61,8 @@ function renderAuditLog() {
     + '<th>Changed By</th>'
     + '<th>Action</th>'
     + '<th>Target</th>'
-    + '<th>Change</th>'
+    + '<th>From</th>'
+    + '<th>To</th>'
     + '</tr></thead>'
     + '<tbody>' + rows + '</tbody>'
     + '</table></div>';
@@ -76,4 +74,14 @@ function auditEsc(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function auditFormatVal(str) {
+  str = String(str || '');
+  if (!str) return '';
+  if (/^https?:\/\//i.test(str)) {
+    var display = str.length > 40 ? str.slice(0, 40) + '...' : str;
+    return '<a href="' + auditEsc(str) + '" target="_blank" rel="noopener" style="color:var(--gold);">' + auditEsc(display) + '</a>';
+  }
+  return auditEsc(str);
 }
