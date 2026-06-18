@@ -4,10 +4,6 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 
 ---
 
-## Loot Tracking
-
-- [ ] See who is missing loot for each slot (e.g. who still needs a trinket) (#9)
-
 ## Priority Management
 
 - [ ] Highlight conflicts where a player has been given top priority on multiple items by officers (#12)
@@ -46,6 +42,10 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 - [ ] Last received item highlighted prominently on the profile ("Last received: X on date Y") (#41)
 - [ ] Attendance trend on the character page -- recent-weeks indicator so raiders can self-monitor (#42)
 - [ ] Public leaderboard -- sortable by attendance %, BiS completion %, items received (#43)
+
+## Discord Bot
+
+- [ ] `/pending-roster` command -- lists all pending signup applicants with their name, class, spec, and role; intended for use during season signup windows so officers can review who is queued (#86)
 
 ## Pre-Launch
 

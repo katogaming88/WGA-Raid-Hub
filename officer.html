@@ -45,7 +45,7 @@
       <nav class="officer-sidebar">
         <button class="nav-item active" onclick="switchTab('roster')">Roster</button>
         <button class="nav-item" onclick="switchTab('loot')">Loot</button>
-        <button class="nav-item" onclick="switchTab('priority')">Priority</button>
+        <button class="nav-item" onclick="switchTab('priority')">Priority<span class="nav-notif nav-notif-abs" id="prioNavBadge" style="display:none;"></span></button>
         <button class="nav-item" onclick="switchTab('attendance')">Attendance</button>
         <button class="nav-item" onclick="switchTab('signups')">Signups</button>
         <button class="nav-item" onclick="switchTab('bis')">BiS Submissions</button>
@@ -109,13 +109,22 @@
 
         <!-- Priority tab -->
         <div id="tab-priority" class="tab-panel">
-          <div class="filter-bar" style="margin-bottom:0.75rem;">
-            <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
-            <button class="filter-chip active" id="chip-prio-type">By Type</button>
-            <button class="filter-chip prio-chip-disabled" title="Raid source data not yet available">By Raid</button>
+          <div class="filter-bar" style="margin-bottom:1rem;">
+            <button class="filter-chip active" id="prio-subtab-btn-list" onclick="switchPrioritySubTab('list', this)">Priority List</button>
+            <button class="filter-chip" id="prio-subtab-btn-unmanaged" onclick="switchPrioritySubTab('unmanaged', this)">Unmanaged Items <span class="nav-notif" id="prioSubBadge" style="display:none;"></span></button>
           </div>
-          <input type="text" id="prioSearch" class="roster-search-input" placeholder="Search items..." oninput="buildPriorityTab()" style="margin-bottom:1rem;">
-          <div id="priorityContent"></div>
+          <div id="prio-sub-list">
+            <div class="filter-bar" style="margin-bottom:0.75rem;">
+              <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
+              <button class="filter-chip active" id="chip-prio-type">By Type</button>
+              <button class="filter-chip prio-chip-disabled" title="Raid source data not yet available">By Raid</button>
+            </div>
+            <input type="text" id="prioSearch" class="roster-search-input" placeholder="Search items..." oninput="buildPriorityTab()" style="margin-bottom:1rem;">
+            <div id="priorityContent"></div>
+          </div>
+          <div id="prio-sub-unmanaged" style="display:none;">
+            <div id="unmanagedContent"></div>
+          </div>
         </div>
 
         <!-- Attendance tab -->
