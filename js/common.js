@@ -1,5 +1,5 @@
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION = '2.11.1';
+var VERSION = '2.12.0';
 var DATA = null;
 
 var WOW_REALMS = [
@@ -895,13 +895,29 @@ function loadAttendanceHistory(firstName) {
       summaryParts.push('<span style="color:var(--text-muted);">' + counts[otherKeys[ok]] + ' ' + otherKeys[ok] + '</span>');
     }
 
+    var CARD_STATUSES = ['Present', 'Bench', 'Medical Leave', 'Excused', 'No Show', 'Not on Roster'];
+
     var html = '<div style="font-size:0.88rem;color:var(--text-muted);margin-bottom:0.6rem;display:flex;gap:0.5rem;flex-wrap:wrap;">' + summaryParts.join('<span style="color:var(--border-mid);">|</span>') + '</div>';
     html += '<div style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:4px;">';
     for (var j = 0; j < history.length; j++) {
       var entry = history[j];
-      html += '<div style="display:flex;justify-content:space-between;font-size:0.95rem;padding:0.28rem 0.75rem;border-bottom:1px solid var(--border);">';
-      html += '<span style="color:var(--text);">' + entry.date + '</span>';
-      html += '<span style="color:' + statusColor(entry.status) + ';font-weight:600;">' + entry.status + '</span>';
+      var isNOR = entry.status === 'Not on Roster';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.95rem;padding:0.28rem 0.75rem;border-bottom:1px solid var(--border);gap:0.5rem;">';
+      html += '<span style="color:var(--text);white-space:nowrap;">' + entry.date + '</span>';
+      if (isNOR) {
+        html += '<span style="color:' + statusColor(entry.status) + ';font-weight:600;">' + entry.status + '</span>';
+      } else {
+        html += '<div style="display:flex;align-items:center;gap:0.4rem;">';
+        html += '<div class="attend-status-wrap">';
+        html += '<select class="attend-status-select attend-card-status-select" data-date="' + entry.date + '" data-name="' + firstName + '" data-old="' + entry.status + '" onchange="saveAttendanceFromCard(this)">';
+        for (var k = 0; k < CARD_STATUSES.length; k++) {
+          var s = CARD_STATUSES[k];
+          html += '<option value="' + s + '"' + (entry.status === s ? ' selected' : '') + '>' + s + '</option>';
+        }
+        html += '</select></div>';
+        html += '<span class="attend-save-ind" style="min-width:40px;text-align:right;"></span>';
+        html += '</div>';
+      }
       html += '</div>';
     }
     html += '</div>';
@@ -914,5 +930,50 @@ function loadAttendanceHistory(firstName) {
     content.innerHTML = '<p style="color:var(--melee);font-size:0.95rem;padding:0.5rem 0;">Failed to load. Try again.</p>';
   };
   script.src = WEB_APP_URL + '?action=getPlayerAttendanceFull&firstName=' + encodeURIComponent(firstName) + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function saveAttendanceFromCard(selectEl) {
+  var date      = selectEl.getAttribute('data-date');
+  var firstName = selectEl.getAttribute('data-name');
+  var status    = selectEl.value;
+  var oldStatus = selectEl.getAttribute('data-old');
+  var indicator = selectEl.parentElement && selectEl.parentElement.parentElement
+    ? selectEl.parentElement.parentElement.querySelector('.attend-save-ind')
+    : null;
+
+  if (!status) return;
+  selectEl.disabled = true;
+  if (indicator) { indicator.textContent = 'Saving...'; indicator.style.color = 'var(--text-muted)'; }
+
+  var data   = { date: date, firstName: firstName, status: status, oldStatus: oldStatus };
+  var cbName = '_saveAttendCardCb_' + Date.now();
+  window[cbName] = function(result) {
+    delete window[cbName];
+    selectEl.disabled = false;
+    if (result && result.success) {
+      selectEl.setAttribute('data-old', status);
+      if (indicator) {
+        indicator.textContent = 'Saved';
+        indicator.style.color = 'var(--heal)';
+        setTimeout(function() { if (indicator) indicator.textContent = ''; }, 2000);
+      }
+    } else {
+      selectEl.value = oldStatus || '';
+      if (indicator) {
+        indicator.textContent = 'Error';
+        indicator.style.color = 'var(--melee)';
+        setTimeout(function() { if (indicator) indicator.textContent = ''; }, 3000);
+      }
+    }
+  };
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    selectEl.disabled = false;
+    selectEl.value = oldStatus || '';
+    if (indicator) { indicator.textContent = 'Error'; indicator.style.color = 'var(--melee)'; }
+  };
+  script.src = WEB_APP_URL + '?action=setAttendanceStatus&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
   document.head.appendChild(script);
 }

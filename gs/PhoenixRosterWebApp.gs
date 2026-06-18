@@ -181,6 +181,46 @@ function doGet(e) {
       return jsonpResponse(callback, { success: true });
     }
 
+    if (action === 'refreshAttendanceWCL') {
+      try {
+        const result = refreshAttendanceCore();
+        appendAuditLog('Attendance Refreshed (WCL)', '', '', `${result.mainNights} nights, ${result.excluded} excluded`);
+        return jsonpResponse(callback, { success: true, mainNights: result.mainNights, excluded: result.excluded });
+      } catch (err) {
+        return jsonpResponse(callback, { success: false, error: err.message });
+      }
+    }
+
+    if (action === 'commitAttendanceScores') {
+      try {
+        const result = commitAttendanceScoresCore();
+        appendAuditLog('Attendance Scores Committed', '', '', `${result.committed} players, ${result.totalRaids} nights`);
+        return jsonpResponse(callback, { success: true, committed: result.committed, totalRaids: result.totalRaids });
+      } catch (err) {
+        return jsonpResponse(callback, { success: false, error: err.message });
+      }
+    }
+
+    if (action === 'getAttendanceGrid') {
+      try {
+        const grid = getAttendanceSheetGrid();
+        return jsonpResponse(callback, { success: true, raids: grid.raids });
+      } catch (err) {
+        return jsonpResponse(callback, { success: false, error: err.message });
+      }
+    }
+
+    if (action === 'setAttendanceStatus') {
+      const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      try {
+        setAttendanceStatusInSheet(data.date, data.firstName, data.status);
+        appendAuditLog('Attendance Status Set', data.firstName, data.oldStatus || '', data.status);
+        return jsonpResponse(callback, { success: true });
+      } catch (err) {
+        return jsonpResponse(callback, { success: false, error: err.message });
+      }
+    }
+
     if (action === 'setSeasonStart') {
       const val = String(e.parameter.value || '').trim();
       props.setProperty('seasonStart', val);

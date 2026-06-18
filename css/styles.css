@@ -247,6 +247,25 @@ select#playerSelect option { background:#1a1d27; }
 .attend-penalty-list { display:flex; flex-direction:column; gap:0.25rem; margin-top:0.5rem; }
 .attend-penalty-entry { display:flex; justify-content:space-between; font-size:1rem; padding:0.2rem 0; border-bottom:1px solid var(--border); }
 
+/* Attendance manage panel */
+.attend-manage-panel { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1.25rem; margin-bottom:1.25rem; }
+.attend-manage-header { display:flex; align-items:center; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; margin-bottom:1rem; }
+.attend-confirm-banner { background:rgba(214,163,68,0.07); border:1px solid var(--gold-dim); border-radius:3px; padding:0.65rem 1rem; font-size:0.97rem; color:var(--text); margin-bottom:0.75rem; display:flex; align-items:center; flex-wrap:wrap; gap:0.5rem; }
+.attend-night-select { appearance:none; -webkit-appearance:none; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:500; padding:0.5rem 1rem 0.5rem 0.75rem; border-radius:3px; cursor:pointer; outline:none; min-width:240px; max-width:100%; }
+.attend-night-select:focus { border-color:var(--gold); }
+.attend-grid-info { font-size:0.92rem; color:var(--text-muted); margin-bottom:0.6rem; }
+.attend-grid-rows { display:flex; flex-direction:column; gap:0.3rem; }
+.attend-grid-row { display:grid; grid-template-columns:150px 70px 1fr 56px; align-items:center; gap:0.6rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; padding:0.4rem 0.75rem; }
+.attend-grid-name { font-size:1rem; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.attend-grid-source { font-size:0.88rem; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.attend-status-wrap { position:relative; }
+.attend-status-wrap::after { content:'▾'; position:absolute; right:0.5rem; top:50%; transform:translateY(-50%); color:var(--gold-dim); pointer-events:none; font-size:0.85rem; }
+.attend-status-select { appearance:none; -webkit-appearance:none; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:0.95rem; padding:0.28rem 1.4rem 0.28rem 0.55rem; border-radius:3px; cursor:pointer; outline:none; width:100%; }
+.attend-status-select:focus { border-color:var(--gold); }
+.attend-status-select:disabled { opacity:0.6; cursor:default; }
+.attend-save-ind { font-size:0.85rem; font-weight:600; text-align:right; white-space:nowrap; }
+.attend-card-status-select { width:auto; }
+
 /* Priority tab */
 .prio-section-header { font-size:0.97rem; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-muted); padding:0.5rem 0 0.35rem; margin-top:1rem; border-bottom:1px solid var(--border-mid); margin-bottom:0.6rem; }
 .prio-section-header:first-child { margin-top:0; }
