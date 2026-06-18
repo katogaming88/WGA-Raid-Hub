@@ -1,5 +1,5 @@
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION = '2.7.2';
+var VERSION = '2.7.3';
 var DATA = null;
 
 var WOW_REALMS = [
@@ -829,7 +829,7 @@ function loadAttendanceHistory(firstName) {
     if (hint) hint.textContent = 'click to collapse';
 
     var history = (result && result.history) || [];
-    history = history.slice().reverse();
+    history = history.slice().sort(function(a, b) { return b.date < a.date ? -1 : b.date > a.date ? 1 : 0; });
 
     if (!history.length) {
       content.innerHTML = '<p style="color:var(--text-muted);font-size:0.95rem;padding:0.5rem 0;">No attendance records found.</p>';
