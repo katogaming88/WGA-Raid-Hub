@@ -9,8 +9,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [2.5.0] - 2026-06-17
 
 ### Added
-- Officer action audit log -- every officer mutation is now recorded in an append-only "Officer Audit Log" sheet. Covers: player add/remove, role/spec/trial/bench changes, BiS approvals/rejections/direct updates/submission toggles, signup approvals/denials, self-received approvals/rejections, loot direct-marks, M+ exclusion toggles/approvals/rejections/bulk-clear, and officer note changes. Each entry captures timestamp, action type, target player, and old -> new value where applicable. Closes #83.
-- Dedicated Audit Log tab in the officer dashboard with a live search filter by action or player name.
+- Officer action audit log -- every officer mutation is now recorded in an append-only "Officer Audit Log" sheet. Covers: player add/remove, role/spec/trial/bench changes, BiS approvals/rejections/direct updates/submission toggles, signup approvals/denials, self-received approvals/rejections, loot direct-marks, M+ exclusion toggles/approvals/rejections/bulk-clear, officer note changes, and open/close toggles for signups, BiS submissions, and M+ exclusions. Closes #83.
+- Dedicated Audit Log tab in the officer dashboard with Time, Changed By, Action, Target, From, and To columns. URLs (e.g. BiS links) render as truncated clickable links. Live search filter across officer, action, and player name.
+- "Changed By" column schema in place for when Discord OAuth ships -- blank for now, wired up and ready (#25).
 
 ---
 
