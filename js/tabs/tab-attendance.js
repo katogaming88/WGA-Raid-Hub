@@ -142,7 +142,7 @@ function renderNightGrid(index) {
     var p = raid.players[i];
     html += '<div class="attend-grid-row">';
     html += '<span class="attend-grid-name">' + escHtml(p.name) + '</span>';
-    var isOfficer = p.source === 'Officer';
+    var hasStatus = !!p.status;
     html += '<span class="attend-grid-source">' + escHtml(p.source || '') + '</span>';
     html += '<div class="attend-status-wrap">';
     html += '<select class="attend-status-select" data-date="' + escHtml(raid.date) + '" data-name="' + escHtml(p.name) + '" data-old="' + escHtml(p.status) + '" onchange="setPlayerStatus(this)">';
@@ -153,7 +153,7 @@ function renderNightGrid(index) {
     }
     html += '</select>';
     html += '</div>';
-    html += '<span class="attend-save-ind" style="color:var(--heal);">' + (isOfficer ? '&#10003;' : '') + '</span>';
+    html += '<span class="attend-save-ind" style="color:var(--heal);">' + (hasStatus ? '&#10003;' : '') + '</span>';
     html += '</div>';
   }
 
