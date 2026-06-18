@@ -1,5 +1,5 @@
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION = '2.13.0';
+var VERSION = '2.13.1';
 var DATA = null;
 
 var WOW_REALMS = [
@@ -395,7 +395,7 @@ function showSelfReceivedForm(firstName, item, slot, rowId, defaultSource, isOff
   var formEl = document.getElementById('form-' + rowId);
   if (!formEl) return;
   if (formEl.style.display !== 'none') { formEl.style.display = 'none'; return; }
-  var sources = ['M+', 'Great Vault', 'Crafted', 'Catalyst', 'World Drop', 'Other'];
+  var sources = ['M+', 'Great Vault', 'Crafted', 'Catalyst', 'Bonus Roll', 'Other'];
   var opts = '<option value="">-- How did you get it? --</option>';
   for (var si = 0; si < sources.length; si++) {
     opts += '<option value="' + sources[si] + '"' + (sources[si] === defaultSource ? ' selected' : '') + '>' + sources[si] + '</option>';

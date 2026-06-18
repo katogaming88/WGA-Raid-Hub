@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.13.1] - 2026-06-18
+
+### Changed
+- Self-mark received source options: replaced "World Drop" with "Bonus Roll"
+
+---
+
 ## [2.13.0] - 2026-06-18
 
 ### Added
