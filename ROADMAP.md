@@ -16,7 +16,6 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 
 ## Loot History
 
-- [ ] Voluntary pass log -- officer marks that a raider passed on a piece; logged and factored positively into their loot priority standing (#37)
 
 ## Officer Dashboard
 
