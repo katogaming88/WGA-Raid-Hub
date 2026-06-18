@@ -1243,19 +1243,21 @@ function ensureAuditLogSheet() {
   let sheet = ss.getSheetByName(CFG.auditLogSheet);
   if (!sheet) {
     sheet = ss.insertSheet(CFG.auditLogSheet);
-    sheet.appendRow(['Timestamp', 'Action', 'Target', 'Old Value', 'New Value']);
+    sheet.appendRow(['Timestamp', 'Changed By', 'Action', 'Target', 'Old Value', 'New Value']);
     sheet.setFrozenRows(1);
   }
   return sheet;
 }
 
-function appendAuditLog(action, target, oldVal, newVal) {
+// changedBy: officer identity — empty string until Discord OAuth ships (#25/#46)
+function appendAuditLog(action, target, oldVal, newVal, changedBy) {
   try {
     const sheet = ensureAuditLogSheet();
     sheet.appendRow([
       new Date(),
-      action  || '',
-      target  || '',
+      changedBy || '',
+      action || '',
+      target || '',
       oldVal !== undefined && oldVal !== null ? String(oldVal) : '',
       newVal !== undefined && newVal !== null ? String(newVal) : ''
     ]);
@@ -1268,16 +1270,17 @@ function getAuditLog() {
   const ss    = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(CFG.auditLogSheet);
   if (!sheet || sheet.getLastRow() < 2) return [];
-  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues();
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
   return rows.reverse().map(function(r) {
     return {
       ts:     r[0] instanceof Date
                 ? Utilities.formatDate(r[0], Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm')
                 : String(r[0] || ''),
-      action: String(r[1] || ''),
-      target: String(r[2] || ''),
-      oldVal: String(r[3] || ''),
-      newVal: String(r[4] || '')
+      changedBy: String(r[1] || ''),
+      action: String(r[2] || ''),
+      target: String(r[3] || ''),
+      oldVal: String(r[4] || ''),
+      newVal: String(r[5] || '')
     };
   });
 }

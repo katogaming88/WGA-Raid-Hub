@@ -29,8 +29,9 @@ function renderAuditLog() {
 
   var entries = searchLow
     ? _auditEntries.filter(function(e) {
-        return (e.action || '').toLowerCase().indexOf(searchLow) !== -1
-            || (e.target || '').toLowerCase().indexOf(searchLow) !== -1;
+        return (e.changedBy || '').toLowerCase().indexOf(searchLow) !== -1
+            || (e.action   || '').toLowerCase().indexOf(searchLow) !== -1
+            || (e.target   || '').toLowerCase().indexOf(searchLow) !== -1;
       })
     : _auditEntries;
 
@@ -47,6 +48,7 @@ function renderAuditLog() {
     else if (e.oldVal)        change = auditEsc(e.oldVal);
     return '<tr>'
       + '<td class="audit-ts">'     + auditEsc(e.ts)     + '</td>'
+      + '<td class="audit-changedby">' + auditEsc(e.changedBy) + '</td>'
       + '<td class="audit-action">' + auditEsc(e.action) + '</td>'
       + '<td class="audit-target">' + auditEsc(e.target) + '</td>'
       + '<td class="audit-change">' + change             + '</td>'
@@ -59,6 +61,7 @@ function renderAuditLog() {
     + '<table class="roster-table audit-table" style="width:100%;">'
     + '<thead><tr>'
     + '<th style="white-space:nowrap;">Time</th>'
+    + '<th>Changed By</th>'
     + '<th>Action</th>'
     + '<th>Target</th>'
     + '<th>Change</th>'
