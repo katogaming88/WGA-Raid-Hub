@@ -1,5 +1,5 @@
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION = '2.6.1';
+var VERSION = '2.7.0';
 var DATA = null;
 
 var WOW_REALMS = [
@@ -747,10 +747,19 @@ function renderProfile(firstName, backTo, container) {
     '<div class="profile-badges"><span class="badge badge-' + player.role + '">' + player.role + '</span>' + trialBadge + benchBadge + classLine + fullyBisBadge + '</div>' +
     '</div>' +
     '</div>' +
-    '<div class="profile-section"' + (hasPenalties ? ' onclick="var d=document.getElementById(\'attend-detail-' + player.firstName + '\');d.style.display=d.style.display===\'none\'?\'flex\':\'none\';" style="cursor:pointer;"' : '') + '>' +
-    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Attendance' + (hasPenalties ? '<span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span>' : '') + '</div>' +
+    '<div class="profile-section"' +
+    (backTo === 'officer'
+      ? ' onclick="loadAttendanceHistory(\'' + player.firstName.replace(/'/g, "\\'") + '\')" style="cursor:pointer;"'
+      : (hasPenalties ? ' onclick="var d=document.getElementById(\'attend-detail-' + player.firstName + '\');d.style.display=d.style.display===\'none\'?\'flex\':\'none\';" style="cursor:pointer;"' : '')) + '>' +
+    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Attendance' +
+    (backTo === 'officer'
+      ? '<span class="attend-history-hint" style="font-size:0.95rem;color:var(--text-dim);">click to expand</span>'
+      : (hasPenalties ? '<span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span>' : '')) +
+    '</div>' +
     '<div class="attend-row"><div class="attend-bar-wrap"><div class="attend-bar" style="width:' + barWidth + '"></div></div><span class="attend-label">' + attendPct + '</span></div>' +
-    attendExtra +
+    (backTo === 'officer'
+      ? '<div id="attend-history-' + player.firstName + '" style="display:none;margin-top:0.6rem;"></div>'
+      : attendExtra) +
     '</div>' +
     '<div class="profile-section" onclick="var l=document.getElementById(\'loot-list-' + player.firstName + '\');l.style.display=l.style.display===\'none\'?\'grid\':\'none\';" style="cursor:pointer;">' +
     '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Items Received <span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
@@ -790,4 +799,84 @@ function renderProfile(firstName, backTo, container) {
   if (container) { container.innerHTML = html; }
   else { document.getElementById('profileView').innerHTML = html; }
   if (backTo === 'officer') updateBisAllowDiv(player.nameRealm, player.firstName);
+}
+
+function loadAttendanceHistory(firstName) {
+  var content = document.getElementById('attend-history-' + firstName);
+  if (!content) return;
+  var hint = content.parentNode ? content.parentNode.querySelector('.attend-history-hint') : null;
+
+  if (content.style.display !== 'none') {
+    content.style.display = 'none';
+    if (hint) hint.textContent = 'click to expand';
+    return;
+  }
+
+  if (content.dataset.loaded) {
+    content.style.display = 'block';
+    if (hint) hint.textContent = 'click to collapse';
+    return;
+  }
+
+  content.innerHTML = '<span style="color:var(--text-muted);font-size:0.95rem;padding:0.5rem 0;display:block;">Loading...</span>';
+  content.style.display = 'block';
+
+  var cbName = '_attendHistCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
+  window[cbName] = function(result) {
+    delete window[cbName];
+    content.dataset.loaded = '1';
+    if (hint) hint.textContent = 'click to collapse';
+
+    var history = (result && result.history) || [];
+    history = history.slice().reverse();
+
+    if (!history.length) {
+      content.innerHTML = '<p style="color:var(--text-muted);font-size:0.95rem;padding:0.5rem 0;">No attendance records found.</p>';
+      return;
+    }
+
+    var counts = {};
+    for (var i = 0; i < history.length; i++) {
+      var s = history[i].status;
+      counts[s] = (counts[s] || 0) + 1;
+    }
+
+    function statusColor(s) {
+      if (s === 'Present') return 'var(--heal)';
+      if (s === 'Late')    return 'var(--gold)';
+      if (s === 'No Show') return 'var(--melee)';
+      return 'var(--gold-light)';
+    }
+
+    var summaryParts = [];
+    var order = ['Present', 'Late', 'No Show', 'Excused'];
+    for (var oi = 0; oi < order.length; oi++) {
+      var st = order[oi];
+      if (counts[st]) summaryParts.push('<span style="color:' + statusColor(st) + ';">' + counts[st] + ' ' + st + '</span>');
+    }
+    var otherKeys = Object.keys(counts).filter(function(k) { return order.indexOf(k) === -1; });
+    for (var ok = 0; ok < otherKeys.length; ok++) {
+      summaryParts.push('<span style="color:var(--text-muted);">' + counts[otherKeys[ok]] + ' ' + otherKeys[ok] + '</span>');
+    }
+
+    var html = '<div style="font-size:0.88rem;color:var(--text-muted);margin-bottom:0.6rem;display:flex;gap:0.5rem;flex-wrap:wrap;">' + summaryParts.join('<span style="color:var(--border-mid);">|</span>') + '</div>';
+    html += '<div style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:4px;">';
+    for (var j = 0; j < history.length; j++) {
+      var entry = history[j];
+      html += '<div style="display:flex;justify-content:space-between;font-size:0.95rem;padding:0.28rem 0.75rem;border-bottom:1px solid var(--border);">';
+      html += '<span style="color:var(--text);">' + entry.date + '</span>';
+      html += '<span style="color:' + statusColor(entry.status) + ';font-weight:600;">' + entry.status + '</span>';
+      html += '</div>';
+    }
+    html += '</div>';
+    content.innerHTML = html;
+  };
+
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    content.innerHTML = '<p style="color:var(--melee);font-size:0.95rem;padding:0.5rem 0;">Failed to load. Try again.</p>';
+  };
+  script.src = WEB_APP_URL + '?action=getPlayerAttendanceFull&firstName=' + encodeURIComponent(firstName) + '&callback=' + cbName;
+  document.head.appendChild(script);
 }

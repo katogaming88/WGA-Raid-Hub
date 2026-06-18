@@ -111,6 +111,16 @@ function doGet(e) {
       return jsonpResponse(callback, { entries: getAuditLog() });
     }
 
+    if (action === 'getPlayerAttendanceFull') {
+      const firstName = String(e.parameter.firstName || '').trim();
+      if (!firstName) return jsonpResponse(callback, { error: 'Missing firstName' });
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const sheets = {};
+      for (const sheet of ss.getSheets()) { sheets[sheet.getName()] = sheet; }
+      const full = getFullAttendanceDetails(sheets);
+      return jsonpResponse(callback, { history: full[firstName] || [] });
+    }
+
     if (action === 'setSignupsOpen') {
       const open = e.parameter.value === 'true';
       props.setProperty('signupsOpen', open ? 'true' : 'false');
@@ -837,6 +847,47 @@ function getAttendanceDetails(sheets) {
     // Skip blank rows or non-penalizing statuses
     if (!rawDate || !status) continue;
     if (!penalizing.has(status)) continue;
+
+    var formattedDate;
+    if (rawDate instanceof Date) {
+      formattedDate = Utilities.formatDate(rawDate, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    } else {
+      formattedDate = dateStr;
+    }
+
+    if (!result[name]) result[name] = [];
+    result[name].push({ date: formattedDate, status });
+  }
+
+  return result;
+}
+
+function getFullAttendanceDetails(sheets) {
+  const sheet = sheets[CFG.attendanceSheet];
+  if (!sheet) return {};
+
+  const data       = sheet.getDataRange().getValues();
+  const result     = {};
+  var   skipReport = false;
+
+  for (let i = CFG.attendDataStart - 1; i < data.length; i++) {
+    const row     = data[i];
+    const rawDate = row[CFG.attendDateCol    - 1];
+    const name    = String(row[CFG.attendNameCol    - 1] || '').trim();
+    const status  = String(row[CFG.attendStatusCol  - 1] || '').trim();
+    const exclude = row[5];
+
+    const dateStr = String(rawDate || '').trim();
+
+    if (dateStr.startsWith('──') || dateStr === 'Report Title') break;
+
+    if (!name) {
+      skipReport = (exclude === true);
+      continue;
+    }
+
+    if (skipReport) continue;
+    if (!rawDate || !status) continue;
 
     var formattedDate;
     if (rawDate instanceof Date) {

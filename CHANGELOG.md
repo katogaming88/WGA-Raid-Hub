@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.7.0] - 2026-06-18
+
+### Added
+- Full attendance history per player in the officer profile panel. An "Attendance History" section appears below the attendance bar when viewing any player as an officer. On first click it fetches the complete date-by-date log (all statuses, not just penalties) via a new `getPlayerAttendanceFull` endpoint. Shows a summary line (e.g. "42 Present, 2 Late, 1 No Show") followed by a scrollable list newest-first, colour-coded by status. Result is cached for the session so subsequent toggles don't re-fetch. Closes #14.
+
+---
+
 ## [2.6.1] - 2026-06-17
 
 ### Changed
