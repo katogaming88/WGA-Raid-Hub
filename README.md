@@ -26,7 +26,7 @@ Multi-step signup form accessible from the landing page. Officers can open or cl
 
 ### Officer dashboard (`officer.html`)
 
-Officers enter a password on page load (session lasts 2 hours). The dashboard has 8 tabs:
+Officers enter a password on page load (session lasts 2 hours). The dashboard has 11 tabs:
 
 | Tab | What it shows |
 |-----|--------------|
@@ -36,8 +36,11 @@ Officers enter a password on page load (session lasts 2 hours). The dashboard ha
 | **Attendance** | Players below the threshold (adjustable slider), sorted lowest first, with penalty dates. |
 | **Priority** | Full priority order for every item, grouped by slot type, collapsible and searchable. |
 | **Signups** | Open/close signup applications; view and delete signup responses. |
+| **Pending Roster** | Review and approve or reject season signup applicants. |
 | **Received Item Requests** | Approve or reject raider self-mark requests. Approving writes the item to Loot Data. |
 | **BiS Submissions** | Open/close BiS submissions globally or per player; approve or reject submitted links. Approving writes the URL to the Roster sheet. |
+| **M+ Exclusions** | Review and approve or reject M+ exclusion requests submitted by raiders. |
+| **Audit Log** | Append-only log of every officer action -- player changes, approvals, loot marks, status changes -- with time, actor, action, target, and old/new values. Live search filter. |
 
 Officer controls on the Roster tab:
 - Add or remove players directly from the page
@@ -60,7 +63,18 @@ Officer controls on the Roster tab:
 | `js/tabs/tab-*.js` | One file per officer tab (8 files) |
 | `css/styles.css` | All styles |
 | `css/officer.css` | Stub for officer-specific styles (future split) |
-| `PhoenixRosterWebApp.gs` | Apps Script -- reads the sheet and serves data as JSON |
+| `gs/PhoenixRosterWebApp.gs` | Apps Script -- reads the sheet and serves data as JSON (web app endpoint) |
+| `gs/Config.gs` | Shared constants -- sheet names, column indices, WCL credentials |
+| `gs/Menu.gs` | Spreadsheet menu definitions (`onOpen`) |
+| `gs/Export.gs` | RCLootCouncil priority export -- builds and base64-encodes the import string |
+| `gs/Dropdowns.gs` | Priority Order and BiS List dropdown management |
+| `gs/WCL.gs` | WarcraftLogs API -- fetches performance scores and writes draft/trend columns |
+| `gs/Attendance.gs` | WCL attendance fetch, sheet writer, and score commit |
+| `gs/PriorityGenerator.gs` | Blended priority score calculator for the Priority Generator tab |
+| `gs/LootReceived.gs` | Difficulty-aware loot tracking -- highlights received items in Priority Generator |
+| `gs/PriorityLegend.gs` | Writes the scoring key/legend to the Priority Generator tab |
+| `gs/About.gs` | Rebuilds the About tab in the spreadsheet |
+| `gs/Utils.gs` | One-off utilities (e.g. set BiS List validation to warn-only) |
 
 ---
 
@@ -80,7 +94,7 @@ Data is cached for 5 minutes on the Apps Script side. Use **Clear Cache** in the
 ### 1. Google Apps Script (one time)
 
 1. Open the Google Sheet -- **Extensions > Apps Script**
-2. Paste `PhoenixRosterWebApp.gs` into a new script file
+2. Create a script file for each `.gs` file in the `gs/` folder and paste in the contents
 3. **Deploy > New Deployment** -- Type: Web App, Execute as: Me, Access: Anyone
 4. Copy the Web App URL (`https://script.google.com/macros/s/.../exec`)
 5. Open `js/common.js` and paste the URL into `var WEB_APP_URL = '...'`
