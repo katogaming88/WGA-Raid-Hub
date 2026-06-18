@@ -11,11 +11,12 @@ const SEASON_REPORT_LIMIT    = 50;
 const ALT_RUN_KEYWORD        = 'Alt';
 
 const ATTENDANCE_WEIGHTS = {
-  'Present':       1.0,
-  'Bench':         1.0,
-  'Excused':       0.8,
-  'No Show':       0.0,
-  'Not on Roster': null,
+  'Present':        1.0,
+  'Bench':          1.0,
+  'Medical Leave':  1.0,
+  'Excused':        0.8,
+  'No Show':        0.0,
+  'Not on Roster':  null,
 };
 
 
@@ -83,7 +84,7 @@ function getSeasonReports(token) {
   const query = `
     query {
       reportData {
-        reports(guildID: ${GUILD_ID}, limit: ${SEASON_REPORT_LIMIT}) {
+        reports(guildID: ${GUILD_TAG_ID}, limit: ${SEASON_REPORT_LIMIT}) {
           data { code title startTime endTime }
         }
       }
@@ -92,7 +93,7 @@ function getSeasonReports(token) {
   const result = wclQuery(token, query);
   if (!result) return [];
   const allReports = result.data?.reportData?.reports?.data || [];
-  return allReports.filter(r => r.title && r.title.includes(REPORT_NAME_FILTER));
+  return allReports.filter(r => r.title);
 }
 
 function collectAllReportDetails(token, reports, rosterSet) {
@@ -267,7 +268,7 @@ function commitAttendanceScores() {
     'Commit Attendance Scores',
     'This calculates each player\'s attendance score across ALL main raid nights\n' +
     'this season and writes it to column D (Attendance) in the Scoring sheet.\n\n' +
-    'Weights:  Present = 1.0  |  Bench = 1.0  |  Excused = 0.8  |  No Show = 0.0\n' +
+    'Weights:  Present = 1.0  |  Bench = 1.0  |  Medical Leave = 1.0  |  Excused = 0.8  |  No Show = 0.0\n' +
     'Blank status rows are treated as No Show.\n\n' +
     'Are you sure?',
     ui.ButtonSet.YES_NO
@@ -351,7 +352,7 @@ function commitAttendanceScores() {
     cell.setNote(
       `${playerData.weights.length} night(s) scored / ${playerNights} applicable nights\n` +
       `(${totalRaids} total season nights)\n` +
-      'Present=1.0 | Bench=1.0 | Excused=0.8 | No Show=0.0 | Not on Roster=excluded'
+      'Present=1.0 | Bench=1.0 | Medical Leave=1.0 | Excused=0.8 | No Show=0.0 | Not on Roster=excluded'
     );
 
     committed++;
@@ -466,7 +467,7 @@ function formatAttendanceSheet(sheet, mainSectionRows, totalRows, reportHeaderRo
 
   if (mainSectionRows > 1) {
     const statusRule = SpreadsheetApp.newDataValidation()
-      .requireValueInList(['Present', 'Bench', 'Excused', 'No Show', 'Not on Roster'], true)
+      .requireValueInList(['Present', 'Bench', 'Medical Leave', 'Excused', 'No Show', 'Not on Roster'], true)
       .setAllowInvalid(false)
       .build();
 
@@ -495,6 +496,7 @@ function formatAttendanceSheet(sheet, mainSectionRows, totalRows, reportHeaderRo
       if      (status === 'Present')                                statusCell.setBackground('#B7E1CD');
       else if (status === 'Bench' && sourceVal === 'Auto (Bench)')  statusCell.setBackground('#D4E6F1');
       else if (status === 'Bench')                                  statusCell.setBackground('#CFE2F3');
+      else if (status === 'Medical Leave')                          statusCell.setBackground('#D0E9FF');
       else if (status === 'Excused')                                statusCell.setBackground('#FFF2CC');
       else if (status === 'No Show')                                statusCell.setBackground('#F4CCCC');
       else if (status === 'Not on Roster')                          statusCell.setBackground('#E8DEF8');

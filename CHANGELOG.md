@@ -6,6 +6,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.11.0] - 2026-06-18
+
+### Added
+- Season start date setting in a new Season Settings tab on the officer dashboard. Officers can set (or clear) the date the current raid season began; the value persists in Script Properties and is included in the core payload for all clients.
+- Mid-season join exclusion: raids between the season start date and a player's personal join date are excluded from their attendance penalty list and attendance percentage. The full attendance history view (expandable per-player) labels those excluded raids as "Not on Roster" in a greyed style so officers can still see the full timeline.
+- Attendance percentage now computed directly from the Attendance sheet rather than the Scoring sheet formula, giving accurate per-player denominators that respect both the season start and each player's join date. Closes #107.
+- Add Player modal now includes an editable Join Date field (defaults to today) so officers can backdate a player's join date at the time of adding them.
+- Medical Leave attendance status with weight 1.0 (no penalty, same as Present). Appears in the Attendance sheet dropdown, displayed in light blue in both the sheet and the webapp attendance history view.
+- "Sync % to Roster Sheet" button in the officer Attendance tab. Computes attendance % using the same logic as the player-facing display and writes the values directly to Roster sheet column C.
+- WCL attendance import now fetches all reports for the Team Phoenix guild tag rather than filtering by report title. Fixes missing raid nights whose WCL log titles did not contain "Phoenix". Alt runs (title contains "Alt") are still excluded and appear in the Excluded section at the bottom of the Attendance sheet.
+- WCL API credentials moved from Config.gs to Script Properties via a `setWCLCredentials()` helper, keeping them out of version control.
+
+### Fixed
+- Attendance % denominator now computed from player rows in the Attendance sheet rather than header rows. Header rows for some raids lacked a date in col A, causing those raids to be silently dropped from the denominator.
+
+### Changed
+- WCL queries scoped to Team Phoenix guild tag ID rather than the overall guild ID.
+- Updated active tanks (added Adrestia, removed Hinda and Rothdar) and healers (added Kaya, removed Puddinpie) in Config.gs.
+
+---
+
 ## [2.10.0] - 2026-06-18
 
 ### Performance

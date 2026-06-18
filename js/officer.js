@@ -22,6 +22,7 @@ function switchTab(name) {
   if (name === 'bis')        buildBisTab();
   if (name === 'mplus')      buildMPlusTab();
   if (name === 'audit')      buildAuditTab();
+  if (name === 'season')     buildSeasonTab();
 }
 
 function resetSignupsSubTab() {

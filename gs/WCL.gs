@@ -177,8 +177,18 @@ function commitDraftScores() {
 
 // ── WCL Shared Helpers (used by both WCL.gs and Attendance.gs) ───────────────
 
+function setWCLCredentials() {
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty('WCL_CLIENT_ID',     '');
+  props.setProperty('WCL_CLIENT_SECRET', '');
+  Logger.log('WCL credentials saved to Script Properties.');
+}
+
 function getAccessToken() {
-  const credentials = Utilities.base64Encode(`${WCL_CLIENT_ID}:${WCL_CLIENT_SECRET}`);
+  const props       = PropertiesService.getScriptProperties();
+  const clientId     = props.getProperty('WCL_CLIENT_ID');
+  const clientSecret = props.getProperty('WCL_CLIENT_SECRET');
+  const credentials  = Utilities.base64Encode(`${clientId}:${clientSecret}`);
   const response = UrlFetchApp.fetch('https://www.warcraftlogs.com/oauth/token', {
     method: 'post',
     headers: { 'Authorization': `Basic ${credentials}` },
@@ -194,7 +204,7 @@ function getRecentReports(token, limit) {
   const query = `
     query {
       reportData {
-        reports(guildID: ${GUILD_ID}, limit: 20) {
+        reports(guildID: ${GUILD_TAG_ID}, limit: 20) {
           data { code title startTime endTime }
         }
       }
