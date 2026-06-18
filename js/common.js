@@ -1,5 +1,5 @@
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION = '2.5.1';
+var VERSION = '2.6.1';
 var DATA = null;
 
 var WOW_REALMS = [
@@ -660,6 +660,10 @@ function renderProfile(firstName, backTo, container) {
     ? '<span id="bis-completion-' + player.firstName + '" style="font-size:0.95rem;"><span style="color:var(--gold-light);font-weight:600;">' + Math.round((bisReceivedCount / bisItems.length) * 100) + '%</span><span style="color:var(--text-muted);font-weight:400;"> (' + bisReceivedCount + '/' + bisItems.length + ')</span></span>'
     : '';
 
+  var fullyBisBadge = (bisItems.length > 0 && bisReceivedCount === bisItems.length)
+    ? '<span class="badge" style="background:rgba(212,175,55,0.15);color:var(--gold);border:1px solid rgba(212,175,55,0.45);font-weight:700;">Fully BiS</span>'
+    : '';
+
   var priorityHTML = bisItems.length
     ? '<div class="priority-list">' +
     '<div class="priority-row" style="grid-template-columns:auto auto 1fr;background:transparent;border:none;padding:0.2rem 0.8rem;">' +
@@ -740,7 +744,7 @@ function renderProfile(firstName, backTo, container) {
     '<div class="profile-identity">' +
     '<div class="profile-name">' + displayName + '</div>' +
     '<div class="profile-realm">' + player.firstName + '-' + player.realm + '</div>' +
-    '<div class="profile-badges"><span class="badge badge-' + player.role + '">' + player.role + '</span>' + trialBadge + benchBadge + classLine + '</div>' +
+    '<div class="profile-badges"><span class="badge badge-' + player.role + '">' + player.role + '</span>' + trialBadge + benchBadge + classLine + fullyBisBadge + '</div>' +
     '</div>' +
     '</div>' +
     '<div class="profile-section"' + (hasPenalties ? ' onclick="var d=document.getElementById(\'attend-detail-' + player.firstName + '\');d.style.display=d.style.display===\'none\'?\'flex\':\'none\';" style="cursor:pointer;"' : '') + '>' +
