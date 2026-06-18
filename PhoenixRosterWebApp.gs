@@ -56,6 +56,9 @@ const CFG = {
   // ── M+ Exclusion Requests tab ─────────────────────────────────────
   mPlusExclusionSheet: 'M+ Exclusion Requests',
 
+  // ── Officer Audit Log tab ────────────────────────────────────────
+  auditLogSheet:      'Officer Audit Log',
+
   // ── Loot Sheet ───────────────────────────────────────────────────
   lootSheet:         'Loot Data',
   lootPlayerCol:     1,  // A - Player (Name-Realm)
@@ -104,10 +107,15 @@ function doGet(e) {
       return jsonpResponse(callback, { success: true });
     }
 
+    if (action === 'getAuditLog') {
+      return jsonpResponse(callback, { entries: getAuditLog() });
+    }
+
     if (action === 'setSignupsOpen') {
       const open = e.parameter.value === 'true';
       props.setProperty('signupsOpen', open ? 'true' : 'false');
       cache.remove('rosterPayload');
+      appendAuditLog(open ? 'Signups Opened' : 'Signups Closed', '', '', '');
       return jsonpResponse(callback, { success: true, signupsOpen: open });
     }
 
@@ -115,6 +123,7 @@ function doGet(e) {
       const open = e.parameter.value === 'true';
       props.setProperty('bisSubmissionsOpen', open ? 'true' : 'false');
       cache.remove('rosterPayload');
+      appendAuditLog(open ? 'BiS Submissions Opened' : 'BiS Submissions Closed', '', '', '');
       return jsonpResponse(callback, { success: true, bisSubmissionsOpen: open });
     }
 
@@ -122,6 +131,7 @@ function doGet(e) {
       const open = e.parameter.value === 'true';
       props.setProperty('mPlusExclusionsOpen', open ? 'true' : 'false');
       cache.remove('rosterPayload');
+      appendAuditLog(open ? 'M+ Exclusions Opened' : 'M+ Exclusions Closed', '', '', '');
       return jsonpResponse(callback, { success: true, mPlusExclusionsOpen: open });
     }
 
@@ -170,21 +180,26 @@ function doGet(e) {
       const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
       writeSelfReceivedRequest(data, 'Approved');
       cache.remove('rosterPayload');
+      appendAuditLog('Loot Marked Received', String(data.player || ''), '', String(data.item || ''));
       return jsonpResponse(callback, { success: true });
     }
 
     if (action === 'approveRequest') {
       const row = parseInt(e.parameter.row, 10);
       if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
+      const reqData = getSelfReceivedRowSummary(row);
       updateRequestStatus(row, 'Approved');
       cache.remove('rosterPayload');
+      appendAuditLog('Self-Received Approved', reqData.player, '', reqData.item);
       return jsonpResponse(callback, { success: true });
     }
 
     if (action === 'rejectRequest') {
       const row = parseInt(e.parameter.row, 10);
       if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
+      const reqData = getSelfReceivedRowSummary(row);
       updateRequestStatus(row, 'Rejected');
+      appendAuditLog('Self-Received Rejected', reqData.player, '', reqData.item);
       return jsonpResponse(callback, { success: true });
     }
 
@@ -210,16 +225,20 @@ function doGet(e) {
       const nameRealm = String(data.nameRealm || '');
       const url       = String(data.url || '');
       if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
+      const oldUrl = getRosterBisLink(nameRealm);
       updateBisLinkInRoster(nameRealm, url);
       updateBiSStatus(row, 'Approved');
       cache.remove('rosterPayload');
+      appendAuditLog('BiS Approved', nameRealm, oldUrl, url);
       return jsonpResponse(callback, { success: true });
     }
 
     if (action === 'rejectBiS') {
       const row = parseInt(e.parameter.row, 10);
       if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
+      const nameRealm = getBiSNameRealmFromRow(row);
       updateBiSStatus(row, 'Rejected');
+      appendAuditLog('BiS Rejected', nameRealm, '', '');
       return jsonpResponse(callback, { success: true });
     }
 
@@ -232,6 +251,7 @@ function doGet(e) {
         setBisAllowedPlayers(allowed);
       }
       cache.remove('rosterPayload');
+      appendAuditLog('BiS Submission Enabled', nameRealm, '', '');
       return jsonpResponse(callback, { success: true, bisAllowedPlayers: allowed });
     }
 
@@ -241,6 +261,7 @@ function doGet(e) {
       const allowed   = getBisAllowedPlayers().filter(function(n) { return n !== nameRealm; });
       setBisAllowedPlayers(allowed);
       cache.remove('rosterPayload');
+      appendAuditLog('BiS Submission Revoked', nameRealm, '', '');
       return jsonpResponse(callback, { success: true, bisAllowedPlayers: allowed });
     }
 
@@ -248,8 +269,10 @@ function doGet(e) {
       const data      = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
       const nameRealm = String(data.nameRealm || '');
       const url       = String(data.url || '');
+      const oldUrl    = getRosterBisLink(nameRealm);
       updateBisLinkInRoster(nameRealm, url);
       cache.remove('rosterPayload');
+      appendAuditLog('BiS Link Updated', nameRealm, oldUrl, url);
       return jsonpResponse(callback, { success: true });
     }
 
@@ -259,8 +282,15 @@ function doGet(e) {
       const field     = String(data.field     || '');
       const value     = data.value;
       if (!nameRealm || !field) return jsonpResponse(callback, { error: 'Missing params' });
+      const oldVal = getRosterFieldValue(nameRealm, field);
       updateRosterField(nameRealm, field, value);
       cache.remove('rosterPayload');
+      const actionLabel = field === 'spec'    ? 'Spec Changed'
+                        : field === 'isTrial' ? 'Trial Status Changed'
+                        : field === 'role'    ? 'Role Changed'
+                        : field === 'isBench' ? 'Bench Status Changed'
+                        : 'Field Changed: ' + field;
+      appendAuditLog(actionLabel, nameRealm, oldVal, String(value));
       return jsonpResponse(callback, { success: true });
     }
 
@@ -269,9 +299,11 @@ function doGet(e) {
       const nameRealm = String(data.nameRealm || '');
       const note      = String(data.note      || '');
       if (!nameRealm) return jsonpResponse(callback, { error: 'Missing nameRealm' });
-      const notes = getPlayerNotes();
+      const notes   = getPlayerNotes();
+      const oldNote = notes[nameRealm] || '';
       if (note) { notes[nameRealm] = note; } else { delete notes[nameRealm]; }
       setPlayerNotes(notes);
+      appendAuditLog('Officer Note Changed', nameRealm, oldNote, note);
       return jsonpResponse(callback, { success: true });
     }
 
@@ -279,6 +311,8 @@ function doGet(e) {
       const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
       addPlayerToRoster(data);
       cache.remove('rosterPayload');
+      const details = [data.class, data.spec, data.role].filter(Boolean).join(' ');
+      appendAuditLog('Player Added', String(data.nameRealm || ''), '', details);
       return jsonpResponse(callback, { success: true });
     }
 
@@ -288,6 +322,7 @@ function doGet(e) {
       if (!nameRealm) return jsonpResponse(callback, { error: 'Missing nameRealm' });
       removePlayerFromRoster(nameRealm);
       cache.remove('rosterPayload');
+      appendAuditLog('Player Removed', nameRealm, '', '');
       return jsonpResponse(callback, { success: true });
     }
 
@@ -319,13 +354,17 @@ function doGet(e) {
         notes:     String(rowData[8] || '')
       });
       updateSignupStatus(row, 'Approved');
+      const signupName = rowData[2] ? rowData[1] + '-' + rowData[2] : String(rowData[1] || '');
+      appendAuditLog('Signup Approved', signupName, '', '');
       return jsonpResponse(callback, { success: true });
     }
 
     if (action === 'denySignup') {
       const row = parseInt(e.parameter.row, 10);
       if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
+      const signupName = getSignupNameFromRow(row);
       updateSignupStatus(row, 'Denied');
+      appendAuditLog('Signup Denied', signupName, '', '');
       return jsonpResponse(callback, { success: true });
     }
 
@@ -363,6 +402,7 @@ function doGet(e) {
       if (excluded) list.push(nameRealm);
       setMPlusManualExcluded(list);
       cache.remove('rosterPayload');
+      appendAuditLog(excluded ? 'M+ Exclusion Toggled On' : 'M+ Exclusion Toggled Off', nameRealm, '', '');
       return jsonpResponse(callback, { success: true, excluded: excluded });
     }
 
@@ -378,6 +418,7 @@ function doGet(e) {
         }
       }
       cache.remove('rosterPayload');
+      appendAuditLog('All M+ Exclusions Cleared', '', '', '');
       return jsonpResponse(callback, { success: true });
     }
 
@@ -397,13 +438,16 @@ function doGet(e) {
         if (exSheet) exSheet.getRange(row, 6).setValue(note);
       }
       cache.remove('rosterPayload');
+      appendAuditLog('M+ Exclusion Approved', nameRealm, '', note || '');
       return jsonpResponse(callback, { success: true });
     }
 
     if (action === 'rejectMPlusExclusion') {
       const row = parseInt(e.parameter.row, 10);
       if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
+      const nameRealm = getMPlusNameRealmFromRow(row);
       updateMPlusExclusionStatus(row, 'Rejected');
+      appendAuditLog('M+ Exclusion Rejected', nameRealm, '', '');
       return jsonpResponse(callback, { success: true });
     }
 
@@ -1190,5 +1234,119 @@ function updateMPlusExclusionStatus(row, status) {
   const sheet = ss.getSheetByName(CFG.mPlusExclusionSheet);
   if (!sheet) return;
   sheet.getRange(row, 5).setValue(status);
+}
+
+// ── Officer Audit Log ─────────────────────────────────────────────────────────
+
+function ensureAuditLogSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(CFG.auditLogSheet);
+  if (!sheet) {
+    sheet = ss.insertSheet(CFG.auditLogSheet);
+    sheet.appendRow(['Timestamp', 'Changed By', 'Action', 'Target', 'Old Value', 'New Value']);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+// changedBy: officer identity — empty string until Discord OAuth ships (#25/#46)
+function appendAuditLog(action, target, oldVal, newVal, changedBy) {
+  try {
+    const sheet = ensureAuditLogSheet();
+    sheet.appendRow([
+      new Date(),
+      changedBy || '',
+      action || '',
+      target || '',
+      oldVal !== undefined && oldVal !== null ? String(oldVal) : '',
+      newVal !== undefined && newVal !== null ? String(newVal) : ''
+    ]);
+  } catch (err) {
+    Logger.log('appendAuditLog error: ' + err);
+  }
+}
+
+function getAuditLog() {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.auditLogSheet);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
+  return rows.reverse().map(function(r) {
+    return {
+      ts:     r[0] instanceof Date
+                ? Utilities.formatDate(r[0], Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm')
+                : String(r[0] || ''),
+      changedBy: String(r[1] || ''),
+      action: String(r[2] || ''),
+      target: String(r[3] || ''),
+      oldVal: String(r[4] || ''),
+      newVal: String(r[5] || '')
+    };
+  });
+}
+
+// ── Audit log read helpers (capture old values before mutations) ───────────────
+
+function getRosterFieldValue(nameRealm, field) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.rosterSheet);
+  if (!sheet) return '';
+  const data = sheet.getDataRange().getValues();
+  for (let i = CFG.rosterDataStart - 1; i < data.length; i++) {
+    const rowPlayer = String(data[i][CFG.rosterPlayerCol - 1] || '').trim();
+    if (rowPlayer.toLowerCase() !== nameRealm.toLowerCase()) continue;
+    if (field === 'spec')    return String(data[i][CFG.rosterSpecCol - 1]  || '');
+    if (field === 'isTrial') return String(data[i][CFG.rosterTrialCol - 1] || '');
+    if (field === 'role')    return String(data[i][CFG.rosterRoleCol - 1]  || '');
+    if (field === 'isBench') return Number(data[i][CFG.rosterPriorityCol - 1] || 0) === 6 ? 'true' : 'false';
+    return '';
+  }
+  return '';
+}
+
+function getRosterBisLink(nameRealm) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.rosterSheet);
+  if (!sheet) return '';
+  const data = sheet.getDataRange().getValues();
+  for (let i = CFG.rosterDataStart - 1; i < data.length; i++) {
+    const rowPlayer = String(data[i][CFG.rosterPlayerCol - 1] || '').trim();
+    if (rowPlayer.toLowerCase() === nameRealm.toLowerCase()) {
+      return String(data[i][CFG.rosterBisLinkCol - 1] || '');
+    }
+  }
+  return '';
+}
+
+function getBiSNameRealmFromRow(row) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.bisResponsesSheet);
+  if (!sheet) return '';
+  return String(sheet.getRange(row, 2).getValue() || '');
+}
+
+function getMPlusNameRealmFromRow(row) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.mPlusExclusionSheet);
+  if (!sheet) return '';
+  return String(sheet.getRange(row, 2).getValue() || '');
+}
+
+function getSelfReceivedRowSummary(row) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.selfReceivedSheet);
+  if (!sheet) return { player: '', item: '' };
+  const vals = sheet.getRange(row, 1, 1, 3).getValues()[0];
+  return { player: String(vals[1] || ''), item: String(vals[2] || '') };
+}
+
+function getSignupNameFromRow(row) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.responsesSheet);
+  if (!sheet) return '';
+  const vals = sheet.getRange(row, 1, 1, 3).getValues()[0];
+  const char  = String(vals[1] || '');
+  const realm = String(vals[2] || '');
+  return realm ? char + '-' + realm : char;
 }
 
