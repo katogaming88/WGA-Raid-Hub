@@ -6,6 +6,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.12.0] - 2026-06-18
+
+### Added
+- Attendance entry from the officer dashboard (#94). The Attendance tab now has a "Manage Raid Attendance" panel with three new capabilities:
+  - **Refresh from WCL** button — triggers a full WCL fetch and rewrites the Attendance sheet without opening the spreadsheet. Shows a progress note ("This may take 30-60 seconds"), then displays a summary (X nights found, Y excluded) on completion.
+  - **Night-by-night status grid** — after refresh (or on tab open if data exists), a dropdown lists every raid night. Selecting a night shows all roster players with their current status. Officers can change any status (Present / Bench / Medical Leave / Excused / No Show / Not on Roster) via a dropdown; each change auto-saves to the Attendance sheet and logs to the audit log.
+  - **Commit Scores to Sheet** button — calculates attendance scores for all players and writes them to the Scoring sheet column D. Shows an inline confirmation banner before firing, then reports how many players were scored and over how many nights.
+- `refreshAttendanceCore()` extracted from `refreshAttendance()` so the WCL fetch logic can be called from the web app without requiring spreadsheet UI.
+- `commitAttendanceScoresCore()` extracted from `commitAttendanceScores()` for the same reason; the spreadsheet menu versions now delegate to these core functions.
+- `getAttendanceSheetGrid()` backend function — reads the Attendance sheet and returns all raid nights with their full player/status list as JSON.
+- `setAttendanceStatusInSheet()` backend function — finds a specific player/date row in the Attendance sheet and updates the status and source columns.
+- Four new web app action handlers: `refreshAttendanceWCL`, `commitAttendanceScores`, `getAttendanceGrid`, `setAttendanceStatus`. All attendance mutations are logged to the Officer Audit Log.
+- Attendance status editing from the player profile card. Expanding a player's attendance history now shows editable dropdowns on each row instead of static labels, allowing per-entry status changes without leaving the roster view. "Not on Roster" entries (pre-join-date raids) remain static labels. Changes save immediately with the same Saved/Error feedback as the grid.
+- All attendance status dropdowns (night selector, grid rows, profile card rows) now show a gold `▾` chevron indicator so they are visually identifiable as interactive controls.
+- Green `✓` checkmark on attendance grid rows where a status has been committed to the sheet (WCL-imported, auto-benched, or officer-entered). Rows with no status show no checkmark, making it easy to spot entries that still need to be filled in. The checkmark persists after saving a change in the current session.
+
+---
+
 ## [2.11.1] - 2026-06-18
 
 ### Fixed

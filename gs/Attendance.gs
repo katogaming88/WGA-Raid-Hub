@@ -26,53 +26,57 @@ const ATTENDANCE_WEIGHTS = {
 
 function refreshAttendance() {
   try {
-    Logger.log('Starting WCL attendance fetch...');
-
-    const token = getAccessToken();
-    if (!token) throw new Error('Failed to get WCL access token. Check Client ID and Secret.');
-
-    const allReports = getSeasonReports(token);
-    if (!allReports || allReports.length === 0) throw new Error('No matching Phoenix reports found.');
-    Logger.log(`Fetched ${allReports.length} total reports.`);
-
-    const rosterData  = getRosterData();
-    const rosterNames = rosterData.map(r => r.firstName);
-    const rosterSet   = new Set(rosterNames.map(n => n.toLowerCase()));
-
-    const reportDetails = collectAllReportDetails(token, allReports, rosterSet);
-    const currentZoneId = detectCurrentZone(reportDetails);
-    if (!currentZoneId) throw new Error('Could not determine current raid zone. Check WCL reports.');
-    Logger.log(`Current season zone ID: ${currentZoneId}`);
-
-    const mainNights = [];
-    const excluded   = [];
-
-    for (const detail of reportDetails) {
-      if (detail.zoneId !== currentZoneId) {
-        excluded.push({ ...detail, reason: `Wrong zone (zone ${detail.zoneId})` });
-      } else if (detail.title.includes(ALT_RUN_KEYWORD)) {
-        excluded.push({ ...detail, reason: `Alt run (title contains "${ALT_RUN_KEYWORD}")` });
-      } else {
-        mainNights.push(detail);
-      }
-    }
-
-    Logger.log(`Main nights: ${mainNights.length} | Excluded: ${excluded.length}`);
-
-    writeAttendanceToSheet(mainNights, excluded, rosterData);
-
+    const result = refreshAttendanceCore();
     SpreadsheetApp.getUi().alert(
-      '✅ Attendance Updated!\n\n' +
-      `${mainNights.length} main raid nights found this season\n` +
-      `${excluded.length} report(s) excluded (alt runs / wrong zone) — see bottom of Attendance sheet\n\n` +
+      'Attendance Updated!\n\n' +
+      `${result.mainNights} main raid nights found this season\n` +
+      `${result.excluded} report(s) excluded (alt runs / wrong zone) -- see bottom of Attendance sheet\n\n` +
       'Fill in Bench / Excused / No Show for any blank rows, then run\n' +
-      '"Commit Attendance Scores → Column D"'
+      '"Commit Attendance Scores -> Column D"'
     );
-
   } catch (e) {
     Logger.log('Error: ' + e.message);
-    SpreadsheetApp.getUi().alert('❌ Error: ' + e.message);
+    SpreadsheetApp.getUi().alert('Error: ' + e.message);
   }
+}
+
+function refreshAttendanceCore() {
+  Logger.log('Starting WCL attendance fetch...');
+
+  const token = getAccessToken();
+  if (!token) throw new Error('Failed to get WCL access token. Check Client ID and Secret.');
+
+  const allReports = getSeasonReports(token);
+  if (!allReports || allReports.length === 0) throw new Error('No matching Phoenix reports found.');
+  Logger.log(`Fetched ${allReports.length} total reports.`);
+
+  const rosterData  = getRosterData();
+  const rosterNames = rosterData.map(r => r.firstName);
+  const rosterSet   = new Set(rosterNames.map(n => n.toLowerCase()));
+
+  const reportDetails = collectAllReportDetails(token, allReports, rosterSet);
+  const currentZoneId = detectCurrentZone(reportDetails);
+  if (!currentZoneId) throw new Error('Could not determine current raid zone. Check WCL reports.');
+  Logger.log(`Current season zone ID: ${currentZoneId}`);
+
+  const mainNights = [];
+  const excluded   = [];
+
+  for (const detail of reportDetails) {
+    if (detail.zoneId !== currentZoneId) {
+      excluded.push({ ...detail, reason: `Wrong zone (zone ${detail.zoneId})` });
+    } else if (detail.title.includes(ALT_RUN_KEYWORD)) {
+      excluded.push({ ...detail, reason: `Alt run (title contains "${ALT_RUN_KEYWORD}")` });
+    } else {
+      mainNights.push(detail);
+    }
+  }
+
+  Logger.log(`Main nights: ${mainNights.length} | Excluded: ${excluded.length}`);
+
+  writeAttendanceToSheet(mainNights, excluded, rosterData);
+
+  return { mainNights: mainNights.length, excluded: excluded.length };
 }
 
 
@@ -273,10 +277,24 @@ function commitAttendanceScores() {
   );
   if (response !== ui.Button.YES) return;
 
-  const attSheet     = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ATTENDANCE_SHEET_NAME);
-  const scoringSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SCORING_SHEET_NAME);
-  if (!attSheet)     { ui.alert('❌ Attendance sheet not found. Run "Refresh Attendance" first.'); return; }
-  if (!scoringSheet) { ui.alert(`❌ Sheet "${SCORING_SHEET_NAME}" not found.`); return; }
+  try {
+    const result = commitAttendanceScoresCore();
+    ui.alert(
+      `Done -- ${result.committed} Attendance scores written to column D.\n` +
+      `Denominator: ${result.totalRaids} main raid nights this season.`
+    );
+  } catch (e) {
+    ui.alert('Error: ' + e.message);
+  }
+}
+
+function commitAttendanceScoresCore() {
+  const ss           = SpreadsheetApp.getActiveSpreadsheet();
+  const attSheet     = ss.getSheetByName(ATTENDANCE_SHEET_NAME);
+  const scoringSheet = ss.getSheetByName(SCORING_SHEET_NAME);
+
+  if (!attSheet)     throw new Error('Attendance sheet not found. Run "Refresh Attendance" first.');
+  if (!scoringSheet) throw new Error(`Sheet "${SCORING_SHEET_NAME}" not found.`);
 
   const lastRow = attSheet.getLastRow();
   const attData = attSheet.getRange(1, 1, lastRow, 6).getValues();
@@ -318,10 +336,7 @@ function commitAttendanceScores() {
   const totalRaids = raidDates.size;
   Logger.log(`Scoring attendance: ${totalRaids} raid nights this season.`);
 
-  if (totalRaids === 0) {
-    ui.alert('❌ No raid nights found in the Attendance sheet. Run the refresh first.');
-    return;
-  }
+  if (totalRaids === 0) throw new Error('No raid nights found in the Attendance sheet. Run the refresh first.');
 
   let committed = 0;
   for (let row = PLAYER_DATA_START; row <= PLAYER_DATA_END; row++) {
@@ -332,7 +347,7 @@ function commitAttendanceScores() {
     const playerData = playerWeights[firstName];
 
     if (!playerData || playerData.weights.length === 0) {
-      Logger.log(`No attendance data for ${firstName} — skipping.`);
+      Logger.log(`No attendance data for ${firstName} -- skipping.`);
       continue;
     }
 
@@ -356,10 +371,7 @@ function commitAttendanceScores() {
     committed++;
   }
 
-  ui.alert(
-    `✅ Done — ${committed} Attendance scores written to column D.\n` +
-    `Denominator: ${totalRaids} main raid nights this season.`
-  );
+  return { committed, totalRaids };
 }
 
 
@@ -536,6 +548,81 @@ function debugAttendanceSheet() {
 function debugExistingAttendance() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ATTENDANCE_SHEET_NAME);
   const entries = readExistingAttendance(sheet);
-  const lines = Object.entries(entries).slice(0, 30).map(([k, v]) => `${k} → ${v}`);
+  const lines = Object.entries(entries).slice(0, 30).map(([k, v]) => `${k} -> ${v}`);
   SpreadsheetApp.getUi().alert(lines.join('\n'));
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// WEB APP HELPERS
+// ════════════════════════════════════════════════════════════════════════════
+
+function getAttendanceSheetGrid() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ATTENDANCE_SHEET_NAME);
+  if (!sheet) return { raids: [] };
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { raids: [] };
+
+  const data = sheet.getRange(1, 1, lastRow, 6).getValues();
+
+  const raids       = [];
+  let   currentRaid = null;
+
+  for (let i = 1; i < data.length; i++) {
+    const [rawDate, firstName, status, source, , excludeFlag] = data[i];
+
+    let dateStr;
+    if (rawDate instanceof Date) {
+      dateStr = Utilities.formatDate(rawDate, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    } else {
+      dateStr = String(rawDate || '');
+    }
+
+    if (!dateStr && !firstName) continue;
+    if (String(dateStr).startsWith('──') || String(dateStr) === 'Report Title') break;
+
+    if (!firstName) {
+      const match = String(dateStr).match(/\((\d{4}-\d{2}-\d{2})\)/);
+      const date  = match ? match[1] : dateStr;
+      currentRaid = { date, title: dateStr, excluded: excludeFlag === true, players: [] };
+      raids.push(currentRaid);
+    } else if (currentRaid) {
+      currentRaid.players.push({
+        name:   String(firstName),
+        status: String(status || ''),
+        source: String(source || ''),
+      });
+    }
+  }
+
+  return { raids };
+}
+
+function setAttendanceStatusInSheet(date, firstName, status) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ATTENDANCE_SHEET_NAME);
+  if (!sheet) throw new Error('Attendance sheet not found.');
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) throw new Error('Attendance sheet is empty.');
+
+  const data = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
+
+  for (let i = 0; i < data.length; i++) {
+    const [rawDate, rowFirstName] = data[i];
+    const rowDate = rawDate instanceof Date
+      ? Utilities.formatDate(rawDate, Session.getScriptTimeZone(), 'yyyy-MM-dd')
+      : String(rawDate || '');
+
+    if (String(rowDate).startsWith('──') || String(rowDate) === 'Report Title') break;
+
+    if (rowDate === date && String(rowFirstName || '').trim() === firstName) {
+      const sheetRow = i + 2;
+      sheet.getRange(sheetRow, 3).setValue(status);
+      sheet.getRange(sheetRow, 4).setValue('Officer');
+      return;
+    }
+  }
+
+  throw new Error(`Row not found for ${date} / ${firstName}.`);
 }
