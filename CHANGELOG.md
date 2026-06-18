@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.7.3] - 2026-06-18
+
+### Fixed
+- Attendance history now sorts newest-to-oldest by date regardless of sheet row order.
+
+---
+
 ## [2.7.2] - 2026-06-18
 
 ### Fixed
