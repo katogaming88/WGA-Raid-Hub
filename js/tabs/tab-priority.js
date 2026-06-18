@@ -1,5 +1,41 @@
 var ARMOR_SLOT_ORDER = ['HEAD','SHOULDERS','CHEST','GLOVES','LEGS','CLOAK','BRACERS','BELT','BOOTS'];
 
+function fetchExportString() {
+  var btn  = document.getElementById('prioExportLoadBtn');
+  var body = document.getElementById('prioExportBody');
+  var area = document.getElementById('prioExportStr');
+  if (btn) { btn.disabled = true; btn.textContent = 'Loading...'; }
+
+  var cbName = '_getExportStringCb';
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (btn) { btn.disabled = false; btn.textContent = 'Regenerate'; }
+    var str = result && result.exportString ? result.exportString : '';
+    area.value = str;
+    area.placeholder = str ? '' : 'No export string found. Run Export Priority Data from the spreadsheet first.';
+    body.style.display = '';
+  };
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    if (btn) { btn.disabled = false; btn.textContent = 'Generate'; }
+    area.value = '';
+    area.placeholder = 'Failed to load export string.';
+    body.style.display = '';
+  };
+  script.src = WEB_APP_URL + '?action=getExportString&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function copyExportString() {
+  var area = document.getElementById('prioExportStr');
+  var msg  = document.getElementById('prioExportCopyMsg');
+  if (!area || !area.value) return;
+  navigator.clipboard.writeText(area.value).then(function() {
+    if (msg) { msg.style.display = ''; setTimeout(function() { msg.style.display = 'none'; }, 2000); }
+  });
+}
+
 function getUnmanagedItems() {
   var prioOrder = DATA.priorityOrder || {};
   var itemSlots = DATA.itemSlots     || {};
