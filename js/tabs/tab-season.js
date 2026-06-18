@@ -1,6 +1,8 @@
 function buildSeasonTab() {
-  var input = document.getElementById('seasonStartInput');
-  if (input) input.value = (DATA && DATA.seasonStart) || '';
+  var startInput = document.getElementById('seasonStartInput');
+  if (startInput) startInput.value = (DATA && DATA.seasonStart) || '';
+  var nameInput = document.getElementById('seasonNameInput');
+  if (nameInput) nameInput.value = (DATA && DATA.seasonName) || '';
 }
 
 function confirmClearSeasonStart() {
@@ -41,6 +43,38 @@ function syncAttendancePct() {
     if (status) { status.textContent = 'Error syncing.'; }
   };
   script.src = WEB_APP_URL + '?action=syncAttendancePct&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
+function saveSeasonName() {
+  var input  = document.getElementById('seasonNameInput');
+  var val    = input ? input.value.trim() : '';
+  var btn    = document.getElementById('seasonNameSaveBtn');
+  var status = document.getElementById('seasonNameStatus');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+  var cbName = '_setSeasonNameCb';
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+    if (result && result.success) {
+      if (DATA) DATA.seasonName = result.seasonName;
+      if (input) input.value = result.seasonName || '';
+      if (status) {
+        status.textContent = val ? 'Saved!' : 'Cleared.';
+        setTimeout(function() { if (status) status.textContent = ''; }, 2000);
+      }
+    } else {
+      if (status) { status.textContent = 'Error saving.'; }
+    }
+  };
+  var script = document.createElement('script');
+  script.onerror = function() {
+    delete window[cbName];
+    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+    if (status) { status.textContent = 'Error saving.'; }
+  };
+  script.src = WEB_APP_URL + '?action=setSeasonName&value=' + encodeURIComponent(val) + '&callback=' + cbName;
   document.head.appendChild(script);
 }
 

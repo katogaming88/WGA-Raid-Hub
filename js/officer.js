@@ -73,8 +73,10 @@ function resetLootSubTab() {
   if (defaultBtn) defaultBtn.classList.add('active');
   var subConflicts = document.getElementById('loot-sub-conflicts');
   var subFairness  = document.getElementById('loot-sub-fairness');
+  var subImport    = document.getElementById('loot-sub-import');
   if (subConflicts) subConflicts.style.display = '';
   if (subFairness)  subFairness.style.display  = 'none';
+  if (subImport)    subImport.style.display     = 'none';
 }
 
 function switchLootSubTab(name, btnEl) {
@@ -82,10 +84,13 @@ function switchLootSubTab(name, btnEl) {
   if (btnEl) btnEl.classList.add('active');
   var subConflicts = document.getElementById('loot-sub-conflicts');
   var subFairness  = document.getElementById('loot-sub-fairness');
+  var subImport    = document.getElementById('loot-sub-import');
   if (subConflicts) subConflicts.style.display = name === 'conflicts' ? '' : 'none';
   if (subFairness)  subFairness.style.display  = name === 'fairness'  ? '' : 'none';
+  if (subImport)    subImport.style.display     = name === 'import'    ? '' : 'none';
   if (name === 'conflicts') buildConflicts();
   if (name === 'fairness')  buildFairness();
+  if (name === 'import')    buildLootImportTab();
 }
 
 function showOfficerPrompt() {
