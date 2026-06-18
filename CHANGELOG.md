@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.10.0] - 2026-06-18
+
+### Performance
+- Payload split into two separately cached JSONP chunks to eliminate load timeouts. A fast `?chunk=core` request (roster, toggle flags, bisAllowedPlayers, playerNotes) returns in under 1 second and lets both pages render immediately. A `?chunk=heavy` request (lootCounts, attendanceDetails, bisList, priorityOrder, itemSlots, selfReceived) fires right after and fills in loot counts, recent loot, BiS/priority content without blocking the visible render. Cache keys are invalidated precisely: roster mutations clear `rosterCore` only (300 s TTL); loot/BiS mutations clear `rosterHeavy` only (900 s TTL); the manual Clear Cache button clears both. Closes #104.
+
+---
+
 ## [2.9.0] - 2026-06-18
 
 ### Added
