@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.6.0] - 2026-06-17
+
+### Added
+- "Fully BiS" badge on the player profile header -- appears automatically when a player has received every item on their BiS list (from any source: raid loot, M+, crafted, etc.). Visible to both raiders and officers. Closes #40.
+
+---
+
 ## [2.5.0] - 2026-06-17
 
 ### Added
