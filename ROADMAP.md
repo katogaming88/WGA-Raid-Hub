@@ -11,8 +11,9 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 
 ## Attendance
 
-- [ ] Full attendance history per player expandable in the officer dashboard (#14)
+- [x] Full attendance history per player expandable in the officer dashboard (#14)
 - [ ] See who was benched most often vs absent (#16)
+- [ ] Attendance management from the officer dashboard -- trigger WCL refresh and fill in Bench/Excused/No Show statuses without opening the spreadsheet; commit scores to Scoring sheet from the UI. WCL fetch logic already exists as a standalone Apps Script. (#94)
 
 ## Loot History
 
@@ -88,3 +89,4 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 - [x] Officer write functionality -- update BiS links, nicknames, trial/bench status directly from the page back to the Google Sheet (#23, shipped across multiple PRs)
 - [x] Per-raider BiS change request system -- raider submits an updated BiS link plus notes on what changed; officer approves before the sheet updates (#24, closed by PR #73)
 - [x] Officer action audit log -- append-only log sheet capturing every officer mutation (player add/remove, field changes, BiS/signup/M+/loot-mark approvals, notes) with old->new values; dedicated Audit Log tab in the officer dashboard (#83)
+- [x] Full attendance history per player in the officer profile panel -- expandable date-by-date log with all statuses, summary line, and status colour-coding (#14)
