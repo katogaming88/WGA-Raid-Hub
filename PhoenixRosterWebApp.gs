@@ -407,6 +407,16 @@ function doGet(e) {
       return jsonpResponse(callback, { success: true });
     }
 
+    if (action === 'getPendingCounts') {
+      return jsonpResponse(callback, {
+        signups:       getSignupResponses().filter(s => s.status !== 'Approved').length,
+        pendingRoster: getPendingRosterEntries().length,
+        bis:           getBiSSubmissions('Pending').length,
+        mplus:         getMPlusExclusionRequests('Pending').length,
+        requests:      getSelfReceivedRequests('Pending').length
+      });
+    }
+
     const cached = cache.get('rosterPayload');
     const json   = cached || (() => {
       const fresh = JSON.stringify(buildPayload());

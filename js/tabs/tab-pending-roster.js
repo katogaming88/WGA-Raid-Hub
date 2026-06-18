@@ -239,6 +239,7 @@ function removePendingRosterRow(rowIndex, btnEl) {
     if (container && !container.querySelector('.signup-response-card')) {
       container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No pending applicants.</p>';
     }
+    updateNavBadges();
   };
   var script = document.createElement('script');
   script.onerror = function() {

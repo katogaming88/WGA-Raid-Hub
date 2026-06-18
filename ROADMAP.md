@@ -19,7 +19,7 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 
 ## Officer Dashboard
 
-- [ ] Roster health summary -- pending action count badges on each officer tab (signups, pending roster, BiS requests, M+ exclusions, self-received) (#76)
+- [x] Roster health summary -- pending action count badges on each officer tab (signups, pending roster, BiS requests, M+ exclusions, self-received) (#76)
 - [ ] Officer action audit log -- append-only log of every officer change (player added/removed, status changes, approvals, loot marks) stored in the Sheet (#83)
 
 ## Roster / Player Management

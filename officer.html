@@ -47,10 +47,10 @@
         <button class="nav-item" onclick="switchTab('loot')">Loot</button>
         <button class="nav-item" onclick="switchTab('priority')">Priority<span class="nav-notif nav-notif-abs" id="prioNavBadge" style="display:none;"></span></button>
         <button class="nav-item" onclick="switchTab('attendance')">Attendance</button>
-        <button class="nav-item" onclick="switchTab('signups')">Signups</button>
-        <button class="nav-item" onclick="switchTab('bis')">BiS Submissions</button>
-        <button class="nav-item" onclick="switchTab('mplus')">M+ Exclusions</button>
-        <button class="nav-item" onclick="switchTab('requests')">Received Item Requests</button>
+        <button class="nav-item" onclick="switchTab('signups')">Signups<span class="nav-notif nav-notif-abs" id="signupsNavBadge" style="display:none;"></span></button>
+        <button class="nav-item" onclick="switchTab('bis')">BiS Submissions<span class="nav-notif nav-notif-abs" id="bisNavBadge" style="display:none;"></span></button>
+        <button class="nav-item" onclick="switchTab('mplus')">M+ Exclusions<span class="nav-notif nav-notif-abs" id="mplusNavBadge" style="display:none;"></span></button>
+        <button class="nav-item" onclick="switchTab('requests')">Received Item Requests<span class="nav-notif nav-notif-abs" id="requestsNavBadge" style="display:none;"></span></button>
       </nav>
 
       <div class="officer-main">
@@ -140,7 +140,7 @@
         <div id="tab-signups" class="tab-panel">
           <div class="filter-bar" style="margin-bottom:1rem;">
             <button class="filter-chip active" id="signups-subtab-btn-signups" onclick="switchSignupsSubTab('signups', this)">Signups</button>
-            <button class="filter-chip" id="signups-subtab-btn-pendingRoster" onclick="switchSignupsSubTab('pendingRoster', this)">Pending Roster</button>
+            <button class="filter-chip" id="signups-subtab-btn-pendingRoster" onclick="switchSignupsSubTab('pendingRoster', this)">Pending Roster <span class="nav-notif" id="pendingRosterSubBadge" style="display:none;"></span></button>
           </div>
           <div id="signups-sub-signups">
             <div class="signup-officer-panel">

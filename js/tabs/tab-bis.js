@@ -125,4 +125,5 @@ function checkEmptyBisSubmissions() {
   if (container && !container.querySelector('.request-card')) {
     container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No pending BiS submissions.</p>';
   }
+  updateNavBadges();
 }
