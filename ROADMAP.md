@@ -4,10 +4,6 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 
 ---
 
-## Loot Tracking
-
-- [ ] See who is missing loot for each slot (e.g. who still needs a trinket) (#9)
-
 ## Priority Management
 
 - [ ] Highlight conflicts where a player has been given top priority on multiple items by officers (#12)
