@@ -51,6 +51,7 @@
         <button class="nav-item" onclick="switchTab('bis')">BiS Submissions<span class="nav-notif nav-notif-abs" id="bisNavBadge" style="display:none;"></span></button>
         <button class="nav-item" onclick="switchTab('mplus')">M+ Exclusions<span class="nav-notif nav-notif-abs" id="mplusNavBadge" style="display:none;"></span></button>
         <button class="nav-item" onclick="switchTab('requests')">Received Item Requests<span class="nav-notif nav-notif-abs" id="requestsNavBadge" style="display:none;"></span></button>
+        <button class="nav-item" onclick="switchTab('audit')">Audit Log</button>
       </nav>
 
       <div class="officer-main">
@@ -180,6 +181,14 @@
           <div id="bisContainer"></div>
         </div>
 
+        <!-- Audit Log tab -->
+        <div id="tab-audit" class="tab-panel">
+          <div style="margin-bottom:1rem;">
+            <input type="text" id="auditSearch" class="roster-search-input" placeholder="Search action or player..." oninput="renderAuditLog()" style="max-width:320px;">
+          </div>
+          <div id="auditContainer"></div>
+        </div>
+
         <!-- M+ Exclusions tab -->
         <div id="tab-mplus" class="tab-panel">
           <div class="signup-officer-panel">
@@ -287,6 +296,7 @@
 <script src="js/tabs/tab-pending-roster.js"></script>
 <script src="js/tabs/tab-mplus.js"></script>
 <script src="js/tabs/tab-priority.js"></script>
+<script src="js/tabs/tab-audit.js"></script>
 <script>document.getElementById('versionNum').textContent = VERSION;</script>
 </body>
 </html>

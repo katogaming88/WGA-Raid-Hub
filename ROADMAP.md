@@ -20,7 +20,7 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 ## Officer Dashboard
 
 - [x] Roster health summary -- pending action count badges on each officer tab (signups, pending roster, BiS requests, M+ exclusions, self-received) (#76)
-- [ ] Officer action audit log -- append-only log of every officer change (player added/removed, status changes, approvals, loot marks) stored in the Sheet (#83)
+- [x] Officer action audit log -- append-only log of every officer change (player added/removed, status changes, approvals, loot marks) stored in the Sheet (#83)
 
 ## Roster / Player Management
 
@@ -87,3 +87,4 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 - [x] M+ exclusion request form -- raider submits Raider.io profile + notes; officer approval queue; approved players marked M+ excluded in sheet (#57, closed by PR #73)
 - [x] Officer write functionality -- update BiS links, nicknames, trial/bench status directly from the page back to the Google Sheet (#23, shipped across multiple PRs)
 - [x] Per-raider BiS change request system -- raider submits an updated BiS link plus notes on what changed; officer approves before the sheet updates (#24, closed by PR #73)
+- [x] Officer action audit log -- append-only log sheet capturing every officer mutation (player add/remove, field changes, BiS/signup/M+/loot-mark approvals, notes) with old->new values; dedicated Audit Log tab in the officer dashboard (#83)
