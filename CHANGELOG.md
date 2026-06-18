@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.11.1] - 2026-06-18
+
+### Fixed
+- Excused absences now carry a partial penalty (weight 0.8) in the webapp attendance percentage, matching the Scoring sheet formula. Previously Excused was treated as a full penalty (same as No Show), causing attendance % to be understated for players with excused absences.
+
+---
+
 ## [2.11.0] - 2026-06-18
 
 ### Added

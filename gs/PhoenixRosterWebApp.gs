@@ -809,7 +809,6 @@ function buildAttendanceMap(sheets, seasonStart, joinDateMap) {
   const data        = sheet.getDataRange().getValues();
   const raidDateSet = new Set();
   const playerData  = {};
-  const penalizing  = new Set(['No Show', 'Excused']);
   var skipReport    = false;
 
   for (let i = CFG.attendDataStart - 1; i < data.length; i++) {
@@ -851,9 +850,13 @@ function buildAttendanceMap(sheets, seasonStart, joinDateMap) {
     const total          = eligible.length;
     if (!total) continue;
 
-    const rows      = playerData[firstName] || [];
-    const penalties = rows.filter(r => (!effectiveStart || r.date >= effectiveStart) && penalizing.has(r.status)).length;
-    const pct       = Math.round((1 - penalties / total) * 1000) / 10;
+    const rows         = playerData[firstName] || [];
+    const eligibleRows = rows.filter(r => !effectiveStart || r.date >= effectiveStart);
+    const sum          = eligibleRows.reduce((acc, r) => {
+      const w = ATTENDANCE_WEIGHTS[r.status];
+      return acc + (w != null ? w : 0);
+    }, 0);
+    const pct = Math.round((sum / total) * 1000) / 10;
     attendMap[firstName] = pct.toFixed(1) + '%';
   }
 
