@@ -66,6 +66,7 @@ const CFG = {
   lootDateCol:       2,  // B - Date
   lootInstanceCol:   10, // J - Instance (e.g. "The Voidspire-Heroic")
   lootDataStart:     2,  // First Data row (row 1 = headers)
+  pastedLootSheet:   'Pasted Loot', // Season | Player | Date | Item Name | Instance
 
   // ── Attendance Sheet ───────────────────────────────────────────────────
   attendanceSheet:  'Attendance',
@@ -228,6 +229,14 @@ function doGet(e) {
       cache.remove('rosterHeavy');
       appendAuditLog('Season Start Set', '', '', val);
       return jsonpResponse(callback, { success: true, seasonStart: val });
+    }
+
+    if (action === 'setSeasonName') {
+      const val = String(e.parameter.value || '').trim();
+      props.setProperty('seasonName', val);
+      cache.remove('rosterCore');
+      appendAuditLog('Season Name Set', '', '', val);
+      return jsonpResponse(callback, { success: true, seasonName: val });
     }
 
     if (action === 'submitSignup') {
@@ -557,6 +566,32 @@ function doGet(e) {
       });
     }
 
+    if (action === 'getPastedLootSummary') {
+      const lss = SpreadsheetApp.getActiveSpreadsheet();
+      return jsonpResponse(callback, getPastedLootSummary(lss));
+    }
+
+    if (action === 'appendLootRows') {
+      const season = String(e.parameter.season || '').trim();
+      const rows   = JSON.parse(decodeURIComponent(e.parameter.rows || '[]'));
+      if (!Array.isArray(rows) || rows.length === 0) return jsonpResponse(callback, { success: true, written: 0, skipped: 0 });
+      const lss    = SpreadsheetApp.getActiveSpreadsheet();
+      const result = appendLootRowsToSheet(season, rows, lss);
+      cache.remove('rosterHeavy');
+      return jsonpResponse(callback, { success: true, written: result.written, skipped: result.skipped });
+    }
+
+    if (action === 'clearAllPastedLoot') {
+      const lss   = SpreadsheetApp.getActiveSpreadsheet();
+      const sheet = lss.getSheetByName(CFG.pastedLootSheet);
+      if (sheet && sheet.getLastRow() >= 2) {
+        sheet.deleteRows(2, sheet.getLastRow() - 1);
+      }
+      cache.remove('rosterHeavy');
+      appendAuditLog('Pasted Loot Cleared', '', '', '');
+      return jsonpResponse(callback, { success: true });
+    }
+
     const chunk = e && e.parameter && e.parameter.chunk;
 
     if (chunk === 'core') {
@@ -756,12 +791,14 @@ function buildCorePayload(sheets, scriptProps) {
   const bisSubmissionsOpen  = scriptProps.getProperty('bisSubmissionsOpen')  === 'true';
   const mPlusExclusionsOpen = scriptProps.getProperty('mPlusExclusionsOpen') === 'true';
   const seasonStart         = scriptProps.getProperty('seasonStart')         || '';
+  const seasonName          = scriptProps.getProperty('seasonName')          || '';
   return {
     generatedAt:          new Date().toISOString(),
     signupsOpen:          signupsOpen,
     bisSubmissionsOpen:   bisSubmissionsOpen,
     mPlusExclusionsOpen:  mPlusExclusionsOpen,
     seasonStart:          seasonStart,
+    seasonName:           seasonName,
     bisAllowedPlayers:    getBisAllowedPlayers(),
     playerNotes:          getPlayerNotes(),
     roster:               getRoster(sheets, seasonStart),
@@ -1150,33 +1187,13 @@ function getItemSlots(sheets) {
 }
 
 function getLootCounts(sheets) {
-  const sheet = sheets[CFG.lootSheet];
-  if (!sheet) return {};
-
-  const data   = sheet.getDataRange().getValues();
   const result = {};
 
   function normName(str) {
     return String(str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
   }
 
-  for (let i = CFG.lootDataStart - 1; i < data.length; i++) {
-    const row      = data[i];
-    const player   = String(row[CFG.lootPlayerCol    - 1] || '').trim();
-    const rawDate  = row[CFG.lootDateCol             - 1];
-    const item     = String(row[3]                        || '').trim().replace(/^\[|\]$/g, ''); // col D, strip brackets
-    const instance = String(row[CFG.lootInstanceCol  - 1] || '').trim();
-    if (!player || !item) continue;
-
-    const name = normName(player.split('-')[0]);
-    if (!name) continue;
-
-    const diffRaw    = instance.split('-').pop().trim().toLowerCase();
-    const difficulty = diffRaw === 'mythic' ? 'Mythic' : diffRaw === 'heroic' ? 'Heroic' : 'Other';
-    const date       = rawDate instanceof Date
-      ? Utilities.formatDate(rawDate, Session.getScriptTimeZone(), 'MMM d, yyyy')
-      : String(rawDate || '').trim();
-
+  function addEntry(name, item, difficulty, date) {
     if (!result[name]) result[name] = { count: 0, heroicCount: 0, mythicCount: 0, items: [] };
     result[name].count++;
     if (difficulty === 'Heroic') result[name].heroicCount++;
@@ -1184,7 +1201,106 @@ function getLootCounts(sheets) {
     result[name].items.push({ name: item, difficulty: difficulty, date: date });
   }
 
+  // Read from existing Loot Data sheet (IMPORTRANGE source)
+  const sheet = sheets[CFG.lootSheet];
+  if (sheet) {
+    const data = sheet.getDataRange().getValues();
+    for (let i = CFG.lootDataStart - 1; i < data.length; i++) {
+      const row      = data[i];
+      const player   = String(row[CFG.lootPlayerCol    - 1] || '').trim();
+      const rawDate  = row[CFG.lootDateCol             - 1];
+      const item     = String(row[3]                        || '').trim().replace(/^\[|\]$/g, ''); // col D, strip brackets
+      const instance = String(row[CFG.lootInstanceCol  - 1] || '').trim();
+      if (!player || !item) continue;
+
+      const name = normName(player.split('-')[0]);
+      if (!name) continue;
+
+      const diffRaw    = instance.split('-').pop().trim().toLowerCase();
+      const difficulty = diffRaw === 'mythic' ? 'Mythic' : diffRaw === 'heroic' ? 'Heroic' : 'Other';
+      const date       = rawDate instanceof Date
+        ? Utilities.formatDate(rawDate, Session.getScriptTimeZone(), 'MMM d, yyyy')
+        : String(rawDate || '').trim();
+
+      addEntry(name, item, difficulty, date);
+    }
+  }
+
+  // Also read from Pasted Loot sheet (imported via officer dashboard)
+  // Columns: A=Season, B=RCLC ID, C=Player, D=Date, E=Item Name, F=Instance
+  const pastedSheet = sheets[CFG.pastedLootSheet];
+  if (pastedSheet && pastedSheet.getLastRow() >= 2) {
+    const pastedData = pastedSheet.getDataRange().getValues();
+    for (let i = 1; i < pastedData.length; i++) { // row 0 is header
+      const row      = pastedData[i];
+      const player   = String(row[2] || '').trim(); // col C
+      const date     = String(row[3] || '').trim(); // col D
+      const item     = String(row[4] || '').trim(); // col E
+      const instance = String(row[5] || '').trim(); // col F
+      if (!player || !instance) continue;
+
+      const name = normName(player.split('-')[0]);
+      if (!name) continue;
+
+      const diffRaw    = instance.split('-').pop().trim().toLowerCase();
+      const difficulty = diffRaw === 'mythic' ? 'Mythic' : diffRaw === 'heroic' ? 'Heroic' : 'Other';
+
+      addEntry(name, item || 'Unknown Item', difficulty, date);
+    }
+  }
+
   return result;
+}
+
+function ensurePastedLootSheet(ss) {
+  let sheet = ss.getSheetByName(CFG.pastedLootSheet);
+  if (!sheet) {
+    sheet = ss.insertSheet(CFG.pastedLootSheet);
+    sheet.getRange(1, 1, 1, 6).setValues([['Season', 'RCLC ID', 'Player', 'Date', 'Item Name', 'Instance']]);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function getPastedLootSummary(ss) {
+  const sheet = ss.getSheetByName(CFG.pastedLootSheet);
+  if (!sheet || sheet.getLastRow() < 2) return { count: 0, lastDate: '' };
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
+  let lastDate = '';
+  for (let i = 0; i < data.length; i++) {
+    const d = String(data[i][3] || '').trim(); // col D = Date
+    if (d > lastDate) lastDate = d;
+  }
+  return { count: data.length, lastDate: lastDate };
+}
+
+function appendLootRowsToSheet(season, rows, ss) {
+  const sheet = ensurePastedLootSheet(ss);
+
+  // Build set of existing RCLC IDs (col B) to deduplicate
+  const existingIds = new Set();
+  if (sheet.getLastRow() >= 2) {
+    const ids = sheet.getRange(2, 2, sheet.getLastRow() - 1, 1).getValues();
+    for (let i = 0; i < ids.length; i++) {
+      const id = String(ids[i][0] || '').trim();
+      if (id) existingIds.add(id);
+    }
+  }
+
+  const toWrite = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r  = rows[i];
+    const id = String(r.id || '').trim();
+    if (!id || existingIds.has(id)) continue;
+    existingIds.add(id);
+    toWrite.push([season, id, String(r.player || ''), String(r.date || ''), String(r.itemName || ''), String(r.instance || '')]);
+  }
+
+  if (toWrite.length > 0) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, toWrite.length, 6).setValues(toWrite);
+  }
+
+  return { written: toWrite.length, skipped: rows.length - toWrite.length };
 }
 
 function getBisAllowedPlayers() {

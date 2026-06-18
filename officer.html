@@ -90,11 +90,12 @@
           <div id="officerProfile"></div>
         </div>
 
-        <!-- Loot tab (Contested Items + Loot Fairness + Priority sub-tabs) -->
+        <!-- Loot tab (Contested Items + Loot Fairness + Import History sub-tabs) -->
         <div id="tab-loot" class="tab-panel">
           <div class="filter-bar" style="margin-bottom:1rem;">
             <button class="filter-chip active" id="loot-subtab-btn-conflicts" onclick="switchLootSubTab('conflicts', this)">Contested Items</button>
             <button class="filter-chip" id="loot-subtab-btn-fairness" onclick="switchLootSubTab('fairness', this)">Loot Fairness</button>
+            <button class="filter-chip" id="loot-subtab-btn-import" onclick="switchLootSubTab('import', this)">Import History</button>
           </div>
           <div id="loot-sub-conflicts">
             <div id="conflictsContent"></div>
@@ -108,6 +109,7 @@
             </div>
             <div id="fairnessContent"></div>
           </div>
+          <div id="loot-sub-import" style="display:none;"></div>
         </div>
 
         <!-- Priority tab -->
@@ -251,6 +253,18 @@
             </div>
             <p class="signup-officer-note" style="margin-top:0.75rem;">Leave blank to include all raids in attendance scoring (no season filter).</p>
 
+            <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:1.25rem 0;">
+
+            <div class="signup-status-row">
+              <span class="signup-status-label">Season Name</span>
+            </div>
+            <p class="signup-officer-note" style="margin-top:0.25rem;">The current season label applied to all imported RCLootCouncil loot history (e.g. Season 1). Set this before importing loot.</p>
+            <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+              <input type="text" id="seasonNameInput" class="add-player-input" placeholder="e.g. Season 1" style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+              <button class="btn btn-gold" id="seasonNameSaveBtn" onclick="saveSeasonName()">Save</button>
+              <span id="seasonNameStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+            </div>
+
           </div>
         </div>
 
@@ -367,6 +381,7 @@
 <script src="js/tabs/tab-priority.js"></script>
 <script src="js/tabs/tab-audit.js"></script>
 <script src="js/tabs/tab-season.js"></script>
+<script src="js/tabs/tab-loot-import.js"></script>
 <script>document.getElementById('versionNum').textContent = VERSION;</script>
 </body>
 </html>

@@ -6,6 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.13.0] - 2026-06-18
+
+### Added
+- Loot history import from the officer dashboard (#101). The Loot tab now has a third sub-tab, **Import History**, where officers can paste an RCLootCouncil JSON export directly into the web app.
+  - Paste area accepts the standard RCLC JSON export (in-game: RCLootCouncil > Export > JSON). Works with any export size — one night, several nights, or the full season history.
+  - Imports are **additive**: each paste appends new entries and automatically skips duplicates (deduped by the RCLC entry `id`). Re-pasting a night you already imported is safe.
+  - Completion message reports how many entries were added and how many were skipped as duplicates.
+  - The panel shows total entries stored and the date of the most recent entry.
+  - **Clear All** button (with confirmation) wipes the imported history for use at a season reset.
+  - Imported data is written to a new `Pasted Loot` sheet (created automatically) with columns: Season, RCLC ID, Player, Date, Item Name, Instance.
+  - The season label applied to all imported entries is set once in the **Season Settings** tab (new Season Name field) rather than entered per import. The Import History tab shows the active season name and warns if none is configured.
+  - `getLootCounts()` now reads from both the existing `Loot Data` sheet (IMPORTRANGE) and the new `Pasted Loot` sheet, merging results — no disruption to existing loot data.
+  - Import and clear actions are logged to the Officer Audit Log and invalidate the heavy payload cache.
+
+---
+
 ## [2.12.0] - 2026-06-18
 
 ### Added
