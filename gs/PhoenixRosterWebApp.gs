@@ -752,9 +752,12 @@ function getRoster(sheets) {
     const charClass = String(row[CFG.rosterClassCol   - 1] || '').trim();
     const spec      = String(row[CFG.rosterSpecCol    - 1] || '').trim();
     const role      = String(row[CFG.rosterRoleCol    - 1] || '').trim();
-    const bisLink   = String(row[CFG.rosterBisLinkCol  - 1] || '').trim();
-    const joinDate  = String(row[CFG.rosterJoinDateCol - 1] || '').trim();
-    const sortKey   = String(row[CFG.rosterSortKeyCol  - 1] || '').trim();
+    const bisLink       = String(row[CFG.rosterBisLinkCol  - 1] || '').trim();
+    const rawJoinDate   = row[CFG.rosterJoinDateCol - 1];
+    const joinDate      = rawJoinDate instanceof Date
+                          ? Utilities.formatDate(rawJoinDate, Session.getScriptTimeZone(), 'yyyy-MM-dd')
+                          : String(rawJoinDate || '').trim();
+    const sortKey       = String(row[CFG.rosterSortKeyCol  - 1] || '').trim();
     const isBench       = String(Math.floor(Number(sortKey) / 1000)) === '6';
     const mPlusExcluded = !!mPlusExcludedSet[nameRealm.toLowerCase()];
     const mPlusNote     = mPlusNoteMap[nameRealm.toLowerCase()] || '';
@@ -1372,7 +1375,7 @@ function getRosterFieldValue(nameRealm, field) {
     if (field === 'spec')     return String(data[i][CFG.rosterSpecCol     - 1] || '');
     if (field === 'isTrial')  return String(data[i][CFG.rosterTrialCol    - 1] || '');
     if (field === 'role')     return String(data[i][CFG.rosterRoleCol     - 1] || '');
-    if (field === 'joinDate') return String(data[i][CFG.rosterJoinDateCol - 1] || '');
+    if (field === 'joinDate') { const v = data[i][CFG.rosterJoinDateCol - 1]; return v instanceof Date ? Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(v || ''); }
     if (field === 'isBench')  return Number(data[i][CFG.rosterPriorityCol - 1] || 0) === 6 ? 'true' : 'false';
     return '';
   }
