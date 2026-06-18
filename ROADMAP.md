@@ -22,13 +22,13 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 
 - [x] Roster health summary -- pending action count badges on each officer tab (signups, pending roster, BiS requests, M+ exclusions, self-received) (#76)
 - [x] Officer action audit log -- append-only log of every officer change (player added/removed, status changes, approvals, loot marks) stored in the Sheet (#83)
-- [ ] Priority export string accessible from the officer dashboard -- read the cached export string from the sheet and display it with a one-click copy, so officers never need to open the spreadsheet to grab the RCLootCouncil import string (#98)
+- [x] Priority export string accessible from the officer dashboard -- read the cached export string from the sheet and display it with a one-click copy, so officers never need to open the spreadsheet to grab the RCLootCouncil import string (#98)
 - [ ] Officer quick-actions bar on the index page -- small bar visible only to authenticated officers (post Discord auth) with fast access to high-frequency tasks like grabbing the priority export string (#99, depends on #25)
 
 ## Roster / Player Management
 
-- [ ] Join date tracking per player -- set on add, visible on profile and roster table; foundation for trial promotion and season archive (#77)
-- [ ] Trial promotion tracking -- surface trials who have been on the roster long enough and have sufficient attendance to warrant review (#78, depends on #77)
+- [x] Join date tracking per player -- set on add, visible on profile and roster table; foundation for trial promotion and season archive (#77)
+- [x] Trial promotion tracking -- surface trials who have been on the roster long enough and have sufficient attendance to warrant review (#78, depends on #77)
 - [ ] Season archive -- end-of-season roster snapshot triggered by officers; read-only archive view with previous seasons selectable (#79, depends on #77)
 
 ## Boss Progression
@@ -42,7 +42,7 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 - [x] "Fully BiS" badge when a player has received every raid-source BiS item (#40)
 - [x] Last received item highlighted prominently on the profile ("Last received: X on date Y") (#41)
 - [ ] Attendance trend on the character page -- recent-weeks indicator so raiders can self-monitor (#42)
-- [ ] Public leaderboard -- sortable by attendance %, BiS completion %, items received (#43)
+- ~~Public leaderboard -- closed, drama risk outweighs the benefit (#43)~~
 
 ## Discord Bot
 
@@ -92,3 +92,6 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 - [x] Per-raider BiS change request system -- raider submits an updated BiS link plus notes on what changed; officer approves before the sheet updates (#24, closed by PR #73)
 - [x] Officer action audit log -- append-only log sheet capturing every officer mutation (player add/remove, field changes, BiS/signup/M+/loot-mark approvals, notes) with old->new values; dedicated Audit Log tab in the officer dashboard (#83)
 - [x] Full attendance history per player in the officer profile panel -- expandable date-by-date log with all statuses, summary line, and status colour-coding (#14)
+- [x] RCLootCouncil priority export string -- generated from the Priority tab and displayed with one-click copy in the officer dashboard (#98)
+- [x] Join date tracking per player -- set automatically on add, editable in officer profile, visible on roster table (#77)
+- [x] Trial promotion tracking -- officer roster tab surfaces trials who have been on the roster long enough with sufficient attendance to warrant a promotion review (#78)
