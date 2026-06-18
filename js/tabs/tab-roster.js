@@ -310,10 +310,12 @@ function submitAddPlayer() {
     }
     if (DATA && DATA.roster) {
       var parts = nameRealm.split('-');
+      var today = new Date(); var mm = today.getMonth() + 1; var dd = today.getDate();
+      var todayStr = today.getFullYear() + '-' + (mm < 10 ? '0' : '') + mm + '-' + (dd < 10 ? '0' : '') + dd;
       DATA.roster.push({
         nameRealm: nameRealm, firstName: parts[0], realm: parts.slice(1).join('-'),
         nick: nickVal, class: cls, spec: spec, role: role,
-        isTrial: isTrial, isBench: false, attendance: '', bisLink: ''
+        isTrial: isTrial, isBench: false, attendance: '', bisLink: '', joinDate: todayStr
       });
     }
     hideAddPlayerModal();
