@@ -3,6 +3,19 @@ function buildSeasonTab() {
   if (input) input.value = (DATA && DATA.seasonStart) || '';
 }
 
+function confirmClearSeasonStart() {
+  var confirm = document.getElementById('seasonClearConfirm');
+  if (confirm) confirm.style.display = '';
+}
+
+function executeClearSeasonStart() {
+  var confirm = document.getElementById('seasonClearConfirm');
+  if (confirm) confirm.style.display = 'none';
+  var input = document.getElementById('seasonStartInput');
+  if (input) input.value = '';
+  saveSeasonStart();
+}
+
 function saveSeasonStart() {
   var input = document.getElementById('seasonStartInput');
   var val   = input ? input.value.trim() : '';
