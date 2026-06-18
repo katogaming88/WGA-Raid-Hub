@@ -1,5 +1,5 @@
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION = '2.4.1';
+var VERSION = '2.4.2';
 var DATA = null;
 
 var WOW_REALMS = [
@@ -501,13 +501,24 @@ function renderProfile(firstName, backTo, container) {
   var lootEntry = getLootEntry(player.firstName);
   var lootCount = lootEntry ? lootEntry.count : 0;
   var lootItemsHTML = '';
-  if (lootEntry && lootEntry.items) {
+  var lastItems = [];
+  if (lootEntry && lootEntry.items && lootEntry.items.length > 0) {
+    var sortedLoot = lootEntry.items.slice().sort(function(a, b) {
+      return new Date(b.date) - new Date(a.date);
+    });
+    var lastDate = sortedLoot[0].date;
+    for (var ld = 0; ld < sortedLoot.length; ld++) {
+      if (sortedLoot[ld].date === lastDate) lastItems.push(sortedLoot[ld]);
+      else break;
+    }
     for (var li = 0; li < lootEntry.items.length; li++) {
       var li_obj = lootEntry.items[li];
       var li_name = typeof li_obj === 'string' ? li_obj : li_obj.name;
       var li_diff = typeof li_obj === 'object' && li_obj.difficulty ? li_obj.difficulty : '';
+      var li_date = typeof li_obj === 'object' && li_obj.date ? li_obj.date : '';
       var li_slot = lookupItemSlot(li_name);
-      lootItemsHTML += '<div style="font-size:1rem;color:var(--text);padding:0.3rem 0;border-bottom:1px solid var(--border);">' + li_name + '<div style="font-size:0.88rem;color:var(--text-muted);margin-top:0.1rem;">' + (li_slot ? '<span style="color:' + getSlotColor(li_slot) + ';">' + li_slot + '</span>' : '') + (li_slot && li_diff ? ' - ' : '') + (li_diff ? '<span>' + li_diff + '</span>' : '') + '</div></div>';
+      var li_sub = (li_slot ? '<span style="color:' + getSlotColor(li_slot) + ';">' + li_slot + '</span>' : '') + (li_slot && li_diff ? ' - ' : '') + (li_diff ? '<span>' + li_diff + '</span>' : '') + ((li_slot || li_diff) && li_date ? ' - ' : '') + (li_date ? '<span>' + li_date + '</span>' : '');
+      lootItemsHTML += '<div style="font-size:1rem;color:var(--text);padding:0.3rem 0;border-bottom:1px solid var(--border);">' + li_name + (li_sub ? '<div style="font-size:0.88rem;color:var(--text-muted);margin-top:0.1rem;">' + li_sub + '</div>' : '') + '</div>';
     }
   }
 
@@ -740,6 +751,27 @@ function renderProfile(firstName, backTo, container) {
     '<div class="profile-section" onclick="var l=document.getElementById(\'loot-list-' + player.firstName + '\');l.style.display=l.style.display===\'none\'?\'grid\':\'none\';" style="cursor:pointer;">' +
     '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Items Received <span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
     '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">' + lootCount + ' item' + (lootCount !== 1 ? 's' : '') + ' this tier</div>' +
+    (lastItems.length
+      ? (function() {
+          var lastDate = lastItems[0].date || '';
+          var itemLines = '';
+          for (var lx = 0; lx < lastItems.length; lx++) {
+            var lxi = lastItems[lx];
+            var lxColor = lxi.difficulty === 'Mythic' ? '#b085f0' : lxi.difficulty === 'Heroic' ? '#4dd9e0' : 'var(--gold)';
+            itemLines += '<div' + (lx > 0 ? ' style="margin-top:0.3rem;padding-top:0.3rem;border-top:1px solid var(--border);"' : '') + '>' +
+              '<div style="font-size:1rem;color:' + lxColor + ';font-weight:600;">' + lxi.name + '</div>' +
+              (lxi.difficulty ? '<div style="font-size:0.88rem;color:var(--text-muted);margin-top:0.1rem;">' + lxi.difficulty + '</div>' : '') +
+              '</div>';
+          }
+          return '<div style="margin-top:0.6rem;padding:0.5rem 0.75rem;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:space-between;" onclick="event.stopPropagation();">' +
+            '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Last received' + (lastDate ? ' - ' + lastDate : '') + '</div>' +
+            itemLines +
+            '</div>' +
+            '<span style="font-size:1.8rem;font-weight:700;color:var(--gold);line-height:1;margin-left:0.75rem;">&#8679;</span>' +
+            '</div>';
+        })()
+      : '') +
     '<div id="loot-list-' + player.firstName + '" style="display:none;margin-top:0.75rem;grid-template-columns:1fr 1fr;gap:0 1rem;">' + lootItemsHTML + '</div>' +
     '</div>' +
     '<div class="profile-section"><div class="section-label">BiS Link</div>' + bisHTML + '</div>' +
