@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.5.0] - 2026-06-17
+
+### Added
+- Officer action audit log -- every officer mutation is now recorded in an append-only "Officer Audit Log" sheet. Covers: player add/remove, role/spec/trial/bench changes, BiS approvals/rejections/direct updates/submission toggles, signup approvals/denials, self-received approvals/rejections, loot direct-marks, M+ exclusion toggles/approvals/rejections/bulk-clear, and officer note changes. Each entry captures timestamp, action type, target player, and old -> new value where applicable. Closes #83.
+- Dedicated Audit Log tab in the officer dashboard with a live search filter by action or player name.
+
+---
+
 ## [2.4.3] - 2026-06-17
 
 ### Added
