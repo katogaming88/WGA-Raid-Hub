@@ -111,6 +111,17 @@ function doGet(e) {
       return jsonpResponse(callback, { entries: getAuditLog() });
     }
 
+    if (action === 'getExportString') {
+      const ss         = SpreadsheetApp.getActiveSpreadsheet();
+      const itemLookup = buildItemLookup(ss);
+      const players    = buildPlayersObject(ss, itemLookup);
+      const priority   = buildPriorityObject(ss, itemLookup);
+      const encoded    = Utilities.base64Encode(JSON.stringify({ players, priority }), Utilities.Charset.UTF_8);
+      const expSheet   = ss.getSheetByName('Export');
+      if (expSheet) expSheet.getRange('A11').setValue(encoded);
+      return jsonpResponse(callback, { exportString: encoded });
+    }
+
     if (action === 'getPlayerAttendanceFull') {
       const firstName = String(e.parameter.firstName || '').trim();
       if (!firstName) return jsonpResponse(callback, { error: 'Missing firstName' });

@@ -110,6 +110,19 @@
 
         <!-- Priority tab -->
         <div id="tab-priority" class="tab-panel">
+          <div class="prio-export-card">
+            <div class="prio-export-header">
+              <span class="prio-export-label">RCLootCouncil Export String</span>
+              <button class="btn btn-muted" id="prioExportLoadBtn" onclick="fetchExportString()">Generate</button>
+            </div>
+            <div id="prioExportBody" style="display:none;">
+              <textarea id="prioExportStr" class="prio-export-textarea" readonly></textarea>
+              <div class="prio-export-actions">
+                <button class="btn btn-gold" onclick="copyExportString()">Copy to Clipboard</button>
+                <span id="prioExportCopyMsg" class="prio-export-copy-msg" style="display:none;">Copied!</span>
+              </div>
+            </div>
+          </div>
           <div class="filter-bar" style="margin-bottom:1rem;">
             <button class="filter-chip active" id="prio-subtab-btn-list" onclick="switchPrioritySubTab('list', this)">Priority List</button>
             <button class="filter-chip" id="prio-subtab-btn-unmanaged" onclick="switchPrioritySubTab('unmanaged', this)">Unmanaged Items <span class="nav-notif" id="prioSubBadge" style="display:none;"></span></button>
