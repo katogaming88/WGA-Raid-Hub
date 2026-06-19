@@ -9,7 +9,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [2.15.1] - 2026-06-19
 
 ### Added
-- **Attendance trend sparkline on player profile.** The attendance section now shows a small SVG line chart covering all raid nights this season, visible by default. Each dot is coloured by status (green = Present, blue = Bench, yellow = Excused, teal = Medical Leave, red = No Show) with the line rising toward Present and falling toward No Show. Hovering a dot shows the exact date and status. A compact legend labels any statuses that appear. Closes #42.
+- **Attendance trend sparkline on player profile.** The attendance section now shows a small SVG line chart, visible by default without clicking anything. When data spans more than one calendar month, each dot represents a month with the Y position reflecting average attendance that month (green >= 90%, blue >= 70%, yellow >= 50%, red below). When only one month of data exists, individual raid nights are shown instead. Hovering a dot shows an instant tooltip with the month, average percentage, and raid count (or exact date and status for per-night mode). Covers all season data with no cap. Closes #42.
 
 ---
 

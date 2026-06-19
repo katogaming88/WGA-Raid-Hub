@@ -249,45 +249,108 @@ function attendTrendValue(status) {
   return 0.5;
 }
 
+function showAttendTip(evt, text) {
+  var tip = document.getElementById('attend-trend-tip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'attend-trend-tip';
+    tip.style.cssText = 'position:fixed;background:var(--bg-elevated);border:1px solid var(--border-mid);border-radius:4px;padding:0.45rem 0.7rem;font-size:0.8rem;color:var(--text-muted);white-space:nowrap;pointer-events:none;z-index:200;font-family:Rajdhani,sans-serif;letter-spacing:0.03em;';
+    document.body.appendChild(tip);
+  }
+  tip.textContent = text;
+  tip.style.display = 'block';
+  tip.style.left = (evt.clientX + 12) + 'px';
+  tip.style.top = (evt.clientY - 32) + 'px';
+}
+
+function hideAttendTip() {
+  var tip = document.getElementById('attend-trend-tip');
+  if (tip) tip.style.display = 'none';
+}
+
+function attendTrendMonthColor(avg) {
+  if (avg >= 0.9) return '#52b788';
+  if (avg >= 0.7) return '#7EC8E3';
+  if (avg >= 0.5) return '#d4a843';
+  return '#e05252';
+}
+
 function renderAttendTrend(firstName) {
   var trend = (DATA.recentAttendanceTrend || {})[firstName];
   if (!trend || !trend.length) return '';
 
   var nights = trend.slice().reverse(); // oldest left, newest right
-  var n  = nights.length;
-  var W  = Math.max(200, n * 16), H = 40, PAD = 5, R = 3.5;
+
+  // Aggregate by calendar month
+  var monthMap = {}, monthOrder = [];
+  var MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  for (var i = 0; i < nights.length; i++) {
+    var key = nights[i].date.substring(0, 7); // "yyyy-MM"
+    if (!monthMap[key]) { monthMap[key] = []; monthOrder.push(key); }
+    monthMap[key].push(nights[i]);
+  }
+
+  // Fall back to per-night dots if only one month of data
+  if (monthOrder.length <= 1) {
+    var n = nights.length;
+    var W = Math.max(300, n * 24), H = 56, PAD = 6, R = 4;
+    var points = [];
+    for (var i = 0; i < n; i++) {
+      var x = n === 1 ? W / 2 : PAD + (i / (n - 1)) * (W - PAD * 2);
+      var y = PAD + (1 - attendTrendValue(nights[i].status)) * (H - PAD * 2);
+      points.push({ x: x, y: y, night: nights[i] });
+    }
+    var lineStr = points.map(function(p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ');
+    var svg = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" style="display:block;overflow:visible;">';
+    svg += '<polyline points="' + lineStr + '" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>';
+    for (var i = 0; i < points.length; i++) {
+      var p = points[i];
+      var tip = p.night.date + ': ' + p.night.status;
+      svg += '<g style="cursor:default;" onmouseover="showAttendTip(event,' + "'" + tip + "')" + '" onmouseout="hideAttendTip()">';
+      svg += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + R + '" fill="' + attendTrendColor(p.night.status) + '"/>';
+      svg += '</g>';
+    }
+    svg += '</svg>';
+    return '<div style="overflow-x:auto;overflow-y:hidden;margin-top:0.75rem;">' + svg + '</div>';
+  }
+
+  var months = monthOrder.map(function(key) {
+    var entries = monthMap[key];
+    var sum = 0;
+    for (var j = 0; j < entries.length; j++) sum += attendTrendValue(entries[j].status);
+    var avg = sum / entries.length;
+    var parts = key.split('-');
+    var label = MONTH_NAMES[parseInt(parts[1], 10) - 1] + ' ' + parts[0];
+    var pct = Math.round(avg * 100);
+    return { key: key, label: label, avg: avg, count: entries.length, pct: pct };
+  });
+
+  var n = months.length;
+  var W = Math.max(200, n * 64), H = 56, PAD = 16, R = 7;
 
   var points = [];
   for (var i = 0; i < n; i++) {
     var x = n === 1 ? W / 2 : PAD + (i / (n - 1)) * (W - PAD * 2);
-    var y = PAD + (1 - attendTrendValue(nights[i].status)) * (H - PAD * 2);
-    points.push({ x: x, y: y, status: nights[i].status, date: nights[i].date });
+    var y = PAD + (1 - months[i].avg) * (H - PAD * 2);
+    points.push({ x: x, y: y, m: months[i] });
   }
 
   var lineStr = points.map(function(p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ');
 
-  var svg = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" style="display:block;margin-top:0.75rem;overflow:visible;">';
-  svg += '<polyline points="' + lineStr + '" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>';
+  var svg = '<svg width="' + W + '" height="' + (H + 18) + '" viewBox="0 0 ' + W + ' ' + (H + 18) + '" style="display:block;overflow:visible;">';
+  svg += '<polyline points="' + lineStr + '" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>';
   for (var i = 0; i < points.length; i++) {
     var p = points[i];
-    svg += '<g><circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + R + '" fill="' + attendTrendColor(p.status) + '"/><title>' + p.date + ' – ' + p.status + '</title></g>';
+    var col = attendTrendMonthColor(p.m.avg);
+    var tip = p.m.label + ': ' + p.m.pct + '% (' + p.m.count + ' raid' + (p.m.count !== 1 ? 's' : '') + ')';
+    svg += '<g style="cursor:default;" onmouseover="showAttendTip(event,' + "'" + tip + "')" + '" onmouseout="hideAttendTip()">';
+    svg += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + R + '" fill="' + col + '"/>';
+    svg += '<text x="' + p.x.toFixed(1) + '" y="' + (H + 14) + '" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.45)" font-family="sans-serif">' + p.m.label.split(' ')[0] + '</text>';
+    svg += '</g>';
   }
   svg += '</svg>';
 
-  // Legend: only statuses that appear
-  var seen = {}, legendItems = [];
-  for (var i = 0; i < nights.length; i++) {
-    var s = nights[i].status;
-    if (!seen[s]) { seen[s] = true; legendItems.push(s); }
-  }
-  var legend = '<div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.3rem;">';
-  for (var i = 0; i < legendItems.length; i++) {
-    var s = legendItems[i];
-    legend += '<span style="font-size:0.78rem;color:var(--text-muted);display:flex;align-items:center;gap:3px;"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + attendTrendColor(s) + ';"></span>' + s + '</span>';
-  }
-  legend += '</div>';
-
-  return svg + legend;
+  return '<div style="overflow-x:auto;overflow-y:hidden;margin-top:0.75rem;">' + svg + '</div>';
 }
 
 function formatJoinDate(dateStr) {
