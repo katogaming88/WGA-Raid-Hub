@@ -3,8 +3,10 @@ var _attendanceGrid = null;
 function switchAttendSubTab(name, btn) {
   document.querySelectorAll('[id^="attend-subtab-btn-"]').forEach(function(b) { b.classList.remove('active'); });
   if (btn) btn.classList.add('active');
+  var manage = document.getElementById('attend-sub-manage');
   var scores = document.getElementById('attend-sub-scores');
   var bench  = document.getElementById('attend-sub-bench');
+  if (manage) manage.style.display = name === 'manage' ? '' : 'none';
   if (scores) scores.style.display = name === 'scores' ? '' : 'none';
   if (bench)  bench.style.display  = name === 'bench'  ? '' : 'none';
   if (name === 'bench') {

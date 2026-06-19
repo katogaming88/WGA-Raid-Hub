@@ -11,6 +11,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - **Bench Fairness sub-tab** on the Attendance tab. Shows how many times each raider has been benched, grouped by role (Tank / Heal / Melee / Ranged / Bench), sorted highest to lowest, with a bar chart and a raid-average reference line. Each row shows bench count and bench rate (benched / total raid nights appeared). Computed from the loaded attendance grid -- run "Refresh from WCL" first if no data appears. Closes #82.
 
+### Changed
+- Attendance tab: the Manage Raid Attendance panel (night grid, WCL refresh, Commit Scores) is now its own **Manage** sub-tab. The tab bar now reads **Manage | Attendance Scores | Bench Fairness**. Manage is the default. This prevents the night grid from consuming the full viewport when you just want to check scores or bench fairness.
+
 ---
 
 ## [2.14.2] - 2026-06-19
