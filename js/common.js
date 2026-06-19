@@ -710,6 +710,22 @@ function renderProfile(firstName, backTo, container) {
     var currentNote = ((DATA && DATA.playerNotes) || {})[player.nameRealm] || '';
     var fnSafe = player.firstName.replace(/'/g, "\\'");
     var nrSafe = player.nameRealm.replace(/'/g, "\\'");
+    var classKeys = Object.keys(CLASS_SPECS).sort();
+    var classOptHtml = '<option value="">-- Select class --</option>';
+    for (var ci = 0; ci < classKeys.length; ci++) {
+      classOptHtml += '<option value="' + classKeys[ci] + '"' + (player.class === classKeys[ci] ? ' selected' : '') + '>' + classKeys[ci] + '</option>';
+    }
+    var specOptHtml = '<option value="">-- Select spec --</option>';
+    if (player.class && CLASS_SPECS[player.class]) {
+      var specList = CLASS_SPECS[player.class].specs;
+      for (var si = 0; si < specList.length; si++) {
+        specOptHtml += '<option value="' + specList[si] + '"' + (player.spec === specList[si] ? ' selected' : '') + '>' + specList[si] + '</option>';
+      }
+    }
+    var realmOptHtml = '';
+    for (var ri = 0; ri < REALMS.length; ri++) {
+      realmOptHtml += '<option value="' + REALMS[ri] + '"' + (player.realm === REALMS[ri] ? ' selected' : '') + '>' + REALMS[ri] + '</option>';
+    }
     officerActionsHTML =
       '<div class="profile-section">' +
       '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var d=document.getElementById(\'player-settings-' + fnSafe + '\');var hint=document.getElementById(\'player-settings-hint-' + fnSafe + '\');var open=d.style.display!==\'none\';d.style.display=open?\'none\':\'\';hint.textContent=open?\'click to expand\':\'click to collapse\';">Player Settings<span id="player-settings-hint-' + fnSafe + '" style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
@@ -723,6 +739,20 @@ function renderProfile(firstName, backTo, container) {
       '<option value="Melee"' + (player.role === 'Melee' ? ' selected' : '') + '>Melee</option>' +
       '<option value="Ranged"' + (player.role === 'Ranged' ? ' selected' : '') + '>Ranged</option>' +
       '</select>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:0.75rem;">' +
+      '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Class</span>' +
+      '<select id="classSelect-' + player.firstName + '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:12rem;" onchange="officerUpdateClass(\'' + nrSafe + '\',\'' + fnSafe + '\',this.value)">' + classOptHtml + '</select>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:0.75rem;">' +
+      '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Spec</span>' +
+      '<select id="specSelect-' + player.firstName + '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:12rem;" onchange="savePlayerField(\'' + nrSafe + '\',\'' + fnSafe + '\',\'spec\',this.value)">' + specOptHtml + '</select>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">' +
+      '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Name</span>' +
+      '<input type="text" id="editNameInput-' + player.firstName + '" value="' + player.firstName + '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:9rem;">' +
+      '<select id="editRealmSelect-' + player.firstName + '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:10rem;">' + realmOptHtml + '</select>' +
+      '<button class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="officerRenamePlayer(\'' + nrSafe + '\',\'' + fnSafe + '\')">Save</button>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
       '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Trial</span>' +

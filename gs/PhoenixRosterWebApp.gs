@@ -390,12 +390,24 @@ function doGet(e) {
       updateRosterField(nameRealm, field, value);
       cache.remove('rosterCore');
       const actionLabel = field === 'spec'     ? 'Spec Changed'
+                        : field === 'class'    ? 'Class Changed'
                         : field === 'isTrial'  ? 'Trial Status Changed'
                         : field === 'role'     ? 'Role Changed'
                         : field === 'isBench'  ? 'Bench Status Changed'
                         : field === 'joinDate' ? 'Join Date Changed'
                         : 'Field Changed: ' + field;
       appendAuditLog(actionLabel, nameRealm, oldVal, String(value));
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'renamePlayer') {
+      const data         = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      const oldNameRealm = String(data.oldNameRealm || '').trim();
+      const newNameRealm = String(data.newNameRealm || '').trim();
+      if (!oldNameRealm || !newNameRealm) return jsonpResponse(callback, { error: 'Missing params' });
+      renamePlayerInRoster(oldNameRealm, newNameRealm);
+      cache.remove('rosterCore');
+      appendAuditLog('Player Renamed', oldNameRealm, oldNameRealm, newNameRealm);
       return jsonpResponse(callback, { success: true });
     }
 
@@ -1388,6 +1400,8 @@ function updateRosterField(nameRealm, field, value) {
     const sheetRow = i + 1;
     if (field === 'spec') {
       sheet.getRange(sheetRow, CFG.rosterSpecCol).setValue(String(value || ''));
+    } else if (field === 'class') {
+      sheet.getRange(sheetRow, CFG.rosterClassCol).setValue(String(value || ''));
     } else if (field === 'isTrial') {
       sheet.getRange(sheetRow, CFG.rosterTrialCol).setValue(value === true || value === 'true');
     } else if (field === 'role') {
@@ -1406,6 +1420,26 @@ function updateRosterField(nameRealm, field, value) {
       }
     } else if (field === 'joinDate') {
       sheet.getRange(sheetRow, CFG.rosterJoinDateCol).setValue(String(value || ''));
+    }
+    return;
+  }
+}
+
+function renamePlayerInRoster(oldNameRealm, newNameRealm) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.rosterSheet);
+  if (!sheet) return;
+  const data = sheet.getDataRange().getValues();
+  for (let i = CFG.rosterDataStart - 1; i < data.length; i++) {
+    const rowPlayer = String(data[i][CFG.rosterPlayerCol - 1] || '').trim();
+    if (rowPlayer.toLowerCase() !== oldNameRealm.toLowerCase()) continue;
+    sheet.getRange(i + 1, CFG.rosterPlayerCol).setValue(newNameRealm);
+    // Migrate officer notes keyed by nameRealm
+    const notes = getPlayerNotes();
+    if (notes[oldNameRealm] !== undefined) {
+      notes[newNameRealm] = notes[oldNameRealm];
+      delete notes[oldNameRealm];
+      setPlayerNotes(notes);
     }
     return;
   }
@@ -1754,6 +1788,7 @@ function getRosterFieldValue(nameRealm, field) {
     const rowPlayer = String(data[i][CFG.rosterPlayerCol - 1] || '').trim();
     if (rowPlayer.toLowerCase() !== nameRealm.toLowerCase()) continue;
     if (field === 'spec')     return String(data[i][CFG.rosterSpecCol     - 1] || '');
+    if (field === 'class')    return String(data[i][CFG.rosterClassCol    - 1] || '');
     if (field === 'isTrial')  return String(data[i][CFG.rosterTrialCol    - 1] || '');
     if (field === 'role')     return String(data[i][CFG.rosterRoleCol     - 1] || '');
     if (field === 'joinDate') { const v = data[i][CFG.rosterJoinDateCol - 1]; return v instanceof Date ? Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(v || ''); }

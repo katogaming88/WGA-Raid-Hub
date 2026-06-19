@@ -80,3 +80,4 @@ Everything gated on Discord OAuth shipping (#25).
 - [x] Submission confirmation screen
 - [x] Apps Script GET-based write pattern -- no POST endpoint required
 - [x] Self-mark items as received outside of raid (M+, Great Vault, Crafted, Catalyst, World Drop) -- officer approval queue
+- [x] Edit player class, spec, and name/realm from the officer dashboard without delete and re-add -- class/spec save on dropdown change, name/realm via Save button, officer notes migrated on rename (#118)
