@@ -1,4 +1,24 @@
-var _attendanceGrid = null; // null = not loaded, 'loading' = in flight, array = loaded
+var _attendanceGrid = null;
+
+function switchAttendSubTab(name, btn) {
+  document.querySelectorAll('[id^="attend-subtab-btn-"]').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  var manage = document.getElementById('attend-sub-manage');
+  var scores = document.getElementById('attend-sub-scores');
+  var bench  = document.getElementById('attend-sub-bench');
+  if (manage) manage.style.display = name === 'manage' ? '' : 'none';
+  if (scores) scores.style.display = name === 'scores' ? '' : 'none';
+  if (bench)  bench.style.display  = name === 'bench'  ? '' : 'none';
+  if (name === 'bench') {
+    if (Array.isArray(_attendanceGrid)) {
+      buildBenchFairness();
+    } else {
+      var el = document.getElementById('benchFairnessContent');
+      if (el) el.innerHTML = '<p style="color:var(--text-muted);padding:0.5rem 0;">Loading attendance data...</p>';
+      ensureAttendanceGridLoaded();
+    }
+  }
+}
 
 function buildAttendanceTab() {
   var details   = DATA.attendanceDetails || {};
@@ -81,6 +101,8 @@ function loadAttendanceGrid() {
     _attendanceGrid = result.raids || [];
     if (status) status.textContent = '';
     renderAttendanceGrid();
+    var benchEl = document.getElementById('attend-sub-bench');
+    if (benchEl && benchEl.style.display !== 'none') buildBenchFairness();
   };
   var script = document.createElement('script');
   script.onerror = function() {

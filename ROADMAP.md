@@ -14,7 +14,7 @@ Performance fixes and officer dashboard completions that don't require new infra
 - [ ] `/pending-roster` bot command -- lists all pending signup applicants with their name, class, spec, and role (#86)
 - [ ] Highlight conflicts where a player has been given top priority on multiple items by officers (#12)
 - [ ] See who was benched most often vs absent (#16)
-- [ ] Bench rotation fairness view -- bench rate per player (times benched vs. raids attended) to ensure fair rotation; similar to loot fairness view (#82)
+- [x] Bench rotation fairness view -- bench rate per player (times benched vs. raids attended) to ensure fair rotation; sub-tab on the Attendance tab, grouped by role with bar chart and average line (#82)
 - [ ] Season archive -- end-of-season roster snapshot triggered by officers; read-only archive view with previous seasons selectable (#79)
 
 ---

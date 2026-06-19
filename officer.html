@@ -188,54 +188,70 @@
 
           <!-- Attendance tab -->
           <div id="tab-attendance" class="tab-panel">
-            <div class="attend-manage-panel">
-              <div class="attend-manage-header">
-                <span class="section-label" style="margin-bottom:0;">Manage Raid Attendance<button class="help-btn"
-                    onclick="toggleHelp('help-attendance')" title="Show help">?</button></span>
-                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
-                  <button class="btn btn-muted" id="refreshWCLBtn" onclick="refreshAttendanceWCL()">Refresh from
-                    WCL</button>
-                  <span id="refreshWCLStatus" style="font-size:0.92rem;"></span>
-                  <button class="btn btn-gold" id="commitScoresBtn" onclick="confirmCommitScores()"
-                    style="margin-left:0.5rem;">Commit Scores to Sheet</button>
-                  <span id="commitScoresStatus" style="font-size:0.92rem;"></span>
-                </div>
-              </div>
-              <div id="help-attendance" class="help-tip">
-                <strong>Refresh from WCL</strong> -- pulls the latest raid nights from Warcraft Logs and populates the
-                attendance grid. Run this after each raid night.<br>
-                <strong>Commit Scores to Sheet</strong> -- calculates each player's attendance % and writes it to the
-                Scoring sheet. Safe to run multiple times; it always recalculates from scratch. Run this when you want
-                the roster view to reflect current scores.<br>
-                <strong>Manual edits</strong> -- click any status cell in the grid to change a player's attendance for
-                that night (Present, Late, Excused, No Show, etc.).<br>
-                <strong>Sync % to Roster Sheet</strong> -- updates the attendance % column on the Roster sheet from live
-                data. Use this if the roster display is stale after manual edits.
-              </div>
-              <div id="commitConfirmBanner" class="attend-confirm-banner" style="display:none;">
-                Calculate and write attendance scores for all players to the Scoring sheet?
-                <button class="btn btn-gold" onclick="executeCommitScores()" style="margin-left:1rem;">Yes,
-                  Commit</button>
-                <button class="btn btn-muted" onclick="cancelCommitScores()" style="margin-left:0.5rem;">Cancel</button>
-              </div>
-              <div id="attendGridStatus" style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;"></div>
-              <div id="attendGridNightRow" style="display:none;margin-bottom:0.75rem;">
-                <div class="attend-status-wrap" style="display:inline-block;">
-                  <select id="attendNightSelect" class="attend-night-select"
-                    onchange="renderNightGrid(this.selectedIndex)"></select>
-                </div>
-              </div>
-              <div id="attendGridTable"></div>
+            <div class="filter-bar" style="margin-bottom:1rem;">
+              <button class="filter-chip active" id="attend-subtab-btn-manage"
+                onclick="switchAttendSubTab('manage', this)">Manage</button>
+              <button class="filter-chip" id="attend-subtab-btn-scores"
+                onclick="switchAttendSubTab('scores', this)">Attendance Scores</button>
+              <button class="filter-chip" id="attend-subtab-btn-bench"
+                onclick="switchAttendSubTab('bench', this)">Bench Fairness</button>
             </div>
-            <div class="attend-threshold-row">
-              <span class="attend-threshold-label">Show at or below <strong id="attendThresholdVal">95%</strong></span>
-              <input type="range" id="attendThreshold" class="attend-slider" min="0" max="100" value="95"
-                oninput="document.getElementById('attendThresholdVal').textContent=this.value+'%';buildAttendanceTab();">
-              <button class="btn btn-gold" id="syncAttendPctBtn" onclick="syncAttendancePct()"
-                style="margin-left:auto;">Sync % to Roster Sheet</button>
-              <span id="syncAttendPctStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+            <div id="attend-sub-manage">
+              <div class="attend-manage-panel">
+                <div class="attend-manage-header">
+                  <span class="section-label" style="margin-bottom:0;">Manage Raid Attendance<button class="help-btn"
+                      onclick="toggleHelp('help-attendance')" title="Show help">?</button></span>
+                  <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                    <button class="btn btn-muted" id="refreshWCLBtn" onclick="refreshAttendanceWCL()">Refresh from
+                      WCL</button>
+                    <span id="refreshWCLStatus" style="font-size:0.92rem;"></span>
+                    <button class="btn btn-gold" id="commitScoresBtn" onclick="confirmCommitScores()"
+                      style="margin-left:0.5rem;">Commit Scores to Sheet</button>
+                    <span id="commitScoresStatus" style="font-size:0.92rem;"></span>
+                  </div>
+                </div>
+                <div id="help-attendance" class="help-tip">
+                  <strong>Refresh from WCL</strong> -- pulls the latest raid nights from Warcraft Logs and populates the
+                  attendance grid. Run this after each raid night.<br>
+                  <strong>Commit Scores to Sheet</strong> -- calculates each player's attendance % and writes it to the
+                  Scoring sheet. Safe to run multiple times; it always recalculates from scratch. Run this when you want
+                  the roster view to reflect current scores.<br>
+                  <strong>Manual edits</strong> -- click any status cell in the grid to change a player's attendance for
+                  that night (Present, Late, Excused, No Show, etc.).<br>
+                  <strong>Sync % to Roster Sheet</strong> -- updates the attendance % column on the Roster sheet from live
+                  data. Use this if the roster display is stale after manual edits.
+                </div>
+                <div id="commitConfirmBanner" class="attend-confirm-banner" style="display:none;">
+                  Calculate and write attendance scores for all players to the Scoring sheet?
+                  <button class="btn btn-gold" onclick="executeCommitScores()" style="margin-left:1rem;">Yes,
+                    Commit</button>
+                  <button class="btn btn-muted" onclick="cancelCommitScores()"
+                    style="margin-left:0.5rem;">Cancel</button>
+                </div>
+                <div id="attendGridStatus" style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;"></div>
+                <div id="attendGridNightRow" style="display:none;margin-bottom:0.75rem;">
+                  <div class="attend-status-wrap" style="display:inline-block;">
+                    <select id="attendNightSelect" class="attend-night-select"
+                      onchange="renderNightGrid(this.selectedIndex)"></select>
+                  </div>
+                </div>
+                <div id="attendGridTable"></div>
+              </div>
             </div>
-            <div id="attendanceContent"></div>
+            <div id="attend-sub-scores" style="display:none;">
+              <div class="attend-threshold-row">
+                <span class="attend-threshold-label">Show at or below <strong id="attendThresholdVal">95%</strong></span>
+                <input type="range" id="attendThreshold" class="attend-slider" min="0" max="100" value="95"
+                  oninput="document.getElementById('attendThresholdVal').textContent=this.value+'%';buildAttendanceTab();">
+                <button class="btn btn-gold" id="syncAttendPctBtn" onclick="syncAttendancePct()"
+                  style="margin-left:auto;">Sync % to Roster Sheet</button>
+                <span id="syncAttendPctStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+              </div>
+              <div id="attendanceContent"></div>
+            </div>
+            <div id="attend-sub-bench" style="display:none;">
+              <div id="benchFairnessContent"></div>
+            </div>
           </div>
 
           <!-- Signups tab -->
@@ -577,6 +593,7 @@
   <script src="js/tabs/tab-conflicts.js"></script>
   <script src="js/tabs/tab-fairness.js"></script>
   <script src="js/tabs/tab-attendance.js"></script>
+  <script src="js/tabs/tab-bench-fairness.js"></script>
   <script src="js/tabs/tab-signups.js"></script>
   <script src="js/tabs/tab-requests.js"></script>
   <script src="js/tabs/tab-bis.js"></script>
