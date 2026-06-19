@@ -227,15 +227,26 @@
               </div>
               <div id="attendGridTable"></div>
             </div>
-            <div class="attend-threshold-row">
-              <span class="attend-threshold-label">Show at or below <strong id="attendThresholdVal">95%</strong></span>
-              <input type="range" id="attendThreshold" class="attend-slider" min="0" max="100" value="95"
-                oninput="document.getElementById('attendThresholdVal').textContent=this.value+'%';buildAttendanceTab();">
-              <button class="btn btn-gold" id="syncAttendPctBtn" onclick="syncAttendancePct()"
-                style="margin-left:auto;">Sync % to Roster Sheet</button>
-              <span id="syncAttendPctStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+            <div class="filter-bar" style="margin-bottom:1rem;">
+              <button class="filter-chip active" id="attend-subtab-btn-scores"
+                onclick="switchAttendSubTab('scores', this)">Attendance Scores</button>
+              <button class="filter-chip" id="attend-subtab-btn-bench"
+                onclick="switchAttendSubTab('bench', this)">Bench Fairness</button>
             </div>
-            <div id="attendanceContent"></div>
+            <div id="attend-sub-scores">
+              <div class="attend-threshold-row">
+                <span class="attend-threshold-label">Show at or below <strong id="attendThresholdVal">95%</strong></span>
+                <input type="range" id="attendThreshold" class="attend-slider" min="0" max="100" value="95"
+                  oninput="document.getElementById('attendThresholdVal').textContent=this.value+'%';buildAttendanceTab();">
+                <button class="btn btn-gold" id="syncAttendPctBtn" onclick="syncAttendancePct()"
+                  style="margin-left:auto;">Sync % to Roster Sheet</button>
+                <span id="syncAttendPctStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+              </div>
+              <div id="attendanceContent"></div>
+            </div>
+            <div id="attend-sub-bench" style="display:none;">
+              <div id="benchFairnessContent"></div>
+            </div>
           </div>
 
           <!-- Signups tab -->
@@ -577,6 +588,7 @@
   <script src="js/tabs/tab-conflicts.js"></script>
   <script src="js/tabs/tab-fairness.js"></script>
   <script src="js/tabs/tab-attendance.js"></script>
+  <script src="js/tabs/tab-bench-fairness.js"></script>
   <script src="js/tabs/tab-signups.js"></script>
   <script src="js/tabs/tab-requests.js"></script>
   <script src="js/tabs/tab-bis.js"></script>
