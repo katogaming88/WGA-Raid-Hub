@@ -1,5 +1,12 @@
 // Officer roster tab: table, filters, add/remove player, player settings
 
+var statItemsDiff = 'all';
+
+function setStatItemsDiff(diff) {
+  statItemsDiff = diff;
+  buildStatsBar();
+}
+
 function buildStatsBar() {
   var roster  = DATA.roster || [];
   var raiders = roster.filter(function(p) { return !p.isBench; });
@@ -15,13 +22,18 @@ function buildStatsBar() {
   var totalItems = 0;
   var lootMap = DATA.lootCounts || {};
   var lootKeys = Object.keys(lootMap);
-  for (var j = 0; j < lootKeys.length; j++) { if (lootMap[lootKeys[j]]) totalItems += lootMap[lootKeys[j]].count || 0; }
+  var countField = statItemsDiff === 'heroic' ? 'heroicCount' : statItemsDiff === 'mythic' ? 'mythicCount' : 'count';
+  for (var j = 0; j < lootKeys.length; j++) { if (lootMap[lootKeys[j]]) totalItems += lootMap[lootKeys[j]][countField] || 0; }
+  var nextDiff  = statItemsDiff === 'all' ? 'heroic' : statItemsDiff === 'heroic' ? 'mythic' : 'all';
+  var diffLabel = statItemsDiff === 'heroic' ? 'Heroic' : statItemsDiff === 'mythic' ? 'Mythic' : 'All';
+  var diffTip   = statItemsDiff === 'heroic' ? 'Heroic loot entries tracked' : statItemsDiff === 'mythic' ? 'Mythic loot entries tracked' : 'Total loot entries tracked across all difficulties';
+  var cycleBadge = '<button class="stat-diff-cycle" onclick="setStatItemsDiff(\''+nextDiff+'\')">'+diffLabel+'</button>';
 
   document.getElementById('officerStats').innerHTML =
-    '<div class="stat-card"><div class="stat-value">'+raiders.length+'</div><div class="stat-label">Raiders</div></div>' +
-    '<div class="stat-card"><div class="stat-value" style="color:'+avgColor+';">'+avgAttend+'%</div><div class="stat-label">Avg Attendance</div></div>' +
-    '<div class="stat-card"><div class="stat-value">'+totalItems+'</div><div class="stat-label">Items Distributed</div></div>' +
-    '<div class="stat-card"><div class="stat-value">'+bisCount+'<span style="font-size:1.2rem;color:var(--text-muted);">/'+raiders.length+'</span></div><div class="stat-label">BiS Submitted</div></div>';
+    '<div class="stat-card" data-tip="Active roster members — bench players excluded"><div class="stat-value">'+raiders.length+'</div><div class="stat-label">Raiders</div></div>' +
+    '<div class="stat-card" data-tip="Average attendance % across active raiders this season"><div class="stat-value" style="color:'+avgColor+';">'+avgAttend+'%</div><div class="stat-label">Avg Attendance</div></div>' +
+    '<div class="stat-card" style="position:relative;" data-tip="'+diffTip+'">'+cycleBadge+'<div class="stat-value">'+totalItems+'</div><div class="stat-label">Items Distributed</div></div>' +
+    '<div class="stat-card" data-tip="Raiders with an approved BiS list link on file"><div class="stat-value">'+bisCount+'<span style="font-size:1.2rem;color:var(--text-muted);">/'+raiders.length+'</span></div><div class="stat-label">BiS Submitted</div></div>';
 }
 
 function toggleFilter(name) {

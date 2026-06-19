@@ -9,7 +9,16 @@ function buildLootImportForm() {
   var seasonName = (window.DATA && DATA.seasonName) ? DATA.seasonName.trim() : '';
 
   var html = '<div class="signup-officer-panel">';
-  html += '<div class="signup-status-row"><span class="signup-status-label">Import from RCLootCouncil</span></div>';
+  html += '<div class="signup-status-row"><span class="signup-status-label">Import from RCLootCouncil<button class="help-btn" onclick="toggleHelp(\'help-loot-import\')" title="Show help">?</button></span></div>';
+  html += '<div id="help-loot-import" class="help-tip">';
+  html += '<strong>How to import:</strong>';
+  html += '<ul>';
+  html += '<li>In-game: open <strong>RCLootCouncil</strong>, click <strong>Export</strong>, choose <strong>JSON</strong>, and copy the output.</li>';
+  html += '<li>Paste it into the box below. You can paste multiple nights at once -- duplicates are skipped automatically.</li>';
+  html += '<li>Make sure <strong>Season Name</strong> is set correctly in Season Settings before importing so entries are tagged with the right season label.</li>';
+  html += '</ul>';
+  html += '<strong>Season reset:</strong> go to <strong>Import History</strong>, click "Clear All Loot", update Season Name in Season Settings, then re-import this season\'s loot.';
+  html += '</div>';
   if (seasonName) {
     html += '<p class="signup-officer-note" style="margin-top:0.35rem;">Active season: <strong>' + seasonName + '</strong>. All imported entries will be tagged with this label. To change it, go to <a href="#" onclick="switchTab(\'season\');return false;">Season Settings</a>.</p>';
   } else {
