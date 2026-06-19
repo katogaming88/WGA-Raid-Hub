@@ -1,5 +1,5 @@
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION = '2.15.2';
+var VERSION = '2.15.1';
 var DATA = null;
 
 var WOW_REALMS = [
@@ -255,7 +255,7 @@ function renderAttendTrend(firstName) {
 
   var nights = trend.slice().reverse(); // oldest left, newest right
   var n  = nights.length;
-  var W  = 200, H = 40, PAD = 5, R = 3.5;
+  var W  = Math.max(200, n * 16), H = 40, PAD = 5, R = 3.5;
 
   var points = [];
   for (var i = 0; i < n; i++) {

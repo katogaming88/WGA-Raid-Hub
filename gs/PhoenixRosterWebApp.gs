@@ -825,7 +825,7 @@ function buildHeavyPayload(sheets) {
     itemSlots:              getItemSlots(sheets),
     lootCounts:             getLootCounts(sheets),
     attendanceDetails:      getAttendanceDetails(sheets),
-    recentAttendanceTrend:  getRecentAttendanceTrend(sheets, 12),
+    recentAttendanceTrend:  getRecentAttendanceTrend(sheets),
     selfReceived:           getSelfReceived(sheets),
   };
 }
@@ -1133,7 +1133,7 @@ function getAttendanceDetails(sheets) {
   return result;
 }
 
-function getRecentAttendanceTrend(sheets, n) {
+function getRecentAttendanceTrend(sheets) {
   const sheet = sheets[CFG.attendanceSheet];
   if (!sheet) return {};
 
@@ -1164,7 +1164,7 @@ function getRecentAttendanceTrend(sheets, n) {
       : dateStr;
 
     if (!result[name]) result[name] = [];
-    if (result[name].length < n) result[name].push({ date: formattedDate, status });
+    result[name].push({ date: formattedDate, status });
   }
 
   return result;
