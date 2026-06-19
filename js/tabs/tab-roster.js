@@ -449,9 +449,10 @@ function officerRenamePlayer(nameRealm, firstName) {
         player.firstName = newName;
         player.realm     = newRealm;
       }
-      selectedOfficerPlayer = newName;
+      selectedOfficerPlayer = null;
       var inlineRow = document.getElementById('inlineProfileRow');
-      if (inlineRow) renderProfile(newName, 'officer', inlineRow.querySelector('td'));
+      if (inlineRow) inlineRow.remove();
+      buildRosterTable();
     }
     if (msgEl) {
       msgEl.textContent = result && result.error ? 'Failed to save.' : 'Saved.';
