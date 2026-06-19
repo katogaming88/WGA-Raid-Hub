@@ -819,13 +819,14 @@ function buildCorePayload(sheets, scriptProps) {
 
 function buildHeavyPayload(sheets) {
   return {
-    generatedAt:       new Date().toISOString(),
-    priorityOrder:     getPriorityOrder(sheets),
-    bisList:           getBisList(sheets),
-    itemSlots:         getItemSlots(sheets),
-    lootCounts:        getLootCounts(sheets),
-    attendanceDetails: getAttendanceDetails(sheets),
-    selfReceived:      getSelfReceived(sheets),
+    generatedAt:            new Date().toISOString(),
+    priorityOrder:          getPriorityOrder(sheets),
+    bisList:                getBisList(sheets),
+    itemSlots:              getItemSlots(sheets),
+    lootCounts:             getLootCounts(sheets),
+    attendanceDetails:      getAttendanceDetails(sheets),
+    recentAttendanceTrend:  getRecentAttendanceTrend(sheets),
+    selfReceived:           getSelfReceived(sheets),
   };
 }
 
@@ -1124,6 +1125,43 @@ function getAttendanceDetails(sheets) {
     const joinDate       = joinDateMap[name] || '';
     const effectiveStart = (joinDate && (!seasonStart || joinDate > seasonStart)) ? joinDate : seasonStart;
     if (effectiveStart && formattedDate < effectiveStart) continue;
+
+    if (!result[name]) result[name] = [];
+    result[name].push({ date: formattedDate, status });
+  }
+
+  return result;
+}
+
+function getRecentAttendanceTrend(sheets) {
+  const sheet = sheets[CFG.attendanceSheet];
+  if (!sheet) return {};
+
+  const data   = sheet.getDataRange().getValues();
+  const result = {};
+  var   skipReport = false;
+
+  for (let i = CFG.attendDataStart - 1; i < data.length; i++) {
+    const row     = data[i];
+    const rawDate = row[CFG.attendDateCol   - 1];
+    const name    = String(row[CFG.attendNameCol   - 1] || '').trim();
+    const status  = String(row[CFG.attendStatusCol - 1] || '').trim();
+    const exclude = row[5];
+
+    const dateStr = String(rawDate || '').trim();
+    if (dateStr.startsWith('──') || dateStr === 'Report Title') break;
+
+    if (!name) {
+      skipReport = (exclude === true);
+      continue;
+    }
+
+    if (skipReport) continue;
+    if (!rawDate || !status || status === 'Not on Roster') continue;
+
+    const formattedDate = (rawDate instanceof Date)
+      ? Utilities.formatDate(rawDate, Session.getScriptTimeZone(), 'yyyy-MM-dd')
+      : dateStr;
 
     if (!result[name]) result[name] = [];
     result[name].push({ date: formattedDate, status });

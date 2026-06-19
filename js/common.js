@@ -1,5 +1,5 @@
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION = '2.15.0';
+var VERSION = '2.15.1';
 var DATA = null;
 
 var WOW_REALMS = [
@@ -114,12 +114,13 @@ function loadData(onCoreReady, onHeavyReady) {
     window._rosterHeavyCallback = function (heavy) {
       delete window._rosterHeavyCallback;
       if (!heavy || heavy.error) return;
-      DATA.lootCounts        = heavy.lootCounts;
-      DATA.attendanceDetails = heavy.attendanceDetails;
-      DATA.bisList           = heavy.bisList;
-      DATA.priorityOrder     = heavy.priorityOrder;
-      DATA.itemSlots         = heavy.itemSlots;
-      DATA.selfReceived      = heavy.selfReceived;
+      DATA.lootCounts              = heavy.lootCounts;
+      DATA.attendanceDetails       = heavy.attendanceDetails;
+      DATA.recentAttendanceTrend   = heavy.recentAttendanceTrend;
+      DATA.bisList                 = heavy.bisList;
+      DATA.priorityOrder           = heavy.priorityOrder;
+      DATA.itemSlots               = heavy.itemSlots;
+      DATA.selfReceived            = heavy.selfReceived;
       if (onHeavyReady) onHeavyReady();
     };
     heavyScript.src = WEB_APP_URL + '?chunk=heavy&callback=_rosterHeavyCallback';
@@ -229,6 +230,128 @@ function getSlotColor(slot) {
 }
 
 function attendColor(pct) { return pct >= 95 ? 'var(--heal)' : pct >= 75 ? 'var(--gold)' : 'var(--melee)'; }
+
+function attendTrendColor(status) {
+  if (status === 'Present')       return '#52b788';
+  if (status === 'Bench')         return '#7EC8E3';
+  if (status === 'Excused')       return '#d4a843';
+  if (status === 'Medical Leave') return '#A8DADC';
+  if (status === 'No Show')       return '#e05252';
+  return '#555';
+}
+
+function attendTrendValue(status) {
+  if (status === 'Present')       return 1.0;
+  if (status === 'Bench')         return 0.85;
+  if (status === 'Medical Leave') return 0.7;
+  if (status === 'Excused')       return 0.5;
+  if (status === 'No Show')       return 0.0;
+  return 0.5;
+}
+
+function showAttendTip(evt, text) {
+  var tip = document.getElementById('attend-trend-tip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'attend-trend-tip';
+    tip.style.cssText = 'position:fixed;background:var(--bg-elevated);border:1px solid var(--border-mid);border-radius:4px;padding:0.45rem 0.7rem;font-size:0.8rem;color:var(--text-muted);white-space:nowrap;pointer-events:none;z-index:200;font-family:Rajdhani,sans-serif;letter-spacing:0.03em;';
+    document.body.appendChild(tip);
+  }
+  tip.textContent = text;
+  tip.style.display = 'block';
+  tip.style.left = (evt.clientX + 12) + 'px';
+  tip.style.top = (evt.clientY - 32) + 'px';
+}
+
+function hideAttendTip() {
+  var tip = document.getElementById('attend-trend-tip');
+  if (tip) tip.style.display = 'none';
+}
+
+function attendTrendMonthColor(avg) {
+  if (avg >= 0.9) return '#52b788';
+  if (avg >= 0.7) return '#7EC8E3';
+  if (avg >= 0.5) return '#d4a843';
+  return '#e05252';
+}
+
+function renderAttendTrend(firstName) {
+  var trend = (DATA.recentAttendanceTrend || {})[firstName];
+  if (!trend || !trend.length) return '';
+
+  var nights = trend.slice().reverse(); // oldest left, newest right
+
+  // Aggregate by calendar month
+  var monthMap = {}, monthOrder = [];
+  var MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  for (var i = 0; i < nights.length; i++) {
+    var key = nights[i].date.substring(0, 7); // "yyyy-MM"
+    if (!monthMap[key]) { monthMap[key] = []; monthOrder.push(key); }
+    monthMap[key].push(nights[i]);
+  }
+
+  // Fall back to per-night dots if only one month of data
+  if (monthOrder.length <= 1) {
+    var n = nights.length;
+    var W = Math.max(300, n * 24), H = 56, PAD = 6, R = 4;
+    var points = [];
+    for (var i = 0; i < n; i++) {
+      var x = n === 1 ? W / 2 : PAD + (i / (n - 1)) * (W - PAD * 2);
+      var y = PAD + (1 - attendTrendValue(nights[i].status)) * (H - PAD * 2);
+      points.push({ x: x, y: y, night: nights[i] });
+    }
+    var lineStr = points.map(function(p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ');
+    var svg = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" style="display:block;overflow:visible;">';
+    svg += '<polyline points="' + lineStr + '" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>';
+    for (var i = 0; i < points.length; i++) {
+      var p = points[i];
+      var tip = p.night.date + ': ' + p.night.status;
+      svg += '<g style="cursor:default;" onmouseover="showAttendTip(event,' + "'" + tip + "')" + '" onmouseout="hideAttendTip()">';
+      svg += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + R + '" fill="' + attendTrendColor(p.night.status) + '"/>';
+      svg += '</g>';
+    }
+    svg += '</svg>';
+    return '<div style="overflow-x:auto;overflow-y:hidden;margin-top:0.75rem;">' + svg + '</div>';
+  }
+
+  var months = monthOrder.map(function(key) {
+    var entries = monthMap[key];
+    var sum = 0;
+    for (var j = 0; j < entries.length; j++) sum += attendTrendValue(entries[j].status);
+    var avg = sum / entries.length;
+    var parts = key.split('-');
+    var label = MONTH_NAMES[parseInt(parts[1], 10) - 1] + ' ' + parts[0];
+    var pct = Math.round(avg * 100);
+    return { key: key, label: label, avg: avg, count: entries.length, pct: pct };
+  });
+
+  var n = months.length;
+  var W = Math.max(200, n * 64), H = 56, PAD = 16, R = 7;
+
+  var points = [];
+  for (var i = 0; i < n; i++) {
+    var x = n === 1 ? W / 2 : PAD + (i / (n - 1)) * (W - PAD * 2);
+    var y = PAD + (1 - months[i].avg) * (H - PAD * 2);
+    points.push({ x: x, y: y, m: months[i] });
+  }
+
+  var lineStr = points.map(function(p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ');
+
+  var svg = '<svg width="' + W + '" height="' + (H + 18) + '" viewBox="0 0 ' + W + ' ' + (H + 18) + '" style="display:block;overflow:visible;">';
+  svg += '<polyline points="' + lineStr + '" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>';
+  for (var i = 0; i < points.length; i++) {
+    var p = points[i];
+    var col = attendTrendMonthColor(p.m.avg);
+    var tip = p.m.label + ': ' + p.m.pct + '% (' + p.m.count + ' raid' + (p.m.count !== 1 ? 's' : '') + ')';
+    svg += '<g style="cursor:default;" onmouseover="showAttendTip(event,' + "'" + tip + "')" + '" onmouseout="hideAttendTip()">';
+    svg += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + R + '" fill="' + col + '"/>';
+    svg += '<text x="' + p.x.toFixed(1) + '" y="' + (H + 14) + '" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.45)" font-family="sans-serif">' + p.m.label.split(' ')[0] + '</text>';
+    svg += '</g>';
+  }
+  svg += '</svg>';
+
+  return '<div style="overflow-x:auto;overflow-y:hidden;margin-top:0.75rem;">' + svg + '</div>';
+}
 
 function formatJoinDate(dateStr) {
   if (!dateStr) return '';
@@ -821,6 +944,7 @@ function renderProfile(firstName, backTo, container) {
       : (hasPenalties ? '<span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span>' : '')) +
     '</div>' +
     '<div class="attend-row"><div class="attend-bar-wrap"><div class="attend-bar" style="width:' + barWidth + '"></div></div><span class="attend-label">' + attendPct + '</span></div>' +
+    renderAttendTrend(player.firstName) +
     (backTo === 'officer'
       ? '<div id="attend-history-' + player.firstName + '" style="display:none;margin-top:0.6rem;"></div>'
       : attendExtra) +

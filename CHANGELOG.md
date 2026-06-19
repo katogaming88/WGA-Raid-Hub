@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.15.1] - 2026-06-19
+
+### Added
+- **Attendance trend sparkline on player profile.** The attendance section now shows a small SVG line chart, visible by default without clicking anything. When data spans more than one calendar month, each dot represents a month with the Y position reflecting average attendance that month (green >= 90%, blue >= 70%, yellow >= 50%, red below). When only one month of data exists, individual raid nights are shown instead. Hovering a dot shows an instant tooltip with the month, average percentage, and raid count (or exact date and status for per-night mode). Covers all season data with no cap. Closes #42.
+
+---
+
 ## [2.15.0] - 2026-06-19
 
 ### Added

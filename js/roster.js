@@ -109,5 +109,10 @@ loadData(
   function() {
     buildPublicStats();
     buildRecentLoot();
+    var sel         = document.getElementById('playerSelect');
+    var profileWrap = document.getElementById('profileViewWrap');
+    if (sel && sel.value && profileWrap && profileWrap.classList.contains('active')) {
+      renderProfile(sel.value, 'landing');
+    }
   }
 );
