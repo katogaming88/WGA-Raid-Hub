@@ -1426,22 +1426,58 @@ function updateRosterField(nameRealm, field, value) {
 }
 
 function renamePlayerInRoster(oldNameRealm, newNameRealm) {
-  const ss    = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(CFG.rosterSheet);
-  if (!sheet) return;
-  const data = sheet.getDataRange().getValues();
-  for (let i = CFG.rosterDataStart - 1; i < data.length; i++) {
-    const rowPlayer = String(data[i][CFG.rosterPlayerCol - 1] || '').trim();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // Update Roster sheet
+  const rosterSheet = ss.getSheetByName(CFG.rosterSheet);
+  if (!rosterSheet) return;
+  const rosterData = rosterSheet.getDataRange().getValues();
+  let found = false;
+  for (let i = CFG.rosterDataStart - 1; i < rosterData.length; i++) {
+    const rowPlayer = String(rosterData[i][CFG.rosterPlayerCol - 1] || '').trim();
     if (rowPlayer.toLowerCase() !== oldNameRealm.toLowerCase()) continue;
-    sheet.getRange(i + 1, CFG.rosterPlayerCol).setValue(newNameRealm);
-    // Migrate officer notes keyed by nameRealm
-    const notes = getPlayerNotes();
-    if (notes[oldNameRealm] !== undefined) {
-      notes[newNameRealm] = notes[oldNameRealm];
-      delete notes[oldNameRealm];
-      setPlayerNotes(notes);
+    rosterSheet.getRange(i + 1, CFG.rosterPlayerCol).setValue(newNameRealm);
+    found = true;
+    break;
+  }
+  if (!found) return;
+
+  // Migrate officer notes keyed by nameRealm
+  const notes = getPlayerNotes();
+  if (notes[oldNameRealm] !== undefined) {
+    notes[newNameRealm] = notes[oldNameRealm];
+    delete notes[oldNameRealm];
+    setPlayerNotes(notes);
+  }
+
+  const oldFirstName = oldNameRealm.split('-')[0].trim();
+  const newFirstName = newNameRealm.split('-')[0].trim();
+  if (oldFirstName.toLowerCase() === newFirstName.toLowerCase()) return;
+
+  // firstName changed: update Attendance sheet (col B = firstName)
+  const attendSheet = ss.getSheetByName(CFG.attendanceSheet);
+  if (attendSheet && attendSheet.getLastRow() >= CFG.attendDataStart) {
+    const attendData = attendSheet.getDataRange().getValues();
+    for (let i = CFG.attendDataStart - 1; i < attendData.length; i++) {
+      const cell = String(attendData[i][CFG.attendNameCol - 1] || '').trim();
+      if (cell.toLowerCase() === oldFirstName.toLowerCase()) {
+        attendSheet.getRange(i + 1, CFG.attendNameCol).setValue(newFirstName);
+      }
     }
-    return;
+  }
+
+  // firstName changed: update Pasted Loot sheet (col C = "Name-Realm", keyed by firstName)
+  const pastedSheet = ss.getSheetByName(CFG.pastedLootSheet);
+  if (pastedSheet && pastedSheet.getLastRow() >= 2) {
+    const pastedData = pastedSheet.getDataRange().getValues();
+    for (let i = 1; i < pastedData.length; i++) {
+      const cell  = String(pastedData[i][2] || '').trim();
+      const parts = cell.split('-');
+      if (parts[0].toLowerCase() === oldFirstName.toLowerCase()) {
+        const updatedPlayer = newFirstName + (parts.length > 1 ? '-' + parts.slice(1).join('-') : '');
+        pastedSheet.getRange(i + 1, 3).setValue(updatedPlayer);
+      }
+    }
   }
 }
 
