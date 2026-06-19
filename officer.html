@@ -1,389 +1,525 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Team Phoenix -- Officer</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css">
-<link rel="stylesheet" href="css/officer.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Phoenix -- Officer</title>
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/officer.css">
 </head>
+
 <body>
 
-<header class="header">
-  <a href="index.html" class="header-link">
-    <span class="header-emblem">🔥</span>
-    <h1>Team Phoenix</h1>
-    <p class="header-sub">Raid Hub</p>
-  </a>
-  <div class="header-divider"></div>
-</header>
+  <header class="header">
+    <a href="index.html" class="header-link">
+      <span class="header-emblem">🔥</span>
+      <h1>Team Phoenix</h1>
+      <p class="header-sub">Raid Hub</p>
+    </a>
+    <div class="header-divider"></div>
+  </header>
 
-<div id="loadingMsg" class="state-msg">
-  <div class="spinner"></div><br>Loading roster data...
-</div>
+  <div id="loadingMsg" class="state-msg">
+    <div class="spinner"></div><br>Loading roster data...
+  </div>
 
-<div id="officerViewWrap" class="view">
-  <div id="officerView">
-    <div class="officer-toolbar">
-      <div>
-        <h2>Officer Dashboard</h2>
-        <span id="dataTimestamp" class="data-timestamp"></span>
-      </div>
-      <div style="display:flex;gap:0.5rem;">
-        <button id="clearCacheBtn" class="btn btn-muted" onclick="clearCache()">Clear Cache</button>
-        <a href="index.html" class="btn btn-muted">Back to Roster</a>
-        <button class="btn btn-muted" onclick="officerLogout()">Log out</button>
-      </div>
-    </div>
-
-    <div id="officerStats" class="officer-stats"></div>
-
-    <div class="officer-body">
-      <nav class="officer-sidebar">
-        <button class="nav-item active" onclick="switchTab('roster')">Roster</button>
-        <button class="nav-item" onclick="switchTab('loot')">Loot</button>
-        <button class="nav-item" onclick="switchTab('priority')">Priority<span class="nav-notif nav-notif-abs" id="prioNavBadge" style="display:none;"></span></button>
-        <button class="nav-item" onclick="switchTab('attendance')">Attendance</button>
-        <button class="nav-item" onclick="switchTab('signups')">Signups<span class="nav-notif nav-notif-abs" id="signupsNavBadge" style="display:none;"></span></button>
-        <button class="nav-item" onclick="switchTab('bis')">BiS Submissions<span class="nav-notif nav-notif-abs" id="bisNavBadge" style="display:none;"></span></button>
-        <button class="nav-item" onclick="switchTab('mplus')">M+ Exclusions<span class="nav-notif nav-notif-abs" id="mplusNavBadge" style="display:none;"></span></button>
-        <button class="nav-item" onclick="switchTab('requests')">Received Item Requests<span class="nav-notif nav-notif-abs" id="requestsNavBadge" style="display:none;"></span></button>
-        <button class="nav-item" onclick="switchTab('audit')">Audit Log</button>
-        <button class="nav-item" onclick="switchTab('season')">Season Settings</button>
-      </nav>
-
-      <div class="officer-main">
-        <!-- Roster tab -->
-        <div id="tab-roster" class="tab-panel active">
-          <div class="roster-search-row">
-            <input type="text" id="rosterSearch" class="roster-search-input" placeholder="Search player..." oninput="buildRosterTable()">
-            <div class="bis-search-wrap">
-              <input type="text" id="bisItemSearch" class="roster-search-input" placeholder="Has BiS item..." oninput="buildRosterTable()">
-              <span id="bisItemCount" class="bis-item-count"></span>
-            </div>
-          </div>
-          <div class="filter-bar" style="margin-bottom:0.35rem;">
-            <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Filter:</span>
-            <button class="filter-chip" onclick="toggleFilter('lowAttend')" id="chip-lowAttend">Low Attendance (&lt;95%)</button>
-            <button class="filter-chip" onclick="toggleFilter('noBis')" id="chip-noBis">No BiS Link</button>
-            <button class="filter-chip" onclick="toggleFilter('trial')" id="chip-trial">Trials Only</button>
-            <button class="filter-chip" onclick="toggleFilter('bench')" id="chip-bench">Bench Only</button>
-          </div>
-          <div class="filter-bar">
-            <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Role:</span>
-            <button class="filter-chip" onclick="toggleRole('Tank')" id="chip-role-Tank">Tanks</button>
-            <button class="filter-chip" onclick="toggleRole('Heal')" id="chip-role-Heal">Healers</button>
-            <button class="filter-chip" onclick="toggleRole('Melee')" id="chip-role-Melee">Melee</button>
-            <button class="filter-chip" onclick="toggleRole('Ranged')" id="chip-role-Ranged">Ranged</button>
-          </div>
-          <div class="filter-bar" style="margin-bottom:0.35rem;">
-            <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
-            <button class="filter-chip" onclick="toggleSort('name')" id="chip-sort-name">Name</button>
-            <button class="filter-chip" onclick="toggleSort('attendance')" id="chip-sort-attendance">Attendance</button>
-            <button class="filter-chip" onclick="toggleSort('items')" id="chip-sort-items">Items</button>
-          </div>
-          <div id="trialPromoAlert"></div>
-          <table class="roster-table" id="rosterTable"></table>
-          <div id="officerProfile"></div>
+  <div id="officerViewWrap" class="view">
+    <div id="officerView">
+      <div class="officer-toolbar">
+        <div>
+          <h2>Officer Dashboard</h2>
+          <span id="dataTimestamp" class="data-timestamp"></span>
         </div>
-
-        <!-- Loot tab (Import + Import History + Contested Items + Loot Fairness sub-tabs) -->
-        <div id="tab-loot" class="tab-panel">
-          <div class="filter-bar" style="margin-bottom:1rem;">
-            <button class="filter-chip active" id="loot-subtab-btn-import" onclick="switchLootSubTab('import', this)">Import</button>
-            <button class="filter-chip" id="loot-subtab-btn-history" onclick="switchLootSubTab('history', this)">Import History</button>
-            <button class="filter-chip" id="loot-subtab-btn-conflicts" onclick="switchLootSubTab('conflicts', this)">Contested Items</button>
-            <button class="filter-chip" id="loot-subtab-btn-fairness" onclick="switchLootSubTab('fairness', this)">Loot Fairness</button>
-          </div>
-          <div id="loot-sub-conflicts" style="display:none;">
-            <div id="conflictsContent"></div>
-          </div>
-          <div id="loot-sub-fairness" style="display:none;">
-            <div class="filter-bar" style="margin-bottom:1rem;">
-              <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Difficulty:</span>
-              <button class="filter-chip active" id="diff-chip-all" onclick="setDiffFilter('all')">All</button>
-              <button class="filter-chip" id="diff-chip-heroic" onclick="setDiffFilter('heroic')">Heroic</button>
-              <button class="filter-chip" id="diff-chip-mythic" onclick="setDiffFilter('mythic')">Mythic</button>
-            </div>
-            <div id="fairnessContent"></div>
-          </div>
-          <div id="loot-sub-import"></div>
-          <div id="loot-sub-history" style="display:none;"></div>
+        <div style="display:flex;gap:0.5rem;">
+          <button id="clearCacheBtn" class="btn btn-muted" onclick="clearCache()">Clear Cache</button>
+          <a href="index.html" class="btn btn-muted">Back to Roster</a>
+          <button class="btn btn-muted" onclick="officerLogout()">Log out</button>
         </div>
+      </div>
 
-        <!-- Priority tab -->
-        <div id="tab-priority" class="tab-panel">
-          <div class="prio-export-card">
-            <div class="prio-export-header">
-              <span class="prio-export-label">RCLootCouncil Export String</span>
-              <button class="btn btn-muted" id="prioExportLoadBtn" onclick="fetchExportString()">Generate</button>
+      <div id="officerStats" class="officer-stats"></div>
+
+      <div class="officer-body">
+        <nav class="officer-sidebar">
+          <button class="nav-item active" onclick="switchTab('roster')">Roster</button>
+          <button class="nav-item" onclick="switchTab('loot')">Loot</button>
+          <button class="nav-item" onclick="switchTab('priority')">Priority<span class="nav-notif nav-notif-abs"
+              id="prioNavBadge" style="display:none;"></span></button>
+          <button class="nav-item" onclick="switchTab('attendance')">Attendance</button>
+          <button class="nav-item" onclick="switchTab('signups')">Signups<span class="nav-notif nav-notif-abs"
+              id="signupsNavBadge" style="display:none;"></span></button>
+          <button class="nav-item" onclick="switchTab('bis')">BiS Submissions<span class="nav-notif nav-notif-abs"
+              id="bisNavBadge" style="display:none;"></span></button>
+          <button class="nav-item" onclick="switchTab('mplus')">M+ Exclusions<span class="nav-notif nav-notif-abs"
+              id="mplusNavBadge" style="display:none;"></span></button>
+          <button class="nav-item" onclick="switchTab('requests')">Received Item Requests<span
+              class="nav-notif nav-notif-abs" id="requestsNavBadge" style="display:none;"></span></button>
+          <button class="nav-item" onclick="switchTab('audit')">Audit Log</button>
+          <button class="nav-item" onclick="switchTab('season')">Season Settings</button>
+        </nav>
+
+        <div class="officer-main">
+          <!-- Roster tab -->
+          <div id="tab-roster" class="tab-panel active">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+              <span class="section-label" style="margin-bottom:0;">Roster<button class="help-btn" onclick="toggleHelp('help-roster')" title="Show help">?</button></span>
             </div>
-            <div id="prioExportBody" style="display:none;">
-              <textarea id="prioExportStr" class="prio-export-textarea" readonly></textarea>
-              <div class="prio-export-actions">
-                <button class="btn btn-gold" onclick="copyExportString()">Copy to Clipboard</button>
-                <span id="prioExportCopyMsg" class="prio-export-copy-msg" style="display:none;">Copied!</span>
+            <div id="help-roster" class="help-tip" style="margin-top:0;margin-bottom:0.75rem;">
+              Click a player row to open their <strong>profile card</strong> below the table. From there you can edit class, spec, role, trial/bench status, join date, BiS link, nickname, M+ exclusion, and officer notes.<br>
+              To rename a player (character name or realm change), use the <strong>Name/Realm</strong> field in their profile card and click Save. This also updates their name in the Attendance and Loot sheets.<br>
+              <strong>+ Add Player</strong> button in the top-right of the roster table header adds a new player directly to the Roster sheet.<br>
+              The <strong>trial promotion banner</strong> appears automatically when a trial has been on the roster long enough with sufficient attendance to warrant a promotion review.
+            </div>
+            <div class="roster-search-row">
+              <input type="text" id="rosterSearch" class="roster-search-input" placeholder="Search player..."
+                oninput="buildRosterTable()">
+              <div class="bis-search-wrap">
+                <input type="text" id="bisItemSearch" class="roster-search-input" placeholder="Has BiS item..."
+                  oninput="buildRosterTable()">
+                <span id="bisItemCount" class="bis-item-count"></span>
               </div>
             </div>
-          </div>
-          <div class="filter-bar" style="margin-bottom:1rem;">
-            <button class="filter-chip active" id="prio-subtab-btn-list" onclick="switchPrioritySubTab('list', this)">Priority List</button>
-            <button class="filter-chip" id="prio-subtab-btn-unmanaged" onclick="switchPrioritySubTab('unmanaged', this)">Unmanaged Items <span class="nav-notif" id="prioSubBadge" style="display:none;"></span></button>
-          </div>
-          <div id="prio-sub-list">
-            <div class="filter-bar" style="margin-bottom:0.75rem;">
+            <div class="filter-bar" style="margin-bottom:0.35rem;">
+              <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Filter:</span>
+              <button class="filter-chip" onclick="toggleFilter('lowAttend')" id="chip-lowAttend">Low Attendance
+                (&lt;95%)</button>
+              <button class="filter-chip" onclick="toggleFilter('noBis')" id="chip-noBis">No BiS Link</button>
+              <button class="filter-chip" onclick="toggleFilter('trial')" id="chip-trial">Trials Only</button>
+              <button class="filter-chip" onclick="toggleFilter('bench')" id="chip-bench">Bench Only</button>
+            </div>
+            <div class="filter-bar">
+              <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Role:</span>
+              <button class="filter-chip" onclick="toggleRole('Tank')" id="chip-role-Tank">Tanks</button>
+              <button class="filter-chip" onclick="toggleRole('Heal')" id="chip-role-Heal">Healers</button>
+              <button class="filter-chip" onclick="toggleRole('Melee')" id="chip-role-Melee">Melee</button>
+              <button class="filter-chip" onclick="toggleRole('Ranged')" id="chip-role-Ranged">Ranged</button>
+            </div>
+            <div class="filter-bar" style="margin-bottom:0.35rem;">
               <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
-              <button class="filter-chip active" id="chip-prio-type">By Type</button>
-              <button class="filter-chip prio-chip-disabled" title="Raid source data not yet available">By Raid</button>
+              <button class="filter-chip" onclick="toggleSort('name')" id="chip-sort-name">Name</button>
+              <button class="filter-chip" onclick="toggleSort('attendance')"
+                id="chip-sort-attendance">Attendance</button>
+              <button class="filter-chip" onclick="toggleSort('items')" id="chip-sort-items">Items</button>
             </div>
-            <input type="text" id="prioSearch" class="roster-search-input" placeholder="Search items..." oninput="buildPriorityTab()" style="margin-bottom:1rem;">
-            <div id="priorityContent"></div>
+            <div id="trialPromoAlert"></div>
+            <table class="roster-table" id="rosterTable"></table>
+            <div id="officerProfile"></div>
           </div>
-          <div id="prio-sub-unmanaged" style="display:none;">
-            <div id="unmanagedContent"></div>
-          </div>
-        </div>
 
-        <!-- Attendance tab -->
-        <div id="tab-attendance" class="tab-panel">
-          <div class="attend-manage-panel">
-            <div class="attend-manage-header">
-              <span class="section-label" style="margin-bottom:0;">Manage Raid Attendance</span>
-              <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
-                <button class="btn btn-muted" id="refreshWCLBtn" onclick="refreshAttendanceWCL()">Refresh from WCL</button>
-                <span id="refreshWCLStatus" style="font-size:0.92rem;"></span>
-                <button class="btn btn-gold" id="commitScoresBtn" onclick="confirmCommitScores()" style="margin-left:0.5rem;">Commit Scores to Sheet</button>
-                <span id="commitScoresStatus" style="font-size:0.92rem;"></span>
+          <!-- Loot tab (Import + Import History + Contested Items + Loot Fairness sub-tabs) -->
+          <div id="tab-loot" class="tab-panel">
+            <div class="filter-bar" style="margin-bottom:1rem;">
+              <button class="filter-chip active" id="loot-subtab-btn-import"
+                onclick="switchLootSubTab('import', this)">Import</button>
+              <button class="filter-chip" id="loot-subtab-btn-history"
+                onclick="switchLootSubTab('history', this)">Import History</button>
+              <button class="filter-chip" id="loot-subtab-btn-conflicts"
+                onclick="switchLootSubTab('conflicts', this)">Contested Items</button>
+              <button class="filter-chip" id="loot-subtab-btn-fairness"
+                onclick="switchLootSubTab('fairness', this)">Loot Fairness</button>
+            </div>
+            <div id="loot-sub-conflicts" style="display:none;">
+              <div id="conflictsContent"></div>
+            </div>
+            <div id="loot-sub-fairness" style="display:none;">
+              <div class="filter-bar" style="margin-bottom:1rem;">
+                <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Difficulty:</span>
+                <button class="filter-chip active" id="diff-chip-all" onclick="setDiffFilter('all')">All</button>
+                <button class="filter-chip" id="diff-chip-heroic" onclick="setDiffFilter('heroic')">Heroic</button>
+                <button class="filter-chip" id="diff-chip-mythic" onclick="setDiffFilter('mythic')">Mythic</button>
+              </div>
+              <div id="fairnessContent"></div>
+            </div>
+            <div id="loot-sub-import"></div>
+            <div id="loot-sub-history" style="display:none;"></div>
+          </div>
+
+          <!-- Priority tab -->
+          <div id="tab-priority" class="tab-panel">
+            <div class="prio-export-card">
+              <div class="prio-export-header">
+                <span class="prio-export-label">RCLootCouncil Export String</span>
+                <button class="btn btn-muted" id="prioExportLoadBtn" onclick="fetchExportString()">Generate</button>
+              </div>
+              <div id="prioExportBody" style="display:none;">
+                <textarea id="prioExportStr" class="prio-export-textarea" readonly></textarea>
+                <div class="prio-export-actions">
+                  <button class="btn btn-gold" onclick="copyExportString()">Copy to Clipboard</button>
+                  <span id="prioExportCopyMsg" class="prio-export-copy-msg" style="display:none;">Copied!</span>
+                </div>
               </div>
             </div>
-            <div id="commitConfirmBanner" class="attend-confirm-banner" style="display:none;">
-              Calculate and write attendance scores for all players to the Scoring sheet?
-              <button class="btn btn-gold" onclick="executeCommitScores()" style="margin-left:1rem;">Yes, Commit</button>
-              <button class="btn btn-muted" onclick="cancelCommitScores()" style="margin-left:0.5rem;">Cancel</button>
+            <div class="filter-bar" style="margin-bottom:0.5rem;">
+              <button class="filter-chip active" id="prio-subtab-btn-list"
+                onclick="switchPrioritySubTab('list', this)">Priority List</button>
+              <button class="filter-chip" id="prio-subtab-btn-unmanaged"
+                onclick="switchPrioritySubTab('unmanaged', this)">Unmanaged Items <span class="nav-notif"
+                  id="prioSubBadge" style="display:none;"></span></button>
+              <button class="help-btn" onclick="toggleHelp('help-priority')" title="Show help">?</button>
             </div>
-            <div id="attendGridStatus" style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;"></div>
-            <div id="attendGridNightRow" style="display:none;margin-bottom:0.75rem;">
-              <div class="attend-status-wrap" style="display:inline-block;">
-                <select id="attendNightSelect" class="attend-night-select" onchange="renderNightGrid(this.selectedIndex)"></select>
+            <div id="help-priority" class="help-tip" style="margin-bottom:0.75rem;">
+              <strong>RCLootCouncil Export String</strong> -- click Generate to build an encoded string from the current priority order and roster. Copy it and paste it into RCLootCouncil in-game to sync loot priorities to your council.<br>
+              <strong>Priority List</strong> -- read-only view of every item's ranked priority order as set in the Priority Order sheet. Use the search box to jump to a specific item.<br>
+              <strong>Unmanaged Items</strong> -- items that appear in players' BiS lists but have no priority order assigned yet in the sheet. The badge count shows how many need attention.
+            </div>
+            <div id="prio-sub-list">
+              <div class="filter-bar" style="margin-bottom:0.75rem;">
+                <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
+                <button class="filter-chip active" id="chip-prio-type">By Type</button>
+                <button class="filter-chip prio-chip-disabled" title="Raid source data not yet available">By
+                  Raid</button>
+              </div>
+              <input type="text" id="prioSearch" class="roster-search-input" placeholder="Search items..."
+                oninput="buildPriorityTab()" style="margin-bottom:1rem;">
+              <div id="priorityContent"></div>
+            </div>
+            <div id="prio-sub-unmanaged" style="display:none;">
+              <div id="unmanagedContent"></div>
+            </div>
+          </div>
+
+          <!-- Attendance tab -->
+          <div id="tab-attendance" class="tab-panel">
+            <div class="attend-manage-panel">
+              <div class="attend-manage-header">
+                <span class="section-label" style="margin-bottom:0;">Manage Raid Attendance<button class="help-btn"
+                    onclick="toggleHelp('help-attendance')" title="Show help">?</button></span>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                  <button class="btn btn-muted" id="refreshWCLBtn" onclick="refreshAttendanceWCL()">Refresh from
+                    WCL</button>
+                  <span id="refreshWCLStatus" style="font-size:0.92rem;"></span>
+                  <button class="btn btn-gold" id="commitScoresBtn" onclick="confirmCommitScores()"
+                    style="margin-left:0.5rem;">Commit Scores to Sheet</button>
+                  <span id="commitScoresStatus" style="font-size:0.92rem;"></span>
+                </div>
+              </div>
+              <div id="help-attendance" class="help-tip">
+                <strong>Refresh from WCL</strong> -- pulls the latest raid nights from Warcraft Logs and populates the
+                attendance grid. Run this after each raid night.<br>
+                <strong>Commit Scores to Sheet</strong> -- calculates each player's attendance % and writes it to the
+                Scoring sheet. Safe to run multiple times; it always recalculates from scratch. Run this when you want
+                the roster view to reflect current scores.<br>
+                <strong>Manual edits</strong> -- click any status cell in the grid to change a player's attendance for
+                that night (Present, Late, Excused, No Show, etc.).<br>
+                <strong>Sync % to Roster Sheet</strong> -- updates the attendance % column on the Roster sheet from live
+                data. Use this if the roster display is stale after manual edits.
+              </div>
+              <div id="commitConfirmBanner" class="attend-confirm-banner" style="display:none;">
+                Calculate and write attendance scores for all players to the Scoring sheet?
+                <button class="btn btn-gold" onclick="executeCommitScores()" style="margin-left:1rem;">Yes,
+                  Commit</button>
+                <button class="btn btn-muted" onclick="cancelCommitScores()" style="margin-left:0.5rem;">Cancel</button>
+              </div>
+              <div id="attendGridStatus" style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;"></div>
+              <div id="attendGridNightRow" style="display:none;margin-bottom:0.75rem;">
+                <div class="attend-status-wrap" style="display:inline-block;">
+                  <select id="attendNightSelect" class="attend-night-select"
+                    onchange="renderNightGrid(this.selectedIndex)"></select>
+                </div>
+              </div>
+              <div id="attendGridTable"></div>
+            </div>
+            <div class="attend-threshold-row">
+              <span class="attend-threshold-label">Show at or below <strong id="attendThresholdVal">95%</strong></span>
+              <input type="range" id="attendThreshold" class="attend-slider" min="0" max="100" value="95"
+                oninput="document.getElementById('attendThresholdVal').textContent=this.value+'%';buildAttendanceTab();">
+              <button class="btn btn-gold" id="syncAttendPctBtn" onclick="syncAttendancePct()"
+                style="margin-left:auto;">Sync % to Roster Sheet</button>
+              <span id="syncAttendPctStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+            </div>
+            <div id="attendanceContent"></div>
+          </div>
+
+          <!-- Signups tab -->
+          <div id="tab-signups" class="tab-panel">
+            <div class="filter-bar" style="margin-bottom:1rem;">
+              <button class="filter-chip active" id="signups-subtab-btn-signups"
+                onclick="switchSignupsSubTab('signups', this)">Signups</button>
+              <button class="filter-chip" id="signups-subtab-btn-pendingRoster"
+                onclick="switchSignupsSubTab('pendingRoster', this)">Pending Roster <span class="nav-notif"
+                  id="pendingRosterSubBadge" style="display:none;"></span></button>
+            </div>
+            <div id="signups-sub-signups">
+              <div class="signup-officer-panel">
+                <div class="signup-status-row">
+                  <span class="signup-status-label">Roster Signups<button class="help-btn"
+                      onclick="toggleHelp('help-signups')" title="Show help">?</button></span>
+                  <span class="signup-status-badge signup-status-closed" id="signupStatusBadge">CLOSED</span>
+                </div>
+                <div id="help-signups" class="help-tip">
+                  Open signups to show the Sign Up button on the landing page for applicants. Close it to hide the form
+                  between signup periods.<br>
+                  Submitted signups appear in the queue below -- <strong>Approve</strong> moves them to the Pending
+                  Roster sub-tab; <strong>Deny</strong> marks them rejected.<br>
+                  On the Pending Roster sub-tab, click <strong>Add to Roster</strong> on each card to add them directly
+                  to the roster sheet. <strong>Remove</strong> dismisses the entry without adding them.
+                </div>
+                <div style="margin-top:1rem;">
+                  <button class="btn btn-muted" id="signupToggleBtn" onclick="toggleSignupsOpen()">Open Signups</button>
+                </div>
+                <p class="signup-officer-note">Toggling signups shows or hides the Sign Up button for applicants.</p>
+              </div>
+              <div id="signupsResponsesContainer"></div>
+            </div>
+            <div id="signups-sub-pendingRoster" style="display:none;">
+              <div id="pendingRosterContainer"></div>
+            </div>
+          </div>
+
+          <!-- Self Received Requests tab -->
+          <div id="tab-requests" class="tab-panel">
+            <div class="signup-officer-panel" style="margin-bottom:1rem;">
+              <div class="signup-status-row">
+                <span class="signup-status-label">Received Item Requests<button class="help-btn"
+                    onclick="toggleHelp('help-requests')" title="Show help">?</button></span>
+              </div>
+              <div id="help-requests" class="help-tip">
+                Raiders submit requests for items received outside of raid (M+, Great Vault, Crafted, Catalyst, Bonus
+                Roll).<br>
+                <strong>Approve</strong> marks the item as received in their loot history, which affects loot fairness
+                scores and priority standing.<br>
+                <strong>Reject</strong> dismisses the request with no change to their record.<br>
+                Officers can also mark items received directly from a player's profile card on the Roster tab -- this
+                bypasses the approval queue and takes effect immediately.
               </div>
             </div>
-            <div id="attendGridTable"></div>
+            <div id="requestsContainer"></div>
           </div>
-          <div class="attend-threshold-row">
-            <span class="attend-threshold-label">Show at or below <strong id="attendThresholdVal">95%</strong></span>
-            <input type="range" id="attendThreshold" class="attend-slider" min="0" max="100" value="95" oninput="document.getElementById('attendThresholdVal').textContent=this.value+'%';buildAttendanceTab();">
-            <button class="btn btn-gold" id="syncAttendPctBtn" onclick="syncAttendancePct()" style="margin-left:auto;">Sync % to Roster Sheet</button>
-            <span id="syncAttendPctStatus" style="font-size:0.92rem;color:var(--heal);"></span>
-          </div>
-          <div id="attendanceContent"></div>
-        </div>
 
-        <!-- Signups tab -->
-        <div id="tab-signups" class="tab-panel">
-          <div class="filter-bar" style="margin-bottom:1rem;">
-            <button class="filter-chip active" id="signups-subtab-btn-signups" onclick="switchSignupsSubTab('signups', this)">Signups</button>
-            <button class="filter-chip" id="signups-subtab-btn-pendingRoster" onclick="switchSignupsSubTab('pendingRoster', this)">Pending Roster <span class="nav-notif" id="pendingRosterSubBadge" style="display:none;"></span></button>
-          </div>
-          <div id="signups-sub-signups">
+          <!-- BiS Submissions tab -->
+          <div id="tab-bis" class="tab-panel">
             <div class="signup-officer-panel">
               <div class="signup-status-row">
-                <span class="signup-status-label">Roster Signups</span>
-                <span class="signup-status-badge signup-status-closed" id="signupStatusBadge">CLOSED</span>
+                <span class="signup-status-label">BiS Submissions<button class="help-btn"
+                    onclick="toggleHelp('help-bis')" title="Show help">?</button></span>
+                <span class="signup-status-badge signup-status-closed" id="bisStatusBadge">CLOSED</span>
+              </div>
+              <div id="help-bis" class="help-tip">
+                Open submissions to show the BiS submit form to raiders. Close it when you don't want unsolicited
+                updates.<br>
+                To let a specific player submit outside of an open window, use the per-player <strong>Allow BiS
+                  Submit</strong> toggle in their officer profile card on the Roster tab.<br>
+                <strong>Approve</strong> updates the player's BiS link in the Roster sheet. <strong>Reject</strong>
+                discards the submission without changing anything.
               </div>
               <div style="margin-top:1rem;">
-                <button class="btn btn-muted" id="signupToggleBtn" onclick="toggleSignupsOpen()">Open Signups</button>
+                <button class="btn btn-muted" id="bisToggleBtn" onclick="toggleBisSubmissionsOpen()">Open
+                  Submissions</button>
               </div>
-              <p class="signup-officer-note">Toggling signups shows or hides the Sign Up button for applicants.</p>
+              <p class="signup-officer-note">Toggling submissions shows or hides the BiS list submit form for raiders.
+              </p>
             </div>
-            <div id="signupsResponsesContainer"></div>
+            <div id="bisContainer"></div>
           </div>
-          <div id="signups-sub-pendingRoster" style="display:none;">
-            <div id="pendingRosterContainer"></div>
+
+          <!-- Audit Log tab -->
+          <div id="tab-audit" class="tab-panel">
+            <div style="margin-bottom:1rem;">
+              <input type="text" id="auditSearch" class="roster-search-input"
+                placeholder="Search by officer, action, or player..." oninput="renderAuditLog()"
+                style="max-width:320px;">
+            </div>
+            <div id="auditContainer"></div>
           </div>
-        </div>
 
-        <!-- Self Received Requests tab -->
-        <div id="tab-requests" class="tab-panel">
-          <div id="requestsContainer"></div>
-        </div>
-
-        <!-- BiS Submissions tab -->
-        <div id="tab-bis" class="tab-panel">
-          <div class="signup-officer-panel">
-            <div class="signup-status-row">
-              <span class="signup-status-label">BiS Submissions</span>
-              <span class="signup-status-badge signup-status-closed" id="bisStatusBadge">CLOSED</span>
-            </div>
-            <div style="margin-top:1rem;">
-              <button class="btn btn-muted" id="bisToggleBtn" onclick="toggleBisSubmissionsOpen()">Open Submissions</button>
-            </div>
-            <p class="signup-officer-note">Toggling submissions shows or hides the BiS list submit form for raiders.</p>
-          </div>
-          <div id="bisContainer"></div>
-        </div>
-
-        <!-- Audit Log tab -->
-        <div id="tab-audit" class="tab-panel">
-          <div style="margin-bottom:1rem;">
-            <input type="text" id="auditSearch" class="roster-search-input" placeholder="Search by officer, action, or player..." oninput="renderAuditLog()" style="max-width:320px;">
-          </div>
-          <div id="auditContainer"></div>
-        </div>
-
-        <!-- Season Settings tab -->
-        <div id="tab-season" class="tab-panel">
-          <div class="signup-officer-panel">
-            <div class="signup-status-row">
-              <span class="signup-status-label">Season Start Date</span>
-            </div>
-            <p class="signup-officer-note" style="margin-top:0.25rem;">Set the date this raid season began. Raids before this date are excluded from attendance scoring. Players who joined after this date have their personal attendance window start from their join date instead.</p>
-            <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
-              <input type="date" id="seasonStartInput" class="add-player-input" style="max-width:180px;font-size:0.95rem;padding:0.35rem 0.6rem;">
-              <button class="btn btn-gold" id="seasonStartSaveBtn" onclick="saveSeasonStart()">Save</button>
-              <button class="btn btn-danger" onclick="confirmClearSeasonStart()">Clear</button>
-              <span id="seasonStartStatus" style="font-size:0.92rem;color:var(--heal);"></span>
-            </div>
-            <div id="seasonClearConfirm" style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
-              <span style="font-size:0.92rem;color:var(--melee);">This will remove the season start date and include all raids in attendance scoring.</span>
-              <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
-                <button class="btn btn-danger" onclick="executeClearSeasonStart()">Yes, Clear</button>
-                <button class="btn btn-muted" onclick="document.getElementById('seasonClearConfirm').style.display='none'">Cancel</button>
+          <!-- Season Settings tab -->
+          <div id="tab-season" class="tab-panel">
+            <div class="signup-officer-panel">
+              <div class="signup-status-row">
+                <span class="signup-status-label">Season Start Date<button class="help-btn"
+                    onclick="toggleHelp('help-season')" title="Show help">?</button></span>
               </div>
-            </div>
-            <p class="signup-officer-note" style="margin-top:0.75rem;">Leave blank to include all raids in attendance scoring (no season filter).</p>
-
-            <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:1.25rem 0;">
-
-            <div class="signup-status-row">
-              <span class="signup-status-label">Season Name</span>
-            </div>
-            <p class="signup-officer-note" style="margin-top:0.25rem;">The current season label applied to all imported RCLootCouncil loot history (e.g. Season 1). Set this before importing loot.</p>
-            <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
-              <input type="text" id="seasonNameInput" class="add-player-input" placeholder="e.g. Season 1" style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
-              <button class="btn btn-gold" id="seasonNameSaveBtn" onclick="saveSeasonName()">Save</button>
-              <span id="seasonNameStatus" style="font-size:0.92rem;color:var(--heal);"></span>
-            </div>
-
-          </div>
-        </div>
-
-        <!-- M+ Exclusions tab -->
-        <div id="tab-mplus" class="tab-panel">
-          <div class="signup-officer-panel">
-            <div class="signup-status-row">
-              <span class="signup-status-label">M+ Exclusion Requests</span>
-              <span class="signup-status-badge signup-status-closed" id="mplusStatusBadge">CLOSED</span>
-            </div>
-            <div style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center;">
-              <button class="btn btn-muted" id="mplusToggleBtn" onclick="toggleMPlusOpen()">Open Requests</button>
-              <button class="btn btn-danger" onclick="confirmClearAllMPlusExclusions()">Clear All Exclusions</button>
-            </div>
-            <div id="mplusClearConfirm" style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
-              <span style="font-size:0.92rem;color:var(--melee);">This will remove all M+ exclusions for all players. Use at season reset.</span>
-              <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
-                <button class="btn btn-danger" onclick="executeClearAllMPlusExclusions()">Yes, Clear All</button>
-                <button class="btn btn-muted" onclick="document.getElementById('mplusClearConfirm').style.display='none'">Cancel</button>
+              <div id="help-season" class="help-tip">
+                <strong>Season reset workflow:</strong>
+                <ul>
+                  <li>Set the new <strong>Season Start Date</strong> below so raids before it are excluded from
+                    attendance scoring.</li>
+                  <li>Update the <strong>Season Name</strong> (e.g. "Season 2") so new loot imports are tagged
+                    correctly.</li>
+                  <li>Go to <strong>Loot &gt; Import History</strong> and click "Clear All Loot" to remove last season's
+                    imported loot.</li>
+                  <li>Re-import this season's loot via <strong>Loot &gt; Import</strong>.</li>
+                  <li>Click <strong>Refresh from WCL</strong> on the Attendance tab to pull the new season's raids.</li>
+                </ul>
               </div>
-            </div>
-            <p class="signup-officer-note">Toggling opens or closes the M+ exclusion request form for raiders.</p>
-          </div>
-          <div id="mplusContainer"></div>
-        </div>
+              <p class="signup-officer-note" style="margin-top:0.25rem;">Set the date this raid season began. Raids
+                before this date are excluded from attendance scoring. Players who joined after this date have their
+                personal attendance window start from their join date instead.</p>
+              <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                <input type="date" id="seasonStartInput" class="add-player-input"
+                  style="max-width:180px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                <button class="btn btn-gold" id="seasonStartSaveBtn" onclick="saveSeasonStart()">Save</button>
+                <button class="btn btn-danger" onclick="confirmClearSeasonStart()">Clear</button>
+                <span id="seasonStartStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+              </div>
+              <div id="seasonClearConfirm"
+                style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
+                <span style="font-size:0.92rem;color:var(--melee);">This will remove the season start date and include
+                  all raids in attendance scoring.</span>
+                <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                  <button class="btn btn-danger" onclick="executeClearSeasonStart()">Yes, Clear</button>
+                  <button class="btn btn-muted"
+                    onclick="document.getElementById('seasonClearConfirm').style.display='none'">Cancel</button>
+                </div>
+              </div>
+              <p class="signup-officer-note" style="margin-top:0.75rem;">Leave blank to include all raids in attendance
+                scoring (no season filter).</p>
 
+              <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:1.25rem 0;">
+
+              <div class="signup-status-row">
+                <span class="signup-status-label">Season Name</span>
+              </div>
+              <p class="signup-officer-note" style="margin-top:0.25rem;">The current season label applied to all
+                imported RCLootCouncil loot history (e.g. Season 1). Set this before importing loot.</p>
+              <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                <input type="text" id="seasonNameInput" class="add-player-input" placeholder="e.g. Season 1"
+                  style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                <button class="btn btn-gold" id="seasonNameSaveBtn" onclick="saveSeasonName()">Save</button>
+                <span id="seasonNameStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- M+ Exclusions tab -->
+          <div id="tab-mplus" class="tab-panel">
+            <div class="signup-officer-panel">
+              <div class="signup-status-row">
+                <span class="signup-status-label">M+ Exclusion Requests<button class="help-btn"
+                    onclick="toggleHelp('help-mplus')" title="Show help">?</button></span>
+                <span class="signup-status-badge signup-status-closed" id="mplusStatusBadge">CLOSED</span>
+              </div>
+              <div id="help-mplus" class="help-tip">
+                Open requests to let raiders submit an exclusion with their Raider.io profile and a reason. Approved
+                players are marked M+ excluded on the roster view.<br>
+                You can also toggle a player's M+ exclusion directly from their officer profile card on the Roster tab
+                without them submitting a request.<br>
+                <strong>Clear All Exclusions</strong> removes every exclusion at once -- use this at the start of a new
+                season when the M+ pool resets.
+              </div>
+              <div style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center;">
+                <button class="btn btn-muted" id="mplusToggleBtn" onclick="toggleMPlusOpen()">Open Requests</button>
+                <button class="btn btn-danger" onclick="confirmClearAllMPlusExclusions()">Clear All Exclusions</button>
+              </div>
+              <div id="mplusClearConfirm"
+                style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
+                <span style="font-size:0.92rem;color:var(--melee);">This will remove all M+ exclusions for all players.
+                  Use at season reset.</span>
+                <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                  <button class="btn btn-danger" onclick="executeClearAllMPlusExclusions()">Yes, Clear All</button>
+                  <button class="btn btn-muted"
+                    onclick="document.getElementById('mplusClearConfirm').style.display='none'">Cancel</button>
+                </div>
+              </div>
+              <p class="signup-officer-note">Toggling opens or closes the M+ exclusion request form for raiders.</p>
+            </div>
+            <div id="mplusContainer"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="footer">We Go Again &middot; Team Phoenix &middot; v<span id="versionNum"></span> &middot; <a
+        class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank"
+        rel="noopener">Changelog</a></div>
+  </div>
+
+  <!-- Add Player modal -->
+  <div id="addPlayerModal" class="officer-prompt">
+    <div class="officer-prompt-box" style="max-width:400px;">
+      <h2>Add Player</h2>
+      <div style="display:flex;flex-direction:column;gap:0.6rem;">
+        <div>
+          <label class="add-player-label">Character Name</label>
+          <input id="addPlayerName" type="text" class="add-player-input" placeholder="Katorri" autocomplete="off">
+        </div>
+        <div style="position:relative;">
+          <label class="add-player-label">Realm</label>
+          <input id="addPlayerRealm" type="text" class="add-player-input" placeholder="Barthilas" autocomplete="off">
+          <div id="addPlayerRealmDropdown"
+            style="display:none;position:absolute;top:100%;left:0;right:0;max-height:160px;overflow-y:auto;background:var(--bg-elevated);border:1px solid var(--border-mid);border-top:none;border-radius:0 0 3px 3px;z-index:200;">
+          </div>
+        </div>
+        <div>
+          <label class="add-player-label">Nickname (optional)</label>
+          <input id="addPlayerNick" type="text" class="add-player-input" placeholder="Kato" autocomplete="off">
+        </div>
+        <div>
+          <label class="add-player-label">Class</label>
+          <select id="addPlayerClass" class="add-player-input" onchange="addPlayerClassChanged()">
+            <option value="">-- Select class --</option>
+          </select>
+        </div>
+        <div>
+          <label class="add-player-label">Spec</label>
+          <select id="addPlayerSpec" class="add-player-input">
+            <option value="">-- Select spec --</option>
+          </select>
+        </div>
+        <div>
+          <label class="add-player-label">Role</label>
+          <select id="addPlayerRole" class="add-player-input">
+            <option value="Tank">Tank</option>
+            <option value="Heal">Heal</option>
+            <option value="Melee" selected>Melee</option>
+            <option value="Ranged">Ranged</option>
+          </select>
+        </div>
+        <div>
+          <label class="add-player-label">Join Date</label>
+          <input id="addPlayerJoinDate" type="date" class="add-player-input">
+        </div>
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.2rem;">
+          <input id="addPlayerTrial" type="checkbox" style="width:auto;accent-color:var(--gold);">
+          <label style="font-size:0.92rem;color:var(--text-muted);letter-spacing:0.06em;">Mark as Trial</label>
+        </div>
+      </div>
+      <p id="addPlayerError" style="display:none;font-size:0.88rem;color:var(--melee);margin-top:0.25rem;"></p>
+      <div class="prompt-buttons" style="margin-top:0.5rem;">
+        <button class="btn btn-gold" onclick="submitAddPlayer()">Add Player</button>
+        <button class="btn btn-muted" onclick="hideAddPlayerModal()">Cancel</button>
       </div>
     </div>
   </div>
-  <div class="footer">We Go Again &middot; Team Phoenix &middot; v<span id="versionNum"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
-</div>
 
-<!-- Add Player modal -->
-<div id="addPlayerModal" class="officer-prompt">
-  <div class="officer-prompt-box" style="max-width:400px;">
-    <h2>Add Player</h2>
-    <div style="display:flex;flex-direction:column;gap:0.6rem;">
-      <div>
-        <label class="add-player-label">Character Name</label>
-        <input id="addPlayerName" type="text" class="add-player-input" placeholder="Katorri" autocomplete="off">
+  <!-- Officer password prompt -->
+  <div id="officerPrompt" class="officer-prompt">
+    <div class="officer-prompt-box">
+      <h2>Officer Access</h2>
+      <input id="officerPassword" type="password" placeholder="Password"
+        onkeydown="if(event.key==='Enter')submitOfficerPassword();" />
+      <p id="officerError" style="display:none;font-size:0.88rem;color:var(--melee);">Incorrect password</p>
+      <div class="prompt-buttons">
+        <button class="btn btn-gold" onclick="submitOfficerPassword()">Enter</button>
+        <a href="index.html" class="btn btn-muted">Cancel</a>
       </div>
-      <div style="position:relative;">
-        <label class="add-player-label">Realm</label>
-        <input id="addPlayerRealm" type="text" class="add-player-input" placeholder="Barthilas" autocomplete="off">
-        <div id="addPlayerRealmDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:160px;overflow-y:auto;background:var(--bg-elevated);border:1px solid var(--border-mid);border-top:none;border-radius:0 0 3px 3px;z-index:200;"></div>
-      </div>
-      <div>
-        <label class="add-player-label">Nickname (optional)</label>
-        <input id="addPlayerNick" type="text" class="add-player-input" placeholder="Kato" autocomplete="off">
-      </div>
-      <div>
-        <label class="add-player-label">Class</label>
-        <select id="addPlayerClass" class="add-player-input" onchange="addPlayerClassChanged()">
-          <option value="">-- Select class --</option>
-        </select>
-      </div>
-      <div>
-        <label class="add-player-label">Spec</label>
-        <select id="addPlayerSpec" class="add-player-input">
-          <option value="">-- Select spec --</option>
-        </select>
-      </div>
-      <div>
-        <label class="add-player-label">Role</label>
-        <select id="addPlayerRole" class="add-player-input">
-          <option value="Tank">Tank</option>
-          <option value="Heal">Heal</option>
-          <option value="Melee" selected>Melee</option>
-          <option value="Ranged">Ranged</option>
-        </select>
-      </div>
-      <div>
-        <label class="add-player-label">Join Date</label>
-        <input id="addPlayerJoinDate" type="date" class="add-player-input">
-      </div>
-      <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.2rem;">
-        <input id="addPlayerTrial" type="checkbox" style="width:auto;accent-color:var(--gold);">
-        <label style="font-size:0.92rem;color:var(--text-muted);letter-spacing:0.06em;">Mark as Trial</label>
-      </div>
-    </div>
-    <p id="addPlayerError" style="display:none;font-size:0.88rem;color:var(--melee);margin-top:0.25rem;"></p>
-    <div class="prompt-buttons" style="margin-top:0.5rem;">
-      <button class="btn btn-gold" onclick="submitAddPlayer()">Add Player</button>
-      <button class="btn btn-muted" onclick="hideAddPlayerModal()">Cancel</button>
     </div>
   </div>
-</div>
 
-<!-- Officer password prompt -->
-<div id="officerPrompt" class="officer-prompt">
-  <div class="officer-prompt-box">
-    <h2>Officer Access</h2>
-    <input id="officerPassword" type="password" placeholder="Password"
-      onkeydown="if(event.key==='Enter')submitOfficerPassword();" />
-    <p id="officerError" style="display:none;font-size:0.88rem;color:var(--melee);">Incorrect password</p>
-    <div class="prompt-buttons">
-      <button class="btn btn-gold" onclick="submitOfficerPassword()">Enter</button>
-      <a href="index.html" class="btn btn-muted">Cancel</a>
-    </div>
-  </div>
-</div>
-
-<script src="js/common.js"></script>
-<script src="js/officer.js"></script>
-<script src="js/tabs/tab-roster.js"></script>
-<script src="js/tabs/tab-conflicts.js"></script>
-<script src="js/tabs/tab-fairness.js"></script>
-<script src="js/tabs/tab-attendance.js"></script>
-<script src="js/tabs/tab-signups.js"></script>
-<script src="js/tabs/tab-requests.js"></script>
-<script src="js/tabs/tab-bis.js"></script>
-<script src="js/tabs/tab-pending-roster.js"></script>
-<script src="js/tabs/tab-mplus.js"></script>
-<script src="js/tabs/tab-priority.js"></script>
-<script src="js/tabs/tab-audit.js"></script>
-<script src="js/tabs/tab-season.js"></script>
-<script src="js/tabs/tab-loot-import.js"></script>
-<script>document.getElementById('versionNum').textContent = VERSION;</script>
+  <script src="js/common.js"></script>
+  <script src="js/officer.js"></script>
+  <script src="js/tabs/tab-roster.js"></script>
+  <script src="js/tabs/tab-conflicts.js"></script>
+  <script src="js/tabs/tab-fairness.js"></script>
+  <script src="js/tabs/tab-attendance.js"></script>
+  <script src="js/tabs/tab-signups.js"></script>
+  <script src="js/tabs/tab-requests.js"></script>
+  <script src="js/tabs/tab-bis.js"></script>
+  <script src="js/tabs/tab-pending-roster.js"></script>
+  <script src="js/tabs/tab-mplus.js"></script>
+  <script src="js/tabs/tab-priority.js"></script>
+  <script src="js/tabs/tab-audit.js"></script>
+  <script src="js/tabs/tab-season.js"></script>
+  <script src="js/tabs/tab-loot-import.js"></script>
+  <script>document.getElementById('versionNum').textContent = VERSION;</script>
 </body>
+
 </html>

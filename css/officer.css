@@ -1,1 +1,86 @@
 /* Officer-only styles will be migrated here from styles.css in a follow-up pass. */
+
+/* ── Stat card difficulty cycle badge ──────────────────────────────────────── */
+.stat-diff-cycle {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.5rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  border: 1px solid var(--gold-dim);
+  background: rgba(214,163,68,0.08);
+  color: var(--gold-light);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.stat-diff-cycle:hover { background: rgba(214,163,68,0.18); }
+
+/* ── Stat card tooltips ────────────────────────────────────────────────────── */
+.stat-card[data-tip] { position: relative; cursor: default; }
+.stat-card[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
+  border-radius: 4px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 50;
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 0.03em;
+  text-transform: none;
+  font-weight: 400;
+}
+.stat-card[data-tip]:hover::after { opacity: 1; }
+
+/* ── Inline help tips ──────────────────────────────────────────────────────── */
+.help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3em;
+  height: 1.3em;
+  border-radius: 50%;
+  border: 1px solid var(--border-mid);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  vertical-align: middle;
+  margin-left: 0.4rem;
+  line-height: 1;
+  transition: border-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.help-btn:hover { border-color: var(--gold-dim); color: var(--gold-light); }
+.help-tip {
+  display: none;
+  margin-top: 0.65rem;
+  padding: 0.7rem 0.9rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border-mid);
+  border-left: 2px solid var(--gold-dim);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+.help-tip.open { display: block; }
+.help-tip ul { padding-left: 1.25rem; margin: 0.35rem 0 0; }
+.help-tip li { margin-bottom: 0.25rem; }
+.help-tip strong { color: var(--text); }

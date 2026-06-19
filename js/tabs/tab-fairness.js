@@ -44,7 +44,13 @@ function buildFairness() {
     grouped[roleOrder[r]].sort(function(a,b) { return b.count - a.count; });
   }
 
-  var html = '';
+  var html = '<div style="display:flex;align-items:center;margin-bottom:0.75rem;">' +
+    '<span class="section-label" style="margin-bottom:0;">Loot Fairness<button class="help-btn" onclick="toggleHelp(\'help-loot-fairness\')" title="Show help">?</button></span>' +
+    '</div>' +
+    '<div id="help-loot-fairness" class="help-tip" style="margin-top:0;margin-bottom:0.75rem;">' +
+    'Shows how many items each raider has received, grouped by role and sorted from most to fewest. The vertical line marks the raid average for the selected difficulty.<br>' +
+    'Use the <strong>All / Heroic / Mythic</strong> difficulty filter above to scope the view. Use this alongside Contested Items to inform priority decisions for contested loot.' +
+    '</div>';
   for (var r = 0; r < roleOrder.length; r++) {
     var role    = roleOrder[r];
     var players = grouped[role];

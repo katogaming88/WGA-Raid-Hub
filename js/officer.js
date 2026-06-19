@@ -4,6 +4,11 @@ var selectedOfficerPlayer = null;
 var activeFilters         = {};
 var activeSort            = { key: null, dir: 1 };
 
+function toggleHelp(id) {
+  var el = document.getElementById(id);
+  if (el) el.classList.toggle('open');
+}
+
 function showView(name) {
   document.getElementById('loadingMsg').style.display = 'none';
   if (name === 'officer') document.getElementById('officerViewWrap').classList.add('active');

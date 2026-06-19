@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.14.1] - 2026-06-19
+
+### Added
+- Contextual help tips on the officer dashboard: every major tab and sub-tab now has a `?` button that toggles an inline tip panel explaining the workflow. Covered sections: Roster, Priority, all four Loot sub-tabs (Import, Import History, Contested Items, Loot Fairness), Attendance, Signups, BiS Submissions, M+ Exclusions, Received Item Requests, and Season Settings (which also includes the full season reset checklist).
+- Stat card hover tooltips: hovering any of the four summary cards at the top of the officer dashboard shows a short description of what the number counts.
+- Items Distributed stat card now has a difficulty filter badge (All / Heroic / Mythic) in its top-right corner. Clicking it cycles through the three views without affecting card height or layout.
+
+---
+
 ## [2.14.0] - 2026-06-19
 
 ### Added

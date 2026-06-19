@@ -17,7 +17,13 @@ function buildConflicts() {
 
   var sorted = Object.keys(itemMap).sort(function(a,b) { return itemMap[b].length - itemMap[a].length; });
 
-  var html = '';
+  var html = '<div style="display:flex;align-items:center;margin-bottom:0.75rem;">' +
+    '<span class="section-label" style="margin-bottom:0;">Contested Items<button class="help-btn" onclick="toggleHelp(\'help-loot-conflicts\')" title="Show help">?</button></span>' +
+    '</div>' +
+    '<div id="help-loot-conflicts" class="help-tip" style="margin-top:0;margin-bottom:0.75rem;">' +
+    'Items that appear in two or more players\' BiS lists, sorted by how many players want them.<br>' +
+    'Each card shows the players who want the item and their current priority rank (if assigned). Items with no priority set yet also appear in <strong>Unmanaged Items</strong> on the Priority tab.' +
+    '</div>';
   for (var i = 0; i < sorted.length; i++) {
     var item    = sorted[i];
     var players = itemMap[item];
