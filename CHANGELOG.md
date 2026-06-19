@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.14.0] - 2026-06-19
+
+### Added
+- Officers can now edit a player's class, spec, and character name/realm directly from the player profile in the officer dashboard, without needing to delete and re-add the player. Class and spec save on dropdown change; name/realm changes require a Save button. Renaming a player migrates their officer notes to the new key automatically. All three changes are written to the audit log.
+
+---
+
 ## [2.13.4] - 2026-06-19
 
 ### Added

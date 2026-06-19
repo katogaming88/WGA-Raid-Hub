@@ -412,6 +412,59 @@ function saveJoinDate(nameRealm, firstName) {
   savePlayerField(nameRealm, firstName, 'joinDate', input.value);
 }
 
+function officerUpdateClass(nameRealm, firstName, newClass) {
+  savePlayerField(nameRealm, firstName, 'class', newClass);
+  var specSel = document.getElementById('specSelect-' + firstName);
+  if (!specSel) return;
+  specSel.innerHTML = '<option value="">-- Select spec --</option>';
+  if (newClass && CLASS_SPECS[newClass]) {
+    var specs = CLASS_SPECS[newClass].specs;
+    for (var i = 0; i < specs.length; i++) {
+      var opt = document.createElement('option');
+      opt.value = specs[i];
+      opt.textContent = specs[i];
+      specSel.appendChild(opt);
+    }
+  }
+}
+
+function officerRenamePlayer(nameRealm, firstName) {
+  var nameInput = document.getElementById('editNameInput-' + firstName);
+  var realmSel  = document.getElementById('editRealmSelect-' + firstName);
+  if (!nameInput || !realmSel) return;
+  var newName  = nameInput.value.trim();
+  var newRealm = realmSel.value;
+  if (!newName || !newRealm) return;
+  var newNameRealm = newName + '-' + newRealm;
+  if (newNameRealm.toLowerCase() === nameRealm.toLowerCase()) return;
+  var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
+  if (msgEl) msgEl.textContent = 'Saving...';
+  var cbName = '_renameCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
+  window[cbName] = function(result) {
+    delete window[cbName];
+    if (result && result.success && DATA) {
+      var player = DATA.roster.find(function(p) { return p.nameRealm === nameRealm; });
+      if (player) {
+        player.nameRealm = newNameRealm;
+        player.firstName = newName;
+        player.realm     = newRealm;
+      }
+      selectedOfficerPlayer = null;
+      var inlineRow = document.getElementById('inlineProfileRow');
+      if (inlineRow) inlineRow.remove();
+      buildRosterTable();
+    }
+    if (msgEl) {
+      msgEl.textContent = result && result.error ? 'Failed to save.' : 'Saved.';
+      setTimeout(function() { if (msgEl) msgEl.textContent = ''; }, 2000);
+    }
+  };
+  var script = document.createElement('script');
+  script.onerror = function() { delete window[cbName]; if (msgEl) msgEl.textContent = 'Failed to save.'; };
+  script.src = WEB_APP_URL + '?action=renamePlayer&data=' + encodeURIComponent(JSON.stringify({ oldNameRealm: nameRealm, newNameRealm: newNameRealm })) + '&callback=' + cbName;
+  document.head.appendChild(script);
+}
+
 function togglePlayerTrial(nameRealm, firstName) {
   var player = DATA && DATA.roster.find(function(p) { return p.nameRealm === nameRealm; });
   if (!player) return;
