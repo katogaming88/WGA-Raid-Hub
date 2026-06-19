@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.15.2] - 2026-06-19
+
+### Changed
+- Attendance trend display changed from coloured dots to a **sparkline** (SVG line chart). Each of the last 12 raid nights is a coloured dot connected by a line -- high = Present, low = No Show, with Bench/Excused/Medical Leave in between. Hovering a dot shows the exact date and status. Legend below labels any statuses present. Closes #42.
+
+---
+
 ## [2.15.0] - 2026-06-19
 
 ### Added

@@ -1,5 +1,5 @@
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION = '2.15.0';
+var VERSION = '2.15.2';
 var DATA = null;
 
 var WOW_REALMS = [
@@ -114,12 +114,13 @@ function loadData(onCoreReady, onHeavyReady) {
     window._rosterHeavyCallback = function (heavy) {
       delete window._rosterHeavyCallback;
       if (!heavy || heavy.error) return;
-      DATA.lootCounts        = heavy.lootCounts;
-      DATA.attendanceDetails = heavy.attendanceDetails;
-      DATA.bisList           = heavy.bisList;
-      DATA.priorityOrder     = heavy.priorityOrder;
-      DATA.itemSlots         = heavy.itemSlots;
-      DATA.selfReceived      = heavy.selfReceived;
+      DATA.lootCounts              = heavy.lootCounts;
+      DATA.attendanceDetails       = heavy.attendanceDetails;
+      DATA.recentAttendanceTrend   = heavy.recentAttendanceTrend;
+      DATA.bisList                 = heavy.bisList;
+      DATA.priorityOrder           = heavy.priorityOrder;
+      DATA.itemSlots               = heavy.itemSlots;
+      DATA.selfReceived            = heavy.selfReceived;
       if (onHeavyReady) onHeavyReady();
     };
     heavyScript.src = WEB_APP_URL + '?chunk=heavy&callback=_rosterHeavyCallback';
@@ -229,6 +230,65 @@ function getSlotColor(slot) {
 }
 
 function attendColor(pct) { return pct >= 95 ? 'var(--heal)' : pct >= 75 ? 'var(--gold)' : 'var(--melee)'; }
+
+function attendTrendColor(status) {
+  if (status === 'Present')       return '#52b788';
+  if (status === 'Bench')         return '#7EC8E3';
+  if (status === 'Excused')       return '#d4a843';
+  if (status === 'Medical Leave') return '#A8DADC';
+  if (status === 'No Show')       return '#e05252';
+  return '#555';
+}
+
+function attendTrendValue(status) {
+  if (status === 'Present')       return 1.0;
+  if (status === 'Bench')         return 0.85;
+  if (status === 'Medical Leave') return 0.7;
+  if (status === 'Excused')       return 0.5;
+  if (status === 'No Show')       return 0.0;
+  return 0.5;
+}
+
+function renderAttendTrend(firstName) {
+  var trend = (DATA.recentAttendanceTrend || {})[firstName];
+  if (!trend || !trend.length) return '';
+
+  var nights = trend.slice().reverse(); // oldest left, newest right
+  var n  = nights.length;
+  var W  = 200, H = 40, PAD = 5, R = 3.5;
+
+  var points = [];
+  for (var i = 0; i < n; i++) {
+    var x = n === 1 ? W / 2 : PAD + (i / (n - 1)) * (W - PAD * 2);
+    var y = PAD + (1 - attendTrendValue(nights[i].status)) * (H - PAD * 2);
+    points.push({ x: x, y: y, status: nights[i].status, date: nights[i].date });
+  }
+
+  var lineStr = points.map(function(p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ');
+
+  var svg = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" style="display:block;margin-top:0.75rem;overflow:visible;">';
+  svg += '<polyline points="' + lineStr + '" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>';
+  for (var i = 0; i < points.length; i++) {
+    var p = points[i];
+    svg += '<g><circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + R + '" fill="' + attendTrendColor(p.status) + '"/><title>' + p.date + ' – ' + p.status + '</title></g>';
+  }
+  svg += '</svg>';
+
+  // Legend: only statuses that appear
+  var seen = {}, legendItems = [];
+  for (var i = 0; i < nights.length; i++) {
+    var s = nights[i].status;
+    if (!seen[s]) { seen[s] = true; legendItems.push(s); }
+  }
+  var legend = '<div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.3rem;">';
+  for (var i = 0; i < legendItems.length; i++) {
+    var s = legendItems[i];
+    legend += '<span style="font-size:0.78rem;color:var(--text-muted);display:flex;align-items:center;gap:3px;"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + attendTrendColor(s) + ';"></span>' + s + '</span>';
+  }
+  legend += '</div>';
+
+  return svg + legend;
+}
 
 function formatJoinDate(dateStr) {
   if (!dateStr) return '';
@@ -821,6 +881,7 @@ function renderProfile(firstName, backTo, container) {
       : (hasPenalties ? '<span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span>' : '')) +
     '</div>' +
     '<div class="attend-row"><div class="attend-bar-wrap"><div class="attend-bar" style="width:' + barWidth + '"></div></div><span class="attend-label">' + attendPct + '</span></div>' +
+    renderAttendTrend(player.firstName) +
     (backTo === 'officer'
       ? '<div id="attend-history-' + player.firstName + '" style="display:none;margin-top:0.6rem;"></div>'
       : attendExtra) +
