@@ -24,7 +24,7 @@ Performance fixes and officer dashboard completions that don't require new infra
 Public-facing and raider-visible features that don't require login.
 
 - [ ] Boss progression tracker on the landing page -- officers set farm/progression/not yet reached status per boss; first-kill dates for farm bosses (#80)
-- [ ] Attendance trend on the character page -- recent-weeks indicator so raiders can self-monitor (#42)
+- [x] Attendance trend on the character page -- row of coloured dots for the last 8 raid nights on the public profile, visible by default; green/blue/yellow/teal/red for each status (#42)
 
 ---
 
