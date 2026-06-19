@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.14.2] - 2026-06-19
+
+### Added
+- Dedicated **Help tab** in the officer dashboard sidebar with a full workflow reference. Six step-by-step guides cover: importing RCLootCouncil loot history, refreshing attendance from WCL, manually editing attendance status, committing scores to the roster sheet, setting season start date and name, and the complete season reset workflow. Links within the guide jump directly to the relevant tab.
+
+---
+
 ## [2.14.1] - 2026-06-19
 
 ### Added

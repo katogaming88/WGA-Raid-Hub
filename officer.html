@@ -63,6 +63,7 @@
               class="nav-notif nav-notif-abs" id="requestsNavBadge" style="display:none;"></span></button>
           <button class="nav-item" onclick="switchTab('audit')">Audit Log</button>
           <button class="nav-item" onclick="switchTab('season')">Season Settings</button>
+          <button class="nav-item" onclick="switchTab('help')">Help</button>
         </nav>
 
         <div class="officer-main">
@@ -384,6 +385,72 @@
                   style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
                 <button class="btn btn-gold" id="seasonNameSaveBtn" onclick="saveSeasonName()">Save</button>
                 <span id="seasonNameStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Help tab -->
+          <div id="tab-help" class="tab-panel">
+            <div class="help-reference">
+              <h3 class="help-ref-heading">Officer Workflow Reference</h3>
+
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Import RCLootCouncil loot history</h4>
+                <ol class="help-ref-steps">
+                  <li>Confirm <strong>Season Name</strong> is set in <a href="#" onclick="switchTab('season');return false;">Season Settings</a> (e.g. "Season 2"). New entries will be tagged with this label.</li>
+                  <li>In-game, open RCLootCouncil and use its export feature to copy your loot history JSON.</li>
+                  <li>Go to <strong>Loot &gt; Import</strong>, paste the JSON into the text box, and click <strong>Import</strong>.</li>
+                  <li>Duplicate entries are skipped automatically -- you can paste multiple nights at once or re-paste old exports safely.</li>
+                </ol>
+              </div>
+
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Refresh attendance from Warcraft Logs</h4>
+                <ol class="help-ref-steps">
+                  <li>Go to the <strong>Attendance</strong> tab.</li>
+                  <li>Click <strong>Refresh from WCL</strong>. This pulls the latest raid nights from Warcraft Logs and populates the attendance grid.</li>
+                  <li>Select a raid night from the dropdown to review or edit player statuses.</li>
+                </ol>
+              </div>
+
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Manually edit attendance status</h4>
+                <ol class="help-ref-steps">
+                  <li>Go to the <strong>Attendance</strong> tab and select the raid night from the dropdown.</li>
+                  <li>Find the player in the grid and use the status dropdown on their row to set: <em>Present</em>, <em>Bench</em>, <em>Excused</em>, <em>Medical Leave</em>, <em>No Show</em>, or <em>Not on Roster</em>.</li>
+                  <li>The change saves immediately -- a checkmark confirms success.</li>
+                </ol>
+              </div>
+
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Commit attendance scores to the roster sheet</h4>
+                <ol class="help-ref-steps">
+                  <li>After reviewing the attendance grid, click <strong>Commit Scores to Sheet</strong> on the Attendance tab.</li>
+                  <li>Confirm the prompt. This calculates each player's attendance percentage and writes it to the Google Sheet roster.</li>
+                  <li>Run this after any manual edits or a WCL refresh to keep the public roster view up to date.</li>
+                </ol>
+              </div>
+
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Set season start date and season name</h4>
+                <ol class="help-ref-steps">
+                  <li>Go to <a href="#" onclick="switchTab('season');return false;">Season Settings</a>.</li>
+                  <li>Set the <strong>Season Start Date</strong> to the first day of the current raid season. Raids before this date are excluded from attendance scoring.</li>
+                  <li>Set the <strong>Season Name</strong> (e.g. "Season 2"). This label is applied to all future loot imports -- set it before importing loot.</li>
+                </ol>
+              </div>
+
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Season reset workflow</h4>
+                <ol class="help-ref-steps">
+                  <li>Go to <a href="#" onclick="switchTab('season');return false;">Season Settings</a> and update the <strong>Season Start Date</strong> to the new season's first raid day.</li>
+                  <li>Update the <strong>Season Name</strong> (e.g. "Season 2") so new loot imports are tagged correctly.</li>
+                  <li>Go to <strong>Loot &gt; Import History</strong> and click <strong>Clear All Loot History</strong> to remove last season's entries.</li>
+                  <li>Re-import this season's loot via <strong>Loot &gt; Import</strong>.</li>
+                  <li>On the <strong>Attendance</strong> tab, click <strong>Refresh from WCL</strong> to pull the new season's raid nights.</li>
+                  <li>Commit updated scores via <strong>Commit Scores to Sheet</strong>.</li>
+                </ol>
               </div>
 
             </div>

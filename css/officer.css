@@ -84,3 +84,15 @@
 .help-tip ul { padding-left: 1.25rem; margin: 0.35rem 0 0; }
 .help-tip li { margin-bottom: 0.25rem; }
 .help-tip strong { color: var(--text); }
+
+/* ── Help reference tab ─────────────────────────────────────────────────────── */
+.help-reference { display: flex; flex-direction: column; gap: 1rem; max-width: 680px; }
+.help-ref-heading { font-size: 1rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 0.25rem; }
+.help-ref-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; padding: 1rem 1.25rem; }
+.help-ref-title { font-size: 0.95rem; font-weight: 600; color: var(--gold-light); margin: 0 0 0.6rem; }
+.help-ref-steps { margin: 0; padding-left: 1.4rem; color: var(--text-muted); font-size: 0.93rem; line-height: 1.6; }
+.help-ref-steps li { margin-bottom: 0.3rem; }
+.help-ref-steps li:last-child { margin-bottom: 0; }
+.help-ref-steps strong { color: var(--text); }
+.help-ref-steps a { color: var(--gold-dim); }
+.help-ref-steps em { color: var(--text); font-style: normal; }
