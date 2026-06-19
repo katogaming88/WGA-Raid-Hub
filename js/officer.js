@@ -69,14 +69,17 @@ function switchPrioritySubTab(name, btnEl) {
 
 function resetLootSubTab() {
   document.querySelectorAll('[id^="loot-subtab-btn-"]').forEach(function(b) { b.classList.remove('active'); });
-  var defaultBtn = document.getElementById('loot-subtab-btn-conflicts');
+  var defaultBtn = document.getElementById('loot-subtab-btn-import');
   if (defaultBtn) defaultBtn.classList.add('active');
   var subConflicts = document.getElementById('loot-sub-conflicts');
   var subFairness  = document.getElementById('loot-sub-fairness');
   var subImport    = document.getElementById('loot-sub-import');
-  if (subConflicts) subConflicts.style.display = '';
+  var subHistory   = document.getElementById('loot-sub-history');
+  if (subConflicts) subConflicts.style.display = 'none';
   if (subFairness)  subFairness.style.display  = 'none';
-  if (subImport)    subImport.style.display     = 'none';
+  if (subImport)    subImport.style.display     = '';
+  if (subHistory)   subHistory.style.display    = 'none';
+  buildLootImportForm();
 }
 
 function switchLootSubTab(name, btnEl) {
@@ -85,12 +88,15 @@ function switchLootSubTab(name, btnEl) {
   var subConflicts = document.getElementById('loot-sub-conflicts');
   var subFairness  = document.getElementById('loot-sub-fairness');
   var subImport    = document.getElementById('loot-sub-import');
+  var subHistory   = document.getElementById('loot-sub-history');
   if (subConflicts) subConflicts.style.display = name === 'conflicts' ? '' : 'none';
   if (subFairness)  subFairness.style.display  = name === 'fairness'  ? '' : 'none';
   if (subImport)    subImport.style.display     = name === 'import'    ? '' : 'none';
+  if (subHistory)   subHistory.style.display    = name === 'history'   ? '' : 'none';
   if (name === 'conflicts') buildConflicts();
   if (name === 'fairness')  buildFairness();
-  if (name === 'import')    buildLootImportTab();
+  if (name === 'import')    buildLootImportForm();
+  if (name === 'history')   buildLootHistoryTab();
 }
 
 function showOfficerPrompt() {
@@ -217,6 +223,7 @@ if (!isOfficerSessionValid()) {
     function() {
       buildStatsBar();
       buildRosterTable();
+      updateUnmanagedBadge();
     }
   );
 }

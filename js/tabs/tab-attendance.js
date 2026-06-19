@@ -228,9 +228,8 @@ function refreshAttendanceWCL() {
     if (btn) { btn.disabled = false; btn.textContent = 'Refresh from WCL'; }
     if (result && result.success) {
       if (status) {
-        status.textContent = result.mainNights + ' night' + (result.mainNights !== 1 ? 's' : '') + ' found, ' + result.excluded + ' excluded';
+        status.textContent = 'Done: ' + result.mainNights + ' night' + (result.mainNights !== 1 ? 's' : '') + ' found, ' + result.excluded + ' excluded.';
         status.style.color = 'var(--heal)';
-        setTimeout(function() { if (status) status.textContent = ''; }, 6000);
       }
       _attendanceGrid = null;
       loadAttendanceGrid();

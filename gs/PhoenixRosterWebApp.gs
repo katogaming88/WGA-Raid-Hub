@@ -1187,13 +1187,17 @@ function getItemSlots(sheets) {
 }
 
 function getLootCounts(sheets) {
-  const result = {};
+  const result  = {};
+  const seenKeys = new Set(); // cross-source dedup: name|item|date
 
   function normName(str) {
     return String(str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
   }
 
   function addEntry(name, item, difficulty, date) {
+    const key = name + '|' + item.toLowerCase() + '|' + date;
+    if (seenKeys.has(key)) return;
+    seenKeys.add(key);
     if (!result[name]) result[name] = { count: 0, heroicCount: 0, mythicCount: 0, items: [] };
     result[name].count++;
     if (difficulty === 'Heroic') result[name].heroicCount++;
@@ -1201,16 +1205,44 @@ function getLootCounts(sheets) {
     result[name].items.push({ name: item, difficulty: difficulty, date: date });
   }
 
-  // Read from existing Loot Data sheet (IMPORTRANGE source)
+  // Read from Pasted Loot sheet first (RCLC import via officer dashboard) so its
+  // entries take priority when deduplicating against the IMPORTRANGE source below.
+  // Columns: A=Season, B=RCLC ID, C=Player, D=Date, E=Item Name, F=Instance
+  const pastedSheet = sheets[CFG.pastedLootSheet];
+  if (pastedSheet && pastedSheet.getLastRow() >= 2) {
+    const pastedData = pastedSheet.getDataRange().getValues();
+    for (let i = 1; i < pastedData.length; i++) {
+      const row      = pastedData[i];
+      const player   = String(row[2] || '').trim();
+      const rawDate  = row[3];
+      const date     = rawDate instanceof Date
+        ? Utilities.formatDate(rawDate, Session.getScriptTimeZone(), 'MMM d, yyyy')
+        : String(rawDate || '').trim();
+      const item     = String(row[4] || '').trim();
+      const instance = String(row[5] || '').trim();
+      if (!player || !instance) continue;
+
+      const name = normName(player.split('-')[0]);
+      if (!name) continue;
+
+      const diffRaw    = instance.split('-').pop().trim().toLowerCase();
+      const difficulty = diffRaw === 'mythic' ? 'Mythic' : diffRaw === 'heroic' ? 'Heroic' : 'Other';
+
+      addEntry(name, item || 'Unknown Item', difficulty, date);
+    }
+  }
+
+  // Read from Loot Data sheet (IMPORTRANGE source). Entries already seen in
+  // Pasted Loot are skipped automatically via the seenKeys set.
   const sheet = sheets[CFG.lootSheet];
   if (sheet) {
     const data = sheet.getDataRange().getValues();
     for (let i = CFG.lootDataStart - 1; i < data.length; i++) {
       const row      = data[i];
-      const player   = String(row[CFG.lootPlayerCol    - 1] || '').trim();
-      const rawDate  = row[CFG.lootDateCol             - 1];
-      const item     = String(row[3]                        || '').trim().replace(/^\[|\]$/g, ''); // col D, strip brackets
-      const instance = String(row[CFG.lootInstanceCol  - 1] || '').trim();
+      const player   = String(row[CFG.lootPlayerCol   - 1] || '').trim();
+      const rawDate  = row[CFG.lootDateCol            - 1];
+      const item     = String(row[3]                       || '').trim().replace(/^\[|\]$/g, '');
+      const instance = String(row[CFG.lootInstanceCol - 1] || '').trim();
       if (!player || !item) continue;
 
       const name = normName(player.split('-')[0]);
@@ -1223,29 +1255,6 @@ function getLootCounts(sheets) {
         : String(rawDate || '').trim();
 
       addEntry(name, item, difficulty, date);
-    }
-  }
-
-  // Also read from Pasted Loot sheet (imported via officer dashboard)
-  // Columns: A=Season, B=RCLC ID, C=Player, D=Date, E=Item Name, F=Instance
-  const pastedSheet = sheets[CFG.pastedLootSheet];
-  if (pastedSheet && pastedSheet.getLastRow() >= 2) {
-    const pastedData = pastedSheet.getDataRange().getValues();
-    for (let i = 1; i < pastedData.length; i++) { // row 0 is header
-      const row      = pastedData[i];
-      const player   = String(row[2] || '').trim(); // col C
-      const date     = String(row[3] || '').trim(); // col D
-      const item     = String(row[4] || '').trim(); // col E
-      const instance = String(row[5] || '').trim(); // col F
-      if (!player || !instance) continue;
-
-      const name = normName(player.split('-')[0]);
-      if (!name) continue;
-
-      const diffRaw    = instance.split('-').pop().trim().toLowerCase();
-      const difficulty = diffRaw === 'mythic' ? 'Mythic' : diffRaw === 'heroic' ? 'Heroic' : 'Other';
-
-      addEntry(name, item || 'Unknown Item', difficulty, date);
     }
   }
 
@@ -1266,34 +1275,75 @@ function getPastedLootSummary(ss) {
   const sheet = ss.getSheetByName(CFG.pastedLootSheet);
   if (!sheet || sheet.getLastRow() < 2) return { count: 0, lastDate: '' };
   const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
+  let lastTs   = 0;
   let lastDate = '';
   for (let i = 0; i < data.length; i++) {
-    const d = String(data[i][3] || '').trim(); // col D = Date
-    if (d > lastDate) lastDate = d;
+    const raw = data[i][3]; // col D = Date
+    if (raw instanceof Date) {
+      if (raw.getTime() > lastTs) {
+        lastTs   = raw.getTime();
+        lastDate = Utilities.formatDate(raw, Session.getScriptTimeZone(), 'MMM d, yyyy');
+      }
+    } else {
+      const d = String(raw || '').trim();
+      if (d > lastDate) lastDate = d;
+    }
   }
   return { count: data.length, lastDate: lastDate };
 }
 
 function appendLootRowsToSheet(season, rows, ss) {
   const sheet = ensurePastedLootSheet(ss);
+  const tz    = Session.getScriptTimeZone();
 
-  // Build set of existing RCLC IDs (col B) to deduplicate
-  const existingIds = new Set();
+  // Normalize any date value (Date object or "YYYY/MM/DD" / "YYYY-MM-DD" string) to "YYYY-MM-DD".
+  function normDateKey(raw) {
+    if (raw instanceof Date) return Utilities.formatDate(raw, tz, 'yyyy-MM-dd');
+    const s = String(raw || '').trim();
+    const m = s.match(/^(\d{4})[\/\-](\d{2})[\/\-](\d{2})/);
+    return m ? m[1] + '-' + m[2] + '-' + m[3] : s.substring(0, 10);
+  }
+
+  // Parse a date string into a real Date object so setValues() stores a native date cell.
+  // Uses local-date construction (year, month, day) to avoid UTC midnight rollover.
+  function parseDateObj(raw) {
+    const s = String(raw || '').trim();
+    const m = s.match(/^(\d{4})[\/\-](\d{2})[\/\-](\d{2})/);
+    if (m) return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+    return s; // fallback: store as-is
+  }
+
+  // Build dedup sets: RCLC IDs (col B) and composite player|item|instance|date keys
+  const existingIds  = new Set();
+  const existingKeys = new Set();
   if (sheet.getLastRow() >= 2) {
-    const ids = sheet.getRange(2, 2, sheet.getLastRow() - 1, 1).getValues();
-    for (let i = 0; i < ids.length; i++) {
-      const id = String(ids[i][0] || '').trim();
+    const data = sheet.getRange(2, 2, sheet.getLastRow() - 1, 5).getValues(); // cols B-F
+    for (let i = 0; i < data.length; i++) {
+      const id       = String(data[i][0] || '').trim();
+      const player   = String(data[i][1] || '').trim();
+      const dateKey  = normDateKey(data[i][2]);
+      const itemName = String(data[i][3] || '').trim();
+      const instance = String(data[i][4] || '').trim();
       if (id) existingIds.add(id);
+      existingKeys.add(player + '|' + itemName + '|' + instance + '|' + dateKey);
     }
   }
 
   const toWrite = [];
   for (let i = 0; i < rows.length; i++) {
-    const r  = rows[i];
-    const id = String(r.id || '').trim();
-    if (!id || existingIds.has(id)) continue;
-    existingIds.add(id);
-    toWrite.push([season, id, String(r.player || ''), String(r.date || ''), String(r.itemName || ''), String(r.instance || '')]);
+    const r        = rows[i];
+    const id       = String(r.id       || '').trim();
+    const player   = String(r.player   || '').trim();
+    const dateKey  = normDateKey(r.date);
+    const itemName = String(r.itemName || '').trim();
+    const instance = String(r.instance || '').trim();
+    const compKey  = player + '|' + itemName + '|' + instance + '|' + dateKey;
+
+    if ((id && existingIds.has(id)) || existingKeys.has(compKey)) continue;
+
+    if (id) existingIds.add(id);
+    existingKeys.add(compKey);
+    toWrite.push([season, id, player, parseDateObj(r.date), itemName, instance]);
   }
 
   if (toWrite.length > 0) {

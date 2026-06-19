@@ -6,6 +6,35 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.13.4] - 2026-06-19
+
+### Added
+- Loot Import is now its own dedicated sub-tab in the Loot tab, separate from Import History. Import History shows stored entry count, most recent date, and the Clear All action; Import shows only the paste form.
+
+### Fixed
+- "Clear All Loot History" button showed no feedback while the server request was in flight. It now disables and reads "Clearing..." until the response arrives.
+- Unmanaged Items notification badge (sidebar and sub-tab) was always blank on page load because the badge was computed at core-payload-ready time, before the heavy payload (which contains priority and item slot data) had loaded. Badge is now also recomputed when the heavy payload arrives.
+
+---
+
+## [2.13.3] - 2026-06-19
+
+### Fixed
+- Loot dates still showed as raw strings after 2.13.2 because RCLC exports dates as `"2026/06/09"` and `String()` was passed through verbatim. The import frontend now parses `e.date` with `new Date()` and normalises it to `YYYY-MM-DD` before storing, so Google Sheets reliably converts it to a Date object and `Utilities.formatDate` formats both loot sources identically -- enabling cross-source deduplication to work. Existing imported data with bad dates should be cleared via Clear All and re-imported.
+
+---
+
+## [2.13.2] - 2026-06-19
+
+### Fixed
+- Attendance source column incorrectly labeled all players as "Officer" on any re-run of "Refresh from WCL". Root cause: the sheet-reader only preserved the status, not the source, so on rebuild every player with a prior entry was re-tagged Officer regardless of whether the entry originated from WCL or an officer edit. The reader now stores both status and source; sources are preserved faithfully across refreshes.
+- "Refresh from WCL" success message auto-cleared after 6 seconds, leaving no indication the import completed if the officer wasn't watching. The message now stays visible until the next refresh.
+- Loot import duplicated entries when the same RCLC JSON was re-imported (e.g. after clearing addon data and re-exporting, which resets local RCLC entry IDs). Deduplication now uses both the RCLC ID and a composite key (player + item + instance + date) so identical loot is skipped even if the ID changed between exports.
+- Recent loot dates from the RCLC import displayed as raw JavaScript timestamp strings (e.g. "Tue Jun 09 2026 00:00:00 GMT-0400"). Google Sheets auto-converts date strings like `2026/06/09` to Date objects on write; the loot reader now formats them with `Utilities.formatDate` the same way the IMPORTRANGE loot path already did.
+- Loot entries appeared doubled when both the `Loot Data` IMPORTRANGE sheet and the `Pasted Loot` sheet contained the same items. `getLootCounts` now deduplicates across both sources using a `player|item|date` key, reading Pasted Loot first so RCLC-imported entries take precedence.
+
+---
+
 ## [2.13.1] - 2026-06-18
 
 ### Changed
