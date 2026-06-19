@@ -155,7 +155,11 @@ function renderLootHistoryPanel(summary, preservedStatus) {
   var lastDate = summary ? (summary.lastDate || '') : '';
 
   var html = '<div class="signup-officer-panel">';
-  html += '<div class="signup-status-row"><span class="signup-status-label">Imported Loot History</span></div>';
+  html += '<div class="signup-status-row"><span class="signup-status-label">Imported Loot History<button class="help-btn" onclick="toggleHelp(\'help-loot-history\')" title="Show help">?</button></span></div>';
+  html += '<div id="help-loot-history" class="help-tip" style="margin-bottom:0.5rem;">';
+  html += 'Shows the total number of loot entries imported via the Import tab, and the date of the most recent entry.<br>';
+  html += '<strong>Clear All Loot History</strong> removes every imported entry -- use this at a season reset before re-importing the new season\'s loot. It does not affect the Loot Data sheet (IMPORTRANGE source), only the pasted imports.';
+  html += '</div>';
   if (count > 0) {
     html += '<p class="signup-officer-note" style="margin-top:0.35rem;">';
     html += count + ' entries stored.';

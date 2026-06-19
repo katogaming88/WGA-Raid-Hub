@@ -143,14 +143,6 @@
 
           <!-- Priority tab -->
           <div id="tab-priority" class="tab-panel">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
-              <span class="section-label" style="margin-bottom:0;">Priority<button class="help-btn" onclick="toggleHelp('help-priority')" title="Show help">?</button></span>
-            </div>
-            <div id="help-priority" class="help-tip" style="margin-top:0;margin-bottom:0.75rem;">
-              <strong>RCLootCouncil Export String</strong> -- click Generate to build an encoded string from the current priority order and roster. Copy it and paste it into RCLootCouncil in-game to sync loot priorities to your council.<br>
-              <strong>Priority List</strong> -- read-only view of every item's ranked priority order as set in the Priority Order sheet. Use the search box to jump to a specific item.<br>
-              <strong>Unmanaged Items</strong> -- items that appear in players' BiS lists but have no priority order assigned yet in the sheet. The badge count shows how many need attention.
-            </div>
             <div class="prio-export-card">
               <div class="prio-export-header">
                 <span class="prio-export-label">RCLootCouncil Export String</span>
@@ -164,12 +156,18 @@
                 </div>
               </div>
             </div>
-            <div class="filter-bar" style="margin-bottom:1rem;">
+            <div class="filter-bar" style="margin-bottom:0.5rem;">
               <button class="filter-chip active" id="prio-subtab-btn-list"
                 onclick="switchPrioritySubTab('list', this)">Priority List</button>
               <button class="filter-chip" id="prio-subtab-btn-unmanaged"
                 onclick="switchPrioritySubTab('unmanaged', this)">Unmanaged Items <span class="nav-notif"
                   id="prioSubBadge" style="display:none;"></span></button>
+              <button class="help-btn" onclick="toggleHelp('help-priority')" title="Show help">?</button>
+            </div>
+            <div id="help-priority" class="help-tip" style="margin-bottom:0.75rem;">
+              <strong>RCLootCouncil Export String</strong> -- click Generate to build an encoded string from the current priority order and roster. Copy it and paste it into RCLootCouncil in-game to sync loot priorities to your council.<br>
+              <strong>Priority List</strong> -- read-only view of every item's ranked priority order as set in the Priority Order sheet. Use the search box to jump to a specific item.<br>
+              <strong>Unmanaged Items</strong> -- items that appear in players' BiS lists but have no priority order assigned yet in the sheet. The badge count shows how many need attention.
             </div>
             <div id="prio-sub-list">
               <div class="filter-bar" style="margin-bottom:0.75rem;">
