@@ -723,8 +723,8 @@ function renderProfile(firstName, backTo, container) {
       }
     }
     var realmOptHtml = '';
-    for (var ri = 0; ri < REALMS.length; ri++) {
-      realmOptHtml += '<option value="' + REALMS[ri] + '"' + (player.realm === REALMS[ri] ? ' selected' : '') + '>' + REALMS[ri] + '</option>';
+    for (var ri = 0; ri < WOW_REALMS.length; ri++) {
+      realmOptHtml += '<option value="' + WOW_REALMS[ri] + '"' + (player.realm === WOW_REALMS[ri] ? ' selected' : '') + '>' + WOW_REALMS[ri] + '</option>';
     }
     officerActionsHTML =
       '<div class="profile-section">' +
