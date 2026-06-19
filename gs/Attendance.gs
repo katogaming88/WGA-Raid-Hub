@@ -208,9 +208,10 @@ function writeAttendanceToSheet(mainNights, excluded, rosterData) {
       .sort();
 
     for (const firstName of presentRoster) {
-      const key    = `${date}|${firstName}`;
-      const status = existingEntries[key] || 'Present';
-      const source = existingEntries[key] ? 'Officer' : 'WCL';
+      const key      = `${date}|${firstName}`;
+      const existing = existingEntries[key];
+      const status   = existing ? existing.status : 'Present';
+      const source   = existing ? existing.source : 'WCL';
       playerRows.add(mainRows.length + 1);
       mainRows.push([date, firstName, status, source, '', '']);
     }
@@ -219,10 +220,10 @@ function writeAttendanceToSheet(mainNights, excluded, rosterData) {
       const inWCL = [...players].some(p => p.toLowerCase() === firstName.toLowerCase());
       if (inWCL) continue;
       const key           = `${date}|${firstName}`;
-      const officerStatus = existingEntries[key];
-      if (officerStatus) {
+      const officerEntry = existingEntries[key];
+      if (officerEntry) {
         playerRows.add(mainRows.length + 1);
-        mainRows.push([date, firstName, officerStatus, 'Officer', '', '']);
+        mainRows.push([date, firstName, officerEntry.status, officerEntry.source || 'Officer', '', '']);
       } else if (benchSet.has(firstName.toLowerCase())) {
         playerRows.add(mainRows.length + 1);
         mainRows.push([date, firstName, 'Bench', 'Auto (Bench)', '', '']);
@@ -423,7 +424,7 @@ function readExistingAttendance(sheet) {
       continue;
     }
     if (status) {
-      entries[`${date}|${firstName}`] = status;
+      entries[`${date}|${firstName}`] = { status: String(status), source: String(source || 'WCL') };
     }
   }
   return entries;

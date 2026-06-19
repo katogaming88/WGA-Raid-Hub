@@ -90,14 +90,15 @@
           <div id="officerProfile"></div>
         </div>
 
-        <!-- Loot tab (Contested Items + Loot Fairness + Import History sub-tabs) -->
+        <!-- Loot tab (Import + Import History + Contested Items + Loot Fairness sub-tabs) -->
         <div id="tab-loot" class="tab-panel">
           <div class="filter-bar" style="margin-bottom:1rem;">
-            <button class="filter-chip active" id="loot-subtab-btn-conflicts" onclick="switchLootSubTab('conflicts', this)">Contested Items</button>
+            <button class="filter-chip active" id="loot-subtab-btn-import" onclick="switchLootSubTab('import', this)">Import</button>
+            <button class="filter-chip" id="loot-subtab-btn-history" onclick="switchLootSubTab('history', this)">Import History</button>
+            <button class="filter-chip" id="loot-subtab-btn-conflicts" onclick="switchLootSubTab('conflicts', this)">Contested Items</button>
             <button class="filter-chip" id="loot-subtab-btn-fairness" onclick="switchLootSubTab('fairness', this)">Loot Fairness</button>
-            <button class="filter-chip" id="loot-subtab-btn-import" onclick="switchLootSubTab('import', this)">Import History</button>
           </div>
-          <div id="loot-sub-conflicts">
+          <div id="loot-sub-conflicts" style="display:none;">
             <div id="conflictsContent"></div>
           </div>
           <div id="loot-sub-fairness" style="display:none;">
@@ -109,7 +110,8 @@
             </div>
             <div id="fairnessContent"></div>
           </div>
-          <div id="loot-sub-import" style="display:none;"></div>
+          <div id="loot-sub-import"></div>
+          <div id="loot-sub-history" style="display:none;"></div>
         </div>
 
         <!-- Priority tab -->
