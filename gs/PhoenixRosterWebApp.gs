@@ -31,16 +31,18 @@ const CFG = {
   bisDataStart:      3,
 
   // ── Priority Order tab ────────────────────────────────────────────────
-  prioritySheet:     'Priority Order',
-  priorityItemCol:   2,
-  priorityRankStart: 3,
-  priorityDataStart: 2,
+  prioritySheet:         'Priority Order',
+  priorityDifficultyCol: 1,  // A -- Difficulty (Heroic / Mythic)
+  priorityItemCol:       2,
+  priorityRankStart:     3,
+  priorityDataStart:     2,
 
   // ── Item Lookup tab ───────────────────────────────────────────────────
   itemLookupSheet:   'Item Lookup',
   itemNameCol:       1,
   itemSlotCol:       3,
-  itemDataStart:     2,
+  itemBossCol:       5,
+  itemDataStart:     3,
 
   // ── Roster Responses tab ─────────────────────────────────────────
   responsesSheet:    'Roster Responses',
@@ -79,6 +81,9 @@ const CFG = {
 var BOT_BASE_URL = 'http://129.80.178.227:3000';
 var BOT_WEBHOOK_SECRET = 'teamPhoenixPPCBot';
 
+var HAS_HEROIC_MULTIPLIER  = 0.85; // mythic prio penalty for players who already have the heroic version
+var HAS_NEITHER_MULTIPLIER = 1.15; // mythic prio bonus for players who have no version of the item
+
 function sendToBot(path, payload) {
   try {
     var options = {
@@ -107,6 +112,7 @@ function doGet(e) {
     if (action === 'clearCache') {
       cache.remove('rosterCore');
       cache.remove('rosterHeavy');
+      cache.remove('rosterPayload');
       return jsonpResponse(callback, { success: true });
     }
 
@@ -628,6 +634,28 @@ function doGet(e) {
       return jsonpResponse(callback, { success: true });
     }
 
+    if (action === 'generatePriorityOrder') {
+      const itemName   = String(e.parameter.item       || '').trim();
+      const difficulty = String(e.parameter.difficulty || 'Heroic').trim();
+      if (!itemName) return jsonpResponse(callback, { error: 'Missing item' });
+      return jsonpResponse(callback, generatePriorityForItem(itemName, difficulty));
+    }
+
+    if (action === 'savePriorityOrder') {
+      const itemName   = String(e.parameter.item       || '').trim();
+      const difficulty = String(e.parameter.difficulty || 'Heroic').trim();
+      if (!itemName) return jsonpResponse(callback, { error: 'Missing item' });
+      let players = [];
+      try { players = JSON.parse(decodeURIComponent(e.parameter.players || '[]')); } catch (_) { players = []; }
+      if (!Array.isArray(players)) return jsonpResponse(callback, { error: 'Invalid players' });
+      const result = savePriorityOrderForItem(itemName, difficulty, players);
+      if (result.success) {
+        cache.remove('rosterHeavy');
+        appendAuditLog('Priority Order Saved (' + difficulty + ')', itemName, '', players.filter(Boolean).join(', '));
+      }
+      return jsonpResponse(callback, result);
+    }
+
     const chunk = e && e.parameter && e.parameter.chunk;
 
     if (chunk === 'core') {
@@ -851,6 +879,7 @@ function buildHeavyPayload(sheets) {
     priorityOrder:          getPriorityOrder(sheets),
     bisList:                getBisList(sheets),
     itemSlots:              getItemSlots(sheets),
+    itemBosses:             getItemBosses(sheets),
     lootCounts:             getLootCounts(sheets),
     attendanceDetails:      getAttendanceDetails(sheets),
     rawAttendanceData:      getRawAttendanceData(sheets),
@@ -1056,15 +1085,170 @@ function getPriorityOrder(sheets) {
     const itemName = String(row[CFG.priorityItemCol - 1] || '').trim();
     if (!itemName) continue;
 
+    const rawDiff = String(row[CFG.priorityDifficultyCol - 1] || '').trim();
+    const diff    = rawDiff ? rawDiff.toLowerCase() : 'heroic';
+
     const ranked = [];
     for (let c = CFG.priorityRankStart - 1; c < row.length; c++) {
       const val = String(row[c] || '').trim();
       if (val) ranked.push(val.split('-')[0].trim());
     }
-    result[itemName] = ranked;
+    if (!result[itemName]) result[itemName] = {};
+    result[itemName][diff] = ranked;
   }
 
   return result;
+}
+
+function generatePriorityForItem(itemName, difficulty) {
+  const diff = (difficulty || 'Heroic').toLowerCase(); // 'heroic' or 'mythic'
+  const ss   = SpreadsheetApp.getActiveSpreadsheet();
+
+  // BiS players for this item -- returns Name-Realm strings from BiS sheet header row
+  const bisPlayers = getBiSPlayersForItem(ss, itemName);
+  if (bisPlayers.length === 0) return { players: [], warning: 'No BiS players found for this item' };
+
+  // Check who already received this item at each difficulty
+  const recipients = getItemRecipients(ss, itemName);
+
+  // Build role / bench / trial maps using CFG column references (not PriorityGenerator constants,
+  // which point at stale column positions from an older Roster layout)
+  const rosterSheet = ss.getSheetByName(CFG.rosterSheet);
+  const roleMap     = {};
+  const benchSet    = new Set();
+  const trialSet    = new Set();
+
+  if (rosterSheet) {
+    const rData = rosterSheet.getDataRange().getValues();
+    for (let i = CFG.rosterDataStart - 1; i < rData.length; i++) {
+      const nameRealm = String(rData[i][CFG.rosterPlayerCol - 1] || '').trim();
+      if (!nameRealm) continue;
+      const firstName = nameRealm.split('-')[0].trim().toLowerCase();
+      const role      = String(rData[i][CFG.rosterRoleCol    - 1] || '').trim().toLowerCase();
+      const isTrial   = rData[i][CFG.rosterTrialCol - 1] === true;
+      const sortKey   = String(rData[i][CFG.rosterSortKeyCol - 1] || '').trim();
+      const isBench   = String(Math.floor(Number(sortKey) / 1000)) === '6';
+      if (role)    roleMap[firstName] = role;
+      if (isTrial) trialSet.add(firstName);
+      if (isBench) benchSet.add(firstName);
+    }
+  }
+
+  // WCL performance score lives in column E (index 4) of the Scoring sheet
+  const scoringSheet = ss.getSheetByName(CFG.scoringSheet);
+  const scoreMap     = {};
+
+  if (scoringSheet) {
+    const sData = scoringSheet.getDataRange().getValues();
+    for (let i = CFG.scoringDataStart - 1; i < sData.length; i++) {
+      const nameRealm = String(sData[i][CFG.scoringPlayerCol - 1] || '').trim();
+      if (!nameRealm) continue;
+      const firstName = nameRealm.split('-')[0].trim().toLowerCase();
+      const score     = sData[i][4]; // column E -- WCL performance score
+      if (typeof score === 'number' && score > 0) {
+        scoreMap[firstName] = Math.round(score * 10) / 10;
+      }
+    }
+  }
+
+  const ROLE_MULTI = { tank: 0.50, heal: 0.75, melee: 1.0, ranged: 1.0 };
+  const rows = [];
+
+  bisPlayers.forEach(function(player) {
+    const firstNameOrig = player.split('-')[0].trim();
+    const firstName     = firstNameOrig.toLowerCase();
+    // normaliseName strips diacritics so "Twañ" matches "twan" in the recipients sets
+    const firstNameNorm = normaliseName(firstNameOrig);
+
+    // Mythic receipt = fully done with the item, excluded from all prio
+    if (recipients.mythic.has(firstNameNorm)) return;
+    // Heroic receipt = excluded from heroic prio, but still eligible (penalized) for mythic
+    if (diff === 'heroic' && recipients.heroic.has(firstNameNorm)) return;
+
+    const role       = roleMap[firstName]  || '';
+    const rawScore   = scoreMap[firstName] || null;
+    const isBench    = benchSet.has(firstName);
+    const isTrial    = trialSet.has(firstName);
+    const roleMul    = ROLE_MULTI[role] !== undefined ? ROLE_MULTI[role] : 1.0;
+    const isTankHeal = role === 'tank' || role === 'heal';
+    const hasHeroic  = diff === 'mythic' && recipients.heroic.has(firstNameNorm);
+
+    let finalMul    = roleMul;
+    let statusLabel = '';
+    if (isBench && isTankHeal) {
+      finalMul    = roleMul * BENCH_ROLE_MULTIPLIER;
+      statusLabel = 'Bench';
+    } else if (isTrial && isTankHeal) {
+      finalMul    = roleMul * TRIAL_ROLE_MULTIPLIER;
+      statusLabel = 'Trial';
+    } else if (isBench) {
+      finalMul    = BENCH_MULTIPLIER;
+      statusLabel = 'Bench';
+    } else if (isTrial) {
+      finalMul    = TRIAL_MULTIPLIER;
+      statusLabel = 'Trial';
+    }
+
+    if (hasHeroic) {
+      finalMul    = finalMul * HAS_HEROIC_MULTIPLIER;
+      statusLabel = statusLabel ? statusLabel + ', Has Heroic' : 'Has Heroic';
+    }
+
+    const hasNeither = diff === 'mythic' && !recipients.heroic.has(firstNameNorm);
+    if (hasNeither) {
+      finalMul    = finalMul * HAS_NEITHER_MULTIPLIER;
+      statusLabel = statusLabel ? statusLabel + ', No Version' : 'No Version';
+    }
+
+    const weightedTotal = rawScore !== null
+      ? Math.round(rawScore * finalMul * 10) / 10
+      : null;
+
+    rows.push({
+      firstName:     firstNameOrig,
+      weightedTotal: weightedTotal,
+      role:          role,
+      statusLabel:   statusLabel,
+      sortScore:     weightedTotal !== null ? weightedTotal : -1,
+    });
+  });
+
+  rows.sort(function(a, b) { return b.sortScore - a.sortScore; });
+  return { players: rows };
+}
+
+function savePriorityOrderForItem(itemName, difficulty, rankedPlayers) {
+  const diff  = difficulty || 'Heroic';
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.prioritySheet);
+  if (!sheet) return { error: 'Priority Order sheet not found' };
+
+  const data = sheet.getDataRange().getValues();
+  let targetRow = -1;
+
+  for (let i = CFG.priorityDataStart - 1; i < data.length; i++) {
+    const rowDiff = String(data[i][CFG.priorityDifficultyCol - 1] || '').trim();
+    const rowItem = String(data[i][CFG.priorityItemCol        - 1] || '').trim();
+    const diffMatch = rowDiff.toLowerCase() === diff.toLowerCase()
+                   || (!rowDiff && diff.toLowerCase() === 'heroic');
+    if (rowItem.toLowerCase() === itemName.toLowerCase() && diffMatch) {
+      targetRow = i + 1;
+      break;
+    }
+  }
+
+  if (targetRow === -1) {
+    targetRow = Math.max(sheet.getLastRow() + 1, CFG.priorityDataStart);
+    sheet.getRange(targetRow, CFG.priorityDifficultyCol).setValue(diff);
+    sheet.getRange(targetRow, CFG.priorityItemCol).setValue(itemName);
+  }
+
+  const maxRanks = 10;
+  const values   = [];
+  for (let i = 0; i < maxRanks; i++) values.push(String(rankedPlayers[i] || ''));
+  sheet.getRange(targetRow, CFG.priorityRankStart, 1, maxRanks).setValues([values]);
+
+  return { success: true };
 }
 
 function normaliseName(str) {
@@ -1282,6 +1466,83 @@ function getItemSlots(sheets) {
     const name = String(row[CFG.itemNameCol - 1] || '').trim();
     const slot = String(row[CFG.itemSlotCol - 1] || '').trim();
     if (name && slot) result[name] = slot;
+  }
+
+  return result;
+}
+
+function getItemRecipients(ss, itemName) {
+  var heroic   = new Set();
+  var mythic   = new Set();
+  var itemLower = itemName.toLowerCase();
+
+  function normName(str) {
+    return String(str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  }
+  function getDiff(instance) {
+    var d = String(instance || '').split('-').pop().trim().toLowerCase();
+    return d === 'mythic' ? 'mythic' : d === 'heroic' ? 'heroic' : null;
+  }
+
+  var pastedSheet = ss.getSheetByName(CFG.pastedLootSheet);
+  if (pastedSheet && pastedSheet.getLastRow() >= 2) {
+    var pd = pastedSheet.getDataRange().getValues();
+    for (var i = 1; i < pd.length; i++) {
+      var player = normName(String(pd[i][2] || '').split('-')[0]);
+      var item   = String(pd[i][4] || '').trim().toLowerCase();
+      var diff   = getDiff(pd[i][5]);
+      if (player && item === itemLower && diff) {
+        if (diff === 'heroic') heroic.add(player); else mythic.add(player);
+      }
+    }
+  }
+
+  var lootSheet = ss.getSheetByName(CFG.lootSheet);
+  if (lootSheet) {
+    var ld = lootSheet.getDataRange().getValues();
+    for (var i = CFG.lootDataStart - 1; i < ld.length; i++) {
+      var player = normName(String(ld[i][CFG.lootPlayerCol - 1] || '').split('-')[0]);
+      var item   = String(ld[i][3] || '').trim().replace(/^\[|\]$/g, '').toLowerCase();
+      var diff   = getDiff(ld[i][CFG.lootInstanceCol - 1]);
+      if (player && item === itemLower && diff) {
+        if (diff === 'heroic') heroic.add(player); else mythic.add(player);
+      }
+    }
+  }
+
+  // Self Received Requests (officer Mark Received + player self-reports)
+  // Source is prefixed with difficulty: "Heroic: Great Vault" or "Mythic: M+".
+  // Entries without a prefix (legacy) default to mythic.
+  var selfSheet = ss.getSheetByName(CFG.selfReceivedSheet);
+  if (selfSheet && selfSheet.getLastRow() >= 2) {
+    var sd = selfSheet.getDataRange().getValues();
+    for (var i = 1; i < sd.length; i++) {
+      var status = String(sd[i][6] || '').trim();
+      if (status !== 'Approved') continue;
+      var player = normName(String(sd[i][1] || '').split('-')[0]);
+      var item   = String(sd[i][2] || '').trim().toLowerCase();
+      var source = String(sd[i][4] || '').trim().toLowerCase();
+      if (!player || item !== itemLower) continue;
+      if (source.indexOf('heroic:') === 0) { heroic.add(player); }
+      else { mythic.add(player); }
+    }
+  }
+
+  return { heroic: heroic, mythic: mythic };
+}
+
+function getItemBosses(sheets) {
+  const sheet = sheets[CFG.itemLookupSheet];
+  if (!sheet) return {};
+
+  const data   = sheet.getDataRange().getValues();
+  const result = {};
+
+  for (let i = CFG.itemDataStart - 1; i < data.length; i++) {
+    const row  = data[i];
+    const name = String(row[CFG.itemNameCol  - 1] || '').trim();
+    const boss = String(row[CFG.itemBossCol  - 1] || '').trim();
+    if (name && boss) result[name] = boss;
   }
 
   return result;

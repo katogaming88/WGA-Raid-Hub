@@ -1,5 +1,5 @@
 var WEB_APP_URL   = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION       = '2.16.0';
+var VERSION       = '2.17.0';
 var DATA          = null;
 var ACTIVE_SEASON = null; // null = All Seasons; set by officer.js when a season is selected
 
@@ -122,7 +122,9 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.bisList                 = heavy.bisList;
       DATA.priorityOrder           = heavy.priorityOrder;
       DATA.itemSlots               = heavy.itemSlots;
+      DATA.itemBosses              = heavy.itemBosses || {};
       DATA.selfReceived            = heavy.selfReceived;
+      if (typeof populateBossFilters === 'function') populateBossFilters();
       if (onHeavyReady) onHeavyReady();
     };
     heavyScript.src = WEB_APP_URL + '?chunk=heavy&callback=_rosterHeavyCallback';
@@ -553,7 +555,13 @@ function showSelfReceivedForm(firstName, item, slot, rowId, defaultSource, isOff
   var noteText    = isOfficer ? '' : '<p class="self-received-note">An officer will review and approve this. Once approved it will appear on your profile.</p>';
   var formHtml =
     '<div class="self-received-form-inner" onclick="event.stopPropagation()">' +
-    '<select class="self-received-source" id="src-' + rowId + '">' + opts + '</select>' +
+    '<div style="display:flex;gap:0.5rem;margin-bottom:0.4rem;">' +
+    '<select id="diff-' + rowId + '" class="self-received-source" style="flex:0 0 auto;width:auto;">' +
+    '<option value="Mythic" selected>Mythic</option>' +
+    '<option value="Heroic">Heroic</option>' +
+    '</select>' +
+    '<select class="self-received-source" id="src-' + rowId + '" style="flex:1;">' + opts + '</select>' +
+    '</div>' +
     '<textarea class="self-received-notes" id="notes-' + rowId + '" placeholder="Notes (optional)" rows="2"></textarea>' +
     '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
     '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="event.stopPropagation();' + submitFn + '">' + submitLabel + '</button>' +
@@ -567,9 +575,12 @@ function showSelfReceivedForm(firstName, item, slot, rowId, defaultSource, isOff
 
 function submitSelfReceivedRequest(firstName, item, slot, rowId) {
   var sourceEl = document.getElementById('src-' + rowId);
-  var notesEl = document.getElementById('notes-' + rowId);
+  var notesEl  = document.getElementById('notes-' + rowId);
+  var diffEl   = document.getElementById('diff-' + rowId);
   if (!sourceEl || !sourceEl.value) { if (sourceEl) sourceEl.style.borderColor = 'var(--melee)'; return; }
-  var data = { player: firstName, item: item, slot: slot, source: sourceEl.value, notes: notesEl ? notesEl.value : '' };
+  var diff   = diffEl ? diffEl.value : 'Mythic';
+  var source = diff + ': ' + sourceEl.value;
+  var data = { player: firstName, item: item, slot: slot, source: source, notes: notesEl ? notesEl.value : '' };
   var formEl = document.getElementById('form-' + rowId);
   if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
   var cbName = '_selfRecCb' + rowId.replace(/[^a-zA-Z0-9]/g, '_');
@@ -597,8 +608,10 @@ function submitSelfReceivedRequest(firstName, item, slot, rowId) {
 function submitDirectMarkReceived(firstName, item, slot, rowId) {
   var sourceEl = document.getElementById('src-' + rowId);
   var notesEl  = document.getElementById('notes-' + rowId);
+  var diffEl   = document.getElementById('diff-' + rowId);
   if (!sourceEl || !sourceEl.value) { if (sourceEl) sourceEl.style.borderColor = 'var(--melee)'; return; }
-  var source  = sourceEl.value;
+  var diff   = diffEl ? diffEl.value : 'Mythic';
+  var source = diff + ': ' + sourceEl.value;
   var data    = { player: firstName, item: item, slot: slot, source: source, notes: notesEl ? notesEl.value : '' };
   var formEl  = document.getElementById('form-' + rowId);
   if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Saving...</p>';
@@ -803,6 +816,11 @@ function renderProfile(firstName, backTo, container) {
     rows += isGen ? '<span style="font-size:0.97rem;color:var(--text-dim);min-width:40px;text-align:center;">-</span>' : rankPillHTML(rank);
     rows += '<span class="priority-item-slot" style="color:' + getSlotColor(slot) + ';">' + slot + '</span>';
     rows += '<span class="priority-item-name" style="text-align:right;" title="' + item + '">' + item + '</span>';
+    var defaultSrc  = isGen ? item : '';
+    var isOfficer   = backTo === 'officer';
+    var officerFlag = isOfficer ? 'true' : 'false';
+    var markRecvBtn = '<button class="mark-received-btn" style="font-size:0.78rem;padding:2px 7px;margin-top:2px;" onclick="event.stopPropagation();showSelfReceivedForm(\'' +
+      player.firstName.replace(/'/g, "\\'") + '\',\'' + item.replace(/'/g, "\\'") + '\',\'' + slot.replace(/'/g, "\\'") + '\',\'' + rowId + '\',\'' + defaultSrc.replace(/'/g, "\\'") + '\',' + officerFlag + ')">Mark received</button>';
     if (received) {
       var badges = '';
       for (var rv = 0; rv < received.length; rv++) {
@@ -810,14 +828,11 @@ function renderProfile(firstName, backTo, container) {
         var rv_date = received[rv].date || '';
         badges += '<span class="bis-received-badge">' + (rv_diff ? rv_diff + ' - ' : '') + rv_date + '</span>';
       }
-      rows += '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;">' + badges + '</div>';
+      rows += '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;">' + badges + (isOfficer ? markRecvBtn : '') + '</div>';
     } else if (selfRec) {
-      rows += '<span class="bis-self-received-badge">' + (selfRec.source || 'Self-reported') + '</span>';
+      rows += '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;"><span class="bis-self-received-badge">' + (selfRec.source || 'Self-reported') + '</span>' + (isOfficer ? markRecvBtn : '') + '</div>';
     } else {
-      var defaultSrc  = isGen ? item : '';
-      var officerFlag = backTo === 'officer' ? 'true' : 'false';
-      rows += '<button class="mark-received-btn" onclick="event.stopPropagation();showSelfReceivedForm(\'' +
-        player.firstName.replace(/'/g, "\\'") + '\',\'' + item.replace(/'/g, "\\'") + '\',\'' + slot.replace(/'/g, "\\'") + '\',\'' + rowId + '\',\'' + defaultSrc.replace(/'/g, "\\'") + '\',' + officerFlag + ')">Mark received</button>';
+      rows += markRecvBtn;
     }
     rows += '</div>';
     rows += '<div class="self-received-form" id="form-' + rowId + '" style="display:none;"></div>';

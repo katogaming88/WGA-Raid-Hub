@@ -6,6 +6,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.17.0] - 2026-06-20
+
+### Added
+- **Priority order management** from the officer dashboard. Dedicated Priority tab lists all items from the BiS sheet, split into Heroic and Mythic rows per item. Officers can drag-and-drop reorder, manually add players from the pool, or hit "Suggest Order" to auto-generate a ranked list. Closes #111.
+- **Priority generator** scores eligible players by WCL performance × role multiplier (Tank ×0.50, Heal ×0.75, DPS ×1.00) with bench/trial penalties. Checks three loot sources (Pasted Loot, Loot Data, Self Received Requests) to exclude or penalize players who already have the item.
+- **Heroic/Mythic prio split.** Each item has separate Heroic and Mythic priority rows in the Priority Order sheet (col A = difficulty). The generator handles them independently: heroic loot recipients are excluded from heroic prio and penalized ×0.85 on mythic; players with no version get a ×1.15 bonus on mythic prio; self-received/officer-marked items exclude the player from all prio.
+- **"Mark Mythic received"** button on BiS list items. Players can submit a self-received request; officers can mark directly. Officers always see the button even when a receipt badge is already shown, so upgrading from heroic to mythic can be recorded. Any approved mark (officer or player) now counts as full exclusion from both prio tiers.
+- Diacritic-insensitive name matching in the generator so players with accented names (e.g. Twañ) are correctly matched against loot records.
+
+### Changed
+- Priority generator no longer pads results to exactly 10 players -- the suggested list stops when there are no more eligible players.
+- Priority tab count label no longer shows `/10`; shows the actual ranked count instead.
+- **Unmanaged Items** badge and list now only clear an item once both Heroic and Mythic priorities have been saved. Previously, saving one difficulty removed the item from the unmanaged tab entirely. Partially-configured items now show individual "Set Heroic" / "Set Mythic" buttons for whichever difficulty is still missing.
+- **Priority List** adds a "Hide empty" checkbox to the filter bar. When checked, individual Heroic/Mythic rows with no players assigned are hidden, reducing clutter without affecting rows that have rankings.
+- **Suggest Order** results now display each player's weighted score and status label (e.g. `Score: 6.6 (Has Heroic)`) inline in the ranked list so officers can see the scoring rationale at a glance.
+- A warning box now appears in the priority edit modal when a "Has Heroic" player is ranked above a "No Version" player in the suggested order. The warning updates live as players are reordered and disappears once the ordering is resolved.
+- Fixed a crash (`SyntaxError: missing ) after argument list`) when clicking "Set Priority" or "Edit" on items whose names contain an apostrophe (e.g. "Vaelgor's Final Store"). `encodeURIComponent` does not encode `'`, so it is now explicitly percent-encoded to `%27` before being embedded in onclick handlers.
+
+---
+
 ## [2.16.0] - 2026-06-19
 
 ### Added

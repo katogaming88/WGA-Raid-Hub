@@ -176,16 +176,27 @@
             </div>
             <div id="prio-sub-list">
               <div class="filter-bar" style="margin-bottom:0.75rem;">
-                <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
-                <button class="filter-chip active" id="chip-prio-type">By Type</button>
-                <button class="filter-chip prio-chip-disabled" title="Raid source data not yet available">By
-                  Raid</button>
+                <select id="prioBossFilter" class="roster-search-input" style="width:auto;min-width:160px;margin-bottom:0;"
+                  onchange="buildPriorityTab()">
+                  <option value="">All Bosses</option>
+                </select>
+                <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--text-muted);cursor:pointer;margin-left:4px;">
+                  <input type="checkbox" id="prioHideEmpty" onchange="buildPriorityTab()"> Hide empty
+                </label>
               </div>
               <input type="text" id="prioSearch" class="roster-search-input" placeholder="Search items..."
                 oninput="buildPriorityTab()" style="margin-bottom:1rem;">
               <div id="priorityContent"></div>
             </div>
             <div id="prio-sub-unmanaged" style="display:none;">
+              <div class="filter-bar" style="margin-bottom:0.75rem;">
+                <select id="unmanagedBossFilter" class="roster-search-input" style="width:auto;min-width:160px;margin-bottom:0;"
+                  onchange="buildUnmanagedTab()">
+                  <option value="">All Bosses</option>
+                </select>
+              </div>
+              <input type="text" id="unmanagedSearch" class="roster-search-input" placeholder="Search items..."
+                oninput="buildUnmanagedTab()" style="margin-bottom:1rem;">
               <div id="unmanagedContent"></div>
             </div>
           </div>
@@ -568,6 +579,42 @@
     <div class="footer">We Go Again &middot; Team Phoenix &middot; v<span id="versionNum"></span> &middot; <a
         class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank"
         rel="noopener">Changelog</a></div>
+  </div>
+
+  <!-- Priority Edit modal -->
+  <div id="prioEditModal" class="officer-prompt">
+    <div class="officer-prompt-box prio-edit-box">
+      <div class="prio-edit-header">
+        <span class="prio-edit-title" id="prioEditTitle">Set Priority</span>
+        <span class="prio-item-slot" id="prioEditSlot"></span>
+        <div class="prio-diff-toggle">
+          <button class="filter-chip active" id="prioEditDiffHeroic" onclick="prioEditSwitchDiff('heroic')">Heroic</button>
+          <button class="filter-chip" id="prioEditDiffMythic" onclick="prioEditSwitchDiff('mythic')">Mythic</button>
+        </div>
+      </div>
+      <div class="prio-edit-body">
+        <div class="prio-edit-ranked">
+          <div class="prio-edit-section-label">Priority Order <span id="prioEditCount" style="color:var(--text-dim);font-weight:400;"></span></div>
+          <div id="prioEditList" class="prio-drag-list"></div>
+          <p class="prio-edit-hint">Drag to reorder. Click a player on the right to add.</p>
+        </div>
+        <div class="prio-edit-pool-col">
+          <div class="prio-edit-section-label" id="prioEditPoolLabel">BiS Players</div>
+          <div id="prioEditPool" class="prio-pool-list"></div>
+          <button class="btn btn-muted prio-edit-show-all" id="prioEditShowAllBtn" onclick="prioEditToggleAllRoster()">Show all roster</button>
+        </div>
+      </div>
+      <p id="prioEditError" style="display:none;font-size:0.85rem;color:var(--melee);margin-top:0.25rem;"></p>
+      <div id="prioEditVersionWarning" style="display:none;background:rgba(255,180,0,0.08);border:1px solid rgba(255,180,0,0.35);border-radius:6px;padding:0.6rem 0.85rem;margin-top:0.5rem;font-size:0.83rem;color:var(--gold);line-height:1.45;">
+        <strong>Note:</strong> One or more players with no version of this item are ranked below players who already have the Heroic version. Consider manually moving "No Version" players higher -- they benefit more from the upgrade.
+      </div>
+      <div class="prio-edit-actions">
+        <button class="btn btn-muted" id="prioEditGenBtn" onclick="prioEditGenerate()">Suggest Order</button>
+        <span class="prio-edit-status" id="prioEditStatus"></span>
+        <button class="btn btn-muted" onclick="closePrioEditModal()">Cancel</button>
+        <button class="btn btn-gold" id="prioEditSaveBtn" onclick="prioEditSave()">Save Priority</button>
+      </div>
+    </div>
   </div>
 
   <!-- Add Player modal -->
