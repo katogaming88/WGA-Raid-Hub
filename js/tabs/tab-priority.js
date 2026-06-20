@@ -36,9 +36,9 @@ function copyExportString() {
   });
 }
 
-function _hasAnyRanked(entry) {
+function _isManaged(entry) {
   if (!entry) return false;
-  return (entry.heroic && entry.heroic.length > 0) || (entry.mythic && entry.mythic.length > 0);
+  return ('heroic' in entry) || ('mythic' in entry);
 }
 
 function getUnmanagedItems() {
@@ -48,12 +48,12 @@ function getUnmanagedItems() {
   var result = [];
   Object.keys(prioOrder).forEach(function(item) {
     if ((itemSlots[item] || '').toLowerCase() === 'slot') return;
-    if (!_hasAnyRanked(prioOrder[item])) { seen[item] = true; result.push(item); }
+    if (!_isManaged(prioOrder[item])) { seen[item] = true; result.push(item); }
   });
   Object.keys(itemSlots).forEach(function(item) {
     if (seen[item]) return;
     if ((itemSlots[item] || '').toLowerCase() === 'slot') return;
-    if (!_hasAnyRanked(prioOrder[item])) result.push(item);
+    if (!_isManaged(prioOrder[item])) result.push(item);
   });
   return result.sort(function(a, b) { return a.localeCompare(b); });
 }
@@ -97,7 +97,7 @@ function buildUnmanagedTab() {
   var el = document.getElementById('unmanagedContent');
   if (!el) return;
   if (!items.length) {
-    el.innerHTML = '<p style="color:var(--heal);padding:1rem;">All items have at least one player ranked.</p>';
+    el.innerHTML = '<p style="color:var(--heal);padding:1rem;">All items have been configured.</p>';
     return;
   }
   var groups = { Trinket: [], Armor: {}, Weapon: [], Jewelry: [], Other: [] };
@@ -196,7 +196,7 @@ function buildPriorityTab() {
   var bossFilter     = ((document.getElementById('prioBossFilter') || {}).value || '').toLowerCase();
   var items = Object.keys(prioOrder).filter(function(i) {
     if ((itemSlots[i] || '').toLowerCase() === 'slot') return false;
-    if (!_hasAnyRanked(prioOrder[i])) return false;
+    if (!_isManaged(prioOrder[i])) return false;
     if (prioSearchTerm && normalise(i).indexOf(prioSearchTerm) === -1) return false;
     if (bossFilter && (itemBosses[i] || '').toLowerCase() !== bossFilter) return false;
     return true;
@@ -232,7 +232,7 @@ function buildPriorityTab() {
     for (var d = 0; d < DIFFS.length; d++) {
       var diff   = DIFFS[d];
       var ranked = entry[diff];
-      if (!ranked || !ranked.length) continue;
+      if (ranked === undefined || ranked === null) continue;
       var diffLabel = diff === 'heroic' ? 'Heroic' : 'Mythic';
       out += '<div class="prio-item">';
       out += '<div class="prio-item-header">';
@@ -240,6 +240,12 @@ function buildPriorityTab() {
       out += '<span class="prio-diff-badge prio-diff-' + diff + '">' + diffLabel + '</span>';
       if (slot) out += '<span class="prio-item-slot" style="color:' + getSlotColor(slot) + ';">' + slot + '</span>';
       if (boss) out += '<span class="prio-item-slot" style="color:var(--text-muted);font-size:0.82rem;">' + boss + '</span>';
+      if (!ranked.length) {
+        out += '<span class="prio-item-count" style="color:var(--text-muted);font-style:italic;">Nobody assigned</span>';
+        out += '<button class="btn btn-muted" style="margin-left:auto;font-size:0.8rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' + itemEnc + '\'),\'' + (slot || '') + '\',false,\'' + diff + '\')">Edit</button>';
+        out += '</div></div>';
+        continue;
+      }
       out += '<span class="prio-item-count">' + ranked.length + ' ranked</span>';
       out += '<button class="btn btn-muted" style="margin-left:auto;font-size:0.8rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' + itemEnc + '\'),\'' + (slot || '') + '\',false,\'' + diff + '\')">Edit</button>';
       out += '</div><div class="prio-ranked-list">';
@@ -573,12 +579,6 @@ function prioEditSave() {
   var status  = document.getElementById('prioEditStatus');
   var errEl   = document.getElementById('prioEditError');
   errEl.style.display = 'none';
-
-  if (!PRIO_EDIT.ranked.length) {
-    errEl.textContent   = 'Add at least one player before saving.';
-    errEl.style.display = '';
-    return;
-  }
 
   saveBtn.disabled    = true;
   saveBtn.textContent = 'Saving...';

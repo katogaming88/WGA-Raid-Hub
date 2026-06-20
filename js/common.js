@@ -555,7 +555,13 @@ function showSelfReceivedForm(firstName, item, slot, rowId, defaultSource, isOff
   var noteText    = isOfficer ? '' : '<p class="self-received-note">An officer will review and approve this. Once approved it will appear on your profile.</p>';
   var formHtml =
     '<div class="self-received-form-inner" onclick="event.stopPropagation()">' +
-    '<select class="self-received-source" id="src-' + rowId + '">' + opts + '</select>' +
+    '<div style="display:flex;gap:0.5rem;margin-bottom:0.4rem;">' +
+    '<select id="diff-' + rowId + '" class="self-received-source" style="flex:0 0 auto;width:auto;">' +
+    '<option value="Mythic" selected>Mythic</option>' +
+    '<option value="Heroic">Heroic</option>' +
+    '</select>' +
+    '<select class="self-received-source" id="src-' + rowId + '" style="flex:1;">' + opts + '</select>' +
+    '</div>' +
     '<textarea class="self-received-notes" id="notes-' + rowId + '" placeholder="Notes (optional)" rows="2"></textarea>' +
     '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
     '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="event.stopPropagation();' + submitFn + '">' + submitLabel + '</button>' +
@@ -569,9 +575,12 @@ function showSelfReceivedForm(firstName, item, slot, rowId, defaultSource, isOff
 
 function submitSelfReceivedRequest(firstName, item, slot, rowId) {
   var sourceEl = document.getElementById('src-' + rowId);
-  var notesEl = document.getElementById('notes-' + rowId);
+  var notesEl  = document.getElementById('notes-' + rowId);
+  var diffEl   = document.getElementById('diff-' + rowId);
   if (!sourceEl || !sourceEl.value) { if (sourceEl) sourceEl.style.borderColor = 'var(--melee)'; return; }
-  var data = { player: firstName, item: item, slot: slot, source: sourceEl.value, notes: notesEl ? notesEl.value : '' };
+  var diff   = diffEl ? diffEl.value : 'Mythic';
+  var source = diff + ': ' + sourceEl.value;
+  var data = { player: firstName, item: item, slot: slot, source: source, notes: notesEl ? notesEl.value : '' };
   var formEl = document.getElementById('form-' + rowId);
   if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
   var cbName = '_selfRecCb' + rowId.replace(/[^a-zA-Z0-9]/g, '_');
@@ -599,8 +608,10 @@ function submitSelfReceivedRequest(firstName, item, slot, rowId) {
 function submitDirectMarkReceived(firstName, item, slot, rowId) {
   var sourceEl = document.getElementById('src-' + rowId);
   var notesEl  = document.getElementById('notes-' + rowId);
+  var diffEl   = document.getElementById('diff-' + rowId);
   if (!sourceEl || !sourceEl.value) { if (sourceEl) sourceEl.style.borderColor = 'var(--melee)'; return; }
-  var source  = sourceEl.value;
+  var diff   = diffEl ? diffEl.value : 'Mythic';
+  var source = diff + ': ' + sourceEl.value;
   var data    = { player: firstName, item: item, slot: slot, source: source, notes: notesEl ? notesEl.value : '' };
   var formEl  = document.getElementById('form-' + rowId);
   if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Saving...</p>';
@@ -809,7 +820,7 @@ function renderProfile(firstName, backTo, container) {
     var isOfficer   = backTo === 'officer';
     var officerFlag = isOfficer ? 'true' : 'false';
     var markRecvBtn = '<button class="mark-received-btn" style="font-size:0.78rem;padding:2px 7px;margin-top:2px;" onclick="event.stopPropagation();showSelfReceivedForm(\'' +
-      player.firstName.replace(/'/g, "\\'") + '\',\'' + item.replace(/'/g, "\\'") + '\',\'' + slot.replace(/'/g, "\\'") + '\',\'' + rowId + '\',\'' + defaultSrc.replace(/'/g, "\\'") + '\',' + officerFlag + ')">Mark Mythic received</button>';
+      player.firstName.replace(/'/g, "\\'") + '\',\'' + item.replace(/'/g, "\\'") + '\',\'' + slot.replace(/'/g, "\\'") + '\',\'' + rowId + '\',\'' + defaultSrc.replace(/'/g, "\\'") + '\',' + officerFlag + ')">Mark received</button>';
     if (received) {
       var badges = '';
       for (var rv = 0; rv < received.length; rv++) {

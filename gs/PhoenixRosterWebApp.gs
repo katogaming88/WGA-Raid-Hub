@@ -1511,7 +1511,8 @@ function getItemRecipients(ss, itemName) {
   }
 
   // Self Received Requests (officer Mark Received + player self-reports)
-  // Marking an item received on a BiS list means the player is done with it -- always treat as mythic.
+  // Source is prefixed with difficulty: "Heroic: Great Vault" or "Mythic: M+".
+  // Entries without a prefix (legacy) default to mythic.
   var selfSheet = ss.getSheetByName(CFG.selfReceivedSheet);
   if (selfSheet && selfSheet.getLastRow() >= 2) {
     var sd = selfSheet.getDataRange().getValues();
@@ -1520,8 +1521,10 @@ function getItemRecipients(ss, itemName) {
       if (status !== 'Approved') continue;
       var player = normName(String(sd[i][1] || '').split('-')[0]);
       var item   = String(sd[i][2] || '').trim().toLowerCase();
+      var source = String(sd[i][4] || '').trim().toLowerCase();
       if (!player || item !== itemLower) continue;
-      mythic.add(player);
+      if (source.indexOf('heroic:') === 0) { heroic.add(player); }
+      else { mythic.add(player); }
     }
   }
 
