@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.19.0] - 2026-06-20
+
+### Added
+- **BiS Manager tab** replaces the old BiS Submissions nav item. The tab now has two sub-tabs: Submissions (existing approve/reject workflow, unchanged) and BiS Lists. Closes #128.
+- **BiS Lists sub-tab** shows all roster players grouped by role with their current item count. Clicking Edit on any player opens an inline editor below their row with: a list of their current BiS items (each removable), an item search/autocomplete field sourced from the Item Lookup sheet, and Save/Cancel actions. Saves write back to the BiS List sheet and invalidate the heavy cache.
+- **Armor type filtering** in the BiS editor item search: results are automatically narrowed to items matching the player's armor type (Plate/Mail/Leather/Cloth derived from their class). Universal slots (Neck, Back, Ring, Trinket, Wrist, Cloak) and items with no armor type recorded are always shown regardless of class. Item Lookup col D = Armor Type; col E = Sort ID; col F = Boss.
+
+---
+
 ## [2.18.0] - 2026-06-20
 
 ### Added

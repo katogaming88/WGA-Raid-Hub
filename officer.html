@@ -56,11 +56,11 @@
           <button class="nav-item" onclick="switchTab('loot')">Loot</button>
           <button class="nav-item" onclick="switchTab('priority')">Priority<span class="nav-notif nav-notif-abs"
               id="prioNavBadge" style="display:none;"></span></button>
+          <button class="nav-item" onclick="switchTab('bis')">BiS Manager<span class="nav-notif nav-notif-abs"
+              id="bisNavBadge" style="display:none;"></span></button>
           <button class="nav-item" onclick="switchTab('attendance')">Attendance</button>
           <button class="nav-item" onclick="switchTab('signups')">Signups<span class="nav-notif nav-notif-abs"
               id="signupsNavBadge" style="display:none;"></span></button>
-          <button class="nav-item" onclick="switchTab('bis')">BiS Submissions<span class="nav-notif nav-notif-abs"
-              id="bisNavBadge" style="display:none;"></span></button>
           <button class="nav-item" onclick="switchTab('mplus')">M+ Exclusions<span class="nav-notif nav-notif-abs"
               id="mplusNavBadge" style="display:none;"></span></button>
           <button class="nav-item" onclick="switchTab('requests')">Received Item Requests<span
@@ -201,6 +201,40 @@
             </div>
           </div>
 
+          <!-- BiS Manager tab -->
+          <div id="tab-bis" class="tab-panel">
+            <div class="filter-bar" style="margin-bottom:1rem;">
+              <button class="filter-chip active" id="bis-subtab-btn-submissions" onclick="switchBisSubTab('submissions', this)">Submissions</button>
+              <button class="filter-chip" id="bis-subtab-btn-lists" onclick="switchBisSubTab('lists', this)">BiS Lists</button>
+            </div>
+            <div id="bis-sub-submissions">
+              <div class="signup-officer-panel">
+                <div class="signup-status-row">
+                  <span class="signup-status-label">BiS Submissions<button class="help-btn"
+                      onclick="toggleHelp('help-bis')" title="Show help">?</button></span>
+                  <span class="signup-status-badge signup-status-closed" id="bisStatusBadge">CLOSED</span>
+                </div>
+                <div id="help-bis" class="help-tip">
+                  Open submissions to show the BiS submit form to raiders. Close it when you don't want unsolicited
+                  updates.<br>
+                  To let a specific player submit outside of an open window, use the per-player <strong>Allow BiS
+                    Submit</strong> toggle in their officer profile card on the Roster tab.<br>
+                  <strong>Approve</strong> updates the player's BiS link in the Roster sheet. <strong>Reject</strong>
+                  discards the submission without changing anything.
+                </div>
+                <div style="margin-top:1rem;">
+                  <button class="btn btn-muted" id="bisToggleBtn" onclick="toggleBisSubmissionsOpen()">Open
+                    Submissions</button>
+                </div>
+                <p class="signup-officer-note">Toggling submissions shows or hides the BiS list submit form for raiders.</p>
+              </div>
+              <div id="bisContainer"></div>
+            </div>
+            <div id="bis-sub-lists" style="display:none;">
+              <div id="bis-lists-container"></div>
+            </div>
+          </div>
+
           <!-- Attendance tab -->
           <div id="tab-attendance" class="tab-panel">
             <div class="filter-bar" style="margin-bottom:1rem;">
@@ -323,32 +357,6 @@
               </div>
             </div>
             <div id="requestsContainer"></div>
-          </div>
-
-          <!-- BiS Submissions tab -->
-          <div id="tab-bis" class="tab-panel">
-            <div class="signup-officer-panel">
-              <div class="signup-status-row">
-                <span class="signup-status-label">BiS Submissions<button class="help-btn"
-                    onclick="toggleHelp('help-bis')" title="Show help">?</button></span>
-                <span class="signup-status-badge signup-status-closed" id="bisStatusBadge">CLOSED</span>
-              </div>
-              <div id="help-bis" class="help-tip">
-                Open submissions to show the BiS submit form to raiders. Close it when you don't want unsolicited
-                updates.<br>
-                To let a specific player submit outside of an open window, use the per-player <strong>Allow BiS
-                  Submit</strong> toggle in their officer profile card on the Roster tab.<br>
-                <strong>Approve</strong> updates the player's BiS link in the Roster sheet. <strong>Reject</strong>
-                discards the submission without changing anything.
-              </div>
-              <div style="margin-top:1rem;">
-                <button class="btn btn-muted" id="bisToggleBtn" onclick="toggleBisSubmissionsOpen()">Open
-                  Submissions</button>
-              </div>
-              <p class="signup-officer-note">Toggling submissions shows or hides the BiS list submit form for raiders.
-              </p>
-            </div>
-            <div id="bisContainer"></div>
           </div>
 
           <!-- Audit Log tab -->

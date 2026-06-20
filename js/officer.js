@@ -25,10 +25,31 @@ function switchTab(name) {
   if (name === 'priority')   { resetPrioritySubTab(); buildPriorityTab(); }
   if (name === 'signups')    { resetSignupsSubTab(); buildSignupsTab(); }
   if (name === 'requests')   buildRequestsTab();
-  if (name === 'bis')        buildBisTab();
+  if (name === 'bis')        { resetBisSubTab(); buildBisTab(); }
   if (name === 'mplus')      buildMPlusTab();
   if (name === 'audit')      buildAuditTab();
   if (name === 'season')     buildSeasonTab();
+}
+
+function resetBisSubTab() {
+  document.querySelectorAll('[id^="bis-subtab-btn-"]').forEach(function(b) { b.classList.remove('active'); });
+  var defaultBtn = document.getElementById('bis-subtab-btn-submissions');
+  if (defaultBtn) defaultBtn.classList.add('active');
+  var subSubmissions = document.getElementById('bis-sub-submissions');
+  var subLists       = document.getElementById('bis-sub-lists');
+  if (subSubmissions) subSubmissions.style.display = '';
+  if (subLists)       subLists.style.display       = 'none';
+}
+
+function switchBisSubTab(name, btnEl) {
+  document.querySelectorAll('[id^="bis-subtab-btn-"]').forEach(function(b) { b.classList.remove('active'); });
+  if (btnEl) btnEl.classList.add('active');
+  var subSubmissions = document.getElementById('bis-sub-submissions');
+  var subLists       = document.getElementById('bis-sub-lists');
+  if (subSubmissions) subSubmissions.style.display = name === 'submissions' ? '' : 'none';
+  if (subLists)       subLists.style.display       = name === 'lists'       ? '' : 'none';
+  if (name === 'submissions') buildBisTab();
+  if (name === 'lists')       buildBisListsTab();
 }
 
 function resetSignupsSubTab() {
