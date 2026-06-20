@@ -6,7 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [2.17.0] - 2026-06-19
+## [2.17.0] - 2026-06-20
 
 ### Added
 - **Priority order management** from the officer dashboard. Dedicated Priority tab lists all items from the BiS sheet, split into Heroic and Mythic rows per item. Officers can drag-and-drop reorder, manually add players from the pool, or hit "Suggest Order" to auto-generate a ranked list. Closes #111.
@@ -18,6 +18,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Changed
 - Priority generator no longer pads results to exactly 10 players -- the suggested list stops when there are no more eligible players.
 - Priority tab count label no longer shows `/10`; shows the actual ranked count instead.
+- **Unmanaged Items** badge and list now only clear an item once both Heroic and Mythic priorities have been saved. Previously, saving one difficulty removed the item from the unmanaged tab entirely. Partially-configured items now show individual "Set Heroic" / "Set Mythic" buttons for whichever difficulty is still missing.
+- **Priority List** adds a "Hide empty" checkbox to the filter bar. When checked, individual Heroic/Mythic rows with no players assigned are hidden, reducing clutter without affecting rows that have rankings.
+- **Suggest Order** results now display each player's weighted score and status label (e.g. `Score: 6.6 (Has Heroic)`) inline in the ranked list so officers can see the scoring rationale at a glance.
+- A warning box now appears in the priority edit modal when a "Has Heroic" player is ranked above a "No Version" player in the suggested order. The warning updates live as players are reordered and disappears once the ordering is resolved.
+- Fixed a crash (`SyntaxError: missing ) after argument list`) when clicking "Set Priority" or "Edit" on items whose names contain an apostrophe (e.g. "Vaelgor's Final Store"). `encodeURIComponent` does not encode `'`, so it is now explicitly percent-encoded to `%27` before being embedded in onclick handlers.
 
 ---
 

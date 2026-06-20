@@ -36,9 +36,14 @@ function copyExportString() {
   });
 }
 
-function _isManaged(entry) {
+function _hasAnyPriority(entry) {
   if (!entry) return false;
   return ('heroic' in entry) || ('mythic' in entry);
+}
+
+function _isFullyManaged(entry) {
+  if (!entry) return false;
+  return ('heroic' in entry) && ('mythic' in entry);
 }
 
 function getUnmanagedItems() {
@@ -48,12 +53,12 @@ function getUnmanagedItems() {
   var result = [];
   Object.keys(prioOrder).forEach(function(item) {
     if ((itemSlots[item] || '').toLowerCase() === 'slot') return;
-    if (!_isManaged(prioOrder[item])) { seen[item] = true; result.push(item); }
+    if (!_isFullyManaged(prioOrder[item])) { seen[item] = true; result.push(item); }
   });
   Object.keys(itemSlots).forEach(function(item) {
     if (seen[item]) return;
     if ((itemSlots[item] || '').toLowerCase() === 'slot') return;
-    if (!_isManaged(prioOrder[item])) result.push(item);
+    if (!_isFullyManaged(prioOrder[item])) result.push(item);
   });
   return result.sort(function(a, b) { return a.localeCompare(b); });
 }
@@ -151,15 +156,21 @@ function buildUnmanagedTab() {
 }
 
 function renderUnmanagedItem(item, slot) {
-  var boss    = (DATA.itemBosses || {})[item] || '';
-  var itemEnc = encodeURIComponent(item);
+  var boss     = (DATA.itemBosses || {})[item] || '';
+  var itemEnc  = encodeURIComponent(item).replace(/'/g, '%27');
+  var entry    = (DATA.priorityOrder || {})[item] || {};
+  var hasHeroic = 'heroic' in entry;
+  var hasMythic = 'mythic' in entry;
   var out = '<div class="prio-item">';
   out += '<div class="prio-item-header">';
   out += '<span class="prio-item-name">' + item + '</span>';
   if (slot) out += '<span class="prio-item-slot" style="color:' + getSlotColor(slot) + ';">' + slot + '</span>';
   if (boss) out += '<span class="prio-item-slot" style="color:var(--text-muted);font-size:0.82rem;">' + boss + '</span>';
-  out += '<span class="prio-item-count" style="color:#c0392b;">No rankings</span>';
-  out += '<button class="btn btn-muted" style="margin-left:auto;font-size:0.8rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' + itemEnc + '\'),\'' + (slot || '') + '\',true,\'heroic\')">Set Priority</button>';
+  out += '<span class="prio-item-count" style="color:#c0392b;">' + (!hasHeroic && !hasMythic ? 'No rankings' : 'Incomplete') + '</span>';
+  out += '<span style="margin-left:auto;display:flex;gap:6px;">';
+  if (!hasHeroic) out += '<button class="btn btn-muted" style="font-size:0.8rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' + itemEnc + '\'),\'' + (slot || '') + '\',true,\'heroic\')">Set Heroic</button>';
+  if (!hasMythic) out += '<button class="btn btn-muted" style="font-size:0.8rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' + itemEnc + '\'),\'' + (slot || '') + '\',true,\'mythic\')">Set Mythic</button>';
+  out += '</span>';
   out += '</div></div>';
   return out;
 }
@@ -194,9 +205,10 @@ function buildPriorityTab() {
 
   var prioSearchTerm = normalise((document.getElementById('prioSearch')      || {}).value || '');
   var bossFilter     = ((document.getElementById('prioBossFilter') || {}).value || '').toLowerCase();
+  var hideEmpty      = !!(document.getElementById('prioHideEmpty') || {}).checked;
   var items = Object.keys(prioOrder).filter(function(i) {
     if ((itemSlots[i] || '').toLowerCase() === 'slot') return false;
-    if (!_isManaged(prioOrder[i])) return false;
+    if (!_hasAnyPriority(prioOrder[i])) return false;
     if (prioSearchTerm && normalise(i).indexOf(prioSearchTerm) === -1) return false;
     if (bossFilter && (itemBosses[i] || '').toLowerCase() !== bossFilter) return false;
     return true;
@@ -226,13 +238,14 @@ function buildPriorityTab() {
     if (!entry) return '';
     var slot    = itemSlots[item]  || '';
     var boss    = itemBosses[item] || '';
-    var itemEnc = encodeURIComponent(item);
+    var itemEnc = encodeURIComponent(item).replace(/'/g, '%27');
     var out     = '';
     var DIFFS   = ['heroic', 'mythic'];
     for (var d = 0; d < DIFFS.length; d++) {
       var diff   = DIFFS[d];
       var ranked = entry[diff];
       if (ranked === undefined || ranked === null) continue;
+      if (hideEmpty && !ranked.length) continue;
       var diffLabel = diff === 'heroic' ? 'Heroic' : 'Mythic';
       out += '<div class="prio-item">';
       out += '<div class="prio-item-header">';
@@ -307,7 +320,7 @@ function buildPriorityTab() {
 
 // -- Priority Edit Modal --
 
-var PRIO_EDIT = { item: '', slot: '', difficulty: 'Heroic', ranked: [], showAllRoster: false, dragSrcIdx: -1 };
+var PRIO_EDIT = { item: '', slot: '', difficulty: 'Heroic', ranked: [], showAllRoster: false, dragSrcIdx: -1, scores: {} };
 
 function openPrioEditModal(item, slot, autoGenerate, difficulty) {
   var diff    = (difficulty || 'heroic').toLowerCase();
@@ -319,12 +332,14 @@ function openPrioEditModal(item, slot, autoGenerate, difficulty) {
   PRIO_EDIT.ranked        = (entry[diff] || []).slice();
   PRIO_EDIT.showAllRoster = false;
   PRIO_EDIT.dragSrcIdx    = -1;
+  PRIO_EDIT.scores        = {};
 
   document.getElementById('prioEditTitle').textContent = item;
   var slotEl = document.getElementById('prioEditSlot');
   slotEl.textContent = slot;
   slotEl.style.color = slot ? getSlotColor(slot) : '';
   document.getElementById('prioEditError').style.display = 'none';
+  document.getElementById('prioEditVersionWarning').style.display = 'none';
   document.getElementById('prioEditStatus').textContent = '';
   document.getElementById('prioEditShowAllBtn').textContent = 'Show all roster';
   document.getElementById('prioEditPoolLabel').textContent = 'BiS Players';
@@ -349,11 +364,13 @@ function prioEditSwitchDiff(diff) {
   PRIO_EDIT.difficulty    = diffCap;
   var entry               = (DATA.priorityOrder || {})[PRIO_EDIT.item] || {};
   PRIO_EDIT.ranked        = (entry[diff] || []).slice();
+  PRIO_EDIT.scores        = {};
   PRIO_EDIT.showAllRoster = false;
-  document.getElementById('prioEditShowAllBtn').textContent = 'Show all roster';
-  document.getElementById('prioEditPoolLabel').textContent  = 'BiS Players';
-  document.getElementById('prioEditStatus').textContent     = '';
-  document.getElementById('prioEditError').style.display    = 'none';
+  document.getElementById('prioEditShowAllBtn').textContent              = 'Show all roster';
+  document.getElementById('prioEditPoolLabel').textContent               = 'BiS Players';
+  document.getElementById('prioEditStatus').textContent                  = '';
+  document.getElementById('prioEditError').style.display                 = 'none';
+  document.getElementById('prioEditVersionWarning').style.display        = 'none';
   prioEditSetDiffToggle(diff);
   prioEditRenderList();
   prioEditRenderPool();
@@ -374,6 +391,22 @@ function prioEditGetBisPlayers() {
     }
   });
   return result;
+}
+
+function prioEditUpdateVersionWarning() {
+  var el = document.getElementById('prioEditVersionWarning');
+  if (!el) return;
+  var scores  = PRIO_EDIT.scores || {};
+  var ranked  = PRIO_EDIT.ranked;
+  var seenHasHeroic = false;
+  var warn = false;
+  for (var i = 0; i < ranked.length; i++) {
+    var s = scores[ranked[i]];
+    var label = s ? (s.statusLabel || '') : '';
+    if (label.indexOf('Has Heroic') !== -1) { seenHasHeroic = true; }
+    if (seenHasHeroic && label.indexOf('No Version') !== -1) { warn = true; break; }
+  }
+  el.style.display = warn ? '' : 'none';
 }
 
 function prioEditRenderList() {
@@ -408,10 +441,20 @@ function prioEditRenderList() {
     html += '<span class="prio-drag-rank">' + (i + 1) + '</span>';
     html += '<span class="prio-drag-name" style="color:' + roleColor + ';">' + display + '</span>';
     if (role) html += '<span class="prio-role-badge prio-role-' + role + '">' + role.toUpperCase() + '</span>';
+    var scoreData = PRIO_EDIT.scores && PRIO_EDIT.scores[firstName];
+    if (scoreData) {
+      if (scoreData.weightedTotal !== null && scoreData.weightedTotal !== undefined) {
+        html += '<span style="font-size:0.78rem;color:var(--text-muted);margin-left:4px;">Score: ' + scoreData.weightedTotal + '</span>';
+      }
+      if (scoreData.statusLabel) {
+        html += '<span style="font-size:0.75rem;color:var(--text-muted);font-style:italic;margin-left:2px;">(' + scoreData.statusLabel + ')</span>';
+      }
+    }
     html += '<button class="prio-drag-remove" onclick="prioEditRemove(' + i + ')" title="Remove">&times;</button>';
     html += '</div>';
   }
   list.innerHTML = html;
+  prioEditUpdateVersionWarning();
 }
 
 function prioEditRenderPool() {
@@ -552,6 +595,9 @@ function prioEditGenerate() {
       status.textContent = result.warning || 'No BiS players found.';
       return;
     }
+    var scoreMap = {};
+    players.forEach(function(p) { scoreMap[p.firstName] = p; });
+    PRIO_EDIT.scores = scoreMap;
     PRIO_EDIT.ranked = players.map(function(p) { return p.firstName; });
     status.textContent = 'Suggested order loaded. Review and adjust as needed.';
     prioEditRenderList();
