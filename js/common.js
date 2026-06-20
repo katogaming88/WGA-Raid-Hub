@@ -1,5 +1,5 @@
 var WEB_APP_URL   = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION       = '2.16.0';
+var VERSION       = '2.17.0';
 var DATA          = null;
 var ACTIVE_SEASON = null; // null = All Seasons; set by officer.js when a season is selected
 
@@ -122,7 +122,9 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.bisList                 = heavy.bisList;
       DATA.priorityOrder           = heavy.priorityOrder;
       DATA.itemSlots               = heavy.itemSlots;
+      DATA.itemBosses              = heavy.itemBosses || {};
       DATA.selfReceived            = heavy.selfReceived;
+      if (typeof populateBossFilters === 'function') populateBossFilters();
       if (onHeavyReady) onHeavyReady();
     };
     heavyScript.src = WEB_APP_URL + '?chunk=heavy&callback=_rosterHeavyCallback';
@@ -803,6 +805,11 @@ function renderProfile(firstName, backTo, container) {
     rows += isGen ? '<span style="font-size:0.97rem;color:var(--text-dim);min-width:40px;text-align:center;">-</span>' : rankPillHTML(rank);
     rows += '<span class="priority-item-slot" style="color:' + getSlotColor(slot) + ';">' + slot + '</span>';
     rows += '<span class="priority-item-name" style="text-align:right;" title="' + item + '">' + item + '</span>';
+    var defaultSrc  = isGen ? item : '';
+    var isOfficer   = backTo === 'officer';
+    var officerFlag = isOfficer ? 'true' : 'false';
+    var markRecvBtn = '<button class="mark-received-btn" style="font-size:0.78rem;padding:2px 7px;margin-top:2px;" onclick="event.stopPropagation();showSelfReceivedForm(\'' +
+      player.firstName.replace(/'/g, "\\'") + '\',\'' + item.replace(/'/g, "\\'") + '\',\'' + slot.replace(/'/g, "\\'") + '\',\'' + rowId + '\',\'' + defaultSrc.replace(/'/g, "\\'") + '\',' + officerFlag + ')">Mark Mythic received</button>';
     if (received) {
       var badges = '';
       for (var rv = 0; rv < received.length; rv++) {
@@ -810,14 +817,11 @@ function renderProfile(firstName, backTo, container) {
         var rv_date = received[rv].date || '';
         badges += '<span class="bis-received-badge">' + (rv_diff ? rv_diff + ' - ' : '') + rv_date + '</span>';
       }
-      rows += '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;">' + badges + '</div>';
+      rows += '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;">' + badges + (isOfficer ? markRecvBtn : '') + '</div>';
     } else if (selfRec) {
-      rows += '<span class="bis-self-received-badge">' + (selfRec.source || 'Self-reported') + '</span>';
+      rows += '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;"><span class="bis-self-received-badge">' + (selfRec.source || 'Self-reported') + '</span>' + (isOfficer ? markRecvBtn : '') + '</div>';
     } else {
-      var defaultSrc  = isGen ? item : '';
-      var officerFlag = backTo === 'officer' ? 'true' : 'false';
-      rows += '<button class="mark-received-btn" onclick="event.stopPropagation();showSelfReceivedForm(\'' +
-        player.firstName.replace(/'/g, "\\'") + '\',\'' + item.replace(/'/g, "\\'") + '\',\'' + slot.replace(/'/g, "\\'") + '\',\'' + rowId + '\',\'' + defaultSrc.replace(/'/g, "\\'") + '\',' + officerFlag + ')">Mark received</button>';
+      rows += markRecvBtn;
     }
     rows += '</div>';
     rows += '<div class="self-received-form" id="form-' + rowId + '" style="display:none;"></div>';
