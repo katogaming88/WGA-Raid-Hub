@@ -37,6 +37,10 @@
           <h2>Officer Dashboard</h2>
           <span id="dataTimestamp" class="data-timestamp"></span>
         </div>
+        <div class="season-selector-wrap" id="seasonSelectorWrap" style="display:none;">
+          <label class="season-selector-label" for="seasonSelector">Season:</label>
+          <select id="seasonSelector" class="season-selector-select" onchange="setActiveSeason(this.value)"></select>
+        </div>
         <div style="display:flex;gap:0.5rem;">
           <button id="clearCacheBtn" class="btn btn-muted" onclick="clearCache()">Clear Cache</button>
           <a href="index.html" class="btn btn-muted">Back to Roster</a>
@@ -348,59 +352,110 @@
 
           <!-- Season Settings tab -->
           <div id="tab-season" class="tab-panel">
-            <div class="signup-officer-panel">
-              <div class="signup-status-row">
-                <span class="signup-status-label">Season Start Date<button class="help-btn"
-                    onclick="toggleHelp('help-season')" title="Show help">?</button></span>
-              </div>
-              <div id="help-season" class="help-tip">
-                <strong>Season reset workflow:</strong>
-                <ul>
-                  <li>Set the new <strong>Season Start Date</strong> below so raids before it are excluded from
-                    attendance scoring.</li>
-                  <li>Update the <strong>Season Name</strong> (e.g. "Season 2") so new loot imports are tagged
-                    correctly.</li>
-                  <li>Go to <strong>Loot &gt; Import History</strong> and click "Clear All Loot" to remove last season's
-                    imported loot.</li>
-                  <li>Re-import this season's loot via <strong>Loot &gt; Import</strong>.</li>
-                  <li>Click <strong>Refresh from WCL</strong> on the Attendance tab to pull the new season's raids.</li>
-                </ul>
-              </div>
-              <p class="signup-officer-note" style="margin-top:0.25rem;">Set the date this raid season began. Raids
-                before this date are excluded from attendance scoring. Players who joined after this date have their
-                personal attendance window start from their join date instead.</p>
-              <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
-                <input type="date" id="seasonStartInput" class="add-player-input"
-                  style="max-width:180px;font-size:0.95rem;padding:0.35rem 0.6rem;">
-                <button class="btn btn-gold" id="seasonStartSaveBtn" onclick="saveSeasonStart()">Save</button>
-                <button class="btn btn-danger" onclick="confirmClearSeasonStart()">Clear</button>
-                <span id="seasonStartStatus" style="font-size:0.92rem;color:var(--heal);"></span>
-              </div>
-              <div id="seasonClearConfirm"
-                style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
-                <span style="font-size:0.92rem;color:var(--melee);">This will remove the season start date and include
-                  all raids in attendance scoring.</span>
-                <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
-                  <button class="btn btn-danger" onclick="executeClearSeasonStart()">Yes, Clear</button>
-                  <button class="btn btn-muted"
-                    onclick="document.getElementById('seasonClearConfirm').style.display='none'">Cancel</button>
+            <div class="season-settings-wrap">
+
+              <!-- Season Start Date -->
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Season Start Date<button class="help-btn" onclick="toggleHelp('help-season-start')" title="Show help">?</button></h4>
+                <div id="help-season-start" class="help-tip">
+                  Raids before this date are excluded from attendance scoring. Players who joined after this date use their own join date as the window start instead, so latecomers are not penalised for raids they were not part of.
+                  Leave blank to include all raids in scoring (no season filter).
+                </div>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Set the date this raid season began.</p>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <input type="date" id="seasonStartInput" class="add-player-input"
+                    style="max-width:180px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-gold" id="seasonStartSaveBtn" onclick="saveSeasonStart()">Save</button>
+                  <button class="btn btn-danger" onclick="confirmClearSeasonStart()">Clear</button>
+                  <span id="seasonStartStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+                <div id="seasonClearConfirm"
+                  style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
+                  <span style="font-size:0.92rem;color:var(--melee);">This will remove the season start date and include
+                    all raids in attendance scoring.</span>
+                  <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                    <button class="btn btn-danger" onclick="executeClearSeasonStart()">Yes, Clear</button>
+                    <button class="btn btn-muted"
+                      onclick="document.getElementById('seasonClearConfirm').style.display='none'">Cancel</button>
+                  </div>
                 </div>
               </div>
-              <p class="signup-officer-note" style="margin-top:0.75rem;">Leave blank to include all raids in attendance
-                scoring (no season filter).</p>
 
-              <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:1.25rem 0;">
-
-              <div class="signup-status-row">
-                <span class="signup-status-label">Season Name</span>
+              <!-- Season Name -->
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Season Name<button class="help-btn" onclick="toggleHelp('help-season-name')" title="Show help">?</button></h4>
+                <div id="help-season-name" class="help-tip">
+                  This label is applied to every loot entry imported through RCLootCouncil while the name is set. It is used by the <strong>Season</strong> toolbar dropdown to let you filter loot, fairness, and attendance to a specific season. Set this before importing loot at the start of each season.
+                </div>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">The current season label applied to all imported RCLootCouncil loot (e.g. Season 1).</p>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <input type="text" id="seasonNameInput" class="add-player-input" placeholder="e.g. Season 1"
+                    style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-gold" id="seasonNameSaveBtn" onclick="saveSeasonName()">Save</button>
+                  <span id="seasonNameStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
               </div>
-              <p class="signup-officer-note" style="margin-top:0.25rem;">The current season label applied to all
-                imported RCLootCouncil loot history (e.g. Season 1). Set this before importing loot.</p>
-              <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
-                <input type="text" id="seasonNameInput" class="add-player-input" placeholder="e.g. Season 1"
-                  style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
-                <button class="btn btn-gold" id="seasonNameSaveBtn" onclick="saveSeasonName()">Save</button>
-                <span id="seasonNameStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+
+              <!-- Season End Date -->
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Season End Date<button class="help-btn" onclick="toggleHelp('help-season-end')" title="Show help">?</button></h4>
+                <div id="help-season-end" class="help-tip">
+                  Optional. Set this when the current season closes before the next one officially begins -- for example if your guild stops raiding a week before the new patch. When set, it acts as the upper bound for attendance and loot filtering in the season selector. Leave blank if the season is still active.
+                </div>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Optional close date for the current season. Leave blank if the season is still ongoing.</p>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <input type="date" id="seasonEndInput" class="add-player-input"
+                    style="max-width:180px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-gold" id="seasonEndSaveBtn" onclick="saveSeasonEnd()">Save</button>
+                  <button class="btn btn-danger" onclick="confirmClearSeasonEnd()">Clear</button>
+                  <span id="seasonEndStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+                <div id="seasonEndClearConfirm"
+                  style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
+                  <span style="font-size:0.92rem;color:var(--melee);">This will remove the season end date.</span>
+                  <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                    <button class="btn btn-danger" onclick="executeClearSeasonEnd()">Yes, Clear</button>
+                    <button class="btn btn-muted"
+                      onclick="document.getElementById('seasonEndClearConfirm').style.display='none'">Cancel</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Archive Season -->
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Archive Current Season<button class="help-btn" onclick="toggleHelp('help-season-archive')" title="Show help">?</button></h4>
+                <div id="help-season-archive" class="help-tip">
+                  Archiving pushes the current Season Name, Start Date, and End Date into the season history list. Once archived, the season appears in the <strong>Season</strong> toolbar dropdown so officers can filter by it at any time. After archiving, set a new Season Name and Start Date for the next season.
+                  <br><br>
+                  <strong>Rollover workflow:</strong>
+                  <ol style="margin:0.35rem 0 0;padding-left:1.25rem;">
+                    <li>Set an <strong>End Date</strong> if the season closes before the next one starts.</li>
+                    <li>Click <strong>Archive Current Season</strong> below.</li>
+                    <li>Set the new <strong>Season Name</strong> and <strong>Start Date</strong>.</li>
+                    <li>Re-import this season's loot via <strong>Loot &gt; Import</strong> -- entries are tagged with the new name automatically.</li>
+                    <li>Click <strong>Refresh from WCL</strong> on the Attendance tab to pull the new season's raids.</li>
+                  </ol>
+                </div>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Move the current season into history so it appears in the season selector dropdown.</p>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <button class="btn btn-danger" onclick="confirmArchiveSeason()">Archive Current Season</button>
+                  <span id="seasonArchiveStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+                <div id="seasonArchiveConfirm"
+                  style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
+                  <span id="seasonArchiveConfirmMsg" style="font-size:0.92rem;color:var(--melee);"></span>
+                  <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                    <button class="btn btn-danger" id="seasonArchiveExecBtn" onclick="executeArchiveSeason()">Yes, Archive</button>
+                    <button class="btn btn-muted"
+                      onclick="document.getElementById('seasonArchiveConfirm').style.display='none'">Cancel</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Season History -->
+              <div id="seasonHistoryWrap" class="help-ref-card" style="display:none;">
+                <h4 class="help-ref-title">Season History</h4>
+                <div id="seasonHistoryList" style="margin-top:0.5rem;font-size:0.92rem;color:var(--text-muted);"></div>
               </div>
 
             </div>

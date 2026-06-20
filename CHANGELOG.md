@@ -6,6 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.16.0] - 2026-06-19
+
+### Added
+- **Season selector** in the officer dashboard toolbar. A "Season:" dropdown filters loot counts, fairness, conflicts, and attendance to the selected season; "All Seasons" retains previous behavior. Defaults to the current season when one is configured. Hidden when no season data exists. Closes #115.
+- **Season history store.** Officers can now archive the current season (Season Settings tab), pushing it to an immutable history list with start and end dates. Past seasons appear as options in the season selector. Season history is persisted in Script Properties and included in the core payload.
+- **Season End Date** field in Season Settings. Officers can record when a season closes (independent of when the next one starts). Stored as `seasonEnd` in Script Properties.
+- **Client-side attendance %** computed from raw per-raid records (`rawAttendanceData` in the heavy payload), replacing the server-computed value for any season other than "current". Replicates the join-date window logic from the backend. Bench fairness sub-tab also filters raid nights to the selected season's date window.
+
+### Changed
+- `getAttendanceDetails()` (heavy payload) now returns all-time penalty events without a season cutoff; the frontend filters them to the active season window when rendering the attendance scores list.
+- Loot items in `getLootCounts()` now include a `season` field (from column A of the Pasted Loot sheet) to enable client-side season filtering.
+- Season Settings tab redesigned into individual cards (Season Start Date, Season Name, Season End Date, Archive Season, Season History). Each card has its own `?` help button with a scoped inline tip, replacing the single cramped panel.
+
+---
+
 ## [2.15.1] - 2026-06-19
 
 ### Added

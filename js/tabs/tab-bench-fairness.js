@@ -14,10 +14,16 @@ function buildBenchFairness() {
 
   var benchCounts = {};
   var raidCounts  = {};
+  var range       = getSeasonDateRange();
 
   for (var i = 0; i < _attendanceGrid.length; i++) {
     var raid = _attendanceGrid[i];
     if (raid.excluded) continue;
+    // Filter to active season window when dates are present
+    if (raid.date) {
+      if (range.start && raid.date < range.start) continue;
+      if (range.end   && raid.date > range.end)   continue;
+    }
     for (var j = 0; j < raid.players.length; j++) {
       var p    = raid.players[j];
       var name = p.name;

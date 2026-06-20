@@ -43,17 +43,15 @@ function buildConflicts() {
       var display = pData ? (pData.nick || pData.firstName) : pName;
       var rankPos = ranked.findIndex ? ranked.findIndex(function(r) { return normalise(r)===normalise(pName); }) : -1;
       var isRanked = rankPos >= 0;
-      var lootEntry = getLootEntry(pName);
+      var seasonItems = getSeasonLootItems(pName);
       var received = false, receivedDiff = '';
-      if (lootEntry && lootEntry.items) {
-        for (var m = 0; m < lootEntry.items.length; m++) {
-          var itemObj  = lootEntry.items[m];
-          var iName    = typeof itemObj === 'string' ? itemObj : itemObj.name;
-          if (normalise(iName) === normalise(item)) {
-            received     = true;
-            receivedDiff = typeof itemObj === 'object' ? itemObj.difficulty : '';
-            break;
-          }
+      for (var m = 0; m < seasonItems.length; m++) {
+        var itemObj  = seasonItems[m];
+        var iName    = typeof itemObj === 'string' ? itemObj : itemObj.name;
+        if (normalise(iName) === normalise(item)) {
+          received     = true;
+          receivedDiff = typeof itemObj === 'object' ? itemObj.difficulty : '';
+          break;
         }
       }
       var badge = received ? ' <span class="received-badge">Received' + (receivedDiff ? ' (' + receivedDiff + ')' : '') + '</span>' : '';

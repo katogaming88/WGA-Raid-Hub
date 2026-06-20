@@ -239,6 +239,30 @@ function doGet(e) {
       return jsonpResponse(callback, { success: true, seasonName: val });
     }
 
+    if (action === 'setSeasonEnd') {
+      const val = String(e.parameter.value || '').trim();
+      props.setProperty('seasonEnd', val);
+      cache.remove('rosterCore');
+      appendAuditLog('Season End Set', '', '', val);
+      return jsonpResponse(callback, { success: true, seasonEnd: val });
+    }
+
+    if (action === 'archiveSeason') {
+      const seasonName  = props.getProperty('seasonName')  || '';
+      const seasonStart = props.getProperty('seasonStart') || '';
+      const seasonEnd   = props.getProperty('seasonEnd')   || '';
+      const history     = JSON.parse(props.getProperty('seasonHistory') || '[]');
+      history.push({ name: seasonName, start: seasonStart, end: seasonEnd });
+      props.setProperty('seasonHistory', JSON.stringify(history));
+      props.deleteProperty('seasonName');
+      props.deleteProperty('seasonStart');
+      props.deleteProperty('seasonEnd');
+      cache.remove('rosterCore');
+      cache.remove('rosterHeavy');
+      appendAuditLog('Season Archived', '', '', seasonName);
+      return jsonpResponse(callback, { success: true });
+    }
+
     if (action === 'submitSignup') {
       const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
       writeSignup(data);
@@ -804,6 +828,8 @@ function buildCorePayload(sheets, scriptProps) {
   const mPlusExclusionsOpen = scriptProps.getProperty('mPlusExclusionsOpen') === 'true';
   const seasonStart         = scriptProps.getProperty('seasonStart')         || '';
   const seasonName          = scriptProps.getProperty('seasonName')          || '';
+  const seasonEnd           = scriptProps.getProperty('seasonEnd')           || '';
+  const seasonHistory       = JSON.parse(scriptProps.getProperty('seasonHistory') || '[]');
   return {
     generatedAt:          new Date().toISOString(),
     signupsOpen:          signupsOpen,
@@ -811,6 +837,8 @@ function buildCorePayload(sheets, scriptProps) {
     mPlusExclusionsOpen:  mPlusExclusionsOpen,
     seasonStart:          seasonStart,
     seasonName:           seasonName,
+    seasonEnd:            seasonEnd,
+    seasonHistory:        seasonHistory,
     bisAllowedPlayers:    getBisAllowedPlayers(),
     playerNotes:          getPlayerNotes(),
     roster:               getRoster(sheets, seasonStart),
@@ -825,6 +853,7 @@ function buildHeavyPayload(sheets) {
     itemSlots:              getItemSlots(sheets),
     lootCounts:             getLootCounts(sheets),
     attendanceDetails:      getAttendanceDetails(sheets),
+    rawAttendanceData:      getRawAttendanceData(sheets),
     recentAttendanceTrend:  getRecentAttendanceTrend(sheets),
     selfReceived:           getSelfReceived(sheets),
   };
@@ -1078,9 +1107,6 @@ function getBisList(sheets) {
 }
 
 function getAttendanceDetails(sheets) {
-  const seasonStart = PropertiesService.getScriptProperties().getProperty('seasonStart') || '';
-  const joinDateMap = buildJoinDateMap(sheets);
-
   const sheet = sheets[CFG.attendanceSheet];
   if (!sheet) return {};
 
@@ -1098,39 +1124,64 @@ function getAttendanceDetails(sheets) {
 
     const dateStr = String(rawDate || '').trim();
 
-    // Stop at the excluded section divider at the bottom
     if (dateStr.startsWith('──') || dateStr === 'Report Title') break;
 
-    // Report header row -- check the exclude checkbox
     if (!name) {
       skipReport = (exclude === true);
       continue;
     }
 
-    // Skip all player rows under an excluded report
     if (skipReport) continue;
-
-    // Skip blank rows or non-penalizing statuses
     if (!rawDate || !status) continue;
     if (!penalizing.has(status)) continue;
 
-    var formattedDate;
-    if (rawDate instanceof Date) {
-      formattedDate = Utilities.formatDate(rawDate, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-    } else {
-      formattedDate = dateStr;
-    }
-
-    // Skip raids before the player's effective start (max of seasonStart and joinDate)
-    const joinDate       = joinDateMap[name] || '';
-    const effectiveStart = (joinDate && (!seasonStart || joinDate > seasonStart)) ? joinDate : seasonStart;
-    if (effectiveStart && formattedDate < effectiveStart) continue;
+    const formattedDate = rawDate instanceof Date
+      ? Utilities.formatDate(rawDate, Session.getScriptTimeZone(), 'yyyy-MM-dd')
+      : dateStr;
 
     if (!result[name]) result[name] = [];
     result[name].push({ date: formattedDate, status });
   }
 
   return result;
+}
+
+function getRawAttendanceData(sheets) {
+  const joinDateMap = buildJoinDateMap(sheets);
+  const sheet       = sheets[CFG.attendanceSheet];
+  if (!sheet) return { raidDates: [], players: {}, joinDates: {} };
+
+  const data        = sheet.getDataRange().getValues();
+  const raidDateSet = new Set();
+  const players     = {};
+  var   skipReport  = false;
+
+  for (let i = CFG.attendDataStart - 1; i < data.length; i++) {
+    const row     = data[i];
+    const rawDate = row[CFG.attendDateCol   - 1];
+    const name    = String(row[CFG.attendNameCol   - 1] || '').trim();
+    const status  = String(row[CFG.attendStatusCol - 1] || '').trim();
+    const exclude = row[5];
+    const dateStr = String(rawDate || '').trim();
+
+    if (dateStr.startsWith('──') || dateStr === 'Report Title') break;
+    if (!name) { skipReport = (exclude === true); continue; }
+    if (skipReport || !rawDate || !status) continue;
+
+    const formattedDate = rawDate instanceof Date
+      ? Utilities.formatDate(rawDate, Session.getScriptTimeZone(), 'yyyy-MM-dd')
+      : dateStr;
+
+    raidDateSet.add(formattedDate);
+    if (!players[name]) players[name] = [];
+    players[name].push({ date: formattedDate, status });
+  }
+
+  return {
+    raidDates: Array.from(raidDateSet).sort(),
+    players:   players,
+    joinDates: joinDateMap,
+  };
 }
 
 function getRecentAttendanceTrend(sheets) {
@@ -1244,7 +1295,7 @@ function getLootCounts(sheets) {
     return String(str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
   }
 
-  function addEntry(name, item, difficulty, date) {
+  function addEntry(name, item, difficulty, date, season) {
     const key = name + '|' + item.toLowerCase() + '|' + date;
     if (seenKeys.has(key)) return;
     seenKeys.add(key);
@@ -1252,7 +1303,7 @@ function getLootCounts(sheets) {
     result[name].count++;
     if (difficulty === 'Heroic') result[name].heroicCount++;
     else if (difficulty === 'Mythic') result[name].mythicCount++;
-    result[name].items.push({ name: item, difficulty: difficulty, date: date });
+    result[name].items.push({ name: item, difficulty: difficulty, date: date, season: season || '' });
   }
 
   // Read from Pasted Loot sheet first (RCLC import via officer dashboard) so its
@@ -1263,6 +1314,7 @@ function getLootCounts(sheets) {
     const pastedData = pastedSheet.getDataRange().getValues();
     for (let i = 1; i < pastedData.length; i++) {
       const row      = pastedData[i];
+      const season   = String(row[0] || '').trim();
       const player   = String(row[2] || '').trim();
       const rawDate  = row[3];
       const date     = rawDate instanceof Date
@@ -1278,7 +1330,7 @@ function getLootCounts(sheets) {
       const diffRaw    = instance.split('-').pop().trim().toLowerCase();
       const difficulty = diffRaw === 'mythic' ? 'Mythic' : diffRaw === 'heroic' ? 'Heroic' : 'Other';
 
-      addEntry(name, item || 'Unknown Item', difficulty, date);
+      addEntry(name, item || 'Unknown Item', difficulty, date, season);
     }
   }
 
