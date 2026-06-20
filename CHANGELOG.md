@@ -6,6 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.18.0] - 2026-06-20
+
+### Added
+- **Raid Progression Tracker** on the public landing page. Displays all raids for the current season as side-by-side cards, each showing raid name, mythic kill count, progress bar, numbered boss list with first-kill dates, and an AOTC badge. Closes #80.
+- **Raid Progression editor** in Season Settings. Officers can add multiple raids per season, each with a name, optional mini-raid flag (suppresses AOTC), AOTC date, and a list of bosses with individual mythic kill dates. Progression data is persisted in Script Properties and included in the core payload; archived seasons include their raid progression.
+- **WCL auto-fill for boss kills.** Each raid card has a WCL Zone ID field and a "Fetch from WCL" button. Clicking it queries the WCL GraphQL API (using existing Script Property credentials) for all guild kills in that zone and populates boss names and first-kill dates automatically. Heroic kill of the last boss in range is used as the AOTC date.
+- **Encounter ID range filter** per raid card (from/to fields). Allows multiple raids that share the same WCL zone ID (e.g. Midnight Season 1 zone 46) to be fetched independently by specifying which encounter IDs belong to each raid.
+- **"List" button** per raid card that queries WCL for all encounters in a zone and displays their IDs and names inline, making it easy to look up the correct encounter range before fetching.
+
+### Changed
+- Landing page stat counters (Raiders, Items This Tier) moved above the character selector card.
+- Landing page max-widths widened to accommodate the side-by-side progression layout (landing card 380px -> 500px, stats 380px -> 500px, loot 480px -> 760px, selector 360px -> 460px).
+
+---
+
 ## [2.17.0] - 2026-06-20
 
 ### Added

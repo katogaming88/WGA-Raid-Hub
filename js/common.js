@@ -1,5 +1,5 @@
 var WEB_APP_URL   = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION       = '2.17.0';
+var VERSION       = '2.18.0';
 var DATA          = null;
 var ACTIVE_SEASON = null; // null = All Seasons; set by officer.js when a season is selected
 

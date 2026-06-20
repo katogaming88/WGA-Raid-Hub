@@ -432,6 +432,21 @@
                 </div>
               </div>
 
+              <!-- Raid Progression -->
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Raid Progression<button class="help-btn" onclick="toggleHelp('help-raid-prog')" title="Show help">?</button></h4>
+                <div id="help-raid-prog" class="help-tip">
+                  Track mythic progression and AOTC dates for each raid in the current season. Multiple raids can be added (e.g. if the season has a mid-patch raid). Boss kill dates appear on the public landing page. Mini-raids (single or small standalone bosses) have no AOTC date. Progression is archived with the season when you archive it.
+                </div>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Add one block per raid in the current season. Boss kill dates are shown publicly.</p>
+                <div id="raidProgressionCards" style="display:flex;flex-direction:column;gap:1rem;margin-top:0.75rem;"></div>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <button class="btn btn-muted" onclick="raidAddRaid()">+ Add Raid</button>
+                  <button class="btn btn-gold" id="raidSaveBtn" onclick="saveRaidProgression()">Save Progression</button>
+                  <span id="raidProgressionStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+              </div>
+
               <!-- Archive Season -->
               <div class="help-ref-card">
                 <h4 class="help-ref-title">Archive Current Season<button class="help-btn" onclick="toggleHelp('help-season-archive')" title="Show help">?</button></h4>
