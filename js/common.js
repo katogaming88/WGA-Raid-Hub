@@ -1,6 +1,7 @@
-var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION = '2.15.1';
-var DATA = null;
+var WEB_APP_URL   = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
+var VERSION       = '2.16.0';
+var DATA          = null;
+var ACTIVE_SEASON = null; // null = All Seasons; set by officer.js when a season is selected
 
 var WOW_REALMS = [
   // NA
@@ -116,6 +117,7 @@ function loadData(onCoreReady, onHeavyReady) {
       if (!heavy || heavy.error) return;
       DATA.lootCounts              = heavy.lootCounts;
       DATA.attendanceDetails       = heavy.attendanceDetails;
+      DATA.rawAttendanceData       = heavy.rawAttendanceData;
       DATA.recentAttendanceTrend   = heavy.recentAttendanceTrend;
       DATA.bisList                 = heavy.bisList;
       DATA.priorityOrder           = heavy.priorityOrder;
@@ -199,6 +201,24 @@ function getLootEntry(firstName) {
   var keys = Object.keys(lootMap);
   for (var i = 0; i < keys.length; i++) { if (normalise(keys[i]) === norm) return lootMap[keys[i]]; }
   return null;
+}
+
+function getSeasonLootItems(firstName) {
+  var entry = getLootEntry(firstName);
+  var items = (entry && entry.items) || [];
+  if (!ACTIVE_SEASON) return items;
+  return items.filter(function(item) { return item.season === ACTIVE_SEASON; });
+}
+
+function getSeasonLootEntry(firstName) {
+  if (!ACTIVE_SEASON) return getLootEntry(firstName);
+  var items  = getSeasonLootItems(firstName);
+  var heroic = 0, mythic = 0;
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].difficulty === 'Heroic') heroic++;
+    else if (items[i].difficulty === 'Mythic') mythic++;
+  }
+  return { count: items.length, heroicCount: heroic, mythicCount: mythic, items: items };
 }
 
 // -- Render helpers ---------------------------------------------------------
@@ -647,13 +667,15 @@ function renderProfile(firstName, backTo, container) {
     attendExtra += '</div>';
   }
 
-  // Loot
-  var lootEntry = getLootEntry(player.firstName);
-  var lootCount = lootEntry ? lootEntry.count : 0;
+  // Loot (season-filtered when ACTIVE_SEASON is set)
+  var lootEntry    = getSeasonLootEntry(player.firstName);
+  var allLootEntry = getLootEntry(player.firstName); // unfiltered, for received map
+  var lootCount    = lootEntry ? lootEntry.count : 0;
   var lootItemsHTML = '';
   var lastItems = [];
-  if (lootEntry && lootEntry.items && lootEntry.items.length > 0) {
-    var sortedLoot = lootEntry.items.slice().sort(function(a, b) {
+  var seasonLootItems = getSeasonLootItems(player.firstName);
+  if (seasonLootItems.length > 0) {
+    var sortedLoot = seasonLootItems.slice().sort(function(a, b) {
       return new Date(b.date) - new Date(a.date);
     });
     var lastDate = sortedLoot[0].date;
@@ -661,8 +683,8 @@ function renderProfile(firstName, backTo, container) {
       if (sortedLoot[ld].date === lastDate) lastItems.push(sortedLoot[ld]);
       else break;
     }
-    for (var li = 0; li < lootEntry.items.length; li++) {
-      var li_obj = lootEntry.items[li];
+    for (var li = 0; li < seasonLootItems.length; li++) {
+      var li_obj = seasonLootItems[li];
       var li_name = typeof li_obj === 'string' ? li_obj : li_obj.name;
       var li_diff = typeof li_obj === 'object' && li_obj.difficulty ? li_obj.difficulty : '';
       var li_date = typeof li_obj === 'object' && li_obj.date ? li_obj.date : '';
@@ -746,16 +768,15 @@ function renderProfile(firstName, backTo, container) {
     }
   }
 
-  // Build received lookup from loot history
+  // Build received lookup from full (unfiltered) loot history so BiS markers are always accurate
   var receivedMap = {};
-  if (lootEntry && lootEntry.items) {
-    for (var ri = 0; ri < lootEntry.items.length; ri++) {
-      var ri_obj = lootEntry.items[ri];
-      var ri_name = typeof ri_obj === 'string' ? ri_obj : ri_obj.name;
-      var ri_key = normalise(ri_name);
-      if (!receivedMap[ri_key]) receivedMap[ri_key] = [];
-      receivedMap[ri_key].push(typeof ri_obj === 'object' ? ri_obj : { name: ri_name });
-    }
+  var receivedItems = (allLootEntry && allLootEntry.items) || [];
+  for (var ri = 0; ri < receivedItems.length; ri++) {
+    var ri_obj  = receivedItems[ri];
+    var ri_name = typeof ri_obj === 'string' ? ri_obj : ri_obj.name;
+    var ri_key  = normalise(ri_name);
+    if (!receivedMap[ri_key]) receivedMap[ri_key] = [];
+    receivedMap[ri_key].push(typeof ri_obj === 'object' ? ri_obj : { name: ri_name });
   }
 
   // Self-received (officer-approved) lookup
@@ -951,7 +972,7 @@ function renderProfile(firstName, backTo, container) {
     '</div>' +
     '<div class="profile-section">' +
     '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var l=document.getElementById(\'loot-list-' + player.firstName + '\');l.style.display=l.style.display===\'none\'?\'grid\':\'none\';">Items Received <span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
-    '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">' + lootCount + ' item' + (lootCount !== 1 ? 's' : '') + ' this tier</div>' +
+    '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">' + lootCount + ' item' + (lootCount !== 1 ? 's' : '') + (ACTIVE_SEASON ? ' — ' + ACTIVE_SEASON : ' this tier') + '</div>' +
     (lastItems.length
       ? (function() {
           var lastDate = lastItems[0].date || '';

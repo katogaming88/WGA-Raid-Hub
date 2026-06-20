@@ -37,6 +37,10 @@
           <h2>Officer Dashboard</h2>
           <span id="dataTimestamp" class="data-timestamp"></span>
         </div>
+        <div class="season-selector-wrap" id="seasonSelectorWrap" style="display:none;">
+          <label class="season-selector-label" for="seasonSelector">Season:</label>
+          <select id="seasonSelector" class="season-selector-select" onchange="setActiveSeason(this.value)"></select>
+        </div>
         <div style="display:flex;gap:0.5rem;">
           <button id="clearCacheBtn" class="btn btn-muted" onclick="clearCache()">Clear Cache</button>
           <a href="index.html" class="btn btn-muted">Back to Roster</a>
@@ -401,6 +405,59 @@
                   style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
                 <button class="btn btn-gold" id="seasonNameSaveBtn" onclick="saveSeasonName()">Save</button>
                 <span id="seasonNameStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+              </div>
+
+              <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:1.25rem 0;">
+
+              <div class="signup-status-row">
+                <span class="signup-status-label">Season End Date</span>
+              </div>
+              <p class="signup-officer-note" style="margin-top:0.25rem;">Optional. Set this when the season closes
+                (e.g. before the last raid night). Leave blank if the season is still ongoing.</p>
+              <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                <input type="date" id="seasonEndInput" class="add-player-input"
+                  style="max-width:180px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                <button class="btn btn-gold" id="seasonEndSaveBtn" onclick="saveSeasonEnd()">Save</button>
+                <button class="btn btn-danger" onclick="confirmClearSeasonEnd()">Clear</button>
+                <span id="seasonEndStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+              </div>
+              <div id="seasonEndClearConfirm"
+                style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
+                <span style="font-size:0.92rem;color:var(--melee);">This will remove the season end date.</span>
+                <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                  <button class="btn btn-danger" onclick="executeClearSeasonEnd()">Yes, Clear</button>
+                  <button class="btn btn-muted"
+                    onclick="document.getElementById('seasonEndClearConfirm').style.display='none'">Cancel</button>
+                </div>
+              </div>
+
+              <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:1.25rem 0;">
+
+              <div class="signup-status-row">
+                <span class="signup-status-label">Archive Season</span>
+              </div>
+              <p class="signup-officer-note" style="margin-top:0.25rem;">Archive the current season into history so
+                officers can filter loot and attendance by season. After archiving, set a new Season Name and Start
+                Date for the next season.</p>
+              <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                <button class="btn btn-danger" onclick="confirmArchiveSeason()">Archive Current Season</button>
+              </div>
+              <div id="seasonArchiveConfirm"
+                style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
+                <span id="seasonArchiveConfirmMsg" style="font-size:0.92rem;color:var(--melee);"></span>
+                <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                  <button class="btn btn-danger" id="seasonArchiveExecBtn" onclick="executeArchiveSeason()">Yes, Archive</button>
+                  <button class="btn btn-muted"
+                    onclick="document.getElementById('seasonArchiveConfirm').style.display='none'">Cancel</button>
+                </div>
+              </div>
+              <span id="seasonArchiveStatus" style="display:block;margin-top:0.5rem;font-size:0.92rem;color:var(--heal);"></span>
+
+              <div id="seasonHistoryWrap" style="margin-top:1.25rem;display:none;">
+                <div class="signup-status-row">
+                  <span class="signup-status-label" style="font-size:0.95rem;">Season History</span>
+                </div>
+                <div id="seasonHistoryList" style="margin-top:0.5rem;font-size:0.92rem;color:var(--text-muted);"></div>
               </div>
 
             </div>

@@ -21,37 +21,47 @@ function switchAttendSubTab(name, btn) {
 }
 
 function buildAttendanceTab() {
-  var details   = DATA.attendanceDetails || {};
-  var roster    = DATA.roster || [];
-  var THRESHOLD = parseInt((document.getElementById('attendThreshold') || { value: '95' }).value) || 95;
+  var allDetails = DATA.attendanceDetails || {};
+  var roster     = DATA.roster || [];
+  var THRESHOLD  = parseInt((document.getElementById('attendThreshold') || { value: '95' }).value) || 95;
+  var range      = getSeasonDateRange();
+
+  // Filter penalty events to the active season window
+  function filterPenalties(penalties) {
+    if (!ACTIVE_SEASON) return penalties;
+    return penalties.filter(function(ae) {
+      return (!range.start || ae.date >= range.start) && (!range.end || ae.date <= range.end);
+    });
+  }
 
   var below = [];
   for (var i = 0; i < roster.length; i++) {
     var p   = roster[i];
-    var pct = parseInt(p.attendance) || 0;
-    if (pct <= THRESHOLD) below.push(p);
+    var att = getDisplayAttendancePct(p);
+    var pct = parseFloat(att) || 0;
+    if (pct <= THRESHOLD) below.push({ player: p, att: att, pct: pct });
   }
-  below.sort(function(a, b) { return (parseInt(a.attendance) || 0) - (parseInt(b.attendance) || 0); });
+  below.sort(function(a, b) { return a.pct - b.pct; });
 
+  var seasonLabel = ACTIVE_SEASON ? ' (' + ACTIVE_SEASON + ')' : '';
   var html = '';
   if (!below.length) {
-    html = '<p style="color:var(--text);padding:1rem;">All raiders are at or above ' + THRESHOLD + '% attendance.</p>';
+    html = '<p style="color:var(--text);padding:1rem;">All raiders are at or above ' + THRESHOLD + '% attendance' + seasonLabel + '.</p>';
   } else {
-    html += '<p style="font-size:1rem;color:var(--text);margin-bottom:1rem;">' + below.length + ' raider' + (below.length !== 1 ? 's' : '') + ' at or below ' + THRESHOLD + '% attendance</p>';
+    html += '<p style="font-size:1rem;color:var(--text);margin-bottom:1rem;">' + below.length + ' raider' + (below.length !== 1 ? 's' : '') + ' at or below ' + THRESHOLD + '% attendance' + seasonLabel + '</p>';
     for (var i = 0; i < below.length; i++) {
-      var p       = below[i];
-      var name    = p.nick || p.firstName;
-      var pct     = parseInt(p.attendance) || 0;
-      var color   = attendColor(pct);
-      var penalty = details[p.firstName] || [];
+      var p       = below[i].player;
+      var att     = below[i].att;
+      var color   = attendColor(parseFloat(att) || 0);
+      var penalty = filterPenalties(allDetails[p.firstName] || []);
 
       html += '<div class="attend-player-row">';
       html += '<div class="attend-player-header">';
-      html += '<span class="attend-player-name">' + name + (p.firstName !== name ? ' <span style="font-size:0.95rem;color:var(--text-muted);">(' + p.firstName + ')</span>' : '') + '</span>';
-      html += '<span style="font-size:1rem;font-weight:700;color:' + color + ';">' + (p.attendance || '-') + '</span>';
+      html += '<span class="attend-player-name">' + (p.nick || p.firstName) + (p.firstName !== (p.nick || p.firstName) ? ' <span style="font-size:0.95rem;color:var(--text-muted);">(' + p.firstName + ')</span>' : '') + '</span>';
+      html += '<span style="font-size:1rem;font-weight:700;color:' + color + ';">' + att + '</span>';
       html += '</div>';
       html += '<div class="attend-row" style="margin-bottom:0.5rem;">';
-      html += '<div class="attend-bar-wrap"><div class="attend-bar" style="width:' + (p.attendance || '0%') + ';background:' + color + ';"></div></div>';
+      html += '<div class="attend-bar-wrap"><div class="attend-bar" style="width:' + att + ';background:' + color + ';"></div></div>';
       html += '</div>';
       if (penalty.length) {
         html += '<div class="attend-penalty-list">';

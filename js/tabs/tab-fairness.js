@@ -18,7 +18,7 @@ function buildFairness() {
   var allEntries = [];
   for (var i = 0; i < roster.length; i++) {
     var p     = roster[i];
-    var entry = getLootEntry(p.firstName);
+    var entry = getSeasonLootEntry(p.firstName);
     var count = 0;
     if (entry) {
       if (activeDiffFilter === 'heroic')      count = entry.heroicCount || 0;
@@ -67,7 +67,8 @@ function buildFairness() {
       html += '</div>';
     }
   }
-  var diffLabel = activeDiffFilter === 'heroic' ? 'Heroic' : activeDiffFilter === 'mythic' ? 'Mythic' : 'All';
-  html += '<div class="fairness-avg-legend"><span class="fairness-avg-line-swatch"></span>'+diffLabel+' avg: '+Math.round(avg)+' items</div>';
+  var diffLabel   = activeDiffFilter === 'heroic' ? 'Heroic' : activeDiffFilter === 'mythic' ? 'Mythic' : 'All';
+  var seasonLabel = ACTIVE_SEASON ? ' &mdash; ' + ACTIVE_SEASON : ' &mdash; All Seasons';
+  html += '<div class="fairness-avg-legend"><span class="fairness-avg-line-swatch"></span>'+diffLabel+' avg: '+Math.round(avg)+' items'+seasonLabel+'</div>';
   document.getElementById('fairnessContent').innerHTML = html;
 }

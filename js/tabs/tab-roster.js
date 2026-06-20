@@ -95,11 +95,11 @@ function buildRosterTable() {
   if (activeSort.key === 'name') {
     sortFn = function(a,b) { return activeSort.dir * (a.nick||a.firstName).localeCompare(b.nick||b.firstName); };
   } else if (activeSort.key === 'attendance') {
-    sortFn = function(a,b) { return activeSort.dir * ((parseInt(a.attendance)||0) - (parseInt(b.attendance)||0)); };
+    sortFn = function(a,b) { return activeSort.dir * ((parseFloat(getDisplayAttendancePct(a))||0) - (parseFloat(getDisplayAttendancePct(b))||0)); };
   } else if (activeSort.key === 'items') {
     sortFn = function(a,b) {
-      var ac = (getLootEntry(a.firstName)||{count:0}).count;
-      var bc = (getLootEntry(b.firstName)||{count:0}).count;
+      var ac = (getSeasonLootEntry(a.firstName)||{count:0}).count;
+      var bc = (getSeasonLootEntry(b.firstName)||{count:0}).count;
       return activeSort.dir * (ac - bc);
     };
   } else {
@@ -118,9 +118,10 @@ function buildRosterTable() {
     for (var j = 0; j < players.length; j++) {
       var p         = players[j];
       var name      = p.nick || p.firstName;
-      var pct       = parseInt(p.attendance) || 0;
+      var att       = getDisplayAttendancePct(p);
+      var pct       = parseFloat(att) || 0;
       var color     = attendColor(pct);
-      var lootEntry = getLootEntry(p.firstName);
+      var lootEntry = getSeasonLootEntry(p.firstName);
       var lootCount = lootEntry ? lootEntry.count : 0;
       var hasBis    = !!p.bisLink;
       var roleColor = p.role==='Tank'?'var(--tank)':p.role==='Heal'?'var(--heal)':p.role==='Ranged'?'var(--ranged)':'var(--melee)';
@@ -128,7 +129,7 @@ function buildRosterTable() {
       if (p.isTrial) statusTags += '<span class="tag tag-trial">Trial</span> ';
       if (p.isBench) statusTags += '<span class="tag tag-bench">Bench</span>';
       if (!statusTags) statusTags = '<span style="color:var(--text);">-</span>';
-      var barPct   = pct + '%';
+      var barPct   = pct.toFixed(1) + '%';
       var clsColor = classColor(p.class);
       html += '<tr class="player-row'+(selectedOfficerPlayer===p.firstName?' selected':'')+'" onclick="officerSelectPlayer(\''+p.firstName+'\')" data-player="'+p.firstName+'">' +
         '<td><div class="player-name-cell">' +
@@ -142,7 +143,7 @@ function buildRosterTable() {
             (p.joinDate?'<span style="font-size:0.82rem;color:var(--text-dim);">Joined: '+formatJoinDate(p.joinDate)+'</span>':'') +
           '</div>' +
         '</div></td>' +
-        '<td><div class="attend-mini-cell"><span class="attend-mini" style="color:'+color+';">'+(p.attendance||'-')+'</span>' +
+        '<td><div class="attend-mini-cell"><span class="attend-mini" style="color:'+color+';">'+(att||'-')+'</span>' +
           (pct?'<div class="attend-mini-bar-wrap"><div class="attend-mini-bar" style="width:'+barPct+';background:'+color+';"></div></div>':'') +
         '</div></td>' +
         '<td>'+lootCount+'</td>' +

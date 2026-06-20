@@ -9,7 +9,7 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 Performance fixes and officer dashboard completions that don't require new infrastructure.
 
 - [ ] Priority order management from the web app -- dedicated UI to assign and reorder player priorities per item, with a priority generator that suggests an order based on BiS lists, role, and loot fairness data; writes back to the Priority Order sheet (#111)
-- [ ] Season selector -- global filter on the officer dashboard to scope loot counts, fairness, conflicts, and attendance to a specific season; "All Seasons" option retains current behavior (#115)
+- [x] Season selector -- global filter on the officer dashboard to scope loot counts, fairness, conflicts, and attendance to a specific season; "All Seasons" option retains current behavior (#115)
 - [ ] Move Discord bot from personal server to guild server -- set up officer notification channel so all officers can see app notifications (#84)
 - [ ] `/pending-roster` bot command -- lists all pending signup applicants with their name, class, spec, and role (#86)
 - [ ] Highlight conflicts where a player has been given top priority on multiple items by officers (#12)
