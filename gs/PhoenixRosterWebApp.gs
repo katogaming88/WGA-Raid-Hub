@@ -38,11 +38,13 @@ const CFG = {
   priorityDataStart:     2,
 
   // ── Item Lookup tab ───────────────────────────────────────────────────
-  itemLookupSheet:   'Item Lookup',
-  itemNameCol:       1,
-  itemSlotCol:       3,
-  itemBossCol:       5,
-  itemDataStart:     3,
+  itemLookupSheet:    'Item Lookup',
+  itemNameCol:        1,
+  itemSlotCol:        3,
+  itemArmorTypeCol:   4,
+  itemSortIdCol:      5,
+  itemBossCol:        6,
+  itemDataStart:      3,
 
   // ── Roster Responses tab ─────────────────────────────────────────
   responsesSheet:    'Roster Responses',
@@ -445,6 +447,18 @@ function doGet(e) {
       updateBisLinkInRoster(nameRealm, url);
       cache.remove('rosterHeavy');
       appendAuditLog('BiS Link Updated', nameRealm, oldUrl, url);
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'setBisItems') {
+      const data      = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      const nameRealm = String(data.nameRealm || '').trim();
+      const items     = Array.isArray(data.items) ? data.items : [];
+      if (!nameRealm) return jsonpResponse(callback, { error: 'Missing nameRealm' });
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      setBisItemsForPlayer(ss, nameRealm, items);
+      cache.remove('rosterHeavy');
+      appendAuditLog('BiS List Updated', nameRealm, '', String(items.length) + ' items');
       return jsonpResponse(callback, { success: true });
     }
 
@@ -919,6 +933,7 @@ function buildHeavyPayload(sheets) {
     priorityOrder:          getPriorityOrder(sheets),
     bisList:                getBisList(sheets),
     itemSlots:              getItemSlots(sheets),
+    itemArmorTypes:         getItemArmorTypes(sheets),
     itemBosses:             getItemBosses(sheets),
     lootCounts:             getLootCounts(sheets),
     attendanceDetails:      getAttendanceDetails(sheets),
@@ -1330,6 +1345,70 @@ function getBisList(sheets) {
   return bisList;
 }
 
+function setBisItemsForPlayer(ss, nameRealm, items) {
+  const sheet = ss.getSheetByName(CFG.bisSheet);
+  if (!sheet) throw new Error('BiS List sheet not found');
+
+  const firstName  = nameRealm.split('-')[0].trim();
+  const data       = sheet.getDataRange().getValues();
+  const headerRow  = data[CFG.bisHeaderRow - 1];
+
+  // Find or create the player's column
+  let playerCol = -1;
+  for (let c = CFG.bisPlayerStartCol - 1; c < headerRow.length; c++) {
+    const h = String(headerRow[c] || '').trim();
+    if (h.split('-')[0].trim().toLowerCase() === firstName.toLowerCase()) {
+      playerCol = c;
+      break;
+    }
+  }
+  if (playerCol === -1) {
+    playerCol = headerRow.length;
+    sheet.getRange(CFG.bisHeaderRow, playerCol + 1).setValue(nameRealm);
+  }
+
+  // Clear existing data for this player
+  const lastRow = sheet.getLastRow();
+  if (lastRow >= CFG.bisDataStart) {
+    sheet.getRange(CFG.bisDataStart, playerCol + 1, lastRow - CFG.bisDataStart + 1, 1).clearContent();
+  }
+
+  if (!items || !items.length) return;
+
+  // Reload data (header write may have shifted values)
+  const fresh = sheet.getDataRange().getValues();
+
+  // Build slot -> [1-based row numbers] map
+  const slotRows = {};
+  for (let i = CFG.bisDataStart - 1; i < fresh.length; i++) {
+    const slot = String(fresh[i][CFG.bisSlotCol - 1] || '').trim();
+    if (!slot) continue;
+    if (!slotRows[slot]) slotRows[slot] = [];
+    slotRows[slot].push(i + 1);
+  }
+
+  // Write items; append new slot rows for any overflow or unknown slots
+  const slotUsed = {};
+  for (const entry of items) {
+    const item = String(entry.item || '').trim();
+    const slot = String(entry.slot || '').trim();
+    if (!item) continue;
+    const rows     = slotRows[slot] || [];
+    const used     = slotUsed[slot] || 0;
+    if (used < rows.length) {
+      sheet.getRange(rows[used], playerCol + 1).setValue(item);
+    } else {
+      // Append a new row for this slot
+      const newRow = sheet.getLastRow() + 1;
+      if (slot) sheet.getRange(newRow, CFG.bisSlotCol).setValue(slot);
+      sheet.getRange(newRow, playerCol + 1).setValue(item);
+      if (!slotRows[slot]) slotRows[slot] = [];
+      slotRows[slot].push(newRow);
+    }
+    slotUsed[slot] = (slotUsed[slot] || 0) + 1;
+  }
+}
+
 function getAttendanceDetails(sheets) {
   const sheet = sheets[CFG.attendanceSheet];
   if (!sheet) return {};
@@ -1506,6 +1585,23 @@ function getItemSlots(sheets) {
     const name = String(row[CFG.itemNameCol - 1] || '').trim();
     const slot = String(row[CFG.itemSlotCol - 1] || '').trim();
     if (name && slot) result[name] = slot;
+  }
+
+  return result;
+}
+
+function getItemArmorTypes(sheets) {
+  const sheet = sheets[CFG.itemLookupSheet];
+  if (!sheet) return {};
+
+  const data   = sheet.getDataRange().getValues();
+  const result = {};
+
+  for (let i = CFG.itemDataStart - 1; i < data.length; i++) {
+    const row       = data[i];
+    const name      = String(row[CFG.itemNameCol - 1]      || '').trim();
+    const armorType = String(row[CFG.itemArmorTypeCol - 1] || '').trim();
+    if (name && armorType) result[name] = armorType;
   }
 
   return result;

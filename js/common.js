@@ -1,5 +1,5 @@
 var WEB_APP_URL   = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION       = '2.18.0';
+var VERSION       = '2.19.0';
 var DATA          = null;
 var ACTIVE_SEASON = null; // null = All Seasons; set by officer.js when a season is selected
 
@@ -55,6 +55,22 @@ var CLASS_SPECS = {
   'Shaman': { specs: ['Elemental', 'Enhancement', 'Restoration'], roles: ['Healer', 'DPS'] },
   'Warlock': { specs: ['Affliction', 'Demonology', 'Destruction'], roles: null },
   'Warrior': { specs: ['Arms', 'Fury', 'Protection'], roles: ['Tank', 'DPS'] }
+};
+
+var CLASS_ARMOR_TYPE = {
+  'Death Knight': 'Plate',
+  'Demon Hunter': 'Leather',
+  'Druid':        'Leather',
+  'Evoker':       'Mail',
+  'Hunter':       'Mail',
+  'Mage':         'Cloth',
+  'Monk':         'Leather',
+  'Paladin':      'Plate',
+  'Priest':       'Cloth',
+  'Rogue':        'Leather',
+  'Shaman':       'Mail',
+  'Warlock':      'Cloth',
+  'Warrior':      'Plate'
 };
 
 var CLASS_COLORS = {
@@ -122,6 +138,7 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.bisList                 = heavy.bisList;
       DATA.priorityOrder           = heavy.priorityOrder;
       DATA.itemSlots               = heavy.itemSlots;
+      DATA.itemArmorTypes          = heavy.itemArmorTypes || {};
       DATA.itemBosses              = heavy.itemBosses || {};
       DATA.selfReceived            = heavy.selfReceived;
       if (typeof populateBossFilters === 'function') populateBossFilters();
