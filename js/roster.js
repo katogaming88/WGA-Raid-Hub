@@ -99,15 +99,63 @@ function buildRecentLoot() {
   el.innerHTML = html;
 }
 
+function buildProgression() {
+  var raids = (DATA && DATA.raidProgression) || [];
+  var el    = document.getElementById('landingProgression');
+  if (!el || !raids.length) return;
+
+  var html = '<div class="prog-wrap">';
+  for (var i = 0; i < raids.length; i++) {
+    var raid    = raids[i];
+    var bosses  = raid.bosses || [];
+    var killed  = bosses.filter(function(b) { return !!b.mythicDate; }).length;
+    var total   = bosses.length;
+    var pct     = total ? Math.round((killed / total) * 100) : 0;
+    html += '<div class="prog-card">';
+    html += '<div class="prog-header">';
+    html += '<span class="prog-score">' + killed + '/' + total + ' M</span>';
+    html += '<span class="prog-raid-name">' + _esc(raid.name || 'Unnamed Raid') + '</span>';
+    html += '</div>';
+    if (total) {
+      html += '<div class="prog-bar-wrap"><div class="prog-bar" style="width:' + pct + '%"></div></div>';
+    }
+    if (bosses.length) {
+      html += '<div class="prog-bosses">';
+      for (var j = 0; j < bosses.length; j++) {
+        var boss    = bosses[j];
+        var killed_ = !!boss.mythicDate;
+        html += '<div class="prog-boss' + (killed_ ? ' prog-boss-killed' : '') + '">';
+        html += '<span class="prog-boss-num">' + (j + 1) + '</span>';
+        html += '<span class="prog-boss-name">' + _esc(boss.name || 'Unknown') + '</span>';
+        if (killed_) html += '<span class="prog-boss-date">' + boss.mythicDate + '</span>';
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+    if (!raid.isMiniRaid && raid.aotcDate) {
+      html += '<div class="prog-aotc">AOTC <span class="prog-aotc-date">' + raid.aotcDate + '</span></div>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function _esc(str) {
+  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 // Boot
 loadData(
   function() {
     populateDropdown();
     buildPublicStats();
+    buildProgression();
     showView('landing');
   },
   function() {
     buildPublicStats();
+    buildProgression();
     buildRecentLoot();
     var sel         = document.getElementById('playerSelect');
     var profileWrap = document.getElementById('profileViewWrap');

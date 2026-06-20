@@ -253,16 +253,54 @@ function doGet(e) {
       return jsonpResponse(callback, { success: true, seasonEnd: val });
     }
 
+    if (action === 'saveRaidProgression') {
+      let raids = [];
+      try { raids = JSON.parse(decodeURIComponent(String(e.parameter.data || ''))); } catch (_) {}
+      if (!Array.isArray(raids)) return jsonpResponse(callback, { error: 'Invalid data' });
+      props.setProperty('raidProgression', JSON.stringify(raids));
+      cache.remove('rosterCore');
+      appendAuditLog('Raid Progression Saved', '', '', raids.length + ' raid(s)');
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'getWclZoneEncounters') {
+      const zoneId = parseInt(e.parameter.zoneId, 10);
+      if (!zoneId || isNaN(zoneId)) return jsonpResponse(callback, { error: 'Missing or invalid zoneId' });
+      try {
+        const token = getAccessToken();
+        if (!token) throw new Error('Failed to get WCL access token');
+        const query = `query { worldData { zone(id: ${zoneId}) { name encounters { id name } } } }`;
+        const result = wclQuery(token, query);
+        const zone = result && result.data && result.data.worldData && result.data.worldData.zone;
+        if (!zone) throw new Error('Zone not found');
+        return jsonpResponse(callback, { success: true, zoneName: zone.name, encounters: zone.encounters || [] });
+      } catch (err) {
+        return jsonpResponse(callback, { error: err.message });
+      }
+    }
+
+    if (action === 'fetchWclProgression') {
+      const zoneId = parseInt(e.parameter.zoneId, 10);
+      if (!zoneId || isNaN(zoneId)) return jsonpResponse(callback, { error: 'Missing or invalid zoneId' });
+      try {
+        return jsonpResponse(callback, fetchWclProgressionData(zoneId));
+      } catch (err) {
+        return jsonpResponse(callback, { error: err.message });
+      }
+    }
+
     if (action === 'archiveSeason') {
-      const seasonName  = props.getProperty('seasonName')  || '';
-      const seasonStart = props.getProperty('seasonStart') || '';
-      const seasonEnd   = props.getProperty('seasonEnd')   || '';
-      const history     = JSON.parse(props.getProperty('seasonHistory') || '[]');
-      history.push({ name: seasonName, start: seasonStart, end: seasonEnd });
+      const seasonName      = props.getProperty('seasonName')      || '';
+      const seasonStart     = props.getProperty('seasonStart')     || '';
+      const seasonEnd       = props.getProperty('seasonEnd')       || '';
+      const raidProgression = JSON.parse(props.getProperty('raidProgression') || '[]');
+      const history         = JSON.parse(props.getProperty('seasonHistory') || '[]');
+      history.push({ name: seasonName, start: seasonStart, end: seasonEnd, raids: raidProgression });
       props.setProperty('seasonHistory', JSON.stringify(history));
       props.deleteProperty('seasonName');
       props.deleteProperty('seasonStart');
       props.deleteProperty('seasonEnd');
+      props.deleteProperty('raidProgression');
       cache.remove('rosterCore');
       cache.remove('rosterHeavy');
       appendAuditLog('Season Archived', '', '', seasonName);
@@ -857,7 +895,8 @@ function buildCorePayload(sheets, scriptProps) {
   const seasonStart         = scriptProps.getProperty('seasonStart')         || '';
   const seasonName          = scriptProps.getProperty('seasonName')          || '';
   const seasonEnd           = scriptProps.getProperty('seasonEnd')           || '';
-  const seasonHistory       = JSON.parse(scriptProps.getProperty('seasonHistory') || '[]');
+  const seasonHistory       = JSON.parse(scriptProps.getProperty('seasonHistory')       || '[]');
+  const raidProgression     = JSON.parse(scriptProps.getProperty('raidProgression')     || '[]');
   return {
     generatedAt:          new Date().toISOString(),
     signupsOpen:          signupsOpen,
@@ -867,6 +906,7 @@ function buildCorePayload(sheets, scriptProps) {
     seasonName:           seasonName,
     seasonEnd:            seasonEnd,
     seasonHistory:        seasonHistory,
+    raidProgression:      raidProgression,
     bisAllowedPlayers:    getBisAllowedPlayers(),
     playerNotes:          getPlayerNotes(),
     roster:               getRoster(sheets, seasonStart),
@@ -2229,5 +2269,73 @@ function getSignupNameFromRow(row) {
   const char  = String(vals[1] || '');
   const realm = String(vals[2] || '');
   return realm ? char + '-' + realm : char;
+}
+
+function fetchWclProgressionData(zoneId) {
+  const token = getAccessToken();
+  if (!token) throw new Error('Failed to get WCL access token. Check WCL_CLIENT_ID and WCL_CLIENT_SECRET in Script Properties.');
+
+  const query = `
+    query {
+      reportData {
+        reports(guildID: ${GUILD_TAG_ID}, zoneID: ${zoneId}, limit: 100) {
+          data {
+            startTime
+            fights(killType: Kills) {
+              encounterID
+              name
+              difficulty
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const result = wclQuery(token, query);
+  if (!result) throw new Error('WCL query returned no data');
+
+  const reports = (result.data && result.data.reportData && result.data.reportData.reports && result.data.reportData.reports.data) || [];
+
+  const firstKills = {};
+
+  for (var i = 0; i < reports.length; i++) {
+    var report = reports[i];
+    var fights = report.fights || [];
+    for (var j = 0; j < fights.length; j++) {
+      var fight = fights[j];
+      var encId = fight.encounterID;
+      var diff  = fight.difficulty;
+      var name  = fight.name || '';
+      var ts    = report.startTime;
+
+      if (!firstKills[encId]) firstKills[encId] = { name: name, mythicMs: null, heroicMs: null };
+      if (name && !firstKills[encId].name) firstKills[encId].name = name;
+
+      if (diff === 5) {
+        if (firstKills[encId].mythicMs === null || ts < firstKills[encId].mythicMs) firstKills[encId].mythicMs = ts;
+      } else if (diff === 4) {
+        if (firstKills[encId].heroicMs === null || ts < firstKills[encId].heroicMs) firstKills[encId].heroicMs = ts;
+      }
+    }
+  }
+
+  var encIds = Object.keys(firstKills).map(function(id) { return parseInt(id); });
+  encIds.sort(function(a, b) { return a - b; });
+
+  var bosses = encIds.map(function(encId) {
+    var k = firstKills[encId];
+    return {
+      encounterID: encId,
+      name:        k.name,
+      mythicDate:  k.mythicMs ? Utilities.formatDate(new Date(k.mythicMs), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+      heroicDate:  k.heroicMs ? Utilities.formatDate(new Date(k.heroicMs), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+    };
+  });
+
+  var aotcDate = '';
+  if (bosses.length > 0) aotcDate = bosses[bosses.length - 1].heroicDate || '';
+
+  return { success: true, bosses: bosses, aotcDate: aotcDate };
 }
 

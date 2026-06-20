@@ -41,16 +41,35 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 
 /* Landing */
 .landing-body { flex:1; display:flex; flex-direction:column; align-items:center; padding:3rem 2rem 2rem; gap:2rem; }
-.landing-card { background:var(--bg-card); border:1px solid var(--border-mid); border-top:2px solid rgba(214,163,68,0.4); border-radius:6px; padding:2.5rem 2rem; width:100%; max-width:380px; display:flex; flex-direction:column; align-items:center; gap:0.75rem; }
+.landing-card { background:var(--bg-card); border:1px solid var(--border-mid); border-top:2px solid rgba(214,163,68,0.4); border-radius:6px; padding:2.5rem 2rem; width:100%; max-width:500px; display:flex; flex-direction:column; align-items:center; gap:0.75rem; }
 
 /* Public stats */
-.pub-stats { display:flex; gap:0.75rem; width:100%; max-width:380px; }
+.pub-stats { display:flex; gap:0.75rem; width:100%; max-width:500px; }
 .pub-stat { flex:1; background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:0.75rem 1rem; text-align:center; }
 .pub-stat-num { display:block; font-size:1.6rem; font-weight:700; color:var(--gold); font-family:'Cinzel',serif; }
 .pub-stat-label { display:block; font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-muted); margin-top:0.2rem; }
 
+/* Raid progression */
+.prog-wrap { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; width:100%; max-width:760px; }
+@media (max-width:560px) { .prog-wrap { grid-template-columns:1fr; } }
+.prog-card { background:var(--bg-card); border:1px solid var(--border-mid); border-top:2px solid rgba(130,60,220,0.45); border-radius:6px; padding:1rem 1.1rem; }
+.prog-header { display:flex; flex-direction:column; align-items:center; gap:0.15rem; margin-bottom:0.6rem; text-align:center; }
+.prog-raid-name { font-family:'Cinzel',serif; font-size:0.95rem; font-weight:600; color:var(--text); letter-spacing:0.02em; }
+.prog-score { font-size:0.85rem; font-weight:700; color:#b085f0; letter-spacing:0.06em; white-space:nowrap; }
+.prog-bar-wrap { height:4px; background:rgba(255,255,255,0.08); border-radius:2px; margin-bottom:0.75rem; overflow:hidden; }
+.prog-bar { height:100%; background:linear-gradient(90deg,#6a30c8,#b085f0); border-radius:2px; transition:width 0.4s; }
+.prog-bosses { display:flex; flex-direction:column; gap:0.3rem; }
+.prog-boss { display:flex; align-items:center; gap:0.55rem; padding:0.3rem 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+.prog-boss:last-child { border-bottom:none; }
+.prog-boss-num { font-size:0.72rem; color:var(--text-dim); min-width:1rem; text-align:right; }
+.prog-boss-name { flex:1; font-size:0.88rem; color:var(--text-muted); }
+.prog-boss-killed .prog-boss-name { color:var(--text); }
+.prog-boss-date { font-size:0.78rem; color:var(--text-dim); white-space:nowrap; }
+.prog-aotc { display:inline-flex; align-items:center; gap:0.4rem; margin-top:0.65rem; font-size:0.75rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); background:rgba(214,163,68,0.1); border:1px solid rgba(214,163,68,0.3); border-radius:4px; padding:0.2rem 0.6rem; }
+.prog-aotc-date { font-weight:400; color:var(--text-muted); letter-spacing:0; text-transform:none; }
+
 /* Public recent loot */
-.pub-loot { width:100%; max-width:480px; }
+.pub-loot { width:100%; max-width:760px; }
 .pub-loot-title { font-size:0.78rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-muted); font-weight:600; margin-bottom:0.5rem; padding-bottom:0.4rem; border-bottom:1px solid var(--border-mid); }
 .pub-loot-row { display:grid; grid-template-columns:90px 1fr auto auto; align-items:center; gap:0.6rem; padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:0.9rem; }
 .pub-loot-player { color:var(--gold); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -61,7 +80,7 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 .diff-other  { background:rgba(255,255,255,0.06); color:var(--text-muted); }
 .pub-loot-date { color:var(--text-dim); font-size:0.8rem; white-space:nowrap; }
 .selector-label { font-size:0.95rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--text-muted); font-weight:600; }
-.selector-outer { position:relative; width:100%; max-width:360px; }
+.selector-outer { position:relative; width:100%; max-width:460px; }
 .selector-outer::after { content:'▾'; position:absolute; right:14px; top:50%; transform:translateY(-50%); color:var(--gold-dim); pointer-events:none; font-size:0.9rem; }
 select#playerSelect { width:100%; appearance:none; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:500; padding:0.65rem 2.2rem 0.65rem 1rem; border-radius:3px; cursor:pointer; transition:border-color 0.15s; outline:none; }
 select#playerSelect:hover { border-color:var(--gold-dim); }
