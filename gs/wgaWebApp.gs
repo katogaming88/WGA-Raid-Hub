@@ -337,6 +337,7 @@ function doGet(e) {
       props.deleteProperty('seasonStart');
       props.deleteProperty('seasonEnd');
       props.deleteProperty('raidProgression');
+      clearBisListSheet(SpreadsheetApp.getActiveSpreadsheet());
       cache.remove('rosterCore');
       cache.remove('rosterHeavy');
       appendAuditLog('Season Archived', '', '', seasonName);
@@ -1444,6 +1445,15 @@ function setBisItemsForPlayer(ss, nameRealm, items) {
     }
     slotUsed[slot] = (slotUsed[slot] || 0) + 1;
   }
+}
+
+function clearBisListSheet(ss) {
+  const sheet = ss.getSheetByName(CFG.bisSheet);
+  if (!sheet) return;
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+  if (lastRow < CFG.bisDataStart || lastCol < CFG.bisPlayerStartCol) return;
+  sheet.getRange(CFG.bisDataStart, CFG.bisPlayerStartCol, lastRow - CFG.bisDataStart + 1, lastCol - CFG.bisPlayerStartCol + 1).clearContent();
 }
 
 function getAttendanceDetails(sheets) {
