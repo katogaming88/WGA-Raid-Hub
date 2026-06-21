@@ -20,7 +20,7 @@
   <header class="header">
     <a href="index.html" class="header-link">
       <span class="header-emblem">🔥</span>
-      <h1>Team Phoenix</h1>
+      <h1 id="headerTeamName">Team Phoenix</h1>
       <p class="header-sub">Raid Hub</p>
     </a>
     <div class="header-divider"></div>
@@ -599,7 +599,7 @@
         </div>
       </div>
     </div>
-    <div class="footer">We Go Again &middot; Team Phoenix &middot; v<span id="versionNum"></span> &middot; <a
+    <div class="footer">We Go Again &middot; <span class="team-name">Team Phoenix</span> &middot; v<span id="versionNum"></span> &middot; <a
         class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank"
         rel="noopener">Changelog</a></div>
   </div>
@@ -728,7 +728,12 @@
   <script src="js/tabs/tab-audit.js"></script>
   <script src="js/tabs/tab-season.js"></script>
   <script src="js/tabs/tab-loot-import.js"></script>
-  <script>document.getElementById('versionNum').textContent = VERSION;</script>
+  <script>
+document.getElementById('versionNum').textContent = VERSION;
+document.title = TEAM_NAME + ' -- Officer';
+document.getElementById('headerTeamName').textContent = TEAM_NAME;
+document.querySelectorAll('.team-name').forEach(function(el){el.textContent=TEAM_NAME;});
+</script>
 </body>
 
 </html>

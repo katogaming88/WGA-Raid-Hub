@@ -1,5 +1,7 @@
-var OFFICER_PASS          = 'phoenix2';
+var OFFICER_PASS          = _teamCfg.officerPass;
 var SESSION_DURATION_MS   = 2 * 60 * 60 * 1000; // 2 hours
+var _SESSION_KEY          = TEAM_SLUG + '_officer';
+var _SESSION_TS_KEY       = TEAM_SLUG + '_officer_ts';
 var selectedOfficerPlayer = null;
 var activeFilters         = {};
 var activeSort            = { key: null, dir: 1 };
@@ -139,8 +141,8 @@ function hideOfficerPrompt() {
 
 function submitOfficerPassword() {
   if (document.getElementById('officerPassword').value === OFFICER_PASS) {
-    sessionStorage.setItem('phoenix_officer', '1');
-    sessionStorage.setItem('phoenix_officer_ts', String(Date.now()));
+    sessionStorage.setItem(_SESSION_KEY, '1');
+    sessionStorage.setItem(_SESSION_TS_KEY, String(Date.now()));
     hideOfficerPrompt();
     document.getElementById('loadingMsg').style.display = '';
     loadData(
@@ -160,14 +162,14 @@ function submitOfficerPassword() {
 }
 
 function officerLogout() {
-  sessionStorage.removeItem('phoenix_officer');
-  sessionStorage.removeItem('phoenix_officer_ts');
+  sessionStorage.removeItem(_SESSION_KEY);
+  sessionStorage.removeItem(_SESSION_TS_KEY);
   window.location.href = 'index.html';
 }
 
 function isOfficerSessionValid() {
-  if (sessionStorage.getItem('phoenix_officer') !== '1') return false;
-  var ts = parseInt(sessionStorage.getItem('phoenix_officer_ts') || '0', 10);
+  if (sessionStorage.getItem(_SESSION_KEY) !== '1') return false;
+  var ts = parseInt(sessionStorage.getItem(_SESSION_TS_KEY) || '0', 10);
   return ts > 0 && (Date.now() - ts) < SESSION_DURATION_MS;
 }
 
@@ -372,8 +374,8 @@ function getDisplayAttendancePct(player) {
 
 // -- Boot: require password before loading any data; clear expired sessions
 if (!isOfficerSessionValid()) {
-  sessionStorage.removeItem('phoenix_officer');
-  sessionStorage.removeItem('phoenix_officer_ts');
+  sessionStorage.removeItem(_SESSION_KEY);
+  sessionStorage.removeItem(_SESSION_TS_KEY);
   document.getElementById('loadingMsg').style.display = 'none';
   showOfficerPrompt();
 } else {

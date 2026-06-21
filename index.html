@@ -14,7 +14,7 @@
 <header class="header">
   <a href="index.html" class="header-link">
     <span class="header-emblem">🔥</span>
-    <h1>Team Phoenix</h1>
+    <h1 id="headerTeamName">Team Phoenix</h1>
     <p class="header-sub">Raid Hub</p>
   </a>
   <div class="header-divider"></div>
@@ -41,13 +41,13 @@
     <div id="landingProgression"></div>
     <div id="landingLoot" class="pub-loot"></div>
   </div>
-  <div class="footer">We Go Again &middot; Team Phoenix &middot; v<span id="versionNum"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
+  <div class="footer">We Go Again &middot; <span class="team-name">Team Phoenix</span> &middot; v<span id="versionNum"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
 </div>
 
 <!-- Profile -->
 <div id="profileViewWrap" class="view">
   <div id="profileView"></div>
-  <div class="footer">We Go Again &middot; Team Phoenix &middot; v<span id="versionNumProfile"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
+  <div class="footer">We Go Again &middot; <span class="team-name">Team Phoenix</span> &middot; v<span id="versionNumProfile"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
 </div>
 
 <!-- Signup -->
@@ -57,12 +57,17 @@
       <div id="signupForm"></div>
     </div>
   </div>
-  <div class="footer">We Go Again &middot; Team Phoenix &middot; v<span id="versionNumSignup"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
+  <div class="footer">We Go Again &middot; <span class="team-name">Team Phoenix</span> &middot; v<span id="versionNumSignup"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
 </div>
 
 <script src="js/common.js"></script>
 <script src="js/roster.js"></script>
 <script src="js/signup.js"></script>
-<script>['versionNum','versionNumProfile','versionNumSignup'].forEach(function(id){document.getElementById(id).textContent=VERSION;});</script>
+<script>
+['versionNum','versionNumProfile','versionNumSignup'].forEach(function(id){document.getElementById(id).textContent=VERSION;});
+document.title = TEAM_NAME + ' -- Roster';
+document.getElementById('headerTeamName').textContent = TEAM_NAME;
+document.querySelectorAll('.team-name').forEach(function(el){el.textContent=TEAM_NAME;});
+</script>
 </body>
 </html>

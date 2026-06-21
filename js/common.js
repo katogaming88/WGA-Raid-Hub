@@ -1,5 +1,22 @@
-var WEB_APP_URL   = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION       = '2.19.0';
+var TEAMS = {
+  phoenix: {
+    gasUrl:      'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec',
+    name:        'Team Phoenix',
+    officerPass: 'phoenix2'
+  },
+  hellfire: {
+    gasUrl:      '', // TODO: fill in after Hellfire Rollers deploys their GAS web app
+    name:        'Hellfire Rollers',
+    officerPass: '' // TODO: fill in
+  }
+};
+
+var _teamParam  = (location.search.match(/[?&]team=([^&]+)/) || [])[1] || 'phoenix';
+var _teamCfg    = TEAMS[_teamParam] || TEAMS.phoenix;
+var TEAM_SLUG   = _teamParam in TEAMS ? _teamParam : 'phoenix';
+var TEAM_NAME   = _teamCfg.name;
+var WEB_APP_URL = _teamCfg.gasUrl;
+var VERSION     = '2.19.0';
 var DATA          = null;
 var ACTIVE_SEASON = null; // null = All Seasons; set by officer.js when a season is selected
 
