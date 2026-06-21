@@ -77,19 +77,17 @@ function executeArchiveSeason() {
   if (el) el.style.display = 'none';
   if (btn) { btn.disabled = true; }
 
-  var cbName = '_archiveSeasonCb';
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=archiveSeason', function(err, result) {
     if (btn) btn.disabled = false;
-    if (result && result.success) {
+    if (!err && result && result.success) {
       var archived = { name: DATA.seasonName, start: DATA.seasonStart, end: DATA.seasonEnd || '', raids: JSON.parse(JSON.stringify(DATA.raidProgression || [])) };
       if (!DATA.seasonHistory) DATA.seasonHistory = [];
       DATA.seasonHistory.push(archived);
-      DATA.seasonName        = '';
-      DATA.seasonStart       = '';
-      DATA.seasonEnd         = '';
-      DATA.raidProgression   = [];
-      SEASON_RAIDS           = [];
+      DATA.seasonName      = '';
+      DATA.seasonStart     = '';
+      DATA.seasonEnd       = '';
+      DATA.raidProgression = [];
+      SEASON_RAIDS         = [];
       buildSeasonTab();
       populateSeasonSelector();
       if (status) {
@@ -97,17 +95,9 @@ function executeArchiveSeason() {
         setTimeout(function() { if (status) status.textContent = ''; }, 3000);
       }
     } else {
-      if (status) { status.textContent = 'Error archiving season.'; }
+      if (status) { status.textContent = err ? err.message : 'Error archiving season.'; }
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    if (btn) btn.disabled = false;
-    if (status) { status.textContent = 'Error archiving season.'; }
-  };
-  script.src = WEB_APP_URL + '?action=archiveSeason&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function syncAttendancePct() {
@@ -115,27 +105,14 @@ function syncAttendancePct() {
   var status = document.getElementById('syncAttendPctStatus');
   if (btn) { btn.disabled = true; btn.textContent = 'Syncing...'; }
 
-  var cbName = '_syncAttendPctCb';
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=syncAttendancePct', function(err, result) {
     if (btn) { btn.disabled = false; btn.textContent = 'Sync to Roster Sheet'; }
-    if (result && result.success) {
-      if (status) {
-        status.textContent = 'Synced!';
-        setTimeout(function() { if (status) status.textContent = ''; }, 2000);
-      }
+    if (!err && result && result.success) {
+      if (status) { status.textContent = 'Synced!'; setTimeout(function() { if (status) status.textContent = ''; }, 2000); }
     } else {
-      if (status) { status.textContent = 'Error syncing.'; }
+      if (status) { status.textContent = err ? err.message : 'Error syncing.'; }
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    if (btn) { btn.disabled = false; btn.textContent = 'Sync to Roster Sheet'; }
-    if (status) { status.textContent = 'Error syncing.'; }
-  };
-  script.src = WEB_APP_URL + '?action=syncAttendancePct&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function saveSeasonName() {
@@ -145,30 +122,17 @@ function saveSeasonName() {
   var status = document.getElementById('seasonNameStatus');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
 
-  var cbName = '_setSeasonNameCb';
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=setSeasonName&value=' + encodeURIComponent(val), function(err, result) {
     if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
-    if (result && result.success) {
+    if (!err && result && result.success) {
       if (DATA) DATA.seasonName = result.seasonName;
       if (input) input.value = result.seasonName || '';
       populateSeasonSelector();
-      if (status) {
-        status.textContent = val ? 'Saved!' : 'Cleared.';
-        setTimeout(function() { if (status) status.textContent = ''; }, 2000);
-      }
+      if (status) { status.textContent = val ? 'Saved!' : 'Cleared.'; setTimeout(function() { if (status) status.textContent = ''; }, 2000); }
     } else {
-      if (status) { status.textContent = 'Error saving.'; }
+      if (status) { status.textContent = err ? err.message : 'Error saving.'; }
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
-    if (status) { status.textContent = 'Error saving.'; }
-  };
-  script.src = WEB_APP_URL + '?action=setSeasonName&value=' + encodeURIComponent(val) + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function saveSeasonStart() {
@@ -182,28 +146,17 @@ function saveSeasonStart() {
   var status = document.getElementById('seasonStartStatus');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
 
-  var cbName = '_setSeasonStartCb';
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=setSeasonStart&value=' + encodeURIComponent(val), function(err, result) {
     if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
-    if (result && result.success) {
+    if (!err && result && result.success) {
       if (DATA) DATA.seasonStart = result.seasonStart;
       if (input) input.value = result.seasonStart || '';
       populateSeasonSelector();
-      if (status) {
-        status.textContent = val ? 'Saved!' : 'Cleared.';
-        setTimeout(function() { if (status) status.textContent = ''; }, 2000);
-      }
+      if (status) { status.textContent = val ? 'Saved!' : 'Cleared.'; setTimeout(function() { if (status) status.textContent = ''; }, 2000); }
+    } else {
+      if (status) { status.textContent = err ? err.message : 'Error saving.'; }
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
-    if (status) { status.textContent = 'Error saving.'; }
-  };
-  script.src = WEB_APP_URL + '?action=setSeasonStart&value=' + encodeURIComponent(val) + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function saveSeasonEnd() {
@@ -217,29 +170,16 @@ function saveSeasonEnd() {
   var status = document.getElementById('seasonEndStatus');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
 
-  var cbName = '_setSeasonEndCb';
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=setSeasonEnd&value=' + encodeURIComponent(val), function(err, result) {
     if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
-    if (result && result.success) {
+    if (!err && result && result.success) {
       if (DATA) DATA.seasonEnd = result.seasonEnd;
       if (input) input.value = result.seasonEnd || '';
-      if (status) {
-        status.textContent = val ? 'Saved!' : 'Cleared.';
-        setTimeout(function() { if (status) status.textContent = ''; }, 2000);
-      }
+      if (status) { status.textContent = val ? 'Saved!' : 'Cleared.'; setTimeout(function() { if (status) status.textContent = ''; }, 2000); }
     } else {
-      if (status) { status.textContent = 'Error saving.'; }
+      if (status) { status.textContent = err ? err.message : 'Error saving.'; }
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
-    if (status) { status.textContent = 'Error saving.'; }
-  };
-  script.src = WEB_APP_URL + '?action=setSeasonEnd&value=' + encodeURIComponent(val) + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 // -- Raid Progression --
@@ -374,19 +314,12 @@ function listWclEncounters(idx) {
   var el = document.getElementById('wclEncList_' + idx);
   if (el) { el.style.display = ''; el.textContent = 'Loading...'; }
 
-  var cbName = '_wclEncCb_' + idx + '_' + Date.now();
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=getWclZoneEncounters&zoneId=' + encodeURIComponent(zoneId), function(err, result) {
     if (!el) return;
-    if (!result || result.error) { el.textContent = 'Error: ' + ((result && result.error) || 'Unknown'); return; }
-    var lines = (result.encounters || []).map(function(e) { return e.id + ' — ' + e.name; });
+    if (err || !result || result.error) { el.textContent = err ? err.message : 'Error: ' + ((result && result.error) || 'Unknown'); return; }
+    var lines = (result.encounters || []).map(function(e) { return e.id + ' -- ' + e.name; });
     el.innerHTML = '<strong style="color:var(--text);">' + (result.zoneName || 'Zone ' + zoneId) + '</strong><br>' + lines.join('<br>');
-  };
-
-  var script = document.createElement('script');
-  script.onerror = function() { delete window[cbName]; if (el) el.textContent = 'Request failed.'; };
-  script.src = WEB_APP_URL + '?action=getWclZoneEncounters&zoneId=' + encodeURIComponent(zoneId) + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function fetchWclForRaid(idx) {
@@ -398,11 +331,9 @@ function fetchWclForRaid(idx) {
   var status = document.getElementById('wclFetchStatus_' + idx);
   if (status) { status.textContent = 'Fetching from WCL...'; }
 
-  var cbName = '_wclFetchCb_' + idx + '_' + Date.now();
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (!result || result.error) {
-      if (status) status.textContent = 'Error: ' + ((result && result.error) || 'Unknown');
+  jsonpRequest(WEB_APP_URL + '?action=fetchWclProgression&zoneId=' + encodeURIComponent(zoneId), function(err, result) {
+    if (err || !result || result.error) {
+      if (status) status.textContent = err ? err.message : 'Error: ' + ((result && result.error) || 'Unknown');
       return;
     }
     var encStart = parseInt(SEASON_RAIDS[idx].encounterStart, 10) || 0;
@@ -421,19 +352,8 @@ function fetchWclForRaid(idx) {
     }
     renderRaidProgressionCards();
     var s = document.getElementById('wclFetchStatus_' + idx);
-    if (s) {
-      s.textContent = 'Fetched ' + SEASON_RAIDS[idx].bosses.length + ' boss(es)!';
-      setTimeout(function() { if (s) s.textContent = ''; }, 3000);
-    }
-  };
-
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    if (status) { status.textContent = 'Request failed.'; }
-  };
-  script.src = WEB_APP_URL + '?action=fetchWclProgression&zoneId=' + encodeURIComponent(zoneId) + '&callback=' + cbName;
-  document.head.appendChild(script);
+    if (s) { s.textContent = 'Fetched ' + SEASON_RAIDS[idx].bosses.length + ' boss(es)!'; setTimeout(function() { if (s) s.textContent = ''; }, 3000); }
+  });
 }
 
 function saveRaidProgression() {
@@ -442,26 +362,13 @@ function saveRaidProgression() {
   var status = document.getElementById('raidProgressionStatus');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
 
-  var cbName = '_saveRaidProgCb';
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=saveRaidProgression&data=' + encodeURIComponent(JSON.stringify(SEASON_RAIDS)), function(err, result) {
     if (btn) { btn.disabled = false; btn.textContent = 'Save Progression'; }
-    if (result && result.success) {
+    if (!err && result && result.success) {
       DATA.raidProgression = JSON.parse(JSON.stringify(SEASON_RAIDS));
-      if (status) {
-        status.textContent = 'Saved!';
-        setTimeout(function() { if (status) status.textContent = ''; }, 2500);
-      }
+      if (status) { status.textContent = 'Saved!'; setTimeout(function() { if (status) status.textContent = ''; }, 2500); }
     } else {
-      if (status) { status.textContent = 'Error saving.'; }
+      if (status) { status.textContent = err ? err.message : 'Error saving.'; }
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    if (btn) { btn.disabled = false; btn.textContent = 'Save Progression'; }
-    if (status) { status.textContent = 'Error saving.'; }
-  };
-  script.src = WEB_APP_URL + '?action=saveRaidProgression&data=' + encodeURIComponent(JSON.stringify(SEASON_RAIDS)) + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }

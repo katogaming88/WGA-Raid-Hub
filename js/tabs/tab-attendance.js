@@ -97,14 +97,12 @@ function loadAttendanceGrid() {
   if (nightRow) nightRow.style.display = 'none';
   if (table)    table.innerHTML = '';
 
-  var cbName = '_getAttendanceGridCb_' + Date.now();
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (!result || !result.success) {
+  jsonpRequest(WEB_APP_URL + '?action=getAttendanceGrid', function(err, result) {
+    if (err || !result || !result.success) {
       _attendanceGrid = null;
       if (status) {
-        status.textContent = result && result.error ? 'Error: ' + result.error : 'No attendance data yet. Run "Refresh from WCL" first.';
-        status.style.color = 'var(--text-muted)';
+        status.textContent = err ? err.message : (result && result.error ? 'Error: ' + result.error : 'No attendance data yet. Run "Refresh from WCL" first.');
+        status.style.color = err ? 'var(--melee)' : 'var(--text-muted)';
       }
       return;
     }
@@ -113,15 +111,7 @@ function loadAttendanceGrid() {
     renderAttendanceGrid();
     var benchEl = document.getElementById('attend-sub-bench');
     if (benchEl && benchEl.style.display !== 'none') buildBenchFairness();
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    _attendanceGrid = null;
-    if (status) { status.textContent = 'Error loading attendance data.'; status.style.color = 'var(--melee)'; }
-  };
-  script.src = WEB_APP_URL + '?action=getAttendanceGrid&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function renderAttendanceGrid() {
@@ -209,12 +199,10 @@ function setPlayerStatus(selectEl) {
   selectEl.disabled = true;
   if (indicator) { indicator.textContent = 'Saving...'; indicator.style.color = 'var(--text-muted)'; }
 
-  var data    = { date: date, firstName: firstName, status: status, oldStatus: oldStatus };
-  var cbName  = '_setAttendStatusCb_' + Date.now();
-  window[cbName] = function(result) {
-    delete window[cbName];
+  var data = { date: date, firstName: firstName, status: status, oldStatus: oldStatus };
+  jsonpRequest(WEB_APP_URL + '?action=setAttendanceStatus&data=' + encodeURIComponent(JSON.stringify(data)), function(err, result) {
     selectEl.disabled = false;
-    if (result && result.success) {
+    if (!err && result && result.success) {
       selectEl.setAttribute('data-old', status);
       var nightSelect = document.getElementById('attendNightSelect');
       var idx = nightSelect ? parseInt(nightSelect.value) : -1;
@@ -236,16 +224,7 @@ function setPlayerStatus(selectEl) {
         setTimeout(function() { if (indicator) indicator.textContent = ''; }, 3000);
       }
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    selectEl.disabled = false;
-    selectEl.value = oldStatus || '';
-    if (indicator) { indicator.textContent = 'Error'; indicator.style.color = 'var(--melee)'; }
-  };
-  script.src = WEB_APP_URL + '?action=setAttendanceStatus&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function refreshAttendanceWCL() {
@@ -254,11 +233,9 @@ function refreshAttendanceWCL() {
   if (btn) { btn.disabled = true; btn.textContent = 'Refreshing...'; }
   if (status) { status.textContent = 'This may take 30-60 seconds...'; status.style.color = 'var(--text-muted)'; }
 
-  var cbName = '_refreshAttendWCLCb';
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=refreshAttendanceWCL', function(err, result) {
     if (btn) { btn.disabled = false; btn.textContent = 'Refresh from WCL'; }
-    if (result && result.success) {
+    if (!err && result && result.success) {
       if (status) {
         status.textContent = 'Done: ' + result.mainNights + ' night' + (result.mainNights !== 1 ? 's' : '') + ' found, ' + result.excluded + ' excluded.';
         status.style.color = 'var(--heal)';
@@ -267,19 +244,11 @@ function refreshAttendanceWCL() {
       loadAttendanceGrid();
     } else {
       if (status) {
-        status.textContent = result && result.error ? result.error : 'Error refreshing.';
+        status.textContent = err ? err.message : (result && result.error ? result.error : 'Error refreshing.');
         status.style.color = 'var(--melee)';
       }
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    if (btn) { btn.disabled = false; btn.textContent = 'Refresh from WCL'; }
-    if (status) { status.textContent = 'Error refreshing.'; status.style.color = 'var(--melee)'; }
-  };
-  script.src = WEB_APP_URL + '?action=refreshAttendanceWCL&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function confirmCommitScores() {
@@ -299,11 +268,9 @@ function executeCommitScores() {
   if (btn) { btn.disabled = true; btn.textContent = 'Committing...'; }
   if (status) status.textContent = '';
 
-  var cbName = '_commitAttendScoresCb';
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=commitAttendanceScores', function(err, result) {
     if (btn) { btn.disabled = false; btn.textContent = 'Commit Scores to Sheet'; }
-    if (result && result.success) {
+    if (!err && result && result.success) {
       if (status) {
         status.textContent = result.committed + ' players scored (' + result.totalRaids + ' night' + (result.totalRaids !== 1 ? 's' : '') + ')';
         status.style.color = 'var(--heal)';
@@ -311,17 +278,9 @@ function executeCommitScores() {
       }
     } else {
       if (status) {
-        status.textContent = result && result.error ? result.error : 'Error committing scores.';
+        status.textContent = err ? err.message : (result && result.error ? result.error : 'Error committing scores.');
         status.style.color = 'var(--melee)';
       }
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    if (btn) { btn.disabled = false; btn.textContent = 'Commit Scores to Sheet'; }
-    if (status) { status.textContent = 'Error committing scores.'; status.style.color = 'var(--melee)'; }
-  };
-  script.src = WEB_APP_URL + '?action=commitAttendanceScores&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }

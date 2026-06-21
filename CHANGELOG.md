@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.22.0] - 2026-06-21
+
+### Changed
+- **JSONP timeout handling across all data loading.** Added a `jsonpRequest(url, callback, timeoutMs)` helper to `common.js` (default 90s timeout, 120s for WCL refresh). All 50+ JSONP call sites across every officer tab now use this helper. If GAS hangs or is slow to respond, the request times out cleanly, re-enables the button, and shows "Request timed out. GAS may still be processing -- try again in a moment." instead of leaving the UI stuck indefinitely. Network errors show "Request failed. Check your connection."
+
+---
+
 ## [2.21.0] - 2026-06-21
 
 ### Added

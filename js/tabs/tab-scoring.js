@@ -32,34 +32,21 @@ function refreshWclPerformance() {
   if (btn) btn.disabled = true;
   if (status) { status.textContent = 'Fetching from WCL...'; status.style.color = 'var(--text-muted)'; }
 
-  var cbName = '_refreshPerfCb_' + Date.now();
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=refreshWclPerformance', function(err, result) {
     if (btn) btn.disabled = false;
-    if (result && result.success) {
+    if (!err && result && result.success) {
       var statusText = result.updated + ' player(s) updated (' + result.recentReports + ' recent / ' + result.trendReports + ' trend reports).';
-      if (status) {
-        status.textContent = statusText;
-        status.style.color = 'var(--heal)';
-      }
+      if (status) { status.textContent = statusText; status.style.color = 'var(--heal)'; }
       var freshScores = (result.scores || []).map(function(s) { return Object.assign({}, s, { committed: false }); });
       renderScoresTable(freshScores);
       _saveScoresCache(freshScores, statusText);
     } else {
       if (status) {
-        status.textContent = 'Error: ' + ((result && result.error) || 'Unknown error');
+        status.textContent = err ? err.message : 'Error: ' + ((result && result.error) || 'Unknown error');
         status.style.color = 'var(--melee)';
       }
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    if (btn) btn.disabled = false;
-    if (status) { status.textContent = 'Request failed. Check WCL credentials in Script Properties.'; status.style.color = 'var(--melee)'; }
-  };
-  script.src = WEB_APP_URL + '?action=refreshWclPerformance&callback=' + cbName;
-  document.head.appendChild(script);
+  }, 120000);
 }
 
 function renderScoresTable(scores) {
@@ -186,10 +173,8 @@ function editScoreCell(el) {
 }
 
 function saveManualScore(playerName, score, cellEl, origColor) {
-  var cbName = '_setScoreCb_' + Date.now();
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (result && result.success) {
+  jsonpRequest(WEB_APP_URL + '?action=setManualScore&firstName=' + encodeURIComponent(playerName) + '&score=' + score, function(err, result) {
+    if (!err && result && result.success) {
       var scoreStr = score.toFixed(2);
       var color = score >= 7 ? 'var(--heal)' : score >= 5 ? 'var(--gold)' : 'var(--text-dim)';
       cellEl.setAttribute('data-score', scoreStr);
@@ -211,19 +196,11 @@ function saveManualScore(playerName, score, cellEl, origColor) {
     } else {
       cellEl.style.color = origColor;
       cellEl.innerHTML = (cellEl.getAttribute('data-score') || 'No data') + ' <span style="font-size:0.7rem;opacity:0.4;font-weight:400;">edit</span>';
-      var msg = (result && result.error) || 'Unknown error';
+      var msg = err ? err.message : ((result && result.error) || 'Unknown error');
       var statusEl = document.getElementById('refreshPerfStatus');
       if (statusEl) { statusEl.textContent = 'Error saving score: ' + msg; statusEl.style.color = 'var(--melee)'; }
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    cellEl.style.color = origColor;
-    cellEl.innerHTML = (cellEl.getAttribute('data-score') || 'No data') + ' <span style="font-size:0.7rem;opacity:0.4;font-weight:400;">edit</span>';
-  };
-  script.src = WEB_APP_URL + '?action=setManualScore&firstName=' + encodeURIComponent(playerName) + '&score=' + score + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function useBestScore(bestCell) {
@@ -259,36 +236,21 @@ function executeCommitPerformance() {
   if (btn) btn.disabled = true;
   if (status) { status.textContent = 'Committing...'; status.style.color = 'var(--text-muted)'; }
 
-  var cbName = '_commitPerfCb_' + Date.now();
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=commitPerformanceScores', function(err, result) {
     if (btn) btn.disabled = false;
-    if (result && result.success) {
-      if (status) {
-        status.textContent = result.committed + ' player(s) committed to Performance column.';
-        status.style.color = 'var(--heal)';
-      }
+    if (!err && result && result.success) {
+      if (status) { status.textContent = result.committed + ' player(s) committed to Performance column.'; status.style.color = 'var(--heal)'; }
       var cached = _loadScoresCache();
       if (cached && cached.scores) {
-        cached.scores.forEach(function(s) {
-          if (!s.manual && !s.noData && s.recent !== null) s.committed = true;
-        });
+        cached.scores.forEach(function(s) { if (!s.manual && !s.noData && s.recent !== null) s.committed = true; });
         _saveScoresCache(cached.scores, cached.status);
         renderScoresTable(cached.scores);
       }
     } else {
       if (status) {
-        status.textContent = 'Error: ' + ((result && result.error) || 'Unknown error');
+        status.textContent = err ? err.message : 'Error: ' + ((result && result.error) || 'Unknown error');
         status.style.color = 'var(--melee)';
       }
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    if (btn) btn.disabled = false;
-    if (status) { status.textContent = 'Request failed.'; status.style.color = 'var(--melee)'; }
-  };
-  script.src = WEB_APP_URL + '?action=commitPerformanceScores&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }

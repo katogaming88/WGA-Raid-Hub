@@ -182,19 +182,14 @@ function setNavBadge(id, count) {
 }
 
 function updateNavBadges() {
-  var cbName = '_getPendingCountsCb';
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=getPendingCounts', function(err, result) {
+    if (err || !result) return;
     setNavBadge('signupsNavBadge', (result.signups || 0) + (result.pendingRoster || 0));
     setNavBadge('pendingRosterSubBadge', result.pendingRoster || 0);
     setNavBadge('bisNavBadge', result.bis || 0);
     setNavBadge('mplusNavBadge', result.mplus || 0);
     setNavBadge('requestsNavBadge', result.requests || 0);
-  };
-  var script = document.createElement('script');
-  script.onerror = function() { delete window[cbName]; };
-  script.src = WEB_APP_URL + '?action=getPendingCounts&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function buildOfficerDashboard() {
@@ -221,21 +216,10 @@ function clearCache() {
   btn.disabled = true;
   btn.textContent = 'Clearing...';
 
-  var cbName = '_clearCacheCallback';
-  window[cbName] = function(data) {
-    delete window[cbName];
-    btn.textContent = data && data.success ? 'Cleared!' : 'Error';
+  jsonpRequest(WEB_APP_URL + '?action=clearCache', function(err, data) {
+    btn.textContent = (!err && data && data.success) ? 'Cleared!' : 'Error';
     setTimeout(function() { btn.textContent = 'Clear Cache'; btn.disabled = false; }, 2000);
-  };
-
-  var script = document.createElement('script');
-  script.src = WEB_APP_URL + '?action=clearCache&callback=' + cbName;
-  script.onerror = function() {
-    delete window[cbName];
-    btn.textContent = 'Error';
-    setTimeout(function() { btn.textContent = 'Clear Cache'; btn.disabled = false; }, 2000);
-  };
-  document.head.appendChild(script);
+  });
 }
 
 // -- Season selector ----------------------------------------------------------

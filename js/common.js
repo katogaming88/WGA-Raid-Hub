@@ -21,9 +21,35 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '2.21.0';
+var VERSION = '2.22.0';
 var DATA = null;
 var ACTIVE_SEASON = null; // null = All Seasons; set by officer.js when a season is selected
+
+function jsonpRequest(url, callback, timeoutMs) {
+  var ms     = timeoutMs || 90000;
+  var cbName = '_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1e9);
+  var timer;
+  var done = false;
+
+  function finish(err, result) {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    delete window[cbName];
+    callback(err, result);
+  }
+
+  window[cbName] = function(result) { finish(null, result); };
+
+  timer = setTimeout(function() {
+    finish(new Error('Request timed out. GAS may still be processing -- try again in a moment.'), null);
+  }, ms);
+
+  var script = document.createElement('script');
+  script.onerror = function() { finish(new Error('Request failed. Check your connection.'), null); };
+  script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cbName;
+  document.head.appendChild(script);
+}
 
 var WOW_REALMS = [
   // NA

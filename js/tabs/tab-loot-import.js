@@ -104,11 +104,9 @@ function setLootImportStatus(text, color) {
 function sendLootChunks(season, rows, offset, totalWritten, totalSkipped, cb) {
   if (offset >= rows.length) { cb(totalWritten, totalSkipped); return; }
   var chunk  = rows.slice(offset, offset + LOOT_CHUNK_SIZE);
-  var cbName = '_appendLootRowsCb' + Date.now();
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (!result || !result.success) {
-      setLootImportStatus('Import failed after ' + totalWritten + ' entries.', 'var(--melee)');
+  jsonpRequest(WEB_APP_URL + '?action=appendLootRows&season=' + encodeURIComponent(season) + '&rows=' + encodeURIComponent(JSON.stringify(chunk)), function(err, result) {
+    if (err || !result || !result.success) {
+      setLootImportStatus(err ? err.message : 'Import failed after ' + totalWritten + ' entries.', 'var(--melee)');
       return;
     }
     var w    = result.written || 0;
@@ -116,14 +114,7 @@ function sendLootChunks(season, rows, offset, totalWritten, totalSkipped, cb) {
     var done = Math.min(offset + LOOT_CHUNK_SIZE, rows.length);
     setLootImportStatus('Importing... (' + done + ' / ' + rows.length + ')', 'var(--text-muted)');
     sendLootChunks(season, rows, offset + LOOT_CHUNK_SIZE, totalWritten + w, totalSkipped + s, cb);
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    setLootImportStatus('Import failed after ' + totalWritten + ' entries.', 'var(--melee)');
-  };
-  script.src = WEB_APP_URL + '?action=appendLootRows&season=' + encodeURIComponent(season) + '&rows=' + encodeURIComponent(JSON.stringify(chunk)) + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 // ── Import History sub-tab ────────────────────────────────────────────────────
@@ -136,15 +127,9 @@ function buildLootHistoryTab() {
 }
 
 function fetchPastedLootSummary(cb) {
-  var cbName = '_pastedLootSummaryCb' + Date.now();
-  window[cbName] = function(result) {
-    delete window[cbName];
-    cb(result || { count: 0, lastDate: '' });
-  };
-  var script = document.createElement('script');
-  script.onerror = function() { delete window[cbName]; cb({ count: 0, lastDate: '' }); };
-  script.src = WEB_APP_URL + '?action=getPastedLootSummary&callback=' + cbName;
-  document.head.appendChild(script);
+  jsonpRequest(WEB_APP_URL + '?action=getPastedLootSummary', function(err, result) {
+    cb((!err && result) ? result : { count: 0, lastDate: '' });
+  });
 }
 
 function renderLootHistoryPanel(summary, preservedStatus) {
@@ -204,26 +189,16 @@ function executeClearAllLoot() {
   if (btn)    { btn.disabled = true; btn.textContent = 'Clearing...'; }
   if (status) { status.textContent = ''; }
 
-  var cbName = '_clearAllLootCb' + Date.now();
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (result && result.success) {
+  jsonpRequest(WEB_APP_URL + '?action=clearAllPastedLoot', function(err, result) {
+    if (!err && result && result.success) {
       fetchPastedLootSummary(function(summary) {
         renderLootHistoryPanel(summary, { color: 'var(--heal)', text: 'All loot history cleared.' });
       });
     } else {
       if (btn)    { btn.disabled = false; btn.textContent = 'Clear All Loot History'; }
-      if (status) { status.style.color = 'var(--melee)'; status.textContent = 'Clear failed.'; }
+      if (status) { status.style.color = 'var(--melee)'; status.textContent = err ? err.message : 'Clear failed.'; }
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    if (btn)    { btn.disabled = false; btn.textContent = 'Clear All Loot History'; }
-    if (status) { status.style.color = 'var(--melee)'; status.textContent = 'Clear failed.'; }
-  };
-  script.src = WEB_APP_URL + '?action=clearAllPastedLoot&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 // Legacy alias — called by old code paths that still reference buildLootImportTab

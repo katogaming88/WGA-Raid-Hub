@@ -3,19 +3,14 @@ function buildRequestsTab() {
   if (!container) return;
   container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">Loading requests...</p>';
 
-  var cbName = '_getPendingReqCb';
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=getPendingRequests', function(err, result) {
+    if (err) {
+      var c = document.getElementById('requestsContainer');
+      if (c) c.innerHTML = '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">' + err.message + '</p>';
+      return;
+    }
     renderPendingRequests(result.requests || []);
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    var c = document.getElementById('requestsContainer');
-    if (c) c.innerHTML = '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">Failed to load requests.</p>';
-  };
-  script.src = WEB_APP_URL + '?action=getPendingRequests&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function renderPendingRequests(requests) {
@@ -49,35 +44,23 @@ function renderPendingRequests(requests) {
 function approveRequest(rowIndex, btnEl) {
   btnEl.disabled = true;
   btnEl.textContent = '...';
-  var cbName = '_approveReqCb' + rowIndex;
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (result.error) { btnEl.disabled = false; btnEl.textContent = 'Approve'; return; }
+  jsonpRequest(WEB_APP_URL + '?action=approveRequest&row=' + rowIndex, function(err, result) {
+    if (err || (result && result.error)) { btnEl.disabled = false; btnEl.textContent = 'Approve'; return; }
     var card = document.querySelector('.request-card[data-row="' + rowIndex + '"]');
     if (card) card.remove();
     checkEmptyRequests();
-  };
-  var script = document.createElement('script');
-  script.onerror = function() { delete window[cbName]; btnEl.disabled = false; btnEl.textContent = 'Approve'; };
-  script.src = WEB_APP_URL + '?action=approveRequest&row=' + rowIndex + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function rejectRequest(rowIndex, btnEl) {
   btnEl.disabled = true;
   btnEl.textContent = '...';
-  var cbName = '_rejectReqCb' + rowIndex;
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (result.error) { btnEl.disabled = false; btnEl.textContent = 'Reject'; return; }
+  jsonpRequest(WEB_APP_URL + '?action=rejectRequest&row=' + rowIndex, function(err, result) {
+    if (err || (result && result.error)) { btnEl.disabled = false; btnEl.textContent = 'Reject'; return; }
     var card = document.querySelector('.request-card[data-row="' + rowIndex + '"]');
     if (card) card.remove();
     checkEmptyRequests();
-  };
-  var script = document.createElement('script');
-  script.onerror = function() { delete window[cbName]; btnEl.disabled = false; btnEl.textContent = 'Reject'; };
-  script.src = WEB_APP_URL + '?action=rejectRequest&row=' + rowIndex + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function checkEmptyRequests() {
