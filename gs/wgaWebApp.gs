@@ -1687,6 +1687,7 @@ function getItemBosses(sheets) {
 function getLootCounts(sheets) {
   const result  = {};
   const seenKeys = new Set(); // cross-source dedup: name|item|date
+  const currentSeason = PropertiesService.getScriptProperties().getProperty('seasonName') || '';
 
   function normName(str) {
     return String(str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
@@ -1753,7 +1754,7 @@ function getLootCounts(sheets) {
         ? Utilities.formatDate(rawDate, Session.getScriptTimeZone(), 'MMM d, yyyy')
         : String(rawDate || '').trim();
 
-      addEntry(name, item, difficulty, date);
+      addEntry(name, item, difficulty, date, currentSeason);
     }
   }
 
