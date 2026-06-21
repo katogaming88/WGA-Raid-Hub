@@ -265,10 +265,29 @@ function wclQuery(token, query) {
   }
 }
 
+var _roleMap = null;
+
+function buildRoleMap() {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.rosterSheet);
+  const map   = {};
+  if (!sheet) return map;
+  const data = sheet.getDataRange().getValues();
+  for (let i = CFG.rosterDataStart - 1; i < data.length; i++) {
+    const nameRealm = String(data[i][CFG.rosterPlayerCol - 1] || '').trim();
+    if (!nameRealm) continue;
+    const firstName = nameRealm.split('-')[0].trim().toLowerCase();
+    const role      = String(data[i][CFG.rosterRoleCol - 1] || '').trim();
+    if (role === 'Tank')                          map[firstName] = 'tank';
+    else if (role === 'Heal')                     map[firstName] = 'healer';
+    else if (role === 'Melee' || role === 'Ranged') map[firstName] = 'dps';
+  }
+  return map;
+}
+
 function getRole(firstName) {
-  if (HEALERS.some(h => h.toLowerCase() === firstName.toLowerCase())) return 'healer';
-  if (TANKS.some(t  => t.toLowerCase() === firstName.toLowerCase())) return 'tank';
-  return 'dps';
+  if (!_roleMap) _roleMap = buildRoleMap();
+  return _roleMap[firstName.toLowerCase()] || 'dps';
 }
 
 function debugScoringRows() {
