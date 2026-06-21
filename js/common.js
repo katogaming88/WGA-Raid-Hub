@@ -624,6 +624,7 @@ function showSelfReceivedForm(firstName, item, slot, rowId, defaultSource, isOff
     '<select id="diff-' + rowId + '" class="self-received-source" style="flex:0 0 auto;width:auto;">' +
     '<option value="Mythic" selected>Mythic</option>' +
     '<option value="Heroic">Heroic</option>' +
+    '<option value="Champion">Champion (Normal)</option>' +
     '</select>' +
     '<select class="self-received-source" id="src-' + rowId + '" style="flex:1;">' + opts + '</select>' +
     '</div>' +
