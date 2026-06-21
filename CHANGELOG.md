@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.23.0] - 2026-06-21
+
+### Changed
+- **BiS List cleared on season archive.** When a season is archived via the officer dashboard, all player item columns (col B onwards from row 3) are now wiped so the sheet is ready for the next season's BiS lists. Slot labels and the player header row are preserved.
+
+---
+
 ## [2.22.0] - 2026-06-21
 
 ### Changed
