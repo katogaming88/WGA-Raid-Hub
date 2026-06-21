@@ -600,7 +600,7 @@
       </div>
     </div>
     <div class="footer">We Go Again &middot; <span class="team-name">Team Phoenix</span> &middot; v<span id="versionNum"></span> &middot; <a
-        class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank"
+        class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank"
         rel="noopener">Changelog</a></div>
   </div>
 
@@ -733,6 +733,9 @@ document.getElementById('versionNum').textContent = VERSION;
 document.title = TEAM_NAME + ' -- Officer';
 document.getElementById('headerTeamName').textContent = TEAM_NAME;
 document.querySelectorAll('.team-name').forEach(function(el){el.textContent=TEAM_NAME;});
+if (TEAM_SLUG !== 'phoenix') {
+  document.querySelectorAll('a[href="index.html"]').forEach(function(a){a.href='index.html?team='+TEAM_SLUG;});
+}
 </script>
 </body>
 

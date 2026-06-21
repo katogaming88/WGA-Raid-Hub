@@ -41,13 +41,13 @@
     <div id="landingProgression"></div>
     <div id="landingLoot" class="pub-loot"></div>
   </div>
-  <div class="footer">We Go Again &middot; <span class="team-name">Team Phoenix</span> &middot; v<span id="versionNum"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
+  <div class="footer">We Go Again &middot; <span class="team-name">Team Phoenix</span> &middot; v<span id="versionNum"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
 </div>
 
 <!-- Profile -->
 <div id="profileViewWrap" class="view">
   <div id="profileView"></div>
-  <div class="footer">We Go Again &middot; <span class="team-name">Team Phoenix</span> &middot; v<span id="versionNumProfile"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
+  <div class="footer">We Go Again &middot; <span class="team-name">Team Phoenix</span> &middot; v<span id="versionNumProfile"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
 </div>
 
 <!-- Signup -->
@@ -57,7 +57,7 @@
       <div id="signupForm"></div>
     </div>
   </div>
-  <div class="footer">We Go Again &middot; <span class="team-name">Team Phoenix</span> &middot; v<span id="versionNumSignup"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/Phoenix-Roster/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
+  <div class="footer">We Go Again &middot; <span class="team-name">Team Phoenix</span> &middot; v<span id="versionNumSignup"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
 </div>
 
 <script src="js/common.js"></script>
@@ -68,6 +68,9 @@
 document.title = TEAM_NAME + ' -- Roster';
 document.getElementById('headerTeamName').textContent = TEAM_NAME;
 document.querySelectorAll('.team-name').forEach(function(el){el.textContent=TEAM_NAME;});
+if (TEAM_SLUG !== 'phoenix') {
+  document.querySelectorAll('a[href="officer.html"]').forEach(function(a){a.href='officer.html?team='+TEAM_SLUG;});
+}
 </script>
 </body>
 </html>
