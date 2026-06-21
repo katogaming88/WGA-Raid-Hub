@@ -1,8 +1,26 @@
 # Changelog
 
-All notable changes to Phoenix-Roster will be documented here.
+All notable changes to WGA Raid Hub will be documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+---
+
+## [2.20.0] - 2026-06-21
+
+### Added
+- **Multi-tenant support.** A single frontend now serves both Team Phoenix and Hellfire Rollers. The active team is selected via `?team=phoenix` or `?team=hellfire` URL param (defaults to `phoenix`) and persists in `sessionStorage` so dropping the param mid-session doesn't reset the team. Each team has its own GAS backend URL, team name, and officer password in the `TEAMS` config in `common.js`. Closes #136.
+- **Team-scoped session storage keys** (`phoenix_officer` / `hellfire_officer`) prevent officer auth from bleeding between teams in the same browser.
+- **Inter-page link passthrough.** Officer Access, Back to Roster, and Cancel links now carry the `?team=` param so navigation stays on the correct team.
+
+### Fixed
+- **Officer player card race condition.** Opening a player card then switching seasons triggered `buildRosterTable()` to wipe the inline card. Added `reopenSelectedPlayer()` which restores the card after every roster rebuild.
+- **Loot not showing in officer view after copying spreadsheet.** Loot Data sheet entries were added to `lootCounts` without a season tag, so the season filter excluded everything. `getLootCounts()` now reads `seasonName` from Script Properties and tags Loot Data entries accordingly.
+
+### Changed
+- GAS web app file renamed from `PhoenixRosterWebApp.gs` to `wgaWebApp.gs`.
+- Removed `REPORT_NAME_FILTER` constant — WCL report fetching now returns all guild reports without filtering by title, accommodating teams with inconsistent report naming.
+- Changelog and footer links updated from `Phoenix-Roster` to `WGA-Raid-Hub` repo.
 
 ---
 
