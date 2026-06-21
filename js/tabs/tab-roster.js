@@ -336,14 +336,13 @@ function submitAddPlayer() {
   var submitBtn = document.querySelector('#addPlayerModal .btn-gold');
   if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Adding...'; }
 
-  var data   = { nameRealm: nameRealm, nick: nickVal, class: cls, spec: spec, role: role, isTrial: isTrial, joinDate: joinDateVal };
-  var cbName = '_addPlayerCb';
-  window[cbName] = function(result) {
-    delete window[cbName];
+  var data = { nameRealm: nameRealm, nick: nickVal, class: cls, spec: spec, role: role, isTrial: isTrial, joinDate: joinDateVal };
+  jsonpRequest(WEB_APP_URL + '?action=addPlayer&data=' + encodeURIComponent(JSON.stringify(data)).replace(/'/g, '%27'), function(err, result) {
     if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Add Player'; }
-    if (result && result.error) {
-      errEl.textContent = 'Failed to add player: ' + result.error;
+    if (err || (result && result.error)) {
+      errEl.textContent = err ? err.message : 'Failed to add player: ' + result.error;
       errEl.style.display = '';
+      window._pendingRosterOnSuccess = null;
       return;
     }
     if (DATA && DATA.roster) {
@@ -360,17 +359,7 @@ function submitAddPlayer() {
       window._pendingRosterOnSuccess();
       window._pendingRosterOnSuccess = null;
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Add Player'; }
-    errEl.textContent = 'Network error. Try again.';
-    errEl.style.display = '';
-    window._pendingRosterOnSuccess = null;
-  };
-  script.src = WEB_APP_URL + '?action=addPlayer&data=' + encodeURIComponent(JSON.stringify(data)).replace(/'/g, '%27') + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function confirmRemovePlayer(nameRealm, firstName) {
@@ -391,11 +380,9 @@ function executeRemovePlayer(nameRealm, firstName) {
   var msgEl = document.getElementById('removePlayerMsg-' + firstName);
   if (msgEl) { msgEl.textContent = 'Removing...'; msgEl.style.color = 'var(--text-muted)'; msgEl.style.display = ''; }
 
-  var cbName = '_removePlayerCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (result && result.error) {
-      if (msgEl) { msgEl.textContent = 'Failed: ' + result.error; msgEl.style.color = 'var(--melee)'; }
+  jsonpRequest(WEB_APP_URL + '?action=removePlayer&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })).replace(/'/g, '%27'), function(err, result) {
+    if (err || (result && result.error)) {
+      if (msgEl) { msgEl.textContent = err ? err.message : 'Failed: ' + result.error; msgEl.style.color = 'var(--melee)'; }
       return;
     }
     if (DATA && DATA.roster) {
@@ -404,37 +391,24 @@ function executeRemovePlayer(nameRealm, firstName) {
     document.getElementById('officerProfile').innerHTML = '';
     selectedOfficerPlayer = null;
     buildOfficerDashboard();
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    if (msgEl) { msgEl.textContent = 'Network error. Try again.'; msgEl.style.color = 'var(--melee)'; }
-  };
-  script.src = WEB_APP_URL + '?action=removePlayer&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })).replace(/'/g, '%27') + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 // -- Player settings --------------------------------------------------------
 function savePlayerField(nameRealm, firstName, field, value) {
   var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
   if (msgEl) msgEl.textContent = 'Saving...';
-  var cbName = '_saveFieldCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (result && result.success && DATA) {
+  jsonpRequest(WEB_APP_URL + '?action=updatePlayerField&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: field, value: value })), function(err, result) {
+    if (!err && result && result.success && DATA) {
       var player = DATA.roster.find(function(p) { return p.nameRealm === nameRealm; });
       if (player) player[field] = value;
       if (field === 'joinDate') buildTrialPromoAlert();
     }
     if (msgEl) {
-      msgEl.textContent = result && result.error ? 'Failed to save.' : 'Saved.';
+      msgEl.textContent = (err || (result && result.error)) ? 'Failed to save.' : 'Saved.';
       setTimeout(function() { if (msgEl) msgEl.textContent = ''; }, 2000);
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() { delete window[cbName]; if (msgEl) msgEl.textContent = 'Failed to save.'; };
-  script.src = WEB_APP_URL + '?action=updatePlayerField&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: field, value: value })) + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function saveJoinDate(nameRealm, firstName) {
@@ -470,30 +444,20 @@ function officerRenamePlayer(nameRealm, firstName) {
   if (newNameRealm.toLowerCase() === nameRealm.toLowerCase()) return;
   var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
   if (msgEl) msgEl.textContent = 'Saving...';
-  var cbName = '_renameCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (result && result.success && DATA) {
+  jsonpRequest(WEB_APP_URL + '?action=renamePlayer&data=' + encodeURIComponent(JSON.stringify({ oldNameRealm: nameRealm, newNameRealm: newNameRealm })), function(err, result) {
+    if (!err && result && result.success && DATA) {
       var player = DATA.roster.find(function(p) { return p.nameRealm === nameRealm; });
-      if (player) {
-        player.nameRealm = newNameRealm;
-        player.firstName = newName;
-        player.realm     = newRealm;
-      }
+      if (player) { player.nameRealm = newNameRealm; player.firstName = newName; player.realm = newRealm; }
       selectedOfficerPlayer = null;
       var inlineRow = document.getElementById('inlineProfileRow');
       if (inlineRow) inlineRow.remove();
       buildRosterTable();
     }
     if (msgEl) {
-      msgEl.textContent = result && result.error ? 'Failed to save.' : 'Saved.';
+      msgEl.textContent = (err || (result && result.error)) ? 'Failed to save.' : 'Saved.';
       setTimeout(function() { if (msgEl) msgEl.textContent = ''; }, 2000);
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() { delete window[cbName]; if (msgEl) msgEl.textContent = 'Failed to save.'; };
-  script.src = WEB_APP_URL + '?action=renamePlayer&data=' + encodeURIComponent(JSON.stringify({ oldNameRealm: nameRealm, newNameRealm: newNameRealm })) + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function togglePlayerTrial(nameRealm, firstName) {
@@ -502,10 +466,8 @@ function togglePlayerTrial(nameRealm, firstName) {
   var newVal = !player.isTrial;
   var btn = document.getElementById('trialToggle-' + firstName);
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
-  var cbName = '_trialCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (result && result.success && DATA) {
+  jsonpRequest(WEB_APP_URL + '?action=updatePlayerField&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: 'isTrial', value: newVal })), function(err, result) {
+    if (!err && result && result.success && DATA) {
       var p = DATA.roster.find(function(p) { return p.nameRealm === nameRealm; });
       if (p) p.isTrial = newVal;
       buildTrialPromoAlert();
@@ -517,14 +479,10 @@ function togglePlayerTrial(nameRealm, firstName) {
     }
     var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
     if (msgEl) {
-      msgEl.textContent = result && result.error ? 'Failed to save.' : 'Saved.';
+      msgEl.textContent = (err || (result && result.error)) ? 'Failed to save.' : 'Saved.';
       setTimeout(function() { if (msgEl) msgEl.textContent = ''; }, 2000);
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() { delete window[cbName]; if (btn) { btn.disabled = false; } };
-  script.src = WEB_APP_URL + '?action=updatePlayerField&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: 'isTrial', value: newVal })) + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function togglePlayerBench(nameRealm, firstName) {
@@ -533,10 +491,8 @@ function togglePlayerBench(nameRealm, firstName) {
   var newVal = !player.isBench;
   var btn = document.getElementById('benchToggle-' + firstName);
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
-  var cbName = '_benchCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (result && result.success && DATA) {
+  jsonpRequest(WEB_APP_URL + '?action=updatePlayerField&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: 'isBench', value: newVal })), function(err, result) {
+    if (!err && result && result.success && DATA) {
       var p = DATA.roster.find(function(p) { return p.nameRealm === nameRealm; });
       if (p) p.isBench = newVal;
     }
@@ -547,14 +503,10 @@ function togglePlayerBench(nameRealm, firstName) {
     }
     var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
     if (msgEl) {
-      msgEl.textContent = result && result.error ? 'Failed to save.' : 'Saved.';
+      msgEl.textContent = (err || (result && result.error)) ? 'Failed to save.' : 'Saved.';
       setTimeout(function() { if (msgEl) msgEl.textContent = ''; }, 2000);
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() { delete window[cbName]; if (btn) { btn.disabled = false; } };
-  script.src = WEB_APP_URL + '?action=updatePlayerField&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: 'isBench', value: newVal })) + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function toggleMPlusExcluded(nameRealm, firstName) {
@@ -563,10 +515,8 @@ function toggleMPlusExcluded(nameRealm, firstName) {
   var newVal = !player.mPlusExcluded;
   var btn = document.getElementById('mplusExclToggle-' + firstName);
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
-  var cbName = '_mplusExclCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (result && result.success && DATA) {
+  jsonpRequest(WEB_APP_URL + '?action=setMPlusExcluded&nameRealm=' + encodeURIComponent(nameRealm) + '&value=' + (newVal ? 'true' : 'false'), function(err, result) {
+    if (!err && result && result.success && DATA) {
       var p = DATA.roster.find(function(p) { return p.nameRealm === nameRealm; });
       if (p) p.mPlusExcluded = newVal;
       buildRosterTable();
@@ -579,14 +529,10 @@ function toggleMPlusExcluded(nameRealm, firstName) {
     }
     var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
     if (msgEl) {
-      msgEl.textContent = result && result.error ? 'Failed to save.' : 'Saved.';
+      msgEl.textContent = (err || (result && result.error)) ? 'Failed to save.' : 'Saved.';
       setTimeout(function() { if (msgEl) msgEl.textContent = ''; }, 2000);
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() { delete window[cbName]; if (btn) { btn.disabled = false; } };
-  script.src = WEB_APP_URL + '?action=setMPlusExcluded&nameRealm=' + encodeURIComponent(nameRealm) + '&value=' + (newVal ? 'true' : 'false') + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function savePlayerNote(nameRealm, firstName) {
@@ -595,22 +541,16 @@ function savePlayerNote(nameRealm, firstName) {
   if (!noteEl) return;
   var note = noteEl.value.trim();
   if (msgEl) msgEl.textContent = 'Saving...';
-  var cbName = '_noteCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (result && result.success && DATA) {
+  jsonpRequest(WEB_APP_URL + '?action=savePlayerNote&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, note: note })), function(err, result) {
+    if (!err && result && result.success && DATA) {
       if (!DATA.playerNotes) DATA.playerNotes = {};
       if (note) { DATA.playerNotes[nameRealm] = note; } else { delete DATA.playerNotes[nameRealm]; }
     }
     if (msgEl) {
-      msgEl.textContent = result && result.error ? 'Failed to save.' : 'Saved.';
+      msgEl.textContent = (err || (result && result.error)) ? 'Failed to save.' : 'Saved.';
       setTimeout(function() { if (msgEl) msgEl.textContent = ''; }, 2000);
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() { delete window[cbName]; if (msgEl) msgEl.textContent = 'Failed to save.'; };
-  script.src = WEB_APP_URL + '?action=savePlayerNote&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, note: note })) + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 // -- Trial promotion tracking (#78) ----------------------------------------

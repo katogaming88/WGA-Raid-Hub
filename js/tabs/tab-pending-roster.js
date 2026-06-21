@@ -3,19 +3,14 @@ function buildPendingRosterTab() {
   if (!container) return;
   container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">Loading...</p>';
 
-  var cbName = '_getPendingRosterCb';
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=getPendingRoster', function(err, result) {
+    if (err) {
+      var c = document.getElementById('pendingRosterContainer');
+      if (c) c.innerHTML = '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">' + err.message + '</p>';
+      return;
+    }
     renderPendingRoster(result.entries || []);
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    var c = document.getElementById('pendingRosterContainer');
-    if (c) c.innerHTML = '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">Failed to load pending roster.</p>';
-  };
-  script.src = WEB_APP_URL + '?action=getPendingRoster&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function renderPendingRoster(entries) {
@@ -159,26 +154,14 @@ function confirmUpdateFromPending(nameRealm, mainSpec, role, rowIndex, btnEl) {
   role      = decodeURIComponent(role);
 
   var dataSafe = encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: 'spec', value: mainSpec }));
-  var cbName = '_updateSpecCb' + rowIndex;
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (result && result.error) { btnEl.disabled = false; btnEl.textContent = 'Update'; return; }
+  jsonpRequest(WEB_APP_URL + '?action=updatePlayerField&data=' + dataSafe, function(err, result) {
+    if (err || (result && result.error)) { btnEl.disabled = false; btnEl.textContent = 'Update'; return; }
     var dataSafe2 = encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: 'role', value: role }));
-    var cbName2 = '_updateRoleCb' + rowIndex;
-    window[cbName2] = function(result2) {
-      delete window[cbName2];
-      if (result2 && result2.error) { btnEl.disabled = false; btnEl.textContent = 'Update'; return; }
+    jsonpRequest(WEB_APP_URL + '?action=updatePlayerField&data=' + dataSafe2, function(err2, result2) {
+      if (err2 || (result2 && result2.error)) { btnEl.disabled = false; btnEl.textContent = 'Update'; return; }
       removePendingRosterRow(rowIndex, null);
-    };
-    var s2 = document.createElement('script');
-    s2.onerror = function() { delete window[cbName2]; btnEl.disabled = false; btnEl.textContent = 'Update'; };
-    s2.src = WEB_APP_URL + '?action=updatePlayerField&data=' + dataSafe2 + '&callback=' + cbName2;
-    document.head.appendChild(s2);
-  };
-  var s1 = document.createElement('script');
-  s1.onerror = function() { delete window[cbName]; btnEl.disabled = false; btnEl.textContent = 'Update'; };
-  s1.src = WEB_APP_URL + '?action=updatePlayerField&data=' + dataSafe + '&callback=' + cbName;
-  document.head.appendChild(s1);
+    });
+  });
 }
 
 function directAddFromPending(entry, nameRealm, nick, btnEl) {
@@ -194,13 +177,8 @@ function directAddFromPending(entry, nameRealm, nick, btnEl) {
     isTrial:   false
   };
 
-  var cbName = '_directAddCb' + entry.rowIndex;
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (result && result.error) {
-      btnEl.disabled = false; btnEl.textContent = 'Add to Roster';
-      return;
-    }
+  jsonpRequest(WEB_APP_URL + '?action=addPlayer&data=' + encodeURIComponent(JSON.stringify(data)), function(err, result) {
+    if (err || (result && result.error)) { btnEl.disabled = false; btnEl.textContent = 'Add to Roster'; return; }
     var parts = nameRealm.split('-');
     if (DATA && DATA.roster) {
       var today = new Date(); var mm = today.getMonth() + 1; var dd = today.getDate();
@@ -215,26 +193,14 @@ function directAddFromPending(entry, nameRealm, nick, btnEl) {
       if (typeof buildStatsBar    === 'function') buildStatsBar();
     }
     removePendingRosterRow(entry.rowIndex, null);
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    btnEl.disabled = false; btnEl.textContent = 'Add to Roster';
-  };
-  script.src = WEB_APP_URL + '?action=addPlayer&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function removePendingRosterRow(rowIndex, btnEl) {
   if (btnEl) { btnEl.disabled = true; btnEl.textContent = '...'; }
 
-  var cbName = '_removePendingRosterCb' + rowIndex;
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (result && result.error) {
-      if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Remove'; }
-      return;
-    }
+  jsonpRequest(WEB_APP_URL + '?action=removePendingRoster&row=' + rowIndex, function(err, result) {
+    if (err || (result && result.error)) { if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Remove'; } return; }
     var card = document.querySelector('.signup-response-card[data-row="' + rowIndex + '"]');
     if (card) card.remove();
     var container = document.getElementById('pendingRosterContainer');
@@ -242,12 +208,5 @@ function removePendingRosterRow(rowIndex, btnEl) {
       container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No pending applicants.</p>';
     }
     updateNavBadges();
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Remove'; }
-  };
-  script.src = WEB_APP_URL + '?action=removePendingRoster&row=' + rowIndex + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }

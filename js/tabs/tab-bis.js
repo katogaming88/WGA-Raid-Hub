@@ -16,21 +16,11 @@ function setBisSubmissionsOpen(open) {
   var btn = document.getElementById('bisToggleBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
 
-  var cbName = '_setBisOpenCb';
-  window[cbName] = function (result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=setBisSubmissionsOpen&value=' + (open ? 'true' : 'false'), function(err, result) {
     if (btn) btn.disabled = false;
-    if (DATA) DATA.bisSubmissionsOpen = open;
+    if (!err) { if (DATA) DATA.bisSubmissionsOpen = open; }
     renderBisToggle();
-  };
-  var script = document.createElement('script');
-  script.onerror = function () {
-    delete window[cbName];
-    if (btn) btn.disabled = false;
-    renderBisToggle();
-  };
-  script.src = WEB_APP_URL + '?action=setBisSubmissionsOpen&value=' + (open ? 'true' : 'false') + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function buildBisTab() {
@@ -38,19 +28,14 @@ function buildBisTab() {
   if (!container) return;
   container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">Loading submissions...</p>';
 
-  var cbName = '_getPendingBisCb';
-  window[cbName] = function (result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=getPendingBiS', function(err, result) {
+    if (err) {
+      var c = document.getElementById('bisContainer');
+      if (c) c.innerHTML = '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">' + err.message + '</p>';
+      return;
+    }
     renderBisSubmissions(result.submissions || []);
-  };
-  var script = document.createElement('script');
-  script.onerror = function () {
-    delete window[cbName];
-    var c = document.getElementById('bisContainer');
-    if (c) c.innerHTML = '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">Failed to load submissions.</p>';
-  };
-  script.src = WEB_APP_URL + '?action=getPendingBiS&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function renderBisSubmissions(submissions) {
@@ -90,34 +75,22 @@ function approveBisSubmission(rowIndex, btnEl) {
   btnEl.disabled = true;
   btnEl.textContent = '...';
   var data = { row: rowIndex, nameRealm: nameRealm, url: bisLink };
-  var cbName = '_approveBisCb' + rowIndex;
-  window[cbName] = function (result) {
-    delete window[cbName];
-    if (result.error) { btnEl.disabled = false; btnEl.textContent = 'Approve'; return; }
+  jsonpRequest(WEB_APP_URL + '?action=approveBiS&data=' + encodeURIComponent(JSON.stringify(data)), function(err, result) {
+    if (err || (result && result.error)) { btnEl.disabled = false; btnEl.textContent = 'Approve'; return; }
     if (card) card.remove();
     checkEmptyBisSubmissions();
-  };
-  var script = document.createElement('script');
-  script.onerror = function () { delete window[cbName]; btnEl.disabled = false; btnEl.textContent = 'Approve'; };
-  script.src = WEB_APP_URL + '?action=approveBiS&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function rejectBisSubmission(rowIndex, btnEl) {
   btnEl.disabled = true;
   btnEl.textContent = '...';
-  var cbName = '_rejectBisCb' + rowIndex;
-  window[cbName] = function (result) {
-    delete window[cbName];
-    if (result.error) { btnEl.disabled = false; btnEl.textContent = 'Reject'; return; }
+  jsonpRequest(WEB_APP_URL + '?action=rejectBiS&row=' + rowIndex, function(err, result) {
+    if (err || (result && result.error)) { btnEl.disabled = false; btnEl.textContent = 'Reject'; return; }
     var card = document.querySelector('.request-card[data-row="' + rowIndex + '"]');
     if (card) card.remove();
     checkEmptyBisSubmissions();
-  };
-  var script = document.createElement('script');
-  script.onerror = function () { delete window[cbName]; btnEl.disabled = false; btnEl.textContent = 'Reject'; };
-  script.src = WEB_APP_URL + '?action=rejectBiS&row=' + rowIndex + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function checkEmptyBisSubmissions() {
@@ -386,12 +359,12 @@ function saveBisListItems() {
   var nameRealm = _bisListEditor.nameRealm;
   var firstName = _bisListEditor.firstName;
   var items = _bisListEditor.items.slice();
-  var cbName = '_setBisItemsCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
-  window[cbName] = function (result) {
-    delete window[cbName];
-    if (result && result.error) {
+  jsonpRequest(WEB_APP_URL + '?action=setBisItems&data=' +
+    encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, items: items })).replace(/'/g, '%27'),
+  function(err, result) {
+    if (err || (result && result.error)) {
       var msg = document.getElementById('bisListSaveMsg');
-      if (msg) msg.textContent = 'Failed: ' + result.error;
+      if (msg) msg.textContent = err ? err.message : 'Failed: ' + result.error;
       return;
     }
     if (DATA && DATA.bisList) {
@@ -404,15 +377,5 @@ function saveBisListItems() {
     _bisListEditor = null;
     _bisListSearch = '';
     buildBisListsTab();
-  };
-  var script = document.createElement('script');
-  script.onerror = function () {
-    delete window[cbName];
-    var msg = document.getElementById('bisListSaveMsg');
-    if (msg) msg.textContent = 'Network error. Try again.';
-  };
-  script.src = WEB_APP_URL + '?action=setBisItems&data=' +
-    encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, items: items })).replace(/'/g, '%27') +
-    '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }

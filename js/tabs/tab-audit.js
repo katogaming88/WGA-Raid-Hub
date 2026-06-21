@@ -5,20 +5,15 @@ function buildAuditTab() {
   if (!container) return;
   container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">Loading audit log...</p>';
 
-  var cbName = '_getAuditLogCb';
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=getAuditLog', function(err, result) {
+    if (err) {
+      var c = document.getElementById('auditContainer');
+      if (c) c.innerHTML = '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">' + err.message + '</p>';
+      return;
+    }
     _auditEntries = (result && result.entries) ? result.entries : [];
     renderAuditLog();
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    var c = document.getElementById('auditContainer');
-    if (c) c.innerHTML = '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">Failed to load audit log.</p>';
-  };
-  script.src = WEB_APP_URL + '?action=getAuditLog&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function renderAuditLog() {

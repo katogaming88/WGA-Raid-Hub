@@ -13,23 +13,13 @@ function toggleMPlusOpen() {
   var btn  = document.getElementById('mplusToggleBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
 
-  var cbName = '_setMPlusOpenCb';
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=setMPlusExclusionsOpen&value=' + (open ? 'true' : 'false'), function(err, result) {
     if (btn) btn.disabled = false;
-    if (result && result.success) {
+    if (!err && result && result.success) {
       if (DATA) DATA.mPlusExclusionsOpen = result.mPlusExclusionsOpen;
     }
     renderMPlusToggle();
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    if (btn) btn.disabled = false;
-    renderMPlusToggle();
-  };
-  script.src = WEB_APP_URL + '?action=setMPlusExclusionsOpen&value=' + (open ? 'true' : 'false') + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function confirmClearAllMPlusExclusions() {
@@ -41,17 +31,11 @@ function executeClearAllMPlusExclusions() {
   var confirmEl = document.getElementById('mplusClearConfirm');
   if (confirmEl) confirmEl.style.display = 'none';
 
-  var cbName = '_clearMPlusCb';
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (result && result.success && DATA && DATA.roster) {
+  jsonpRequest(WEB_APP_URL + '?action=clearAllMPlusExclusions', function(err, result) {
+    if (!err && result && result.success && DATA && DATA.roster) {
       DATA.roster.forEach(function(p) { p.mPlusExcluded = false; });
     }
-  };
-  var script = document.createElement('script');
-  script.onerror = function() { delete window[cbName]; };
-  script.src = WEB_APP_URL + '?action=clearAllMPlusExclusions&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function buildMPlusTab() {
@@ -60,19 +44,14 @@ function buildMPlusTab() {
   if (!container) return;
   container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">Loading submissions...</p>';
 
-  var cbName = '_getMPlusExclusionsCb';
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=getMPlusExclusions', function(err, result) {
+    if (err) {
+      var c = document.getElementById('mplusContainer');
+      if (c) c.innerHTML = '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">' + err.message + '</p>';
+      return;
+    }
     renderMPlusSubmissions(result.submissions || []);
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    var c = document.getElementById('mplusContainer');
-    if (c) c.innerHTML = '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">Failed to load submissions.</p>';
-  };
-  script.src = WEB_APP_URL + '?action=getMPlusExclusions&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function renderMPlusSubmissions(submissions) {
@@ -151,13 +130,8 @@ function confirmApproveMPlusExclusion(rowIndex, nameRealm, note, btnEl) {
   btnEl.textContent = '...';
 
   var data   = { row: rowIndex, nameRealm: nameRealm, note: note };
-  var cbName = '_approveMPlusCb' + rowIndex;
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (result.error) {
-      btnEl.disabled = false; btnEl.textContent = 'Approve';
-      return;
-    }
+  jsonpRequest(WEB_APP_URL + '?action=approveMPlusExclusion&data=' + encodeURIComponent(JSON.stringify(data)), function(err, result) {
+    if (err || (result && result.error)) { btnEl.disabled = false; btnEl.textContent = 'Approve'; return; }
     var card = document.querySelector('.request-card[data-row="' + rowIndex + '"]');
     if (card) card.remove();
     var container = document.getElementById('mplusContainer');
@@ -165,14 +139,7 @@ function confirmApproveMPlusExclusion(rowIndex, nameRealm, note, btnEl) {
       container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No pending M+ exclusion requests.</p>';
     }
     updateNavBadges();
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    btnEl.disabled = false; btnEl.textContent = 'Approve';
-  };
-  script.src = WEB_APP_URL + '?action=approveMPlusExclusion&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function rejectMPlusExclusion(rowIndex, btnEl) {
@@ -181,10 +148,8 @@ function rejectMPlusExclusion(rowIndex, btnEl) {
   var approveBtn = btnEl.previousElementSibling;
   if (approveBtn) approveBtn.disabled = true;
 
-  var cbName = '_rejectMPlusCb' + rowIndex;
-  window[cbName] = function(result) {
-    delete window[cbName];
-    if (result.error) {
+  jsonpRequest(WEB_APP_URL + '?action=rejectMPlusExclusion&row=' + rowIndex, function(err, result) {
+    if (err || (result && result.error)) {
       btnEl.disabled = false; btnEl.textContent = 'Reject';
       if (approveBtn) approveBtn.disabled = false;
       return;
@@ -196,13 +161,5 @@ function rejectMPlusExclusion(rowIndex, btnEl) {
       container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No pending M+ exclusion requests.</p>';
     }
     updateNavBadges();
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    btnEl.disabled = false; btnEl.textContent = 'Reject';
-    if (approveBtn) approveBtn.disabled = false;
-  };
-  script.src = WEB_APP_URL + '?action=rejectMPlusExclusion&row=' + rowIndex + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }

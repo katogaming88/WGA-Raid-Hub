@@ -6,25 +6,13 @@ function fetchExportString() {
   var area = document.getElementById('prioExportStr');
   if (btn) { btn.disabled = true; btn.textContent = 'Loading...'; }
 
-  var cbName = '_getExportStringCb';
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL + '?action=getExportString', function(err, result) {
     if (btn) { btn.disabled = false; btn.textContent = 'Regenerate'; }
-    var str = result && result.exportString ? result.exportString : '';
+    var str = (!err && result && result.exportString) ? result.exportString : '';
     area.value = str;
-    area.placeholder = str ? '' : 'No export string found. Run Export Priority Data from the spreadsheet first.';
+    area.placeholder = err ? err.message : (str ? '' : 'No export string found. Run Export Priority Data from the spreadsheet first.');
     body.style.display = '';
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    if (btn) { btn.disabled = false; btn.textContent = 'Generate'; }
-    area.value = '';
-    area.placeholder = 'Failed to load export string.';
-    body.style.display = '';
-  };
-  script.src = WEB_APP_URL + '?action=getExportString&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function copyExportString() {
@@ -584,17 +572,17 @@ function prioEditGenerate() {
   btn.textContent = 'Generating...';
   status.textContent = '';
 
-  var cbName = '_prioGenCb_' + Date.now();
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL
+    + '?action=generatePriorityOrder'
+    + '&item=' + encodeURIComponent(PRIO_EDIT.item)
+    + '&difficulty=' + encodeURIComponent(PRIO_EDIT.difficulty),
+  function(err, result) {
     btn.disabled    = false;
     btn.textContent = 'Suggest Order';
+    if (err) { status.textContent = err.message; return; }
     if (result.error) { status.textContent = 'Error: ' + result.error; return; }
     var players = result.players || [];
-    if (!players.length) {
-      status.textContent = result.warning || 'No BiS players found.';
-      return;
-    }
+    if (!players.length) { status.textContent = result.warning || 'No BiS players found.'; return; }
     var scoreMap = {};
     players.forEach(function(p) { scoreMap[p.firstName] = p; });
     PRIO_EDIT.scores = scoreMap;
@@ -602,20 +590,7 @@ function prioEditGenerate() {
     status.textContent = 'Suggested order loaded. Review and adjust as needed.';
     prioEditRenderList();
     prioEditRenderPool();
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    btn.disabled    = false;
-    btn.textContent = 'Suggest Order';
-    status.textContent = 'Failed to load suggestions.';
-  };
-  script.src = WEB_APP_URL
-    + '?action=generatePriorityOrder'
-    + '&item=' + encodeURIComponent(PRIO_EDIT.item)
-    + '&difficulty=' + encodeURIComponent(PRIO_EDIT.difficulty)
-    + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 // -- Save --
@@ -630,13 +605,16 @@ function prioEditSave() {
   saveBtn.textContent = 'Saving...';
   status.textContent  = '';
 
-  var cbName = '_prioSaveCb_' + Date.now();
-  window[cbName] = function(result) {
-    delete window[cbName];
+  jsonpRequest(WEB_APP_URL
+    + '?action=savePriorityOrder'
+    + '&item=' + encodeURIComponent(PRIO_EDIT.item)
+    + '&difficulty=' + encodeURIComponent(PRIO_EDIT.difficulty)
+    + '&players=' + encodeURIComponent(JSON.stringify(PRIO_EDIT.ranked)),
+  function(err, result) {
     saveBtn.disabled    = false;
     saveBtn.textContent = 'Save Priority';
-    if (result.error) {
-      errEl.textContent   = 'Error: ' + result.error;
+    if (err || (result && result.error)) {
+      errEl.textContent   = err ? err.message : 'Error: ' + result.error;
       errEl.style.display = '';
       return;
     }
@@ -647,22 +625,7 @@ function prioEditSave() {
     buildUnmanagedTab();
     updateUnmanagedBadge();
     closePrioEditModal();
-  };
-  var script = document.createElement('script');
-  script.onerror = function() {
-    delete window[cbName];
-    saveBtn.disabled    = false;
-    saveBtn.textContent = 'Save Priority';
-    errEl.textContent   = 'Save failed. Check connection and try again.';
-    errEl.style.display = '';
-  };
-  script.src = WEB_APP_URL
-    + '?action=savePriorityOrder'
-    + '&item=' + encodeURIComponent(PRIO_EDIT.item)
-    + '&difficulty=' + encodeURIComponent(PRIO_EDIT.difficulty)
-    + '&players=' + encodeURIComponent(JSON.stringify(PRIO_EDIT.ranked))
-    + '&callback=' + cbName;
-  document.head.appendChild(script);
+  });
 }
 
 function getRoleColor(role) {
