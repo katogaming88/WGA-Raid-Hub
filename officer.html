@@ -59,6 +59,7 @@
           <button class="nav-item" onclick="switchTab('bis')">BiS Manager<span class="nav-notif nav-notif-abs"
               id="bisNavBadge" style="display:none;"></span></button>
           <button class="nav-item" onclick="switchTab('attendance')">Attendance</button>
+          <button class="nav-item" onclick="switchTab('scoring')">Scoring</button>
           <button class="nav-item" onclick="switchTab('signups')">Signups<span class="nav-notif nav-notif-abs"
               id="signupsNavBadge" style="display:none;"></span></button>
           <button class="nav-item" onclick="switchTab('mplus')">M+ Exclusions<span class="nav-notif nav-notif-abs"
@@ -301,6 +302,39 @@
             <div id="attend-sub-bench" style="display:none;">
               <div id="benchFairnessContent"></div>
             </div>
+          </div>
+
+          <!-- Scoring tab -->
+          <div id="tab-scoring" class="tab-panel">
+            <div class="attend-manage-header">
+              <span class="section-label" style="margin-bottom:0;">WCL Performance Scores<button class="help-btn" onclick="toggleHelp('help-scoring')" title="Show help">?</button></span>
+              <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                <button class="btn btn-muted" id="refreshPerfBtn" onclick="refreshWclPerformance()">Refresh from WCL</button>
+                <span id="refreshPerfStatus" style="font-size:0.92rem;"></span>
+                <button class="btn btn-gold" id="commitPerfBtn" onclick="confirmCommitPerformance()" style="margin-left:0.5rem;">Commit to Scoring Sheet</button>
+                <span id="commitPerfStatus" style="font-size:0.92rem;"></span>
+              </div>
+            </div>
+            <div id="help-scoring" class="help-tip" style="margin-top:0.5rem;margin-bottom:0.75rem;">
+              <strong>Refresh from WCL</strong> -- fetches the last raid reports from WCL and calculates ilvl bracket % scores for each DPS and healer. Writes draft scores to columns J (Recent) and K (Trend) of the Scoring sheet. Tanks are skipped and marked Manual.<br>
+              <strong>Commit to Scoring Sheet</strong> -- copies Recent Scores (column J) into the Performance column (C), which is what the Priority Generator uses. Safe to run multiple times.
+            </div>
+            <div id="perfConfirmBanner" class="attend-confirm-banner" style="display:none;">
+              Copy Recent Scores (column J) into the Performance column (C) for all players?
+              <button class="btn btn-gold" onclick="executeCommitPerformance()" style="margin-left:1rem;">Yes, Commit</button>
+              <button class="btn btn-muted" onclick="cancelCommitPerformance()" style="margin-left:0.5rem;">Cancel</button>
+            </div>
+            <div id="scoringStatus" style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;"></div>
+            <div style="display:flex;flex-wrap:wrap;gap:1rem;font-size:0.8rem;color:var(--text-muted);padding:0.25rem 0 0.75rem;border-top:1px solid var(--border);margin-top:0.25rem;">
+              <span><span style="color:var(--heal);font-weight:700;">&#9632;</span> &gt;= 7.0 &mdash; Strong</span>
+              <span><span style="color:var(--gold);font-weight:700;">&#9632;</span> &gt;= 5.0 &mdash; Average</span>
+              <span><span style="color:var(--text-dim);font-weight:700;">&#9632;</span> &lt; 5.0 &mdash; Below average</span>
+              <span><span style="color:#b085f0;font-weight:700;">&#9632;</span> Trend fallback (no recent data)</span>
+              <span><span style="color:var(--melee);font-weight:700;">&#9632;</span> No data</span>
+              <span><span style="color:var(--text-muted);font-weight:700;">&#9632;</span> Excluded (Tank/Healer)</span>
+              <span style="color:var(--text-dim);">Scores = ilvl bracket percentile / 10</span>
+            </div>
+            <div id="scoringContent"></div>
           </div>
 
           <!-- Signups tab -->
@@ -728,6 +762,7 @@
   <script src="js/tabs/tab-audit.js"></script>
   <script src="js/tabs/tab-season.js"></script>
   <script src="js/tabs/tab-loot-import.js"></script>
+  <script src="js/tabs/tab-scoring.js"></script>
   <script>
 document.getElementById('versionNum').textContent = VERSION;
 document.title = TEAM_NAME + ' -- Officer';

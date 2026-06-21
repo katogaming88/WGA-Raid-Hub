@@ -210,6 +210,40 @@ function doGet(e) {
       }
     }
 
+    if (action === 'refreshWclPerformance') {
+      try {
+        const result = refreshWclPerformanceCore();
+        appendAuditLog('WCL Performance Refreshed', '', '', `${result.updated} players updated, ${result.recentReports} recent / ${result.trendReports} trend reports`);
+        return jsonpResponse(callback, { success: true, updated: result.updated, scores: result.scores, recentReports: result.recentReports, trendReports: result.trendReports });
+      } catch (err) {
+        return jsonpResponse(callback, { success: false, error: err.message });
+      }
+    }
+
+    if (action === 'setManualScore') {
+      const firstName = String(e.parameter.firstName || '').trim();
+      const score     = parseFloat(e.parameter.score);
+      if (!firstName)   return jsonpResponse(callback, { success: false, error: 'Missing firstName' });
+      if (isNaN(score)) return jsonpResponse(callback, { success: false, error: 'Invalid score' });
+      try {
+        setManualScoreCore(firstName, score);
+        appendAuditLog('Manual Score Set', firstName, '', score.toFixed(2));
+        return jsonpResponse(callback, { success: true });
+      } catch (err) {
+        return jsonpResponse(callback, { success: false, error: err.message });
+      }
+    }
+
+    if (action === 'commitPerformanceScores') {
+      try {
+        const result = commitPerformanceScoresCore();
+        appendAuditLog('Performance Scores Committed', '', '', `${result.committed} players`);
+        return jsonpResponse(callback, { success: true, committed: result.committed });
+      } catch (err) {
+        return jsonpResponse(callback, { success: false, error: err.message });
+      }
+    }
+
     if (action === 'getAttendanceGrid') {
       try {
         const grid = getAttendanceSheetGrid();
@@ -1189,9 +1223,10 @@ function generatePriorityForItem(itemName, difficulty) {
     }
   }
 
-  // WCL performance score lives in column E (index 4) of the Scoring sheet
-  const scoringSheet = ss.getSheetByName(CFG.scoringSheet);
-  const scoreMap     = {};
+  // WCL performance score (col E) for DPS; attendance score (col D) for tanks/healers
+  const scoringSheet   = ss.getSheetByName(CFG.scoringSheet);
+  const scoreMap       = {};
+  const attendScoreMap = {};
 
   if (scoringSheet) {
     const sData = scoringSheet.getDataRange().getValues();
@@ -1199,10 +1234,10 @@ function generatePriorityForItem(itemName, difficulty) {
       const nameRealm = String(sData[i][CFG.scoringPlayerCol - 1] || '').trim();
       if (!nameRealm) continue;
       const firstName = nameRealm.split('-')[0].trim().toLowerCase();
-      const score     = sData[i][4]; // column E -- WCL performance score
-      if (typeof score === 'number' && score > 0) {
-        scoreMap[firstName] = Math.round(score * 10) / 10;
-      }
+      const wclScore  = sData[i][4];                        // column E -- WCL performance
+      const attend    = sData[i][CFG.scoringAttendCol - 1]; // column D -- attendance 1-10
+      if (typeof wclScore === 'number' && wclScore > 0) scoreMap[firstName]       = Math.round(wclScore * 10) / 10;
+      if (typeof attend   === 'number' && attend   > 0) attendScoreMap[firstName] = Math.round(attend   * 10) / 10;
     }
   }
 
@@ -1220,20 +1255,22 @@ function generatePriorityForItem(itemName, difficulty) {
     // Heroic receipt = excluded from heroic prio, but still eligible (penalized) for mythic
     if (diff === 'heroic' && recipients.heroic.has(firstNameNorm)) return;
 
-    const role       = roleMap[firstName]  || '';
-    const rawScore   = scoreMap[firstName] || null;
+    const role         = roleMap[firstName]  || '';
+    const isTankOrHeal = role === 'tank' || role === 'heal';
+    const rawScore     = isTankOrHeal
+      ? (attendScoreMap[firstName] !== undefined ? attendScoreMap[firstName] : null)
+      : (scoreMap[firstName] || null);
     const isBench    = benchSet.has(firstName);
     const isTrial    = trialSet.has(firstName);
-    const roleMul    = ROLE_MULTI[role] !== undefined ? ROLE_MULTI[role] : 1.0;
-    const isTankHeal = role === 'tank' || role === 'heal';
-    const hasHeroic  = diff === 'mythic' && recipients.heroic.has(firstNameNorm);
+    const roleMul   = ROLE_MULTI[role] !== undefined ? ROLE_MULTI[role] : 1.0;
+    const hasHeroic = diff === 'mythic' && recipients.heroic.has(firstNameNorm);
 
     let finalMul    = roleMul;
     let statusLabel = '';
-    if (isBench && isTankHeal) {
+    if (isBench && isTankOrHeal) {
       finalMul    = roleMul * BENCH_ROLE_MULTIPLIER;
       statusLabel = 'Bench';
-    } else if (isTrial && isTankHeal) {
+    } else if (isTrial && isTankOrHeal) {
       finalMul    = roleMul * TRIAL_ROLE_MULTIPLIER;
       statusLabel = 'Trial';
     } else if (isBench) {

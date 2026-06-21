@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.21.0] - 2026-06-21
+
+### Added
+- **WCL Performance Scores tab** in the officer dashboard. Officers can now refresh WCL performance scores and commit them to the Scoring sheet directly from the web app, without needing to open the spreadsheet. Refresh pulls the last N raid reports from WCL and writes draft scores (ilvl bracket %) to columns J and K of the Scoring sheet; Commit copies the Recent Score (col J) into the Performance column (col C) used by the Priority Generator. Tanks are automatically skipped and marked Manual.
+
+### Changed
+- `refreshPerformanceScores()` and `commitDraftScores()` in `WCL.gs` now delegate to extracted core functions (`refreshWclPerformanceCore`, `commitPerformanceScoresCore`) so the same logic is callable from the web app without triggering `SpreadsheetApp.getUi()` alerts.
+
+---
+
 ## [2.20.0] - 2026-06-21
 
 ### Added
