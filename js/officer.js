@@ -154,6 +154,7 @@ function submitOfficerPassword() {
       function() {
         buildStatsBar();
         buildRosterTable();
+        reopenSelectedPlayer();
       }
     );
   } else {
@@ -282,6 +283,7 @@ function setActiveSeason(value) {
 function rebuildSeasonFilteredViews() {
   // Always rebuild the roster table (attendance % may change)
   buildRosterTable();
+  reopenSelectedPlayer();
   // Rebuild whichever loot sub-tab is currently visible
   var subFairness  = document.getElementById('loot-sub-fairness');
   var subConflicts = document.getElementById('loot-sub-conflicts');
@@ -389,6 +391,7 @@ if (!isOfficerSessionValid()) {
       buildStatsBar();
       buildRosterTable();
       updateUnmanagedBadge();
+      reopenSelectedPlayer();
     }
   );
 }
