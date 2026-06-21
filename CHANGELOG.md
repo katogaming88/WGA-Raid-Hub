@@ -9,10 +9,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [2.21.0] - 2026-06-21
 
 ### Added
-- **WCL Performance Scores tab** in the officer dashboard. Officers can now refresh WCL performance scores and commit them to the Scoring sheet directly from the web app, without needing to open the spreadsheet. Refresh pulls the last N raid reports from WCL and writes draft scores (ilvl bracket %) to columns J and K of the Scoring sheet; Commit copies the Recent Score (col J) into the Performance column (col C) used by the Priority Generator. Tanks are automatically skipped and marked Manual.
+- **WCL Performance Scores tab** in the officer dashboard (`js/tabs/tab-scoring.js`). Officers can refresh WCL performance scores and commit them to the Scoring sheet without opening the spreadsheet.
+- **Three scoring windows**: Recent (last 2 reports), Trend (last 8 reports), Best (last 20 reports). Scores are ilvl bracket percentile / 10, giving a 0-10 scale. Best Score uses the single highest percentile across all 20 reports rather than an average.
+- **Inline score editing**: clicking any Recent Score cell opens a number input to manually override the value. The override is saved to the draft column (J) immediately via GAS and the cell updates in place.
+- **"Use Best" button** on each Best Score cell copies the best score into the Recent Score column (both the spreadsheet draft and the in-page cache), so the next Commit will use the best score rather than the recent average.
+- **Committed badge**: after committing, each eligible player's Recent Score cell shows a "committed" label so officers can see which scores have already been pushed to the Performance column.
+- **sessionStorage caching**: scores are stored in `sessionStorage` after each refresh. Returning to the Scoring tab within the same browser session restores the table immediately with a "cached N mins ago" status, avoiding a redundant WCL fetch.
+- **Color legend** always visible on the Scoring tab: green (>=7 Strong), gold (>=5 Average), dim (<5 Below average), purple (trend fallback), red (No data), muted (Excluded - Tank/Healer).
+- **Healer exclusion from WCL scoring**: healers are now fully excluded from WCL data collection alongside tanks. Both roles are marked "Excluded" in the draft columns with a blue background.
+- **Attendance-based scoring for tanks and healers** in the Priority Generator: instead of using the WCL performance score (col E), tanks receive `attendance * 0.50` and healers receive `attendance * 0.75` as their raw score, reflecting that these roles are not meaningfully ranked by DPS bracket percentile.
 
 ### Changed
 - `refreshPerformanceScores()` and `commitDraftScores()` in `WCL.gs` now delegate to extracted core functions (`refreshWclPerformanceCore`, `commitPerformanceScoresCore`) so the same logic is callable from the web app without triggering `SpreadsheetApp.getUi()` alerts.
+- `getRecentReports()` in `WCL.gs` now accepts a `limit` parameter instead of hardcoding 20, so all three scoring windows can share a single GQL fetch sliced in memory.
+- `BEST_REPORTS = 20` added to `Config.gs` alongside existing `RECENT_REPORTS` and `TREND_REPORTS` constants.
 
 ---
 
