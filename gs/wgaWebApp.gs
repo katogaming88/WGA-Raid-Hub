@@ -83,9 +83,10 @@ const CFG = {
 var BOT_BASE_URL = 'http://129.80.178.227:3000';
 var BOT_WEBHOOK_SECRET = 'teamPhoenixPPCBot';
 
-var HAS_HEROIC_MULTIPLIER   = 0.85; // mythic prio penalty for players who already have the heroic version
-var HAS_CHAMPION_MULTIPLIER = 1.07; // mythic prio small bonus for players who only have the champion (normal) version
-var HAS_NEITHER_MULTIPLIER  = 1.15; // mythic prio bonus for players who have no version of the item at all
+var HAS_HEROIC_MULTIPLIER            = 0.85; // mythic prio penalty for players who already have the heroic version
+var HAS_CHAMPION_MULTIPLIER          = 1.07; // mythic prio small bonus for players who only have the champion (normal) version
+var HAS_NEITHER_MULTIPLIER           = 1.15; // mythic prio bonus for players who have no version of the item at all
+var HAS_CHAMPION_FOR_HEROIC_MULT     = 0.90; // heroic prio penalty for players who already have the champion (normal) version
 
 function sendToBot(path, payload) {
   try {
@@ -1294,8 +1295,9 @@ function generatePriorityForItem(itemName, difficulty) {
       statusLabel = statusLabel ? statusLabel + ', Has Champion' : 'Has Champion';
     }
 
-    // Show status label on heroic prio for players who have the champion (normal) version
+    // Heroic prio penalty for players who already have the champion (normal) version
     if (diff === 'heroic' && recipients.champion.has(firstNameNorm)) {
+      finalMul    = finalMul * HAS_CHAMPION_FOR_HEROIC_MULT;
       statusLabel = statusLabel ? statusLabel + ', Has Champion' : 'Has Champion';
     }
 

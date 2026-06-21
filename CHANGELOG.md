@@ -9,7 +9,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [2.24.0] - 2026-06-21
 
 ### Added
-- **Champion (Normal) loot tier tracking in priority scoring.** The priority generator now recognises Normal-difficulty receipts from all three loot sources (Pasted Loot sheet, Loot Data IMPORTRANGE, and Self Received Requests). Players who already received a Champion (Normal) version of an item are no longer incorrectly treated as having "No Version" -- they receive a 1.07x Mythic-prio bonus instead of the 1.15x "No Version" bonus. Heroic priority lists show a "Has Champion" status label for these players (no score effect, since they remain fully eligible for the Heroic upgrade). Self-received source prefixes "Champion:" and "Normal:" both route to the champion tier.
+- **Champion (Normal) loot tier tracking in priority scoring.** The priority generator now recognises Normal-difficulty receipts from all three loot sources (Pasted Loot sheet, Loot Data IMPORTRANGE, and Self Received Requests). For Mythic priority, players with only a Normal receipt receive a 1.07x bonus (vs the 1.15x "No Version" bonus they incorrectly received before). For Heroic priority, Normal holders receive a 0.90x penalty and a "Has Champion" status label -- they are lower priority than players with no version, but still eligible. Self-received source prefixes "Champion:" and "Normal:" both route to the champion tier.
 
 ---
 
