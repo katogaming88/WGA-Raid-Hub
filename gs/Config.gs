@@ -31,7 +31,6 @@ const PLAYER_DATA_END   = 33;
 const GUILD_TAG_ID       = 801219;
 const RECENT_REPORTS     = 2;   // "Recent" score window
 const TREND_REPORTS      = 8;   // "Trend" score window
-const REPORT_NAME_FILTER = 'Phoenix';
 
 const HEALERS = ['Luminouss', 'Goldenbaby', 'Hotwood', 'Flameus', 'Kayá'];
 const TANKS   = ['Fluphie', 'Fluphyxd', 'Adrestia'];

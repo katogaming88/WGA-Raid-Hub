@@ -1,6 +1,28 @@
-var WEB_APP_URL   = 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec';
-var VERSION       = '2.19.0';
-var DATA          = null;
+var TEAMS = {
+  phoenix: {
+    gasUrl: 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec',
+    name: 'Team Phoenix',
+    officerPass: 'phoenix2'
+  },
+  hellfire: {
+    gasUrl: 'https://script.google.com/macros/s/AKfycbwIpnJyZDwWr5MmWIv7iyaDZ0OajPTFePMTYfIy8WG7jhg7pakQTvTVSM3SLihrKxBb/exec', // TODO: fill in after Hellfire Rollers deploys their GAS web app
+    name: 'Hellfire Rollers',
+    officerPass: 'hellfire2' // TODO: fill in
+  }
+};
+
+var _teamParam = (location.search.match(/[?&]team=([^&]+)/) || [])[1];
+if (_teamParam && _teamParam in TEAMS) {
+  sessionStorage.setItem('wga_team', _teamParam);
+} else {
+  _teamParam = sessionStorage.getItem('wga_team') || 'phoenix';
+}
+var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
+var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
+var TEAM_NAME = _teamCfg.name;
+var WEB_APP_URL = _teamCfg.gasUrl;
+var VERSION = '2.19.0';
+var DATA = null;
 var ACTIVE_SEASON = null; // null = All Seasons; set by officer.js when a season is selected
 
 var WOW_REALMS = [
@@ -60,17 +82,17 @@ var CLASS_SPECS = {
 var CLASS_ARMOR_TYPE = {
   'Death Knight': 'Plate',
   'Demon Hunter': 'Leather',
-  'Druid':        'Leather',
-  'Evoker':       'Mail',
-  'Hunter':       'Mail',
-  'Mage':         'Cloth',
-  'Monk':         'Leather',
-  'Paladin':      'Plate',
-  'Priest':       'Cloth',
-  'Rogue':        'Leather',
-  'Shaman':       'Mail',
-  'Warlock':      'Cloth',
-  'Warrior':      'Plate'
+  'Druid': 'Leather',
+  'Evoker': 'Mail',
+  'Hunter': 'Mail',
+  'Mage': 'Cloth',
+  'Monk': 'Leather',
+  'Paladin': 'Plate',
+  'Priest': 'Cloth',
+  'Rogue': 'Leather',
+  'Shaman': 'Mail',
+  'Warlock': 'Cloth',
+  'Warrior': 'Plate'
 };
 
 var CLASS_COLORS = {
@@ -131,16 +153,16 @@ function loadData(onCoreReady, onHeavyReady) {
     window._rosterHeavyCallback = function (heavy) {
       delete window._rosterHeavyCallback;
       if (!heavy || heavy.error) return;
-      DATA.lootCounts              = heavy.lootCounts;
-      DATA.attendanceDetails       = heavy.attendanceDetails;
-      DATA.rawAttendanceData       = heavy.rawAttendanceData;
-      DATA.recentAttendanceTrend   = heavy.recentAttendanceTrend;
-      DATA.bisList                 = heavy.bisList;
-      DATA.priorityOrder           = heavy.priorityOrder;
-      DATA.itemSlots               = heavy.itemSlots;
-      DATA.itemArmorTypes          = heavy.itemArmorTypes || {};
-      DATA.itemBosses              = heavy.itemBosses || {};
-      DATA.selfReceived            = heavy.selfReceived;
+      DATA.lootCounts = heavy.lootCounts;
+      DATA.attendanceDetails = heavy.attendanceDetails;
+      DATA.rawAttendanceData = heavy.rawAttendanceData;
+      DATA.recentAttendanceTrend = heavy.recentAttendanceTrend;
+      DATA.bisList = heavy.bisList;
+      DATA.priorityOrder = heavy.priorityOrder;
+      DATA.itemSlots = heavy.itemSlots;
+      DATA.itemArmorTypes = heavy.itemArmorTypes || {};
+      DATA.itemBosses = heavy.itemBosses || {};
+      DATA.selfReceived = heavy.selfReceived;
       if (typeof populateBossFilters === 'function') populateBossFilters();
       if (onHeavyReady) onHeavyReady();
     };
@@ -193,10 +215,10 @@ function getSelfReceivedItems(firstName) {
 function refreshBisCompletion(firstName) {
   var el = document.getElementById('bis-completion-' + firstName);
   if (!el) return;
-  var bisItems     = getBisItems(firstName);
+  var bisItems = getBisItems(firstName);
   if (!bisItems.length) return;
   var selfRecItems = getSelfReceivedItems(firstName);
-  var selfRecMap   = {};
+  var selfRecMap = {};
   for (var i = 0; i < selfRecItems.length; i++) selfRecMap[normalise(selfRecItems[i].item)] = true;
   var lootEntry = getLootEntry(firstName);
   var receivedMap = {};
@@ -226,12 +248,12 @@ function getSeasonLootItems(firstName) {
   var entry = getLootEntry(firstName);
   var items = (entry && entry.items) || [];
   if (!ACTIVE_SEASON) return items;
-  return items.filter(function(item) { return item.season === ACTIVE_SEASON; });
+  return items.filter(function (item) { return item.season === ACTIVE_SEASON; });
 }
 
 function getSeasonLootEntry(firstName) {
   if (!ACTIVE_SEASON) return getLootEntry(firstName);
-  var items  = getSeasonLootItems(firstName);
+  var items = getSeasonLootItems(firstName);
   var heroic = 0, mythic = 0;
   for (var i = 0; i < items.length; i++) {
     if (items[i].difficulty === 'Heroic') heroic++;
@@ -271,20 +293,20 @@ function getSlotColor(slot) {
 function attendColor(pct) { return pct >= 95 ? 'var(--heal)' : pct >= 75 ? 'var(--gold)' : 'var(--melee)'; }
 
 function attendTrendColor(status) {
-  if (status === 'Present')       return '#52b788';
-  if (status === 'Bench')         return '#7EC8E3';
-  if (status === 'Excused')       return '#d4a843';
+  if (status === 'Present') return '#52b788';
+  if (status === 'Bench') return '#7EC8E3';
+  if (status === 'Excused') return '#d4a843';
   if (status === 'Medical Leave') return '#A8DADC';
-  if (status === 'No Show')       return '#e05252';
+  if (status === 'No Show') return '#e05252';
   return '#555';
 }
 
 function attendTrendValue(status) {
-  if (status === 'Present')       return 1.0;
-  if (status === 'Bench')         return 0.85;
+  if (status === 'Present') return 1.0;
+  if (status === 'Bench') return 0.85;
   if (status === 'Medical Leave') return 0.7;
-  if (status === 'Excused')       return 0.5;
-  if (status === 'No Show')       return 0.0;
+  if (status === 'Excused') return 0.5;
+  if (status === 'No Show') return 0.0;
   return 0.5;
 }
 
@@ -322,7 +344,7 @@ function renderAttendTrend(firstName) {
 
   // Aggregate by calendar month
   var monthMap = {}, monthOrder = [];
-  var MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   for (var i = 0; i < nights.length; i++) {
     var key = nights[i].date.substring(0, 7); // "yyyy-MM"
     if (!monthMap[key]) { monthMap[key] = []; monthOrder.push(key); }
@@ -339,7 +361,7 @@ function renderAttendTrend(firstName) {
       var y = PAD + (1 - attendTrendValue(nights[i].status)) * (H - PAD * 2);
       points.push({ x: x, y: y, night: nights[i] });
     }
-    var lineStr = points.map(function(p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ');
+    var lineStr = points.map(function (p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ');
     var svg = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" style="display:block;overflow:visible;">';
     svg += '<polyline points="' + lineStr + '" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>';
     for (var i = 0; i < points.length; i++) {
@@ -353,7 +375,7 @@ function renderAttendTrend(firstName) {
     return '<div style="overflow-x:auto;overflow-y:hidden;margin-top:0.75rem;">' + svg + '</div>';
   }
 
-  var months = monthOrder.map(function(key) {
+  var months = monthOrder.map(function (key) {
     var entries = monthMap[key];
     var sum = 0;
     for (var j = 0; j < entries.length; j++) sum += attendTrendValue(entries[j].status);
@@ -374,7 +396,7 @@ function renderAttendTrend(firstName) {
     points.push({ x: x, y: y, m: months[i] });
   }
 
-  var lineStr = points.map(function(p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ');
+  var lineStr = points.map(function (p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ');
 
   var svg = '<svg width="' + W + '" height="' + (H + 18) + '" viewBox="0 0 ' + W + ' ' + (H + 18) + '" style="display:block;overflow:visible;">';
   svg += '<polyline points="' + lineStr + '" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>';
@@ -396,7 +418,7 @@ function formatJoinDate(dateStr) {
   if (!dateStr) return '';
   var parts = dateStr.split('-');
   if (parts.length !== 3) return dateStr;
-  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   var m = parseInt(parts[1], 10) - 1;
   if (m < 0 || m > 11) return dateStr;
   return months[m] + ' ' + parseInt(parts[2], 10) + ', ' + parts[0];
@@ -562,14 +584,14 @@ function showSelfReceivedForm(firstName, item, slot, rowId, defaultSource, isOff
   for (var si = 0; si < sources.length; si++) {
     opts += '<option value="' + sources[si] + '"' + (sources[si] === defaultSource ? ' selected' : '') + '>' + sources[si] + '</option>';
   }
-  var fnSafe   = firstName.replace(/'/g, "\\'");
+  var fnSafe = firstName.replace(/'/g, "\\'");
   var itemSafe = item.replace(/'/g, "\\'");
   var slotSafe = slot.replace(/'/g, "\\'");
   var submitFn = isOfficer
     ? 'submitDirectMarkReceived(\'' + fnSafe + '\',\'' + itemSafe + '\',\'' + slotSafe + '\',\'' + rowId + '\')'
     : 'submitSelfReceivedRequest(\'' + fnSafe + '\',\'' + itemSafe + '\',\'' + slotSafe + '\',\'' + rowId + '\')';
   var submitLabel = isOfficer ? 'Mark received' : 'Submit request';
-  var noteText    = isOfficer ? '' : '<p class="self-received-note">An officer will review and approve this. Once approved it will appear on your profile.</p>';
+  var noteText = isOfficer ? '' : '<p class="self-received-note">An officer will review and approve this. Once approved it will appear on your profile.</p>';
   var formHtml =
     '<div class="self-received-form-inner" onclick="event.stopPropagation()">' +
     '<div style="display:flex;gap:0.5rem;margin-bottom:0.4rem;">' +
@@ -592,10 +614,10 @@ function showSelfReceivedForm(firstName, item, slot, rowId, defaultSource, isOff
 
 function submitSelfReceivedRequest(firstName, item, slot, rowId) {
   var sourceEl = document.getElementById('src-' + rowId);
-  var notesEl  = document.getElementById('notes-' + rowId);
-  var diffEl   = document.getElementById('diff-' + rowId);
+  var notesEl = document.getElementById('notes-' + rowId);
+  var diffEl = document.getElementById('diff-' + rowId);
   if (!sourceEl || !sourceEl.value) { if (sourceEl) sourceEl.style.borderColor = 'var(--melee)'; return; }
-  var diff   = diffEl ? diffEl.value : 'Mythic';
+  var diff = diffEl ? diffEl.value : 'Mythic';
   var source = diff + ': ' + sourceEl.value;
   var data = { player: firstName, item: item, slot: slot, source: source, notes: notesEl ? notesEl.value : '' };
   var formEl = document.getElementById('form-' + rowId);
@@ -624,16 +646,16 @@ function submitSelfReceivedRequest(firstName, item, slot, rowId) {
 
 function submitDirectMarkReceived(firstName, item, slot, rowId) {
   var sourceEl = document.getElementById('src-' + rowId);
-  var notesEl  = document.getElementById('notes-' + rowId);
-  var diffEl   = document.getElementById('diff-' + rowId);
+  var notesEl = document.getElementById('notes-' + rowId);
+  var diffEl = document.getElementById('diff-' + rowId);
   if (!sourceEl || !sourceEl.value) { if (sourceEl) sourceEl.style.borderColor = 'var(--melee)'; return; }
-  var diff   = diffEl ? diffEl.value : 'Mythic';
+  var diff = diffEl ? diffEl.value : 'Mythic';
   var source = diff + ': ' + sourceEl.value;
-  var data    = { player: firstName, item: item, slot: slot, source: source, notes: notesEl ? notesEl.value : '' };
-  var formEl  = document.getElementById('form-' + rowId);
+  var data = { player: firstName, item: item, slot: slot, source: source, notes: notesEl ? notesEl.value : '' };
+  var formEl = document.getElementById('form-' + rowId);
   if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Saving...</p>';
   var cbName = '_directRecCb' + rowId.replace(/[^a-zA-Z0-9]/g, '_');
-  window[cbName] = function(result) {
+  window[cbName] = function (result) {
     delete window[cbName];
     if (formEl) {
       if (result.error) {
@@ -655,7 +677,7 @@ function submitDirectMarkReceived(firstName, item, slot, rowId) {
     }
   };
   var script = document.createElement('script');
-  script.onerror = function() {
+  script.onerror = function () {
     delete window[cbName];
     if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed. Try again.</p>';
   };
@@ -698,14 +720,14 @@ function renderProfile(firstName, backTo, container) {
   }
 
   // Loot (season-filtered when ACTIVE_SEASON is set)
-  var lootEntry    = getSeasonLootEntry(player.firstName);
+  var lootEntry = getSeasonLootEntry(player.firstName);
   var allLootEntry = getLootEntry(player.firstName); // unfiltered, for received map
-  var lootCount    = lootEntry ? lootEntry.count : 0;
+  var lootCount = lootEntry ? lootEntry.count : 0;
   var lootItemsHTML = '';
   var lastItems = [];
   var seasonLootItems = getSeasonLootItems(player.firstName);
   if (seasonLootItems.length > 0) {
-    var sortedLoot = seasonLootItems.slice().sort(function(a, b) {
+    var sortedLoot = seasonLootItems.slice().sort(function (a, b) {
       return new Date(b.date) - new Date(a.date);
     });
     var lastDate = sortedLoot[0].date;
@@ -802,9 +824,9 @@ function renderProfile(firstName, backTo, container) {
   var receivedMap = {};
   var receivedItems = (allLootEntry && allLootEntry.items) || [];
   for (var ri = 0; ri < receivedItems.length; ri++) {
-    var ri_obj  = receivedItems[ri];
+    var ri_obj = receivedItems[ri];
     var ri_name = typeof ri_obj === 'string' ? ri_obj : ri_obj.name;
-    var ri_key  = normalise(ri_name);
+    var ri_key = normalise(ri_name);
     if (!receivedMap[ri_key]) receivedMap[ri_key] = [];
     receivedMap[ri_key].push(typeof ri_obj === 'object' ? ri_obj : { name: ri_name });
   }
@@ -833,8 +855,8 @@ function renderProfile(firstName, backTo, container) {
     rows += isGen ? '<span style="font-size:0.97rem;color:var(--text-dim);min-width:40px;text-align:center;">-</span>' : rankPillHTML(rank);
     rows += '<span class="priority-item-slot" style="color:' + getSlotColor(slot) + ';">' + slot + '</span>';
     rows += '<span class="priority-item-name" style="text-align:right;" title="' + item + '">' + item + '</span>';
-    var defaultSrc  = isGen ? item : '';
-    var isOfficer   = backTo === 'officer';
+    var defaultSrc = isGen ? item : '';
+    var isOfficer = backTo === 'officer';
     var officerFlag = isOfficer ? 'true' : 'false';
     var markRecvBtn = '<button class="mark-received-btn" style="font-size:0.78rem;padding:2px 7px;margin-top:2px;" onclick="event.stopPropagation();showSelfReceivedForm(\'' +
       player.firstName.replace(/'/g, "\\'") + '\',\'' + item.replace(/'/g, "\\'") + '\',\'' + slot.replace(/'/g, "\\'") + '\',\'' + rowId + '\',\'' + defaultSrc.replace(/'/g, "\\'") + '\',' + officerFlag + ')">Mark received</button>';
@@ -1006,25 +1028,25 @@ function renderProfile(firstName, backTo, container) {
     '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var l=document.getElementById(\'loot-list-' + player.firstName + '\');l.style.display=l.style.display===\'none\'?\'grid\':\'none\';">Items Received <span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
     '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">' + lootCount + ' item' + (lootCount !== 1 ? 's' : '') + (ACTIVE_SEASON ? ' — ' + ACTIVE_SEASON : ' this tier') + '</div>' +
     (lastItems.length
-      ? (function() {
-          var lastDate = lastItems[0].date || '';
-          var itemLines = '';
-          for (var lx = 0; lx < lastItems.length; lx++) {
-            var lxi = lastItems[lx];
-            var lxColor = lxi.difficulty === 'Mythic' ? '#b085f0' : lxi.difficulty === 'Heroic' ? '#4dd9e0' : 'var(--gold)';
-            itemLines += '<div' + (lx > 0 ? ' style="margin-top:0.3rem;padding-top:0.3rem;border-top:1px solid var(--border);"' : '') + '>' +
-              '<div style="font-size:1rem;color:' + lxColor + ';font-weight:600;">' + lxi.name + '</div>' +
-              (lxi.difficulty ? '<div style="font-size:0.88rem;color:var(--text-muted);margin-top:0.1rem;">' + lxi.difficulty + '</div>' : '') +
-              '</div>';
-          }
-          return '<div style="margin-top:0.6rem;padding:0.5rem 0.75rem;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:space-between;">' +
-            '<div style="flex:1;min-width:0;">' +
-            '<div style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Last received' + (lastDate ? ' - ' + lastDate : '') + '</div>' +
-            itemLines +
-            '</div>' +
-            '<span style="font-size:1.8rem;font-weight:700;color:var(--gold);line-height:1;margin-left:0.75rem;">&#8679;</span>' +
+      ? (function () {
+        var lastDate = lastItems[0].date || '';
+        var itemLines = '';
+        for (var lx = 0; lx < lastItems.length; lx++) {
+          var lxi = lastItems[lx];
+          var lxColor = lxi.difficulty === 'Mythic' ? '#b085f0' : lxi.difficulty === 'Heroic' ? '#4dd9e0' : 'var(--gold)';
+          itemLines += '<div' + (lx > 0 ? ' style="margin-top:0.3rem;padding-top:0.3rem;border-top:1px solid var(--border);"' : '') + '>' +
+            '<div style="font-size:1rem;color:' + lxColor + ';font-weight:600;">' + lxi.name + '</div>' +
+            (lxi.difficulty ? '<div style="font-size:0.88rem;color:var(--text-muted);margin-top:0.1rem;">' + lxi.difficulty + '</div>' : '') +
             '</div>';
-        })()
+        }
+        return '<div style="margin-top:0.6rem;padding:0.5rem 0.75rem;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:space-between;">' +
+          '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Last received' + (lastDate ? ' - ' + lastDate : '') + '</div>' +
+          itemLines +
+          '</div>' +
+          '<span style="font-size:1.8rem;font-weight:700;color:var(--gold);line-height:1;margin-left:0.75rem;">&#8679;</span>' +
+          '</div>';
+      })()
       : '') +
     '<div id="loot-list-' + player.firstName + '" style="display:none;margin-top:0.75rem;grid-template-columns:1fr 1fr;gap:0 1rem;">' + lootItemsHTML + '</div>' +
     '</div>' +
@@ -1063,13 +1085,13 @@ function loadAttendanceHistory(firstName) {
   content.style.display = 'block';
 
   var cbName = '_attendHistCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
-  window[cbName] = function(result) {
+  window[cbName] = function (result) {
     delete window[cbName];
     content.dataset.loaded = '1';
     if (hint) hint.textContent = 'click to collapse';
 
     var history = (result && result.history) || [];
-    history = history.slice().sort(function(a, b) { return b.date < a.date ? -1 : b.date > a.date ? 1 : 0; });
+    history = history.slice().sort(function (a, b) { return b.date < a.date ? -1 : b.date > a.date ? 1 : 0; });
 
     if (!history.length) {
       content.innerHTML = '<p style="color:var(--text-muted);font-size:0.95rem;padding:0.5rem 0;">No attendance records found.</p>';
@@ -1083,9 +1105,9 @@ function loadAttendanceHistory(firstName) {
     }
 
     function statusColor(s) {
-      if (s === 'Present')       return 'var(--heal)';
-      if (s === 'Late')          return 'var(--gold)';
-      if (s === 'No Show')       return 'var(--melee)';
+      if (s === 'Present') return 'var(--heal)';
+      if (s === 'Late') return 'var(--gold)';
+      if (s === 'No Show') return 'var(--melee)';
       if (s === 'Medical Leave') return '#7EC8E3';
       if (s === 'Not on Roster') return 'var(--text-muted)';
       return 'var(--gold-light)';
@@ -1097,7 +1119,7 @@ function loadAttendanceHistory(firstName) {
       var st = order[oi];
       if (counts[st]) summaryParts.push('<span style="color:' + statusColor(st) + ';">' + counts[st] + ' ' + st + '</span>');
     }
-    var otherKeys = Object.keys(counts).filter(function(k) { return order.indexOf(k) === -1; });
+    var otherKeys = Object.keys(counts).filter(function (k) { return order.indexOf(k) === -1; });
     for (var ok = 0; ok < otherKeys.length; ok++) {
       summaryParts.push('<span style="color:var(--text-muted);">' + counts[otherKeys[ok]] + ' ' + otherKeys[ok] + '</span>');
     }
@@ -1132,7 +1154,7 @@ function loadAttendanceHistory(firstName) {
   };
 
   var script = document.createElement('script');
-  script.onerror = function() {
+  script.onerror = function () {
     delete window[cbName];
     content.innerHTML = '<p style="color:var(--melee);font-size:0.95rem;padding:0.5rem 0;">Failed to load. Try again.</p>';
   };
@@ -1141,9 +1163,9 @@ function loadAttendanceHistory(firstName) {
 }
 
 function saveAttendanceFromCard(selectEl) {
-  var date      = selectEl.getAttribute('data-date');
+  var date = selectEl.getAttribute('data-date');
   var firstName = selectEl.getAttribute('data-name');
-  var status    = selectEl.value;
+  var status = selectEl.value;
   var oldStatus = selectEl.getAttribute('data-old');
   var indicator = selectEl.parentElement && selectEl.parentElement.parentElement
     ? selectEl.parentElement.parentElement.querySelector('.attend-save-ind')
@@ -1153,9 +1175,9 @@ function saveAttendanceFromCard(selectEl) {
   selectEl.disabled = true;
   if (indicator) { indicator.textContent = 'Saving...'; indicator.style.color = 'var(--text-muted)'; }
 
-  var data   = { date: date, firstName: firstName, status: status, oldStatus: oldStatus };
+  var data = { date: date, firstName: firstName, status: status, oldStatus: oldStatus };
   var cbName = '_saveAttendCardCb_' + Date.now();
-  window[cbName] = function(result) {
+  window[cbName] = function (result) {
     delete window[cbName];
     selectEl.disabled = false;
     if (result && result.success) {
@@ -1163,19 +1185,19 @@ function saveAttendanceFromCard(selectEl) {
       if (indicator) {
         indicator.textContent = 'Saved';
         indicator.style.color = 'var(--heal)';
-        setTimeout(function() { if (indicator) indicator.textContent = ''; }, 2000);
+        setTimeout(function () { if (indicator) indicator.textContent = ''; }, 2000);
       }
     } else {
       selectEl.value = oldStatus || '';
       if (indicator) {
         indicator.textContent = 'Error';
         indicator.style.color = 'var(--melee)';
-        setTimeout(function() { if (indicator) indicator.textContent = ''; }, 3000);
+        setTimeout(function () { if (indicator) indicator.textContent = ''; }, 3000);
       }
     }
   };
   var script = document.createElement('script');
-  script.onerror = function() {
+  script.onerror = function () {
     delete window[cbName];
     selectEl.disabled = false;
     selectEl.value = oldStatus || '';

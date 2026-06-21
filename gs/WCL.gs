@@ -213,7 +213,7 @@ function getRecentReports(token, limit) {
   const result = wclQuery(token, query);
   if (!result) return [];
   const allReports = result.data?.reportData?.reports?.data || [];
-  return allReports.filter(r => r.title && r.title.includes(REPORT_NAME_FILTER)).slice(0, limit);
+  return allReports.slice(0, limit);
 }
 
 function getReportRankings(token, reportCode) {

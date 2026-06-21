@@ -197,6 +197,24 @@ function officerSelectPlayer(firstName) {
   inlineRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
+// Re-renders the currently open player card after buildRosterTable() wipes the
+// table HTML. Called from onHeavyReady and rebuildSeasonFilteredViews so the
+// card stays open and picks up freshly loaded data (loot, BiS, etc.).
+function reopenSelectedPlayer() {
+  if (!selectedOfficerPlayer) return;
+  var playerRow = document.querySelector('.player-row[data-player="' + selectedOfficerPlayer + '"]');
+  if (!playerRow) return;
+  var inlineRow = document.createElement('tr');
+  inlineRow.id = 'inlineProfileRow';
+  var inlineCell = document.createElement('td');
+  inlineCell.colSpan = 7;
+  inlineCell.style.padding = '0';
+  inlineCell.style.border = 'none';
+  inlineRow.appendChild(inlineCell);
+  playerRow.parentNode.insertBefore(inlineRow, playerRow.nextSibling);
+  renderProfile(selectedOfficerPlayer, 'officer', inlineCell);
+}
+
 // -- Add player modal -------------------------------------------------------
 function showAddPlayerModal() {
   document.getElementById('addPlayerName').value  = '';
