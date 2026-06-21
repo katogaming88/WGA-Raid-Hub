@@ -83,8 +83,9 @@ const CFG = {
 var BOT_BASE_URL = 'http://129.80.178.227:3000';
 var BOT_WEBHOOK_SECRET = 'teamPhoenixPPCBot';
 
-var HAS_HEROIC_MULTIPLIER  = 0.85; // mythic prio penalty for players who already have the heroic version
-var HAS_NEITHER_MULTIPLIER = 1.15; // mythic prio bonus for players who have no version of the item
+var HAS_HEROIC_MULTIPLIER   = 0.85; // mythic prio penalty for players who already have the heroic version
+var HAS_CHAMPION_MULTIPLIER = 1.07; // mythic prio small bonus for players who only have the champion (normal) version
+var HAS_NEITHER_MULTIPLIER  = 1.15; // mythic prio bonus for players who have no version of the item at all
 
 function sendToBot(path, payload) {
   try {
@@ -1264,7 +1265,8 @@ function generatePriorityForItem(itemName, difficulty) {
     const isBench    = benchSet.has(firstName);
     const isTrial    = trialSet.has(firstName);
     const roleMul   = ROLE_MULTI[role] !== undefined ? ROLE_MULTI[role] : 1.0;
-    const hasHeroic = diff === 'mythic' && recipients.heroic.has(firstNameNorm);
+    const hasHeroic       = diff === 'mythic' && recipients.heroic.has(firstNameNorm);
+    const hasChampionOnly = diff === 'mythic' && recipients.champion.has(firstNameNorm) && !recipients.heroic.has(firstNameNorm);
 
     let finalMul    = roleMul;
     let statusLabel = '';
@@ -1287,7 +1289,17 @@ function generatePriorityForItem(itemName, difficulty) {
       statusLabel = statusLabel ? statusLabel + ', Has Heroic' : 'Has Heroic';
     }
 
-    const hasNeither = diff === 'mythic' && !recipients.heroic.has(firstNameNorm);
+    if (hasChampionOnly) {
+      finalMul    = finalMul * HAS_CHAMPION_MULTIPLIER;
+      statusLabel = statusLabel ? statusLabel + ', Has Champion' : 'Has Champion';
+    }
+
+    // Show status label on heroic prio for players who have the champion (normal) version
+    if (diff === 'heroic' && recipients.champion.has(firstNameNorm)) {
+      statusLabel = statusLabel ? statusLabel + ', Has Champion' : 'Has Champion';
+    }
+
+    const hasNeither = diff === 'mythic' && !recipients.heroic.has(firstNameNorm) && !recipients.champion.has(firstNameNorm);
     if (hasNeither) {
       finalMul    = finalMul * HAS_NEITHER_MULTIPLIER;
       statusLabel = statusLabel ? statusLabel + ', No Version' : 'No Version';
@@ -1655,8 +1667,9 @@ function getItemArmorTypes(sheets) {
 }
 
 function getItemRecipients(ss, itemName) {
-  var heroic   = new Set();
-  var mythic   = new Set();
+  var heroic    = new Set();
+  var mythic    = new Set();
+  var champion  = new Set();
   var itemLower = itemName.toLowerCase();
 
   function normName(str) {
@@ -1664,7 +1677,7 @@ function getItemRecipients(ss, itemName) {
   }
   function getDiff(instance) {
     var d = String(instance || '').split('-').pop().trim().toLowerCase();
-    return d === 'mythic' ? 'mythic' : d === 'heroic' ? 'heroic' : null;
+    return d === 'mythic' ? 'mythic' : d === 'heroic' ? 'heroic' : d === 'normal' ? 'champion' : null;
   }
 
   var pastedSheet = ss.getSheetByName(CFG.pastedLootSheet);
@@ -1675,7 +1688,7 @@ function getItemRecipients(ss, itemName) {
       var item   = String(pd[i][4] || '').trim().toLowerCase();
       var diff   = getDiff(pd[i][5]);
       if (player && item === itemLower && diff) {
-        if (diff === 'heroic') heroic.add(player); else mythic.add(player);
+        if (diff === 'heroic') heroic.add(player); else if (diff === 'champion') champion.add(player); else mythic.add(player);
       }
     }
   }
@@ -1688,7 +1701,7 @@ function getItemRecipients(ss, itemName) {
       var item   = String(ld[i][3] || '').trim().replace(/^\[|\]$/g, '').toLowerCase();
       var diff   = getDiff(ld[i][CFG.lootInstanceCol - 1]);
       if (player && item === itemLower && diff) {
-        if (diff === 'heroic') heroic.add(player); else mythic.add(player);
+        if (diff === 'heroic') heroic.add(player); else if (diff === 'champion') champion.add(player); else mythic.add(player);
       }
     }
   }
@@ -1706,12 +1719,13 @@ function getItemRecipients(ss, itemName) {
       var item   = String(sd[i][2] || '').trim().toLowerCase();
       var source = String(sd[i][4] || '').trim().toLowerCase();
       if (!player || item !== itemLower) continue;
-      if (source.indexOf('heroic:') === 0) { heroic.add(player); }
-      else { mythic.add(player); }
+      if (source.indexOf('heroic:') === 0)                                            { heroic.add(player); }
+      else if (source.indexOf('champion:') === 0 || source.indexOf('normal:') === 0) { champion.add(player); }
+      else                                                                             { mythic.add(player); }
     }
   }
 
-  return { heroic: heroic, mythic: mythic };
+  return { heroic: heroic, mythic: mythic, champion: champion };
 }
 
 function getItemBosses(sheets) {
