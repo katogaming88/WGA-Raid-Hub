@@ -360,12 +360,20 @@ function getDisplayAttendancePct(player) {
   return player.attendance || '0%';
 }
 
-// -- Boot: require password before loading any data; clear expired sessions
+// -- Boot: check password session first; Discord session validation happens via
+//    onDiscordSessionRestored() in officer.html once discord.js calls initDiscordLogin().
 if (!isOfficerSessionValid()) {
   sessionStorage.removeItem(_SESSION_KEY);
   sessionStorage.removeItem(_SESSION_TS_KEY);
   document.getElementById('loadingMsg').style.display = 'none';
-  showOfficerPrompt();
+  // Check for a Discord session before showing the password prompt.
+  // initDiscordLogin() (discord.js) calls onDiscordSessionRestored() which will call
+  // _grantOfficerAccessViaDiscord() if the session is valid and the user is an officer.
+  if (typeof initDiscordLogin === 'function') {
+    initDiscordLogin();
+  } else {
+    showOfficerPrompt();
+  }
 } else {
   loadData(
     function() {

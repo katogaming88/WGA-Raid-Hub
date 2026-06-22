@@ -6,6 +6,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.0.0] - 2026-06-22
+
+### Added
+- **Discord OAuth login.** Closes #25. Raiders and officers can now sign in with Discord -- the largest feature this app has shipped and the foundation for Phase 6 post-auth work.
+  - **Login flow:** "Login with Discord" button in the site nav opens a popup. Discord redirects to a new `discord-callback.html` relay page on GitHub Pages, which forwards the authorization code to GAS server-side. The client secret never touches the browser.
+  - **Session management:** GAS exchanges the code for a Discord access token, fetches the user profile, and creates a 30-day session token stored in `PropertiesService`. The frontend stores the token in `localStorage` (survives tab close and refresh).
+  - **Character claiming:** On first login, a modal prompts the raider to select their character from the roster. One claim per Discord ID and one claim per character, enforced server-side. Claim is stored in a new "Discord Claims" sheet.
+  - **Auto-redirect:** After login (or on page load with a valid session), the raider's own profile opens automatically -- no need to pick from the dropdown.
+  - **Officer Discord login:** Officers whose claimed character has Raid Leader or Officer priority (1 or 2) bypass the password prompt entirely when logging in via Discord. The password prompt remains available as a fallback.
+  - **Self-mark auto-approve:** When a Discord-authenticated raider submits a self-received item for their own character, GAS auto-approves it immediately instead of queuing it for officer review. Implements the long-standing TODO comment in the codebase. Partially closes #74.
+  - **`discordClaims` in core payload:** The `chunk=core` response now includes a `discordClaims` array so the officer page can display and manage claims (officer claim management UI ships in #45).
+- New GAS actions: `discordCallback`, `validateDiscordSession`, `claimCharacter`, `discordLogout`.
+- New GAS helpers: `discordOAuthCallback`, `validateDiscordSession`, `claimCharacterForSession`, `isOfficerCharacter`, `ensureDiscordClaimsSheet`, `getDiscordClaims`, `generateSessionToken`, `discordTokenExchange`, `discordApiGet`.
+- New files: `discord-callback.html`, `js/discord.js`.
+
+### Setup required (before going live)
+1. Create a Discord application at discord.com/developers. Enable `identify` scope. Register redirect URI: `https://katogaming88.github.io/wga-raid-hub/discord-callback.html`.
+2. Set `DISCORD_CLIENT_ID` (public) in `js/discord.js` (already set to the app client ID).
+3. Set `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` as Script Properties in both GAS deployments (Phoenix and Hellfire).
+
+---
+
 ## [2.29.0] - 2026-06-22
 
 ### Added

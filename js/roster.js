@@ -151,6 +151,23 @@ function _esc(str) {
   return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// Auto-open the claimed character's profile after Discord login / session restore.
+function autoOpenClaimedProfile(nameRealm) {
+  if (!nameRealm || !window.DATA) return;
+  var firstName = nameRealm.split('-')[0].trim();
+  var sel = document.getElementById('playerSelect');
+  if (!sel) return;
+  // Confirm the character is actually in the current roster dropdown
+  var found = false;
+  for (var i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].value === firstName) { found = true; break; }
+  }
+  if (!found) return;
+  sel.value = firstName;
+  showView('profile');
+  renderProfile(firstName, 'landing');
+}
+
 // Boot
 loadData(
   function() {
@@ -158,6 +175,8 @@ loadData(
     buildPublicStats();
     buildProgression();
     showView('landing');
+    // Init Discord session after core data is ready (claiming modal needs DATA.roster)
+    if (typeof initDiscordLogin === 'function') initDiscordLogin();
   },
   function() {
     buildPublicStats();

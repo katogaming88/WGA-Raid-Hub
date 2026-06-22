@@ -30,7 +30,7 @@
     <a href="index.html" class="site-nav-item" id="navHome" data-tooltip="Back to the roster overview">Home</a>
     <div class="site-nav-right">
       <select id="teamSwitcherSelect" class="team-switcher" title="Switch team"></select>
-      <button class="site-nav-item site-nav-discord" id="navDiscord" disabled data-tooltip="Discord login coming soon -- view your profile and notifications">Login with Discord</button>
+      <button class="site-nav-item site-nav-discord" id="navDiscord" onclick="openDiscordPopup()" data-tooltip="Sign in with Discord -- officers with a claimed character bypass the password prompt">Login with Discord</button>
       <button class="site-nav-item active" id="navOfficer" data-tooltip="Officer dashboard -- manage roster, loot, and signups">Officer Access</button>
     </div>
   </nav>
@@ -868,6 +868,7 @@
   </div>
 
   <script src="js/common.js"></script>
+  <script src="js/discord.js"></script>
   <script src="js/officer.js"></script>
   <script src="js/tabs/tab-roster.js"></script>
   <script src="js/tabs/tab-conflicts.js"></script>
@@ -894,6 +895,60 @@ if (TEAM_SLUG !== 'phoenix') {
   document.querySelectorAll('a[href="index.html"]').forEach(function(a){a.href='index.html?team='+TEAM_SLUG;});
 }
 initTeamUI();
+
+// Called by discord.js after a successful Discord login popup completes.
+function onDiscordLoginComplete(session) {
+  if (session.isOfficer) {
+    _grantOfficerAccessViaDiscord();
+  } else {
+    var errEl = document.getElementById('officerError');
+    if (errEl) {
+      errEl.textContent = 'Your character (' + (session.nameRealm || session.username) + ') does not have officer access.';
+      errEl.style.display = '';
+    }
+    showOfficerPrompt();
+  }
+}
+
+// Called by discord.js when a stored session is validated on page load.
+function onDiscordSessionRestored(session) {
+  if (session.isOfficer && !isOfficerSessionValid()) {
+    _grantOfficerAccessViaDiscord();
+  } else if (!isOfficerSessionValid()) {
+    // Discord auth succeeded but the character is not an officer -- fall back to password.
+    showOfficerPrompt();
+  }
+}
+
+// Called by discord.js when no valid Discord session exists (no stored token or expired).
+function onDiscordInitNoSession() {
+  if (!isOfficerSessionValid()) showOfficerPrompt();
+}
+
+// Called by discord.js on logout.
+function onDiscordLogout() {
+  officerLogout();
+}
+
+function _grantOfficerAccessViaDiscord() {
+  // Establish the password-based session flag so the rest of officer.js works unchanged.
+  sessionStorage.setItem(_SESSION_KEY, '1');
+  sessionStorage.setItem(_SESSION_TS_KEY, String(Date.now()));
+  hideOfficerPrompt();
+  document.getElementById('loadingMsg').style.display = '';
+  loadData(
+    function() {
+      buildOfficerDashboard();
+      document.getElementById('officerViewWrap').classList.add('active');
+      document.getElementById('loadingMsg').style.display = 'none';
+    },
+    function() {
+      buildStatsBar();
+      buildRosterTable();
+      reopenSelectedPlayer();
+    }
+  );
+}
 </script>
 </body>
 
