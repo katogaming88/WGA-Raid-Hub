@@ -173,7 +173,7 @@ function showDiscordClaimModal(session) {
       if (claimed.indexOf(p.nameRealm.toLowerCase()) !== -1) return; // already taken
       var opt = document.createElement('option');
       opt.value = p.nameRealm;
-      opt.textContent = p.nameRealm + ' ' + p.class;
+      opt.textContent = p.nameRealm + ' (' + p.class + ')';
       sel.appendChild(opt);
     });
   }
