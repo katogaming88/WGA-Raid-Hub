@@ -613,7 +613,7 @@ function buildTrialPromoAlert() {
     html += '</div></div></td>';
     html += '<td style="color:var(--gold-light);font-weight:600;">'+r.ageWeeks+' wk</td>';
     html += '<td><span style="color:'+aColor+';font-weight:700;">'+(p.attendance||'-')+'</span></td>';
-    html += '<td><button class="btn btn-gold" style="font-size:0.82rem;padding:0.2rem 0.6rem;white-space:nowrap;" onclick="event.stopPropagation();promoteTrialPlayer(\''+nrSafe+'\',\''+fnSafe+'\')">Promote</button></td>';
+    html += '<td><button class="btn btn-gold" style="font-size:0.82rem;padding:0.2rem 0.6rem;white-space:nowrap;" onclick="event.stopPropagation();promoteTrialPlayer(\''+nrSafe+'\',\''+fnSafe+'\',this)">Promote</button></td>';
     html += '</tr>';
   }
   html += '</tbody></table></div>';
@@ -621,13 +621,14 @@ function buildTrialPromoAlert() {
   el.innerHTML = html;
 }
 
-function promoteTrialPlayer(nameRealm, firstName) {
+function promoteTrialPlayer(nameRealm, firstName, btn) {
   var player = null;
   var roster = (DATA && DATA.roster) || [];
   for (var i = 0; i < roster.length; i++) {
     if (roster[i].nameRealm === nameRealm) { player = roster[i]; break; }
   }
   if (!player || !player.isTrial) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Promoting...'; }
 
   jsonpRequest(WEB_APP_URL + '?action=updatePlayerField&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: 'isTrial', value: false })), function(err, result) {
     if (!err && result && result.success) {
@@ -636,6 +637,8 @@ function promoteTrialPlayer(nameRealm, firstName) {
       buildRosterTable();
       var trialBtn = document.getElementById('trialToggle-' + firstName);
       if (trialBtn) { trialBtn.textContent = 'Mark as Trial'; trialBtn.classList.remove('btn-gold'); trialBtn.classList.add('btn-muted'); }
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = 'Promote'; }
     }
   });
 }
