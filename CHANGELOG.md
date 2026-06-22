@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.0.4] - 2026-06-22
+
+### Added
+- Discord Claims subtab under Admin on the officer dashboard. Shows all claimed characters with Discord username, character, and claimed date. Officers can remove a claim if a raider linked the wrong character -- the raider's active session is updated immediately and they will be prompted to re-claim on next login.
+
+---
+
 ## [3.0.3] - 2026-06-22
 
 ### Fixed

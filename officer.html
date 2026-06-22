@@ -653,6 +653,8 @@
                 onclick="switchAdminSubTab('botconfig', this)">Bot Config</button>
               <button class="filter-chip" id="admin-subtab-btn-export"
                 onclick="switchAdminSubTab('export', this)">Data Export</button>
+              <button class="filter-chip" id="admin-subtab-btn-discord"
+                onclick="switchAdminSubTab('discord', this)">Discord Claims</button>
               <button class="filter-chip" id="admin-subtab-btn-danger"
                 onclick="switchAdminSubTab('danger', this)">Danger Zone</button>
             </div>
@@ -702,6 +704,15 @@
                 <div style="margin-top:0.75rem;">
                   <button class="btn btn-gold" id="adminExportBtn" onclick="downloadExport()">Download JSON</button>
                 </div>
+              </div>
+            </div>
+
+            <!-- Discord Claims -->
+            <div id="admin-sub-discord" style="display:none;">
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Discord Claims</h4>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Characters claimed by raiders via Discord login. Remove a claim if a raider linked the wrong character.</p>
+                <div id="adminDiscordClaimsContent" style="margin-top:0.75rem;"></div>
               </div>
             </div>
 

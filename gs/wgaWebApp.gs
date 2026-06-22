@@ -898,6 +898,39 @@ function doGet(e) {
       return jsonpResponse(callback, { success: true });
     }
 
+    if (action === 'removeDiscordClaim') {
+      const nameRealm = String(e.parameter.nameRealm || '').trim();
+      if (!nameRealm) return jsonpResponse(callback, { success: false, error: 'Missing nameRealm' });
+      try {
+        const ss = SpreadsheetApp.getActiveSpreadsheet();
+        const claimsSheet = ss.getSheetByName('Discord Claims');
+        if (claimsSheet) {
+          const claimData = claimsSheet.getDataRange().getValues();
+          for (let i = claimData.length - 1; i >= 1; i--) {
+            if (String(claimData[i][2]).trim() === nameRealm) {
+              claimsSheet.deleteRow(i + 1);
+            }
+          }
+        }
+        const allProps = props.getProperties();
+        Object.keys(allProps).forEach(function(key) {
+          if (key.indexOf('discordSession_') !== 0) return;
+          try {
+            const sess = JSON.parse(allProps[key]);
+            if (sess && sess.nameRealm === nameRealm) {
+              sess.nameRealm = null;
+              sess.isOfficer = false;
+              props.setProperty(key, JSON.stringify(sess));
+            }
+          } catch (_) {}
+        });
+        cache.remove('rosterCore');
+        return jsonpResponse(callback, { success: true });
+      } catch (err) {
+        return jsonpResponse(callback, { success: false, error: err.message });
+      }
+    }
+
     const chunk = e && e.parameter && e.parameter.chunk;
 
     if (chunk === 'core') {
