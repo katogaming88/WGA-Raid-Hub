@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.25.0] - 2026-06-21
+
+### Added
+- **Active M+ exclusion list in officer tab.** The M+ Exclusions tab now shows a "Currently Excluded" section above the pending request queue, listing every player whose exclusion is active with their officer note. No extra network call -- populated from the already-loaded roster data on tab switch. Closes #149.
+- **Rejection reason on raider card.** When an officer rejects an M+ exclusion request they are now prompted for an optional rejection reason (matching the existing approve note flow). The reason is saved to the sheet and shown on the raider's public card as a "Rejected" badge with the officer's note. If requests are open, the raider sees a Re-submit button. Closes #144.
+
+---
+
 ## [2.24.0] - 2026-06-21
 
 ### Added
