@@ -10,6 +10,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 - **Team switcher in officer dashboard.** A dropdown in the officer nav bar lets the admin switch between team deployments (Team Phoenix, Hellfire Rollers). Selecting a team saves to sessionStorage and reloads the page against that team's GAS backend. Auth is namespaced per team so switching prompts for the correct officer password automatically. Switcher is officer-page only -- not visible on the public roster.
+- **Admin panel for super-admin.** A new Admin tab (officer page only) gives the admin full control over both team deployments:
+  - **Properties Inspector** -- live read of all script properties (season name/dates, feature flags, bot URL, masked bot secret).
+  - **Bot Config** -- set or clear the bot base URL and webhook secret via the officer UI without touching GAS directly.
+  - **Data Export** -- one-click download of the full in-memory DATA object as a timestamped JSON file.
+  - **Danger Zone** -- eight targeted destructive operations (clear season history, clear any data sheet) each requiring the admin to type the exact team name before executing.
+- New backend GAS actions: `getAdminProperties`, `setBotUrl`, `setBotSecret`, `dangerClearSeasonHistory`, `dangerClearSheet`.
 
 ---
 

@@ -467,6 +467,23 @@ select#playerSelect option { background:#1a1d27; }
 .realm-option { padding:0.4rem 0.75rem; font-size:1rem; color:var(--text); cursor:pointer; }
 .realm-option:hover { background:var(--bg-input); color:var(--gold-light); }
 
+/* Admin nav */
+.nav-admin-divider { height:1px; background:var(--border-mid); margin:0.5rem 0.5rem; }
+.nav-item-admin { color:var(--melee) !important; }
+.nav-item-admin.active { border-left-color:var(--melee) !important; }
+.nav-item-admin:hover { border-left-color:rgba(255,124,92,0.5) !important; }
+
+/* Admin properties table */
+.admin-props-table { width:100%; border-collapse:collapse; font-size:0.9rem; }
+.admin-props-table tr { border-bottom:1px solid var(--border); }
+.admin-prop-key { padding:0.5rem 0.75rem 0.5rem 0; color:var(--text-muted); white-space:nowrap; width:180px; vertical-align:top; }
+.admin-prop-val { padding:0.5rem 0; color:var(--text); word-break:break-all; }
+
+/* Admin danger zone */
+.admin-danger-card { background:var(--bg-card); border:1px solid rgba(255,124,92,0.25); border-radius:4px; padding:1rem 1.25rem; margin-bottom:0.75rem; }
+.admin-danger-label { font-family:'Cinzel',serif; font-size:0.92rem; font-weight:700; color:var(--melee); margin-bottom:0.3rem; }
+.admin-danger-desc { font-size:0.88rem; color:var(--text-muted); margin:0 0 0.75rem; line-height:1.4; }
+
 /* Responsive */
 @media (max-width:640px) {
   #officerView { padding:1rem 1rem 2rem; }
