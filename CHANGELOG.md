@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.26.0] - 2026-06-22
+
+### Added
+- **Priority over-allocation detection.** The Contested Items view now shows a warning banner listing any player who holds 1st priority on two or more item/difficulty combinations, helping officers spot over-allocation before loot decisions are made. Each affected player's chip in the item cards is also flagged with a red `!` badge. Closes #12.
+
+### Fixed
+- **Rank labels now display in Contested Items.** Player chips in the Contested Items view were never showing rank numbers (#1, #2, etc.) due to a bug where the per-difficulty priority object was treated as a flat array. Ranks now render correctly with a difficulty suffix (e.g. `#1H`, `#2M`).
+
+### Changed
+- **Contested Items moved from Loot tab to Priority tab.** It is a planning tool, not a loot history tool, so it now lives alongside Priority List and Unmanaged Items.
+- **Priority subtabs reordered to match officer workflow.** New order: Contested Items -> Unmanaged Items -> Priority List (what's being fought over -> what still needs a decision -> what's been decided). Contested Items is now the default landing subtab when opening Priority.
+
+---
+
 ## [2.25.0] - 2026-06-21
 
 ### Added
