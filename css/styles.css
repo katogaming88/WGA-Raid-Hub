@@ -36,6 +36,7 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 .site-nav-item:hover { color:var(--text); }
 .site-nav-item.active { color:var(--gold-light); border-bottom-color:var(--gold); }
 .site-nav-discord { opacity:0.45; cursor:default; }
+.team-switcher { font-family:'Rajdhani',sans-serif; font-size:0.82rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.4rem 0.6rem; background:var(--bg-elevated); border:1px solid var(--border-mid); border-radius:3px; color:var(--gold-light); cursor:pointer; align-self:center; margin-right:0.5rem; }
 .site-nav-discord:hover { color:var(--text-muted); }
 .site-nav-item[data-tooltip] { position:relative; }
 .site-nav-item[data-tooltip]::after { content:attr(data-tooltip); position:absolute; top:calc(100% + 6px); left:50%; transform:translateX(-50%); background:var(--bg-elevated); border:1px solid var(--border-mid); color:var(--text-muted); font-size:0.95rem; font-weight:400; letter-spacing:0.04em; text-transform:none; white-space:nowrap; padding:0.3rem 0.6rem; border-radius:3px; pointer-events:none; opacity:0; transition:opacity 0s; z-index:200; }

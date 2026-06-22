@@ -29,6 +29,7 @@
   <nav class="site-nav" id="siteNav">
     <a href="index.html" class="site-nav-item" id="navHome" data-tooltip="Back to the roster overview">Home</a>
     <div class="site-nav-right">
+      <select id="teamSwitcherSelect" class="team-switcher" title="Switch team"></select>
       <button class="site-nav-item site-nav-discord" id="navDiscord" disabled data-tooltip="Discord login coming soon -- view your profile and notifications">Login with Discord</button>
       <button class="site-nav-item active" id="navOfficer" data-tooltip="Officer dashboard -- manage roster, loot, and signups">Officer Access</button>
     </div>
@@ -795,6 +796,7 @@ document.querySelectorAll('.team-name').forEach(function(el){el.textContent=TEAM
 if (TEAM_SLUG !== 'phoenix') {
   document.querySelectorAll('a[href="index.html"]').forEach(function(a){a.href='index.html?team='+TEAM_SLUG;});
 }
+initTeamUI();
 </script>
 </body>
 
