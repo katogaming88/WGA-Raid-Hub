@@ -40,6 +40,7 @@ function executeClearAllMPlusExclusions() {
 
 function buildMPlusTab() {
   renderMPlusToggle();
+  renderActiveExclusions();
   var container = document.getElementById('mplusContainer');
   if (!container) return;
   container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">Loading submissions...</p>';
@@ -52,6 +53,25 @@ function buildMPlusTab() {
     }
     renderMPlusSubmissions(result.submissions || []);
   });
+}
+
+function renderActiveExclusions() {
+  var container = document.getElementById('mplusActiveContainer');
+  if (!container) return;
+  var active = (DATA && DATA.roster || []).filter(function(p) { return p.mPlusExcluded; });
+  if (!active.length) {
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:0.95rem;margin-top:0.75rem;">No players currently excluded.</p>';
+    return;
+  }
+  var html = '<div style="margin-top:0.75rem;display:flex;flex-direction:column;gap:0.4rem;">';
+  active.forEach(function(p) {
+    html +=
+      '<div style="display:flex;align-items:baseline;gap:0.6rem;padding:0.4rem 0;border-bottom:1px solid var(--border);">' +
+        '<span style="font-size:0.97rem;font-weight:600;color:var(--text);min-width:140px;">' + p.nameRealm + '</span>' +
+        (p.mPlusNote ? '<span style="font-size:0.88rem;color:var(--text-muted);font-style:italic;">' + p.mPlusNote + '</span>' : '') +
+      '</div>';
+  });
+  container.innerHTML = html + '</div>';
 }
 
 function renderMPlusSubmissions(submissions) {
@@ -84,7 +104,7 @@ function renderMPlusSubmissions(submissions) {
         : '') +
       '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
         '<button class="btn request-approve-btn" onclick="approveMPlusExclusion(' + s.rowIndex + ',\'' + nrSafe + '\',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Approve</button>' +
-        '<button class="btn btn-danger" onclick="rejectMPlusExclusion(' + s.rowIndex + ',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Reject</button>' +
+        '<button class="btn btn-danger" onclick="rejectMPlusExclusion(' + s.rowIndex + ',\'' + nrSafe + '\',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Reject</button>' +
       '</div>' +
     '</div>';
   });
@@ -120,7 +140,7 @@ function approveMPlusExclusion(rowIndex, nameRealm, btnEl) {
       var nrSafe = nameRealm.replace(/'/g, "\\'");
       actionsDiv.innerHTML =
         '<button class="btn request-approve-btn" onclick="approveMPlusExclusion(' + rowIndex + ',\'' + nrSafe + '\',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Approve</button>' +
-        '<button class="btn btn-danger" onclick="rejectMPlusExclusion(' + rowIndex + ',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Reject</button>';
+        '<button class="btn btn-danger" onclick="rejectMPlusExclusion(' + rowIndex + ',\'' + nrSafe + '\',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Reject</button>';
     });
   }
 }
@@ -142,18 +162,47 @@ function confirmApproveMPlusExclusion(rowIndex, nameRealm, note, btnEl) {
   });
 }
 
-function rejectMPlusExclusion(rowIndex, btnEl) {
+function rejectMPlusExclusion(rowIndex, nameRealm, btnEl) {
+  var actionsDiv = btnEl.parentNode;
+  var noteId     = '_mplusRejectNote' + rowIndex;
+  var nrSafe     = nameRealm.replace(/'/g, "\\'");
+  actionsDiv.innerHTML =
+    '<div style="width:100%;">' +
+      '<div style="font-size:0.92rem;color:var(--text-muted);margin-bottom:0.4rem;">Rejection reason (optional, shown to raider):</div>' +
+      '<textarea id="' + noteId + '" rows="2" placeholder="e.g. You still need to meet the weekly M+ requirement" style="width:100%;box-sizing:border-box;background:var(--bg-alt);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:0.4rem 0.5rem;font-size:0.88rem;resize:vertical;"></textarea>' +
+      '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
+        '<button id="_mplusRejectConfirm' + rowIndex + '" class="btn btn-danger" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Reject</button>' +
+        '<button id="_mplusRejectCancel' + rowIndex + '" class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Cancel</button>' +
+      '</div>' +
+    '</div>';
+
+  var noteInput  = document.getElementById(noteId);
+  var confirmBtn = document.getElementById('_mplusRejectConfirm' + rowIndex);
+  var cancelBtn  = document.getElementById('_mplusRejectCancel' + rowIndex);
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function() {
+      actionsDiv.innerHTML =
+        '<button class="btn request-approve-btn" onclick="approveMPlusExclusion(' + rowIndex + ',\'' + nrSafe + '\',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Approve</button>' +
+        '<button class="btn btn-danger" onclick="rejectMPlusExclusion(' + rowIndex + ',\'' + nrSafe + '\',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Reject</button>';
+    });
+  }
+
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', function() {
+      var note = noteInput ? noteInput.value.trim() : '';
+      confirmRejectMPlusExclusion(rowIndex, note, confirmBtn);
+    });
+  }
+}
+
+function confirmRejectMPlusExclusion(rowIndex, note, btnEl) {
   btnEl.disabled = true;
   btnEl.textContent = '...';
-  var approveBtn = btnEl.previousElementSibling;
-  if (approveBtn) approveBtn.disabled = true;
 
-  jsonpRequest(WEB_APP_URL + '?action=rejectMPlusExclusion&row=' + rowIndex, function(err, result) {
-    if (err || (result && result.error)) {
-      btnEl.disabled = false; btnEl.textContent = 'Reject';
-      if (approveBtn) approveBtn.disabled = false;
-      return;
-    }
+  var data = { row: rowIndex, note: note };
+  jsonpRequest(WEB_APP_URL + '?action=rejectMPlusExclusion&data=' + encodeURIComponent(JSON.stringify(data)), function(err, result) {
+    if (err || (result && result.error)) { btnEl.disabled = false; btnEl.textContent = 'Reject'; return; }
     var card = document.querySelector('.request-card[data-row="' + rowIndex + '"]');
     if (card) card.remove();
     var container = document.getElementById('mplusContainer');

@@ -679,11 +679,18 @@ function doGet(e) {
     }
 
     if (action === 'rejectMPlusExclusion') {
-      const row = parseInt(e.parameter.row, 10);
+      const data      = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      const row       = parseInt(data.row || e.parameter.row, 10);
+      const note      = String(data.note || '');
       if (isNaN(row) || row < 2) return jsonpResponse(callback, { error: 'Invalid row' });
       const nameRealm = getMPlusNameRealmFromRow(row);
       updateMPlusExclusionStatus(row, 'Rejected');
-      appendAuditLog('M+ Exclusion Rejected', nameRealm, '', '');
+      if (note) {
+        const exSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CFG.mPlusExclusionSheet);
+        if (exSheet) exSheet.getRange(row, 6).setValue(note);
+      }
+      cache.remove('rosterCore');
+      appendAuditLog('M+ Exclusion Rejected', nameRealm, '', note || '');
       return jsonpResponse(callback, { success: true });
     }
 
@@ -1004,7 +1011,7 @@ function setMPlusManualExcluded(arr) {
 function getApprovedMPlusExcludedSet(sheets) {
   const excluded = {};
   const notes    = {};
-  // From approved requests
+  const rejected = {}; // key -> officer note (most recent rejection per player)
   const sheet = sheets[CFG.mPlusExclusionSheet];
   if (sheet && sheet.getLastRow() >= 2) {
     const data = sheet.getDataRange().getValues();
@@ -1012,9 +1019,13 @@ function getApprovedMPlusExcludedSet(sheets) {
       const status    = String(data[i][4] || '').trim();
       const nameRealm = String(data[i][1] || '').trim();
       const note      = String(data[i][5] || '').trim();
-      if (status === 'Approved' && nameRealm) {
-        excluded[nameRealm.toLowerCase()] = true;
-        if (note) notes[nameRealm.toLowerCase()] = note;
+      if (!nameRealm) continue;
+      const key = nameRealm.toLowerCase();
+      if (status === 'Approved') {
+        excluded[key] = true;
+        if (note) notes[key] = note;
+      } else if (status === 'Rejected') {
+        rejected[key] = note; // later rows overwrite earlier, so last = most recent
       }
     }
   }
@@ -1022,7 +1033,7 @@ function getApprovedMPlusExcludedSet(sheets) {
   for (const nr of getMPlusManualExcluded()) {
     if (nr) excluded[nr.toLowerCase()] = true;
   }
-  return { excluded, notes };
+  return { excluded, notes, rejected };
 }
 
 function buildJoinDateMap(sheets) {
@@ -1114,6 +1125,7 @@ function getRoster(sheets, seasonStart) {
   const mPlusData        = getApprovedMPlusExcludedSet(sheets);
   const mPlusExcludedSet = mPlusData.excluded;
   const mPlusNoteMap     = mPlusData.notes;
+  const mPlusRejectedMap = mPlusData.rejected;
 
   const data = sheet.getDataRange().getValues();
 
@@ -1154,12 +1166,14 @@ function getRoster(sheets, seasonStart) {
                           : String(rawJoinDate || '').trim();
     const sortKey       = String(row[CFG.rosterSortKeyCol  - 1] || '').trim();
     const isBench       = String(Math.floor(Number(sortKey) / 1000)) === '6';
-    const mPlusExcluded = !!mPlusExcludedSet[nameRealm.toLowerCase()];
-    const mPlusNote     = mPlusNoteMap[nameRealm.toLowerCase()] || '';
+    const mPlusExcluded      = !!mPlusExcludedSet[nameRealm.toLowerCase()];
+    const mPlusNote          = mPlusNoteMap[nameRealm.toLowerCase()] || '';
+    const mPlusRejected      = !mPlusExcluded && (mPlusRejectedMap[nameRealm.toLowerCase()] !== undefined);
+    const mPlusRejectionNote = mPlusRejected ? (mPlusRejectedMap[nameRealm.toLowerCase()] || '') : '';
 
     if (!role) continue;
 
-    players.push({ nameRealm, firstName, realm, isTrial, isBench, attendance: attendMap[firstName] || '', nick, class: charClass, spec, role, bisLink, joinDate, mPlusExcluded, mPlusNote });
+    players.push({ nameRealm, firstName, realm, isTrial, isBench, attendance: attendMap[firstName] || '', nick, class: charClass, spec, role, bisLink, joinDate, mPlusExcluded, mPlusNote, mPlusRejected, mPlusRejectionNote });
   }
 
   return players;
