@@ -203,14 +203,14 @@ function submitCharacterClaim() {
   if (!session || !session.token) return;
 
   var submitBtn = document.querySelector('#discordClaimModal .claim-submit-btn');
-  if (submitBtn) submitBtn.disabled = true;
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Claiming...'; }
 
   jsonpRequest(
     WEB_APP_URL + '?action=claimCharacter'
     + '&token=' + encodeURIComponent(session.token)
     + '&nameRealm=' + encodeURIComponent(nameRealm),
     function (err, result) {
-      if (submitBtn) submitBtn.disabled = false;
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Confirm claim'; }
       if (err || !result || !result.success) {
         var msg = (result && result.error) ? result.error : 'Something went wrong. Please try again.';
         if (errEl) { errEl.textContent = msg; errEl.style.display = ''; }
