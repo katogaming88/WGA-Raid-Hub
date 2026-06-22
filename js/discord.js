@@ -136,6 +136,14 @@ function handleDiscordAuthResult(result) {
 // ── Session validation on page load ──────────────────────────────────────────
 
 function initDiscordLogin() {
+  // On localhost (VS Code preview) Discord OAuth is not functional -- skip straight to fallback
+  var isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  if (isLocal) {
+    renderDiscordNav(null);
+    if (typeof onDiscordInitNoSession === 'function') onDiscordInitNoSession();
+    return;
+  }
+
   var session = getDiscordSession();
   if (!session || !session.token) {
     renderDiscordNav(null);
