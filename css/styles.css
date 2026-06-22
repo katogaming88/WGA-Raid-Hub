@@ -256,7 +256,17 @@ select#playerSelect option { background:#1a1d27; }
 .conflict-player-tag { font-size:0.9rem; padding:2px 8px; border-radius:2px; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text); display:inline-flex; align-items:center; gap:0.35rem; }
 .conflict-player-tag.ranked { border-color:rgba(214,163,68,0.3); color:var(--gold-light); }
 .conflict-player-tag.received { opacity:0.5; text-decoration:line-through; }
+.conflict-player-tag.over-allocated { border-color:rgba(214,90,60,0.5); color:#e05a3a; }
+.overalloc-badge { font-size:0.72rem; font-weight:800; padding:0 4px; border-radius:2px; background:rgba(214,90,60,0.18); color:#e05a3a; line-height:1.4; }
 .received-badge { font-size:1rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; padding:1px 5px; border-radius:2px; background:rgba(61,220,132,0.12); color:var(--heal); border:1px solid rgba(61,220,132,0.25); text-decoration:none; display:inline-block; }
+/* Priority over-allocation banner */
+.prio-overalloc-banner { background:rgba(214,90,60,0.07); border:1px solid rgba(214,90,60,0.28); border-radius:4px; padding:0.85rem 1.1rem; margin-bottom:1rem; }
+.prio-overalloc-title { font-size:0.88rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#e05a3a; margin-bottom:0.55rem; }
+.prio-overalloc-list { display:flex; flex-direction:column; gap:0.3rem; }
+.prio-overalloc-player { display:flex; flex-wrap:wrap; align-items:center; gap:0.4rem; }
+.prio-overalloc-name { font-size:0.88rem; font-weight:600; color:var(--text); min-width:80px; }
+.prio-overalloc-item { font-size:0.8rem; padding:1px 6px; border-radius:2px; background:rgba(214,90,60,0.1); color:#e05a3a; border:1px solid rgba(214,90,60,0.22); }
+.prio-overalloc-diff { text-transform:uppercase; font-size:0.72rem; opacity:0.75; margin-left:2px; }
 
 /* Loot fairness */
 .fairness-section-header { font-size:0.9rem; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-muted); padding:0.5rem 0 0.35rem; margin-top:1rem; border-bottom:1px solid var(--border-mid); margin-bottom:0.5rem; }
