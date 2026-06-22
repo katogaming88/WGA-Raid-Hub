@@ -7,12 +7,13 @@ function buildAdminTab() {
 function switchAdminSubTab(name, btnEl) {
   document.querySelectorAll('[id^="admin-subtab-btn-"]').forEach(function(b) { b.classList.remove('active'); });
   if (btnEl) btnEl.classList.add('active');
-  ['properties', 'botconfig', 'export', 'danger'].forEach(function(sub) {
+  ['properties', 'botconfig', 'export', 'officers', 'danger'].forEach(function(sub) {
     var el = document.getElementById('admin-sub-' + sub);
     if (el) el.style.display = (sub === name) ? '' : 'none';
   });
   if (name === 'properties') loadAdminProperties();
   if (name === 'botconfig')  loadBotConfig();
+  if (name === 'officers')   renderOfficerManagement();
   if (name === 'danger')     renderDangerZone();
 }
 
@@ -190,5 +191,100 @@ function executeDangerOp(key) {
       if (status) { status.style.color = 'var(--melee)'; status.textContent = err ? err.message : 'Error.'; }
     }
   });
+}
+
+// ── Officer Management ────────────────────────────────────────────────────────
+
+function renderOfficerManagement() {
+  var el = document.getElementById('adminOfficersContent');
+  if (!el) return;
+
+  var claims     = (window.DATA && DATA.discordClaims)     ? DATA.discordClaims     : [];
+  var officerIds = (window.DATA && DATA.officerDiscordIds) ? DATA.officerDiscordIds : [];
+
+  // Build rows for all claimed users
+  var rows = claims.slice().sort(function(a, b) { return a.nameRealm.localeCompare(b.nameRealm); }).map(function(c) {
+    var isOfficer = officerIds.indexOf(c.discordId) !== -1;
+    var btn = isOfficer
+      ? '<button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="revokeOfficer(' + JSON.stringify(c.discordId) + ',' + JSON.stringify(c.username) + ')">Revoke</button>'
+      : '<button class="btn" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="grantOfficer(' + JSON.stringify(c.discordId) + ',' + JSON.stringify(c.username) + ')">Grant Officer</button>';
+    return '<tr>'
+      + '<td style="width:30%">' + escHtml(c.username) + '</td>'
+      + '<td style="width:35%">' + escHtml(c.nameRealm) + '</td>'
+      + '<td style="width:15%;text-align:center">' + (isOfficer ? '<span style="color:var(--heal)">Officer</span>' : '<span style="color:var(--text-muted)">Raider</span>') + '</td>'
+      + '<td style="width:20%;text-align:right">' + btn + '</td>'
+      + '</tr>';
+  }).join('');
+
+  var table = rows
+    ? '<table class="loot-table" style="width:100%;table-layout:fixed;margin-bottom:1rem;">'
+      + '<thead><tr><th style="width:30%">Discord User</th><th style="width:35%">Character</th><th style="width:15%;text-align:center">Role</th><th style="width:20%"></th></tr></thead>'
+      + '<tbody>' + rows + '</tbody></table>'
+    : '<p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">No claimed characters yet.</p>';
+
+  // Manual grant by Discord ID
+  var manual = '<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">'
+    + '<input type="text" id="manualOfficerDiscordId" class="roster-search-input" style="width:220px;" placeholder="Discord ID">'
+    + '<input type="text" id="manualOfficerUsername" class="roster-search-input" style="width:160px;" placeholder="Username (optional)">'
+    + '<button class="btn" onclick="grantOfficerManual()" style="padding:0.3rem 0.75rem;font-size:0.85rem;">Grant Officer</button>'
+    + '<span id="manualOfficerStatus" style="font-size:0.85rem;"></span>'
+    + '</div>';
+
+  el.innerHTML = table + '<p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.5rem;">Grant officer access to a Discord user not yet in the list above:</p>' + manual;
+}
+
+function grantOfficer(discordId, username) {
+  jsonpRequest(
+    WEB_APP_URL + '?action=addOfficer&discordId=' + encodeURIComponent(discordId) + '&username=' + encodeURIComponent(username || ''),
+    function(err, result) {
+      if (err || !result || !result.success) { alert('Failed: ' + ((result && result.error) || 'Unknown error')); return; }
+      if (window.DATA) {
+        DATA.officerDiscordIds = DATA.officerDiscordIds || [];
+        if (DATA.officerDiscordIds.indexOf(discordId) === -1) DATA.officerDiscordIds.push(discordId);
+      }
+      renderOfficerManagement();
+    }
+  );
+}
+
+function revokeOfficer(discordId, username) {
+  if (!confirm('Revoke officer access for ' + (username || discordId) + '?')) return;
+  jsonpRequest(
+    WEB_APP_URL + '?action=removeOfficer&discordId=' + encodeURIComponent(discordId) + '&username=' + encodeURIComponent(username || ''),
+    function(err, result) {
+      if (err || !result || !result.success) { alert('Failed: ' + ((result && result.error) || 'Unknown error')); return; }
+      if (window.DATA && DATA.officerDiscordIds) {
+        DATA.officerDiscordIds = DATA.officerDiscordIds.filter(function(id) { return id !== discordId; });
+      }
+      renderOfficerManagement();
+    }
+  );
+}
+
+function grantOfficerManual() {
+  var idEl  = document.getElementById('manualOfficerDiscordId');
+  var unEl  = document.getElementById('manualOfficerUsername');
+  var stEl  = document.getElementById('manualOfficerStatus');
+  var discordId = idEl ? idEl.value.trim() : '';
+  var username  = unEl ? unEl.value.trim() : '';
+  if (!discordId) { if (stEl) { stEl.style.color = 'var(--melee)'; stEl.textContent = 'Discord ID required.'; } return; }
+  if (stEl) { stEl.style.color = 'var(--text-muted)'; stEl.textContent = 'Saving...'; }
+  jsonpRequest(
+    WEB_APP_URL + '?action=addOfficer&discordId=' + encodeURIComponent(discordId) + '&username=' + encodeURIComponent(username),
+    function(err, result) {
+      if (err || !result || !result.success) {
+        if (stEl) { stEl.style.color = 'var(--melee)'; stEl.textContent = (result && result.error) || 'Error.'; }
+        return;
+      }
+      if (window.DATA) {
+        DATA.officerDiscordIds = DATA.officerDiscordIds || [];
+        if (DATA.officerDiscordIds.indexOf(discordId) === -1) DATA.officerDiscordIds.push(discordId);
+      }
+      if (idEl) idEl.value = '';
+      if (unEl) unEl.value = '';
+      if (stEl) { stEl.style.color = 'var(--heal)'; stEl.textContent = 'Granted.'; setTimeout(function() { if (stEl) stEl.textContent = ''; }, 3000); }
+      renderOfficerManagement();
+    }
+  );
 }
 

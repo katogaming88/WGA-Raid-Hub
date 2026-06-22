@@ -856,6 +856,31 @@ function doGet(e) {
       return jsonpResponse(callback, result);
     }
 
+    // ── Officer management actions ────────────────────────────────────────
+
+    if (action === 'addOfficer') {
+      const discordId = String(e.parameter.discordId || '').trim();
+      if (!discordId) return jsonpResponse(callback, { success: false, error: 'Missing discordId' });
+      const officers = getOfficerIds().filter(function(id) { return id !== discordId; });
+      officers.push(discordId);
+      props.setProperty('officerDiscordIds', officers.join(','));
+      cache.remove('rosterCore');
+      const username = String(e.parameter.username || discordId);
+      appendAuditLog('Officer Granted', username, '', discordId);
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'removeOfficer') {
+      const discordId = String(e.parameter.discordId || '').trim();
+      if (!discordId) return jsonpResponse(callback, { success: false, error: 'Missing discordId' });
+      const officers = getOfficerIds().filter(function(id) { return id !== discordId; });
+      props.setProperty('officerDiscordIds', officers.join(','));
+      cache.remove('rosterCore');
+      const username = String(e.parameter.username || discordId);
+      appendAuditLog('Officer Revoked', username, '', discordId);
+      return jsonpResponse(callback, { success: true });
+    }
+
     // ── Discord OAuth actions ─────────────────────────────────────────────
 
     if (action === 'discordCallback') {
@@ -919,7 +944,6 @@ function doGet(e) {
             const sess = JSON.parse(allProps[key]);
             if (sess && sess.nameRealm === nameRealm) {
               sess.nameRealm = null;
-              sess.isOfficer = false;
               props.setProperty(key, JSON.stringify(sess));
             }
           } catch (_) {}
@@ -1151,6 +1175,7 @@ function buildCorePayload(sheets, scriptProps) {
     bisAllowedPlayers:    getBisAllowedPlayers(),
     playerNotes:          getPlayerNotes(),
     discordClaims:        getDiscordClaims(sheets),
+    officerDiscordIds:    getOfficerIds(),
     roster:               getRoster(sheets, seasonStart),
   };
 }
@@ -2764,7 +2789,8 @@ function discordOAuthCallback(code) {
   const claims   = getDiscordClaims(sheets);
   const existing = claims.find(function(c) { return c.discordId === discordId; });
   const nameRealm  = existing ? existing.nameRealm : null;
-  const isOfficer  = nameRealm ? isOfficerCharacter(ss, nameRealm) : false;
+  const isOfficer  = isOfficerDiscordId(discordId);
+  const isAdmin    = isAdminDiscordId(discordId);
 
   const token     = generateSessionToken();
   const sessionData = {
@@ -2772,7 +2798,6 @@ function discordOAuthCallback(code) {
     username:   username,
     avatar:     avatar,
     nameRealm:  nameRealm,
-    isOfficer:  isOfficer,
     createdAt:  new Date().toISOString()
   };
   PropertiesService.getScriptProperties().setProperty('discordSession_' + token, JSON.stringify(sessionData));
@@ -2784,7 +2809,8 @@ function discordOAuthCallback(code) {
     username:   username,
     avatar:     avatar,
     nameRealm:  nameRealm,
-    isOfficer:  isOfficer
+    isOfficer:  isOfficer,
+    isAdmin:    isAdmin
   };
 }
 
@@ -2801,13 +2827,15 @@ function validateDiscordSession(token) {
     try { PropertiesService.getScriptProperties().deleteProperty('discordSession_' + token); } catch (_) {}
     return { valid: false };
   }
+  const did = session.discordId || '';
   return {
     valid:      true,
-    discordId:  session.discordId  || '',
-    username:   session.username   || '',
-    avatar:     session.avatar     || '',
-    nameRealm:  session.nameRealm  || null,
-    isOfficer:  session.isOfficer  || false
+    discordId:  did,
+    username:   session.username  || '',
+    avatar:     session.avatar    || '',
+    nameRealm:  session.nameRealm || null,
+    isOfficer:  isOfficerDiscordId(did),
+    isAdmin:    isAdminDiscordId(did)
   };
 }
 
@@ -2848,33 +2876,42 @@ function claimCharacterForSession(token, nameRealm) {
   const claimsSheet = ensureDiscordClaimsSheet(ss);
   claimsSheet.appendRow([session.discordId, session.username, nameRealm, new Date().toISOString()]);
 
-  // Update the session property with the new nameRealm and isOfficer flag
-  const isOfficer = isOfficerCharacter(ss, nameRealm);
+  // Update the stored session with the new nameRealm
   const updated = {
     discordId:  session.discordId,
     username:   session.username,
     avatar:     session.avatar,
     nameRealm:  nameRealm,
-    isOfficer:  isOfficer,
     createdAt:  new Date().toISOString()  // refresh session age on claim
   };
   PropertiesService.getScriptProperties().setProperty('discordSession_' + token, JSON.stringify(updated));
 
+  const isOfficer = isOfficerDiscordId(session.discordId);
+  const isAdmin   = isAdminDiscordId(session.discordId);
   appendAuditLog('Discord Claim Created', nameRealm, '', session.username);
-  return { success: true, nameRealm: nameRealm, isOfficer: isOfficer };
+  return { success: true, nameRealm: nameRealm, isOfficer: isOfficer, isAdmin: isAdmin };
 }
 
-function isOfficerCharacter(ss, nameRealm) {
-  const sheet = ss.getSheetByName(CFG.rosterSheet);
-  if (!sheet) return false;
-  const data = sheet.getDataRange().getValues();
-  for (var i = CFG.rosterDataStart - 1; i < data.length; i++) {
-    const rowName = String(data[i][CFG.rosterPlayerCol - 1] || '').trim();
-    if (rowName.toLowerCase() !== nameRealm.toLowerCase()) continue;
-    const priority = Number(data[i][CFG.rosterPriorityCol - 1] || 0);
-    return priority === 1 || priority === 2; // 1=RL, 2=Officer
-  }
-  return false;
+function getOfficerIds() {
+  const val = PropertiesService.getScriptProperties().getProperty('officerDiscordIds') || '';
+  return val.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+}
+
+function getAdminIds() {
+  const val = PropertiesService.getScriptProperties().getProperty('adminDiscordIds') || '';
+  return val.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+}
+
+function isOfficerDiscordId(discordId) {
+  if (!discordId) return false;
+  const admins   = getAdminIds();
+  const officers = getOfficerIds();
+  return admins.indexOf(discordId) !== -1 || officers.indexOf(discordId) !== -1;
+}
+
+function isAdminDiscordId(discordId) {
+  if (!discordId) return false;
+  return getAdminIds().indexOf(discordId) !== -1;
 }
 
 function ensureDiscordClaimsSheet(ss) {
