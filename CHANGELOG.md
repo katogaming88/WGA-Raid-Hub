@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.27.0] - 2026-06-22
+
+### Added
+- **Archived seasons view and unarchive capability.** Season History now shows rich cards (name, date range, raid count) in reverse-chronological order, each with an Unarchive button. Officers can restore any past season as the active season with a confirmation step -- the dialog warns if an active season would be overwritten. A new `unarchiveSeason` backend action handles the restore and logs it to the audit log. Closes #143.
+
+---
+
 ## [2.26.0] - 2026-06-22
 
 ### Added
