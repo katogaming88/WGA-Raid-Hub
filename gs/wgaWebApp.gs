@@ -283,6 +283,16 @@ function doGet(e) {
       return jsonpResponse(callback, { success: true, seasonName: val });
     }
 
+    if (action === 'setTrialThresholds') {
+      const weeks  = Math.max(1,  Math.min(52,  parseInt(e.parameter.weeks)  || 4));
+      const attend = Math.max(0,  Math.min(100, parseInt(e.parameter.attend) || 75));
+      props.setProperty('trialWeeks',  String(weeks));
+      props.setProperty('trialAttend', String(attend));
+      cache.remove('rosterCore');
+      appendAuditLog('Trial Thresholds Set', '', '', weeks + ' wk / ' + attend + '%');
+      return jsonpResponse(callback, { success: true, trialWeeks: weeks, trialAttend: attend });
+    }
+
     if (action === 'setSeasonEnd') {
       const val = String(e.parameter.value || '').trim();
       props.setProperty('seasonEnd', val);
@@ -1032,6 +1042,8 @@ function buildCorePayload(sheets, scriptProps) {
   const seasonEnd           = scriptProps.getProperty('seasonEnd')           || '';
   const seasonHistory       = JSON.parse(scriptProps.getProperty('seasonHistory')       || '[]');
   const raidProgression     = JSON.parse(scriptProps.getProperty('raidProgression')     || '[]');
+  const trialWeeks          = parseInt(scriptProps.getProperty('trialWeeks'))  || 4;
+  const trialAttend         = parseInt(scriptProps.getProperty('trialAttend')) || 75;
   return {
     generatedAt:          new Date().toISOString(),
     signupsOpen:          signupsOpen,
@@ -1042,6 +1054,8 @@ function buildCorePayload(sheets, scriptProps) {
     seasonEnd:            seasonEnd,
     seasonHistory:        seasonHistory,
     raidProgression:      raidProgression,
+    trialWeeks:           trialWeeks,
+    trialAttend:          trialAttend,
     bisAllowedPlayers:    getBisAllowedPlayers(),
     playerNotes:          getPlayerNotes(),
     roster:               getRoster(sheets, seasonStart),

@@ -75,6 +75,7 @@
               id="mplusNavBadge" style="display:none;"></span></button>
           <button class="nav-item" onclick="switchTab('requests')">Received Item Requests<span
               class="nav-notif nav-notif-abs" id="requestsNavBadge" style="display:none;"></span></button>
+          <div class="nav-admin-divider"></div>
           <button class="nav-item" onclick="switchTab('season')">Season Settings</button>
           <button class="nav-item" onclick="switchTab('audit')">Audit Log</button>
           <button class="nav-item" onclick="switchTab('help')">Help</button>
@@ -417,7 +418,28 @@
 
           <!-- Season Settings tab -->
           <div id="tab-season" class="tab-panel">
-            <div class="season-settings-wrap">
+            <div class="filter-chips" style="margin-bottom:1rem;">
+              <button id="season-subtab-btn-settings"    class="filter-chip active" onclick="switchSeasonSubTab('settings',this)">Settings</button>
+              <button id="season-subtab-btn-progression" class="filter-chip"        onclick="switchSeasonSubTab('progression',this)">Raid Progression</button>
+              <button id="season-subtab-btn-history"     class="filter-chip"        onclick="switchSeasonSubTab('history',this)">History</button>
+            </div>
+
+            <div id="season-sub-settings" class="season-settings-wrap">
+
+              <!-- Season Name -->
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Season Name<button class="help-btn" onclick="toggleHelp('help-season-name')" title="Show help">?</button></h4>
+                <div id="help-season-name" class="help-tip">
+                  This label is applied to every loot entry imported through RCLootCouncil while the name is set. It is used by the <strong>Season</strong> toolbar dropdown to let you filter loot, fairness, and attendance to a specific season. Set this before importing loot at the start of each season.
+                </div>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">The current season label applied to all imported RCLootCouncil loot (e.g. Season 1).</p>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <input type="text" id="seasonNameInput" class="add-player-input" placeholder="e.g. Season 1"
+                    style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-gold" id="seasonNameSaveBtn" onclick="saveSeasonName()">Save</button>
+                  <span id="seasonNameStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+              </div>
 
               <!-- Season Start Date -->
               <div class="help-ref-card">
@@ -446,21 +468,6 @@
                 </div>
               </div>
 
-              <!-- Season Name -->
-              <div class="help-ref-card">
-                <h4 class="help-ref-title">Season Name<button class="help-btn" onclick="toggleHelp('help-season-name')" title="Show help">?</button></h4>
-                <div id="help-season-name" class="help-tip">
-                  This label is applied to every loot entry imported through RCLootCouncil while the name is set. It is used by the <strong>Season</strong> toolbar dropdown to let you filter loot, fairness, and attendance to a specific season. Set this before importing loot at the start of each season.
-                </div>
-                <p class="signup-officer-note" style="margin-top:0.25rem;">The current season label applied to all imported RCLootCouncil loot (e.g. Season 1).</p>
-                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
-                  <input type="text" id="seasonNameInput" class="add-player-input" placeholder="e.g. Season 1"
-                    style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
-                  <button class="btn btn-gold" id="seasonNameSaveBtn" onclick="saveSeasonName()">Save</button>
-                  <span id="seasonNameStatus" style="font-size:0.92rem;color:var(--heal);"></span>
-                </div>
-              </div>
-
               <!-- Season End Date -->
               <div class="help-ref-card">
                 <h4 class="help-ref-title">Season End Date<button class="help-btn" onclick="toggleHelp('help-season-end')" title="Show help">?</button></h4>
@@ -486,7 +493,24 @@
                 </div>
               </div>
 
-              <!-- Raid Progression -->
+              <!-- Trial Promotion Thresholds -->
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Trial Promotion Thresholds</h4>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">A trial player appears in the promotion alert once they meet both thresholds.</p>
+                <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <span style="font-size:0.92rem;color:var(--text-muted);">At least</span>
+                  <input type="number" id="trialWeeksInput" class="add-player-input" min="1" max="52" style="max-width:70px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <span style="font-size:0.92rem;color:var(--text-muted);">weeks on roster and</span>
+                  <input type="number" id="trialAttendInput" class="add-player-input" min="0" max="100" style="max-width:70px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <span style="font-size:0.92rem;color:var(--text-muted);">% attendance</span>
+                  <button class="btn btn-gold" id="trialThresholdsSaveBtn" onclick="saveTrialThresholds()">Save</button>
+                  <span id="trialThresholdsStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+              </div>
+
+            </div><!-- /season-sub-settings -->
+
+            <div id="season-sub-progression" class="season-settings-wrap" style="display:none;">
               <div class="help-ref-card">
                 <h4 class="help-ref-title">Raid Progression<button class="help-btn" onclick="toggleHelp('help-raid-prog')" title="Show help">?</button></h4>
                 <div id="help-raid-prog" class="help-tip">
@@ -500,7 +524,9 @@
                   <span id="raidProgressionStatus" style="font-size:0.92rem;color:var(--heal);"></span>
                 </div>
               </div>
+            </div><!-- /season-sub-progression -->
 
+            <div id="season-sub-history" class="season-settings-wrap" style="display:none;">
               <!-- Archive Season -->
               <div class="help-ref-card">
                 <h4 class="help-ref-title">Archive Current Season<button class="help-btn" onclick="toggleHelp('help-season-archive')" title="Show help">?</button></h4>
@@ -548,8 +574,8 @@
                 </div>
                 <span id="seasonUnarchiveStatus" style="font-size:0.92rem;color:var(--heal);display:block;margin-top:0.5rem;"></span>
               </div>
+            </div><!-- /season-sub-history -->
 
-            </div>
           </div>
 
           <!-- Help tab -->

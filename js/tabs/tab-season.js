@@ -1,3 +1,14 @@
+function switchSeasonSubTab(name, btnEl) {
+  document.querySelectorAll('[id^="season-subtab-btn-"]').forEach(function(b) { b.classList.remove('active'); });
+  if (btnEl) btnEl.classList.add('active');
+  ['settings', 'progression', 'history'].forEach(function(sub) {
+    var el = document.getElementById('season-sub-' + sub);
+    if (el) el.style.display = sub === name ? '' : 'none';
+  });
+  if (name === 'progression') renderRaidProgressionCards();
+  if (name === 'history')     renderSeasonHistory();
+}
+
 function buildSeasonTab() {
   var startInput = document.getElementById('seasonStartInput');
   if (startInput) startInput.value = (DATA && DATA.seasonStart) || '';
@@ -5,9 +16,14 @@ function buildSeasonTab() {
   if (nameInput) nameInput.value = (DATA && DATA.seasonName) || '';
   var endInput = document.getElementById('seasonEndInput');
   if (endInput) endInput.value = (DATA && DATA.seasonEnd) || '';
-  renderSeasonHistory();
+  var trialWeeksInput  = document.getElementById('trialWeeksInput');
+  var trialAttendInput = document.getElementById('trialAttendInput');
+  if (trialWeeksInput)  trialWeeksInput.value  = (DATA && DATA.trialWeeks  != null) ? DATA.trialWeeks  : 4;
+  if (trialAttendInput) trialAttendInput.value = (DATA && DATA.trialAttend != null) ? DATA.trialAttend : 75;
   SEASON_RAIDS = JSON.parse(JSON.stringify((DATA && DATA.raidProgression) || []));
-  renderRaidProgressionCards();
+  // Reset to Settings subtab; Progression and History render lazily on switch
+  var defaultBtn = document.getElementById('season-subtab-btn-settings');
+  switchSeasonSubTab('settings', defaultBtn);
 }
 
 function renderSeasonHistory() {
@@ -418,6 +434,28 @@ function saveRaidProgression() {
     if (!err && result && result.success) {
       DATA.raidProgression = JSON.parse(JSON.stringify(SEASON_RAIDS));
       if (status) { status.textContent = 'Saved!'; setTimeout(function() { if (status) status.textContent = ''; }, 2500); }
+    } else {
+      if (status) { status.textContent = err ? err.message : 'Error saving.'; }
+    }
+  });
+}
+
+function saveTrialThresholds() {
+  var weeksInput  = document.getElementById('trialWeeksInput');
+  var attendInput = document.getElementById('trialAttendInput');
+  var btn         = document.getElementById('trialThresholdsSaveBtn');
+  var status      = document.getElementById('trialThresholdsStatus');
+  var weeks  = Math.max(1,  Math.min(52,  parseInt(weeksInput  ? weeksInput.value  : 4)  || 4));
+  var attend = Math.max(0,  Math.min(100, parseInt(attendInput ? attendInput.value : 75) || 75));
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+  jsonpRequest(WEB_APP_URL + '?action=setTrialThresholds&weeks=' + weeks + '&attend=' + attend, function(err, result) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+    if (!err && result && result.success) {
+      if (DATA) { DATA.trialWeeks = result.trialWeeks; DATA.trialAttend = result.trialAttend; }
+      PROMO_THRESHOLDS.weeks  = result.trialWeeks;
+      PROMO_THRESHOLDS.attend = result.trialAttend;
+      if (status) { status.textContent = 'Saved!'; setTimeout(function() { if (status) status.textContent = ''; }, 2000); }
     } else {
       if (status) { status.textContent = err ? err.message : 'Error saving.'; }
     }
