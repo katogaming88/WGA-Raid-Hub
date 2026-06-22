@@ -1,12 +1,12 @@
 // Discord OAuth session management and login flow.
 // Depends on: common.js (WEB_APP_URL, TEAM_SLUG, jsonpRequest)
 
-var DISCORD_CLIENT_ID    = '1387285474688249886'; // public -- safe in JS
+var DISCORD_CLIENT_ID = '1518683392864948334'; // public -- safe in JS
 var DISCORD_REDIRECT_URI = 'https://katogaming88.github.io/wga-raid-hub/discord-callback.html';
-var DISCORD_SCOPE        = 'identify';
-var DISCORD_SESSION_KEY  = 'wga_discord_' + TEAM_SLUG; // one key per team in localStorage
-var _discordPopup         = null;
-var _discordCsrfState     = null;
+var DISCORD_SCOPE = 'identify';
+var DISCORD_SESSION_KEY = 'wga_discord_' + TEAM_SLUG; // one key per team in localStorage
+var _discordPopup = null;
+var _discordCsrfState = null;
 
 // ── Session storage ───────────────────────────────────────────────────────────
 
@@ -18,11 +18,11 @@ function getDiscordSession() {
 }
 
 function setDiscordSession(data) {
-  try { localStorage.setItem(DISCORD_SESSION_KEY, JSON.stringify(data)); } catch (_) {}
+  try { localStorage.setItem(DISCORD_SESSION_KEY, JSON.stringify(data)); } catch (_) { }
 }
 
 function clearDiscordSession() {
-  try { localStorage.removeItem(DISCORD_SESSION_KEY); } catch (_) {}
+  try { localStorage.removeItem(DISCORD_SESSION_KEY); } catch (_) { }
 }
 
 // ── Nav rendering ─────────────────────────────────────────────────────────────
@@ -31,10 +31,10 @@ function renderDiscordNav(session) {
   var btn = document.getElementById('navDiscord');
   if (!btn) return;
   if (!session) {
-    btn.textContent   = 'Login with Discord';
-    btn.disabled      = false;
-    btn.onclick       = openDiscordPopup;
-    btn.title         = 'Sign in with Discord to view your priority standing and mark loot received';
+    btn.textContent = 'Login with Discord';
+    btn.disabled = false;
+    btn.onclick = openDiscordPopup;
+    btn.title = 'Sign in with Discord to view your priority standing and mark loot received';
     btn.classList.remove('discord-logged-in');
     // Remove any logout dropdown if present
     var existing = document.getElementById('discordNavDropdown');
@@ -44,21 +44,21 @@ function renderDiscordNav(session) {
 
   var displayName = session.nameRealm ? session.nameRealm.split('-')[0] : session.username;
   btn.textContent = displayName;
-  btn.disabled    = false;
-  btn.title       = 'Logged in as ' + session.username + (session.nameRealm ? ' (' + session.nameRealm + ')' : '');
+  btn.disabled = false;
+  btn.title = 'Logged in as ' + session.username + (session.nameRealm ? ' (' + session.nameRealm + ')' : '');
   btn.classList.add('discord-logged-in');
 
   // Wire click to show a tiny logout dropdown
-  btn.onclick = function(ev) {
+  btn.onclick = function (ev) {
     ev.stopPropagation();
     var dd = document.getElementById('discordNavDropdown');
     if (dd) { dd.parentNode.removeChild(dd); return; }
     dd = document.createElement('div');
-    dd.id        = 'discordNavDropdown';
+    dd.id = 'discordNavDropdown';
     dd.className = 'discord-nav-dropdown';
     var logoutBtn = document.createElement('button');
     logoutBtn.textContent = 'Log out';
-    logoutBtn.onclick     = discordLogout;
+    logoutBtn.onclick = discordLogout;
     dd.appendChild(logoutBtn);
     btn.parentNode.style.position = 'relative';
     btn.parentNode.appendChild(dd);
@@ -84,8 +84,8 @@ function openDiscordPopup() {
     + '&state=' + encodeURIComponent(_discordCsrfState);
 
   var w = 480, h = 700;
-  var left = Math.max(0, Math.round(window.screenX + (window.outerWidth  - w) / 2));
-  var top  = Math.max(0, Math.round(window.screenY + (window.outerHeight - h) / 2));
+  var left = Math.max(0, Math.round(window.screenX + (window.outerWidth - w) / 2));
+  var top = Math.max(0, Math.round(window.screenY + (window.outerHeight - h) / 2));
   _discordPopup = window.open(authUrl, 'discord_auth',
     'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top +
     ',toolbar=no,menubar=no,resizable=no');
@@ -95,11 +95,11 @@ function openDiscordPopup() {
   }
 }
 
-window.addEventListener('message', function(ev) {
+window.addEventListener('message', function (ev) {
   if (ev.origin !== 'https://katogaming88.github.io') return;
   var data = ev.data;
   if (!data || data.type !== 'discord_auth') return;
-  if (_discordPopup) { try { _discordPopup.close(); } catch (_) {} _discordPopup = null; }
+  if (_discordPopup) { try { _discordPopup.close(); } catch (_) { } _discordPopup = null; }
   handleDiscordAuthResult(data.result || {});
 });
 
@@ -107,7 +107,7 @@ function handleDiscordAuthResult(result) {
   if (!result || !result.success) {
     // Show a brief error near the login button
     var btn = document.getElementById('navDiscord');
-    if (btn) { btn.textContent = 'Login failed -- try again'; setTimeout(function() { renderDiscordNav(null); }, 3000); }
+    if (btn) { btn.textContent = 'Login failed -- try again'; setTimeout(function () { renderDiscordNav(null); }, 3000); }
     return;
   }
 
@@ -137,7 +137,7 @@ function initDiscordLogin() {
     return;
   }
   // Validate the stored token against GAS (async, non-blocking)
-  jsonpRequest(WEB_APP_URL + '?action=validateDiscordSession&token=' + encodeURIComponent(session.token), function(err, result) {
+  jsonpRequest(WEB_APP_URL + '?action=validateDiscordSession&token=' + encodeURIComponent(session.token), function (err, result) {
     if (err || !result || !result.valid) {
       clearDiscordSession();
       renderDiscordNav(null);
@@ -168,11 +168,11 @@ function showDiscordClaimModal(session) {
   var sel = document.getElementById('claimCharacterSelect');
   if (sel && window.DATA && DATA.roster) {
     sel.innerHTML = '<option value="">-- Select your character --</option>';
-    var claimed = (DATA.discordClaims || []).map(function(c) { return c.nameRealm.toLowerCase(); });
-    DATA.roster.forEach(function(p) {
+    var claimed = (DATA.discordClaims || []).map(function (c) { return c.nameRealm.toLowerCase(); });
+    DATA.roster.forEach(function (p) {
       if (claimed.indexOf(p.nameRealm.toLowerCase()) !== -1) return; // already taken
       var opt = document.createElement('option');
-      opt.value       = p.nameRealm;
+      opt.value = p.nameRealm;
       opt.textContent = p.nameRealm + ' (' + p.class + ' ' + p.spec + ')';
       sel.appendChild(opt);
     });
@@ -187,8 +187,8 @@ function closeDiscordClaimModal() {
 }
 
 function submitCharacterClaim() {
-  var sel      = document.getElementById('claimCharacterSelect');
-  var errEl    = document.getElementById('claimError');
+  var sel = document.getElementById('claimCharacterSelect');
+  var errEl = document.getElementById('claimError');
   var nameRealm = sel ? sel.value : '';
   if (!nameRealm) { if (errEl) { errEl.textContent = 'Please select a character.'; errEl.style.display = ''; } return; }
 
@@ -200,9 +200,9 @@ function submitCharacterClaim() {
 
   jsonpRequest(
     WEB_APP_URL + '?action=claimCharacter'
-      + '&token='     + encodeURIComponent(session.token)
-      + '&nameRealm=' + encodeURIComponent(nameRealm),
-    function(err, result) {
+    + '&token=' + encodeURIComponent(session.token)
+    + '&nameRealm=' + encodeURIComponent(nameRealm),
+    function (err, result) {
       if (submitBtn) submitBtn.disabled = false;
       if (err || !result || !result.success) {
         var msg = (result && result.error) ? result.error : 'Something went wrong. Please try again.';
@@ -226,7 +226,7 @@ function discordLogout() {
   var session = getDiscordSession();
   if (session && session.token) {
     // Fire-and-forget: invalidate the server-side session token
-    jsonpRequest(WEB_APP_URL + '?action=discordLogout&token=' + encodeURIComponent(session.token), function() {}, 5000);
+    jsonpRequest(WEB_APP_URL + '?action=discordLogout&token=' + encodeURIComponent(session.token), function () { }, 5000);
   }
   clearDiscordSession();
   renderDiscordNav(null);
