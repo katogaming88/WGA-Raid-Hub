@@ -149,6 +149,7 @@ function submitOfficerPassword() {
     loadData(
       function() {
         buildOfficerDashboard();
+        if (typeof showAdminTab === 'function') showAdminTab(true);
         document.getElementById('officerViewWrap').classList.add('active');
         document.getElementById('loadingMsg').style.display = 'none';
       },
@@ -382,6 +383,11 @@ if (!isOfficerSessionValid()) {
   loadData(
     function() {
       buildOfficerDashboard();
+      // Session was restored from sessionStorage (page reload) -- check Discord session for isAdmin
+      if (typeof showAdminTab === 'function') {
+        var ds = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
+        showAdminTab(!ds || ds.isAdmin);  // no Discord session means password login, show Admin
+      }
       document.getElementById('officerViewWrap').classList.add('active');
       document.getElementById('loadingMsg').style.display = 'none';
     },

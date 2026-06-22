@@ -80,7 +80,7 @@
           <button class="nav-item" onclick="switchTab('audit')">Audit Log</button>
           <button class="nav-item" onclick="switchTab('help')">Help</button>
           <div class="nav-admin-divider"></div>
-          <button class="nav-item nav-item-admin" onclick="switchTab('admin')">Admin</button>
+          <button class="nav-item nav-item-admin" id="adminNavBtn" onclick="switchTab('admin')" style="display:none;">Admin</button>
         </nav>
 
         <div class="officer-main">
@@ -667,6 +667,8 @@
                 onclick="switchAdminSubTab('botconfig', this)">Bot Config</button>
               <button class="filter-chip" id="admin-subtab-btn-export"
                 onclick="switchAdminSubTab('export', this)">Data Export</button>
+              <button class="filter-chip" id="admin-subtab-btn-officers"
+                onclick="switchAdminSubTab('officers', this)">Officers</button>
               <button class="filter-chip" id="admin-subtab-btn-danger"
                 onclick="switchAdminSubTab('danger', this)">Danger Zone</button>
             </div>
@@ -717,6 +719,12 @@
                   <button class="btn btn-gold" id="adminExportBtn" onclick="downloadExport()">Download JSON</button>
                 </div>
               </div>
+            </div>
+
+            <!-- Officers -->
+            <div id="admin-sub-officers" style="display:none;">
+              <p class="signup-officer-note" style="margin-bottom:0.75rem;">Officers can access the officer dashboard. Admins also have access to this Admin tab. Set your Discord ID in <strong>adminDiscordIds</strong> via GAS Script Properties to grant admin access.</p>
+              <div id="adminOfficersContent"></div>
             </div>
 
             <!-- Danger Zone -->
@@ -913,7 +921,7 @@ initTeamUI();
 // Called by discord.js after a successful Discord login popup completes.
 function onDiscordLoginComplete(session) {
   if (session.isOfficer) {
-    _grantOfficerAccessViaDiscord();
+    _grantOfficerAccessViaDiscord(session);
   } else {
     var errEl = document.getElementById('officerError');
     if (errEl) {
@@ -927,7 +935,7 @@ function onDiscordLoginComplete(session) {
 // Called by discord.js when a stored session is validated on page load.
 function onDiscordSessionRestored(session) {
   if (session.isOfficer && !isOfficerSessionValid()) {
-    _grantOfficerAccessViaDiscord();
+    _grantOfficerAccessViaDiscord(session);
   } else if (!isOfficerSessionValid()) {
     // Discord auth succeeded but the character is not an officer -- fall back to password.
     showOfficerPrompt();
@@ -944,7 +952,12 @@ function onDiscordLogout() {
   officerLogout();
 }
 
-function _grantOfficerAccessViaDiscord() {
+function showAdminTab(show) {
+  var btn = document.getElementById('adminNavBtn');
+  if (btn) btn.style.display = show ? '' : 'none';
+}
+
+function _grantOfficerAccessViaDiscord(session) {
   // Establish the password-based session flag so the rest of officer.js works unchanged.
   sessionStorage.setItem(_SESSION_KEY, '1');
   sessionStorage.setItem(_SESSION_TS_KEY, String(Date.now()));
@@ -953,6 +966,7 @@ function _grantOfficerAccessViaDiscord() {
   loadData(
     function() {
       buildOfficerDashboard();
+      showAdminTab(session && session.isAdmin);
       document.getElementById('officerViewWrap').classList.add('active');
       document.getElementById('loadingMsg').style.display = 'none';
     },

@@ -6,6 +6,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.0.6] - 2026-06-22
+
+### Changed
+- Discord Claims moved from Admin to a new subtab under Roster, accessible to all officers.
+- Column widths in the Discord Claims table are now fixed to prevent content from spreading unevenly.
+
+### Added
+- Officer management UI in the Admin tab (Officers subtab). Admins can grant or revoke officer dashboard access per Discord user, or manually grant by Discord ID for users who have not yet claimed a character.
+- Admin tab is now hidden from officers logged in via Discord; only users whose Discord ID is listed in the `adminDiscordIds` GAS Script Property can see it. Password login always shows Admin.
+- `isOfficer` is now controlled by an explicit `officerDiscordIds` GAS Script Property rather than roster priority rank.
+
+---
+
+## [3.0.5] - 2026-06-22
+
+### Changed
+- Discord Claims moved from Admin to a new subtab under Roster, accessible to all officers.
+- Column widths in the Discord Claims table are now fixed.
+
+---
+
 ## [3.0.4] - 2026-06-22
 
 ### Added
