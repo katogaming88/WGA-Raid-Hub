@@ -21,7 +21,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '2.23.0';
+var VERSION = '2.25.0';
 var DATA = null;
 var ACTIVE_SEASON = null; // null = All Seasons; set by officer.js when a season is selected
 
@@ -826,6 +826,33 @@ function renderProfile(firstName, backTo, container) {
       (player.mPlusNote
         ? '<div style="font-size:0.92rem;color:var(--text);margin-top:0.4rem;font-style:italic;">' + player.mPlusNote + '</div>'
         : '');
+  } else if (player.mPlusRejected) {
+    var fnMplusR = player.firstName.replace(/'/g, "\\'");
+    var nrMplusR = player.nameRealm.replace(/'/g, "\\'");
+    mplusHTML =
+      '<div style="display:flex;align-items:center;gap:0.5rem;">' +
+      '<span class="signup-status-badge signup-status-closed" style="font-size:0.8rem;">Rejected</span>' +
+      '<span style="font-size:0.92rem;color:var(--text-muted);">Your M+ exclusion request was not approved.</span>' +
+      '</div>' +
+      (player.mPlusRejectionNote
+        ? '<div style="margin-top:0.5rem;padding:0.4rem 0.6rem;background:rgba(255,124,92,0.08);border-left:3px solid var(--melee);border-radius:3px;font-size:0.92rem;color:var(--text);font-style:italic;">' + player.mPlusRejectionNote + '</div>'
+        : '');
+    if (DATA && DATA.mPlusExclusionsOpen) {
+      mplusHTML +=
+        '<div style="margin-top:0.75rem;">' +
+        '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="toggleMPlusForm(\'' + fnMplusR + '\')">Re-submit Request</button>' +
+        '<div id="mplusForm-' + player.firstName + '" style="display:none;margin-top:0.75rem;">' +
+        '<div style="font-size:0.92rem;color:var(--text-muted);margin-bottom:0.5rem;">Submit your Raider.io profile to request exclusion from dungeon loot priority.</div>' +
+        '<input type="url" id="mplusUrl-' + player.firstName + '" placeholder="https://raider.io/characters/..." class="self-received-source" style="max-width:100%;font-size:1rem;">' +
+        '<textarea id="mplusNotes-' + player.firstName + '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
+        '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
+        '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="submitMPlusExclusionForm(\'' + nrMplusR + '\',\'' + fnMplusR + '\')">Submit</button>' +
+        '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'mplusForm-' + player.firstName + '\').style.display=\'none\'">Cancel</button>' +
+        '</div>' +
+        '<p class="self-received-note">An officer will review your request. Once approved you will no longer need to do the required weekly M+ dungeons.</p>' +
+        '</div>' +
+        '</div>';
+    }
   } else {
     if (DATA && DATA.mPlusExclusionsOpen) {
       var fnMplus = player.firstName.replace(/'/g, "\\'");
