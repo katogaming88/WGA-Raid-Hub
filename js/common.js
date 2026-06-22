@@ -21,7 +21,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '2.29.0';
+var VERSION = '3.0.0';
 var DATA = null;
 var ACTIVE_SEASON = null; // null = All Seasons; set by officer.js when a season is selected
 
@@ -681,6 +681,10 @@ function submitSelfReceivedRequest(firstName, item, slot, rowId) {
     if (formEl) {
       if (result.error) {
         formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+      } else if (result.autoApproved) {
+        formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Marked as received.</p>';
+        var btn = document.querySelector('#bisrow-' + firstName + '-' + rowId.split('-').pop() + ' .mark-received-btn');
+        if (btn) btn.style.display = 'none';
       } else {
         formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Request submitted -- pending officer approval.</p>';
         var btn = document.querySelector('#bisrow-' + firstName + '-' + rowId.split('-').pop() + ' .mark-received-btn');
@@ -688,12 +692,20 @@ function submitSelfReceivedRequest(firstName, item, slot, rowId) {
       }
     }
   };
+  // Include the Discord session token so GAS can auto-approve for verified raiders.
+  var sessionToken = '';
+  try {
+    var ds = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
+    if (ds && ds.token) sessionToken = ds.token;
+  } catch (_) {}
   var script = document.createElement('script');
   script.onerror = function () {
     delete window[cbName];
     if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
   };
-  script.src = WEB_APP_URL + '?action=requestSelfReceived&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
+  script.src = WEB_APP_URL + '?action=requestSelfReceived&data=' + encodeURIComponent(JSON.stringify(data))
+             + (sessionToken ? '&sessionToken=' + encodeURIComponent(sessionToken) : '')
+             + '&callback=' + cbName;
   document.head.appendChild(script);
 }
 

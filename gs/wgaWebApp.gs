@@ -455,19 +455,36 @@ function doGet(e) {
     }
 
     if (action === 'requestSelfReceived') {
-      const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
-      // TODO(auth): once Discord OAuth ships, bypass officer approval for verified players:
-      //   if (isPlayerVerified(data.player)) { approveSelfReceivedDirect(data); cache.remove('rosterHeavy'); return jsonpResponse(callback, { success: true }); }
-      writeSelfReceivedRequest(data);
-      sendToBot('/selfreceived', JSON.stringify({
-        player:      data.player  || '',
-        item:        data.item    || '',
-        slot:        data.slot    || '',
-        source:      data.source  || '',
-        notes:       data.notes   || '',
-        submittedAt: new Date().toISOString()
-      }));
-      return jsonpResponse(callback, { success: true });
+      const data         = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
+      const sessionToken = String(e.parameter.sessionToken || '').trim();
+      // Auto-approve when the submitting raider is Discord-authenticated as the same character.
+      // The token validation confirms identity server-side; no client-side trust is needed.
+      let autoApproved = false;
+      if (sessionToken) {
+        const session = validateDiscordSession(sessionToken);
+        if (session.valid && session.nameRealm) {
+          const sessionFirst = session.nameRealm.split('-')[0].trim().toLowerCase();
+          const playerFirst  = String(data.player || '').split('-')[0].trim().toLowerCase();
+          if (sessionFirst && sessionFirst === playerFirst) {
+            writeSelfReceivedRequest(data, 'Approved');
+            cache.remove('rosterHeavy');
+            appendAuditLog('Loot Marked Received (self)', String(data.player || ''), '', String(data.item || ''));
+            autoApproved = true;
+          }
+        }
+      }
+      if (!autoApproved) {
+        writeSelfReceivedRequest(data);
+        sendToBot('/selfreceived', JSON.stringify({
+          player:      data.player  || '',
+          item:        data.item    || '',
+          slot:        data.slot    || '',
+          source:      data.source  || '',
+          notes:       data.notes   || '',
+          submittedAt: new Date().toISOString()
+        }));
+      }
+      return jsonpResponse(callback, { success: true, autoApproved: autoApproved });
     }
 
     if (action === 'getPendingRequests') {
@@ -839,6 +856,48 @@ function doGet(e) {
       return jsonpResponse(callback, result);
     }
 
+    // ── Discord OAuth actions ─────────────────────────────────────────────
+
+    if (action === 'discordCallback') {
+      const code = String(e.parameter.code || '').trim();
+      if (!code) return jsonpResponse(callback, { success: false, error: 'Missing code' });
+      try {
+        const result = discordOAuthCallback(code);
+        return jsonpResponse(callback, result);
+      } catch (err) {
+        Logger.log('discordCallback error: ' + err);
+        return jsonpResponse(callback, { success: false, error: err.message });
+      }
+    }
+
+    if (action === 'validateDiscordSession') {
+      const token = String(e.parameter.token || '').trim();
+      if (!token) return jsonpResponse(callback, { valid: false });
+      return jsonpResponse(callback, validateDiscordSession(token));
+    }
+
+    if (action === 'claimCharacter') {
+      const token     = String(e.parameter.token     || '').trim();
+      const nameRealm = String(e.parameter.nameRealm || '').trim();
+      if (!token || !nameRealm) return jsonpResponse(callback, { success: false, error: 'Missing params' });
+      try {
+        const result = claimCharacterForSession(token, nameRealm);
+        if (result.success) cache.remove('rosterCore');
+        return jsonpResponse(callback, result);
+      } catch (err) {
+        Logger.log('claimCharacter error: ' + err);
+        return jsonpResponse(callback, { success: false, error: err.message });
+      }
+    }
+
+    if (action === 'discordLogout') {
+      const token = String(e.parameter.token || '').trim();
+      if (token) {
+        try { props.deleteProperty('discordSession_' + token); } catch (_) {}
+      }
+      return jsonpResponse(callback, { success: true });
+    }
+
     const chunk = e && e.parameter && e.parameter.chunk;
 
     if (chunk === 'core') {
@@ -1058,6 +1117,7 @@ function buildCorePayload(sheets, scriptProps) {
     trialAttend:          trialAttend,
     bisAllowedPlayers:    getBisAllowedPlayers(),
     playerNotes:          getPlayerNotes(),
+    discordClaims:        getDiscordClaims(sheets),
     roster:               getRoster(sheets, seasonStart),
   };
 }
@@ -2604,3 +2664,207 @@ function fetchWclProgressionData(zoneId) {
   return { success: true, bosses: bosses, aotcDate: aotcDate };
 }
 
+// ── Discord OAuth helpers ─────────────────────────────────────────────────────
+
+var DISCORD_TOKEN_URL = 'https://discord.com/api/oauth2/token';
+var DISCORD_API_BASE  = 'https://discord.com/api/v10';
+var DISCORD_REDIRECT_URI = 'https://katogaming88.github.io/wga-raid-hub/discord-callback.html';
+var DISCORD_SESSION_TTL_DAYS = 30;
+
+function generateSessionToken() {
+  return Utilities.getUuid().replace(/-/g, '');
+}
+
+function discordTokenExchange(code) {
+  const props    = PropertiesService.getScriptProperties();
+  const clientId = props.getProperty('DISCORD_CLIENT_ID');
+  const secret   = props.getProperty('DISCORD_CLIENT_SECRET');
+  if (!clientId || !secret) throw new Error('Discord credentials not configured in Script Properties');
+
+  const response = UrlFetchApp.fetch(DISCORD_TOKEN_URL, {
+    method:           'post',
+    contentType:      'application/x-www-form-urlencoded',
+    payload:          'client_id=' + encodeURIComponent(clientId) +
+                      '&client_secret=' + encodeURIComponent(secret) +
+                      '&grant_type=authorization_code' +
+                      '&code=' + encodeURIComponent(code) +
+                      '&redirect_uri=' + encodeURIComponent(DISCORD_REDIRECT_URI),
+    muteHttpExceptions: true
+  });
+
+  const status = response.getResponseCode();
+  const body   = JSON.parse(response.getContentText());
+  if (status !== 200 || !body.access_token) {
+    Logger.log('Discord token exchange failed (' + status + '): ' + response.getContentText());
+    throw new Error('Discord token exchange failed: ' + (body.error_description || body.error || status));
+  }
+  return body.access_token;
+}
+
+function discordApiGet(accessToken, path) {
+  const response = UrlFetchApp.fetch(DISCORD_API_BASE + path, {
+    method:             'get',
+    headers:            { 'Authorization': 'Bearer ' + accessToken },
+    muteHttpExceptions: true
+  });
+  const status = response.getResponseCode();
+  if (status !== 200) {
+    Logger.log('Discord API GET ' + path + ' failed (' + status + '): ' + response.getContentText());
+    throw new Error('Discord API error: ' + status);
+  }
+  return JSON.parse(response.getContentText());
+}
+
+function discordOAuthCallback(code) {
+  const accessToken = discordTokenExchange(code);
+  const user        = discordApiGet(accessToken, '/users/@me');
+
+  const discordId = String(user.id       || '');
+  const username  = String(user.username || '');
+  const avatar    = String(user.avatar   || '');
+  if (!discordId) throw new Error('Could not retrieve Discord user ID');
+
+  // Look up any existing character claim for this Discord ID
+  const ss         = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets     = {};
+  for (const sheet of ss.getSheets()) { sheets[sheet.getName()] = sheet; }
+  const claims   = getDiscordClaims(sheets);
+  const existing = claims.find(function(c) { return c.discordId === discordId; });
+  const nameRealm  = existing ? existing.nameRealm : null;
+  const isOfficer  = nameRealm ? isOfficerCharacter(ss, nameRealm) : false;
+
+  const token     = generateSessionToken();
+  const sessionData = {
+    discordId:  discordId,
+    username:   username,
+    avatar:     avatar,
+    nameRealm:  nameRealm,
+    isOfficer:  isOfficer,
+    createdAt:  new Date().toISOString()
+  };
+  PropertiesService.getScriptProperties().setProperty('discordSession_' + token, JSON.stringify(sessionData));
+
+  return {
+    success:    true,
+    token:      token,
+    discordId:  discordId,
+    username:   username,
+    avatar:     avatar,
+    nameRealm:  nameRealm,
+    isOfficer:  isOfficer
+  };
+}
+
+function validateDiscordSession(token) {
+  if (!token) return { valid: false };
+  const raw = PropertiesService.getScriptProperties().getProperty('discordSession_' + token);
+  if (!raw) return { valid: false };
+  var session;
+  try { session = JSON.parse(raw); } catch (_) { return { valid: false }; }
+  // Expire sessions older than DISCORD_SESSION_TTL_DAYS days
+  const created = new Date(session.createdAt || 0);
+  const ageMs   = Date.now() - created.getTime();
+  if (ageMs > DISCORD_SESSION_TTL_DAYS * 24 * 60 * 60 * 1000) {
+    try { PropertiesService.getScriptProperties().deleteProperty('discordSession_' + token); } catch (_) {}
+    return { valid: false };
+  }
+  return {
+    valid:      true,
+    discordId:  session.discordId  || '',
+    username:   session.username   || '',
+    avatar:     session.avatar     || '',
+    nameRealm:  session.nameRealm  || null,
+    isOfficer:  session.isOfficer  || false
+  };
+}
+
+function claimCharacterForSession(token, nameRealm) {
+  const session = validateDiscordSession(token);
+  if (!session.valid) return { success: false, error: 'Invalid or expired session' };
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // Verify nameRealm exists on the roster
+  const rosterSheet = ss.getSheetByName(CFG.rosterSheet);
+  if (!rosterSheet) return { success: false, error: 'Roster sheet not found' };
+  const rData = rosterSheet.getDataRange().getValues();
+  var foundOnRoster = false;
+  for (var i = CFG.rosterDataStart - 1; i < rData.length; i++) {
+    if (String(rData[i][CFG.rosterPlayerCol - 1] || '').trim().toLowerCase() === nameRealm.toLowerCase()) {
+      foundOnRoster = true;
+      break;
+    }
+  }
+  if (!foundOnRoster) return { success: false, error: 'Character not found on roster' };
+
+  const sheets = {};
+  for (const sheet of ss.getSheets()) { sheets[sheet.getName()] = sheet; }
+  const existing = getDiscordClaims(sheets);
+
+  // Enforce one claim per Discord ID
+  const existingById = existing.find(function(c) { return c.discordId === session.discordId; });
+  if (existingById) return { success: false, error: 'You already have a claim for ' + existingById.nameRealm };
+
+  // Enforce one claim per character
+  const existingByChar = existing.find(function(c) {
+    return c.nameRealm.toLowerCase() === nameRealm.toLowerCase();
+  });
+  if (existingByChar) return { success: false, error: nameRealm + ' is already claimed by another Discord user' };
+
+  // Write the claim
+  const claimsSheet = ensureDiscordClaimsSheet(ss);
+  claimsSheet.appendRow([session.discordId, session.username, nameRealm, new Date().toISOString()]);
+
+  // Update the session property with the new nameRealm and isOfficer flag
+  const isOfficer = isOfficerCharacter(ss, nameRealm);
+  const updated = {
+    discordId:  session.discordId,
+    username:   session.username,
+    avatar:     session.avatar,
+    nameRealm:  nameRealm,
+    isOfficer:  isOfficer,
+    createdAt:  new Date().toISOString()  // refresh session age on claim
+  };
+  PropertiesService.getScriptProperties().setProperty('discordSession_' + token, JSON.stringify(updated));
+
+  appendAuditLog('Discord Claim Created', nameRealm, '', session.username);
+  return { success: true, nameRealm: nameRealm, isOfficer: isOfficer };
+}
+
+function isOfficerCharacter(ss, nameRealm) {
+  const sheet = ss.getSheetByName(CFG.rosterSheet);
+  if (!sheet) return false;
+  const data = sheet.getDataRange().getValues();
+  for (var i = CFG.rosterDataStart - 1; i < data.length; i++) {
+    const rowName = String(data[i][CFG.rosterPlayerCol - 1] || '').trim();
+    if (rowName.toLowerCase() !== nameRealm.toLowerCase()) continue;
+    const priority = Number(data[i][CFG.rosterPriorityCol - 1] || 0);
+    return priority === 1 || priority === 2; // 1=RL, 2=Officer
+  }
+  return false;
+}
+
+function ensureDiscordClaimsSheet(ss) {
+  var sheet = ss.getSheetByName('Discord Claims');
+  if (!sheet) {
+    sheet = ss.insertSheet('Discord Claims');
+    sheet.appendRow(['Discord ID', 'Discord Username', 'Name-Realm', 'Claimed At']);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function getDiscordClaims(sheets) {
+  const sheet = sheets['Discord Claims'];
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  const data    = sheet.getDataRange().getValues();
+  const results = [];
+  for (var i = 1; i < data.length; i++) {
+    const discordId  = String(data[i][0] || '').trim();
+    const username   = String(data[i][1] || '').trim();
+    const nameRealm  = String(data[i][2] || '').trim();
+    const claimedAt  = String(data[i][3] || '').trim();
+    if (discordId && nameRealm) results.push({ discordId, username, nameRealm, claimedAt });
+  }
+  return results;
+}
