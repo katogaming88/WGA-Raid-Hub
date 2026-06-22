@@ -7,13 +7,12 @@ function buildAdminTab() {
 function switchAdminSubTab(name, btnEl) {
   document.querySelectorAll('[id^="admin-subtab-btn-"]').forEach(function(b) { b.classList.remove('active'); });
   if (btnEl) btnEl.classList.add('active');
-  ['properties', 'botconfig', 'export', 'discord', 'danger'].forEach(function(sub) {
+  ['properties', 'botconfig', 'export', 'danger'].forEach(function(sub) {
     var el = document.getElementById('admin-sub-' + sub);
     if (el) el.style.display = (sub === name) ? '' : 'none';
   });
   if (name === 'properties') loadAdminProperties();
   if (name === 'botconfig')  loadBotConfig();
-  if (name === 'discord')    renderDiscordClaims();
   if (name === 'danger')     renderDangerZone();
 }
 
@@ -193,44 +192,3 @@ function executeDangerOp(key) {
   });
 }
 
-// ── Discord Claims ────────────────────────────────────────────────────────────
-
-function renderDiscordClaims() {
-  var el = document.getElementById('adminDiscordClaimsContent');
-  if (!el) return;
-  var claims = (window.DATA && DATA.discordClaims) ? DATA.discordClaims : [];
-  if (!claims.length) {
-    el.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">No characters have been claimed yet.</p>';
-    return;
-  }
-  var rows = claims.slice().sort(function(a, b) { return a.nameRealm.localeCompare(b.nameRealm); }).map(function(c) {
-    var date = c.claimedAt ? new Date(c.claimedAt).toLocaleDateString() : '--';
-    return '<tr>'
-      + '<td>' + escHtml(c.username) + '</td>'
-      + '<td>' + escHtml(c.nameRealm) + '</td>'
-      + '<td>' + escHtml(date) + '</td>'
-      + '<td><button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="removeDiscordClaim(' + JSON.stringify(c.nameRealm) + ')">Remove</button></td>'
-      + '</tr>';
-  }).join('');
-  el.innerHTML = '<table class="loot-table" style="width:100%;">'
-    + '<thead><tr><th>Discord User</th><th>Character</th><th>Claimed</th><th></th></tr></thead>'
-    + '<tbody>' + rows + '</tbody>'
-    + '</table>';
-}
-
-function removeDiscordClaim(nameRealm) {
-  if (!confirm('Remove claim for ' + nameRealm + '? The raider will need to re-claim their character on next login.')) return;
-  jsonpRequest(
-    WEB_APP_URL + '?action=removeDiscordClaim&nameRealm=' + encodeURIComponent(nameRealm),
-    function(err, result) {
-      if (err || !result || !result.success) {
-        alert('Failed to remove claim: ' + ((result && result.error) || (err && err.message) || 'Unknown error'));
-        return;
-      }
-      if (window.DATA && DATA.discordClaims) {
-        DATA.discordClaims = DATA.discordClaims.filter(function(c) { return c.nameRealm !== nameRealm; });
-      }
-      renderDiscordClaims();
-    }
-  );
-}

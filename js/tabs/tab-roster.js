@@ -644,3 +644,62 @@ function promoteTrialPlayer(nameRealm, firstName, btn) {
 }
 
 initAddPlayerRealmCombobox();
+
+// ── Roster subtabs ────────────────────────────────────────────────────────────
+
+function switchRosterSubTab(name, btnEl) {
+  document.querySelectorAll('[id^="roster-subtab-btn-"]').forEach(function(b) { b.classList.remove('active'); });
+  if (btnEl) btnEl.classList.add('active');
+  ['roster', 'discord'].forEach(function(sub) {
+    var el = document.getElementById('roster-sub-' + sub);
+    if (el) el.style.display = (sub === name) ? '' : 'none';
+  });
+  if (name === 'discord') renderDiscordClaims();
+}
+
+// ── Discord Claims ────────────────────────────────────────────────────────────
+
+function renderDiscordClaims() {
+  var el = document.getElementById('rosterDiscordClaimsContent');
+  if (!el) return;
+  var claims = (window.DATA && DATA.discordClaims) ? DATA.discordClaims : [];
+  if (!claims.length) {
+    el.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">No characters have been claimed yet.</p>';
+    return;
+  }
+  var rows = claims.slice().sort(function(a, b) { return a.nameRealm.localeCompare(b.nameRealm); }).map(function(c) {
+    var date = c.claimedAt ? new Date(c.claimedAt).toLocaleDateString() : '--';
+    return '<tr>'
+      + '<td style="width:30%">' + escHtml(c.username) + '</td>'
+      + '<td style="width:40%">' + escHtml(c.nameRealm) + '</td>'
+      + '<td style="width:20%">' + escHtml(date) + '</td>'
+      + '<td style="width:10%;text-align:right"><button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="removeDiscordClaim(' + JSON.stringify(c.nameRealm) + ')">Remove</button></td>'
+      + '</tr>';
+  }).join('');
+  el.innerHTML = '<table class="loot-table" style="width:100%;table-layout:fixed;">'
+    + '<thead><tr>'
+    + '<th style="width:30%">Discord User</th>'
+    + '<th style="width:40%">Character</th>'
+    + '<th style="width:20%">Claimed</th>'
+    + '<th style="width:10%"></th>'
+    + '</tr></thead>'
+    + '<tbody>' + rows + '</tbody>'
+    + '</table>';
+}
+
+function removeDiscordClaim(nameRealm) {
+  if (!confirm('Remove claim for ' + nameRealm + '? The raider will need to re-claim their character on next login.')) return;
+  jsonpRequest(
+    WEB_APP_URL + '?action=removeDiscordClaim&nameRealm=' + encodeURIComponent(nameRealm),
+    function(err, result) {
+      if (err || !result || !result.success) {
+        alert('Failed to remove claim: ' + ((result && result.error) || (err && err.message) || 'Unknown error'));
+        return;
+      }
+      if (window.DATA && DATA.discordClaims) {
+        DATA.discordClaims = DATA.discordClaims.filter(function(c) { return c.nameRealm !== nameRealm; });
+      }
+      renderDiscordClaims();
+    }
+  );
+}
