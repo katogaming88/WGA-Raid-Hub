@@ -835,7 +835,7 @@ function renderProfile(firstName, backTo, container) {
       '<span style="font-size:0.92rem;color:var(--text-muted);">Your M+ exclusion request was not approved.</span>' +
       '</div>' +
       (player.mPlusRejectionNote
-        ? '<div style="font-size:0.92rem;color:var(--text);margin-top:0.4rem;font-style:italic;">' + player.mPlusRejectionNote + '</div>'
+        ? '<div style="margin-top:0.5rem;padding:0.4rem 0.6rem;background:rgba(255,124,92,0.08);border-left:3px solid var(--melee);border-radius:3px;font-size:0.92rem;color:var(--text);font-style:italic;">' + player.mPlusRejectionNote + '</div>'
         : '');
     if (DATA && DATA.mPlusExclusionsOpen) {
       mplusHTML +=
