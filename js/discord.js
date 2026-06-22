@@ -2,7 +2,7 @@
 // Depends on: common.js (WEB_APP_URL, TEAM_SLUG, jsonpRequest)
 
 var DISCORD_CLIENT_ID = '1518683392864948334'; // public -- safe in JS
-var DISCORD_REDIRECT_URI = 'https://katogaming88.github.io/wga-raid-hub/discord-callback.html';
+var DISCORD_REDIRECT_URI = 'https://katogaming88.github.io/WGA-Raid-Hub/discord-callback.html';
 var DISCORD_SCOPE = 'identify';
 var DISCORD_SESSION_KEY = 'wga_discord_' + TEAM_SLUG; // one key per team in localStorage
 var _discordPopup = null;
