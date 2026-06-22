@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.0.3] - 2026-06-22
+
+### Fixed
+- Claim character dropdown is now sorted alphabetically by Name-Realm.
+
+---
+
 ## [3.0.2] - 2026-06-22
 
 ### Fixed

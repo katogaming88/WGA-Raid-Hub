@@ -176,7 +176,7 @@ function showDiscordClaimModal(session) {
   if (sel && window.DATA && DATA.roster) {
     sel.innerHTML = '<option value="">-- Select your character --</option>';
     var claimed = (DATA.discordClaims || []).map(function (c) { return c.nameRealm.toLowerCase(); });
-    DATA.roster.forEach(function (p) {
+    DATA.roster.slice().sort(function (a, b) { return a.nameRealm.localeCompare(b.nameRealm); }).forEach(function (p) {
       if (claimed.indexOf(p.nameRealm.toLowerCase()) !== -1) return; // already taken
       var opt = document.createElement('option');
       opt.value = p.nameRealm;
