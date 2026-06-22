@@ -4,9 +4,15 @@ function showView(name) {
   ['landingView','profileViewWrap','signupViewWrap'].forEach(function(id) {
     document.getElementById(id).classList.remove('active');
   });
-  if (name === 'landing') { document.getElementById('landingView').classList.add('active'); renderSignupLandingLink(); }
+  if (name === 'landing') { document.getElementById('landingView').classList.add('active'); updateSignupNavItem(); }
   if (name === 'profile') document.getElementById('profileViewWrap').classList.add('active');
   if (name === 'signup')  document.getElementById('signupViewWrap').classList.add('active');
+  ['navHome','navSignup'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+  });
+  var activeNav = { landing: 'navHome', profile: 'navHome', signup: 'navSignup' }[name];
+  if (activeNav) { var el = document.getElementById(activeNav); if (el) el.classList.add('active'); }
 }
 
 function populateDropdown() {
@@ -36,8 +42,8 @@ function populateDropdown() {
   }
 }
 
-function renderSignupLandingLink() {
-  var el = document.getElementById('signupLink');
+function updateSignupNavItem() {
+  var el = document.getElementById('navSignup');
   if (el) el.style.display = (DATA && DATA.signupsOpen) ? '' : 'none';
 }
 

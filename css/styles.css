@@ -29,6 +29,21 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 .header-link { display:inline-block; text-decoration:none; color:inherit; transition:opacity 0.15s; }
 .header-link:hover { opacity:0.8; }
 
+/* Site nav */
+.site-nav { display:flex; align-items:stretch; background:var(--bg-card); border-bottom:1px solid var(--border); padding:0 1rem; }
+.site-nav-right { margin-left:auto; display:flex; align-items:stretch; }
+.site-nav-item { font-family:'Rajdhani',sans-serif; font-size:0.82rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; padding:0.65rem 1rem; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--text-muted); cursor:pointer; transition:color 0.15s,border-color 0.15s; text-decoration:none; display:inline-flex; align-items:center; }
+.site-nav-item:hover { color:var(--text); }
+.site-nav-item.active { color:var(--gold-light); border-bottom-color:var(--gold); }
+.site-nav-discord { opacity:0.45; cursor:default; }
+.site-nav-discord:hover { color:var(--text-muted); }
+.site-nav-item[data-tooltip] { position:relative; }
+.site-nav-item[data-tooltip]::after { content:attr(data-tooltip); position:absolute; top:calc(100% + 6px); left:50%; transform:translateX(-50%); background:var(--bg-elevated); border:1px solid var(--border-mid); color:var(--text-muted); font-size:0.95rem; font-weight:400; letter-spacing:0.04em; text-transform:none; white-space:nowrap; padding:0.3rem 0.6rem; border-radius:3px; pointer-events:none; opacity:0; transition:opacity 0s; z-index:200; }
+.site-nav-item[data-tooltip]:hover::after { opacity:1; }
+#navHome::after, #navSignup::after { left:0; transform:none; }
+#navDiscord::after, #navOfficer::after { left:auto; right:0; transform:none; }
+@media (max-width:480px) { .site-nav { padding:0 0.25rem; } .site-nav-item { padding:0.6rem 0.6rem; font-size:0.75rem; } }
+
 /* States */
 .state-msg { text-align:center; padding:3rem 2rem; color:var(--text); font-size:0.97rem; letter-spacing:0.05em; }
 .state-msg.error { color:#ff7c5c; }
@@ -86,8 +101,6 @@ select#playerSelect { width:100%; appearance:none; background:var(--bg-input); b
 select#playerSelect:hover { border-color:var(--gold-dim); }
 select#playerSelect:focus { border-color:var(--gold); box-shadow:0 0 0 2px rgba(214,163,68,0.12); }
 select#playerSelect option { background:#1a1d27; }
-.officer-link { margin-top:0.5rem; font-size:0.95rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-dim); cursor:pointer; border-bottom:1px solid transparent; transition:color 0.15s,border-color 0.15s; }
-.officer-link:hover { color:var(--text-muted); border-color:var(--text-dim); }
 
 /* Officer password prompt */
 .officer-prompt { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:100; align-items:center; justify-content:center; }

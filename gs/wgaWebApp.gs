@@ -80,8 +80,8 @@ const CFG = {
   attendDataStart:  2,  // First data row
 };
 
-var BOT_BASE_URL = 'http://129.80.178.227:3000';
-var BOT_WEBHOOK_SECRET = 'teamPhoenixPPCBot';
+var BOT_BASE_URL = PropertiesService.getScriptProperties().getProperty('BOT_BASE_URL') || 'http://129.80.178.227:3000';
+var BOT_WEBHOOK_SECRET = PropertiesService.getScriptProperties().getProperty('BOT_WEBHOOK_SECRET') || 'teamPhoenixPPCBot';
 
 var HAS_HEROIC_MULTIPLIER            = 0.85; // mythic prio penalty for players who already have the heroic version
 var HAS_CHAMPION_MULTIPLIER          = 1.07; // mythic prio small bonus for players who only have the champion (normal) version
