@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.0.1] - 2026-06-22
+
+### Fixed
+- Claim character dropdown now shows `Name-Realm Class` instead of `Name-Realm (Class Spec)` -- drops spec and parentheses to reduce visual noise.
+- Discord OAuth redirect URI corrected to match GitHub Pages URL casing (`WGA-Raid-Hub`). Fixes #166.
+
+---
+
 ## [3.0.0] - 2026-06-22
 
 ### Added
