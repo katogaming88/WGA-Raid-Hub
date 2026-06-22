@@ -18,14 +18,65 @@ function renderSeasonHistory() {
   if (!history.length) { wrap.style.display = 'none'; return; }
   wrap.style.display = '';
   var html = '';
-  for (var i = 0; i < history.length; i++) {
+  for (var i = history.length - 1; i >= 0; i--) {
     var s = history[i];
-    html += '<div style="padding:0.3rem 0;border-bottom:1px solid rgba(255,255,255,0.06);">';
+    var raidCount = s.raids && s.raids.length ? s.raids.length : 0;
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:0.45rem 0;border-bottom:1px solid rgba(255,255,255,0.06);gap:0.75rem;flex-wrap:wrap;">';
+    html += '<div>';
     html += '<strong style="color:var(--text);">' + (s.name || '(unnamed)') + '</strong>';
-    html += ' &nbsp; ' + (s.start || '-') + ' to ' + (s.end || 'ongoing');
+    html += '<span style="font-size:0.85rem;color:var(--text-muted);margin-left:0.75rem;">' + (s.start || '-') + ' to ' + (s.end || 'ongoing') + '</span>';
+    if (raidCount) html += '<span style="font-size:0.82rem;color:var(--text-muted);margin-left:0.5rem;">(' + raidCount + ' raid' + (raidCount !== 1 ? 's' : '') + ')</span>';
+    html += '</div>';
+    html += '<button class="btn btn-muted" style="font-size:0.8rem;padding:2px 10px;white-space:nowrap;" onclick="confirmUnarchiveSeason(' + i + ')">Unarchive</button>';
     html += '</div>';
   }
   list.innerHTML = html;
+  var confirmEl = document.getElementById('seasonUnarchiveConfirm');
+  if (confirmEl) confirmEl.style.display = 'none';
+}
+
+var _unarchiveIndex = -1;
+
+function confirmUnarchiveSeason(index) {
+  _unarchiveIndex = index;
+  var history = (DATA && DATA.seasonHistory) || [];
+  var s       = history[index] || {};
+  var msg     = document.getElementById('seasonUnarchiveConfirmMsg');
+  var confirmEl = document.getElementById('seasonUnarchiveConfirm');
+  if (msg) {
+    var text = 'Restore "' + (s.name || '(unnamed)') + '" as the active season?';
+    if (DATA && DATA.seasonName) {
+      text += ' The current active season ("' + DATA.seasonName + '") will be overwritten. Archive it first if you want to keep it.';
+    }
+    msg.textContent = text;
+  }
+  if (confirmEl) confirmEl.style.display = '';
+}
+
+function executeUnarchiveSeason() {
+  var confirmEl = document.getElementById('seasonUnarchiveConfirm');
+  var status    = document.getElementById('seasonUnarchiveStatus');
+  var btn       = document.getElementById('seasonUnarchiveExecBtn');
+  if (confirmEl) confirmEl.style.display = 'none';
+  if (btn) btn.disabled = true;
+
+  jsonpRequest(WEB_APP_URL + '?action=unarchiveSeason&index=' + _unarchiveIndex, function(err, result) {
+    if (btn) btn.disabled = false;
+    if (!err && result && result.success) {
+      var season = result.season;
+      DATA.seasonName      = season.name  || '';
+      DATA.seasonStart     = season.start || '';
+      DATA.seasonEnd       = season.end   || '';
+      DATA.raidProgression = season.raids || [];
+      if (DATA.seasonHistory) DATA.seasonHistory.splice(_unarchiveIndex, 1);
+      _unarchiveIndex = -1;
+      buildSeasonTab();
+      populateSeasonSelector();
+      if (status) { status.textContent = 'Season restored.'; setTimeout(function() { if (status) status.textContent = ''; }, 3000); }
+    } else {
+      if (status) { status.textContent = err ? err.message : 'Error restoring season.'; }
+    }
+  });
 }
 
 function confirmClearSeasonStart() {
