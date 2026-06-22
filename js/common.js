@@ -28,7 +28,7 @@ var ACTIVE_SEASON = null; // null = All Seasons; set by officer.js when a season
 function switchTeam(slug) {
   if (!(slug in TEAMS)) return;
   sessionStorage.setItem('wga_team', slug);
-  location.reload();
+  location.href = location.pathname;
 }
 
 function initTeamUI() {
