@@ -346,6 +346,24 @@ function doGet(e) {
       return jsonpResponse(callback, { success: true });
     }
 
+    if (action === 'unarchiveSeason') {
+      const index   = parseInt(e.parameter.index, 10);
+      const history = JSON.parse(props.getProperty('seasonHistory') || '[]');
+      if (isNaN(index) || index < 0 || index >= history.length) {
+        return jsonpResponse(callback, { error: 'Invalid season index' });
+      }
+      const season = history.splice(index, 1)[0];
+      props.setProperty('seasonHistory',    JSON.stringify(history));
+      props.setProperty('seasonName',       season.name  || '');
+      props.setProperty('seasonStart',      season.start || '');
+      props.setProperty('seasonEnd',        season.end   || '');
+      props.setProperty('raidProgression',  JSON.stringify(season.raids || []));
+      cache.remove('rosterCore');
+      cache.remove('rosterHeavy');
+      appendAuditLog('Season Unarchived', '', '', season.name || '');
+      return jsonpResponse(callback, { success: true, season: season });
+    }
+
     if (action === 'submitSignup') {
       const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
       writeSignup(data);
