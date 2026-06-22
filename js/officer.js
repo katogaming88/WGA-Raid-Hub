@@ -24,7 +24,7 @@ function switchTab(name) {
   document.getElementById('tab-' + name).classList.add('active');
   if (name === 'loot')       { resetLootSubTab(); }
   if (name === 'attendance') buildAttendanceTab();
-  if (name === 'priority')   { resetPrioritySubTab(); buildPriorityTab(); }
+  if (name === 'priority')   { resetPrioritySubTab(); buildConflicts(); }
   if (name === 'signups')    { resetSignupsSubTab(); buildSignupsTab(); }
   if (name === 'requests')   buildRequestsTab();
   if (name === 'bis')        { resetBisSubTab(); buildBisTab(); }
@@ -77,14 +77,14 @@ function switchSignupsSubTab(name, btnEl) {
 
 function resetPrioritySubTab() {
   document.querySelectorAll('[id^="prio-subtab-btn-"]').forEach(function(b) { b.classList.remove('active'); });
-  var defaultBtn = document.getElementById('prio-subtab-btn-list');
+  var defaultBtn = document.getElementById('prio-subtab-btn-conflicts');
   if (defaultBtn) defaultBtn.classList.add('active');
   var subList      = document.getElementById('prio-sub-list');
   var subUnmanaged = document.getElementById('prio-sub-unmanaged');
   var subConflicts = document.getElementById('prio-sub-conflicts');
-  if (subList)      subList.style.display      = '';
+  if (subList)      subList.style.display      = 'none';
   if (subUnmanaged) subUnmanaged.style.display = 'none';
-  if (subConflicts) subConflicts.style.display = 'none';
+  if (subConflicts) subConflicts.style.display = '';
 }
 
 function switchPrioritySubTab(name, btnEl) {
