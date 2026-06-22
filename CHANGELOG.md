@@ -22,7 +22,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - New files: `discord-callback.html`, `js/discord.js`.
 
 ### Setup required (before going live)
-1. Create a Discord application at discord.com/developers. Enable `identify` scope. Register redirect URI: `https://katogaming88.github.io/wga-raid-hub/discord-callback.html`.
+1. Create a Discord application at discord.com/developers. Enable `identify` scope. Register redirect URI: `https://katogaming88.github.io/WGA-Raid-Hub/discord-callback.html`.
 2. Set `DISCORD_CLIENT_ID` (public) in `js/discord.js` (already set to the app client ID).
 3. Set `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` as Script Properties in both GAS deployments (Phoenix and Hellfire).
 

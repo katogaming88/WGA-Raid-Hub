@@ -2668,7 +2668,7 @@ function fetchWclProgressionData(zoneId) {
 
 var DISCORD_TOKEN_URL = 'https://discord.com/api/oauth2/token';
 var DISCORD_API_BASE  = 'https://discord.com/api/v10';
-var DISCORD_REDIRECT_URI = 'https://katogaming88.github.io/wga-raid-hub/discord-callback.html';
+var DISCORD_REDIRECT_URI = 'https://katogaming88.github.io/WGA-Raid-Hub/discord-callback.html';
 var DISCORD_SESSION_TTL_DAYS = 30;
 
 function generateSessionToken() {
