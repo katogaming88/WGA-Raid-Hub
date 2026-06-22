@@ -1,3 +1,14 @@
+function switchSeasonSubTab(name, btnEl) {
+  document.querySelectorAll('[id^="season-subtab-btn-"]').forEach(function(b) { b.classList.remove('active'); });
+  if (btnEl) btnEl.classList.add('active');
+  ['settings', 'progression', 'history'].forEach(function(sub) {
+    var el = document.getElementById('season-sub-' + sub);
+    if (el) el.style.display = sub === name ? '' : 'none';
+  });
+  if (name === 'progression') renderRaidProgressionCards();
+  if (name === 'history')     renderSeasonHistory();
+}
+
 function buildSeasonTab() {
   var startInput = document.getElementById('seasonStartInput');
   if (startInput) startInput.value = (DATA && DATA.seasonStart) || '';
@@ -9,9 +20,9 @@ function buildSeasonTab() {
   var trialAttendInput = document.getElementById('trialAttendInput');
   if (trialWeeksInput)  trialWeeksInput.value  = (DATA && DATA.trialWeeks  != null) ? DATA.trialWeeks  : 4;
   if (trialAttendInput) trialAttendInput.value = (DATA && DATA.trialAttend != null) ? DATA.trialAttend : 75;
-  renderSeasonHistory();
-  SEASON_RAIDS = JSON.parse(JSON.stringify((DATA && DATA.raidProgression) || []));
-  renderRaidProgressionCards();
+  // Reset to Settings subtab; Progression and History load lazily on switch
+  var defaultBtn = document.getElementById('season-subtab-btn-settings');
+  switchSeasonSubTab('settings', defaultBtn);
 }
 
 function renderSeasonHistory() {
