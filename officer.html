@@ -86,49 +86,63 @@
         <div class="officer-main">
           <!-- Roster tab -->
           <div id="tab-roster" class="tab-panel active">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
-              <span class="section-label" style="margin-bottom:0;">Roster<button class="help-btn" onclick="toggleHelp('help-roster')" title="Show help">?</button></span>
+            <div class="filter-bar" style="margin-bottom:1rem;">
+              <button class="filter-chip active" id="roster-subtab-btn-roster"
+                onclick="switchRosterSubTab('roster', this)">Roster</button>
+              <button class="filter-chip" id="roster-subtab-btn-discord"
+                onclick="switchRosterSubTab('discord', this)">Discord Claims</button>
             </div>
-            <div id="help-roster" class="help-tip" style="margin-top:0;margin-bottom:0.75rem;">
-              Click a player row to open their <strong>profile card</strong> below the table. From there you can edit class, spec, role, trial/bench status, join date, BiS link, nickname, M+ exclusion, and officer notes.<br>
-              To rename a player (character name or realm change), use the <strong>Name/Realm</strong> field in their profile card and click Save. This also updates their name in the Attendance and Loot sheets.<br>
-              <strong>+ Add Player</strong> button in the top-right of the roster table header adds a new player directly to the Roster sheet.<br>
-              The <strong>trial promotion banner</strong> appears automatically when a trial has been on the roster long enough with sufficient attendance to warrant a promotion review.
-            </div>
-            <div class="roster-search-row">
-              <input type="text" id="rosterSearch" class="roster-search-input" placeholder="Search player..."
-                oninput="buildRosterTable()">
-              <div class="bis-search-wrap">
-                <input type="text" id="bisItemSearch" class="roster-search-input" placeholder="Has BiS item..."
-                  oninput="buildRosterTable()">
-                <span id="bisItemCount" class="bis-item-count"></span>
+
+            <div id="roster-sub-roster">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+                <span class="section-label" style="margin-bottom:0;">Roster<button class="help-btn" onclick="toggleHelp('help-roster')" title="Show help">?</button></span>
               </div>
+              <div id="help-roster" class="help-tip" style="margin-top:0;margin-bottom:0.75rem;">
+                Click a player row to open their <strong>profile card</strong> below the table. From there you can edit class, spec, role, trial/bench status, join date, BiS link, nickname, M+ exclusion, and officer notes.<br>
+                To rename a player (character name or realm change), use the <strong>Name/Realm</strong> field in their profile card and click Save. This also updates their name in the Attendance and Loot sheets.<br>
+                <strong>+ Add Player</strong> button in the top-right of the roster table header adds a new player directly to the Roster sheet.<br>
+                The <strong>trial promotion banner</strong> appears automatically when a trial has been on the roster long enough with sufficient attendance to warrant a promotion review.
+              </div>
+              <div class="roster-search-row">
+                <input type="text" id="rosterSearch" class="roster-search-input" placeholder="Search player..."
+                  oninput="buildRosterTable()">
+                <div class="bis-search-wrap">
+                  <input type="text" id="bisItemSearch" class="roster-search-input" placeholder="Has BiS item..."
+                    oninput="buildRosterTable()">
+                  <span id="bisItemCount" class="bis-item-count"></span>
+                </div>
+              </div>
+              <div class="filter-bar" style="margin-bottom:0.35rem;">
+                <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Filter:</span>
+                <button class="filter-chip" onclick="toggleFilter('lowAttend')" id="chip-lowAttend">Low Attendance
+                  (&lt;95%)</button>
+                <button class="filter-chip" onclick="toggleFilter('noBis')" id="chip-noBis">No BiS Link</button>
+                <button class="filter-chip" onclick="toggleFilter('trial')" id="chip-trial">Trials Only</button>
+                <button class="filter-chip" onclick="toggleFilter('bench')" id="chip-bench">Bench Only</button>
+              </div>
+              <div class="filter-bar">
+                <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Role:</span>
+                <button class="filter-chip" onclick="toggleRole('Tank')" id="chip-role-Tank">Tanks</button>
+                <button class="filter-chip" onclick="toggleRole('Heal')" id="chip-role-Heal">Healers</button>
+                <button class="filter-chip" onclick="toggleRole('Melee')" id="chip-role-Melee">Melee</button>
+                <button class="filter-chip" onclick="toggleRole('Ranged')" id="chip-role-Ranged">Ranged</button>
+              </div>
+              <div class="filter-bar" style="margin-bottom:0.35rem;">
+                <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
+                <button class="filter-chip" onclick="toggleSort('name')" id="chip-sort-name">Name</button>
+                <button class="filter-chip" onclick="toggleSort('attendance')"
+                  id="chip-sort-attendance">Attendance</button>
+                <button class="filter-chip" onclick="toggleSort('items')" id="chip-sort-items">Items</button>
+              </div>
+              <div id="trialPromoAlert"></div>
+              <table class="roster-table" id="rosterTable"></table>
+              <div id="officerProfile"></div>
             </div>
-            <div class="filter-bar" style="margin-bottom:0.35rem;">
-              <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Filter:</span>
-              <button class="filter-chip" onclick="toggleFilter('lowAttend')" id="chip-lowAttend">Low Attendance
-                (&lt;95%)</button>
-              <button class="filter-chip" onclick="toggleFilter('noBis')" id="chip-noBis">No BiS Link</button>
-              <button class="filter-chip" onclick="toggleFilter('trial')" id="chip-trial">Trials Only</button>
-              <button class="filter-chip" onclick="toggleFilter('bench')" id="chip-bench">Bench Only</button>
+
+            <div id="roster-sub-discord" style="display:none;">
+              <p class="signup-officer-note" style="margin-bottom:0.75rem;">Characters claimed by raiders via Discord login. Remove a claim if a raider linked the wrong character.</p>
+              <div id="rosterDiscordClaimsContent"></div>
             </div>
-            <div class="filter-bar">
-              <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Role:</span>
-              <button class="filter-chip" onclick="toggleRole('Tank')" id="chip-role-Tank">Tanks</button>
-              <button class="filter-chip" onclick="toggleRole('Heal')" id="chip-role-Heal">Healers</button>
-              <button class="filter-chip" onclick="toggleRole('Melee')" id="chip-role-Melee">Melee</button>
-              <button class="filter-chip" onclick="toggleRole('Ranged')" id="chip-role-Ranged">Ranged</button>
-            </div>
-            <div class="filter-bar" style="margin-bottom:0.35rem;">
-              <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
-              <button class="filter-chip" onclick="toggleSort('name')" id="chip-sort-name">Name</button>
-              <button class="filter-chip" onclick="toggleSort('attendance')"
-                id="chip-sort-attendance">Attendance</button>
-              <button class="filter-chip" onclick="toggleSort('items')" id="chip-sort-items">Items</button>
-            </div>
-            <div id="trialPromoAlert"></div>
-            <table class="roster-table" id="rosterTable"></table>
-            <div id="officerProfile"></div>
           </div>
 
           <!-- Loot tab (Import + Import History + Loot Fairness sub-tabs) -->
@@ -653,8 +667,6 @@
                 onclick="switchAdminSubTab('botconfig', this)">Bot Config</button>
               <button class="filter-chip" id="admin-subtab-btn-export"
                 onclick="switchAdminSubTab('export', this)">Data Export</button>
-              <button class="filter-chip" id="admin-subtab-btn-discord"
-                onclick="switchAdminSubTab('discord', this)">Discord Claims</button>
               <button class="filter-chip" id="admin-subtab-btn-danger"
                 onclick="switchAdminSubTab('danger', this)">Danger Zone</button>
             </div>
@@ -704,15 +716,6 @@
                 <div style="margin-top:0.75rem;">
                   <button class="btn btn-gold" id="adminExportBtn" onclick="downloadExport()">Download JSON</button>
                 </div>
-              </div>
-            </div>
-
-            <!-- Discord Claims -->
-            <div id="admin-sub-discord" style="display:none;">
-              <div class="help-ref-card">
-                <h4 class="help-ref-title">Discord Claims</h4>
-                <p class="signup-officer-note" style="margin-top:0.25rem;">Characters claimed by raiders via Discord login. Remove a claim if a raider linked the wrong character.</p>
-                <div id="adminDiscordClaimsContent" style="margin-top:0.75rem;"></div>
               </div>
             </div>
 
