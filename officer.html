@@ -29,6 +29,7 @@
   <nav class="site-nav" id="siteNav">
     <a href="index.html" class="site-nav-item" id="navHome" data-tooltip="Back to the roster overview">Home</a>
     <div class="site-nav-right">
+      <select id="teamSwitcherSelect" class="team-switcher" title="Switch team"></select>
       <button class="site-nav-item site-nav-discord" id="navDiscord" disabled data-tooltip="Discord login coming soon -- view your profile and notifications">Login with Discord</button>
       <button class="site-nav-item active" id="navOfficer" data-tooltip="Officer dashboard -- manage roster, loot, and signups">Officer Access</button>
     </div>
@@ -77,6 +78,8 @@
           <button class="nav-item" onclick="switchTab('season')">Season Settings</button>
           <button class="nav-item" onclick="switchTab('audit')">Audit Log</button>
           <button class="nav-item" onclick="switchTab('help')">Help</button>
+          <div class="nav-admin-divider"></div>
+          <button class="nav-item nav-item-admin" onclick="switchTab('admin')">Admin</button>
         </nav>
 
         <div class="officer-main">
@@ -615,6 +618,73 @@
             </div>
           </div>
 
+          <!-- Admin tab -->
+          <div id="tab-admin" class="tab-panel">
+            <div class="filter-bar" style="margin-bottom:1rem;">
+              <button class="filter-chip active" id="admin-subtab-btn-properties"
+                onclick="switchAdminSubTab('properties', this)">Properties</button>
+              <button class="filter-chip" id="admin-subtab-btn-botconfig"
+                onclick="switchAdminSubTab('botconfig', this)">Bot Config</button>
+              <button class="filter-chip" id="admin-subtab-btn-export"
+                onclick="switchAdminSubTab('export', this)">Data Export</button>
+              <button class="filter-chip" id="admin-subtab-btn-danger"
+                onclick="switchAdminSubTab('danger', this)">Danger Zone</button>
+            </div>
+
+            <!-- Properties -->
+            <div id="admin-sub-properties">
+              <div class="help-ref-card" style="margin-bottom:1rem;">
+                <h4 class="help-ref-title">Script Properties</h4>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Live read of key GAS script properties for this team.</p>
+                <div id="adminPropsContent" style="margin-top:0.75rem;"></div>
+                <div style="margin-top:0.75rem;">
+                  <button class="btn btn-muted" onclick="loadAdminProperties()">Refresh</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bot Config -->
+            <div id="admin-sub-botconfig" style="display:none;">
+              <div class="help-ref-card" style="margin-bottom:1rem;">
+                <h4 class="help-ref-title">Bot URL</h4>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">The base URL of the Discord bot server. Leave blank to use the compiled default.</p>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <input type="text" id="adminBotUrlInput" class="add-player-input"
+                    style="flex:1;min-width:200px;max-width:420px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-gold" id="adminBotUrlBtn" onclick="saveBotUrl()">Save</button>
+                  <span id="adminBotUrlStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+              </div>
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Bot Webhook Secret</h4>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">The shared secret sent in the X-Webhook-Secret header. Current value is masked -- enter a new value to replace it.</p>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <input type="password" id="adminBotSecretInput" class="add-player-input"
+                    placeholder="New secret value"
+                    style="flex:1;min-width:200px;max-width:420px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-gold" id="adminBotSecretBtn" onclick="saveBotSecret()">Save</button>
+                  <span id="adminBotSecretStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Data Export -->
+            <div id="admin-sub-export" style="display:none;">
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Export All Data</h4>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Downloads everything currently loaded in the dashboard (roster, loot history, priority order, BiS lists, season history, scoring) as a JSON file. No GAS call -- exports from the in-memory cache.</p>
+                <div style="margin-top:0.75rem;">
+                  <button class="btn btn-gold" id="adminExportBtn" onclick="downloadExport()">Download JSON</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Danger Zone -->
+            <div id="admin-sub-danger" style="display:none;">
+              <div id="adminDangerContent"></div>
+            </div>
+          </div>
+
           <!-- M+ Exclusions tab -->
           <div id="tab-mplus" class="tab-panel">
             <div class="signup-officer-panel">
@@ -760,6 +830,7 @@
   <div id="officerPrompt" class="officer-prompt">
     <div class="officer-prompt-box">
       <h2>Officer Access</h2>
+      <select id="officerPromptTeamSelect" class="team-switcher" style="width:100%;margin-bottom:0.25rem;"></select>
       <input id="officerPassword" type="password" placeholder="Password"
         onkeydown="if(event.key==='Enter')submitOfficerPassword();" />
       <p id="officerError" style="display:none;font-size:0.88rem;color:var(--melee);">Incorrect password</p>
@@ -787,6 +858,7 @@
   <script src="js/tabs/tab-season.js"></script>
   <script src="js/tabs/tab-loot-import.js"></script>
   <script src="js/tabs/tab-scoring.js"></script>
+  <script src="js/tabs/tab-admin.js"></script>
   <script>
 document.getElementById('versionNum').textContent = VERSION;
 document.title = TEAM_NAME + ' -- Officer';
@@ -795,6 +867,7 @@ document.querySelectorAll('.team-name').forEach(function(el){el.textContent=TEAM
 if (TEAM_SLUG !== 'phoenix') {
   document.querySelectorAll('a[href="index.html"]').forEach(function(a){a.href='index.html?team='+TEAM_SLUG;});
 }
+initTeamUI();
 </script>
 </body>
 

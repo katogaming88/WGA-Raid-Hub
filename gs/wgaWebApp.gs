@@ -364,6 +364,65 @@ function doGet(e) {
       return jsonpResponse(callback, { success: true, season: season });
     }
 
+    // ── Admin actions ──────────────────────────────────────────────────────
+
+    if (action === 'getAdminProperties') {
+      const history    = JSON.parse(props.getProperty('seasonHistory')    || '[]');
+      const raids      = JSON.parse(props.getProperty('raidProgression')  || '[]');
+      const botSecret  = props.getProperty('BOT_WEBHOOK_SECRET') || '';
+      return jsonpResponse(callback, {
+        seasonName:           props.getProperty('seasonName')          || '',
+        seasonStart:          props.getProperty('seasonStart')         || '',
+        seasonEnd:            props.getProperty('seasonEnd')           || '',
+        seasonHistoryCount:   history.length,
+        raidProgressionCount: raids.length,
+        signupsOpen:          props.getProperty('signupsOpen')         || 'false',
+        bisSubmissionsOpen:   props.getProperty('bisSubmissionsOpen')  || 'false',
+        mPlusExclusionsOpen:  props.getProperty('mPlusExclusionsOpen') || 'false',
+        botUrl:               props.getProperty('BOT_BASE_URL')        || '',
+        botSecretMasked:      botSecret ? '****' + botSecret.slice(-4) : '(not set)',
+      });
+    }
+
+    if (action === 'setBotUrl') {
+      const val = String(e.parameter.value || '').trim();
+      if (val) props.setProperty('BOT_BASE_URL', val);
+      else     props.deleteProperty('BOT_BASE_URL');
+      appendAuditLog('Admin: Bot URL Updated', '', '', val || '(cleared)');
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'setBotSecret') {
+      const val = String(e.parameter.value || '').trim();
+      if (val) props.setProperty('BOT_WEBHOOK_SECRET', val);
+      else     props.deleteProperty('BOT_WEBHOOK_SECRET');
+      appendAuditLog('Admin: Bot Secret Updated', '', '', '(redacted)');
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'dangerClearSeasonHistory') {
+      props.deleteProperty('seasonHistory');
+      cache.remove('rosterCore');
+      appendAuditLog('DANGER: Season History Cleared', '', '', '');
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'dangerClearSheet') {
+      const sheetName = String(e.parameter.sheet || '').trim();
+      const allowed   = ['Loot Data', 'Pasted Loot', 'BiS Responses', 'Roster Responses',
+                         'M+ Exclusion Requests', 'Pending Roster', 'Self Received Requests'];
+      if (!allowed.includes(sheetName)) return jsonpResponse(callback, { error: 'Sheet not permitted' });
+      const ss    = SpreadsheetApp.getActiveSpreadsheet();
+      const sheet = ss.getSheetByName(sheetName);
+      if (!sheet) return jsonpResponse(callback, { error: 'Sheet not found: ' + sheetName });
+      const lastRow = sheet.getLastRow();
+      if (lastRow > 1) sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
+      cache.remove('rosterCore');
+      cache.remove('rosterHeavy');
+      appendAuditLog('DANGER: Sheet Cleared', sheetName, '', '');
+      return jsonpResponse(callback, { success: true });
+    }
+
     if (action === 'submitSignup') {
       const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
       writeSignup(data);

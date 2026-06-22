@@ -21,9 +21,35 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '2.27.0';
+var VERSION = '2.28.0';
 var DATA = null;
 var ACTIVE_SEASON = null; // null = All Seasons; set by officer.js when a season is selected
+
+function switchTeam(slug) {
+  if (!(slug in TEAMS)) return;
+  sessionStorage.setItem('wga_team', slug);
+  location.href = location.pathname;
+}
+
+function initTeamUI() {
+  var suffix = document.title.split(' -- ')[1] || '';
+  document.title = TEAM_NAME + (suffix ? ' -- ' + suffix : '');
+  var nameEl = document.getElementById('headerTeamName');
+  if (nameEl) nameEl.textContent = TEAM_NAME;
+  ['teamSwitcherSelect', 'officerPromptTeamSelect'].forEach(function(id) {
+    var sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = '';
+    Object.keys(TEAMS).forEach(function(slug) {
+      var opt = document.createElement('option');
+      opt.value = slug;
+      opt.textContent = TEAMS[slug].name;
+      if (slug === TEAM_SLUG) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.onchange = function() { switchTeam(this.value); };
+  });
+}
 
 function jsonpRequest(url, callback, timeoutMs) {
   var ms = timeoutMs || 90000;
