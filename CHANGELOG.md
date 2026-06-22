@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.29.0] - 2026-06-22
+
+### Added
+- **Trial promotion improvements.** Closes #145.
+  - Officers can now promote a trial player directly from the promotion alert with a "Promote" button on each row -- no longer need to navigate to the player profile.
+  - Trial period duration and attendance threshold are now configurable in Season Settings and persisted to GAS script properties. Thresholds default to 4 weeks / 75% if not set.
+
+---
+
 ## [2.28.0] - 2026-06-22
 
 ### Added

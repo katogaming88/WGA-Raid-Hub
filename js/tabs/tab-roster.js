@@ -561,6 +561,9 @@ function buildTrialPromoAlert() {
   var el = document.getElementById('trialPromoAlert');
   if (!el) return;
 
+  if (DATA && DATA.trialWeeks  != null) PROMO_THRESHOLDS.weeks  = DATA.trialWeeks;
+  if (DATA && DATA.trialAttend != null) PROMO_THRESHOLDS.attend = DATA.trialAttend;
+
   var minDays   = PROMO_THRESHOLDS.weeks * 7;
   var minAttend = PROMO_THRESHOLDS.attend;
   var today     = new Date();
@@ -585,30 +588,23 @@ function buildTrialPromoAlert() {
 
   ready.sort(function(a, b) { return b.ageDays - a.ageDays; });
 
-  var w = PROMO_THRESHOLDS.weeks;
-  var a = PROMO_THRESHOLDS.attend;
-
   var html = '<div class="trial-promo-card">';
   html += '<div class="trial-promo-header">';
   html += '<span class="trial-promo-title">Trial Promotions</span>';
   html += '<span class="trial-promo-count">'+ready.length+' ready for review</span>';
   html += '</div>';
-  html += '<div class="trial-promo-thresholds">';
-  html += '<span class="trial-promo-thresh-label">Show trials on roster for at least</span>';
-  html += '<input type="number" class="trial-promo-input" id="promoWeeks" value="'+w+'" min="1" max="52" onchange="updatePromoThreshold()">';
-  html += '<span class="trial-promo-thresh-label">wk and</span>';
-  html += '<input type="number" class="trial-promo-input" id="promoAttend" value="'+a+'" min="0" max="100" onchange="updatePromoThreshold()">';
-  html += '<span class="trial-promo-thresh-label">% attendance or above</span>';
-  html += '</div>';
+  html += '<p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 0.75rem;">Thresholds: '+PROMO_THRESHOLDS.weeks+' wk on roster, '+PROMO_THRESHOLDS.attend+'% attendance. Adjust in Season Settings.</p>';
 
-  html += '<table class="trial-promo-table"><thead><tr><th>Player</th><th>On Roster</th><th>Attendance</th></tr></thead><tbody>';
+  html += '<table class="trial-promo-table"><thead><tr><th>Player</th><th>On Roster</th><th>Attendance</th><th></th></tr></thead><tbody>';
   for (var j = 0; j < ready.length; j++) {
     var r         = ready[j];
     var p         = r.p;
     var name      = p.nick || p.firstName;
     var aColor    = attendColor(parseInt(p.attendance));
     var roleColor = p.role==='Tank'?'var(--tank)':p.role==='Heal'?'var(--heal)':p.role==='Ranged'?'var(--ranged)':'var(--melee)';
-    html += '<tr class="trial-promo-row" onclick="officerSelectPlayer(\''+p.firstName+'\')" title="Open player profile">';
+    var nrSafe    = p.nameRealm.replace(/'/g, "\\'");
+    var fnSafe    = p.firstName.replace(/'/g, "\\'");
+    html += '<tr class="trial-promo-row" onclick="officerSelectPlayer(\''+fnSafe+'\')" title="Open player profile">';
     html += '<td><div class="player-name-cell">';
     html += '<div class="mini-avatar" style="background:rgba(0,0,0,0.25);color:'+roleColor+';border:2px solid '+roleColor+';">'+name.slice(0,2).toUpperCase()+'</div>';
     html += '<div style="display:flex;flex-direction:column;gap:0.1rem;">';
@@ -617,6 +613,7 @@ function buildTrialPromoAlert() {
     html += '</div></div></td>';
     html += '<td style="color:var(--gold-light);font-weight:600;">'+r.ageWeeks+' wk</td>';
     html += '<td><span style="color:'+aColor+';font-weight:700;">'+(p.attendance||'-')+'</span></td>';
+    html += '<td><button class="btn btn-gold" style="font-size:0.82rem;padding:0.2rem 0.6rem;white-space:nowrap;" onclick="event.stopPropagation();promoteTrialPlayer(\''+nrSafe+'\',\''+fnSafe+'\')">Promote</button></td>';
     html += '</tr>';
   }
   html += '</tbody></table></div>';
@@ -624,12 +621,23 @@ function buildTrialPromoAlert() {
   el.innerHTML = html;
 }
 
-function updatePromoThreshold() {
-  var w = parseInt(document.getElementById('promoWeeks').value)  || 4;
-  var a = parseInt(document.getElementById('promoAttend').value) || 75;
-  PROMO_THRESHOLDS.weeks  = Math.max(1,  Math.min(52,  w));
-  PROMO_THRESHOLDS.attend = Math.max(0,  Math.min(100, a));
-  buildTrialPromoAlert();
+function promoteTrialPlayer(nameRealm, firstName) {
+  var player = null;
+  var roster = (DATA && DATA.roster) || [];
+  for (var i = 0; i < roster.length; i++) {
+    if (roster[i].nameRealm === nameRealm) { player = roster[i]; break; }
+  }
+  if (!player || !player.isTrial) return;
+
+  jsonpRequest(WEB_APP_URL + '?action=updatePlayerField&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: 'isTrial', value: false })), function(err, result) {
+    if (!err && result && result.success) {
+      player.isTrial = false;
+      buildTrialPromoAlert();
+      buildRosterTable();
+      var trialBtn = document.getElementById('trialToggle-' + firstName);
+      if (trialBtn) { trialBtn.textContent = 'Mark as Trial'; trialBtn.classList.remove('btn-gold'); trialBtn.classList.add('btn-muted'); }
+    }
+  });
 }
 
 initAddPlayerRealmCombobox();

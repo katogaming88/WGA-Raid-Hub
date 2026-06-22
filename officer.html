@@ -486,6 +486,21 @@
                 </div>
               </div>
 
+              <!-- Trial Promotion Thresholds -->
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Trial Promotion Thresholds</h4>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">A trial player appears in the promotion alert once they meet both thresholds.</p>
+                <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <span style="font-size:0.92rem;color:var(--text-muted);">At least</span>
+                  <input type="number" id="trialWeeksInput" class="add-player-input" min="1" max="52" style="max-width:70px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <span style="font-size:0.92rem;color:var(--text-muted);">weeks on roster and</span>
+                  <input type="number" id="trialAttendInput" class="add-player-input" min="0" max="100" style="max-width:70px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <span style="font-size:0.92rem;color:var(--text-muted);">% attendance</span>
+                  <button class="btn btn-gold" id="trialThresholdsSaveBtn" onclick="saveTrialThresholds()">Save</button>
+                  <span id="trialThresholdsStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+              </div>
+
               <!-- Raid Progression -->
               <div class="help-ref-card">
                 <h4 class="help-ref-title">Raid Progression<button class="help-btn" onclick="toggleHelp('help-raid-prog')" title="Show help">?</button></h4>
