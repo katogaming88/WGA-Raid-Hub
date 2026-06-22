@@ -20,7 +20,8 @@ function buildSeasonTab() {
   var trialAttendInput = document.getElementById('trialAttendInput');
   if (trialWeeksInput)  trialWeeksInput.value  = (DATA && DATA.trialWeeks  != null) ? DATA.trialWeeks  : 4;
   if (trialAttendInput) trialAttendInput.value = (DATA && DATA.trialAttend != null) ? DATA.trialAttend : 75;
-  // Reset to Settings subtab; Progression and History load lazily on switch
+  SEASON_RAIDS = JSON.parse(JSON.stringify((DATA && DATA.raidProgression) || []));
+  // Reset to Settings subtab; Progression and History render lazily on switch
   var defaultBtn = document.getElementById('season-subtab-btn-settings');
   switchSeasonSubTab('settings', defaultBtn);
 }
