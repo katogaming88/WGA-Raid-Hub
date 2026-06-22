@@ -20,6 +20,15 @@
   <div class="header-divider"></div>
 </header>
 
+<nav class="site-nav" id="siteNav">
+  <button class="site-nav-item active" id="navHome" onclick="showView('landing')" data-tooltip="Back to the roster overview">Home</button>
+  <button class="site-nav-item" id="navSignup" onclick="showSignupView()" data-tooltip="Apply to join the raid team for next season">Sign Up</button>
+  <div class="site-nav-right">
+    <button class="site-nav-item site-nav-discord" id="navDiscord" disabled data-tooltip="Discord login coming soon -- view your profile and notifications">Login with Discord</button>
+    <a href="officer.html" class="site-nav-item" id="navOfficer" data-tooltip="Officer dashboard -- manage roster, loot, and signups">Officer Access</a>
+  </div>
+</nav>
+
 <div id="loadingMsg" class="state-msg">
   <div class="spinner"></div><br>Loading roster data...
 </div>
@@ -35,8 +44,6 @@
           <option value="">-- Select your character --</option>
         </select>
       </div>
-      <span class="signup-cta" id="signupLink" onclick="showSignupView()" style="display:none;">Sign Up for Next Season</span>
-      <a href="officer.html" class="officer-link">Officer Access</a>
     </div>
     <div id="landingProgression"></div>
     <div id="landingLoot" class="pub-loot"></div>

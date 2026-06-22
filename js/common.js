@@ -5,9 +5,9 @@ var TEAMS = {
     officerPass: 'phoenix2'
   },
   hellfire: {
-    gasUrl: 'https://script.google.com/macros/s/AKfycbwIpnJyZDwWr5MmWIv7iyaDZ0OajPTFePMTYfIy8WG7jhg7pakQTvTVSM3SLihrKxBb/exec', // TODO: fill in after Hellfire Rollers deploys their GAS web app
+    gasUrl: 'https://script.google.com/macros/s/AKfycbwIpnJyZDwWr5MmWIv7iyaDZ0OajPTFePMTYfIy8WG7jhg7pakQTvTVSM3SLihrKxBb/exec',
     name: 'Hellfire Rollers',
-    officerPass: 'hellfire2' // TODO: fill in
+    officerPass: 'hellfire2'
   }
 };
 
@@ -26,7 +26,7 @@ var DATA = null;
 var ACTIVE_SEASON = null; // null = All Seasons; set by officer.js when a season is selected
 
 function jsonpRequest(url, callback, timeoutMs) {
-  var ms     = timeoutMs || 90000;
+  var ms = timeoutMs || 90000;
   var cbName = '_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1e9);
   var timer;
   var done = false;
@@ -39,14 +39,14 @@ function jsonpRequest(url, callback, timeoutMs) {
     callback(err, result);
   }
 
-  window[cbName] = function(result) { finish(null, result); };
+  window[cbName] = function (result) { finish(null, result); };
 
-  timer = setTimeout(function() {
+  timer = setTimeout(function () {
     finish(new Error('Request timed out. GAS may still be processing -- try again in a moment.'), null);
   }, ms);
 
   var script = document.createElement('script');
-  script.onerror = function() { finish(new Error('Request failed. Check your connection.'), null); };
+  script.onerror = function () { finish(new Error('Request failed. Check your connection.'), null); };
   script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cbName;
   document.head.appendChild(script);
 }
