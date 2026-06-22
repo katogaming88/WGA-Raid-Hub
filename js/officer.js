@@ -369,11 +369,15 @@ if (!isOfficerSessionValid()) {
   // Check for a Discord session before showing the password prompt.
   // initDiscordLogin() (discord.js) calls onDiscordSessionRestored() which will call
   // _grantOfficerAccessViaDiscord() if the session is valid and the user is an officer.
-  if (typeof initDiscordLogin === 'function') {
-    initDiscordLogin();
-  } else {
-    showOfficerPrompt();
-  }
+  // Defer by one tick so the inline script callbacks (onDiscordInitNoSession etc.)
+  // defined at the bottom of officer.html are available before initDiscordLogin fires.
+  setTimeout(function() {
+    if (typeof initDiscordLogin === 'function') {
+      initDiscordLogin();
+    } else {
+      showOfficerPrompt();
+    }
+  }, 0);
 } else {
   loadData(
     function() {
