@@ -36,8 +36,9 @@ function initTeamUI() {
   document.title = TEAM_NAME + (suffix ? ' -- ' + suffix : '');
   var nameEl = document.getElementById('headerTeamName');
   if (nameEl) nameEl.textContent = TEAM_NAME;
-  var sel = document.getElementById('teamSwitcherSelect');
-  if (sel) {
+  ['teamSwitcherSelect', 'officerPromptTeamSelect'].forEach(function(id) {
+    var sel = document.getElementById(id);
+    if (!sel) return;
     sel.innerHTML = '';
     Object.keys(TEAMS).forEach(function(slug) {
       var opt = document.createElement('option');
@@ -47,7 +48,7 @@ function initTeamUI() {
       sel.appendChild(opt);
     });
     sel.onchange = function() { switchTeam(this.value); };
-  }
+  });
 }
 
 function jsonpRequest(url, callback, timeoutMs) {
