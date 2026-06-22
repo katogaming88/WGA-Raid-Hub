@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.0.2] - 2026-06-22
+
+### Fixed
+- Discord nav dropdown now anchors below the button instead of floating to the right edge of the screen.
+- Nav dropdown shows a "Claim your character" option when logged in but no character has been claimed yet.
+
+---
+
 ## [3.0.1] - 2026-06-22
 
 ### Fixed

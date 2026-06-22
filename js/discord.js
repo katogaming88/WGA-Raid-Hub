@@ -56,12 +56,19 @@ function renderDiscordNav(session) {
     dd = document.createElement('div');
     dd.id = 'discordNavDropdown';
     dd.className = 'discord-nav-dropdown';
+    var currentSession = getDiscordSession();
+    if (currentSession && !currentSession.nameRealm) {
+      var claimBtn = document.createElement('button');
+      claimBtn.textContent = 'Claim your character';
+      claimBtn.onclick = function () { showDiscordClaimModal(currentSession); };
+      dd.appendChild(claimBtn);
+    }
     var logoutBtn = document.createElement('button');
     logoutBtn.textContent = 'Log out';
     logoutBtn.onclick = discordLogout;
     dd.appendChild(logoutBtn);
-    btn.parentNode.style.position = 'relative';
-    btn.parentNode.appendChild(dd);
+    btn.style.position = 'relative';
+    btn.appendChild(dd);
     document.addEventListener('click', function closeDD() {
       var d = document.getElementById('discordNavDropdown');
       if (d) d.parentNode.removeChild(d);
