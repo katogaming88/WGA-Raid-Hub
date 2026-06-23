@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.3.1] - 2026-06-23
+
+### Changed
+- **Attendance refresh: fewer WCL API calls** -- Two optimizations reduce the number of WCL queries on each pull:
+  1. If `Season Start` is set, the initial report list query is filtered to that date (`startTime` param), so only current-season reports are fetched instead of the last 50 regardless of age.
+  2. Reports whose date is already in the Attendance sheet are skipped for zone + participant fetches entirely (3 queries each -> 0). The current zone ID is stored in script properties after each refresh so cached reports can use it without a round-trip.
+  - Typical re-run savings: a 10-night season with 8 nights already cached goes from ~30 WCL API calls to ~6.
+
+---
+
 ## [3.3.0] - 2026-06-23
 
 ### Added
