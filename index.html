@@ -29,6 +29,26 @@
   </div>
 </nav>
 
+<!-- Officer quick-actions bar (visible only to Discord-authenticated officers) -->
+<div id="officerQuickActions" class="officer-quick-bar" style="display:none">
+  <div class="oqa-row">
+    <span class="oqa-label">Officer</span>
+    <div class="oqa-actions">
+      <button class="btn btn-muted oqa-btn" id="oqaExportBtn" onclick="qaExportString()">Copy Priority Export</button>
+      <button class="btn btn-muted oqa-btn" id="oqaAttendBtn" onclick="qaRefreshAttendance()">Refresh Attendance</button>
+      <button class="btn btn-muted oqa-btn" id="oqaLootBtn" onclick="qaPasteLootToggle()">Paste Loot</button>
+    </div>
+    <span id="oqaStatus" class="oqa-status"></span>
+  </div>
+  <div id="oqaLootPanel" class="oqa-loot-panel" style="display:none">
+    <textarea id="oqaLootPaste" class="prio-export-textarea" placeholder="Paste RCLC JSON here..." style="height:120px;margin-top:0.5rem;"></textarea>
+    <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.5rem;">
+      <button class="btn btn-gold" id="oqaLootImportBtn" onclick="qaSubmitLoot()">Import</button>
+      <span id="oqaLootStatus" style="font-size:0.9rem;"></span>
+    </div>
+  </div>
+</div>
+
 <div id="loadingMsg" class="state-msg">
   <div class="spinner"></div><br>Loading roster data...
 </div>
@@ -85,6 +105,7 @@
 
 <script src="js/common.js"></script>
 <script src="js/discord.js"></script>
+<script src="js/officer-quick-actions.js"></script>
 <script src="js/roster.js"></script>
 <script src="js/signup.js"></script>
 <script>
