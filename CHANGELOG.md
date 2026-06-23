@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.0.7] - 2026-06-22
+
+### Changed
+- Discord login no longer auto-navigates to your character profile on login, session restore, or after claiming a character.
+- A persistent **My Profile** entry now appears in the Discord nav dropdown (when a character is claimed) so you can navigate to your profile on demand.
+
+---
+
 ## [3.0.6] - 2026-06-22
 
 ### Changed
