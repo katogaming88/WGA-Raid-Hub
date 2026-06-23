@@ -667,21 +667,38 @@ function renderDiscordClaims() {
     el.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">No characters have been claimed yet.</p>';
     return;
   }
+  var officerIds = (window.DATA && DATA.officerDiscordIds) ? DATA.officerDiscordIds : [];
+  var adminBtn = document.getElementById('adminNavBtn');
+  var isAdmin = adminBtn && adminBtn.style.display !== 'none';
   var rows = claims.slice().sort(function(a, b) { return a.nameRealm.localeCompare(b.nameRealm); }).map(function(c) {
     var date = c.claimedAt ? new Date(c.claimedAt).toLocaleDateString() : '--';
+    var isOfficer = officerIds.indexOf(c.discordId) !== -1;
+    var roleCell = isOfficer
+      ? '<span style="color:var(--heal)">Officer</span>'
+      : '<span style="color:var(--text-muted)">Raider</span>';
+    var actionCell = '';
+    if (isAdmin) {
+      actionCell = isOfficer
+        ? '<button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="revokeOfficer(' + JSON.stringify(c.discordId) + ',' + JSON.stringify(c.username) + ')">Revoke</button>'
+        : '<button class="btn" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="grantOfficer(' + JSON.stringify(c.discordId) + ',' + JSON.stringify(c.username) + ')">Grant Officer</button>';
+    } else {
+      actionCell = '<button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="removeDiscordClaim(' + JSON.stringify(c.nameRealm) + ')">Remove</button>';
+    }
     return '<tr>'
-      + '<td style="width:30%">' + escHtml(c.username) + '</td>'
-      + '<td style="width:40%">' + escHtml(c.nameRealm) + '</td>'
-      + '<td style="width:20%">' + escHtml(date) + '</td>'
-      + '<td style="width:10%;text-align:right"><button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="removeDiscordClaim(' + JSON.stringify(c.nameRealm) + ')">Remove</button></td>'
+      + '<td style="width:25%">' + escHtml(c.username) + '</td>'
+      + '<td style="width:30%">' + escHtml(c.nameRealm) + '</td>'
+      + '<td style="width:15%">' + escHtml(date) + '</td>'
+      + '<td style="width:15%">' + roleCell + '</td>'
+      + '<td style="width:15%;text-align:right">' + actionCell + '</td>'
       + '</tr>';
   }).join('');
   el.innerHTML = '<table class="loot-table" style="width:100%;table-layout:fixed;">'
     + '<thead><tr>'
-    + '<th style="width:30%">Discord User</th>'
-    + '<th style="width:40%">Character</th>'
-    + '<th style="width:20%">Claimed</th>'
-    + '<th style="width:10%"></th>'
+    + '<th style="width:25%;text-align:left">Discord User</th>'
+    + '<th style="width:30%;text-align:left">Character</th>'
+    + '<th style="width:15%;text-align:left">Claimed</th>'
+    + '<th style="width:15%;text-align:left">Role</th>'
+    + '<th style="width:15%"></th>'
     + '</tr></thead>'
     + '<tbody>' + rows + '</tbody>'
     + '</table>';
