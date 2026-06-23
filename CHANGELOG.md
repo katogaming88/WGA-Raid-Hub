@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.4.1] - 2026-06-23
+
+### Changed
+- **Officer quick-actions: attendance refresh links to dashboard** -- After a successful WCL attendance refresh from the index page quick-actions bar, the status message now includes a "Review in Dashboard" link that opens `officer.html` directly on the Attendance tab.
+- **Officer dashboard: `?tab=` deep-link support** -- `officer.html?tab=attendance` (or any other tab name) now opens the dashboard with that tab active. Uses `openTab()`, a new programmatic helper that finds and clicks the correct sidebar nav button.
+
+---
+
 ## [3.4.0] - 2026-06-23
 
 ### Added
