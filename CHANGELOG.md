@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.1.0] - 2026-06-23
+
+### Added
+- **Signup: Main Swap field** (#181) -- Raiders switching mains can enter their current character (Name-Realm) on the signup form. If Discord-authenticated, the field pre-fills with their claimed character. Officers see the main swap on the signup card (highlighted in gold). On approval, the old character is automatically removed from the Roster sheet and their Discord claim is cleared.
+- **Season archive: Roster snapshot** (#79) -- Archiving a season now captures a read-only snapshot of the roster (name, role, trial/bench status, join date, attendance %). Officers can expand a "View Roster" table for any archived season in the Season History tab.
+
+### Fixed
+- **Duplicate signup guard** (#180) -- Approving a signup for a character already on the Roster sheet now returns a descriptive error to the officer rather than silently creating a duplicate entry.
+
+### Changed
+- **Admin-only visibility** (#157) -- The team switcher dropdown in the nav bar is now hidden for non-admin officers (same gate as the Admin tab).
+
+---
+
 ## [3.0.10] - 2026-06-23
 
 ### Fixed

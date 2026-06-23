@@ -988,6 +988,8 @@ function onDiscordLogout() {
 function showAdminTab(show) {
   var btn = document.getElementById('adminNavBtn');
   if (btn) btn.style.display = show ? '' : 'none';
+  var ts = document.getElementById('teamSwitcherSelect');
+  if (ts) ts.style.display = show ? '' : 'none';
 }
 
 function _grantOfficerAccessViaDiscord(session) {

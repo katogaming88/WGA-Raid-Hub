@@ -88,12 +88,20 @@ function renderSignupStep() {
       '</div>';
 
   } else if (signupStep === 4) {
+    var discordSession = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
+    var mainSwapDefault = signupData.mainSwap !== undefined
+      ? signupData.mainSwap
+      : (discordSession && discordSession.nameRealm ? discordSession.nameRealm : '');
     html =
       '<div class="signup-step-label">Step 4 of 4</div>' +
       '<h2 class="signup-step-title">Additional Information</h2>' +
       '<div class="signup-field">' +
         '<span class="signup-label">Discord Name <span class="signup-optional">(optional -- only if different from your character name)</span></span>' +
         '<input type="text" id="signupDiscord" class="signup-input" placeholder="YourDiscord" value="' + (signupData.discord || '') + '">' +
+      '</div>' +
+      '<div class="signup-field">' +
+        '<span class="signup-label">Main swap <span class="signup-optional">(optional -- enter your current Name-Realm if you are switching mains this season)</span></span>' +
+        '<input type="text" id="signupMainSwap" class="signup-input" placeholder="Katorri-Khaz Modan" value="' + mainSwapDefault + '">' +
       '</div>' +
       '<div class="signup-field">' +
         '<span class="signup-label">Anything else officers should know? <span class="signup-optional">(optional)</span></span>' +
@@ -219,6 +227,7 @@ function signupBack() {
 
 function submitSignup() {
   signupData.discord     = (document.getElementById('signupDiscord').value || '').trim();
+  signupData.mainSwap    = (document.getElementById('signupMainSwap') ? document.getElementById('signupMainSwap').value || '' : '').trim();
   signupData.notes       = (document.getElementById('signupNotes').value || '').trim();
   signupData.submittedAt = new Date().toISOString();
 

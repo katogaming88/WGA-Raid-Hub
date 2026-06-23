@@ -37,18 +37,89 @@ function renderSeasonHistory() {
   for (var i = history.length - 1; i >= 0; i--) {
     var s = history[i];
     var raidCount = s.raids && s.raids.length ? s.raids.length : 0;
-    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:0.45rem 0;border-bottom:1px solid rgba(255,255,255,0.06);gap:0.75rem;flex-wrap:wrap;">';
+    html += '<div style="border-bottom:1px solid rgba(255,255,255,0.06);padding:0.45rem 0 0.6rem;">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;">';
     html += '<div>';
     html += '<strong style="color:var(--text);">' + (s.name || '(unnamed)') + '</strong>';
     html += '<span style="font-size:0.85rem;color:var(--text-muted);margin-left:0.75rem;">' + (s.start || '-') + ' to ' + (s.end || 'ongoing') + '</span>';
     if (raidCount) html += '<span style="font-size:0.82rem;color:var(--text-muted);margin-left:0.5rem;">(' + raidCount + ' raid' + (raidCount !== 1 ? 's' : '') + ')</span>';
     html += '</div>';
+    html += '<div style="display:flex;gap:0.4rem;">';
+    if (s.snapshotKey) {
+      html += '<button class="btn btn-muted" style="font-size:0.8rem;padding:2px 10px;white-space:nowrap;" onclick="toggleSeasonSnapshot(\'' + s.snapshotKey + '\', this)">View Roster</button>';
+    }
     html += '<button class="btn btn-muted" style="font-size:0.8rem;padding:2px 10px;white-space:nowrap;" onclick="confirmUnarchiveSeason(' + i + ')">Unarchive</button>';
+    html += '</div>';
+    html += '</div>';
+    if (s.snapshotKey) {
+      html += '<div id="snapshot-' + s.snapshotKey + '" style="display:none;margin-top:0.5rem;"></div>';
+    }
     html += '</div>';
   }
   list.innerHTML = html;
   var confirmEl = document.getElementById('seasonUnarchiveConfirm');
   if (confirmEl) confirmEl.style.display = 'none';
+}
+
+function toggleSeasonSnapshot(key, btnEl) {
+  var panel = document.getElementById('snapshot-' + key);
+  if (!panel) return;
+  if (panel.style.display !== 'none') {
+    panel.style.display = 'none';
+    btnEl.textContent = 'View Roster';
+    return;
+  }
+  if (panel.dataset.loaded) {
+    panel.style.display = '';
+    btnEl.textContent = 'Hide Roster';
+    return;
+  }
+  btnEl.disabled = true;
+  btnEl.textContent = 'Loading...';
+  jsonpRequest(WEB_APP_URL + '?action=getRosterSnapshot&key=' + encodeURIComponent(key), function(err, result) {
+    btnEl.disabled = false;
+    btnEl.textContent = 'Hide Roster';
+    if (err || !result || result.error) {
+      panel.innerHTML = '<p style="color:var(--melee);font-size:0.88rem;">' + (result && result.error ? result.error : 'Failed to load snapshot.') + '</p>';
+      panel.style.display = '';
+      return;
+    }
+    var players = result.players || [];
+    panel.dataset.loaded = '1';
+    if (!players.length) {
+      panel.innerHTML = '<p style="font-size:0.88rem;color:var(--text-muted);">No roster data captured for this season.</p>';
+      panel.style.display = '';
+      return;
+    }
+    var roleOrder = { Tank: 0, Heal: 1, Melee: 2, Ranged: 3 };
+    players.sort(function(a, b) {
+      var ra = roleOrder[a.role] !== undefined ? roleOrder[a.role] : 9;
+      var rb = roleOrder[b.role] !== undefined ? roleOrder[b.role] : 9;
+      if (ra !== rb) return ra - rb;
+      return a.nameRealm.localeCompare(b.nameRealm);
+    });
+    var html = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin-top:0.25rem;">';
+    html += '<thead><tr style="color:var(--text-muted);text-align:left;border-bottom:1px solid rgba(255,255,255,0.1);">';
+    html += '<th style="padding:0.2rem 0.5rem 0.2rem 0;">Player</th>';
+    html += '<th style="padding:0.2rem 0.5rem;">Role</th>';
+    html += '<th style="padding:0.2rem 0.5rem;">Status</th>';
+    html += '<th style="padding:0.2rem 0.5rem;">Join Date</th>';
+    html += '<th style="padding:0.2rem 0;">Attendance</th>';
+    html += '</tr></thead><tbody>';
+    players.forEach(function(p) {
+      var status = p.isBench ? 'Bench' : p.isTrial ? 'Trial' : 'Roster';
+      html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">';
+      html += '<td style="padding:0.18rem 0.5rem 0.18rem 0;color:var(--text);">' + p.nameRealm + '</td>';
+      html += '<td style="padding:0.18rem 0.5rem;color:var(--text-muted);">' + (p.role || '-') + '</td>';
+      html += '<td style="padding:0.18rem 0.5rem;color:var(--text-muted);">' + status + '</td>';
+      html += '<td style="padding:0.18rem 0.5rem;color:var(--text-muted);">' + (p.joinDate || '-') + '</td>';
+      html += '<td style="padding:0.18rem 0;color:var(--text-muted);">' + (p.attendance || '-') + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    panel.innerHTML = html;
+    panel.style.display = '';
+  });
 }
 
 var _unarchiveIndex = -1;
@@ -147,7 +218,7 @@ function executeArchiveSeason() {
   jsonpRequest(WEB_APP_URL + '?action=archiveSeason', function(err, result) {
     if (btn) btn.disabled = false;
     if (!err && result && result.success) {
-      var archived = { name: DATA.seasonName, start: DATA.seasonStart, end: DATA.seasonEnd || '', raids: JSON.parse(JSON.stringify(DATA.raidProgression || [])) };
+      var archived = { name: DATA.seasonName, start: DATA.seasonStart, end: DATA.seasonEnd || '', raids: JSON.parse(JSON.stringify(DATA.raidProgression || [])), snapshotKey: result.snapshotKey || '' };
       if (!DATA.seasonHistory) DATA.seasonHistory = [];
       DATA.seasonHistory.push(archived);
       DATA.seasonName      = '';
