@@ -151,6 +151,15 @@ function _esc(str) {
   return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// Called by discord.js when a stored session is successfully validated on page load.
+// Checks for the wga_open_profile flag set by officer.html "My Profile" navigation.
+function onDiscordSessionRestored(session) {
+  if (session && session.nameRealm && sessionStorage.getItem('wga_open_profile')) {
+    sessionStorage.removeItem('wga_open_profile');
+    autoOpenClaimedProfile(session.nameRealm);
+  }
+}
+
 // Auto-open the claimed character's profile after Discord login / session restore.
 function autoOpenClaimedProfile(nameRealm) {
   if (!nameRealm || !window.DATA) return;

@@ -62,12 +62,19 @@ function renderDiscordNav(session) {
       profileBtn.textContent = 'My Profile';
       profileBtn.onclick = function () {
         var firstName = currentSession.nameRealm.split('-')[0].trim();
+        var d = document.getElementById('discordNavDropdown');
+        if (d) d.parentNode.removeChild(d);
+        if (!document.getElementById('profileView')) {
+          // On officer.html -- navigate to the public page and auto-open the profile there
+          sessionStorage.setItem('wga_open_profile', '1');
+          var base = window.location.pathname.replace('officer.html', 'index.html');
+          window.location.href = base + (TEAM_SLUG !== 'phoenix' ? '?team=' + TEAM_SLUG : '');
+          return;
+        }
         if (typeof showView === 'function') showView('profile');
         if (typeof renderProfile === 'function') renderProfile(firstName, 'landing');
         var sel = document.getElementById('playerSelect');
         if (sel) sel.value = firstName;
-        var d = document.getElementById('discordNavDropdown');
-        if (d) d.parentNode.removeChild(d);
       };
       dd.appendChild(profileBtn);
     } else if (currentSession && !currentSession.nameRealm) {
