@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.5.1] - 2026-06-23
+
+### Fixed
+- **Discord session lost when switching teams** -- Switching to a different team via the nav dropdown now preserves your Discord login. Previously the per-team session key (`wga_discord_<slug>`) caused the new page to find no stored token, forcing a re-login. The session is now copied to the destination team's key before navigation.
+
+---
+
 ## [3.5.0] - 2026-06-23
 
 ### Changed
