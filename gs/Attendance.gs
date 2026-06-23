@@ -627,3 +627,27 @@ function setAttendanceStatusInSheet(date, firstName, status) {
 
   throw new Error(`Row not found for ${date} / ${firstName}.`);
 }
+
+function setReportExcludedInSheet(date, excluded) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ATTENDANCE_SHEET_NAME);
+  if (!sheet) throw new Error('Attendance sheet not found.');
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) throw new Error('Attendance sheet is empty.');
+
+  const data = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
+
+  for (let i = 0; i < data.length; i++) {
+    const [rawDate, firstName] = data[i];
+    if (firstName) continue; // player rows have a firstName — skip them
+    const dateStr = String(rawDate || '');
+    if (dateStr.startsWith('──') || dateStr === 'Report Title') break;
+    const match = dateStr.match(/\((\d{4}-\d{2}-\d{2})\)/);
+    if (match && match[1] === date) {
+      sheet.getRange(i + 2, 6).setValue(excluded === true);
+      return;
+    }
+  }
+
+  throw new Error('Report not found for date: ' + date);
+}

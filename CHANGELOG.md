@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.3.0] - 2026-06-23
+
+### Added
+- **Attendance: exclude report from web app** -- Each raid night in the Attendance > Manage tab now has an "Exclude Report" / "Remove Exclusion" toggle button. Toggling updates column F of the Attendance sheet directly, immediately reflects in the night selector label (`[EXCLUDED]`), and writes an audit log entry.
+
+---
+
 ## [3.2.0] - 2026-06-23
 
 ### Added
