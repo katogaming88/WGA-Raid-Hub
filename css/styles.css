@@ -42,6 +42,14 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 .discord-nav-dropdown { position:absolute; top:100%; right:0; background:var(--bg-elevated); border:1px solid var(--border-mid); border-radius:4px; min-width:120px; z-index:300; box-shadow:0 4px 12px rgba(0,0,0,0.5); }
 .discord-nav-dropdown button { display:block; width:100%; text-align:left; background:transparent; border:none; color:var(--text-muted); font-family:'Rajdhani',sans-serif; font-size:0.82rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.55rem 1rem; cursor:pointer; }
 .discord-nav-dropdown button:hover { color:var(--text); background:rgba(255,255,255,0.04); }
+/* Officer quick-actions bar */
+.officer-quick-bar { background:var(--bg-elevated); border-bottom:1px solid var(--border); padding:0.45rem 1rem 0.6rem; display:flex; flex-direction:column; gap:0; }
+.oqa-row { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
+.oqa-label { font-family:'Cinzel',serif; font-size:0.72rem; color:var(--gold-dim); letter-spacing:0.15em; text-transform:uppercase; white-space:nowrap; flex-shrink:0; }
+.oqa-actions { display:flex; gap:0.4rem; flex-wrap:wrap; }
+.oqa-btn { font-size:0.78rem !important; padding:0.25rem 0.7rem !important; }
+.oqa-status { font-size:0.82rem; color:var(--text-muted); flex:1; min-width:0; }
+.oqa-loot-panel { padding-top:0.25rem; }
 .team-switcher { font-family:'Rajdhani',sans-serif; font-size:0.82rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.4rem 0.6rem; background:var(--bg-elevated); border:1px solid var(--border-mid); border-radius:3px; color:var(--gold-light); cursor:pointer; align-self:center; margin-right:0.5rem; }
 /* Discord claiming modal */
 .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:200; display:flex; align-items:center; justify-content:center; }

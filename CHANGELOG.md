@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.4.0] - 2026-06-23
+
+### Added
+- **Officer quick-actions bar on the index page** (#99) -- A compact bar appears below the site nav on the public roster page whenever a Discord-authenticated officer is logged in. Three actions are available without navigating to the full officer dashboard:
+  - **Copy Priority Export** -- fetches the current priority export string from the backend and copies it to the clipboard in one click.
+  - **Refresh Attendance** -- triggers a WCL attendance pull with inline progress and result feedback.
+  - **Paste Loot** -- toggles an inline RCLootCouncil JSON paste form with the same chunked import logic as the officer dashboard loot import tab.
+  - The bar shows/hides reactively on Discord login, logout, and session restore.
+
+---
+
 ## [3.3.2] - 2026-06-23
 
 ### Changed
