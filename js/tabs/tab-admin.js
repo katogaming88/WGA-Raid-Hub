@@ -211,14 +211,14 @@ function renderOfficerManagement() {
     return '<tr>'
       + '<td style="width:30%">' + escHtml(c.username) + '</td>'
       + '<td style="width:35%">' + escHtml(c.nameRealm) + '</td>'
-      + '<td style="width:15%;text-align:center">' + (isOfficer ? '<span style="color:var(--heal)">Officer</span>' : '<span style="color:var(--text-muted)">Raider</span>') + '</td>'
+      + '<td style="width:15%">' + (isOfficer ? '<span style="color:var(--heal)">Officer</span>' : '<span style="color:var(--text-muted)">Raider</span>') + '</td>'
       + '<td style="width:20%;text-align:right">' + btn + '</td>'
       + '</tr>';
   }).join('');
 
   var table = rows
     ? '<table class="loot-table" style="width:100%;table-layout:fixed;margin-bottom:1rem;">'
-      + '<thead><tr><th style="width:30%">Discord User</th><th style="width:35%">Character</th><th style="width:15%;text-align:center">Role</th><th style="width:20%"></th></tr></thead>'
+      + '<thead><tr><th style="width:30%;text-align:left">Discord User</th><th style="width:35%;text-align:left">Character</th><th style="width:15%;text-align:left">Role</th><th style="width:20%"></th></tr></thead>'
       + '<tbody>' + rows + '</tbody></table>'
     : '<p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">No claimed characters yet.</p>';
 
@@ -243,6 +243,7 @@ function grantOfficer(discordId, username) {
         if (DATA.officerDiscordIds.indexOf(discordId) === -1) DATA.officerDiscordIds.push(discordId);
       }
       renderOfficerManagement();
+      if (typeof renderDiscordClaims === 'function') renderDiscordClaims();
     }
   );
 }
@@ -257,6 +258,7 @@ function revokeOfficer(discordId, username) {
         DATA.officerDiscordIds = DATA.officerDiscordIds.filter(function(id) { return id !== discordId; });
       }
       renderOfficerManagement();
+      if (typeof renderDiscordClaims === 'function') renderDiscordClaims();
     }
   );
 }

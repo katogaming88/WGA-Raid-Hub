@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.0.8] - 2026-06-23
+
+### Fixed
+- Column headers in the Discord Claims and Officers tables now align with their data cells (headers were center-aligned by browser default while data was left-aligned).
+
+### Added
+- Discord Claims table now shows a Role column (Officer/Raider) for each claimed user.
+- Admins see Grant Officer / Revoke buttons directly in the Discord Claims table; non-admin officers see only the Remove button.
+
+---
+
 ## [3.0.7] - 2026-06-22
 
 ### Changed
