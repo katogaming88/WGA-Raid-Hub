@@ -267,6 +267,19 @@ function doGet(e) {
       }
     }
 
+    if (action === 'setReportExcluded') {
+      const date     = String(e.parameter.date     || '').trim();
+      const excluded = e.parameter.excluded === 'true';
+      if (!date) return jsonpResponse(callback, { success: false, error: 'Missing date' });
+      try {
+        setReportExcludedInSheet(date, excluded);
+        appendAuditLog(excluded ? 'Report Excluded' : 'Report Exclusion Removed', date, '', '');
+        return jsonpResponse(callback, { success: true });
+      } catch (err) {
+        return jsonpResponse(callback, { success: false, error: err.message });
+      }
+    }
+
     if (action === 'setSeasonStart') {
       const val = String(e.parameter.value || '').trim();
       props.setProperty('seasonStart', val);

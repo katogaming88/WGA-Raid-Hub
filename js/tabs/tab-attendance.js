@@ -157,6 +157,8 @@ function renderNightGrid(index) {
   var html = '<div class="attend-grid-info">';
   html += '<span style="color:var(--text-muted);">' + raid.players.length + ' player' + (raid.players.length !== 1 ? 's' : '') + '</span>';
   if (raid.excluded) html += '<span style="color:var(--melee);margin-left:0.75rem;">Excluded from scoring</span>';
+  html += '<button id="excludeReportBtn" class="btn btn-muted" style="margin-left:auto;font-size:0.85rem;padding:0.2rem 0.65rem;" onclick="toggleReportExcluded(' + index + ')">'
+        + (raid.excluded ? 'Remove Exclusion' : 'Exclude Report') + '</button>';
   html += '</div>';
   html += '<div class="attend-grid-rows">';
 
@@ -223,6 +225,31 @@ function setPlayerStatus(selectEl) {
         indicator.style.color = 'var(--melee)';
         setTimeout(function() { if (indicator) indicator.textContent = ''; }, 3000);
       }
+    }
+  });
+}
+
+function toggleReportExcluded(index) {
+  if (!Array.isArray(_attendanceGrid) || !_attendanceGrid[index]) return;
+  var raid = _attendanceGrid[index];
+  var btn  = document.getElementById('excludeReportBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+  var newExcluded = !raid.excluded;
+  jsonpRequest(WEB_APP_URL + '?action=setReportExcluded&date=' + encodeURIComponent(raid.date) + '&excluded=' + newExcluded, function(err, result) {
+    if (!err && result && result.success) {
+      raid.excluded = newExcluded;
+      // Update dropdown label
+      var nightSelect = document.getElementById('attendNightSelect');
+      if (nightSelect && nightSelect.options[index]) {
+        var baseTitle = raid.title.replace(/ \[EXCLUDED\]$/, '');
+        nightSelect.options[index].textContent = baseTitle + (newExcluded ? ' [EXCLUDED]' : '');
+      }
+      renderNightGrid(index);
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = newExcluded ? 'Exclude Report' : 'Remove Exclusion'; }
+      var errMsg = err ? err.message : (result && result.error ? result.error : 'Error saving.');
+      alert('Failed to update report exclusion: ' + errMsg);
     }
   });
 }
