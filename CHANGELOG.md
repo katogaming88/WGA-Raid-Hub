@@ -9,9 +9,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [3.3.1] - 2026-06-23
 
 ### Changed
-- **Attendance refresh: fewer WCL API calls** -- Two optimizations reduce the number of WCL queries on each pull:
+- **Attendance refresh: fewer WCL API calls** -- Three optimizations reduce the number of WCL queries on each pull:
   1. If `Season Start` is set, the initial report list query is filtered to that date (`startTime` param), so only current-season reports are fetched instead of the last 50 regardless of age.
-  2. Reports whose date is already in the Attendance sheet are skipped for zone + participant fetches entirely (3 queries each -> 0). The current zone ID is stored in script properties after each refresh so cached reports can use it without a round-trip.
+  2. Reports whose date is already in the Attendance sheet skip zone + participant fetches entirely when either raid progression zone IDs are configured or a season start date is set (3 queries -> 0). When neither is set, only participant fetches are skipped (3 -> 1).
+  3. Zone filtering now uses the zone IDs from the configured Raid Progression rather than heuristically detecting the "current" zone from the most recent report. This correctly handles mid-season tier additions (e.g. Sporefall in 12.0.7) -- any zone listed in the season's raid progression is treated as valid. Falls back to the previous heuristic if no progression is configured.
   - Typical re-run savings: a 10-night season with 8 nights already cached goes from ~30 WCL API calls to ~6.
 
 ---
