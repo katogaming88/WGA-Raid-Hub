@@ -486,8 +486,12 @@ function readExistingAttendance(sheet) {
       if (excludeFlag === true) entries[`__exclude__|${date}`] = true;
       continue;
     }
-    if (status) {
-      entries[`${date}|${firstName}`] = { status: String(status), source: String(source || 'WCL') };
+    // Only preserve officer-set or WCL-sourced statuses. Auto-generated entries
+    // (source starts with "Auto") are re-evaluated on each refresh so stale values
+    // from a previous run never block the bench-detection logic.
+    const src = String(source || '');
+    if (status && !src.startsWith('Auto')) {
+      entries[`${date}|${firstName}`] = { status: String(status), source: src || 'WCL' };
     }
   }
   return entries;
