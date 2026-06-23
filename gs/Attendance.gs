@@ -255,7 +255,6 @@ function writeAttendanceToSheet(mainNights, excluded, rosterData) {
   const existingEntries = readExistingAttendance(sheet);
 
   const rosterNames = rosterData.map(r => r.firstName);
-  const benchSet    = new Set(rosterData.filter(r => r.isBench).map(r => r.firstName.toLowerCase()));
 
   const mainRows         = [
     ['Raid Date', 'Player (First Name)', 'Status', 'Source', 'Notes', 'Exclude Report'],
@@ -289,15 +288,11 @@ function writeAttendanceToSheet(mainNights, excluded, rosterData) {
       if (inWCL) continue;
       const key           = `${date}|${firstName}`;
       const officerEntry = existingEntries[key];
+      playerRows.add(mainRows.length + 1);
       if (officerEntry) {
-        playerRows.add(mainRows.length + 1);
         mainRows.push([date, firstName, officerEntry.status, officerEntry.source || 'Officer', '', '']);
-      } else if (benchSet.has(firstName.toLowerCase())) {
-        playerRows.add(mainRows.length + 1);
-        mainRows.push([date, firstName, 'Bench', 'Auto (Bench)', '', '']);
       } else {
-        playerRows.add(mainRows.length + 1);
-        mainRows.push([date, firstName, '', 'Officer', '', '']);
+        mainRows.push([date, firstName, 'Bench', 'Auto', '', '']);
       }
     }
   }
