@@ -4,6 +4,18 @@ Items marked `[ ]` are planned. See [Shipped](#shipped) at the bottom for comple
 
 ---
 
+## Stress Test
+
+End-to-end smoke tests to be run before launch or after a major rollout. These validate real-data paths that can't be exercised in dev.
+
+- [ ] Season rollover end-to-end -- archive season, verify roster snapshot, new season settings, progression resets (#127)
+- [ ] Raid progression archives correctly with season rollover (#131)
+- [ ] Repopulate Item Lookup sheet for new season -- follow issue #132 guide and verify autocomplete, slot data, and boss filters load correctly (#134)
+- [ ] Champion (Normal) loot tier priority scoring -- verify correct tier weighting once real Normal loot exists (#148)
+- [ ] Verify unarchive season on a test sheet -- confirm data is restored cleanly without corrupting active season (#155)
+
+---
+
 ## Phase 4: Stability & Officer Tooling
 
 Performance fixes and officer dashboard completions.
