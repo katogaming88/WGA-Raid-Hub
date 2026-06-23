@@ -57,7 +57,20 @@ function renderDiscordNav(session) {
     dd.id = 'discordNavDropdown';
     dd.className = 'discord-nav-dropdown';
     var currentSession = getDiscordSession();
-    if (currentSession && !currentSession.nameRealm) {
+    if (currentSession && currentSession.nameRealm) {
+      var profileBtn = document.createElement('button');
+      profileBtn.textContent = 'My Profile';
+      profileBtn.onclick = function () {
+        var firstName = currentSession.nameRealm.split('-')[0].trim();
+        if (typeof showView === 'function') showView('profile');
+        if (typeof renderProfile === 'function') renderProfile(firstName, 'landing');
+        var sel = document.getElementById('playerSelect');
+        if (sel) sel.value = firstName;
+        var d = document.getElementById('discordNavDropdown');
+        if (d) d.parentNode.removeChild(d);
+      };
+      dd.appendChild(profileBtn);
+    } else if (currentSession && !currentSession.nameRealm) {
       var claimBtn = document.createElement('button');
       claimBtn.textContent = 'Claim your character';
       claimBtn.onclick = function () { showDiscordClaimModal(currentSession); };
@@ -127,9 +140,6 @@ function handleDiscordAuthResult(result) {
   if (!result.nameRealm) {
     // First login -- no character claimed yet, show the claiming modal
     showDiscordClaimModal(result);
-  } else {
-    // Returning login -- auto-open the player's own profile
-    if (typeof autoOpenClaimedProfile === 'function') autoOpenClaimedProfile(result.nameRealm);
   }
 }
 
@@ -167,9 +177,6 @@ function initDiscordLogin() {
     setDiscordSession(updated);
     renderDiscordNav(updated);
     if (typeof onDiscordSessionRestored === 'function') onDiscordSessionRestored(updated);
-    if (updated.nameRealm && typeof autoOpenClaimedProfile === 'function') {
-      autoOpenClaimedProfile(updated.nameRealm);
-    }
   }, 15000);
 }
 
@@ -229,7 +236,6 @@ function submitCharacterClaim() {
       renderDiscordNav(updated);
       closeDiscordClaimModal();
       if (typeof onDiscordClaimComplete === 'function') onDiscordClaimComplete(updated);
-      if (result.nameRealm && typeof autoOpenClaimedProfile === 'function') autoOpenClaimedProfile(result.nameRealm);
     },
     15000
   );
