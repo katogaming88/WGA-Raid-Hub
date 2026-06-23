@@ -53,7 +53,19 @@ Testers access the test environment by appending `?team=test` to the URL:
 
 Production teams are unaffected.
 
-### 5. Discord OAuth on localhost
+### 5. Add dummy entries for Hellfire testers
+
+The test sheet is a copy of the Phoenix roster. Hellfire testers won't have a character on it and need their own slot to claim — once a character is claimed, no one else can claim it.
+
+Before the test, collect the list of Hellfire testers and add one dummy row per person to the test sheet's **Roster tab**:
+
+- **Name-Realm**: something recognisable, e.g. `HFTester-Stormrage`, `HFTester2-Stormrage`
+- **Role**: any (e.g. `Melee`)
+- **Class/Spec**: any
+
+Let each Hellfire tester know which dummy name is theirs before the session starts. Phoenix testers claim their real character as normal.
+
+### 6. Discord OAuth on localhost
 
 Discord OAuth is automatically disabled on `localhost` / `127.0.0.1` -- the login popup is skipped and no session is attempted. This means:
 
