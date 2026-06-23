@@ -6,7 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [3.1.0] - 2026-06-23
+## [3.0.10] - 2026-06-23
 
 ### Fixed
 - "My Profile" in the Discord nav dropdown now works on the officer dashboard. Clicking it navigates to the public roster page and automatically opens your character profile there.
