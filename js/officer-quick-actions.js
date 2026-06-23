@@ -172,3 +172,7 @@ function _qaLootChunks(season, rows, offset, written, skipped, statusEl, onDone,
     }
   );
 }
+
+// Eagerly show the bar from the cached session without waiting for JSONP validation.
+// onDiscordSessionRestored / onDiscordLogout will correct it once validation completes.
+_qaRender();

@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.4.2] - 2026-06-23
+
+### Fixed
+- **Officer quick-actions bar disappears on hard refresh** -- The bar now renders immediately from the cached Discord session in localStorage instead of waiting for the async token-validation JSONP call to complete. The validation callback still corrects the bar if the token has since been invalidated.
+
+---
+
 ## [3.4.1] - 2026-06-23
 
 ### Changed
