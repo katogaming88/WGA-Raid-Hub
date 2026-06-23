@@ -1,6 +1,8 @@
-# Phoenix Roster
+# WGA Raid Hub
 
-A live web app for Team Phoenix -- a full raid hub giving raiders a personal profile and officers a complete management dashboard, all driven by the Phoenix Loot Priority Google Sheet.
+A live web app for We Go Again raid teams -- a full raid hub giving raiders a personal profile and officers a complete management dashboard, all driven by a Google Sheet backend.
+
+Supports multiple teams (Team Phoenix and Hellfire Rollers) from a single codebase. Append `?team=hellfire` to any URL to switch teams.
 
 ---
 
@@ -12,6 +14,7 @@ A live web app for Team Phoenix -- a full raid hub giving raiders a personal pro
 - Stats row showing current Raiders count and total items distributed this tier
 - Recent Loot feed showing the last 10 items distributed across the roster
 - Raid Progression tracker showing all raids for the current season as cards with kill counts, boss lists, first-kill dates, and AOTC badge
+- Discord login button -- sign in with Discord to claim your character and access personalised features
 
 ### Raider profile (public, no login)
 
@@ -19,7 +22,15 @@ A live web app for Team Phoenix -- a full raid hub giving raiders a personal pro
 - **Items Received** -- total items received this tier, expandable to show the full list with slot and difficulty
 - **BiS List** -- link to the player's submitted BiS list; submit or update directly from the profile
 - **Loot Priority** -- every BiS item with the player's current priority rank, slot, and source
-- **Self-mark received** -- submit items received outside of raid (M+, Great Vault, Crafted, Catalyst, World Drop) for officer approval
+- **Self-mark received** -- submit items received outside of raid (M+, Great Vault, Crafted, Catalyst, Bonus Roll) for officer approval; Discord-authenticated raiders are auto-approved
+
+### Discord login (raiders and officers)
+
+Officers and raiders sign in via Discord OAuth popup. On first login, raiders claim their character from the roster. Subsequent visits restore the session automatically.
+
+- **My Profile** -- nav dropdown shortcut to your claimed character's profile page
+- **Officers** -- Discord-authenticated officers bypass the password prompt
+- **Admins** -- a separate admin Discord ID list controls access to the Admin tab
 
 ### Season signup (public)
 
@@ -27,11 +38,11 @@ Multi-step signup form accessible from the landing page. Officers can open or cl
 
 ### Officer dashboard (`officer.html`)
 
-Officers enter a password on page load (session lasts 2 hours). The dashboard has 11 tabs with a global season selector to filter loot, fairness, and attendance to a specific season:
+Accessible via Discord OAuth (primary) or password fallback (session lasts 2 hours). The dashboard has a global season selector to filter loot, fairness, and attendance to a specific season.
 
 | Tab | Sub-tabs | What it shows |
 |-----|----------|--------------|
-| **Roster** | -- | Full player table with attendance, items, BiS status, trial/bench tags. Filter by role, attendance, BiS, or trial/bench. Sort by name, attendance, or items. Click a player to expand their full profile inline with edit controls. |
+| **Roster** | Roster / Discord Claims | Roster: full player table with attendance, items, BiS status, trial/bench tags. Filter by role, attendance, BiS, or trial/bench. Sort by name, attendance, or items. Click a player to expand their full profile inline with edit controls. Discord Claims: all claimed Discord-to-character mappings; officers can remove claims; admins can grant or revoke officer access per user. |
 | **Loot** | Import / Import History / Contested Items / Loot Fairness | Import: paste RCLootCouncil JSON to write loot to the sheet. Import History: view previously imported batches. Contested Items: every raid item sorted by how many players have it on their BiS, with each player's priority rank. Loot Fairness: bar chart of items received per player, filterable by Heroic or Mythic. |
 | **Priority** | Priority List / Unmanaged Items | RCLootCouncil export string generator (generate and copy to clipboard). Priority List: full priority order per item, filterable by boss and searchable; each item has a Priority Generator button to auto-rank players by blended score with an editable, saveable order. Unmanaged Items: BiS items with no priority order yet assigned, with badge count. |
 | **BiS Manager** | Submissions / BiS Lists | Submissions: open/close BiS submissions globally or per player; approve or reject submitted links (approving writes the URL to the Roster sheet). BiS Lists: role-grouped player table; Edit opens an inline item editor with the player's current BiS items, BiS source link, and armor-type-filtered item search/autocomplete. |
@@ -41,6 +52,7 @@ Officers enter a password on page load (session lasts 2 hours). The dashboard ha
 | **Received Item Requests** | -- | Approve or reject raider self-mark requests. Approving writes the item to their loot history. Officers can also mark items received directly from the Roster tab player card. |
 | **Season Settings** | -- | Season Start Date (attendance window start), Season Name (applied to imported loot), Season End Date (optional close date), Raid Progression (boss kill dates shown publicly), Archive Season (pushes season to history and resets settings), Season History (list of past seasons). |
 | **Audit Log** | -- | Append-only log of every officer action -- player changes, approvals, loot marks, status changes -- with timestamp, actor, action, target, and old/new values. Live search filter. |
+| **Admin** | Properties / Bot Config / Data Export / Officers / Danger Zone | Visible to admins only (Discord login) or password login. Officers subtab: grant/revoke officer dashboard access per Discord user. Properties: manage GAS script properties. |
 | **Help** | -- | Officer workflow reference guide covering common tasks. |
 
 Officer controls on the Roster tab (player card):
@@ -60,14 +72,16 @@ Officer controls on the Roster tab (player card):
 |------|---------|
 | `index.html` | Public page -- landing, raider profiles, season signup |
 | `officer.html` | Officer dashboard -- all management tabs |
-| `js/common.js` | Shared globals, `WEB_APP_URL`, `VERSION`, data helpers, `renderProfile` |
+| `discord-callback.html` | Discord OAuth relay page -- receives the OAuth code and passes it back to the opener via postMessage |
+| `js/common.js` | Shared globals, `TEAMS`, `VERSION`, data helpers, `renderProfile` |
+| `js/discord.js` | Discord OAuth session management, popup flow, nav rendering |
 | `js/roster.js` | Public page boot, dropdown, stats row, recent loot |
 | `js/signup.js` | Multi-step signup form logic |
-| `js/officer.js` | Officer boot, password gate, session expiry, tab dispatch |
-| `js/tabs/tab-*.js` | One file per officer tab (14 files) |
+| `js/officer.js` | Officer boot, auth gate, session expiry, tab dispatch |
+| `js/tabs/tab-*.js` | One file per officer tab (15 files) |
 | `css/styles.css` | All styles |
-| `css/officer.css` | Stub for officer-specific styles (future split) |
-| `gs/PhoenixRosterWebApp.gs` | Apps Script -- reads the sheet and serves data as JSON (web app endpoint) |
+| `css/officer.css` | Officer-specific styles |
+| `gs/wgaWebApp.gs` | Apps Script -- reads the sheet and serves data as JSON (web app endpoint); handles Discord OAuth token exchange, session management, character claims, and officer/admin checks |
 | `gs/Config.gs` | Shared constants -- sheet names, column indices, WCL credentials |
 | `gs/Menu.gs` | Spreadsheet menu definitions (`onOpen`) |
 | `gs/Export.gs` | RCLootCouncil priority export -- builds and base64-encodes the import string |
@@ -85,9 +99,10 @@ Officer controls on the Roster tab (player card):
 ## How it works
 
 1. The **Google Sheet** is the source of truth -- officers update the Roster, BiS List, Priority Order, Scoring, and Loot Data tabs as normal
-2. The **Apps Script** (`PhoenixRosterWebApp.gs`) reads those tabs and returns a JSON payload via JSONP when either page loads
+2. The **Apps Script** (`wgaWebApp.gs`) reads those tabs and returns a JSON payload via JSONP when either page loads; it also handles Discord OAuth token exchange, session storage, and character claims
 3. `index.html` and `officer.html` fetch that payload on load and render all views dynamically -- no page reloads
 4. Both pages are hosted on **GitHub Pages** at the repo root
+5. The **TEAMS object** in `js/common.js` maps each team slug to its own GAS deployment URL and officer password; append `?team=hellfire` to switch teams
 
 Data is split into two cached payloads: core (roster, settings -- 5 min cache) and heavy (BiS lists, item data, loot counts, attendance -- 15 min cache). Use **Clear Cache** in the officer dashboard toolbar to force a refresh after sheet changes.
 
@@ -95,22 +110,43 @@ Data is split into two cached payloads: core (roster, settings -- 5 min cache) a
 
 ## Setup
 
-### 1. Google Apps Script (one time)
+### 1. Google Apps Script (one time per team)
 
 1. Open the Google Sheet -- **Extensions > Apps Script**
 2. Create a script file for each `.gs` file in the `gs/` folder and paste in the contents
 3. **Deploy > New Deployment** -- Type: Web App, Execute as: Me, Access: Anyone
-4. Copy the Web App URL (`https://script.google.com/macros/s/.../exec`)
-5. Open `js/common.js` and paste the URL into `var WEB_APP_URL = '...'`
-6. Open `js/officer.js` and set `var OFFICER_PASS = '...'` to your officer password
+4. Copy the Web App URL and paste it into the relevant `gasUrl` entry in `js/common.js` under `var TEAMS = { ... }`
 
-### 2. GitHub Pages (one time)
+### 2. Discord OAuth (one time)
+
+1. Create a Discord app at [discord.com/developers](https://discord.com/developers/applications)
+2. Under **OAuth2**, add redirect URI: `https://yourusername.github.io/repo-name/discord-callback.html`
+3. Enable the `identify` scope
+4. Copy the **Client ID** (public) and **Client Secret** (keep private)
+5. In each team's Apps Script, go to **Project Settings > Script Properties** and add:
+   - `DISCORD_CLIENT_ID` -- your Discord app client ID
+   - `DISCORD_CLIENT_SECRET` -- your Discord app client secret
+6. Replace `DISCORD_CLIENT_ID` in `js/discord.js` with your client ID
+7. Replace `DISCORD_REDIRECT_URI` in `js/discord.js` with your actual callback URL
+
+### 3. Officer and admin access
+
+Officer and admin access is controlled by GAS Script Properties (set per team deployment):
+
+| Property | Format | Effect |
+|----------|--------|--------|
+| `officerDiscordIds` | Comma-separated Discord user IDs | These users can access the officer dashboard via Discord login |
+| `adminDiscordIds` | Comma-separated Discord user IDs | These users also see the Admin tab |
+
+Discord user IDs can be found by enabling Developer Mode in Discord and right-clicking a user.
+
+### 4. GitHub Pages (one time)
 
 1. Push all files to your GitHub repo
 2. **Settings > Pages > Deploy from branch > main / root**
 3. Your public URL will be `https://yourusername.github.io/repo-name`
 
-### 3. Roster tab columns
+### 5. Roster tab columns
 
 | Col | Header |
 |-----|--------|
@@ -129,7 +165,7 @@ Data is split into two cached payloads: core (roster, settings -- 5 min cache) a
 
 Paste the formula from `AttendanceFormula.txt` into **C4** and drag down. Format column C as custom number format `0"%"`.
 
-### 4. Item Lookup tab columns
+### 6. Item Lookup tab columns
 
 | Col | Header |
 |-----|--------|
@@ -151,6 +187,9 @@ See issue #132 for the full workflow for populating this sheet from Wowhead each
 | Player leaves | Use Remove Player in the Roster tab |
 | Role / trial / bench / class / spec / join date change | Edit inline from the player card on the Roster tab |
 | Rename a player | Use Rename in the player card on the Roster tab |
+| Grant officer access | Roster > Discord Claims > Grant Officer (admin only), or Admin > Officers |
+| Revoke officer access | Roster > Discord Claims > Revoke (admin only), or Admin > Officers |
+| Remove a Discord claim | Roster > Discord Claims > Remove |
 | BiS link submitted | Approve from BiS Manager > Submissions (writes to sheet automatically) |
 | Edit a player's BiS items directly | BiS Manager > BiS Lists > Edit |
 | Loot imported | Loot > Import -- paste RCLootCouncil JSON; entries are tagged with the current season name |
@@ -164,7 +203,7 @@ See issue #132 for the full workflow for populating this sheet from Wowhead each
 
 ## Redeploying the Apps Script
 
-Only needed when `PhoenixRosterWebApp.gs` itself changes -- not for sheet data changes.
+Only needed when `wgaWebApp.gs` or any `.gs` file changes -- not for sheet data changes.
 
 1. Apps Script > **Deploy > Manage Deployments**
 2. Click the pencil icon on the existing deployment
@@ -184,6 +223,7 @@ Only needed when `PhoenixRosterWebApp.gs` itself changes -- not for sheet data c
 | Loot Data | All loot awarded this tier (IMPORTRANGE source) |
 | Pasted Loot | RCLC loot imported via the officer dashboard |
 | Attendance | Per-night attendance statuses for scoring and penalty date tracking |
+| Discord Claims | Discord ID to Name-Realm mappings from OAuth login |
 | Roster Responses | Season signup submissions |
 | Self Received Requests | Raider-submitted received item requests |
 | BiS Responses | BiS list link submissions |
@@ -192,7 +232,9 @@ Only needed when `PhoenixRosterWebApp.gs` itself changes -- not for sheet data c
 
 ---
 
-## Passwords and sessions
+## Auth and sessions
 
-- **Officer password** -- set in `js/officer.js` as `var OFFICER_PASS = '...'`. Sessions last 2 hours; revisiting `officer.html` after expiry re-prompts.
-- **Raider access** -- no login. The page URL shared via Discord is the only gate.
+- **Discord OAuth** -- primary auth method for both raiders and officers. Sessions are stored in `localStorage` per team and validated against GAS on each page load. Sessions expire after 30 days.
+- **Officer password** -- fallback method. Set per team in the `TEAMS` object in `js/common.js`. Sessions last 2 hours.
+- **Officer access** -- controlled by `officerDiscordIds` GAS Script Property (comma-separated Discord IDs). Takes effect immediately without requiring users to re-login.
+- **Admin access** -- controlled by `adminDiscordIds` GAS Script Property. Admins see the Admin tab; password login always shows Admin.
