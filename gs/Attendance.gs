@@ -3,7 +3,6 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 const ROSTER_PLAYER_DATA_START = 4;
-const BENCH_SORT_KEY_PREFIX    = 6;
 
 const ATTENDANCE_SHEET_NAME  = 'Attendance';
 const ATTENDANCE_COL         = 4;
@@ -496,31 +495,13 @@ function readExistingAttendance(sheet) {
 function getRosterData() {
   const ss           = SpreadsheetApp.getActiveSpreadsheet();
   const scoringSheet = ss.getSheetByName(SCORING_SHEET_NAME);
-  const rosterSheet  = ss.getSheetByName(ROSTER_SHEET_NAME);
-
-  const benchSet = new Set();
-  if (rosterSheet) {
-    const lastRow = rosterSheet.getLastRow();
-    if (lastRow >= ROSTER_PLAYER_DATA_START) {
-      const rosterData = rosterSheet.getRange(ROSTER_PLAYER_DATA_START, ROSTER_PLAYER_COL, lastRow - ROSTER_PLAYER_DATA_START + 1, ROSTER_SORT_KEY_COL - ROSTER_PLAYER_COL + 1).getValues();
-      for (const row of rosterData) {
-        const fullName = row[0];
-        const sortKey  = row[ROSTER_SORT_KEY_COL - ROSTER_PLAYER_COL];
-        if (!fullName) continue;
-        if (Math.floor(Number(sortKey) / 1000) === BENCH_SORT_KEY_PREFIX) {
-          benchSet.add(fullName.toString().split('-')[0].toLowerCase());
-        }
-      }
-    }
-  }
-  Logger.log(`Bench players: ${[...benchSet].join(', ')}`);
 
   const roster = [];
   for (let row = PLAYER_DATA_START; row <= PLAYER_DATA_END; row++) {
     const cellValue = scoringSheet.getRange(row, PLAYER_COL).getValue();
     if (!cellValue || String(cellValue).trim() === '') continue;
     const firstName = cellValue.toString().split('-')[0];
-    roster.push({ firstName, isBench: benchSet.has(firstName.toLowerCase()) });
+    roster.push({ firstName });
   }
   return roster;
 }
