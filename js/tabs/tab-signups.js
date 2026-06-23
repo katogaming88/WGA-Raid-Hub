@@ -80,9 +80,10 @@ function renderSignupResponses(signups) {
         s.className + ' &middot; ' + s.mainSpec +
         (s.offSpecs ? '<span style="color:var(--text-muted);font-weight:400;"> / ' + s.offSpecs + '</span>' : '') +
       '</div>';
-    if (s.role)    html += '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Role: <span style="color:var(--text);">' + s.role + '</span></div>';
-    if (s.discord) html += '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Discord: <span style="color:var(--text);">' + s.discord + '</span></div>';
-    if (s.notes)   html += '<div style="font-size:0.97rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' + s.notes + '</div>';
+    if (s.role)     html += '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Role: <span style="color:var(--text);">' + s.role + '</span></div>';
+    if (s.discord)  html += '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Discord: <span style="color:var(--text);">' + s.discord + '</span></div>';
+    if (s.mainSwap) html += '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Main swap: <span style="color:var(--gold-light);font-weight:600;">' + s.mainSwap + '</span></div>';
+    if (s.notes)    html += '<div style="font-size:0.97rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' + s.notes + '</div>';
     html += actionBtns + '</div>';
   });
 
@@ -113,6 +114,17 @@ function approveSignupRow(rowIndex, btnEl) {
     if (err || (result && result.error)) {
       btnEl.disabled = false; btnEl.textContent = 'Approve';
       if (denyBtn) denyBtn.disabled = false;
+      var card = btnEl.closest('.signup-response-card');
+      if (card) {
+        var existing = card.querySelector('.signup-action-error');
+        if (!existing) {
+          existing = document.createElement('p');
+          existing.className = 'signup-action-error';
+          existing.style.cssText = 'color:var(--melee);font-size:0.88rem;margin:0.4rem 0 0;';
+          btnEl.parentNode.insertBefore(existing, btnEl.parentNode.firstChild);
+        }
+        existing.textContent = (result && result.error) ? result.error : (err ? err.message : 'Approval failed.');
+      }
       return;
     }
     var card = document.querySelector('.signup-response-card[data-row="' + rowIndex + '"]');

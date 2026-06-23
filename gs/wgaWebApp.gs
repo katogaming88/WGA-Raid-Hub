@@ -343,17 +343,36 @@ function doGet(e) {
       const seasonEnd       = props.getProperty('seasonEnd')       || '';
       const raidProgression = JSON.parse(props.getProperty('raidProgression') || '[]');
       const history         = JSON.parse(props.getProperty('seasonHistory') || '[]');
-      history.push({ name: seasonName, start: seasonStart, end: seasonEnd, raids: raidProgression });
+
+      // Capture a read-only roster snapshot before clearing the season
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const sheets = {};
+      for (const sheet of ss.getSheets()) { sheets[sheet.getName()] = sheet; }
+      const rosterPlayers = getRoster(sheets, seasonStart);
+      const snapshot = rosterPlayers.map(function(p) {
+        return {
+          nameRealm:  p.nameRealm,
+          role:       p.role,
+          isTrial:    p.isTrial,
+          isBench:    p.isBench,
+          joinDate:   p.joinDate,
+          attendance: p.attendance
+        };
+      });
+      const snapshotKey = 'rosterSnapshot_' + Date.now();
+      props.setProperty(snapshotKey, JSON.stringify(snapshot));
+
+      history.push({ name: seasonName, start: seasonStart, end: seasonEnd, raids: raidProgression, snapshotKey: snapshotKey });
       props.setProperty('seasonHistory', JSON.stringify(history));
       props.deleteProperty('seasonName');
       props.deleteProperty('seasonStart');
       props.deleteProperty('seasonEnd');
       props.deleteProperty('raidProgression');
-      clearBisListSheet(SpreadsheetApp.getActiveSpreadsheet());
+      clearBisListSheet(ss);
       cache.remove('rosterCore');
       cache.remove('rosterHeavy');
       appendAuditLog('Season Archived', '', '', seasonName);
-      return jsonpResponse(callback, { success: true });
+      return jsonpResponse(callback, { success: true, snapshotKey: snapshotKey });
     }
 
     if (action === 'unarchiveSeason') {
@@ -372,6 +391,18 @@ function doGet(e) {
       cache.remove('rosterHeavy');
       appendAuditLog('Season Unarchived', '', '', season.name || '');
       return jsonpResponse(callback, { success: true, season: season });
+    }
+
+    if (action === 'getRosterSnapshot') {
+      const key = String(e.parameter.key || '').trim();
+      if (!key || key.indexOf('rosterSnapshot_') !== 0) return jsonpResponse(callback, { error: 'Invalid key' });
+      const val = props.getProperty(key);
+      if (!val) return jsonpResponse(callback, { players: [] });
+      try {
+        return jsonpResponse(callback, { players: JSON.parse(val) });
+      } catch (_) {
+        return jsonpResponse(callback, { players: [] });
+      }
     }
 
     // ── Admin actions ──────────────────────────────────────────────────────
@@ -682,10 +713,27 @@ function doGet(e) {
       const ss    = SpreadsheetApp.getActiveSpreadsheet();
       const sheet = ss.getSheetByName(CFG.responsesSheet);
       if (!sheet) return jsonpResponse(callback, { error: 'Sheet not found' });
-      const rowData = sheet.getRange(row, 1, 1, 9).getValues()[0];
+      const rowData    = sheet.getRange(row, 1, 1, 11).getValues()[0];
+      const charName   = String(rowData[1] || '');
+      const realm      = String(rowData[2] || '');
+      const signupName = realm ? charName + '-' + realm : charName;
+      const mainSwap   = String(rowData[10] || '').trim();
+
+      // Duplicate guard: reject if this Name-Realm is already on the Roster sheet
+      const rosterSheet = ss.getSheetByName(CFG.rosterSheet);
+      if (rosterSheet) {
+        const rData = rosterSheet.getDataRange().getValues();
+        for (let i = CFG.rosterDataStart - 1; i < rData.length; i++) {
+          const existing = String(rData[i][CFG.rosterPlayerCol - 1] || '').trim();
+          if (existing.toLowerCase() === signupName.toLowerCase()) {
+            return jsonpResponse(callback, { error: signupName + ' is already on the roster. Deny this signup instead.' });
+          }
+        }
+      }
+
       writeToApplicants({
-        charName:  String(rowData[1] || ''),
-        realm:     String(rowData[2] || ''),
+        charName:  charName,
+        realm:     realm,
         className: String(rowData[3] || ''),
         mainSpec:  String(rowData[4] || ''),
         offSpecs:  String(rowData[5] || ''),
@@ -694,8 +742,25 @@ function doGet(e) {
         notes:     String(rowData[8] || '')
       });
       updateSignupStatus(row, 'Approved');
-      const signupName = rowData[2] ? rowData[1] + '-' + rowData[2] : String(rowData[1] || '');
       appendAuditLog('Signup Approved', signupName, '', '');
+
+      // Main swap: if set and on the roster, remove the old character and clear their Discord claim
+      if (mainSwap) {
+        const sheets = {};
+        for (const s of ss.getSheets()) { sheets[s.getName()] = s; }
+        const rData2 = (rosterSheet || ss.getSheetByName(CFG.rosterSheet)).getDataRange().getValues();
+        let swapOnRoster = false;
+        for (let i = CFG.rosterDataStart - 1; i < rData2.length; i++) {
+          const existing = String(rData2[i][CFG.rosterPlayerCol - 1] || '').trim();
+          if (existing.toLowerCase() === mainSwap.toLowerCase()) { swapOnRoster = true; break; }
+        }
+        if (swapOnRoster) {
+          removePlayerFromRoster(mainSwap);
+          clearDiscordClaimForNameRealm(ss, props, mainSwap);
+          appendAuditLog('Main Swap: Old Character Removed', mainSwap, '', signupName);
+        }
+      }
+
       return jsonpResponse(callback, { success: true });
     }
 
@@ -1045,7 +1110,8 @@ function getSignupResponses() {
       role:      String(row[6] || ''),
       discord:   String(row[7] || ''),
       notes:     String(row[8] || ''),
-      status:    String(row[9] || 'Pending')
+      status:    String(row[9] || 'Pending'),
+      mainSwap:  String(row[10] || '')
     });
   }
   return results.reverse();
@@ -1056,7 +1122,7 @@ function writeSignup(data) {
   let sheet = ss.getSheetByName(CFG.responsesSheet);
   if (!sheet) {
     sheet = ss.insertSheet(CFG.responsesSheet);
-    sheet.appendRow(['Timestamp', 'Character', 'Realm', 'Class', 'Main Spec', 'Off Specs', 'Role', 'Discord', 'Notes', 'Status']);
+    sheet.appendRow(['Timestamp', 'Character', 'Realm', 'Class', 'Main Spec', 'Off Specs', 'Role', 'Discord', 'Notes', 'Status', 'Main Swap']);
     sheet.setFrozenRows(1);
   }
   sheet.appendRow([
@@ -1069,7 +1135,8 @@ function writeSignup(data) {
     data.role      || '',
     data.discord   || '',
     data.notes     || '',
-    'Pending'
+    'Pending',
+    data.mainSwap  || ''
   ]);
 }
 
@@ -2386,6 +2453,29 @@ function removePlayerFromRoster(nameRealm) {
       return;
     }
   }
+}
+
+function clearDiscordClaimForNameRealm(ss, props, nameRealm) {
+  const claimsSheet = ss.getSheetByName('Discord Claims');
+  if (claimsSheet) {
+    const claimData = claimsSheet.getDataRange().getValues();
+    for (let i = claimData.length - 1; i >= 1; i--) {
+      if (String(claimData[i][2] || '').trim().toLowerCase() === nameRealm.toLowerCase()) {
+        claimsSheet.deleteRow(i + 1);
+      }
+    }
+  }
+  const allProps = props.getProperties();
+  Object.keys(allProps).forEach(function(key) {
+    if (key.indexOf('discordSession_') !== 0) return;
+    try {
+      const sess = JSON.parse(allProps[key]);
+      if (sess && sess.nameRealm && sess.nameRealm.toLowerCase() === nameRealm.toLowerCase()) {
+        sess.nameRealm = null;
+        props.setProperty(key, JSON.stringify(sess));
+      }
+    } catch (_) {}
+  });
 }
 
 function clearRosterCache() {
