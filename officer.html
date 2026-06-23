@@ -879,6 +879,10 @@
     <div class="officer-prompt-box">
       <h2>Officer Access</h2>
       <select id="officerPromptTeamSelect" class="team-switcher" style="width:100%;margin-bottom:0.25rem;"></select>
+      <div id="officerDiscordReauth" style="display:none;margin-bottom:0.75rem;padding:0.6rem 0.75rem;background:rgba(88,101,242,0.1);border:1px solid rgba(88,101,242,0.3);border-radius:4px;">
+        <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 0.5rem 0;">Continue as <strong id="reauthUsername" style="color:var(--text);"></strong></p>
+        <button class="btn site-nav-discord" style="width:100%;padding:0.35rem 0.5rem;font-size:0.88rem;" onclick="openDiscordPopup()">Continue with Discord</button>
+      </div>
       <input id="officerPassword" type="password" placeholder="Password"
         onkeydown="if(event.key==='Enter')submitOfficerPassword();" />
       <p id="officerError" style="display:none;font-size:0.88rem;color:var(--melee);">Incorrect password</p>
@@ -918,6 +922,19 @@ if (TEAM_SLUG !== 'phoenix') {
 }
 initTeamUI();
 
+// When switching teams while Discord-authenticated, store a hint so the new page
+// can show "Continue with Discord" instead of jumping straight to the password prompt.
+(function() {
+  var ts = document.getElementById('teamSwitcherSelect');
+  if (ts) {
+    ts.onchange = function() {
+      var ds = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
+      if (ds && ds.username) sessionStorage.setItem('wga_discord_reauth', ds.username);
+      switchTeam(this.value);
+    };
+  }
+})();
+
 // Called by discord.js after a successful Discord login popup completes.
 function onDiscordLoginComplete(session) {
   if (session.isOfficer) {
@@ -944,7 +961,23 @@ function onDiscordSessionRestored(session) {
 
 // Called by discord.js when no valid Discord session exists (no stored token or expired).
 function onDiscordInitNoSession() {
+  var reauthUser = sessionStorage.getItem('wga_discord_reauth');
+  if (reauthUser) {
+    sessionStorage.removeItem('wga_discord_reauth');
+    showDiscordReauthPrompt(reauthUser);
+    return;
+  }
   if (!isOfficerSessionValid()) showOfficerPrompt();
+}
+
+function showDiscordReauthPrompt(username) {
+  var hint = document.getElementById('officerDiscordReauth');
+  var nameEl = document.getElementById('reauthUsername');
+  if (hint && nameEl) {
+    nameEl.textContent = username;
+    hint.style.display = '';
+  }
+  showOfficerPrompt();
 }
 
 // Called by discord.js on logout.

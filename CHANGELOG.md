@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.0.9] - 2026-06-23
+
+### Fixed
+- Switching teams on the officer dashboard while Discord-authenticated no longer drops you to the password prompt on the new team. A "Continue with Discord" banner now appears at the top of the access prompt so you can re-authenticate with one click. The password form remains available below as a fallback.
+
+---
+
 ## [3.0.8] - 2026-06-23
 
 ### Fixed
