@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.2.0] - 2026-06-23
+
+### Added
+- **Audit log: officer identity** (#112) -- All officer-initiated actions now populate the "Changed By" column in the Audit Log with the officer's Discord username. The Discord token is auto-injected into every backend request when a Discord session is active. Discord Claims (user self-service) are marked "N/A" in that column since no officer performs the action.
+
+---
+
 ## [3.1.0] - 2026-06-23
 
 ### Added

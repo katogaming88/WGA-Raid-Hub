@@ -21,7 +21,15 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.1.0';
+var VERSION = '3.2.0';
+
+function _getDiscordTokenParam() {
+  try {
+    var s = typeof getDiscordSession === 'function' && getDiscordSession();
+    return (s && s.token) ? '&token=' + encodeURIComponent(s.token) : '';
+  } catch (_) { return ''; }
+}
+
 var DATA = null;
 var ACTIVE_SEASON = null; // null = All Seasons; set by officer.js when a season is selected
 
@@ -73,6 +81,7 @@ function jsonpRequest(url, callback, timeoutMs) {
 
   var script = document.createElement('script');
   script.onerror = function () { finish(new Error('Request failed. Check your connection.'), null); };
+  if (url.indexOf(WEB_APP_URL) === 0) url += _getDiscordTokenParam();
   script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cbName;
   document.head.appendChild(script);
 }
@@ -568,7 +577,7 @@ function officerUpdateBisLink(nameRealm, firstName) {
     delete window[cbName];
     if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to save. Try again.</p>';
   };
-  script.src = WEB_APP_URL + '?action=updateBisLink&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
+  script.src = WEB_APP_URL + '?action=updateBisLink&data=' + encodeURIComponent(JSON.stringify(data)) + _getDiscordTokenParam() + '&callback=' + cbName;
   document.head.appendChild(script);
 }
 
@@ -606,7 +615,7 @@ function allowBisForPlayer(nameRealm, firstName) {
   };
   var script = document.createElement('script');
   script.onerror = function () { delete window[cbName]; updateBisAllowDiv(nameRealm, firstName); };
-  script.src = WEB_APP_URL + '?action=allowBisForPlayer&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })) + '&callback=' + cbName;
+  script.src = WEB_APP_URL + '?action=allowBisForPlayer&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })) + _getDiscordTokenParam() + '&callback=' + cbName;
   document.head.appendChild(script);
 }
 
@@ -621,7 +630,7 @@ function revokeBisForPlayer(nameRealm, firstName) {
   };
   var script = document.createElement('script');
   script.onerror = function () { delete window[cbName]; updateBisAllowDiv(nameRealm, firstName); };
-  script.src = WEB_APP_URL + '?action=revokeBisForPlayer&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })) + '&callback=' + cbName;
+  script.src = WEB_APP_URL + '?action=revokeBisForPlayer&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })) + _getDiscordTokenParam() + '&callback=' + cbName;
   document.head.appendChild(script);
 }
 
@@ -746,7 +755,7 @@ function submitDirectMarkReceived(firstName, item, slot, rowId) {
     delete window[cbName];
     if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed. Try again.</p>';
   };
-  script.src = WEB_APP_URL + '?action=directMarkReceived&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
+  script.src = WEB_APP_URL + '?action=directMarkReceived&data=' + encodeURIComponent(JSON.stringify(data)) + _getDiscordTokenParam() + '&callback=' + cbName;
   document.head.appendChild(script);
 }
 
@@ -1295,6 +1304,6 @@ function saveAttendanceFromCard(selectEl) {
     selectEl.value = oldStatus || '';
     if (indicator) { indicator.textContent = 'Error'; indicator.style.color = 'var(--melee)'; }
   };
-  script.src = WEB_APP_URL + '?action=setAttendanceStatus&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
+  script.src = WEB_APP_URL + '?action=setAttendanceStatus&data=' + encodeURIComponent(JSON.stringify(data)) + _getDiscordTokenParam() + '&callback=' + cbName;
   document.head.appendChild(script);
 }
