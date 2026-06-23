@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.5.0] - 2026-06-23
+
+### Changed
+- **"Who are you?" selector is now gated behind Discord login** -- The player selector card on the landing page is hidden unless the visitor is logged in via Discord with a claimed character. This prevents anonymous profile browsing now that Discord auth is live.
+  - **Non-officers** see a "View My Profile" button that opens their own profile -- no dropdown.
+  - **Officers** see the full player dropdown for browsing plus a "View My Profile" button.
+  - **Unclaimed / not logged in** -- the card is hidden entirely.
+
+---
+
 ## [3.4.2] - 2026-06-23
 
 ### Fixed

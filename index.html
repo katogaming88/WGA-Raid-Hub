@@ -57,12 +57,15 @@
 <div id="landingView" class="view">
   <div class="landing-body">
     <div id="landingStats" class="pub-stats"></div>
-    <div class="landing-card">
+    <div class="landing-card" id="playerSelectorCard">
       <span class="selector-label">Who are you?</span>
-      <div class="selector-outer">
+      <div class="selector-outer" id="playerDropdownOuter">
         <select id="playerSelect">
           <option value="">-- Select your character --</option>
         </select>
+      </div>
+      <div id="myProfileOuter" style="display:none">
+        <button class="btn btn-gold" id="myProfileBtn">View My Profile</button>
       </div>
     </div>
     <div id="landingProgression"></div>
