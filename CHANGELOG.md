@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.3.2] - 2026-06-23
+
+### Changed
+- **Attendance: auto-Bench players not in WCL log** -- Roster players who do not appear in the WCL log for a main raid night are now automatically marked `Bench` (source: `Auto`) instead of left blank. Officers can override individual rows to No Show / Excused as needed; manually set statuses are preserved on subsequent refreshes.
+
+---
+
 ## [3.3.1] - 2026-06-23
 
 ### Changed
