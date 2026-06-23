@@ -112,6 +112,7 @@ function doGet(e) {
     const props    = PropertiesService.getScriptProperties();
     const action   = e && e.parameter && e.parameter.action;
     const callback = e && e.parameter && e.parameter.callback;
+    _currentChangedBy = resolveChangedBy(String(e && e.parameter && e.parameter.token || ''));
 
     if (action === 'clearCache') {
       cache.remove('rosterCore');
@@ -2641,13 +2642,16 @@ function ensureAuditLogSheet() {
   return sheet;
 }
 
-// changedBy: officer identity — empty string until Discord OAuth ships (#25/#46)
+// Set once per doGet() invocation from the Discord session token; falls back when changedBy is not explicitly passed.
+var _currentChangedBy = '';
+
 function appendAuditLog(action, target, oldVal, newVal, changedBy) {
   try {
     const sheet = ensureAuditLogSheet();
+    const by = changedBy !== undefined ? changedBy : _currentChangedBy;
     sheet.appendRow([
       new Date(),
-      changedBy || '',
+      by || '',
       action || '',
       target || '',
       oldVal !== undefined && oldVal !== null ? String(oldVal) : '',
@@ -2656,6 +2660,14 @@ function appendAuditLog(action, target, oldVal, newVal, changedBy) {
   } catch (err) {
     Logger.log('appendAuditLog error: ' + err);
   }
+}
+
+function resolveChangedBy(token) {
+  if (!token) return '';
+  try {
+    var sess = validateDiscordSession(token);
+    return (sess && sess.valid && sess.username) ? sess.username : '';
+  } catch (_) { return ''; }
 }
 
 function getAuditLog() {
@@ -2978,7 +2990,7 @@ function claimCharacterForSession(token, nameRealm) {
 
   const isOfficer = isOfficerDiscordId(session.discordId);
   const isAdmin   = isAdminDiscordId(session.discordId);
-  appendAuditLog('Discord Claim Created', nameRealm, '', session.username);
+  appendAuditLog('Discord Claim Created', nameRealm, '', session.username, 'N/A');
   return { success: true, nameRealm: nameRealm, isOfficer: isOfficer, isAdmin: isAdmin };
 }
 
