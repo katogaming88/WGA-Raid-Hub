@@ -88,8 +88,11 @@ function refreshAttendanceCore() {
   for (const detail of reportDetails) {
     if (detail.title.includes(ALT_RUN_KEYWORD)) {
       excluded.push({ ...detail, reason: `Alt run (title contains "${ALT_RUN_KEYWORD}")` });
+    } else if (detail.isCached) {
+      // Already a validated main night from a previous run — skip zone re-check.
+      mainNights.push(detail);
     } else if (validZoneIds.size > 0 && !validZoneIds.has(detail.zoneId)) {
-      // Raid progression is configured — exclude reports whose zone isn't in it.
+      // Raid progression is configured — exclude new reports whose zone isn't in it.
       excluded.push({ ...detail, reason: `Not in raid progression (zone ${detail.zoneId})` });
     } else if (validZoneIds.size === 0 && !hasSeasonFilter && detail.zoneId !== currentZoneId) {
       // Fallback: no progression and no season start — use the detected zone heuristic.
@@ -139,8 +142,8 @@ function collectAllReportDetails(token, reports, rosterSet, existingDates, known
     let zoneId, players;
 
     if (alreadyInSheet && skipZoneForCached) {
-      // Zone check not needed for cached reports (progression or season-start filter handles scope).
-      // writeAttendanceToSheet re-uses existing rows via readExistingAttendance.
+      // Zone check not needed for cached reports — they were already validated as main nights
+      // when first written. isCached=true lets the filter loop skip zone checks for them.
       zoneId  = latestZoneId || 0;
       players = new Set();
       Logger.log(`[cached]      ${report.title} (${date})`);
@@ -169,6 +172,7 @@ function collectAllReportDetails(token, reports, rosterSet, existingDates, known
       zoneId,
       players,
       rosterCount,
+      isCached:  alreadyInSheet && skipZoneForCached,
     });
   }
 
