@@ -502,19 +502,21 @@ function getRosterData() {
   const scoringSheet = ss.getSheetByName(SCORING_SHEET_NAME);
   const rosterSheet  = ss.getSheetByName(ROSTER_SHEET_NAME);
 
-  // Build bench set from Roster sheet (sort key prefix 6 = bench, e.g. 6001, 6002...).
-  // Uses ROSTER_DATA_START (row 2) consistent with PriorityGenerator.gs.
+  // Build bench set from Roster sheet. Uses CFG column constants (same as wgaWebApp.gs):
+  // Column D (CFG.rosterPlayerCol=4) = Name-Realm, Column K (CFG.rosterPriorityCol=11) = Priority.
+  // Priority === 6 means Bench.
   const benchSet = new Set();
   if (rosterSheet) {
     const lastRow = rosterSheet.getLastRow();
-    if (lastRow >= ROSTER_DATA_START) {
-      const data = rosterSheet.getRange(ROSTER_DATA_START, ROSTER_PLAYER_COL, lastRow - ROSTER_DATA_START + 1, ROSTER_SORT_KEY_COL - ROSTER_PLAYER_COL + 1).getValues();
+    if (lastRow >= CFG.rosterDataStart) {
+      const numCols = CFG.rosterPriorityCol - CFG.rosterPlayerCol + 1;
+      const data = rosterSheet.getRange(CFG.rosterDataStart, CFG.rosterPlayerCol, lastRow - CFG.rosterDataStart + 1, numCols).getValues();
       for (const row of data) {
-        const fullName = row[0];
-        const sortKey  = row[ROSTER_SORT_KEY_COL - ROSTER_PLAYER_COL];
+        const fullName = String(row[0] || '').trim();
+        const priority = Number(row[CFG.rosterPriorityCol - CFG.rosterPlayerCol] || 0);
         if (!fullName) continue;
-        if (String(Math.floor(Number(sortKey) / 1000)) === '6') {
-          benchSet.add(fullName.toString().split('-')[0].toLowerCase());
+        if (priority === 6) {
+          benchSet.add(fullName.split('-')[0].toLowerCase());
         }
       }
     }
