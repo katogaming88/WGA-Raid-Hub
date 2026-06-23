@@ -17,6 +17,14 @@ function showView(name) {
   if (name === 'officer') document.getElementById('officerViewWrap').classList.add('active');
 }
 
+function openTab(name) {
+  var btns = document.querySelectorAll('.nav-item');
+  for (var i = 0; i < btns.length; i++) {
+    var attr = btns[i].getAttribute('onclick') || '';
+    if (attr.indexOf("'" + name + "'") !== -1) { btns[i].click(); return; }
+  }
+}
+
 function switchTab(name) {
   document.querySelectorAll('.nav-item').forEach(function(b) { b.classList.remove('active'); });
   document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
@@ -211,6 +219,8 @@ function buildOfficerDashboard() {
     var el = document.getElementById('dataTimestamp');
     if (el) el.textContent = 'Data as of ' + ts;
   }
+  var tabParam = (location.search.match(/[?&]tab=([^&]+)/) || [])[1];
+  if (tabParam) openTab(tabParam);
 }
 
 function clearCache() {

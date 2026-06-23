@@ -62,10 +62,13 @@ function qaRefreshAttendance() {
   jsonpRequest(WEB_APP_URL + '?action=refreshAttendanceWCL', function(err, result) {
     if (btn) { btn.disabled = false; btn.textContent = 'Refresh Attendance'; }
     if (!err && result && result.success) {
-      _qaSetStatus(
-        'Done: ' + result.mainNights + ' night' + (result.mainNights !== 1 ? 's' : '') + ' found, ' + result.excluded + ' excluded.',
-        'var(--heal)'
-      );
+      var msg = 'Done: ' + result.mainNights + ' night' + (result.mainNights !== 1 ? 's' : '') + ' found, ' + result.excluded + ' excluded.';
+      var officerBase = 'officer.html' + (TEAM_SLUG !== 'phoenix' ? '?team=' + TEAM_SLUG + '&' : '?') + 'tab=attendance';
+      var el = document.getElementById('oqaStatus');
+      if (el) {
+        el.style.color = 'var(--heal)';
+        el.innerHTML = msg + ' <a href="' + officerBase + '" style="color:var(--gold-light);text-decoration:underline;">Review in Dashboard</a>';
+      }
     } else {
       _qaSetStatus(err ? err.message : (result && result.error ? result.error : 'Error refreshing.'), 'var(--melee)');
     }
