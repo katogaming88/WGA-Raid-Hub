@@ -380,10 +380,15 @@ if (!isOfficerSessionValid()) {
     }
   }, 0);
 } else {
+  // Session restored from sessionStorage (page reload) -- update Discord nav from cached session
+  // without waiting for server validation, so the button reflects the logged-in state immediately.
+  if (typeof renderDiscordNav === 'function' && typeof getDiscordSession === 'function') {
+    renderDiscordNav(getDiscordSession());
+  }
   loadData(
     function() {
       buildOfficerDashboard();
-      // Session was restored from sessionStorage (page reload) -- check Discord session for isAdmin
+      // Check Discord session for isAdmin
       if (typeof showAdminTab === 'function') {
         var ds = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
         showAdminTab(!ds || ds.isAdmin);  // no Discord session means password login, show Admin
