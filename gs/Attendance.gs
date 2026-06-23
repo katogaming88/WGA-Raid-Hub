@@ -46,27 +46,54 @@ function refreshAttendanceCore() {
   const token = getAccessToken();
   if (!token) throw new Error('Failed to get WCL access token. Check Client ID and Secret.');
 
-  const allReports = getSeasonReports(token);
+  const props       = PropertiesService.getScriptProperties();
+  const seasonStart = props.getProperty('seasonStart') || '';
+  const startTimeMs = seasonStart ? new Date(seasonStart).getTime() : null;
+
+  const allReports = getSeasonReports(token, startTimeMs);
   if (!allReports || allReports.length === 0) throw new Error('No matching Phoenix reports found.');
-  Logger.log(`Fetched ${allReports.length} total reports.`);
+  Logger.log(`Fetched ${allReports.length} report(s) from WCL${startTimeMs ? ' (filtered to season start)' : ''}.`);
 
   const rosterData  = getRosterData();
   const rosterNames = rosterData.map(r => r.firstName);
   const rosterSet   = new Set(rosterNames.map(n => n.toLowerCase()));
 
-  const reportDetails = collectAllReportDetails(token, allReports, rosterSet);
+  // Read dates already in the sheet so we can skip re-fetching their participant data.
+  const ss           = SpreadsheetApp.getActiveSpreadsheet();
+  const attSheet     = ss.getSheetByName(ATTENDANCE_SHEET_NAME);
+  const existingDates = attSheet ? getExistingReportDates(attSheet) : new Set();
+  const storedZoneId  = parseInt(props.getProperty('currentZoneId') || '0') || null;
+  Logger.log(`Cached dates in sheet: ${existingDates.size} | Stored zone: ${storedZoneId}`);
+
+  // Build valid zone set from the raid progression configured in Season Settings.
+  // This is the most accurate filter: officers explicitly add each raid tier, so mid-season
+  // additions (e.g. Sporefall in 12.0.7) are handled automatically when added to progression.
+  const raidsConfig  = JSON.parse(props.getProperty('raidProgression') || '[]');
+  const validZoneIds = new Set(raidsConfig.map(r => Number(r.id)).filter(Boolean));
+  Logger.log(`Valid zone IDs from progression: ${[...validZoneIds].join(', ') || '(none — fallback mode)'}`);
+
+  // When raidProgression has zone IDs or a season start date is set, we know which reports are
+  // in-scope without needing to fetch zone data for already-processed reports.
+  const hasSeasonFilter = !!startTimeMs;
+  const skipZoneForCached = validZoneIds.size > 0 || hasSeasonFilter;
+
+  const reportDetails = collectAllReportDetails(token, allReports, rosterSet, existingDates, storedZoneId, skipZoneForCached);
   const currentZoneId = detectCurrentZone(reportDetails);
-  if (!currentZoneId) throw new Error('Could not determine current raid zone. Check WCL reports.');
-  Logger.log(`Current season zone ID: ${currentZoneId}`);
+  if (currentZoneId) props.setProperty('currentZoneId', String(currentZoneId));
+  Logger.log(`Zone detection: ${currentZoneId || '(none)'}`);
 
   const mainNights = [];
   const excluded   = [];
 
   for (const detail of reportDetails) {
-    if (detail.zoneId !== currentZoneId) {
-      excluded.push({ ...detail, reason: `Wrong zone (zone ${detail.zoneId})` });
-    } else if (detail.title.includes(ALT_RUN_KEYWORD)) {
+    if (detail.title.includes(ALT_RUN_KEYWORD)) {
       excluded.push({ ...detail, reason: `Alt run (title contains "${ALT_RUN_KEYWORD}")` });
+    } else if (validZoneIds.size > 0 && !validZoneIds.has(detail.zoneId)) {
+      // Raid progression is configured — exclude reports whose zone isn't in it.
+      excluded.push({ ...detail, reason: `Not in raid progression (zone ${detail.zoneId})` });
+    } else if (validZoneIds.size === 0 && !hasSeasonFilter && detail.zoneId !== currentZoneId) {
+      // Fallback: no progression and no season start — use the detected zone heuristic.
+      excluded.push({ ...detail, reason: `Wrong zone (zone ${detail.zoneId})` });
     } else {
       mainNights.push(detail);
     }
@@ -84,11 +111,12 @@ function refreshAttendanceCore() {
 // REPORT FETCHING
 // ════════════════════════════════════════════════════════════════════════════
 
-function getSeasonReports(token) {
+function getSeasonReports(token, startTimeMs) {
+  const startFilter = startTimeMs ? `, startTime: ${startTimeMs}` : '';
   const query = `
     query {
       reportData {
-        reports(guildID: ${GUILD_TAG_ID}, limit: ${SEASON_REPORT_LIMIT}) {
+        reports(guildID: ${GUILD_TAG_ID}, limit: ${SEASON_REPORT_LIMIT}${startFilter}) {
           data { code title startTime endTime }
         }
       }
@@ -100,30 +128,66 @@ function getSeasonReports(token) {
   return allReports.filter(r => r.title);
 }
 
-function collectAllReportDetails(token, reports, rosterSet) {
-  const details = [];
+function collectAllReportDetails(token, reports, rosterSet, existingDates, knownZoneId, skipZoneForCached) {
+  const details      = [];
+  let   latestZoneId = knownZoneId || null;
 
   for (const report of reports) {
-    Logger.log(`Fetching details for: ${report.title} (${report.code})`);
+    const date           = formatReportDate(report.startTime);
+    const alreadyInSheet = existingDates && existingDates.has(date);
 
-    const zoneId      = getReportZone(token, report.code);
-    const players     = getReportParticipants(token, report.code);
+    let zoneId, players;
+
+    if (alreadyInSheet && skipZoneForCached) {
+      // Zone check not needed for cached reports (progression or season-start filter handles scope).
+      // writeAttendanceToSheet re-uses existing rows via readExistingAttendance.
+      zoneId  = latestZoneId || 0;
+      players = new Set();
+      Logger.log(`[cached]      ${report.title} (${date})`);
+    } else if (alreadyInSheet) {
+      // Zone filter is active (no progression, no season start) — fetch zone so the filter
+      // can classify accurately, but skip participant fetch (rows already exist in sheet).
+      zoneId  = getReportZone(token, report.code);
+      players = new Set();
+      if (zoneId) latestZoneId = zoneId;
+      Logger.log(`[cached+zone] ${report.title} (${date}) → zone ${zoneId}`);
+    } else {
+      // New report → full fetch.
+      zoneId  = getReportZone(token, report.code);
+      players = getReportParticipants(token, report.code);
+      if (zoneId) latestZoneId = zoneId;
+      Logger.log(`[new]         ${report.title} (${date}) → zone ${zoneId} | participants: ${players.size}`);
+    }
+
     const rosterCount = [...players].filter(n => rosterSet.has(n.toLowerCase())).length;
 
     details.push({
-      code:        report.code,
-      title:       report.title,
-      date:        formatReportDate(report.startTime),
-      startTime:   report.startTime,
+      code:      report.code,
+      title:     report.title,
+      date,
+      startTime: report.startTime,
       zoneId,
       players,
       rosterCount,
     });
-
-    Logger.log(`  → zone: ${zoneId} | participants: ${players.size}`);
   }
 
   return details.sort((a, b) => b.startTime - a.startTime);
+}
+
+function getExistingReportDates(sheet) {
+  const dates   = new Set();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return dates;
+  const data = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
+  for (const [rawDate, firstName] of data) {
+    if (firstName) continue; // player row
+    const dateStr = String(rawDate || '');
+    if (dateStr.startsWith('──') || dateStr === 'Report Title') break;
+    const match = dateStr.match(/\((\d{4}-\d{2}-\d{2})\)/);
+    if (match) dates.add(match[1]);
+  }
+  return dates;
 }
 
 function getReportZone(token, reportCode) {
