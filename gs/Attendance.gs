@@ -2,9 +2,6 @@
 // ATTENDANCE CONFIG
 // ════════════════════════════════════════════════════════════════════════════
 
-const ROSTER_PLAYER_DATA_START = 4;
-const BENCH_SORT_KEY_PREFIX    = 6;
-
 const ATTENDANCE_SHEET_NAME  = 'Attendance';
 const ATTENDANCE_COL         = 4;
 const SEASON_REPORT_LIMIT    = 50;
@@ -255,6 +252,7 @@ function writeAttendanceToSheet(mainNights, excluded, rosterData) {
   const existingEntries = readExistingAttendance(sheet);
 
   const rosterNames = rosterData.map(r => r.firstName);
+  const benchSet    = new Set(rosterData.filter(r => r.isBench).map(r => r.firstName.toLowerCase()));
 
   const mainRows         = [
     ['Raid Date', 'Player (First Name)', 'Status', 'Source', 'Notes', 'Exclude Report'],
@@ -291,8 +289,10 @@ function writeAttendanceToSheet(mainNights, excluded, rosterData) {
       playerRows.add(mainRows.length + 1);
       if (officerEntry) {
         mainRows.push([date, firstName, officerEntry.status, officerEntry.source || 'Officer', '', '']);
+      } else if (benchSet.has(firstName.toLowerCase())) {
+        mainRows.push([date, firstName, 'Bench', 'Auto (Bench)', '', '']);
       } else {
-        mainRows.push([date, firstName, 'Bench', 'Auto', '', '']);
+        mainRows.push([date, firstName, '', 'Officer', '', '']);
       }
     }
   }
@@ -498,22 +498,24 @@ function getRosterData() {
   const scoringSheet = ss.getSheetByName(SCORING_SHEET_NAME);
   const rosterSheet  = ss.getSheetByName(ROSTER_SHEET_NAME);
 
+  // Build bench set from Roster sheet (sort key prefix 6 = bench, e.g. 6001, 6002...).
+  // Uses ROSTER_DATA_START (row 2) consistent with PriorityGenerator.gs.
   const benchSet = new Set();
   if (rosterSheet) {
     const lastRow = rosterSheet.getLastRow();
-    if (lastRow >= ROSTER_PLAYER_DATA_START) {
-      const rosterData = rosterSheet.getRange(ROSTER_PLAYER_DATA_START, ROSTER_PLAYER_COL, lastRow - ROSTER_PLAYER_DATA_START + 1, ROSTER_SORT_KEY_COL - ROSTER_PLAYER_COL + 1).getValues();
-      for (const row of rosterData) {
+    if (lastRow >= ROSTER_DATA_START) {
+      const data = rosterSheet.getRange(ROSTER_DATA_START, ROSTER_PLAYER_COL, lastRow - ROSTER_DATA_START + 1, ROSTER_SORT_KEY_COL - ROSTER_PLAYER_COL + 1).getValues();
+      for (const row of data) {
         const fullName = row[0];
         const sortKey  = row[ROSTER_SORT_KEY_COL - ROSTER_PLAYER_COL];
         if (!fullName) continue;
-        if (Math.floor(Number(sortKey) / 1000) === BENCH_SORT_KEY_PREFIX) {
+        if (String(Math.floor(Number(sortKey) / 1000)) === '6') {
           benchSet.add(fullName.toString().split('-')[0].toLowerCase());
         }
       }
     }
   }
-  Logger.log(`Bench players: ${[...benchSet].join(', ')}`);
+  Logger.log(`Bench players: ${[...benchSet].join(', ') || '(none)'}`);
 
   const roster = [];
   for (let row = PLAYER_DATA_START; row <= PLAYER_DATA_END; row++) {
