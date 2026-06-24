@@ -79,10 +79,11 @@
     return;
   }
 
-  // Determine which GAS backend to call based on the team stored by the opener.
-  var teamSlug  = null;
-  try { teamSlug = localStorage.getItem('wga_team'); } catch (_) {}
-  teamSlug = (teamSlug && TEAMS[teamSlug]) ? teamSlug : 'phoenix';
+  // Determine which GAS backend to call from the team slug encoded in the OAuth state param.
+  // The opener embeds it as "<csrfToken>:<teamSlug>" so the popup needs no cross-window storage.
+  var stateParam = getParam('state') || '';
+  var teamSlug   = stateParam.split(':')[1] || '';
+  if (!TEAMS[teamSlug]) teamSlug = 'phoenix';
   var gasUrl = TEAMS[teamSlug];
 
   // 10-second timeout guard

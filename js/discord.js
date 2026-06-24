@@ -100,15 +100,17 @@ function renderDiscordNav(session) {
 // ── Popup flow ────────────────────────────────────────────────────────────────
 
 function openDiscordPopup() {
-  // Generate CSRF state token
+  // Generate CSRF state token; encode team slug so the callback knows which GAS to call
+  // without needing cross-window storage coordination (popup cannot share sessionStorage).
   _discordCsrfState = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  var _stateParam = _discordCsrfState + ':' + TEAM_SLUG;
 
   var authUrl = 'https://discord.com/api/oauth2/authorize'
     + '?client_id=' + encodeURIComponent(DISCORD_CLIENT_ID)
     + '&redirect_uri=' + encodeURIComponent(DISCORD_REDIRECT_URI)
     + '&response_type=code'
     + '&scope=' + encodeURIComponent(DISCORD_SCOPE)
-    + '&state=' + encodeURIComponent(_discordCsrfState);
+    + '&state=' + encodeURIComponent(_stateParam);
 
   var w = 480, h = 700;
   var left = Math.max(0, Math.round(window.screenX + (window.outerWidth - w) / 2));
