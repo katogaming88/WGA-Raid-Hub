@@ -1,6 +1,4 @@
-// Officer quick-actions bar (index.html only).
-// Shows only to Discord-authenticated officers. Provides one-click access to:
-// copy priority export string, trigger WCL attendance refresh, paste loot import.
+// Officer quick-actions bar + player selector gating (index.html only).
 // Depends on: common.js (WEB_APP_URL, jsonpRequest), discord.js (getDiscordSession)
 
 var _QA_LOOT_CHUNK = 25;
@@ -16,11 +14,51 @@ function _qaRender() {
   bar.style.display = _qaIsOfficer() ? '' : 'none';
 }
 
+// ── Player selector gating ────────────────────────────────────────────────────
+// No session / unclaimed  -> hide card entirely
+// Logged in, non-officer  -> "View My Profile" button only
+// Logged in, officer      -> full dropdown + "View My Profile" link
+
+function _renderPlayerSelector() {
+  var card         = document.getElementById('playerSelectorCard');
+  var dropOuter    = document.getElementById('playerDropdownOuter');
+  var profileOuter = document.getElementById('myProfileOuter');
+  var profileBtn   = document.getElementById('myProfileBtn');
+  if (!card) return;
+
+  var session = typeof getDiscordSession === 'function' && getDiscordSession();
+
+  if (!session || !session.nameRealm) {
+    card.style.display = 'none';
+    return;
+  }
+
+  card.style.display = '';
+  var firstName = session.nameRealm.split('-')[0];
+
+  if (profileBtn) {
+    profileBtn.onclick = function() {
+      if (typeof showView === 'function')     showView('profile');
+      if (typeof renderProfile === 'function') renderProfile(firstName, 'landing');
+      var sel = document.getElementById('playerSelect');
+      if (sel) sel.value = firstName;
+    };
+  }
+
+  if (session.isOfficer) {
+    if (dropOuter)    dropOuter.style.display    = '';
+    if (profileOuter) profileOuter.style.display = '';
+  } else {
+    if (dropOuter)    dropOuter.style.display    = 'none';
+    if (profileOuter) profileOuter.style.display = '';
+  }
+}
+
 // Callbacks invoked by discord.js
-function onDiscordSessionRestored(session) { _qaRender(); }
-function onDiscordLoginComplete(session)   { _qaRender(); }
-function onDiscordLogout()                 { _qaRender(); }
-function onDiscordInitNoSession()          { _qaRender(); }
+function onDiscordSessionRestored(session) { _qaRender(); _renderPlayerSelector(); }
+function onDiscordLoginComplete(session)   { _qaRender(); _renderPlayerSelector(); }
+function onDiscordLogout()                 { _qaRender(); _renderPlayerSelector(); }
+function onDiscordInitNoSession()          { _qaRender(); _renderPlayerSelector(); }
 
 function _qaSetStatus(msg, color) {
   var el = document.getElementById('oqaStatus');
@@ -173,6 +211,7 @@ function _qaLootChunks(season, rows, offset, written, skipped, statusEl, onDone,
   );
 }
 
-// Eagerly show the bar from the cached session without waiting for JSONP validation.
-// onDiscordSessionRestored / onDiscordLogout will correct it once validation completes.
+// Eagerly render from the cached session without waiting for JSONP validation.
+// onDiscordSessionRestored / onDiscordLogout will correct both once validation completes.
 _qaRender();
+_renderPlayerSelector();

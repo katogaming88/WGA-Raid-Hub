@@ -21,7 +21,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.4.3';
+var VERSION = '3.5.5';
 
 function _getDiscordTokenParam() {
   try {
@@ -35,6 +35,16 @@ var ACTIVE_SEASON = null; // null = All Seasons; set by officer.js when a season
 
 function switchTeam(slug) {
   if (!(slug in TEAMS)) return;
+  // Copy Discord session to the destination team's key so login persists across the switch.
+  // Sessions are keyed per-team in localStorage but the token is valid globally server-side.
+  try {
+    var srcKey = 'wga_discord_' + TEAM_SLUG;
+    var dstKey = 'wga_discord_' + slug;
+    if (srcKey !== dstKey) {
+      var raw = localStorage.getItem(srcKey);
+      if (raw) localStorage.setItem(dstKey, raw);
+    }
+  } catch (_) {}
   sessionStorage.setItem('wga_team', slug);
   location.href = location.pathname;
 }

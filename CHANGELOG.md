@@ -6,10 +6,48 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [3.4.3] - 2026-06-23
+## [3.5.5] - 2026-06-23
 
 ### Added
 - **Supabase migration plan** -- Added `docs/supabase-migration-plan.md`, a proposal for moving the Raid Hub off Google Sheets to Supabase and PostgreSQL: phased roadmap, security model (Row Level Security as the access boundary), data migration approach, the loot-feed retirement, and the decisions and setup needed to begin. Planning only; no application changes.
+
+---
+
+## [3.5.4] - 2026-06-23
+
+### Fixed
+- **Grant/Revoke Officer and Remove buttons broken on Roster tab** -- Same double-quote collision as the Admin tab fix in 3.5.3; the Roster tab's Discord Claims section had identical unescaped `JSON.stringify` calls in its `onclick` attributes. Also fixes the Remove button (`removeDiscordClaim`) on the same row.
+
+---
+
+## [3.5.3] - 2026-06-23
+
+### Fixed
+- **Grant/Revoke Officer buttons broken in Admin tab** -- The onclick attributes used `JSON.stringify` to embed Discord ID and username, which wraps strings in double quotes. Because the attribute itself also uses double quotes, the browser truncated the attribute at the first inner `"`, leaving an incomplete JS expression that threw `SyntaxError: Unexpected end of input`. Replaced the inner quotes with `&quot;` HTML entities so the onclick is valid.
+
+---
+
+## [3.5.2] - 2026-06-23
+
+### Fixed
+- **"Invalid or expired session" when claiming a character on Hellfire Rollers** -- The Discord login popup could not read `sessionStorage` from the opener window, so it always called Phoenix's GAS backend to create the session. Claiming a character on Hellfire's page then failed because Hellfire's GAS had no record of the token. The team slug is now encoded directly in the OAuth `state` parameter so the callback knows which backend to call without any cross-window storage coordination.
+
+---
+
+## [3.5.1] - 2026-06-23
+
+### Fixed
+- **Discord session lost when switching teams** -- Switching to a different team via the nav dropdown now preserves your Discord login. Previously the per-team session key (`wga_discord_<slug>`) caused the new page to find no stored token, forcing a re-login. The session is now copied to the destination team's key before navigation.
+
+---
+
+## [3.5.0] - 2026-06-23
+
+### Changed
+- **"Who are you?" selector is now gated behind Discord login** -- The player selector card on the landing page is hidden unless the visitor is logged in via Discord with a claimed character. This prevents anonymous profile browsing now that Discord auth is live.
+  - **Non-officers** see a "View My Profile" button that opens their own profile -- no dropdown.
+  - **Officers** see the full player dropdown for browsing plus a "View My Profile" button.
+  - **Unclaimed / not logged in** -- the card is hidden entirely.
 
 ---
 
