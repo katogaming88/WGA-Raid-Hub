@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.5.2] - 2026-06-23
+
+### Fixed
+- **"Invalid or expired session" when claiming a character on Hellfire Rollers** -- The Discord login popup could not read `sessionStorage` from the opener window, so it always called Phoenix's GAS backend to create the session. Claiming a character on Hellfire's page then failed because Hellfire's GAS had no record of the token. The team slug is now encoded directly in the OAuth `state` parameter so the callback knows which backend to call without any cross-window storage coordination.
+
+---
+
 ## [3.5.1] - 2026-06-23
 
 ### Fixed
