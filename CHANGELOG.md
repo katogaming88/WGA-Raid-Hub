@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.5.4] - 2026-06-23
+
+### Fixed
+- **Grant/Revoke Officer and Remove buttons broken on Roster tab** -- Same double-quote collision as the Admin tab fix in 3.5.3; the Roster tab's Discord Claims section had identical unescaped `JSON.stringify` calls in its `onclick` attributes. Also fixes the Remove button (`removeDiscordClaim`) on the same row.
+
+---
+
 ## [3.5.3] - 2026-06-23
 
 ### Fixed
