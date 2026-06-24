@@ -205,9 +205,11 @@ function renderOfficerManagement() {
   // Build rows for all claimed users
   var rows = claims.slice().sort(function(a, b) { return a.nameRealm.localeCompare(b.nameRealm); }).map(function(c) {
     var isOfficer = officerIds.indexOf(c.discordId) !== -1;
+    var jsonId  = JSON.stringify(c.discordId).replace(/"/g, '&quot;');
+    var jsonUn  = JSON.stringify(c.username).replace(/"/g, '&quot;');
     var btn = isOfficer
-      ? '<button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="revokeOfficer(' + JSON.stringify(c.discordId) + ',' + JSON.stringify(c.username) + ')">Revoke</button>'
-      : '<button class="btn" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="grantOfficer(' + JSON.stringify(c.discordId) + ',' + JSON.stringify(c.username) + ')">Grant Officer</button>';
+      ? '<button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="revokeOfficer(' + jsonId + ',' + jsonUn + ')">Revoke</button>'
+      : '<button class="btn" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="grantOfficer(' + jsonId + ',' + jsonUn + ')">Grant Officer</button>';
     return '<tr>'
       + '<td style="width:30%">' + escHtml(c.username) + '</td>'
       + '<td style="width:35%">' + escHtml(c.nameRealm) + '</td>'

@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.5.3] - 2026-06-23
+
+### Fixed
+- **Grant/Revoke Officer buttons broken in Admin tab** -- The onclick attributes used `JSON.stringify` to embed Discord ID and username, which wraps strings in double quotes. Because the attribute itself also uses double quotes, the browser truncated the attribute at the first inner `"`, leaving an incomplete JS expression that threw `SyntaxError: Unexpected end of input`. Replaced the inner quotes with `&quot;` HTML entities so the onclick is valid.
+
+---
+
 ## [3.5.2] - 2026-06-23
 
 ### Fixed
