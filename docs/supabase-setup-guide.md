@@ -115,6 +115,10 @@ To get them:
 4. Copy the **anon public** key.
 5. Copy the **service_role** key -- store it in a password manager, not a text file.
 
+The anon key and project URL are not used in this guide. They go into `js/common.js`
+when the Supabase client is initialized in Phase 2 (issue #207). Collect them now so
+they are ready when that work starts.
+
 ---
 
 ## Step 2: Create the reference tables
