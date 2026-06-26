@@ -716,27 +716,89 @@ create policy "Admins write season_snapshots"
   using      (my_team_role(team_id) = 'admin')
   with check (my_team_role(team_id) = 'admin');
 
--- team_members: officers read their team, admins write
+-- team_members: officers read their team, admins and site admins write
 create policy "Officers read own team_members"
   on team_members for select
-  using (my_team_role(team_id) in ('officer', 'admin'));
+  using (my_team_role(team_id) in ('officer', 'admin') or is_site_admin());
 create policy "Admins write team_members"
   on team_members for all
-  using      (my_team_role(team_id) = 'admin')
-  with check (my_team_role(team_id) = 'admin');
+  using      (my_team_role(team_id) = 'admin' or is_site_admin())
+  with check (my_team_role(team_id) = 'admin' or is_site_admin());
+```
+
+### Site admin table and policies
+
+A site admin has access above the team level -- they can manage settings and
+team membership across both teams without needing a team-specific role. This is
+separate from the `team_members` admin role, which is scoped to one team.
+
+```sql
+create table site_admins (
+  id            serial primary key,
+  discord_id    text not null unique,
+  auth_user_id  uuid references auth.users(id) on delete set null
+);
+
+alter table site_admins enable row level security;
+```
+
+The `is_site_admin()` helper works the same way as `my_team_role()` -- it is
+`security definer` so it can read `site_admins` without hitting an RLS catch-22,
+and `stable` so it is cached within a query rather than called once per row.
+
+```sql
+create or replace function is_site_admin()
+returns boolean
+language sql
+security definer
+stable
+as $$
+  select exists (
+    select 1 from site_admins
+    where auth_user_id = auth.uid()
+  );
+$$;
+
+-- Only site admins can read or write the site_admins table itself
+create policy "Site admins read site_admins"
+  on site_admins for select
+  using (is_site_admin());
+
+create policy "Site admins write site_admins"
+  on site_admins for all
+  using      (is_site_admin())
+  with check (is_site_admin());
+
+-- Update policies that were admin-only to also allow site admins
+drop policy "Admins write settings" on settings;
+create policy "Admins write settings"
+  on settings for all
+  using      (my_team_role(team_id) = 'admin' or is_site_admin())
+  with check (my_team_role(team_id) = 'admin' or is_site_admin());
+
+drop policy "Admins write season_snapshots" on season_snapshots;
+create policy "Admins write season_snapshots"
+  on season_snapshots for all
+  using      (my_team_role(team_id) = 'admin' or is_site_admin())
+  with check (my_team_role(team_id) = 'admin' or is_site_admin());
+
+drop policy "Officers read audit_log" on audit_log;
+create policy "Officers read audit_log"
+  on audit_log for select
+  using (my_team_role(team_id) in ('officer', 'admin') or is_site_admin());
 ```
 
 ### Auth trigger
 
-When an officer logs in with Discord for the first time, Supabase creates a row in
-`auth.users`. At that moment the officer already has a `team_members` row (seeded in
-issue #203) but `auth_user_id` is still null. This trigger fires automatically on
-every new `auth.users` insert, reads the Discord user ID from the login metadata,
-finds the matching `team_members` row, and fills in the UUID. From that point on,
-`auth.uid()` in any RLS policy correctly identifies the officer.
+When an officer or site admin logs in with Discord for the first time, Supabase
+creates a row in `auth.users`. At that moment they already have a row in
+`team_members` or `site_admins` (seeded in issue #203) but `auth_user_id` is still
+null. This trigger fires automatically on every new `auth.users` insert, reads the
+Discord user ID from the login metadata, and fills in the UUID on both tables.
 
-Without this trigger, an officer would log in successfully but `my_team_role()` would
-return null -- they would be logged in but treated as anonymous.
+Without this trigger, an officer would log in successfully but `my_team_role()` and
+`is_site_admin()` would both return null -- they would be logged in but treated as
+anonymous.
 
 ```sql
 create or replace function link_auth_user_to_member()
@@ -749,6 +811,12 @@ begin
   set auth_user_id = new.id
   where discord_id = new.raw_user_meta_data ->> 'provider_id'
     and auth_user_id is null;
+
+  update site_admins
+  set auth_user_id = new.id
+  where discord_id = new.raw_user_meta_data ->> 'provider_id'
+    and auth_user_id is null;
+
   return new;
 end;
 $$;
@@ -767,10 +835,16 @@ text.
 
 ## Issue #203: Seed officer and admin data
 
-Insert all current Phoenix and Hellfire officers and admins into `team_members`.
-
 **How to find a Discord user ID:** in Discord go to Settings -> Advanced -> turn on
 Developer Mode. Then right-click any user and choose "Copy User ID".
+
+First, seed yourself into `site_admins`:
+
+```sql
+insert into site_admins (discord_id) values ('YOUR_DISCORD_ID_HERE');
+```
+
+Then insert all current Phoenix and Hellfire officers and admins into `team_members`:
 
 ```sql
 insert into team_members (team_id, discord_id, role) values
@@ -780,8 +854,8 @@ insert into team_members (team_id, discord_id, role) values
   -- add all current officers for both teams
 ```
 
-Do not insert `auth_user_id` -- it starts as null and is filled in automatically
-when each officer logs in for the first time via the trigger above.
+Do not insert `auth_user_id` in either table -- it starts as null and is filled in
+automatically when each person logs in for the first time via the auth trigger.
 
 Team IDs: Phoenix = 1, Hellfire = 2.
 
