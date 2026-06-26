@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.5.5] - 2026-06-23
+
+### Added
+- **Supabase migration plan** -- Added `docs/supabase-migration-plan.md`, a proposal for moving the Raid Hub off Google Sheets to Supabase and PostgreSQL: phased roadmap, security model (Row Level Security as the access boundary), data migration approach, the loot-feed retirement, and the decisions and setup needed to begin. Planning only; no application changes.
+
+---
+
 ## [3.5.4] - 2026-06-23
 
 ### Fixed
