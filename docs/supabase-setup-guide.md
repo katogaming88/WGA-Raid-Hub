@@ -887,14 +887,18 @@ only place where secrets can safely live. The website never sees these values.
 
 In Supabase: **Project Settings** -> **Edge Functions** -> **Secrets**. Add each:
 
-| Secret name                | Where to find the value                              |
-|----------------------------|------------------------------------------------------|
-| `WCL_CLIENT_ID`            | WarcraftLogs OAuth app                               |
-| `WCL_CLIENT_SECRET`        | WarcraftLogs OAuth app                               |
-| `DISCORD_BOT_SECRET`       | Apps Script Script Properties as `BOT_WEBHOOK_SECRET`|
-| `BOT_WEBHOOK_URL_PHOENIX`  | `https://wga-phoenix.duckdns.org` (already live)     |
-| `BOT_WEBHOOK_URL_HELLFIRE` | `https://wga-hellfire.duckdns.org` (already live)    |
-| `SUPABASE_SERVICE_KEY`     | Supabase -> Project Settings -> API -> service_role  |
+| Secret name                    | Where to find the value                                  |
+|--------------------------------|----------------------------------------------------------|
+| `WCL_CLIENT_ID`                | WarcraftLogs OAuth app                                   |
+| `WCL_CLIENT_SECRET`            | WarcraftLogs OAuth app                                   |
+| `BOT_WEBHOOK_SECRET_PHOENIX`   | Apps Script Script Properties for the Phoenix bot        |
+| `BOT_WEBHOOK_SECRET_HELLFIRE`  | Apps Script Script Properties for the Hellfire bot       |
+| `BOT_WEBHOOK_URL_PHOENIX`      | `https://wga-phoenix.duckdns.org` (already live)         |
+| `BOT_WEBHOOK_URL_HELLFIRE`     | `https://wga-hellfire.duckdns.org` (already live)        |
+| `SERVICE_ROLE_KEY`             | Supabase -> Project Settings -> API -> service_role      |
+
+Note: Supabase does not allow secrets prefixed with `SUPABASE_`, so the service role
+key is stored as `SERVICE_ROLE_KEY`.
 
 The `SUPABASE_SERVICE_KEY` bypasses RLS entirely. It must never appear outside of
 Edge Function secrets.
