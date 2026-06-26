@@ -1,5 +1,10 @@
 # Supabase Setup Guide -- Phase 1: Foundation
 
+**Status: Complete.** All Phase 1 issues (#202-206) are closed. The JavaScript
+smoke test from issue #206 was not fully run because supabase-js is not loaded on
+any page yet -- it carries over to the start of Phase 2 (issue #207) once the
+client is initialized.
+
 This guide covers everything in the **Supabase Phase 1: Foundation** milestone
 (issues #202-206). Each section below maps directly to one issue.
 
@@ -7,7 +12,8 @@ This guide covers everything in the **Supabase Phase 1: Foundation** milestone
 - Supabase project created (ID: `kxgjqnpwfklbgrxdgmmv`, Americas region, auto RLS enabled)
 - Both bots on HTTPS: Phoenix at `https://wga-phoenix.duckdns.org`,
   Hellfire at `https://wga-hellfire.duckdns.org`
-- Russell has dashboard access
+- Rex has dashboard access
+- Three teams seeded: Phoenix (1), Hellfire (2), Immolation (3)
 
 ---
 
