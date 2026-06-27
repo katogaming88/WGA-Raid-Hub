@@ -276,7 +276,6 @@ create table players (
   join_date       date,
   m_plus_excluded boolean not null default false,
   m_plus_note     text,
-  sort_key        integer,
   unique (team_id, name_realm)
 );
 ```
