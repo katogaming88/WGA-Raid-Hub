@@ -1,0 +1,36 @@
+name: Changelog Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed
+        run: |
+          git diff --name-only origin/${{ github.base_ref }}...HEAD > changed_files.txt
+
+          if grep -qE '^(js|gs)/.+\.(js|html)$|^[^/]+\.html$' changed_files.txt; then
+            echo "functional=true" >> $GITHUB_OUTPUT
+          else
+            echo "functional=false" >> $GITHUB_OUTPUT
+          fi
+
+          if grep -q '^CHANGELOG.md' changed_files.txt; then
+            echo "changelog=true" >> $GITHUB_OUTPUT
+          else
+            echo "changelog=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Fail if functional changes without changelog update
+        if: steps.changed.outputs.functional == 'true' && steps.changed.outputs.changelog == 'false'
+        run: |
+          echo "::error::CHANGELOG.md was not updated. If this PR changes how the app works or fixes a bug, please update CHANGELOG.md and bump the VERSION in js/common.js."
+          exit 1
