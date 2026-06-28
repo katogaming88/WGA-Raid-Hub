@@ -2,7 +2,7 @@ name: Changelog Check
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, synchronize, reopened]
 
 jobs:
   changelog:
@@ -12,17 +12,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check for skip-changelog label
-        id: skip
-        run: |
-          if echo '${{ toJson(github.event.pull_request.labels.*.name) }}' | grep -q 'skip-changelog'; then
-            echo "skip=true" >> $GITHUB_OUTPUT
-          else
-            echo "skip=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Get changed files
-        if: steps.skip.outputs.skip == 'false'
         id: changed
         run: |
           git diff --name-only origin/${{ github.base_ref }}...HEAD > changed_files.txt
@@ -40,7 +30,7 @@ jobs:
           fi
 
       - name: Fail if functional changes without changelog update
-        if: steps.skip.outputs.skip == 'false' && steps.changed.outputs.functional == 'true' && steps.changed.outputs.changelog == 'false'
+        if: steps.changed.outputs.functional == 'true' && steps.changed.outputs.changelog == 'false'
         run: |
-          echo "::error::CHANGELOG.md was not updated. If this PR changes how the app works or fixes a bug, please update CHANGELOG.md and bump the VERSION in js/common.js. For non-functional changes (formatting, config, docs), add the 'skip-changelog' label."
+          echo "::error::CHANGELOG.md was not updated. If this PR changes how the app works or fixes a bug, please update CHANGELOG.md and bump the VERSION in js/common.js."
           exit 1
