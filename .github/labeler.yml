@@ -1,0 +1,41 @@
+roster:
+  - changed-files:
+    - any-glob-to-any-file:
+      - js/tabs/tab-roster.js
+      - js/roster.js
+
+attendance:
+  - changed-files:
+    - any-glob-to-any-file:
+      - js/tabs/tab-attendance.js
+
+loot:
+  - changed-files:
+    - any-glob-to-any-file:
+      - js/tabs/tab-loot-import.js
+
+priority:
+  - changed-files:
+    - any-glob-to-any-file:
+      - js/tabs/tab-priority.js
+
+bis:
+  - changed-files:
+    - any-glob-to-any-file:
+      - js/tabs/tab-bis.js
+
+filters:
+  - changed-files:
+    - any-glob-to-any-file:
+      - js/tabs/tab-conflicts.js
+
+discord:
+  - changed-files:
+    - any-glob-to-any-file:
+      - js/discord.js
+
+documentation:
+  - changed-files:
+    - any-glob-to-any-file:
+      - docs/**
+      - '*.md'

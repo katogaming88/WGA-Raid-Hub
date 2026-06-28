@@ -1,11 +1,13 @@
 var TEAMS = {
   phoenix: {
-    gasUrl: 'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec',
+    gasUrl:
+      'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec',
     name: 'Team Phoenix',
     officerPass: 'phoenix2'
   },
   hellfire: {
-    gasUrl: 'https://script.google.com/macros/s/AKfycbwIpnJyZDwWr5MmWIv7iyaDZ0OajPTFePMTYfIy8WG7jhg7pakQTvTVSM3SLihrKxBb/exec',
+    gasUrl:
+      'https://script.google.com/macros/s/AKfycbwIpnJyZDwWr5MmWIv7iyaDZ0OajPTFePMTYfIy8WG7jhg7pakQTvTVSM3SLihrKxBb/exec',
     name: 'Hellfire Rollers',
     officerPass: 'hellfire2'
   }
@@ -26,8 +28,10 @@ var VERSION = '3.5.5';
 function _getDiscordTokenParam() {
   try {
     var s = typeof getDiscordSession === 'function' && getDiscordSession();
-    return (s && s.token) ? '&token=' + encodeURIComponent(s.token) : '';
-  } catch (_) { return ''; }
+    return s && s.token ? '&token=' + encodeURIComponent(s.token) : '';
+  } catch (_) {
+    return '';
+  }
 }
 
 var DATA = null;
@@ -54,18 +58,20 @@ function initTeamUI() {
   document.title = TEAM_NAME + (suffix ? ' -- ' + suffix : '');
   var nameEl = document.getElementById('headerTeamName');
   if (nameEl) nameEl.textContent = TEAM_NAME;
-  ['teamSwitcherSelect', 'officerPromptTeamSelect'].forEach(function(id) {
+  ['teamSwitcherSelect', 'officerPromptTeamSelect'].forEach(function (id) {
     var sel = document.getElementById(id);
     if (!sel) return;
     sel.innerHTML = '';
-    Object.keys(TEAMS).forEach(function(slug) {
+    Object.keys(TEAMS).forEach(function (slug) {
       var opt = document.createElement('option');
       opt.value = slug;
       opt.textContent = TEAMS[slug].name;
       if (slug === TEAM_SLUG) opt.selected = true;
       sel.appendChild(opt);
     });
-    sel.onchange = function() { switchTeam(this.value); };
+    sel.onchange = function () {
+      switchTeam(this.value);
+    };
   });
 }
 
@@ -83,14 +89,18 @@ function jsonpRequest(url, callback, timeoutMs) {
     callback(err, result);
   }
 
-  window[cbName] = function (result) { finish(null, result); };
+  window[cbName] = function (result) {
+    finish(null, result);
+  };
 
   timer = setTimeout(function () {
     finish(new Error('Request timed out. GAS may still be processing -- try again in a moment.'), null);
   }, ms);
 
   var script = document.createElement('script');
-  script.onerror = function () { finish(new Error('Request failed. Check your connection.'), null); };
+  script.onerror = function () {
+    finish(new Error('Request failed. Check your connection.'), null);
+  };
   if (url.indexOf(WEB_APP_URL) === 0) url += _getDiscordTokenParam();
   script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cbName;
   document.head.appendChild(script);
@@ -98,88 +108,269 @@ function jsonpRequest(url, callback, timeoutMs) {
 
 var WOW_REALMS = [
   // NA
-  'Aegwynn', 'Aggramar', 'Akama', 'Alexstrasza', 'Alleria', 'Altar of Storms', 'Alterac Mountains',
-  'Andorhal', 'Anetheron', 'Antonidas', "Anub'arak", 'Anvilmar', 'Arathor', 'Archimonde',
-  'Area 52', 'Argent Dawn', 'Arthas', 'Arygos', 'Auchindoun', 'Azgalor', 'Azjol-Nerub', 'Azralon',
-  'Azshara', 'Azuremyst', 'Baelgun', 'Black Dragonflight', 'Blackhand', 'Blackrock',
-  'Blackwater Raiders', 'Blackwing Lair', "Blade's Edge", 'Bladefist', 'Bleeding Hollow',
-  'Blood Furnace', 'Bloodhoof', 'Bloodscalp', 'Bonechewer', 'Borean Tundra', 'Boulderfist',
-  'Bronze Dragonflight', 'Bronzebeard', 'Burning Blade', 'Burning Legion', 'Cairne',
-  'Cenarion Circle', 'Cenarius', "Cho'gall", 'Chromaggus', 'Crushridge', 'Daggerspine', 'Dalaran',
-  'Dalvengyr', 'Dark Iron', 'Darrowmere', 'Dawnbringer', 'Deathwing', 'Demon Soul', 'Destromath',
-  'Detheroc', 'Doomhammer', 'Dragonblight', 'Dragonmaw', "Drak'Tharon", "Drak'thul",
-  'Drenden', 'Dunemaul', 'Durotan', 'Duskwood', 'Earthen Ring', 'Echo Isles', 'Eitrigg',
-  "Eldre'Thalas", 'Elune', 'Emerald Dream', 'Eonar', 'Eredar', 'Executus', 'Exodar', 'Farstriders',
-  'Feathermoon', 'Fenris', 'Fizzcrank', 'Frostmane', 'Frostwolf', 'Garithos', 'Garona', 'Garrosh',
-  'Ghostlands', 'Gilneas', 'Gnomeregan', 'Gorefiend', 'Greymane', 'Grizzly Hills', "Gul'dan",
-  'Gurubashi', 'Hakkar', 'Haomarush', 'Hellscream', 'Hydraxis', 'Hyjal', 'Icecrown',
-  'Illidan', 'Jaedenar', "Kael'thas", 'Kalecgos', 'Kargath', "Kel'Thuzad",
-  'Khaz Modan', "Kil'jaeden", 'Kilrogg', 'Kirin Tor', 'Korgath', 'Korialstrasz',
-  'Kul Tiras', 'Laughing Skull', 'Lethon', 'Lightbringer', "Lightning's Blade", 'Lightninghoof',
-  'Llane', 'Lothar', 'Madoran', 'Maelstrom', 'Magtheridon', 'Maiev', "Mal'Ganis", 'Malorne',
-  'Malygos', 'Mannoroth', 'Medivh', 'Misha', "Mok'Nathal", 'Moon Guard', 'Moonrunner', "Mug'thol",
-  'Muradin', 'Nathrezim', 'Nazgrel', 'Nazjatar', 'Nesingwary', 'Norgannon', 'Nordrassil',
-  'Onyxia', 'Perenolde', 'Proudmoore', "Quel'dorei", 'Ravenholdt', 'Rexxar',
-  'Rivendare', 'Runetotem', 'Scarlet Crusade', 'Scilla', "Sen'jin", 'Sentinels', 'Shadow Council',
-  'Shadowmoon', 'Shadowsong', 'Shattered Halls', 'Shattered Hand', "Shu'halo", 'Silver Hand',
-  'Silvermoon', 'Sisters of Elune', 'Skullcrusher', 'Skywall', 'Smolderthorn', 'Spinebreaker',
-  'Spirestone', 'Staghelm', 'Steamwheedle Cartel', 'Stonemaul', 'Stormrage', 'Stormreaver',
-  'Stormscale', 'Sulfuras', 'Tanaris', 'Terenas', 'Terokkar', 'Thorium Brotherhood', 'Thrall',
-  'Thunderhorn', 'Thunderlord', 'Tichondrius', 'Tirion', 'Tortheldrin', 'Trollbane', 'Turalyon',
-  'Twisting Nether', 'Uther', 'Vashj', 'Velen', 'Venture Co', 'Whisperwind', 'Wildhammer',
-  'Windrunner', 'Winterhoof', 'Wyrmrest Accord', 'Ysera', 'Ysondre', 'Zangarmarsh', "Zul'jin",
+  'Aegwynn',
+  'Aggramar',
+  'Akama',
+  'Alexstrasza',
+  'Alleria',
+  'Altar of Storms',
+  'Alterac Mountains',
+  'Andorhal',
+  'Anetheron',
+  'Antonidas',
+  "Anub'arak",
+  'Anvilmar',
+  'Arathor',
+  'Archimonde',
+  'Area 52',
+  'Argent Dawn',
+  'Arthas',
+  'Arygos',
+  'Auchindoun',
+  'Azgalor',
+  'Azjol-Nerub',
+  'Azralon',
+  'Azshara',
+  'Azuremyst',
+  'Baelgun',
+  'Black Dragonflight',
+  'Blackhand',
+  'Blackrock',
+  'Blackwater Raiders',
+  'Blackwing Lair',
+  "Blade's Edge",
+  'Bladefist',
+  'Bleeding Hollow',
+  'Blood Furnace',
+  'Bloodhoof',
+  'Bloodscalp',
+  'Bonechewer',
+  'Borean Tundra',
+  'Boulderfist',
+  'Bronze Dragonflight',
+  'Bronzebeard',
+  'Burning Blade',
+  'Burning Legion',
+  'Cairne',
+  'Cenarion Circle',
+  'Cenarius',
+  "Cho'gall",
+  'Chromaggus',
+  'Crushridge',
+  'Daggerspine',
+  'Dalaran',
+  'Dalvengyr',
+  'Dark Iron',
+  'Darrowmere',
+  'Dawnbringer',
+  'Deathwing',
+  'Demon Soul',
+  'Destromath',
+  'Detheroc',
+  'Doomhammer',
+  'Dragonblight',
+  'Dragonmaw',
+  "Drak'Tharon",
+  "Drak'thul",
+  'Drenden',
+  'Dunemaul',
+  'Durotan',
+  'Duskwood',
+  'Earthen Ring',
+  'Echo Isles',
+  'Eitrigg',
+  "Eldre'Thalas",
+  'Elune',
+  'Emerald Dream',
+  'Eonar',
+  'Eredar',
+  'Executus',
+  'Exodar',
+  'Farstriders',
+  'Feathermoon',
+  'Fenris',
+  'Fizzcrank',
+  'Frostmane',
+  'Frostwolf',
+  'Garithos',
+  'Garona',
+  'Garrosh',
+  'Ghostlands',
+  'Gilneas',
+  'Gnomeregan',
+  'Gorefiend',
+  'Greymane',
+  'Grizzly Hills',
+  "Gul'dan",
+  'Gurubashi',
+  'Hakkar',
+  'Haomarush',
+  'Hellscream',
+  'Hydraxis',
+  'Hyjal',
+  'Icecrown',
+  'Illidan',
+  'Jaedenar',
+  "Kael'thas",
+  'Kalecgos',
+  'Kargath',
+  "Kel'Thuzad",
+  'Khaz Modan',
+  "Kil'jaeden",
+  'Kilrogg',
+  'Kirin Tor',
+  'Korgath',
+  'Korialstrasz',
+  'Kul Tiras',
+  'Laughing Skull',
+  'Lethon',
+  'Lightbringer',
+  "Lightning's Blade",
+  'Lightninghoof',
+  'Llane',
+  'Lothar',
+  'Madoran',
+  'Maelstrom',
+  'Magtheridon',
+  'Maiev',
+  "Mal'Ganis",
+  'Malorne',
+  'Malygos',
+  'Mannoroth',
+  'Medivh',
+  'Misha',
+  "Mok'Nathal",
+  'Moon Guard',
+  'Moonrunner',
+  "Mug'thol",
+  'Muradin',
+  'Nathrezim',
+  'Nazgrel',
+  'Nazjatar',
+  'Nesingwary',
+  'Norgannon',
+  'Nordrassil',
+  'Onyxia',
+  'Perenolde',
+  'Proudmoore',
+  "Quel'dorei",
+  'Ravenholdt',
+  'Rexxar',
+  'Rivendare',
+  'Runetotem',
+  'Scarlet Crusade',
+  'Scilla',
+  "Sen'jin",
+  'Sentinels',
+  'Shadow Council',
+  'Shadowmoon',
+  'Shadowsong',
+  'Shattered Halls',
+  'Shattered Hand',
+  "Shu'halo",
+  'Silver Hand',
+  'Silvermoon',
+  'Sisters of Elune',
+  'Skullcrusher',
+  'Skywall',
+  'Smolderthorn',
+  'Spinebreaker',
+  'Spirestone',
+  'Staghelm',
+  'Steamwheedle Cartel',
+  'Stonemaul',
+  'Stormrage',
+  'Stormreaver',
+  'Stormscale',
+  'Sulfuras',
+  'Tanaris',
+  'Terenas',
+  'Terokkar',
+  'Thorium Brotherhood',
+  'Thrall',
+  'Thunderhorn',
+  'Thunderlord',
+  'Tichondrius',
+  'Tirion',
+  'Tortheldrin',
+  'Trollbane',
+  'Turalyon',
+  'Twisting Nether',
+  'Uther',
+  'Vashj',
+  'Velen',
+  'Venture Co',
+  'Whisperwind',
+  'Wildhammer',
+  'Windrunner',
+  'Winterhoof',
+  'Wyrmrest Accord',
+  'Ysera',
+  'Ysondre',
+  'Zangarmarsh',
+  "Zul'jin",
   'Zuluhed',
   // OCE
-  "Aman'Thul", 'Barthilas', 'Caelestrasz', "Dath'Remar", 'Dreadmaul', 'Frostmourne',
-  'Gundrak', "Jubei'Thos", "Khaz'goroth", 'Nagrand', 'Saurfang', 'Thaurissan'
+  "Aman'Thul",
+  'Barthilas',
+  'Caelestrasz',
+  "Dath'Remar",
+  'Dreadmaul',
+  'Frostmourne',
+  'Gundrak',
+  "Jubei'Thos",
+  "Khaz'goroth",
+  'Nagrand',
+  'Saurfang',
+  'Thaurissan'
 ].sort();
 
 var CLASS_SPECS = {
   'Death Knight': { specs: ['Blood', 'Frost', 'Unholy'], roles: ['Tank', 'DPS'] },
   'Demon Hunter': { specs: ['Havoc', 'Vengeance', 'Devourer'], roles: ['Tank', 'DPS'] },
-  'Druid': { specs: ['Balance', 'Feral', 'Guardian', 'Restoration'], roles: ['Tank', 'Healer', 'DPS'] },
-  'Evoker': { specs: ['Augmentation', 'Devastation', 'Preservation'], roles: ['Healer', 'DPS'] },
-  'Hunter': { specs: ['Beast Mastery', 'Marksmanship', 'Survival'], roles: null },
-  'Mage': { specs: ['Arcane', 'Fire', 'Frost'], roles: null },
-  'Monk': { specs: ['Brewmaster', 'Mistweaver', 'Windwalker'], roles: ['Tank', 'Healer', 'DPS'] },
-  'Paladin': { specs: ['Holy', 'Protection', 'Retribution'], roles: ['Tank', 'Healer', 'DPS'] },
-  'Priest': { specs: ['Discipline', 'Holy', 'Shadow'], roles: ['Healer', 'DPS'] },
-  'Rogue': { specs: ['Assassination', 'Outlaw', 'Subtlety'], roles: null },
-  'Shaman': { specs: ['Elemental', 'Enhancement', 'Restoration'], roles: ['Healer', 'DPS'] },
-  'Warlock': { specs: ['Affliction', 'Demonology', 'Destruction'], roles: null },
-  'Warrior': { specs: ['Arms', 'Fury', 'Protection'], roles: ['Tank', 'DPS'] }
+  Druid: { specs: ['Balance', 'Feral', 'Guardian', 'Restoration'], roles: ['Tank', 'Healer', 'DPS'] },
+  Evoker: { specs: ['Augmentation', 'Devastation', 'Preservation'], roles: ['Healer', 'DPS'] },
+  Hunter: { specs: ['Beast Mastery', 'Marksmanship', 'Survival'], roles: null },
+  Mage: { specs: ['Arcane', 'Fire', 'Frost'], roles: null },
+  Monk: { specs: ['Brewmaster', 'Mistweaver', 'Windwalker'], roles: ['Tank', 'Healer', 'DPS'] },
+  Paladin: { specs: ['Holy', 'Protection', 'Retribution'], roles: ['Tank', 'Healer', 'DPS'] },
+  Priest: { specs: ['Discipline', 'Holy', 'Shadow'], roles: ['Healer', 'DPS'] },
+  Rogue: { specs: ['Assassination', 'Outlaw', 'Subtlety'], roles: null },
+  Shaman: { specs: ['Elemental', 'Enhancement', 'Restoration'], roles: ['Healer', 'DPS'] },
+  Warlock: { specs: ['Affliction', 'Demonology', 'Destruction'], roles: null },
+  Warrior: { specs: ['Arms', 'Fury', 'Protection'], roles: ['Tank', 'DPS'] }
 };
 
 var CLASS_ARMOR_TYPE = {
   'Death Knight': 'Plate',
   'Demon Hunter': 'Leather',
-  'Druid': 'Leather',
-  'Evoker': 'Mail',
-  'Hunter': 'Mail',
-  'Mage': 'Cloth',
-  'Monk': 'Leather',
-  'Paladin': 'Plate',
-  'Priest': 'Cloth',
-  'Rogue': 'Leather',
-  'Shaman': 'Mail',
-  'Warlock': 'Cloth',
-  'Warrior': 'Plate'
+  Druid: 'Leather',
+  Evoker: 'Mail',
+  Hunter: 'Mail',
+  Mage: 'Cloth',
+  Monk: 'Leather',
+  Paladin: 'Plate',
+  Priest: 'Cloth',
+  Rogue: 'Leather',
+  Shaman: 'Mail',
+  Warlock: 'Cloth',
+  Warrior: 'Plate'
 };
 
 var CLASS_COLORS = {
   'Death Knight': '#C41E3A',
   'Demon Hunter': '#A330C9',
-  'Druid': '#FF7C0A',
-  'Evoker': '#33937F',
-  'Hunter': '#AAD372',
-  'Mage': '#3FC7EB',
-  'Monk': '#00FF98',
-  'Paladin': '#F48CBA',
-  'Priest': '#FFFFFF',
-  'Rogue': '#FFF468',
-  'Shaman': '#0070DD',
-  'Warlock': '#8788EE',
-  'Warrior': '#C69B3A'
+  Druid: '#FF7C0A',
+  Evoker: '#33937F',
+  Hunter: '#AAD372',
+  Mage: '#3FC7EB',
+  Monk: '#00FF98',
+  Paladin: '#F48CBA',
+  Priest: '#FFFFFF',
+  Rogue: '#FFF468',
+  Shaman: '#0070DD',
+  Warlock: '#8788EE',
+  Warrior: '#C69B3A'
 };
 
 function classColor(cls) {
@@ -196,11 +387,17 @@ function classHexToRgba(hex, a) {
 function classBadgeStyle(cls) {
   var hex = CLASS_COLORS[cls];
   if (!hex) return '';
-  return 'color:' + hex + ';background:' + classHexToRgba(hex, 0.1) + ';border-color:' + classHexToRgba(hex, 0.25) + ';';
+  return (
+    'color:' + hex + ';background:' + classHexToRgba(hex, 0.1) + ';border-color:' + classHexToRgba(hex, 0.25) + ';'
+  );
 }
 
 function normalise(str) {
-  return String(str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  return String(str || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim();
 }
 
 // -- Data loading -----------------------------------------------------------
@@ -209,18 +406,31 @@ function normalise(str) {
 function loadData(onCoreReady, onHeavyReady) {
   var loadingEl = document.getElementById('loadingMsg');
   function showError(msg) {
-    if (loadingEl) { loadingEl.className = 'state-msg error'; loadingEl.innerHTML = msg; }
+    if (loadingEl) {
+      loadingEl.className = 'state-msg error';
+      loadingEl.innerHTML = msg;
+    }
   }
 
   window._rosterCoreCallback = function (data) {
     delete window._rosterCoreCallback;
-    if (data.error) { showError('Could not load roster data. ' + data.error); return; }
+    if (data.error) {
+      showError('Could not load roster data. ' + data.error);
+      return;
+    }
     DATA = data;
     DATA._loadedAt = new Date();
-    try { onCoreReady(); } catch (e) { showError('Could not load roster data. ' + e.message); return; }
+    try {
+      onCoreReady();
+    } catch (e) {
+      showError('Could not load roster data. ' + e.message);
+      return;
+    }
 
     var heavyScript = document.createElement('script');
-    heavyScript.onerror = function () { delete window._rosterHeavyCallback; };
+    heavyScript.onerror = function () {
+      delete window._rosterHeavyCallback;
+    };
     window._rosterHeavyCallback = function (heavy) {
       delete window._rosterHeavyCallback;
       if (!heavy || heavy.error) return;
@@ -250,7 +460,9 @@ function loadData(onCoreReady, onHeavyReady) {
   document.head.appendChild(coreScript);
 
   setTimeout(function () {
-    if (!DATA) { showError('Request timed out.'); }
+    if (!DATA) {
+      showError('Request timed out.');
+    }
   }, 15000);
 }
 
@@ -259,7 +471,9 @@ function getRank(firstName, itemName) {
   var list = (DATA.priorityOrder || {})[itemName];
   if (!list) return null;
   var norm = normalise(firstName);
-  for (var i = 0; i < list.length; i++) { if (normalise(list[i]) === norm) return i + 1; }
+  for (var i = 0; i < list.length; i++) {
+    if (normalise(list[i]) === norm) return i + 1;
+  }
   return null;
 }
 
@@ -268,9 +482,16 @@ function getBisItems(firstName) {
   var norm = normalise(firstName);
   var key = null;
   var keys = Object.keys(bisMap);
-  for (var i = 0; i < keys.length; i++) { if (normalise(keys[i]) === norm) { key = keys[i]; break; } }
+  for (var i = 0; i < keys.length; i++) {
+    if (normalise(keys[i]) === norm) {
+      key = keys[i];
+      break;
+    }
+  }
   var entries = key ? bisMap[key] : [];
-  return entries.map(function (e) { return (typeof e === 'string') ? { item: e, slot: '' } : e; });
+  return entries.map(function (e) {
+    return typeof e === 'string' ? { item: e, slot: '' } : e;
+  });
 }
 
 function getSelfReceivedItems(firstName) {
@@ -304,14 +525,23 @@ function refreshBisCompletion(firstName) {
     if (receivedMap[normalise(bisItems[k].item)] || selfRecMap[normalise(bisItems[k].item)]) count++;
   }
   var pct = Math.round((count / bisItems.length) * 100);
-  el.innerHTML = '<span style="color:var(--gold-light);font-weight:600;">' + pct + '%</span><span style="color:var(--text-muted);font-weight:400;"> (' + count + '/' + bisItems.length + ')</span>';
+  el.innerHTML =
+    '<span style="color:var(--gold-light);font-weight:600;">' +
+    pct +
+    '%</span><span style="color:var(--text-muted);font-weight:400;"> (' +
+    count +
+    '/' +
+    bisItems.length +
+    ')</span>';
 }
 
 function getLootEntry(firstName) {
   var lootMap = DATA.lootCounts || {};
   var norm = normalise(firstName);
   var keys = Object.keys(lootMap);
-  for (var i = 0; i < keys.length; i++) { if (normalise(keys[i]) === norm) return lootMap[keys[i]]; }
+  for (var i = 0; i < keys.length; i++) {
+    if (normalise(keys[i]) === norm) return lootMap[keys[i]];
+  }
   return null;
 }
 
@@ -319,13 +549,16 @@ function getSeasonLootItems(firstName) {
   var entry = getLootEntry(firstName);
   var items = (entry && entry.items) || [];
   if (!ACTIVE_SEASON) return items;
-  return items.filter(function (item) { return item.season === ACTIVE_SEASON; });
+  return items.filter(function (item) {
+    return item.season === ACTIVE_SEASON;
+  });
 }
 
 function getSeasonLootEntry(firstName) {
   if (!ACTIVE_SEASON) return getLootEntry(firstName);
   var items = getSeasonLootItems(firstName);
-  var heroic = 0, mythic = 0;
+  var heroic = 0,
+    mythic = 0;
   for (var i = 0; i < items.length; i++) {
     if (items[i].difficulty === 'Heroic') heroic++;
     else if (items[i].difficulty === 'Mythic') mythic++;
@@ -335,12 +568,27 @@ function getSeasonLootEntry(firstName) {
 
 // -- Render helpers ---------------------------------------------------------
 function rankPillHTML(rank) {
-  if (rank === null) return '<span style="font-size:0.97rem;color:var(--text-dim);min-width:40px;text-align:center;">-</span>';
+  if (rank === null)
+    return '<span style="font-size:0.97rem;color:var(--text-dim);min-width:40px;text-align:center;">-</span>';
   var t = Math.min((rank - 1) / 14, 1);
-  var rv = Math.round(214 + (100 - 214) * t), gv = Math.round(163 + (100 - 163) * t), bv = Math.round(68 + (100 - 68) * t);
+  var rv = Math.round(214 + (100 - 214) * t),
+    gv = Math.round(163 + (100 - 163) * t),
+    bv = Math.round(68 + (100 - 68) * t);
   var a = Math.max(0.08, 0.18 - t * 0.1);
-  var c = 'rgb(' + rv + ',' + gv + ',' + bv + ')', bg = 'rgba(' + rv + ',' + gv + ',' + bv + ',' + a + ')', bd = 'rgba(' + rv + ',' + gv + ',' + bv + ',' + Math.max(0.2, 0.4 - t * 0.2) + ')';
-  return '<span class="rank-pill" style="background:' + bg + ';color:' + c + ';border:1px solid ' + bd + ';">#' + rank + '</span>';
+  var c = 'rgb(' + rv + ',' + gv + ',' + bv + ')',
+    bg = 'rgba(' + rv + ',' + gv + ',' + bv + ',' + a + ')',
+    bd = 'rgba(' + rv + ',' + gv + ',' + bv + ',' + Math.max(0.2, 0.4 - t * 0.2) + ')';
+  return (
+    '<span class="rank-pill" style="background:' +
+    bg +
+    ';color:' +
+    c +
+    ';border:1px solid ' +
+    bd +
+    ';">#' +
+    rank +
+    '</span>'
+  );
 }
 
 function lookupItemSlot(itemName) {
@@ -357,11 +605,14 @@ function getSlotColor(slot) {
   if (s === 'TRINKET' || s === 'TRINKET 1' || s === 'TRINKET 2') return 'var(--gold)';
   if (s === 'NECK' || s === 'RING' || s === 'RING 1' || s === 'RING 2') return 'var(--ranged)';
   if (s === '1H/2H' || s === 'OH') return 'var(--melee)';
-  if (['HEAD', 'SHOULDERS', 'CHEST', 'GLOVES', 'LEGS', 'CLOAK', 'BRACERS', 'BELT', 'BOOTS'].indexOf(s) >= 0) return 'var(--tank)';
+  if (['HEAD', 'SHOULDERS', 'CHEST', 'GLOVES', 'LEGS', 'CLOAK', 'BRACERS', 'BELT', 'BOOTS'].indexOf(s) >= 0)
+    return 'var(--tank)';
   return 'var(--text)';
 }
 
-function attendColor(pct) { return pct >= 95 ? 'var(--heal)' : pct >= 75 ? 'var(--gold)' : 'var(--melee)'; }
+function attendColor(pct) {
+  return pct >= 95 ? 'var(--heal)' : pct >= 75 ? 'var(--gold)' : 'var(--melee)';
+}
 
 function attendTrendColor(status) {
   if (status === 'Present') return '#52b788';
@@ -386,13 +637,14 @@ function showAttendTip(evt, text) {
   if (!tip) {
     tip = document.createElement('div');
     tip.id = 'attend-trend-tip';
-    tip.style.cssText = 'position:fixed;background:var(--bg-elevated);border:1px solid var(--border-mid);border-radius:4px;padding:0.45rem 0.7rem;font-size:0.8rem;color:var(--text-muted);white-space:nowrap;pointer-events:none;z-index:200;font-family:Rajdhani,sans-serif;letter-spacing:0.03em;';
+    tip.style.cssText =
+      'position:fixed;background:var(--bg-elevated);border:1px solid var(--border-mid);border-radius:4px;padding:0.45rem 0.7rem;font-size:0.8rem;color:var(--text-muted);white-space:nowrap;pointer-events:none;z-index:200;font-family:Rajdhani,sans-serif;letter-spacing:0.03em;';
     document.body.appendChild(tip);
   }
   tip.textContent = text;
   tip.style.display = 'block';
-  tip.style.left = (evt.clientX + 12) + 'px';
-  tip.style.top = (evt.clientY - 32) + 'px';
+  tip.style.left = evt.clientX + 12 + 'px';
+  tip.style.top = evt.clientY - 32 + 'px';
 }
 
 function hideAttendTip() {
@@ -414,32 +666,69 @@ function renderAttendTrend(firstName) {
   var nights = trend.slice().reverse(); // oldest left, newest right
 
   // Aggregate by calendar month
-  var monthMap = {}, monthOrder = [];
+  var monthMap = {},
+    monthOrder = [];
   var MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   for (var i = 0; i < nights.length; i++) {
     var key = nights[i].date.substring(0, 7); // "yyyy-MM"
-    if (!monthMap[key]) { monthMap[key] = []; monthOrder.push(key); }
+    if (!monthMap[key]) {
+      monthMap[key] = [];
+      monthOrder.push(key);
+    }
     monthMap[key].push(nights[i]);
   }
 
   // Fall back to per-night dots if only one month of data
   if (monthOrder.length <= 1) {
     var n = nights.length;
-    var W = Math.max(300, n * 24), H = 56, PAD = 6, R = 4;
+    var W = Math.max(300, n * 24),
+      H = 56,
+      PAD = 6,
+      R = 4;
     var points = [];
     for (var i = 0; i < n; i++) {
       var x = n === 1 ? W / 2 : PAD + (i / (n - 1)) * (W - PAD * 2);
       var y = PAD + (1 - attendTrendValue(nights[i].status)) * (H - PAD * 2);
       points.push({ x: x, y: y, night: nights[i] });
     }
-    var lineStr = points.map(function (p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ');
-    var svg = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" style="display:block;overflow:visible;">';
-    svg += '<polyline points="' + lineStr + '" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>';
+    var lineStr = points
+      .map(function (p) {
+        return p.x.toFixed(1) + ',' + p.y.toFixed(1);
+      })
+      .join(' ');
+    var svg =
+      '<svg width="' +
+      W +
+      '" height="' +
+      H +
+      '" viewBox="0 0 ' +
+      W +
+      ' ' +
+      H +
+      '" style="display:block;overflow:visible;">';
+    svg +=
+      '<polyline points="' +
+      lineStr +
+      '" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>';
     for (var i = 0; i < points.length; i++) {
       var p = points[i];
       var tip = p.night.date + ': ' + p.night.status;
-      svg += '<g style="cursor:default;" onmouseover="showAttendTip(event,' + "'" + tip + "')" + '" onmouseout="hideAttendTip()">';
-      svg += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + R + '" fill="' + attendTrendColor(p.night.status) + '"/>';
+      svg +=
+        '<g style="cursor:default;" onmouseover="showAttendTip(event,' +
+        "'" +
+        tip +
+        "')" +
+        '" onmouseout="hideAttendTip()">';
+      svg +=
+        '<circle cx="' +
+        p.x.toFixed(1) +
+        '" cy="' +
+        p.y.toFixed(1) +
+        '" r="' +
+        R +
+        '" fill="' +
+        attendTrendColor(p.night.status) +
+        '"/>';
       svg += '</g>';
     }
     svg += '</svg>';
@@ -458,7 +747,10 @@ function renderAttendTrend(firstName) {
   });
 
   var n = months.length;
-  var W = Math.max(200, n * 64), H = 56, PAD = 16, R = 7;
+  var W = Math.max(200, n * 64),
+    H = 56,
+    PAD = 16,
+    R = 7;
 
   var points = [];
   for (var i = 0; i < n; i++) {
@@ -467,17 +759,45 @@ function renderAttendTrend(firstName) {
     points.push({ x: x, y: y, m: months[i] });
   }
 
-  var lineStr = points.map(function (p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ');
+  var lineStr = points
+    .map(function (p) {
+      return p.x.toFixed(1) + ',' + p.y.toFixed(1);
+    })
+    .join(' ');
 
-  var svg = '<svg width="' + W + '" height="' + (H + 18) + '" viewBox="0 0 ' + W + ' ' + (H + 18) + '" style="display:block;overflow:visible;">';
-  svg += '<polyline points="' + lineStr + '" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>';
+  var svg =
+    '<svg width="' +
+    W +
+    '" height="' +
+    (H + 18) +
+    '" viewBox="0 0 ' +
+    W +
+    ' ' +
+    (H + 18) +
+    '" style="display:block;overflow:visible;">';
+  svg +=
+    '<polyline points="' +
+    lineStr +
+    '" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>';
   for (var i = 0; i < points.length; i++) {
     var p = points[i];
     var col = attendTrendMonthColor(p.m.avg);
     var tip = p.m.label + ': ' + p.m.pct + '% (' + p.m.count + ' raid' + (p.m.count !== 1 ? 's' : '') + ')';
-    svg += '<g style="cursor:default;" onmouseover="showAttendTip(event,' + "'" + tip + "')" + '" onmouseout="hideAttendTip()">';
+    svg +=
+      '<g style="cursor:default;" onmouseover="showAttendTip(event,' +
+      "'" +
+      tip +
+      "')" +
+      '" onmouseout="hideAttendTip()">';
     svg += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + R + '" fill="' + col + '"/>';
-    svg += '<text x="' + p.x.toFixed(1) + '" y="' + (H + 14) + '" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.45)" font-family="sans-serif">' + p.m.label.split(' ')[0] + '</text>';
+    svg +=
+      '<text x="' +
+      p.x.toFixed(1) +
+      '" y="' +
+      (H + 14) +
+      '" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.45)" font-family="sans-serif">' +
+      p.m.label.split(' ')[0] +
+      '</text>';
     svg += '</g>';
   }
   svg += '</svg>';
@@ -521,34 +841,53 @@ function submitMPlusExclusionForm(nameRealm, firstName) {
   var urlEl = document.getElementById('mplusUrl-' + firstName);
   var notesEl = document.getElementById('mplusNotes-' + firstName);
   var formEl = document.getElementById('mplusForm-' + firstName);
-  if (!urlEl || !urlEl.value.trim()) { if (urlEl) urlEl.style.borderColor = 'var(--melee)'; return; }
+  if (!urlEl || !urlEl.value.trim()) {
+    if (urlEl) urlEl.style.borderColor = 'var(--melee)';
+    return;
+  }
   var data = { nameRealm: nameRealm, raiderioUrl: urlEl.value.trim(), notes: notesEl ? notesEl.value.trim() : '' };
-  if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
+  if (formEl)
+    formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
   var cbName = '_submitMPlusCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
   window[cbName] = function (result) {
     delete window[cbName];
     if (result && result.success) {
-      if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Request submitted! An officer will review it shortly.</p>';
+      if (formEl)
+        formEl.innerHTML =
+          '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Request submitted! An officer will review it shortly.</p>';
     } else {
-      if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+      if (formEl)
+        formEl.innerHTML =
+          '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
     }
   };
   var script = document.createElement('script');
   script.onerror = function () {
     delete window[cbName];
-    if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+    if (formEl)
+      formEl.innerHTML =
+        '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
   };
-  script.src = WEB_APP_URL + '?action=submitMPlusExclusion&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
+  script.src =
+    WEB_APP_URL +
+    '?action=submitMPlusExclusion&data=' +
+    encodeURIComponent(JSON.stringify(data)) +
+    '&callback=' +
+    cbName;
   document.head.appendChild(script);
 }
 
 function submitBiSForm(nameRealm, firstName) {
   var urlEl = document.getElementById('bisUrl-' + firstName);
   var notesEl = document.getElementById('bisNotes-' + firstName);
-  if (!urlEl || !urlEl.value.trim()) { if (urlEl) urlEl.style.borderColor = 'var(--melee)'; return; }
+  if (!urlEl || !urlEl.value.trim()) {
+    if (urlEl) urlEl.style.borderColor = 'var(--melee)';
+    return;
+  }
   var data = { nameRealm: nameRealm, bisLink: urlEl.value.trim(), notes: notesEl ? notesEl.value.trim() : '' };
   var formEl = document.getElementById('bisForm-' + firstName);
-  if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
+  if (formEl)
+    formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
   var cbName = '_submitBisCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
   window[cbName] = function (result) {
     delete window[cbName];
@@ -561,15 +900,21 @@ function submitBiSForm(nameRealm, firstName) {
   var script = document.createElement('script');
   script.onerror = function () {
     delete window[cbName];
-    if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+    if (formEl)
+      formEl.innerHTML =
+        '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
   };
-  script.src = WEB_APP_URL + '?action=submitBiS&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
+  script.src =
+    WEB_APP_URL + '?action=submitBiS&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
   document.head.appendChild(script);
 }
 
 function officerUpdateBisLink(nameRealm, firstName) {
   var urlEl = document.getElementById('bisUrl-' + firstName);
-  if (!urlEl || !urlEl.value.trim()) { if (urlEl) urlEl.style.borderColor = 'var(--melee)'; return; }
+  if (!urlEl || !urlEl.value.trim()) {
+    if (urlEl) urlEl.style.borderColor = 'var(--melee)';
+    return;
+  }
   var data = { nameRealm: nameRealm, url: urlEl.value.trim() };
   var formEl = document.getElementById('bisForm-' + firstName);
   if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Saving...</p>';
@@ -585,9 +930,17 @@ function officerUpdateBisLink(nameRealm, firstName) {
   var script = document.createElement('script');
   script.onerror = function () {
     delete window[cbName];
-    if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to save. Try again.</p>';
+    if (formEl)
+      formEl.innerHTML =
+        '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to save. Try again.</p>';
   };
-  script.src = WEB_APP_URL + '?action=updateBisLink&data=' + encodeURIComponent(JSON.stringify(data)) + _getDiscordTokenParam() + '&callback=' + cbName;
+  script.src =
+    WEB_APP_URL +
+    '?action=updateBisLink&data=' +
+    encodeURIComponent(JSON.stringify(data)) +
+    _getDiscordTokenParam() +
+    '&callback=' +
+    cbName;
   document.head.appendChild(script);
 }
 
@@ -601,7 +954,9 @@ function updateBisAllowDiv(nameRealm, firstName) {
   btn.style.cssText = 'font-size:0.92rem;padding:0.25rem 0.75rem;';
   if (allowed) {
     btn.textContent = 'Revoke BiS Access';
-    btn.onclick = function () { revokeBisForPlayer(nameRealm, firstName); };
+    btn.onclick = function () {
+      revokeBisForPlayer(nameRealm, firstName);
+    };
     var badge = document.createElement('span');
     badge.style.cssText = 'font-size:0.9rem;color:var(--heal);margin-left:0.5rem;';
     badge.textContent = 'Submission open';
@@ -609,7 +964,9 @@ function updateBisAllowDiv(nameRealm, firstName) {
     divEl.appendChild(badge);
   } else {
     btn.textContent = 'Allow BiS Submission';
-    btn.onclick = function () { allowBisForPlayer(nameRealm, firstName); };
+    btn.onclick = function () {
+      allowBisForPlayer(nameRealm, firstName);
+    };
     divEl.appendChild(btn);
   }
 }
@@ -624,8 +981,17 @@ function allowBisForPlayer(nameRealm, firstName) {
     updateBisAllowDiv(nameRealm, firstName);
   };
   var script = document.createElement('script');
-  script.onerror = function () { delete window[cbName]; updateBisAllowDiv(nameRealm, firstName); };
-  script.src = WEB_APP_URL + '?action=allowBisForPlayer&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })) + _getDiscordTokenParam() + '&callback=' + cbName;
+  script.onerror = function () {
+    delete window[cbName];
+    updateBisAllowDiv(nameRealm, firstName);
+  };
+  script.src =
+    WEB_APP_URL +
+    '?action=allowBisForPlayer&data=' +
+    encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })) +
+    _getDiscordTokenParam() +
+    '&callback=' +
+    cbName;
   document.head.appendChild(script);
 }
 
@@ -639,8 +1005,17 @@ function revokeBisForPlayer(nameRealm, firstName) {
     updateBisAllowDiv(nameRealm, firstName);
   };
   var script = document.createElement('script');
-  script.onerror = function () { delete window[cbName]; updateBisAllowDiv(nameRealm, firstName); };
-  script.src = WEB_APP_URL + '?action=revokeBisForPlayer&data=' + encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })) + _getDiscordTokenParam() + '&callback=' + cbName;
+  script.onerror = function () {
+    delete window[cbName];
+    updateBisAllowDiv(nameRealm, firstName);
+  };
+  script.src =
+    WEB_APP_URL +
+    '?action=revokeBisForPlayer&data=' +
+    encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })) +
+    _getDiscordTokenParam() +
+    '&callback=' +
+    cbName;
   document.head.appendChild(script);
 }
 
@@ -649,34 +1024,60 @@ function showSelfReceivedForm(firstName, item, slot, rowId, defaultSource, isOff
   if (event) event.stopPropagation();
   var formEl = document.getElementById('form-' + rowId);
   if (!formEl) return;
-  if (formEl.style.display !== 'none') { formEl.style.display = 'none'; return; }
+  if (formEl.style.display !== 'none') {
+    formEl.style.display = 'none';
+    return;
+  }
   var sources = ['M+', 'Great Vault', 'Crafted', 'Catalyst', 'Bonus Roll', 'Other'];
   var opts = '<option value="">-- How did you get it? --</option>';
   for (var si = 0; si < sources.length; si++) {
-    opts += '<option value="' + sources[si] + '"' + (sources[si] === defaultSource ? ' selected' : '') + '>' + sources[si] + '</option>';
+    opts +=
+      '<option value="' +
+      sources[si] +
+      '"' +
+      (sources[si] === defaultSource ? ' selected' : '') +
+      '>' +
+      sources[si] +
+      '</option>';
   }
   var fnSafe = firstName.replace(/'/g, "\\'");
   var itemSafe = item.replace(/'/g, "\\'");
   var slotSafe = slot.replace(/'/g, "\\'");
   var submitFn = isOfficer
-    ? 'submitDirectMarkReceived(\'' + fnSafe + '\',\'' + itemSafe + '\',\'' + slotSafe + '\',\'' + rowId + '\')'
-    : 'submitSelfReceivedRequest(\'' + fnSafe + '\',\'' + itemSafe + '\',\'' + slotSafe + '\',\'' + rowId + '\')';
+    ? "submitDirectMarkReceived('" + fnSafe + "','" + itemSafe + "','" + slotSafe + "','" + rowId + "')"
+    : "submitSelfReceivedRequest('" + fnSafe + "','" + itemSafe + "','" + slotSafe + "','" + rowId + "')";
   var submitLabel = isOfficer ? 'Mark received' : 'Submit request';
-  var noteText = isOfficer ? '' : '<p class="self-received-note">An officer will review and approve this. Once approved it will appear on your profile.</p>';
+  var noteText = isOfficer
+    ? ''
+    : '<p class="self-received-note">An officer will review and approve this. Once approved it will appear on your profile.</p>';
   var formHtml =
     '<div class="self-received-form-inner" onclick="event.stopPropagation()">' +
     '<div style="display:flex;gap:0.5rem;margin-bottom:0.4rem;">' +
-    '<select id="diff-' + rowId + '" class="self-received-source" style="flex:0 0 auto;width:auto;">' +
+    '<select id="diff-' +
+    rowId +
+    '" class="self-received-source" style="flex:0 0 auto;width:auto;">' +
     '<option value="Mythic" selected>Mythic</option>' +
     '<option value="Heroic">Heroic</option>' +
     '<option value="Champion">Champion (Normal)</option>' +
     '</select>' +
-    '<select class="self-received-source" id="src-' + rowId + '" style="flex:1;">' + opts + '</select>' +
+    '<select class="self-received-source" id="src-' +
+    rowId +
+    '" style="flex:1;">' +
+    opts +
+    '</select>' +
     '</div>' +
-    '<textarea class="self-received-notes" id="notes-' + rowId + '" placeholder="Notes (optional)" rows="2"></textarea>' +
+    '<textarea class="self-received-notes" id="notes-' +
+    rowId +
+    '" placeholder="Notes (optional)" rows="2"></textarea>' +
     '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
-    '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="event.stopPropagation();' + submitFn + '">' + submitLabel + '</button>' +
-    '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="event.stopPropagation();document.getElementById(\'form-' + rowId + '\').style.display=\'none\'">Cancel</button>' +
+    '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="event.stopPropagation();' +
+    submitFn +
+    '">' +
+    submitLabel +
+    '</button>' +
+    '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="event.stopPropagation();document.getElementById(\'form-' +
+    rowId +
+    "').style.display='none'\">Cancel</button>" +
     '</div>' +
     noteText +
     '</div>';
@@ -688,24 +1089,31 @@ function submitSelfReceivedRequest(firstName, item, slot, rowId) {
   var sourceEl = document.getElementById('src-' + rowId);
   var notesEl = document.getElementById('notes-' + rowId);
   var diffEl = document.getElementById('diff-' + rowId);
-  if (!sourceEl || !sourceEl.value) { if (sourceEl) sourceEl.style.borderColor = 'var(--melee)'; return; }
+  if (!sourceEl || !sourceEl.value) {
+    if (sourceEl) sourceEl.style.borderColor = 'var(--melee)';
+    return;
+  }
   var diff = diffEl ? diffEl.value : 'Mythic';
   var source = diff + ': ' + sourceEl.value;
   var data = { player: firstName, item: item, slot: slot, source: source, notes: notesEl ? notesEl.value : '' };
   var formEl = document.getElementById('form-' + rowId);
-  if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
+  if (formEl)
+    formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
   var cbName = '_selfRecCb' + rowId.replace(/[^a-zA-Z0-9]/g, '_');
   window[cbName] = function (result) {
     delete window[cbName];
     if (formEl) {
       if (result.error) {
-        formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+        formEl.innerHTML =
+          '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
       } else if (result.autoApproved) {
-        formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Marked as received.</p>';
+        formEl.innerHTML =
+          '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Marked as received.</p>';
         var btn = document.querySelector('#bisrow-' + firstName + '-' + rowId.split('-').pop() + ' .mark-received-btn');
         if (btn) btn.style.display = 'none';
       } else {
-        formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Request submitted -- pending officer approval.</p>';
+        formEl.innerHTML =
+          '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Request submitted -- pending officer approval.</p>';
         var btn = document.querySelector('#bisrow-' + firstName + '-' + rowId.split('-').pop() + ' .mark-received-btn');
         if (btn) btn.style.display = 'none';
       }
@@ -720,11 +1128,17 @@ function submitSelfReceivedRequest(firstName, item, slot, rowId) {
   var script = document.createElement('script');
   script.onerror = function () {
     delete window[cbName];
-    if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+    if (formEl)
+      formEl.innerHTML =
+        '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
   };
-  script.src = WEB_APP_URL + '?action=requestSelfReceived&data=' + encodeURIComponent(JSON.stringify(data))
-             + (sessionToken ? '&sessionToken=' + encodeURIComponent(sessionToken) : '')
-             + '&callback=' + cbName;
+  script.src =
+    WEB_APP_URL +
+    '?action=requestSelfReceived&data=' +
+    encodeURIComponent(JSON.stringify(data)) +
+    (sessionToken ? '&sessionToken=' + encodeURIComponent(sessionToken) : '') +
+    '&callback=' +
+    cbName;
   document.head.appendChild(script);
 }
 
@@ -732,7 +1146,10 @@ function submitDirectMarkReceived(firstName, item, slot, rowId) {
   var sourceEl = document.getElementById('src-' + rowId);
   var notesEl = document.getElementById('notes-' + rowId);
   var diffEl = document.getElementById('diff-' + rowId);
-  if (!sourceEl || !sourceEl.value) { if (sourceEl) sourceEl.style.borderColor = 'var(--melee)'; return; }
+  if (!sourceEl || !sourceEl.value) {
+    if (sourceEl) sourceEl.style.borderColor = 'var(--melee)';
+    return;
+  }
   var diff = diffEl ? diffEl.value : 'Mythic';
   var source = diff + ': ' + sourceEl.value;
   var data = { player: firstName, item: item, slot: slot, source: source, notes: notesEl ? notesEl.value : '' };
@@ -763,9 +1180,16 @@ function submitDirectMarkReceived(firstName, item, slot, rowId) {
   var script = document.createElement('script');
   script.onerror = function () {
     delete window[cbName];
-    if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed. Try again.</p>';
+    if (formEl)
+      formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed. Try again.</p>';
   };
-  script.src = WEB_APP_URL + '?action=directMarkReceived&data=' + encodeURIComponent(JSON.stringify(data)) + _getDiscordTokenParam() + '&callback=' + cbName;
+  script.src =
+    WEB_APP_URL +
+    '?action=directMarkReceived&data=' +
+    encodeURIComponent(JSON.stringify(data)) +
+    _getDiscordTokenParam() +
+    '&callback=' +
+    cbName;
   document.head.appendChild(script);
 }
 
@@ -776,14 +1200,27 @@ function submitDirectMarkReceived(firstName, item, slot, rowId) {
 function renderProfile(firstName, backTo, container) {
   var norm = normalise(firstName);
   var player = null;
-  for (var i = 0; i < DATA.roster.length; i++) { if (normalise(DATA.roster[i].firstName) === norm) { player = DATA.roster[i]; break; } }
+  for (var i = 0; i < DATA.roster.length; i++) {
+    if (normalise(DATA.roster[i].firstName) === norm) {
+      player = DATA.roster[i];
+      break;
+    }
+  }
   if (!player) return;
 
   var displayName = player.nick || player.firstName;
   var initials = displayName.slice(0, 2).toUpperCase();
-  var classLine = player.class ? '<span class="badge badge-class" style="' + classBadgeStyle(player.class) + '">' + (player.spec || player.class) + '</span>' : '';
+  var classLine = player.class
+    ? '<span class="badge badge-class" style="' +
+      classBadgeStyle(player.class) +
+      '">' +
+      (player.spec || player.class) +
+      '</span>'
+    : '';
   var trialBadge = player.isTrial ? '<span class="badge badge-trial">Trial</span>' : '';
-  var benchBadge = player.isBench ? '<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text);border:1px solid var(--border);">Bench</span>' : '';
+  var benchBadge = player.isBench
+    ? '<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text);border:1px solid var(--border);">Bench</span>'
+    : '';
 
   // Attendance
   var attendPct = player.attendance || '-';
@@ -792,11 +1229,15 @@ function renderProfile(firstName, backTo, container) {
   var hasPenalties = attendDetail.length > 0;
   var attendExtra = '';
   if (hasPenalties) {
-    attendExtra += '<div id="attend-detail-' + player.firstName + '" style="display:none;margin-top:0.75rem;flex-direction:column;gap:0.3rem;">';
+    attendExtra +=
+      '<div id="attend-detail-' +
+      player.firstName +
+      '" style="display:none;margin-top:0.75rem;flex-direction:column;gap:0.3rem;">';
     for (var ai = 0; ai < attendDetail.length; ai++) {
       var ae = attendDetail[ai];
       var sc = ae.status === 'No Show' ? 'var(--melee)' : 'var(--gold)';
-      attendExtra += '<div style="display:flex;justify-content:space-between;font-size:1rem;padding:0.25rem 0;border-bottom:1px solid var(--border);">';
+      attendExtra +=
+        '<div style="display:flex;justify-content:space-between;font-size:1rem;padding:0.25rem 0;border-bottom:1px solid var(--border);">';
       attendExtra += '<span style="color:var(--text);">' + ae.date + '</span>';
       attendExtra += '<span style="color:' + sc + ';font-weight:600;">' + ae.status + '</span></div>';
     }
@@ -825,14 +1266,27 @@ function renderProfile(firstName, backTo, container) {
       var li_diff = typeof li_obj === 'object' && li_obj.difficulty ? li_obj.difficulty : '';
       var li_date = typeof li_obj === 'object' && li_obj.date ? li_obj.date : '';
       var li_slot = lookupItemSlot(li_name);
-      var li_sub = (li_slot ? '<span style="color:' + getSlotColor(li_slot) + ';">' + li_slot + '</span>' : '') + (li_slot && li_diff ? ' - ' : '') + (li_diff ? '<span>' + li_diff + '</span>' : '') + ((li_slot || li_diff) && li_date ? ' - ' : '') + (li_date ? '<span>' + li_date + '</span>' : '');
-      lootItemsHTML += '<div style="font-size:1rem;color:var(--text);padding:0.3rem 0;border-bottom:1px solid var(--border);">' + li_name + (li_sub ? '<div style="font-size:0.88rem;color:var(--text-muted);margin-top:0.1rem;">' + li_sub + '</div>' : '') + '</div>';
+      var li_sub =
+        (li_slot ? '<span style="color:' + getSlotColor(li_slot) + ';">' + li_slot + '</span>' : '') +
+        (li_slot && li_diff ? ' - ' : '') +
+        (li_diff ? '<span>' + li_diff + '</span>' : '') +
+        ((li_slot || li_diff) && li_date ? ' - ' : '') +
+        (li_date ? '<span>' + li_date + '</span>' : '');
+      lootItemsHTML +=
+        '<div style="font-size:1rem;color:var(--text);padding:0.3rem 0;border-bottom:1px solid var(--border);">' +
+        li_name +
+        (li_sub
+          ? '<div style="font-size:0.88rem;color:var(--text-muted);margin-top:0.1rem;">' + li_sub + '</div>'
+          : '') +
+        '</div>';
     }
   }
 
   // BiS link
   var bisStatusHTML = player.bisLink
-    ? '<div class="bis-row"><div class="bis-dot yes"></div><a class="bis-link" href="' + player.bisLink + '" target="_blank" rel="noopener">View BiS Source</a></div>'
+    ? '<div class="bis-row"><div class="bis-dot yes"></div><a class="bis-link" href="' +
+      player.bisLink +
+      '" target="_blank" rel="noopener">View BiS Source</a></div>'
     : '<div class="bis-row"><div class="bis-dot no"></div><span class="bis-none">No BiS list submitted yet</span></div>';
 
   var bisActionHTML;
@@ -840,27 +1294,57 @@ function renderProfile(firstName, backTo, container) {
     var bisAllowed = bisAllowedFor(player.nameRealm);
     bisActionHTML =
       '<div style="margin-top:0.75rem;">' +
-      '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="toggleBisForm(\'' + player.firstName.replace(/'/g, "\\'") + '\')">Update BiS Link</button>' +
-      '<div id="bisForm-' + player.firstName + '" style="display:none;margin-top:0.75rem;">' +
-      '<input type="url" id="bisUrl-' + player.firstName + '" placeholder="Paste BiS list URL" class="self-received-source" style="max-width:100%;font-size:1rem;">' +
+      '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="toggleBisForm(\'' +
+      player.firstName.replace(/'/g, "\\'") +
+      '\')">Update BiS Link</button>' +
+      '<div id="bisForm-' +
+      player.firstName +
+      '" style="display:none;margin-top:0.75rem;">' +
+      '<input type="url" id="bisUrl-' +
+      player.firstName +
+      '" placeholder="Paste BiS list URL" class="self-received-source" style="max-width:100%;font-size:1rem;">' +
       '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
-      '<button class="btn request-approve-btn" onclick="officerUpdateBisLink(\'' + player.nameRealm.replace(/'/g, "\\'") + '\',\'' + player.firstName.replace(/'/g, "\\'") + '\')">Save</button>' +
-      '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.25rem 0.75rem;" onclick="document.getElementById(\'bisForm-' + player.firstName + '\').style.display=\'none\'">Cancel</button>' +
+      '<button class="btn request-approve-btn" onclick="officerUpdateBisLink(\'' +
+      player.nameRealm.replace(/'/g, "\\'") +
+      "','" +
+      player.firstName.replace(/'/g, "\\'") +
+      '\')">Save</button>' +
+      '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.25rem 0.75rem;" onclick="document.getElementById(\'bisForm-' +
+      player.firstName +
+      "').style.display='none'\">Cancel</button>" +
       '</div>' +
       '</div>' +
       '</div>' +
-      '<div id="bisAllowDiv-' + player.firstName + '" style="margin-top:0.5rem;"></div>';
+      '<div id="bisAllowDiv-' +
+      player.firstName +
+      '" style="margin-top:0.5rem;"></div>';
   } else if (bisSubmissionsOpen() || bisAllowedFor(player.nameRealm)) {
     var bisBtnLabel = player.bisLink ? 'Update BiS List' : 'Submit BiS List';
     bisActionHTML =
       '<div style="margin-top:0.75rem;">' +
-      '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="toggleBisForm(\'' + player.firstName.replace(/'/g, "\\'") + '\')">' + bisBtnLabel + '</button>' +
-      '<div id="bisForm-' + player.firstName + '" style="display:none;margin-top:0.75rem;">' +
-      '<input type="url" id="bisUrl-' + player.firstName + '" placeholder="Paste your BiS list URL" class="self-received-source" style="max-width:100%;font-size:1rem;">' +
-      '<textarea id="bisNotes-' + player.firstName + '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
+      '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="toggleBisForm(\'' +
+      player.firstName.replace(/'/g, "\\'") +
+      '\')">' +
+      bisBtnLabel +
+      '</button>' +
+      '<div id="bisForm-' +
+      player.firstName +
+      '" style="display:none;margin-top:0.75rem;">' +
+      '<input type="url" id="bisUrl-' +
+      player.firstName +
+      '" placeholder="Paste your BiS list URL" class="self-received-source" style="max-width:100%;font-size:1rem;">' +
+      '<textarea id="bisNotes-' +
+      player.firstName +
+      '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
       '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
-      '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="submitBiSForm(\'' + player.nameRealm.replace(/'/g, "\\'") + '\',\'' + player.firstName.replace(/'/g, "\\'") + '\')">Submit</button>' +
-      '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'bisForm-' + player.firstName + '\').style.display=\'none\'">Cancel</button>' +
+      '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="submitBiSForm(\'' +
+      player.nameRealm.replace(/'/g, "\\'") +
+      "','" +
+      player.firstName.replace(/'/g, "\\'") +
+      '\')">Submit</button>' +
+      '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'bisForm-' +
+      player.firstName +
+      "').style.display='none'\">Cancel</button>" +
       '</div>' +
       '<p class="self-received-note">An officer will review your submission. Once approved it will appear on your profile.</p>' +
       '</div>' +
@@ -881,7 +1365,9 @@ function renderProfile(firstName, backTo, container) {
       '<span style="font-size:0.92rem;color:var(--text-muted);">No longer required to do weekly M+ dungeons.</span>' +
       '</div>' +
       (player.mPlusNote
-        ? '<div style="font-size:0.92rem;color:var(--text);margin-top:0.4rem;font-style:italic;">' + player.mPlusNote + '</div>'
+        ? '<div style="font-size:0.92rem;color:var(--text);margin-top:0.4rem;font-style:italic;">' +
+          player.mPlusNote +
+          '</div>'
         : '');
   } else if (player.mPlusRejected) {
     var fnMplusR = player.firstName.replace(/'/g, "\\'");
@@ -892,19 +1378,35 @@ function renderProfile(firstName, backTo, container) {
       '<span style="font-size:0.92rem;color:var(--text-muted);">Your M+ exclusion request was not approved.</span>' +
       '</div>' +
       (player.mPlusRejectionNote
-        ? '<div style="margin-top:0.5rem;padding:0.4rem 0.6rem;background:rgba(255,124,92,0.08);border-left:3px solid var(--melee);border-radius:3px;font-size:0.92rem;color:var(--text);font-style:italic;">' + player.mPlusRejectionNote + '</div>'
+        ? '<div style="margin-top:0.5rem;padding:0.4rem 0.6rem;background:rgba(255,124,92,0.08);border-left:3px solid var(--melee);border-radius:3px;font-size:0.92rem;color:var(--text);font-style:italic;">' +
+          player.mPlusRejectionNote +
+          '</div>'
         : '');
     if (DATA && DATA.mPlusExclusionsOpen) {
       mplusHTML +=
         '<div style="margin-top:0.75rem;">' +
-        '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="toggleMPlusForm(\'' + fnMplusR + '\')">Re-submit Request</button>' +
-        '<div id="mplusForm-' + player.firstName + '" style="display:none;margin-top:0.75rem;">' +
+        '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="toggleMPlusForm(\'' +
+        fnMplusR +
+        '\')">Re-submit Request</button>' +
+        '<div id="mplusForm-' +
+        player.firstName +
+        '" style="display:none;margin-top:0.75rem;">' +
         '<div style="font-size:0.92rem;color:var(--text-muted);margin-bottom:0.5rem;">Submit your Raider.io profile to request exclusion from dungeon loot priority.</div>' +
-        '<input type="url" id="mplusUrl-' + player.firstName + '" placeholder="https://raider.io/characters/..." class="self-received-source" style="max-width:100%;font-size:1rem;">' +
-        '<textarea id="mplusNotes-' + player.firstName + '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
+        '<input type="url" id="mplusUrl-' +
+        player.firstName +
+        '" placeholder="https://raider.io/characters/..." class="self-received-source" style="max-width:100%;font-size:1rem;">' +
+        '<textarea id="mplusNotes-' +
+        player.firstName +
+        '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
         '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
-        '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="submitMPlusExclusionForm(\'' + nrMplusR + '\',\'' + fnMplusR + '\')">Submit</button>' +
-        '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'mplusForm-' + player.firstName + '\').style.display=\'none\'">Cancel</button>' +
+        '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="submitMPlusExclusionForm(\'' +
+        nrMplusR +
+        "','" +
+        fnMplusR +
+        '\')">Submit</button>' +
+        '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'mplusForm-' +
+        player.firstName +
+        "').style.display='none'\">Cancel</button>" +
         '</div>' +
         '<p class="self-received-note">An officer will review your request. Once approved you will no longer need to do the required weekly M+ dungeons.</p>' +
         '</div>' +
@@ -915,19 +1417,34 @@ function renderProfile(firstName, backTo, container) {
       var fnMplus = player.firstName.replace(/'/g, "\\'");
       var nrMplus = player.nameRealm.replace(/'/g, "\\'");
       mplusHTML =
-        '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="toggleMPlusForm(\'' + fnMplus + '\')">Request M+ Exclusion</button>' +
-        '<div id="mplusForm-' + player.firstName + '" style="display:none;margin-top:0.75rem;">' +
+        '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="toggleMPlusForm(\'' +
+        fnMplus +
+        '\')">Request M+ Exclusion</button>' +
+        '<div id="mplusForm-' +
+        player.firstName +
+        '" style="display:none;margin-top:0.75rem;">' +
         '<div style="font-size:0.92rem;color:var(--text-muted);margin-bottom:0.5rem;">Submit your Raider.io profile to request exclusion from dungeon loot priority.</div>' +
-        '<input type="url" id="mplusUrl-' + player.firstName + '" placeholder="https://raider.io/characters/..." class="self-received-source" style="max-width:100%;font-size:1rem;">' +
-        '<textarea id="mplusNotes-' + player.firstName + '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
+        '<input type="url" id="mplusUrl-' +
+        player.firstName +
+        '" placeholder="https://raider.io/characters/..." class="self-received-source" style="max-width:100%;font-size:1rem;">' +
+        '<textarea id="mplusNotes-' +
+        player.firstName +
+        '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
         '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
-        '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="submitMPlusExclusionForm(\'' + nrMplus + '\',\'' + fnMplus + '\')">Submit</button>' +
-        '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'mplusForm-' + player.firstName + '\').style.display=\'none\'">Cancel</button>' +
+        '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="submitMPlusExclusionForm(\'' +
+        nrMplus +
+        "','" +
+        fnMplus +
+        '\')">Submit</button>' +
+        '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'mplusForm-' +
+        player.firstName +
+        "').style.display='none'\">Cancel</button>" +
         '</div>' +
         '<p class="self-received-note">An officer will review your request. Once approved you will no longer need to do the required weekly M+ dungeons.</p>' +
         '</div>';
     } else {
-      mplusHTML = '<span style="font-size:0.92rem;color:var(--text-muted);">M+ exclusion requests are currently closed.</span>';
+      mplusHTML =
+        '<span style="font-size:0.92rem;color:var(--text-muted);">M+ exclusion requests are currently closed.</span>';
     }
   }
 
@@ -954,23 +1471,43 @@ function renderProfile(firstName, backTo, container) {
   var rows = '';
   for (var bi = 0; bi < bisItems.length; bi++) {
     var entry = bisItems[bi];
-    var item = entry.item, bisSlot = entry.slot;
+    var item = entry.item,
+      bisSlot = entry.slot;
     var rank = getRank(player.firstName, item);
     var slot = (DATA.itemSlots || {})[item] || bisSlot || '';
-    var isGen = (item === 'M+' || item === 'Crafted' || item === 'Catalyst');
+    var isGen = item === 'M+' || item === 'Crafted' || item === 'Catalyst';
     var received = receivedMap[normalise(item)] || null;
     var selfRec = selfRecMap[normalise(item)] || null;
     var isReceived = received || selfRec;
     var rowId = 'bisrow-' + player.firstName + '-' + bi;
-    rows += '<div class="priority-row' + (isReceived ? ' bis-received' : '') + '" id="' + rowId + '" style="grid-template-columns:auto auto 1fr auto;">';
-    rows += isGen ? '<span style="font-size:0.97rem;color:var(--text-dim);min-width:40px;text-align:center;">-</span>' : rankPillHTML(rank);
+    rows +=
+      '<div class="priority-row' +
+      (isReceived ? ' bis-received' : '') +
+      '" id="' +
+      rowId +
+      '" style="grid-template-columns:auto auto 1fr auto;">';
+    rows += isGen
+      ? '<span style="font-size:0.97rem;color:var(--text-dim);min-width:40px;text-align:center;">-</span>'
+      : rankPillHTML(rank);
     rows += '<span class="priority-item-slot" style="color:' + getSlotColor(slot) + ';">' + slot + '</span>';
     rows += '<span class="priority-item-name" style="text-align:right;" title="' + item + '">' + item + '</span>';
     var defaultSrc = isGen ? item : '';
     var isOfficer = backTo === 'officer';
     var officerFlag = isOfficer ? 'true' : 'false';
-    var markRecvBtn = '<button class="mark-received-btn" style="font-size:0.78rem;padding:2px 7px;margin-top:2px;" onclick="event.stopPropagation();showSelfReceivedForm(\'' +
-      player.firstName.replace(/'/g, "\\'") + '\',\'' + item.replace(/'/g, "\\'") + '\',\'' + slot.replace(/'/g, "\\'") + '\',\'' + rowId + '\',\'' + defaultSrc.replace(/'/g, "\\'") + '\',' + officerFlag + ')">Mark received</button>';
+    var markRecvBtn =
+      '<button class="mark-received-btn" style="font-size:0.78rem;padding:2px 7px;margin-top:2px;" onclick="event.stopPropagation();showSelfReceivedForm(\'' +
+      player.firstName.replace(/'/g, "\\'") +
+      "','" +
+      item.replace(/'/g, "\\'") +
+      "','" +
+      slot.replace(/'/g, "\\'") +
+      "','" +
+      rowId +
+      "','" +
+      defaultSrc.replace(/'/g, "\\'") +
+      "'," +
+      officerFlag +
+      ')">Mark received</button>';
     if (received) {
       var badges = '';
       for (var rv = 0; rv < received.length; rv++) {
@@ -978,9 +1515,18 @@ function renderProfile(firstName, backTo, container) {
         var rv_date = received[rv].date || '';
         badges += '<span class="bis-received-badge">' + (rv_diff ? rv_diff + ' - ' : '') + rv_date + '</span>';
       }
-      rows += '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;">' + badges + (isOfficer ? markRecvBtn : '') + '</div>';
+      rows +=
+        '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;">' +
+        badges +
+        (isOfficer ? markRecvBtn : '') +
+        '</div>';
     } else if (selfRec) {
-      rows += '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;"><span class="bis-self-received-badge">' + (selfRec.source || 'Self-reported') + '</span>' + (isOfficer ? markRecvBtn : '') + '</div>';
+      rows +=
+        '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;"><span class="bis-self-received-badge">' +
+        (selfRec.source || 'Self-reported') +
+        '</span>' +
+        (isOfficer ? markRecvBtn : '') +
+        '</div>';
     } else {
       rows += markRecvBtn;
     }
@@ -993,26 +1539,38 @@ function renderProfile(firstName, backTo, container) {
     if (receivedMap[bci_key] || selfRecMap[bci_key]) bisReceivedCount++;
   }
   var bisCompletionHTML = bisItems.length
-    ? '<span id="bis-completion-' + player.firstName + '" style="font-size:0.95rem;"><span style="color:var(--gold-light);font-weight:600;">' + Math.round((bisReceivedCount / bisItems.length) * 100) + '%</span><span style="color:var(--text-muted);font-weight:400;"> (' + bisReceivedCount + '/' + bisItems.length + ')</span></span>'
+    ? '<span id="bis-completion-' +
+      player.firstName +
+      '" style="font-size:0.95rem;"><span style="color:var(--gold-light);font-weight:600;">' +
+      Math.round((bisReceivedCount / bisItems.length) * 100) +
+      '%</span><span style="color:var(--text-muted);font-weight:400;"> (' +
+      bisReceivedCount +
+      '/' +
+      bisItems.length +
+      ')</span></span>'
     : '';
 
-  var fullyBisBadge = (bisItems.length > 0 && bisReceivedCount === bisItems.length)
-    ? '<span class="badge" style="background:rgba(212,175,55,0.15);color:var(--gold);border:1px solid rgba(212,175,55,0.45);font-weight:700;">Fully BiS</span>'
-    : '';
+  var fullyBisBadge =
+    bisItems.length > 0 && bisReceivedCount === bisItems.length
+      ? '<span class="badge" style="background:rgba(212,175,55,0.15);color:var(--gold);border:1px solid rgba(212,175,55,0.45);font-weight:700;">Fully BiS</span>'
+      : '';
 
   var priorityHTML = bisItems.length
     ? '<div class="priority-list">' +
-    '<div class="priority-row" style="grid-template-columns:auto auto 1fr;background:transparent;border:none;padding:0.2rem 0.8rem;">' +
-    '<span style="font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);">Prio</span>' +
-    '<span style="font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);">Slot</span>' +
-    '<span style="font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);text-align:right;">Item / Source</span>' +
-    '</div>' + rows + '</div>'
+      '<div class="priority-row" style="grid-template-columns:auto auto 1fr;background:transparent;border:none;padding:0.2rem 0.8rem;">' +
+      '<span style="font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);">Prio</span>' +
+      '<span style="font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);">Slot</span>' +
+      '<span style="font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);text-align:right;">Item / Source</span>' +
+      '</div>' +
+      rows +
+      '</div>'
     : '<p class="no-items-msg">No BiS items on record yet.</p>';
 
   var backLabel = backTo === 'officer' ? '<- Back to dashboard' : '<- Back to roster';
-  var backAction = backTo === 'officer'
-    ? 'var ir=document.getElementById(\'inlineProfileRow\');if(ir)ir.remove();selectedOfficerPlayer=null;document.querySelectorAll(\'.player-row\').forEach(function(r){r.classList.remove(\'selected\')});'
-    : 'showView(\'landing\');document.getElementById(\'playerSelect\').value=\'\';';
+  var backAction =
+    backTo === 'officer'
+      ? "var ir=document.getElementById('inlineProfileRow');if(ir)ir.remove();selectedOfficerPlayer=null;document.querySelectorAll('.player-row').forEach(function(r){r.classList.remove('selected')});"
+      : "showView('landing');document.getElementById('playerSelect').value='';";
 
   var officerActionsHTML = '';
   if (backTo === 'officer') {
@@ -1022,82 +1580,219 @@ function renderProfile(firstName, backTo, container) {
     var classKeys = Object.keys(CLASS_SPECS).sort();
     var classOptHtml = '<option value="">-- Select class --</option>';
     for (var ci = 0; ci < classKeys.length; ci++) {
-      classOptHtml += '<option value="' + classKeys[ci] + '"' + (player.class === classKeys[ci] ? ' selected' : '') + '>' + classKeys[ci] + '</option>';
+      classOptHtml +=
+        '<option value="' +
+        classKeys[ci] +
+        '"' +
+        (player.class === classKeys[ci] ? ' selected' : '') +
+        '>' +
+        classKeys[ci] +
+        '</option>';
     }
     var specOptHtml = '<option value="">-- Select spec --</option>';
     if (player.class && CLASS_SPECS[player.class]) {
       var specList = CLASS_SPECS[player.class].specs;
       for (var si = 0; si < specList.length; si++) {
-        specOptHtml += '<option value="' + specList[si] + '"' + (player.spec === specList[si] ? ' selected' : '') + '>' + specList[si] + '</option>';
+        specOptHtml +=
+          '<option value="' +
+          specList[si] +
+          '"' +
+          (player.spec === specList[si] ? ' selected' : '') +
+          '>' +
+          specList[si] +
+          '</option>';
       }
     }
     var realmOptHtml = '';
     for (var ri = 0; ri < WOW_REALMS.length; ri++) {
-      realmOptHtml += '<option value="' + WOW_REALMS[ri] + '"' + (player.realm === WOW_REALMS[ri] ? ' selected' : '') + '>' + WOW_REALMS[ri] + '</option>';
+      realmOptHtml +=
+        '<option value="' +
+        WOW_REALMS[ri] +
+        '"' +
+        (player.realm === WOW_REALMS[ri] ? ' selected' : '') +
+        '>' +
+        WOW_REALMS[ri] +
+        '</option>';
     }
     officerActionsHTML =
       '<div class="profile-section">' +
-      '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var d=document.getElementById(\'player-settings-' + fnSafe + '\');var hint=document.getElementById(\'player-settings-hint-' + fnSafe + '\');var open=d.style.display!==\'none\';d.style.display=open?\'none\':\'\';hint.textContent=open?\'click to expand\':\'click to collapse\';">Player Settings<span id="player-settings-hint-' + fnSafe + '" style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
-      '<div id="player-settings-' + fnSafe + '" style="display:none;">' +
+      '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var d=document.getElementById(\'player-settings-' +
+      fnSafe +
+      "');var hint=document.getElementById('player-settings-hint-" +
+      fnSafe +
+      "');var open=d.style.display!=='none';d.style.display=open?'none':'';hint.textContent=open?'click to expand':'click to collapse';\">Player Settings<span id=\"player-settings-hint-" +
+      fnSafe +
+      '" style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
+      '<div id="player-settings-' +
+      fnSafe +
+      '" style="display:none;">' +
       '<div style="display:flex;flex-direction:column;gap:0.75rem;margin-top:0.5rem;">' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
       '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Role</span>' +
-      '<select id="roleSelect-' + player.firstName + '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:10rem;" onchange="savePlayerField(\'' + nrSafe + '\',\'' + fnSafe + '\',\'role\',this.value)">' +
-      '<option value="Tank"' + (player.role === 'Tank' ? ' selected' : '') + '>Tank</option>' +
-      '<option value="Heal"' + (player.role === 'Heal' ? ' selected' : '') + '>Heal</option>' +
-      '<option value="Melee"' + (player.role === 'Melee' ? ' selected' : '') + '>Melee</option>' +
-      '<option value="Ranged"' + (player.role === 'Ranged' ? ' selected' : '') + '>Ranged</option>' +
+      '<select id="roleSelect-' +
+      player.firstName +
+      '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:10rem;" onchange="savePlayerField(\'' +
+      nrSafe +
+      "','" +
+      fnSafe +
+      "','role',this.value)\">" +
+      '<option value="Tank"' +
+      (player.role === 'Tank' ? ' selected' : '') +
+      '>Tank</option>' +
+      '<option value="Heal"' +
+      (player.role === 'Heal' ? ' selected' : '') +
+      '>Heal</option>' +
+      '<option value="Melee"' +
+      (player.role === 'Melee' ? ' selected' : '') +
+      '>Melee</option>' +
+      '<option value="Ranged"' +
+      (player.role === 'Ranged' ? ' selected' : '') +
+      '>Ranged</option>' +
       '</select>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
       '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Class</span>' +
-      '<select id="classSelect-' + player.firstName + '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:12rem;" onchange="officerUpdateClass(\'' + nrSafe + '\',\'' + fnSafe + '\',this.value)">' + classOptHtml + '</select>' +
+      '<select id="classSelect-' +
+      player.firstName +
+      '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:12rem;" onchange="officerUpdateClass(\'' +
+      nrSafe +
+      "','" +
+      fnSafe +
+      '\',this.value)">' +
+      classOptHtml +
+      '</select>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
       '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Spec</span>' +
-      '<select id="specSelect-' + player.firstName + '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:12rem;" onchange="savePlayerField(\'' + nrSafe + '\',\'' + fnSafe + '\',\'spec\',this.value)">' + specOptHtml + '</select>' +
+      '<select id="specSelect-' +
+      player.firstName +
+      '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:12rem;" onchange="savePlayerField(\'' +
+      nrSafe +
+      "','" +
+      fnSafe +
+      "','spec',this.value)\">" +
+      specOptHtml +
+      '</select>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">' +
       '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Name</span>' +
-      '<input type="text" id="editNameInput-' + player.firstName + '" value="' + player.firstName + '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:9rem;">' +
-      '<select id="editRealmSelect-' + player.firstName + '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:10rem;">' + realmOptHtml + '</select>' +
-      '<button class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="officerRenamePlayer(\'' + nrSafe + '\',\'' + fnSafe + '\')">Save</button>' +
+      '<input type="text" id="editNameInput-' +
+      player.firstName +
+      '" value="' +
+      player.firstName +
+      '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:9rem;">' +
+      '<select id="editRealmSelect-' +
+      player.firstName +
+      '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:10rem;">' +
+      realmOptHtml +
+      '</select>' +
+      '<button class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="officerRenamePlayer(\'' +
+      nrSafe +
+      "','" +
+      fnSafe +
+      '\')">Save</button>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
       '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Trial</span>' +
-      '<button id="trialToggle-' + player.firstName + '" class="btn ' + (player.isTrial ? 'btn-gold' : 'btn-muted') + '" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="togglePlayerTrial(\'' + nrSafe + '\',\'' + fnSafe + '\')">' + (player.isTrial ? 'Remove Trial' : 'Mark as Trial') + '</button>' +
+      '<button id="trialToggle-' +
+      player.firstName +
+      '" class="btn ' +
+      (player.isTrial ? 'btn-gold' : 'btn-muted') +
+      '" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="togglePlayerTrial(\'' +
+      nrSafe +
+      "','" +
+      fnSafe +
+      '\')">' +
+      (player.isTrial ? 'Remove Trial' : 'Mark as Trial') +
+      '</button>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
       '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Bench</span>' +
-      '<button id="benchToggle-' + player.firstName + '" class="btn ' + (player.isBench ? 'btn-gold' : 'btn-muted') + '" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="togglePlayerBench(\'' + nrSafe + '\',\'' + fnSafe + '\')">' + (player.isBench ? 'Remove from Bench' : 'Move to Bench') + '</button>' +
+      '<button id="benchToggle-' +
+      player.firstName +
+      '" class="btn ' +
+      (player.isBench ? 'btn-gold' : 'btn-muted') +
+      '" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="togglePlayerBench(\'' +
+      nrSafe +
+      "','" +
+      fnSafe +
+      '\')">' +
+      (player.isBench ? 'Remove from Bench' : 'Move to Bench') +
+      '</button>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
       '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">M+ Excl.</span>' +
-      '<button id="mplusExclToggle-' + player.firstName + '" class="btn ' + (player.mPlusExcluded ? 'btn-gold' : 'btn-muted') + '" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="toggleMPlusExcluded(\'' + nrSafe + '\',\'' + fnSafe + '\')">' + (player.mPlusExcluded ? 'Remove Exclusion' : 'Mark as Excluded') + '</button>' +
+      '<button id="mplusExclToggle-' +
+      player.firstName +
+      '" class="btn ' +
+      (player.mPlusExcluded ? 'btn-gold' : 'btn-muted') +
+      '" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="toggleMPlusExcluded(\'' +
+      nrSafe +
+      "','" +
+      fnSafe +
+      '\')">' +
+      (player.mPlusExcluded ? 'Remove Exclusion' : 'Mark as Excluded') +
+      '</button>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
       '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Joined</span>' +
-      '<input type="date" id="joinDateInput-' + player.firstName + '" value="' + (player.joinDate || '') + '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:12rem;">' +
-      '<button class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="saveJoinDate(\'' + nrSafe + '\',\'' + fnSafe + '\')">Save</button>' +
+      '<input type="date" id="joinDateInput-' +
+      player.firstName +
+      '" value="' +
+      (player.joinDate || '') +
+      '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:12rem;">' +
+      '<button class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="saveJoinDate(\'' +
+      nrSafe +
+      "','" +
+      fnSafe +
+      '\')">Save</button>' +
       '</div>' +
-      '<div id="playerSettingsMsg-' + player.firstName + '" style="font-size:0.92rem;color:var(--text-muted);min-height:1.2rem;"></div>' +
+      '<div id="playerSettingsMsg-' +
+      player.firstName +
+      '" style="font-size:0.92rem;color:var(--text-muted);min-height:1.2rem;"></div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;padding-top:0.25rem;border-top:1px solid var(--border);margin-top:0.5rem;">' +
       '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Remove</span>' +
-      '<button id="removePlayerBtn-' + player.firstName + '" class="btn btn-danger" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="confirmRemovePlayer(\'' + nrSafe + '\',\'' + fnSafe + '\')">Remove Player</button>' +
-      '<div id="removePlayerConfirm-' + player.firstName + '" style="display:none;gap:0.5rem;align-items:center;">' +
+      '<button id="removePlayerBtn-' +
+      player.firstName +
+      '" class="btn btn-danger" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="confirmRemovePlayer(\'' +
+      nrSafe +
+      "','" +
+      fnSafe +
+      '\')">Remove Player</button>' +
+      '<div id="removePlayerConfirm-' +
+      player.firstName +
+      '" style="display:none;gap:0.5rem;align-items:center;">' +
       '<span style="font-size:0.92rem;color:var(--melee);">Confirm?</span>' +
-      '<button class="btn btn-danger" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="executeRemovePlayer(\'' + nrSafe + '\',\'' + fnSafe + '\')">Yes, Remove</button>' +
-      '<button class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="cancelRemovePlayer(\'' + fnSafe + '\')">Cancel</button>' +
+      '<button class="btn btn-danger" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="executeRemovePlayer(\'' +
+      nrSafe +
+      "','" +
+      fnSafe +
+      '\')">Yes, Remove</button>' +
+      '<button class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="cancelRemovePlayer(\'' +
+      fnSafe +
+      '\')">Cancel</button>' +
       '</div>' +
-      '<span id="removePlayerMsg-' + player.firstName + '" style="display:none;font-size:0.92rem;"></span>' +
+      '<span id="removePlayerMsg-' +
+      player.firstName +
+      '" style="display:none;font-size:0.92rem;"></span>' +
       '</div>' +
       '</div>' +
       '<div style="margin-top:1rem;">' +
       '<div style="font-size:0.88rem;color:var(--text-muted);margin-bottom:0.35rem;text-transform:uppercase;letter-spacing:0.08em;">Officer Notes</div>' +
-      '<textarea id="playerNote-' + player.firstName + '" rows="3" class="self-received-notes" style="width:100%;box-sizing:border-box;font-size:0.92rem;">' + currentNote.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</textarea>' +
+      '<textarea id="playerNote-' +
+      player.firstName +
+      '" rows="3" class="self-received-notes" style="width:100%;box-sizing:border-box;font-size:0.92rem;">' +
+      currentNote.replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+      '</textarea>' +
       '<div style="display:flex;gap:0.5rem;margin-top:0.4rem;align-items:center;">' +
-      '<button class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="savePlayerNote(\'' + nrSafe + '\',\'' + fnSafe + '\')">Save Note</button>' +
-      '<span id="playerNoteMsg-' + player.firstName + '" style="font-size:0.92rem;color:var(--text-muted);"></span>' +
+      '<button class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="savePlayerNote(\'' +
+      nrSafe +
+      "','" +
+      fnSafe +
+      '\')">Save Note</button>' +
+      '<span id="playerNoteMsg-' +
+      player.firstName +
+      '" style="font-size:0.92rem;color:var(--text-muted);"></span>' +
       '</div>' +
       '</div>' +
       '</div>' +
@@ -1106,17 +1801,46 @@ function renderProfile(firstName, backTo, container) {
 
   var html =
     '<div class="profile-card">' +
-    '<div class="role-bar role-bar-' + player.role + '"></div>' +
+    '<div class="role-bar role-bar-' +
+    player.role +
+    '"></div>' +
     '<div style="padding:0.6rem 1.25rem;border-bottom:1px solid var(--border);">' +
-    '<button onclick="' + backAction + '" style="background:none;border:none;color:var(--text);font-family:\'Rajdhani\',sans-serif;font-size:0.9rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;padding:0;">' + backLabel + '</button>' +
+    '<button onclick="' +
+    backAction +
+    '" style="background:none;border:none;color:var(--text);font-family:\'Rajdhani\',sans-serif;font-size:0.9rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;padding:0;">' +
+    backLabel +
+    '</button>' +
     '</div>' +
     '<div class="profile-header">' +
-    '<div class="profile-avatar avatar-' + player.role + '">' + initials + '</div>' +
+    '<div class="profile-avatar avatar-' +
+    player.role +
+    '">' +
+    initials +
+    '</div>' +
     '<div class="profile-identity">' +
-    '<div class="profile-name">' + displayName + '</div>' +
-    '<div class="profile-realm">' + player.firstName + '-' + player.realm + '</div>' +
-    '<div class="profile-badges"><span class="badge badge-' + player.role + '">' + player.role + '</span>' + trialBadge + benchBadge + classLine + fullyBisBadge + '</div>' +
-    (player.joinDate ? '<div style="font-size:0.9rem;color:var(--text-muted);margin-top:0.35rem;">Joined: ' + formatJoinDate(player.joinDate) + '</div>' : '') +
+    '<div class="profile-name">' +
+    displayName +
+    '</div>' +
+    '<div class="profile-realm">' +
+    player.firstName +
+    '-' +
+    player.realm +
+    '</div>' +
+    '<div class="profile-badges"><span class="badge badge-' +
+    player.role +
+    '">' +
+    player.role +
+    '</span>' +
+    trialBadge +
+    benchBadge +
+    classLine +
+    fullyBisBadge +
+    '</div>' +
+    (player.joinDate
+      ? '<div style="font-size:0.9rem;color:var(--text-muted);margin-top:0.35rem;">Joined: ' +
+        formatJoinDate(player.joinDate) +
+        '</div>'
+      : '') +
     '</div>' +
     '</div>' +
     '<div class="profile-section">' +
@@ -1124,54 +1848,107 @@ function renderProfile(firstName, backTo, container) {
     (backTo === 'officer' || hasPenalties ? 'cursor:pointer;"' : '"') +
     (backTo === 'officer'
       ? ' onclick="loadAttendanceHistory(\'' + player.firstName.replace(/'/g, "\\'") + '\')"'
-      : (hasPenalties ? ' onclick="var d=document.getElementById(\'attend-detail-' + player.firstName + '\');d.style.display=d.style.display===\'none\'?\'flex\':\'none\';"' : '')) + '>Attendance' +
+      : hasPenalties
+        ? ' onclick="var d=document.getElementById(\'attend-detail-' +
+          player.firstName +
+          "');d.style.display=d.style.display==='none'?'flex':'none';\""
+        : '') +
+    '>Attendance' +
     (backTo === 'officer'
       ? '<span class="attend-history-hint" style="font-size:0.95rem;color:var(--text-dim);">click to expand</span>'
-      : (hasPenalties ? '<span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span>' : '')) +
+      : hasPenalties
+        ? '<span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span>'
+        : '') +
     '</div>' +
-    '<div class="attend-row"><div class="attend-bar-wrap"><div class="attend-bar" style="width:' + barWidth + '"></div></div><span class="attend-label">' + attendPct + '</span></div>' +
+    '<div class="attend-row"><div class="attend-bar-wrap"><div class="attend-bar" style="width:' +
+    barWidth +
+    '"></div></div><span class="attend-label">' +
+    attendPct +
+    '</span></div>' +
     renderAttendTrend(player.firstName) +
     (backTo === 'officer'
       ? '<div id="attend-history-' + player.firstName + '" style="display:none;margin-top:0.6rem;"></div>'
       : attendExtra) +
     '</div>' +
     '<div class="profile-section">' +
-    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var l=document.getElementById(\'loot-list-' + player.firstName + '\');l.style.display=l.style.display===\'none\'?\'grid\':\'none\';">Items Received <span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
-    '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">' + lootCount + ' item' + (lootCount !== 1 ? 's' : '') + (ACTIVE_SEASON ? ' — ' + ACTIVE_SEASON : ' this tier') + '</div>' +
+    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var l=document.getElementById(\'loot-list-' +
+    player.firstName +
+    "');l.style.display=l.style.display==='none'?'grid':'none';\">Items Received <span style=\"font-size:0.95rem;color:var(--text-dim);\">click to expand</span></div>" +
+    '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">' +
+    lootCount +
+    ' item' +
+    (lootCount !== 1 ? 's' : '') +
+    (ACTIVE_SEASON ? ' — ' + ACTIVE_SEASON : ' this tier') +
+    '</div>' +
     (lastItems.length
       ? (function () {
-        var lastDate = lastItems[0].date || '';
-        var itemLines = '';
-        for (var lx = 0; lx < lastItems.length; lx++) {
-          var lxi = lastItems[lx];
-          var lxColor = lxi.difficulty === 'Mythic' ? '#b085f0' : lxi.difficulty === 'Heroic' ? '#4dd9e0' : 'var(--gold)';
-          itemLines += '<div' + (lx > 0 ? ' style="margin-top:0.3rem;padding-top:0.3rem;border-top:1px solid var(--border);"' : '') + '>' +
-            '<div style="font-size:1rem;color:' + lxColor + ';font-weight:600;">' + lxi.name + '</div>' +
-            (lxi.difficulty ? '<div style="font-size:0.88rem;color:var(--text-muted);margin-top:0.1rem;">' + lxi.difficulty + '</div>' : '') +
-            '</div>';
-        }
-        return '<div style="margin-top:0.6rem;padding:0.5rem 0.75rem;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:space-between;">' +
-          '<div style="flex:1;min-width:0;">' +
-          '<div style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Last received' + (lastDate ? ' - ' + lastDate : '') + '</div>' +
-          itemLines +
-          '</div>' +
-          '<span style="font-size:1.8rem;font-weight:700;color:var(--gold);line-height:1;margin-left:0.75rem;">&#8679;</span>' +
-          '</div>';
-      })()
+          var lastDate = lastItems[0].date || '';
+          var itemLines = '';
+          for (var lx = 0; lx < lastItems.length; lx++) {
+            var lxi = lastItems[lx];
+            var lxColor =
+              lxi.difficulty === 'Mythic' ? '#b085f0' : lxi.difficulty === 'Heroic' ? '#4dd9e0' : 'var(--gold)';
+            itemLines +=
+              '<div' +
+              (lx > 0 ? ' style="margin-top:0.3rem;padding-top:0.3rem;border-top:1px solid var(--border);"' : '') +
+              '>' +
+              '<div style="font-size:1rem;color:' +
+              lxColor +
+              ';font-weight:600;">' +
+              lxi.name +
+              '</div>' +
+              (lxi.difficulty
+                ? '<div style="font-size:0.88rem;color:var(--text-muted);margin-top:0.1rem;">' +
+                  lxi.difficulty +
+                  '</div>'
+                : '') +
+              '</div>';
+          }
+          return (
+            '<div style="margin-top:0.6rem;padding:0.5rem 0.75rem;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:space-between;">' +
+            '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Last received' +
+            (lastDate ? ' - ' + lastDate : '') +
+            '</div>' +
+            itemLines +
+            '</div>' +
+            '<span style="font-size:1.8rem;font-weight:700;color:var(--gold);line-height:1;margin-left:0.75rem;">&#8679;</span>' +
+            '</div>'
+          );
+        })()
       : '') +
-    '<div id="loot-list-' + player.firstName + '" style="display:none;margin-top:0.75rem;grid-template-columns:1fr 1fr;gap:0 1rem;">' + lootItemsHTML + '</div>' +
+    '<div id="loot-list-' +
+    player.firstName +
+    '" style="display:none;margin-top:0.75rem;grid-template-columns:1fr 1fr;gap:0 1rem;">' +
+    lootItemsHTML +
     '</div>' +
-    '<div class="profile-section"><div class="section-label">BiS Link</div>' + bisHTML + '</div>' +
+    '</div>' +
+    '<div class="profile-section"><div class="section-label">BiS Link</div>' +
+    bisHTML +
+    '</div>' +
     '<div class="profile-section">' +
-    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var l=document.getElementById(\'prio-list-' + player.firstName + '\');l.style.display=l.style.display===\'none\'?\'block\':\'none\';">BiS List' + bisCompletionHTML + '<span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
-    '<div id="prio-list-' + player.firstName + '" style="display:none;">' + priorityHTML + '</div>' +
+    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var l=document.getElementById(\'prio-list-' +
+    player.firstName +
+    "');l.style.display=l.style.display==='none'?'block':'none';\">BiS List" +
+    bisCompletionHTML +
+    '<span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
+    '<div id="prio-list-' +
+    player.firstName +
+    '" style="display:none;">' +
+    priorityHTML +
     '</div>' +
-    (mplusHTML ? '<div class="profile-section"><div class="section-label">M+ Exclusion</div>' + mplusHTML + '</div>' : '') +
+    '</div>' +
+    (mplusHTML
+      ? '<div class="profile-section"><div class="section-label">M+ Exclusion</div>' + mplusHTML + '</div>'
+      : '') +
     officerActionsHTML +
     '</div>';
 
-  if (container) { container.innerHTML = html; }
-  else { document.getElementById('profileView').innerHTML = html; }
+  if (container) {
+    container.innerHTML = html;
+  } else {
+    document.getElementById('profileView').innerHTML = html;
+  }
   if (backTo === 'officer') updateBisAllowDiv(player.nameRealm, player.firstName);
 }
 
@@ -1192,7 +1969,8 @@ function loadAttendanceHistory(firstName) {
     return;
   }
 
-  content.innerHTML = '<span style="color:var(--text-muted);font-size:0.95rem;padding:0.5rem 0;display:block;">Loading...</span>';
+  content.innerHTML =
+    '<span style="color:var(--text-muted);font-size:0.95rem;padding:0.5rem 0;display:block;">Loading...</span>';
   content.style.display = 'block';
 
   var cbName = '_attendHistCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
@@ -1202,10 +1980,13 @@ function loadAttendanceHistory(firstName) {
     if (hint) hint.textContent = 'click to collapse';
 
     var history = (result && result.history) || [];
-    history = history.slice().sort(function (a, b) { return b.date < a.date ? -1 : b.date > a.date ? 1 : 0; });
+    history = history.slice().sort(function (a, b) {
+      return b.date < a.date ? -1 : b.date > a.date ? 1 : 0;
+    });
 
     if (!history.length) {
-      content.innerHTML = '<p style="color:var(--text-muted);font-size:0.95rem;padding:0.5rem 0;">No attendance records found.</p>';
+      content.innerHTML =
+        '<p style="color:var(--text-muted);font-size:0.95rem;padding:0.5rem 0;">No attendance records found.</p>';
       return;
     }
 
@@ -1228,28 +2009,44 @@ function loadAttendanceHistory(firstName) {
     var order = ['Present', 'Late', 'No Show', 'Excused', 'Medical Leave'];
     for (var oi = 0; oi < order.length; oi++) {
       var st = order[oi];
-      if (counts[st]) summaryParts.push('<span style="color:' + statusColor(st) + ';">' + counts[st] + ' ' + st + '</span>');
+      if (counts[st])
+        summaryParts.push('<span style="color:' + statusColor(st) + ';">' + counts[st] + ' ' + st + '</span>');
     }
-    var otherKeys = Object.keys(counts).filter(function (k) { return order.indexOf(k) === -1; });
+    var otherKeys = Object.keys(counts).filter(function (k) {
+      return order.indexOf(k) === -1;
+    });
     for (var ok = 0; ok < otherKeys.length; ok++) {
-      summaryParts.push('<span style="color:var(--text-muted);">' + counts[otherKeys[ok]] + ' ' + otherKeys[ok] + '</span>');
+      summaryParts.push(
+        '<span style="color:var(--text-muted);">' + counts[otherKeys[ok]] + ' ' + otherKeys[ok] + '</span>'
+      );
     }
 
     var CARD_STATUSES = ['Present', 'Bench', 'Medical Leave', 'Excused', 'No Show', 'Not on Roster'];
 
-    var html = '<div style="font-size:0.88rem;color:var(--text-muted);margin-bottom:0.6rem;display:flex;gap:0.5rem;flex-wrap:wrap;">' + summaryParts.join('<span style="color:var(--border-mid);">|</span>') + '</div>';
+    var html =
+      '<div style="font-size:0.88rem;color:var(--text-muted);margin-bottom:0.6rem;display:flex;gap:0.5rem;flex-wrap:wrap;">' +
+      summaryParts.join('<span style="color:var(--border-mid);">|</span>') +
+      '</div>';
     html += '<div style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:4px;">';
     for (var j = 0; j < history.length; j++) {
       var entry = history[j];
       var isNOR = entry.status === 'Not on Roster';
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.95rem;padding:0.28rem 0.75rem;border-bottom:1px solid var(--border);gap:0.5rem;">';
+      html +=
+        '<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.95rem;padding:0.28rem 0.75rem;border-bottom:1px solid var(--border);gap:0.5rem;">';
       html += '<span style="color:var(--text);white-space:nowrap;">' + entry.date + '</span>';
       if (isNOR) {
         html += '<span style="color:' + statusColor(entry.status) + ';font-weight:600;">' + entry.status + '</span>';
       } else {
         html += '<div style="display:flex;align-items:center;gap:0.4rem;">';
         html += '<div class="attend-status-wrap">';
-        html += '<select class="attend-status-select attend-card-status-select" data-date="' + entry.date + '" data-name="' + firstName + '" data-old="' + entry.status + '" onchange="saveAttendanceFromCard(this)">';
+        html +=
+          '<select class="attend-status-select attend-card-status-select" data-date="' +
+          entry.date +
+          '" data-name="' +
+          firstName +
+          '" data-old="' +
+          entry.status +
+          '" onchange="saveAttendanceFromCard(this)">';
         for (var k = 0; k < CARD_STATUSES.length; k++) {
           var s = CARD_STATUSES[k];
           html += '<option value="' + s + '"' + (entry.status === s ? ' selected' : '') + '>' + s + '</option>';
@@ -1267,9 +2064,11 @@ function loadAttendanceHistory(firstName) {
   var script = document.createElement('script');
   script.onerror = function () {
     delete window[cbName];
-    content.innerHTML = '<p style="color:var(--melee);font-size:0.95rem;padding:0.5rem 0;">Failed to load. Try again.</p>';
+    content.innerHTML =
+      '<p style="color:var(--melee);font-size:0.95rem;padding:0.5rem 0;">Failed to load. Try again.</p>';
   };
-  script.src = WEB_APP_URL + '?action=getPlayerAttendanceFull&firstName=' + encodeURIComponent(firstName) + '&callback=' + cbName;
+  script.src =
+    WEB_APP_URL + '?action=getPlayerAttendanceFull&firstName=' + encodeURIComponent(firstName) + '&callback=' + cbName;
   document.head.appendChild(script);
 }
 
@@ -1278,13 +2077,17 @@ function saveAttendanceFromCard(selectEl) {
   var firstName = selectEl.getAttribute('data-name');
   var status = selectEl.value;
   var oldStatus = selectEl.getAttribute('data-old');
-  var indicator = selectEl.parentElement && selectEl.parentElement.parentElement
-    ? selectEl.parentElement.parentElement.querySelector('.attend-save-ind')
-    : null;
+  var indicator =
+    selectEl.parentElement && selectEl.parentElement.parentElement
+      ? selectEl.parentElement.parentElement.querySelector('.attend-save-ind')
+      : null;
 
   if (!status) return;
   selectEl.disabled = true;
-  if (indicator) { indicator.textContent = 'Saving...'; indicator.style.color = 'var(--text-muted)'; }
+  if (indicator) {
+    indicator.textContent = 'Saving...';
+    indicator.style.color = 'var(--text-muted)';
+  }
 
   var data = { date: date, firstName: firstName, status: status, oldStatus: oldStatus };
   var cbName = '_saveAttendCardCb_' + Date.now();
@@ -1296,14 +2099,18 @@ function saveAttendanceFromCard(selectEl) {
       if (indicator) {
         indicator.textContent = 'Saved';
         indicator.style.color = 'var(--heal)';
-        setTimeout(function () { if (indicator) indicator.textContent = ''; }, 2000);
+        setTimeout(function () {
+          if (indicator) indicator.textContent = '';
+        }, 2000);
       }
     } else {
       selectEl.value = oldStatus || '';
       if (indicator) {
         indicator.textContent = 'Error';
         indicator.style.color = 'var(--melee)';
-        setTimeout(function () { if (indicator) indicator.textContent = ''; }, 3000);
+        setTimeout(function () {
+          if (indicator) indicator.textContent = '';
+        }, 3000);
       }
     }
   };
@@ -1312,8 +2119,17 @@ function saveAttendanceFromCard(selectEl) {
     delete window[cbName];
     selectEl.disabled = false;
     selectEl.value = oldStatus || '';
-    if (indicator) { indicator.textContent = 'Error'; indicator.style.color = 'var(--melee)'; }
+    if (indicator) {
+      indicator.textContent = 'Error';
+      indicator.style.color = 'var(--melee)';
+    }
   };
-  script.src = WEB_APP_URL + '?action=setAttendanceStatus&data=' + encodeURIComponent(JSON.stringify(data)) + _getDiscordTokenParam() + '&callback=' + cbName;
+  script.src =
+    WEB_APP_URL +
+    '?action=setAttendanceStatus&data=' +
+    encodeURIComponent(JSON.stringify(data)) +
+    _getDiscordTokenParam() +
+    '&callback=' +
+    cbName;
   document.head.appendChild(script);
 }

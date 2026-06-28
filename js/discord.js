@@ -14,15 +14,21 @@ function getDiscordSession() {
   try {
     var raw = localStorage.getItem(DISCORD_SESSION_KEY);
     return raw ? JSON.parse(raw) : null;
-  } catch (_) { return null; }
+  } catch (_) {
+    return null;
+  }
 }
 
 function setDiscordSession(data) {
-  try { localStorage.setItem(DISCORD_SESSION_KEY, JSON.stringify(data)); } catch (_) { }
+  try {
+    localStorage.setItem(DISCORD_SESSION_KEY, JSON.stringify(data));
+  } catch (_) {}
 }
 
 function clearDiscordSession() {
-  try { localStorage.removeItem(DISCORD_SESSION_KEY); } catch (_) { }
+  try {
+    localStorage.removeItem(DISCORD_SESSION_KEY);
+  } catch (_) {}
 }
 
 // ── Nav rendering ─────────────────────────────────────────────────────────────
@@ -52,7 +58,10 @@ function renderDiscordNav(session) {
   btn.onclick = function (ev) {
     ev.stopPropagation();
     var dd = document.getElementById('discordNavDropdown');
-    if (dd) { dd.parentNode.removeChild(dd); return; }
+    if (dd) {
+      dd.parentNode.removeChild(dd);
+      return;
+    }
     dd = document.createElement('div');
     dd.id = 'discordNavDropdown';
     dd.className = 'discord-nav-dropdown';
@@ -80,7 +89,9 @@ function renderDiscordNav(session) {
     } else if (currentSession && !currentSession.nameRealm) {
       var claimBtn = document.createElement('button');
       claimBtn.textContent = 'Claim your character';
-      claimBtn.onclick = function () { showDiscordClaimModal(currentSession); };
+      claimBtn.onclick = function () {
+        showDiscordClaimModal(currentSession);
+      };
       dd.appendChild(claimBtn);
     }
     var logoutBtn = document.createElement('button');
@@ -105,19 +116,27 @@ function openDiscordPopup() {
   _discordCsrfState = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
   var _stateParam = _discordCsrfState + ':' + TEAM_SLUG;
 
-  var authUrl = 'https://discord.com/api/oauth2/authorize'
-    + '?client_id=' + encodeURIComponent(DISCORD_CLIENT_ID)
-    + '&redirect_uri=' + encodeURIComponent(DISCORD_REDIRECT_URI)
-    + '&response_type=code'
-    + '&scope=' + encodeURIComponent(DISCORD_SCOPE)
-    + '&state=' + encodeURIComponent(_stateParam);
+  var authUrl =
+    'https://discord.com/api/oauth2/authorize' +
+    '?client_id=' +
+    encodeURIComponent(DISCORD_CLIENT_ID) +
+    '&redirect_uri=' +
+    encodeURIComponent(DISCORD_REDIRECT_URI) +
+    '&response_type=code' +
+    '&scope=' +
+    encodeURIComponent(DISCORD_SCOPE) +
+    '&state=' +
+    encodeURIComponent(_stateParam);
 
-  var w = 480, h = 700;
+  var w = 480,
+    h = 700;
   var left = Math.max(0, Math.round(window.screenX + (window.outerWidth - w) / 2));
   var top = Math.max(0, Math.round(window.screenY + (window.outerHeight - h) / 2));
-  _discordPopup = window.open(authUrl, 'discord_auth',
-    'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top +
-    ',toolbar=no,menubar=no,resizable=no');
+  _discordPopup = window.open(
+    authUrl,
+    'discord_auth',
+    'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',toolbar=no,menubar=no,resizable=no'
+  );
 
   if (!_discordPopup) {
     alert('Please allow popups for this site to log in with Discord.');
@@ -128,7 +147,12 @@ window.addEventListener('message', function (ev) {
   if (ev.origin !== 'https://katogaming88.github.io') return;
   var data = ev.data;
   if (!data || data.type !== 'discord_auth') return;
-  if (_discordPopup) { try { _discordPopup.close(); } catch (_) { } _discordPopup = null; }
+  if (_discordPopup) {
+    try {
+      _discordPopup.close();
+    } catch (_) {}
+    _discordPopup = null;
+  }
   handleDiscordAuthResult(data.result || {});
 });
 
@@ -136,7 +160,12 @@ function handleDiscordAuthResult(result) {
   if (!result || !result.success) {
     // Show a brief error near the login button
     var btn = document.getElementById('navDiscord');
-    if (btn) { btn.textContent = 'Login failed -- try again'; setTimeout(function () { renderDiscordNav(null); }, 3000); }
+    if (btn) {
+      btn.textContent = 'Login failed -- try again';
+      setTimeout(function () {
+        renderDiscordNav(null);
+      }, 3000);
+    }
     return;
   }
 
@@ -171,22 +200,26 @@ function initDiscordLogin() {
     return;
   }
   // Validate the stored token against GAS (async, non-blocking)
-  jsonpRequest(WEB_APP_URL + '?action=validateDiscordSession&token=' + encodeURIComponent(session.token), function (err, result) {
-    if (err || !result || !result.valid) {
-      clearDiscordSession();
-      renderDiscordNav(null);
-      if (typeof onDiscordInitNoSession === 'function') onDiscordInitNoSession();
-      return;
-    }
-    // Merge fresh server-side data (nameRealm/isOfficer may have changed)
-    var updated = Object.assign({}, session, {
-      nameRealm: result.nameRealm || null,
-      isOfficer: result.isOfficer || false
-    });
-    setDiscordSession(updated);
-    renderDiscordNav(updated);
-    if (typeof onDiscordSessionRestored === 'function') onDiscordSessionRestored(updated);
-  }, 15000);
+  jsonpRequest(
+    WEB_APP_URL + '?action=validateDiscordSession&token=' + encodeURIComponent(session.token),
+    function (err, result) {
+      if (err || !result || !result.valid) {
+        clearDiscordSession();
+        renderDiscordNav(null);
+        if (typeof onDiscordInitNoSession === 'function') onDiscordInitNoSession();
+        return;
+      }
+      // Merge fresh server-side data (nameRealm/isOfficer may have changed)
+      var updated = Object.assign({}, session, {
+        nameRealm: result.nameRealm || null,
+        isOfficer: result.isOfficer || false
+      });
+      setDiscordSession(updated);
+      renderDiscordNav(updated);
+      if (typeof onDiscordSessionRestored === 'function') onDiscordSessionRestored(updated);
+    },
+    15000
+  );
 }
 
 // ── Claiming modal ────────────────────────────────────────────────────────────
@@ -199,14 +232,21 @@ function showDiscordClaimModal(session) {
   var sel = document.getElementById('claimCharacterSelect');
   if (sel && window.DATA && DATA.roster) {
     sel.innerHTML = '<option value="">-- Select your character --</option>';
-    var claimed = (DATA.discordClaims || []).map(function (c) { return c.nameRealm.toLowerCase(); });
-    DATA.roster.slice().sort(function (a, b) { return a.nameRealm.localeCompare(b.nameRealm); }).forEach(function (p) {
-      if (claimed.indexOf(p.nameRealm.toLowerCase()) !== -1) return; // already taken
-      var opt = document.createElement('option');
-      opt.value = p.nameRealm;
-      opt.textContent = p.nameRealm + ' (' + p.class + ')';
-      sel.appendChild(opt);
+    var claimed = (DATA.discordClaims || []).map(function (c) {
+      return c.nameRealm.toLowerCase();
     });
+    DATA.roster
+      .slice()
+      .sort(function (a, b) {
+        return a.nameRealm.localeCompare(b.nameRealm);
+      })
+      .forEach(function (p) {
+        if (claimed.indexOf(p.nameRealm.toLowerCase()) !== -1) return; // already taken
+        var opt = document.createElement('option');
+        opt.value = p.nameRealm;
+        opt.textContent = p.nameRealm + ' (' + p.class + ')';
+        sel.appendChild(opt);
+      });
   }
   document.getElementById('claimError').style.display = 'none';
   modal.style.display = '';
@@ -221,23 +261,41 @@ function submitCharacterClaim() {
   var sel = document.getElementById('claimCharacterSelect');
   var errEl = document.getElementById('claimError');
   var nameRealm = sel ? sel.value : '';
-  if (!nameRealm) { if (errEl) { errEl.textContent = 'Please select a character.'; errEl.style.display = ''; } return; }
+  if (!nameRealm) {
+    if (errEl) {
+      errEl.textContent = 'Please select a character.';
+      errEl.style.display = '';
+    }
+    return;
+  }
 
   var session = getDiscordSession();
   if (!session || !session.token) return;
 
   var submitBtn = document.querySelector('#discordClaimModal .claim-submit-btn');
-  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Claiming...'; }
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Claiming...';
+  }
 
   jsonpRequest(
-    WEB_APP_URL + '?action=claimCharacter'
-    + '&token=' + encodeURIComponent(session.token)
-    + '&nameRealm=' + encodeURIComponent(nameRealm),
+    WEB_APP_URL +
+      '?action=claimCharacter' +
+      '&token=' +
+      encodeURIComponent(session.token) +
+      '&nameRealm=' +
+      encodeURIComponent(nameRealm),
     function (err, result) {
-      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Confirm claim'; }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Confirm claim';
+      }
       if (err || !result || !result.success) {
-        var msg = (result && result.error) ? result.error : 'Something went wrong. Please try again.';
-        if (errEl) { errEl.textContent = msg; errEl.style.display = ''; }
+        var msg = result && result.error ? result.error : 'Something went wrong. Please try again.';
+        if (errEl) {
+          errEl.textContent = msg;
+          errEl.style.display = '';
+        }
         return;
       }
       var updated = Object.assign({}, session, { nameRealm: result.nameRealm, isOfficer: result.isOfficer || false });
@@ -256,7 +314,11 @@ function discordLogout() {
   var session = getDiscordSession();
   if (session && session.token) {
     // Fire-and-forget: invalidate the server-side session token
-    jsonpRequest(WEB_APP_URL + '?action=discordLogout&token=' + encodeURIComponent(session.token), function () { }, 5000);
+    jsonpRequest(
+      WEB_APP_URL + '?action=discordLogout&token=' + encodeURIComponent(session.token),
+      function () {},
+      5000
+    );
   }
   clearDiscordSession();
   renderDiscordNav(null);

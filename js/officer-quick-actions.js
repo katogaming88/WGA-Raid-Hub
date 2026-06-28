@@ -20,10 +20,10 @@ function _qaRender() {
 // Logged in, officer      -> full dropdown + "View My Profile" link
 
 function _renderPlayerSelector() {
-  var card         = document.getElementById('playerSelectorCard');
-  var dropOuter    = document.getElementById('playerDropdownOuter');
+  var card = document.getElementById('playerSelectorCard');
+  var dropOuter = document.getElementById('playerDropdownOuter');
   var profileOuter = document.getElementById('myProfileOuter');
-  var profileBtn   = document.getElementById('myProfileBtn');
+  var profileBtn = document.getElementById('myProfileBtn');
   if (!card) return;
 
   var session = typeof getDiscordSession === 'function' && getDiscordSession();
@@ -37,8 +37,8 @@ function _renderPlayerSelector() {
   var firstName = session.nameRealm.split('-')[0];
 
   if (profileBtn) {
-    profileBtn.onclick = function() {
-      if (typeof showView === 'function')     showView('profile');
+    profileBtn.onclick = function () {
+      if (typeof showView === 'function') showView('profile');
       if (typeof renderProfile === 'function') renderProfile(firstName, 'landing');
       var sel = document.getElementById('playerSelect');
       if (sel) sel.value = firstName;
@@ -46,19 +46,31 @@ function _renderPlayerSelector() {
   }
 
   if (session.isOfficer) {
-    if (dropOuter)    dropOuter.style.display    = '';
+    if (dropOuter) dropOuter.style.display = '';
     if (profileOuter) profileOuter.style.display = '';
   } else {
-    if (dropOuter)    dropOuter.style.display    = 'none';
+    if (dropOuter) dropOuter.style.display = 'none';
     if (profileOuter) profileOuter.style.display = '';
   }
 }
 
 // Callbacks invoked by discord.js
-function onDiscordSessionRestored(session) { _qaRender(); _renderPlayerSelector(); }
-function onDiscordLoginComplete(session)   { _qaRender(); _renderPlayerSelector(); }
-function onDiscordLogout()                 { _qaRender(); _renderPlayerSelector(); }
-function onDiscordInitNoSession()          { _qaRender(); _renderPlayerSelector(); }
+function onDiscordSessionRestored(session) {
+  _qaRender();
+  _renderPlayerSelector();
+}
+function onDiscordLoginComplete(session) {
+  _qaRender();
+  _renderPlayerSelector();
+}
+function onDiscordLogout() {
+  _qaRender();
+  _renderPlayerSelector();
+}
+function onDiscordInitNoSession() {
+  _qaRender();
+  _renderPlayerSelector();
+}
 
 function _qaSetStatus(msg, color) {
   var el = document.getElementById('oqaStatus');
@@ -71,46 +83,83 @@ function _qaSetStatus(msg, color) {
 
 function qaExportString() {
   var btn = document.getElementById('oqaExportBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Loading...'; }
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Loading...';
+  }
   _qaSetStatus('Fetching export string...', 'var(--text-muted)');
 
-  jsonpRequest(WEB_APP_URL + '?action=getExportString', function(err, result) {
-    if (btn) { btn.disabled = false; btn.textContent = 'Copy Priority Export'; }
-    var str = (!err && result && result.exportString) ? result.exportString : '';
-    if (!str) {
-      _qaSetStatus(err ? err.message : 'No export string found.', 'var(--melee)');
-      return;
-    }
-    navigator.clipboard.writeText(str).then(function() {
-      _qaSetStatus('Copied!', 'var(--heal)');
-      setTimeout(function() { _qaSetStatus('', ''); }, 3000);
-    }).catch(function() {
-      _qaSetStatus('Copy failed -- check browser permissions.', 'var(--melee)');
-    });
-  }, 20000);
+  jsonpRequest(
+    WEB_APP_URL + '?action=getExportString',
+    function (err, result) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Copy Priority Export';
+      }
+      var str = !err && result && result.exportString ? result.exportString : '';
+      if (!str) {
+        _qaSetStatus(err ? err.message : 'No export string found.', 'var(--melee)');
+        return;
+      }
+      navigator.clipboard
+        .writeText(str)
+        .then(function () {
+          _qaSetStatus('Copied!', 'var(--heal)');
+          setTimeout(function () {
+            _qaSetStatus('', '');
+          }, 3000);
+        })
+        .catch(function () {
+          _qaSetStatus('Copy failed -- check browser permissions.', 'var(--melee)');
+        });
+    },
+    20000
+  );
 }
 
 // ── Refresh Attendance ────────────────────────────────────────────────────────
 
 function qaRefreshAttendance() {
   var btn = document.getElementById('oqaAttendBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Refreshing...'; }
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Refreshing...';
+  }
   _qaSetStatus('This may take 30-60 seconds...', 'var(--text-muted)');
 
-  jsonpRequest(WEB_APP_URL + '?action=refreshAttendanceWCL', function(err, result) {
-    if (btn) { btn.disabled = false; btn.textContent = 'Refresh Attendance'; }
-    if (!err && result && result.success) {
-      var msg = 'Done: ' + result.mainNights + ' night' + (result.mainNights !== 1 ? 's' : '') + ' found, ' + result.excluded + ' excluded.';
-      var officerBase = 'officer.html' + (TEAM_SLUG !== 'phoenix' ? '?team=' + TEAM_SLUG + '&' : '?') + 'tab=attendance';
-      var el = document.getElementById('oqaStatus');
-      if (el) {
-        el.style.color = 'var(--heal)';
-        el.innerHTML = msg + ' <a href="' + officerBase + '" style="color:var(--gold-light);text-decoration:underline;">Review in Dashboard</a>';
+  jsonpRequest(
+    WEB_APP_URL + '?action=refreshAttendanceWCL',
+    function (err, result) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Refresh Attendance';
       }
-    } else {
-      _qaSetStatus(err ? err.message : (result && result.error ? result.error : 'Error refreshing.'), 'var(--melee)');
-    }
-  }, 90000);
+      if (!err && result && result.success) {
+        var msg =
+          'Done: ' +
+          result.mainNights +
+          ' night' +
+          (result.mainNights !== 1 ? 's' : '') +
+          ' found, ' +
+          result.excluded +
+          ' excluded.';
+        var officerBase =
+          'officer.html' + (TEAM_SLUG !== 'phoenix' ? '?team=' + TEAM_SLUG + '&' : '?') + 'tab=attendance';
+        var el = document.getElementById('oqaStatus');
+        if (el) {
+          el.style.color = 'var(--heal)';
+          el.innerHTML =
+            msg +
+            ' <a href="' +
+            officerBase +
+            '" style="color:var(--gold-light);text-decoration:underline;">Review in Dashboard</a>';
+        }
+      } else {
+        _qaSetStatus(err ? err.message : result && result.error ? result.error : 'Error refreshing.', 'var(--melee)');
+      }
+    },
+    90000
+  );
 }
 
 // ── Paste Loot Import ─────────────────────────────────────────────────────────
@@ -126,8 +175,8 @@ function qaPasteLootToggle() {
 }
 
 function qaSubmitLoot() {
-  var pasteEl  = document.getElementById('oqaLootPaste');
-  var paste    = pasteEl ? pasteEl.value.trim() : '';
+  var pasteEl = document.getElementById('oqaLootPaste');
+  var paste = pasteEl ? pasteEl.value.trim() : '';
   var statusEl = document.getElementById('oqaLootStatus');
   var importBtn = document.getElementById('oqaLootImportBtn');
 
@@ -137,7 +186,10 @@ function qaSubmitLoot() {
     statusEl.style.color = color || 'var(--text-muted)';
   }
 
-  if (!paste) { setStatus('Paste the RCLC JSON export first.', 'var(--melee)'); return; }
+  if (!paste) {
+    setStatus('Paste the RCLC JSON export first.', 'var(--melee)');
+    return;
+  }
 
   var entries;
   try {
@@ -150,11 +202,11 @@ function qaSubmitLoot() {
 
   var rows = [];
   for (var i = 0; i < entries.length; i++) {
-    var ent      = entries[i];
-    var id       = String(ent.id       || '').trim();
-    var player   = String(ent.player   || '').trim();
-    var rawDate  = ent.date;
-    var date     = (function(raw) {
+    var ent = entries[i];
+    var id = String(ent.id || '').trim();
+    var player = String(ent.player || '').trim();
+    var rawDate = ent.date;
+    var date = (function (raw) {
       if (!raw) return '';
       var d = new Date(raw);
       if (isNaN(d.getTime())) return String(raw).trim();
@@ -162,8 +214,8 @@ function qaSubmitLoot() {
       var dy = String(d.getDate()).padStart(2, '0');
       return d.getFullYear() + '-' + mo + '-' + dy;
     })(rawDate);
-    var itemName = String(ent.itemName  || '').trim();
-    var instance = String(ent.instance  || '').trim();
+    var itemName = String(ent.itemName || '').trim();
+    var instance = String(ent.instance || '').trim();
     if (id && player && instance) {
       rows.push({ id: id, player: player, date: date, itemName: itemName, instance: instance });
     }
@@ -174,19 +226,25 @@ function qaSubmitLoot() {
     return;
   }
 
-  var season = (window.DATA && DATA.seasonName) ? DATA.seasonName.trim() : '';
+  var season = window.DATA && DATA.seasonName ? DATA.seasonName.trim() : '';
   if (importBtn) importBtn.disabled = true;
   setStatus('Importing ' + rows.length + ' entries...', 'var(--text-muted)');
 
-  _qaLootChunks(season, rows, 0, 0, 0, statusEl,
-    function(written, skipped) {
+  _qaLootChunks(
+    season,
+    rows,
+    0,
+    0,
+    0,
+    statusEl,
+    function (written, skipped) {
       if (importBtn) importBtn.disabled = false;
       var msg = 'Done. ' + written + ' new entries added';
       if (skipped > 0) msg += ', ' + skipped + ' duplicates skipped';
       setStatus(msg + '.', 'var(--heal)');
       if (pasteEl) pasteEl.value = '';
     },
-    function(errMsg) {
+    function (errMsg) {
       if (importBtn) importBtn.disabled = false;
       setStatus(errMsg, 'var(--melee)');
     }
@@ -194,19 +252,36 @@ function qaSubmitLoot() {
 }
 
 function _qaLootChunks(season, rows, offset, written, skipped, statusEl, onDone, onError) {
-  if (offset >= rows.length) { onDone(written, skipped); return; }
+  if (offset >= rows.length) {
+    onDone(written, skipped);
+    return;
+  }
   var chunk = rows.slice(offset, offset + _QA_LOOT_CHUNK);
   if (statusEl) {
-    statusEl.textContent = 'Importing... (' + Math.min(offset + _QA_LOOT_CHUNK, rows.length) + ' / ' + rows.length + ')';
+    statusEl.textContent =
+      'Importing... (' + Math.min(offset + _QA_LOOT_CHUNK, rows.length) + ' / ' + rows.length + ')';
   }
   jsonpRequest(
-    WEB_APP_URL + '?action=appendLootRows&season=' + encodeURIComponent(season) + '&rows=' + encodeURIComponent(JSON.stringify(chunk)),
-    function(err, result) {
+    WEB_APP_URL +
+      '?action=appendLootRows&season=' +
+      encodeURIComponent(season) +
+      '&rows=' +
+      encodeURIComponent(JSON.stringify(chunk)),
+    function (err, result) {
       if (err || !result || !result.success) {
         onError(err ? err.message : 'Import failed after ' + written + ' entries.');
         return;
       }
-      _qaLootChunks(season, rows, offset + _QA_LOOT_CHUNK, written + (result.written || 0), skipped + (result.skipped || 0), statusEl, onDone, onError);
+      _qaLootChunks(
+        season,
+        rows,
+        offset + _QA_LOOT_CHUNK,
+        written + (result.written || 0),
+        skipped + (result.skipped || 0),
+        statusEl,
+        onDone,
+        onError
+      );
     }
   );
 }

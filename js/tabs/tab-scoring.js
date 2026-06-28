@@ -10,10 +10,12 @@ function _loadScoresCache() {
   try {
     var raw = sessionStorage.getItem(_WCL_SCORES_KEY);
     return raw ? JSON.parse(raw) : null;
-  } catch (e) { return null; }
+  } catch (e) {
+    return null;
+  }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   var cached = _loadScoresCache();
   if (!cached || !cached.scores || !cached.scores.length) return;
   var status = document.getElementById('refreshPerfStatus');
@@ -27,34 +29,55 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function refreshWclPerformance() {
-  var btn    = document.getElementById('refreshPerfBtn');
+  var btn = document.getElementById('refreshPerfBtn');
   var status = document.getElementById('refreshPerfStatus');
   if (btn) btn.disabled = true;
-  if (status) { status.textContent = 'Fetching from WCL...'; status.style.color = 'var(--text-muted)'; }
+  if (status) {
+    status.textContent = 'Fetching from WCL...';
+    status.style.color = 'var(--text-muted)';
+  }
 
-  jsonpRequest(WEB_APP_URL + '?action=refreshWclPerformance', function(err, result) {
-    if (btn) btn.disabled = false;
-    if (!err && result && result.success) {
-      var statusText = result.updated + ' player(s) updated (' + result.recentReports + ' recent / ' + result.trendReports + ' trend reports).';
-      if (status) { status.textContent = statusText; status.style.color = 'var(--heal)'; }
-      var freshScores = (result.scores || []).map(function(s) { return Object.assign({}, s, { committed: false }); });
-      renderScoresTable(freshScores);
-      _saveScoresCache(freshScores, statusText);
-    } else {
-      if (status) {
-        status.textContent = err ? err.message : 'Error: ' + ((result && result.error) || 'Unknown error');
-        status.style.color = 'var(--melee)';
+  jsonpRequest(
+    WEB_APP_URL + '?action=refreshWclPerformance',
+    function (err, result) {
+      if (btn) btn.disabled = false;
+      if (!err && result && result.success) {
+        var statusText =
+          result.updated +
+          ' player(s) updated (' +
+          result.recentReports +
+          ' recent / ' +
+          result.trendReports +
+          ' trend reports).';
+        if (status) {
+          status.textContent = statusText;
+          status.style.color = 'var(--heal)';
+        }
+        var freshScores = (result.scores || []).map(function (s) {
+          return Object.assign({}, s, { committed: false });
+        });
+        renderScoresTable(freshScores);
+        _saveScoresCache(freshScores, statusText);
+      } else {
+        if (status) {
+          status.textContent = err ? err.message : 'Error: ' + ((result && result.error) || 'Unknown error');
+          status.style.color = 'var(--melee)';
+        }
       }
-    }
-  }, 120000);
+    },
+    120000
+  );
 }
 
 function renderScoresTable(scores) {
   var el = document.getElementById('scoringContent');
   if (!el) return;
-  if (!scores.length) { el.innerHTML = '<p style="color:var(--text-muted);padding:0.5rem 0;">No players found in Scoring sheet.</p>'; return; }
+  if (!scores.length) {
+    el.innerHTML = '<p style="color:var(--text-muted);padding:0.5rem 0;">No players found in Scoring sheet.</p>';
+    return;
+  }
 
-  scores.sort(function(a, b) {
+  scores.sort(function (a, b) {
     if (a.manual && !b.manual) return 1;
     if (!a.manual && b.manual) return -1;
     if (a.noData && !b.noData) return 1;
@@ -80,7 +103,7 @@ function renderScoresTable(scores) {
       recentColor = s.recent >= 7 ? 'var(--heal)' : s.recent >= 5 ? 'var(--gold)' : 'var(--text-dim)';
     }
 
-    var trendDisplay = (s.trend !== null && !s.manual) ? s.trend.toFixed(2) : '--';
+    var trendDisplay = s.trend !== null && !s.manual ? s.trend.toFixed(2) : '--';
     var trendColor = 'var(--text-muted)';
     if (s.trend !== null && !s.manual) {
       trendColor = s.trend >= 7 ? 'var(--heal)' : s.trend >= 5 ? 'var(--gold)' : 'var(--text-dim)';
@@ -94,34 +117,56 @@ function renderScoresTable(scores) {
       bestColor = s.best >= 7 ? 'var(--heal)' : s.best >= 5 ? 'var(--gold)' : 'var(--text-dim)';
     }
 
-    var dataScore = (s.recent !== null) ? s.recent.toFixed(2) : '';
+    var dataScore = s.recent !== null ? s.recent.toFixed(2) : '';
     var committedBadge = s.committed
       ? ' <span style="color:var(--heal);font-size:0.75rem;font-weight:400;opacity:0.85;">committed</span>'
       : '';
     var recentTd;
     if (s.manual) {
-      recentTd = '<td style="padding:0.4rem 0.75rem;color:' + recentColor + ';font-weight:600;">' + recentDisplay + '</td>';
+      recentTd =
+        '<td style="padding:0.4rem 0.75rem;color:' + recentColor + ';font-weight:600;">' + recentDisplay + '</td>';
     } else {
-      recentTd = '<td style="padding:0.4rem 0.75rem;color:' + recentColor + ';font-weight:600;cursor:pointer;" ' +
+      recentTd =
+        '<td style="padding:0.4rem 0.75rem;color:' +
+        recentColor +
+        ';font-weight:600;cursor:pointer;" ' +
         'title="Click to edit manually" ' +
-        'data-name="' + s.name + '" data-score="' + dataScore + '" ' +
+        'data-name="' +
+        s.name +
+        '" data-score="' +
+        dataScore +
+        '" ' +
         'onclick="editScoreCell(this)">' +
-        recentDisplay + committedBadge +
+        recentDisplay +
+        committedBadge +
         ' <span style="font-size:0.7rem;opacity:0.4;font-weight:400;">edit</span>' +
         '</td>';
     }
 
     var bestTd = hasBest
-      ? '<td style="padding:0.4rem 0.75rem;color:' + bestColor + ';" data-name="' + s.name + '" data-best="' + s.best.toFixed(2) + '">' +
-          bestDisplay +
-          ' <span style="font-size:0.7rem;opacity:0.4;font-weight:400;cursor:pointer;" onclick="useBestScore(this.parentElement)">use</span>' +
+      ? '<td style="padding:0.4rem 0.75rem;color:' +
+        bestColor +
+        ';" data-name="' +
+        s.name +
+        '" data-best="' +
+        s.best.toFixed(2) +
+        '">' +
+        bestDisplay +
+        ' <span style="font-size:0.7rem;opacity:0.4;font-weight:400;cursor:pointer;" onclick="useBestScore(this.parentElement)">use</span>' +
         '</td>'
       : '<td style="padding:0.4rem 0.75rem;color:' + bestColor + ';">' + bestDisplay + '</td>';
 
-    rows += '<tr>' +
-      '<td style="padding:0.4rem 0.75rem;font-weight:600;">' + s.name + '</td>' +
+    rows +=
+      '<tr>' +
+      '<td style="padding:0.4rem 0.75rem;font-weight:600;">' +
+      s.name +
+      '</td>' +
       recentTd +
-      '<td style="padding:0.4rem 0.75rem;color:' + trendColor + ';">' + trendDisplay + '</td>' +
+      '<td style="padding:0.4rem 0.75rem;color:' +
+      trendColor +
+      ';">' +
+      trendDisplay +
+      '</td>' +
       bestTd +
       '</tr>';
   }
@@ -134,18 +179,22 @@ function renderScoresTable(scores) {
     '<th style="padding:0.4rem 0.75rem;text-align:left;font-weight:500;">Trend Score</th>' +
     '<th style="padding:0.4rem 0.75rem;text-align:left;font-weight:500;">Best Score (all)</th>' +
     '</tr></thead>' +
-    '<tbody>' + rows + '</tbody>' +
+    '<tbody>' +
+    rows +
+    '</tbody>' +
     '</table>';
 }
 
 function editScoreCell(el) {
   if (el.querySelector('input')) return;
   var playerName = el.getAttribute('data-name');
-  var current    = el.getAttribute('data-score') || '';
-  var origHtml   = el.innerHTML;
-  var origColor  = el.style.color;
+  var current = el.getAttribute('data-score') || '';
+  var origHtml = el.innerHTML;
+  var origColor = el.style.color;
 
-  el.innerHTML = '<input type="number" step="0.01" min="0" max="10" value="' + current +
+  el.innerHTML =
+    '<input type="number" step="0.01" min="0" max="10" value="' +
+    current +
     '" style="width:80px;background:var(--surface);color:var(--text);border:1px solid var(--gold);' +
     'border-radius:3px;padding:0.15rem 0.3rem;font-size:0.9rem;" />';
   var input = el.querySelector('input');
@@ -160,47 +209,64 @@ function editScoreCell(el) {
       return;
     }
     var val = Math.round(parseFloat(raw) * 100) / 100;
-    if (val < 0 || val > 10) { el.innerHTML = origHtml; el.style.color = origColor; return; }
+    if (val < 0 || val > 10) {
+      el.innerHTML = origHtml;
+      el.style.color = origColor;
+      return;
+    }
     el.innerHTML = '<span style="color:var(--text-muted);">Saving...</span>';
     saveManualScore(playerName, val, el, origColor);
   }
 
   input.addEventListener('blur', commit);
-  input.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter')  { input.blur(); }
-    if (e.key === 'Escape') { el.innerHTML = origHtml; el.style.color = origColor; }
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      input.blur();
+    }
+    if (e.key === 'Escape') {
+      el.innerHTML = origHtml;
+      el.style.color = origColor;
+    }
   });
 }
 
 function saveManualScore(playerName, score, cellEl, origColor) {
-  jsonpRequest(WEB_APP_URL + '?action=setManualScore&firstName=' + encodeURIComponent(playerName) + '&score=' + score, function(err, result) {
-    if (!err && result && result.success) {
-      var scoreStr = score.toFixed(2);
-      var color = score >= 7 ? 'var(--heal)' : score >= 5 ? 'var(--gold)' : 'var(--text-dim)';
-      cellEl.setAttribute('data-score', scoreStr);
-      cellEl.style.color = color;
-      cellEl.innerHTML = scoreStr + ' <span style="font-size:0.7rem;opacity:0.4;font-weight:400;">edit</span>';
-      var cached = _loadScoresCache();
-      if (cached && cached.scores) {
-        for (var ci = 0; ci < cached.scores.length; ci++) {
-          if (cached.scores[ci].name.toLowerCase() === playerName.toLowerCase()) {
-            cached.scores[ci].recent    = score;
-            cached.scores[ci].noData    = false;
-            cached.scores[ci].usedTrend = false;
-            cached.scores[ci].committed = false;
-            break;
+  jsonpRequest(
+    WEB_APP_URL + '?action=setManualScore&firstName=' + encodeURIComponent(playerName) + '&score=' + score,
+    function (err, result) {
+      if (!err && result && result.success) {
+        var scoreStr = score.toFixed(2);
+        var color = score >= 7 ? 'var(--heal)' : score >= 5 ? 'var(--gold)' : 'var(--text-dim)';
+        cellEl.setAttribute('data-score', scoreStr);
+        cellEl.style.color = color;
+        cellEl.innerHTML = scoreStr + ' <span style="font-size:0.7rem;opacity:0.4;font-weight:400;">edit</span>';
+        var cached = _loadScoresCache();
+        if (cached && cached.scores) {
+          for (var ci = 0; ci < cached.scores.length; ci++) {
+            if (cached.scores[ci].name.toLowerCase() === playerName.toLowerCase()) {
+              cached.scores[ci].recent = score;
+              cached.scores[ci].noData = false;
+              cached.scores[ci].usedTrend = false;
+              cached.scores[ci].committed = false;
+              break;
+            }
           }
+          _saveScoresCache(cached.scores, cached.status);
         }
-        _saveScoresCache(cached.scores, cached.status);
+      } else {
+        cellEl.style.color = origColor;
+        cellEl.innerHTML =
+          (cellEl.getAttribute('data-score') || 'No data') +
+          ' <span style="font-size:0.7rem;opacity:0.4;font-weight:400;">edit</span>';
+        var msg = err ? err.message : (result && result.error) || 'Unknown error';
+        var statusEl = document.getElementById('refreshPerfStatus');
+        if (statusEl) {
+          statusEl.textContent = 'Error saving score: ' + msg;
+          statusEl.style.color = 'var(--melee)';
+        }
       }
-    } else {
-      cellEl.style.color = origColor;
-      cellEl.innerHTML = (cellEl.getAttribute('data-score') || 'No data') + ' <span style="font-size:0.7rem;opacity:0.4;font-weight:400;">edit</span>';
-      var msg = err ? err.message : ((result && result.error) || 'Unknown error');
-      var statusEl = document.getElementById('refreshPerfStatus');
-      if (statusEl) { statusEl.textContent = 'Error saving score: ' + msg; statusEl.style.color = 'var(--melee)'; }
     }
-  });
+  );
 }
 
 function useBestScore(bestCell) {
@@ -208,12 +274,12 @@ function useBestScore(bestCell) {
   var best = parseFloat(bestCell.getAttribute('data-best'));
   if (!name || isNaN(best)) return;
 
-  var row       = bestCell.parentElement;
+  var row = bestCell.parentElement;
   var recentCell = row.cells[1];
   if (!recentCell || recentCell.querySelector('input')) return;
 
   var origColor = recentCell.style.color;
-  recentCell.setAttribute('data-name',  name);
+  recentCell.setAttribute('data-name', name);
   recentCell.setAttribute('data-score', best.toFixed(2));
   recentCell.innerHTML = '<span style="color:var(--text-muted);">Saving...</span>';
   saveManualScore(name, best, recentCell, origColor);
@@ -231,18 +297,26 @@ function cancelCommitPerformance() {
 
 function executeCommitPerformance() {
   cancelCommitPerformance();
-  var btn    = document.getElementById('commitPerfBtn');
+  var btn = document.getElementById('commitPerfBtn');
   var status = document.getElementById('commitPerfStatus');
   if (btn) btn.disabled = true;
-  if (status) { status.textContent = 'Committing...'; status.style.color = 'var(--text-muted)'; }
+  if (status) {
+    status.textContent = 'Committing...';
+    status.style.color = 'var(--text-muted)';
+  }
 
-  jsonpRequest(WEB_APP_URL + '?action=commitPerformanceScores', function(err, result) {
+  jsonpRequest(WEB_APP_URL + '?action=commitPerformanceScores', function (err, result) {
     if (btn) btn.disabled = false;
     if (!err && result && result.success) {
-      if (status) { status.textContent = result.committed + ' player(s) committed to Performance column.'; status.style.color = 'var(--heal)'; }
+      if (status) {
+        status.textContent = result.committed + ' player(s) committed to Performance column.';
+        status.style.color = 'var(--heal)';
+      }
       var cached = _loadScoresCache();
       if (cached && cached.scores) {
-        cached.scores.forEach(function(s) { if (!s.manual && !s.noData && s.recent !== null) s.committed = true; });
+        cached.scores.forEach(function (s) {
+          if (!s.manual && !s.noData && s.recent !== null) s.committed = true;
+        });
         _saveScoresCache(cached.scores, cached.status);
         renderScoresTable(cached.scores);
       }
