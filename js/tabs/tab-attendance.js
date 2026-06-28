@@ -1,14 +1,16 @@
 var _attendanceGrid = null;
 
 function switchAttendSubTab(name, btn) {
-  document.querySelectorAll('[id^="attend-subtab-btn-"]').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelectorAll('[id^="attend-subtab-btn-"]').forEach(function (b) {
+    b.classList.remove('active');
+  });
   if (btn) btn.classList.add('active');
   var manage = document.getElementById('attend-sub-manage');
   var scores = document.getElementById('attend-sub-scores');
-  var bench  = document.getElementById('attend-sub-bench');
+  var bench = document.getElementById('attend-sub-bench');
   if (manage) manage.style.display = name === 'manage' ? '' : 'none';
   if (scores) scores.style.display = name === 'scores' ? '' : 'none';
-  if (bench)  bench.style.display  = name === 'bench'  ? '' : 'none';
+  if (bench) bench.style.display = name === 'bench' ? '' : 'none';
   if (name === 'bench') {
     if (Array.isArray(_attendanceGrid)) {
       buildBenchFairness();
@@ -22,46 +24,73 @@ function switchAttendSubTab(name, btn) {
 
 function buildAttendanceTab() {
   var allDetails = DATA.attendanceDetails || {};
-  var roster     = DATA.roster || [];
-  var THRESHOLD  = parseInt((document.getElementById('attendThreshold') || { value: '95' }).value) || 95;
-  var range      = getSeasonDateRange();
+  var roster = DATA.roster || [];
+  var THRESHOLD = parseInt((document.getElementById('attendThreshold') || { value: '95' }).value) || 95;
+  var range = getSeasonDateRange();
 
   // Filter penalty events to the active season window
   function filterPenalties(penalties) {
     if (!ACTIVE_SEASON) return penalties;
-    return penalties.filter(function(ae) {
+    return penalties.filter(function (ae) {
       return (!range.start || ae.date >= range.start) && (!range.end || ae.date <= range.end);
     });
   }
 
   var below = [];
   for (var i = 0; i < roster.length; i++) {
-    var p   = roster[i];
+    var p = roster[i];
     var att = getDisplayAttendancePct(p);
     var pct = parseFloat(att) || 0;
     if (pct <= THRESHOLD) below.push({ player: p, att: att, pct: pct });
   }
-  below.sort(function(a, b) { return a.pct - b.pct; });
+  below.sort(function (a, b) {
+    return a.pct - b.pct;
+  });
 
   var seasonLabel = ACTIVE_SEASON ? ' (' + ACTIVE_SEASON + ')' : '';
   var html = '';
   if (!below.length) {
-    html = '<p style="color:var(--text);padding:1rem;">All raiders are at or above ' + THRESHOLD + '% attendance' + seasonLabel + '.</p>';
+    html =
+      '<p style="color:var(--text);padding:1rem;">All raiders are at or above ' +
+      THRESHOLD +
+      '% attendance' +
+      seasonLabel +
+      '.</p>';
   } else {
-    html += '<p style="font-size:1rem;color:var(--text);margin-bottom:1rem;">' + below.length + ' raider' + (below.length !== 1 ? 's' : '') + ' at or below ' + THRESHOLD + '% attendance' + seasonLabel + '</p>';
+    html +=
+      '<p style="font-size:1rem;color:var(--text);margin-bottom:1rem;">' +
+      below.length +
+      ' raider' +
+      (below.length !== 1 ? 's' : '') +
+      ' at or below ' +
+      THRESHOLD +
+      '% attendance' +
+      seasonLabel +
+      '</p>';
     for (var i = 0; i < below.length; i++) {
-      var p       = below[i].player;
-      var att     = below[i].att;
-      var color   = attendColor(parseFloat(att) || 0);
+      var p = below[i].player;
+      var att = below[i].att;
+      var color = attendColor(parseFloat(att) || 0);
       var penalty = filterPenalties(allDetails[p.firstName] || []);
 
       html += '<div class="attend-player-row">';
       html += '<div class="attend-player-header">';
-      html += '<span class="attend-player-name">' + (p.nick || p.firstName) + (p.firstName !== (p.nick || p.firstName) ? ' <span style="font-size:0.95rem;color:var(--text-muted);">(' + p.firstName + ')</span>' : '') + '</span>';
+      html +=
+        '<span class="attend-player-name">' +
+        (p.nick || p.firstName) +
+        (p.firstName !== (p.nick || p.firstName)
+          ? ' <span style="font-size:0.95rem;color:var(--text-muted);">(' + p.firstName + ')</span>'
+          : '') +
+        '</span>';
       html += '<span style="font-size:1rem;font-weight:700;color:' + color + ';">' + att + '</span>';
       html += '</div>';
       html += '<div class="attend-row" style="margin-bottom:0.5rem;">';
-      html += '<div class="attend-bar-wrap"><div class="attend-bar" style="width:' + att + ';background:' + color + ';"></div></div>';
+      html +=
+        '<div class="attend-bar-wrap"><div class="attend-bar" style="width:' +
+        att +
+        ';background:' +
+        color +
+        ';"></div></div>';
       html += '</div>';
       if (penalty.length) {
         html += '<div class="attend-penalty-list">';
@@ -90,18 +119,22 @@ function ensureAttendanceGridLoaded() {
 }
 
 function loadAttendanceGrid() {
-  var status   = document.getElementById('attendGridStatus');
+  var status = document.getElementById('attendGridStatus');
   var nightRow = document.getElementById('attendGridNightRow');
-  var table    = document.getElementById('attendGridTable');
-  if (status)   status.textContent = 'Loading attendance data...';
+  var table = document.getElementById('attendGridTable');
+  if (status) status.textContent = 'Loading attendance data...';
   if (nightRow) nightRow.style.display = 'none';
-  if (table)    table.innerHTML = '';
+  if (table) table.innerHTML = '';
 
-  jsonpRequest(WEB_APP_URL + '?action=getAttendanceGrid', function(err, result) {
+  jsonpRequest(WEB_APP_URL + '?action=getAttendanceGrid', function (err, result) {
     if (err || !result || !result.success) {
       _attendanceGrid = null;
       if (status) {
-        status.textContent = err ? err.message : (result && result.error ? 'Error: ' + result.error : 'No attendance data yet. Run "Refresh from WCL" first.');
+        status.textContent = err
+          ? err.message
+          : result && result.error
+            ? 'Error: ' + result.error
+            : 'No attendance data yet. Run "Refresh from WCL" first.';
         status.style.color = err ? 'var(--melee)' : 'var(--text-muted)';
       }
       return;
@@ -115,19 +148,24 @@ function loadAttendanceGrid() {
 }
 
 function renderAttendanceGrid() {
-  var nightRow   = document.getElementById('attendGridNightRow');
+  var nightRow = document.getElementById('attendGridNightRow');
   var nightSelect = document.getElementById('attendNightSelect');
-  var status     = document.getElementById('attendGridStatus');
-  var table      = document.getElementById('attendGridTable');
+  var status = document.getElementById('attendGridStatus');
+  var table = document.getElementById('attendGridTable');
 
   if (!_attendanceGrid || !Array.isArray(_attendanceGrid) || !_attendanceGrid.length) {
-    if (status) { status.textContent = 'No raid nights in Attendance sheet. Run "Refresh from WCL" first.'; status.style.color = 'var(--text-muted)'; }
+    if (status) {
+      status.textContent = 'No raid nights in Attendance sheet. Run "Refresh from WCL" first.';
+      status.style.color = 'var(--text-muted)';
+    }
     if (nightRow) nightRow.style.display = 'none';
     if (table) table.innerHTML = '';
     return;
   }
 
-  if (status)   { status.textContent = ''; }
+  if (status) {
+    status.textContent = '';
+  }
   if (nightRow) nightRow.style.display = '';
 
   if (nightSelect) {
@@ -135,8 +173,8 @@ function renderAttendanceGrid() {
     nightSelect.innerHTML = '';
     for (var i = 0; i < _attendanceGrid.length; i++) {
       var raid = _attendanceGrid[i];
-      var opt  = document.createElement('option');
-      opt.value       = String(i);
+      var opt = document.createElement('option');
+      opt.value = String(i);
       opt.textContent = raid.title + (raid.excluded ? ' [EXCLUDED]' : '');
       nightSelect.appendChild(opt);
     }
@@ -152,13 +190,25 @@ function renderNightGrid(index) {
   if (!table || !Array.isArray(_attendanceGrid)) return;
 
   var raid = _attendanceGrid[index];
-  if (!raid) { table.innerHTML = ''; return; }
+  if (!raid) {
+    table.innerHTML = '';
+    return;
+  }
 
   var html = '<div class="attend-grid-info">';
-  html += '<span style="color:var(--text-muted);">' + raid.players.length + ' player' + (raid.players.length !== 1 ? 's' : '') + '</span>';
+  html +=
+    '<span style="color:var(--text-muted);">' +
+    raid.players.length +
+    ' player' +
+    (raid.players.length !== 1 ? 's' : '') +
+    '</span>';
   if (raid.excluded) html += '<span style="color:var(--melee);margin-left:0.75rem;">Excluded from scoring</span>';
-  html += '<button id="excludeReportBtn" class="btn btn-muted" style="margin-left:auto;font-size:0.85rem;padding:0.2rem 0.65rem;" onclick="toggleReportExcluded(' + index + ')">'
-        + (raid.excluded ? 'Remove Exclusion' : 'Exclude Report') + '</button>';
+  html +=
+    '<button id="excludeReportBtn" class="btn btn-muted" style="margin-left:auto;font-size:0.85rem;padding:0.2rem 0.65rem;" onclick="toggleReportExcluded(' +
+    index +
+    ')">' +
+    (raid.excluded ? 'Remove Exclusion' : 'Exclude Report') +
+    '</button>';
   html += '</div>';
   html += '<div class="attend-grid-rows">';
 
@@ -169,7 +219,14 @@ function renderNightGrid(index) {
     var hasStatus = !!p.status;
     html += '<span class="attend-grid-source">' + escHtml(p.source || '') + '</span>';
     html += '<div class="attend-status-wrap">';
-    html += '<select class="attend-status-select" data-date="' + escHtml(raid.date) + '" data-name="' + escHtml(p.name) + '" data-old="' + escHtml(p.status) + '" onchange="setPlayerStatus(this)">';
+    html +=
+      '<select class="attend-status-select" data-date="' +
+      escHtml(raid.date) +
+      '" data-name="' +
+      escHtml(p.name) +
+      '" data-old="' +
+      escHtml(p.status) +
+      '" onchange="setPlayerStatus(this)">';
     if (!p.status) html += '<option value="" selected disabled>(no status)</option>';
     for (var j = 0; j < ATTENDANCE_STATUSES.length; j++) {
       var s = ATTENDANCE_STATUSES[j];
@@ -186,92 +243,133 @@ function renderNightGrid(index) {
 }
 
 function escHtml(str) {
-  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function setPlayerStatus(selectEl) {
-  var date      = selectEl.getAttribute('data-date');
+  var date = selectEl.getAttribute('data-date');
   var firstName = selectEl.getAttribute('data-name');
-  var status    = selectEl.value;
+  var status = selectEl.value;
   var oldStatus = selectEl.getAttribute('data-old');
-  var row       = selectEl.parentElement;
+  var row = selectEl.parentElement;
   var indicator = row ? row.querySelector('.attend-save-ind') : null;
 
   if (!status) return;
   selectEl.disabled = true;
-  if (indicator) { indicator.textContent = 'Saving...'; indicator.style.color = 'var(--text-muted)'; }
+  if (indicator) {
+    indicator.textContent = 'Saving...';
+    indicator.style.color = 'var(--text-muted)';
+  }
 
   var data = { date: date, firstName: firstName, status: status, oldStatus: oldStatus };
-  jsonpRequest(WEB_APP_URL + '?action=setAttendanceStatus&data=' + encodeURIComponent(JSON.stringify(data)), function(err, result) {
-    selectEl.disabled = false;
-    if (!err && result && result.success) {
-      selectEl.setAttribute('data-old', status);
-      var nightSelect = document.getElementById('attendNightSelect');
-      var idx = nightSelect ? parseInt(nightSelect.value) : -1;
-      if (idx >= 0 && Array.isArray(_attendanceGrid) && _attendanceGrid[idx]) {
-        var players = _attendanceGrid[idx].players;
-        for (var i = 0; i < players.length; i++) {
-          if (players[i].name === firstName) { players[i].status = status; players[i].source = 'Officer'; break; }
+  jsonpRequest(
+    WEB_APP_URL + '?action=setAttendanceStatus&data=' + encodeURIComponent(JSON.stringify(data)),
+    function (err, result) {
+      selectEl.disabled = false;
+      if (!err && result && result.success) {
+        selectEl.setAttribute('data-old', status);
+        var nightSelect = document.getElementById('attendNightSelect');
+        var idx = nightSelect ? parseInt(nightSelect.value) : -1;
+        if (idx >= 0 && Array.isArray(_attendanceGrid) && _attendanceGrid[idx]) {
+          var players = _attendanceGrid[idx].players;
+          for (var i = 0; i < players.length; i++) {
+            if (players[i].name === firstName) {
+              players[i].status = status;
+              players[i].source = 'Officer';
+              break;
+            }
+          }
+        }
+        if (indicator) {
+          indicator.innerHTML = '&#10003;';
+          indicator.style.color = 'var(--heal)';
+        }
+      } else {
+        selectEl.value = oldStatus || '';
+        if (indicator) {
+          indicator.textContent = 'Error';
+          indicator.style.color = 'var(--melee)';
+          setTimeout(function () {
+            if (indicator) indicator.textContent = '';
+          }, 3000);
         }
       }
-      if (indicator) {
-        indicator.innerHTML = '&#10003;';
-        indicator.style.color = 'var(--heal)';
-      }
-    } else {
-      selectEl.value = oldStatus || '';
-      if (indicator) {
-        indicator.textContent = 'Error';
-        indicator.style.color = 'var(--melee)';
-        setTimeout(function() { if (indicator) indicator.textContent = ''; }, 3000);
-      }
     }
-  });
+  );
 }
 
 function toggleReportExcluded(index) {
   if (!Array.isArray(_attendanceGrid) || !_attendanceGrid[index]) return;
   var raid = _attendanceGrid[index];
-  var btn  = document.getElementById('excludeReportBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  var btn = document.getElementById('excludeReportBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+  }
 
   var newExcluded = !raid.excluded;
-  jsonpRequest(WEB_APP_URL + '?action=setReportExcluded&date=' + encodeURIComponent(raid.date) + '&excluded=' + newExcluded, function(err, result) {
-    if (!err && result && result.success) {
-      raid.excluded = newExcluded;
-      // Update dropdown label
-      var nightSelect = document.getElementById('attendNightSelect');
-      if (nightSelect && nightSelect.options[index]) {
-        var baseTitle = raid.title.replace(/ \[EXCLUDED\]$/, '');
-        nightSelect.options[index].textContent = baseTitle + (newExcluded ? ' [EXCLUDED]' : '');
+  jsonpRequest(
+    WEB_APP_URL + '?action=setReportExcluded&date=' + encodeURIComponent(raid.date) + '&excluded=' + newExcluded,
+    function (err, result) {
+      if (!err && result && result.success) {
+        raid.excluded = newExcluded;
+        // Update dropdown label
+        var nightSelect = document.getElementById('attendNightSelect');
+        if (nightSelect && nightSelect.options[index]) {
+          var baseTitle = raid.title.replace(/ \[EXCLUDED\]$/, '');
+          nightSelect.options[index].textContent = baseTitle + (newExcluded ? ' [EXCLUDED]' : '');
+        }
+        renderNightGrid(index);
+      } else {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = newExcluded ? 'Exclude Report' : 'Remove Exclusion';
+        }
+        var errMsg = err ? err.message : result && result.error ? result.error : 'Error saving.';
+        alert('Failed to update report exclusion: ' + errMsg);
       }
-      renderNightGrid(index);
-    } else {
-      if (btn) { btn.disabled = false; btn.textContent = newExcluded ? 'Exclude Report' : 'Remove Exclusion'; }
-      var errMsg = err ? err.message : (result && result.error ? result.error : 'Error saving.');
-      alert('Failed to update report exclusion: ' + errMsg);
     }
-  });
+  );
 }
 
 function refreshAttendanceWCL() {
-  var btn    = document.getElementById('refreshWCLBtn');
+  var btn = document.getElementById('refreshWCLBtn');
   var status = document.getElementById('refreshWCLStatus');
-  if (btn) { btn.disabled = true; btn.textContent = 'Refreshing...'; }
-  if (status) { status.textContent = 'This may take 30-60 seconds...'; status.style.color = 'var(--text-muted)'; }
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Refreshing...';
+  }
+  if (status) {
+    status.textContent = 'This may take 30-60 seconds...';
+    status.style.color = 'var(--text-muted)';
+  }
 
-  jsonpRequest(WEB_APP_URL + '?action=refreshAttendanceWCL', function(err, result) {
-    if (btn) { btn.disabled = false; btn.textContent = 'Refresh from WCL'; }
+  jsonpRequest(WEB_APP_URL + '?action=refreshAttendanceWCL', function (err, result) {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Refresh from WCL';
+    }
     if (!err && result && result.success) {
       if (status) {
-        status.textContent = 'Done: ' + result.mainNights + ' night' + (result.mainNights !== 1 ? 's' : '') + ' found, ' + result.excluded + ' excluded.';
+        status.textContent =
+          'Done: ' +
+          result.mainNights +
+          ' night' +
+          (result.mainNights !== 1 ? 's' : '') +
+          ' found, ' +
+          result.excluded +
+          ' excluded.';
         status.style.color = 'var(--heal)';
       }
       _attendanceGrid = null;
       loadAttendanceGrid();
     } else {
       if (status) {
-        status.textContent = err ? err.message : (result && result.error ? result.error : 'Error refreshing.');
+        status.textContent = err ? err.message : result && result.error ? result.error : 'Error refreshing.';
         status.style.color = 'var(--melee)';
       }
     }
@@ -290,22 +388,36 @@ function cancelCommitScores() {
 
 function executeCommitScores() {
   cancelCommitScores();
-  var btn    = document.getElementById('commitScoresBtn');
+  var btn = document.getElementById('commitScoresBtn');
   var status = document.getElementById('commitScoresStatus');
-  if (btn) { btn.disabled = true; btn.textContent = 'Committing...'; }
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Committing...';
+  }
   if (status) status.textContent = '';
 
-  jsonpRequest(WEB_APP_URL + '?action=commitAttendanceScores', function(err, result) {
-    if (btn) { btn.disabled = false; btn.textContent = 'Commit Scores to Sheet'; }
+  jsonpRequest(WEB_APP_URL + '?action=commitAttendanceScores', function (err, result) {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Commit Scores to Sheet';
+    }
     if (!err && result && result.success) {
       if (status) {
-        status.textContent = result.committed + ' players scored (' + result.totalRaids + ' night' + (result.totalRaids !== 1 ? 's' : '') + ')';
+        status.textContent =
+          result.committed +
+          ' players scored (' +
+          result.totalRaids +
+          ' night' +
+          (result.totalRaids !== 1 ? 's' : '') +
+          ')';
         status.style.color = 'var(--heal)';
-        setTimeout(function() { if (status) status.textContent = ''; }, 6000);
+        setTimeout(function () {
+          if (status) status.textContent = '';
+        }, 6000);
       }
     } else {
       if (status) {
-        status.textContent = err ? err.message : (result && result.error ? result.error : 'Error committing scores.');
+        status.textContent = err ? err.message : result && result.error ? result.error : 'Error committing scores.';
         status.style.color = 'var(--melee)';
       }
     }

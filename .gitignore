@@ -3,7 +3,6 @@
 Thumbs.db
 
 # Editor
-.vscode/extensions.json
 *.swp
 *.swo
 
@@ -11,8 +10,6 @@ Thumbs.db
 .env
 .env.local
 
-# Node (if a build step is added later)
+# Node
 node_modules/
-package-lock.json
-package.json
 npm-debug.log*
