@@ -18,6 +18,8 @@ function buildSeasonTab() {
   if (nameInput) nameInput.value = (DATA && DATA.seasonName) || '';
   var endInput = document.getElementById('seasonEndInput');
   if (endInput) endInput.value = (DATA && DATA.seasonEnd) || '';
+  var signupSeasonInput = document.getElementById('signupSeasonInput');
+  if (signupSeasonInput) signupSeasonInput.value = (DATA && DATA.signupSeason) || '';
   var trialWeeksInput = document.getElementById('trialWeeksInput');
   var trialAttendInput = document.getElementById('trialAttendInput');
   if (trialWeeksInput) trialWeeksInput.value = DATA && DATA.trialWeeks != null ? DATA.trialWeeks : 4;
@@ -314,6 +316,31 @@ function syncAttendancePct() {
       if (status) {
         status.textContent = err ? err.message : 'Error syncing.';
       }
+    }
+  });
+}
+
+function saveSignupSeason() {
+  var input = document.getElementById('signupSeasonInput');
+  var val = input ? input.value.trim() : '';
+  var btn = document.getElementById('signupSeasonSaveBtn');
+  var status = document.getElementById('signupSeasonStatus');
+  if (!val) {
+    if (status) { status.textContent = 'Season name cannot be blank.'; setTimeout(function () { if (status) status.textContent = ''; }, 3000); }
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+  jsonpRequest(WEB_APP_URL + '?action=setActiveSignupSeason&season=' + encodeURIComponent(val), function (err, result) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+    if (!err && result && result.success) {
+      if (DATA) DATA.signupSeason = val;
+      if (status) {
+        status.textContent = val ? 'Saved!' : 'Cleared.';
+        setTimeout(function () { if (status) status.textContent = ''; }, 2000);
+      }
+    } else {
+      if (status) status.textContent = err ? err.message : 'Error saving.';
     }
   });
 }
