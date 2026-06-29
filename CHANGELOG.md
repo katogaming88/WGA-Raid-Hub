@@ -6,6 +6,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.6.0] - 2026-06-28
+
+### Added
+- **3-stage roster signup flow** -- Signups are now a full season registration flow: players submit a signup (class/spec/role/discord/mainswap/notes), officers approve into a Pending Roster staging area, then push to the official roster in bulk when signups close.
+- **Active signup season setting** -- A new Settings sheet stores a `signupSeason` key (e.g. `MN S1`) independent of the attendance season start date, so pre-season signups are attributed to the correct season. Officers set it via a new `setActiveSignupSeason` action.
+- **Season stamping** -- Every signup submission and pending roster entry is now stamped with the active signup season.
+- **Re-signup support** -- Approving a player who already has a Pending entry overwrites it rather than creating a duplicate, so players can update their class/spec before the push.
+- **Missing signups** -- New `getMissingSignups` action (and `/missing-signups` bot command via bot issue #3) returns roster members who have not submitted a signup for the current season.
+- **Push to Roster** -- New `pushPendingToRoster` action bulk-applies all Pending entries to the official roster (add new players, update existing class/spec/role). Optionally removes roster members not in the pending set.
+- **Pending Roster tab redesign** -- Stats panel (total + role breakdown), collapsible missing signups section grouped by role, simplified cards with mainswap/season indicators, and a two-step Push to Roster confirm flow with optional remove-absent checkbox.
+
+### Changed
+- **Pending Roster sheet columns** -- Extended from 6 to 12 columns: Character-Realm, Class, Main Spec, Off Specs, Role, Discord, Mainswap, Notes, Season, Submitted At, Approved At, Status.
+- **Approve signup** -- Removed the old duplicate-on-roster guard (players are expected to already be on the roster for season re-registrations). Now passes mainswap, notes, and season through to the Pending Roster sheet.
+- **Officer.html help text** -- Updated Signups tab help to describe the push-based flow.
+
+### Fixed
+- **ESLint no-useless-escape** -- Removed unnecessary `\/` and `\-` escapes in two date-parsing regexes.
+- **ESLint no-empty** -- Added `Logger.log()` bodies to previously-empty catch blocks.
+- **ESLint no-redeclare** -- Converted `var` to `const`/`let` in `getItemRecipients` loops to eliminate cross-loop re-declarations.
+
+---
+
 ## [3.5.5] - 2026-06-23
 
 ### Added
