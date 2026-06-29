@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.6.7] - 2026-06-29
+
+### Added
+- **Devotion Aura buff coverage tracking** -- Devotion Aura (provided by all Paladins) is now included in the raid buff coverage panel.
+
+---
+
 ## [3.6.6] - 2026-06-29
 
 ### Fixed
