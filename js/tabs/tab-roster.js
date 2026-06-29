@@ -965,6 +965,70 @@ function promoteTrialPlayer(nameRealm, firstName, btn) {
 
 initAddPlayerRealmCombobox();
 
+// ── Buff / debuff coverage (compact) ─────────────────────────────────────────
+
+function buildRosterBuffCoverage() {
+  var el = document.getElementById('rosterBuffCoverage');
+  if (!el) return;
+  var raiders = (DATA.roster || []).filter(function (p) {
+    return !p.isBench;
+  });
+  var coverage = computeBuffCoverage(raiders, 'class', 'spec', 'firstName');
+
+  var sections = [
+    { label: 'Raid Buffs', buffs: RAID_BUFFS },
+    { label: 'Boss Debuffs', buffs: BOSS_DEBUFFS },
+    { label: 'Utility', buffs: RAID_UTILITY }
+  ];
+
+  var html =
+    '<div style="margin-bottom:0.75rem;padding:0.7rem 0.85rem;background:var(--bg-alt);' +
+    'border:1px solid var(--border);border-radius:6px;">' +
+    '<span style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.12em;' +
+    'color:var(--text-muted);font-weight:700;display:block;margin-bottom:0.5rem;">Buff Coverage</span>';
+
+  sections.forEach(function (sec) {
+    html +=
+      '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.25rem;margin-bottom:0.4rem;">' +
+      '<span style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;' +
+      'color:var(--text-dim);font-weight:600;min-width:4.5rem;">' +
+      sec.label +
+      '</span>';
+    sec.buffs.forEach(function (buff) {
+      var data = coverage[buff.name] || { count: 0, providers: [] };
+      var count = data.count;
+      var indicator, color;
+      if (count >= 2) {
+        indicator = '&#10003;';
+        color = 'var(--heal)';
+      } else if (count === 1) {
+        indicator = '!';
+        color = 'var(--gold-light)';
+      } else {
+        indicator = '&#10007;';
+        color = 'var(--melee)';
+      }
+      html +=
+        '<span style="display:inline-flex;align-items:center;gap:0.2rem;background:var(--bg);' +
+        'border:1px solid var(--border);border-radius:4px;padding:0.1rem 0.4rem;' +
+        'font-size:0.77rem;cursor:default;">' +
+        '<span style="color:' +
+        color +
+        ';font-weight:700;">' +
+        indicator +
+        '</span>' +
+        '<span style="color:var(--text-muted);">' +
+        buff.name +
+        '</span>' +
+        '</span>';
+    });
+    html += '</div>';
+  });
+
+  html += '</div>';
+  el.innerHTML = html;
+}
+
 // ── Roster subtabs ────────────────────────────────────────────────────────────
 
 function switchRosterSubTab(name, btnEl) {

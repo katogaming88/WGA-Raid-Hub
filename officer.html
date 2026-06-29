@@ -135,6 +135,7 @@
                 <button class="filter-chip" onclick="toggleSort('items')" id="chip-sort-items">Items</button>
               </div>
               <div id="trialPromoAlert"></div>
+              <div id="rosterBuffCoverage"></div>
               <table class="roster-table" id="rosterTable"></table>
               <div id="officerProfile"></div>
             </div>
@@ -1010,6 +1011,7 @@ function _grantOfficerAccessViaDiscord(session) {
     function() {
       buildStatsBar();
       buildRosterTable();
+      buildRosterBuffCoverage();
       reopenSelectedPlayer();
     }
   );

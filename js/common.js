@@ -23,7 +23,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.6.0';
+var VERSION = '3.6.1';
 
 function _getDiscordTokenParam() {
   try {
@@ -372,6 +372,54 @@ var CLASS_COLORS = {
   Warlock: '#8788EE',
   Warrior: '#C69B3A'
 };
+
+// MN buff/debuff/utility map -- update here when class abilities change
+var RAID_BUFFS = [
+  { name: 'Mark of the Wild', classes: ['Druid'] },
+  { name: 'Arcane Intellect', classes: ['Mage'] },
+  { name: 'Battle Shout', classes: ['Warrior'] },
+  { name: 'Power Word: Fortitude', classes: ['Priest'] },
+  { name: "Hunter's Mark", classes: ['Hunter'] },
+  { name: 'Blessing of the Bronze', classes: ['Evoker'] },
+  { name: 'Skyfury', classes: ['Shaman'] }
+];
+
+var BOSS_DEBUFFS = [
+  { name: 'Mystic Touch', classes: ['Monk'] },
+  { name: 'Chaos Brand', classes: ['Demon Hunter'] },
+  { name: 'Atrophic Poison', classes: ['Rogue'] }
+];
+
+var RAID_UTILITY = [
+  { name: 'Heroism / Bloodlust', classes: ['Shaman', 'Mage', 'Hunter', 'Evoker'] },
+  { name: 'Combat Res', classes: ['Druid', 'Warlock', 'Paladin', 'Death Knight'] },
+  { name: 'Healthstone', classes: ['Warlock'] },
+  { name: 'Gateway', classes: ['Warlock'] },
+  { name: 'Death Grip', classes: ['Death Knight'] },
+  { name: 'Mass Grip', classes: ['Death Knight'], specs: ['Blood'] },
+  { name: 'Life Grip / Rescue', classes: ['Priest', 'Evoker'] },
+  { name: 'Blessing of Protection', classes: ['Paladin'] },
+  { name: 'Darkness', classes: ['Demon Hunter'] },
+  { name: 'Zephyr', classes: ['Evoker'] }
+];
+
+// players: array of objects; classField/specField/nameField: key names on each object
+function computeBuffCoverage(players, classField, specField, nameField) {
+  var allBuffs = RAID_BUFFS.concat(BOSS_DEBUFFS).concat(RAID_UTILITY);
+  var result = {};
+  allBuffs.forEach(function (buff) {
+    result[buff.name] = { count: 0, providers: [] };
+    players.forEach(function (p) {
+      var cls = p[classField] || '';
+      var spec = p[specField] || '';
+      if (buff.classes.indexOf(cls) === -1) return;
+      if (buff.specs && buff.specs.indexOf(spec) === -1) return;
+      result[buff.name].count++;
+      result[buff.name].providers.push(p[nameField] || cls);
+    });
+  });
+  return result;
+}
 
 function classColor(cls) {
   return CLASS_COLORS[cls] || 'var(--text)';

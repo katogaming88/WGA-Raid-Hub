@@ -37,6 +37,11 @@ function renderPendingRoster(entries, missing) {
   html += buildPendingStatsHtml(entries);
   html += buildMissingSignupsHtml(missing);
 
+  if (entries.length) {
+    var coverage = computeBuffCoverage(entries, 'className', 'mainSpec', 'nameRealm');
+    html += buildPendingBuffCoverageHtml(coverage);
+  }
+
   if (!entries.length) {
     html +=
       '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No approved signups in the pending roster.</p>';
@@ -164,6 +169,83 @@ function buildMissingSignupsHtml(missing) {
 function toggleMissingSignups() {
   var panel = document.getElementById('pendingMissingCollapse');
   var icon = document.getElementById('pendingMissingIcon');
+  if (!panel) return;
+  var visible = panel.style.display !== 'none';
+  panel.style.display = visible ? 'none' : 'block';
+  if (icon) icon.innerHTML = visible ? '&#9654;' : '&#9660;';
+}
+
+// ── Buff / debuff coverage panel ─────────────────────────────────────────────
+
+function buildPendingBuffCoverageHtml(coverage) {
+  var sections = [
+    { label: 'Raid Buffs', buffs: RAID_BUFFS },
+    { label: 'Boss Debuffs', buffs: BOSS_DEBUFFS },
+    { label: 'Utility', buffs: RAID_UTILITY }
+  ];
+
+  var bodyHtml = '';
+  sections.forEach(function (sec) {
+    bodyHtml +=
+      '<div style="margin-bottom:0.6rem;">' +
+      '<span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;' +
+      'color:var(--text-muted);font-weight:700;display:block;margin-bottom:0.35rem;">' +
+      sec.label +
+      '</span>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:0.3rem;">';
+    sec.buffs.forEach(function (buff) {
+      var data = coverage[buff.name] || { count: 0, providers: [] };
+      var count = data.count;
+      var indicator, color;
+      if (count >= 2) {
+        indicator = '&#10003;';
+        color = 'var(--heal)';
+      } else if (count === 1) {
+        indicator = '!';
+        color = 'var(--gold-light)';
+      } else {
+        indicator = '&#10007;';
+        color = 'var(--melee)';
+      }
+      var titleAttr = data.providers.length ? ' title="' + data.providers.join(', ') + '"' : '';
+      bodyHtml +=
+        '<span' +
+        titleAttr +
+        ' style="display:inline-flex;align-items:center;gap:0.25rem;' +
+        'background:var(--bg);border:1px solid var(--border);border-radius:4px;' +
+        'padding:0.15rem 0.5rem;font-size:0.8rem;cursor:default;">' +
+        '<span style="color:' +
+        color +
+        ';font-weight:700;">' +
+        indicator +
+        '</span>' +
+        '<span style="color:var(--text-muted);">' +
+        buff.name +
+        '</span>' +
+        (count > 0 ? '<span style="color:' + color + ';font-weight:600;font-size:0.75rem;">' + count + '</span>' : '') +
+        '</span>';
+    });
+    bodyHtml += '</div></div>';
+  });
+
+  return (
+    '<div style="margin-bottom:1.25rem;border:1px solid var(--border);border-radius:6px;overflow:hidden;">' +
+    '<div onclick="togglePendingBuffCoverage()" style="cursor:pointer;display:flex;align-items:center;' +
+    'justify-content:space-between;padding:0.6rem 0.85rem;background:var(--bg-alt);">' +
+    '<span style="font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.12em;' +
+    'color:var(--text-muted);">Buff Coverage</span>' +
+    '<span id="pendingBuffIcon" style="font-size:0.8rem;color:var(--text-muted);">&#9654;</span>' +
+    '</div>' +
+    '<div id="pendingBuffCollapse" style="display:none;padding:0.75rem 0.85rem;">' +
+    bodyHtml +
+    '</div>' +
+    '</div>'
+  );
+}
+
+function togglePendingBuffCoverage() {
+  var panel = document.getElementById('pendingBuffCollapse');
+  var icon = document.getElementById('pendingBuffIcon');
   if (!panel) return;
   var visible = panel.style.display !== 'none';
   panel.style.display = visible ? 'none' : 'block';
