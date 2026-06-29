@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.6.5] - 2026-06-29
+
+### Added
+- **Signup Season setting in Season Settings** -- Officers can now set the signup season label directly from the Season Settings tab. Previously the backend supported this but had no UI, meaning all signups were recorded with a blank season field. The field is now exposed, loaded on page open, and validates against empty saves.
+
+---
+
 ## [3.6.4] - 2026-06-28
 
 ### Fixed

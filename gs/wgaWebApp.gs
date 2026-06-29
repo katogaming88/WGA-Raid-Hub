@@ -1257,6 +1257,7 @@ function buildCorePayload(sheets, scriptProps) {
   const raidProgression     = JSON.parse(scriptProps.getProperty('raidProgression')     || '[]');
   const trialWeeks          = parseInt(scriptProps.getProperty('trialWeeks'))  || 4;
   const trialAttend         = parseInt(scriptProps.getProperty('trialAttend')) || 75;
+  const signupSeason        = getActiveSignupSeason();
   return {
     generatedAt:          new Date().toISOString(),
     signupsOpen:          signupsOpen,
@@ -1269,6 +1270,7 @@ function buildCorePayload(sheets, scriptProps) {
     raidProgression:      raidProgression,
     trialWeeks:           trialWeeks,
     trialAttend:          trialAttend,
+    signupSeason:         signupSeason,
     bisAllowedPlayers:    getBisAllowedPlayers(),
     playerNotes:          getPlayerNotes(),
     discordClaims:        getDiscordClaims(sheets),
