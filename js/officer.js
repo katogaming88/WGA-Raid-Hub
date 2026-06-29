@@ -93,8 +93,10 @@ function resetSignupsSubTab() {
   if (defaultBtn) defaultBtn.classList.add('active');
   var subSignups = document.getElementById('signups-sub-signups');
   var subPending = document.getElementById('signups-sub-pendingRoster');
+  var subHistory = document.getElementById('signups-sub-history');
   if (subSignups) subSignups.style.display = '';
   if (subPending) subPending.style.display = 'none';
+  if (subHistory) subHistory.style.display = 'none';
 }
 
 function switchSignupsSubTab(name, btnEl) {
@@ -104,10 +106,13 @@ function switchSignupsSubTab(name, btnEl) {
   if (btnEl) btnEl.classList.add('active');
   var subSignups = document.getElementById('signups-sub-signups');
   var subPending = document.getElementById('signups-sub-pendingRoster');
+  var subHistory = document.getElementById('signups-sub-history');
   if (subSignups) subSignups.style.display = name === 'signups' ? '' : 'none';
   if (subPending) subPending.style.display = name === 'pendingRoster' ? '' : 'none';
+  if (subHistory) subHistory.style.display = name === 'history' ? '' : 'none';
   if (name === 'signups') buildSignupsTab();
   if (name === 'pendingRoster') buildPendingRosterTab();
+  if (name === 'history') buildSignupHistoryTab();
 }
 
 function resetPrioritySubTab() {

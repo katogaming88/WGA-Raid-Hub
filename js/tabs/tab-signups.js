@@ -143,6 +143,134 @@ function renderSignupResponses(signups) {
   container.innerHTML = html + '</div>';
 }
 
+// ── Signup History sub-tab ───────────────────────────────────────────────────
+
+function buildSignupHistoryTab() {
+  var container = document.getElementById('signupHistoryContainer');
+  if (!container) return;
+  container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">Loading...</p>';
+
+  jsonpRequest(WEB_APP_URL + '?action=getSignups', function (err, result) {
+    if (err) {
+      var c = document.getElementById('signupHistoryContainer');
+      if (c) c.innerHTML = '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">' + err.message + '</p>';
+      return;
+    }
+    renderSignupHistory(result.signups || []);
+  });
+}
+
+function renderSignupHistory(signups) {
+  var container = document.getElementById('signupHistoryContainer');
+  if (!container) return;
+
+  var season = DATA && DATA.signupSeason;
+  var filtered = season
+    ? signups.filter(function (s) {
+        return s.season === season;
+      })
+    : signups;
+
+  var seasonLabel = season ? ' for ' + season : '';
+
+  if (!filtered.length) {
+    container.innerHTML =
+      '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No signups recorded' +
+      seasonLabel +
+      '.</p>';
+    return;
+  }
+
+  var statusOrder = ['Approved', 'Pending', 'Denied'];
+  var statusColors = { Approved: 'var(--heal)', Pending: 'var(--gold-light)', Denied: 'var(--melee)' };
+  var byStatus = { Approved: [], Pending: [], Denied: [] };
+  filtered.forEach(function (s) {
+    var st = s.status || 'Pending';
+    if (!byStatus[st]) byStatus[st] = [];
+    byStatus[st].push(s);
+  });
+
+  var html =
+    '<div style="margin-top:1.5rem;">' +
+    '<div style="font-size:0.9rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);' +
+    'font-weight:600;margin-bottom:0.75rem;">' +
+    filtered.length +
+    ' signup' +
+    (filtered.length !== 1 ? 's' : '') +
+    seasonLabel +
+    '</div>';
+
+  statusOrder.forEach(function (st) {
+    var group = byStatus[st];
+    if (!group || !group.length) return;
+    html +=
+      '<div style="margin-bottom:1.5rem;">' +
+      '<div style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.12em;color:' +
+      (statusColors[st] || 'var(--text-muted)') +
+      ';font-weight:700;margin-bottom:0.5rem;">' +
+      st +
+      ' (' +
+      group.length +
+      ')</div>';
+    group.forEach(function (s) {
+      var clsColor = classColor(s.className);
+      html +=
+        '<div class="signup-response-card" style="opacity:' +
+        (st === 'Denied' ? '0.55' : '1') +
+        ';">' +
+        '<div class="signup-response-header">' +
+        '<div style="display:flex;align-items:center;">' +
+        '<span class="signup-response-name">' +
+        s.charName +
+        '-' +
+        s.realm +
+        '</span>' +
+        '<span class="signup-status-badge ' +
+        (st === 'Approved' ? 'signup-status-open' : st === 'Denied' ? 'signup-status-closed' : '') +
+        '" style="font-size:0.7rem;padding:0.1rem 0.5rem;margin-left:0.4rem;">' +
+        st +
+        '</span>' +
+        '</div>' +
+        '<span class="signup-response-time">' +
+        s.timestamp +
+        '</span>' +
+        '</div>' +
+        '<div style="font-size:1rem;color:' +
+        clsColor +
+        ';margin-top:0.35rem;font-weight:600;">' +
+        s.className +
+        ' &middot; ' +
+        s.mainSpec +
+        (s.offSpecs ? '<span style="color:var(--text-muted);font-weight:400;"> / ' + s.offSpecs + '</span>' : '') +
+        '</div>';
+      if (s.role)
+        html +=
+          '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Role: <span style="color:var(--text);">' +
+          s.role +
+          '</span></div>';
+      if (s.discord)
+        html +=
+          '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Discord: <span style="color:var(--text);">' +
+          s.discord +
+          '</span></div>';
+      if (s.mainSwap)
+        html +=
+          '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Main swap: <span style="color:var(--gold-light);font-weight:600;">' +
+          s.mainSwap +
+          '</span></div>';
+      if (s.notes)
+        html +=
+          '<div style="font-size:0.97rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' +
+          s.notes +
+          '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+
+  container.innerHTML = html + '</div>';
+}
+
 function deleteSignupRow(rowIndex, btnEl) {
   if (!confirm('Delete this signup? This cannot be undone.')) return;
   btnEl.disabled = true;

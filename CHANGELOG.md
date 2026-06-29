@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.6.7] - 2026-06-29
+
+### Added
+- **Devotion Aura buff coverage tracking** -- Devotion Aura (provided by all Paladins) is now included in the raid buff coverage panel.
+- **Signup history viewer** -- A new History sub-tab on the Signups tab shows all Roster Responses entries for the current signup season, grouped by status (Approved / Pending / Denied). Read-only reference view so officers can see the full signup picture alongside the active submission queue.
+
+---
+
 ## [3.6.6] - 2026-06-29
 
 ### Fixed

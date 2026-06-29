@@ -23,7 +23,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.6.6';
+var VERSION = '3.6.7';
 
 function _getDiscordTokenParam() {
   try {
@@ -436,7 +436,8 @@ var RAID_BUFFS = [
   { name: 'Power Word: Fortitude', classes: ['Priest'] },
   { name: "Hunter's Mark", classes: ['Hunter'] },
   { name: 'Blessing of the Bronze', classes: ['Evoker'] },
-  { name: 'Skyfury', classes: ['Shaman'] }
+  { name: 'Skyfury', classes: ['Shaman'] },
+  { name: 'Devotion Aura', classes: ['Paladin'] }
 ];
 
 var BOSS_DEBUFFS = [
