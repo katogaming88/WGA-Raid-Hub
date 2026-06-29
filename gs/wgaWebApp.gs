@@ -2002,26 +2002,26 @@ function getItemRecipients(ss, itemName) {
     return d === 'mythic' ? 'mythic' : d === 'heroic' ? 'heroic' : d === 'normal' ? 'champion' : null;
   }
 
-  var pastedSheet = ss.getSheetByName(CFG.pastedLootSheet);
+  const pastedSheet = ss.getSheetByName(CFG.pastedLootSheet);
   if (pastedSheet && pastedSheet.getLastRow() >= 2) {
-    var pd = pastedSheet.getDataRange().getValues();
-    for (var i = 1; i < pd.length; i++) {
-      var player = normName(String(pd[i][2] || '').split('-')[0]);
-      var item   = String(pd[i][4] || '').trim().toLowerCase();
-      var diff   = getDiff(pd[i][5]);
+    const pd = pastedSheet.getDataRange().getValues();
+    for (let i = 1; i < pd.length; i++) {
+      const player = normName(String(pd[i][2] || '').split('-')[0]);
+      const item   = String(pd[i][4] || '').trim().toLowerCase();
+      const diff   = getDiff(pd[i][5]);
       if (player && item === itemLower && diff) {
         if (diff === 'heroic') heroic.add(player); else if (diff === 'champion') champion.add(player); else mythic.add(player);
       }
     }
   }
 
-  var lootSheet = ss.getSheetByName(CFG.lootSheet);
+  const lootSheet = ss.getSheetByName(CFG.lootSheet);
   if (lootSheet) {
-    var ld = lootSheet.getDataRange().getValues();
-    for (var i = CFG.lootDataStart - 1; i < ld.length; i++) {
-      var player = normName(String(ld[i][CFG.lootPlayerCol - 1] || '').split('-')[0]);
-      var item   = String(ld[i][3] || '').trim().replace(/^\[|\]$/g, '').toLowerCase();
-      var diff   = getDiff(ld[i][CFG.lootInstanceCol - 1]);
+    const ld = lootSheet.getDataRange().getValues();
+    for (let i = CFG.lootDataStart - 1; i < ld.length; i++) {
+      const player = normName(String(ld[i][CFG.lootPlayerCol - 1] || '').split('-')[0]);
+      const item   = String(ld[i][3] || '').trim().replace(/^\[|\]$/g, '').toLowerCase();
+      const diff   = getDiff(ld[i][CFG.lootInstanceCol - 1]);
       if (player && item === itemLower && diff) {
         if (diff === 'heroic') heroic.add(player); else if (diff === 'champion') champion.add(player); else mythic.add(player);
       }
@@ -2031,15 +2031,15 @@ function getItemRecipients(ss, itemName) {
   // Self Received Requests (officer Mark Received + player self-reports)
   // Source is prefixed with difficulty: "Heroic: Great Vault" or "Mythic: M+".
   // Entries without a prefix (legacy) default to mythic.
-  var selfSheet = ss.getSheetByName(CFG.selfReceivedSheet);
+  const selfSheet = ss.getSheetByName(CFG.selfReceivedSheet);
   if (selfSheet && selfSheet.getLastRow() >= 2) {
-    var sd = selfSheet.getDataRange().getValues();
-    for (var i = 1; i < sd.length; i++) {
-      var status = String(sd[i][6] || '').trim();
+    const sd = selfSheet.getDataRange().getValues();
+    for (let i = 1; i < sd.length; i++) {
+      const status = String(sd[i][6] || '').trim();
       if (status !== 'Approved') continue;
-      var player = normName(String(sd[i][1] || '').split('-')[0]);
-      var item   = String(sd[i][2] || '').trim().toLowerCase();
-      var source = String(sd[i][4] || '').trim().toLowerCase();
+      const player = normName(String(sd[i][1] || '').split('-')[0]);
+      const item   = String(sd[i][2] || '').trim().toLowerCase();
+      const source = String(sd[i][4] || '').trim().toLowerCase();
       if (!player || item !== itemLower) continue;
       if (source.indexOf('heroic:') === 0)                                            { heroic.add(player); }
       else if (source.indexOf('champion:') === 0 || source.indexOf('normal:') === 0) { champion.add(player); }
