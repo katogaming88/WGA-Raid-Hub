@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.6.3] - 2026-06-28
+
+### Fixed
+- **Buff coverage styling** -- Buff names are now colored by their provider class (e.g. Druid orange for Mark of the Wild). Multi-class buffs (Heroism, Combat Res) remain white. Font size increased from ~0.77rem to 0.88rem on both the Roster and Pending Roster panels.
+
+---
+
 ## [3.6.2] - 2026-06-28
 
 ### Fixed

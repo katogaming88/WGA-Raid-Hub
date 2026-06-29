@@ -207,22 +207,25 @@ function buildPendingBuffCoverageHtml(coverage) {
         indicator = '&#10007;';
         color = 'var(--melee)';
       }
+      var nameColor = buff.classes.length === 1 ? classColor(buff.classes[0]) : 'var(--text)';
       var titleAttr = data.providers.length ? ' title="' + data.providers.join(', ') + '"' : '';
       bodyHtml +=
         '<span' +
         titleAttr +
-        ' style="display:inline-flex;align-items:center;gap:0.25rem;' +
+        ' style="display:inline-flex;align-items:center;gap:0.3rem;' +
         'background:var(--bg);border:1px solid var(--border);border-radius:4px;' +
-        'padding:0.15rem 0.5rem;font-size:0.8rem;cursor:default;">' +
+        'padding:0.2rem 0.6rem;font-size:0.88rem;cursor:default;">' +
         '<span style="color:' +
         color +
         ';font-weight:700;">' +
         indicator +
         '</span>' +
-        '<span style="color:var(--text-muted);">' +
+        '<span style="color:' +
+        nameColor +
+        ';">' +
         buff.name +
         '</span>' +
-        (count > 0 ? '<span style="color:' + color + ';font-weight:600;font-size:0.75rem;">' + count + '</span>' : '') +
+        (count > 0 ? '<span style="color:' + color + ';font-weight:600;font-size:0.8rem;">' + count + '</span>' : '') +
         '</span>';
     });
     bodyHtml += '</div></div>';

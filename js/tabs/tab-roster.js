@@ -1008,16 +1008,19 @@ function buildRosterBuffCoverage() {
         indicator = '&#10007;';
         color = 'var(--melee)';
       }
+      var nameColor = buff.classes.length === 1 ? classColor(buff.classes[0]) : 'var(--text)';
       html +=
-        '<span style="display:inline-flex;align-items:center;gap:0.2rem;background:var(--bg);' +
-        'border:1px solid var(--border);border-radius:4px;padding:0.1rem 0.4rem;' +
-        'font-size:0.77rem;cursor:default;">' +
+        '<span style="display:inline-flex;align-items:center;gap:0.3rem;background:var(--bg);' +
+        'border:1px solid var(--border);border-radius:4px;padding:0.2rem 0.55rem;' +
+        'font-size:0.88rem;cursor:default;">' +
         '<span style="color:' +
         color +
         ';font-weight:700;">' +
         indicator +
         '</span>' +
-        '<span style="color:var(--text-muted);">' +
+        '<span style="color:' +
+        nameColor +
+        ';">' +
         buff.name +
         '</span>' +
         '</span>';
