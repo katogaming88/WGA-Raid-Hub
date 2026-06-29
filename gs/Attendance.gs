@@ -404,11 +404,7 @@ function commitAttendanceScoresCore() {
   let committed = 0;
   const rosterPlayers = getRosterPlayers();
   for (const { firstName } of rosterPlayers) {
-    const row = findScoringRow(scoringSheet, firstName);
-    if (row === -1) {
-      Logger.log(`${firstName} not in Scoring sheet -- skipping.`);
-      continue;
-    }
+    const row = findOrCreateScoringRow(scoringSheet, firstName);
 
     const playerData = playerWeights[firstName];
 

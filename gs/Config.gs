@@ -68,6 +68,16 @@ function findScoringRow(sheet, firstName) {
   return -1;
 }
 
+// Like findScoringRow, but appends a new row for the player if they don't exist yet.
+function findOrCreateScoringRow(sheet, firstName) {
+  const existing = findScoringRow(sheet, firstName);
+  if (existing !== -1) return existing;
+  const newRow = sheet.getLastRow() + 1;
+  sheet.getRange(newRow, PLAYER_COL).setValue(firstName);
+  Logger.log(`Added ${firstName} to Scoring sheet at row ${newRow}.`);
+  return newRow;
+}
+
 
 // ════════════════════════════════════════════════════════════════════════════
 // WCL CONFIG

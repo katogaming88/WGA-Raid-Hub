@@ -107,11 +107,7 @@ function writeDualScores(recentData, trendData, bestData) {
 
   const rosterPlayers = getRosterPlayers();
   for (const { firstName } of rosterPlayers) {
-    const row = findScoringRow(sheet, firstName);
-    if (row === -1) {
-      Logger.log(`${firstName} not in Scoring sheet -- skipping WCL scores.`);
-      continue;
-    }
+    const row = findOrCreateScoringRow(sheet, firstName);
     const role = getRole(firstName);
 
     const recentCell = sheet.getRange(row, DRAFT_SCORE_COL);
@@ -188,8 +184,7 @@ function commitPerformanceScoresCore() {
   for (const { firstName } of getRosterPlayers()) {
     if (getRole(firstName) === 'tank') continue;
 
-    const row = findScoringRow(sheet, firstName);
-    if (row === -1) continue;
+    const row = findOrCreateScoringRow(sheet, firstName);
 
     const draftValue = sheet.getRange(row, DRAFT_SCORE_COL).getValue();
     if (!draftValue || draftValue === 'No data' || draftValue === 'Excluded' || draftValue === '') continue;
