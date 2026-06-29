@@ -320,7 +320,7 @@ function doGet(e) {
 
     if (action === 'saveRaidProgression') {
       let raids = [];
-      try { raids = JSON.parse(decodeURIComponent(String(e.parameter.data || ''))); } catch (_) {}
+      try { raids = JSON.parse(decodeURIComponent(String(e.parameter.data || ''))); } catch (parseErr) { Logger.log('saveRaidProgression parse error: ' + parseErr); }
       if (!Array.isArray(raids)) return jsonpResponse(callback, { error: 'Invalid data' });
       props.setProperty('raidProgression', JSON.stringify(raids));
       cache.remove('rosterCore');
@@ -1011,7 +1011,7 @@ function doGet(e) {
     if (action === 'discordLogout') {
       const token = String(e.parameter.token || '').trim();
       if (token) {
-        try { props.deleteProperty('discordSession_' + token); } catch (_) {}
+        try { props.deleteProperty('discordSession_' + token); } catch (delErr) { Logger.log('discordLogout delete error: ' + delErr); }
       }
       return jsonpResponse(callback, { success: true });
     }
@@ -1039,7 +1039,7 @@ function doGet(e) {
               sess.nameRealm = null;
               props.setProperty(key, JSON.stringify(sess));
             }
-          } catch (_) {}
+          } catch (e) { Logger.log('removeDiscordClaim session error: ' + e); }
         });
         cache.remove('rosterCore');
         return jsonpResponse(callback, { success: true });
@@ -2183,7 +2183,7 @@ function appendLootRowsToSheet(season, rows, ss) {
   function normDateKey(raw) {
     if (raw instanceof Date) return Utilities.formatDate(raw, tz, 'yyyy-MM-dd');
     const s = String(raw || '').trim();
-    const m = s.match(/^(\d{4})[\/\-](\d{2})[\/\-](\d{2})/);
+    const m = s.match(/^(\d{4})[/-](\d{2})[/-](\d{2})/);
     return m ? m[1] + '-' + m[2] + '-' + m[3] : s.substring(0, 10);
   }
 
@@ -2191,7 +2191,7 @@ function appendLootRowsToSheet(season, rows, ss) {
   // Uses local-date construction (year, month, day) to avoid UTC midnight rollover.
   function parseDateObj(raw) {
     const s = String(raw || '').trim();
-    const m = s.match(/^(\d{4})[\/\-](\d{2})[\/\-](\d{2})/);
+    const m = s.match(/^(\d{4})[/-](\d{2})[/-](\d{2})/);
     if (m) return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
     return s; // fallback: store as-is
   }
@@ -2504,7 +2504,7 @@ function clearDiscordClaimForNameRealm(ss, props, nameRealm) {
         sess.nameRealm = null;
         props.setProperty(key, JSON.stringify(sess));
       }
-    } catch (_) {}
+    } catch (e) { Logger.log('clearDiscordClaim session error: ' + e); }
   });
 }
 
@@ -3129,7 +3129,7 @@ function validateDiscordSession(token) {
   const created = new Date(session.createdAt || 0);
   const ageMs   = Date.now() - created.getTime();
   if (ageMs > DISCORD_SESSION_TTL_DAYS * 24 * 60 * 60 * 1000) {
-    try { PropertiesService.getScriptProperties().deleteProperty('discordSession_' + token); } catch (_) {}
+    try { PropertiesService.getScriptProperties().deleteProperty('discordSession_' + token); } catch (e) { Logger.log('session expiry delete error: ' + e); }
     return { valid: false };
   }
   const did = session.discordId || '';
