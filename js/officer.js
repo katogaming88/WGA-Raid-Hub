@@ -241,6 +241,7 @@ function updateNavBadges() {
 function buildOfficerDashboard() {
   buildStatsBar();
   buildRosterTable();
+  buildRosterBuffCoverage();
   buildTrialPromoAlert();
   renderSignupToggle();
   renderBisToggle();
