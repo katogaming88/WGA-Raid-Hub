@@ -403,11 +403,14 @@ function commitAttendanceScoresCore() {
   if (totalRaids === 0) throw new Error('No raid nights found in the Attendance sheet. Run the refresh first.');
 
   let committed = 0;
-  for (let row = PLAYER_DATA_START; row <= PLAYER_DATA_END; row++) {
-    const cellValue = scoringSheet.getRange(row, PLAYER_COL).getValue();
-    if (!cellValue || String(cellValue).trim() === '') continue;
+  const rosterPlayers = getRosterPlayers();
+  for (const { firstName } of rosterPlayers) {
+    const row = findScoringRow(scoringSheet, firstName);
+    if (row === -1) {
+      Logger.log(`${firstName} not in Scoring sheet -- skipping.`);
+      continue;
+    }
 
-    const firstName  = cellValue.toString().split('-')[0];
     const playerData = playerWeights[firstName];
 
     if (!playerData || playerData.weights.length === 0) {
@@ -498,39 +501,9 @@ function readExistingAttendance(sheet) {
 }
 
 function getRosterData() {
-  const ss           = SpreadsheetApp.getActiveSpreadsheet();
-  const scoringSheet = ss.getSheetByName(SCORING_SHEET_NAME);
-  const rosterSheet  = ss.getSheetByName(ROSTER_SHEET_NAME);
-
-  // Build bench set from Roster sheet. Uses CFG column constants (same as wgaWebApp.gs):
-  // Column D (CFG.rosterPlayerCol=4) = Name-Realm, Column K (CFG.rosterPriorityCol=11) = Priority.
-  // Priority === 6 means Bench.
-  const benchSet = new Set();
-  if (rosterSheet) {
-    const lastRow = rosterSheet.getLastRow();
-    if (lastRow >= CFG.rosterDataStart) {
-      const numCols = CFG.rosterPriorityCol - CFG.rosterPlayerCol + 1;
-      const data = rosterSheet.getRange(CFG.rosterDataStart, CFG.rosterPlayerCol, lastRow - CFG.rosterDataStart + 1, numCols).getValues();
-      for (const row of data) {
-        const fullName = String(row[0] || '').trim();
-        const priority = Number(row[CFG.rosterPriorityCol - CFG.rosterPlayerCol] || 0);
-        if (!fullName) continue;
-        if (priority === 6) {
-          benchSet.add(fullName.split('-')[0].toLowerCase());
-        }
-      }
-    }
-  }
-  Logger.log(`Bench players: ${[...benchSet].join(', ') || '(none)'}`);
-
-  const roster = [];
-  for (let row = PLAYER_DATA_START; row <= PLAYER_DATA_END; row++) {
-    const cellValue = scoringSheet.getRange(row, PLAYER_COL).getValue();
-    if (!cellValue || String(cellValue).trim() === '') continue;
-    const firstName = cellValue.toString().split('-')[0];
-    roster.push({ firstName, isBench: benchSet.has(firstName.toLowerCase()) });
-  }
-  return roster;
+  const players = getRosterPlayers();
+  Logger.log(`Roster players (${players.length}): ${players.map(p => p.firstName).join(', ')}`);
+  return players;
 }
 
 function formatAttendanceSheet(sheet, mainSectionRows, totalRows, reportHeaderRows, playerRows) {

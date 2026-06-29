@@ -90,9 +90,12 @@ function writeDualScores(recentData, trendData, bestData) {
   let updated = 0;
   const scores = [];
 
-  sheet.getRange(PLAYER_DATA_START, DRAFT_SCORE_COL, PLAYER_DATA_END - PLAYER_DATA_START + 1, 2)
-    .clearContent()
-    .setBackground(null);
+  const lastScoringRow = sheet.getLastRow();
+  if (lastScoringRow >= PLAYER_DATA_START) {
+    sheet.getRange(PLAYER_DATA_START, DRAFT_SCORE_COL, lastScoringRow - PLAYER_DATA_START + 1, 2)
+      .clearContent()
+      .setBackground(null);
+  }
 
   const recentHeader = sheet.getRange(3, DRAFT_SCORE_COL);
   recentHeader.setValue(`Recent Score\n(last ${RECENT_REPORTS} reports)`);
@@ -102,12 +105,14 @@ function writeDualScores(recentData, trendData, bestData) {
   trendHeader.setValue(`Trend Score\n(last ${TREND_REPORTS} reports)`);
   trendHeader.setFontWeight('bold').setBackground('#D9EAD3').setHorizontalAlignment('center').setWrap(true);
 
-  for (let row = PLAYER_DATA_START; row <= PLAYER_DATA_END; row++) {
-    const cellValue = sheet.getRange(row, PLAYER_COL).getValue();
-    if (!cellValue || String(cellValue).trim() === '') continue;
-
-    const firstName = cellValue.toString().split('-')[0];
-    const role      = getRole(firstName);
+  const rosterPlayers = getRosterPlayers();
+  for (const { firstName } of rosterPlayers) {
+    const row = findScoringRow(sheet, firstName);
+    if (row === -1) {
+      Logger.log(`${firstName} not in Scoring sheet -- skipping WCL scores.`);
+      continue;
+    }
+    const role = getRole(firstName);
 
     const recentCell = sheet.getRange(row, DRAFT_SCORE_COL);
     const trendCell  = sheet.getRange(row, TREND_SCORE_COL);
@@ -170,16 +175,9 @@ function writeDualScores(recentData, trendData, bestData) {
 function setManualScoreCore(firstName, score) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SCORING_SHEET_NAME);
   if (!sheet) throw new Error(`Sheet "${SCORING_SHEET_NAME}" not found`);
-  for (let row = PLAYER_DATA_START; row <= PLAYER_DATA_END; row++) {
-    const cellValue = sheet.getRange(row, PLAYER_COL).getValue();
-    if (!cellValue || String(cellValue).trim() === '') continue;
-    const rowFirst = cellValue.toString().split('-')[0].trim().toLowerCase();
-    if (rowFirst === firstName.toLowerCase()) {
-      sheet.getRange(row, DRAFT_SCORE_COL).setValue(score).setNumberFormat('0.00').setBackground('#FFF2CC');
-      return;
-    }
-  }
-  throw new Error(`Player "${firstName}" not found in Scoring sheet`);
+  const row = findScoringRow(sheet, firstName);
+  if (row === -1) throw new Error(`Player "${firstName}" not found in Scoring sheet`);
+  sheet.getRange(row, DRAFT_SCORE_COL).setValue(score).setNumberFormat('0.00').setBackground('#FFF2CC');
 }
 
 function commitPerformanceScoresCore() {
@@ -187,12 +185,11 @@ function commitPerformanceScoresCore() {
   if (!sheet) throw new Error(`Sheet "${SCORING_SHEET_NAME}" not found`);
   let committed = 0;
 
-  for (let row = PLAYER_DATA_START; row <= PLAYER_DATA_END; row++) {
-    const cellValue = sheet.getRange(row, PLAYER_COL).getValue();
-    if (!cellValue || String(cellValue).trim() === '') continue;
-
-    const firstName = cellValue.toString().split('-')[0];
+  for (const { firstName } of getRosterPlayers()) {
     if (getRole(firstName) === 'tank') continue;
+
+    const row = findScoringRow(sheet, firstName);
+    if (row === -1) continue;
 
     const draftValue = sheet.getRange(row, DRAFT_SCORE_COL).getValue();
     if (!draftValue || draftValue === 'No data' || draftValue === 'Excluded' || draftValue === '') continue;
@@ -337,9 +334,10 @@ function getRole(firstName) {
 }
 
 function debugScoringRows() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SCORING_SHEET_NAME);
-  const lines = [];
-  for (let row = PLAYER_DATA_START; row <= PLAYER_DATA_END; row++) {
+  const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SCORING_SHEET_NAME);
+  const lastRow = sheet.getLastRow();
+  const lines   = [];
+  for (let row = PLAYER_DATA_START; row <= lastRow; row++) {
     const cellValue = sheet.getRange(row, PLAYER_COL).getValue();
     lines.push(`Row ${row}: "${cellValue}" (type: ${typeof cellValue})`);
   }
