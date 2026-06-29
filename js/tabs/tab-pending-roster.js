@@ -1,20 +1,18 @@
 var _pendingRosterEntries = [];
 var _pendingMissingSignups = [];
-var _pendingSignupHistory = [];
 
 function buildPendingRosterTab() {
   var container = document.getElementById('pendingRosterContainer');
   if (!container) return;
   container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">Loading...</p>';
 
-  var loaded = { entries: false, missing: false, history: false };
+  var loaded = { entries: false, missing: false };
   _pendingRosterEntries = [];
   _pendingMissingSignups = [];
-  _pendingSignupHistory = [];
 
   function tryRender() {
-    if (!loaded.entries || !loaded.missing || !loaded.history) return;
-    renderPendingRoster(_pendingRosterEntries, _pendingMissingSignups, _pendingSignupHistory);
+    if (!loaded.entries || !loaded.missing) return;
+    renderPendingRoster(_pendingRosterEntries, _pendingMissingSignups);
   }
 
   jsonpRequest(WEB_APP_URL + '?action=getPendingRoster', function (err, result) {
@@ -28,28 +26,15 @@ function buildPendingRosterTab() {
     loaded.missing = true;
     tryRender();
   });
-
-  jsonpRequest(WEB_APP_URL + '?action=getSignups', function (err, result) {
-    var all = err ? [] : result.signups || [];
-    var season = DATA && DATA.signupSeason;
-    _pendingSignupHistory = season
-      ? all.filter(function (s) {
-          return s.season === season;
-        })
-      : all;
-    loaded.history = true;
-    tryRender();
-  });
 }
 
-function renderPendingRoster(entries, missing, history) {
+function renderPendingRoster(entries, missing) {
   var container = document.getElementById('pendingRosterContainer');
   if (!container) return;
 
   var html = '<div style="margin-top:1.5rem;">';
 
   html += buildPendingStatsHtml(entries);
-  html += buildSignupHistoryHtml(history || []);
   html += buildMissingSignupsHtml(missing);
 
   if (entries.length) {
@@ -107,99 +92,6 @@ function buildPendingStatsHtml(entries) {
     rolePills +
     '</div>'
   );
-}
-
-// ── Signup history section ───────────────────────────────────────────────────
-
-function buildSignupHistoryHtml(signups) {
-  var season = DATA && DATA.signupSeason;
-  var collapseId = 'pendingHistoryCollapse';
-  var label = season ? 'Signed Up for ' + season : 'Signup History';
-
-  var statusOrder = ['Approved', 'Pending', 'Denied'];
-  var statusColors = {
-    Approved: 'var(--heal)',
-    Pending: 'var(--gold-light)',
-    Denied: 'var(--melee)'
-  };
-  var byStatus = { Approved: [], Pending: [], Denied: [] };
-  signups.forEach(function (s) {
-    var st = s.status || 'Pending';
-    if (!byStatus[st]) byStatus[st] = [];
-    byStatus[st].push(s);
-  });
-
-  var html =
-    '<div style="margin-bottom:1.25rem;border:1px solid var(--border);border-radius:6px;overflow:hidden;">' +
-    '<div onclick="toggleSignupHistory()" style="cursor:pointer;display:flex;align-items:center;' +
-    'justify-content:space-between;padding:0.6rem 0.85rem;background:var(--bg-alt);">' +
-    '<span style="font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.12em;' +
-    'color:var(--text-muted);">' +
-    label +
-    ' (' +
-    signups.length +
-    ')</span>' +
-    '<span id="pendingHistoryIcon" style="font-size:0.8rem;color:var(--text-muted);">&#9654;</span>' +
-    '</div>' +
-    '<div id="' +
-    collapseId +
-    '" style="display:none;padding:0.75rem 0.85rem;">';
-
-  if (!signups.length) {
-    html +=
-      '<p style="color:var(--text-muted);font-size:0.9rem;margin:0;">No signups recorded' +
-      (season ? ' for ' + season : '') +
-      '.</p>';
-  } else {
-    statusOrder.forEach(function (st) {
-      var group = byStatus[st];
-      if (!group || !group.length) return;
-      html +=
-        '<div style="margin-bottom:0.5rem;">' +
-        '<span style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.1em;color:' +
-        (statusColors[st] || 'var(--text-muted)') +
-        ';font-weight:700;">' +
-        st +
-        ' (' +
-        group.length +
-        ')</span>' +
-        '<div style="margin-top:0.25rem;display:flex;flex-wrap:wrap;gap:0.35rem;">';
-      group.forEach(function (s) {
-        var clsColor = classColor(s.className);
-        html +=
-          '<span style="font-size:0.82rem;background:var(--bg);border:1px solid var(--border);' +
-          'border-radius:4px;padding:0.15rem 0.5rem;color:' +
-          clsColor +
-          ';" title="' +
-          s.charName +
-          '-' +
-          s.realm +
-          ' | ' +
-          s.mainSpec +
-          ' | ' +
-          s.timestamp +
-          '">' +
-          s.charName +
-          '<span style="color:var(--text-muted);font-weight:400;"> (' +
-          (s.mainSpec || s.className || '') +
-          ')</span>' +
-          '</span>';
-      });
-      html += '</div></div>';
-    });
-  }
-
-  html += '</div></div>';
-  return html;
-}
-
-function toggleSignupHistory() {
-  var panel = document.getElementById('pendingHistoryCollapse');
-  var icon = document.getElementById('pendingHistoryIcon');
-  if (!panel) return;
-  var visible = panel.style.display !== 'none';
-  panel.style.display = visible ? 'none' : 'block';
-  if (icon) icon.innerHTML = visible ? '&#9654;' : '&#9660;';
 }
 
 // ── Missing signups section ──────────────────────────────────────────────────
@@ -548,7 +440,7 @@ function removePendingRosterRow(rowIndex, btnEl) {
       return e.rowIndex !== rowIndex;
     });
     // Re-render stats and push area with updated list
-    renderPendingRoster(_pendingRosterEntries, _pendingMissingSignups, _pendingSignupHistory);
+    renderPendingRoster(_pendingRosterEntries, _pendingMissingSignups);
     updateNavBadges();
   });
 }
