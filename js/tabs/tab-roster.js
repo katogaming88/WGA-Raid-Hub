@@ -450,7 +450,13 @@ function submitAddPlayer() {
   var isTrial = document.getElementById('addPlayerTrial').checked;
   var errEl = document.getElementById('addPlayerError');
 
-  if (!nameVal || !realmVal || !cls || !spec || !role) {
+  var nameErr = validateCharName(nameVal);
+  if (nameErr) {
+    errEl.textContent = nameErr;
+    errEl.style.display = '';
+    return;
+  }
+  if (!realmVal || !cls || !spec || !role) {
     errEl.textContent = 'Please fill in all required fields.';
     errEl.style.display = '';
     return;

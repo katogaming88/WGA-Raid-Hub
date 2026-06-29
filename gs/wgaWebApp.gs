@@ -2259,7 +2259,30 @@ function setPlayerNotes(notes) {
 function roleToPriority(role) {
   if (role === 'Tank')  return 3;
   if (role === 'Heal')  return 4;
-  return 5; // Melee / Ranged / DPS
+  return 5; // Melee / Ranged
+}
+
+const SPEC_ROLE_MAP = {
+  'Arcane': 'Ranged', 'Fire': 'Ranged',
+  'Affliction': 'Ranged', 'Demonology': 'Ranged', 'Destruction': 'Ranged',
+  'Beast Mastery': 'Ranged', 'Marksmanship': 'Ranged', 'Survival': 'Melee',
+  'Balance': 'Ranged', 'Shadow': 'Ranged', 'Elemental': 'Ranged',
+  'Augmentation': 'Ranged', 'Devastation': 'Ranged', 'Devourer': 'Ranged',
+  'Assassination': 'Melee', 'Outlaw': 'Melee', 'Subtlety': 'Melee',
+  'Feral': 'Melee', 'Windwalker': 'Melee', 'Retribution': 'Melee',
+  'Enhancement': 'Melee', 'Havoc': 'Melee', 'Arms': 'Melee', 'Fury': 'Melee',
+  'Frost': 'Melee', 'Unholy': 'Melee',
+  'Blood': 'Tank', 'Guardian': 'Tank', 'Brewmaster': 'Tank',
+  'Protection': 'Tank', 'Vengeance': 'Tank',
+  'Restoration': 'Heal', 'Mistweaver': 'Heal', 'Holy': 'Heal',
+  'Discipline': 'Heal', 'Preservation': 'Heal',
+};
+
+function resolveRaidRole(role, spec) {
+  if (role === 'DPS' || role === 'Healer' || role === '') {
+    return SPEC_ROLE_MAP[spec] || 'Melee';
+  }
+  return role || 'Melee';
 }
 
 function updateRosterField(nameRealm, field, value) {
@@ -2915,7 +2938,8 @@ function pushPendingToRoster(removeAbsent) {
 
     const cls     = String(row[1 + o] || '').trim();
     const spec    = String(row[2 + o] || '').trim();
-    const role    = String(row[4 + o] || '').trim() || 'Melee';
+    const rawRole = String(row[4 + o] || '').trim();
+    const role    = resolveRaidRole(rawRole, spec);
     const key     = nameRealm.toLowerCase();
     pushedKeys[key] = true;
 

@@ -265,8 +265,9 @@ function signupNext() {
   if (signupStep === 1) {
     var charName = (document.getElementById('signupCharName').value || '').trim();
     var realm = (document.getElementById('signupRealm').value || '').trim();
-    if (!charName) {
-      document.getElementById('signupError').textContent = 'Please enter your character name.';
+    var charNameErr = validateCharName(charName);
+    if (charNameErr) {
+      document.getElementById('signupError').textContent = charNameErr;
       return;
     }
     if (!realm) {
@@ -293,7 +294,11 @@ function signupNext() {
     signupData.offSpecs = Array.prototype.map.call(offSpecEls, function (el) {
       return el.value;
     });
-    signupData.role = roleEl ? roleEl.value : null;
+    var rawRole = roleEl ? roleEl.value : (specData.role || null);
+    if (rawRole === 'DPS' || rawRole === 'Healer') {
+      rawRole = SPEC_ROLE[signupData.mainSpec] || rawRole;
+    }
+    signupData.role = rawRole;
     signupStep = 4;
   } else {
     signupStep++;

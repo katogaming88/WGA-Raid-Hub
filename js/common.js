@@ -330,15 +330,41 @@ var CLASS_SPECS = {
   'Demon Hunter': { specs: ['Havoc', 'Vengeance', 'Devourer'], roles: ['Tank', 'DPS'] },
   Druid: { specs: ['Balance', 'Feral', 'Guardian', 'Restoration'], roles: ['Tank', 'Healer', 'DPS'] },
   Evoker: { specs: ['Augmentation', 'Devastation', 'Preservation'], roles: ['Healer', 'DPS'] },
-  Hunter: { specs: ['Beast Mastery', 'Marksmanship', 'Survival'], roles: null },
-  Mage: { specs: ['Arcane', 'Fire', 'Frost'], roles: null },
+  Hunter: { specs: ['Beast Mastery', 'Marksmanship', 'Survival'], roles: ['Melee', 'Ranged'] },
+  Mage: { specs: ['Arcane', 'Fire', 'Frost'], roles: null, role: 'Ranged' },
   Monk: { specs: ['Brewmaster', 'Mistweaver', 'Windwalker'], roles: ['Tank', 'Healer', 'DPS'] },
   Paladin: { specs: ['Holy', 'Protection', 'Retribution'], roles: ['Tank', 'Healer', 'DPS'] },
   Priest: { specs: ['Discipline', 'Holy', 'Shadow'], roles: ['Healer', 'DPS'] },
-  Rogue: { specs: ['Assassination', 'Outlaw', 'Subtlety'], roles: null },
+  Rogue: { specs: ['Assassination', 'Outlaw', 'Subtlety'], roles: null, role: 'Melee' },
   Shaman: { specs: ['Elemental', 'Enhancement', 'Restoration'], roles: ['Healer', 'DPS'] },
-  Warlock: { specs: ['Affliction', 'Demonology', 'Destruction'], roles: null },
+  Warlock: { specs: ['Affliction', 'Demonology', 'Destruction'], roles: null, role: 'Ranged' },
   Warrior: { specs: ['Arms', 'Fury', 'Protection'], roles: ['Tank', 'DPS'] }
+};
+
+// Returns an error string if the character name is invalid, otherwise null.
+function validateCharName(name) {
+  if (!name) return 'Please enter your character name.';
+  if (name.length < 2 || name.length > 12) return 'Character name must be 2-12 characters.';
+  if (!/^[A-Z]/.test(name)) return 'Character name must start with a capital letter (e.g. Katorri).';
+  if (/[A-Z]/.test(name.slice(1))) return 'Character name can only have one capital letter (the first). Did you mean ' + name[0] + name.slice(1).toLowerCase() + '?';
+  return null;
+}
+
+// Maps each spec to its raid role. Used to resolve 'DPS' -> 'Melee'/'Ranged'.
+var SPEC_ROLE = {
+  'Arcane': 'Ranged', 'Fire': 'Ranged',
+  'Affliction': 'Ranged', 'Demonology': 'Ranged', 'Destruction': 'Ranged',
+  'Beast Mastery': 'Ranged', 'Marksmanship': 'Ranged', 'Survival': 'Melee',
+  'Balance': 'Ranged', 'Shadow': 'Ranged', 'Elemental': 'Ranged',
+  'Augmentation': 'Ranged', 'Devastation': 'Ranged', 'Devourer': 'Ranged',
+  'Assassination': 'Melee', 'Outlaw': 'Melee', 'Subtlety': 'Melee',
+  'Feral': 'Melee', 'Windwalker': 'Melee', 'Retribution': 'Melee',
+  'Enhancement': 'Melee', 'Havoc': 'Melee', 'Arms': 'Melee', 'Fury': 'Melee',
+  'Frost': 'Melee', 'Unholy': 'Melee',
+  'Blood': 'Tank', 'Guardian': 'Tank', 'Brewmaster': 'Tank',
+  'Protection': 'Tank', 'Vengeance': 'Tank',
+  'Restoration': 'Heal', 'Mistweaver': 'Heal', 'Holy': 'Heal',
+  'Discipline': 'Heal', 'Preservation': 'Heal',
 };
 
 var CLASS_ARMOR_TYPE = {
