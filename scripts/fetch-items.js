@@ -10,6 +10,23 @@
 
 const { writeFileSync } = require('fs');
 
+// ---------------------------------------------------------------------------
+// UPDATE THESE EACH TIER
+// Slot keywords and armor type suffixes are specific to each raid tier.
+// The suffix pattern (cast/cured/forged/woven) is consistent across tiers.
+// The slot keywords and prefix change each tier -- update them here.
+//
+// Current tier: The Venomous Abyss (12.1)
+// Token prefix: Venom (e.g. Venomforged Effigy)
+const TOKEN_SLOT_KEYWORDS = {
+  effigy:  'Head',
+  icon:    'Chest',
+  idol:    'Hands',
+  relic:   'Legs',
+  remnant: 'Shoulder',
+};
+// ---------------------------------------------------------------------------
+
 // Types to skip entirely. Junk is NOT here -- tier tokens have type Junk on Wowhead,
 // so Junk items are fetched and kept only if they have a raid boss source.
 const SKIP_TYPES = new Set(['Decor', 'Reagent', 'Cosmetic']);
@@ -144,6 +161,28 @@ const SLOT_FROM_TYPE = {
 
 const ARMOR_SLOTS = ['Head', 'Shoulder', 'Chest', 'Wrist', 'Hands', 'Waist', 'Legs', 'Feet'];
 
+// Tier token name parsing -- slot from keyword, armor type from suffix
+const TOKEN_ARMOR_SUFFIXES = {
+  cast:   'Mail',
+  cured:  'Leather',
+  forged: 'Plate',
+  woven:  'Cloth',
+};
+
+function parseTokenFromName(name) {
+  if (!name) return null;
+  const lower = name.toLowerCase();
+  let slot = null;
+  for (const [keyword, s] of Object.entries(TOKEN_SLOT_KEYWORDS)) {
+    if (lower.includes(keyword)) { slot = s; break; }
+  }
+  let armor_type = null;
+  for (const [suffix, a] of Object.entries(TOKEN_ARMOR_SUFFIXES)) {
+    if (lower.includes(suffix)) { armor_type = a; break; }
+  }
+  return slot && armor_type ? { slot, armor_type } : null;
+}
+
 function getArmorType(wowheadType) {
   return wowheadType.endsWith(' Armor') ? wowheadType.slice(0, -6) : null;
 }
@@ -204,9 +243,19 @@ async function main() {
       const pageHtml = await pageRes.text();
       const boss = parseBossFromPage(pageHtml);
 
-      // Junk items (tier tokens) are only kept if they have a raid boss source
-      if (wowheadType === 'Junk' && !boss) {
-        console.log(`[SKIP] ${id}: ${name} | Junk with no boss source, skipping`);
+      if (wowheadType === 'Junk') {
+        const token = parseTokenFromName(name);
+        if (token) {
+          itemRows.push({ wow_item_id: id, name, slot: token.slot, armor_type: token.armor_type });
+          if (boss) bossRows.push({ wow_item_id: id, boss });
+          console.log(`[OK]   ${id}: ${name} | slot: ${token.slot} | armor: ${token.armor_type} | boss: ${boss ?? '(not found)'}`);
+        } else if (boss) {
+          itemRows.push({ wow_item_id: id, name, slot: slot ?? '', armor_type });
+          bossRows.push({ wow_item_id: id, boss });
+          console.log(`[OK]   ${id}: ${name} | slot: ${slot ?? '??'} | boss: ${boss}`);
+        } else {
+          console.log(`[SKIP] ${id}: ${name} | Junk with no parseable token name or boss source, skipping`);
+        }
       } else {
         itemRows.push({ wow_item_id: id, name, slot: slot ?? '', armor_type });
         if (boss) bossRows.push({ wow_item_id: id, boss });
