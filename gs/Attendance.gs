@@ -3,7 +3,6 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 const ATTENDANCE_SHEET_NAME  = 'Attendance';
-const ATTENDANCE_COL         = 4;
 const SEASON_REPORT_LIMIT    = 50;
 const ALT_RUN_KEYWORD        = 'Alt';
 
