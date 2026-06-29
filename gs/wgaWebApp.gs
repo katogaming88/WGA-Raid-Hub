@@ -61,6 +61,9 @@ const CFG = {
   // ── M+ Exclusion Requests tab ─────────────────────────────────────
   mPlusExclusionSheet: 'M+ Exclusion Requests',
 
+  // ── Settings tab ─────────────────────────────────────────────────
+  settingsSheet:       'Settings',
+
   // ── Officer Audit Log tab ────────────────────────────────────────
   auditLogSheet:      'Officer Audit Log',
 
@@ -317,7 +320,7 @@ function doGet(e) {
 
     if (action === 'saveRaidProgression') {
       let raids = [];
-      try { raids = JSON.parse(decodeURIComponent(String(e.parameter.data || ''))); } catch (_) {}
+      try { raids = JSON.parse(decodeURIComponent(String(e.parameter.data || ''))); } catch (parseErr) { Logger.log('saveRaidProgression parse error: ' + parseErr); }
       if (!Array.isArray(raids)) return jsonpResponse(callback, { error: 'Invalid data' });
       props.setProperty('raidProgression', JSON.stringify(raids));
       cache.remove('rosterCore');
@@ -727,33 +730,25 @@ function doGet(e) {
       const ss    = SpreadsheetApp.getActiveSpreadsheet();
       const sheet = ss.getSheetByName(CFG.responsesSheet);
       if (!sheet) return jsonpResponse(callback, { error: 'Sheet not found' });
-      const rowData    = sheet.getRange(row, 1, 1, 11).getValues()[0];
+      const rowData    = sheet.getRange(row, 1, 1, 12).getValues()[0];
       const charName   = String(rowData[1] || '');
       const realm      = String(rowData[2] || '');
       const signupName = realm ? charName + '-' + realm : charName;
       const mainSwap   = String(rowData[10] || '').trim();
-
-      // Duplicate guard: reject if this Name-Realm is already on the Roster sheet
-      const rosterSheet = ss.getSheetByName(CFG.rosterSheet);
-      if (rosterSheet) {
-        const rData = rosterSheet.getDataRange().getValues();
-        for (let i = CFG.rosterDataStart - 1; i < rData.length; i++) {
-          const existing = String(rData[i][CFG.rosterPlayerCol - 1] || '').trim();
-          if (existing.toLowerCase() === signupName.toLowerCase()) {
-            return jsonpResponse(callback, { error: signupName + ' is already on the roster. Deny this signup instead.' });
-          }
-        }
-      }
+      const season     = String(rowData[11] || '').trim() || getActiveSignupSeason();
 
       writeToApplicants({
-        charName:  charName,
-        realm:     realm,
-        className: String(rowData[3] || ''),
-        mainSpec:  String(rowData[4] || ''),
-        offSpecs:  String(rowData[5] || ''),
-        role:      String(rowData[6] || ''),
-        discord:   String(rowData[7] || ''),
-        notes:     String(rowData[8] || '')
+        charName:    charName,
+        realm:       realm,
+        className:   String(rowData[3] || ''),
+        mainSpec:    String(rowData[4] || ''),
+        offSpecs:    String(rowData[5] || ''),
+        role:        String(rowData[6] || ''),
+        discord:     String(rowData[7] || ''),
+        notes:       String(rowData[8] || ''),
+        mainSwap:    mainSwap,
+        season:      season,
+        submittedAt: rowData[0] instanceof Date ? rowData[0].toISOString() : String(rowData[0] || '')
       });
       updateSignupStatus(row, 'Approved');
       appendAuditLog('Signup Approved', signupName, '', '');
@@ -762,7 +757,7 @@ function doGet(e) {
       if (mainSwap) {
         const sheets = {};
         for (const s of ss.getSheets()) { sheets[s.getName()] = s; }
-        const rData2 = (rosterSheet || ss.getSheetByName(CFG.rosterSheet)).getDataRange().getValues();
+        const rData2 = ss.getSheetByName(CFG.rosterSheet).getDataRange().getValues();
         let swapOnRoster = false;
         for (let i = CFG.rosterDataStart - 1; i < rData2.length; i++) {
           const existing = String(rData2[i][CFG.rosterPlayerCol - 1] || '').trim();
@@ -874,6 +869,25 @@ function doGet(e) {
       }
       cache.remove('rosterCore');
       appendAuditLog('M+ Exclusion Rejected', nameRealm, '', note || '');
+      return jsonpResponse(callback, { success: true });
+    }
+
+    if (action === 'getMissingSignups') {
+      return jsonpResponse(callback, { missing: getMissingSignups() });
+    }
+
+    if (action === 'pushPendingToRoster') {
+      const removeAbsent = e.parameter.removeAbsent === 'true';
+      const result = pushPendingToRoster(removeAbsent);
+      cache.remove('rosterCore');
+      cache.remove('rosterHeavy');
+      return jsonpResponse(callback, result);
+    }
+
+    if (action === 'setActiveSignupSeason') {
+      const season = String(e.parameter.season || '').trim();
+      if (!season) return jsonpResponse(callback, { error: 'Missing season' });
+      setActiveSignupSeason(season);
       return jsonpResponse(callback, { success: true });
     }
 
@@ -997,7 +1011,7 @@ function doGet(e) {
     if (action === 'discordLogout') {
       const token = String(e.parameter.token || '').trim();
       if (token) {
-        try { props.deleteProperty('discordSession_' + token); } catch (_) {}
+        try { props.deleteProperty('discordSession_' + token); } catch (delErr) { Logger.log('discordLogout delete error: ' + delErr); }
       }
       return jsonpResponse(callback, { success: true });
     }
@@ -1025,7 +1039,7 @@ function doGet(e) {
               sess.nameRealm = null;
               props.setProperty(key, JSON.stringify(sess));
             }
-          } catch (_) {}
+          } catch (e) { Logger.log('removeDiscordClaim session error: ' + e); }
         });
         cache.remove('rosterCore');
         return jsonpResponse(callback, { success: true });
@@ -1125,7 +1139,8 @@ function getSignupResponses() {
       discord:   String(row[7] || ''),
       notes:     String(row[8] || ''),
       status:    String(row[9] || 'Pending'),
-      mainSwap:  String(row[10] || '')
+      mainSwap:  String(row[10] || ''),
+      season:    String(row[11] || '')
     });
   }
   return results.reverse();
@@ -1136,7 +1151,7 @@ function writeSignup(data) {
   let sheet = ss.getSheetByName(CFG.responsesSheet);
   if (!sheet) {
     sheet = ss.insertSheet(CFG.responsesSheet);
-    sheet.appendRow(['Timestamp', 'Character', 'Realm', 'Class', 'Main Spec', 'Off Specs', 'Role', 'Discord', 'Notes', 'Status', 'Main Swap']);
+    sheet.appendRow(['Timestamp', 'Character', 'Realm', 'Class', 'Main Spec', 'Off Specs', 'Role', 'Discord', 'Notes', 'Status', 'Main Swap', 'Season']);
     sheet.setFrozenRows(1);
   }
   sheet.appendRow([
@@ -1150,7 +1165,8 @@ function writeSignup(data) {
     data.discord   || '',
     data.notes     || '',
     'Pending',
-    data.mainSwap  || ''
+    data.mainSwap  || '',
+    getActiveSignupSeason()
   ]);
 }
 
@@ -1986,26 +2002,26 @@ function getItemRecipients(ss, itemName) {
     return d === 'mythic' ? 'mythic' : d === 'heroic' ? 'heroic' : d === 'normal' ? 'champion' : null;
   }
 
-  var pastedSheet = ss.getSheetByName(CFG.pastedLootSheet);
+  const pastedSheet = ss.getSheetByName(CFG.pastedLootSheet);
   if (pastedSheet && pastedSheet.getLastRow() >= 2) {
-    var pd = pastedSheet.getDataRange().getValues();
-    for (var i = 1; i < pd.length; i++) {
-      var player = normName(String(pd[i][2] || '').split('-')[0]);
-      var item   = String(pd[i][4] || '').trim().toLowerCase();
-      var diff   = getDiff(pd[i][5]);
+    const pd = pastedSheet.getDataRange().getValues();
+    for (let i = 1; i < pd.length; i++) {
+      const player = normName(String(pd[i][2] || '').split('-')[0]);
+      const item   = String(pd[i][4] || '').trim().toLowerCase();
+      const diff   = getDiff(pd[i][5]);
       if (player && item === itemLower && diff) {
         if (diff === 'heroic') heroic.add(player); else if (diff === 'champion') champion.add(player); else mythic.add(player);
       }
     }
   }
 
-  var lootSheet = ss.getSheetByName(CFG.lootSheet);
+  const lootSheet = ss.getSheetByName(CFG.lootSheet);
   if (lootSheet) {
-    var ld = lootSheet.getDataRange().getValues();
-    for (var i = CFG.lootDataStart - 1; i < ld.length; i++) {
-      var player = normName(String(ld[i][CFG.lootPlayerCol - 1] || '').split('-')[0]);
-      var item   = String(ld[i][3] || '').trim().replace(/^\[|\]$/g, '').toLowerCase();
-      var diff   = getDiff(ld[i][CFG.lootInstanceCol - 1]);
+    const ld = lootSheet.getDataRange().getValues();
+    for (let i = CFG.lootDataStart - 1; i < ld.length; i++) {
+      const player = normName(String(ld[i][CFG.lootPlayerCol - 1] || '').split('-')[0]);
+      const item   = String(ld[i][3] || '').trim().replace(/^\[|\]$/g, '').toLowerCase();
+      const diff   = getDiff(ld[i][CFG.lootInstanceCol - 1]);
       if (player && item === itemLower && diff) {
         if (diff === 'heroic') heroic.add(player); else if (diff === 'champion') champion.add(player); else mythic.add(player);
       }
@@ -2015,15 +2031,15 @@ function getItemRecipients(ss, itemName) {
   // Self Received Requests (officer Mark Received + player self-reports)
   // Source is prefixed with difficulty: "Heroic: Great Vault" or "Mythic: M+".
   // Entries without a prefix (legacy) default to mythic.
-  var selfSheet = ss.getSheetByName(CFG.selfReceivedSheet);
+  const selfSheet = ss.getSheetByName(CFG.selfReceivedSheet);
   if (selfSheet && selfSheet.getLastRow() >= 2) {
-    var sd = selfSheet.getDataRange().getValues();
-    for (var i = 1; i < sd.length; i++) {
-      var status = String(sd[i][6] || '').trim();
+    const sd = selfSheet.getDataRange().getValues();
+    for (let i = 1; i < sd.length; i++) {
+      const status = String(sd[i][6] || '').trim();
       if (status !== 'Approved') continue;
-      var player = normName(String(sd[i][1] || '').split('-')[0]);
-      var item   = String(sd[i][2] || '').trim().toLowerCase();
-      var source = String(sd[i][4] || '').trim().toLowerCase();
+      const player = normName(String(sd[i][1] || '').split('-')[0]);
+      const item   = String(sd[i][2] || '').trim().toLowerCase();
+      const source = String(sd[i][4] || '').trim().toLowerCase();
       if (!player || item !== itemLower) continue;
       if (source.indexOf('heroic:') === 0)                                            { heroic.add(player); }
       else if (source.indexOf('champion:') === 0 || source.indexOf('normal:') === 0) { champion.add(player); }
@@ -2167,7 +2183,7 @@ function appendLootRowsToSheet(season, rows, ss) {
   function normDateKey(raw) {
     if (raw instanceof Date) return Utilities.formatDate(raw, tz, 'yyyy-MM-dd');
     const s = String(raw || '').trim();
-    const m = s.match(/^(\d{4})[\/\-](\d{2})[\/\-](\d{2})/);
+    const m = s.match(/^(\d{4})[/-](\d{2})[/-](\d{2})/);
     return m ? m[1] + '-' + m[2] + '-' + m[3] : s.substring(0, 10);
   }
 
@@ -2175,7 +2191,7 @@ function appendLootRowsToSheet(season, rows, ss) {
   // Uses local-date construction (year, month, day) to avoid UTC midnight rollover.
   function parseDateObj(raw) {
     const s = String(raw || '').trim();
-    const m = s.match(/^(\d{4})[\/\-](\d{2})[\/\-](\d{2})/);
+    const m = s.match(/^(\d{4})[/-](\d{2})[/-](\d{2})/);
     if (m) return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
     return s; // fallback: store as-is
   }
@@ -2488,7 +2504,7 @@ function clearDiscordClaimForNameRealm(ss, props, nameRealm) {
         sess.nameRealm = null;
         props.setProperty(key, JSON.stringify(sess));
       }
-    } catch (_) {}
+    } catch (e) { Logger.log('clearDiscordClaim session error: ' + e); }
   });
 }
 
@@ -2551,17 +2567,41 @@ function writeToApplicants(data) {
   let sheet = ss.getSheetByName(CFG.applicantsSheet);
   if (!sheet) {
     sheet = ss.insertSheet(CFG.applicantsSheet);
-    sheet.appendRow(['Character-Realm', 'Class', 'Main Spec', 'Off Specs', 'Role', 'Discord']);
+    sheet.appendRow(['Character-Realm', 'Class', 'Main Spec', 'Off Specs', 'Role', 'Discord', 'Mainswap', 'Notes', 'Season', 'Submitted At', 'Approved At', 'Status']);
     sheet.setFrozenRows(1);
   }
-  sheet.appendRow([
-    (data.charName || '') + (data.realm ? '-' + data.realm : ''),
-    data.className || '',
-    data.mainSpec  || '',
-    data.offSpecs  || '',
-    data.role      || '',
-    data.discord   || ''
-  ]);
+
+  const nameRealm   = (data.charName || '') + (data.realm ? '-' + data.realm : '');
+  const approvedAt  = new Date();
+  const newRow      = [
+    nameRealm,
+    data.className  || '',
+    data.mainSpec   || '',
+    data.offSpecs   || '',
+    data.role       || '',
+    data.discord    || '',
+    data.mainSwap   || '',
+    data.notes      || '',
+    data.season     || getActiveSignupSeason(),
+    data.submittedAt || '',
+    approvedAt,
+    'Pending'
+  ];
+
+  // Upsert: update existing Pending row for this player if one exists
+  if (sheet.getLastRow() >= 2) {
+    const existing = sheet.getDataRange().getValues();
+    for (let i = 1; i < existing.length; i++) {
+      const rowNR  = String(existing[i][0] || '').trim();
+      const status = String(existing[i][11] || '').trim();
+      if (rowNR.toLowerCase() === nameRealm.toLowerCase() && status !== 'Pushed') {
+        sheet.getRange(i + 1, 1, 1, 12).setValues([newRow]);
+        return;
+      }
+    }
+  }
+
+  sheet.appendRow(newRow);
 }
 
 function getPendingRosterEntries() {
@@ -2572,17 +2612,25 @@ function getPendingRosterEntries() {
   const results = [];
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    // Old format had Timestamp in col A; detect by checking if col A is a Date
+    // Legacy rows had Timestamp in col A — detect and skip that offset
     const o = (row[0] instanceof Date) ? 1 : 0;
     if (!row[0 + o]) continue;
+    const status = String(row[11 + o] || '').trim();
+    if (status === 'Pushed') continue;
     results.push({
-      rowIndex:  i + 1,
-      nameRealm: String(row[0 + o] || ''),
-      className: String(row[1 + o] || ''),
-      mainSpec:  String(row[2 + o] || ''),
-      offSpecs:  String(row[3 + o] || ''),
-      role:      String(row[4 + o] || ''),
-      discord:   String(row[5 + o] || '')
+      rowIndex:    i + 1,
+      nameRealm:   String(row[0 + o]  || ''),
+      className:   String(row[1 + o]  || ''),
+      mainSpec:    String(row[2 + o]  || ''),
+      offSpecs:    String(row[3 + o]  || ''),
+      role:        String(row[4 + o]  || ''),
+      discord:     String(row[5 + o]  || ''),
+      mainSwap:    String(row[6 + o]  || ''),
+      notes:       String(row[7 + o]  || ''),
+      season:      String(row[8 + o]  || ''),
+      submittedAt: String(row[9 + o]  || ''),
+      approvedAt:  String(row[10 + o] || ''),
+      status:      status || 'Pending'
     });
   }
   return results.reverse();
@@ -2769,6 +2817,148 @@ function getSignupNameFromRow(row) {
   return realm ? char + '-' + realm : char;
 }
 
+// ── Settings helpers ──────────────────────────────────────────────────────────
+
+function getActiveSignupSeason() {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CFG.settingsSheet);
+  if (!sheet || sheet.getLastRow() < 2) return '';
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim().toLowerCase() === 'signupseason') {
+      return String(data[i][1] || '').trim();
+    }
+  }
+  return '';
+}
+
+function setActiveSignupSeason(season) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(CFG.settingsSheet);
+  if (!sheet) {
+    sheet = ss.insertSheet(CFG.settingsSheet);
+    sheet.appendRow(['Key', 'Value']);
+    sheet.setFrozenRows(1);
+  }
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim().toLowerCase() === 'signupseason') {
+      sheet.getRange(i + 1, 2).setValue(season);
+      return;
+    }
+  }
+  sheet.appendRow(['signupSeason', season]);
+}
+
+// ── Signup season helpers ─────────────────────────────────────────────────────
+
+function getMissingSignups() {
+  const season   = getActiveSignupSeason();
+  const signups  = getSignupResponses();
+  const submitted = {};
+  signups.forEach(function(s) {
+    if (s.season !== season && season) return;
+    if (s.status === 'Denied') return;
+    const key = (s.charName + '-' + s.realm).toLowerCase().trim();
+    submitted[key] = true;
+  });
+
+  const ss           = SpreadsheetApp.getActiveSpreadsheet();
+  const rosterSheet  = ss.getSheetByName(CFG.rosterSheet);
+  const missing      = [];
+  if (!rosterSheet) return missing;
+
+  const rData = rosterSheet.getDataRange().getValues();
+  for (let i = CFG.rosterDataStart - 1; i < rData.length; i++) {
+    const nameRealm = String(rData[i][CFG.rosterPlayerCol - 1] || '').trim();
+    if (!nameRealm) continue;
+    if (!submitted[nameRealm.toLowerCase()]) {
+      missing.push({
+        nameRealm:  nameRealm,
+        className:  String(rData[i][CFG.rosterClassCol - 1] || ''),
+        spec:       String(rData[i][CFG.rosterSpecCol  - 1] || ''),
+        role:       String(rData[i][CFG.rosterRoleCol  - 1] || '')
+      });
+    }
+  }
+  return missing;
+}
+
+function pushPendingToRoster(removeAbsent) {
+  const ss           = SpreadsheetApp.getActiveSpreadsheet();
+  const pendingSheet = ss.getSheetByName(CFG.applicantsSheet);
+  const rosterSheet  = ss.getSheetByName(CFG.rosterSheet);
+  if (!pendingSheet || !rosterSheet) return { error: 'Sheet not found' };
+
+  // Build current roster map: nameRealm.lower -> rowIndex (1-based)
+  const rData      = rosterSheet.getDataRange().getValues();
+  const rosterMap  = {};
+  for (let i = CFG.rosterDataStart - 1; i < rData.length; i++) {
+    const nr = String(rData[i][CFG.rosterPlayerCol - 1] || '').trim();
+    if (nr) rosterMap[nr.toLowerCase()] = i + 1;
+  }
+
+  // Process each Pending entry
+  const pendingData = pendingSheet.getLastRow() >= 2 ? pendingSheet.getDataRange().getValues() : [];
+  const pushedKeys  = {};
+  let added = 0, updated = 0;
+
+  for (let i = 1; i < pendingData.length; i++) {
+    const row    = pendingData[i];
+    const o      = (row[0] instanceof Date) ? 1 : 0;
+    const status = String(row[11 + o] || '').trim();
+    if (status === 'Pushed') continue;
+    const nameRealm = String(row[0 + o] || '').trim();
+    if (!nameRealm) continue;
+
+    const cls     = String(row[1 + o] || '').trim();
+    const spec    = String(row[2 + o] || '').trim();
+    const role    = String(row[4 + o] || '').trim() || 'Melee';
+    const key     = nameRealm.toLowerCase();
+    pushedKeys[key] = true;
+
+    if (rosterMap[key]) {
+      // Update existing roster row
+      const rRow = rosterMap[key];
+      rosterSheet.getRange(rRow, CFG.rosterClassCol).setValue(cls);
+      rosterSheet.getRange(rRow, CFG.rosterSpecCol).setValue(spec);
+      rosterSheet.getRange(rRow, CFG.rosterRoleCol).setValue(role);
+      rosterSheet.getRange(rRow, CFG.rosterPriorityCol).setValue(roleToPriority(role));
+      updated++;
+    } else {
+      // Add as new roster entry
+      addPlayerToRoster({ nameRealm: nameRealm, class: cls, spec: spec, role: role, isTrial: false, nick: '' });
+      added++;
+    }
+
+    // Mark as Pushed in pending sheet
+    pendingSheet.getRange(i + 1, 12 + o).setValue('Pushed');
+    appendAuditLog('Roster Push: ' + (rosterMap[key] ? 'Updated' : 'Added'), nameRealm, '', '');
+  }
+
+  // Optionally remove roster members not in the pending push
+  const removed = [];
+  if (removeAbsent) {
+    for (const nr in rosterMap) {
+      if (!pushedKeys[nr]) {
+        const nameRealm = String(rData[rosterMap[nr] - 1][CFG.rosterPlayerCol - 1] || '').trim();
+        removePlayerFromRoster(nameRealm);
+        appendAuditLog('Roster Push: Removed (no signup)', nameRealm, '', '');
+        removed.push(nameRealm);
+      }
+    }
+  } else {
+    for (const nr in rosterMap) {
+      if (!pushedKeys[nr]) {
+        const nameRealm = String(rData[rosterMap[nr] - 1][CFG.rosterPlayerCol - 1] || '').trim();
+        if (nameRealm) removed.push(nameRealm);
+      }
+    }
+  }
+
+  return { success: true, added: added, updated: updated, removed: removed, removedAbsent: removeAbsent };
+}
+
 function fetchWclProgressionData(zoneId) {
   const token = getAccessToken();
   if (!token) throw new Error('Failed to get WCL access token. Check WCL_CLIENT_ID and WCL_CLIENT_SECRET in Script Properties.');
@@ -2939,7 +3129,7 @@ function validateDiscordSession(token) {
   const created = new Date(session.createdAt || 0);
   const ageMs   = Date.now() - created.getTime();
   if (ageMs > DISCORD_SESSION_TTL_DAYS * 24 * 60 * 60 * 1000) {
-    try { PropertiesService.getScriptProperties().deleteProperty('discordSession_' + token); } catch (_) {}
+    try { PropertiesService.getScriptProperties().deleteProperty('discordSession_' + token); } catch (e) { Logger.log('session expiry delete error: ' + e); }
     return { valid: false };
   }
   const did = session.discordId || '';

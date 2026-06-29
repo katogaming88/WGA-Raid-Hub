@@ -1,283 +1,339 @@
+var _pendingRosterEntries = [];
+var _pendingMissingSignups = [];
+
 function buildPendingRosterTab() {
   var container = document.getElementById('pendingRosterContainer');
   if (!container) return;
   container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">Loading...</p>';
 
+  var loaded = { entries: false, missing: false };
+  _pendingRosterEntries = [];
+  _pendingMissingSignups = [];
+
+  function tryRender() {
+    if (!loaded.entries || !loaded.missing) return;
+    renderPendingRoster(_pendingRosterEntries, _pendingMissingSignups);
+  }
+
   jsonpRequest(WEB_APP_URL + '?action=getPendingRoster', function (err, result) {
-    if (err) {
-      var c = document.getElementById('pendingRosterContainer');
-      if (c) c.innerHTML = '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">' + err.message + '</p>';
-      return;
-    }
-    renderPendingRoster(result.entries || []);
+    _pendingRosterEntries = err ? [] : result.entries || [];
+    loaded.entries = true;
+    tryRender();
+  });
+
+  jsonpRequest(WEB_APP_URL + '?action=getMissingSignups', function (err, result) {
+    _pendingMissingSignups = err ? [] : result.missing || [];
+    loaded.missing = true;
+    tryRender();
   });
 }
 
-function renderPendingRoster(entries) {
+function renderPendingRoster(entries, missing) {
   var container = document.getElementById('pendingRosterContainer');
   if (!container) return;
 
+  var html = '<div style="margin-top:1.5rem;">';
+
+  html += buildPendingStatsHtml(entries);
+  html += buildMissingSignupsHtml(missing);
+
   if (!entries.length) {
-    container.innerHTML =
-      '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No pending applicants.</p>';
-    return;
+    html +=
+      '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No approved signups in the pending roster.</p>';
+  } else {
+    html += buildPushAreaHtml(entries, missing);
+    entries.forEach(function (e) {
+      html += buildPendingCardHtml(e);
+    });
   }
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// ── Stats panel ──────────────────────────────────────────────────────────────
+
+function buildPendingStatsHtml(entries) {
+  var roles = { Tank: 0, Heal: 0, Melee: 0, Ranged: 0 };
+  entries.forEach(function (e) {
+    if (roles[e.role] !== undefined) roles[e.role]++;
+  });
+
+  var roleColors = { Tank: 'var(--tank)', Heal: 'var(--heal)', Melee: 'var(--melee)', Ranged: 'var(--ranged)' };
+  var rolePills = Object.keys(roles)
+    .map(function (r) {
+      return (
+        '<span style="display:inline-flex;align-items:center;gap:0.3rem;background:var(--bg-alt);' +
+        'border:1px solid var(--border);border-radius:4px;padding:0.2rem 0.6rem;font-size:0.85rem;">' +
+        '<span style="color:' +
+        roleColors[r] +
+        ';font-weight:700;">' +
+        r +
+        '</span>' +
+        '<span style="color:var(--text);font-weight:600;">' +
+        roles[r] +
+        '</span>' +
+        '</span>'
+      );
+    })
+    .join('');
+
+  return (
+    '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.25rem;">' +
+    '<span style="font-size:0.85rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;' +
+    'letter-spacing:0.12em;margin-right:0.25rem;">' +
+    entries.length +
+    ' Pending</span>' +
+    rolePills +
+    '</div>'
+  );
+}
+
+// ── Missing signups section ──────────────────────────────────────────────────
+
+function buildMissingSignupsHtml(missing) {
+  var collapsed = missing.length > 0;
+  var collapseId = 'pendingMissingCollapse';
+
+  var headerColor = missing.length ? 'var(--melee)' : 'var(--text-muted)';
+  var icon = missing.length ? '&#9660;' : '&#9654;';
 
   var html =
-    '<div style="margin-top:1.5rem;">' +
-    '<div style="font-size:0.9rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:0.75rem;">' +
-    entries.length +
-    ' applicant' +
-    (entries.length !== 1 ? 's' : '') +
-    ' awaiting roster placement</div>';
+    '<div style="margin-bottom:1.25rem;border:1px solid var(--border);border-radius:6px;overflow:hidden;">' +
+    '<div onclick="toggleMissingSignups()" style="cursor:pointer;display:flex;align-items:center;' +
+    'justify-content:space-between;padding:0.6rem 0.85rem;background:var(--bg-alt);">' +
+    '<span style="font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.12em;color:' +
+    headerColor +
+    ';">Missing Signups (' +
+    missing.length +
+    ')</span>' +
+    '<span id="pendingMissingIcon" style="font-size:0.8rem;color:var(--text-muted);">' +
+    icon +
+    '</span>' +
+    '</div>' +
+    '<div id="' +
+    collapseId +
+    '" style="display:' +
+    (collapsed ? 'block' : 'none') +
+    ';padding:0.75rem 0.85rem;">';
 
-  entries.forEach(function (e) {
-    var clsColor = classColor(e.className);
-    var entrySafe = encodeURIComponent(JSON.stringify(e)).replace(/'/g, '%27');
+  if (!missing.length) {
     html +=
-      '<div class="signup-response-card" data-row="' +
-      e.rowIndex +
-      '">' +
-      '<div class="signup-response-header">' +
-      '<span class="signup-response-name">' +
-      e.nameRealm +
-      '</span>' +
-      '</div>' +
-      '<div style="font-size:1rem;color:' +
-      clsColor +
-      ';margin-top:0.35rem;font-weight:600;">' +
-      e.className +
-      ' &middot; ' +
-      e.mainSpec +
-      (e.offSpecs ? '<span style="color:var(--text-muted);font-weight:400;"> / ' + e.offSpecs + '</span>' : '') +
-      '</div>';
-    if (e.role)
-      html +=
-        '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Role: <span style="color:var(--text);">' +
-        e.role +
-        '</span></div>';
-    if (e.discord)
-      html +=
-        '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Discord: <span style="color:var(--text);">' +
-        e.discord +
-        '</span></div>';
-    html +=
-      '<div class="pending-roster-actions" data-entry-safe="' +
-      entrySafe +
-      '" data-row="' +
-      e.rowIndex +
-      '" style="display:flex;gap:0.5rem;margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);">' +
-      '<button class="btn request-approve-btn" onclick="handleAddToRoster(\'' +
-      entrySafe +
-      '\',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Add to Roster</button>' +
-      '<button class="btn btn-danger" onclick="removePendingRosterRow(' +
-      e.rowIndex +
-      ',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Remove</button>' +
-      '</div>' +
-      '</div>';
-  });
-
-  container.innerHTML = html + '</div>';
-}
-
-function handleAddToRoster(entrySafe, btnEl) {
-  var entry;
-  try {
-    entry = JSON.parse(decodeURIComponent(entrySafe));
-  } catch (e) {
-    return;
-  }
-
-  var parts = (entry.nameRealm || '').split('-');
-  var nameRealm = parts[0] + '-' + parts.slice(1).join('-');
-
-  var existing = null;
-  if (DATA && DATA.roster) {
-    for (var i = 0; i < DATA.roster.length; i++) {
-      if (normalise(DATA.roster[i].nameRealm) === normalise(nameRealm)) {
-        existing = DATA.roster[i];
-        break;
-      }
-    }
-  }
-
-  if (existing) {
-    showPendingUpdatePrompt(entry, nameRealm, existing, btnEl);
+      '<p style="color:var(--text-muted);font-size:0.9rem;margin:0;">All roster members have submitted a signup.</p>';
   } else {
-    showPendingNickPrompt(entry, nameRealm, parts[0], btnEl);
+    var byRole = { Tank: [], Heal: [], Melee: [], Ranged: [] };
+    missing.forEach(function (p) {
+      var r = p.role || 'Melee';
+      if (!byRole[r]) byRole[r] = [];
+      byRole[r].push(p);
+    });
+    var roleColors = { Tank: 'var(--tank)', Heal: 'var(--heal)', Melee: 'var(--melee)', Ranged: 'var(--ranged)' };
+    Object.keys(byRole).forEach(function (role) {
+      if (!byRole[role].length) return;
+      html +=
+        '<div style="margin-bottom:0.5rem;">' +
+        '<span style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.1em;color:' +
+        roleColors[role] +
+        ';font-weight:700;">' +
+        role +
+        ' (' +
+        byRole[role].length +
+        ')</span>' +
+        '<div style="margin-top:0.25rem;display:flex;flex-wrap:wrap;gap:0.35rem;">';
+      byRole[role].forEach(function (p) {
+        var clsColor = classColor(p.className);
+        html +=
+          '<span style="font-size:0.82rem;background:var(--bg);border:1px solid var(--border);' +
+          'border-radius:4px;padding:0.15rem 0.5rem;color:' +
+          clsColor +
+          ';">' +
+          (p.nameRealm ? p.nameRealm.split('-')[0] : p.nameRealm) +
+          '<span style="color:var(--text-muted);font-weight:400;"> (' +
+          (p.spec || p.className || '') +
+          ')</span>' +
+          '</span>';
+      });
+      html += '</div></div>';
+    });
   }
+
+  html += '</div></div>';
+  return html;
 }
 
-function showPendingUpdatePrompt(entry, nameRealm, existing, btnEl) {
-  var actionsDiv = btnEl.parentNode;
-  var sameSpec = normalise(existing.spec) === normalise(entry.mainSpec);
-  var sameRole = normalise(existing.role) === normalise(entry.role);
-  var changes = [];
-  if (!sameSpec) changes.push('spec <b style="color:var(--text);">' + entry.mainSpec + '</b>');
-  if (!sameRole) changes.push('role <b style="color:var(--text);">' + entry.role + '</b>');
-  var msg = changes.length
-    ? 'Already on roster. Update ' + changes.join(' and ') + '?'
-    : 'Already on roster with matching spec and role.';
+function toggleMissingSignups() {
+  var panel = document.getElementById('pendingMissingCollapse');
+  var icon = document.getElementById('pendingMissingIcon');
+  if (!panel) return;
+  var visible = panel.style.display !== 'none';
+  panel.style.display = visible ? 'none' : 'block';
+  if (icon) icon.innerHTML = visible ? '&#9654;' : '&#9660;';
+}
 
-  actionsDiv.innerHTML =
-    '<div style="width:100%;">' +
-    '<div style="font-size:0.92rem;color:var(--text-muted);margin-bottom:0.5rem;">' +
-    msg +
+// ── Push to Roster area ──────────────────────────────────────────────────────
+
+function buildPushAreaHtml(entries, missing) {
+  var missingCount = missing.length;
+  return (
+    '<div id="pendingPushArea" style="margin-bottom:1.25rem;padding:0.85rem;background:var(--bg-alt);' +
+    'border:1px solid var(--border);border-radius:6px;">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">' +
+    '<span style="font-size:0.9rem;color:var(--text-muted);">Push all ' +
+    entries.length +
+    ' pending entries to the official roster. This will add new players and update existing ones.</span>' +
+    '<button class="btn request-approve-btn" id="pendingPushBtn" onclick="showPushConfirm()" ' +
+    'style="font-size:0.88rem;padding:0.3rem 1rem;white-space:nowrap;">Push to Roster</button>' +
     '</div>' +
-    '<div style="display:flex;gap:0.5rem;">' +
-    (changes.length
-      ? '<button id="_pendingUpdateBtn' +
-        entry.rowIndex +
-        '" class="btn request-approve-btn" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Update</button>'
+    '<div id="pendingPushConfirm" style="display:none;margin-top:0.85rem;padding-top:0.75rem;' +
+    'border-top:1px solid var(--border);">' +
+    '<label style="display:flex;align-items:flex-start;gap:0.5rem;font-size:0.9rem;color:var(--text);' +
+    'cursor:pointer;margin-bottom:0.75rem;">' +
+    '<input type="checkbox" id="pendingPushRemoveAbsent" style="margin-top:0.15rem;accent-color:var(--melee);">' +
+    '<span>Also remove roster members not in the pending roster' +
+    (missingCount
+      ? ' <span style="color:var(--melee);font-weight:600;">(' +
+        missingCount +
+        ' missing signup' +
+        (missingCount !== 1 ? 's' : '') +
+        ')</span>'
       : '') +
-    '<button id="_pendingCancelBtn' +
-    entry.rowIndex +
-    '" class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Cancel</button>' +
+    '</span>' +
+    '</label>' +
+    '<div style="display:flex;gap:0.5rem;">' +
+    '<button class="btn request-approve-btn" id="pendingPushConfirmBtn" onclick="confirmPushToRoster(this)" ' +
+    'style="font-size:0.88rem;padding:0.25rem 0.75rem;">Confirm Push</button>' +
+    '<button class="btn btn-muted" onclick="hidePushConfirm()" ' +
+    'style="font-size:0.88rem;padding:0.25rem 0.75rem;">Cancel</button>' +
     '</div>' +
-    '</div>';
-
-  var updateBtn = document.getElementById('_pendingUpdateBtn' + entry.rowIndex);
-  if (updateBtn) {
-    updateBtn.addEventListener('click', function () {
-      confirmUpdateFromPending(nameRealm, entry.mainSpec, entry.role, entry.rowIndex, updateBtn);
-    });
-  }
-  var cancelBtn = document.getElementById('_pendingCancelBtn' + entry.rowIndex);
-  if (cancelBtn) {
-    cancelBtn.addEventListener('click', function () {
-      cancelPendingAction(entry.rowIndex);
-    });
-  }
-}
-
-function showPendingNickPrompt(entry, nameRealm, firstName, btnEl) {
-  var actionsDiv = btnEl.parentNode;
-  var inputId = 'nickInput' + entry.rowIndex;
-  actionsDiv.innerHTML =
-    '<div style="width:100%;">' +
-    '<div style="font-size:0.92rem;color:var(--text-muted);margin-bottom:0.5rem;">Nickname for <b style="color:var(--text);">' +
-    firstName +
-    '</b>? <span style="font-weight:400;">(optional)</span></div>' +
-    '<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">' +
-    '<input id="' +
-    inputId +
-    '" type="text" placeholder="Leave blank to skip" style="background:var(--bg-alt);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:0.25rem 0.5rem;font-size:0.88rem;min-width:0;flex:1;" />' +
-    '<button id="_pendingAddBtn' +
-    entry.rowIndex +
-    '" class="btn request-approve-btn" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Add</button>' +
-    '<button id="_pendingCancelBtn' +
-    entry.rowIndex +
-    '" class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Cancel</button>' +
+    '<div id="pendingPushResult" style="margin-top:0.6rem;font-size:0.88rem;"></div>' +
     '</div>' +
-    '</div>';
-
-  var input = document.getElementById(inputId);
-  if (input) input.focus();
-
-  var addBtn = document.getElementById('_pendingAddBtn' + entry.rowIndex);
-  if (addBtn) {
-    addBtn.addEventListener('click', function () {
-      var nick = input ? input.value.trim() : '';
-      directAddFromPending(entry, nameRealm, nick, addBtn);
-    });
-  }
-  var cancelBtn = document.getElementById('_pendingCancelBtn' + entry.rowIndex);
-  if (cancelBtn) {
-    cancelBtn.addEventListener('click', function () {
-      cancelPendingAction(entry.rowIndex);
-    });
-  }
+    '</div>'
+  );
 }
 
-function cancelPendingAction(rowIndex) {
-  var card = document.querySelector('.signup-response-card[data-row="' + rowIndex + '"]');
-  if (!card) return;
-  var actionsDiv = card.querySelector('.pending-roster-actions');
-  if (!actionsDiv) return;
-  var entrySafe = actionsDiv.getAttribute('data-entry-safe') || '';
-  actionsDiv.innerHTML =
-    '<button class="btn request-approve-btn" onclick="handleAddToRoster(\'' +
-    entrySafe +
-    '\',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Add to Roster</button>' +
-    '<button class="btn btn-danger" onclick="removePendingRosterRow(' +
-    rowIndex +
-    ',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Remove</button>';
+function showPushConfirm() {
+  var confirm = document.getElementById('pendingPushConfirm');
+  var btn = document.getElementById('pendingPushBtn');
+  if (confirm) confirm.style.display = 'block';
+  if (btn) btn.style.display = 'none';
 }
 
-function confirmUpdateFromPending(nameRealm, mainSpec, role, rowIndex, btnEl) {
+function hidePushConfirm() {
+  var confirm = document.getElementById('pendingPushConfirm');
+  var btn = document.getElementById('pendingPushBtn');
+  if (confirm) confirm.style.display = 'none';
+  if (btn) btn.style.display = '';
+}
+
+function confirmPushToRoster(btnEl) {
+  var removeAbsent = document.getElementById('pendingPushRemoveAbsent');
+  var remove = removeAbsent && removeAbsent.checked;
+  var resultEl = document.getElementById('pendingPushResult');
+
   btnEl.disabled = true;
-  btnEl.textContent = '...';
-  nameRealm = decodeURIComponent(nameRealm);
-  mainSpec = decodeURIComponent(mainSpec);
-  role = decodeURIComponent(role);
-
-  var dataSafe = encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: 'spec', value: mainSpec }));
-  jsonpRequest(WEB_APP_URL + '?action=updatePlayerField&data=' + dataSafe, function (err, result) {
-    if (err || (result && result.error)) {
-      btnEl.disabled = false;
-      btnEl.textContent = 'Update';
-      return;
-    }
-    var dataSafe2 = encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: 'role', value: role }));
-    jsonpRequest(WEB_APP_URL + '?action=updatePlayerField&data=' + dataSafe2, function (err2, result2) {
-      if (err2 || (result2 && result2.error)) {
-        btnEl.disabled = false;
-        btnEl.textContent = 'Update';
-        return;
-      }
-      removePendingRosterRow(rowIndex, null);
-    });
-  });
-}
-
-function directAddFromPending(entry, nameRealm, nick, btnEl) {
-  btnEl.disabled = true;
-  btnEl.textContent = '...';
-
-  var data = {
-    nameRealm: nameRealm,
-    nick: nick || '',
-    class: entry.className || '',
-    spec: entry.mainSpec || '',
-    role: entry.role || 'Melee',
-    isTrial: false
-  };
+  btnEl.textContent = 'Pushing...';
 
   jsonpRequest(
-    WEB_APP_URL + '?action=addPlayer&data=' + encodeURIComponent(JSON.stringify(data)),
+    WEB_APP_URL + '?action=pushPendingToRoster&removeAbsent=' + (remove ? 'true' : 'false'),
     function (err, result) {
-      if (err || (result && result.error)) {
-        btnEl.disabled = false;
-        btnEl.textContent = 'Add to Roster';
+      btnEl.disabled = false;
+      btnEl.textContent = 'Confirm Push';
+
+      if (err || !result || result.error) {
+        if (resultEl)
+          resultEl.innerHTML =
+            '<span style="color:var(--melee);">' +
+            (result && result.error ? result.error : 'Push failed. Try again.') +
+            '</span>';
         return;
       }
-      var parts = nameRealm.split('-');
-      if (DATA && DATA.roster) {
-        var today = new Date();
-        var mm = today.getMonth() + 1;
-        var dd = today.getDate();
-        var todayStr = today.getFullYear() + '-' + (mm < 10 ? '0' : '') + mm + '-' + (dd < 10 ? '0' : '') + dd;
-        DATA.roster.push({
-          nameRealm: nameRealm,
-          firstName: parts[0],
-          realm: parts.slice(1).join('-'),
-          nick: nick || '',
-          class: entry.className,
-          spec: entry.mainSpec,
-          role: entry.role || 'Melee',
-          isTrial: false,
-          isBench: false,
-          attendance: '',
-          bisLink: '',
-          joinDate: todayStr
-        });
-        if (typeof buildRosterTable === 'function') buildRosterTable();
-        if (typeof buildStatsBar === 'function') buildStatsBar();
-      }
-      removePendingRosterRow(entry.rowIndex, null);
+
+      var lines = [];
+      if (result.added) lines.push(result.added + ' player' + (result.added !== 1 ? 's' : '') + ' added');
+      if (result.updated) lines.push(result.updated + ' player' + (result.updated !== 1 ? 's' : '') + ' updated');
+      if (result.removedAbsent && result.removed && result.removed.length)
+        lines.push(result.removed.length + ' removed: ' + result.removed.join(', '));
+      else if (!result.removedAbsent && result.removed && result.removed.length)
+        lines.push(result.removed.length + ' not in pending (not removed): ' + result.removed.join(', '));
+
+      if (resultEl)
+        resultEl.innerHTML =
+          '<span style="color:var(--text-muted);">Done. ' + (lines.join('; ') || 'No changes.') + '</span>';
+
+      // Reload after short delay
+      setTimeout(function () {
+        buildPendingRosterTab();
+        updateNavBadges();
+      }, 1800);
     }
   );
 }
+
+// ── Pending entry cards ──────────────────────────────────────────────────────
+
+function buildPendingCardHtml(e) {
+  var clsColor = classColor(e.className);
+  var html =
+    '<div class="signup-response-card" data-row="' +
+    e.rowIndex +
+    '">' +
+    '<div class="signup-response-header">' +
+    '<span class="signup-response-name">' +
+    e.nameRealm +
+    '</span>';
+
+  if (e.season)
+    html +=
+      '<span style="font-size:0.7rem;color:var(--text-muted);background:var(--bg-alt);' +
+      'border:1px solid var(--border);border-radius:3px;padding:0.1rem 0.4rem;margin-left:0.4rem;">' +
+      e.season +
+      '</span>';
+
+  html += '</div>';
+  html +=
+    '<div style="font-size:1rem;color:' +
+    clsColor +
+    ';margin-top:0.35rem;font-weight:600;">' +
+    e.className +
+    ' &middot; ' +
+    e.mainSpec +
+    (e.offSpecs ? '<span style="color:var(--text-muted);font-weight:400;"> / ' + e.offSpecs + '</span>' : '') +
+    '</div>';
+
+  if (e.role)
+    html +=
+      '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Role: <span style="color:var(--text);">' +
+      e.role +
+      '</span></div>';
+  if (e.discord)
+    html +=
+      '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Discord: <span style="color:var(--text);">' +
+      e.discord +
+      '</span></div>';
+  if (e.mainSwap)
+    html +=
+      '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Main swap: ' +
+      '<span style="color:var(--gold-light);font-weight:600;">' +
+      e.mainSwap +
+      '</span></div>';
+  if (e.notes)
+    html +=
+      '<div style="font-size:0.9rem;color:var(--text-muted);margin-top:0.35rem;font-style:italic;">' +
+      e.notes +
+      '</div>';
+
+  html +=
+    '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);">' +
+    '<button class="btn btn-danger" onclick="removePendingRosterRow(' +
+    e.rowIndex +
+    ',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Remove from Pending</button>' +
+    '</div>' +
+    '</div>';
+
+  return html;
+}
+
+// ── Remove from pending ──────────────────────────────────────────────────────
 
 function removePendingRosterRow(rowIndex, btnEl) {
   if (btnEl) {
@@ -289,17 +345,17 @@ function removePendingRosterRow(rowIndex, btnEl) {
     if (err || (result && result.error)) {
       if (btnEl) {
         btnEl.disabled = false;
-        btnEl.textContent = 'Remove';
+        btnEl.textContent = 'Remove from Pending';
       }
       return;
     }
     var card = document.querySelector('.signup-response-card[data-row="' + rowIndex + '"]');
     if (card) card.remove();
-    var container = document.getElementById('pendingRosterContainer');
-    if (container && !container.querySelector('.signup-response-card')) {
-      container.innerHTML =
-        '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No pending applicants.</p>';
-    }
+    _pendingRosterEntries = _pendingRosterEntries.filter(function (e) {
+      return e.rowIndex !== rowIndex;
+    });
+    // Re-render stats and push area with updated list
+    renderPendingRoster(_pendingRosterEntries, _pendingMissingSignups);
     updateNavBadges();
   });
 }
