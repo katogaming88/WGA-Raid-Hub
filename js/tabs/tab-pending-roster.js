@@ -16,13 +16,13 @@ function buildPendingRosterTab() {
   }
 
   jsonpRequest(WEB_APP_URL + '?action=getPendingRoster', function (err, result) {
-    _pendingRosterEntries = err ? [] : (result.entries || []);
+    _pendingRosterEntries = err ? [] : result.entries || [];
     loaded.entries = true;
     tryRender();
   });
 
   jsonpRequest(WEB_APP_URL + '?action=getMissingSignups', function (err, result) {
-    _pendingMissingSignups = err ? [] : (result.missing || []);
+    _pendingMissingSignups = err ? [] : result.missing || [];
     loaded.missing = true;
     tryRender();
   });
@@ -118,7 +118,8 @@ function buildMissingSignupsHtml(missing) {
     ';padding:0.75rem 0.85rem;">';
 
   if (!missing.length) {
-    html += '<p style="color:var(--text-muted);font-size:0.9rem;margin:0;">All roster members have submitted a signup.</p>';
+    html +=
+      '<p style="color:var(--text-muted);font-size:0.9rem;margin:0;">All roster members have submitted a signup.</p>';
   } else {
     var byRole = { Tank: [], Heal: [], Melee: [], Ranged: [] };
     missing.forEach(function (p) {
@@ -190,7 +191,11 @@ function buildPushAreaHtml(entries, missing) {
     '<input type="checkbox" id="pendingPushRemoveAbsent" style="margin-top:0.15rem;accent-color:var(--melee);">' +
     '<span>Also remove roster members not in the pending roster' +
     (missingCount
-      ? ' <span style="color:var(--melee);font-weight:600;">(' + missingCount + ' missing signup' + (missingCount !== 1 ? 's' : '') + ')</span>'
+      ? ' <span style="color:var(--melee);font-weight:600;">(' +
+        missingCount +
+        ' missing signup' +
+        (missingCount !== 1 ? 's' : '') +
+        ')</span>'
       : '') +
     '</span>' +
     '</label>' +
@@ -237,7 +242,9 @@ function confirmPushToRoster(btnEl) {
       if (err || !result || result.error) {
         if (resultEl)
           resultEl.innerHTML =
-            '<span style="color:var(--melee);">' + (result && result.error ? result.error : 'Push failed. Try again.') + '</span>';
+            '<span style="color:var(--melee);">' +
+            (result && result.error ? result.error : 'Push failed. Try again.') +
+            '</span>';
         return;
       }
 
@@ -290,9 +297,7 @@ function buildPendingCardHtml(e) {
     e.className +
     ' &middot; ' +
     e.mainSpec +
-    (e.offSpecs
-      ? '<span style="color:var(--text-muted);font-weight:400;"> / ' + e.offSpecs + '</span>'
-      : '') +
+    (e.offSpecs ? '<span style="color:var(--text-muted);font-weight:400;"> / ' + e.offSpecs + '</span>' : '') +
     '</div>';
 
   if (e.role)
