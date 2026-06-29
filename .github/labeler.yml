@@ -2,6 +2,7 @@ roster:
   - changed-files:
     - any-glob-to-any-file:
       - js/tabs/tab-roster.js
+      - js/tabs/tab-pending-roster.js
       - js/roster.js
 
 attendance:
@@ -42,11 +43,7 @@ documentation:
 
 skip-changelog:
   - changed-files:
-    - any-glob-to-any-file:
-      - .github/**
-      - docs/**
-      - '*.md'
-      - .eslintrc.json
-      - .prettierrc.json
-      - package.json
-      - package-lock.json
+    - all-globs-to-all-files:
+      - '!js/**'
+      - '!gs/**'
+      - '!*.html'
