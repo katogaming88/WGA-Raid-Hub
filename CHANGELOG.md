@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.6.4] - 2026-06-28
+
+### Fixed
+- **Attendance and WCL scores now pull from the Roster sheet** -- Player lists for attendance refresh, attendance score commit, WCL score refresh, and performance score commit were previously read from hardcoded rows 4-33 in the Scoring sheet (30-player cap). All four now source players directly from the Roster sheet, so anyone added to the Roster is automatically included. The Scoring sheet still stores scores per player but is no longer the source of truth for who is on the roster.
+
+---
+
 ## [3.6.3] - 2026-06-28
 
 ### Fixed
