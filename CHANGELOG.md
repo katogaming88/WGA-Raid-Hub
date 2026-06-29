@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.6.6] - 2026-06-29
+
+### Fixed
+- **Roster push overwrite bug** -- When multiple signups were pushed to the roster in one batch, any player whose role was stored as `DPS` or `Healer` (raw signup form values) was written to the sheet with an invalid role string. The next player's insertion point calculation skipped that row, causing them to be written to the same row and clobbering the previous player (root cause of Dayned being lost). The backend now resolves `DPS` and `Healer` to the correct `Melee`/`Ranged`/`Heal` value based on the player's main spec before writing to the roster.
+- **Pure DPS class role defaulting to Melee** -- Warlock, Mage, and Rogue signups had no role radio buttons, but the resolved role defaulted to `Melee` for all of them. Each class now carries a fixed role in `CLASS_SPECS` (`Ranged` for Warlock/Mage, `Melee` for Rogue).
+- **Hunter role not accounting for Survival (Melee)** -- Hunter previously defaulted to `Ranged`. Since Survival is a melee spec, Hunters now see a `Melee`/`Ranged` radio button on the signup form.
+- **Hybrid DPS/Healer role not resolving at signup time** -- Players selecting `DPS` or `Healer` on the signup form now have their role resolved to the specific raid role (`Melee`, `Ranged`, or `Heal`) based on their selected main spec before the signup is submitted.
+
+### Added
+- **Character name validation** -- The public signup form and the officer Add Player modal now reject names that don't follow WoW naming rules: 2-12 characters, first letter capitalized, no additional capitals. Invalid names show an error with a corrected suggestion (e.g. "Did you mean Glizzygary?").
+
+---
+
 ## [3.6.5] - 2026-06-29
 
 ### Added
