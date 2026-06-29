@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.6.1] - 2026-06-28
+
+### Added
+- **Buff/debuff coverage panel** -- Pending Roster tab now shows a collapsible Buff Coverage section (between Missing Signups and the Push area) with Raid Buffs, Boss Debuffs, and Utility grouped into three sections. Each buff shows a green checkmark (2+ players), yellow warning (1 player), or red X (not covered). Hovering a buff chip shows which players provide it.
+- **Compact buff summary on Roster tab** -- A compact always-visible buff/debuff summary appears above the roster table, showing the same green/yellow/red indicators for the current active roster (bench excluded).
+
+---
+
 ## [3.6.0] - 2026-06-28
 
 ### Added
