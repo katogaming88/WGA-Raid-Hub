@@ -326,18 +326,31 @@ function saveSignupSeason() {
   var btn = document.getElementById('signupSeasonSaveBtn');
   var status = document.getElementById('signupSeasonStatus');
   if (!val) {
-    if (status) { status.textContent = 'Season name cannot be blank.'; setTimeout(function () { if (status) status.textContent = ''; }, 3000); }
+    if (status) {
+      status.textContent = 'Season name cannot be blank.';
+      setTimeout(function () {
+        if (status) status.textContent = '';
+      }, 3000);
+    }
     return;
   }
-  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+  }
 
   jsonpRequest(WEB_APP_URL + '?action=setActiveSignupSeason&season=' + encodeURIComponent(val), function (err, result) {
-    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Save';
+    }
     if (!err && result && result.success) {
       if (DATA) DATA.signupSeason = val;
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
-        setTimeout(function () { if (status) status.textContent = ''; }, 2000);
+        setTimeout(function () {
+          if (status) status.textContent = '';
+        }, 2000);
       }
     } else {
       if (status) status.textContent = err ? err.message : 'Error saving.';

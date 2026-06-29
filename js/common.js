@@ -346,25 +346,54 @@ function validateCharName(name) {
   if (!name) return 'Please enter your character name.';
   if (name.length < 2 || name.length > 12) return 'Character name must be 2-12 characters.';
   if (!/^[A-Z]/.test(name)) return 'Character name must start with a capital letter (e.g. Katorri).';
-  if (/[A-Z]/.test(name.slice(1))) return 'Character name can only have one capital letter (the first). Did you mean ' + name[0] + name.slice(1).toLowerCase() + '?';
+  if (/[A-Z]/.test(name.slice(1)))
+    return (
+      'Character name can only have one capital letter (the first). Did you mean ' +
+      name[0] +
+      name.slice(1).toLowerCase() +
+      '?'
+    );
   return null;
 }
 
 // Maps each spec to its raid role. Used to resolve 'DPS' -> 'Melee'/'Ranged'.
 var SPEC_ROLE = {
-  'Arcane': 'Ranged', 'Fire': 'Ranged',
-  'Affliction': 'Ranged', 'Demonology': 'Ranged', 'Destruction': 'Ranged',
-  'Beast Mastery': 'Ranged', 'Marksmanship': 'Ranged', 'Survival': 'Melee',
-  'Balance': 'Ranged', 'Shadow': 'Ranged', 'Elemental': 'Ranged',
-  'Augmentation': 'Ranged', 'Devastation': 'Ranged', 'Devourer': 'Ranged',
-  'Assassination': 'Melee', 'Outlaw': 'Melee', 'Subtlety': 'Melee',
-  'Feral': 'Melee', 'Windwalker': 'Melee', 'Retribution': 'Melee',
-  'Enhancement': 'Melee', 'Havoc': 'Melee', 'Arms': 'Melee', 'Fury': 'Melee',
-  'Frost': 'Melee', 'Unholy': 'Melee',
-  'Blood': 'Tank', 'Guardian': 'Tank', 'Brewmaster': 'Tank',
-  'Protection': 'Tank', 'Vengeance': 'Tank',
-  'Restoration': 'Heal', 'Mistweaver': 'Heal', 'Holy': 'Heal',
-  'Discipline': 'Heal', 'Preservation': 'Heal',
+  Arcane: 'Ranged',
+  Fire: 'Ranged',
+  Affliction: 'Ranged',
+  Demonology: 'Ranged',
+  Destruction: 'Ranged',
+  'Beast Mastery': 'Ranged',
+  Marksmanship: 'Ranged',
+  Survival: 'Melee',
+  Balance: 'Ranged',
+  Shadow: 'Ranged',
+  Elemental: 'Ranged',
+  Augmentation: 'Ranged',
+  Devastation: 'Ranged',
+  Devourer: 'Ranged',
+  Assassination: 'Melee',
+  Outlaw: 'Melee',
+  Subtlety: 'Melee',
+  Feral: 'Melee',
+  Windwalker: 'Melee',
+  Retribution: 'Melee',
+  Enhancement: 'Melee',
+  Havoc: 'Melee',
+  Arms: 'Melee',
+  Fury: 'Melee',
+  Frost: 'Melee',
+  Unholy: 'Melee',
+  Blood: 'Tank',
+  Guardian: 'Tank',
+  Brewmaster: 'Tank',
+  Protection: 'Tank',
+  Vengeance: 'Tank',
+  Restoration: 'Heal',
+  Mistweaver: 'Heal',
+  Holy: 'Heal',
+  Discipline: 'Heal',
+  Preservation: 'Heal'
 };
 
 var CLASS_ARMOR_TYPE = {

@@ -294,7 +294,7 @@ function signupNext() {
     signupData.offSpecs = Array.prototype.map.call(offSpecEls, function (el) {
       return el.value;
     });
-    var rawRole = roleEl ? roleEl.value : (specData.role || null);
+    var rawRole = roleEl ? roleEl.value : specData.role || null;
     if (rawRole === 'DPS' || rawRole === 'Healer') {
       rawRole = SPEC_ROLE[signupData.mainSpec] || rawRole;
     }
