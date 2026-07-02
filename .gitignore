@@ -11,8 +11,8 @@ Thumbs.db
 .env.local
 .env.example
 
-# Agent config
-.agents/
+# Claude / local config
+.claude/
 
 # Node
 node_modules/
