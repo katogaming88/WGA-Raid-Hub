@@ -9,6 +9,10 @@ Thumbs.db
 # Local env / secrets
 .env
 .env.local
+.env.example
+
+# Agent config
+.agents/
 
 # Node
 node_modules/
