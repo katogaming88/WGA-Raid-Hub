@@ -26,9 +26,9 @@ Performance fixes and officer dashboard completions.
 - [x] Bench rotation fairness view (#82)
 - [x] See who was benched most often vs absent (#16)
 - [x] Season archive -- end-of-season roster snapshot triggered by officers; read-only archive view with previous seasons selectable; unarchive supported (#79, #143)
-- [ ] Move Discord bot from personal server to guild server -- set up officer notification channel so all officers can see app notifications (#84)
-- [ ] Discord bot slash commands -- `/pending-roster`, `/trials`, `/bench`, `/attendance`, `/absences`, `/mplus-excluded`, `/fairness`, `/officers` (#86)
-- [ ] Hide team switcher from non-admin officers (#157)
+- [x] Move Discord bot from personal server to guild server -- set up officer notification channel so all officers can see app notifications (#84)
+- [x] Discord bot slash commands -- `/pending-roster`, `/trials`, `/bench`, `/attendance`, `/absences`, `/mplus-excluded`, `/fairness`, `/officers` (#86)
+- [x] Hide team switcher from non-admin officers (#157)
 - [ ] In-app notification bell -- notify raiders when a submission (BiS, self-mark, M+) is approved or rejected without them having to log back in (#151)
 
 ---
@@ -50,8 +50,8 @@ Public-facing and raider-visible features.
 - [x] App role system -- explicit `officerDiscordIds` and `adminDiscordIds` GAS Script Properties control officer and admin access; recomputed live on every session validation (#44)
 - [x] Officer claim management -- Discord Claims subtab in Roster; admins can grant/revoke officer access per claimed user; Admin > Officers subtab for full officer management (#45)
 - [x] Replace officer password -- not implementing; password kept as fallback for localhost and non-Discord officers (#46, closed as won't-do)
-- [ ] Record which officer committed each attendance change -- wire Discord identity into the audit log (#112)
-- [ ] Officer quick-actions bar on the index page -- small bar visible only to authenticated officers with fast access to high-frequency tasks (#99)
+- [x] Record which officer committed each attendance change -- wire Discord identity into the audit log (#112)
+- [x] Officer quick-actions bar on the index page -- small bar visible only to authenticated officers with fast access to high-frequency tasks (#99)
 
 ---
 

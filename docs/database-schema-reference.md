@@ -22,6 +22,7 @@ Includes notes on redundancies and why they exist.
 - [audit_log](#audit_log)
 - [site_admins](#site_admins)
 - [scoring](#scoring)
+- [player_wcl_season_perf](#player_wcl_season_perf)
 - [classes_specs](#classes_specs)
 - [self_received_requests](#self_received_requests)
 - [bis_requests](#bis_requests)
@@ -125,6 +126,7 @@ Applications submitted by players (or prospective members) to join a raid team f
 | `reviewed_at`         | timestamptz | When an officer acted on it                                                      |
 | `reviewed_by`         | int4        | FK -> `team_members.id` (officer who reviewed)                                   |
 | `signup_officer_note` | text        | Officer's internal note on the application                                       |
+| `approved_player_id`  | int4        | FK -> `players.id` ON DELETE SET NULL -- the player row created when approved    |
 
 ---
 
@@ -159,8 +161,10 @@ The active raid roster. One row per character on a team.
 | `nickname`        | text | Display name override shown in the UI                |
 | `bis_link`        | text | URL to their external BiS list (Wowhead, etc.)       |
 | `join_date`       | date | When they joined the roster                          |
-| `m_plus_excluded` | bool | Whether they are excluded from M+ tracking           |
-| `m_plus_note`     | text | Reason for M+ exclusion                              |
+| `m_plus_excluded`  | bool        | Whether they are excluded from M+ tracking                                      |
+| `m_plus_note`      | text        | Reason for M+ exclusion                                                         |
+| `team_member_id`   | int4        | FK -> `team_members.id` ON DELETE SET NULL -- links character to Discord account |
+| `archived_at`      | timestamptz | Soft-delete timestamp. Null = active roster. Populated on character swap/removal |
 
 ---
 
@@ -247,18 +251,37 @@ Global super-admins who can manage any team on the site. Separate from team-scop
 
 ## `scoring`
 
-Cached computed scores per player. Denormalized for fast UI rendering -- all values are derivable from `attendance` and `rclc_loot`.
+Cached computed scores per player per season. Denormalized for fast UI rendering -- all values are derivable from `attendance` and `rclc_loot`. Unique on `(player_id, season)` so history is preserved across seasons.
 
 | Column              | Type    | Purpose                                                           |
 | ------------------- | ------- | ----------------------------------------------------------------- |
 | `id`                | int4    | PK                                                                |
 | `player_id`         | int4    | FK -> `players.id`                                                |
+| `season`            | text    | Season this score applies to (e.g. "MN1")                         |
 | `recent_score`      | numeric | Score based on recent raid performance (recency-weighted)         |
 | `trend_score`       | numeric | Score trajectory -- whether performance is improving or declining |
 | `best_score`        | numeric | All-time or current-tier peak score                               |
 | `performance_score` | numeric | Parse/performance component of overall score                      |
 | `attendance_score`  | numeric | Attendance component of overall score                             |
 | `attendance_pct`    | numeric | Raw attendance percentage (separate from the weighted score)      |
+
+---
+
+## `player_wcl_season_perf`
+
+WCL character page performance averages per player per season. Written once at the start of a new season by officers triggering a fetch for all current roster players. Never mutated after the initial write. Used as the baseline for heroic priority generation.
+
+| Column            | Type        | Purpose                                                              |
+| ----------------- | ----------- | -------------------------------------------------------------------- |
+| `id`              | int4        | PK                                                                   |
+| `player_id`       | int4        | FK -> `players.id`                                                   |
+| `team_id`         | int4        | FK -> `teams.id` (denormalized for RLS)                              |
+| `season`          | text        | Season the data was pulled for (e.g. "MN1")                          |
+| `best_perf_avg`   | numeric     | WCL character page best performance average                          |
+| `median_perf_avg` | numeric     | WCL character page median performance average                        |
+| `fetched_at`      | timestamptz | When the data was pulled from WCL                                    |
+
+Unique on `(player_id, season)`.
 
 ---
 
@@ -271,7 +294,7 @@ Lookup table of every valid WoW class/spec combination.
 | `id`    | int4 | PK                                                        |
 | `class` | text | Class name (e.g. "Paladin")                               |
 | `spec`  | text | Spec name (e.g. "Holy")                                   |
-| `role`  | text | Tank/Healer/DPS -- drives buff coverage and comp analysis |
+| `role`  | text | Tank/Heal/Melee/Ranged -- drives buff coverage and comp analysis |
 
 ---
 
