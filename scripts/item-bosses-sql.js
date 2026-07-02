@@ -11,8 +11,24 @@
 //
 // Items with a clear boss name generate SQL rows.
 // Items showing "Drop" or "Zone Drop" are listed for manual lookup.
+//
+// ENCOUNTER_MAP translates Wowhead's per-boss attribution to the encounter
+// name that RCLootCouncil records. Update this table each tier.
+// Bosses not in the map are used as-is (single-boss encounters).
 
 import readline from 'readline';
+
+// Wowhead source name -> RCLC encounter name
+// Only needed when Wowhead attributes loot to an individual boss inside a
+// multi-boss encounter (e.g. "Vexhul" is one of The Twin Fangs).
+const ENCOUNTER_MAP = {
+  // The Venomous Abyss -- Midnight Season 1
+  "Gore Rattle":      "Ula'tek",
+  "Mor'zahi":         'The Lost Explorers',
+  "Vexhul":           'The Twin Fangs',
+  "Breath of Ula'tek":'Entombed Sentinels',
+  "Vashnik":          'Vashnik the Malignant',
+};
 
 const zoneName = process.argv[2];
 if (!zoneName) {
@@ -63,7 +79,8 @@ rl.on('close', () => {
     if (boss === 'Drop' || boss === 'Zone Drop') {
       manual.push(`  wow_item_id ${wowId}  (source: "${raw}")`);
     } else {
-      rows.push(`  ((select id from items where wow_item_id = ${wowId}), '${boss.replace(/'/g, "''")}' )`);
+      const encounter = ENCOUNTER_MAP[boss] ?? boss;
+      rows.push(`  ((select id from items where wow_item_id = ${wowId}), '${encounter.replace(/'/g, "''")}' )`);
     }
   }
 
