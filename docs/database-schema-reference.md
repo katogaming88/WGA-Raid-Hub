@@ -114,15 +114,16 @@ Applications submitted by players (or prospective members) to join a raid team f
 | `id`                  | int4        | PK                                                                               |
 | `team_id`             | int4        | FK -> `teams.id`                                                                 |
 | `signup_name_realm`   | text        | Character name-realm as entered by the applicant (free text -- no player FK yet) |
+| `class_spec_id`       | int4        | FK -> `classes_specs.id` -- the spec they are applying as                        |
 | `off_specs`           | text        | Off-specs they can play                                                          |
 | `main_swap`           | bool        | Whether they want to swap mains from last season                                 |
 | `player_note`         | text        | Free-text note from the applicant                                                |
 | `submitted_at`        | timestamptz | When the signup was submitted                                                    |
-| `status`              | text        | Workflow state: pending/approved/denied                                          |
+| `status`              | text        | Workflow state: pending/approved/rejected/added                                  |
 | `swap_class_spec_id`  | int4        | FK -> `classes_specs.id` -- the new spec they would swap to                      |
 | `season`              | text        | Which season this signup is for                                                  |
 | `reviewed_at`         | timestamptz | When an officer acted on it                                                      |
-| `reviewed_by`         | int4        | FK -> `players.id` (officer who reviewed)                                        |
+| `reviewed_by`         | int4        | FK -> `team_members.id` (officer who reviewed)                                   |
 | `signup_officer_note` | text        | Officer's internal note on the application                                       |
 
 ---
@@ -306,17 +307,16 @@ Player requests to be added to the BiS list for a specific item (officer-approva
 
 ## `mplus_exclusion_requests`
 
-Requests to be excluded from M+ score tracking for a given week.
+Season-long M+ exemption request queue. Players submit a request when they have no more meaningful gear upgrades available from M+. The durable exemption state lives on `players.m_plus_excluded`; this table is the intake workflow. No season column -- the table is wiped between seasons (by design, not a bug).
 
 | Column          | Type        | Purpose                                                |
 | --------------- | ----------- | ------------------------------------------------------ |
 | `id`            | int4        | PK                                                     |
 | `team_id`       | int4        | FK -> `teams.id` (denormalized)                        |
 | `player_id`     | int4        | FK -> `players.id`                                     |
-| `week_of`       | date        | The M+ lockout week this exclusion applies to          |
 | `reason`        | text        | Player-provided reason                                 |
 | `submitted_at`  | timestamptz | When it was submitted                                  |
-| `status`        | text        | Pending/approved/denied                                |
+| `status`        | text        | pending/approved/denied                                |
 | `raiderio_url`  | text        | Raider.IO profile link for officer to verify key count |
 | `officer_notes` | text        | Internal officer note on the decision                  |
 
