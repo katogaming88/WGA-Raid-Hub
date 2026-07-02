@@ -27,6 +27,7 @@ Includes notes on redundancies and why they exist.
 - [self_received_requests](#self_received_requests)
 - [bis_requests](#bis_requests)
 - [mplus_exclusion_requests](#mplus_exclusion_requests)
+- [Triggers](#triggers)
 - [Redundancies & Design Notes](#redundancies--design-notes)
 
 ---
@@ -67,7 +68,8 @@ A player's current BiS list -- which items they need and whether they have them.
 | `id`        | int4 | PK                                      |
 | `player_id` | int4 | FK -> `players.id`                      |
 | `item_id`   | int4 | FK -> `items.id` -- the item they want  |
-| `obtained`  | bool | Whether they have received it this tier |
+| `obtained`   | bool        | Whether they have received it this tier |
+| `updated_at` | timestamptz | Auto-set on every UPDATE via trigger    |
 
 ---
 
@@ -102,7 +104,8 @@ Ordered loot priority lists managed by officers -- who gets the next drop for a 
 | `item_id`    | int4 | FK -> `items.id`                          |
 | `difficulty` | text | Difficulty tier this priority applies to  |
 | `rank`       | int4 | Ordinal position (1 = next in line)       |
-| `player_id`  | int4 | FK -> `players.id` -- who is at this rank |
+| `player_id`  | int4        | FK -> `players.id` -- who is at this rank |
+| `updated_at` | timestamptz | Auto-set on every UPDATE via trigger      |
 
 ---
 
@@ -127,6 +130,7 @@ Applications submitted by players (or prospective members) to join a raid team f
 | `reviewed_by`         | int4        | FK -> `team_members.id` (officer who reviewed)                                   |
 | `signup_officer_note` | text        | Officer's internal note on the application                                       |
 | `approved_player_id`  | int4        | FK -> `players.id` ON DELETE SET NULL -- the player row created when approved    |
+| `updated_at`          | timestamptz | Auto-set on every UPDATE via trigger                                             |
 
 ---
 
@@ -165,6 +169,7 @@ The active raid roster. One row per character on a team.
 | `m_plus_note`      | text        | Reason for M+ exclusion                                                         |
 | `team_member_id`   | int4        | FK -> `team_members.id` ON DELETE SET NULL -- links character to Discord account |
 | `archived_at`      | timestamptz | Soft-delete timestamp. Null = active roster. Populated on character swap/removal |
+| `updated_at`       | timestamptz | Auto-set on every UPDATE via trigger                                             |
 
 ---
 
@@ -263,7 +268,8 @@ Cached computed scores per player per season. Denormalized for fast UI rendering
 | `best_score`        | numeric | All-time or current-tier peak score                               |
 | `performance_score` | numeric | Parse/performance component of overall score                      |
 | `attendance_score`  | numeric | Attendance component of overall score                             |
-| `attendance_pct`    | numeric | Raw attendance percentage (separate from the weighted score)      |
+| `attendance_pct`    | numeric     | Raw attendance percentage (separate from the weighted score)      |
+| `updated_at`        | timestamptz | Auto-set on every UPDATE via trigger                              |
 
 ---
 
@@ -342,6 +348,27 @@ Season-long M+ exemption request queue. Players submit a request when they have 
 | `status`        | text        | pending/approved/denied                                |
 | `raiderio_url`  | text        | Raider.IO profile link for officer to verify key count |
 | `officer_notes` | text        | Internal officer note on the decision                  |
+| `updated_at`    | timestamptz | Auto-set on every UPDATE via trigger                   |
+
+---
+
+## Triggers
+
+Two shared trigger functions handle cross-cutting DB invariants.
+
+### `set_updated_at()`
+
+A `BEFORE UPDATE` trigger on each mutable table. Sets `updated_at = now()` automatically on every write so application code never has to pass it explicitly.
+
+Tables: `players`, `season_signups`, `bis_items`, `scoring`, `mplus_exclusion_requests`, `priority_order`.
+
+### `check_team_id_matches_player()`
+
+A `BEFORE INSERT OR UPDATE` trigger on every table that carries a denormalized `team_id` alongside a `player_id` FK. Raises an exception if the two disagree -- i.e. if the row's `team_id` does not match `players.team_id` for the given `player_id`. Skips the check when `player_id` is null (allowed on `rclc_loot` after a player is deleted).
+
+Tables: `attendance`, `rclc_loot`, `bis_requests`, `self_received_requests`, `mplus_exclusion_requests`.
+
+Note: `bis_items` is excluded -- it has no denormalized `team_id` and derives team through `player_id` by design.
 
 ---
 
@@ -357,7 +384,7 @@ Both exist for deduplication on re-import but handle different failure modes. `r
 
 ### 3. `team_id` denormalized across many tables
 
-`attendance`, `rclc_loot`, `self_received_requests`, `bis_requests`, `mplus_exclusion_requests`, `season_signups`, and `priority_order` all carry `team_id` even though `player_id` already implies a team via `players.team_id`. This is intentional denormalization for two reasons: (1) it avoids joining through `players` on every query, and (2) it allows Supabase Row-Level Security policies to filter by team directly on these tables. The tradeoff is that `team_id` could drift out of sync with `players.team_id` if a player is transferred between teams.
+`attendance`, `rclc_loot`, `self_received_requests`, `bis_requests`, `mplus_exclusion_requests`, `season_signups`, and `priority_order` all carry `team_id` even though `player_id` already implies a team via `players.team_id`. This is intentional denormalization for two reasons: (1) it avoids joining through `players` on every query, and (2) it allows Supabase Row-Level Security policies to filter by team directly on these tables. The tradeoff is that `team_id` could drift out of sync with `players.team_id` if a player is transferred between teams. The `check_team_id_matches_player()` trigger guards against this on write.
 
 ### 4. `players.name_realm` vs `team_members.name_realm`
 
