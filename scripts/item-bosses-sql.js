@@ -1,26 +1,35 @@
 'use strict';
 
-// Generates item_bosses INSERT SQL from Wowhead ID and Source column data.
+// Generates item_bosses INSERT SQL from Wowhead loot table data.
 //
-// Usage:
-//   node scripts/item-bosses-sql.js "<zone name>"
+// --- Setup (do once per tier) ---
+// Update ENCOUNTER_MAP below with any multi-boss encounter name corrections
+// for the new tier before running the script.
 //
-// Then paste two lines when prompted:
-//   Line 1: comma-separated wow_item_ids  (copied from Wowhead)
-//   Line 2: comma-separated Source values (copied from Wowhead)
+// --- How to run ---
+// 1. Go to the Wowhead zone page and open the Items tab.
+// 2. Select all rows in the table.
+// 3. Run the script with the zone name exactly as it appears in the Source column:
+//      node scripts/item-bosses-sql.js "The Venomous Abyss"
+// 4. When prompted, paste the comma-separated ID column values, then Enter.
+// 5. When prompted, paste the comma-separated Source column values, then Enter.
 //
-// Items with a clear boss name generate SQL rows.
-// Items showing "Drop" or "Zone Drop" are listed for manual lookup.
+// --- Output ---
+// Ready-to-paste INSERT SQL is printed for all items with a known boss.
+// Items tagged "Drop" or "Zone Drop" are printed separately -- look each one
+// up on Wowhead to find the boss, then add them to the SQL manually.
 //
-// ENCOUNTER_MAP translates Wowhead's per-boss attribution to the encounter
-// name that RCLootCouncil records. Update this table each tier.
-// Bosses not in the map are used as-is (single-boss encounters).
+// --- ENCOUNTER_MAP ---
+// Wowhead tags loot with the individual boss name, but RCLootCouncil records
+// the encounter name shown on the pull timer. For multi-boss encounters these
+// differ (e.g. Wowhead says "Vexhul", RCLC records "The Twin Fangs").
+// Add a mapping here for each mismatch. Bosses not listed are used as-is.
 
 import readline from 'readline';
 
-// Wowhead source name -> RCLC encounter name
-// Only needed when Wowhead attributes loot to an individual boss inside a
-// multi-boss encounter (e.g. "Vexhul" is one of The Twin Fangs).
+// Wowhead boss name -> RCLC encounter name
+// Only add entries where the name differs between Wowhead and RCLootCouncil.
+// Update each tier.
 const ENCOUNTER_MAP = {
   // The Venomous Abyss -- Midnight Season 1
   "Gore Rattle":      "Ula'tek",
