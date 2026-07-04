@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.7.1] - 2026-07-04
+
+### Added
+- **Public Roster tab** -- A new "Roster" nav item on the public landing page shows who's currently on the roster (name, class, spec) grouped by role, with no login required. Read-only -- no attendance, loot counts, or BiS data, and no edit controls (those stay behind the officer-only profile dropdown). Reuses the same class-badge styling as the officer BiS Lists tab.
+
+---
+
 ## [3.7.0] - 2026-07-04
 
 ### Added

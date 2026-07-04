@@ -22,6 +22,7 @@
 
 <nav class="site-nav" id="siteNav">
   <button class="site-nav-item active" id="navHome" onclick="showView('landing')" data-tooltip="Back to the roster overview">Home</button>
+  <button class="site-nav-item" id="navRoster" onclick="showView('roster')" data-tooltip="See who's currently on the roster">Roster</button>
   <button class="site-nav-item" id="navSignup" onclick="showSignupView()" data-tooltip="Apply to join the raid team for next season">Sign Up</button>
   <div class="site-nav-right">
     <button class="site-nav-item site-nav-discord" id="navDiscord" onclick="openDiscordPopup()" data-tooltip="Sign in with Discord to view your priority standing and mark loot received">Login with Discord</button>
@@ -74,6 +75,14 @@
   <div class="footer">We Go Again &middot; <span class="team-name">Team Phoenix</span> &middot; v<span id="versionNum"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
 </div>
 
+<!-- Roster -->
+<div id="rosterViewWrap" class="view">
+  <div class="landing-body">
+    <div id="rosterView" class="pub-loot"></div>
+  </div>
+  <div class="footer">We Go Again &middot; <span class="team-name">Team Phoenix</span> &middot; v<span id="versionNumRoster"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
+</div>
+
 <!-- Profile -->
 <div id="profileViewWrap" class="view">
   <div id="profileView"></div>
@@ -112,7 +121,7 @@
 <script src="js/roster.js"></script>
 <script src="js/signup.js"></script>
 <script>
-['versionNum','versionNumProfile','versionNumSignup'].forEach(function(id){document.getElementById(id).textContent=VERSION;});
+['versionNum','versionNumProfile','versionNumSignup','versionNumRoster'].forEach(function(id){document.getElementById(id).textContent=VERSION;});
 document.title = TEAM_NAME + ' -- Roster';
 document.getElementById('headerTeamName').textContent = TEAM_NAME;
 document.querySelectorAll('.team-name').forEach(function(el){el.textContent=TEAM_NAME;});

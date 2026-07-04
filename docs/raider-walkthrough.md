@@ -58,3 +58,10 @@
 - Shows current raider count and total items distributed this tier
 - Recent loot feed -- last 10 items given out across the roster
 - Raid progression -- current season's raids showing how many bosses are down out of the total (e.g. 3/8 Mythic) with a first-kill date for each downed boss
+
+---
+
+## The Roster tab
+
+- Public, no login needed -- shows who's currently on the roster, grouped by role
+- Just name, class, and spec -- no attendance, loot, or BiS info
