@@ -13,6 +13,13 @@
 - Click the character selector dropdown at the top
 - Pick your character -- your profile loads automatically
 
+### Or log in with Discord (optional, faster)
+
+- Click **Login with Discord** in the top nav and authorize
+- First time logging in, you'll be asked to claim your character from the roster
+- Once claimed, clicking your name in the nav jumps straight to your profile -- no need to find yourself in the dropdown
+- Claiming also lets the signup form auto-verify it's really you (catches typos and class mix-ups -- see below)
+
 ---
 
 ## What you can see on your profile
@@ -39,7 +46,9 @@
 
 ### Season signup
 - If signups are open there's a Sign Up button on the main page
-- Multi-step form -- class, spec, role, Discord tag, notes
+- Multi-step form -- character/realm, class, spec, role, Discord tag, notes
+- If you're switching mains this season, check the "I'm switching mains" box and enter your old main -- this records the swap for officers
+- If you're logged in with Discord and the name/class you enter doesn't match your claimed character, you'll see a warning and have to confirm before submitting (this catches typos and wrong-class clicks)
 - Officers review applications
 
 ### M+ exclusion request
