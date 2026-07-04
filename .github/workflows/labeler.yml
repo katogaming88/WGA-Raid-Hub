@@ -1,7 +1,11 @@
 name: Auto Label
 
+# pull_request_target (not pull_request) so this also runs -- with write access --
+# on PRs opened from forks. Safe here because actions/labeler only reads the PR's
+# changed-file list and .github/labeler.yml; it never checks out or executes the
+# fork's code.
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened]
 
 jobs:
