@@ -1,7 +1,7 @@
 // Public page: view switching, player dropdown, boot
 function showView(name) {
   document.getElementById('loadingMsg').style.display = 'none';
-  ['landingView', 'profileViewWrap', 'signupViewWrap'].forEach(function (id) {
+  ['landingView', 'profileViewWrap', 'signupViewWrap', 'rosterViewWrap'].forEach(function (id) {
     document.getElementById(id).classList.remove('active');
   });
   if (name === 'landing') {
@@ -10,11 +10,15 @@ function showView(name) {
   }
   if (name === 'profile') document.getElementById('profileViewWrap').classList.add('active');
   if (name === 'signup') document.getElementById('signupViewWrap').classList.add('active');
-  ['navHome', 'navSignup'].forEach(function (id) {
+  if (name === 'roster') {
+    document.getElementById('rosterViewWrap').classList.add('active');
+    buildPublicRosterTab();
+  }
+  ['navHome', 'navSignup', 'navRoster'].forEach(function (id) {
     var el = document.getElementById(id);
     if (el) el.classList.remove('active');
   });
-  var activeNav = { landing: 'navHome', profile: 'navHome', signup: 'navSignup' }[name];
+  var activeNav = { landing: 'navHome', profile: 'navHome', signup: 'navSignup', roster: 'navRoster' }[name];
   if (activeNav) {
     var el = document.getElementById(activeNav);
     if (el) el.classList.add('active');
@@ -48,6 +52,75 @@ function populateDropdown() {
     }
     sel.appendChild(group);
   }
+}
+
+function buildPublicRosterTab() {
+  var container = document.getElementById('rosterView');
+  if (!container || !window.DATA || !DATA.roster) return;
+
+  var order = ['Tank', 'Heal', 'Melee', 'Ranged'];
+  var labels = { Tank: 'Tanks', Heal: 'Healers', Melee: 'Melee', Ranged: 'Ranged' };
+  var groups = { Tank: [], Heal: [], Melee: [], Ranged: [] };
+
+  for (var i = 0; i < DATA.roster.length; i++) {
+    var p = DATA.roster[i];
+    if (groups[p.role]) groups[p.role].push(p);
+  }
+
+  var html = '<table class="roster-table"><thead><tr><th>Player</th><th>Class / Spec</th></tr></thead><tbody>';
+
+  for (var r = 0; r < order.length; r++) {
+    var role = order[r];
+    var players = groups[role];
+    if (!players.length) continue;
+    players.sort(function (a, b) {
+      return (a.nick || a.firstName).localeCompare(b.nick || b.firstName);
+    });
+    html += '<tr class="group-header"><td colspan="2">' + labels[role] + '</td></tr>';
+
+    for (var j = 0; j < players.length; j++) {
+      var p = players[j];
+      var roleColor =
+        p.role === 'Tank'
+          ? 'var(--tank)'
+          : p.role === 'Heal'
+            ? 'var(--heal)'
+            : p.role === 'Ranged'
+              ? 'var(--ranged)'
+              : 'var(--melee)';
+      var dispName = p.nick || p.firstName;
+      html +=
+        '<tr>' +
+        '<td><div class="player-name-cell">' +
+        '<div class="mini-avatar" style="background:rgba(0,0,0,0.25);color:' +
+        roleColor +
+        ';border:2px solid ' +
+        roleColor +
+        ';">' +
+        dispName.slice(0, 2).toUpperCase() +
+        '</div>' +
+        '<span style="font-weight:600;color:var(--text);">' +
+        dispName +
+        '</span>' +
+        (p.firstName !== dispName
+          ? '<span style="font-size:0.9rem;color:var(--text-muted);">(' + p.firstName + ')</span>'
+          : '') +
+        '</div></td>' +
+        '<td>' +
+        (p.class
+          ? '<span class="badge badge-class" style="' +
+            classBadgeStyle(p.class) +
+            ';">' +
+            (p.spec || p.class) +
+            '</span>'
+          : '<span style="color:var(--text-dim);">-</span>') +
+        '</td>' +
+        '</tr>';
+    }
+  }
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
 }
 
 function updateSignupNavItem() {
