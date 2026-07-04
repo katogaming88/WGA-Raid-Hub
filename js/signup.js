@@ -131,10 +131,12 @@ function renderSignupStep() {
       '">' +
       '</div>' +
       '<div class="signup-field">' +
-      '<label class="signup-checkbox-label"><input type="checkbox" id="signupMainSwapToggle"' +
+      '<label style="display:flex;align-items:center;gap:0.55rem;font-size:1rem;color:var(--text);cursor:pointer;">' +
+      '<input type="checkbox" id="signupMainSwapToggle"' +
       (swapChecked ? ' checked' : '') +
-      ' onchange="toggleMainSwapField()"> I\'m switching mains this season' +
-      '<span class="signup-optional"> (optional)</span></label>' +
+      ' onchange="toggleMainSwapField()" style="width:1.15rem;height:1.15rem;accent-color:var(--gold-light);cursor:pointer;flex-shrink:0;">' +
+      '<span>I\'m switching mains this season <span class="signup-optional">(optional)</span></span>' +
+      '</label>' +
       '<div id="signupMainSwapWrap" style="display:' +
       (swapChecked ? 'block' : 'none') +
       ';margin-top:0.5rem;">' +
