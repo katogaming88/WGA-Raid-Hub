@@ -1,5 +1,18 @@
 var _pendingRosterEntries = [];
 var _pendingMissingSignups = [];
+var _pendingFilterRole = null;
+var _pendingSwapOnly = false;
+var _pendingSortKey = 'name';
+
+// Map of nameRealm.toLowerCase() -> current roster player, for diff/conflict checks.
+function buildPendingRosterMap() {
+  var map = {};
+  var roster = (window.DATA && DATA.roster) || [];
+  roster.forEach(function (p) {
+    if (p.nameRealm) map[p.nameRealm.toLowerCase()] = p;
+  });
+  return map;
+}
 
 function buildPendingRosterTab() {
   var container = document.getElementById('pendingRosterContainer');
@@ -32,6 +45,7 @@ function renderPendingRoster(entries, missing) {
   var container = document.getElementById('pendingRosterContainer');
   if (!container) return;
 
+  var rosterMap = buildPendingRosterMap();
   var html = '<div style="margin-top:1.5rem;">';
 
   html += buildPendingStatsHtml(entries);
@@ -46,14 +60,101 @@ function renderPendingRoster(entries, missing) {
     html +=
       '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No approved signups in the pending roster.</p>';
   } else {
-    html += buildPushAreaHtml(entries, missing);
-    entries.forEach(function (e) {
-      html += buildPendingCardHtml(e);
-    });
+    html += buildPushAreaHtml(entries, missing, rosterMap);
+    html += buildPendingControlsHtml();
+    var visible = getFilteredSortedPendingEntries(entries);
+    if (!visible.length) {
+      html +=
+        '<p style="color:var(--text-muted);font-size:1rem;margin-top:1rem;">No pending entries match the current filter.</p>';
+    } else {
+      visible.forEach(function (e) {
+        html += buildPendingCardHtml(e, rosterMap);
+      });
+    }
   }
 
   html += '</div>';
   container.innerHTML = html;
+}
+
+// ── Filter / sort controls ────────────────────────────────────────────────────
+
+function getFilteredSortedPendingEntries(entries) {
+  var filtered = entries.filter(function (e) {
+    if (_pendingFilterRole && e.role !== _pendingFilterRole) return false;
+    if (_pendingSwapOnly && !e.mainSwap) return false;
+    return true;
+  });
+  filtered.sort(function (a, b) {
+    if (_pendingSortKey === 'class') {
+      return (
+        (a.className || '').localeCompare(b.className || '') || (a.nameRealm || '').localeCompare(b.nameRealm || '')
+      );
+    }
+    return (a.nameRealm || '').localeCompare(b.nameRealm || '');
+  });
+  return filtered;
+}
+
+function buildPendingControlsHtml() {
+  var roles = ['Tank', 'Heal', 'Melee', 'Ranged'];
+  var roleColors = { Tank: 'var(--tank)', Heal: 'var(--heal)', Melee: 'var(--melee)', Ranged: 'var(--ranged)' };
+
+  function chip(active, color, label, onclick) {
+    return (
+      '<button onclick="' +
+      onclick +
+      '" style="cursor:pointer;font-size:0.82rem;padding:0.2rem 0.65rem;border-radius:4px;' +
+      'border:1px solid ' +
+      (active ? color : 'var(--border)') +
+      ';background:' +
+      (active ? color : 'var(--bg)') +
+      ';color:' +
+      (active ? 'var(--bg)' : 'var(--text-muted)') +
+      ';font-weight:600;">' +
+      label +
+      '</button>'
+    );
+  }
+
+  var roleChips = roles
+    .map(function (r) {
+      return chip(_pendingFilterRole === r, roleColors[r], r, "setPendingFilterRole('" + r + "')");
+    })
+    .join('');
+
+  var swapChip = chip(_pendingSwapOnly, 'var(--gold-light)', 'Main Swap Only', 'togglePendingSwapOnly()');
+
+  var sortChip = chip(
+    _pendingSortKey === 'class',
+    'var(--text)',
+    'Sort: ' + (_pendingSortKey === 'class' ? 'Class' : 'Name'),
+    'togglePendingSortKey()'
+  );
+
+  return (
+    '<div style="display:flex;flex-wrap:wrap;gap:0.4rem;align-items:center;margin-bottom:1rem;">' +
+    roleChips +
+    swapChip +
+    '<span style="flex:1;"></span>' +
+    sortChip +
+    '</div>'
+  );
+}
+
+function setPendingFilterRole(role) {
+  _pendingFilterRole = _pendingFilterRole === role ? null : role;
+  renderPendingRoster(_pendingRosterEntries, _pendingMissingSignups);
+}
+
+function togglePendingSwapOnly() {
+  _pendingSwapOnly = !_pendingSwapOnly;
+  renderPendingRoster(_pendingRosterEntries, _pendingMissingSignups);
+}
+
+function togglePendingSortKey() {
+  _pendingSortKey = _pendingSortKey === 'class' ? 'name' : 'class';
+  renderPendingRoster(_pendingRosterEntries, _pendingMissingSignups);
 }
 
 // ── Stats panel ──────────────────────────────────────────────────────────────
@@ -257,15 +358,36 @@ function togglePendingBuffCoverage() {
 
 // ── Push to Roster area ──────────────────────────────────────────────────────
 
-function buildPushAreaHtml(entries, missing) {
+function buildPushAreaHtml(entries, missing, rosterMap) {
   var missingCount = missing.length;
+  var added = 0,
+    updated = 0;
+  entries.forEach(function (e) {
+    if (e.nameRealm && rosterMap[e.nameRealm.toLowerCase()]) updated++;
+    else added++;
+  });
+
+  var diffParts = [];
+  if (added) diffParts.push('<span style="color:var(--heal);font-weight:600;">' + added + ' new</span>');
+  if (updated) diffParts.push('<span style="color:var(--gold-light);font-weight:600;">' + updated + ' updated</span>');
+  if (missingCount)
+    diffParts.push(
+      '<span style="color:var(--melee);font-weight:600;">' +
+        missingCount +
+        ' missing signup' +
+        (missingCount !== 1 ? 's' : '') +
+        '</span> (only removed if checked below)'
+    );
+
   return (
     '<div id="pendingPushArea" style="margin-bottom:1.25rem;padding:0.85rem;background:var(--bg-alt);' +
     'border:1px solid var(--border);border-radius:6px;">' +
     '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">' +
     '<span style="font-size:0.9rem;color:var(--text-muted);">Push all ' +
     entries.length +
-    ' pending entries to the official roster. This will add new players and update existing ones.</span>' +
+    ' pending entries to the official roster: ' +
+    diffParts.join(', ') +
+    '.</span>' +
     '<button class="btn request-approve-btn" id="pendingPushBtn" onclick="showPushConfirm()" ' +
     'style="font-size:0.88rem;padding:0.3rem 1rem;white-space:nowrap;">Push to Roster</button>' +
     '</div>' +
@@ -356,15 +478,27 @@ function confirmPushToRoster(btnEl) {
 
 // ── Pending entry cards ──────────────────────────────────────────────────────
 
-function buildPendingCardHtml(e) {
+function buildPendingCardHtml(e, rosterMap) {
+  rosterMap = rosterMap || {};
   var clsColor = classColor(e.className);
+  var isNew = !(e.nameRealm && rosterMap[e.nameRealm.toLowerCase()]);
+  var borderStyle = e.mainSwap ? 'border-left:3px solid var(--gold-light);' : '';
+
   var html =
-    '<div class="signup-response-card" data-row="' +
+    '<div class="signup-response-card" style="' +
+    borderStyle +
+    '" data-row="' +
     e.rowIndex +
     '">' +
     '<div class="signup-response-header">' +
     '<span class="signup-response-name">' +
     e.nameRealm +
+    '</span>' +
+    '<span style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;' +
+    'margin-left:0.4rem;color:' +
+    (isNew ? 'var(--heal)' : 'var(--text-muted)') +
+    ';">' +
+    (isNew ? 'New' : 'Update') +
     '</span>';
 
   if (e.season)
@@ -395,12 +529,18 @@ function buildPendingCardHtml(e) {
       '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Discord: <span style="color:var(--text);">' +
       e.discord +
       '</span></div>';
-  if (e.mainSwap)
+  if (e.mainSwap) {
+    var swapStillOnRoster = !!rosterMap[e.mainSwap.toLowerCase()];
     html +=
       '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Main swap: ' +
       '<span style="color:var(--gold-light);font-weight:600;">' +
       e.mainSwap +
-      '</span></div>';
+      '</span>' +
+      (swapStillOnRoster
+        ? ' <span style="color:var(--melee);font-size:0.85rem;">(still on roster -- check "remove absent" to clean up)</span>'
+        : ' <span style="color:var(--text-muted);font-size:0.85rem;">(already off roster)</span>') +
+      '</div>';
+  }
   if (e.notes)
     html +=
       '<div style="font-size:0.9rem;color:var(--text-muted);margin-top:0.35rem;font-style:italic;">' +

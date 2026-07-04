@@ -119,12 +119,8 @@ function renderSignupStep() {
       '</div>';
   } else if (signupStep === 4) {
     var discordSession = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
-    var mainSwapDefault =
-      signupData.mainSwap !== undefined
-        ? signupData.mainSwap
-        : discordSession && discordSession.nameRealm
-          ? discordSession.nameRealm
-          : '';
+    var hasClaim = !!(discordSession && discordSession.nameRealm);
+    var swapChecked = !!signupData.mainSwapChecked;
     html =
       '<div class="signup-step-label">Step 4 of 4</div>' +
       '<h2 class="signup-step-title">Additional Information</h2>' +
@@ -135,10 +131,21 @@ function renderSignupStep() {
       '">' +
       '</div>' +
       '<div class="signup-field">' +
-      '<span class="signup-label">Main swap <span class="signup-optional">(optional -- enter your current Name-Realm if you are switching mains this season)</span></span>' +
-      '<input type="text" id="signupMainSwap" class="signup-input" placeholder="Katorri-Khaz Modan" value="' +
-      mainSwapDefault +
-      '">' +
+      '<label class="signup-checkbox-label"><input type="checkbox" id="signupMainSwapToggle"' +
+      (swapChecked ? ' checked' : '') +
+      ' onchange="toggleMainSwapField()"> I\'m switching mains this season' +
+      '<span class="signup-optional"> (optional)</span></label>' +
+      '<div id="signupMainSwapWrap" style="display:' +
+      (swapChecked ? 'block' : 'none') +
+      ';margin-top:0.5rem;">' +
+      (hasClaim
+        ? '<p style="margin:0;color:var(--text-muted);font-size:0.92rem;">Switching from <strong style="color:var(--text);">' +
+          discordSession.nameRealm +
+          '</strong></p>'
+        : '<input type="text" id="signupMainSwap" class="signup-input" placeholder="Katorri-Khaz Modan" value="' +
+          (signupData.mainSwap || '') +
+          '">') +
+      '</div>' +
       '</div>' +
       '<div class="signup-field">' +
       '<span class="signup-label">Anything else officers should know? <span class="signup-optional">(optional)</span></span>' +
@@ -207,6 +214,12 @@ function initRealmCombobox() {
       dropdown.style.display = 'none';
     }, 150);
   });
+}
+
+function toggleMainSwapField() {
+  var cb = document.getElementById('signupMainSwapToggle');
+  var wrap = document.getElementById('signupMainSwapWrap');
+  if (wrap) wrap.style.display = cb && cb.checked ? 'block' : 'none';
 }
 
 function pickRealm(realm) {
@@ -317,9 +330,31 @@ function signupBack() {
 
 function submitSignup() {
   signupData.discord = (document.getElementById('signupDiscord').value || '').trim();
-  signupData.mainSwap = (
-    document.getElementById('signupMainSwap') ? document.getElementById('signupMainSwap').value || '' : ''
-  ).trim();
+
+  var swapToggle = document.getElementById('signupMainSwapToggle');
+  var swapChecked = !!(swapToggle && swapToggle.checked);
+  signupData.mainSwapChecked = swapChecked;
+
+  var discordSession = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
+  var hasClaim = !!(discordSession && discordSession.nameRealm);
+
+  if (!swapChecked) {
+    signupData.mainSwap = '';
+  } else if (hasClaim) {
+    signupData.mainSwap = discordSession.nameRealm;
+  } else {
+    var rawSwap = (
+      document.getElementById('signupMainSwap') ? document.getElementById('signupMainSwap').value : ''
+    ).trim();
+    var swapResult = validateMainSwap(rawSwap);
+    if (swapResult.error) {
+      var swapErr = document.getElementById('signupError');
+      if (swapErr) swapErr.textContent = swapResult.error;
+      return;
+    }
+    signupData.mainSwap = swapResult.value;
+  }
+
   signupData.notes = (document.getElementById('signupNotes').value || '').trim();
   signupData.submittedAt = new Date().toISOString();
 
