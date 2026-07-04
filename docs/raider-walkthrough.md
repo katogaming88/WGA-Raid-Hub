@@ -3,22 +3,18 @@
 ## What it is
 
 - A web app for the guild -- gives every raider a personal profile page and lets you do a few things without needing to message an officer
-- Public page, no login needed -- just go to the URL and pick your character
+- The landing page itself (raider count, recent loot, raid progression) is public, no login needed
+- Viewing **your own profile** requires logging in with Discord and claiming your character -- see below
 
 ---
 
 ## Finding your profile
 
 - Open the link (share this in Discord)
-- Click the character selector dropdown at the top
-- Pick your character -- your profile loads automatically
-
-### Or log in with Discord (optional, faster)
-
 - Click **Login with Discord** in the top nav and authorize
 - First time logging in, you'll be asked to claim your character from the roster
-- Once claimed, clicking your name in the nav jumps straight to your profile -- no need to find yourself in the dropdown
-- Claiming also lets the signup form auto-verify it's really you (catches typos and class mix-ups -- see below)
+- Once claimed, click **View My Profile** (or click your name in the nav) -- this opens your own profile
+- Note: there's no dropdown to browse other raiders' profiles -- only officers can look up other characters
 
 ---
 
