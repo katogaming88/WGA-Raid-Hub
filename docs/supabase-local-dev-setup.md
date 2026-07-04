@@ -106,11 +106,15 @@ not secrets and they do not touch the cloud project.
 
 3. `docker ps` should list ~11 healthy `supabase_*_WGA-Raid-Hub` containers.
 
-A fresh local database has ZERO tables in the `public` schema. That is correct:
-the local stack builds only from migration files in `supabase/migrations/`, and it
-knows nothing about the cloud schema until the baseline migration is captured
-(Phase 1 step 2 of the migration plan). If the migrations directory has files,
-the tables appear after `supabase db reset`.
+The local stack builds only from `supabase/roles.sql` plus the migration files in
+`supabase/migrations/`; it knows nothing about the cloud schema beyond what those
+files capture. Run `supabase db reset` and the 20 public tables should appear
+(check in Studio or with `\dt public.*` in psql).
+
+`roles.sql` exists because the cloud cluster has a custom `claude_readers` role
+that the RLS policies in the baseline migration reference. Local and shadow
+databases need that role created before the migrations run or the policy
+statements fail with `role "claude_readers" does not exist`.
 
 ## 4. Link to the cloud project (one-time)
 
@@ -152,10 +156,13 @@ stack. The only loss is the Logs page inside local Studio.
 
 ## What comes next
 
-With the stack running and linked, the next migration-plan steps are:
+With the stack running, linked, and the baseline migration captured
+(`supabase/migrations/20260704204411_initial_schema.sql`, pulled with
+`supabase db pull --diff-engine migra`; the default pg-delta engine reported
+"no schema changes found" against the live schema, so use the migra engine),
+the next migration-plan steps are:
 
-- **Baseline migration:** `supabase db pull` to capture the live cloud schema as
-  the first file in `supabase/migrations/`.
 - **Schema fixes as migrations:** issues #271 and #272 ride the new workflow.
+- **Test harness:** vitest RLS policy matrix against the local stack.
 
 See the roadmap in [supabase-migration-plan.md](supabase-migration-plan.md).
