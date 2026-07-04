@@ -54,6 +54,14 @@ When merging a PR:
 | `css/styles.css` | All styles |
 | `css/officer.css` | Stub for officer-specific styles (future split) |
 | `PhoenixRosterWebApp.gs` | Google Apps Script (data layer) |
+| `supabase/` | Supabase CLI project: local dev stack config and (soon) schema migrations |
+
+## Local development database (Supabase)
+
+The Supabase migration develops all schema changes against a local stack running in
+Docker before anything touches the cloud project. Setup from scratch (Docker,
+Supabase CLI, starting the stack, linking to the cloud project) is documented
+step by step in [docs/supabase-local-dev-setup.md](docs/supabase-local-dev-setup.md).
 
 ## Google Apps Script changes
 

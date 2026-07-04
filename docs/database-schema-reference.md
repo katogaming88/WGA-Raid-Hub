@@ -185,6 +185,7 @@ Links Discord/auth users to a team. The account-level membership layer, separate
 | `auth_user_id` | uuid | FK -> `auth.users.id` (Supabase auth)                                         |
 | `role`         | text | Team role: officer/member/viewer                                              |
 | `name_realm`   | text | The character this member considers their main (see note on redundancy below) |
+| `updated_at`   | timestamptz | Auto-set on every UPDATE via trigger                                   |
 
 ---
 
@@ -208,6 +209,7 @@ Key-value config blob per team. One row per team.
 | --------- | ----- | -------------------------------------------------------------------------- |
 | `team_id` | int4  | PK + FK -> `teams.id`                                                      |
 | `config`  | jsonb | Freeform settings (loot rules, scoring weights, display preferences, etc.) |
+| `updated_at` | timestamptz | Auto-set on every UPDATE via trigger                            |
 
 ---
 
@@ -360,13 +362,15 @@ Two shared trigger functions handle cross-cutting DB invariants.
 
 A `BEFORE UPDATE` trigger on each mutable table. Sets `updated_at = now()` automatically on every write so application code never has to pass it explicitly.
 
-Tables: `players`, `season_signups`, `bis_items`, `scoring`, `mplus_exclusion_requests`, `priority_order`.
+Tables: `players`, `season_signups`, `bis_items`, `scoring`, `mplus_exclusion_requests`, `priority_order`, `team_members`, `team_settings`.
+
+`updated_at` is nullable with no default, on purpose (#272): these tables have no separate created-at column, so the value stays NULL until the first real UPDATE. A row with a NULL `updated_at` is a fresh insert; a non-NULL one has actually been edited. Populating it at insert time would erase that distinction.
 
 ### `check_team_id_matches_player()`
 
 A `BEFORE INSERT OR UPDATE` trigger on every table that carries a denormalized `team_id` alongside a `player_id` FK. Raises an exception if the two disagree -- i.e. if the row's `team_id` does not match `players.team_id` for the given `player_id`. Skips the check when `player_id` is null (allowed on `rclc_loot` after a player is deleted).
 
-Tables: `attendance`, `rclc_loot`, `bis_requests`, `self_received_requests`, `mplus_exclusion_requests`.
+Tables: `attendance`, `rclc_loot`, `bis_requests`, `self_received_requests`, `mplus_exclusion_requests`, `priority_order`.
 
 Note: `bis_items` is excluded -- it has no denormalized `team_id` and derives team through `player_id` by design.
 
