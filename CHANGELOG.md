@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.6.9] - 2026-07-04
+
+### Fixed
+- **Main-swap checkbox not obvious as a checkbox** -- The "I'm switching mains this season" toggle used the hidden-input/pill-button style meant for grouped chip selections (like off-spec), so as a standalone full-width control it read as a static label rather than something clickable. It now renders as a visible native checkbox with a gold accent, matching the pattern used elsewhere on the site (e.g. the Pending Roster "remove absent" toggle).
+
+---
+
 ## [3.6.8] - 2026-07-04
 
 ### Fixed
