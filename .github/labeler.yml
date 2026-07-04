@@ -69,6 +69,11 @@ admin:
     - any-glob-to-any-file:
       - js/tabs/tab-admin.js
 
+database:
+  - changed-files:
+    - any-glob-to-any-file:
+      - supabase/**
+
 documentation:
   - changed-files:
     - any-glob-to-any-file:
