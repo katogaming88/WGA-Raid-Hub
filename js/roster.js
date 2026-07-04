@@ -44,10 +44,10 @@ function populateDropdown() {
     var group = document.createElement('optgroup');
     group.label = labels[role];
     for (var j = 0; j < players.length; j++) {
-      var p = players[j];
+      var player = players[j];
       var opt = document.createElement('option');
-      opt.value = p.firstName;
-      opt.textContent = p.nick ? p.nick + ' (' + p.firstName + ')' : p.firstName;
+      opt.value = player.firstName;
+      opt.textContent = player.nick ? player.nick + ' (' + player.firstName + ')' : player.firstName;
       group.appendChild(opt);
     }
     sel.appendChild(group);
@@ -79,16 +79,16 @@ function buildPublicRosterTab() {
     html += '<tr class="group-header"><td colspan="2">' + labels[role] + '</td></tr>';
 
     for (var j = 0; j < players.length; j++) {
-      var p = players[j];
+      var player = players[j];
       var roleColor =
-        p.role === 'Tank'
+        player.role === 'Tank'
           ? 'var(--tank)'
-          : p.role === 'Heal'
+          : player.role === 'Heal'
             ? 'var(--heal)'
-            : p.role === 'Ranged'
+            : player.role === 'Ranged'
               ? 'var(--ranged)'
               : 'var(--melee)';
-      var dispName = p.nick || p.firstName;
+      var dispName = player.nick || player.firstName;
       html +=
         '<tr>' +
         '<td><div class="player-name-cell">' +
@@ -102,16 +102,16 @@ function buildPublicRosterTab() {
         '<span style="font-weight:600;color:var(--text);">' +
         dispName +
         '</span>' +
-        (p.firstName !== dispName
-          ? '<span style="font-size:0.9rem;color:var(--text-muted);">(' + p.firstName + ')</span>'
+        (player.firstName !== dispName
+          ? '<span style="font-size:0.9rem;color:var(--text-muted);">(' + player.firstName + ')</span>'
           : '') +
         '</div></td>' +
         '<td>' +
-        (p.class
+        (player.class
           ? '<span class="badge badge-class" style="' +
-            classBadgeStyle(p.class) +
+            classBadgeStyle(player.class) +
             ';">' +
-            (p.spec || p.class) +
+            (player.spec || player.class) +
             '</span>'
           : '<span style="color:var(--text-dim);">-</span>') +
         '</td>' +
@@ -163,8 +163,8 @@ function buildRecentLoot() {
 
   var all = [];
   var keys = Object.keys(loot);
-  for (var i = 0; i < keys.length; i++) {
-    var key = keys[i];
+  for (var k = 0; k < keys.length; k++) {
+    var key = keys[k];
     var items = loot[key].items || [];
     var display = nameMap[key] || key.charAt(0).toUpperCase() + key.slice(1);
     for (var j = 0; j < items.length; j++) {
@@ -187,8 +187,8 @@ function buildRecentLoot() {
   if (!el || !recent.length) return;
 
   var html = '<div class="pub-loot-title">Recent Loot</div>';
-  for (var i = 0; i < recent.length; i++) {
-    var e = recent[i];
+  for (var m = 0; m < recent.length; m++) {
+    var e = recent[m];
     var diffClass =
       e.difficulty === 'Mythic' ? 'diff-mythic' : e.difficulty === 'Heroic' ? 'diff-heroic' : 'diff-other';
     html +=
