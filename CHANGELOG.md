@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.6.8] - 2026-07-04
+
+### Fixed
+- **Main swap on the signup form was an auto-filled text box** -- The field silently pre-filled with the signer's own claimed character, making it look like everyone was swapping mains by default. It's now a checkbox ("I'm switching mains this season"). If the Discord user has a claimed character, it's shown read-only; otherwise a text box appears, validated with the same name-formatting rules as character names (catches malformed entries like `mmyumbeans - Illidan` before submission).
+
+### Added
+- **Pending Roster diff preview** -- The push banner now shows how many entries are new vs. updates vs. missing signups, computed against the live roster, before confirming a push.
+- **Pending Roster conflict highlighting** -- Cards with a main swap get a highlighted border, a New/Update badge, and a note on whether the old character is still on the roster (so officers know if "remove absent" is needed to clean it up).
+- **Pending Roster sort/filter controls** -- Role chips, a "Main Swap Only" toggle, and Name/Class sort for the pending entry list.
+
+---
+
 ## [3.6.7] - 2026-06-29
 
 ### Added
