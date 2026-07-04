@@ -58,14 +58,13 @@ function buildPublicRosterTab() {
   var container = document.getElementById('rosterView');
   if (!container || !window.DATA || !DATA.roster) return;
 
-  var order = ['Tank', 'Heal', 'Melee', 'Ranged', 'Bench'];
-  var labels = { Tank: 'Tanks', Heal: 'Healers', Melee: 'Melee', Ranged: 'Ranged', Bench: 'Bench' };
-  var groups = { Tank: [], Heal: [], Melee: [], Ranged: [], Bench: [] };
+  var order = ['Tank', 'Heal', 'Melee', 'Ranged'];
+  var labels = { Tank: 'Tanks', Heal: 'Healers', Melee: 'Melee', Ranged: 'Ranged' };
+  var groups = { Tank: [], Heal: [], Melee: [], Ranged: [] };
 
   for (var i = 0; i < DATA.roster.length; i++) {
     var p = DATA.roster[i];
-    if (p.isBench) groups['Bench'].push(p);
-    else if (groups[p.role]) groups[p.role].push(p);
+    if (groups[p.role]) groups[p.role].push(p);
   }
 
   var html = '<table class="roster-table"><thead><tr><th>Player</th><th>Class / Spec</th></tr></thead><tbody>';
@@ -103,6 +102,9 @@ function buildPublicRosterTab() {
         '<span style="font-weight:600;color:var(--text);">' +
         dispName +
         '</span>' +
+        (p.firstName !== dispName
+          ? '<span style="font-size:0.9rem;color:var(--text-muted);">(' + p.firstName + ')</span>'
+          : '') +
         '</div></td>' +
         '<td>' +
         (p.class
