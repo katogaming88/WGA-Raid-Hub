@@ -343,7 +343,9 @@ function submitSignup() {
   } else if (hasClaim) {
     signupData.mainSwap = discordSession.nameRealm;
   } else {
-    var rawSwap = (document.getElementById('signupMainSwap') ? document.getElementById('signupMainSwap').value : '').trim();
+    var rawSwap = (
+      document.getElementById('signupMainSwap') ? document.getElementById('signupMainSwap').value : ''
+    ).trim();
     var swapResult = validateMainSwap(rawSwap);
     if (swapResult.error) {
       var swapErr = document.getElementById('signupError');

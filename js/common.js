@@ -361,8 +361,7 @@ function validateMainSwap(nameRealm) {
   if (!nameRealm) return { error: 'Please enter your current character as Name-Realm.' };
   var normalized = nameRealm.trim().replace(/\s*-\s*/g, '-');
   var idx = normalized.indexOf('-');
-  if (idx === -1)
-    return { error: 'Enter your current character as Name-Realm (e.g. Katorri-Khaz Modan).' };
+  if (idx === -1) return { error: 'Enter your current character as Name-Realm (e.g. Katorri-Khaz Modan).' };
 
   var name = normalized.slice(0, idx);
   var realm = normalized.slice(idx + 1);
