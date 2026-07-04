@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.7.0] - 2026-07-04
+
+### Added
+- **Signup mismatch confirmations for logged-in Discord users** -- If a signer is logged in with a claimed character, two new checks now catch likely mistakes before submission:
+  - **Different Name-Realm than the claim** -- typed at Step 1, this is checked immediately, before any class/spec is picked. A typo can land on a genuinely different real character (e.g. typing `Katorri` when your claim is `Katorrí`, which happens to be someone else's actual character on the same realm), so this is no longer silently assumed to be an intentional main swap. Step 1 shows exactly what's claimed vs. what was typed, naming both characters, and requires an explicit confirmation before continuing. If confirmed, the claimed character is automatically recorded as the main-swap source later at submission -- no manual re-typing needed.
+  - **Same Name-Realm, different class** -- the character's class can't actually change, so picking a class that doesn't match the claimed character's roster record is almost certainly a misclick. A confirmation checkbox naming both the recorded and selected class appears at the spec step and blocks progress until checked.
+  - The original checkbox + manual Name-Realm entry (added in 3.6.8) is unchanged for signers with no claimed character on file.
+
+---
+
 ## [3.6.9] - 2026-07-04
 
 ### Fixed
