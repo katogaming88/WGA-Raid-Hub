@@ -21,6 +21,7 @@ function _qaRender() {
 
 function _renderPlayerSelector() {
   var card = document.getElementById('playerSelectorCard');
+  var label = document.getElementById('playerSelectorLabel');
   var dropOuter = document.getElementById('playerDropdownOuter');
   var profileOuter = document.getElementById('myProfileOuter');
   var profileBtn = document.getElementById('myProfileBtn');
@@ -46,9 +47,11 @@ function _renderPlayerSelector() {
   }
 
   if (session.isOfficer) {
+    if (label) label.textContent = 'Look Up a Raider';
     if (dropOuter) dropOuter.style.display = '';
     if (profileOuter) profileOuter.style.display = '';
   } else {
+    if (label) label.textContent = 'Your Profile';
     if (dropOuter) dropOuter.style.display = 'none';
     if (profileOuter) profileOuter.style.display = '';
   }
