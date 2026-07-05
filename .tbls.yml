@@ -1,0 +1,11 @@
+# tbls config: generates dbdoc/ from the local Supabase Postgres stack.
+# Docs: https://github.com/k1LoW/tbls
+# Regenerate with: npm run db:docs (requires `supabase start` running).
+# The DSN is the Supabase CLI local-stack default, identical on every dev
+# machine and in CI. It is not a secret.
+dsn: postgres://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable
+docPath: dbdoc
+er:
+  format: mermaid
+include:
+  - public.*

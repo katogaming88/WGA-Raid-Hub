@@ -6,7 +6,9 @@
     "lint": "eslint js/",
     "lint:fix": "eslint --fix js/",
     "format": "prettier --write \"js/**/*.js\"",
-    "format:check": "prettier --check \"js/**/*.js\""
+    "format:check": "prettier --check \"js/**/*.js\"",
+    "db:docs": "tbls doc --force",
+    "db:docs:check": "tbls diff"
   },
   "devDependencies": {
     "eslint": "^8.57.0",
