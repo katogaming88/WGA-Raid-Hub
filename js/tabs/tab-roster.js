@@ -1063,8 +1063,6 @@ function renderDiscordClaims() {
     return;
   }
   var officerIds = window.DATA && DATA.officerDiscordIds ? DATA.officerDiscordIds : [];
-  var adminBtn = document.getElementById('adminNavBtn');
-  var isAdmin = adminBtn && adminBtn.style.display !== 'none';
   var rows = claims
     .slice()
     .sort(function (a, b) {
@@ -1076,28 +1074,11 @@ function renderDiscordClaims() {
       var roleCell = isOfficer
         ? '<span style="color:var(--heal)">Officer</span>'
         : '<span style="color:var(--text-muted)">Raider</span>';
-      var jsonId = JSON.stringify(c.discordId).replace(/"/g, '&quot;');
-      var jsonUn = JSON.stringify(c.username).replace(/"/g, '&quot;');
       var jsonNr = JSON.stringify(c.nameRealm).replace(/"/g, '&quot;');
-      var actionCell = '';
-      if (isAdmin) {
-        actionCell = isOfficer
-          ? '<button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="revokeOfficer(' +
-            jsonId +
-            ',' +
-            jsonUn +
-            ')">Revoke</button>'
-          : '<button class="btn" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="grantOfficer(' +
-            jsonId +
-            ',' +
-            jsonUn +
-            ')">Grant Officer</button>';
-      } else {
-        actionCell =
-          '<button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="removeDiscordClaim(' +
-          jsonNr +
-          ')">Remove</button>';
-      }
+      var actionCell =
+        '<button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="removeDiscordClaim(' +
+        jsonNr +
+        ')">Remove</button>';
       return (
         '<tr>' +
         '<td style="width:25%">' +

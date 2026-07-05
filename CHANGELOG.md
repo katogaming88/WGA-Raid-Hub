@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.7.3] - 2026-07-05
+
+### Changed
+- **Split officer promotion out of the Discord Claims tab** -- The Roster tab's Discord Claims sub-tab showed Grant/Revoke Officer buttons alongside claim data, duplicating the Admin tab's Officers sub-tab. Discord Claims is now purely a read-only view of who claimed what character, with a consistent "Remove" action for every viewer (previously only non-admins had it). The Officers sub-tab now lists only current officers (with Revoke), plus a new "Promote a claimed character to officer" picker built from claimed users who aren't officers yet -- replacing the old free-text Discord ID field, which required knowing a raw ID that was never shown anywhere in the UI.
+
+---
+
 ## [3.7.2] - 2026-07-05
 
 ### Fixed
