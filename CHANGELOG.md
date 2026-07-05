@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.7.2] - 2026-07-05
+
+### Fixed
+- **Stale "Who are you?" label on the profile selector card** -- The public landing page's card only ever renders once someone's already logged in with Discord and claimed a character, so asking "who are you?" no longer made sense. Now reads "Your Profile" for raiders (just their own "View My Profile" button) and "Look Up a Raider" for officers (who get the full character dropdown).
+
+---
+
 ## [3.7.1] - 2026-07-04
 
 ### Added
