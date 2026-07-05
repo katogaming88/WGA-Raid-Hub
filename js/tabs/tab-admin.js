@@ -335,41 +335,37 @@ function renderOfficerManagement() {
   var claims = window.DATA && DATA.discordClaims ? DATA.discordClaims : [];
   var officerIds = window.DATA && DATA.officerDiscordIds ? DATA.officerDiscordIds : [];
 
-  // Build rows for all claimed users
-  var rows = claims
+  var officerClaims = claims.filter(function (c) {
+    return officerIds.indexOf(c.discordId) !== -1;
+  });
+  var nonOfficerClaims = claims.filter(function (c) {
+    return officerIds.indexOf(c.discordId) === -1;
+  });
+
+  // Build rows for current officers only
+  var rows = officerClaims
     .slice()
     .sort(function (a, b) {
       return a.nameRealm.localeCompare(b.nameRealm);
     })
     .map(function (c) {
-      var isOfficer = officerIds.indexOf(c.discordId) !== -1;
       var jsonId = JSON.stringify(c.discordId).replace(/"/g, '&quot;');
       var jsonUn = JSON.stringify(c.username).replace(/"/g, '&quot;');
-      var btn = isOfficer
-        ? '<button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="revokeOfficer(' +
-          jsonId +
-          ',' +
-          jsonUn +
-          ')">Revoke</button>'
-        : '<button class="btn" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="grantOfficer(' +
-          jsonId +
-          ',' +
-          jsonUn +
-          ')">Grant Officer</button>';
+      var btn =
+        '<button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="revokeOfficer(' +
+        jsonId +
+        ',' +
+        jsonUn +
+        ')">Revoke</button>';
       return (
         '<tr>' +
-        '<td style="width:30%">' +
+        '<td style="width:35%">' +
         escHtml(c.username) +
         '</td>' +
-        '<td style="width:35%">' +
+        '<td style="width:40%">' +
         escHtml(c.nameRealm) +
         '</td>' +
-        '<td style="width:15%">' +
-        (isOfficer
-          ? '<span style="color:var(--heal)">Officer</span>'
-          : '<span style="color:var(--text-muted)">Raider</span>') +
-        '</td>' +
-        '<td style="width:20%;text-align:right">' +
+        '<td style="width:25%;text-align:right">' +
         btn +
         '</td>' +
         '</tr>'
@@ -379,25 +375,69 @@ function renderOfficerManagement() {
 
   var table = rows
     ? '<table class="loot-table" style="width:100%;table-layout:fixed;margin-bottom:1rem;">' +
-      '<thead><tr><th style="width:30%;text-align:left">Discord User</th><th style="width:35%;text-align:left">Character</th><th style="width:15%;text-align:left">Role</th><th style="width:20%"></th></tr></thead>' +
+      '<thead><tr><th style="width:35%;text-align:left">Discord User</th><th style="width:40%;text-align:left">Character</th><th style="width:25%"></th></tr></thead>' +
       '<tbody>' +
       rows +
       '</tbody></table>'
-    : '<p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">No claimed characters yet.</p>';
+    : '<p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">No officers yet.</p>';
 
-  // Manual grant by Discord ID
-  var manual =
-    '<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">' +
-    '<input type="text" id="manualOfficerDiscordId" class="roster-search-input" style="width:220px;" placeholder="Discord ID">' +
-    '<input type="text" id="manualOfficerUsername" class="roster-search-input" style="width:160px;" placeholder="Username (optional)">' +
-    '<button class="btn" onclick="grantOfficerManual()" style="padding:0.3rem 0.75rem;font-size:0.85rem;">Grant Officer</button>' +
-    '<span id="manualOfficerStatus" style="font-size:0.85rem;"></span>' +
-    '</div>';
+  // Promote a claimed character to officer
+  var options = nonOfficerClaims
+    .slice()
+    .sort(function (a, b) {
+      return a.nameRealm.localeCompare(b.nameRealm);
+    })
+    .map(function (c) {
+      var jsonId = JSON.stringify(c.discordId).replace(/"/g, '&quot;');
+      var jsonUn = JSON.stringify(c.username).replace(/"/g, '&quot;');
+      return (
+        '<option value="' +
+        escHtml(c.discordId) +
+        '" data-username="' +
+        escHtml(c.username) +
+        '">' +
+        escHtml(c.username) +
+        ' (' +
+        escHtml(c.nameRealm) +
+        ')</option>'
+      );
+    })
+    .join('');
+
+  var promote = options
+    ? '<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">' +
+      '<select id="promoteOfficerSelect" class="roster-search-input" style="width:280px;">' +
+      '<option value="">Select a claimed character...</option>' +
+      options +
+      '</select>' +
+      '<button class="btn" onclick="grantOfficerFromPicker()" style="padding:0.3rem 0.75rem;font-size:0.85rem;">Grant Officer</button>' +
+      '<span id="manualOfficerStatus" style="font-size:0.85rem;"></span>' +
+      '</div>'
+    : '<p style="color:var(--text-muted);font-size:0.9rem;">No claimed characters left to promote.</p>';
 
   el.innerHTML =
     table +
-    '<p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.5rem;">Grant officer access to a Discord user not yet in the list above:</p>' +
-    manual;
+    '<p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.5rem;">Promote a claimed character to officer:</p>' +
+    promote;
+}
+
+function grantOfficerFromPicker() {
+  var selectEl = document.getElementById('promoteOfficerSelect');
+  var stEl = document.getElementById('manualOfficerStatus');
+  var discordId = selectEl ? selectEl.value : '';
+  var username = selectEl && selectEl.selectedOptions.length ? selectEl.selectedOptions[0].dataset.username : '';
+  if (!discordId) {
+    if (stEl) {
+      stEl.style.color = 'var(--melee)';
+      stEl.textContent = 'Select a claimed character first.';
+    }
+    return;
+  }
+  if (stEl) {
+    stEl.style.color = 'var(--text-muted)';
+    stEl.textContent = 'Saving...';
+  }
+  grantOfficer(discordId, username);
 }
 
 function grantOfficer(discordId, username) {
@@ -446,51 +486,3 @@ function revokeOfficer(discordId, username) {
   );
 }
 
-function grantOfficerManual() {
-  var idEl = document.getElementById('manualOfficerDiscordId');
-  var unEl = document.getElementById('manualOfficerUsername');
-  var stEl = document.getElementById('manualOfficerStatus');
-  var discordId = idEl ? idEl.value.trim() : '';
-  var username = unEl ? unEl.value.trim() : '';
-  if (!discordId) {
-    if (stEl) {
-      stEl.style.color = 'var(--melee)';
-      stEl.textContent = 'Discord ID required.';
-    }
-    return;
-  }
-  if (stEl) {
-    stEl.style.color = 'var(--text-muted)';
-    stEl.textContent = 'Saving...';
-  }
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=addOfficer&discordId=' +
-      encodeURIComponent(discordId) +
-      '&username=' +
-      encodeURIComponent(username),
-    function (err, result) {
-      if (err || !result || !result.success) {
-        if (stEl) {
-          stEl.style.color = 'var(--melee)';
-          stEl.textContent = (result && result.error) || 'Error.';
-        }
-        return;
-      }
-      if (window.DATA) {
-        DATA.officerDiscordIds = DATA.officerDiscordIds || [];
-        if (DATA.officerDiscordIds.indexOf(discordId) === -1) DATA.officerDiscordIds.push(discordId);
-      }
-      if (idEl) idEl.value = '';
-      if (unEl) unEl.value = '';
-      if (stEl) {
-        stEl.style.color = 'var(--heal)';
-        stEl.textContent = 'Granted.';
-        setTimeout(function () {
-          if (stEl) stEl.textContent = '';
-        }, 3000);
-      }
-      renderOfficerManagement();
-    }
-  );
-}
