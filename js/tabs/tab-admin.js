@@ -485,4 +485,3 @@ function revokeOfficer(discordId, username) {
     }
   );
 }
-
