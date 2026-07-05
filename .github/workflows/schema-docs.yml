@@ -1,0 +1,32 @@
+name: Schema docs
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/roles.sql'
+      - 'supabase/config.toml'
+      - 'dbdoc/**'
+      - '.tbls.yml'
+      - '.github/workflows/schema-docs.yml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Pinned to the CLI version used to generate dbdoc/ locally. tbls also
+      # documents Supabase-internal enums (auth/storage), which come from the
+      # bundled Postgres image, so a newer CLI here can fail `tbls diff` on
+      # enum changes unrelated to our migrations. Bump this pin and regenerate
+      # docs together.
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.0
+      - name: Start local database
+        run: |
+          supabase db start
+          supabase migration up
+      - uses: k1LoW/setup-tbls@v1
+      - name: Fail if dbdoc/ is stale
+        run: tbls diff
