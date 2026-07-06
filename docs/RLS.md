@@ -14,7 +14,17 @@ This file documents the RLS policies on every public table. The generated schema
 
 ## Per-table policy matrix
 
-Every table also has a `claude_readers` SELECT policy; it is omitted from the matrix. "Officer" means team officer or team admin via `my_team_role`. "+site" means site admins are OR'd in via `is_site_admin()`.
+### How to read this matrix
+
+RLS is deny-by-default: with RLS enabled (it is, on all 20 tables), nobody can touch any row unless a policy explicitly grants it. Policies are additive; if any one policy matches an actor and operation, the action is allowed. Each row below summarizes which grants exist for that table.
+
+- **Public SELECT**: "yes" means a `FOR SELECT USING (true)` policy exists, so anyone (including anonymous visitors) can read every row. This is how the public site serves roster, loot, and standings without login. "no" means there is no public read path.
+- **Officer**: what a team officer can do, scoped to their own team's rows via `my_team_role(team_id)`. "all ops" covers SELECT, INSERT, UPDATE, and DELETE. "SELECT, UPDATE" means they can see and modify existing rows but cannot insert or delete. Team admins pass every officer check too, since these policies accept both roles.
+- **Admin**: grants beyond the officer policies. "(via officer)" means no separate admin policy exists; admins qualify under the Officer column. "all ops +site" marks admin-only write policies that officers do NOT pass. "+site" anywhere means site admins are OR'd in via `is_site_admin()` regardless of team.
+- **Notes**: exceptions and known gaps.
+- **A blank cell** means no policy grants that actor anything, so deny-by-default applies. A table with only Public SELECT (like `classes_specs` or `teams`) is a read-only lookup: everyone can read it and only the service role can write it. A table blank in every column except Notes (`site_admins`) is invisible to everyone but the actor named there.
+
+Two things the matrix hides on purpose: every table also carries a `claude_readers` SELECT policy (uniform across all 20 tables, so it is stated here instead of as a column), and per [#284](https://github.com/katogaming88/WGA-Raid-Hub/issues/284) none of the public or officer policies are reachable through the Supabase API yet, because the base grants in front of them are missing.
 
 | Table | Public SELECT | Officer | Admin | Notes |
 | --- | --- | --- | --- | --- |
