@@ -36,11 +36,19 @@ export function buildPlayerRegistry(rosterNameRealms) {
 
   return {
     // Resolve any sheet spelling (first name, First-Realm, with nickname) to
-    // the Roster's exact name_realm, or null when unknown.
+    // the Roster's exact name_realm -- or to an already-registered departed
+    // stub, so loot rows link to the same archived player their attendance
+    // created. Null when unknown everywhere.
     resolve(rawName) {
       const cleaned = stripNickname(rawName).trim();
       if (!cleaned) return null;
-      return byFullNorm.get(normName(cleaned)) || byNorm.get(normName(firstName(cleaned))) || null;
+      return (
+        byFullNorm.get(normName(cleaned)) ||
+        byNorm.get(normName(firstName(cleaned))) ||
+        stubs.get(normName(cleaned)) ||
+        stubs.get(normName(firstName(cleaned))) ||
+        null
+      );
     },
 
     // Resolve, registering a departed-player stub when unknown. The stub's

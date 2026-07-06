@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.10.0] - 2026-07-06
+
+### Added
+- **One-time data migration tooling, stage C (#320)** -- Import generators for loot, the M+ request history, and the officer audit log. Loot merges Pasted Loot and the legacy external tracker export, translates the base difficulty tier to Champion (per the decision on #320), derives legacy seasons from a date-ranges config, creates items rows for old-tier gear the Item Registry never knew, and dedupes on team-prefixed keys so a re-apply or a refresh export inserts only new rows. Audit rows keep their action text verbatim with the target/old/new/changed-by context folded into a jsonb detail blob. Timestamps convert from the spreadsheet's wall-clock timezone at apply time, so DST is Postgres's problem, not the generator's.
+
+---
+
 ## [3.9.0] - 2026-07-06
 
 ### Added
