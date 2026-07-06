@@ -3,16 +3,19 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "lint": "eslint js/ scripts/",
-    "lint:fix": "eslint --fix js/ scripts/",
-    "format": "prettier --write \"js/**/*.js\" \"scripts/**/*.js\"",
-    "format:check": "prettier --check \"js/**/*.js\" \"scripts/**/*.js\"",
+    "lint": "eslint js/ scripts/ tests/",
+    "lint:fix": "eslint --fix js/ scripts/ tests/",
+    "format": "prettier --write \"js/**/*.js\" \"scripts/**/*.js\" \"tests/**/*.js\"",
+    "format:check": "prettier --check \"js/**/*.js\" \"scripts/**/*.js\" \"tests/**/*.js\"",
+    "test:rls": "vitest run tests/rls",
     "db:docs": "tbls doc --force",
     "db:docs:check": "tbls diff",
     "db:rls": "psql \"postgres://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable\" -f docs/rls_policies.sql"
   },
   "devDependencies": {
     "eslint": "^8.57.0",
-    "prettier": "^3.9.4"
+    "pg": "^8.16.0",
+    "prettier": "^3.9.4",
+    "vitest": "^3.2.0"
   }
 }

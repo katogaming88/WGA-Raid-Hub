@@ -1,0 +1,34 @@
+name: RLS tests
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/rls-tests.yml'
+
+jobs:
+  rls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Same pin as schema-docs.yml; bump both together (see the comment
+      # there for why the CLI version is tied to the tbls docs).
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.0
+      # db reset applies roles.sql, every migration, and supabase/seed.sql,
+      # so a broken seed fails here before the tests run.
+      - name: Build database (roles, migrations, seed)
+        run: |
+          supabase db start
+          supabase db reset
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run RLS policy tests
+        run: npm run test:rls

@@ -1,0 +1,113 @@
+-- Local/CI test fixtures. Applied automatically by `supabase db reset`
+-- (config.toml [db.seed]). Never pushed to the cloud: `db push` only runs
+-- migrations.
+--
+-- Identities used by tests/rls/. The UUIDs are what the harness puts in
+-- request.jwt.claims to impersonate each person; they must stay in sync
+-- with tests/rls/helpers.js.
+--
+--   ...0001  officer on team 1
+--   ...0002  admin on team 1
+--   ...0003  raider on team 1
+--   ...0004  site admin (no team role)
+--   ...0005  officer on team 2
+
+insert into auth.users (id) values
+  ('00000000-0000-0000-0000-000000000001'),
+  ('00000000-0000-0000-0000-000000000002'),
+  ('00000000-0000-0000-0000-000000000003'),
+  ('00000000-0000-0000-0000-000000000004'),
+  ('00000000-0000-0000-0000-000000000005');
+
+insert into public.teams (id, name, slug) values
+  (1, 'Team Phoenix', 'phoenix'),
+  (2, 'Hellfire Rollers', 'hellfire');
+
+insert into public.team_members (id, team_id, discord_id, auth_user_id, role, name_realm) values
+  (1, 1, 'discord-officer-1', '00000000-0000-0000-0000-000000000001', 'officer', 'Seedofficer-Illidan'),
+  (2, 1, 'discord-admin-1',   '00000000-0000-0000-0000-000000000002', 'admin',   'Seedadmin-Illidan'),
+  (3, 1, 'discord-raider-1',  '00000000-0000-0000-0000-000000000003', 'raider',  'Seedraider-Illidan'),
+  (4, 2, 'discord-officer-2', '00000000-0000-0000-0000-000000000005', 'officer', 'Seedofficertwo-Illidan');
+
+insert into public.site_admins (id, discord_id, auth_user_id) values
+  (1, 'discord-site-admin', '00000000-0000-0000-0000-000000000004');
+
+insert into public.classes_specs (id, class, spec, role) values
+  (1, 'Mage', 'Frost', 'Ranged');
+
+insert into public.items (id, wow_item_id, name, slot, armor_type) values
+  (1, 100001, 'Seed Test Staff', 'Two-Hand', null),
+  (2, 100002, 'Seed Test Robe', 'Chest', 'Cloth');
+
+insert into public.players (id, team_id, name_realm, class_spec_id) values
+  (1, 1, 'Seedraider-Illidan', 1),
+  (2, 1, 'Seedplayertwo-Illidan', 1),
+  (3, 2, 'Seedhellfire-Illidan', 1);
+
+-- One row per gated table so the harness can prove invisibility to the
+-- wrong roles and visibility plus UPDATE reach to the right ones.
+
+insert into public.audit_log (id, team_id, actor_id, action) values
+  (1, 1, '00000000-0000-0000-0000-000000000001', 'seed_test_action');
+
+insert into public.bis_requests (id, team_id, player_id, bis_req_item_id, status) values
+  (1, 1, 1, 1, 'pending');
+
+insert into public.mplus_exclusion_requests (id, team_id, player_id, reason, status) values
+  (1, 1, 1, 'seed test reason', 'pending');
+
+insert into public.season_signups (id, team_id, signup_name_realm, class_spec_id, season, status) values
+  (1, 1, 'Seedsignup-Illidan', 1, 'seed-season', 'pending');
+
+insert into public.self_received_requests (id, team_id, player_id, self_item_id, status) values
+  (1, 1, 1, 2, 'pending');
+
+-- Rows for public-read tables the matrix test asserts are visible.
+
+insert into public.attendance (id, team_id, player_id, raid_date, status) values
+  (1, 1, 1, '2026-01-01', 'Present');
+
+insert into public.bis_items (id, player_id, item_id, obtained) values
+  (1, 1, 1, false);
+
+insert into public.scoring (id, player_id, season) values
+  (1, 1, 'seed-season');
+
+insert into public.priority_order (id, team_id, season, item_id, difficulty, rank, player_id) values
+  (1, 1, 'seed-season', 1, 'Mythic', 1, 1);
+
+insert into public.rclc_loot (id, team_id, player_id, item_id, difficulty, season) values
+  (1, 1, 1, 1, 'Mythic', 'seed-season');
+
+insert into public.player_wcl_season_perf (player_id, team_id, season) values
+  (1, 1, 'seed-season');
+
+insert into public.season_snapshots (id, team_id, season, data) values
+  (1, 1, 'seed-season', '{}');
+
+insert into public.team_settings (team_id, config) values
+  (1, '{}'),
+  (2, '{}');
+
+insert into public.item_bosses (item_id, boss) values
+  (1, 'Seed Test Boss');
+
+-- Serial sequences must move past the explicit ids above or the first
+-- INSERT a test makes collides on the primary key.
+select setval('public.teams_id_seq', 10);
+select setval('public.team_members_id_seq', 10);
+select setval('public.site_admins_id_seq', 10);
+select setval('public.classes_specs_id_seq', 10);
+select setval('public.items_id_seq', 10);
+select setval('public.players_id_seq', 10);
+select setval('public.audit_log_id_seq', 10);
+select setval('public.bis_requests_id_seq', 10);
+select setval('public.mplus_exclusion_requests_id_seq', 10);
+select setval('public.signups_id_seq', 10);
+select setval('public.self_received_requests_id_seq', 10);
+select setval('public.attendance_id_seq', 10);
+select setval('public.bis_items_id_seq', 10);
+select setval('public.scoring_id_seq', 10);
+select setval('public.priority_order_id_seq', 10);
+select setval('public.loot_id_seq', 10);
+select setval('public.season_snapshots_id_seq', 10);
