@@ -10,5 +10,18 @@
     "no-console": "off",
     "no-redeclare": "warn",
     "no-empty": "warn"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["scripts/**/*.js"],
+      "env": {
+        "browser": false,
+        "node": true,
+        "es2022": true
+      },
+      "parserOptions": {
+        "sourceType": "module"
+      }
+    }
+  ]
 }

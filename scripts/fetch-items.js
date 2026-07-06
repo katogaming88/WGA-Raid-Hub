@@ -19,11 +19,11 @@ const { writeFileSync } = require('fs');
 // Current tier: The Venomous Abyss (12.1)
 // Token prefix: Venom (e.g. Venomforged Effigy)
 const TOKEN_SLOT_KEYWORDS = {
-  effigy:  'Head',
-  icon:    'Chest',
-  idol:    'Hands',
-  relic:   'Legs',
-  remnant: 'Shoulder',
+  effigy: 'Head',
+  icon: 'Chest',
+  idol: 'Hands',
+  relic: 'Legs',
+  remnant: 'Shoulder'
 };
 // ---------------------------------------------------------------------------
 
@@ -133,40 +133,40 @@ const RAW_DATA = [
   [270915, 'Junk'],
   [270919, 'Junk'],
   [270920, 'Junk'],
-  [270923, 'Junk'],
+  [270923, 'Junk']
 ];
 
 // Slot is deterministic for these types -- no API call needed
 const SLOT_FROM_TYPE = {
-  'Trinket':          'Trinket',
-  'Amulet':           'Neck',
-  'Ring':             'Finger',
-  'Cloak':            'Back',
-  'Two-Handed Axe':   'Two-Hand',
+  Trinket: 'Trinket',
+  Amulet: 'Neck',
+  Ring: 'Finger',
+  Cloak: 'Back',
+  'Two-Handed Axe': 'Two-Hand',
   'Two-Handed Sword': 'Two-Hand',
-  'Two-Handed Mace':  'Two-Hand',
-  'Polearm':          'Two-Hand',
-  'Staff':            'Two-Hand',
-  'One-Handed Axe':   'One-Hand',
+  'Two-Handed Mace': 'Two-Hand',
+  Polearm: 'Two-Hand',
+  Staff: 'Two-Hand',
+  'One-Handed Axe': 'One-Hand',
   'One-Handed Sword': 'One-Hand',
-  'One-Handed Mace':  'One-Hand',
-  'Dagger':           'One-Hand',
-  'Warglaive':        'One-Hand',
-  'Fist Weapon':      'One-Hand',
-  'Bow':              'Ranged',
-  'Gun':              'Ranged',
-  'Shield':           'Off Hand',
-  'Off-hand Frill':   'Off Hand',
+  'One-Handed Mace': 'One-Hand',
+  Dagger: 'One-Hand',
+  Warglaive: 'One-Hand',
+  'Fist Weapon': 'One-Hand',
+  Bow: 'Ranged',
+  Gun: 'Ranged',
+  Shield: 'Off Hand',
+  'Off-hand Frill': 'Off Hand'
 };
 
 const ARMOR_SLOTS = ['Head', 'Shoulder', 'Chest', 'Wrist', 'Hands', 'Waist', 'Legs', 'Feet'];
 
 // Tier token name parsing -- slot from keyword, armor type from suffix
 const TOKEN_ARMOR_SUFFIXES = {
-  cast:   'Mail',
-  cured:  'Leather',
+  cast: 'Mail',
+  cured: 'Leather',
   forged: 'Plate',
-  woven:  'Cloth',
+  woven: 'Cloth'
 };
 
 function parseTokenFromName(name) {
@@ -174,11 +174,17 @@ function parseTokenFromName(name) {
   const lower = name.toLowerCase();
   let slot = null;
   for (const [keyword, s] of Object.entries(TOKEN_SLOT_KEYWORDS)) {
-    if (lower.includes(keyword)) { slot = s; break; }
+    if (lower.includes(keyword)) {
+      slot = s;
+      break;
+    }
   }
   let armor_type = null;
   for (const [suffix, a] of Object.entries(TOKEN_ARMOR_SUFFIXES)) {
-    if (lower.includes(suffix)) { armor_type = a; break; }
+    if (lower.includes(suffix)) {
+      armor_type = a;
+      break;
+    }
   }
   return slot && armor_type ? { slot, armor_type } : null;
 }
@@ -210,22 +216,23 @@ function csvEscape(val) {
 }
 
 async function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 async function main() {
   const filtered = RAW_DATA.filter(([, type]) => !SKIP_TYPES.has(type));
-  console.log(`Processing ${filtered.length} items (skipped ${RAW_DATA.length - filtered.length} Decor/Junk/Reagent)...\n`);
+  console.log(
+    `Processing ${filtered.length} items (skipped ${RAW_DATA.length - filtered.length} Decor/Junk/Reagent)...\n`
+  );
 
   const itemRows = [];
   const bossRows = [];
 
   for (const [id, wowheadType] of filtered) {
     try {
-      const tooltipRes = await fetch(
-        `https://www.wowhead.com/tooltip/item/${id}?dataEnv=4&locale=enus`,
-        { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; wga-item-seeder/1.0)' } }
-      );
+      const tooltipRes = await fetch(`https://www.wowhead.com/tooltip/item/${id}?dataEnv=4&locale=enus`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; wga-item-seeder/1.0)' }
+      });
       if (!tooltipRes.ok) throw new Error(`Tooltip HTTP ${tooltipRes.status}`);
       const tooltip = await tooltipRes.json();
 
@@ -236,10 +243,9 @@ async function main() {
 
       await sleep(200);
 
-      const pageRes = await fetch(
-        `https://www.wowhead.com/item=${id}`,
-        { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; wga-item-seeder/1.0)' } }
-      );
+      const pageRes = await fetch(`https://www.wowhead.com/item=${id}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; wga-item-seeder/1.0)' }
+      });
       const pageHtml = await pageRes.text();
       const boss = parseBossFromPage(pageHtml);
 
@@ -248,7 +254,9 @@ async function main() {
         if (token) {
           itemRows.push({ wow_item_id: id, name, slot: token.slot, armor_type: token.armor_type });
           if (boss) bossRows.push({ wow_item_id: id, boss });
-          console.log(`[OK]   ${id}: ${name} | slot: ${token.slot} | armor: ${token.armor_type} | boss: ${boss ?? '(not found)'}`);
+          console.log(
+            `[OK]   ${id}: ${name} | slot: ${token.slot} | armor: ${token.armor_type} | boss: ${boss ?? '(not found)'}`
+          );
         } else if (boss) {
           itemRows.push({ wow_item_id: id, name, slot: slot ?? '', armor_type });
           bossRows.push({ wow_item_id: id, boss });
@@ -273,24 +281,19 @@ async function main() {
 
   const itemsCsv = [
     'wow_item_id,name,slot,armor_type,sort_id',
-    ...itemRows.map(r =>
-      `${r.wow_item_id},${csvEscape(r.name)},${csvEscape(r.slot)},${csvEscape(r.armor_type)},`
-    ),
+    ...itemRows.map((r) => `${r.wow_item_id},${csvEscape(r.name)},${csvEscape(r.slot)},${csvEscape(r.armor_type)},`)
   ].join('\n');
   writeFileSync('items.csv', itemsCsv, 'utf8');
 
   // item_bosses uses wow_item_id as a placeholder.
   // After importing items.csv, replace wow_item_id with the DB-assigned `id`.
-  const bossesCsv = [
-    'wow_item_id,boss',
-    ...bossRows.map(r => `${r.wow_item_id},${csvEscape(r.boss)}`),
-  ].join('\n');
+  const bossesCsv = ['wow_item_id,boss', ...bossRows.map((r) => `${r.wow_item_id},${csvEscape(r.boss)}`)].join('\n');
   writeFileSync('item_bosses_raw.csv', bossesCsv, 'utf8');
 
   console.log(`\nDone.`);
   console.log(`  items.csv          -- ${itemRows.length} rows`);
   console.log(`  item_bosses_raw.csv -- ${bossRows.length} rows`);
-  if (itemRows.some(r => !r.slot)) {
+  if (itemRows.some((r) => !r.slot)) {
     console.log('\nWARNING: Some items have no slot. Check rows with empty slot in items.csv.');
   }
 }
