@@ -1,0 +1,2873 @@
+{
+  "name": "postgres",
+  "tables": [
+    {
+      "name": "public.attendance",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('attendance_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "raid_date",
+          "type": "date",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'Present'::text"
+        },
+        {
+          "name": "report_excluded",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "report_id",
+          "type": "text",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "attendance_pkey",
+          "def": "CREATE UNIQUE INDEX attendance_pkey ON public.attendance USING btree (id)",
+          "table": "public.attendance",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "attendance_team_id_player_id_raid_date_key",
+          "def": "CREATE UNIQUE INDEX attendance_team_id_player_id_raid_date_key ON public.attendance USING btree (team_id, player_id, raid_date)",
+          "table": "public.attendance",
+          "columns": [
+            "team_id",
+            "player_id",
+            "raid_date"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "attendance_status_check",
+          "type": "CHECK",
+          "def": "CHECK ((status = ANY (ARRAY['Present'::text, 'Bench'::text, 'Medical Leave'::text, 'Excused'::text, 'Extended Leave'::text, 'No Show'::text, 'Not on Roster'::text])))",
+          "table": "public.attendance",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "attendance_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.attendance",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "attendance_team_id_player_id_raid_date_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, player_id, raid_date)",
+          "table": "public.attendance",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "player_id",
+            "raid_date"
+          ]
+        },
+        {
+          "name": "attendance_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.attendance",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "attendance_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.attendance",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_attendance_team_id_check",
+          "def": "CREATE TRIGGER trg_attendance_team_id_check BEFORE INSERT OR UPDATE ON public.attendance FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        }
+      ]
+    },
+    {
+      "name": "public.audit_log",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('audit_log_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "actor_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "target_type",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "target_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "detail",
+          "type": "jsonb",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "audit_log_pkey",
+          "def": "CREATE UNIQUE INDEX audit_log_pkey ON public.audit_log USING btree (id)",
+          "table": "public.audit_log",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "audit_log_actor_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (actor_id) REFERENCES auth.users(id) ON DELETE SET NULL",
+          "table": "public.audit_log",
+          "referenced_table": "auth.users",
+          "columns": [
+            "actor_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "audit_log_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.audit_log",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "audit_log_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.audit_log",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.bis_items",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('bis_items_id_seq'::regclass)"
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "item_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "obtained",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "bis_items_no_dupe_item_key",
+          "def": "CREATE UNIQUE INDEX bis_items_no_dupe_item_key ON public.bis_items USING btree (player_id, item_id)",
+          "table": "public.bis_items",
+          "columns": [
+            "player_id",
+            "item_id"
+          ]
+        },
+        {
+          "name": "bis_items_pkey",
+          "def": "CREATE UNIQUE INDEX bis_items_pkey ON public.bis_items USING btree (id)",
+          "table": "public.bis_items",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "bis_items_no_dupe_item_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (player_id, item_id)",
+          "table": "public.bis_items",
+          "referenced_table": "",
+          "columns": [
+            "player_id",
+            "item_id"
+          ]
+        },
+        {
+          "name": "bis_items_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.bis_items",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "bis_items_item_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL",
+          "table": "public.bis_items",
+          "referenced_table": "public.items",
+          "columns": [
+            "item_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "bis_items_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.bis_items",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_bis_items_updated_at",
+          "def": "CREATE TRIGGER trg_bis_items_updated_at BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.bis_requests",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('bis_requests_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "bis_req_item_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "submitted_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'pending'::text"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "bis_requests_pkey",
+          "def": "CREATE UNIQUE INDEX bis_requests_pkey ON public.bis_requests USING btree (id)",
+          "table": "public.bis_requests",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "bis_requests_status_check",
+          "type": "CHECK",
+          "def": "CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])))",
+          "table": "public.bis_requests",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "bis_requests_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.bis_requests",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "bis_requests_bis_req_item_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (bis_req_item_id) REFERENCES items(id) ON DELETE SET NULL",
+          "table": "public.bis_requests",
+          "referenced_table": "public.items",
+          "columns": [
+            "bis_req_item_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "bis_requests_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL",
+          "table": "public.bis_requests",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "bis_requests_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.bis_requests",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_bis_requests_team_id_check",
+          "def": "CREATE TRIGGER trg_bis_requests_team_id_check BEFORE INSERT OR UPDATE ON public.bis_requests FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        }
+      ]
+    },
+    {
+      "name": "public.classes_specs",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('classes_specs_id_seq'::regclass)"
+        },
+        {
+          "name": "class",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "spec",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "classes_specs_pkey",
+          "def": "CREATE UNIQUE INDEX classes_specs_pkey ON public.classes_specs USING btree (id)",
+          "table": "public.classes_specs",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "unique_spec_key",
+          "def": "CREATE UNIQUE INDEX unique_spec_key ON public.classes_specs USING btree (class, spec)",
+          "table": "public.classes_specs",
+          "columns": [
+            "class",
+            "spec"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "classes_specs_role_check",
+          "type": "CHECK",
+          "def": "CHECK ((role = ANY (ARRAY['Tank'::text, 'Heal'::text, 'Melee'::text, 'Ranged'::text])))",
+          "table": "public.classes_specs",
+          "referenced_table": "",
+          "columns": [
+            "role"
+          ]
+        },
+        {
+          "name": "classes_specs_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.classes_specs",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "unique_spec_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (class, spec)",
+          "table": "public.classes_specs",
+          "referenced_table": "",
+          "columns": [
+            "class",
+            "spec"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.item_bosses",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "item_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "boss",
+          "type": "text",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "item_bosses_pkey",
+          "def": "CREATE UNIQUE INDEX item_bosses_pkey ON public.item_bosses USING btree (item_id, boss)",
+          "table": "public.item_bosses",
+          "columns": [
+            "item_id",
+            "boss"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "item_bosses_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (item_id, boss)",
+          "table": "public.item_bosses",
+          "referenced_table": "",
+          "columns": [
+            "item_id",
+            "boss"
+          ]
+        },
+        {
+          "name": "item_bosses_item_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE",
+          "table": "public.item_bosses",
+          "referenced_table": "public.items",
+          "columns": [
+            "item_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.items",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('items_id_seq'::regclass)"
+        },
+        {
+          "name": "wow_item_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "slot",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "armor_type",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "sort_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "is_placeholder",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "items_pkey",
+          "def": "CREATE UNIQUE INDEX items_pkey ON public.items USING btree (id)",
+          "table": "public.items",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "items_armor_type_check",
+          "type": "CHECK",
+          "def": "CHECK ((armor_type = ANY (ARRAY['Plate'::text, 'Mail'::text, 'Leather'::text, 'Cloth'::text])))",
+          "table": "public.items",
+          "referenced_table": "",
+          "columns": [
+            "armor_type"
+          ]
+        },
+        {
+          "name": "items_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.items",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.rclc_loot",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('loot_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "item_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "difficulty",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "awarded_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "rclc_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "dedupe_key",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "boss",
+          "type": "text",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "loot_dedupe_key_key",
+          "def": "CREATE UNIQUE INDEX loot_dedupe_key_key ON public.rclc_loot USING btree (dedupe_key)",
+          "table": "public.rclc_loot",
+          "columns": [
+            "dedupe_key"
+          ]
+        },
+        {
+          "name": "loot_pkey",
+          "def": "CREATE UNIQUE INDEX loot_pkey ON public.rclc_loot USING btree (id)",
+          "table": "public.rclc_loot",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "loot_difficulty_check",
+          "type": "CHECK",
+          "def": "CHECK ((difficulty = ANY (ARRAY['Champion'::text, 'Heroic'::text, 'Mythic'::text])))",
+          "table": "public.rclc_loot",
+          "referenced_table": "",
+          "columns": [
+            "difficulty"
+          ]
+        },
+        {
+          "name": "loot_item_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL",
+          "table": "public.rclc_loot",
+          "referenced_table": "public.items",
+          "columns": [
+            "item_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "loot_dedupe_key_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (dedupe_key)",
+          "table": "public.rclc_loot",
+          "referenced_table": "",
+          "columns": [
+            "dedupe_key"
+          ]
+        },
+        {
+          "name": "loot_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.rclc_loot",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "loot_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL",
+          "table": "public.rclc_loot",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "loot_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.rclc_loot",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_rclc_loot_team_id_check",
+          "def": "CREATE TRIGGER trg_rclc_loot_team_id_check BEFORE INSERT OR UPDATE ON public.rclc_loot FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        }
+      ]
+    },
+    {
+      "name": "public.mplus_exclusion_requests",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('mplus_exclusion_requests_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "submitted_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'pending'::text"
+        },
+        {
+          "name": "raiderio_url",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "officer_notes",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "mplus_exclusion_requests_pkey",
+          "def": "CREATE UNIQUE INDEX mplus_exclusion_requests_pkey ON public.mplus_exclusion_requests USING btree (id)",
+          "table": "public.mplus_exclusion_requests",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mplus_excl_one_pending_per_player",
+          "def": "CREATE UNIQUE INDEX mplus_excl_one_pending_per_player ON public.mplus_exclusion_requests USING btree (player_id) WHERE (status = 'pending'::text)",
+          "table": "public.mplus_exclusion_requests",
+          "columns": [
+            "player_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "mplus_exclusion_requests_status_check",
+          "type": "CHECK",
+          "def": "CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])))",
+          "table": "public.mplus_exclusion_requests",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "mplus_exclusion_requests_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.mplus_exclusion_requests",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mplus_exclusion_requests_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL",
+          "table": "public.mplus_exclusion_requests",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mplus_exclusion_requests_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.mplus_exclusion_requests",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_mplus_exclusion_requests_team_id_check",
+          "def": "CREATE TRIGGER trg_mplus_exclusion_requests_team_id_check BEFORE INSERT OR UPDATE ON public.mplus_exclusion_requests FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        },
+        {
+          "name": "trg_mplus_exclusion_requests_updated_at",
+          "def": "CREATE TRIGGER trg_mplus_exclusion_requests_updated_at BEFORE UPDATE ON public.mplus_exclusion_requests FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.player_wcl_season_perf",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "best_perf_avg",
+          "type": "numeric",
+          "nullable": true
+        },
+        {
+          "name": "median_perf_avg",
+          "type": "numeric",
+          "nullable": true
+        },
+        {
+          "name": "fetched_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "player_wcl_season_perf_pkey",
+          "def": "CREATE UNIQUE INDEX player_wcl_season_perf_pkey ON public.player_wcl_season_perf USING btree (id)",
+          "table": "public.player_wcl_season_perf",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "player_wcl_season_perf_player_id_season_key",
+          "def": "CREATE UNIQUE INDEX player_wcl_season_perf_player_id_season_key ON public.player_wcl_season_perf USING btree (player_id, season)",
+          "table": "public.player_wcl_season_perf",
+          "columns": [
+            "player_id",
+            "season"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "player_wcl_season_perf_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.player_wcl_season_perf",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "player_wcl_season_perf_player_id_season_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (player_id, season)",
+          "table": "public.player_wcl_season_perf",
+          "referenced_table": "",
+          "columns": [
+            "player_id",
+            "season"
+          ]
+        },
+        {
+          "name": "player_wcl_season_perf_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.player_wcl_season_perf",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "player_wcl_season_perf_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.player_wcl_season_perf",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.players",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('players_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "name_realm",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "class_spec_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "is_trial",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "is_bench",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "nickname",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "bis_link",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "join_date",
+          "type": "date",
+          "nullable": true
+        },
+        {
+          "name": "m_plus_excluded",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "m_plus_note",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "team_member_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "players_pkey",
+          "def": "CREATE UNIQUE INDEX players_pkey ON public.players USING btree (id)",
+          "table": "public.players",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "players_team_id_name_realm_key",
+          "def": "CREATE UNIQUE INDEX players_team_id_name_realm_key ON public.players USING btree (team_id, name_realm)",
+          "table": "public.players",
+          "columns": [
+            "team_id",
+            "name_realm"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "players_class_spec_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE",
+          "table": "public.players",
+          "referenced_table": "public.classes_specs",
+          "columns": [
+            "class_spec_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "players_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.players",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "players_team_id_name_realm_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, name_realm)",
+          "table": "public.players",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "name_realm"
+          ]
+        },
+        {
+          "name": "players_team_member_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE SET NULL",
+          "table": "public.players",
+          "referenced_table": "public.team_members",
+          "columns": [
+            "team_member_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "players_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.players",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_players_updated_at",
+          "def": "CREATE TRIGGER trg_players_updated_at BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.priority_order",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('priority_order_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "item_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "difficulty",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "rank",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "priority_order_no_dupe_player_key",
+          "def": "CREATE UNIQUE INDEX priority_order_no_dupe_player_key ON public.priority_order USING btree (team_id, season, item_id, difficulty, player_id)",
+          "table": "public.priority_order",
+          "columns": [
+            "team_id",
+            "season",
+            "item_id",
+            "difficulty",
+            "player_id"
+          ]
+        },
+        {
+          "name": "priority_order_pkey",
+          "def": "CREATE UNIQUE INDEX priority_order_pkey ON public.priority_order USING btree (id)",
+          "table": "public.priority_order",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "priority_order_team_id_season_item_difficulty_rank_key",
+          "def": "CREATE UNIQUE INDEX priority_order_team_id_season_item_difficulty_rank_key ON public.priority_order USING btree (team_id, season, item_id, difficulty, rank)",
+          "table": "public.priority_order",
+          "columns": [
+            "team_id",
+            "season",
+            "item_id",
+            "difficulty",
+            "rank"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "priority_order_difficulty_check",
+          "type": "CHECK",
+          "def": "CHECK ((difficulty = ANY (ARRAY['Heroic'::text, 'Mythic'::text])))",
+          "table": "public.priority_order",
+          "referenced_table": "",
+          "columns": [
+            "difficulty"
+          ]
+        },
+        {
+          "name": "priority_order_item_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (item_id) REFERENCES items(id)",
+          "table": "public.priority_order",
+          "referenced_table": "public.items",
+          "columns": [
+            "item_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "priority_order_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.priority_order",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "priority_order_no_dupe_player_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, season, item_id, difficulty, player_id)",
+          "table": "public.priority_order",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "season",
+            "item_id",
+            "difficulty",
+            "player_id"
+          ]
+        },
+        {
+          "name": "priority_order_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.priority_order",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "priority_order_team_id_season_item_difficulty_rank_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, season, item_id, difficulty, rank)",
+          "table": "public.priority_order",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "season",
+            "item_id",
+            "difficulty",
+            "rank"
+          ]
+        },
+        {
+          "name": "priority_order_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.priority_order",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_priority_order_updated_at",
+          "def": "CREATE TRIGGER trg_priority_order_updated_at BEFORE UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_priority_order_team_id_check",
+          "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        }
+      ]
+    },
+    {
+      "name": "public.scoring",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('scoring_id_seq'::regclass)"
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "recent_score",
+          "type": "numeric",
+          "nullable": true
+        },
+        {
+          "name": "trend_score",
+          "type": "numeric",
+          "nullable": true
+        },
+        {
+          "name": "best_score",
+          "type": "numeric",
+          "nullable": true
+        },
+        {
+          "name": "performance_score",
+          "type": "numeric",
+          "nullable": true
+        },
+        {
+          "name": "attendance_score",
+          "type": "numeric",
+          "nullable": true
+        },
+        {
+          "name": "attendance_pct",
+          "type": "numeric",
+          "nullable": true
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "scoring_pkey",
+          "def": "CREATE UNIQUE INDEX scoring_pkey ON public.scoring USING btree (id)",
+          "table": "public.scoring",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "scoring_player_id_season_key",
+          "def": "CREATE UNIQUE INDEX scoring_player_id_season_key ON public.scoring USING btree (player_id, season)",
+          "table": "public.scoring",
+          "columns": [
+            "player_id",
+            "season"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "scoring_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.scoring",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "scoring_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.scoring",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "scoring_player_id_season_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (player_id, season)",
+          "table": "public.scoring",
+          "referenced_table": "",
+          "columns": [
+            "player_id",
+            "season"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_scoring_updated_at",
+          "def": "CREATE TRIGGER trg_scoring_updated_at BEFORE UPDATE ON public.scoring FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.season_signups",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('signups_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "signup_name_realm",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "class_spec_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "off_specs",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "main_swap",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "player_note",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "submitted_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'pending'::text"
+        },
+        {
+          "name": "swap_class_spec_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "reviewed_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "reviewed_by",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "signup_officer_note",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "approved_player_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "signups_pkey",
+          "def": "CREATE UNIQUE INDEX signups_pkey ON public.season_signups USING btree (id)",
+          "table": "public.season_signups",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "season_signups_status_check",
+          "type": "CHECK",
+          "def": "CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text, 'added'::text])))",
+          "table": "public.season_signups",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "season_signups_swap_class_spec_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (swap_class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE",
+          "table": "public.season_signups",
+          "referenced_table": "public.classes_specs",
+          "columns": [
+            "swap_class_spec_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "signups_class_spec_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE",
+          "table": "public.season_signups",
+          "referenced_table": "public.classes_specs",
+          "columns": [
+            "class_spec_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "season_signups_approved_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (approved_player_id) REFERENCES players(id) ON DELETE SET NULL",
+          "table": "public.season_signups",
+          "referenced_table": "public.players",
+          "columns": [
+            "approved_player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "signups_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.season_signups",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "season_signups_reviewed_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (reviewed_by) REFERENCES team_members(id) ON DELETE SET NULL",
+          "table": "public.season_signups",
+          "referenced_table": "public.team_members",
+          "columns": [
+            "reviewed_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "signups_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.season_signups",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_season_signups_updated_at",
+          "def": "CREATE TRIGGER trg_season_signups_updated_at BEFORE UPDATE ON public.season_signups FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.season_snapshots",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('season_snapshots_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "snapped_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "data",
+          "type": "jsonb",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "season_snapshots_pkey",
+          "def": "CREATE UNIQUE INDEX season_snapshots_pkey ON public.season_snapshots USING btree (id)",
+          "table": "public.season_snapshots",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "season_snapshots_team_id_season_key",
+          "def": "CREATE UNIQUE INDEX season_snapshots_team_id_season_key ON public.season_snapshots USING btree (team_id, season)",
+          "table": "public.season_snapshots",
+          "columns": [
+            "team_id",
+            "season"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "season_snapshots_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.season_snapshots",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "season_snapshots_team_id_season_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, season)",
+          "table": "public.season_snapshots",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "season"
+          ]
+        },
+        {
+          "name": "season_snapshots_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.season_snapshots",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.self_received_requests",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('self_received_requests_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "self_item_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "submitted_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'pending'::text"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "self_received_requests_pkey",
+          "def": "CREATE UNIQUE INDEX self_received_requests_pkey ON public.self_received_requests USING btree (id)",
+          "table": "public.self_received_requests",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "self_received_requests_status_check",
+          "type": "CHECK",
+          "def": "CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])))",
+          "table": "public.self_received_requests",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "self_received_requests_self_item_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (self_item_id) REFERENCES items(id) ON DELETE SET NULL",
+          "table": "public.self_received_requests",
+          "referenced_table": "public.items",
+          "columns": [
+            "self_item_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "self_received_requests_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL",
+          "table": "public.self_received_requests",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "self_received_requests_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.self_received_requests",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "self_received_requests_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.self_received_requests",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_self_received_requests_team_id_check",
+          "def": "CREATE TRIGGER trg_self_received_requests_team_id_check BEFORE INSERT OR UPDATE ON public.self_received_requests FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        }
+      ]
+    },
+    {
+      "name": "public.site_admins",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('site_admins_id_seq'::regclass)"
+        },
+        {
+          "name": "discord_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "site_admins_discord_id_key",
+          "def": "CREATE UNIQUE INDEX site_admins_discord_id_key ON public.site_admins USING btree (discord_id)",
+          "table": "public.site_admins",
+          "columns": [
+            "discord_id"
+          ]
+        },
+        {
+          "name": "site_admins_pkey",
+          "def": "CREATE UNIQUE INDEX site_admins_pkey ON public.site_admins USING btree (id)",
+          "table": "public.site_admins",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "site_admins_auth_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL",
+          "table": "public.site_admins",
+          "referenced_table": "auth.users",
+          "columns": [
+            "auth_user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "site_admins_discord_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (discord_id)",
+          "table": "public.site_admins",
+          "referenced_table": "",
+          "columns": [
+            "discord_id"
+          ]
+        },
+        {
+          "name": "site_admins_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.site_admins",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.team_members",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('team_members_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "discord_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "name_realm",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_members_pkey",
+          "def": "CREATE UNIQUE INDEX team_members_pkey ON public.team_members USING btree (id)",
+          "table": "public.team_members",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_members_team_id_discord_id_key",
+          "def": "CREATE UNIQUE INDEX team_members_team_id_discord_id_key ON public.team_members USING btree (team_id, discord_id)",
+          "table": "public.team_members",
+          "columns": [
+            "team_id",
+            "discord_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_members_role_check",
+          "type": "CHECK",
+          "def": "CHECK ((role = ANY (ARRAY['raider'::text, 'officer'::text, 'admin'::text])))",
+          "table": "public.team_members",
+          "referenced_table": "",
+          "columns": [
+            "role"
+          ]
+        },
+        {
+          "name": "team_members_auth_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL",
+          "table": "public.team_members",
+          "referenced_table": "auth.users",
+          "columns": [
+            "auth_user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_members_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.team_members",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_members_team_id_discord_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, discord_id)",
+          "table": "public.team_members",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "discord_id"
+          ]
+        },
+        {
+          "name": "team_members_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.team_members",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_team_members_updated_at",
+          "def": "CREATE TRIGGER trg_team_members_updated_at BEFORE UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.team_settings",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "config",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "settings_pkey",
+          "def": "CREATE UNIQUE INDEX settings_pkey ON public.team_settings USING btree (team_id)",
+          "table": "public.team_settings",
+          "columns": [
+            "team_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "settings_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (team_id)",
+          "table": "public.team_settings",
+          "referenced_table": "",
+          "columns": [
+            "team_id"
+          ]
+        },
+        {
+          "name": "settings_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.team_settings",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_team_settings_updated_at",
+          "def": "CREATE TRIGGER trg_team_settings_updated_at BEFORE UPDATE ON public.team_settings FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.teams",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('teams_id_seq'::regclass)"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "slug",
+          "type": "text",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "teams_name_key",
+          "def": "CREATE UNIQUE INDEX teams_name_key ON public.teams USING btree (name)",
+          "table": "public.teams",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "teams_pkey",
+          "def": "CREATE UNIQUE INDEX teams_pkey ON public.teams USING btree (id)",
+          "table": "public.teams",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "teams_slug_key",
+          "def": "CREATE UNIQUE INDEX teams_slug_key ON public.teams USING btree (slug)",
+          "table": "public.teams",
+          "columns": [
+            "slug"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "teams_name_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (name)",
+          "table": "public.teams",
+          "referenced_table": "",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "teams_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.teams",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "teams_slug_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (slug)",
+          "table": "public.teams",
+          "referenced_table": "",
+          "columns": [
+            "slug"
+          ]
+        }
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "table": "public.attendance",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.attendance",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.audit_log",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.bis_items",
+      "columns": [
+        "item_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.items",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.bis_items",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.bis_requests",
+      "columns": [
+        "bis_req_item_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.items",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (bis_req_item_id) REFERENCES items(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.bis_requests",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.bis_requests",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.item_bosses",
+      "columns": [
+        "item_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.items",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.rclc_loot",
+      "columns": [
+        "item_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.items",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.rclc_loot",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.rclc_loot",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.mplus_exclusion_requests",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.mplus_exclusion_requests",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.player_wcl_season_perf",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.player_wcl_season_perf",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.players",
+      "columns": [
+        "class_spec_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.classes_specs",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
+    },
+    {
+      "table": "public.players",
+      "columns": [
+        "team_member_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.team_members",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.players",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.priority_order",
+      "columns": [
+        "item_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.items",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (item_id) REFERENCES items(id)"
+    },
+    {
+      "table": "public.priority_order",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.priority_order",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.scoring",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.season_signups",
+      "columns": [
+        "swap_class_spec_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.classes_specs",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (swap_class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
+    },
+    {
+      "table": "public.season_signups",
+      "columns": [
+        "class_spec_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.classes_specs",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
+    },
+    {
+      "table": "public.season_signups",
+      "columns": [
+        "approved_player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (approved_player_id) REFERENCES players(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.season_signups",
+      "columns": [
+        "reviewed_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.team_members",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (reviewed_by) REFERENCES team_members(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.season_signups",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.season_snapshots",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.self_received_requests",
+      "columns": [
+        "self_item_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.items",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (self_item_id) REFERENCES items(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.self_received_requests",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.self_received_requests",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_members",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_settings",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    }
+  ],
+  "functions": [
+    {
+      "name": "public.check_team_id_matches_player",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.is_site_admin",
+      "return_type": "bool",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.link_auth_user_to_member",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.my_team_role",
+      "return_type": "text",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.rls_auto_enable",
+      "return_type": "event_trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_updated_at",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    }
+  ],
+  "enums": [
+    {
+      "name": "auth.aal_level",
+      "values": [
+        "aal1",
+        "aal2",
+        "aal3"
+      ]
+    },
+    {
+      "name": "auth.code_challenge_method",
+      "values": [
+        "plain",
+        "s256"
+      ]
+    },
+    {
+      "name": "auth.factor_status",
+      "values": [
+        "unverified",
+        "verified"
+      ]
+    },
+    {
+      "name": "auth.factor_type",
+      "values": [
+        "phone",
+        "totp",
+        "webauthn"
+      ]
+    },
+    {
+      "name": "auth.oauth_authorization_status",
+      "values": [
+        "approved",
+        "denied",
+        "expired",
+        "pending"
+      ]
+    },
+    {
+      "name": "auth.oauth_client_type",
+      "values": [
+        "confidential",
+        "public"
+      ]
+    },
+    {
+      "name": "auth.oauth_registration_type",
+      "values": [
+        "dynamic",
+        "manual"
+      ]
+    },
+    {
+      "name": "auth.oauth_response_type",
+      "values": [
+        "code"
+      ]
+    },
+    {
+      "name": "auth.one_time_token_type",
+      "values": [
+        "confirmation_token",
+        "email_change_token_current",
+        "email_change_token_new",
+        "phone_change_token",
+        "reauthentication_token",
+        "recovery_token"
+      ]
+    },
+    {
+      "name": "net.request_status",
+      "values": [
+        "ERROR",
+        "PENDING",
+        "SUCCESS"
+      ]
+    },
+    {
+      "name": "realtime.action",
+      "values": [
+        "DELETE",
+        "ERROR",
+        "INSERT",
+        "TRUNCATE",
+        "UPDATE"
+      ]
+    },
+    {
+      "name": "realtime.equality_op",
+      "values": [
+        "eq",
+        "gt",
+        "gte",
+        "ilike",
+        "imatch",
+        "in",
+        "is",
+        "isdistinct",
+        "like",
+        "lt",
+        "lte",
+        "match",
+        "neq"
+      ]
+    },
+    {
+      "name": "storage.buckettype",
+      "values": [
+        "ANALYTICS",
+        "STANDARD",
+        "VECTOR"
+      ]
+    }
+  ],
+  "driver": {
+    "name": "postgres",
+    "database_version": "PostgreSQL 17.6 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit",
+    "meta": {
+      "current_schema": "public",
+      "search_paths": [
+        "\"\\$user\"",
+        "public",
+        "extensions"
+      ],
+      "dict": {
+        "Functions": "Stored procedures and functions"
+      }
+    }
+  }
+}

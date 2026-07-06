@@ -54,7 +54,9 @@ When merging a PR:
 | `css/styles.css` | All styles |
 | `css/officer.css` | Stub for officer-specific styles (future split) |
 | `PhoenixRosterWebApp.gs` | Google Apps Script (data layer) |
-| `supabase/` | Supabase CLI project: local dev stack config and (soon) schema migrations |
+| `supabase/` | Supabase CLI project: local dev stack config and schema migrations |
+| `dbdoc/` | Generated schema docs (tbls). Never edit by hand; regenerate with `npm run db:docs` |
+| `docs/RLS.md` | Hand-maintained RLS policy reference (tbls cannot generate this) |
 
 ## Local development database (Supabase)
 
@@ -62,6 +64,15 @@ The Supabase migration develops all schema changes against a local stack running
 Docker before anything touches the cloud project. Setup from scratch (Docker,
 Supabase CLI, starting the stack, linking to the cloud project) is documented
 step by step in [docs/supabase-local-dev-setup.md](docs/supabase-local-dev-setup.md).
+
+PRs that change `supabase/migrations/` must also:
+
+- Regenerate the schema docs: `supabase db reset`, then `npm run db:docs`, and
+  commit the `dbdoc/` changes (CI fails stale docs)
+- Update [docs/RLS.md](docs/RLS.md) if the migration adds, alters, or drops an
+  RLS policy (CI checks this too)
+- Regenerate the policy export if policies changed: `npm run db:rls`, and
+  commit `docs/rls_policies.csv` (CI fails a stale CSV)
 
 ## Google Apps Script changes
 

@@ -73,11 +73,13 @@ database:
   - changed-files:
     - any-glob-to-any-file:
       - supabase/**
+      - dbdoc/**
 
 documentation:
   - changed-files:
     - any-glob-to-any-file:
       - docs/**
+      - dbdoc/**
       - '*.md'
 
 skip-changelog:

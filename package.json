@@ -6,7 +6,10 @@
     "lint": "eslint js/",
     "lint:fix": "eslint --fix js/",
     "format": "prettier --write \"js/**/*.js\"",
-    "format:check": "prettier --check \"js/**/*.js\""
+    "format:check": "prettier --check \"js/**/*.js\"",
+    "db:docs": "tbls doc --force",
+    "db:docs:check": "tbls diff",
+    "db:rls": "psql \"postgres://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable\" -f docs/rls_policies.sql"
   },
   "devDependencies": {
     "eslint": "^8.57.0",

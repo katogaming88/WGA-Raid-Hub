@@ -1,0 +1,56 @@
+name: Schema docs
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/roles.sql'
+      - 'supabase/config.toml'
+      - 'dbdoc/**'
+      - '.tbls.yml'
+      - 'docs/rls_policies.*'
+      - '.github/workflows/schema-docs.yml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # tbls cannot introspect RLS policies, so dbdoc/ never covers them.
+      # docs/RLS.md is the hand-maintained policy reference; this step keeps
+      # it honest by failing any PR that touches policy SQL without touching
+      # the reference.
+      - name: Require RLS.md update when policies change
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA" "$HEAD_SHA"
+          policy_diff=$(git diff "$BASE_SHA" "$HEAD_SHA" -- supabase/migrations/ | grep -iE 'POLICY|ROW LEVEL SECURITY' || true)
+          changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          if [ -n "$policy_diff" ] && ! echo "$changed" | grep -qx 'docs/RLS.md'; then
+            echo "This PR changes RLS policy SQL in supabase/migrations/ but does not update docs/RLS.md."
+            echo "Update the policy matrix in docs/RLS.md in the same PR."
+            exit 1
+          fi
+      # Pinned to the CLI version used to generate dbdoc/ locally. tbls also
+      # documents Supabase-internal enums (auth/storage), which come from the
+      # bundled Postgres image, so a newer CLI here can fail `tbls diff` on
+      # enum changes unrelated to our migrations. Bump this pin and regenerate
+      # docs together.
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.0
+      - name: Start local database
+        run: |
+          supabase db start
+          supabase migration up
+      - uses: k1LoW/setup-tbls@v1
+      - name: Fail if dbdoc/ is stale
+        run: tbls diff
+      # Raw policy export; regenerated here and compared against the committed
+      # file so it cannot drift. psql is preinstalled on ubuntu runners.
+      - name: Fail if docs/rls_policies.csv is stale
+        run: |
+          psql "postgres://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable" -f docs/rls_policies.sql
+          git diff --exit-code docs/rls_policies.csv

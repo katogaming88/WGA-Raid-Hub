@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.7.4] - 2026-07-05
+
+### Added
+- **Generated database schema docs** -- New `dbdoc/` directory with a markdown page and Mermaid ER diagram per table, generated from the migrations with [tbls](https://github.com/k1LoW/tbls) (`npm run db:docs`). A new schema-docs CI check fails any PR whose migrations no longer match the committed docs, so the diagrams cannot silently drift.
+- **RLS policy reference** -- `docs/RLS.md` documents the row-level-security policy matrix for all 20 tables (tbls cannot introspect policies). CI requires it to be updated whenever a migration touches policy SQL. Writing it surfaced two policy defects on `player_wcl_season_perf`, filed as #293.
+- **Raw RLS policy export** -- `docs/rls_policies.csv` holds every policy as one spreadsheet-friendly row, generated straight from `pg_policies` with `npm run db:rls`. CI regenerates it and fails the PR if the committed CSV is stale.
+
+---
+
 ## [3.7.3] - 2026-07-05
 
 ### Changed
