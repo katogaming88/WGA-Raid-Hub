@@ -15,7 +15,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # tbls cannot introspect RLS policies, so dbdoc/ never covers them.
       # docs/RLS.md is the hand-maintained policy reference; this step keeps
       # it honest by failing any PR that touches policy SQL without touching
