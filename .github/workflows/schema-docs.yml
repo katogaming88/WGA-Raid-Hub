@@ -45,6 +45,14 @@ jobs:
         run: |
           supabase db start
           supabase migration up
+      # plpgsql_check via the CLI: validates database function bodies
+      # (my_team_role, is_site_admin, the updated_at and team-consistency
+      # triggers) against the schema the migrations just built. Catches a
+      # migration renaming a column that a function still references. Does
+      # not cover grants or policies. Baseline was clean at 2.109.0, so any
+      # warning fails the build.
+      - name: Lint database functions
+        run: supabase db lint --local --schema public --level warning --fail-on warning
       - uses: k1LoW/setup-tbls@v1
       - name: Fail if dbdoc/ is stale
         run: tbls diff
