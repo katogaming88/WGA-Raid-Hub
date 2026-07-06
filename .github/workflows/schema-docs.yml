@@ -8,6 +8,7 @@ on:
       - 'supabase/config.toml'
       - 'dbdoc/**'
       - '.tbls.yml'
+      - 'docs/rls_policies.*'
       - '.github/workflows/schema-docs.yml'
 
 jobs:
@@ -47,3 +48,9 @@ jobs:
       - uses: k1LoW/setup-tbls@v1
       - name: Fail if dbdoc/ is stale
         run: tbls diff
+      # Raw policy export; regenerated here and compared against the committed
+      # file so it cannot drift. psql is preinstalled on ubuntu runners.
+      - name: Fail if docs/rls_policies.csv is stale
+        run: |
+          psql "postgres://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable" -f docs/rls_policies.sql
+          git diff --exit-code docs/rls_policies.csv

@@ -71,6 +71,8 @@ PRs that change `supabase/migrations/` must also:
   commit the `dbdoc/` changes (CI fails stale docs)
 - Update [docs/RLS.md](docs/RLS.md) if the migration adds, alters, or drops an
   RLS policy (CI checks this too)
+- Regenerate the policy export if policies changed: `npm run db:rls`, and
+  commit `docs/rls_policies.csv` (CI fails a stale CSV)
 
 ## Google Apps Script changes
 

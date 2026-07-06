@@ -168,8 +168,9 @@ npm run db:docs     # regenerate dbdoc/
 
 Commit the `dbdoc/` changes together with the migration. `npm run db:docs:check`
 runs `tbls diff` locally, the same check CI runs. If your PR adds, alters, or
-drops an RLS policy, also update [RLS.md](RLS.md) in the same PR (CI checks
-that too).
+drops an RLS policy, also update [RLS.md](RLS.md) and regenerate the raw policy
+export with `npm run db:rls` (commit `docs/rls_policies.csv`) in the same PR;
+CI checks both.
 
 ## Known quirk: vector container restart loop (Windows)
 

@@ -58,7 +58,9 @@ Two things the matrix hides on purpose: every table also carries a `claude_reade
 
 ## Verifying against a live database
 
-Reproduce the raw policy list locally (stack running):
+The raw, ungrouped policy list (one row per policy, straight from `pg_policies`) is committed as [rls_policies.csv](rls_policies.csv), which opens in any spreadsheet tool for sorting and filtering. Regenerate it with `npm run db:rls` (stack running); CI fails a PR when the committed CSV no longer matches what the migrations produce. For interactive browsing, local Supabase Studio (http://127.0.0.1:54323) has a Policies page showing each table's policies with their SQL.
+
+The same list, ad hoc in psql:
 
 ```sql
 select tablename, policyname, roles, cmd, qual, with_check
