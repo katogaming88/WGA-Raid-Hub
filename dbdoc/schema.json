@@ -2051,7 +2051,7 @@
         {
           "name": "team_members_role_check",
           "type": "CHECK",
-          "def": "CHECK ((role = ANY (ARRAY['raider'::text, 'officer'::text, 'admin'::text])))",
+          "def": "CHECK ((role = ANY (ARRAY['raider'::text, 'officer'::text, 'team_leader'::text])))",
           "table": "public.team_members",
           "referenced_table": "",
           "columns": [

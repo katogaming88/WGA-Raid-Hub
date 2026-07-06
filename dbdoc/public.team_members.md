@@ -16,7 +16,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| team_members_role_check | CHECK | CHECK ((role = ANY (ARRAY['raider'::text, 'officer'::text, 'admin'::text]))) |
+| team_members_role_check | CHECK | CHECK ((role = ANY (ARRAY['raider'::text, 'officer'::text, 'team_leader'::text]))) |
 | team_members_auth_user_id_fkey | FOREIGN KEY | FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL |
 | team_members_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | team_members_team_id_discord_id_key | UNIQUE | UNIQUE (team_id, discord_id) |

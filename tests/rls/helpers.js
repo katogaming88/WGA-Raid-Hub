@@ -7,7 +7,7 @@ export const pool = new Pool({ connectionString: DSN });
 
 // Must stay in sync with supabase/seed.sql.
 export const OFFICER_T1 = '00000000-0000-0000-0000-000000000001';
-export const ADMIN_T1 = '00000000-0000-0000-0000-000000000002';
+export const TEAM_LEADER_T1 = '00000000-0000-0000-0000-000000000002';
 export const RAIDER_T1 = '00000000-0000-0000-0000-000000000003';
 export const SITE_ADMIN = '00000000-0000-0000-0000-000000000004';
 export const OFFICER_T2 = '00000000-0000-0000-0000-000000000005';
