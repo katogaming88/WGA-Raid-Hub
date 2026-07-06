@@ -143,8 +143,33 @@ Link state is written to `supabase/.temp/`, which is gitignored. Verify with
 | `supabase stop` | Stop it (data volumes are kept) |
 | `supabase status` | Show endpoints and keys |
 | `supabase db reset` | Rebuild the local database from `supabase/migrations/` + seed |
+| `npm run db:docs` | Regenerate the schema docs in `dbdoc/` (see section 6) |
 
 Docker Desktop must be running before `supabase start`.
+
+## 6. Regenerating schema docs (after any migration change)
+
+The generated docs in `dbdoc/` (markdown + Mermaid ER diagrams, built by
+[tbls](https://github.com/k1LoW/tbls)) must match the schema the migrations
+produce; the schema-docs CI workflow fails a PR when they drift.
+
+One-time install: tbls is not in the main scoop bucket. Download the
+`tbls_vX.Y.Z_windows_amd64.zip` asset from the
+[tbls releases page](https://github.com/k1LoW/tbls/releases), and put
+`tbls.exe` somewhere on PATH (this setup used `~\bin`, added to the user PATH).
+On macOS/Linux: `brew install k1LoW/tap/tbls`.
+
+Then, whenever migrations change:
+
+```powershell
+supabase db reset   # make the local DB match the migration files
+npm run db:docs     # regenerate dbdoc/
+```
+
+Commit the `dbdoc/` changes together with the migration. `npm run db:docs:check`
+runs `tbls diff` locally, the same check CI runs. If your PR adds, alters, or
+drops an RLS policy, also update [RLS.md](RLS.md) in the same PR (CI checks
+that too).
 
 ## Known quirk: vector container restart loop (Windows)
 

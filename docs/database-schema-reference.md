@@ -3,6 +3,15 @@
 A full column-by-column breakdown of every table in the WGA Raid Hub database.
 Includes notes on redundancies and why they exist.
 
+> **Where truth lives:** for structure (columns, types, constraints, indexes,
+> FKs, ER diagrams), the generated docs in [`dbdoc/`](../dbdoc/README.md) are
+> canonical; they are regenerated from the migrations and CI fails when they
+> drift. This file is canonical for semantics: what columns mean, why
+> redundancies exist, and trigger behavior. RLS policies are documented in
+> [RLS.md](RLS.md). Where a column table below disagrees with `dbdoc/`,
+> `dbdoc/` is right; fixing the stale text here is welcome but this file is
+> not machine-checked.
+
 ---
 
 ## Table of Contents
