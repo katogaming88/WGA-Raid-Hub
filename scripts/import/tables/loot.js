@@ -22,8 +22,8 @@
 // (player|itemID|date|time), per #228.
 //
 // Season: Pasted Loot carries it; legacy rows derive it from the award date
-// against the --seasons ranges config. cols G (response) / S (note) are
-// deliberately not read yet -- pending kat's call on #322.
+// against the --seasons ranges config. The export's response and note columns
+// are dropped on import, decided on #322 (the raw CSV preserves them offline).
 
 import { normName } from '../lib/names.js';
 import { sqlString, sqlNumber, sqlBool, insertStatement } from '../lib/sql.js';

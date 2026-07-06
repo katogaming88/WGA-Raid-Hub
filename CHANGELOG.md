@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.11.0] - 2026-07-06
+
+### Added
+- **Self Received Requests import (#320, decided in #322)** -- Migration adds `difficulty`, `source`, and `note` columns to `self_received_requests`, and a new generator imports the tab with the mixed Source values split the same way the app reads them: a "Mythic:"/"Heroic:" prefix wins, a bare value defaults to Mythic, and the base tier stores as Champion. The legacy loot export's response and note columns are dropped on import per the same decision.
+
+---
+
 ## [3.10.0] - 2026-07-06
 
 ### Added

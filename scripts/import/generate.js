@@ -27,7 +27,8 @@
 // with a note so exports can arrive incrementally):
 //   Roster.csv, Scoring.csv, Item Lookup.csv, M+ Exclusion Requests.csv,
 //   Attendance.csv, BiS List.csv, Priority Order.csv, Pasted Loot.csv,
-//   Loot Data.csv (full-width A:V export), Officer Audit Log.csv
+//   Loot Data.csv (full-width A:V export), Officer Audit Log.csv,
+//   Self Received Requests.csv
 
 import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -42,6 +43,7 @@ import { parseBis, bisSql } from './tables/bis.js';
 import { parsePriority, prioritySql } from './tables/priority.js';
 import { parsePastedLoot, parseLegacyLoot, lootSql } from './tables/loot.js';
 import { parseMplusRequests, mplusSql } from './tables/mplus.js';
+import { parseSelfReceived, selfReceivedSql } from './tables/self-received.js';
 import { parseAudit, auditSql } from './tables/audit.js';
 
 const TEAM_IDS = { phoenix: 1, hellfire: 2 };
@@ -171,6 +173,21 @@ if (rosterRows) {
     mplusResult = mplusSql(teamId, parseMplusRequests(mplusRows, `${team} M+ Exclusion Requests`), registry, tz);
   }
 
+  let selfReceivedResult = null;
+  const selfReceivedRows = loadCsvIfPresent(join(dataDir, 'Self Received Requests.csv'));
+  if (selfReceivedRows) {
+    selfReceivedResult = selfReceivedSql(
+      teamId,
+      parseSelfReceived(selfReceivedRows, `${team} Self Received Requests`),
+      registry,
+      tz,
+      knownItems
+    );
+    for (const w of selfReceivedResult.warnings) notes.push(`self_received_requests: ${w}`);
+  } else {
+    notes.push('Self Received Requests.csv missing -- self_received_requests section skipped');
+  }
+
   const stubs = registry.stubNames();
   const playersResult = playersSql(teamId, players, approved, mplusManual, stubs);
   section('players', playersResult.sql);
@@ -197,6 +214,10 @@ if (rosterRows) {
   if (mplusResult) {
     section('mplus_exclusion_requests', mplusResult.sql);
     summary.push(`mplus_exclusion_requests: ${mplusResult.count} rows`);
+  }
+  if (selfReceivedResult) {
+    section('self_received_requests', selfReceivedResult.sql);
+    summary.push(`self_received_requests: ${selfReceivedResult.count} rows`);
   }
   if (lootResult) {
     section('rclc_loot', lootResult.sql);

@@ -19,7 +19,7 @@
 | [public.scoring](public.scoring.md) | 10 |  | BASE TABLE |
 | [public.season_signups](public.season_signups.md) | 16 |  | BASE TABLE |
 | [public.season_snapshots](public.season_snapshots.md) | 5 |  | BASE TABLE |
-| [public.self_received_requests](public.self_received_requests.md) | 6 |  | BASE TABLE |
+| [public.self_received_requests](public.self_received_requests.md) | 9 |  | BASE TABLE |
 | [public.site_admins](public.site_admins.md) | 3 |  | BASE TABLE |
 | [public.team_members](public.team_members.md) | 7 |  | BASE TABLE |
 | [public.team_settings](public.team_settings.md) | 3 |  | BASE TABLE |
@@ -249,6 +249,9 @@ erDiagram
   integer self_item_id FK
   timestamp_with_time_zone submitted_at
   text status
+  text difficulty
+  text source
+  text note
 }
 "public.site_admins" {
   integer id

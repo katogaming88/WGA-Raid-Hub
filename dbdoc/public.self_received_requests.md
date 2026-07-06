@@ -10,11 +10,15 @@
 | self_item_id | integer |  | false |  | [public.items](public.items.md) |  |
 | submitted_at | timestamp with time zone | now() | false |  |  |  |
 | status | text | 'pending'::text | false |  |  |  |
+| difficulty | text |  | true |  |  |  |
+| source | text |  | true |  |  |  |
+| note | text |  | true |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| self_received_requests_difficulty_check | CHECK | CHECK ((difficulty = ANY (ARRAY['Champion'::text, 'Heroic'::text, 'Mythic'::text]))) |
 | self_received_requests_status_check | CHECK | CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text]))) |
 | self_received_requests_self_item_id_fkey | FOREIGN KEY | FOREIGN KEY (self_item_id) REFERENCES items(id) ON DELETE SET NULL |
 | self_received_requests_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL |
@@ -49,6 +53,9 @@ erDiagram
   integer self_item_id FK
   timestamp_with_time_zone submitted_at
   text status
+  text difficulty
+  text source
+  text note
 }
 "public.teams" {
   integer id
