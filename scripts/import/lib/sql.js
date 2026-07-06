@@ -52,3 +52,18 @@ export function insertStatement(table, columns, valueRows, conflictClause) {
   if (conflictClause) lines.push(conflictClause);
   return lines.join('\n') + ';\n';
 }
+
+// Idempotent multi-row INSERT for tables with no unique key (audit_log,
+// request queues): a correlated NOT EXISTS on the aliased VALUES filters out
+// rows already applied. `existsCondition` references v.<column> names.
+export function insertWhereNotExists(table, columns, valueRows, existsCondition) {
+  if (!valueRows.length) return `-- ${table}: no rows\n`;
+  return (
+    `insert into ${table} (${columns.join(', ')})\n` +
+    `select ${columns.map((c) => `v.${c}`).join(', ')}\n` +
+    `from (values\n` +
+    valueRows.map((r) => `  (${r.join(', ')})`).join(',\n') +
+    `\n) as v(${columns.join(', ')})\n` +
+    `where not exists (\n  select 1 from ${table} t where ${existsCondition}\n);\n`
+  );
+}

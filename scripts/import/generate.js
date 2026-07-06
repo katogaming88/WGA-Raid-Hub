@@ -18,13 +18,18 @@
 //   --out <file>       output (default data/sql/import-<team>.sql)
 //   --mplus-manual <a,b>  manual M+ exclusion overrides (Script Properties
 //                         list; names as First-Realm)
+//   --tz <zone>        spreadsheet timezone for wall-clock timestamps
+//                      (default America/New_York -- confirm on #320)
+//   --seasons <file>   season ranges JSON [{name, start, end?}] used to
+//                      derive legacy loot seasons (default data/seasons.json)
 //
 // Expected CSV filenames in the data directory (missing tabs are skipped
 // with a note so exports can arrive incrementally):
 //   Roster.csv, Scoring.csv, Item Lookup.csv, M+ Exclusion Requests.csv,
-//   Attendance.csv, BiS List.csv, Priority Order.csv
+//   Attendance.csv, BiS List.csv, Priority Order.csv, Pasted Loot.csv,
+//   Loot Data.csv (full-width A:V export), Officer Audit Log.csv
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { loadCsvIfPresent } from './lib/csv.js';
 import { normName } from './lib/names.js';
@@ -35,6 +40,9 @@ import { parseScoring, scoringSql } from './tables/scoring.js';
 import { parseAttendance, attendanceSql } from './tables/attendance.js';
 import { parseBis, bisSql } from './tables/bis.js';
 import { parsePriority, prioritySql } from './tables/priority.js';
+import { parsePastedLoot, parseLegacyLoot, lootSql } from './tables/loot.js';
+import { parseMplusRequests, mplusSql } from './tables/mplus.js';
+import { parseAudit, auditSql } from './tables/audit.js';
 
 const TEAM_IDS = { phoenix: 1, hellfire: 2 };
 
@@ -53,6 +61,9 @@ const dataDir = arg('data', join('data', team));
 const outFile = arg('out', join('data', 'sql', `import-${team}.sql`));
 const season = arg('season', '');
 const mplusManual = (arg('mplus-manual', '') || '').split(',').filter(Boolean);
+const tz = arg('tz', 'America/New_York');
+const seasonsFile = arg('seasons', join('data', 'seasons.json'));
+const seasons = existsSync(seasonsFile) ? JSON.parse(readFileSync(seasonsFile, 'utf8')) : null;
 
 const sections = [];
 const summary = [];
@@ -136,9 +147,29 @@ if (rosterRows) {
     notes.push('Priority Order.csv missing -- priority_order section skipped');
   }
 
+  let lootResult = null;
+  const pastedRows = loadCsvIfPresent(join(dataDir, 'Pasted Loot.csv'));
+  const legacyRows = loadCsvIfPresent(join(dataDir, 'Loot Data.csv'));
+  if (pastedRows || legacyRows) {
+    const entries = [
+      ...(pastedRows ? parsePastedLoot(pastedRows, `${team} Pasted Loot`) : []),
+      ...(legacyRows ? parseLegacyLoot(legacyRows, `${team} Loot Data`) : [])
+    ];
+    if (legacyRows && !seasons) notes.push(`no ${seasonsFile} -- legacy loot seasons import as null`);
+    lootResult = lootSql(teamId, entries, registry, { knownItems, seasons, tz });
+    for (const w of lootResult.warnings) notes.push(`rclc_loot: ${w}`);
+  } else {
+    notes.push('Pasted Loot.csv / Loot Data.csv missing -- rclc_loot section skipped');
+  }
+
   const mplusRows = loadCsvIfPresent(join(dataDir, 'M+ Exclusion Requests.csv'));
   if (!mplusRows) notes.push('M+ Exclusion Requests.csv missing -- m_plus_excluded imports as false');
   const approved = parseApprovedMplus(mplusRows);
+
+  let mplusResult = null;
+  if (mplusRows) {
+    mplusResult = mplusSql(teamId, parseMplusRequests(mplusRows, `${team} M+ Exclusion Requests`), registry, tz);
+  }
 
   const stubs = registry.stubNames();
   const playersResult = playersSql(teamId, players, approved, mplusManual, stubs);
@@ -163,8 +194,29 @@ if (rosterRows) {
     section('priority_order', priorityResult.sql);
     summary.push(`priority_order: ${priorityResult.count} rows (season ${JSON.stringify(season)})`);
   }
+  if (mplusResult) {
+    section('mplus_exclusion_requests', mplusResult.sql);
+    summary.push(`mplus_exclusion_requests: ${mplusResult.count} rows`);
+  }
+  if (lootResult) {
+    section('rclc_loot', lootResult.sql);
+    summary.push(
+      `rclc_loot: ${lootResult.counts.pasted} pasted + ${lootResult.counts.legacy} legacy rows` +
+        (lootResult.newItemCount ? ` (+${lootResult.newItemCount} old-tier items)` : '')
+    );
+  }
 } else {
   notes.push('Roster.csv missing -- player-referencing sections skipped');
+}
+
+// --- Officer Audit Log (needs no roster; actor lives in the detail jsonb)
+const auditRows = loadCsvIfPresent(join(dataDir, 'Officer Audit Log.csv'));
+if (auditRows) {
+  const auditResult = auditSql(teamId, parseAudit(auditRows, `${team} Officer Audit Log`), tz);
+  section('audit_log', auditResult.sql);
+  summary.push(`audit_log: ${auditResult.count} rows`);
+} else {
+  notes.push('Officer Audit Log.csv missing -- audit_log section skipped');
 }
 
 if (!sections.length) {
