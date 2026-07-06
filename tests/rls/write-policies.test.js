@@ -4,16 +4,7 @@
 // a rejection can only come from RLS. Every statement runs in a rolled-back
 // transaction.
 import { describe, it, expect, afterAll } from 'vitest';
-import {
-  pool,
-  queryAs,
-  RLS_DENIED,
-  OFFICER_T1,
-  ADMIN_T1,
-  RAIDER_T1,
-  SITE_ADMIN,
-  OFFICER_T2
-} from './helpers.js';
+import { pool, queryAs, RLS_DENIED, OFFICER_T1, ADMIN_T1, RAIDER_T1, SITE_ADMIN, OFFICER_T2 } from './helpers.js';
 
 async function expectDenied(role, uid, sql, params) {
   await expect(queryAs(role, uid, sql, params)).rejects.toMatchObject({ code: RLS_DENIED });
@@ -23,7 +14,8 @@ async function expectDenied(role, uid, sql, params) {
 // payloads target team 1 with team-1 players.
 const DIRECT_TEAM_INSERTS = {
   players: "insert into public.players (team_id, name_realm) values (1, 'Testinsert-Illidan')",
-  attendance: "insert into public.attendance (team_id, player_id, raid_date, status) values (1, 1, '2026-02-02', 'Present')",
+  attendance:
+    "insert into public.attendance (team_id, player_id, raid_date, status) values (1, 1, '2026-02-02', 'Present')",
   priority_order:
     "insert into public.priority_order (team_id, season, item_id, difficulty, rank, player_id) values (1, 'test-season', 1, 'Heroic', 1, 1)",
   rclc_loot:
@@ -140,7 +132,8 @@ describe('request tables have no INSERT path (service role only)', () => {
       "insert into public.mplus_exclusion_requests (team_id, player_id, reason) values (1, 2, 'test')",
     season_signups:
       "insert into public.season_signups (team_id, signup_name_realm, season) values (1, 'Testsignup-Illidan', 'test-season')",
-    self_received_requests: 'insert into public.self_received_requests (team_id, player_id, self_item_id) values (1, 1, 1)'
+    self_received_requests:
+      'insert into public.self_received_requests (team_id, player_id, self_item_id) values (1, 1, 1)'
   };
   for (const [table, sql] of Object.entries(REQUEST_INSERTS)) {
     it(`even a team 1 officer cannot insert into ${table}`, async () => {

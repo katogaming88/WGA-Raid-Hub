@@ -24,9 +24,7 @@ export async function withRole(role, uid, fn) {
   try {
     await client.query('begin');
     if (uid) {
-      await client.query("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify({ sub: uid, role })
-      ]);
+      await client.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: uid, role })]);
     }
     await client.query(`set local role ${role}`);
     return await fn((text, params) => client.query(text, params));
