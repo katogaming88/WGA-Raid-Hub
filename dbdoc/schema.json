@@ -1860,6 +1860,21 @@
           "type": "text",
           "nullable": false,
           "default": "'pending'::text"
+        },
+        {
+          "name": "difficulty",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "source",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "nullable": true
         }
       ],
       "indexes": [
@@ -1873,6 +1888,16 @@
         }
       ],
       "constraints": [
+        {
+          "name": "self_received_requests_difficulty_check",
+          "type": "CHECK",
+          "def": "CHECK ((difficulty = ANY (ARRAY['Champion'::text, 'Heroic'::text, 'Mythic'::text])))",
+          "table": "public.self_received_requests",
+          "referenced_table": "",
+          "columns": [
+            "difficulty"
+          ]
+        },
         {
           "name": "self_received_requests_status_check",
           "type": "CHECK",

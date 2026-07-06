@@ -95,6 +95,9 @@ erDiagram
   integer self_item_id FK
   timestamp_with_time_zone submitted_at
   text status
+  text difficulty
+  text source
+  text note
 }
 ```
 
