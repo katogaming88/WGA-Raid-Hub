@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.9.0] - 2026-07-06
+
+### Added
+- **One-time data migration tooling, stage B (#320)** -- Import generators for the three history tables. Attendance locates its columns by header text (the #228 cleanup changed the export layout), validates statuses against the schema's allowed list, and flags duplicate player/date rows; departed players referenced only by history import as archived stub rows. The BiS grid and priority ranking grid reshape from their wide sheet layouts into normal rows, with duplicate BiS cells collapsed and every item reference checked against the Item Lookup export before apply.
+
+---
+
 ## [3.8.0] - 2026-07-06
 
 ### Added

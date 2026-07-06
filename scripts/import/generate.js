@@ -21,15 +21,20 @@
 //
 // Expected CSV filenames in the data directory (missing tabs are skipped
 // with a note so exports can arrive incrementally):
-//   Roster.csv, Scoring.csv, Item Lookup.csv, M+ Exclusion Requests.csv
+//   Roster.csv, Scoring.csv, Item Lookup.csv, M+ Exclusion Requests.csv,
+//   Attendance.csv, BiS List.csv, Priority Order.csv
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { loadCsvIfPresent } from './lib/csv.js';
+import { normName } from './lib/names.js';
 import { buildPlayerRegistry } from './lib/registry.js';
 import { parseItems, itemsSql, diffItemRegistries } from './tables/items.js';
 import { parsePlayers, parseApprovedMplus, playersSql } from './tables/players.js';
 import { parseScoring, scoringSql } from './tables/scoring.js';
+import { parseAttendance, attendanceSql } from './tables/attendance.js';
+import { parseBis, bisSql } from './tables/bis.js';
+import { parsePriority, prioritySql } from './tables/priority.js';
 
 const TEAM_IDS = { phoenix: 1, hellfire: 2 };
 
@@ -60,10 +65,12 @@ function section(title, sql) {
 // --- Item Lookup -> items + item_bosses (global tables, idempotent both runs)
 const itemRows = loadCsvIfPresent(join(dataDir, 'Item Lookup.csv'));
 let itemCount = 0;
+let knownItems = null; // normName(item) set for validating item references
 if (itemRows) {
   const { items } = parseItems(itemRows, `${team} Item Lookup`);
   section('items + item_bosses', itemsSql(items));
   itemCount = items.length;
+  knownItems = new Set(items.map((i) => normName(i.name)));
   summary.push(`items: ${items.length} (bosses on ${items.filter((i) => i.boss).length})`);
 
   const otherTeam = team === 'phoenix' ? 'hellfire' : 'phoenix';
@@ -78,7 +85,9 @@ if (itemRows) {
   notes.push('Item Lookup.csv missing -- items section skipped');
 }
 
-// --- Roster + Scoring (scoring parses first so departed players become stubs)
+// --- Player-referencing tabs. Everything that can name a departed player is
+// parsed BEFORE the players section is emitted, so the registry's archived
+// stubs land in that insert; sections are then emitted in FK order.
 const rosterRows = loadCsvIfPresent(join(dataDir, 'Roster.csv'));
 if (rosterRows) {
   const players = parsePlayers(rosterRows, `${team} Roster`);
@@ -90,6 +99,41 @@ if (rosterRows) {
     scoringResult = scoringSql(teamId, parseScoring(scoringRows, `${team} Scoring`), registry, season);
   } else {
     notes.push('Scoring.csv missing -- scoring section skipped');
+  }
+
+  let attendanceResult = null;
+  const attendanceRows = loadCsvIfPresent(join(dataDir, 'Attendance.csv'));
+  if (attendanceRows) {
+    const parsed = parseAttendance(attendanceRows, `${team} Attendance`);
+    for (const w of parsed.warnings) notes.push(`attendance: ${w}`);
+    attendanceResult = attendanceSql(teamId, parsed.entries, registry);
+  } else {
+    notes.push('Attendance.csv missing -- attendance section skipped');
+  }
+
+  let bisResult = null;
+  const bisRows = loadCsvIfPresent(join(dataDir, 'BiS List.csv'));
+  if (bisRows) {
+    const { cells } = parseBis(bisRows, `${team} BiS List`);
+    bisResult = bisSql(teamId, cells, registry, knownItems);
+    for (const w of bisResult.warnings) notes.push(`bis_items: ${w}`);
+  } else {
+    notes.push('BiS List.csv missing -- bis_items section skipped');
+  }
+
+  let priorityResult = null;
+  const priorityRows = loadCsvIfPresent(join(dataDir, 'Priority Order.csv'));
+  if (priorityRows) {
+    priorityResult = prioritySql(
+      teamId,
+      parsePriority(priorityRows, `${team} Priority Order`),
+      registry,
+      season,
+      knownItems
+    );
+    for (const w of priorityResult.warnings) notes.push(`priority_order: ${w}`);
+  } else {
+    notes.push('Priority Order.csv missing -- priority_order section skipped');
   }
 
   const mplusRows = loadCsvIfPresent(join(dataDir, 'M+ Exclusion Requests.csv'));
@@ -107,8 +151,20 @@ if (rosterRows) {
     section('scoring', scoringResult.sql);
     summary.push(`scoring: ${scoringResult.count} rows (season ${JSON.stringify(season)})`);
   }
+  if (attendanceResult) {
+    section('attendance', attendanceResult.sql);
+    summary.push(`attendance: ${attendanceResult.count} rows`);
+  }
+  if (bisResult) {
+    section('bis_items', bisResult.sql);
+    summary.push(`bis_items: ${bisResult.count} rows (${bisResult.collapsed} duplicate cells collapsed)`);
+  }
+  if (priorityResult) {
+    section('priority_order', priorityResult.sql);
+    summary.push(`priority_order: ${priorityResult.count} rows (season ${JSON.stringify(season)})`);
+  }
 } else {
-  notes.push('Roster.csv missing -- players and scoring sections skipped');
+  notes.push('Roster.csv missing -- player-referencing sections skipped');
 }
 
 if (!sections.length) {
