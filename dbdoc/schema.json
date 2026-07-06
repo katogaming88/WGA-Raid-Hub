@@ -493,6 +493,15 @@
             "class",
             "spec"
           ]
+        },
+        {
+          "name": "classes_specs_class_spec_key",
+          "def": "CREATE UNIQUE INDEX classes_specs_class_spec_key ON public.classes_specs USING btree (class, spec)",
+          "table": "public.classes_specs",
+          "columns": [
+            "class",
+            "spec"
+          ]
         }
       ],
       "constraints": [
@@ -518,6 +527,17 @@
         },
         {
           "name": "unique_spec_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (class, spec)",
+          "table": "public.classes_specs",
+          "referenced_table": "",
+          "columns": [
+            "class",
+            "spec"
+          ]
+        },
+        {
+          "name": "classes_specs_class_spec_key",
           "type": "UNIQUE",
           "def": "UNIQUE (class, spec)",
           "table": "public.classes_specs",
@@ -631,6 +651,14 @@
           "table": "public.items",
           "columns": [
             "id"
+          ]
+        },
+        {
+          "name": "items_lower_name_key",
+          "def": "CREATE UNIQUE INDEX items_lower_name_key ON public.items USING btree (lower(name))",
+          "table": "public.items",
+          "columns": [
+            "lower"
           ]
         }
       ],

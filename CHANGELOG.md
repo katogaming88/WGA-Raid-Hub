@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.8.0] - 2026-07-06
+
+### Added
+- **One-time data migration tooling, stage A (#320)** -- New `scripts/import/` generators turn per-team CSV exports of the Google Sheet tabs into one reviewable, transactional SQL file per team (`node scripts/import/generate.js --team phoenix --season "..."`). This stage covers items + item_bosses (with a cross-team registry mismatch report), players (M+ exclusion state derived from approved requests, departed players kept as archived stubs so history FKs hold), and scoring. Re-applying a file inserts only new rows, so the pre-cutover refresh is a plain re-run. CSVs and generated SQL live in the new gitignored `data/` directory.
+- **Natural unique keys on the reference tables** -- Migration adds `unique (class, spec)` on classes_specs and a unique index on `items (lower(name))`, giving the import SQL real ON CONFLICT targets. A double-applied import (SQL Editor or psql) now converges instead of duplicating reference rows; the classes-specs generator from #321 emits the matching conflict clause.
+- **Import test suite** -- `npm run test:import` runs vitest unit tests for the CSV parsing, name normalization (diacritics, nicknames), SQL escaping, and per-table generators.
+
+---
+
 ## [3.7.4] - 2026-07-05
 
 ### Added

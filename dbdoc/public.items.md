@@ -24,6 +24,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | items_pkey | CREATE UNIQUE INDEX items_pkey ON public.items USING btree (id) |
+| items_lower_name_key | CREATE UNIQUE INDEX items_lower_name_key ON public.items USING btree (lower(name)) |
 
 ## Relations
 

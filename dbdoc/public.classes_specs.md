@@ -16,6 +16,7 @@
 | classes_specs_role_check | CHECK | CHECK ((role = ANY (ARRAY['Tank'::text, 'Heal'::text, 'Melee'::text, 'Ranged'::text]))) |
 | classes_specs_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | unique_spec_key | UNIQUE | UNIQUE (class, spec) |
+| classes_specs_class_spec_key | UNIQUE | UNIQUE (class, spec) |
 
 ## Indexes
 
@@ -23,6 +24,7 @@
 | ---- | ---------- |
 | classes_specs_pkey | CREATE UNIQUE INDEX classes_specs_pkey ON public.classes_specs USING btree (id) |
 | unique_spec_key | CREATE UNIQUE INDEX unique_spec_key ON public.classes_specs USING btree (class, spec) |
+| classes_specs_class_spec_key | CREATE UNIQUE INDEX classes_specs_class_spec_key ON public.classes_specs USING btree (class, spec) |
 
 ## Relations
 
