@@ -3142,6 +3142,7 @@ function renderProfile(firstName, backTo, container) {
     (mplusHTML && featureEnabled('mplus')
       ? '<div class="profile-section"><div class="section-label">M+ Exclusion</div>' + mplusHTML + '</div>'
       : '') +
+    (typeof ownStreamerSectionHTML === 'function' ? ownStreamerSectionHTML(player, backTo) : '') +
     officerActionsHTML +
     '</div>';
 

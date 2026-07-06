@@ -1,7 +1,7 @@
 // Public page: view switching, player dropdown, boot
 function showView(name) {
   document.getElementById('loadingMsg').style.display = 'none';
-  ['landingView', 'profileViewWrap', 'signupViewWrap', 'rosterViewWrap'].forEach(function (id) {
+  ['landingView', 'profileViewWrap', 'signupViewWrap', 'rosterViewWrap', 'streamersViewWrap'].forEach(function (id) {
     document.getElementById(id).classList.remove('active');
   });
   if (name === 'landing') {
@@ -14,15 +14,26 @@ function showView(name) {
     document.getElementById('rosterViewWrap').classList.add('active');
     buildPublicRosterTab();
   }
-  ['navHome', 'navSignup', 'navRoster'].forEach(function (id) {
+  if (name === 'streamers') {
+    document.getElementById('streamersViewWrap').classList.add('active');
+    buildStreamersTab();
+  }
+  ['navHome', 'navSignup', 'navRoster', 'navStreamers'].forEach(function (id) {
     var el = document.getElementById(id);
     if (el) el.classList.remove('active');
   });
-  var activeNav = { landing: 'navHome', profile: 'navHome', signup: 'navSignup', roster: 'navRoster' }[name];
+  var activeNav = { landing: 'navHome', profile: 'navHome', signup: 'navSignup', roster: 'navRoster', streamers: 'navStreamers' }[
+    name
+  ];
   if (activeNav) {
     var el = document.getElementById(activeNav);
     if (el) el.classList.add('active');
   }
+
+  // Hide the floating stream widget where it's redundant (Streams tab itself)
+  // or just noisy (mid-signup) -- shown everywhere else (landing, roster, profile).
+  var widget = document.getElementById('streamWidget');
+  if (widget) widget.classList.toggle('stream-widget-hidden', name === 'streamers' || name === 'signup');
 }
 
 function populateDropdown() {
@@ -308,6 +319,7 @@ checkMaintenanceMode().then(function (maint) {
       populateDropdown();
       buildPublicStats();
       buildProgression();
+      buildStreamWidget();
       showView('landing');
       // Init Discord session after core data is ready so the profile deep-link can
       // find the claimed character in the now-populated player dropdown.
@@ -317,6 +329,7 @@ checkMaintenanceMode().then(function (maint) {
       buildPublicStats();
       buildProgression();
       buildRecentLoot();
+      buildStreamWidget();
       var sel = document.getElementById('playerSelect');
       var profileWrap = document.getElementById('profileViewWrap');
       if (sel && sel.value && profileWrap && profileWrap.classList.contains('active')) {

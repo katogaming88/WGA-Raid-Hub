@@ -23,6 +23,7 @@
 <nav class="site-nav" id="siteNav">
   <button class="site-nav-item active" id="navHome" onclick="showView('landing')" data-tooltip="Back to the roster overview">Home</button>
   <button class="site-nav-item" id="navRoster" onclick="showView('roster')" data-tooltip="See who's currently on the roster">Roster</button>
+  <button class="site-nav-item" id="navStreamers" onclick="showView('streamers')" data-tooltip="Watch raiders streaming live on Twitch">Streams</button>
   <button class="site-nav-item" id="navSignup" onclick="showSignupView()" data-tooltip="Apply to join the raid team for next season">Sign Up</button>
   <div class="site-nav-right">
     <select id="teamSwitcherSelect" class="team-switcher" title="Switch team"></select>
@@ -30,6 +31,9 @@
     <a href="officer.html" class="site-nav-item" id="navOfficer" data-tooltip="Officer dashboard -- manage roster, loot, and signups">Officer Access</a>
   </div>
 </nav>
+
+<!-- Live streamers banner (site-wide, shown on every page when someone is live) -->
+<div id="streamLiveTopbar" class="stream-live-topbar" style="display:none"></div>
 
 <!-- Officer quick-actions bar (visible only to Discord-authenticated officers) -->
 <div id="officerQuickActions" class="officer-quick-bar" style="display:none">
@@ -96,6 +100,14 @@
   <div class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNumRoster"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
 </div>
 
+<!-- Streamers -->
+<div id="streamersViewWrap" class="view">
+  <div class="landing-body">
+    <div id="streamersView" class="pub-loot"></div>
+  </div>
+  <div class="footer">We Go Again &middot; <span class="team-name">Team Phoenix</span> &middot; v<span id="versionNumStreamers"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
+</div>
+
 <!-- Profile -->
 <div id="profileViewWrap" class="view">
   <div id="profileView"></div>
@@ -133,14 +145,21 @@
   </div>
 </div>
 
+<!-- Floating live-streams widget (site-wide, expanded by default, collapsible) -->
+<div id="streamWidget" class="stream-widget" style="display:none">
+  <div class="stream-widget-panel" id="streamWidgetPanel"></div>
+  <button class="stream-widget-pill" id="streamWidgetPill" onclick="toggleStreamWidget()"></button>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/common.js?v=3.33.18"></script>
 <script src="js/discord.js?v=3.33.18"></script>
 <script src="js/officer-quick-actions.js?v=3.33.18"></script>
+<script src="js/streamers.js?v=3.33.18"></script>
 <script src="js/roster.js?v=3.33.18"></script>
 <script src="js/signup.js?v=3.33.18"></script>
 <script>
-['versionNum','versionNumProfile','versionNumSignup','versionNumRoster'].forEach(function(id){document.getElementById(id).textContent=VERSION;});
+['versionNum','versionNumProfile','versionNumSignup','versionNumRoster','versionNumStreamers'].forEach(function(id){document.getElementById(id).textContent=VERSION;});
 document.title = TEAM_NAME + ' -- Roster';
 document.getElementById('headerTeamName').textContent = TEAM_NAME;
 document.querySelectorAll('.team-name').forEach(function(el){el.textContent=TEAM_NAME;});
