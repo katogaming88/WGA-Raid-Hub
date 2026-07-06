@@ -17,3 +17,6 @@ Thumbs.db
 # Node
 node_modules/
 npm-debug.log*
+
+# One-time migration data (sheet CSV exports and generated SQL, see #320)
+data/

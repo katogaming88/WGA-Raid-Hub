@@ -90,7 +90,8 @@ for (const [className, data] of Object.entries(CLASS_SPECS)) {
   }
 }
 
-console.log('-- Paste into Supabase SQL Editor:');
+console.log('-- Paste into Supabase SQL Editor (or apply with psql -f):');
 console.log('insert into classes_specs (class, spec, role)');
 console.log('values');
-console.log(rows.join(',\n') + ';');
+console.log(rows.join(',\n'));
+console.log('on conflict (class, spec) do nothing;');

@@ -216,6 +216,12 @@ For each team, a one-time import:
 Before each feature flips over, we check row counts and spot-check known records
 against the live Sheet, so nothing is silently lost.
 
+The tooling for this lives in `scripts/import/` (#320): CSV exports go into the
+gitignored `data/<team>/` directory, `node scripts/import/generate.js --team <slug>`
+writes one transactional SQL file per team, and the file is applied with psql. The
+inserts key on natural unique columns, so re-applying after a fresh export picks up
+only the rows added since the last run.
+
 ## The loot feed
 
 Loot currently comes from two places: officers pasting RCLootCouncil exports into the
