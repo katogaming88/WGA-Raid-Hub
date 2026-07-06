@@ -6,8 +6,8 @@ This file documents the RLS policies on every public table. The generated schema
 
 ## Concepts
 
-- **`my_team_role(team_id)`**: returns the calling user's role (`officer`, `admin`, or member) on the given team, resolved from `team_members` via `auth.uid()`. Officer-gated policies accept `officer` or `admin`; admin-gated policies accept `admin` only.
-- **`is_site_admin()`**: true when `auth.uid()` appears in `site_admins`. Site admins bypass team scoping on the tables that OR it in.
+- **`my_team_role(team_id)`**: returns the calling user's role on the given team, resolved from `team_members` via `auth.uid()`. The role column allows exactly `raider`, `officer`, or `admin` (the team admin, top tier within one team). Officer-gated policies accept `officer` or `admin`; admin-gated policies accept `admin` only. No policy references `raider`: being on a team's roster grants no access beyond public read.
+- **`is_site_admin()`**: true when `auth.uid()` appears in `site_admins`. This is a separate, global mechanism, not a `team_members` role: site admins pass every policy that ORs it in ("+site" in the matrix) on every team.
 - **Public read**: `FOR SELECT USING (true)`. The site's public pages (roster, loot feed, standings) read these tables anonymously.
 - **`claude_readers`**: nologin group role for read-only AI/analysis access. Holds one `Claude readers read <table>` SELECT policy on every public table, scoped `TO claude_readers` only. Created by `supabase/roles.sql`; see [claude-readonly-db-access.md](claude-readonly-db-access.md). Add a matching policy when adding a table.
 - **Service role**: Supabase's `service_role` bypasses RLS entirely. Tables listed below with no write policy are writable only through the service role (or direct SQL as `postgres`).
