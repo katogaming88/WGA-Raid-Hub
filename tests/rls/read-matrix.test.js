@@ -2,7 +2,7 @@
 // in docs/RLS.md. If a table is added or a read policy changes, this file
 // and that matrix move together.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, countAs, OFFICER_T1, OFFICER_T2, RAIDER_T1, SITE_ADMIN } from './helpers.js';
+import { pool, countAs, OFFICER_T1, OFFICER_T2, RAIDER_T1, SITE_ADMIN, TEAM_LEADER_T1 } from './helpers.js';
 
 // Matrix: tables with a `using (true)` public SELECT policy.
 const PUBLIC_READ = [
@@ -78,8 +78,8 @@ describe('site admin visibility', () => {
   it('site admin sees site_admins', async () => {
     expect(await countAs('authenticated', SITE_ADMIN, 'site_admins')).toBeGreaterThan(0);
   });
-  it('team 1 admin cannot see site_admins', async () => {
-    expect(await countAs('authenticated', OFFICER_T1, 'site_admins')).toBe(0);
+  it('team 1 team leader cannot see site_admins', async () => {
+    expect(await countAs('authenticated', TEAM_LEADER_T1, 'site_admins')).toBe(0);
   });
 });
 

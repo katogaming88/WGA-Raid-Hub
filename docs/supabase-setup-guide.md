@@ -54,7 +54,7 @@ database itself refuses anything that breaks the rule.
 - `unique` -- no two rows may have the same value in this column (or combination of
   columns). The database rejects any insert or update that would create a duplicate.
 - `check (condition)` -- the condition must be true for every row. A common use is
-  `check (role in ('raider', 'officer', 'admin'))`, which rejects any value outside
+  `check (role in ('raider', 'officer', 'team_leader'))`, which rejects any value outside
   that list.
 
 ### Primary keys
@@ -234,7 +234,7 @@ create table team_members (
   team_id       integer not null references teams(id) on delete cascade,
   discord_id    text not null,
   auth_user_id  uuid references auth.users(id) on delete set null,
-  role          text not null check (role in ('raider', 'officer', 'admin')),
+  role          text not null check (role in ('raider', 'officer', 'team_leader')),
   name_realm    text,
   unique (team_id, discord_id)
 );
@@ -247,7 +247,7 @@ Walking through the new parts:
   It starts as null because we seed officers before they have logged in yet.
   `on delete set null` (not cascade) means if the Supabase account is deleted, we
   keep the `team_members` row but clear the auth link.
-- `check (role in ('raider', 'officer', 'admin'))` -- the database rejects any value
+- `check (role in ('raider', 'officer', 'team_leader'))` -- the database rejects any value
   outside this list.
 - `unique (team_id, discord_id)` -- a composite unique constraint. A Discord user
   can have a row in both teams but cannot have two rows in the same team.
@@ -547,14 +547,22 @@ alter table season_snapshots         enable row level security;
 
 ### RLS policies
 
-Before writing policies, know the three types of caller:
+Before writing policies, know the types of caller (tier names decided in
+[#294](https://github.com/katogaming88/WGA-Raid-Hub/issues/294)):
 
 - **Anonymous:** has the anon key, no session. Can see public data (roster, loot,
   item lists), cannot write anything.
 - **Logged-in raider:** has a Discord session and a `team_members` row with
-  `role = 'raider'`. Can submit forms via Edge Functions.
-- **Officer / Admin:** has a session and a `team_members` row with `role = 'officer'`
-  or `'admin'`. Can read queues, approve requests, write data.
+  `role = 'raider'`. Can submit forms via Edge Functions. The role grants nothing
+  beyond public read; it is roster bookkeeping.
+- **Officer:** has a session and a `team_members` row with `role = 'officer'`.
+  Can read queues, approve requests, and write data for their own team.
+- **Team leader:** `role = 'team_leader'`, one per team. Passes every officer
+  check, plus the three team-leader-only write policies officers do not:
+  `team_settings`, `team_members` (their own roster and promotions), and
+  `season_snapshots`.
+- **Site admin:** a row in `site_admins`, checked by `is_site_admin()`. Global,
+  not team-scoped; passes every policy that ORs it in, on every team.
 
 **The role-checking function -- run this first:**
 
@@ -609,8 +617,8 @@ create policy "Public read players"
   on players for select using (true);
 create policy "Officers write players"
   on players for all
-  using      (my_team_role(team_id) in ('officer', 'admin'))
-  with check (my_team_role(team_id) in ('officer', 'admin'));
+  using      (my_team_role(team_id) in ('officer', 'team_leader'))
+  with check (my_team_role(team_id) in ('officer', 'team_leader'));
 
 -- Scoring: public read, officers write
 -- No team_id on scoring rows, so follow the foreign key to players to find the team
@@ -620,11 +628,11 @@ create policy "Officers write scoring"
   on scoring for all
   using (
     my_team_role((select team_id from players where id = player_id))
-    in ('officer', 'admin')
+    in ('officer', 'team_leader')
   )
   with check (
     my_team_role((select team_id from players where id = player_id))
-    in ('officer', 'admin')
+    in ('officer', 'team_leader')
   );
 
 -- BiS items: public read, officers write (also needs the player subquery)
@@ -634,11 +642,11 @@ create policy "Officers write bis_items"
   on bis_items for all
   using (
     my_team_role((select team_id from players where id = player_id))
-    in ('officer', 'admin')
+    in ('officer', 'team_leader')
   )
   with check (
     my_team_role((select team_id from players where id = player_id))
-    in ('officer', 'admin')
+    in ('officer', 'team_leader')
   );
 
 -- Loot, attendance, priority: public read, officers write
@@ -648,87 +656,87 @@ create policy "Public read priority_order" on priority_order  for select using (
 
 create policy "Officers write loot"
   on loot for all
-  using      (my_team_role(team_id) in ('officer', 'admin'))
-  with check (my_team_role(team_id) in ('officer', 'admin'));
+  using      (my_team_role(team_id) in ('officer', 'team_leader'))
+  with check (my_team_role(team_id) in ('officer', 'team_leader'));
 create policy "Officers write attendance"
   on attendance for all
-  using      (my_team_role(team_id) in ('officer', 'admin'))
-  with check (my_team_role(team_id) in ('officer', 'admin'));
+  using      (my_team_role(team_id) in ('officer', 'team_leader'))
+  with check (my_team_role(team_id) in ('officer', 'team_leader'));
 create policy "Officers write priority_order"
   on priority_order for all
-  using      (my_team_role(team_id) in ('officer', 'admin'))
-  with check (my_team_role(team_id) in ('officer', 'admin'));
+  using      (my_team_role(team_id) in ('officer', 'team_leader'))
+  with check (my_team_role(team_id) in ('officer', 'team_leader'));
 
 -- Request queues: officers read and update only, no anon insert path
 create policy "Officers read signups"
   on signups for select
-  using (my_team_role(team_id) in ('officer', 'admin'));
+  using (my_team_role(team_id) in ('officer', 'team_leader'));
 create policy "Officers update signups"
   on signups for update
-  using      (my_team_role(team_id) in ('officer', 'admin'))
-  with check (my_team_role(team_id) in ('officer', 'admin'));
+  using      (my_team_role(team_id) in ('officer', 'team_leader'))
+  with check (my_team_role(team_id) in ('officer', 'team_leader'));
 
 create policy "Officers read bis_requests"
   on bis_requests for select
-  using (my_team_role(team_id) in ('officer', 'admin'));
+  using (my_team_role(team_id) in ('officer', 'team_leader'));
 create policy "Officers update bis_requests"
   on bis_requests for update
-  using      (my_team_role(team_id) in ('officer', 'admin'))
-  with check (my_team_role(team_id) in ('officer', 'admin'));
+  using      (my_team_role(team_id) in ('officer', 'team_leader'))
+  with check (my_team_role(team_id) in ('officer', 'team_leader'));
 
 create policy "Officers read self_received_requests"
   on self_received_requests for select
-  using (my_team_role(team_id) in ('officer', 'admin'));
+  using (my_team_role(team_id) in ('officer', 'team_leader'));
 create policy "Officers update self_received_requests"
   on self_received_requests for update
-  using      (my_team_role(team_id) in ('officer', 'admin'))
-  with check (my_team_role(team_id) in ('officer', 'admin'));
+  using      (my_team_role(team_id) in ('officer', 'team_leader'))
+  with check (my_team_role(team_id) in ('officer', 'team_leader'));
 
 create policy "Officers read mplus_exclusion_requests"
   on mplus_exclusion_requests for select
-  using (my_team_role(team_id) in ('officer', 'admin'));
+  using (my_team_role(team_id) in ('officer', 'team_leader'));
 create policy "Officers update mplus_exclusion_requests"
   on mplus_exclusion_requests for update
-  using      (my_team_role(team_id) in ('officer', 'admin'))
-  with check (my_team_role(team_id) in ('officer', 'admin'));
+  using      (my_team_role(team_id) in ('officer', 'team_leader'))
+  with check (my_team_role(team_id) in ('officer', 'team_leader'));
 
 create policy "Officers read pending_roster"
   on pending_roster for select
-  using (my_team_role(team_id) in ('officer', 'admin'));
+  using (my_team_role(team_id) in ('officer', 'team_leader'));
 create policy "Officers update pending_roster"
   on pending_roster for update
-  using      (my_team_role(team_id) in ('officer', 'admin'))
-  with check (my_team_role(team_id) in ('officer', 'admin'));
+  using      (my_team_role(team_id) in ('officer', 'team_leader'))
+  with check (my_team_role(team_id) in ('officer', 'team_leader'));
 
 -- Audit log: officers read only, no direct write path
 create policy "Officers read audit_log"
   on audit_log for select
-  using (my_team_role(team_id) in ('officer', 'admin'));
+  using (my_team_role(team_id) in ('officer', 'team_leader'));
 
 -- Settings: public read, admins write
 create policy "Public read settings"
   on settings for select using (true);
 create policy "Admins write settings"
   on settings for all
-  using      (my_team_role(team_id) = 'admin')
-  with check (my_team_role(team_id) = 'admin');
+  using      (my_team_role(team_id) = 'team_leader')
+  with check (my_team_role(team_id) = 'team_leader');
 
 -- Season snapshots: public read, admins write
 create policy "Public read season_snapshots"
   on season_snapshots for select using (true);
 create policy "Admins write season_snapshots"
   on season_snapshots for all
-  using      (my_team_role(team_id) = 'admin')
-  with check (my_team_role(team_id) = 'admin');
+  using      (my_team_role(team_id) = 'team_leader')
+  with check (my_team_role(team_id) = 'team_leader');
 
 -- team_members: officers read their team, admins and site admins write
 create policy "Officers read own team_members"
   on team_members for select
-  using (my_team_role(team_id) in ('officer', 'admin') or is_site_admin());
+  using (my_team_role(team_id) in ('officer', 'team_leader') or is_site_admin());
 create policy "Admins write team_members"
   on team_members for all
-  using      (my_team_role(team_id) = 'admin' or is_site_admin())
-  with check (my_team_role(team_id) = 'admin' or is_site_admin());
+  using      (my_team_role(team_id) = 'team_leader' or is_site_admin())
+  with check (my_team_role(team_id) = 'team_leader' or is_site_admin());
 ```
 
 ### Site admin table and policies
@@ -778,19 +786,19 @@ create policy "Site admins write site_admins"
 drop policy "Admins write settings" on settings;
 create policy "Admins write settings"
   on settings for all
-  using      (my_team_role(team_id) = 'admin' or is_site_admin())
-  with check (my_team_role(team_id) = 'admin' or is_site_admin());
+  using      (my_team_role(team_id) = 'team_leader' or is_site_admin())
+  with check (my_team_role(team_id) = 'team_leader' or is_site_admin());
 
 drop policy "Admins write season_snapshots" on season_snapshots;
 create policy "Admins write season_snapshots"
   on season_snapshots for all
-  using      (my_team_role(team_id) = 'admin' or is_site_admin())
-  with check (my_team_role(team_id) = 'admin' or is_site_admin());
+  using      (my_team_role(team_id) = 'team_leader' or is_site_admin())
+  with check (my_team_role(team_id) = 'team_leader' or is_site_admin());
 
 drop policy "Officers read audit_log" on audit_log;
 create policy "Officers read audit_log"
   on audit_log for select
-  using (my_team_role(team_id) in ('officer', 'admin') or is_site_admin());
+  using (my_team_role(team_id) in ('officer', 'team_leader') or is_site_admin());
 ```
 
 ### Auth trigger
@@ -849,11 +857,11 @@ First, seed yourself into `site_admins`:
 insert into site_admins (discord_id) values ('YOUR_DISCORD_ID_HERE');
 ```
 
-Then insert all current Phoenix and Hellfire officers and admins into `team_members`:
+Then insert all current Phoenix and Hellfire officers and team leaders into `team_members`:
 
 ```sql
 insert into team_members (team_id, discord_id, role) values
-  (1, 'DISCORD_ID_HERE', 'admin'),    -- Phoenix admin
+  (1, 'DISCORD_ID_HERE', 'team_leader'),    -- Phoenix team leader
   (1, 'DISCORD_ID_HERE', 'officer'),  -- Phoenix officer
   (2, 'DISCORD_ID_HERE', 'officer');  -- Hellfire officer
   -- add all current officers for both teams

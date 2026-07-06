@@ -7,7 +7,7 @@
 -- with tests/rls/helpers.js.
 --
 --   ...0001  officer on team 1
---   ...0002  admin on team 1
+--   ...0002  team leader on team 1
 --   ...0003  raider on team 1
 --   ...0004  site admin (no team role)
 --   ...0005  officer on team 2
@@ -25,7 +25,7 @@ insert into public.teams (id, name, slug) values
 
 insert into public.team_members (id, team_id, discord_id, auth_user_id, role, name_realm) values
   (1, 1, 'discord-officer-1', '00000000-0000-0000-0000-000000000001', 'officer', 'Seedofficer-Illidan'),
-  (2, 1, 'discord-admin-1',   '00000000-0000-0000-0000-000000000002', 'admin',   'Seedadmin-Illidan'),
+  (2, 1, 'discord-leader-1',  '00000000-0000-0000-0000-000000000002', 'team_leader', 'Seedleader-Illidan'),
   (3, 1, 'discord-raider-1',  '00000000-0000-0000-0000-000000000003', 'raider',  'Seedraider-Illidan'),
   (4, 2, 'discord-officer-2', '00000000-0000-0000-0000-000000000005', 'officer', 'Seedofficertwo-Illidan');
 

@@ -4,7 +4,7 @@
 // a rejection can only come from RLS. Every statement runs in a rolled-back
 // transaction.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, queryAs, RLS_DENIED, OFFICER_T1, ADMIN_T1, RAIDER_T1, SITE_ADMIN, OFFICER_T2 } from './helpers.js';
+import { pool, queryAs, RLS_DENIED, OFFICER_T1, TEAM_LEADER_T1, RAIDER_T1, SITE_ADMIN, OFFICER_T2 } from './helpers.js';
 
 async function expectDenied(role, uid, sql, params) {
   await expect(queryAs(role, uid, sql, params)).rejects.toMatchObject({ code: RLS_DENIED });
@@ -32,8 +32,8 @@ describe('officer-write tables (direct team_id scope)', () => {
     });
     // Regression for #293 on player_wcl_season_perf: WITH CHECK used to
     // allow only officer, so admins passed USING but failed every write.
-    it(`team 1 admin can insert into ${table}`, async () => {
-      const res = await queryAs('authenticated', ADMIN_T1, sql);
+    it(`team 1 team leader can insert into ${table}`, async () => {
+      const res = await queryAs('authenticated', TEAM_LEADER_T1, sql);
       expect(res.rowCount).toBe(1);
     });
     it(`raider cannot insert into ${table}`, async () => {
@@ -68,10 +68,10 @@ describe('officer-write tables (team resolved through players subquery)', () => 
   }
 });
 
-describe('team_members is admin and site-admin only', () => {
+describe('team_members is team-leader and site-admin only', () => {
   const sql = "insert into public.team_members (team_id, discord_id, role) values (1, 'discord-new-member', 'raider')";
-  it('team 1 admin can insert', async () => {
-    const res = await queryAs('authenticated', ADMIN_T1, sql);
+  it('team 1 team leader can insert', async () => {
+    const res = await queryAs('authenticated', TEAM_LEADER_T1, sql);
     expect(res.rowCount).toBe(1);
   });
   it('site admin can insert', async () => {
@@ -83,10 +83,10 @@ describe('team_members is admin and site-admin only', () => {
   });
 });
 
-describe('team_settings is admin and site-admin only', () => {
+describe('team_settings is team-leader and site-admin only', () => {
   const sql = `update public.team_settings set config = '{"seeded": false}' where team_id = 1`;
-  it('team 1 admin can update team 1 settings', async () => {
-    const res = await queryAs('authenticated', ADMIN_T1, sql);
+  it('team 1 team leader can update team 1 settings', async () => {
+    const res = await queryAs('authenticated', TEAM_LEADER_T1, sql);
     expect(res.rowCount).toBe(1);
   });
   it('site admin can update team 1 settings', async () => {
@@ -99,10 +99,10 @@ describe('team_settings is admin and site-admin only', () => {
   });
 });
 
-describe('season_snapshots is admin and site-admin only', () => {
+describe('season_snapshots is team-leader and site-admin only', () => {
   const sql = "insert into public.season_snapshots (team_id, season, data) values (1, 'test-season', '{}')";
-  it('team 1 admin can insert', async () => {
-    const res = await queryAs('authenticated', ADMIN_T1, sql);
+  it('team 1 team leader can insert', async () => {
+    const res = await queryAs('authenticated', TEAM_LEADER_T1, sql);
     expect(res.rowCount).toBe(1);
   });
   it('site admin can insert', async () => {
@@ -120,8 +120,8 @@ describe('site_admins is site-admin only', () => {
     const res = await queryAs('authenticated', SITE_ADMIN, sql);
     expect(res.rowCount).toBe(1);
   });
-  it('team 1 admin cannot insert', async () => {
-    await expectDenied('authenticated', ADMIN_T1, sql);
+  it('team 1 team leader cannot insert', async () => {
+    await expectDenied('authenticated', TEAM_LEADER_T1, sql);
   });
 });
 
