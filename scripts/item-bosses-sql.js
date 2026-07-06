@@ -32,11 +32,11 @@ import readline from 'readline';
 // Update each tier.
 const ENCOUNTER_MAP = {
   // The Venomous Abyss -- Midnight Season 1
-  "Gore Rattle":      "Ula'tek",
-  "Mor'zahi":         'The Lost Explorers',
-  "Vexhul":           'The Twin Fangs',
-  "Breath of Ula'tek":'Entombed Sentinels',
-  "Vashnik":          'Vashnik the Malignant',
+  'Gore Rattle': "Ula'tek",
+  "Mor'zahi": 'The Lost Explorers',
+  Vexhul: 'The Twin Fangs',
+  "Breath of Ula'tek": 'Entombed Sentinels',
+  Vashnik: 'Vashnik the Malignant'
 };
 
 const zoneName = process.argv[2];
@@ -55,7 +55,7 @@ if (isTTY) {
 
 const lines = [];
 
-rl.on('line', line => {
+rl.on('line', (line) => {
   lines.push(line.trim());
   if (isTTY && lines.length === 1) process.stdout.write('Paste sources: ');
   if (lines.length === 2) rl.close();
@@ -67,23 +67,27 @@ rl.on('close', () => {
     process.exit(1);
   }
 
-  const ids     = lines[0].split(',').map(s => s.trim()).filter(Boolean);
-  const sources = lines[1].split(',').map(s => s.trim()).filter(Boolean);
+  const ids = lines[0]
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const sources = lines[1]
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
 
   if (ids.length !== sources.length) {
     console.error(`Count mismatch: ${ids.length} IDs vs ${sources.length} sources.`);
     process.exit(1);
   }
 
-  const rows   = [];
+  const rows = [];
   const manual = [];
 
   for (let i = 0; i < ids.length; i++) {
     const wowId = ids[i];
-    const raw   = sources[i];
-    const boss  = raw.endsWith(' ' + zoneName)
-      ? raw.slice(0, -(zoneName.length + 1)).trim()
-      : raw;
+    const raw = sources[i];
+    const boss = raw.endsWith(' ' + zoneName) ? raw.slice(0, -(zoneName.length + 1)).trim() : raw;
 
     if (boss === 'Drop' || boss === 'Zone Drop') {
       manual.push(`  wow_item_id ${wowId}  (source: "${raw}")`);
@@ -102,6 +106,6 @@ rl.on('close', () => {
 
   if (manual.length > 0) {
     console.log('\n-- Manual lookup needed (check each on Wowhead to find the correct boss):');
-    manual.forEach(m => console.log(m));
+    manual.forEach((m) => console.log(m));
   }
 });
