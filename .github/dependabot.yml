@@ -1,0 +1,27 @@
+version: 2
+updates:
+  # Workflow action refs only. Steps that pin a tool version through an
+  # input (supabase/setup-cli's `version: 2.109.0`) are not touched by
+  # dependabot, so that pin stays where the workflow comments say to bump it.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - skip-changelog
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - skip-changelog
+    groups:
+      dev-dependencies:
+        patterns:
+          - '*'
+    ignore:
+      # eslint 9 requires migrating .eslintrc.json to flat config; take that
+      # on deliberately, not as a weekly update.
+      - dependency-name: eslint
+        update-types: ['version-update:semver-major']
