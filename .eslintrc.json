@@ -13,7 +13,7 @@
   },
   "overrides": [
     {
-      "files": ["scripts/**/*.js"],
+      "files": ["scripts/**/*.js", "tests/**/*.js"],
       "env": {
         "browser": false,
         "node": true,

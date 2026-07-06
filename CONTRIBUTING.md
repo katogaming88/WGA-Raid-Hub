@@ -73,6 +73,10 @@ PRs that change `supabase/migrations/` must also:
   RLS policy (CI checks this too)
 - Regenerate the policy export if policies changed: `npm run db:rls`, and
   commit `docs/rls_policies.csv` (CI fails a stale CSV)
+- Pass the RLS policy tests: `supabase db reset` (applies migrations and the
+  test seed), then `npm run test:rls`. CI runs the same suite on every
+  supabase/ or tests/ change. If a policy legitimately changed, update the
+  matching assertions in `tests/rls/` and the matrix in docs/RLS.md together
 
 ## Google Apps Script changes
 
