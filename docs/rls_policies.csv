@@ -24,8 +24,8 @@ mplus_exclusion_requests,Claude readers read mplus_exclusion_requests,claude_rea
 mplus_exclusion_requests,Officers read mplus_exclusion_requests,public,SELECT,PERMISSIVE,"(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'admin'::text]))",
 mplus_exclusion_requests,Officers update mplus_exclusion_requests,public,UPDATE,PERMISSIVE,"(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'admin'::text]))","(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'admin'::text]))"
 player_wcl_season_perf,Claude readers read player_wcl_season_perf,claude_readers,SELECT,PERMISSIVE,true,
-player_wcl_season_perf,Officers write player_wcl_season_perf,public,ALL,PERMISSIVE,"(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'admin'::text]))",(my_team_role(team_id) = ANY (ARRAY['officer'::text]))
-player_wcl_season_perf,Public reas player_wcl_season_perf,public,SELECT,PERMISSIVE,true,
+player_wcl_season_perf,Officers write player_wcl_season_perf,public,ALL,PERMISSIVE,"(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'admin'::text]))","(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'admin'::text]))"
+player_wcl_season_perf,Public read player_wcl_season_perf,public,SELECT,PERMISSIVE,true,
 players,Claude readers read players,claude_readers,SELECT,PERMISSIVE,true,
 players,Officers write players,public,ALL,PERMISSIVE,"(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'admin'::text]))","(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'admin'::text]))"
 players,Public read players,public,SELECT,PERMISSIVE,true,

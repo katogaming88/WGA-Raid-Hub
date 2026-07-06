@@ -36,7 +36,7 @@ Two things the matrix hides on purpose: every table also carries a `claude_reade
 | item_bosses | yes | | | Read-only lookup; no write policy |
 | items | yes | | | Read-only lookup; no write policy |
 | mplus_exclusion_requests | no | SELECT, UPDATE | | No INSERT policy; submissions are service-role only |
-| player_wcl_season_perf | yes | all ops | (broken, #293) | Write policy's WITH CHECK allows officer only, so admin writes fail; public-read policy name has a typo. Both tracked in [#293](https://github.com/katogaming88/WGA-Raid-Hub/issues/293) |
+| player_wcl_season_perf | yes | all ops | (via officer) | |
 | players | yes | all ops | (via officer) | |
 | priority_order | yes | all ops | (via officer) | |
 | rclc_loot | yes | all ops | (via officer) | |
@@ -51,8 +51,7 @@ Two things the matrix hides on purpose: every table also carries a `claude_reade
 
 ## Known issues
 
-- [#284](https://github.com/katogaming88/WGA-Raid-Hub/issues/284): `anon` and `authenticated` are missing base SELECT/INSERT/UPDATE/DELETE grants on every table, so none of the public or officer policies above are reachable through the Supabase API yet. The policies are correct; the grants gate in front of them is closed.
-- [#293](https://github.com/katogaming88/WGA-Raid-Hub/issues/293): `player_wcl_season_perf` write policy blocks admins (WITH CHECK asymmetry) and its public-read policy name has a typo (`Public reas`).
+- `service_role` is missing base DML grants on every table, the same defect [#284](https://github.com/katogaming88/WGA-Raid-Hub/issues/284) fixed for `anon` and `authenticated`. service_role bypasses policies but not grants, so server-side writes (Edge Functions, service-key integrations) will fail until it gets the same treatment. Flagged on #284.
 - The four request tables (`bis_requests`, `mplus_exclusion_requests`, `self_received_requests`, `season_signups`) have no INSERT policies. Raider-facing submission flows will need them (or an Edge Function using the service role) when those features move off Apps Script.
 - [#294](https://github.com/katogaming88/WGA-Raid-Hub/issues/294): "team admin" is this document's working name for `team_members.role = 'admin'`; the blessed vocabulary for the permission tiers is still to be decided there.
 
