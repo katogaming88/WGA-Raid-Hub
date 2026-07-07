@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.13.3] - 2026-07-07
+
+### Fixed
+- **Roster import accepts the full-sheet export layout (#320)** -- The hellfire Roster export ships the sheet's two banner rows (title and description) above the header, which the roster parser rejected because it expected the header in row 1. The parser now locates the header row by content within the first few rows, so both the cleaned phoenix layout and the full-sheet hellfire layout import. Verified against the hellfire export on the local stack: 15 players and 59 audit rows import, and a second apply inserts zero rows. The hellfire signup-flow tabs (Pending Roster, Discord Claims, Roster Responses) are out of scope for the historical import and stay in the sheet until the signup flow itself moves.
+
+---
+
 ## [3.13.2] - 2026-07-07
 
 ### Added
