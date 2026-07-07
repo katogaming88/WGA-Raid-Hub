@@ -71,6 +71,29 @@ describe('officers read their own team, not other teams', () => {
   }
 });
 
+describe('pending_roster view inherits season_signups visibility', () => {
+  // security_invoker view over season_signups; the underlying officer-only
+  // policies must apply to callers of the view, not the view owner.
+  it('anon sees no rows', async () => {
+    expect(await countAs('anon', null, 'pending_roster')).toBe(0);
+  });
+  it('raider sees no rows', async () => {
+    expect(await countAs('authenticated', RAIDER_T1, 'pending_roster')).toBe(0);
+  });
+  it('team 1 officer sees team 1 approved signups only', async () => {
+    expect(await countAs('authenticated', OFFICER_T1, 'pending_roster', 'team_id = 1')).toBeGreaterThan(0);
+    expect(await countAs('authenticated', OFFICER_T1, 'pending_roster', 'team_id = 2')).toBe(0);
+  });
+  it('team 2 officer sees no team 1 rows', async () => {
+    expect(await countAs('authenticated', OFFICER_T2, 'pending_roster', 'team_id = 1')).toBe(0);
+  });
+  it('pending signups do not appear in the view', async () => {
+    expect(
+      await countAs('authenticated', OFFICER_T1, 'pending_roster', "signup_name_realm = 'Seedsignup-Illidan'")
+    ).toBe(0);
+  });
+});
+
 describe('site admin visibility', () => {
   it('site admin sees team_members', async () => {
     expect(await countAs('authenticated', SITE_ADMIN, 'team_members')).toBeGreaterThan(0);

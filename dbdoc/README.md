@@ -24,6 +24,7 @@
 | [public.team_members](public.team_members.md) | 7 |  | BASE TABLE |
 | [public.team_settings](public.team_settings.md) | 3 |  | BASE TABLE |
 | [public.teams](public.teams.md) | 3 |  | BASE TABLE |
+| [public.pending_roster](public.pending_roster.md) | 14 |  | VIEW |
 
 ## Stored procedures and functions
 
@@ -35,6 +36,7 @@
 | public.my_team_role | text | p_team_id integer | FUNCTION |
 | public.rls_auto_enable | event_trigger |  | FUNCTION |
 | public.set_updated_at | trigger |  | FUNCTION |
+| public.add_signup_to_roster | int4 | p_signup_id integer, p_is_trial boolean DEFAULT true, p_archive_player_id integer DEFAULT NULL::integer | FUNCTION |
 
 ## Enums
 
@@ -276,6 +278,22 @@ erDiagram
   integer id
   text name
   text slug
+}
+"public.pending_roster" {
+  integer signup_id
+  integer team_id
+  text season
+  text signup_name_realm
+  integer class_spec_id
+  text class
+  text spec
+  text role
+  text off_specs
+  boolean main_swap
+  text player_note
+  text signup_officer_note
+  timestamp_with_time_zone reviewed_at
+  integer reviewed_by
 }
 ```
 

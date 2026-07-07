@@ -1644,6 +1644,17 @@
       ],
       "constraints": [
         {
+          "name": "season_signups_player_only_when_added",
+          "type": "CHECK",
+          "def": "CHECK (((approved_player_id IS NULL) OR (status = 'added'::text)))",
+          "table": "public.season_signups",
+          "referenced_table": "",
+          "columns": [
+            "approved_player_id",
+            "status"
+          ]
+        },
+        {
           "name": "season_signups_status_check",
           "type": "CHECK",
           "def": "CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text, 'added'::text])))",
@@ -2308,6 +2319,87 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.pending_roster",
+      "type": "VIEW",
+      "columns": [
+        {
+          "name": "signup_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "signup_name_realm",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "class_spec_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "class",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "spec",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "off_specs",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "main_swap",
+          "type": "boolean",
+          "nullable": true
+        },
+        {
+          "name": "player_note",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "signup_officer_note",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "reviewed_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "reviewed_by",
+          "type": "integer",
+          "nullable": true
+        }
+      ],
+      "def": "CREATE VIEW pending_roster AS (\n SELECT s.id AS signup_id,\n    s.team_id,\n    s.season,\n    s.signup_name_realm,\n    COALESCE(s.swap_class_spec_id, s.class_spec_id) AS class_spec_id,\n    cs.class,\n    cs.spec,\n    cs.role,\n    s.off_specs,\n    s.main_swap,\n    s.player_note,\n    s.signup_officer_note,\n    s.reviewed_at,\n    s.reviewed_by\n   FROM (season_signups s\n     LEFT JOIN classes_specs cs ON ((cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id))))\n  WHERE ((s.status = 'approved'::text) AND (s.approved_player_id IS NULL))\n)",
+      "referenced_tables": [
+        "public.season_signups",
+        "public.classes_specs"
+      ]
     }
   ],
   "relations": [
@@ -2789,6 +2881,12 @@
       "name": "public.set_updated_at",
       "return_type": "trigger",
       "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.add_signup_to_roster",
+      "return_type": "int4",
+      "arguments": "p_signup_id integer, p_is_trial boolean DEFAULT true, p_archive_player_id integer DEFAULT NULL::integer",
       "type": "FUNCTION"
     }
   ],

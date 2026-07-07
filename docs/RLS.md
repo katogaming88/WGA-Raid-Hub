@@ -49,6 +49,13 @@ One thing the matrix hides on purpose: every table also carries a `claude_reader
 | team_settings | yes | | all ops +site | |
 | teams | yes | | | Read-only lookup; no write policy |
 
+## Views and functions
+
+Neither of these carries policies of its own; both defer to the table policies above.
+
+- **`pending_roster`** (view): the officer worklist of approved signups awaiting a roster add (`season_signups` where `status = 'approved'` and `approved_player_id is null`, joined to `classes_specs`). Created `WITH (security_invoker = on)`, so it runs with the caller's privileges and the `season_signups` policies apply to whoever queries it: anon and raiders see zero rows, officers and team leaders see their own team. SELECT is granted to `anon` and `authenticated`; the grant is safe because the underlying policies do the filtering.
+- **`add_signup_to_roster(signup_id, is_trial, archive_player_id)`** (function): atomically promotes an approved signup to the roster (creates or unarchives the `players` row, optionally archives a main-swap predecessor on the same team, sets `status = 'added'` and `approved_player_id`). `SECURITY INVOKER`, so authorization comes entirely from the caller passing the existing `players` write and `season_signups` update policies. EXECUTE is granted to `authenticated` only and revoked from `anon` and `public`.
+
 ## Known issues
 
 - `service_role` is missing base DML grants on every table, the same defect [#284](https://github.com/katogaming88/WGA-Raid-Hub/issues/284) fixed for `anon` and `authenticated`. service_role bypasses policies but not grants, so server-side writes (Edge Functions, service-key integrations) will fail until it gets the same treatment. Flagged on #284.
