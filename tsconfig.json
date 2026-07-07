@@ -1,0 +1,16 @@
+{
+  // Type checking for the plain-JS frontend (#331). There is no build step:
+  // tsc runs with noEmit against the .js files exactly as they ship. Only
+  // files that opt in with a // @ts-check comment are checked (checkJs is
+  // off); the rest are still loaded so their script-scope globals resolve.
+  "compilerOptions": {
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": false,
+    "target": "es2020",
+    "lib": ["es2020", "dom", "dom.iterable"],
+    "strict": false,
+    "noImplicitAny": false
+  },
+  "include": ["js/**/*.js", "js/globals.d.ts"]
+}

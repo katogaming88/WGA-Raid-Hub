@@ -39,6 +39,10 @@ When merging a PR:
 - Keep PRs focused on one issue or theme
 - Update `CHANGELOG.md` with a brief description of what changed
 - If your change affects `PhoenixRosterWebApp.gs`, note whether a new deployment is needed
+- `js/common.js` is type-checked (`// @ts-check` plus JSDoc annotations, no
+  build step). If you touch a checked file, run `npm run typecheck`; CI runs
+  the same check on every `js/` change. Add `// @ts-check` to more `js/`
+  files as they get touched
 
 ## Project structure
 
