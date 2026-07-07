@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.12.2] - 2026-07-07
+
+### Changed
+- **Clarified the Admin Danger Zone's "Clear M+ Exclusions" label** -- renamed to "Clear M+ Exclusion Requests" to distinguish it from the M+ Exclusions tab's own "Clear All Exclusions," which clears a different thing (the active exclusion flag on players, not the request history).
+
+---
+
 ## [3.12.1] - 2026-07-07
 
 ### Fixed
