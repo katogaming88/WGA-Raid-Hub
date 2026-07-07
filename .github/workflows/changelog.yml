@@ -2,7 +2,9 @@ name: Changelog Check
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    # labeled/unlabeled so toggling the chore label re-evaluates the
+    # version-bump exemption without needing a new push.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 # A new push to the PR supersedes any still-running check on the old commit.
 concurrency:
@@ -34,8 +36,29 @@ jobs:
             echo "changelog=false" >> $GITHUB_OUTPUT
           fi
 
+          if git diff origin/${{ github.base_ref }}...HEAD -- js/common.js | grep -q '^\+var VERSION'; then
+            echo "version_bump=true" >> $GITHUB_OUTPUT
+          else
+            echo "version_bump=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Fail if functional changes without changelog update
         if: steps.changed.outputs.functional == 'true' && steps.changed.outputs.changelog == 'false'
         run: |
           echo "::error::CHANGELOG.md was not updated. If this PR changes how the app works or fixes a bug, please update CHANGELOG.md and bump the VERSION in js/common.js."
+          exit 1
+
+      # Chore/mechanical PRs are exempt (#299): the VERSION bump signals
+      # "user-visible behavior changed", so requiring one for a lint pass or
+      # comment-only change trains reflexive bumping. Exemption = chore/*
+      # branch or the chore label. The changelog check above stays purely
+      # path-based with no bypass (see be59777 for why).
+      - name: Fail if functional changes without a VERSION bump
+        if: >-
+          steps.changed.outputs.functional == 'true' &&
+          steps.changed.outputs.version_bump == 'false' &&
+          !startsWith(github.head_ref, 'chore/') &&
+          !contains(github.event.pull_request.labels.*.name, 'chore')
+        run: |
+          echo "::error::The VERSION in js/common.js was not bumped. Functional PRs bump it per CONTRIBUTING.md; if this change is mechanical (formatting, lint, comments), use a chore/* branch or add the chore label."
           exit 1
