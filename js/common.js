@@ -3,13 +3,15 @@ var TEAMS = {
     gasUrl:
       'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec',
     name: 'Team Phoenix',
-    officerPass: 'phoenix2'
+    officerPass: 'phoenix2',
+    supabaseTeamId: 1
   },
   hellfire: {
     gasUrl:
       'https://script.google.com/macros/s/AKfycbwIpnJyZDwWr5MmWIv7iyaDZ0OajPTFePMTYfIy8WG7jhg7pakQTvTVSM3SLihrKxBb/exec',
     name: 'Hellfire Rollers',
-    officerPass: 'hellfire2'
+    officerPass: 'hellfire2',
+    supabaseTeamId: 2
   }
 };
 
@@ -23,7 +25,14 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.12.2';
+var VERSION = '3.13.1';
+
+// Supabase client. The publishable key is public by design (it maps to the
+// anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
+// the JSONP site fully working if the CDN script fails to load.
+var SUPABASE_URL = 'https://kxgjqnpwfklbgrxdgmmv.supabase.co';
+var SUPABASE_ANON_KEY = 'sb_publishable_OdTUOR0Do1ThdKUPBh5inA_OWq78POC';
+var supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 function _getDiscordTokenParam() {
   try {

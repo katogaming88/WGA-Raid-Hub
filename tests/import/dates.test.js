@@ -10,6 +10,12 @@ describe('parseSheetTimestamp', () => {
   it('accepts US short format', () => {
     expect(parseSheetTimestamp('1/3/2026 19:00:00')).toBe('2026-01-03 19:00:00');
   });
+  it('accepts US short format with a two-digit year (Loot Data export)', () => {
+    expect(parseSheetTimestamp('3/19/26')).toBe('2026-03-19 00:00:00');
+    expect(parseSheetTimestamp('03/19/26')).toBe('2026-03-19 00:00:00');
+    expect(parseSheetTimestamp('3/19/26 22:35:00')).toBe('2026-03-19 22:35:00');
+    expect(parseSheetTimestamp('6/9/26 22:35')).toBe('2026-06-09 22:35:00');
+  });
   it('accepts the display format the request tabs use', () => {
     expect(parseSheetTimestamp('Jan 3, 2026 19:00')).toBe('2026-01-03 19:00:00');
     expect(parseSheetTimestamp('Dec 31, 2025')).toBe('2025-12-31 00:00:00');

@@ -6,11 +6,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [3.12.2] - 2026-07-07
+## [3.13.1] - 2026-07-07
 
 ### Changed
 - **Clarified the Admin Danger Zone's "Clear M+ Exclusions" label** -- renamed to "Clear M+ Exclusion Requests" to distinguish it from the M+ Exclusions tab's own "Clear All Exclusions," which clears a different thing (the active exclusion flag on players, not the request history).
 
+---
+
+## [3.13.0] - 2026-07-07
+
+### Added
+- **supabase-js client on both pages (#207)** -- index.html and officer.html now load the supabase-js v2 library and initialize a shared client in `js/common.js`, and each team's config carries its Supabase team id (verified against the live `teams` table). Nothing reads from Supabase yet: the JSONP backend stays in charge of every feature, and if the CDN script fails to load the site works exactly as before. This is the foundation for the Phase 2 public read switches (#208, #209).
+
+---
+
+## [3.12.2] - 2026-07-07
+
+### Fixed
+- **Loot Data import accepts the export's two-digit-year dates (#320)** -- The real Loot Data export writes its date column as `3/19/26`, which the import date parser rejected (it only knew 4-digit years). The parser now accepts `M/d/yy` with or without a time, expanding to `20yy`. Verified against the phoenix export on the local stack: all 156 loot rows import (102 Heroic, 54 Mythic, season MID1, Eastern timestamps), 19 old-tier items auto-created, and a second apply inserts zero rows.
+- **Schema reference doc matches the live difficulty vocabulary** -- `docs/database-schema-reference.md` still described the `rclc_loot.difficulty` CHECK as Normal/Heroic/Mythic; the live constraint is Champion/Heroic/Mythic with Normal translated to Champion on import (decided on #320).
 ---
 
 ## [3.12.1] - 2026-07-07
