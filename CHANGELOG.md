@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.15.0] - 2026-07-07
+
+### Changed
+- **Loot columns store item track, named and valued as track (#343)** -- The `difficulty` columns on `rclc_loot`, `self_received_requests`, and `priority_order` are renamed to `track` and store the real upgrade-track names: Champion, Hero, Myth (previously the hybrid Champion/Heroic/Mythic). The columns always meant track: the app translated Normal drops to "champion", and self-received uses the values for vault/crafted/catalyst items that never dropped at a raid difficulty. The migration updates existing rows in place; the importers translate the sheet's difficulty words on the way in; priority_order stays Hero/Myth only, since Champion loot is handled by loot council outside the priority system. The sheet and current UI keep their vocabulary until the Phase 2/5 switches.
+
+---
+
 ## [3.14.0] - 2026-07-07
 
 ### Added

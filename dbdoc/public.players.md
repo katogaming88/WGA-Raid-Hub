@@ -106,7 +106,7 @@ erDiagram
   integer team_id FK
   integer player_id FK
   integer item_id FK
-  text difficulty
+  text track
   text season
   timestamp_with_time_zone awarded_at
   text rclc_id
@@ -138,7 +138,7 @@ erDiagram
   integer team_id FK
   text season
   integer item_id FK
-  text difficulty
+  text track
   integer rank
   integer player_id FK
   timestamp_with_time_zone updated_at
@@ -180,7 +180,7 @@ erDiagram
   integer self_item_id FK
   timestamp_with_time_zone submitted_at
   text status
-  text difficulty
+  text track
   text source
   text note
 }

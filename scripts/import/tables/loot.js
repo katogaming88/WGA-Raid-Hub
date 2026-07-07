@@ -12,9 +12,11 @@
 //   the export's item column (brackets stripped, same as gs/wgaWebApp.gs:2025)
 //   with equipLoc as the slot, so no loot history displays nameless.
 //
-// Difficulty comes from the instance string's suffix; the base tier is
-// stored as Champion per kat's decision on #320 (the data says "Normal",
-// gs/wgaWebApp.gs:2004 already does this same translation).
+// The track column derives from the instance string's difficulty suffix:
+// for fresh raid drops the mapping is deterministic (Normal -> Champion,
+// Heroic -> Hero, Mythic -> Myth, decided on #343; gs/wgaWebApp.gs:2004
+// already translated Normal to champion). The ongoing Phase 5 import can
+// read the RCLC itemString's bonus IDs as the authoritative track source.
 //
 // dedupe_key (unique) is team-prefixed: rclc ids can collide across the two
 // team spreadsheets, and composite keys use normalized player/item/date.
@@ -31,14 +33,14 @@ import { sqlTimestampAtZone, parseSheetTimestamp, seasonForDate } from '../lib/d
 import { playerIdSql } from '../lib/registry.js';
 import { assertHeader } from '../lib/csv.js';
 
-function parseDifficulty(instanceStr) {
+function parseTrack(instanceStr) {
   const d = String(instanceStr || '')
     .split('-')
     .pop()
     .trim()
     .toLowerCase();
-  if (d === 'mythic') return 'Mythic';
-  if (d === 'heroic') return 'Heroic';
+  if (d === 'mythic') return 'Myth';
+  if (d === 'heroic') return 'Hero';
   if (d === 'normal') return 'Champion';
   return null;
 }
@@ -125,7 +127,7 @@ export function parseLegacyLoot(rows, label = 'Loot Data') {
 
 export function lootSql(teamId, entries, registry, { knownItems, seasons, tz }) {
   const warnings = [];
-  const counts = { pasted: 0, legacy: 0, unknownPlayers: 0, unknownSeason: 0, unknownDifficulty: 0 };
+  const counts = { pasted: 0, legacy: 0, unknownPlayers: 0, unknownSeason: 0, unknownTrack: 0 };
 
   // Old-tier items missing from the Item Lookup get created first, by name.
   const newItems = new Map(); // normName -> {name, wowItemId, slot}
@@ -162,8 +164,8 @@ export function lootSql(teamId, entries, registry, { knownItems, seasons, tz }) 
     const nameRealm = registry.resolve(e.player);
     if (!nameRealm) counts.unknownPlayers++;
 
-    const difficulty = parseDifficulty(e.instance);
-    if (!difficulty && e.instance) counts.unknownDifficulty++;
+    const track = parseTrack(e.instance);
+    if (!track && e.instance) counts.unknownTrack++;
 
     let season;
     let awardedAt;
@@ -196,7 +198,7 @@ export function lootSql(teamId, entries, registry, { knownItems, seasons, tz }) 
       String(teamId),
       nameRealm ? playerIdSql(teamId, nameRealm) : 'null',
       itemRef,
-      sqlString(difficulty),
+      sqlString(track),
       sqlString(season),
       awardedAt,
       sqlString(rclcId),
@@ -207,7 +209,7 @@ export function lootSql(teamId, entries, registry, { knownItems, seasons, tz }) 
 
   sql += insertStatement(
     'rclc_loot',
-    ['team_id', 'player_id', 'item_id', 'difficulty', 'season', 'awarded_at', 'rclc_id', 'dedupe_key', 'boss'],
+    ['team_id', 'player_id', 'item_id', 'track', 'season', 'awarded_at', 'rclc_id', 'dedupe_key', 'boss'],
     valueRows,
     'on conflict (dedupe_key) do nothing'
   );
@@ -216,8 +218,8 @@ export function lootSql(teamId, entries, registry, { knownItems, seasons, tz }) 
     warnings.push(`${counts.unknownPlayers} rows kept with player_id null (name not on Roster)`);
   if (counts.unknownSeason)
     warnings.push(`${counts.unknownSeason} legacy rows have no season (date outside --seasons ranges)`);
-  if (counts.unknownDifficulty)
-    warnings.push(`${counts.unknownDifficulty} rows with unparseable instance difficulty (imported null)`);
+  if (counts.unknownTrack)
+    warnings.push(`${counts.unknownTrack} rows whose instance suffix maps to no track (imported null)`);
   if (newItems.size) warnings.push(`${newItems.size} old-tier items added to items from the legacy export`);
 
   return { sql, counts, newItemCount: newItems.size, warnings };

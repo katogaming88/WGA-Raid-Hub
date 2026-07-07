@@ -17,9 +17,9 @@ const DIRECT_TEAM_INSERTS = {
   attendance:
     "insert into public.attendance (team_id, player_id, raid_date, status) values (1, 1, '2026-02-02', 'Present')",
   priority_order:
-    "insert into public.priority_order (team_id, season, item_id, difficulty, rank, player_id) values (1, 'test-season', 1, 'Heroic', 1, 1)",
+    "insert into public.priority_order (team_id, season, item_id, track, rank, player_id) values (1, 'test-season', 1, 'Hero', 1, 1)",
   rclc_loot:
-    "insert into public.rclc_loot (team_id, player_id, item_id, difficulty, season) values (1, 1, 1, 'Heroic', 'test-season')",
+    "insert into public.rclc_loot (team_id, player_id, item_id, track, season) values (1, 1, 1, 'Hero', 'test-season')",
   player_wcl_season_perf:
     "insert into public.player_wcl_season_perf (player_id, team_id, season) values (1, 1, 'test-season')"
 };

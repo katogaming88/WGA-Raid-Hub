@@ -15,17 +15,17 @@ function selfReceivedRows() {
 const KNOWN = new Set(['crown of testing', "slayer's band"].map(normName));
 
 describe('splitSource', () => {
-  it('splits a difficulty prefix from the source', () => {
-    expect(splitSource('Mythic: Bonus Roll')).toEqual({ difficulty: 'Mythic', source: 'Bonus Roll' });
-    expect(splitSource('Heroic: Great Vault')).toEqual({ difficulty: 'Heroic', source: 'Great Vault' });
+  it('splits a difficulty prefix from the source, mapping it to a track', () => {
+    expect(splitSource('Mythic: Bonus Roll')).toEqual({ track: 'Myth', source: 'Bonus Roll' });
+    expect(splitSource('Heroic: Great Vault')).toEqual({ track: 'Hero', source: 'Great Vault' });
   });
-  it('defaults bare values to Mythic like the app does', () => {
-    expect(splitSource('Bonus Roll')).toEqual({ difficulty: 'Mythic', source: 'Bonus Roll' });
-    expect(splitSource('Crafted')).toEqual({ difficulty: 'Mythic', source: 'Crafted' });
+  it('defaults bare values to the Myth track like the app does', () => {
+    expect(splitSource('Bonus Roll')).toEqual({ track: 'Myth', source: 'Bonus Roll' });
+    expect(splitSource('Crafted')).toEqual({ track: 'Myth', source: 'Crafted' });
   });
   it('maps the base tier to Champion and empties to null', () => {
-    expect(splitSource('Normal: Great Vault')).toEqual({ difficulty: 'Champion', source: 'Great Vault' });
-    expect(splitSource('')).toEqual({ difficulty: null, source: null });
+    expect(splitSource('Normal: Great Vault')).toEqual({ track: 'Champion', source: 'Great Vault' });
+    expect(splitSource('')).toEqual({ track: null, source: null });
   });
 });
 
@@ -37,8 +37,9 @@ describe('parseSelfReceived + selfReceivedSql', () => {
     expect(count).toBe(3);
     expect(warnings).toHaveLength(0);
     expect(sql).toContain("'approved'");
-    expect(sql).toContain("'Mythic', 'Bonus Roll'");
+    expect(sql).toContain("'Myth', 'Bonus Roll'");
     expect(sql).toContain("'Champion', 'Great Vault'");
+    expect(sql).toContain('status, track, source');
     expect(sql).toContain('where not exists');
     expect(sql).toContain('t.self_item_id = v.self_item_id');
   });

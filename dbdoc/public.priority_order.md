@@ -8,7 +8,7 @@
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
 | season | text |  | false |  |  |  |
 | item_id | integer |  | false |  | [public.items](public.items.md) |  |
-| difficulty | text |  | false |  |  |  |
+| track | text |  | false |  |  |  |
 | rank | integer |  | false |  |  |  |
 | player_id | integer |  | false |  | [public.players](public.players.md) |  |
 | updated_at | timestamp with time zone |  | true |  |  |  |
@@ -17,21 +17,21 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| priority_order_difficulty_check | CHECK | CHECK ((difficulty = ANY (ARRAY['Heroic'::text, 'Mythic'::text]))) |
+| priority_order_track_check | CHECK | CHECK ((track = ANY (ARRAY['Hero'::text, 'Myth'::text]))) |
 | priority_order_item_id_fkey | FOREIGN KEY | FOREIGN KEY (item_id) REFERENCES items(id) |
 | priority_order_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
-| priority_order_no_dupe_player_key | UNIQUE | UNIQUE (team_id, season, item_id, difficulty, player_id) |
+| priority_order_no_dupe_player_key | UNIQUE | UNIQUE (team_id, season, item_id, track, player_id) |
 | priority_order_pkey | PRIMARY KEY | PRIMARY KEY (id) |
-| priority_order_team_id_season_item_difficulty_rank_key | UNIQUE | UNIQUE (team_id, season, item_id, difficulty, rank) |
+| priority_order_team_id_season_item_track_rank_key | UNIQUE | UNIQUE (team_id, season, item_id, track, rank) |
 | priority_order_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| priority_order_no_dupe_player_key | CREATE UNIQUE INDEX priority_order_no_dupe_player_key ON public.priority_order USING btree (team_id, season, item_id, difficulty, player_id) |
+| priority_order_no_dupe_player_key | CREATE UNIQUE INDEX priority_order_no_dupe_player_key ON public.priority_order USING btree (team_id, season, item_id, track, player_id) |
 | priority_order_pkey | CREATE UNIQUE INDEX priority_order_pkey ON public.priority_order USING btree (id) |
-| priority_order_team_id_season_item_difficulty_rank_key | CREATE UNIQUE INDEX priority_order_team_id_season_item_difficulty_rank_key ON public.priority_order USING btree (team_id, season, item_id, difficulty, rank) |
+| priority_order_team_id_season_item_track_rank_key | CREATE UNIQUE INDEX priority_order_team_id_season_item_track_rank_key ON public.priority_order USING btree (team_id, season, item_id, track, rank) |
 
 ## Triggers
 
@@ -54,7 +54,7 @@ erDiagram
   integer team_id FK
   text season
   integer item_id FK
-  text difficulty
+  text track
   integer rank
   integer player_id FK
   timestamp_with_time_zone updated_at

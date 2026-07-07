@@ -61,12 +61,17 @@ describe('parsePastedLoot / parseLegacyLoot', () => {
 describe('lootSql', () => {
   const registry = () => buildPlayerRegistry(['Hinda-Thrall']);
 
-  it('translates the base tier to Champion and derives legacy seasons', () => {
+  it('maps instance suffixes to tracks and derives legacy seasons', () => {
     const entries = [...parsePastedLoot(pastedRows()), ...parseLegacyLoot(legacyRows())];
     const { sql, counts } = lootSql(1, entries, registry(), OPTS);
     expect(counts).toMatchObject({ pasted: 2, legacy: 2 });
     expect(sql).toContain("'Champion'"); // Normal suffix, both sources
+    expect(sql).toContain("'Hero'"); // Heroic suffix
+    expect(sql).toContain("'Myth'"); // Mythic suffix
+    expect(sql).toContain('team_id, player_id, item_id, track, season');
     expect(sql).not.toContain("'Normal'");
+    expect(sql).not.toContain("'Heroic'");
+    expect(sql).not.toContain("'Mythic'");
     const legacyLine = sql.split('\n').find((l) => l.includes('231234') && l.includes('Season 2'));
     expect(legacyLine).toBeTruthy(); // 2025-12-01 falls in Season 2
   });

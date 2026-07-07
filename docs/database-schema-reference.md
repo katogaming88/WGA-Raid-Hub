@@ -92,7 +92,7 @@ Raw loot history imported from the RCLootCouncil addon export.
 | `team_id`    | int4        | FK -> `teams.id` -- denormalized for query filtering and RLS                           |
 | `player_id`  | int4        | FK -> `players.id`                                                                     |
 | `item_id`    | int4        | FK -> `items.id`                                                                       |
-| `difficulty` | text        | Item tier CHECK values Champion/Heroic/Mythic -- the importer and app translate a Normal-difficulty drop to Champion (item-track naming, decided on #320) |
+| `track`      | text        | Item upgrade track, CHECK values Champion/Hero/Myth -- derived from the instance string's difficulty suffix on import (Normal -> Champion, Heroic -> Hero, Mythic -> Myth, decided on #343) |
 | `season`     | text        | Season string (e.g. "MN1")                                                             |
 | `awarded_at` | timestamptz | Timestamp of loot award                                                                |
 | `rclc_id`    | text        | RCLootCouncil's own record ID -- primary deduplication key on re-import                |
@@ -111,7 +111,7 @@ Ordered loot priority lists managed by officers -- who gets the next drop for a 
 | `team_id`    | int4 | FK -> `teams.id`                          |
 | `season`     | text | Season this priority list applies to      |
 | `item_id`    | int4 | FK -> `items.id`                          |
-| `difficulty` | text | Difficulty tier this priority applies to  |
+| `track`      | text | Item track this priority applies to, CHECK values Hero/Myth -- Champion loot never enters the priority system (first-weeks loot council, #343) |
 | `rank`       | int4 | Ordinal position (1 = next in line)       |
 | `player_id`  | int4        | FK -> `players.id` -- who is at this rank |
 | `updated_at` | timestamptz | Auto-set on every UPDATE via trigger      |
@@ -329,6 +329,9 @@ Player-submitted claims that they received a drop (self-reported loot tracking, 
 | `self_item_id` | int4        | FK -> `items.id` -- item they claim to have received |
 | `submitted_at` | timestamptz | When they submitted the claim                        |
 | `status`       | text        | Pending/approved/denied by an officer                |
+| `track`        | text        | Item track, CHECK values Champion/Hero/Myth -- split from the sheet's Source cell prefix (#322, renamed per #343) |
+| `source`       | text        | Where the item came from (Bonus Roll, Great Vault, Crafted, ...) -- the other half of the Source split |
+| `note`         | text        | Player note from the request form                    |
 
 ---
 

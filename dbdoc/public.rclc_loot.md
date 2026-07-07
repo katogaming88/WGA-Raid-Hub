@@ -8,7 +8,7 @@
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
 | player_id | integer |  | true |  | [public.players](public.players.md) |  |
 | item_id | integer |  | true |  | [public.items](public.items.md) |  |
-| difficulty | text |  | true |  |  |  |
+| track | text |  | true |  |  |  |
 | season | text |  | true |  |  |  |
 | awarded_at | timestamp with time zone | now() | false |  |  |  |
 | rclc_id | text |  | true |  |  |  |
@@ -19,7 +19,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| loot_difficulty_check | CHECK | CHECK ((difficulty = ANY (ARRAY['Champion'::text, 'Heroic'::text, 'Mythic'::text]))) |
+| rclc_loot_track_check | CHECK | CHECK ((track = ANY (ARRAY['Champion'::text, 'Hero'::text, 'Myth'::text]))) |
 | loot_item_id_fkey | FOREIGN KEY | FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL |
 | loot_dedupe_key_key | UNIQUE | UNIQUE (dedupe_key) |
 | loot_pkey | PRIMARY KEY | PRIMARY KEY (id) |
@@ -53,7 +53,7 @@ erDiagram
   integer team_id FK
   integer player_id FK
   integer item_id FK
-  text difficulty
+  text track
   text season
   timestamp_with_time_zone awarded_at
   text rclc_id

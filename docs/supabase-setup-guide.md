@@ -339,7 +339,7 @@ create table loot (
   item_name    text not null,
   slot         text,
   boss         text,
-  difficulty   text check (difficulty in ('Champion', 'Heroic', 'Mythic')),
+  track        text check (track in ('Champion', 'Hero', 'Myth')),
   source       text,
   season       text,
   awarded_at   timestamptz not null default now(),
@@ -387,17 +387,18 @@ create table priority_order (
   team_id    integer not null references teams(id) on delete cascade,
   season     text not null,
   item       text not null,
-  difficulty text not null check (difficulty in ('Heroic', 'Mythic')),
+  track      text not null check (track in ('Hero', 'Myth')),
   rank       integer not null,
   player_id  integer not null references players(id) on delete cascade,
-  unique (team_id, season, item, difficulty, rank)
+  unique (team_id, season, item, track, rank)
 );
 ```
 
-Priority is ranked per item per difficulty -- a player might be rank 1 for the
-Heroic trinket and rank 4 for the Mythic trinket. The unique constraint means within
-a team and season, each (item, difficulty, rank) slot can only be occupied by one
-player.
+Priority is ranked per item per track -- a player might be rank 1 for the
+Hero-track trinket and rank 4 for the Myth-track trinket. The unique constraint
+means within a team and season, each (item, track, rank) slot can only be occupied
+by one player. Champion-track loot never enters the priority system: it drops in
+the first weeks of a raid and is handed out by loot council instead (#343).
 
 ### Request queue tables
 

@@ -711,7 +711,7 @@
           "nullable": true
         },
         {
-          "name": "difficulty",
+          "name": "track",
           "type": "text",
           "nullable": true
         },
@@ -762,13 +762,13 @@
       ],
       "constraints": [
         {
-          "name": "loot_difficulty_check",
+          "name": "rclc_loot_track_check",
           "type": "CHECK",
-          "def": "CHECK ((difficulty = ANY (ARRAY['Champion'::text, 'Heroic'::text, 'Mythic'::text])))",
+          "def": "CHECK ((track = ANY (ARRAY['Champion'::text, 'Hero'::text, 'Myth'::text])))",
           "table": "public.rclc_loot",
           "referenced_table": "",
           "columns": [
-            "difficulty"
+            "track"
           ]
         },
         {
@@ -1271,7 +1271,7 @@
           "nullable": false
         },
         {
-          "name": "difficulty",
+          "name": "track",
           "type": "text",
           "nullable": false
         },
@@ -1294,7 +1294,7 @@
       "indexes": [
         {
           "name": "priority_order_no_dupe_player_key",
-          "def": "CREATE UNIQUE INDEX priority_order_no_dupe_player_key ON public.priority_order USING btree (team_id, season, item_id, difficulty, player_id)",
+          "def": "CREATE UNIQUE INDEX priority_order_no_dupe_player_key ON public.priority_order USING btree (team_id, season, item_id, track, player_id)",
           "table": "public.priority_order",
           "columns": [
             "team_id",
@@ -1313,8 +1313,8 @@
           ]
         },
         {
-          "name": "priority_order_team_id_season_item_difficulty_rank_key",
-          "def": "CREATE UNIQUE INDEX priority_order_team_id_season_item_difficulty_rank_key ON public.priority_order USING btree (team_id, season, item_id, difficulty, rank)",
+          "name": "priority_order_team_id_season_item_track_rank_key",
+          "def": "CREATE UNIQUE INDEX priority_order_team_id_season_item_track_rank_key ON public.priority_order USING btree (team_id, season, item_id, track, rank)",
           "table": "public.priority_order",
           "columns": [
             "team_id",
@@ -1327,13 +1327,13 @@
       ],
       "constraints": [
         {
-          "name": "priority_order_difficulty_check",
+          "name": "priority_order_track_check",
           "type": "CHECK",
-          "def": "CHECK ((difficulty = ANY (ARRAY['Heroic'::text, 'Mythic'::text])))",
+          "def": "CHECK ((track = ANY (ARRAY['Hero'::text, 'Myth'::text])))",
           "table": "public.priority_order",
           "referenced_table": "",
           "columns": [
-            "difficulty"
+            "track"
           ]
         },
         {
@@ -1365,14 +1365,14 @@
         {
           "name": "priority_order_no_dupe_player_key",
           "type": "UNIQUE",
-          "def": "UNIQUE (team_id, season, item_id, difficulty, player_id)",
+          "def": "UNIQUE (team_id, season, item_id, track, player_id)",
           "table": "public.priority_order",
           "referenced_table": "",
           "columns": [
             "team_id",
             "season",
             "item_id",
-            "difficulty",
+            "track",
             "player_id"
           ]
         },
@@ -1387,16 +1387,16 @@
           ]
         },
         {
-          "name": "priority_order_team_id_season_item_difficulty_rank_key",
+          "name": "priority_order_team_id_season_item_track_rank_key",
           "type": "UNIQUE",
-          "def": "UNIQUE (team_id, season, item_id, difficulty, rank)",
+          "def": "UNIQUE (team_id, season, item_id, track, rank)",
           "table": "public.priority_order",
           "referenced_table": "",
           "columns": [
             "team_id",
             "season",
             "item_id",
-            "difficulty",
+            "track",
             "rank"
           ]
         },
@@ -1873,7 +1873,7 @@
           "default": "'pending'::text"
         },
         {
-          "name": "difficulty",
+          "name": "track",
           "type": "text",
           "nullable": true
         },
@@ -1900,16 +1900,6 @@
       ],
       "constraints": [
         {
-          "name": "self_received_requests_difficulty_check",
-          "type": "CHECK",
-          "def": "CHECK ((difficulty = ANY (ARRAY['Champion'::text, 'Heroic'::text, 'Mythic'::text])))",
-          "table": "public.self_received_requests",
-          "referenced_table": "",
-          "columns": [
-            "difficulty"
-          ]
-        },
-        {
           "name": "self_received_requests_status_check",
           "type": "CHECK",
           "def": "CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])))",
@@ -1917,6 +1907,16 @@
           "referenced_table": "",
           "columns": [
             "status"
+          ]
+        },
+        {
+          "name": "self_received_requests_track_check",
+          "type": "CHECK",
+          "def": "CHECK ((track = ANY (ARRAY['Champion'::text, 'Hero'::text, 'Myth'::text])))",
+          "table": "public.self_received_requests",
+          "referenced_table": "",
+          "columns": [
+            "track"
           ]
         },
         {
