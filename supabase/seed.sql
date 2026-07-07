@@ -77,11 +77,11 @@ insert into public.bis_items (id, player_id, item_id, obtained) values
 insert into public.scoring (id, player_id, season) values
   (1, 1, 'seed-season');
 
-insert into public.priority_order (id, team_id, season, item_id, difficulty, rank, player_id) values
-  (1, 1, 'seed-season', 1, 'Mythic', 1, 1);
+insert into public.priority_order (id, team_id, season, item_id, track, rank, player_id) values
+  (1, 1, 'seed-season', 1, 'Myth', 1, 1);
 
-insert into public.rclc_loot (id, team_id, player_id, item_id, difficulty, season) values
-  (1, 1, 1, 1, 'Mythic', 'seed-season');
+insert into public.rclc_loot (id, team_id, player_id, item_id, track, season) values
+  (1, 1, 1, 1, 'Myth', 'seed-season');
 
 insert into public.player_wcl_season_perf (player_id, team_id, season) values
   (1, 1, 'seed-season');

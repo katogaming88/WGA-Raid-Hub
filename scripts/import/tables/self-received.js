@@ -7,8 +7,9 @@
 // ("Mythic: Bonus Roll" vs bare "Bonus Roll"); columns for the split values
 // were added by migration 20260706234500 per the decision on #322. The split
 // mirrors the app's parsing (gs/wgaWebApp.gs:2046-2048): a recognized prefix
-// wins, a bare non-empty value defaults to Mythic, and the base tier maps to
-// Champion like everywhere else. An empty cell imports as null/null.
+// wins and a bare non-empty value defaults to the Myth track. The sheet's
+// difficulty words map to track names (Normal -> Champion, Heroic -> Hero,
+// Mythic -> Myth, decided on #343). An empty cell imports as null/null.
 //
 // No unique key on this table: idempotency via NOT EXISTS on
 // (team_id, submitted_at, self_item_id).
@@ -20,14 +21,14 @@ import { sqlTimestampAtZone } from '../lib/dates.js';
 import { playerIdSql, itemIdSql } from '../lib/registry.js';
 
 const STATUS_MAP = { pending: 'pending', approved: 'approved', rejected: 'rejected' };
-const TIER = { normal: 'Champion', champion: 'Champion', heroic: 'Heroic', mythic: 'Mythic' };
+const TRACK = { normal: 'Champion', champion: 'Champion', heroic: 'Hero', mythic: 'Myth' };
 
 export function splitSource(raw) {
   const s = String(raw || '').trim();
-  if (!s) return { difficulty: null, source: null };
+  if (!s) return { track: null, source: null };
   const m = s.match(/^(normal|champion|heroic|mythic)\s*:\s*(.*)$/i);
-  if (m) return { difficulty: TIER[m[1].toLowerCase()], source: m[2].trim() || null };
-  return { difficulty: 'Mythic', source: s }; // legacy format: no prefix defaults to Mythic
+  if (m) return { track: TRACK[m[1].toLowerCase()], source: m[2].trim() || null };
+  return { track: 'Myth', source: s }; // legacy format: no prefix defaults to the Myth track
 }
 
 export function parseSelfReceived(rows, label = 'Self Received Requests') {
@@ -71,14 +72,14 @@ export function selfReceivedSql(teamId, entries, registry, tz, knownItems) {
       itemIdSql(e.item),
       sqlTimestampAtZone(e.timestamp, tz),
       sqlString(e.status),
-      sqlString(e.difficulty),
+      sqlString(e.track),
       sqlString(e.source),
       sqlString(e.note)
     ];
   });
   const sql = insertWhereNotExists(
     'self_received_requests',
-    ['team_id', 'player_id', 'self_item_id', 'submitted_at', 'status', 'difficulty', 'source', 'note'],
+    ['team_id', 'player_id', 'self_item_id', 'submitted_at', 'status', 'track', 'source', 'note'],
     valueRows,
     't.team_id = v.team_id and t.submitted_at = v.submitted_at and t.self_item_id = v.self_item_id'
   );
