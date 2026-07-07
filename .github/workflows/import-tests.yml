@@ -1,0 +1,30 @@
+name: Import tests
+
+# The import-tooling tests need no database, so they get their own cheap job
+# instead of riding inside rls-tests.yml's Postgres boot.
+on:
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - 'tests/import/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/import-tests.yml'
+
+# A new push to the PR supersedes any still-running check on the old commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run import-tooling tests
+        run: npm run test:import
