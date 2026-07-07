@@ -5,10 +5,16 @@ on:
     paths:
       - 'js/**'
       - 'scripts/**'
+      - 'tests/**'
       - '.eslintrc.json'
       - '.prettierrc.json'
       - 'package.json'
       - 'package-lock.json'
+
+# A new push to the PR supersedes any still-running check on the old commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   lint:

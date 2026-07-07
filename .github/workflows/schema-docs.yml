@@ -11,6 +11,12 @@ on:
       - 'docs/rls_policies.*'
       - '.github/workflows/schema-docs.yml'
 
+# A new push to the PR supersedes any still-running check on the old commit,
+# so stale runs stop booting a full Postgres stack for a superseded diff.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
