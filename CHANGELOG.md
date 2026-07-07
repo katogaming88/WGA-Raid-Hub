@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.13.2] - 2026-07-07
+
+### Added
+- **`.env.example` template is now tracked** -- the root `.gitignore` was ignoring the example env file along with the real one, so the template never traveled with the repo. The ignore rule now covers only `.env`/`.env.local`; `.env.example` documents the expected variables (Supabase URL and keys, pooler `DATABASE_URL`) with empty values.
+
+---
+
 ## [3.13.1] - 2026-07-07
 
 ### Changed
