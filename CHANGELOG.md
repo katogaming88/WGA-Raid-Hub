@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.15.1] - 2026-07-07
+
+### Fixed
+- **`scripts/fetch-items.js` runs again (#301)** -- The script still used a CommonJS `require` after `scripts/` became an ES module package, so `node scripts/fetch-items.js` threw before doing anything. The require is now an import, and the script only starts its Wowhead fetches when executed directly, so the test suite can load it without hitting the network.
+
+---
+
 ## [3.15.0] - 2026-07-07
 
 ### Changed

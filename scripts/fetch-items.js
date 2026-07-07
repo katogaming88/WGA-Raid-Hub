@@ -8,7 +8,8 @@
 //
 // Usage: node scripts/fetch-items.js
 
-const { writeFileSync } = require('fs');
+import { writeFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 
 // ---------------------------------------------------------------------------
 // UPDATE THESE EACH TIER
@@ -298,4 +299,8 @@ async function main() {
   }
 }
 
-main();
+// Run only when executed directly, so tests can import the module without
+// kicking off the Wowhead fetches.
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}
