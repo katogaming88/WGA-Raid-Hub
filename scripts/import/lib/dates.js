@@ -42,6 +42,13 @@ export function parseSheetTimestamp(value) {
     return `${m[3]}-${pad(m[1])}-${pad(m[2])} ${pad(m[4] || 0)}:${m[5] || '00'}:${m[6] || '00'}`;
   }
 
+  // 3/19/26 22:35[:00]  (US month/day, two-digit year -> 20yy; the Loot Data
+  // export's date column uses this shape)
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (m) {
+    return `20${m[3]}-${pad(m[1])}-${pad(m[2])} ${pad(m[4] || 0)}:${m[5] || '00'}:${m[6] || '00'}`;
+  }
+
   // Jan 3, 2026 19:00
   m = s.match(/^([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
   if (m && MONTHS[m[1].toLowerCase()]) {
