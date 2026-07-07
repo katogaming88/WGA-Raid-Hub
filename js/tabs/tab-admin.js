@@ -214,7 +214,7 @@ var DANGER_OPS = [
   },
   {
     key: 'clearMplus',
-    label: 'Clear M+ Exclusions',
+    label: 'Clear M+ Exclusion Requests',
     desc: 'Wipes all rows from the M+ Exclusion Requests sheet.',
     action: 'dangerClearSheet',
     sheet: 'M+ Exclusion Requests'
