@@ -1,3 +1,4 @@
+// @ts-check
 var TEAMS = {
   phoenix: {
     gasUrl:
@@ -25,7 +26,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.15.1';
+var VERSION = '3.15.2';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -78,7 +79,7 @@ function initTeamUI() {
       if (slug === TEAM_SLUG) opt.selected = true;
       sel.appendChild(opt);
     });
-    sel.onchange = function () {
+    sel.onchange = /** @this {HTMLSelectElement} */ function () {
       switchTeam(this.value);
     };
   });
@@ -815,11 +816,15 @@ function renderAttendTrend(firstName) {
 
   // Fall back to per-night dots if only one month of data
   if (monthOrder.length <= 1) {
+    /** @type {number} */
     var n = nights.length;
     var W = Math.max(300, n * 24),
       H = 56,
       PAD = 6,
       R = 4;
+    // Shared with the per-month branch below (var hoists to function scope):
+    // per-night points carry `night`, per-month points carry `m`.
+    /** @type {{x: number, y: number, night?: any, m?: any}[]} */
     var points = [];
     for (var i = 0; i < n; i++) {
       var x = n === 1 ? W / 2 : PAD + (i / (n - 1)) * (W - PAD * 2);
@@ -887,6 +892,7 @@ function renderAttendTrend(firstName) {
     PAD = 16,
     R = 7;
 
+  /** @type {{x: number, y: number, night?: any, m?: any}[]} */
   var points = [];
   for (var i = 0; i < n; i++) {
     var x = n === 1 ? W / 2 : PAD + (i / (n - 1)) * (W - PAD * 2);
@@ -973,8 +979,8 @@ function toggleMPlusForm(firstName) {
 }
 
 function submitMPlusExclusionForm(nameRealm, firstName) {
-  var urlEl = document.getElementById('mplusUrl-' + firstName);
-  var notesEl = document.getElementById('mplusNotes-' + firstName);
+  var urlEl = /** @type {HTMLInputElement} */ (document.getElementById('mplusUrl-' + firstName));
+  var notesEl = /** @type {HTMLTextAreaElement} */ (document.getElementById('mplusNotes-' + firstName));
   var formEl = document.getElementById('mplusForm-' + firstName);
   if (!urlEl || !urlEl.value.trim()) {
     if (urlEl) urlEl.style.borderColor = 'var(--melee)';
@@ -1013,8 +1019,8 @@ function submitMPlusExclusionForm(nameRealm, firstName) {
 }
 
 function submitBiSForm(nameRealm, firstName) {
-  var urlEl = document.getElementById('bisUrl-' + firstName);
-  var notesEl = document.getElementById('bisNotes-' + firstName);
+  var urlEl = /** @type {HTMLInputElement} */ (document.getElementById('bisUrl-' + firstName));
+  var notesEl = /** @type {HTMLTextAreaElement} */ (document.getElementById('bisNotes-' + firstName));
   if (!urlEl || !urlEl.value.trim()) {
     if (urlEl) urlEl.style.borderColor = 'var(--melee)';
     return;
@@ -1045,7 +1051,7 @@ function submitBiSForm(nameRealm, firstName) {
 }
 
 function officerUpdateBisLink(nameRealm, firstName) {
-  var urlEl = document.getElementById('bisUrl-' + firstName);
+  var urlEl = /** @type {HTMLInputElement} */ (document.getElementById('bisUrl-' + firstName));
   if (!urlEl || !urlEl.value.trim()) {
     if (urlEl) urlEl.style.borderColor = 'var(--melee)';
     return;
@@ -1221,9 +1227,9 @@ function showSelfReceivedForm(firstName, item, slot, rowId, defaultSource, isOff
 }
 
 function submitSelfReceivedRequest(firstName, item, slot, rowId) {
-  var sourceEl = document.getElementById('src-' + rowId);
-  var notesEl = document.getElementById('notes-' + rowId);
-  var diffEl = document.getElementById('diff-' + rowId);
+  var sourceEl = /** @type {HTMLSelectElement} */ (document.getElementById('src-' + rowId));
+  var notesEl = /** @type {HTMLTextAreaElement} */ (document.getElementById('notes-' + rowId));
+  var diffEl = /** @type {HTMLSelectElement} */ (document.getElementById('diff-' + rowId));
   if (!sourceEl || !sourceEl.value) {
     if (sourceEl) sourceEl.style.borderColor = 'var(--melee)';
     return;
@@ -1244,12 +1250,16 @@ function submitSelfReceivedRequest(firstName, item, slot, rowId) {
       } else if (result.autoApproved) {
         formEl.innerHTML =
           '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Marked as received.</p>';
-        var btn = document.querySelector('#bisrow-' + firstName + '-' + rowId.split('-').pop() + ' .mark-received-btn');
+        var btn = /** @type {HTMLElement} */ (
+          document.querySelector('#bisrow-' + firstName + '-' + rowId.split('-').pop() + ' .mark-received-btn')
+        );
         if (btn) btn.style.display = 'none';
       } else {
         formEl.innerHTML =
           '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Request submitted -- pending officer approval.</p>';
-        var btn = document.querySelector('#bisrow-' + firstName + '-' + rowId.split('-').pop() + ' .mark-received-btn');
+        var btn = /** @type {HTMLElement} */ (
+          document.querySelector('#bisrow-' + firstName + '-' + rowId.split('-').pop() + ' .mark-received-btn')
+        );
         if (btn) btn.style.display = 'none';
       }
     }
@@ -1278,9 +1288,9 @@ function submitSelfReceivedRequest(firstName, item, slot, rowId) {
 }
 
 function submitDirectMarkReceived(firstName, item, slot, rowId) {
-  var sourceEl = document.getElementById('src-' + rowId);
-  var notesEl = document.getElementById('notes-' + rowId);
-  var diffEl = document.getElementById('diff-' + rowId);
+  var sourceEl = /** @type {HTMLSelectElement} */ (document.getElementById('src-' + rowId));
+  var notesEl = /** @type {HTMLTextAreaElement} */ (document.getElementById('notes-' + rowId));
+  var diffEl = /** @type {HTMLSelectElement} */ (document.getElementById('diff-' + rowId));
   if (!sourceEl || !sourceEl.value) {
     if (sourceEl) sourceEl.style.borderColor = 'var(--melee)';
     return;
@@ -1388,7 +1398,7 @@ function renderProfile(firstName, backTo, container) {
   var seasonLootItems = getSeasonLootItems(player.firstName);
   if (seasonLootItems.length > 0) {
     var sortedLoot = seasonLootItems.slice().sort(function (a, b) {
-      return new Date(b.date) - new Date(a.date);
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
     });
     var lastDate = sortedLoot[0].date;
     for (var ld = 0; ld < sortedLoot.length; ld++) {
@@ -2127,6 +2137,7 @@ function loadAttendanceHistory(firstName) {
 
     var counts = {};
     for (var i = 0; i < history.length; i++) {
+      /** @type {string} */
       var s = history[i].status;
       counts[s] = (counts[s] || 0) + 1;
     }

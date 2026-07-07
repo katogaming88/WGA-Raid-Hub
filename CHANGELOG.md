@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.15.2] - 2026-07-07
+
+### Added
+- **Type checking for the frontend JS (#331)** -- `js/common.js` now opts into TypeScript's checker with `// @ts-check` and JSDoc annotations, and a new "Type check" step in the lint CI runs `tsc --noEmit` (also available locally as `npm run typecheck`). There is still no build step: the `.js` files ship exactly as they are, and a new `js/globals.d.ts` declares the window globals (the supabase CDN client and the JSONP callbacks) for the checker only. The remaining `js/` files opt in as they get touched; generated Supabase types come after the Phase 2 schema settles, per the issue.
+
+---
+
 ## [3.15.1] - 2026-07-07
 
 ### Fixed
