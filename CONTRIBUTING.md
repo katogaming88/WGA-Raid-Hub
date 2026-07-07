@@ -34,6 +34,11 @@ When merging a PR:
 - Bump the version in `js/common.js` (`var VERSION`)
 - Add an entry to `CHANGELOG.md` under the new version number
 
+CI enforces both on functional PRs (changes under `js/`, `gs/`, or the HTML
+pages). Mechanical PRs (formatting, lint, comment-only changes) are exempt
+from the version-bump check: use a `chore/*` branch or add the `chore` label.
+The changelog check has no exemption.
+
 ## Pull requests
 
 - Keep PRs focused on one issue or theme
