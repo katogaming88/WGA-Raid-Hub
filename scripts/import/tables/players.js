@@ -1,6 +1,9 @@
 // Roster tab -> players (#320 step 4).
 //
-// Layout (kat's cleaned export, 2026-07-06): header row 1, data from row 2.
+// Layout (kat's cleaned export, 2026-07-06): header row 1, data from the
+// next row. The hellfire export (2026-07-07) ships the sheet's two banner
+// rows (title, description) above the header, so the header row is located
+// by content within the first few rows rather than assumed at row 1.
 // Cols: A "Is Trial", B "First-Realm", C nickname, D class, E spec, F role,
 // G BiS link, H priority (numeric 1-6; 6 = bench), I join date (M/d/yyyy).
 // Role (col F) is derivable from class/spec and skipped.
@@ -18,12 +21,27 @@ import { assertHeader } from '../lib/csv.js';
 import { normName } from '../lib/names.js';
 import { sqlString, sqlBool, sqlDate, insertStatement } from '../lib/sql.js';
 
-const DATA_START = 1; // 0-based: row 2
+const HEADER_SCAN_ROWS = 5;
 
 export function parsePlayers(rows, label = 'Roster') {
-  assertHeader(rows, 0, { 0: 'trial', 1: 'player', 3: 'class', 4: 'spec' }, label);
+  let headerRow = 0;
+  for (let i = 0; i < Math.min(rows.length, HEADER_SCAN_ROWS); i++) {
+    const row = rows[i] || [];
+    if (
+      String(row[0] || '')
+        .toLowerCase()
+        .includes('trial') &&
+      String(row[1] || '')
+        .toLowerCase()
+        .includes('player')
+    ) {
+      headerRow = i;
+      break;
+    }
+  }
+  assertHeader(rows, headerRow, { 0: 'trial', 1: 'player', 3: 'class', 4: 'spec' }, label);
   const players = [];
-  for (let i = DATA_START; i < rows.length; i++) {
+  for (let i = headerRow + 1; i < rows.length; i++) {
     const row = rows[i] || [];
     const nameRealm = String(row[1] || '').trim();
     if (!nameRealm) continue;

@@ -29,6 +29,26 @@ describe('parsePlayers', () => {
     expect(players[0]).toMatchObject({ nameRealm: 'Hinda-Thrall', isTrial: true, isBench: false, nickname: 'Roth' });
     expect(players[1]).toMatchObject({ nameRealm: 'Séraphine-Thrall', isTrial: false, isBench: true });
   });
+
+  it('locates the header below banner rows (hellfire full-sheet export)', () => {
+    const rows = [
+      ['', 'WGA – Player Registry', '', '', '', '', '', '', ''],
+      ['', 'Single source of truth. Update names here.', '', '', '', '', '', '', ''],
+      ...rosterRows(),
+      ['FALSE', '', '', '', '', '', '', '', '']
+    ];
+    const players = parsePlayers(rows);
+    expect(players).toHaveLength(2);
+    expect(players[0].nameRealm).toBe('Hinda-Thrall');
+  });
+
+  it('still fails loudly when no header row is present', () => {
+    const rows = [
+      ['Timestamp', 'Changed By', 'Action', 'Target', 'From', 'To'],
+      ['6/22/2026 16:26:47', '', 'Player Added', 'X-Realm', '', '']
+    ];
+    expect(() => parsePlayers(rows)).toThrow(/expected to contain/);
+  });
 });
 
 describe('parseApprovedMplus', () => {
