@@ -158,6 +158,28 @@ describe('request tables allow officer review updates', () => {
   });
 });
 
+describe('add_signup_to_roster is officer-gated through RLS', () => {
+  // SECURITY INVOKER function; seeded signup 2 is team 1, status approved.
+  const sql = 'select public.add_signup_to_roster(2) as player_id';
+  it('team 1 officer can promote a team 1 signup', async () => {
+    const res = await queryAs('authenticated', OFFICER_T1, sql);
+    expect(res.rows[0].player_id).toBeGreaterThan(0);
+  });
+  it('team 1 team leader can promote a team 1 signup', async () => {
+    const res = await queryAs('authenticated', TEAM_LEADER_T1, sql);
+    expect(res.rows[0].player_id).toBeGreaterThan(0);
+  });
+  it('anon has no execute grant', async () => {
+    await expectDenied('anon', null, sql);
+  });
+  it('raider cannot promote (signup invisible under RLS)', async () => {
+    await expect(queryAs('authenticated', RAIDER_T1, sql)).rejects.toThrow(/not found/);
+  });
+  it('team 2 officer cannot promote a team 1 signup', async () => {
+    await expect(queryAs('authenticated', OFFICER_T2, sql)).rejects.toThrow(/not found/);
+  });
+});
+
 describe('audit_log has no client write path', () => {
   const sql = "insert into public.audit_log (team_id, action) values (1, 'test-action')";
   it('team 1 officer cannot insert', async () => {

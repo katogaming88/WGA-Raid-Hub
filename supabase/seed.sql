@@ -56,8 +56,12 @@ insert into public.bis_requests (id, team_id, player_id, bis_req_item_id, status
 insert into public.mplus_exclusion_requests (id, team_id, player_id, reason, status) values
   (1, 1, 1, 'seed test reason', 'pending');
 
+-- Signup 1 exercises the gated-table matrix; 2 and 3 are approved so the
+-- pending_roster view and add_signup_to_roster() have rows to work with.
 insert into public.season_signups (id, team_id, signup_name_realm, class_spec_id, season, status) values
-  (1, 1, 'Seedsignup-Illidan', 1, 'seed-season', 'pending');
+  (1, 1, 'Seedsignup-Illidan', 1, 'seed-season', 'pending'),
+  (2, 1, 'Seedapproved-Illidan', 1, 'seed-season', 'approved'),
+  (3, 2, 'Seedapprovedtwo-Illidan', 1, 'seed-season', 'approved');
 
 insert into public.self_received_requests (id, team_id, player_id, self_item_id, status) values
   (1, 1, 1, 2, 'pending');

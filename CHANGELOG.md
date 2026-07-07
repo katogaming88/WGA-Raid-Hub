@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.12.0] - 2026-07-06
+
+### Added
+- **Signup-to-roster promotion in the database** -- The old sheet's Pending Roster tab is now a signup state instead of a table: approved signups waiting for the roster add are exactly `season_signups` rows at `status = 'approved'`, readable by officers through the new `pending_roster` view. A new `add_signup_to_roster()` function performs the add as one transaction: it creates the player (or unarchives a returning character, or links an already-active member without resetting their trial flag and join date), archives the old character on a main swap, and marks the signup `added`. A CHECK constraint guarantees a signup can only link to a player once it is `added`. Authorization rides on the existing officer policies; applicant names stay invisible to the public until the add happens.
+
+---
+
 ## [3.11.0] - 2026-07-06
 
 ### Added

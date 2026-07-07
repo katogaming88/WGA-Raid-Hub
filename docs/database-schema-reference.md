@@ -122,6 +122,8 @@ Ordered loot priority lists managed by officers -- who gets the next drop for a 
 
 Applications submitted by players (or prospective members) to join a raid team for a season.
 
+Lifecycle: `pending` -> `approved` -> `added` (or `rejected` at review). The "Pending Roster" from the old sheet is not a table: it is the set of rows with `status = 'approved'` and `approved_player_id` still NULL, exposed to the officer UI through the `pending_roster` view. No `players` row exists until an officer promotes the signup with `add_signup_to_roster(signup_id, is_trial, archive_player_id)`, which creates (or unarchives) the player, optionally archives a main-swap predecessor, and sets `status = 'added'` plus `approved_player_id` in one transaction. The `season_signups_player_only_when_added` CHECK enforces that only `added` rows link to a player. See [database-decisions.md](database-decisions.md) for why this is a signup state rather than a flag on `players`.
+
 | Column                | Type        | Purpose                                                                          |
 | --------------------- | ----------- | -------------------------------------------------------------------------------- |
 | `id`                  | int4        | PK                                                                               |
@@ -138,7 +140,7 @@ Applications submitted by players (or prospective members) to join a raid team f
 | `reviewed_at`         | timestamptz | When an officer acted on it                                                      |
 | `reviewed_by`         | int4        | FK -> `team_members.id` (officer who reviewed)                                   |
 | `signup_officer_note` | text        | Officer's internal note on the application                                       |
-| `approved_player_id`  | int4        | FK -> `players.id` ON DELETE SET NULL -- the player row created when approved    |
+| `approved_player_id`  | int4        | FK -> `players.id` ON DELETE SET NULL -- the player row created when the signup is added to the roster (status `added`) |
 | `updated_at`          | timestamptz | Auto-set on every UPDATE via trigger                                             |
 
 ---
