@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.12.2] - 2026-07-07
+
+### Fixed
+- **Loot Data import accepts the export's two-digit-year dates (#320)** -- The real Loot Data export writes its date column as `3/19/26`, which the import date parser rejected (it only knew 4-digit years). The parser now accepts `M/d/yy` with or without a time, expanding to `20yy`. Verified against the phoenix export on the local stack: all 156 loot rows import (102 Heroic, 54 Mythic, season MID1, Eastern timestamps), 19 old-tier items auto-created, and a second apply inserts zero rows.
+- **Schema reference doc matches the live difficulty vocabulary** -- `docs/database-schema-reference.md` still described the `rclc_loot.difficulty` CHECK as Normal/Heroic/Mythic; the live constraint is Champion/Heroic/Mythic with Normal translated to Champion on import (decided on #320).
+
+---
+
 ## [3.12.1] - 2026-07-07
 
 ### Fixed

@@ -92,7 +92,7 @@ Raw loot history imported from the RCLootCouncil addon export.
 | `team_id`    | int4        | FK -> `teams.id` -- denormalized for query filtering and RLS                           |
 | `player_id`  | int4        | FK -> `players.id`                                                                     |
 | `item_id`    | int4        | FK -> `items.id`                                                                       |
-| `difficulty` | text        | Raid difficulty the item dropped in (Normal/Heroic/Mythic)                             |
+| `difficulty` | text        | Item tier CHECK values Champion/Heroic/Mythic -- the importer and app translate a Normal-difficulty drop to Champion (item-track naming, decided on #320) |
 | `season`     | text        | Season string (e.g. "MN1")                                                             |
 | `awarded_at` | timestamptz | Timestamp of loot award                                                                |
 | `rclc_id`    | text        | RCLootCouncil's own record ID -- primary deduplication key on re-import                |
