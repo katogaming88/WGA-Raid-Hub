@@ -1,6 +1,6 @@
 // Item Lookup tab -> items + item_bosses (#320 step 3).
 //
-// Layout (docs in #228): row 1 title, row 2 header, data from row 3.
+// Layout (kat's cleaned export, 2026-07-06): header row 1, data from row 2.
 // Cols: A name, B wow item id, C slot, D armor type, E sort id, F boss.
 // The Boss column feeds the separate item_bosses table (composite PK, so an
 // item can gain more bosses later). Placeholder rows (M+, Crafted, Catalyst)
@@ -17,20 +17,30 @@ import { normName } from '../lib/names.js';
 import { sqlString, sqlNumber, sqlBool, insertStatement } from '../lib/sql.js';
 import { itemIdSql } from '../lib/registry.js';
 
-const DATA_START = 2; // 0-based: row 3
+const DATA_START = 1; // 0-based: row 2
 const PLACEHOLDERS = new Set(['m+', 'crafted', 'catalyst']);
+// The app's placeholder vocabulary is "Crafted" (js/common.js:1604,
+// gs/Dropdowns.gs:194) and the BiS cells use it too, but the Item Lookup
+// export names its row "Crafting". Normalize on import so the BiS cells
+// resolve against the imported placeholder row.
+const PLACEHOLDER_ALIASES = new Map([['crafting', 'Crafted']]);
 const ARMOR_TYPES = new Set(['Plate', 'Mail', 'Leather', 'Cloth']);
 
 export function parseItems(rows, label = 'Item Lookup') {
-  assertHeader(rows, 1, { 0: 'item', 2: 'slot' }, label);
+  assertHeader(rows, 0, { 0: 'item', 2: 'slot' }, label);
   const items = [];
   const warnings = [];
 
   for (let i = DATA_START; i < rows.length; i++) {
     const row = rows[i] || [];
-    const name = String(row[0] || '').trim();
+    let name = String(row[0] || '').trim();
     if (!name) continue;
 
+    const alias = PLACEHOLDER_ALIASES.get(normName(name));
+    if (alias) {
+      warnings.push(`renamed placeholder ${JSON.stringify(name)} to ${JSON.stringify(alias)} (app vocabulary)`);
+      name = alias;
+    }
     const isPlaceholder = PLACEHOLDERS.has(normName(name));
     const wowItemId = String(row[1] || '').trim();
     let slot = String(row[2] || '').trim();

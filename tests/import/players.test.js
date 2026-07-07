@@ -1,16 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { parsePlayers, parseApprovedMplus, playersSql } from '../../scripts/import/tables/players.js';
 
-// Roster layout: rows 1-3 header block, data from row 4.
-// Cols: B trial, D name_realm, E nick, F class, G spec, I bis link, K priority, M join date.
+// Roster layout (cleaned export): header row 1, data from row 2.
+// Cols: A trial, B name_realm, C nick, D class, E spec, F role, G bis link,
+// H priority, I join date.
 function rosterRows() {
   return [
-    ['Roster'],
-    [],
-    ['', 'Trial', 'Attend', 'Player', 'Nickname', 'Class', 'Spec', 'Role', 'BiS', 'Sort', 'Priority', '', 'Join Date'],
-    ['', 'TRUE', '95%', 'Hinda-Thrall', 'Roth', 'Mage', 'Frost', 'Ranged', 'https://x', '3001', '3', '', '2025-11-02'],
-    ['', 'FALSE', '80%', 'Séraphine-Thrall', '', 'Priest', 'Holy', 'Heal', '', '6002', '6', '', '2026/01/10'],
-    ['', '', '', '', '', '', '', '', '', '', '', '', '']
+    ['Is Trial', 'Player (Name-Realm)', 'Nickname', 'Class', 'Spec', 'Role', 'BIS Link', 'Priority', 'Join Date'],
+    ['TRUE', 'Hinda-Thrall', 'Roth', 'Mage', 'Frost', 'Ranged', 'https://x', '3', '2025-11-02'],
+    ['FALSE', 'Séraphine-Thrall', '', 'Priest', 'Holy', 'Heal', '', '6', '1/10/2026'],
+    ['', '', '', '', '', '', '', '', '']
   ];
 }
 

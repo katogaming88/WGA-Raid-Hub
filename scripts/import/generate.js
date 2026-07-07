@@ -80,7 +80,8 @@ const itemRows = loadCsvIfPresent(join(dataDir, 'Item Lookup.csv'));
 let itemCount = 0;
 let knownItems = null; // normName(item) set for validating item references
 if (itemRows) {
-  const { items } = parseItems(itemRows, `${team} Item Lookup`);
+  const { items, warnings } = parseItems(itemRows, `${team} Item Lookup`);
+  for (const w of warnings) notes.push(`items: ${w}`);
   section('items + item_bosses', itemsSql(items));
   itemCount = items.length;
   knownItems = new Set(items.map((i) => normName(i.name)));

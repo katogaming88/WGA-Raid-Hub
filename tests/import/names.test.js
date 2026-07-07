@@ -19,6 +19,13 @@ describe('stripNickname', () => {
   it('removes a trailing parenthesized nickname', () => {
     expect(stripNickname('Hinda-Thrall (Roth)')).toBe('Hinda-Thrall');
   });
+  it('removes a trailing dash-separated nickname', () => {
+    expect(stripNickname('Hinda-Thrall - Roth')).toBe('Hinda-Thrall');
+  });
+  it('keeps realm names that contain spaces', () => {
+    expect(stripNickname('Fxd-Area 52 - FX')).toBe('Fxd-Area 52');
+    expect(stripNickname('Zuggz-Area 52')).toBe('Zuggz-Area 52');
+  });
   it('leaves plain names alone', () => {
     expect(stripNickname('Hinda-Thrall')).toBe('Hinda-Thrall');
   });

@@ -23,13 +23,16 @@ export function sqlNumber(value) {
   return String(n);
 }
 
-// Accepts 'yyyy-MM-dd' or 'yyyy/MM/dd', emits a quoted ISO date or null.
+// Accepts 'yyyy-MM-dd', 'yyyy/MM/dd', or the sheet-locale 'M/d/yyyy',
+// emits a quoted ISO date or null.
 export function sqlDate(value) {
   const s = String(value || '').trim();
   if (!s) return 'null';
-  const m = s.match(/^(\d{4})[/-](\d{2})[/-](\d{2})/);
-  if (!m) throw new Error(`Unrecognized date: ${JSON.stringify(value)}`);
-  return `'${m[1]}-${m[2]}-${m[3]}'`;
+  const iso = s.match(/^(\d{4})[/-](\d{2})[/-](\d{2})/);
+  if (iso) return `'${iso[1]}-${iso[2]}-${iso[3]}'`;
+  const us = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (us) return `'${us[3]}-${us[1].padStart(2, '0')}-${us[2].padStart(2, '0')}'`;
+  throw new Error(`Unrecognized date: ${JSON.stringify(value)}`);
 }
 
 // jsonb literal from a plain object; keys with empty values are dropped.

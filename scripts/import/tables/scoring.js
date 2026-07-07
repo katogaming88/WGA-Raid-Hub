@@ -1,12 +1,11 @@
 // Scoring tab -> scoring (#320 step 5).
 //
-// Layout: rows 1-3 title/header (kat's #228 cleanup removed the old title and
-// weights rows, leaving the header block), data from row 4.
-// Cols: A first name, C Performance (the manually-set value this import must
-// carry), D attendance score, E attendance pct, J recent score, K trend
-// score. Recent/trend are best-effort: the WCL Edge Function re-syncs them
-// after migration. Cols F-H (tier/flags) and the display area are skipped
-// per #228.
+// Layout (kat's cleaned export, 2026-07-06): header row 1, data from row 2.
+// Cols: A "First-Realm - Nick" (nickname optional), B Performance (the
+// manually-set value this import must carry), C attendance score (1-10),
+// D weighted total. The weighted total is derived (not stored), and the old
+// sheet's attendance pct / recent / trend columns are not exported: they
+// import as null and the WCL Edge Function re-syncs them after migration.
 //
 // Tank/Heal rows carry the literal text "Excluded" in the score columns
 // (gs/WCL.gs:116) -- imported as null.
@@ -18,7 +17,7 @@ import { assertHeader } from '../lib/csv.js';
 import { sqlString, sqlNumber, insertStatement } from '../lib/sql.js';
 import { playerIdSql } from '../lib/registry.js';
 
-const DATA_START = 3; // 0-based: row 4
+const DATA_START = 1; // 0-based: row 2
 
 function scoreOrNull(raw) {
   const s = String(raw || '').trim();
@@ -27,7 +26,7 @@ function scoreOrNull(raw) {
 }
 
 export function parseScoring(rows, label = 'Scoring') {
-  assertHeader(rows, 2, { 0: 'player' }, label);
+  assertHeader(rows, 0, { 0: 'player', 1: 'performance', 2: 'attendance' }, label);
   const entries = [];
   for (let i = DATA_START; i < rows.length; i++) {
     const row = rows[i] || [];
@@ -35,11 +34,11 @@ export function parseScoring(rows, label = 'Scoring') {
     if (!name) continue;
     entries.push({
       name,
-      performance: row[2],
-      attendanceScore: row[3],
-      attendancePct: row[4],
-      recent: row[9],
-      trend: row[10]
+      performance: row[1],
+      attendanceScore: row[2],
+      attendancePct: '',
+      recent: '',
+      trend: ''
     });
   }
   return entries;
