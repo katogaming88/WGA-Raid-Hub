@@ -9,6 +9,12 @@ on:
       - 'package-lock.json'
       - '.github/workflows/rls-tests.yml'
 
+# A new push to the PR supersedes any still-running check on the old commit,
+# so stale runs stop booting a full Postgres stack for a superseded diff.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   rls:
     runs-on: ubuntu-latest
