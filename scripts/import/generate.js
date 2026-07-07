@@ -28,7 +28,7 @@
 //   Roster.csv, Scoring.csv, Item Lookup.csv, M+ Exclusion Requests.csv,
 //   Attendance.csv, BiS List.csv, Priority Order.csv, Pasted Loot.csv,
 //   Loot Data.csv (full-width A:V export), Officer Audit Log.csv,
-//   Self Received Requests.csv
+//   Self Received Requests.csv, Discord Claims.csv
 
 import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -45,6 +45,7 @@ import { parsePastedLoot, parseLegacyLoot, lootSql } from './tables/loot.js';
 import { parseMplusRequests, mplusSql } from './tables/mplus.js';
 import { parseSelfReceived, selfReceivedSql } from './tables/self-received.js';
 import { parseAudit, auditSql } from './tables/audit.js';
+import { parseDiscordClaims, discordClaimsSql } from './tables/discord-claims.js';
 
 const TEAM_IDS = { phoenix: 1, hellfire: 2 };
 
@@ -174,6 +175,17 @@ if (rosterRows) {
     mplusResult = mplusSql(teamId, parseMplusRequests(mplusRows, `${team} M+ Exclusion Requests`), registry, tz);
   }
 
+  let claimsResult = null;
+  const claimsRows = loadCsvIfPresent(join(dataDir, 'Discord Claims.csv'));
+  if (claimsRows) {
+    const parsed = parseDiscordClaims(claimsRows, `${team} Discord Claims`);
+    for (const w of parsed.warnings) notes.push(`team_members: ${w}`);
+    claimsResult = discordClaimsSql(teamId, parsed.claims, registry);
+    for (const w of claimsResult.warnings) notes.push(`team_members: ${w}`);
+  } else {
+    notes.push('Discord Claims.csv missing -- team_members section skipped');
+  }
+
   let selfReceivedResult = null;
   const selfReceivedRows = loadCsvIfPresent(join(dataDir, 'Self Received Requests.csv'));
   if (selfReceivedRows) {
@@ -219,6 +231,10 @@ if (rosterRows) {
   if (selfReceivedResult) {
     section('self_received_requests', selfReceivedResult.sql);
     summary.push(`self_received_requests: ${selfReceivedResult.count} rows`);
+  }
+  if (claimsResult) {
+    section('team_members (discord claims)', claimsResult.sql);
+    summary.push(`team_members: ${claimsResult.count} claims`);
   }
   if (lootResult) {
     section('rclc_loot', lootResult.sql);
