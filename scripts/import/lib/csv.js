@@ -1,9 +1,10 @@
 // CSV loading for the #320 import generators.
 //
-// Tabs are exported as plain CSVs into the gitignored data/ directory. Header
-// rows sit at different positions per tab (Roster data starts row 4, Item
-// Lookup row 3, request tabs row 2), so this returns raw row arrays and the
-// per-table modules slice from their own data-start row.
+// Tabs are exported as plain CSVs into the gitignored data/ directory. The
+// cleaned exports carry the header in row 1 and data from row 2, but this
+// still returns raw row arrays and lets the per-table modules slice from
+// their own data-start row, so a tab that ships extra rows only needs its
+// own module touched.
 
 import { readFileSync, existsSync } from 'node:fs';
 import { parse } from 'csv-parse/sync';

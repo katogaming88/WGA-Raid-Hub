@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.12.1] - 2026-07-07
+
+### Fixed
+- **Import generators match the real CSV exports (#320)** -- The parsers were written against the raw sheet tab layouts, but the actual exports are flattened: headers sit in row 1, the Roster and Scoring tabs carry different column sets, and player names arrive as "First-Realm - Nickname". The Roster, Scoring, and Item Lookup parsers now read the exported layouts, dash-separated nicknames are stripped everywhere names are matched, and M/d/yyyy join dates are accepted. The Item Lookup's "Crafting" placeholder row is renamed to "Crafted" on import to match the app vocabulary the BiS cells already use, and the Attendance parser skips the export's excluded-reports trailer and blank-status rows with a printed warning instead of aborting. Verified end to end against the phoenix exports on the local stack: full generate, apply, and a second apply inserting zero rows.
+
+---
+
 ## [3.12.0] - 2026-07-06
 
 ### Added

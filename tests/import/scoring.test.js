@@ -2,28 +2,27 @@ import { describe, it, expect } from 'vitest';
 import { parseScoring, scoringSql } from '../../scripts/import/tables/scoring.js';
 import { buildPlayerRegistry } from '../../scripts/import/lib/registry.js';
 
-// Scoring layout: rows 1-3 header block, data from row 4.
-// Cols: A player, C performance, D attendance score, E attendance pct, J recent, K trend.
+// Scoring layout (cleaned export): header row 1, data from row 2.
+// Cols: A "First-Realm - Nick", B performance, C attendance score, D weighted
+// total (derived, not imported).
 function scoringRows() {
   return [
-    ['Scoring'],
-    [],
-    ['Player', '', 'Performance', 'Attendance', 'Attend %', '', '', '', '', 'Recent', 'Trend'],
-    ['Hinda', '', '9.2', '10', '98.5%', '', '', '', '', '9.4', '9.1'],
-    ['Tanky', '', 'Excluded', '9.5', '90.0%', '', '', '', '', 'Excluded', 'Excluded'],
-    ['Oldguy', '', '7.5', '8', '80.0%', '', '', '', '', '', '']
+    ['Player (Name-Realm)', 'Performance\n(1–10)', 'Attendance\n(1–10)', 'Weighted Total'],
+    ['Hinda-Thrall - Roth', '9.2', '10', '9.6'],
+    ['Tanky-Thrall', 'Excluded', '9.5', ''],
+    ['Oldguy', '7.5', '8', '7.75']
   ];
 }
 
 describe('parseScoring + scoringSql', () => {
   const registry = () => buildPlayerRegistry(['Hinda-Thrall', 'Tanky-Thrall']);
 
-  it('parses rows and maps Excluded and % values', () => {
+  it('parses rows, strips nicknames, and maps Excluded values', () => {
     const { sql, count } = scoringSql(1, parseScoring(scoringRows()), registry(), 'Season 3');
     expect(count).toBe(3);
     expect(sql).toContain("name_realm = 'Hinda-Thrall'");
     const tanky = sql.split('\n').find((l) => l.includes('Tanky-Thrall'));
-    expect(tanky).toContain("'Season 3', null, 9.5, 90"); // performance Excluded -> null, pct stripped
+    expect(tanky).toContain("'Season 3', null, 9.5, null"); // performance Excluded -> null, pct not exported
     expect(sql).toContain('on conflict (player_id, season) do nothing');
   });
 

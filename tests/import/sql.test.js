@@ -28,6 +28,10 @@ describe('sqlDate', () => {
     expect(sqlDate('2026-07-06')).toBe("'2026-07-06'");
     expect(sqlDate('2026/07/06')).toBe("'2026-07-06'");
   });
+  it('accepts sheet-locale M/d/yyyy dates', () => {
+    expect(sqlDate('4/21/2026')).toBe("'2026-04-21'");
+    expect(sqlDate('12/3/2025')).toBe("'2025-12-03'");
+  });
   it('rejects garbage', () => {
     expect(() => sqlDate('June 5th')).toThrow(/Unrecognized/);
   });

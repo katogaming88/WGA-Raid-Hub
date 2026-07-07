@@ -1,10 +1,9 @@
 // Roster tab -> players (#320 step 4).
 //
-// Layout: rows 1-3 title/header, data from row 4.
-// Cols: B trial flag, D "First-Realm", E nickname, F class, G spec,
-// I BiS link, K priority (numeric 1-6; 6 = bench), M join date.
-// Col C (attendance pct) is display-only (lives in scoring); col H (role) is
-// derivable from class/spec; cols J/L/N are sort key / reserved / legend.
+// Layout (kat's cleaned export, 2026-07-06): header row 1, data from row 2.
+// Cols: A "Is Trial", B "First-Realm", C nickname, D class, E spec, F role,
+// G BiS link, H priority (numeric 1-6; 6 = bench), I join date (M/d/yyyy).
+// Role (col F) is derivable from class/spec and skipped.
 //
 // m_plus_excluded and m_plus_note are NOT roster columns: the app derives
 // them from Approved rows on the M+ Exclusion Requests tab
@@ -19,24 +18,24 @@ import { assertHeader } from '../lib/csv.js';
 import { normName } from '../lib/names.js';
 import { sqlString, sqlBool, sqlDate, insertStatement } from '../lib/sql.js';
 
-const DATA_START = 3; // 0-based: row 4
+const DATA_START = 1; // 0-based: row 2
 
 export function parsePlayers(rows, label = 'Roster') {
-  assertHeader(rows, 2, { 3: 'player' }, label);
+  assertHeader(rows, 0, { 0: 'trial', 1: 'player', 3: 'class', 4: 'spec' }, label);
   const players = [];
   for (let i = DATA_START; i < rows.length; i++) {
     const row = rows[i] || [];
-    const nameRealm = String(row[3] || '').trim();
+    const nameRealm = String(row[1] || '').trim();
     if (!nameRealm) continue;
     players.push({
       nameRealm,
-      isTrial: String(row[1] || '').toLowerCase() === 'true',
-      nickname: String(row[4] || '').trim(),
-      class: String(row[5] || '').trim(),
-      spec: String(row[6] || '').trim(),
-      bisLink: String(row[8] || '').trim(),
-      isBench: String(row[10] || '').trim() === '6',
-      joinDate: String(row[12] || '').trim()
+      isTrial: String(row[0] || '').toLowerCase() === 'true',
+      nickname: String(row[2] || '').trim(),
+      class: String(row[3] || '').trim(),
+      spec: String(row[4] || '').trim(),
+      bisLink: String(row[6] || '').trim(),
+      isBench: String(row[7] || '').trim() === '6',
+      joinDate: String(row[8] || '').trim()
     });
   }
   return players;

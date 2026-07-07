@@ -35,6 +35,25 @@ describe('parseAttendance', () => {
   it('fails loudly on a wrong-tab export', () => {
     expect(() => parseAttendance([['Item Name', 'Slot'], []])).toThrow(/header/);
   });
+  it('skips the excluded-reports trailer with a warning', () => {
+    const rows = attendanceRows();
+    rows.push(
+      ['', '', '', ''],
+      ['── Excluded Reports ──', '', '', ''],
+      ['Report Title', 'Date', 'Reason', 'Roster Members Found'],
+      ['Phoenix Alt run', '2026-04-27', 'Alt run (title contains "Alt")', '9']
+    );
+    const { entries, warnings } = parseAttendance(rows);
+    expect(entries).toHaveLength(3);
+    expect(warnings.join('\n')).toContain('not a date');
+  });
+  it('skips rows with an empty status with a warning', () => {
+    const rows = attendanceRows();
+    rows.push(['2026-05-04', 'Fxd', '', '']);
+    const { entries, warnings } = parseAttendance(rows);
+    expect(entries).toHaveLength(3);
+    expect(warnings.join('\n')).toContain('Fxd 2026-05-04 has no status');
+  });
 });
 
 describe('attendanceSql', () => {
