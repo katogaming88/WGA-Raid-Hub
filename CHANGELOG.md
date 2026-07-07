@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.14.0] - 2026-07-07
+
+### Added
+- **Discord Claims import into team_members (#338)** -- The importer now reads a team's Discord Claims tab and backfills each claim as a `team_members` row (`role = 'raider'`), so the auth trigger can match a raider's Discord ID on their first Supabase login and existing claims carry over instead of everyone re-claiming. A claim for an already-seeded officer or team leader keeps the existing role and only fills in a missing `name_realm`. Claim IDs mangled by sheet number formatting (scientific notation loses digits) are skipped with a printed warning, since a truncated ID would silently never match at login. Verified on the local stack: 6 of hellfire's 7 claims import (one skipped for a mangled ID), seeded officer rows keep their roles and gain their character links, and a second apply changes nothing.
+
+---
+
 ## [3.13.3] - 2026-07-07
 
 ### Fixed
