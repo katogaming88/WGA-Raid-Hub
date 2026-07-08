@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [Unreleased]
+
+### Backend
+- **Raider character claim flow, backend half (#212)** -- Added `claim_character(team_id, name_realm)`, a `SECURITY DEFINER` function that links a raider's chosen character to the person layer: it sets `players.team_member_id` to the caller's `team_members` row, creating that row with `role = 'raider'` on a first claim and reusing an unlinked row imported from the Discord Claims sheet (#338) rather than duplicating it. It refuses a character that is archived, missing, or already claimed. A new self-read RLS policy lets a member read their own `team_members` row, which the login session read (`resolveDiscordSession`) needs for a raider's `nameRealm` to resolve. A one-time backfill links the pre-migrated claims to their `players` rows on the canonical `team_member_id` model. The frontend that calls this ships separately (v3.19.0). Also captures the `on_auth_user_created` trigger in a migration: it was created by hand in the dashboard and existed only on production, so local and CI stacks could not exercise the claim path against it until now.
+
+---
+
 ## [3.18.0] - 2026-07-08
 
 ### Frontend

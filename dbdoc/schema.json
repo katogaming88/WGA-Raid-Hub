@@ -2888,6 +2888,12 @@
       "return_type": "int4",
       "arguments": "p_signup_id integer, p_is_trial boolean DEFAULT true, p_archive_player_id integer DEFAULT NULL::integer",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.claim_character",
+      "return_type": "record",
+      "arguments": "p_team_id integer, p_name_realm text",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

@@ -37,6 +37,7 @@
 | public.rls_auto_enable | event_trigger |  | FUNCTION |
 | public.set_updated_at | trigger |  | FUNCTION |
 | public.add_signup_to_roster | int4 | p_signup_id integer, p_is_trial boolean DEFAULT true, p_archive_player_id integer DEFAULT NULL::integer | FUNCTION |
+| public.claim_character | record | p_team_id integer, p_name_realm text | FUNCTION |
 
 ## Enums
 
