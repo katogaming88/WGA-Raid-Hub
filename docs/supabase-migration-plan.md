@@ -1,8 +1,8 @@
 # WGA Raid Hub: Migration from Google Sheets to Supabase + PostgreSQL
 
-**Status:** Proposal for review
+**Status:** Phase 2 complete, Phase 3 not started
 **Audience:** Kat (and anyone helping run or build the Raid Hub)
-**Last updated:** 2026-06-23
+**Last updated:** 2026-07-08
 
 ## How to read this document
 
@@ -170,14 +170,15 @@ Each phase ends with that feature live on Supabase and verified against the old 
 before moving on. Order is driven by dependencies (later features need earlier ones in
 place).
 
-**Phase 1: Foundation.** Set up the Supabase project, the database structure for
+**Phase 1: Foundation.** *(Done.)* Set up the Supabase project, the database structure for
 reference data (item lookup, armor types, bosses) and teams, and the testing setup.
 Wire the website to read one simple thing from Supabase to prove the connection works.
 Lowest risk, nothing user-facing changes.
 
-**Phase 2: Public roster (read only).** The public roster and loot feed read from
-Supabase. No writing yet, so no login needed. This is the first visible win and is easy
-to check against the live site side by side.
+**Phase 2: Public roster (read only).** *(Done, verified in #210.)* The public roster
+(#208) and loot feed (#209) read from Supabase for both teams. Attendance and the two
+M+ rejection fields still merge in from the Apps Script core payload -- they move at
+Phase 5, not here. No writing yet, so no login needed.
 
 **Phase 3: Login.** Move Discord login to Supabase. This affects the public site and the
 officer dashboard at the same time, so it is done as one careful switch with the ability

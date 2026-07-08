@@ -217,7 +217,7 @@ describe('fetchSupabaseLoot', () => {
 describe('loadData lootCounts wiring', () => {
   function heavyPayload() {
     return {
-      lootCounts: { sheetkey: { count: 1, heroicCount: 1, mythicCount: 0, items: [] } },
+      // No lootCounts: the Apps Script stopped serving it once #358 redeployed.
       attendanceDetails: { some: 'attendance' },
       bisList: ['bis'],
       priorityOrder: ['prio'],
@@ -254,9 +254,9 @@ describe('loadData lootCounts wiring', () => {
     expect(sandbox.DATA.priorityOrder).toEqual(['prio']);
   });
 
-  it('falls back to the Apps Script lootCounts when the query fails', async () => {
+  it('resolves to an empty loot feed when the query fails (no Apps Script fallback anymore)', async () => {
     const mock = mockSupabase({ lootPages: [{ data: null, error: { message: 'nope' } }] });
     const sandbox = await runLoadData(mock);
-    expect(Object.keys(sandbox.DATA.lootCounts)).toEqual(['sheetkey']);
+    expect(sandbox.DATA.lootCounts).toEqual({});
   });
 });
