@@ -277,5 +277,13 @@ function submitCharacterClaim() {
 
 function discordLogout() {
   if (!supabaseClient) return;
-  supabaseClient.auth.signOut();
+  // Don't rely solely on the onAuthStateChange SIGNED_OUT branch -- it's only wired up
+  // when initDiscordLogin() has run on this page load, which officer.js's reload path
+  // skips once a password-session flag is already valid. Clear state directly so logout
+  // works regardless of whether that listener is attached.
+  supabaseClient.auth.signOut().then(function () {
+    clearDiscordSession();
+    renderDiscordNav(null);
+    if (typeof onDiscordLogout === 'function') onDiscordLogout();
+  });
 }
