@@ -1,0 +1,30 @@
+name: Frontend tests
+
+# The frontend unit tests load js/ files into a vm sandbox, so like the
+# import tests they need no database and get their own cheap job.
+on:
+  pull_request:
+    paths:
+      - 'js/**'
+      - 'tests/frontend/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/frontend-tests.yml'
+
+# A new push to the PR supersedes any still-running check on the old commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run frontend unit tests
+        run: npm run test:frontend

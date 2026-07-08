@@ -48,6 +48,9 @@ The changelog check has no exemption.
   build step). If you touch a checked file, run `npm run typecheck`; CI runs
   the same check on every `js/` change. Add `// @ts-check` to more `js/`
   files as they get touched
+- Frontend logic has unit tests under `tests/frontend/` (they load the plain
+  `js/` scripts into a vm sandbox, no browser needed). Run
+  `npm run test:frontend`; CI runs the suite on every `js/` change
 
 ## Project structure
 

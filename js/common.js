@@ -26,7 +26,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.15.2';
+var VERSION = '3.16.0';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -537,6 +537,83 @@ function normalise(str) {
 }
 
 // -- Data loading -----------------------------------------------------------
+
+// Public roster reads come from Supabase (#208); Apps Script keeps computing
+// attendance from the Attendance sheet (scoring.attendance_pct stays empty
+// until the WCL sync lands) and all four M+ fields (they derive from the
+// requests flow, which is officer-gated to anon and migrates at Phase 5),
+// so those merge in from the JSONP core payload. Resolves to the players
+// rows, or null on any failure so the caller falls back to the JSONP roster.
+function fetchSupabaseRoster() {
+  if (!supabaseClient) return Promise.resolve(null);
+  var query = supabaseClient
+    .from('players')
+    .select('name_realm, nickname, is_trial, is_bench, bis_link, join_date, classes_specs(class, spec, role)')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .is('archived_at', null)
+    .order('name_realm')
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Supabase roster query failed, using Apps Script roster.', result.error.message);
+        return null;
+      }
+      return result.data && result.data.length ? result.data : null;
+    })
+    .catch(function (err) {
+      console.warn('Supabase roster query failed, using Apps Script roster.', err);
+      return null;
+    });
+  var timeout = new Promise(function (resolve) {
+    setTimeout(function () {
+      resolve(null);
+    }, 10000);
+  });
+  return Promise.race([query, timeout]);
+}
+
+/**
+ * Maps Supabase players rows to the roster shape the Apps Script core payload
+ * emits (see getRoster() in gs/wgaWebApp.gs), so no render code changes.
+ * @param {any[]} rows - players rows with embedded classes_specs
+ * @param {any[]} [jsonpRoster] - the Apps Script roster from the core payload
+ * @returns {any[]}
+ */
+function mapSupabaseRoster(rows, jsonpRoster) {
+  var jsonpByName = {};
+  (jsonpRoster || []).forEach(function (p) {
+    if (p && p.nameRealm) jsonpByName[String(p.nameRealm).toLowerCase()] = p;
+  });
+  var players = [];
+  (rows || []).forEach(function (row) {
+    var nameRealm = String(row.name_realm || '').trim();
+    if (!nameRealm) return;
+    var cs = row.classes_specs || {};
+    // Mirror getRoster(): a row without a role is not a roster entry.
+    if (!cs.role) return;
+    var parts = nameRealm.split('-');
+    var jsonpRow = jsonpByName[nameRealm.toLowerCase()] || {};
+    players.push({
+      nameRealm: nameRealm,
+      firstName: parts[0].trim(),
+      realm: parts.slice(1).join('-').trim(),
+      isTrial: !!row.is_trial,
+      isBench: !!row.is_bench,
+      attendance: jsonpRow.attendance || '',
+      nick: row.nickname || '',
+      class: cs.class || '',
+      spec: cs.spec || '',
+      role: cs.role,
+      bisLink: row.bis_link || '',
+      joinDate: row.join_date || '',
+      mPlusExcluded: !!jsonpRow.mPlusExcluded,
+      mPlusNote: jsonpRow.mPlusNote || '',
+      mPlusRejected: !!jsonpRow.mPlusRejected,
+      mPlusRejectionNote: jsonpRow.mPlusRejectionNote || ''
+    });
+  });
+  return players;
+}
+
 // onCoreReady fires once the fast core chunk is loaded and the page can render.
 // onHeavyReady (optional) fires once loot/attendance/BiS/priority data arrives.
 function loadData(onCoreReady, onHeavyReady) {
@@ -548,43 +625,50 @@ function loadData(onCoreReady, onHeavyReady) {
     }
   }
 
+  // Fired in parallel with the core chunk; the core callback waits for it.
+  var rosterPromise = fetchSupabaseRoster();
+
   window._rosterCoreCallback = function (data) {
     delete window._rosterCoreCallback;
     if (data.error) {
       showError('Could not load roster data. ' + data.error);
       return;
     }
-    DATA = data;
-    DATA._loadedAt = new Date();
-    try {
-      onCoreReady();
-    } catch (e) {
-      showError('Could not load roster data. ' + e.message);
-      return;
-    }
+    rosterPromise.then(function (rows) {
+      var mapped = rows ? mapSupabaseRoster(rows, data.roster) : null;
+      if (mapped && mapped.length) data.roster = mapped;
+      DATA = data;
+      DATA._loadedAt = new Date();
+      try {
+        onCoreReady();
+      } catch (e) {
+        showError('Could not load roster data. ' + e.message);
+        return;
+      }
 
-    var heavyScript = document.createElement('script');
-    heavyScript.onerror = function () {
-      delete window._rosterHeavyCallback;
-    };
-    window._rosterHeavyCallback = function (heavy) {
-      delete window._rosterHeavyCallback;
-      if (!heavy || heavy.error) return;
-      DATA.lootCounts = heavy.lootCounts;
-      DATA.attendanceDetails = heavy.attendanceDetails;
-      DATA.rawAttendanceData = heavy.rawAttendanceData;
-      DATA.recentAttendanceTrend = heavy.recentAttendanceTrend;
-      DATA.bisList = heavy.bisList;
-      DATA.priorityOrder = heavy.priorityOrder;
-      DATA.itemSlots = heavy.itemSlots;
-      DATA.itemArmorTypes = heavy.itemArmorTypes || {};
-      DATA.itemBosses = heavy.itemBosses || {};
-      DATA.selfReceived = heavy.selfReceived;
-      if (typeof populateBossFilters === 'function') populateBossFilters();
-      if (onHeavyReady) onHeavyReady();
-    };
-    heavyScript.src = WEB_APP_URL + '?chunk=heavy&callback=_rosterHeavyCallback';
-    document.head.appendChild(heavyScript);
+      var heavyScript = document.createElement('script');
+      heavyScript.onerror = function () {
+        delete window._rosterHeavyCallback;
+      };
+      window._rosterHeavyCallback = function (heavy) {
+        delete window._rosterHeavyCallback;
+        if (!heavy || heavy.error) return;
+        DATA.lootCounts = heavy.lootCounts;
+        DATA.attendanceDetails = heavy.attendanceDetails;
+        DATA.rawAttendanceData = heavy.rawAttendanceData;
+        DATA.recentAttendanceTrend = heavy.recentAttendanceTrend;
+        DATA.bisList = heavy.bisList;
+        DATA.priorityOrder = heavy.priorityOrder;
+        DATA.itemSlots = heavy.itemSlots;
+        DATA.itemArmorTypes = heavy.itemArmorTypes || {};
+        DATA.itemBosses = heavy.itemBosses || {};
+        DATA.selfReceived = heavy.selfReceived;
+        if (typeof populateBossFilters === 'function') populateBossFilters();
+        if (onHeavyReady) onHeavyReady();
+      };
+      heavyScript.src = WEB_APP_URL + '?chunk=heavy&callback=_rosterHeavyCallback';
+      document.head.appendChild(heavyScript);
+    });
   };
 
   var coreScript = document.createElement('script');

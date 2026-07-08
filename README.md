@@ -100,7 +100,7 @@ Officer controls on the Roster tab (player card):
 
 1. The **Google Sheet** is the source of truth -- officers update the Roster, BiS List, Priority Order, Scoring, and Loot Data tabs as normal
 2. The **Apps Script** (`wgaWebApp.gs`) reads those tabs and returns a JSON payload via JSONP when either page loads; it also handles Discord OAuth token exchange, session storage, and character claims
-3. `index.html` and `officer.html` fetch that payload on load and render all views dynamically -- no page reloads
+3. `index.html` and `officer.html` fetch that payload on load and render all views dynamically -- no page reloads. The roster itself now reads from **Supabase** (Phase 2 of the migration), with the Apps Script copy as fallback if that query fails; attendance and M+ exclusion fields still come from the Apps Script payload
 4. Both pages are hosted on **GitHub Pages** at the repo root
 5. The **TEAMS object** in `js/common.js` maps each team slug to its own GAS deployment URL and officer password; append `?team=hellfire` to switch teams
 
