@@ -90,7 +90,7 @@ Raw loot history imported from the RCLootCouncil addon export.
 | ------------ | ----------- | -------------------------------------------------------------------------------------- |
 | `id`         | int4        | PK                                                                                     |
 | `team_id`    | int4        | FK -> `teams.id` -- denormalized for query filtering and RLS                           |
-| `player_id`  | int4        | FK -> `players.id`                                                                     |
+| `player_id`  | int4        | FK -> `players.id` -- the character the item was awarded to (historical fact; departed characters resolve to archived stub rows) |
 | `item_id`    | int4        | FK -> `items.id`                                                                       |
 | `track`      | text        | Item upgrade track, CHECK values Champion/Hero/Myth -- derived from the instance string's difficulty suffix on import (Normal -> Champion, Heroic -> Hero, Mythic -> Myth, decided on #343) |
 | `season`     | text        | Season string (e.g. "MN1")                                                             |
@@ -178,8 +178,8 @@ The active raid roster. One row per character on a team.
 | `join_date`       | date | When they joined the roster                          |
 | `m_plus_excluded`  | bool        | Whether they are excluded from M+ tracking                                      |
 | `m_plus_note`      | text        | Reason for M+ exclusion                                                         |
-| `team_member_id`   | int4        | FK -> `team_members.id` ON DELETE SET NULL -- links character to Discord account |
-| `archived_at`      | timestamptz | Soft-delete timestamp. Null = active roster. Populated on character swap/removal |
+| `team_member_id`   | int4        | FK -> `team_members.id` ON DELETE SET NULL -- links character to Discord account; many characters can share one team_member (the person layer) |
+| `archived_at`      | timestamptz | Soft-delete timestamp. Null = active roster. Populated on character swap/removal; archived stubs (name only, no class/spec) represent departed characters kept for history FKs |
 | `updated_at`       | timestamptz | Auto-set on every UPDATE via trigger                                             |
 
 ---
