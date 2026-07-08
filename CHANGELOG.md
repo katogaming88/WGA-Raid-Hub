@@ -2,7 +2,9 @@
 
 All notable changes to WGA Raid Hub will be documented here.
 
-The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+with each release split into `### Frontend` (drives the version number) and
+`### Backend` (migrations and import tooling, no version bump) sections.
 
 ---
 

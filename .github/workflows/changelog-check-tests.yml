@@ -1,0 +1,30 @@
+name: Changelog check tests
+
+# The changelog-check classifier is plain node with no database, so it gets
+# the same cheap job shape as the import tests.
+on:
+  pull_request:
+    paths:
+      - 'scripts/ci/**'
+      - 'tests/ci/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/changelog-check-tests.yml'
+
+# A new push to the PR supersedes any still-running check on the old commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  changelog-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run changelog-check tests
+        run: npm run test:ci

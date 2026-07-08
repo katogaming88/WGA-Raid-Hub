@@ -3,7 +3,7 @@ name: Changelog Check
 on:
   pull_request:
     # labeled/unlabeled so toggling the chore label re-evaluates the
-    # version-bump exemption without needing a new push.
+    # exemption without needing a new push.
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
 # A new push to the PR supersedes any still-running check on the old commit.
@@ -19,46 +19,61 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get changed files
+      # Classifies the diff (#353): frontend = js/, gs/, and root-page paths,
+      # with js/common.js counting only when its diff goes beyond the VERSION
+      # line, so complying with "bump VERSION" cannot itself mark a PR
+      # functional. backend = supabase/migrations/ and scripts/import/.
+      # frontend_entry / backend_entry = CHANGELOG.md gained content under
+      # the matching ### heading. The script has no dependencies, so no
+      # npm ci here.
+      - name: Classify the diff
         id: changed
+        run: node scripts/ci/changelog-check.js origin/${{ github.base_ref }}
+
+      # All four checks below share the chore exemption (chore/* branch or
+      # the chore label): the VERSION bump and the sectioned changelog both
+      # signal "behavior changed", which a mechanical PR does not do. #353
+      # extends the exemption to the changelog-entry checks, superseding the
+      # no-bypass rule from be59777.
+      - name: Fail if frontend changes lack a Frontend changelog entry
+        if: >-
+          steps.changed.outputs.frontend == 'true' &&
+          steps.changed.outputs.frontend_entry == 'false' &&
+          !startsWith(github.head_ref, 'chore/') &&
+          !contains(github.event.pull_request.labels.*.name, 'chore')
         run: |
-          git diff --name-only origin/${{ github.base_ref }}...HEAD > changed_files.txt
-
-          if grep -qE '^(js|gs)/.+\.(js|html)$|^[^/]+\.html$' changed_files.txt; then
-            echo "functional=true" >> $GITHUB_OUTPUT
-          else
-            echo "functional=false" >> $GITHUB_OUTPUT
-          fi
-
-          if grep -q '^CHANGELOG.md' changed_files.txt; then
-            echo "changelog=true" >> $GITHUB_OUTPUT
-          else
-            echo "changelog=false" >> $GITHUB_OUTPUT
-          fi
-
-          if git diff origin/${{ github.base_ref }}...HEAD -- js/common.js | grep -q '^\+var VERSION'; then
-            echo "version_bump=true" >> $GITHUB_OUTPUT
-          else
-            echo "version_bump=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Fail if functional changes without changelog update
-        if: steps.changed.outputs.functional == 'true' && steps.changed.outputs.changelog == 'false'
-        run: |
-          echo "::error::CHANGELOG.md was not updated. If this PR changes how the app works or fixes a bug, please update CHANGELOG.md and bump the VERSION in js/common.js."
+          echo "::error::CHANGELOG.md gained no entry under '### Frontend'. Changes to js/, gs/, or the root pages get a Frontend entry plus a VERSION bump (see CONTRIBUTING.md); if this PR is mechanical, use a chore/* branch or the chore label."
           exit 1
 
-      # Chore/mechanical PRs are exempt (#299): the VERSION bump signals
-      # "user-visible behavior changed", so requiring one for a lint pass or
-      # comment-only change trains reflexive bumping. Exemption = chore/*
-      # branch or the chore label. The changelog check above stays purely
-      # path-based with no bypass (see be59777 for why).
-      - name: Fail if functional changes without a VERSION bump
+      - name: Fail if frontend changes lack a VERSION bump
         if: >-
-          steps.changed.outputs.functional == 'true' &&
+          steps.changed.outputs.frontend == 'true' &&
           steps.changed.outputs.version_bump == 'false' &&
           !startsWith(github.head_ref, 'chore/') &&
           !contains(github.event.pull_request.labels.*.name, 'chore')
         run: |
-          echo "::error::The VERSION in js/common.js was not bumped. Functional PRs bump it per CONTRIBUTING.md; if this change is mechanical (formatting, lint, comments), use a chore/* branch or add the chore label."
+          echo "::error::The VERSION in js/common.js was not bumped. Frontend PRs bump it per CONTRIBUTING.md; if this change is mechanical (formatting, lint, comments), use a chore/* branch or add the chore label."
+          exit 1
+
+      # The reverse direction (#353): a bump with no frontend change trains
+      # reflexive bumping and erodes VERSION as the "user-visible behavior
+      # changed" signal.
+      - name: Fail if VERSION bumps without a frontend change
+        if: >-
+          steps.changed.outputs.frontend == 'false' &&
+          steps.changed.outputs.version_bump == 'true' &&
+          !startsWith(github.head_ref, 'chore/') &&
+          !contains(github.event.pull_request.labels.*.name, 'chore')
+        run: |
+          echo "::error::The VERSION in js/common.js was bumped, but no frontend file changed. Backend/DB-only PRs take no bump and log under '### Backend' in CHANGELOG.md instead (see CONTRIBUTING.md)."
+          exit 1
+
+      - name: Fail if backend changes lack a Backend changelog entry
+        if: >-
+          steps.changed.outputs.backend == 'true' &&
+          steps.changed.outputs.backend_entry == 'false' &&
+          !startsWith(github.head_ref, 'chore/') &&
+          !contains(github.event.pull_request.labels.*.name, 'chore')
+        run: |
+          echo "::error::CHANGELOG.md gained no entry under '### Backend'. Changes under supabase/migrations/ or scripts/import/ get a Backend entry with no VERSION bump (see CONTRIBUTING.md); if this PR is mechanical, use a chore/* branch or the chore label."
           exit 1

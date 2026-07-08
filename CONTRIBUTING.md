@@ -31,18 +31,28 @@ This project follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PA
 | **PATCH** | Bug fixes, visual polish, copy changes, layout tweaks, performance improvements | Layout fix, subtitle change, footer tweak |
 
 When merging a PR:
-- Bump the version in `js/common.js` (`var VERSION`)
-- Add an entry to `CHANGELOG.md` under the new version number
+- Frontend changes (under `js/`, `gs/`, or the root HTML pages): bump the
+  version in `js/common.js` (`var VERSION`) and add an entry under a
+  `### Frontend` heading in the new version's `CHANGELOG.md` block
+- Backend changes (under `supabase/migrations/` or `scripts/import/`): add
+  an entry under a `### Backend` heading, with no version bump. Backend
+  entries join the version block of the release they land next to
+- A PR touching both sides updates both sections; a PR touching neither
+  needs neither
 
-CI enforces both on functional PRs (changes under `js/`, `gs/`, or the HTML
-pages). Mechanical PRs (formatting, lint, comment-only changes) are exempt
-from the version-bump check: use a `chore/*` branch or add the `chore` label.
-The changelog check has no exemption.
+CI enforces this in both directions (#353): frontend paths require a
+Frontend entry and a bump, backend paths require a Backend entry, and a
+bump without a frontend change fails. The `js/common.js` VERSION line
+itself does not count as a frontend change, so a bump alone never
+satisfies the frontend checks. Mechanical PRs (formatting, lint,
+comment-only changes) are exempt from every check: use a `chore/*` branch
+or add the `chore` label.
 
 ## Pull requests
 
 - Keep PRs focused on one issue or theme
-- Update `CHANGELOG.md` with a brief description of what changed
+- Update `CHANGELOG.md` under `### Frontend` / `### Backend` per the
+  versioning section above
 - If your change affects `PhoenixRosterWebApp.gs`, note whether a new deployment is needed
 - `js/common.js` is type-checked (`// @ts-check` plus JSDoc annotations, no
   build step). If you touch a checked file, run `npm run typecheck`; CI runs
