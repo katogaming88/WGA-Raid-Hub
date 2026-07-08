@@ -18,8 +18,10 @@ import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 // Same path rules the workflow used inline before #353, minus js/common.js
-// (handled separately via its diff content).
-const FRONTEND_PATH = /^(js|gs)\/.+\.(js|html)$|^[^/]+\.html$/;
+// (handled separately via its diff content). css/ counts as frontend too --
+// missed in the original #353 rules, caught by #361 tripping the reverse
+// (bump without a frontend change) check on a CSS-only fix.
+const FRONTEND_PATH = /^(js|gs)\/.+\.(js|html)$|^css\/.+\.css$|^[^/]+\.html$/;
 const BACKEND_PATH = /^(supabase\/migrations|scripts\/import)\//;
 const VERSION_LINE = /^[+-]var VERSION\b/;
 
