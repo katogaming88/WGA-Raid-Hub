@@ -26,7 +26,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.18.0';
+var VERSION = '3.18.1';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -35,10 +35,16 @@ var SUPABASE_URL = 'https://kxgjqnpwfklbgrxdgmmv.supabase.co';
 var SUPABASE_ANON_KEY = 'sb_publishable_OdTUOR0Do1ThdKUPBh5inA_OWq78POC';
 var supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
-function _getDiscordTokenParam() {
+// Audit-log attribution for the officer writes still served by Apps Script.
+// Before the Supabase login swap (#211) this sent the Discord session token,
+// which GAS turned into the acting officer's name. The mapped session no
+// longer carries a token, so it now sends the resolved username directly as
+// changedBy. Same trust level as before: the GAS write actions are
+// unauthenticated either way, this is attribution, not authorization (#364).
+function _getAuditChangedByParam() {
   try {
     var s = typeof getDiscordSession === 'function' && getDiscordSession();
-    return s && s.token ? '&token=' + encodeURIComponent(s.token) : '';
+    return s && s.username ? '&changedBy=' + encodeURIComponent(s.username) : '';
   } catch (_) {
     return '';
   }
@@ -111,7 +117,7 @@ function jsonpRequest(url, callback, timeoutMs) {
   script.onerror = function () {
     finish(new Error('Request failed. Check your connection.'), null);
   };
-  if (url.indexOf(WEB_APP_URL) === 0) url += _getDiscordTokenParam();
+  if (url.indexOf(WEB_APP_URL) === 0) url += _getAuditChangedByParam();
   script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cbName;
   document.head.appendChild(script);
 }
@@ -1281,7 +1287,7 @@ function officerUpdateBisLink(nameRealm, firstName) {
     WEB_APP_URL +
     '?action=updateBisLink&data=' +
     encodeURIComponent(JSON.stringify(data)) +
-    _getDiscordTokenParam() +
+    _getAuditChangedByParam() +
     '&callback=' +
     cbName;
   document.head.appendChild(script);
@@ -1332,7 +1338,7 @@ function allowBisForPlayer(nameRealm, firstName) {
     WEB_APP_URL +
     '?action=allowBisForPlayer&data=' +
     encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })) +
-    _getDiscordTokenParam() +
+    _getAuditChangedByParam() +
     '&callback=' +
     cbName;
   document.head.appendChild(script);
@@ -1356,7 +1362,7 @@ function revokeBisForPlayer(nameRealm, firstName) {
     WEB_APP_URL +
     '?action=revokeBisForPlayer&data=' +
     encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })) +
-    _getDiscordTokenParam() +
+    _getAuditChangedByParam() +
     '&callback=' +
     cbName;
   document.head.appendChild(script);
@@ -1534,7 +1540,7 @@ function submitDirectMarkReceived(firstName, item, slot, rowId) {
     WEB_APP_URL +
     '?action=directMarkReceived&data=' +
     encodeURIComponent(JSON.stringify(data)) +
-    _getDiscordTokenParam() +
+    _getAuditChangedByParam() +
     '&callback=' +
     cbName;
   document.head.appendChild(script);
@@ -2476,7 +2482,7 @@ function saveAttendanceFromCard(selectEl) {
     WEB_APP_URL +
     '?action=setAttendanceStatus&data=' +
     encodeURIComponent(JSON.stringify(data)) +
-    _getDiscordTokenParam() +
+    _getAuditChangedByParam() +
     '&callback=' +
     cbName;
   document.head.appendChild(script);

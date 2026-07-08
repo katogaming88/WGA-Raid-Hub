@@ -115,7 +115,12 @@ function doGet(e) {
     const props    = PropertiesService.getScriptProperties();
     const action   = e && e.parameter && e.parameter.action;
     const callback = e && e.parameter && e.parameter.callback;
-    _currentChangedBy = resolveChangedBy(String(e && e.parameter && e.parameter.token || ''));
+    // Prefer a Discord session token (old cached frontends still send one) and
+    // fall back to an explicit changedBy the Supabase-auth frontend passes,
+    // since the mapped session no longer carries a token (#364).
+    _currentChangedBy =
+      resolveChangedBy(String(e && e.parameter && e.parameter.token || '')) ||
+      String((e && e.parameter && e.parameter.changedBy) || '');
 
     if (action === 'clearCache') {
       cache.remove('rosterCore');
