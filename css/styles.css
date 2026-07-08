@@ -136,6 +136,8 @@ select#playerSelect option { background:#1a1d27; }
 .btn-gold:hover { background:rgba(214,163,68,0.2); }
 .btn-muted { background:transparent; border:1px solid var(--border-mid); color:var(--text); }
 .btn-muted:hover { background:var(--bg-elevated); }
+.btn.site-nav-discord { background:rgba(88,101,242,0.15); border:1px solid rgba(88,101,242,0.4); color:#c9cdff; }
+.btn.site-nav-discord:hover { background:rgba(88,101,242,0.25); color:#c9cdff; }
 
 /* Profile view */
 #profileView { padding:0 2rem 3rem; max-width:680px; width:100%; margin:0 auto; }
