@@ -1287,7 +1287,7 @@ function buildHeavyPayload(sheets) {
     itemSlots:              getItemSlots(sheets),
     itemArmorTypes:         getItemArmorTypes(sheets),
     itemBosses:             getItemBosses(sheets),
-    lootCounts:             getLootCounts(sheets),
+    // lootCounts retired (#209): the site reads loot from Supabase rclc_loot.
     attendanceDetails:      getAttendanceDetails(sheets),
     rawAttendanceData:      getRawAttendanceData(sheets),
     recentAttendanceTrend:  getRecentAttendanceTrend(sheets),
@@ -2069,82 +2069,10 @@ function getItemBosses(sheets) {
   return result;
 }
 
-function getLootCounts(sheets) {
-  const result  = {};
-  const seenKeys = new Set(); // cross-source dedup: name|item|date
-  const currentSeason = PropertiesService.getScriptProperties().getProperty('seasonName') || '';
-
-  function normName(str) {
-    return String(str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
-  }
-
-  function addEntry(name, item, difficulty, date, season) {
-    const key = name + '|' + item.toLowerCase() + '|' + date;
-    if (seenKeys.has(key)) return;
-    seenKeys.add(key);
-    if (!result[name]) result[name] = { count: 0, heroicCount: 0, mythicCount: 0, items: [] };
-    result[name].count++;
-    if (difficulty === 'Heroic') result[name].heroicCount++;
-    else if (difficulty === 'Mythic') result[name].mythicCount++;
-    result[name].items.push({ name: item, difficulty: difficulty, date: date, season: season || '' });
-  }
-
-  // Read from Pasted Loot sheet first (RCLC import via officer dashboard) so its
-  // entries take priority when deduplicating against the IMPORTRANGE source below.
-  // Columns: A=Season, B=RCLC ID, C=Player, D=Date, E=Item Name, F=Instance
-  const pastedSheet = sheets[CFG.pastedLootSheet];
-  if (pastedSheet && pastedSheet.getLastRow() >= 2) {
-    const pastedData = pastedSheet.getDataRange().getValues();
-    for (let i = 1; i < pastedData.length; i++) {
-      const row      = pastedData[i];
-      const season   = String(row[0] || '').trim();
-      const player   = String(row[2] || '').trim();
-      const rawDate  = row[3];
-      const date     = rawDate instanceof Date
-        ? Utilities.formatDate(rawDate, Session.getScriptTimeZone(), 'MMM d, yyyy')
-        : String(rawDate || '').trim();
-      const item     = String(row[4] || '').trim();
-      const instance = String(row[5] || '').trim();
-      if (!player || !instance) continue;
-
-      const name = normName(player.split('-')[0]);
-      if (!name) continue;
-
-      const diffRaw    = instance.split('-').pop().trim().toLowerCase();
-      const difficulty = diffRaw === 'mythic' ? 'Mythic' : diffRaw === 'heroic' ? 'Heroic' : 'Other';
-
-      addEntry(name, item || 'Unknown Item', difficulty, date, season);
-    }
-  }
-
-  // Read from Loot Data sheet (IMPORTRANGE source). Entries already seen in
-  // Pasted Loot are skipped automatically via the seenKeys set.
-  const sheet = sheets[CFG.lootSheet];
-  if (sheet) {
-    const data = sheet.getDataRange().getValues();
-    for (let i = CFG.lootDataStart - 1; i < data.length; i++) {
-      const row      = data[i];
-      const player   = String(row[CFG.lootPlayerCol   - 1] || '').trim();
-      const rawDate  = row[CFG.lootDateCol            - 1];
-      const item     = String(row[3]                       || '').trim().replace(/^\[|\]$/g, '');
-      const instance = String(row[CFG.lootInstanceCol - 1] || '').trim();
-      if (!player || !item) continue;
-
-      const name = normName(player.split('-')[0]);
-      if (!name) continue;
-
-      const diffRaw    = instance.split('-').pop().trim().toLowerCase();
-      const difficulty = diffRaw === 'mythic' ? 'Mythic' : diffRaw === 'heroic' ? 'Heroic' : 'Other';
-      const date       = rawDate instanceof Date
-        ? Utilities.formatDate(rawDate, Session.getScriptTimeZone(), 'MMM d, yyyy')
-        : String(rawDate || '').trim();
-
-      addEntry(name, item, difficulty, date, currentSeason);
-    }
-  }
-
-  return result;
-}
+// getLootCounts() retired (#209): the loot feed reads from Supabase rclc_loot.
+// The Pasted Loot sheet (below) and the Loot Data IMPORTRANGE tab stay: the
+// officer paste flow and the priority generator's received-items check still
+// consume them until their own migration phases.
 
 function ensurePastedLootSheet(ss) {
   let sheet = ss.getSheetByName(CFG.pastedLootSheet);
