@@ -153,31 +153,43 @@ function initDiscordLogin() {
     return;
   }
 
-  supabaseClient.auth.getSession().then(function (result) {
-    var session = result.data.session;
-    if (!session) {
-      renderDiscordNav(null);
-      if (typeof onDiscordInitNoSession === 'function') onDiscordInitNoSession();
-      return;
-    }
-    resolveDiscordSession(session).then(function (mapped) {
-      setDiscordSession(mapped);
-      renderDiscordNav(mapped);
-      if (typeof onDiscordSessionRestored === 'function') onDiscordSessionRestored(mapped);
-    });
-  });
+  function fallBackToNoSession() {
+    clearDiscordSession();
+    renderDiscordNav(null);
+    if (typeof onDiscordInitNoSession === 'function') onDiscordInitNoSession();
+  }
+
+  supabaseClient.auth
+    .getSession()
+    .then(function (result) {
+      var session = result.data.session;
+      if (!session) {
+        fallBackToNoSession();
+        return;
+      }
+      resolveDiscordSession(session)
+        .then(function (mapped) {
+          setDiscordSession(mapped);
+          renderDiscordNav(mapped);
+          if (typeof onDiscordSessionRestored === 'function') onDiscordSessionRestored(mapped);
+        })
+        .catch(fallBackToNoSession);
+    })
+    .catch(fallBackToNoSession);
 
   supabaseClient.auth.onAuthStateChange(function (event, session) {
     if (event === 'SIGNED_IN' && session) {
-      resolveDiscordSession(session).then(function (mapped) {
-        setDiscordSession(mapped);
-        renderDiscordNav(mapped);
-        if (typeof onDiscordLoginComplete === 'function') onDiscordLoginComplete(mapped);
-        if (!mapped.nameRealm) {
-          // First login -- no character claimed yet, show the claiming modal
-          showDiscordClaimModal(mapped);
-        }
-      });
+      resolveDiscordSession(session)
+        .then(function (mapped) {
+          setDiscordSession(mapped);
+          renderDiscordNav(mapped);
+          if (typeof onDiscordLoginComplete === 'function') onDiscordLoginComplete(mapped);
+          if (!mapped.nameRealm) {
+            // First login -- no character claimed yet, show the claiming modal
+            showDiscordClaimModal(mapped);
+          }
+        })
+        .catch(fallBackToNoSession);
     }
     if (event === 'SIGNED_OUT') {
       clearDiscordSession();
