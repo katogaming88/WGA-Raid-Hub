@@ -1,34 +1,23 @@
 // Discord OAuth session management and login flow.
-// Depends on: common.js (WEB_APP_URL, TEAM_SLUG, jsonpRequest)
+// Depends on: common.js (supabaseClient, _teamCfg)
 
-var DISCORD_CLIENT_ID = '1518683392864948334'; // public -- safe in JS
-var DISCORD_REDIRECT_URI = 'https://katogaming88.github.io/WGA-Raid-Hub/discord-callback.html';
-var DISCORD_SCOPE = 'identify';
-var DISCORD_SESSION_KEY = 'wga_discord_' + TEAM_SLUG; // one key per team in localStorage
-var _discordPopup = null;
-var _discordCsrfState = null;
+var _mappedDiscordSession = null; // cache of the {username, nameRealm, isOfficer, isAdmin} shape
 
-// ── Session storage ───────────────────────────────────────────────────────────
+// ── Session cache ─────────────────────────────────────────────────────────────
+// Supabase's SDK persists the raw auth session itself; this is only a cache of
+// the *mapped* shape so synchronous readers (renderDiscordNav, etc.) don't need
+// to await a promise on every call.
 
 function getDiscordSession() {
-  try {
-    var raw = localStorage.getItem(DISCORD_SESSION_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch (_) {
-    return null;
-  }
+  return _mappedDiscordSession;
 }
 
 function setDiscordSession(data) {
-  try {
-    localStorage.setItem(DISCORD_SESSION_KEY, JSON.stringify(data));
-  } catch (_) {}
+  _mappedDiscordSession = data;
 }
 
 function clearDiscordSession() {
-  try {
-    localStorage.removeItem(DISCORD_SESSION_KEY);
-  } catch (_) {}
+  _mappedDiscordSession = null;
 }
 
 // ── Nav rendering ─────────────────────────────────────────────────────────────
@@ -39,7 +28,7 @@ function renderDiscordNav(session) {
   if (!session) {
     btn.textContent = 'Login with Discord';
     btn.disabled = false;
-    btn.onclick = openDiscordPopup;
+    btn.onclick = loginWithDiscord;
     btn.title = 'Sign in with Discord to view your priority standing and mark loot received';
     btn.classList.remove('discord-logged-in');
     // Remove any logout dropdown if present
@@ -108,118 +97,81 @@ function renderDiscordNav(session) {
   };
 }
 
-// ── Popup flow ────────────────────────────────────────────────────────────────
+// ── Login (full-page redirect) ──────────────────────────────────────────────
 
-function openDiscordPopup() {
-  // Generate CSRF state token; encode team slug so the callback knows which GAS to call
-  // without needing cross-window storage coordination (popup cannot share sessionStorage).
-  _discordCsrfState = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-  var _stateParam = _discordCsrfState + ':' + TEAM_SLUG;
-
-  var authUrl =
-    'https://discord.com/api/oauth2/authorize' +
-    '?client_id=' +
-    encodeURIComponent(DISCORD_CLIENT_ID) +
-    '&redirect_uri=' +
-    encodeURIComponent(DISCORD_REDIRECT_URI) +
-    '&response_type=code' +
-    '&scope=' +
-    encodeURIComponent(DISCORD_SCOPE) +
-    '&state=' +
-    encodeURIComponent(_stateParam);
-
-  var w = 480,
-    h = 700;
-  var left = Math.max(0, Math.round(window.screenX + (window.outerWidth - w) / 2));
-  var top = Math.max(0, Math.round(window.screenY + (window.outerHeight - h) / 2));
-  _discordPopup = window.open(
-    authUrl,
-    'discord_auth',
-    'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',toolbar=no,menubar=no,resizable=no'
-  );
-
-  if (!_discordPopup) {
-    alert('Please allow popups for this site to log in with Discord.');
-  }
+function loginWithDiscord() {
+  if (!supabaseClient) return;
+  supabaseClient.auth.signInWithOAuth({
+    provider: 'discord',
+    options: { redirectTo: window.location.origin + window.location.pathname + window.location.search }
+  });
 }
 
-window.addEventListener('message', function (ev) {
-  if (ev.origin !== 'https://katogaming88.github.io') return;
-  var data = ev.data;
-  if (!data || data.type !== 'discord_auth') return;
-  if (_discordPopup) {
-    try {
-      _discordPopup.close();
-    } catch (_) {}
-    _discordPopup = null;
-  }
-  handleDiscordAuthResult(data.result || {});
-});
+// ── Session mapping ──────────────────────────────────────────────────────────
 
-function handleDiscordAuthResult(result) {
-  if (!result || !result.success) {
-    // Show a brief error near the login button
-    var btn = document.getElementById('navDiscord');
-    if (btn) {
-      btn.textContent = 'Login failed -- try again';
-      setTimeout(function () {
-        renderDiscordNav(null);
-      }, 3000);
-    }
-    return;
-  }
-
-  setDiscordSession(result);
-  renderDiscordNav(result);
-
-  // Notify officer.html that a Discord login just completed so it can gate access
-  if (typeof onDiscordLoginComplete === 'function') onDiscordLoginComplete(result);
-
-  if (!result.nameRealm) {
-    // First login -- no character claimed yet, show the claiming modal
-    showDiscordClaimModal(result);
-  }
+function resolveDiscordSession(session) {
+  return supabaseClient
+    .from('team_members')
+    .select('role, name_realm')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('auth_user_id', session.user.id)
+    .maybeSingle()
+    .then(function (result) {
+      var member = result.data;
+      return supabaseClient
+        .rpc('is_site_admin')
+        .then(function (adminResult) {
+          return {
+            username: session.user.user_metadata.full_name || session.user.user_metadata.name,
+            nameRealm: member ? member.name_realm : null,
+            isOfficer: !!member && (member.role === 'officer' || member.role === 'team_leader'),
+            isAdmin: !!adminResult.data
+          };
+        });
+    });
 }
 
 // ── Session validation on page load ──────────────────────────────────────────
 
 function initDiscordLogin() {
-  // On localhost (VS Code preview) Discord OAuth is not functional -- skip straight to fallback
-  var isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  if (isLocal) {
+  if (!supabaseClient) {
     renderDiscordNav(null);
     if (typeof onDiscordInitNoSession === 'function') onDiscordInitNoSession();
     return;
   }
 
-  var session = getDiscordSession();
-  if (!session || !session.token) {
-    renderDiscordNav(null);
-    // Let the host page know there is no Discord session (e.g. officer.html shows password prompt)
-    if (typeof onDiscordInitNoSession === 'function') onDiscordInitNoSession();
-    return;
-  }
-  // Validate the stored token against GAS (async, non-blocking)
-  jsonpRequest(
-    WEB_APP_URL + '?action=validateDiscordSession&token=' + encodeURIComponent(session.token),
-    function (err, result) {
-      if (err || !result || !result.valid) {
-        clearDiscordSession();
-        renderDiscordNav(null);
-        if (typeof onDiscordInitNoSession === 'function') onDiscordInitNoSession();
-        return;
-      }
-      // Merge fresh server-side data (nameRealm/isOfficer may have changed)
-      var updated = Object.assign({}, session, {
-        nameRealm: result.nameRealm || null,
-        isOfficer: result.isOfficer || false
+  supabaseClient.auth.getSession().then(function (result) {
+    var session = result.data.session;
+    if (!session) {
+      renderDiscordNav(null);
+      if (typeof onDiscordInitNoSession === 'function') onDiscordInitNoSession();
+      return;
+    }
+    resolveDiscordSession(session).then(function (mapped) {
+      setDiscordSession(mapped);
+      renderDiscordNav(mapped);
+      if (typeof onDiscordSessionRestored === 'function') onDiscordSessionRestored(mapped);
+    });
+  });
+
+  supabaseClient.auth.onAuthStateChange(function (event, session) {
+    if (event === 'SIGNED_IN' && session) {
+      resolveDiscordSession(session).then(function (mapped) {
+        setDiscordSession(mapped);
+        renderDiscordNav(mapped);
+        if (typeof onDiscordLoginComplete === 'function') onDiscordLoginComplete(mapped);
+        if (!mapped.nameRealm) {
+          // First login -- no character claimed yet, show the claiming modal
+          showDiscordClaimModal(mapped);
+        }
       });
-      setDiscordSession(updated);
-      renderDiscordNav(updated);
-      if (typeof onDiscordSessionRestored === 'function') onDiscordSessionRestored(updated);
-    },
-    15000
-  );
+    }
+    if (event === 'SIGNED_OUT') {
+      clearDiscordSession();
+      renderDiscordNav(null);
+      if (typeof onDiscordLogout === 'function') onDiscordLogout();
+    }
+  });
 }
 
 // ── Claiming modal ────────────────────────────────────────────────────────────
@@ -270,7 +222,7 @@ function submitCharacterClaim() {
   }
 
   var session = getDiscordSession();
-  if (!session || !session.token) return;
+  if (!session) return;
 
   var submitBtn = document.querySelector('#discordClaimModal .claim-submit-btn');
   if (submitBtn) {
@@ -311,16 +263,6 @@ function submitCharacterClaim() {
 // ── Logout ────────────────────────────────────────────────────────────────────
 
 function discordLogout() {
-  var session = getDiscordSession();
-  if (session && session.token) {
-    // Fire-and-forget: invalidate the server-side session token
-    jsonpRequest(
-      WEB_APP_URL + '?action=discordLogout&token=' + encodeURIComponent(session.token),
-      function () {},
-      5000
-    );
-  }
-  clearDiscordSession();
-  renderDiscordNav(null);
-  if (typeof onDiscordLogout === 'function') onDiscordLogout();
+  if (!supabaseClient) return;
+  supabaseClient.auth.signOut();
 }

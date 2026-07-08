@@ -72,9 +72,8 @@ Officer controls on the Roster tab (player card):
 |------|---------|
 | `index.html` | Public page -- landing, raider profiles, season signup |
 | `officer.html` | Officer dashboard -- all management tabs |
-| `discord-callback.html` | Discord OAuth relay page -- receives the OAuth code and passes it back to the opener via postMessage |
 | `js/common.js` | Shared globals, `TEAMS`, `VERSION`, data helpers, `renderProfile` |
-| `js/discord.js` | Discord OAuth session management, popup flow, nav rendering |
+| `js/discord.js` | Discord login via Supabase Auth (full-page redirect), session mapping, nav rendering |
 | `js/roster.js` | Public page boot, dropdown, stats row, recent loot |
 | `js/signup.js` | Multi-step signup form logic |
 | `js/officer.js` | Officer boot, auth gate, session expiry, tab dispatch |

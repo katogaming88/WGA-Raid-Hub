@@ -30,7 +30,7 @@
     <a href="index.html" class="site-nav-item" id="navHome" data-tooltip="Back to the roster overview">Home</a>
     <div class="site-nav-right">
       <select id="teamSwitcherSelect" class="team-switcher" title="Switch team"></select>
-      <button class="site-nav-item site-nav-discord" id="navDiscord" onclick="openDiscordPopup()" data-tooltip="Sign in with Discord -- officers with a claimed character bypass the password prompt">Login with Discord</button>
+      <button class="site-nav-item site-nav-discord" id="navDiscord" onclick="loginWithDiscord()" data-tooltip="Sign in with Discord -- officers with a claimed character bypass the password prompt">Login with Discord</button>
       <button class="site-nav-item active" id="navOfficer" data-tooltip="Officer dashboard -- manage roster, loot, and signups">Officer Access</button>
     </div>
   </nav>
@@ -904,7 +904,7 @@
       <select id="officerPromptTeamSelect" class="team-switcher" style="width:100%;margin-bottom:0.25rem;"></select>
       <div id="officerDiscordReauth" style="display:none;margin-bottom:0.75rem;padding:0.6rem 0.75rem;background:rgba(88,101,242,0.1);border:1px solid rgba(88,101,242,0.3);border-radius:4px;">
         <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 0.5rem 0;">Continue as <strong id="reauthUsername" style="color:var(--text);"></strong></p>
-        <button class="btn site-nav-discord" style="width:100%;padding:0.35rem 0.5rem;font-size:0.88rem;" onclick="openDiscordPopup()">Continue with Discord</button>
+        <button class="btn site-nav-discord" style="width:100%;padding:0.35rem 0.5rem;font-size:0.88rem;" onclick="loginWithDiscord()">Continue with Discord</button>
       </div>
       <input id="officerPassword" type="password" placeholder="Password"
         onkeydown="if(event.key==='Enter')submitOfficerPassword();" />

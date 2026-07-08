@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.18.0] - 2026-07-08
+
+### Frontend
+- **Discord login now goes through Supabase Auth (#211)** -- Replaced the hand-rolled popup OAuth flow (`discord-callback.html`, `window.open`, `postMessage` relay, CSRF `state` param) with Supabase's `signInWithOAuth()` full-page redirect. `js/discord.js` maps the resulting Supabase auth session to the `{ username, nameRealm, isOfficer, isAdmin }` shape `officer.js` already consumes via `onDiscordLoginComplete` / `onDiscordSessionRestored` / `onDiscordInitNoSession` / `onDiscordLogout`, so no changes were needed there. Role and admin tier come from `team_members` and `is_site_admin()` respectively. Login mechanism only -- the character-claim write (#212) and removing the now-redundant GAS OAuth redirect (#213) are separate follow-ups; `discord-callback.html` is deleted since the new flow no longer needs a relay page.
+
+---
+
 ## [3.17.2] - 2026-07-08
 
 ### Frontend
