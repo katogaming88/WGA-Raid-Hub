@@ -1,23 +1,38 @@
 // Discord OAuth session management and login flow.
 // Depends on: common.js (supabaseClient, _teamCfg)
 
+var DISCORD_SESSION_KEY = 'wga_discord_' + TEAM_SLUG; // one key per team
 var _mappedDiscordSession = null; // cache of the {username, nameRealm, isOfficer, isAdmin} shape
 
 // ── Session cache ─────────────────────────────────────────────────────────────
-// Supabase's SDK persists the raw auth session itself; this is only a cache of
-// the *mapped* shape so synchronous readers (renderDiscordNav, etc.) don't need
-// to await a promise on every call.
+// Supabase's SDK persists the raw auth session itself, but that alone can't
+// answer isOfficer/nameRealm synchronously (that's a DB round-trip). Persist the
+// *mapped* shape to localStorage too so synchronous readers (renderDiscordNav,
+// and officer.js's reload path which renders from cache before initDiscordLogin
+// re-validates) have something to show immediately after a page reload, before
+// resolveDiscordSession() has had a chance to run again.
 
 function getDiscordSession() {
+  if (_mappedDiscordSession) return _mappedDiscordSession;
+  try {
+    var raw = localStorage.getItem(DISCORD_SESSION_KEY);
+    if (raw) _mappedDiscordSession = JSON.parse(raw);
+  } catch (_) {}
   return _mappedDiscordSession;
 }
 
 function setDiscordSession(data) {
   _mappedDiscordSession = data;
+  try {
+    localStorage.setItem(DISCORD_SESSION_KEY, JSON.stringify(data));
+  } catch (_) {}
 }
 
 function clearDiscordSession() {
   _mappedDiscordSession = null;
+  try {
+    localStorage.removeItem(DISCORD_SESSION_KEY);
+  } catch (_) {}
 }
 
 // ── Nav rendering ─────────────────────────────────────────────────────────────
