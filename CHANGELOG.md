@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.18.1] - 2026-07-08
+
+### Frontend
+- **Audit log records the acting officer again (#364)** -- The Supabase login swap (#211) dropped the Discord session token from the client session, and that token was the only thing that told Apps Script who made a change. Officer writes still served by Apps Script (attendance, BiS, received items, and the rest until Phase 5) were logging a blank "changed by" as a result. The site now sends the signed-in officer's Discord username as `changedBy` instead, and Apps Script uses it when no token is present (old cached sessions that still send a token keep working). Both team deployments need a redeploy for the Apps Script half to take effect; until then attribution stays blank, the same as before this change.
+
+---
+
 ## [3.18.0] - 2026-07-08
 
 ### Frontend
