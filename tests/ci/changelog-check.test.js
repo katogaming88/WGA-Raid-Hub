@@ -30,9 +30,10 @@ function makeDiff(dir, oldText, newText) {
 }
 
 describe('path classification', () => {
-  it('counts js/, gs/, and root pages as frontend', () => {
+  it('counts js/, gs/, css/, and root pages as frontend', () => {
     expect(isFrontendPath('js/index.js')).toBe(true);
     expect(isFrontendPath('gs/include.html')).toBe(true);
+    expect(isFrontendPath('css/styles.css')).toBe(true);
     expect(isFrontendPath('index.html')).toBe(true);
     expect(isFrontendPath('officer.html')).toBe(true);
   });

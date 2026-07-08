@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.17.1] - 2026-07-08
+
+### Frontend
+- **Fixed unreadable Discord reauth button on the officer password prompt** -- `.site-nav-discord` is styled for the transparent top-nav bar, but the reauth "Continue with Discord" button in the officer prompt pairs it with `.btn` instead of `.site-nav-item`, so it had no background set and fell back to the browser's default white button with `--text-muted` text on top -- washed out and hard to read. Added a `.btn.site-nav-discord` variant with a blurple-tinted background matching the surrounding reauth box.
+
+---
+
 ## [3.17.0] - 2026-07-08
 
 ### Frontend
