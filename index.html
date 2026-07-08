@@ -57,6 +57,11 @@
 <!-- Landing -->
 <div id="landingView" class="view">
   <div class="landing-body">
+    <section id="claimPromptCard" class="landing-card claim-prompt" aria-labelledby="claimPromptHeading" style="display:none">
+      <h2 id="claimPromptHeading">Claim your character</h2>
+      <p id="claimPromptDesc">Welcome, <strong id="claimPromptName"></strong>! Link your Discord to a character to see your priority standing and mark loot you receive.</p>
+      <button type="button" class="btn btn-gold" id="claimPromptBtn" aria-describedby="claimPromptDesc" onclick="showDiscordClaimModal(getDiscordSession())">Claim your character</button>
+    </section>
     <div id="landingStats" class="pub-stats"></div>
     <div class="landing-card" id="playerSelectorCard">
       <span class="selector-label" id="playerSelectorLabel">Your Profile</span>

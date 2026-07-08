@@ -26,7 +26,7 @@ Supports multiple teams (Team Phoenix and Hellfire Rollers) from a single codeba
 
 ### Discord login (raiders and officers)
 
-Officers and raiders sign in via Discord OAuth popup. On first login, raiders claim their character from the roster. Subsequent visits restore the session automatically.
+Officers and raiders sign in with Discord through Supabase Auth (a full-page redirect). On first login, raiders claim their character from the roster; a "Claim your character" box on the home page also lets them claim any time they are logged in without one. Subsequent visits restore the session automatically.
 
 - **My Profile** -- nav dropdown shortcut to your claimed character's profile page
 - **Officers** -- Discord-authenticated officers bypass the password prompt
@@ -80,7 +80,7 @@ Officer controls on the Roster tab (player card):
 | `js/tabs/tab-*.js` | One file per officer tab (15 files) |
 | `css/styles.css` | All styles |
 | `css/officer.css` | Officer-specific styles |
-| `gs/wgaWebApp.gs` | Apps Script -- reads the sheet and serves data as JSON (web app endpoint); handles Discord OAuth token exchange, session management, character claims, and officer/admin checks |
+| `gs/wgaWebApp.gs` | Apps Script -- reads the sheet and serves the roster/attendance/BiS/priority JSON payload (web app endpoint) and officer write actions (attendance refresh, loot import, priority export) |
 | `gs/Config.gs` | Shared constants -- sheet names, column indices, WCL credentials |
 | `gs/Menu.gs` | Spreadsheet menu definitions (`onOpen`) |
 | `gs/Export.gs` | RCLootCouncil priority export -- builds and base64-encodes the import string |
@@ -98,7 +98,7 @@ Officer controls on the Roster tab (player card):
 ## How it works
 
 1. The **Google Sheet** is the source of truth -- officers update the Roster, BiS List, Priority Order, Scoring, and Loot Data tabs as normal
-2. The **Apps Script** (`wgaWebApp.gs`) reads those tabs and returns a JSON payload via JSONP when either page loads; it also handles Discord OAuth token exchange, session storage, and character claims
+2. The **Apps Script** (`wgaWebApp.gs`) reads those tabs and returns a JSON payload via JSONP when either page loads; Discord login and character claims now run through Supabase instead (Supabase Auth for login, the `claim_character` function for claims)
 3. `index.html` and `officer.html` fetch that payload on load and render all views dynamically -- no page reloads. The roster itself now reads from **Supabase** (Phase 2 of the migration), with the Apps Script copy as fallback if that query fails; attendance and M+ exclusion fields still come from the Apps Script payload
 4. Both pages are hosted on **GitHub Pages** at the repo root
 5. The **TEAMS object** in `js/common.js` maps each team slug to its own GAS deployment URL and officer password; append `?team=hellfire` to switch teams

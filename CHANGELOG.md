@@ -8,7 +8,10 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [Unreleased]
+## [3.19.0] - 2026-07-08
+
+### Frontend
+- **Raider character claim flow (#212)** -- Claiming a character now writes through Supabase. The claim dropdown lists only unclaimed roster members, read live from the database instead of the old Apps Script claims list, and confirming a claim calls the `claim_character` function, which links the character to your Discord identity and rejects one that is missing, archived, or already taken. On login the site resolves your claimed character through the canonical `players.team_member_id` link, so your profile and priority standing show up. A persistent "Claim your character" box on the home page gives you a way back to claiming whenever you are logged in without a character, not only the one-shot modal right after login.
 
 ### Backend
 - **Raider character claim flow, backend half (#212)** -- Added `claim_character(team_id, name_realm)`, a `SECURITY DEFINER` function that links a raider's chosen character to the person layer: it sets `players.team_member_id` to the caller's `team_members` row, creating that row with `role = 'raider'` on a first claim and reusing an unlinked row imported from the Discord Claims sheet (#338) rather than duplicating it. It refuses a character that is archived, missing, or already claimed. A new self-read RLS policy lets a member read their own `team_members` row, which the login session read (`resolveDiscordSession`) needs for a raider's `nameRealm` to resolve. A one-time backfill links the pre-migrated claims to their `players` rows on the canonical `team_member_id` model. The frontend that calls this ships separately (v3.19.0). Also captures the `on_auth_user_created` trigger in a migration: it was created by hand in the dashboard and existed only on production, so local and CI stacks could not exercise the claim path against it until now.

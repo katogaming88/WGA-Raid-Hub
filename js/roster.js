@@ -299,7 +299,8 @@ loadData(
     buildPublicStats();
     buildProgression();
     showView('landing');
-    // Init Discord session after core data is ready (claiming modal needs DATA.roster)
+    // Init Discord session after core data is ready so the profile deep-link can
+    // find the claimed character in the now-populated player dropdown.
     if (typeof initDiscordLogin === 'function') initDiscordLogin();
   },
   function () {

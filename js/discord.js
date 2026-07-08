@@ -127,16 +127,33 @@ function loginWithDiscord() {
 function resolveDiscordSession(session) {
   return supabaseClient
     .from('team_members')
-    .select('role, name_realm')
+    .select('id, role, name_realm')
     .eq('team_id', _teamCfg.supabaseTeamId)
     .eq('auth_user_id', session.user.id)
     .maybeSingle()
-    .then(function (result) {
-      var member = result.data;
-      return supabaseClient.rpc('is_site_admin').then(function (adminResult) {
+    .then(function (memberResult) {
+      var member = memberResult.data;
+      // nameRealm comes from the linked character (players.team_member_id): a
+      // claim sets that link but never writes team_members.name_realm, so the
+      // player lookup is the canonical source. team_members.name_realm stays only
+      // as the transitional bridge column (#338) for any row not yet backfilled.
+      // One person can link several characters (alts); take the first by name.
+      var linkedPromise = member
+        ? supabaseClient
+            .from('players')
+            .select('name_realm')
+            .eq('team_member_id', member.id)
+            .is('archived_at', null)
+            .order('name_realm')
+            .limit(1)
+            .maybeSingle()
+        : Promise.resolve({ data: null });
+      return Promise.all([linkedPromise, supabaseClient.rpc('is_site_admin')]).then(function (results) {
+        var linked = results[0].data;
+        var adminResult = results[1];
         return {
           username: session.user.user_metadata.full_name || session.user.user_metadata.name,
-          nameRealm: member ? member.name_realm : null,
+          nameRealm: (linked && linked.name_realm) || (member && member.name_realm) || null,
           isOfficer: !!member && (member.role === 'officer' || member.role === 'team_leader'),
           isAdmin: !!adminResult.data
         };
@@ -205,28 +222,39 @@ function showDiscordClaimModal(session) {
   var modal = document.getElementById('discordClaimModal');
   if (!modal) return;
   document.getElementById('claimDiscordName').textContent = session.username || '';
-  // Populate the roster dropdown from DATA (must already be loaded)
+  document.getElementById('claimError').style.display = 'none';
+  // Show the modal immediately; the character list fills in when the query
+  // resolves (one round-trip). Blocking on the read would make the button that
+  // opened the modal feel unresponsive.
+  modal.style.display = '';
+
   var sel = document.getElementById('claimCharacterSelect');
-  if (sel && window.DATA && DATA.roster) {
-    sel.innerHTML = '<option value="">-- Select your character --</option>';
-    var claimed = (DATA.discordClaims || []).map(function (c) {
-      return c.nameRealm.toLowerCase();
-    });
-    DATA.roster
-      .slice()
-      .sort(function (a, b) {
-        return a.nameRealm.localeCompare(b.nameRealm);
-      })
-      .forEach(function (p) {
-        if (claimed.indexOf(p.nameRealm.toLowerCase()) !== -1) return; // already taken
+  if (!sel || !supabaseClient) return;
+  sel.innerHTML = '<option value="">Loading characters...</option>';
+  // Unclaimed active characters on this team (team_member_id is null). The DB is
+  // the source of truth for claimed-ness now, replacing the old DATA.discordClaims
+  // diff. Skip rows without a role the way the roster read does (js/common.js);
+  // #357 departed-loot stubs are archived and/or carry no class_spec, so they
+  // never surface here.
+  supabaseClient
+    .from('players')
+    .select('name_realm, classes_specs(class, role)')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .is('team_member_id', null)
+    .is('archived_at', null)
+    .order('name_realm')
+    .then(function (result) {
+      sel.innerHTML = '<option value="">-- Select your character --</option>';
+      if (result.error) return;
+      (result.data || []).forEach(function (row) {
+        var cs = row.classes_specs || {};
+        if (!cs.role) return;
         var opt = document.createElement('option');
-        opt.value = p.nameRealm;
-        opt.textContent = p.nameRealm + ' (' + p.class + ')';
+        opt.value = row.name_realm;
+        opt.textContent = row.name_realm + (cs.class ? ' (' + cs.class + ')' : '');
         sel.appendChild(opt);
       });
-  }
-  document.getElementById('claimError').style.display = 'none';
-  modal.style.display = '';
+    });
 }
 
 function closeDiscordClaimModal() {
@@ -255,34 +283,45 @@ function submitCharacterClaim() {
     submitBtn.textContent = 'Claiming...';
   }
 
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=claimCharacter' +
-      '&token=' +
-      encodeURIComponent(session.token) +
-      '&nameRealm=' +
-      encodeURIComponent(nameRealm),
-    function (err, result) {
+  function claimFailed(msg) {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Confirm claim';
+    }
+    if (errEl) {
+      errEl.textContent = msg || 'Something went wrong. Please try again.';
+      errEl.style.display = '';
+    }
+  }
+
+  // claim_character (SECURITY DEFINER, #212) links the chosen character to the
+  // caller's team_members row and returns the claimed name_realm + role. A
+  // rejected claim (already claimed, not on roster) comes back as result.error
+  // carrying the raised message.
+  supabaseClient
+    .rpc('claim_character', { p_team_id: _teamCfg.supabaseTeamId, p_name_realm: nameRealm })
+    .then(function (result) {
+      var row = result.data && result.data[0];
+      if (result.error || !row) {
+        claimFailed(result.error && result.error.message);
+        return;
+      }
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Confirm claim';
       }
-      if (err || !result || !result.success) {
-        var msg = result && result.error ? result.error : 'Something went wrong. Please try again.';
-        if (errEl) {
-          errEl.textContent = msg;
-          errEl.style.display = '';
-        }
-        return;
-      }
-      var updated = Object.assign({}, session, { nameRealm: result.nameRealm, isOfficer: result.isOfficer || false });
+      var updated = Object.assign({}, session, {
+        nameRealm: row.name_realm,
+        isOfficer: row.role === 'officer' || row.role === 'team_leader'
+      });
       setDiscordSession(updated);
       renderDiscordNav(updated);
       closeDiscordClaimModal();
       if (typeof onDiscordClaimComplete === 'function') onDiscordClaimComplete(updated);
-    },
-    15000
-  );
+    })
+    .catch(function () {
+      claimFailed();
+    });
 }
 
 // ── Logout ────────────────────────────────────────────────────────────────────
