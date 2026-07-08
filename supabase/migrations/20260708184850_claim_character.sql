@@ -43,14 +43,6 @@ begin
     raise exception 'Character not found on roster';
   end if;
 
-  -- Never silently take over a character already linked to someone.
-  if exists (
-    select 1 from public.players p
-    where p.id = v_player_id and p.team_member_id is not null
-  ) then
-    raise exception '% is already claimed', p_name_realm;
-  end if;
-
   -- Find the caller's person row: by auth link first, then by an unlinked
   -- Discord id (a row imported from the claims sheet, #338, that the login
   -- trigger has not linked yet), otherwise create it. Reusing the discord_id
@@ -79,8 +71,17 @@ begin
     end if;
   end if;
 
+  -- Never silently take over a character already linked to someone. The guard
+  -- rides on the write itself (team_member_id is null) rather than a separate
+  -- prior select, so two concurrent claims on the same character cannot both
+  -- pass a check and then both write under read-committed isolation: the second
+  -- update matches no row and raises.
   update public.players p set team_member_id = v_member_id
-  where p.id = v_player_id;
+  where p.id = v_player_id and p.team_member_id is null;
+
+  if not found then
+    raise exception '% is already claimed', p_name_realm;
+  end if;
 
   return query select p_name_realm, v_member_role;
 end;
