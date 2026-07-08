@@ -63,17 +63,30 @@ describe('parseApprovedMplus', () => {
 });
 
 describe('playersSql', () => {
-  it('emits class_spec subselects, m_plus fields, and the conflict clause', () => {
+  it('emits class_spec subselects, m_plus fields, and the reconcile upsert', () => {
     const players = parsePlayers(rosterRows());
     const { sql, count } = playersSql(1, players, parseApprovedMplus(mplusRows()), [], []);
     expect(count).toBe(2);
     expect(sql).toContain("class = 'Mage' and spec = 'Frost'");
-    expect(sql).toContain('on conflict (team_id, name_realm) do nothing');
+    expect(sql).toContain('on conflict (team_id, name_realm) do update set');
+    expect(sql).toContain('archived_at = null');
     const hinda = sql.split('\n').find((l) => l.includes('Hinda-Thrall'));
     expect(hinda).toContain("'until next tier'");
     expect(hinda).toContain('true, false'); // is_trial, is_bench
   });
-  it('applies manual overrides and appends archived stubs', () => {
+  it('keeps the m_plus columns and team_member_id out of the update set', () => {
+    const { sql } = playersSql(1, parsePlayers(rosterRows()), new Map(), [], []);
+    const updateSet = sql.slice(sql.indexOf('do update set'), sql.indexOf(';'));
+    expect(updateSet).not.toContain('m_plus');
+    expect(updateSet).not.toContain('team_member_id');
+  });
+  it('guards the upsert so unchanged rows are not touched', () => {
+    const { sql } = playersSql(1, parsePlayers(rosterRows()), new Map(), [], []);
+    const updateSet = sql.slice(sql.indexOf('do update set'), sql.indexOf(';'));
+    expect(updateSet).toContain('is distinct from');
+    expect(updateSet).toContain('or players.archived_at is not null');
+  });
+  it('applies manual overrides and appends archived stubs with do nothing', () => {
     const players = parsePlayers(rosterRows());
     const { sql, count } = playersSql(1, players, new Map(), ['Séraphine-Thrall'], ['Oldguy']);
     expect(count).toBe(3);
@@ -81,6 +94,21 @@ describe('playersSql', () => {
     expect(sera).toMatch(/true, null,\s*$|true, null,/); // m_plus_excluded true, note null
     const stub = sql.split('\n').find((l) => l.includes("'Oldguy'"));
     expect(stub).toContain('now()');
+    expect(sql).toContain('on conflict (team_id, name_realm) do nothing');
+  });
+  it('archives active players missing from the export, scoped to the team', () => {
+    const { sql } = playersSql(7, parsePlayers(rosterRows()), new Map(), [], ['Oldguy']);
+    const sweep = sql.slice(sql.indexOf('update players'));
+    expect(sweep).toContain('set archived_at = now()');
+    expect(sweep).toContain('team_id = 7 and archived_at is null');
+    expect(sweep).toContain("not in ('Hinda-Thrall', 'Séraphine-Thrall')");
+    // Stubs are inserted already archived; the sweep list is roster-only.
+    expect(sweep).not.toContain('Oldguy');
+  });
+  it('skips the archive sweep when the roster parses to zero players', () => {
+    const { sql, warnings } = playersSql(1, [], new Map(), [], ['Oldguy']);
+    expect(sql).not.toContain('update players');
+    expect(warnings).toContain('roster parsed 0 players -- archive sweep skipped');
   });
   it('normalizes join dates from both sheet formats', () => {
     const { sql } = playersSql(1, parsePlayers(rosterRows()), new Map(), [], []);
