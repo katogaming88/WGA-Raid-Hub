@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.17.2] - 2026-07-08
+
+### Frontend
+- **Removed the Apps Script loot fallback (#210 cutover cleanup)** -- Both team GAS deployments were redeployed to drop `lootCounts` (retired in #358), confirmed live via the `heavy` chunk. The frontend no longer falls back to `heavy.lootCounts` when the Supabase loot query fails; it now resolves to an empty loot feed instead, since there is no longer an alternate source to fall back to.
+
+---
+
 ## [3.17.1] - 2026-07-08
 
 ### Frontend

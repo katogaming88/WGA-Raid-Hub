@@ -26,7 +26,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.17.1';
+var VERSION = '3.17.2';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -624,8 +624,9 @@ var SEASON_LABELS = { MID1: 'Midnight Season 1' };
 
 // Public loot reads come from Supabase (#209): all seasons for the team,
 // newest first, paged past PostgREST's 1000-row cap. Resolves to the combined
-// rows, or null on any failure/empty so the caller falls back to the Apps
-// Script lootCounts while that feed still exists.
+// rows, or null on any failure/empty -- the Apps Script no longer serves
+// lootCounts (retired #358, redeployed #210), so a failure here means an
+// empty loot feed, not a fallback to the old source.
 function fetchSupabaseLoot() {
   if (!supabaseClient) return Promise.resolve(null);
   var PAGE = 1000;
@@ -644,7 +645,7 @@ function fetchSupabaseLoot() {
       .range(from, from + PAGE - 1)
       .then(function (/** @type {{data: any[]|null, error: {message: string}|null}} */ result) {
         if (result.error) {
-          console.warn('Supabase loot query failed, using Apps Script loot.', result.error.message);
+          console.warn('Supabase loot query failed.', result.error.message);
           return null;
         }
         var rows = result.data || [];
@@ -654,7 +655,7 @@ function fetchSupabaseLoot() {
       });
   }
   var query = fetchPage(0, []).catch(function (err) {
-    console.warn('Supabase loot query failed, using Apps Script loot.', err);
+    console.warn('Supabase loot query failed.', err);
     return null;
   });
   var timeout = new Promise(function (resolve) {
@@ -769,9 +770,7 @@ function loadData(onCoreReady, onHeavyReady) {
         if (!heavy || heavy.error) return;
         lootPromise.then(function (lootRows) {
           var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
-          // heavy.lootCounts is the fallback only while the Apps Script still
-          // serves it; after the #209 redeploy it is gone from the payload.
-          DATA.lootCounts = mappedLoot || heavy.lootCounts || {};
+          DATA.lootCounts = mappedLoot || {};
           DATA.attendanceDetails = heavy.attendanceDetails;
           DATA.rawAttendanceData = heavy.rawAttendanceData;
           DATA.recentAttendanceTrend = heavy.recentAttendanceTrend;
