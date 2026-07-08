@@ -26,6 +26,13 @@
 // Season: Pasted Loot carries it; legacy rows derive it from the award date
 // against the --seasons ranges config. The export's response and note columns
 // are dropped on import, decided on #322 (the raw CSV preserves them offline).
+//
+// Player names that don't resolve against the Roster become archived stub
+// players rows (registry.resolveOrStub), the same treatment the other history
+// tabs give departed players, so every loot row keeps its character
+// attribution. Loot previously kept such rows with player_id null, which hid
+// them from any player-keyed view; the pre-stub prod rows are relinked by a
+// one-time data/sql script (see #209's PRs).
 
 import { normName } from '../lib/names.js';
 import { sqlString, sqlNumber, sqlBool, insertStatement } from '../lib/sql.js';
@@ -127,7 +134,7 @@ export function parseLegacyLoot(rows, label = 'Loot Data') {
 
 export function lootSql(teamId, entries, registry, { knownItems, seasons, tz }) {
   const warnings = [];
-  const counts = { pasted: 0, legacy: 0, unknownPlayers: 0, unknownSeason: 0, unknownTrack: 0 };
+  const counts = { pasted: 0, legacy: 0, unknownSeason: 0, unknownTrack: 0 };
 
   // Old-tier items missing from the Item Lookup get created first, by name.
   const newItems = new Map(); // normName -> {name, wowItemId, slot}
@@ -161,8 +168,7 @@ export function lootSql(teamId, entries, registry, { knownItems, seasons, tz }) 
   }
 
   const valueRows = entries.map((e) => {
-    const nameRealm = registry.resolve(e.player);
-    if (!nameRealm) counts.unknownPlayers++;
+    const nameRealm = registry.resolveOrStub(e.player);
 
     const track = parseTrack(e.instance);
     if (!track && e.instance) counts.unknownTrack++;
@@ -214,8 +220,6 @@ export function lootSql(teamId, entries, registry, { knownItems, seasons, tz }) 
     'on conflict (dedupe_key) do nothing'
   );
 
-  if (counts.unknownPlayers)
-    warnings.push(`${counts.unknownPlayers} rows kept with player_id null (name not on Roster)`);
   if (counts.unknownSeason)
     warnings.push(`${counts.unknownSeason} legacy rows have no season (date outside --seasons ranges)`);
   if (counts.unknownTrack)

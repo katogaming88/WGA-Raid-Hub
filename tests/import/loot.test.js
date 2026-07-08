@@ -90,19 +90,21 @@ describe('lootSql', () => {
     expect(sql).toContain('on conflict (dedupe_key) do nothing');
   });
 
-  it('keeps unknown players with player_id null and counts them', () => {
-    const { sql, counts } = lootSql(1, parseLegacyLoot(legacyRows()), registry(), OPTS);
-    expect(counts.unknownPlayers).toBe(1); // Oldguy not on roster
+  it('creates an archived stub for players not on the Roster', () => {
+    const reg = registry();
+    const { sql } = lootSql(1, parseLegacyLoot(legacyRows()), reg, OPTS);
+    expect(reg.stubNames()).toContain('Oldguy-Thrall'); // lands in the players section's stub insert
     const relicLine = sql.split('\n').find((l) => l.includes('t1:oldguy-thrall|198765'));
-    expect(relicLine).toContain('(1, null,');
+    expect(relicLine).toContain("name_realm = 'Oldguy-Thrall'");
+    expect(relicLine).not.toContain('(1, null,');
   });
 
-  it('links loot to archived stubs created by earlier tabs', () => {
+  it('links loot to archived stubs created by earlier tabs instead of stubbing again', () => {
     const reg = registry();
     reg.resolveOrStub('Oldguy'); // attendance saw this departed player first
-    const { counts, sql } = lootSql(1, parseLegacyLoot(legacyRows()), reg, OPTS);
-    expect(counts.unknownPlayers).toBe(0);
+    const { sql } = lootSql(1, parseLegacyLoot(legacyRows()), reg, OPTS);
     const relicLine = sql.split('\n').find((l) => l.includes('t1:oldguy-thrall|198765'));
     expect(relicLine).toContain("name_realm = 'Oldguy'");
+    expect(reg.stubNames()).toEqual(['Oldguy']); // no second stub for the same player
   });
 });
