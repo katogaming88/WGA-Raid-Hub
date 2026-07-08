@@ -53,10 +53,18 @@ describe('gated tables hide their rows from anon and raiders', () => {
     it(`anon sees no rows in ${table}`, async () => {
       expect(await countAs('anon', null, table)).toBe(0);
     });
+  }
+  // team_members has a self-read policy (a member reads their own row, #212);
+  // the other gated tables stay fully hidden from raiders.
+  for (const table of GATED.filter((t) => t !== 'team_members')) {
     it(`raider sees no rows in ${table}`, async () => {
       expect(await countAs('authenticated', RAIDER_T1, table)).toBe(0);
     });
   }
+  it('raider sees only their own team_members row', async () => {
+    expect(await countAs('authenticated', RAIDER_T1, 'team_members')).toBe(1);
+    expect(await countAs('authenticated', RAIDER_T1, 'team_members', 'team_id = 2')).toBe(0);
+  });
 });
 
 describe('officers read their own team, not other teams', () => {

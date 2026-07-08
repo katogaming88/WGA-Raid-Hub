@@ -6,7 +6,7 @@ This file documents the RLS policies on every public table. The generated schema
 
 ## Concepts
 
-- **`my_team_role(team_id)`**: returns the calling user's role on the given team, resolved from `team_members` via `auth.uid()`. The role column allows exactly `raider`, `officer`, or `team_leader` (top tier within one team; named by [#294](https://github.com/katogaming88/WGA-Raid-Hub/issues/294) to stay distinct from site admins). Officer-gated policies accept `officer` or `team_leader`; team-leader-gated policies accept `team_leader` only. No policy references `raider`: being on a team's roster grants no access beyond public read.
+- **`my_team_role(team_id)`**: returns the calling user's role on the given team, resolved from `team_members` via `auth.uid()`. The role column allows exactly `raider`, `officer`, or `team_leader` (top tier within one team; named by [#294](https://github.com/katogaming88/WGA-Raid-Hub/issues/294) to stay distinct from site admins). Officer-gated policies accept `officer` or `team_leader`; team-leader-gated policies accept `team_leader` only. No policy grants a `raider` role any team data, though a member of any role can read their own `team_members` row through the self-read policy ([#212](https://github.com/katogaming88/WGA-Raid-Hub/issues/212), see the matrix note); being on a team's roster otherwise grants no access beyond public read.
 - **`is_site_admin()`**: true when `auth.uid()` appears in `site_admins`. This is a separate, global mechanism, not a `team_members` role: site admins pass every policy that ORs it in ("+site" in the matrix) on every team.
 - **Public read**: `FOR SELECT USING (true)`. The site's public pages (roster, loot feed, standings) read these tables anonymously.
 - **`claude_readers`**: nologin group role for read-only AI/analysis access. Holds one `Claude readers read <table>` SELECT policy on every public table, scoped `TO claude_readers` only. Created by `supabase/roles.sql`; see [claude-readonly-db-access.md](claude-readonly-db-access.md). Add a matching policy when adding a table.
@@ -45,16 +45,17 @@ One thing the matrix hides on purpose: every table also carries a `claude_reader
 | season_snapshots | yes | | all ops +site | |
 | self_received_requests | no | SELECT, UPDATE | | No INSERT policy; submissions are service-role only |
 | site_admins | no | | | Site admins only: SELECT and all ops via `is_site_admin()` |
-| team_members | no | SELECT +site | all ops +site | |
+| team_members | no | SELECT +site | all ops +site | Members also read their own row (`auth_user_id = auth.uid()`) |
 | team_settings | yes | | all ops +site | |
 | teams | yes | | | Read-only lookup; no write policy |
 
 ## Views and functions
 
-Neither of these carries policies of its own; both defer to the table policies above.
+None of these carries a policy of its own. The view and the `SECURITY INVOKER` function defer to the table policies above; the `SECURITY DEFINER` function deliberately bypasses them for one specific, validated operation.
 
 - **`pending_roster`** (view): the officer worklist of approved signups awaiting a roster add (`season_signups` where `status = 'approved'` and `approved_player_id is null`, joined to `classes_specs`). Created `WITH (security_invoker = on)`, so it runs with the caller's privileges and the `season_signups` policies apply to whoever queries it: anon and raiders see zero rows, officers and team leaders see their own team. SELECT is granted to `anon` and `authenticated`; the grant is safe because the underlying policies do the filtering.
 - **`add_signup_to_roster(signup_id, is_trial, archive_player_id)`** (function): atomically promotes an approved signup to the roster (creates or unarchives the `players` row, optionally archives a main-swap predecessor on the same team, sets `status = 'added'` and `approved_player_id`). `SECURITY INVOKER`, so authorization comes entirely from the caller passing the existing `players` write and `season_signups` update policies. EXECUTE is granted to `authenticated` only and revoked from `anon` and `public`.
+- **`claim_character(team_id, name_realm)`** (function): links a raider's chosen character to their person row, setting `players.team_member_id` and creating the `team_members` row (`role = 'raider'`) on a first claim, or reusing an unlinked row imported from the Discord Claims sheet ([#338](https://github.com/katogaming88/WGA-Raid-Hub/issues/338)). `SECURITY DEFINER` because a claiming raider has no role yet and cannot pass the `players` or `team_members` write policies; it validates that the character is an unarchived, unclaimed roster member of the team and derives the caller's Discord id from `auth.users` rather than trusting a parameter. EXECUTE is granted to `authenticated` only and revoked from `anon` and `public`.
 
 ## Known issues
 
