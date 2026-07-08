@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.16.0] - 2026-07-07
+
+### Changed
+- **Public roster reads from Supabase (#208)** -- Both pages now load the roster from the `players` table (with class/spec/role joined from `classes_specs`) instead of the Apps Script payload. The rows are mapped to the exact shape the Apps Script emitted, so nothing changes visually. Attendance and the M+ exclusion fields still merge in from the Apps Script payload: attendance is computed live from the Attendance sheet, and the M+ request flow stays officer-gated until Phase 5. If the Supabase query fails, times out, or returns nothing, the page falls back to the Apps Script roster and keeps working. New frontend unit tests (`npm run test:frontend`) cover the mapping and the fallback, with their own CI job.
+
+---
+
 ## [3.15.2] - 2026-07-07
 
 ### Added
