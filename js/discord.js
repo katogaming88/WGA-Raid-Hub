@@ -118,16 +118,14 @@ function resolveDiscordSession(session) {
     .maybeSingle()
     .then(function (result) {
       var member = result.data;
-      return supabaseClient
-        .rpc('is_site_admin')
-        .then(function (adminResult) {
-          return {
-            username: session.user.user_metadata.full_name || session.user.user_metadata.name,
-            nameRealm: member ? member.name_realm : null,
-            isOfficer: !!member && (member.role === 'officer' || member.role === 'team_leader'),
-            isAdmin: !!adminResult.data
-          };
-        });
+      return supabaseClient.rpc('is_site_admin').then(function (adminResult) {
+        return {
+          username: session.user.user_metadata.full_name || session.user.user_metadata.name,
+          nameRealm: member ? member.name_realm : null,
+          isOfficer: !!member && (member.role === 'officer' || member.role === 'team_leader'),
+          isAdmin: !!adminResult.data
+        };
+      });
     });
 }
 
