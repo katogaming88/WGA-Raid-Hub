@@ -26,7 +26,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.16.0';
+var VERSION = '3.17.0';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -614,6 +614,118 @@ function mapSupabaseRoster(rows, jsonpRoster) {
   return players;
 }
 
+// Interim season display map (#209): rclc_loot.season stores the community
+// shorthand ('MID1', decided on #320), while the season filter and the Apps
+// Script payloads use the sheet's display names. Translate on read until the
+// seasons vocabulary consolidates when season state moves off the sheet
+// (Phase 5). Unknown codes pass through unchanged.
+/** @type {Object<string, string>} */
+var SEASON_LABELS = { MID1: 'Midnight Season 1' };
+
+// Public loot reads come from Supabase (#209): all seasons for the team,
+// newest first, paged past PostgREST's 1000-row cap. Resolves to the combined
+// rows, or null on any failure/empty so the caller falls back to the Apps
+// Script lootCounts while that feed still exists.
+function fetchSupabaseLoot() {
+  if (!supabaseClient) return Promise.resolve(null);
+  var PAGE = 1000;
+  /**
+   * @param {number} from
+   * @param {any[]} acc
+   * @returns {Promise<any[]|null>}
+   */
+  function fetchPage(from, acc) {
+    return supabaseClient
+      .from('rclc_loot')
+      .select('track, season, awarded_at, items(name), players(name_realm)')
+      .eq('team_id', _teamCfg.supabaseTeamId)
+      .order('awarded_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(from, from + PAGE - 1)
+      .then(function (/** @type {{data: any[]|null, error: {message: string}|null}} */ result) {
+        if (result.error) {
+          console.warn('Supabase loot query failed, using Apps Script loot.', result.error.message);
+          return null;
+        }
+        var rows = result.data || [];
+        var all = acc.concat(rows);
+        if (rows.length < PAGE) return all.length ? all : null;
+        return fetchPage(from + PAGE, all);
+      });
+  }
+  var query = fetchPage(0, []).catch(function (err) {
+    console.warn('Supabase loot query failed, using Apps Script loot.', err);
+    return null;
+  });
+  var timeout = new Promise(function (resolve) {
+    setTimeout(function () {
+      resolve(null);
+    }, 10000);
+  });
+  return Promise.race([query, timeout]);
+}
+
+/**
+ * Rebuilds the Apps Script getLootCounts() shape from rclc_loot rows so no
+ * render code changes: diacritic-stripped lowercase first-name keys, entries
+ * carrying count/heroicCount/mythicCount and per-item difficulty labels
+ * ('Heroic'/'Mythic'/'Other' -- the UI vocabulary for the Hero/Myth/Champion
+ * tracks), display dates formatted in the sheet's timezone, and seasons shown
+ * under their display names. Rows without a linked player are skipped; the
+ * import stubs departed characters, so every historical row stays attributed
+ * (docs/database-decisions.md, 2026-07-08).
+ * @param {any[]} rows - rclc_loot rows with embedded items and players
+ * @returns {Object<string, {count: number, heroicCount: number, mythicCount: number, items: any[]}>}
+ */
+function mapSupabaseLoot(rows) {
+  /** @type {Object<string, {count: number, heroicCount: number, mythicCount: number, items: any[]}>} */
+  var result = {};
+  /** @type {Object<string, string>} */
+  var keyOwners = {};
+  var dateFormat = new Intl.DateTimeFormat('en-US', {
+    // The Apps Script feed formatted award dates in the sheet's timezone;
+    // browser-local formatting would shift dates across midnight elsewhere.
+    timeZone: 'America/New_York',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+  (rows || []).forEach(function (row) {
+    var nameRealm = row.players && row.players.name_realm ? String(row.players.name_realm) : '';
+    if (!nameRealm) return;
+    var key = normalise(nameRealm.split('-')[0]);
+    if (!key) return;
+    if (keyOwners[key] && keyOwners[key] !== nameRealm) {
+      // Two characters sharing a first name merge under one key, exactly like
+      // the Apps Script feed did; the rows keep their true player links, so
+      // the durable fix is re-keying the display by identity, not data repair.
+      console.warn(
+        'Loot display key collision: ' + keyOwners[key] + ' and ' + nameRealm + ' both map to "' + key + '"'
+      );
+    } else {
+      keyOwners[key] = nameRealm;
+    }
+    var difficulty = row.track === 'Hero' ? 'Heroic' : row.track === 'Myth' ? 'Mythic' : 'Other';
+    var date = '';
+    if (row.awarded_at) {
+      var d = new Date(row.awarded_at);
+      if (!isNaN(d.getTime())) date = dateFormat.format(d);
+    }
+    if (!result[key]) result[key] = { count: 0, heroicCount: 0, mythicCount: 0, items: [] };
+    var entry = result[key];
+    entry.count++;
+    if (difficulty === 'Heroic') entry.heroicCount++;
+    else if (difficulty === 'Mythic') entry.mythicCount++;
+    entry.items.push({
+      name: row.items && row.items.name ? row.items.name : 'Unknown Item',
+      difficulty: difficulty,
+      date: date,
+      season: SEASON_LABELS[row.season] || row.season || ''
+    });
+  });
+  return result;
+}
+
 // onCoreReady fires once the fast core chunk is loaded and the page can render.
 // onHeavyReady (optional) fires once loot/attendance/BiS/priority data arrives.
 function loadData(onCoreReady, onHeavyReady) {
@@ -627,6 +739,8 @@ function loadData(onCoreReady, onHeavyReady) {
 
   // Fired in parallel with the core chunk; the core callback waits for it.
   var rosterPromise = fetchSupabaseRoster();
+  // Fired alongside; the heavy callback waits for it before setting lootCounts.
+  var lootPromise = fetchSupabaseLoot();
 
   window._rosterCoreCallback = function (data) {
     delete window._rosterCoreCallback;
@@ -653,18 +767,23 @@ function loadData(onCoreReady, onHeavyReady) {
       window._rosterHeavyCallback = function (heavy) {
         delete window._rosterHeavyCallback;
         if (!heavy || heavy.error) return;
-        DATA.lootCounts = heavy.lootCounts;
-        DATA.attendanceDetails = heavy.attendanceDetails;
-        DATA.rawAttendanceData = heavy.rawAttendanceData;
-        DATA.recentAttendanceTrend = heavy.recentAttendanceTrend;
-        DATA.bisList = heavy.bisList;
-        DATA.priorityOrder = heavy.priorityOrder;
-        DATA.itemSlots = heavy.itemSlots;
-        DATA.itemArmorTypes = heavy.itemArmorTypes || {};
-        DATA.itemBosses = heavy.itemBosses || {};
-        DATA.selfReceived = heavy.selfReceived;
-        if (typeof populateBossFilters === 'function') populateBossFilters();
-        if (onHeavyReady) onHeavyReady();
+        lootPromise.then(function (lootRows) {
+          var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
+          // heavy.lootCounts is the fallback only while the Apps Script still
+          // serves it; after the #209 redeploy it is gone from the payload.
+          DATA.lootCounts = mappedLoot || heavy.lootCounts || {};
+          DATA.attendanceDetails = heavy.attendanceDetails;
+          DATA.rawAttendanceData = heavy.rawAttendanceData;
+          DATA.recentAttendanceTrend = heavy.recentAttendanceTrend;
+          DATA.bisList = heavy.bisList;
+          DATA.priorityOrder = heavy.priorityOrder;
+          DATA.itemSlots = heavy.itemSlots;
+          DATA.itemArmorTypes = heavy.itemArmorTypes || {};
+          DATA.itemBosses = heavy.itemBosses || {};
+          DATA.selfReceived = heavy.selfReceived;
+          if (typeof populateBossFilters === 'function') populateBossFilters();
+          if (onHeavyReady) onHeavyReady();
+        });
       };
       heavyScript.src = WEB_APP_URL + '?chunk=heavy&callback=_rosterHeavyCallback';
       document.head.appendChild(heavyScript);

@@ -60,6 +60,11 @@ function mockSupabase(result) {
       calls.order.push(col);
       return builder;
     },
+    // loadData also fires the loot query (#209); these tests only assert the
+    // roster path, but the builder must accept the loot chain's range().
+    range() {
+      return builder;
+    },
     then(onFulfilled, onRejected) {
       return Promise.resolve()
         .then(() => result())

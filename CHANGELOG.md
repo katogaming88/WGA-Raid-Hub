@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.17.0] - 2026-07-08
+
+### Frontend
+- **Public loot reads from Supabase (#209)** -- The loot feed (player cards, Recent Loot, landing totals, fairness and priority views) now builds from the `rclc_loot` table instead of the Apps Script heavy payload. Rows are remapped client-side to the exact shape the Apps Script emitted -- same first-name keys, award dates formatted in the sheet's Eastern timezone, Hero/Myth/Champion tracks shown under the Heroic/Mythic/Other labels the UI expects, and the stored season code shown under its sheet display name -- so nothing changes visually. The query fetches every season for the team and pages past PostgREST's 1000-row cap; on any failure it falls back to the Apps Script loot feed while that still exists. The Apps Script stops serving `lootCounts` (both team deployments need a redeploy after this merge). One sheet-era artifact is deliberately not reproduced: the old feed collapsed a genuine same-minute double drop into one entry, so phoenix's item total now reads 156 where the sheet showed 155.
+
+---
+
 ## [3.16.0] - 2026-07-07
 
 ### Frontend
