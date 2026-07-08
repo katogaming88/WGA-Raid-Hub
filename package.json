@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"js/**/*.js\" \"scripts/**/*.js\" \"tests/**/*.js\"",
     "format:check": "prettier --check \"js/**/*.js\" \"scripts/**/*.js\" \"tests/**/*.js\"",
+    "test:ci": "vitest run tests/ci",
     "test:rls": "vitest run tests/rls",
     "test:import": "vitest run tests/import",
     "test:frontend": "vitest run tests/frontend",
