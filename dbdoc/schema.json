@@ -2906,6 +2906,12 @@
       "return_type": "text",
       "arguments": "p_actor_id uuid, p_team_id integer",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.import_rclc_loot",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer, p_season text, p_rows jsonb",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

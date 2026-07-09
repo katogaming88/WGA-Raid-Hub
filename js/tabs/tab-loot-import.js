@@ -1,6 +1,16 @@
-var LOOT_CHUNK_SIZE = 25;
-
-// ── Import sub-tab ────────────────────────────────────────────────────────────
+// ── Import sub-tab (Supabase, #219) ─────────────────────────────────────────
+//
+// submitLootImport() carries every field import_rclc_loot() (migration
+// 20260709180000) needs straight through from the RCLC paste -- date/time,
+// itemID, boss, instance -- instead of the old GAS path's minimal
+// id/player/date/itemName/instance subset. The RPC does its own date
+// parsing (accepts RCLC's "YYYY/MM/DD" as-is) and player/item resolution
+// server-side, so there's no client-side reshaping needed beyond picking the
+// fields off each entry. One RPC call per paste, not chunked -- a raid
+// night's export is at most a couple hundred entries, well within a normal
+// request body, and the old GAS chunking was worked around Apps Script's own
+// URL-length limits (JSONP GET), which don't apply to a POST through
+// supabase-js.
 
 function buildLootImportForm() {
   var el = document.getElementById('loot-sub-import');
@@ -71,20 +81,18 @@ function submitLootImport() {
     var e = entries[i];
     var id = String(e.id || '').trim();
     var player = String(e.player || '').trim();
-    var date = (function (raw) {
-      if (!raw) return '';
-      var d = new Date(raw);
-      if (isNaN(d.getTime())) return String(raw).trim();
-      var yr = d.getFullYear();
-      var mo = String(d.getMonth() + 1).padStart(2, '0');
-      var dy = String(d.getDate()).padStart(2, '0');
-      return yr + '-' + mo + '-' + dy;
-    })(e.date);
-    var itemName = String(e.itemName || '').trim();
     var instance = String(e.instance || '').trim();
-    if (id && player && instance) {
-      rows.push({ id: id, player: player, date: date, itemName: itemName, instance: instance });
-    }
+    if (!id || !player || !instance) continue;
+    rows.push({
+      id: id,
+      player: player,
+      date: String(e.date || '').trim(),
+      time: String(e.time || '').trim(),
+      itemID: e.itemID != null ? e.itemID : null,
+      itemName: String(e.itemName || '').trim(),
+      instance: instance,
+      boss: String(e.boss || '').trim()
+    });
   }
 
   if (rows.length === 0) {
@@ -99,12 +107,23 @@ function submitLootImport() {
 
   setLootImportStatus('Importing ' + rows.length + ' entries...', 'var(--text-muted)');
 
-  sendLootChunks(season, rows, 0, 0, 0, function (written, skipped) {
-    var msg = 'Done. ' + written + ' new entries added';
-    if (skipped > 0) msg += ', ' + skipped + ' duplicates skipped';
-    msg += '.';
-    setLootImportStatus(msg, 'var(--heal)');
-  });
+  supabaseClient
+    .rpc('import_rclc_loot', { p_team_id: _teamCfg.supabaseTeamId, p_season: season, p_rows: rows })
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      var counts = result.data || {};
+      var inserted = counts.inserted || 0;
+      var skipped = counts.skipped_duplicate || 0;
+      var unresolved = counts.unresolved_item || 0;
+      var msg = 'Done. ' + inserted + ' new entries added';
+      if (skipped > 0) msg += ', ' + skipped + ' duplicates skipped';
+      if (unresolved > 0) msg += ', ' + unresolved + ' with an unresolved item (check Item Lookup)';
+      msg += '.';
+      setLootImportStatus(msg, 'var(--heal)');
+    })
+    .catch(function (err) {
+      setLootImportStatus('Import failed: ' + err.message, 'var(--melee)');
+    });
 }
 
 function setLootImportStatus(text, color) {
@@ -112,32 +131,6 @@ function setLootImportStatus(text, color) {
   if (!el) return;
   el.style.color = color || 'var(--text-muted)';
   el.textContent = text;
-}
-
-function sendLootChunks(season, rows, offset, totalWritten, totalSkipped, cb) {
-  if (offset >= rows.length) {
-    cb(totalWritten, totalSkipped);
-    return;
-  }
-  var chunk = rows.slice(offset, offset + LOOT_CHUNK_SIZE);
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=appendLootRows&season=' +
-      encodeURIComponent(season) +
-      '&rows=' +
-      encodeURIComponent(JSON.stringify(chunk)),
-    function (err, result) {
-      if (err || !result || !result.success) {
-        setLootImportStatus(err ? err.message : 'Import failed after ' + totalWritten + ' entries.', 'var(--melee)');
-        return;
-      }
-      var w = result.written || 0;
-      var s = result.skipped || 0;
-      var done = Math.min(offset + LOOT_CHUNK_SIZE, rows.length);
-      setLootImportStatus('Importing... (' + done + ' / ' + rows.length + ')', 'var(--text-muted)');
-      sendLootChunks(season, rows, offset + LOOT_CHUNK_SIZE, totalWritten + w, totalSkipped + s, cb);
-    }
-  );
 }
 
 // ── Import History sub-tab ────────────────────────────────────────────────────

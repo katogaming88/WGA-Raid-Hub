@@ -6,6 +6,23 @@ Issues carrying a decision are tagged with the `decision` label: `gh issue list 
 
 ---
 
+## 2026-07-09 -- RCLC loot import (#219): SECURITY INVOKER RPC, instance-suffix track, boss/itemID read straight off the export
+
+The GAS paste-import only ever carried `id, player, date, itemName, instance` into the "Pasted Loot" sheet -- no difficulty, boss, or item-id derivation existed anywhere in the import path. Migrating this needed real new logic, not a straight port, and a sample live RCLC JSON export (provided by Kat) settled several things the issue itself had flagged as open:
+
+- **Boss is directly in the export** (`"boss":"Chimaerus the Undreamt God"`) -- no `item_bosses` lookup needed at all, despite the issue's implementation steps suggesting one. `item_bosses` is many-to-many (`(item_id, boss)` composite PK, an item can drop from several bosses), so a lookup-based resolution would have been ambiguous anyway; the export already answers the question directly per row.
+- **Item resolved by `itemID` (wow_item_id) first, name as fallback** -- the export's `itemID` field matches `items.wow_item_id` unambiguously, more reliable than name matching (special characters, renames). Mirrors the historical import's `itemIdByWowId` pattern for the legacy tracker source.
+- **Track derived from the `instance` string's difficulty suffix only** (`"The Dreamrift-Mythic"` -> `Myth`), the same `parseTrack()` logic the one-time historical import already proved out. The export's `itemString` does technically encode the authoritative track via Blizzard bonus IDs, but decoding those needs a maintained bonus-ID reference table this repo doesn't have -- deferred as a documented future enhancement, not attempted now. Confirmed with Kat rather than half-implementing a guess.
+- **"Source" is moot** -- `rclc_loot` has no column for it; the concept only applies to a different table (`self_received_requests`). What Kat actually wanted noted as "from the RCLC import" lives in the audit log action name (`'Loot Imported (RCLC)'`), not a data column.
+- **Unresolved items are left `item_id = null` and counted, not auto-created.** Auto-creating a placeholder `items` row (matching the historical import's legacy-source behavior) would require `SECURITY DEFINER`, since `items` grants no authenticated role a direct write. Given the season's Item Lookup should already be populated before loot starts flowing, a genuinely unresolved item is a sign that needs updating, not something to paper over -- so the RPC stays `SECURITY INVOKER` instead, matching `add_signup_to_roster()`'s reasoning ("authorization comes from existing RLS") since officers already have full write access to both `players` and `rclc_loot` directly.
+- **Player resolution is an exact `name_realm` match (case-insensitive), no diacritic folding**, unlike the Node-side one-time-import registry (`scripts/import/lib/registry.js`), which folds diacritics because sheet data was officer-typed by hand across multiple tabs inconsistently. RCLC reads the name straight from the game client, so it should already match the roster's `name_realm` exactly. Unknown names get an archived stub, same shape as the historical import's stub rows.
+- **`awarded_at` combines the export's separate `date` and `time` fields** (assumed America/New_York, matching the site's existing display-timezone assumption for this data), an improvement over the GAS path, which discarded time-of-day entirely.
+- **"Import History" (entry count + Clear All button) stays on GAS/Sheet, out of scope for this PR.** It reads/clears the "Pasted Loot" sheet specifically, which is currently empty -- everything in Supabase's `rclc_loot` today came from the separate legacy external-tracker import instead, and that source distinction was never preserved as a column. A Supabase-based version would show all historical rows as if they were paste-imports (they weren't) and a "Clear All" could delete real loot history rather than just recent pastes. Known gap: the GAS summary will permanently show "no loot history imported yet" once paste-imports actually start landing in Supabase instead, but the import action's own per-paste confirmation banner (inserted/skipped/unresolved counts) already covers officers' real day-to-day need.
+
+[Full discussion -> #219](https://github.com/katogaming88/WGA-Raid-Hub/issues/219)
+
+---
+
 ## 2026-07-09 -- Attendance writes (#218): writes-only, reads deliberately staying on Apps Script for now
 
 Unlike roster (#216) and BiS (#217), attendance's Supabase table doesn't yet have a live pipeline feeding it real data. Checked the live DB before starting:

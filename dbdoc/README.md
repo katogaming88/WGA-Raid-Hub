@@ -40,6 +40,7 @@
 | public.claim_character | record | p_team_id integer, p_name_realm text | FUNCTION |
 | public.write_audit_log | int4 | p_team_id integer, p_action text, p_target_type text DEFAULT NULL::text, p_target_id integer DEFAULT NULL::integer, p_detail jsonb DEFAULT NULL::jsonb | FUNCTION |
 | public.resolve_actor_name | text | p_actor_id uuid, p_team_id integer | FUNCTION |
+| public.import_rclc_loot | jsonb | p_team_id integer, p_season text, p_rows jsonb | FUNCTION |
 
 ## Enums
 

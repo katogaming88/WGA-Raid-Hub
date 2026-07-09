@@ -1,8 +1,6 @@
 // Officer quick-actions bar + player selector gating (index.html only).
 // Depends on: common.js (WEB_APP_URL, jsonpRequest), discord.js (getDiscordSession)
 
-var _QA_LOOT_CHUNK = 25;
-
 function _qaIsOfficer() {
   var s = typeof getDiscordSession === 'function' && getDiscordSession();
   return !!(s && s.isOfficer);
@@ -298,20 +296,18 @@ function qaSubmitLoot() {
     var ent = entries[i];
     var id = String(ent.id || '').trim();
     var player = String(ent.player || '').trim();
-    var rawDate = ent.date;
-    var date = (function (raw) {
-      if (!raw) return '';
-      var d = new Date(raw);
-      if (isNaN(d.getTime())) return String(raw).trim();
-      var mo = String(d.getMonth() + 1).padStart(2, '0');
-      var dy = String(d.getDate()).padStart(2, '0');
-      return d.getFullYear() + '-' + mo + '-' + dy;
-    })(rawDate);
-    var itemName = String(ent.itemName || '').trim();
     var instance = String(ent.instance || '').trim();
-    if (id && player && instance) {
-      rows.push({ id: id, player: player, date: date, itemName: itemName, instance: instance });
-    }
+    if (!id || !player || !instance) continue;
+    rows.push({
+      id: id,
+      player: player,
+      date: String(ent.date || '').trim(),
+      time: String(ent.time || '').trim(),
+      itemID: ent.itemID != null ? ent.itemID : null,
+      itemName: String(ent.itemName || '').trim(),
+      instance: instance,
+      boss: String(ent.boss || '').trim()
+    });
   }
 
   if (rows.length === 0) {
@@ -323,60 +319,25 @@ function qaSubmitLoot() {
   if (importBtn) importBtn.disabled = true;
   setStatus('Importing ' + rows.length + ' entries...', 'var(--text-muted)');
 
-  _qaLootChunks(
-    season,
-    rows,
-    0,
-    0,
-    0,
-    statusEl,
-    function (written, skipped) {
+  supabaseClient
+    .rpc('import_rclc_loot', { p_team_id: _teamCfg.supabaseTeamId, p_season: season, p_rows: rows })
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
       if (importBtn) importBtn.disabled = false;
-      var msg = 'Done. ' + written + ' new entries added';
+      var counts = result.data || {};
+      var inserted = counts.inserted || 0;
+      var skipped = counts.skipped_duplicate || 0;
+      var unresolved = counts.unresolved_item || 0;
+      var msg = 'Done. ' + inserted + ' new entries added';
       if (skipped > 0) msg += ', ' + skipped + ' duplicates skipped';
+      if (unresolved > 0) msg += ', ' + unresolved + ' with an unresolved item (check Item Lookup)';
       setStatus(msg + '.', 'var(--heal)');
       if (pasteEl) pasteEl.value = '';
-    },
-    function (errMsg) {
+    })
+    .catch(function (err) {
       if (importBtn) importBtn.disabled = false;
-      setStatus(errMsg, 'var(--melee)');
-    }
-  );
-}
-
-function _qaLootChunks(season, rows, offset, written, skipped, statusEl, onDone, onError) {
-  if (offset >= rows.length) {
-    onDone(written, skipped);
-    return;
-  }
-  var chunk = rows.slice(offset, offset + _QA_LOOT_CHUNK);
-  if (statusEl) {
-    statusEl.textContent =
-      'Importing... (' + Math.min(offset + _QA_LOOT_CHUNK, rows.length) + ' / ' + rows.length + ')';
-  }
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=appendLootRows&season=' +
-      encodeURIComponent(season) +
-      '&rows=' +
-      encodeURIComponent(JSON.stringify(chunk)),
-    function (err, result) {
-      if (err || !result || !result.success) {
-        onError(err ? err.message : 'Import failed after ' + written + ' entries.');
-        return;
-      }
-      _qaLootChunks(
-        season,
-        rows,
-        offset + _QA_LOOT_CHUNK,
-        written + (result.written || 0),
-        skipped + (result.skipped || 0),
-        statusEl,
-        onDone,
-        onError
-      );
-    }
-  );
+      setStatus('Import failed: ' + err.message, 'var(--melee)');
+    });
 }
 
 // Eagerly render from the cached session without waiting for validation.
