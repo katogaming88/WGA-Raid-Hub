@@ -149,10 +149,62 @@ function checkEmptyBisSubmissions() {
   updateNavBadges();
 }
 
-// ── BiS Lists sub-tab ────────────────────────────────────────────────────────
+// ── BiS Lists sub-tab (Supabase, #217) ───────────────────────────────────────
+//
+// Every add/remove/mark-obtained writes straight to bis_items and logs itself
+// via writeAuditLog() (#214) -- no staged "Save" step, since the backend
+// supports true per-row writes now (unlike the old GAS setBisItems, which
+// only rewrote a player's whole BiS column at once). getBisItems(firstName)
+// (js/common.js) is the live source of truth; DATA.bisList is patched in
+// place after each successful write instead of re-fetching. Audit entries use
+// target_type 'players' (not 'bis_items') so TARGET still resolves to the
+// character name even after a row is deleted -- a bis_items id would go
+// stale the moment "remove" runs, since resolveAuditTargetNames() (tab-audit.js)
+// only ever looks the row up by a still-existing primary key.
 
-var _bisListEditor = null; // { firstName, nameRealm, items: [{item, slot}] }
+var _bisListEditor = null; // { firstName, nameRealm }
 var _bisListSearch = '';
+
+function bisFindRosterPlayer(firstName) {
+  var norm = normalise(firstName);
+  var roster = (DATA && DATA.roster) || [];
+  for (var i = 0; i < roster.length; i++) {
+    if (normalise(roster[i].firstName) === norm) return roster[i];
+  }
+  return null;
+}
+
+// bis_items keys on (player_id, item_id); items aren't looked up by id
+// anywhere on the client yet, so resolve by exact name match (items.name has
+// a unique index) the same way #216 resolved classes_specs.
+function resolveItemId(itemName) {
+  return supabaseClient
+    .from('items')
+    .select('id')
+    .eq('name', itemName)
+    .maybeSingle()
+    .then(function (result) {
+      if (result.error || !result.data) throw new Error('Unknown item: ' + itemName);
+      return result.data.id;
+    });
+}
+
+function bisItemAuditDetail(itemName, slot) {
+  return [slot, itemName].filter(Boolean).join(' ');
+}
+
+// DATA.bisList's key may not be an exact case match for the roster's
+// firstName (mirrors the same normalise-based lookup getBisItems() already
+// does); falls back to firstName itself for a player's first-ever BiS entry.
+function bisListKeyFor(firstName) {
+  var bisMap = DATA.bisList || {};
+  var norm = normalise(firstName);
+  var keys = Object.keys(bisMap);
+  for (var i = 0; i < keys.length; i++) {
+    if (normalise(keys[i]) === norm) return keys[i];
+  }
+  return firstName;
+}
 
 function buildBisListsTab() {
   var container = document.getElementById('bis-lists-container');
@@ -283,7 +335,7 @@ function toggleBisListEditor(firstName, nameRealm) {
     _bisListEditor = null;
     _bisListSearch = '';
   } else {
-    _bisListEditor = { firstName: firstName, nameRealm: nameRealm, items: getBisItems(firstName).slice() };
+    _bisListEditor = { firstName: firstName, nameRealm: nameRealm };
     _bisListSearch = '';
   }
   buildBisListsTab();
@@ -291,19 +343,11 @@ function toggleBisListEditor(firstName, nameRealm) {
 
 function bisEditorHTML() {
   if (!_bisListEditor) return '';
-  var items = _bisListEditor.items;
+  var items = getBisItems(_bisListEditor.firstName);
   var html = '<div style="margin-bottom:0.6rem;">';
 
   // BiS link (from roster)
-  var player = null;
-  var roster = DATA.roster || [];
-  var norm = normalise(_bisListEditor.firstName);
-  for (var pi = 0; pi < roster.length; pi++) {
-    if (normalise(roster[pi].firstName) === norm) {
-      player = roster[pi];
-      break;
-    }
-  }
+  var player = bisFindRosterPlayer(_bisListEditor.firstName);
   var bisLink = player && player.bisLink;
   html +=
     '<div style="font-size:0.88rem;color:var(--text-muted);margin-bottom:0.5rem;">BiS Source: ' +
@@ -317,6 +361,7 @@ function bisEditorHTML() {
     for (var i = 0; i < items.length; i++) {
       var slot = items[i].slot || '';
       var item = items[i].item || '';
+      var obtained = !!items[i].obtained;
       var slotC = getSlotColor(slot);
       html +=
         '<div style="display:flex;align-items:center;gap:0.5rem;font-size:0.95rem;padding:0.15rem 0;">' +
@@ -325,9 +370,17 @@ function bisEditorHTML() {
         ';font-size:0.85rem;">' +
         slot +
         '</span>' +
-        '<span style="flex:1;color:var(--text);">' +
+        '<span style="flex:1;color:var(--text);' +
+        (obtained ? 'text-decoration:line-through;opacity:0.7;' : '') +
+        '">' +
         item +
         '</span>' +
+        '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.82rem;color:var(--text-muted);cursor:pointer;white-space:nowrap;">' +
+        '<input type="checkbox" ' +
+        (obtained ? 'checked' : '') +
+        ' onchange="toggleBisItemObtained(' +
+        i +
+        ', this.checked)">Obtained</label>' +
         '<button class="btn btn-muted" style="font-size:0.78rem;padding:1px 7px;color:var(--melee);" ' +
         'onclick="removeBisListItem(' +
         i +
@@ -350,8 +403,6 @@ function bisEditorHTML() {
     'max-height:200px;overflow-y:auto;"></div>' +
     '</div>' +
     '<div style="display:flex;gap:0.5rem;align-items:center;">' +
-    '<button class="btn request-approve-btn" onclick="saveBisListItems()">Save</button>' +
-    '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.25rem 0.75rem;" onclick="cancelBisListEditor()">Cancel</button>' +
     '<span id="bisListSaveMsg" style="font-size:0.92rem;color:var(--text-muted);"></span>' +
     '</div>';
 
@@ -379,8 +430,68 @@ function refreshBisEditorPanel() {
 
 function removeBisListItem(index) {
   if (!_bisListEditor) return;
-  _bisListEditor.items.splice(index, 1);
-  refreshBisEditorPanel();
+  var entry = getBisItems(_bisListEditor.firstName)[index];
+  var player = bisFindRosterPlayer(_bisListEditor.firstName);
+  if (!entry || !player || !player.id || entry.itemId == null) return;
+  var msgEl = document.getElementById('bisListSaveMsg');
+  if (msgEl) msgEl.textContent = 'Removing...';
+  supabaseClient
+    .from('bis_items')
+    .delete()
+    .eq('player_id', player.id)
+    .eq('item_id', entry.itemId)
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      return writeAuditLog('BiS Item Removed', 'players', player.id, bisItemAuditDetail(entry.item, entry.slot));
+    })
+    .then(function () {
+      var key = bisListKeyFor(_bisListEditor.firstName);
+      if (DATA.bisList && DATA.bisList[key]) {
+        DATA.bisList[key] = DATA.bisList[key].filter(function (e) {
+          return e.itemId !== entry.itemId;
+        });
+      }
+      // Rebuilds the whole tab, not just refreshBisEditorPanel() -- the row's
+      // own BiS-count badge needs to move too, since this is already committed
+      // state rather than a pending draft.
+      buildBisListsTab();
+    })
+    .catch(function (err) {
+      var msg = document.getElementById('bisListSaveMsg');
+      if (msg) msg.textContent = 'Failed: ' + err.message;
+    });
+}
+
+function toggleBisItemObtained(index, checked) {
+  if (!_bisListEditor) return;
+  var entry = getBisItems(_bisListEditor.firstName)[index];
+  var player = bisFindRosterPlayer(_bisListEditor.firstName);
+  if (!entry || !player || !player.id || entry.itemId == null) return;
+  var msgEl = document.getElementById('bisListSaveMsg');
+  if (msgEl) msgEl.textContent = 'Saving...';
+  supabaseClient
+    .from('bis_items')
+    .update({ obtained: checked })
+    .eq('player_id', player.id)
+    .eq('item_id', entry.itemId)
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      var detail =
+        (checked ? 'Marked obtained: ' : 'Marked not obtained: ') + bisItemAuditDetail(entry.item, entry.slot);
+      return writeAuditLog('BiS Item Obtained Changed', 'players', player.id, detail);
+    })
+    .then(function () {
+      // entry is the same object reference stored in DATA.bisList (getBisItems()
+      // returns object entries as-is, not copies), so this mutation persists.
+      entry.obtained = checked;
+      var msg = document.getElementById('bisListSaveMsg');
+      if (msg) msg.textContent = '';
+    })
+    .catch(function (err) {
+      var msg = document.getElementById('bisListSaveMsg');
+      if (msg) msg.textContent = 'Failed: ' + err.message;
+      refreshBisEditorPanel();
+    });
 }
 
 var BIS_UNIVERSAL_SLOTS = { Trinket: true, Ring: true, Neck: true, Back: true, Wrist: true, Cloak: true };
@@ -399,7 +510,8 @@ function bisListOnInput() {
   var allItems = Object.keys(DATA.itemSlots || {});
   var existing = {};
   if (_bisListEditor) {
-    for (var e = 0; e < _bisListEditor.items.length; e++) existing[normalise(_bisListEditor.items[e].item)] = true;
+    var currentItems = getBisItems(_bisListEditor.firstName);
+    for (var e = 0; e < currentItems.length; e++) existing[normalise(currentItems[e].item)] = true;
   }
 
   // Determine player armor type for filtering
@@ -472,52 +584,39 @@ function bisListOnInput() {
 
 function bisListPickItem(itemName, slot) {
   if (!_bisListEditor) return;
-  for (var i = 0; i < _bisListEditor.items.length; i++) {
-    if (_bisListEditor.items[i].item === itemName) return;
+  var existing = getBisItems(_bisListEditor.firstName);
+  for (var i = 0; i < existing.length; i++) {
+    if (existing[i].item === itemName) return;
   }
-  _bisListEditor.items.push({ item: itemName, slot: slot });
-  _bisListSearch = '';
-  refreshBisEditorPanel();
-}
-
-function cancelBisListEditor() {
-  _bisListEditor = null;
-  _bisListSearch = '';
-  buildBisListsTab();
-}
-
-function saveBisListItems() {
-  if (!_bisListEditor) return;
-  var msgEl = document.getElementById('bisListSaveMsg');
-  if (msgEl) msgEl.textContent = 'Saving...';
-  var nameRealm = _bisListEditor.nameRealm;
+  var player = bisFindRosterPlayer(_bisListEditor.firstName);
+  if (!player || !player.id) return;
   var firstName = _bisListEditor.firstName;
-  var items = _bisListEditor.items.slice();
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=setBisItems&data=' +
-      encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, items: items })).replace(/'/g, '%27'),
-    function (err, result) {
-      if (err || (result && result.error)) {
-        var msg = document.getElementById('bisListSaveMsg');
-        if (msg) msg.textContent = err ? err.message : 'Failed: ' + result.error;
-        return;
-      }
-      if (DATA && DATA.bisList) {
-        var norm = normalise(firstName);
-        var keys = Object.keys(DATA.bisList);
-        var key = firstName;
-        for (var k = 0; k < keys.length; k++) {
-          if (normalise(keys[k]) === norm) {
-            key = keys[k];
-            break;
-          }
-        }
-        DATA.bisList[key] = items;
-      }
-      _bisListEditor = null;
-      _bisListSearch = '';
+  _bisListSearch = '';
+  var msgEl = document.getElementById('bisListSaveMsg');
+  if (msgEl) msgEl.textContent = 'Adding...';
+  resolveItemId(itemName)
+    .then(function (itemId) {
+      return supabaseClient
+        .from('bis_items')
+        .insert({ player_id: player.id, item_id: itemId })
+        .then(function (result) {
+          if (result.error) throw new Error(result.error.message);
+          return writeAuditLog('BiS Item Added', 'players', player.id, bisItemAuditDetail(itemName, slot)).then(
+            function () {
+              return itemId;
+            }
+          );
+        });
+    })
+    .then(function (itemId) {
+      var key = bisListKeyFor(firstName);
+      if (!DATA.bisList) DATA.bisList = {};
+      if (!DATA.bisList[key]) DATA.bisList[key] = [];
+      DATA.bisList[key].push({ item: itemName, slot: slot, obtained: false, playerId: player.id, itemId: itemId });
       buildBisListsTab();
-    }
-  );
+    })
+    .catch(function (err) {
+      var msg = document.getElementById('bisListSaveMsg');
+      if (msg) msg.textContent = 'Failed: ' + err.message;
+    });
 }

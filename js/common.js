@@ -26,7 +26,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.22.0';
+var VERSION = '3.23.0';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -753,6 +753,69 @@ function mapSupabaseLoot(rows) {
   return result;
 }
 
+// BiS list reads come from Supabase (#217): bis_items has no team_id column
+// of its own (derives team through the player_id FK, docs/database-decisions.md),
+// so filtering by team requires an inner join through players. Resolves to
+// the raw rows, or null on any failure so the caller falls back to the Apps
+// Script heavy chunk's bisList.
+function fetchSupabaseBisItems() {
+  if (!supabaseClient) return Promise.resolve(null);
+  var query = supabaseClient
+    .from('bis_items')
+    .select('player_id, item_id, obtained, items(name, slot), players!inner(name_realm, team_id)')
+    .eq('players.team_id', _teamCfg.supabaseTeamId)
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Supabase BiS items query failed, using Apps Script BiS list.', result.error.message);
+        return null;
+      }
+      return result.data && result.data.length ? result.data : null;
+    })
+    .catch(function (err) {
+      console.warn('Supabase BiS items query failed, using Apps Script BiS list.', err);
+      return null;
+    });
+  var timeout = new Promise(function (resolve) {
+    setTimeout(function () {
+      resolve(null);
+    }, 10000);
+  });
+  return Promise.race([query, timeout]);
+}
+
+/**
+ * Maps bis_items rows to the DATA.bisList shape the Apps Script heavy chunk
+ * emits (firstName -> array of {item, slot} entries), so no render code
+ * changes. Keys by the same raw firstName derivation mapSupabaseRoster()
+ * uses, since tab-conflicts.js/tab-priority.js index DATA.bisList[firstName]
+ * directly against the roster's firstName rather than going through
+ * getBisItems()'s normalised lookup. Carries obtained/playerId/itemId so the
+ * BiS Lists editor (tab-bis.js) can write back without a second lookup.
+ * @param {any[]} rows - bis_items rows with embedded items and players
+ * @returns {Object<string, {item: string, slot: string, obtained: boolean, playerId: number, itemId: number}[]>}
+ */
+function mapSupabaseBisItems(rows) {
+  /** @type {Object<string, {item: string, slot: string, obtained: boolean, playerId: number, itemId: number}[]>} */
+  var map = {};
+  (rows || []).forEach(function (row) {
+    var players = row.players || {};
+    var nameRealm = String(players.name_realm || '').trim();
+    if (!nameRealm) return;
+    var firstName = nameRealm.split('-')[0].trim();
+    var itemRow = row.items || {};
+    if (!itemRow.name) return;
+    if (!map[firstName]) map[firstName] = [];
+    map[firstName].push({
+      item: itemRow.name,
+      slot: itemRow.slot || '',
+      obtained: !!row.obtained,
+      playerId: row.player_id,
+      itemId: row.item_id
+    });
+  });
+  return map;
+}
+
 // onCoreReady fires once the fast core chunk is loaded and the page can render.
 // onHeavyReady (optional) fires once loot/attendance/BiS/priority data arrives.
 function loadData(onCoreReady, onHeavyReady) {
@@ -768,6 +831,8 @@ function loadData(onCoreReady, onHeavyReady) {
   var rosterPromise = fetchSupabaseRoster();
   // Fired alongside; the heavy callback waits for it before setting lootCounts.
   var lootPromise = fetchSupabaseLoot();
+  // Fired alongside; the heavy callback waits for it before setting bisList.
+  var bisItemsPromise = fetchSupabaseBisItems();
 
   window._rosterCoreCallback = function (data) {
     delete window._rosterCoreCallback;
@@ -794,13 +859,16 @@ function loadData(onCoreReady, onHeavyReady) {
       window._rosterHeavyCallback = function (heavy) {
         delete window._rosterHeavyCallback;
         if (!heavy || heavy.error) return;
-        lootPromise.then(function (lootRows) {
+        Promise.all([lootPromise, bisItemsPromise]).then(function (results) {
+          var lootRows = results[0];
+          var bisRows = results[1];
           var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
           DATA.lootCounts = mappedLoot || {};
           DATA.attendanceDetails = heavy.attendanceDetails;
           DATA.rawAttendanceData = heavy.rawAttendanceData;
           DATA.recentAttendanceTrend = heavy.recentAttendanceTrend;
-          DATA.bisList = heavy.bisList;
+          var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
+          DATA.bisList = mappedBis && Object.keys(mappedBis).length ? mappedBis : heavy.bisList;
           DATA.priorityOrder = heavy.priorityOrder;
           DATA.itemSlots = heavy.itemSlots;
           DATA.itemArmorTypes = heavy.itemArmorTypes || {};

@@ -6,6 +6,19 @@ Issues carrying a decision are tagged with the `decision` label: `gh issue list 
 
 ---
 
+## 2026-07-09 -- BiS list edits (#217): editor reworked to instant per-row writes; audit entries target the player, not the bis_items row
+
+The old officer BiS editor (`js/tabs/tab-bis.js`) staged add/remove in a local array and pushed the whole list on one "Save" click, because the GAS `setBisItems` handler it called only ever supported rewriting a player's entire BiS column at once. `bis_items` supports true per-row insert/update/delete, and the issue itself flagged the editor's shape as an open design call rather than something to port as-is.
+
+- **Reworked to instant writes, no staged state.** Picking an item, clicking `x`, and toggling the new "Obtained" checkbox each fire their own Supabase write immediately (one `audit_log` row apiece) instead of accumulating in `_bisListEditor.items` for a batched Save. Removes the "did I remember to hit Save" ambiguity the granular backend was meant to fix, and matches the instant-toggle pattern #216 already established for the Roster tab.
+- **Audit entries use `target_type: 'players'` / `target_id: <player.id>`, not `'bis_items'` / `<bis_items.id>`.** `resolve_actor_name()`/`resolveAuditTargetNames()` (`tab-audit.js`) only ever resolve a TARGET by looking its primary key up in the live table. A `bis_items` id goes stale the instant "remove" runs (the row is gone), which would permanently blank TARGET for every remove entry and any add/obtain entry for an item later removed. `players.id` never disappears for an active roster member, so pointing at the player keeps TARGET showing the character name for all three actions, indefinitely. The action name and detail string (e.g. `"Chest Firelord's Vestments"`) already carry the item-level specifics; TARGET only needed to answer "which character."
+- **BiS reads also moved to Supabase in the same PR**, ahead of what #217 literally scoped (writes only). Roster reads had their own migration issue before #216 shipped roster writes; BiS had no equivalent, so shipping writes-only would have made `DATA.bisList` (sourced from the Apps Script heavy chunk) go stale the moment any write landed -- a reload would show wrong BiS counts/contents everywhere the list is used (roster tab, contested items, profile checklist). `fetchSupabaseBisItems()`/`mapSupabaseBisItems()` (`js/common.js`) replace `heavy.bisList` when the Supabase read succeeds, keyed by the same raw-firstName convention `mapSupabaseRoster()` uses (`tab-conflicts.js`/`tab-priority.js` index `DATA.bisList[firstName]` directly, bypassing the normalised-lookup `getBisItems()` does).
+- **Item ids resolved by exact `items.name` match at write time** (`resolveItemId()`), same approach #216 used for `classes_specs` -- no client-side id cache exists yet for either lookup table.
+
+[Full discussion -> #217](https://github.com/katogaming88/WGA-Raid-Hub/issues/217)
+
+---
+
 ## 2026-07-09 -- Roster edits (#216): Role dropdown dropped, Class+Spec write together
 
 The old Player Settings panel (`js/common.js`) had three independent controls -- Role, Class, Spec -- each firing its own write, matching the old sheet's three separate columns. The migrated `players` table only has `class_spec_id` (a single FK into `classes_specs`, which pairs each class+spec with exactly one `role`); there's no column an independent role write or a class-only write could land on.

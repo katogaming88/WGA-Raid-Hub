@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.23.0] - 2026-07-09
+
+### Frontend
+- **BiS list edits moved to Supabase (#217, Phase 5)** -- adding an item, removing an item, and a new "mark obtained" toggle on the officer BiS Lists editor now write straight to `bis_items` instead of the Apps Script `setBisItems` action, each logging itself via `write_audit_log()` (#214). The editor no longer stages changes behind a Save button -- each action fires its own instant write, since `bis_items` supports true per-row inserts/updates/deletes (the old GAS handler only supported rewriting a player's whole BiS column at once). "Obtained" is a brand-new concept with no Sheet equivalent; it's separate from the existing loot-based BiS completion badge on the profile page, which still derives from actual RCLootCouncil/self-received history. BiS list *reads* also moved to Supabase in this same release (ahead of the issue's literal writes-only scope) so a page reload always reflects the true current state instead of a stale Apps Script snapshot the moment any write landed. Apps Script keeps its `setBisItems` handler in place, unused, until the whole Phase 5 write migration is verified.
+
+---
+
 ## [3.22.0] - 2026-07-09
 
 ### Frontend
