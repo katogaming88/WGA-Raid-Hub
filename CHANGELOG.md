@@ -20,6 +20,9 @@ with each release split into `### Frontend` (drives the version number) and
 ### Frontend
 - **Audit Log tab rewired to Supabase (#378)** -- the officer dashboard's Audit Log tab read from the legacy GAS `?action=getAuditLog` JSONP endpoint; it now reads `audit_log` directly. Columns collapse the old From/To pair into a single DETAIL column, holding the human-readable summary string `write_audit_log()` (#214) and the #377 backfill both write. CHANGED BY resolves `actor_id` through `resolve_actor_name()` (#376) instead of showing a raw uuid; TARGET resolves `target_type = 'players'` rows to a character name (no other `target_type` is written by any flow yet, so nothing else resolves). Historical rows (before #214) have no `actor_id`/`target_type` and permanently lost their original TARGET value in the #377 backfill, so CHANGED BY and TARGET show blank for anything from before this shipped -- accepted, not a bug.
 
+### Backend
+- **anon/authenticated granted USAGE on public sequences (#383)** -- #312 granted base table DML to anon/authenticated so RLS could be reached on a write, but never granted USAGE on the identity sequences behind serial columns; found when #216's Add Player flow hit `permission denied for sequence players_id_seq` despite the row-level policy permitting the insert. Same class of gap #332 flagged for service_role. One additive migration, same shape as #312.
+
 ---
 
 ## [3.20.0] - 2026-07-09
