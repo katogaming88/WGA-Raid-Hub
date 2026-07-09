@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.20.0] - 2026-07-09
+
+### Frontend
+- **Officer claim management and promotion on Supabase (#365)** -- The roster tab's Discord Claims table and the admin tab's officer promotion picker read live `DATA.discordClaims`/`DATA.officerDiscordIds` from the GAS core payload, which went stale the moment #212 moved claim writes to Supabase; the admin tab's promote action was already dead code since #211 moved officer access to `team_members.role`. Both panels now read through a shared `fetchTeamClaims()` (`js/discord.js`): claimed, unarchived players on the team joined to their linked `team_members` row for `discord_id` and `role`. Removing a claim clears `players.team_member_id`; granting/revoking officer access updates `team_members.role` directly between `raider` and `officer` through PostgREST, covered by the existing "Officers write players" and "Team leaders write team_members" policies -- no new SQL needed. The claims table now shows Discord ID instead of a display name and drops the claimed-date column, since neither is stored anywhere in Supabase. Team leaders are intentionally excluded from the officer picker -- it only replaces the old flat officer on/off toggle, not the separate team-leader tier.
+
+---
+
 ## [3.19.2] - 2026-07-09
 
 ### Frontend

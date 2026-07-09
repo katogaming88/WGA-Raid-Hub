@@ -330,103 +330,80 @@ function executeDangerOp(key) {
 
 function renderOfficerManagement() {
   var el = document.getElementById('adminOfficersContent');
-  if (!el) return;
+  if (!el || !supabaseClient) return;
+  el.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">Loading...</p>';
+  fetchTeamClaims().then(function (claims) {
+    // Team leaders are a distinct top tier managed outside this picker; only
+    // plain officers are promotable/revocable here (matches the old flat
+    // officerDiscordIds toggle this replaces).
+    var officerClaims = claims.filter(function (c) {
+      return c.role === 'officer';
+    });
+    var nonOfficerClaims = claims.filter(function (c) {
+      return c.role !== 'officer' && c.role !== 'team_leader';
+    });
 
-  var claims = window.DATA && DATA.discordClaims ? DATA.discordClaims : [];
-  var officerIds = window.DATA && DATA.officerDiscordIds ? DATA.officerDiscordIds : [];
+    var rows = officerClaims
+      .map(function (c) {
+        var jsonId = JSON.stringify(c.teamMemberId);
+        var jsonNr = JSON.stringify(c.nameRealm).replace(/"/g, '&quot;');
+        var btn =
+          '<button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="revokeOfficer(' +
+          jsonId +
+          ',' +
+          jsonNr +
+          ')">Revoke</button>';
+        return (
+          '<tr>' +
+          '<td style="width:75%">' +
+          escHtml(c.nameRealm) +
+          '</td>' +
+          '<td style="width:25%;text-align:right">' +
+          btn +
+          '</td>' +
+          '</tr>'
+        );
+      })
+      .join('');
 
-  var officerClaims = claims.filter(function (c) {
-    return officerIds.indexOf(c.discordId) !== -1;
+    var table = rows
+      ? '<table class="loot-table" style="width:100%;table-layout:fixed;margin-bottom:1rem;">' +
+        '<thead><tr><th style="width:75%;text-align:left">Character</th><th style="width:25%"></th></tr></thead>' +
+        '<tbody>' +
+        rows +
+        '</tbody></table>'
+      : '<p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">No officers yet.</p>';
+
+    // Promote a claimed character to officer
+    var options = nonOfficerClaims
+      .map(function (c) {
+        return '<option value="' + escHtml(String(c.teamMemberId)) + '">' + escHtml(c.nameRealm) + '</option>';
+      })
+      .join('');
+
+    var promote = options
+      ? '<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">' +
+        '<select id="promoteOfficerSelect" class="roster-search-input" style="width:280px;">' +
+        '<option value="">Select a claimed character...</option>' +
+        options +
+        '</select>' +
+        '<button class="btn" onclick="grantOfficerFromPicker()" style="padding:0.3rem 0.75rem;font-size:0.85rem;">Grant Officer</button>' +
+        '<span id="manualOfficerStatus" style="font-size:0.85rem;"></span>' +
+        '</div>'
+      : '<p style="color:var(--text-muted);font-size:0.9rem;">No claimed characters left to promote.</p>';
+
+    el.innerHTML =
+      table +
+      '<p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.5rem;">Promote a claimed character to officer:</p>' +
+      promote;
   });
-  var nonOfficerClaims = claims.filter(function (c) {
-    return officerIds.indexOf(c.discordId) === -1;
-  });
-
-  // Build rows for current officers only
-  var rows = officerClaims
-    .slice()
-    .sort(function (a, b) {
-      return a.nameRealm.localeCompare(b.nameRealm);
-    })
-    .map(function (c) {
-      var jsonId = JSON.stringify(c.discordId).replace(/"/g, '&quot;');
-      var jsonUn = JSON.stringify(c.username).replace(/"/g, '&quot;');
-      var btn =
-        '<button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="revokeOfficer(' +
-        jsonId +
-        ',' +
-        jsonUn +
-        ')">Revoke</button>';
-      return (
-        '<tr>' +
-        '<td style="width:35%">' +
-        escHtml(c.username) +
-        '</td>' +
-        '<td style="width:40%">' +
-        escHtml(c.nameRealm) +
-        '</td>' +
-        '<td style="width:25%;text-align:right">' +
-        btn +
-        '</td>' +
-        '</tr>'
-      );
-    })
-    .join('');
-
-  var table = rows
-    ? '<table class="loot-table" style="width:100%;table-layout:fixed;margin-bottom:1rem;">' +
-      '<thead><tr><th style="width:35%;text-align:left">Discord User</th><th style="width:40%;text-align:left">Character</th><th style="width:25%"></th></tr></thead>' +
-      '<tbody>' +
-      rows +
-      '</tbody></table>'
-    : '<p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">No officers yet.</p>';
-
-  // Promote a claimed character to officer
-  var options = nonOfficerClaims
-    .slice()
-    .sort(function (a, b) {
-      return a.nameRealm.localeCompare(b.nameRealm);
-    })
-    .map(function (c) {
-      var jsonId = JSON.stringify(c.discordId).replace(/"/g, '&quot;');
-      var jsonUn = JSON.stringify(c.username).replace(/"/g, '&quot;');
-      return (
-        '<option value="' +
-        escHtml(c.discordId) +
-        '" data-username="' +
-        escHtml(c.username) +
-        '">' +
-        escHtml(c.username) +
-        ' (' +
-        escHtml(c.nameRealm) +
-        ')</option>'
-      );
-    })
-    .join('');
-
-  var promote = options
-    ? '<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">' +
-      '<select id="promoteOfficerSelect" class="roster-search-input" style="width:280px;">' +
-      '<option value="">Select a claimed character...</option>' +
-      options +
-      '</select>' +
-      '<button class="btn" onclick="grantOfficerFromPicker()" style="padding:0.3rem 0.75rem;font-size:0.85rem;">Grant Officer</button>' +
-      '<span id="manualOfficerStatus" style="font-size:0.85rem;"></span>' +
-      '</div>'
-    : '<p style="color:var(--text-muted);font-size:0.9rem;">No claimed characters left to promote.</p>';
-
-  el.innerHTML =
-    table +
-    '<p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.5rem;">Promote a claimed character to officer:</p>' +
-    promote;
 }
 
 function grantOfficerFromPicker() {
   var selectEl = document.getElementById('promoteOfficerSelect');
   var stEl = document.getElementById('manualOfficerStatus');
-  var discordId = selectEl ? selectEl.value : '';
-  var username = selectEl && selectEl.selectedOptions.length ? selectEl.selectedOptions[0].dataset.username : '';
-  if (!discordId) {
+  var teamMemberId = selectEl ? selectEl.value : '';
+  if (!teamMemberId) {
     if (stEl) {
       stEl.style.color = 'var(--melee)';
       stEl.textContent = 'Select a claimed character first.';
@@ -437,51 +414,36 @@ function grantOfficerFromPicker() {
     stEl.style.color = 'var(--text-muted)';
     stEl.textContent = 'Saving...';
   }
-  grantOfficer(discordId, username);
+  grantOfficer(teamMemberId);
 }
 
-function grantOfficer(discordId, username) {
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=addOfficer&discordId=' +
-      encodeURIComponent(discordId) +
-      '&username=' +
-      encodeURIComponent(username || ''),
-    function (err, result) {
-      if (err || !result || !result.success) {
-        alert('Failed: ' + ((result && result.error) || 'Unknown error'));
+function grantOfficer(teamMemberId) {
+  supabaseClient
+    .from('team_members')
+    .update({ role: 'officer' })
+    .eq('id', teamMemberId)
+    .then(function (result) {
+      if (result.error) {
+        alert('Failed: ' + result.error.message);
         return;
-      }
-      if (window.DATA) {
-        DATA.officerDiscordIds = DATA.officerDiscordIds || [];
-        if (DATA.officerDiscordIds.indexOf(discordId) === -1) DATA.officerDiscordIds.push(discordId);
       }
       renderOfficerManagement();
       if (typeof renderDiscordClaims === 'function') renderDiscordClaims();
-    }
-  );
+    });
 }
 
-function revokeOfficer(discordId, username) {
-  if (!confirm('Revoke officer access for ' + (username || discordId) + '?')) return;
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=removeOfficer&discordId=' +
-      encodeURIComponent(discordId) +
-      '&username=' +
-      encodeURIComponent(username || ''),
-    function (err, result) {
-      if (err || !result || !result.success) {
-        alert('Failed: ' + ((result && result.error) || 'Unknown error'));
+function revokeOfficer(teamMemberId, nameRealm) {
+  if (!confirm('Revoke officer access for ' + (nameRealm || teamMemberId) + '?')) return;
+  supabaseClient
+    .from('team_members')
+    .update({ role: 'raider' })
+    .eq('id', teamMemberId)
+    .then(function (result) {
+      if (result.error) {
+        alert('Failed: ' + result.error.message);
         return;
-      }
-      if (window.DATA && DATA.officerDiscordIds) {
-        DATA.officerDiscordIds = DATA.officerDiscordIds.filter(function (id) {
-          return id !== discordId;
-        });
       }
       renderOfficerManagement();
       if (typeof renderDiscordClaims === 'function') renderDiscordClaims();
-    }
-  );
+    });
 }

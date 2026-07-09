@@ -1056,81 +1056,70 @@ function switchRosterSubTab(name, btnEl) {
 
 function renderDiscordClaims() {
   var el = document.getElementById('rosterDiscordClaimsContent');
-  if (!el) return;
-  var claims = window.DATA && DATA.discordClaims ? DATA.discordClaims : [];
-  if (!claims.length) {
-    el.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">No characters have been claimed yet.</p>';
-    return;
-  }
-  var officerIds = window.DATA && DATA.officerDiscordIds ? DATA.officerDiscordIds : [];
-  var rows = claims
-    .slice()
-    .sort(function (a, b) {
-      return a.nameRealm.localeCompare(b.nameRealm);
-    })
-    .map(function (c) {
-      var date = c.claimedAt ? new Date(c.claimedAt).toLocaleDateString() : '--';
-      var isOfficer = officerIds.indexOf(c.discordId) !== -1;
-      var roleCell = isOfficer
-        ? '<span style="color:var(--heal)">Officer</span>'
-        : '<span style="color:var(--text-muted)">Raider</span>';
-      var jsonNr = JSON.stringify(c.nameRealm).replace(/"/g, '&quot;');
-      var actionCell =
-        '<button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="removeDiscordClaim(' +
-        jsonNr +
-        ')">Remove</button>';
-      return (
-        '<tr>' +
-        '<td style="width:25%">' +
-        escHtml(c.username) +
-        '</td>' +
-        '<td style="width:30%">' +
-        escHtml(c.nameRealm) +
-        '</td>' +
-        '<td style="width:15%">' +
-        escHtml(date) +
-        '</td>' +
-        '<td style="width:15%">' +
-        roleCell +
-        '</td>' +
-        '<td style="width:15%;text-align:right">' +
-        actionCell +
-        '</td>' +
-        '</tr>'
-      );
-    })
-    .join('');
-  el.innerHTML =
-    '<table class="loot-table" style="width:100%;table-layout:fixed;">' +
-    '<thead><tr>' +
-    '<th style="width:25%;text-align:left">Discord User</th>' +
-    '<th style="width:30%;text-align:left">Character</th>' +
-    '<th style="width:15%;text-align:left">Claimed</th>' +
-    '<th style="width:15%;text-align:left">Role</th>' +
-    '<th style="width:15%"></th>' +
-    '</tr></thead>' +
-    '<tbody>' +
-    rows +
-    '</tbody>' +
-    '</table>';
+  if (!el || !supabaseClient) return;
+  el.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">Loading...</p>';
+  fetchTeamClaims().then(function (claims) {
+    if (!claims.length) {
+      el.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">No characters have been claimed yet.</p>';
+      return;
+    }
+    var rows = claims
+      .map(function (c) {
+        var isOfficer = c.role === 'officer' || c.role === 'team_leader';
+        var roleCell = isOfficer
+          ? '<span style="color:var(--heal)">Officer</span>'
+          : '<span style="color:var(--text-muted)">Raider</span>';
+        var jsonNr = JSON.stringify(c.nameRealm).replace(/"/g, '&quot;');
+        var actionCell =
+          '<button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="removeDiscordClaim(' +
+          jsonNr +
+          ')">Remove</button>';
+        return (
+          '<tr>' +
+          '<td style="width:35%">' +
+          escHtml(c.nameRealm) +
+          '</td>' +
+          '<td style="width:30%">' +
+          escHtml(c.discordId) +
+          '</td>' +
+          '<td style="width:20%">' +
+          roleCell +
+          '</td>' +
+          '<td style="width:15%;text-align:right">' +
+          actionCell +
+          '</td>' +
+          '</tr>'
+        );
+      })
+      .join('');
+    el.innerHTML =
+      '<table class="loot-table" style="width:100%;table-layout:fixed;">' +
+      '<thead><tr>' +
+      '<th style="width:35%;text-align:left">Character</th>' +
+      '<th style="width:30%;text-align:left">Discord ID</th>' +
+      '<th style="width:20%;text-align:left">Role</th>' +
+      '<th style="width:15%"></th>' +
+      '</tr></thead>' +
+      '<tbody>' +
+      rows +
+      '</tbody>' +
+      '</table>';
+  });
 }
 
 function removeDiscordClaim(nameRealm) {
   if (!confirm('Remove claim for ' + nameRealm + '? The raider will need to re-claim their character on next login.'))
     return;
-  jsonpRequest(
-    WEB_APP_URL + '?action=removeDiscordClaim&nameRealm=' + encodeURIComponent(nameRealm),
-    function (err, result) {
-      if (err || !result || !result.success) {
-        alert('Failed to remove claim: ' + ((result && result.error) || (err && err.message) || 'Unknown error'));
+  supabaseClient
+    .from('players')
+    .update({ team_member_id: null })
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('name_realm', nameRealm)
+    .then(function (result) {
+      if (result.error) {
+        alert('Failed to remove claim: ' + result.error.message);
         return;
       }
-      if (window.DATA && DATA.discordClaims) {
-        DATA.discordClaims = DATA.discordClaims.filter(function (c) {
-          return c.nameRealm !== nameRealm;
-        });
-      }
       renderDiscordClaims();
-    }
-  );
+    });
 }

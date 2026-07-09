@@ -422,6 +422,30 @@ function submitCharacterClaim() {
     });
 }
 
+// ── Officer claim management (#365) ──────────────────────────────────────────
+
+// Claimed characters on this team: players with a linked team_members row,
+// joined for the discord id and role. Supabase is the source of truth now
+// (replacing DATA.discordClaims / DATA.officerDiscordIds), so both the roster
+// tab's claims table and the admin tab's promotion picker share this fetch.
+function fetchTeamClaims() {
+  if (!supabaseClient) return Promise.resolve([]);
+  return supabaseClient
+    .from('players')
+    .select('name_realm, team_members(id, discord_id, role)')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .not('team_member_id', 'is', null)
+    .is('archived_at', null)
+    .order('name_realm')
+    .then(function (result) {
+      if (result.error) return [];
+      return (result.data || []).map(function (row) {
+        var tm = row.team_members || {};
+        return { nameRealm: row.name_realm, teamMemberId: tm.id, discordId: tm.discord_id, role: tm.role };
+      });
+    });
+}
+
 // ── Logout ────────────────────────────────────────────────────────────────────
 
 function discordLogout() {
