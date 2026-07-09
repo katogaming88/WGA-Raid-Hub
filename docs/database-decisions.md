@@ -6,6 +6,17 @@ Issues carrying a decision are tagged with the `decision` label: `gh issue list 
 
 ---
 
+## 2026-07-09 -- Actor-name resolution reads auth.users PII, so it's gated like a read policy, not just an execute grant
+
+`resolve_actor_name(p_actor_id uuid, p_team_id integer)` (migration `20260709130000_resolve_actor_name.sql`, #376, split from #215) resolves `audit_log.actor_id` to a display name for the Audit Log tab's CHANGED BY column.
+
+- **Internal authorization check, not just a GRANT restriction.** Every other SECURITY DEFINER function so far (`write_audit_log`, `claim_character`) only ever exposes or attributes the *caller's own* data. This one is different: its Discord-display-name fallback path reads `auth.users.raw_user_meta_data` for an arbitrary other person (the case where a site admin acted on a team they don't belong to, so no `team_members` row exists to resolve a name from). Restricting `EXECUTE` to `authenticated` alone would let any raider harvest other people's Discord display names by probing actor uuids across teams they have nothing to do with. The function therefore re-checks the same `my_team_role(p_team_id) in ('officer','team_leader') or is_site_admin()` gate `"Officers read audit_log"` already enforces at the table level -- callers who couldn't read a team's audit log can't resolve names on it either.
+- **Resolution order mirrors `resolveDiscordSession()`'s existing client-side priority** (`js/discord.js`): linked player's `nickname`, then the character-name part of `name_realm` (preferring the linked `players` row over `team_members.name_realm`'s legacy bridge column, same precedence `resolveDiscordSession()` uses), then the Discord display name, then `null`.
+
+[Full discussion -> #376](https://github.com/katogaming88/WGA-Raid-Hub/issues/376)
+
+---
+
 ## 2026-07-09 -- Audit log write path: security-definer writer is the only insert path
 
 `audit_log` grants anon/authenticated only `REFERENCES,TRIGGER,TRUNCATE,MAINTAIN` -- no `INSERT` -- so a Phase 5 officer write feature has no direct path to log an action. `write_audit_log(p_team_id, p_action, p_target_type, p_target_id, p_detail)` (migration `20260709120000_write_audit_log.sql`) is the one function meant to ever insert into that table.

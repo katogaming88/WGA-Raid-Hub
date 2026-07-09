@@ -16,6 +16,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ### Backend
 - **Audit log write path (#214)** -- `audit_log` had no client write path (anon/authenticated hold no INSERT grant on the table), so no Phase 5 officer write feature would have anywhere to record its action. `write_audit_log(p_team_id, p_action, p_target_type, p_target_id, p_detail)` is now the one SECURITY DEFINER function meant to ever insert into it: same definer pattern as `is_site_admin()`/`claim_character()`, gated to officer/team_leader-or-site-admin callers, `actor_id` always set from `auth.uid()` rather than a caller-supplied value.
+- **Actor-name resolution for the audit log (#376)** -- `resolve_actor_name(p_actor_id, p_team_id)` resolves an `audit_log.actor_id` uuid to a display name for the upcoming Audit Log tab rewire: the linked player's nickname, else the character-name part of their `name_realm`, else (for a site admin acting on a team they don't belong to) their Discord display name read from `auth.users`. Since that last path surfaces another person's PII, the function re-checks the same officer/team_leader-or-site-admin gate `"Officers read audit_log"` already enforces, rather than relying on the `EXECUTE` grant alone.
 
 ---
 
