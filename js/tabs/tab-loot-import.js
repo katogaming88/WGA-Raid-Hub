@@ -1,6 +1,16 @@
-var LOOT_CHUNK_SIZE = 25;
-
-// ── Import sub-tab ────────────────────────────────────────────────────────────
+// ── Import sub-tab (Supabase, #219) ─────────────────────────────────────────
+//
+// submitLootImport() carries every field import_rclc_loot() (migration
+// 20260709180000) needs straight through from the RCLC paste -- date/time,
+// itemID, boss, instance -- instead of the old GAS path's minimal
+// id/player/date/itemName/instance subset. The RPC does its own date
+// parsing (accepts RCLC's "YYYY/MM/DD" as-is) and player/item resolution
+// server-side, so there's no client-side reshaping needed beyond picking the
+// fields off each entry. One RPC call per paste, not chunked -- a raid
+// night's export is at most a couple hundred entries, well within a normal
+// request body, and the old GAS chunking was worked around Apps Script's own
+// URL-length limits (JSONP GET), which don't apply to a POST through
+// supabase-js.
 
 function buildLootImportForm() {
   var el = document.getElementById('loot-sub-import');
@@ -22,7 +32,7 @@ function buildLootImportForm() {
     '<li>Make sure <strong>Season Name</strong> is set correctly in Season Settings before importing so entries are tagged with the right season label.</li>';
   html += '</ul>';
   html +=
-    '<strong>Season reset:</strong> go to <strong>Import History</strong>, click "Clear All Loot", update Season Name in Season Settings, then re-import this season\'s loot.';
+    '<strong>Season reset:</strong> update Season Name in Season Settings before re-importing so new entries are tagged with the new season -- past seasons stay in the loot feed under their own label, filterable there.';
   html += '</div>';
   if (seasonName) {
     html +=
@@ -71,20 +81,18 @@ function submitLootImport() {
     var e = entries[i];
     var id = String(e.id || '').trim();
     var player = String(e.player || '').trim();
-    var date = (function (raw) {
-      if (!raw) return '';
-      var d = new Date(raw);
-      if (isNaN(d.getTime())) return String(raw).trim();
-      var yr = d.getFullYear();
-      var mo = String(d.getMonth() + 1).padStart(2, '0');
-      var dy = String(d.getDate()).padStart(2, '0');
-      return yr + '-' + mo + '-' + dy;
-    })(e.date);
-    var itemName = String(e.itemName || '').trim();
     var instance = String(e.instance || '').trim();
-    if (id && player && instance) {
-      rows.push({ id: id, player: player, date: date, itemName: itemName, instance: instance });
-    }
+    if (!id || !player || !instance) continue;
+    rows.push({
+      id: id,
+      player: player,
+      date: String(e.date || '').trim(),
+      time: String(e.time || '').trim(),
+      itemID: e.itemID != null ? e.itemID : null,
+      itemName: String(e.itemName || '').trim(),
+      instance: instance,
+      boss: String(e.boss || '').trim()
+    });
   }
 
   if (rows.length === 0) {
@@ -99,12 +107,23 @@ function submitLootImport() {
 
   setLootImportStatus('Importing ' + rows.length + ' entries...', 'var(--text-muted)');
 
-  sendLootChunks(season, rows, 0, 0, 0, function (written, skipped) {
-    var msg = 'Done. ' + written + ' new entries added';
-    if (skipped > 0) msg += ', ' + skipped + ' duplicates skipped';
-    msg += '.';
-    setLootImportStatus(msg, 'var(--heal)');
-  });
+  supabaseClient
+    .rpc('import_rclc_loot', { p_team_id: _teamCfg.supabaseTeamId, p_season: season, p_rows: rows })
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      var counts = result.data || {};
+      var inserted = counts.inserted || 0;
+      var skipped = counts.skipped_duplicate || 0;
+      var unresolved = counts.unresolved_item || 0;
+      var msg = 'Done. ' + inserted + ' new entries added';
+      if (skipped > 0) msg += ', ' + skipped + ' duplicates skipped';
+      if (unresolved > 0) msg += ', ' + unresolved + ' with an unresolved item (check Item Lookup)';
+      msg += '.';
+      setLootImportStatus(msg, 'var(--heal)');
+    })
+    .catch(function (err) {
+      setLootImportStatus('Import failed: ' + err.message, 'var(--melee)');
+    });
 }
 
 function setLootImportStatus(text, color) {
@@ -114,135 +133,90 @@ function setLootImportStatus(text, color) {
   el.textContent = text;
 }
 
-function sendLootChunks(season, rows, offset, totalWritten, totalSkipped, cb) {
-  if (offset >= rows.length) {
-    cb(totalWritten, totalSkipped);
-    return;
-  }
-  var chunk = rows.slice(offset, offset + LOOT_CHUNK_SIZE);
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=appendLootRows&season=' +
-      encodeURIComponent(season) +
-      '&rows=' +
-      encodeURIComponent(JSON.stringify(chunk)),
-    function (err, result) {
-      if (err || !result || !result.success) {
-        setLootImportStatus(err ? err.message : 'Import failed after ' + totalWritten + ' entries.', 'var(--melee)');
-        return;
-      }
-      var w = result.written || 0;
-      var s = result.skipped || 0;
-      var done = Math.min(offset + LOOT_CHUNK_SIZE, rows.length);
-      setLootImportStatus('Importing... (' + done + ' / ' + rows.length + ')', 'var(--text-muted)');
-      sendLootChunks(season, rows, offset + LOOT_CHUNK_SIZE, totalWritten + w, totalSkipped + s, cb);
-    }
-  );
-}
-
-// ── Import History sub-tab ────────────────────────────────────────────────────
-
+// ── Import History sub-tab (Supabase, #219) ─────────────────────────────────
+//
+// Sourced from audit_log rather than rclc_loot directly: every successful
+// import already logs one 'Loot Imported (RCLC)' entry per row (player as
+// TARGET, "track - item name" as DETAIL), and -- critically -- only genuine
+// paste-imports ever produce that action. rclc_loot itself can't tell a
+// paste-imported row apart from the separate legacy-tracker rows the #320
+// historical import already merged in, so querying it directly here would
+// misrepresent old history as recent imports. No "Clear All" in this
+// version for the same reason: there's no safe way yet to select only
+// paste-imported rows for deletion (see docs/database-decisions.md).
 function buildLootHistoryTab() {
   var el = document.getElementById('loot-sub-history');
   if (!el) return;
   el.innerHTML = '<p style="font-size:0.92rem;color:var(--text-muted);padding:0.5rem 0;">Loading...</p>';
-  fetchPastedLootSummary(renderLootHistoryPanel);
+  if (!supabaseClient) {
+    el.innerHTML = '<p style="font-size:0.92rem;color:var(--melee);padding:0.5rem 0;">Not connected to Supabase.</p>';
+    return;
+  }
+
+  var teamId = _teamCfg.supabaseTeamId;
+  supabaseClient
+    .from('audit_log')
+    .select('target_type, target_id, detail, created_at')
+    .eq('team_id', teamId)
+    .eq('action', 'Loot Imported (RCLC)')
+    .order('created_at', { ascending: false })
+    .limit(100)
+    .then(function (result) {
+      if (result.error) {
+        el.innerHTML =
+          '<p style="font-size:0.92rem;color:var(--melee);padding:0.5rem 0;">' + escHtml(result.error.message) + '</p>';
+        return;
+      }
+      var rows = result.data || [];
+      return resolveAuditTargetNames(rows, teamId).then(function (targetNames) {
+        renderLootHistoryPanel(rows, targetNames);
+      });
+    });
 }
 
-function fetchPastedLootSummary(cb) {
-  jsonpRequest(WEB_APP_URL + '?action=getPastedLootSummary', function (err, result) {
-    cb(!err && result ? result : { count: 0, lastDate: '' });
-  });
-}
-
-function renderLootHistoryPanel(summary, preservedStatus) {
+function renderLootHistoryPanel(rows, targetNames) {
   var el = document.getElementById('loot-sub-history');
   if (!el) return;
 
-  var count = summary ? summary.count || 0 : 0;
-  var lastDate = summary ? summary.lastDate || '' : '';
-
   var html = '<div class="signup-officer-panel">';
   html +=
-    '<div class="signup-status-row"><span class="signup-status-label">Imported Loot History<button class="help-btn" onclick="toggleHelp(\'help-loot-history\')" title="Show help">?</button></span></div>';
+    '<div class="signup-status-row"><span class="signup-status-label">Recent RCLC Imports<button class="help-btn" onclick="toggleHelp(\'help-loot-history\')" title="Show help">?</button></span></div>';
   html += '<div id="help-loot-history" class="help-tip" style="margin-bottom:0.5rem;">';
   html +=
-    'Shows the total number of loot entries imported via the Import tab, and the date of the most recent entry.<br>';
-  html +=
-    "<strong>Clear All Loot History</strong> removes every imported entry -- use this at a season reset before re-importing the new season's loot. It does not affect the Loot Data sheet (IMPORTRANGE source), only the pasted imports.";
+    'Shows the most recent loot entries imported via the Import tab (up to the last 100), so any officer can confirm a paste went through. Sourced from the audit log -- every successful import logs one entry per item.';
   html += '</div>';
-  if (count > 0) {
-    html += '<p class="signup-officer-note" style="margin-top:0.35rem;">';
-    html += count + ' entries stored.';
-    if (lastDate) html += ' Most recent: ' + lastDate + '.';
-    html += '</p>';
-    html += '<div style="margin-top:0.75rem;display:flex;align-items:center;gap:0.75rem;">';
+
+  if (!rows.length) {
     html +=
-      '<button id="clearAllLootBtn" class="btn btn-danger" onclick="confirmClearAllLoot()">Clear All Loot History</button>';
-    html += '<span id="lootHistoryStatus" style="font-size:0.92rem;"></span>';
+      '<p class="signup-officer-note" style="margin-top:0.35rem;">No loot imported yet. Go to the <a href="#" onclick="switchLootSubTab(\'import\', document.getElementById(\'loot-subtab-btn-import\'));return false;">Import</a> tab to add entries.</p>';
     html += '</div>';
-    html +=
-      '<div id="lootClearConfirm" style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">';
-    html +=
-      '<span style="font-size:0.92rem;color:var(--melee);">This will delete all ' +
-      count +
-      ' imported loot entries. Use at season reset.</span>';
-    html += '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">';
-    html += '<button class="btn btn-danger" onclick="executeClearAllLoot()">Yes, Clear All</button>';
-    html +=
-      '<button class="btn btn-muted" onclick="document.getElementById(\'lootClearConfirm\').style.display=\'none\'">Cancel</button>';
-    html += '</div></div>';
-  } else {
-    html +=
-      '<p class="signup-officer-note" style="margin-top:0.35rem;">No loot history imported yet. Go to the <a href="#" onclick="switchLootSubTab(\'import\', document.getElementById(\'loot-subtab-btn-import\'));return false;">Import</a> tab to add entries.</p>';
+    el.innerHTML = html;
+    return;
   }
+
+  html +=
+    '<div style="font-size:0.88rem;color:var(--text-muted);margin:0.5rem 0;">' +
+    rows.length +
+    ' recent import' +
+    (rows.length !== 1 ? 's' : '') +
+    '</div>';
+  html +=
+    '<div style="overflow-x:auto;"><table class="roster-table" style="width:100%;"><thead><tr><th>Time</th><th>Player</th><th>Item</th></tr></thead><tbody>';
+  rows.forEach(function (row) {
+    var player = row.target_type === 'players' && row.target_id != null ? targetNames[row.target_id] || '' : '';
+    html +=
+      '<tr><td style="white-space:nowrap;">' +
+      escHtml(auditFormatTs(row.created_at)) +
+      '</td><td>' +
+      escHtml(player) +
+      '</td><td>' +
+      escHtml(typeof row.detail === 'string' ? row.detail : '') +
+      '</td></tr>';
+  });
+  html += '</tbody></table></div>';
   html += '</div>';
 
   el.innerHTML = html;
-
-  if (preservedStatus) {
-    var statusEl = document.getElementById('lootHistoryStatus');
-    if (statusEl) {
-      statusEl.style.color = preservedStatus.color;
-      statusEl.textContent = preservedStatus.text;
-    }
-  }
-}
-
-function confirmClearAllLoot() {
-  var el = document.getElementById('lootClearConfirm');
-  if (el) el.style.display = '';
-}
-
-function executeClearAllLoot() {
-  var confirmEl = document.getElementById('lootClearConfirm');
-  if (confirmEl) confirmEl.style.display = 'none';
-  var btn = document.getElementById('clearAllLootBtn');
-  var status = document.getElementById('lootHistoryStatus');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Clearing...';
-  }
-  if (status) {
-    status.textContent = '';
-  }
-
-  jsonpRequest(WEB_APP_URL + '?action=clearAllPastedLoot', function (err, result) {
-    if (!err && result && result.success) {
-      fetchPastedLootSummary(function (summary) {
-        renderLootHistoryPanel(summary, { color: 'var(--heal)', text: 'All loot history cleared.' });
-      });
-    } else {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Clear All Loot History';
-      }
-      if (status) {
-        status.style.color = 'var(--melee)';
-        status.textContent = err ? err.message : 'Clear failed.';
-      }
-    }
-  });
 }
 
 // Legacy alias — called by old code paths that still reference buildLootImportTab
