@@ -453,7 +453,8 @@ if (!isOfficerSessionValid()) {
       // Check Discord session for isAdmin
       if (typeof showAdminTab === 'function') {
         var ds = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
-        showAdminTab(!ds || ds.isAdmin); // no Discord session means password login, show Admin
+        // No Discord session means password login -- show the full Admin tab.
+        showAdminTab(ds ? adminAccessLevel(ds) : true);
       }
       document.getElementById('officerViewWrap').classList.add('active');
       document.getElementById('loadingMsg').style.display = 'none';

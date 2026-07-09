@@ -225,6 +225,7 @@ function resolveDiscordSession(session) {
           username: session.user.user_metadata.full_name || session.user.user_metadata.name,
           nameRealm: nameRealm,
           isOfficer: !!member && (member.role === 'officer' || member.role === 'team_leader'),
+          isTeamLeader: !!member && member.role === 'team_leader',
           isAdmin: !!adminResult.data
         };
         if (nameRealm) return mapped;
@@ -410,7 +411,8 @@ function submitCharacterClaim() {
       }
       var updated = Object.assign({}, session, {
         nameRealm: row.name_realm,
-        isOfficer: row.role === 'officer' || row.role === 'team_leader'
+        isOfficer: row.role === 'officer' || row.role === 'team_leader',
+        isTeamLeader: row.role === 'team_leader'
       });
       setDiscordSession(updated);
       renderDiscordNav(updated);
@@ -419,6 +421,44 @@ function submitCharacterClaim() {
     })
     .catch(function () {
       claimFailed();
+    });
+}
+
+// Admin tab access level for a resolved session: true grants the full tab
+// (site admins), 'officers' grants only the Officers sub-tab (team leaders --
+// the "Team leaders write team_members" policy already covers their grant/
+// revoke writes, they just had no UI path to it before), false hides the tab
+// entirely. Callers with their own no-session fallback (the legacy password
+// login has no Discord session at all) branch around this rather than folding
+// that case in here.
+function adminAccessLevel(session) {
+  if (!session) return false;
+  if (session.isAdmin) return true;
+  if (session.isTeamLeader) return 'officers';
+  return false;
+}
+
+// ── Officer claim management (#365) ──────────────────────────────────────────
+
+// Claimed characters on this team: players with a linked team_members row,
+// joined for the discord id and role. Supabase is the source of truth now
+// (replacing DATA.discordClaims / DATA.officerDiscordIds), so both the roster
+// tab's claims table and the admin tab's promotion picker share this fetch.
+function fetchTeamClaims() {
+  if (!supabaseClient) return Promise.resolve([]);
+  return supabaseClient
+    .from('players')
+    .select('name_realm, team_members(id, discord_id, role)')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .not('team_member_id', 'is', null)
+    .is('archived_at', null)
+    .order('name_realm')
+    .then(function (result) {
+      if (result.error) return [];
+      return (result.data || []).map(function (row) {
+        var tm = row.team_members || {};
+        return { nameRealm: row.name_realm, teamMemberId: tm.id, discordId: tm.discord_id, role: tm.role };
+      });
     });
 }
 

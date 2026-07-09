@@ -746,7 +746,7 @@
 
             <!-- Officers -->
             <div id="admin-sub-officers" style="display:none;">
-              <p class="signup-officer-note" style="margin-bottom:0.75rem;">Officers can access the officer dashboard. Admins also have access to this Admin tab. Set your Discord ID in <strong>adminDiscordIds</strong> via GAS Script Properties to grant admin access.</p>
+              <p class="signup-officer-note" style="margin-bottom:0.75rem;">Officers can access the officer dashboard. Team leaders and site admins can promote a claimed character to officer or revoke it from here.</p>
               <div id="adminOfficersContent"></div>
             </div>
 
@@ -1009,11 +1009,23 @@ function onDiscordLogout() {
   officerLogout();
 }
 
-function showAdminTab(show) {
+// access: true for the full tab (site admins), 'officers' for team leaders
+// (Officers sub-tab only -- Properties/Bot Config/Data Export/Danger Zone stay
+// site-admin only), falsy to hide the tab. buildAdminTab() (tab-admin.js)
+// reads window._adminAccessLevel to pick the right default sub-tab on click.
+function showAdminTab(access) {
   var btn = document.getElementById('adminNavBtn');
+  var show = !!access;
   if (btn) btn.style.display = show ? '' : 'none';
   var ts = document.getElementById('teamSwitcherSelect');
   if (ts) ts.style.display = show ? '' : 'none';
+
+  window._adminAccessLevel = access;
+  var officersOnly = access === 'officers';
+  ['properties', 'botconfig', 'export', 'danger'].forEach(function (sub) {
+    var subBtn = document.getElementById('admin-subtab-btn-' + sub);
+    if (subBtn) subBtn.style.display = officersOnly ? 'none' : '';
+  });
 }
 
 function _grantOfficerAccessViaDiscord(session) {
@@ -1025,7 +1037,7 @@ function _grantOfficerAccessViaDiscord(session) {
   loadData(
     function() {
       buildOfficerDashboard();
-      showAdminTab(session && session.isAdmin);
+      showAdminTab(session ? adminAccessLevel(session) : false);
       document.getElementById('officerViewWrap').classList.add('active');
       document.getElementById('loadingMsg').style.display = 'none';
     },

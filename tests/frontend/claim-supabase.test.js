@@ -200,7 +200,18 @@ describe('submitCharacterClaim', () => {
     );
     sandbox.submitCharacterClaim();
     await flush();
-    expect(sandbox.getDiscordSession().isOfficer).toBe(true);
+    const mapped = sandbox.getDiscordSession();
+    expect(mapped.isOfficer).toBe(true);
+    expect(mapped.isTeamLeader).toBe(true);
+  });
+
+  it('does not set isTeamLeader for a plain officer role', async () => {
+    const { sandbox } = setup({ data: [{ name_realm: 'Rex-Illidan', role: 'officer' }], error: null }, 'Rex-Illidan');
+    sandbox.submitCharacterClaim();
+    await flush();
+    const mapped = sandbox.getDiscordSession();
+    expect(mapped.isOfficer).toBe(true);
+    expect(mapped.isTeamLeader).toBe(false);
   });
 
   it('shows the RPC error message and leaves the modal open on a rejected claim', async () => {
@@ -306,7 +317,13 @@ describe('resolveDiscordSession', () => {
       linkedPlayer: { name_realm: 'Linked-Illidan' }
     });
     const mapped = await sandbox.resolveDiscordSession(session);
-    expect(mapped).toEqual({ username: 'Kato', nameRealm: 'Linked-Illidan', isOfficer: false, isAdmin: false });
+    expect(mapped).toEqual({
+      username: 'Kato',
+      nameRealm: 'Linked-Illidan',
+      isOfficer: false,
+      isTeamLeader: false,
+      isAdmin: false
+    });
     const q = captured.byTable.players;
     expect(q.eq).toEqual([['team_member_id', 5]]);
     expect(q.is).toEqual([['archived_at', null]]);
@@ -624,5 +641,42 @@ describe('onDiscordSessionRestored (#371 collision regression)', () => {
     // but _qaRefresh() must still run -- the two behaviors are independent.
     sandbox.onDiscordSessionRestored({ username: 'Kato', nameRealm: 'Kato-Illidan' });
     expect(qaRefresh).toHaveBeenCalledOnce();
+  });
+});
+
+// #365 follow-up: the Admin tab's Officers sub-tab was site-admin-gated even
+// though the "Team leaders write team_members" RLS policy already lets a team
+// leader grant/revoke officer access -- there was just no UI path to it.
+// adminAccessLevel() is the single source of truth both showAdminTab() call
+// sites (officer.html, js/officer.js) defer to for the tri-state result.
+describe('adminAccessLevel', () => {
+  function load() {
+    const sandbox = loadDiscordJs({ supabaseClient: null });
+    return sandbox;
+  }
+
+  it('grants full access to a site admin', () => {
+    const sandbox = load();
+    expect(sandbox.adminAccessLevel({ isAdmin: true, isTeamLeader: false })).toBe(true);
+  });
+
+  it('grants full access to a site admin who is also a team leader', () => {
+    const sandbox = load();
+    expect(sandbox.adminAccessLevel({ isAdmin: true, isTeamLeader: true })).toBe(true);
+  });
+
+  it('grants officers-only access to a team leader who is not a site admin', () => {
+    const sandbox = load();
+    expect(sandbox.adminAccessLevel({ isAdmin: false, isTeamLeader: true })).toBe('officers');
+  });
+
+  it('denies access to a plain officer or raider', () => {
+    const sandbox = load();
+    expect(sandbox.adminAccessLevel({ isAdmin: false, isTeamLeader: false })).toBe(false);
+  });
+
+  it('denies access with no session', () => {
+    const sandbox = load();
+    expect(sandbox.adminAccessLevel(null)).toBe(false);
   });
 });

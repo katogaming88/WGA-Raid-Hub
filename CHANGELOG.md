@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.20.0] - 2026-07-09
+
+### Frontend
+- **Officer claim management and promotion on Supabase (#365)** -- The roster tab's Discord Claims table and the admin tab's officer promotion picker read live `DATA.discordClaims`/`DATA.officerDiscordIds` from the GAS core payload, which went stale the moment #212 moved claim writes to Supabase; the admin tab's promote action was already dead code since #211 moved officer access to `team_members.role`. Both panels now read through a shared `fetchTeamClaims()` (`js/discord.js`): claimed, unarchived players on the team joined to their linked `team_members` row for `discord_id` and `role`. Removing a claim clears `players.team_member_id`; granting/revoking officer access updates `team_members.role` directly between `raider` and `officer` through PostgREST, covered by the existing "Officers write players" and "Team leaders write team_members" policies -- no new SQL needed. The claims table now shows Discord ID instead of a display name and drops the claimed-date column, since neither is stored anywhere in Supabase. Team leaders are intentionally excluded from the officer picker -- it only replaces the old flat officer on/off toggle, not the separate team-leader tier.
+- **Team leaders can now reach the Officers sub-tab without site-admin access (#365 follow-up)** -- The Admin tab was a single site-admin-gated nav item, so a team leader had to go through a site admin to promote a raider to officer even though the "Team leaders write team_members" policy already let them make that write. `showAdminTab()` now takes a tri-state access level (`adminAccessLevel()` in `js/discord.js`: full for site admins, `'officers'`-only for team leaders, none otherwise) instead of a plain boolean; a team-leader-only session gets the Admin nav item but only the Officers sub-tab -- Properties, Bot Config, Data Export, and Danger Zone stay hidden and reachable only by site admins.
+
+---
+
 ## [3.19.2] - 2026-07-09
 
 ### Frontend
