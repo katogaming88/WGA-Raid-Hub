@@ -6,6 +6,18 @@ Issues carrying a decision are tagged with the `decision` label: `gh issue list 
 
 ---
 
+## 2026-07-09 -- anon/authenticated need USAGE on sequences too, not just table DML
+
+#312 granted base table DML (`select/insert/update/delete` on all `public` tables) to `anon`/`authenticated` so RLS policies would actually get consulted on a write. Found while testing #216's Add Player flow: inserting into `players` still failed with `permission denied for sequence players_id_seq`, even though the row-level `"Officers write players"` policy permits the insert.
+
+- **A serial/identity column's `nextval()` checks `USAGE` on its backing sequence before RLS is ever reached.** #312 only covered tables; nothing had exercised an `INSERT ... DEFAULT` through PostgREST until now, so the gap sat unnoticed. Same class of issue #332 flagged for `service_role` -- this is the `anon`/`authenticated` half of it.
+- **Fix mirrors #312's shape exactly:** one additive migration (`20260709150000_sequence_grants.sql`, #383), `grant usage, select on all sequences in schema public to anon, authenticated` plus the matching `alter default privileges` so future sequences pick it up automatically. Doesn't loosen anything -- RLS still gates every row.
+- **No dbdoc/RLS.md update needed** -- grants don't appear in either (confirmed against #312's precedent), so this is a schema-docs-CI no-op.
+
+[Full discussion -> #383](https://github.com/katogaming88/WGA-Raid-Hub/issues/383)
+
+---
+
 ## 2026-07-09 -- Historical audit_log.detail backfilled in place, legacy changed_by dropped rather than preserved
 
 The Stage C import (#320) wrote the raw `{target, from, to, changed_by}` shape into `audit_log.detail` for every historical row; `write_audit_log()` (#214) and the Audit Log tab rewire (#378) both expect a single human-readable summary string instead. Migration `20260709140000_backfill_audit_log_detail.sql` (#377, split from #215) converts existing rows in place via `UPDATE ... WHERE jsonb_typeof(detail) = 'object'`.
