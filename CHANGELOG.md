@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.19.2] - 2026-07-09
+
+### Frontend
+- **Added a team switcher to the public page (#368)** -- `index.html`'s nav had no way to move between teams; only `officer.html` exposed the `teamSwitcherSelect` dropdown. A raider landing on the wrong team's link (bad bookmark, stale Discord link) had to manually edit the `?team=` query param. Reuses the existing shared `initTeamUI()`/`switchTeam()` plumbing, so it inherits Discord session carry-over across the switch for free.
+- **Added a "wrong team" hint to the claim modal (#212)** -- A raider who doesn't see their character in the claim dropdown had no signal that they might be viewing the wrong team's roster. The hint now names the currently-viewed team and links straight into the new public team switcher (`goToTeamSwitcher()` in `js/discord.js`) rather than just stating the problem. This was the last remaining piece of #212, deliberately deferred behind #368 landing first.
+
+---
+
 ## [3.19.1] - 2026-07-09
 
 ### Frontend

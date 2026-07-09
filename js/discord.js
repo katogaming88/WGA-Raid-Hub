@@ -309,6 +309,19 @@ function closeDiscordClaimModal() {
   if (modal) modal.style.display = 'none';
 }
 
+// Closes the claim modal and hands off to the public team switcher (#368) so the
+// "wrong team" hint (#212) is actionable, not just informational.
+function goToTeamSwitcher() {
+  closeDiscordClaimModal();
+  var sel = document.getElementById('teamSwitcherSelect');
+  if (!sel) return;
+  sel.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  sel.focus();
+  if (typeof sel.showPicker === 'function') {
+    try { sel.showPicker(); } catch (_) {}
+  }
+}
+
 function submitCharacterClaim() {
   var sel = document.getElementById('claimCharacterSelect');
   var errEl = document.getElementById('claimError');
