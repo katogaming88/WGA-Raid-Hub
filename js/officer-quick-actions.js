@@ -57,22 +57,47 @@ function _renderPlayerSelector() {
   }
 }
 
+// Persistent "claim your character" prompt on the landing view, shown only when
+// logged in with no claimed character -- the same session state where
+// _renderPlayerSelector hides the profile card. display:none keeps it out of the
+// accessibility tree. The box's dialog/focus a11y and the modal it opens are
+// tracked in the Accessibility milestone; this is just the entry point.
+function _renderClaimPrompt() {
+  var card = document.getElementById('claimPromptCard');
+  if (!card) return;
+  var session = typeof getDiscordSession === 'function' && getDiscordSession();
+  if (session && !session.nameRealm) {
+    var nameEl = document.getElementById('claimPromptName');
+    if (nameEl) nameEl.textContent = session.username || '';
+    card.style.display = '';
+  } else {
+    card.style.display = 'none';
+  }
+}
+
+// Officer bar + player selector + claim prompt all react to the Discord session;
+// refresh the three together on every transition.
+function _qaRefresh() {
+  _qaRender();
+  _renderPlayerSelector();
+  _renderClaimPrompt();
+}
+
 // Callbacks invoked by discord.js
 function onDiscordSessionRestored(session) {
-  _qaRender();
-  _renderPlayerSelector();
+  _qaRefresh();
 }
 function onDiscordLoginComplete(session) {
-  _qaRender();
-  _renderPlayerSelector();
+  _qaRefresh();
 }
 function onDiscordLogout() {
-  _qaRender();
-  _renderPlayerSelector();
+  _qaRefresh();
 }
 function onDiscordInitNoSession() {
-  _qaRender();
-  _renderPlayerSelector();
+  _qaRefresh();
+}
+function onDiscordClaimComplete(session) {
+  _qaRefresh();
 }
 
 function _qaSetStatus(msg, color) {
@@ -289,7 +314,6 @@ function _qaLootChunks(season, rows, offset, written, skipped, statusEl, onDone,
   );
 }
 
-// Eagerly render from the cached session without waiting for JSONP validation.
-// onDiscordSessionRestored / onDiscordLogout will correct both once validation completes.
-_qaRender();
-_renderPlayerSelector();
+// Eagerly render from the cached session without waiting for validation.
+// The onDiscord* callbacks correct these once session validation completes.
+_qaRefresh();
