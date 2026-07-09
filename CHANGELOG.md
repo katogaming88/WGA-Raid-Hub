@@ -13,6 +13,9 @@ with each release split into `### Frontend` (drives the version number) and
 ### Frontend
 - **RCLootCouncil paste import moved to Supabase (#219, Phase 5)** -- both the officer dashboard's Loot Import tab and the public-page officer quick-actions bar's paste widget (two separate call sites, both migrated) now import through `import_rclc_loot()` instead of the Apps Script `appendLootRows` action. Each import resolves the player (creating an archived stub for an unrecognized name-realm, never a null link), resolves the item by its numeric item ID first and name as a fallback, derives the track (Champion/Hero/Myth) from the instance string's difficulty suffix, and reads the boss straight off the export -- all server-side in one RPC call instead of the old chunked JSONP round-trips. Duplicate protection is a real unique constraint (`dedupe_key`, team + RCLC id) rather than app-level checking, so re-importing the same export is a safe no-op. Every newly-imported row logs itself via `write_audit_log()` (#214); the confirmation banner now also reports items that couldn't be resolved against the season's Item Lookup. The "Import History" sub-tab (entry count + Clear All) intentionally stays on Apps Script for now -- see `docs/database-decisions.md` for why migrating it isn't a clean lift like roster/BiS were.
 
+### Backend
+- **`import_rclc_loot()` RPC** (#219) -- `SECURITY INVOKER` function that resolves player/item, derives track, computes the dedupe key, and inserts into `rclc_loot` with `on conflict (dedupe_key) do nothing`, logging one `audit_log` entry per newly-inserted row. Uses `INVOKER` rather than `DEFINER` since officers already have full RLS write access to both `players` and `rclc_loot` directly (same reasoning as `add_signup_to_roster()`); an unresolved item is left `item_id = null` rather than auto-created, since that would require `DEFINER` (`items` grants no authenticated role a direct write).
+
 ---
 
 ## [3.24.0] - 2026-07-09
