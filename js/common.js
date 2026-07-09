@@ -26,7 +26,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.23.0';
+var VERSION = '3.24.0';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -2446,7 +2446,7 @@ function loadAttendanceHistory(firstName) {
       );
     }
 
-    var CARD_STATUSES = ['Present', 'Bench', 'Medical Leave', 'Excused', 'No Show', 'Not on Roster'];
+    var CARD_STATUSES = ['Present', 'Bench', 'Medical Leave', 'Excused', 'Extended Leave', 'No Show', 'Not on Roster'];
 
     var html =
       '<div style="font-size:0.88rem;color:var(--text-muted);margin-bottom:0.6rem;display:flex;gap:0.5rem;flex-wrap:wrap;">' +
@@ -2497,6 +2497,10 @@ function loadAttendanceHistory(firstName) {
   document.head.appendChild(script);
 }
 
+// Second write path onto the same attendance table setPlayerStatus()
+// (js/tabs/tab-attendance.js, #218) covers -- this one fires from the
+// player-profile "Attendance" history card instead of the Attendance tab's
+// per-night grid. Same Supabase upsert + audit log shape as that one.
 function saveAttendanceFromCard(selectEl) {
   var date = selectEl.getAttribute('data-date');
   var firstName = selectEl.getAttribute('data-name');
@@ -2508,18 +2512,46 @@ function saveAttendanceFromCard(selectEl) {
       : null;
 
   if (!status) return;
+
+  var norm = normalise(firstName);
+  var roster = (DATA && DATA.roster) || [];
+  var player = null;
+  for (var i = 0; i < roster.length; i++) {
+    if (normalise(roster[i].firstName) === norm) {
+      player = roster[i];
+      break;
+    }
+  }
+  if (!player || !player.id) {
+    selectEl.value = oldStatus || '';
+    if (indicator) {
+      indicator.textContent = 'Error';
+      indicator.style.color = 'var(--melee)';
+      setTimeout(function () {
+        if (indicator) indicator.textContent = '';
+      }, 3000);
+    }
+    return;
+  }
+
   selectEl.disabled = true;
   if (indicator) {
     indicator.textContent = 'Saving...';
     indicator.style.color = 'var(--text-muted)';
   }
 
-  var data = { date: date, firstName: firstName, status: status, oldStatus: oldStatus };
-  var cbName = '_saveAttendCardCb_' + Date.now();
-  window[cbName] = function (result) {
-    delete window[cbName];
-    selectEl.disabled = false;
-    if (result && result.success) {
+  supabaseClient
+    .from('attendance')
+    .upsert(
+      { team_id: _teamCfg.supabaseTeamId, player_id: player.id, raid_date: date, status: status },
+      { onConflict: 'team_id,player_id,raid_date' }
+    )
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      return writeAuditLog('Attendance Status Set', 'players', player.id, (oldStatus || '(none)') + ' -> ' + status);
+    })
+    .then(function () {
+      selectEl.disabled = false;
       selectEl.setAttribute('data-old', status);
       if (indicator) {
         indicator.textContent = 'Saved';
@@ -2528,8 +2560,11 @@ function saveAttendanceFromCard(selectEl) {
           if (indicator) indicator.textContent = '';
         }, 2000);
       }
-    } else {
+    })
+    .catch(function (err) {
+      selectEl.disabled = false;
       selectEl.value = oldStatus || '';
+      console.warn('Failed to save attendance status.', err);
       if (indicator) {
         indicator.textContent = 'Error';
         indicator.style.color = 'var(--melee)';
@@ -2537,24 +2572,5 @@ function saveAttendanceFromCard(selectEl) {
           if (indicator) indicator.textContent = '';
         }, 3000);
       }
-    }
-  };
-  var script = document.createElement('script');
-  script.onerror = function () {
-    delete window[cbName];
-    selectEl.disabled = false;
-    selectEl.value = oldStatus || '';
-    if (indicator) {
-      indicator.textContent = 'Error';
-      indicator.style.color = 'var(--melee)';
-    }
-  };
-  script.src =
-    WEB_APP_URL +
-    '?action=setAttendanceStatus&data=' +
-    encodeURIComponent(JSON.stringify(data)) +
-    _getAuditChangedByParam() +
-    '&callback=' +
-    cbName;
-  document.head.appendChild(script);
+    });
 }

@@ -6,7 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | id | integer | nextval('attendance_id_seq'::regclass) | false |  |  |  |
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
-| player_id | integer |  | false |  | [public.players](public.players.md) |  |
+| player_id | integer |  | true |  | [public.players](public.players.md) |  |
 | raid_date | date |  | false |  |  |  |
 | status | text | 'Present'::text | false |  |  |  |
 | report_excluded | boolean | false | false |  |  |  |
@@ -19,7 +19,7 @@
 | attendance_status_check | CHECK | CHECK ((status = ANY (ARRAY['Present'::text, 'Bench'::text, 'Medical Leave'::text, 'Excused'::text, 'Extended Leave'::text, 'No Show'::text, 'Not on Roster'::text]))) |
 | attendance_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | attendance_team_id_player_id_raid_date_key | UNIQUE | UNIQUE (team_id, player_id, raid_date) |
-| attendance_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
+| attendance_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL |
 | attendance_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 
 ## Indexes
@@ -41,7 +41,7 @@
 erDiagram
 
 "public.attendance" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
-"public.attendance" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.attendance" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 
 "public.attendance" {
   integer id

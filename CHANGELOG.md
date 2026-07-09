@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.24.0] - 2026-07-09
+
+### Frontend
+- **Attendance status/exclusion writes moved to Supabase (#218, Phase 5)** -- setting a player's per-night attendance status (both from the Attendance tab's per-night grid and the player profile's "Attendance" history card -- two separate write paths, both migrated) and toggling a raid night's report-exclusion flag now write straight to `attendance` instead of the Apps Script `setAttendanceStatus`/`setReportExcluded` actions, each logging itself via `write_audit_log()` (#214). Added the missing `Extended Leave` status to both status dropdowns to match what the database has always allowed. Unlike roster and BiS, the attendance grid's *reads* deliberately stay on Apps Script for now -- the weekly WCL sync that actually populates new raid nights hasn't moved to Supabase yet (a separate issue, #223), so migrating reads today would show an empty grid for any team without a historical import. Known interim quirk: since writes go to Supabase but reads still come from the untouched Sheet, an officer's edit persists only for the rest of that browser session until reads migrate alongside #223 (see `docs/database-decisions.md`).
+
+### Backend
+- **`attendance.player_id`'s FK reconciled to `ON DELETE SET NULL`** (#218) -- matches `rclc_loot` and the decision #250 already called for but never actually migrated (the baseline schema dump still showed `ON DELETE CASCADE`). Safety net only, in case a `players` row is ever hard-deleted outside the app's soft-delete path.
+
+---
+
 ## [3.23.0] - 2026-07-09
 
 ### Frontend
