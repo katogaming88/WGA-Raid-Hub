@@ -25,6 +25,7 @@
   <button class="site-nav-item" id="navRoster" onclick="showView('roster')" data-tooltip="See who's currently on the roster">Roster</button>
   <button class="site-nav-item" id="navSignup" onclick="showSignupView()" data-tooltip="Apply to join the raid team for next season">Sign Up</button>
   <div class="site-nav-right">
+    <select id="teamSwitcherSelect" class="team-switcher" title="Switch team"></select>
     <button class="site-nav-item site-nav-discord" id="navDiscord" onclick="loginWithDiscord()" data-tooltip="Sign in with Discord to view your priority standing and mark loot received">Login with Discord</button>
     <a href="officer.html" class="site-nav-item" id="navOfficer" data-tooltip="Officer dashboard -- manage roster, loot, and signups">Officer Access</a>
   </div>
@@ -135,6 +136,7 @@ document.querySelectorAll('.team-name').forEach(function(el){el.textContent=TEAM
 if (TEAM_SLUG !== 'phoenix') {
   document.querySelectorAll('a[href="officer.html"]').forEach(function(a){a.href='officer.html?team='+TEAM_SLUG;});
 }
+initTeamUI();
 </script>
 </body>
 </html>
