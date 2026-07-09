@@ -112,6 +112,22 @@ function renderDiscordNav(session) {
   };
 }
 
+// Transient state while a real auth session exists but resolveDiscordSession()
+// hasn't resolved the mapped shape yet (a team_members lookup, then a players
+// lookup and an is_site_admin call). Only shown when there's no cached session
+// to render optimistically instead -- otherwise a returning user would see a
+// pointless flash on every page load. Without this, the gap between login
+// completing and the mapped session resolving looks like nothing happened,
+// especially if the tab loses focus and the browser defers the pending
+// requests (#371).
+function renderDiscordNavLoading() {
+  var btn = document.getElementById('navDiscord');
+  if (!btn) return;
+  btn.textContent = 'Signing in...';
+  btn.disabled = true;
+  btn.onclick = null;
+}
+
 // ── Login (full-page redirect) ──────────────────────────────────────────────
 
 function loginWithDiscord() {
@@ -119,6 +135,29 @@ function loginWithDiscord() {
   supabaseClient.auth.signInWithOAuth({
     provider: 'discord',
     options: { redirectTo: window.location.origin + window.location.pathname + window.location.search }
+  });
+}
+
+// Bounds a promise chain that would otherwise hang forever if the underlying
+// request stalls (accepted but never answered -- fetch() has no default
+// timeout) rather than erroring quickly. Without this, a stalled request would
+// leave the "Signing in..."/"Checking your account..." loading state (#371) on
+// screen indefinitely instead of falling back to a retryable logged-out state.
+function withTimeout(promise, ms) {
+  return new Promise(function (resolve, reject) {
+    var timer = setTimeout(function () {
+      reject(new Error('Timed out'));
+    }, ms);
+    promise.then(
+      function (value) {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      function (err) {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
   });
 }
 
@@ -176,6 +215,12 @@ function initDiscordLogin() {
     if (typeof onDiscordInitNoSession === 'function') onDiscordInitNoSession();
   }
 
+  function markResolving() {
+    if (getDiscordSession()) return;
+    renderDiscordNavLoading();
+    if (typeof onDiscordSessionResolving === 'function') onDiscordSessionResolving();
+  }
+
   supabaseClient.auth
     .getSession()
     .then(function (result) {
@@ -184,7 +229,8 @@ function initDiscordLogin() {
         fallBackToNoSession();
         return;
       }
-      resolveDiscordSession(session)
+      markResolving();
+      withTimeout(resolveDiscordSession(session), 15000)
         .then(function (mapped) {
           setDiscordSession(mapped);
           renderDiscordNav(mapped);
@@ -196,7 +242,8 @@ function initDiscordLogin() {
 
   supabaseClient.auth.onAuthStateChange(function (event, session) {
     if (event === 'SIGNED_IN' && session) {
-      resolveDiscordSession(session)
+      markResolving();
+      withTimeout(resolveDiscordSession(session), 15000)
         .then(function (mapped) {
           setDiscordSession(mapped);
           renderDiscordNav(mapped);

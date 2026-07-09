@@ -8,6 +8,15 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.19.1] - 2026-07-09
+
+### Frontend
+- **Fixed the claim prompt getting stuck on "Checking your account..." after login (#371)** -- `js/roster.js` and `js/officer-quick-actions.js` both declared a global `onDiscordSessionRestored` function. `roster.js` loads last on `index.html`, so its declaration silently won the naming collision -- `officer-quick-actions.js`'s version, the one that refreshes the officer bar, player selector, and claim prompt, has been dead code since #370 shipped. It only went unnoticed because most logins fire a `SIGNED_IN` event (a different, non-colliding hook); a `getSession()`-restored session firing `INITIAL_SESSION` instead hit the collision and never updated the UI. Fixed by having `roster.js`'s version call `_qaRefresh()` itself and removing the shadowed duplicate.
+- **Added loading feedback while a Discord session resolves** -- The gap between a Discord login completing and the mapped session resolving (a `team_members` lookup, then a `players` lookup and an `is_site_admin` check) had no visual feedback. If the tab lost focus during that window, the browser would defer those requests until it regained focus, so login could look like it silently failed for several seconds. The nav button now shows a disabled "Signing in..." state during that gap, and the persistent "Claim your character" box (#370) shows a "Checking your account..." placeholder instead of staying invisible. Both are skipped when a cached session is already available, so returning users don't see a pointless flash. The lookup itself is now bounded by a 15-second timeout, so a stalled request (accepted but never answered, which the browser's own `fetch()` has no default timeout for) falls back to a retryable logged-out state instead of leaving the loading state on screen indefinitely.
+- **Reworded the claim prompt** -- "Link your Discord to a character to see your priority standing and mark loot you receive" is now "Link a character to your account to unlock your raider profile," a general framing that doesn't call out specific features.
+
+---
+
 ## [3.19.0] - 2026-07-08
 
 ### Frontend

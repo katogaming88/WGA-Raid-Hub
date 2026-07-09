@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DISCORD_JS = readFileSync(path.join(HERE, '../../js/discord.js'), 'utf8');
 const QUICK_ACTIONS_JS = readFileSync(path.join(HERE, '../../js/officer-quick-actions.js'), 'utf8');
+const ROSTER_JS = readFileSync(path.join(HERE, '../../js/roster.js'), 'utf8');
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -330,7 +331,10 @@ describe('_renderClaimPrompt', () => {
   function setup() {
     const els = {
       claimPromptCard: makeEl({ style: { display: '' } }),
-      claimPromptName: makeEl()
+      claimPromptName: makeEl(),
+      claimPromptLoading: makeEl({ style: { display: '' } }),
+      claimPromptDesc: makeEl({ style: { display: 'none' } }),
+      claimPromptBtn: makeEl({ style: { display: 'none' } })
     };
     let current = null;
     const sandbox = loadQuickActions({ els, getSession: () => current });
@@ -357,5 +361,192 @@ describe('_renderClaimPrompt', () => {
     setSession({ username: 'Kato', nameRealm: 'Kato-Illidan' });
     sandbox._renderClaimPrompt();
     expect(els.claimPromptCard.style.display).toBe('none');
+  });
+
+  it('restores the real description and button, hiding the loading text, once resolved (#371)', () => {
+    const { els, sandbox, setSession } = setup();
+    // Simulate having shown the loading placeholder first, the way
+    // _renderClaimPromptLoading() leaves it before resolution completes.
+    els.claimPromptLoading.style.display = '';
+    els.claimPromptDesc.style.display = 'none';
+    els.claimPromptBtn.style.display = 'none';
+    setSession({ username: 'Kato', nameRealm: null });
+    sandbox._renderClaimPrompt();
+    expect(els.claimPromptLoading.style.display).toBe('none');
+    expect(els.claimPromptDesc.style.display).toBe('');
+    expect(els.claimPromptBtn.style.display).toBe('');
+  });
+});
+
+// #371: shown the instant a real auth session exists but resolveDiscordSession()
+// hasn't resolved the mapped shape yet, so the card isn't just invisible for
+// however long that takes.
+describe('_renderClaimPromptLoading', () => {
+  function setup(getSession) {
+    const els = {
+      claimPromptCard: makeEl({ style: { display: 'none' } }),
+      claimPromptLoading: makeEl({ style: { display: 'none' } }),
+      claimPromptDesc: makeEl({ style: { display: '' } }),
+      claimPromptBtn: makeEl({ style: { display: '' } })
+    };
+    const sandbox = loadQuickActions({ els, getSession });
+    return { els, sandbox };
+  }
+
+  it('shows the card with the loading text and hides the real description/button', () => {
+    const { els, sandbox } = setup(() => null);
+    sandbox._renderClaimPromptLoading();
+    expect(els.claimPromptCard.style.display).toBe('');
+    expect(els.claimPromptLoading.style.display).toBe('');
+    expect(els.claimPromptDesc.style.display).toBe('none');
+    expect(els.claimPromptBtn.style.display).toBe('none');
+  });
+
+  it('does nothing when a cached session already exists', () => {
+    const { els, sandbox } = setup(() => ({ username: 'Kato', nameRealm: 'Kato-Illidan' }));
+    sandbox._renderClaimPromptLoading();
+    expect(els.claimPromptCard.style.display).toBe('none');
+    expect(els.claimPromptLoading.style.display).toBe('none');
+  });
+});
+
+// #371: the gap between a SIGNED_IN event and resolveDiscordSession() resolving
+// (a team_members lookup, then a players lookup + is_site_admin in parallel) had
+// no visual feedback, so a backgrounded tab deferring those requests looked like
+// login had silently failed.
+describe('renderDiscordNavLoading (#371)', () => {
+  function setupInitLogin(storedSession) {
+    const { client } = makeClient({
+      team_members: () => ({ data: null, error: null }),
+      rpc: { is_site_admin: () => ({ data: false, error: null }) }
+    });
+    let authStateCb = null;
+    client.auth = {
+      getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+      onAuthStateChange: (cb) => {
+        authStateCb = cb;
+      }
+    };
+    const navBtn = makeEl({
+      textContent: 'Login with Discord',
+      disabled: false,
+      classList: { add: () => {}, remove: () => {} }
+    });
+    const els = { navDiscord: navBtn };
+    const store = storedSession ? { wga_discord_phoenix: JSON.stringify(storedSession) } : {};
+    const sandbox = loadDiscordJs({ supabaseClient: client, els, store });
+    sandbox.initDiscordLogin();
+    const fakeSession = { user: { id: 'u1', user_metadata: { full_name: 'Kato' } } };
+    return { navBtn, fireSignedIn: () => authStateCb('SIGNED_IN', fakeSession) };
+  }
+
+  it('shows "Signing in..." synchronously on SIGNED_IN when there is no cached session', async () => {
+    const { navBtn, fireSignedIn } = setupInitLogin(null);
+    await flush();
+    fireSignedIn();
+    expect(navBtn.textContent).toBe('Signing in...');
+    expect(navBtn.disabled).toBe(true);
+    await flush();
+    await flush();
+    expect(navBtn.textContent).not.toBe('Signing in...');
+  });
+
+  it('does not flash the loading state when a cached session already exists', () => {
+    // No flush before firing: the mock getSession() resolves null on a
+    // microtask and would clear this seeded cache via fallBackToNoSession()
+    // once it settles, same as a real expired-session case would -- firing
+    // synchronously checks the SIGNED_IN handler's own gating in isolation.
+    const { navBtn, fireSignedIn } = setupInitLogin({ username: 'Kato', nameRealm: null, isOfficer: false });
+    fireSignedIn();
+    expect(navBtn.textContent).not.toBe('Signing in...');
+  });
+
+  it('falls back to logged-out instead of hanging forever if the lookup never settles', async () => {
+    vi.useFakeTimers();
+    try {
+      // team_members never resolves nor rejects -- simulates a stalled request
+      // (accepted but never answered), which fetch() has no default timeout for.
+      const { client } = makeClient({ team_members: () => new Promise(() => {}) });
+      let authStateCb = null;
+      client.auth = {
+        getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+        onAuthStateChange: (cb) => {
+          authStateCb = cb;
+        }
+      };
+      const navBtn = makeEl({
+        textContent: 'Login with Discord',
+        disabled: false,
+        classList: { add: () => {}, remove: () => {} }
+      });
+      const sandbox = loadDiscordJs({ supabaseClient: client, els: { navDiscord: navBtn }, store: {} });
+      sandbox.initDiscordLogin();
+      await vi.advanceTimersByTimeAsync(0);
+
+      authStateCb('SIGNED_IN', { user: { id: 'u1', user_metadata: { full_name: 'Kato' } } });
+      expect(navBtn.textContent).toBe('Signing in...');
+
+      await vi.advanceTimersByTimeAsync(15000);
+      expect(navBtn.textContent).toBe('Login with Discord');
+      expect(navBtn.disabled).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+// #371 regression: js/roster.js and js/officer-quick-actions.js both declared a
+// global onDiscordSessionRestored -- roster.js's declaration loads last on
+// index.html and silently won the naming collision, so officer-quick-actions.js's
+// version (the one that refreshes the officer bar/player selector/claim prompt)
+// was dead code that never ran. Fixed by having roster.js's version call
+// _qaRefresh() itself. This test loads the real roster.js the way index.html
+// does and asserts the merged behavior, so the collision can't silently return.
+describe('onDiscordSessionRestored (#371 collision regression)', () => {
+  function loadRosterJs() {
+    const qaRefresh = vi.fn();
+    const els = {
+      playerSelect: { addEventListener: () => {}, options: [], value: '' }
+    };
+    const sandbox = {
+      document: {
+        getElementById: (id) => els[id] || null
+      },
+      sessionStorage: {
+        _store: {},
+        getItem(k) {
+          return k in this._store ? this._store[k] : null;
+        },
+        setItem(k, v) {
+          this._store[k] = String(v);
+        },
+        removeItem(k) {
+          delete this._store[k];
+        }
+      },
+      window: {},
+      console,
+      loadData: () => {}, // no-op: roster.js's own boot call, not under test here
+      _qaRefresh: qaRefresh
+    };
+    sandbox.window.DATA = null;
+    vm.createContext(sandbox);
+    vm.runInContext(ROSTER_JS, sandbox, { filename: 'roster.js' });
+    return { sandbox, qaRefresh, sessionStorage: sandbox.sessionStorage };
+  }
+
+  it('calls _qaRefresh() when a session is restored, not just the profile deep-link', () => {
+    const { sandbox, qaRefresh } = loadRosterJs();
+    sandbox.onDiscordSessionRestored({ username: 'Kato', nameRealm: null });
+    expect(qaRefresh).toHaveBeenCalledOnce();
+  });
+
+  it('still calls _qaRefresh() when the profile deep-link flag is also set', () => {
+    const { sandbox, qaRefresh, sessionStorage } = loadRosterJs();
+    sessionStorage.setItem('wga_open_profile', '1');
+    // autoOpenClaimedProfile() bails out early (no window.DATA in this sandbox),
+    // but _qaRefresh() must still run -- the two behaviors are independent.
+    sandbox.onDiscordSessionRestored({ username: 'Kato', nameRealm: 'Kato-Illidan' });
+    expect(qaRefresh).toHaveBeenCalledOnce();
   });
 });

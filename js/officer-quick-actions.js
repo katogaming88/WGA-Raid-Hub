@@ -65,14 +65,39 @@ function _renderPlayerSelector() {
 function _renderClaimPrompt() {
   var card = document.getElementById('claimPromptCard');
   if (!card) return;
+  var loadingEl = document.getElementById('claimPromptLoading');
+  var descEl = document.getElementById('claimPromptDesc');
+  var btnEl = document.getElementById('claimPromptBtn');
   var session = typeof getDiscordSession === 'function' && getDiscordSession();
   if (session && !session.nameRealm) {
     var nameEl = document.getElementById('claimPromptName');
     if (nameEl) nameEl.textContent = session.username || '';
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (descEl) descEl.style.display = '';
+    if (btnEl) btnEl.style.display = '';
     card.style.display = '';
   } else {
     card.style.display = 'none';
   }
+}
+
+// Shown the instant a real auth session exists but resolveDiscordSession()
+// (a team_members lookup, then a players lookup + is_site_admin in parallel)
+// hasn't resolved yet, so a raider sees *something* immediately instead of the
+// card staying invisible for however long that takes -- worse if the tab loses
+// focus and the browser defers the pending requests (#371). Skipped when a
+// cached session already answers whether the card should show at all, so a
+// returning user with (or without) a claim doesn't see a pointless flash.
+function _renderClaimPromptLoading() {
+  var card = document.getElementById('claimPromptCard');
+  if (!card || (typeof getDiscordSession === 'function' && getDiscordSession())) return;
+  var loadingEl = document.getElementById('claimPromptLoading');
+  var descEl = document.getElementById('claimPromptDesc');
+  var btnEl = document.getElementById('claimPromptBtn');
+  if (loadingEl) loadingEl.style.display = '';
+  if (descEl) descEl.style.display = 'none';
+  if (btnEl) btnEl.style.display = 'none';
+  card.style.display = '';
 }
 
 // Officer bar + player selector + claim prompt all react to the Discord session;
@@ -84,9 +109,11 @@ function _qaRefresh() {
 }
 
 // Callbacks invoked by discord.js
-function onDiscordSessionRestored(session) {
-  _qaRefresh();
-}
+// onDiscordSessionRestored is NOT defined here even though discord.js documents
+// it as one of the four hooks -- js/roster.js (loaded after this file) already
+// defines it for the profile deep-link feature, and a second same-named function
+// declaration would silently win and shadow this one (#371). roster.js's version
+// calls _qaRefresh() itself instead.
 function onDiscordLoginComplete(session) {
   _qaRefresh();
 }
@@ -98,6 +125,9 @@ function onDiscordInitNoSession() {
 }
 function onDiscordClaimComplete(session) {
   _qaRefresh();
+}
+function onDiscordSessionResolving() {
+  _renderClaimPromptLoading();
 }
 
 function _qaSetStatus(msg, color) {
