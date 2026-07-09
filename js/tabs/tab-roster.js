@@ -1,5 +1,89 @@
 // Officer roster tab: table, filters, add/remove player, player settings
 
+// -- Roster writes (Supabase, #216) ------------------------------------------
+//
+// Roster reads still merge attendance/M+ fields from the Apps Script core
+// payload (js/common.js fetchSupabaseRoster()), but every write below goes
+// straight to Supabase: RLS already permits an officer's plain
+// insert/update against `players` (no RPC needed for the write itself), and
+// each write logs itself via writeAuditLog() (#214). GAS keeps its
+// addPlayer/removePlayer/updatePlayerField handlers until this path is
+// verified side by side (#216); nothing here calls them anymore.
+//
+// class/spec/role collapse into a single `class_spec_id` FK (role is derived
+// from classes_specs.role, not stored), so unlike the old sheet, class and
+// spec can't be written independently -- see docs/database-decisions.md. The
+// Class dropdown only repopulates the Spec dropdown; the actual write fires
+// once a Spec is chosen (officerSaveClassSpec below).
+
+function findRosterPlayer(nameRealm) {
+  return (
+    (DATA &&
+      DATA.roster.find(function (p) {
+        return p.nameRealm === nameRealm;
+      })) ||
+    null
+  );
+}
+
+// Runs a Supabase write promise, updating a status message element the same
+// way the old jsonpRequest callbacks did ('Saving...' -> 'Saved.'/'Failed to
+// save.', cleared after 2s). Resolves true/false so callers can gate further
+// local state mutation on whether the write actually succeeded.
+function runRosterWrite(promise, msgEl) {
+  return promise
+    .then(function () {
+      if (msgEl) msgEl.textContent = 'Saved.';
+      return true;
+    })
+    .catch(function (err) {
+      console.warn('Roster write failed.', err);
+      if (msgEl) msgEl.textContent = 'Failed to save.';
+      return false;
+    })
+    .then(function (ok) {
+      if (msgEl) {
+        setTimeout(function () {
+          if (msgEl) msgEl.textContent = '';
+        }, 2000);
+      }
+      return ok;
+    });
+}
+
+var ROSTER_FIELD_COLUMN = { isTrial: 'is_trial', isBench: 'is_bench', joinDate: 'join_date' };
+var ROSTER_FIELD_AUDIT_LABEL = {
+  isTrial: 'Trial Status Changed',
+  isBench: 'Bench Status Changed',
+  joinDate: 'Join Date Changed'
+};
+
+function rosterFieldAuditDetail(field, value) {
+  if (field === 'isTrial') return value ? 'Trial added' : 'Trial removed';
+  if (field === 'isBench') return value ? 'Moved to bench' : 'Removed from bench';
+  if (field === 'joinDate') return 'Changed to ' + value;
+  return null;
+}
+
+// Targeted update for the fields that map 1:1 onto a players column
+// (isTrial/isBench/joinDate). class/spec go through officerSaveClassSpec
+// instead, since they resolve to one FK together.
+function updateRosterFieldSupabase(nameRealm, field, value) {
+  var player = findRosterPlayer(nameRealm);
+  var column = ROSTER_FIELD_COLUMN[field];
+  if (!player || !player.id || !column) return Promise.reject(new Error('Unknown player or field.'));
+  var payload = {};
+  payload[column] = field === 'joinDate' ? value || null : !!value;
+  return supabaseClient
+    .from('players')
+    .update(payload)
+    .eq('id', player.id)
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      return writeAuditLog(ROSTER_FIELD_AUDIT_LABEL[field], 'players', player.id, rosterFieldAuditDetail(field, value));
+    });
+}
+
 var statItemsDiff = 'all';
 
 function setStatItemsDiff(diff) {
@@ -487,7 +571,7 @@ function submitAddPlayer() {
     submitBtn.textContent = 'Adding...';
   }
 
-  var data = {
+  addPlayerToRosterSupabase({
     nameRealm: nameRealm,
     nick: nickVal,
     class: cls,
@@ -495,23 +579,16 @@ function submitAddPlayer() {
     role: role,
     isTrial: isTrial,
     joinDate: joinDateVal
-  };
-  jsonpRequest(
-    WEB_APP_URL + '?action=addPlayer&data=' + encodeURIComponent(JSON.stringify(data)).replace(/'/g, '%27'),
-    function (err, result) {
+  })
+    .then(function (playerId) {
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Add Player';
       }
-      if (err || (result && result.error)) {
-        errEl.textContent = err ? err.message : 'Failed to add player: ' + result.error;
-        errEl.style.display = '';
-        window._pendingRosterOnSuccess = null;
-        return;
-      }
       if (DATA && DATA.roster) {
         var parts = nameRealm.split('-');
         DATA.roster.push({
+          id: playerId,
           nameRealm: nameRealm,
           firstName: parts[0],
           realm: parts.slice(1).join('-'),
@@ -532,8 +609,68 @@ function submitAddPlayer() {
         window._pendingRosterOnSuccess();
         window._pendingRosterOnSuccess = null;
       }
-    }
-  );
+    })
+    .catch(function (err) {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Add Player';
+      }
+      errEl.textContent = 'Failed to add player: ' + err.message;
+      errEl.style.display = '';
+      window._pendingRosterOnSuccess = null;
+    });
+}
+
+// Three-case upsert (docs/database-decisions.md roster-promotion pattern):
+// brand-new name_realm -> insert; a previously archived row for the same
+// name_realm -> un-archive it in place (preserves its id, so historical
+// rclc_loot/bis_items/attendance rows stay linked); an already-active row ->
+// reject rather than silently overwrite. Resolves to the written player's id.
+function addPlayerToRosterSupabase(payload) {
+  if (!supabaseClient) return Promise.reject(new Error('Not connected to Supabase.'));
+  var teamId = _teamCfg.supabaseTeamId;
+  return supabaseClient
+    .from('classes_specs')
+    .select('id')
+    .eq('class', payload.class)
+    .eq('spec', payload.spec)
+    .maybeSingle()
+    .then(function (csResult) {
+      if (csResult.error || !csResult.data) throw new Error('Unknown class/spec combination.');
+      var classSpecId = csResult.data.id;
+      return supabaseClient
+        .from('players')
+        .select('id, archived_at')
+        .eq('team_id', teamId)
+        .eq('name_realm', payload.nameRealm)
+        .maybeSingle()
+        .then(function (existing) {
+          if (existing.error) throw new Error(existing.error.message);
+          var row = existing.data;
+          if (row && !row.archived_at) throw new Error(payload.nameRealm + ' is already on the roster.');
+          var fields = {
+            team_id: teamId,
+            name_realm: payload.nameRealm,
+            nickname: payload.nick || null,
+            class_spec_id: classSpecId,
+            is_trial: !!payload.isTrial,
+            is_bench: false,
+            join_date: payload.joinDate || null,
+            archived_at: null
+          };
+          return row
+            ? supabaseClient.from('players').update(fields).eq('id', row.id).select('id').single()
+            : supabaseClient.from('players').insert(fields).select('id').single();
+        });
+    })
+    .then(function (writeResult) {
+      if (writeResult.error) throw new Error(writeResult.error.message);
+      var playerId = writeResult.data.id;
+      var detail = [payload.class, payload.spec, payload.role].filter(Boolean).join(' ');
+      return writeAuditLog('Player Added', 'players', playerId, detail).then(function () {
+        return playerId;
+      });
+    });
 }
 
 function confirmRemovePlayer(nameRealm, firstName) {
@@ -558,18 +695,27 @@ function executeRemovePlayer(nameRealm, firstName) {
     msgEl.style.display = '';
   }
 
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=removePlayer&data=' +
-      encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })).replace(/'/g, '%27'),
-    function (err, result) {
-      if (err || (result && result.error)) {
-        if (msgEl) {
-          msgEl.textContent = err ? err.message : 'Failed: ' + result.error;
-          msgEl.style.color = 'var(--melee)';
-        }
-        return;
-      }
+  var player = findRosterPlayer(nameRealm);
+  if (!player || !player.id) {
+    if (msgEl) {
+      msgEl.textContent = 'Failed: player not found.';
+      msgEl.style.color = 'var(--melee)';
+    }
+    return;
+  }
+
+  // Soft-delete via archived_at, not a hard DELETE -- an archived row keeps
+  // its id so rclc_loot/bis_items/attendance rows referencing it stay intact
+  // (docs/database-decisions.md).
+  supabaseClient
+    .from('players')
+    .update({ archived_at: new Date().toISOString() })
+    .eq('id', player.id)
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      return writeAuditLog('Player Removed', 'players', player.id, null);
+    })
+    .then(function () {
       if (DATA && DATA.roster) {
         DATA.roster = DATA.roster.filter(function (p) {
           return p.nameRealm !== nameRealm;
@@ -578,34 +724,77 @@ function executeRemovePlayer(nameRealm, firstName) {
       document.getElementById('officerProfile').innerHTML = '';
       selectedOfficerPlayer = null;
       buildOfficerDashboard();
-    }
-  );
+    })
+    .catch(function (err) {
+      if (msgEl) {
+        msgEl.textContent = 'Failed: ' + err.message;
+        msgEl.style.color = 'var(--melee)';
+      }
+    });
 }
 
 // -- Player settings --------------------------------------------------------
 function savePlayerField(nameRealm, firstName, field, value) {
   var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
   if (msgEl) msgEl.textContent = 'Saving...';
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=updatePlayerField&data=' +
-      encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: field, value: value })),
-    function (err, result) {
-      if (!err && result && result.success && DATA) {
-        var player = DATA.roster.find(function (p) {
-          return p.nameRealm === nameRealm;
-        });
-        if (player) player[field] = value;
-        if (field === 'joinDate') buildTrialPromoAlert();
-      }
-      if (msgEl) {
-        msgEl.textContent = err || (result && result.error) ? 'Failed to save.' : 'Saved.';
-        setTimeout(function () {
-          if (msgEl) msgEl.textContent = '';
-        }, 2000);
-      }
+  runRosterWrite(updateRosterFieldSupabase(nameRealm, field, value), msgEl).then(function (ok) {
+    if (ok && DATA) {
+      var player = findRosterPlayer(nameRealm);
+      if (player) player[field] = value;
+      if (field === 'joinDate') buildTrialPromoAlert();
     }
-  );
+  });
+}
+
+// class/spec collapse into one class_spec_id FK, so a spec pick is the only
+// point a write actually fires; officerUpdateClass (below) only repopulates
+// this dropdown. Reads the class dropdown's current value directly since the
+// player object isn't mutated until this resolves.
+function officerSaveClassSpec(nameRealm, firstName, specValue) {
+  var classSel = document.getElementById('classSelect-' + firstName);
+  var classValue = classSel ? classSel.value : '';
+  var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
+  if (!classValue || !specValue) {
+    if (msgEl) msgEl.textContent = 'Select both a class and a spec.';
+    return;
+  }
+  if (msgEl) msgEl.textContent = 'Saving...';
+  runRosterWrite(updateClassSpecSupabase(nameRealm, classValue, specValue), msgEl).then(function (ok) {
+    if (ok) {
+      var player = findRosterPlayer(nameRealm);
+      if (player) {
+        player.class = classValue;
+        player.spec = specValue;
+        // player.role is set inside updateClassSpecSupabase from the
+        // classes_specs lookup, since it already has the resolved row there.
+      }
+      buildRosterTable();
+      reopenSelectedPlayer();
+    }
+  });
+}
+
+function updateClassSpecSupabase(nameRealm, classValue, specValue) {
+  var player = findRosterPlayer(nameRealm);
+  if (!player || !player.id) return Promise.reject(new Error('Player not found.'));
+  return supabaseClient
+    .from('classes_specs')
+    .select('id, role')
+    .eq('class', classValue)
+    .eq('spec', specValue)
+    .maybeSingle()
+    .then(function (csResult) {
+      if (csResult.error || !csResult.data) throw new Error('Unknown class/spec combination.');
+      return supabaseClient
+        .from('players')
+        .update({ class_spec_id: csResult.data.id })
+        .eq('id', player.id)
+        .then(function (result) {
+          if (result.error) throw new Error(result.error.message);
+          player.role = csResult.data.role;
+          return writeAuditLog('Spec Changed', 'players', player.id, 'Changed to ' + classValue + ' ' + specValue);
+        });
+    });
 }
 
 function saveJoinDate(nameRealm, firstName) {
@@ -614,8 +803,10 @@ function saveJoinDate(nameRealm, firstName) {
   savePlayerField(nameRealm, firstName, 'joinDate', input.value);
 }
 
+// UI-only: repopulates the Spec dropdown for the newly picked class. Doesn't
+// write anything -- class and spec resolve to one class_spec_id together, so
+// the write fires from officerSaveClassSpec once a spec is actually chosen.
 function officerUpdateClass(nameRealm, firstName, newClass) {
-  savePlayerField(nameRealm, firstName, 'class', newClass);
   var specSel = document.getElementById('specSelect-' + firstName);
   if (!specSel) return;
   specSel.innerHTML = '<option value="">-- Select spec --</option>';
@@ -671,11 +862,7 @@ function officerRenamePlayer(nameRealm, firstName) {
 }
 
 function togglePlayerTrial(nameRealm, firstName) {
-  var player =
-    DATA &&
-    DATA.roster.find(function (p) {
-      return p.nameRealm === nameRealm;
-    });
+  var player = findRosterPlayer(nameRealm);
   if (!player) return;
   var newVal = !player.isTrial;
   var btn = document.getElementById('trialToggle-' + firstName);
@@ -683,40 +870,22 @@ function togglePlayerTrial(nameRealm, firstName) {
     btn.disabled = true;
     btn.textContent = 'Saving...';
   }
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=updatePlayerField&data=' +
-      encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: 'isTrial', value: newVal })),
-    function (err, result) {
-      if (!err && result && result.success && DATA) {
-        var p = DATA.roster.find(function (p) {
-          return p.nameRealm === nameRealm;
-        });
-        if (p) p.isTrial = newVal;
-        buildTrialPromoAlert();
-      }
-      if (btn) {
-        btn.disabled = false;
-        btn.className = 'btn ' + (newVal ? 'btn-gold' : 'btn-muted');
-        btn.textContent = newVal ? 'Remove Trial' : 'Mark as Trial';
-      }
-      var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
-      if (msgEl) {
-        msgEl.textContent = err || (result && result.error) ? 'Failed to save.' : 'Saved.';
-        setTimeout(function () {
-          if (msgEl) msgEl.textContent = '';
-        }, 2000);
-      }
+  var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
+  runRosterWrite(updateRosterFieldSupabase(nameRealm, 'isTrial', newVal), msgEl).then(function (ok) {
+    if (ok) {
+      player.isTrial = newVal;
+      buildTrialPromoAlert();
     }
-  );
+    if (btn) {
+      btn.disabled = false;
+      btn.className = 'btn ' + (newVal ? 'btn-gold' : 'btn-muted');
+      btn.textContent = newVal ? 'Remove Trial' : 'Mark as Trial';
+    }
+  });
 }
 
 function togglePlayerBench(nameRealm, firstName) {
-  var player =
-    DATA &&
-    DATA.roster.find(function (p) {
-      return p.nameRealm === nameRealm;
-    });
+  var player = findRosterPlayer(nameRealm);
   if (!player) return;
   var newVal = !player.isBench;
   var btn = document.getElementById('benchToggle-' + firstName);
@@ -724,31 +893,15 @@ function togglePlayerBench(nameRealm, firstName) {
     btn.disabled = true;
     btn.textContent = 'Saving...';
   }
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=updatePlayerField&data=' +
-      encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: 'isBench', value: newVal })),
-    function (err, result) {
-      if (!err && result && result.success && DATA) {
-        var p = DATA.roster.find(function (p) {
-          return p.nameRealm === nameRealm;
-        });
-        if (p) p.isBench = newVal;
-      }
-      if (btn) {
-        btn.disabled = false;
-        btn.className = 'btn ' + (newVal ? 'btn-gold' : 'btn-muted');
-        btn.textContent = newVal ? 'Remove from Bench' : 'Move to Bench';
-      }
-      var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
-      if (msgEl) {
-        msgEl.textContent = err || (result && result.error) ? 'Failed to save.' : 'Saved.';
-        setTimeout(function () {
-          if (msgEl) msgEl.textContent = '';
-        }, 2000);
-      }
+  var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
+  runRosterWrite(updateRosterFieldSupabase(nameRealm, 'isBench', newVal), msgEl).then(function (ok) {
+    if (ok) player.isBench = newVal;
+    if (btn) {
+      btn.disabled = false;
+      btn.className = 'btn ' + (newVal ? 'btn-gold' : 'btn-muted');
+      btn.textContent = newVal ? 'Remove from Bench' : 'Move to Bench';
     }
-  );
+  });
 }
 
 function toggleMPlusExcluded(nameRealm, firstName) {
@@ -944,29 +1097,25 @@ function promoteTrialPlayer(nameRealm, firstName, btn) {
     btn.textContent = 'Promoting...';
   }
 
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=updatePlayerField&data=' +
-      encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, field: 'isTrial', value: false })),
-    function (err, result) {
-      if (!err && result && result.success) {
-        player.isTrial = false;
-        buildTrialPromoAlert();
-        buildRosterTable();
-        var trialBtn = document.getElementById('trialToggle-' + firstName);
-        if (trialBtn) {
-          trialBtn.textContent = 'Mark as Trial';
-          trialBtn.classList.remove('btn-gold');
-          trialBtn.classList.add('btn-muted');
-        }
-      } else {
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = 'Promote';
-        }
+  updateRosterFieldSupabase(nameRealm, 'isTrial', false)
+    .then(function () {
+      player.isTrial = false;
+      buildTrialPromoAlert();
+      buildRosterTable();
+      var trialBtn = document.getElementById('trialToggle-' + firstName);
+      if (trialBtn) {
+        trialBtn.textContent = 'Mark as Trial';
+        trialBtn.classList.remove('btn-gold');
+        trialBtn.classList.add('btn-muted');
       }
-    }
-  );
+    })
+    .catch(function (err) {
+      console.warn('Trial promotion failed.', err);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Promote';
+      }
+    });
 }
 
 initAddPlayerRealmCombobox();

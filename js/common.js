@@ -26,7 +26,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.21.0';
+var VERSION = '3.22.0';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -34,6 +34,25 @@ var VERSION = '3.21.0';
 var SUPABASE_URL = 'https://kxgjqnpwfklbgrxdgmmv.supabase.co';
 var SUPABASE_ANON_KEY = 'sb_publishable_OdTUOR0Do1ThdKUPBh5inA_OWq78POC';
 var supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+// Two-statement pattern for officer writes: the caller performs its own
+// insert/update against a table RLS already permits, then calls this to log
+// it, since audit_log has no direct client write path (write_audit_log(),
+// #214). Failing to log doesn't undo the write; surfaced via console.warn.
+function writeAuditLog(action, targetType, targetId, detail) {
+  if (!supabaseClient) return Promise.resolve();
+  return supabaseClient
+    .rpc('write_audit_log', {
+      p_team_id: _teamCfg.supabaseTeamId,
+      p_action: action,
+      p_target_type: targetType || null,
+      p_target_id: targetId == null ? null : targetId,
+      p_detail: detail == null ? null : String(detail)
+    })
+    .then(function (result) {
+      if (result.error) console.warn('Failed to write audit log entry.', result.error.message);
+    });
+}
 
 // Audit-log attribution for the officer writes still served by Apps Script.
 // Before the Supabase login swap (#211) this sent the Discord session token,
@@ -554,7 +573,7 @@ function fetchSupabaseRoster() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('players')
-    .select('name_realm, nickname, is_trial, is_bench, bis_link, join_date, classes_specs(class, spec, role)')
+    .select('id, name_realm, nickname, is_trial, is_bench, bis_link, join_date, classes_specs(class, spec, role)')
     .eq('team_id', _teamCfg.supabaseTeamId)
     .is('archived_at', null)
     .order('name_realm')
@@ -599,6 +618,7 @@ function mapSupabaseRoster(rows, jsonpRoster) {
     var parts = nameRealm.split('-');
     var jsonpRow = jsonpByName[nameRealm.toLowerCase()] || {};
     players.push({
+      id: row.id,
       nameRealm: nameRealm,
       firstName: parts[0].trim(),
       realm: parts.slice(1).join('-').trim(),
@@ -1982,26 +2002,9 @@ function renderProfile(firstName, backTo, container) {
       '<div style="display:flex;flex-direction:column;gap:0.75rem;margin-top:0.5rem;">' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
       '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Role</span>' +
-      '<select id="roleSelect-' +
-      player.firstName +
-      '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:10rem;" onchange="savePlayerField(\'' +
-      nrSafe +
-      "','" +
-      fnSafe +
-      "','role',this.value)\">" +
-      '<option value="Tank"' +
-      (player.role === 'Tank' ? ' selected' : '') +
-      '>Tank</option>' +
-      '<option value="Heal"' +
-      (player.role === 'Heal' ? ' selected' : '') +
-      '>Heal</option>' +
-      '<option value="Melee"' +
-      (player.role === 'Melee' ? ' selected' : '') +
-      '>Melee</option>' +
-      '<option value="Ranged"' +
-      (player.role === 'Ranged' ? ' selected' : '') +
-      '>Ranged</option>' +
-      '</select>' +
+      '<span style="font-size:0.92rem;color:var(--text);">' +
+      (player.role || '-') +
+      '</span>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
       '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Class</span>' +
@@ -2019,11 +2022,11 @@ function renderProfile(firstName, backTo, container) {
       '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Spec</span>' +
       '<select id="specSelect-' +
       player.firstName +
-      '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:12rem;" onchange="savePlayerField(\'' +
+      '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:12rem;" onchange="officerSaveClassSpec(\'' +
       nrSafe +
       "','" +
       fnSafe +
-      "','spec',this.value)\">" +
+      '\',this.value)">' +
       specOptHtml +
       '</select>' +
       '</div>' +

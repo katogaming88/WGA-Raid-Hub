@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.22.0] - 2026-07-09
+
+### Frontend
+- **Roster edits moved to Supabase (#216, Phase 5)** -- add player, remove player, and the trial/bench/join-date/class/spec field edits on the officer Roster tab now write straight to `players` instead of going through the Apps Script `addPlayer`/`removePlayer`/`updatePlayerField` actions; every write logs itself via `write_audit_log()` (#214). "Remove player" is a soft-delete (`archived_at` set, not a hard delete) so historical loot/BiS/attendance rows referencing the player stay intact; re-adding a previously archived name-realm un-archives the same row instead of erroring or duplicating. Apps Script keeps its roster-write handlers in place, unused, until this path is verified side by side. The Player Settings panel's standalone Role dropdown is gone -- role is now a read-only derived display, since the migrated schema resolves it from a single class+spec pairing (`class_spec_id`) rather than storing it independently; picking a new Class only repopulates the Spec dropdown, and the write fires once Spec is chosen (see `docs/database-decisions.md`, 2026-07-09).
+
+---
+
 ## [3.21.0] - 2026-07-09
 
 ### Frontend
