@@ -25,6 +25,7 @@
   <button class="site-nav-item" id="navRoster" onclick="showView('roster')" data-tooltip="See who's currently on the roster">Roster</button>
   <button class="site-nav-item" id="navSignup" onclick="showSignupView()" data-tooltip="Apply to join the raid team for next season">Sign Up</button>
   <div class="site-nav-right">
+    <select id="teamSwitcherSelect" class="team-switcher" title="Switch team"></select>
     <button class="site-nav-item site-nav-discord" id="navDiscord" onclick="loginWithDiscord()" data-tooltip="Sign in with Discord to view your priority standing and mark loot received">Login with Discord</button>
     <a href="officer.html" class="site-nav-item" id="navOfficer" data-tooltip="Officer dashboard -- manage roster, loot, and signups">Officer Access</a>
   </div>
@@ -61,7 +62,8 @@
       <h2 id="claimPromptHeading">Claim your character</h2>
       <p id="claimPromptLoading" style="display:none">Checking your account...</p>
       <p id="claimPromptDesc">Welcome, <strong id="claimPromptName"></strong>! Link a character to your account to unlock your raider profile.</p>
-      <button type="button" class="btn btn-gold" id="claimPromptBtn" aria-describedby="claimPromptDesc" onclick="showDiscordClaimModal(getDiscordSession())">Claim your character</button>
+      <p id="claimPromptElsewhereDesc" style="display:none">Welcome, <strong id="claimPromptElsewhereWho"></strong>! You've already claimed <strong id="claimPromptElsewhereChar"></strong> on <strong id="claimPromptElsewhereTeam"></strong>. Switch teams to view your profile.</p>
+      <button type="button" class="btn btn-gold" id="claimPromptBtn" aria-describedby="claimPromptDesc">Claim your character</button>
     </section>
     <div id="landingStats" class="pub-stats"></div>
     <div class="landing-card" id="playerSelectorCard">
@@ -113,6 +115,7 @@
     <select id="claimCharacterSelect" class="add-player-input" style="width:100%;margin-bottom:8px">
       <option value="">-- Select your character --</option>
     </select>
+    <p class="form-error">Don't see your character? You might be on the wrong team. You're currently viewing <strong class="team-name">Team Phoenix</strong>. <a href="#" class="form-error-link" onclick="goToTeamSwitcher();return false;">Switch teams</a></p>
     <p id="claimError" class="form-error" style="display:none"></p>
     <div class="modal-actions">
       <button class="btn btn-gold claim-submit-btn" onclick="submitCharacterClaim()">Confirm claim</button>
@@ -135,6 +138,7 @@ document.querySelectorAll('.team-name').forEach(function(el){el.textContent=TEAM
 if (TEAM_SLUG !== 'phoenix') {
   document.querySelectorAll('a[href="officer.html"]').forEach(function(a){a.href='officer.html?team='+TEAM_SLUG;});
 }
+initTeamUI();
 </script>
 </body>
 </html>

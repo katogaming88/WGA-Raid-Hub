@@ -67,15 +67,50 @@ function _renderClaimPrompt() {
   if (!card) return;
   var loadingEl = document.getElementById('claimPromptLoading');
   var descEl = document.getElementById('claimPromptDesc');
+  var elsewhereEl = document.getElementById('claimPromptElsewhereDesc');
   var btnEl = document.getElementById('claimPromptBtn');
   var session = typeof getDiscordSession === 'function' && getDiscordSession();
   if (session && !session.nameRealm) {
-    var nameEl = document.getElementById('claimPromptName');
-    if (nameEl) nameEl.textContent = session.username || '';
     if (loadingEl) loadingEl.style.display = 'none';
-    if (descEl) descEl.style.display = '';
     if (btnEl) btnEl.style.display = '';
     card.style.display = '';
+
+    // resolveDiscordSession() (js/discord.js) sets claimedElsewhere when this
+    // team has no linked character but the raider already has one on another
+    // team -- point them there instead of implying they've never claimed
+    // anything (#368 follow-up to #212).
+    if (session.claimedElsewhere) {
+      var elsewhere = session.claimedElsewhere;
+      var whoEl = document.getElementById('claimPromptElsewhereWho');
+      var charEl = document.getElementById('claimPromptElsewhereChar');
+      var teamEl = document.getElementById('claimPromptElsewhereTeam');
+      if (whoEl) whoEl.textContent = session.username || '';
+      if (charEl) charEl.textContent = elsewhere.nameRealm;
+      if (teamEl) teamEl.textContent = elsewhere.teamName || 'your other team';
+      if (descEl) descEl.style.display = 'none';
+      if (elsewhereEl) elsewhereEl.style.display = '';
+      if (btnEl) {
+        btnEl.textContent = elsewhere.teamName ? 'Switch to ' + elsewhere.teamName : 'Switch teams';
+        btnEl.onclick = elsewhere.teamSlug
+          ? function () {
+              switchTeam(elsewhere.teamSlug);
+            }
+          : function () {
+              if (typeof goToTeamSwitcher === 'function') goToTeamSwitcher();
+            };
+      }
+    } else {
+      var nameEl = document.getElementById('claimPromptName');
+      if (nameEl) nameEl.textContent = session.username || '';
+      if (descEl) descEl.style.display = '';
+      if (elsewhereEl) elsewhereEl.style.display = 'none';
+      if (btnEl) {
+        btnEl.textContent = 'Claim your character';
+        btnEl.onclick = function () {
+          showDiscordClaimModal(getDiscordSession());
+        };
+      }
+    }
   } else {
     card.style.display = 'none';
   }

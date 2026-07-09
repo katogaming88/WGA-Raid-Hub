@@ -163,6 +163,36 @@ function withTimeout(promise, ms) {
 
 // ── Session mapping ──────────────────────────────────────────────────────────
 
+// "Members read own team_members" (#212) filters only on auth_user_id, with no
+// team_id restriction, so a raider's other-team row is readable from here too.
+// Used to tell "never claimed anywhere" apart from "claimed, just not on this
+// team" so the landing claim prompt can point at the right team instead of
+// implying a claim has to start from scratch (#368 follow-up).
+function findClaimElsewhere(userId) {
+  return supabaseClient
+    .from('team_members')
+    .select('team_id, players!players_team_member_id_fkey(name_realm)')
+    .eq('auth_user_id', userId)
+    .neq('team_id', _teamCfg.supabaseTeamId)
+    .then(function (result) {
+      var rows = result.data || [];
+      for (var i = 0; i < rows.length; i++) {
+        var players = rows[i].players || [];
+        var nameRealm = players.length ? players[0].name_realm : null;
+        if (!nameRealm) continue;
+        var teamSlug = null;
+        Object.keys(TEAMS).forEach(function (slug) {
+          if (TEAMS[slug].supabaseTeamId === rows[i].team_id) teamSlug = slug;
+        });
+        return { teamSlug: teamSlug, teamName: teamSlug ? TEAMS[teamSlug].name : null, nameRealm: nameRealm };
+      }
+      return null;
+    })
+    .catch(function () {
+      return null;
+    });
+}
+
 function resolveDiscordSession(session) {
   return supabaseClient
     .from('team_members')
@@ -190,12 +220,18 @@ function resolveDiscordSession(session) {
       return Promise.all([linkedPromise, supabaseClient.rpc('is_site_admin')]).then(function (results) {
         var linked = results[0].data;
         var adminResult = results[1];
-        return {
+        var nameRealm = (linked && linked.name_realm) || (member && member.name_realm) || null;
+        var mapped = {
           username: session.user.user_metadata.full_name || session.user.user_metadata.name,
-          nameRealm: (linked && linked.name_realm) || (member && member.name_realm) || null,
+          nameRealm: nameRealm,
           isOfficer: !!member && (member.role === 'officer' || member.role === 'team_leader'),
           isAdmin: !!adminResult.data
         };
+        if (nameRealm) return mapped;
+        return findClaimElsewhere(session.user.id).then(function (elsewhere) {
+          mapped.claimedElsewhere = elsewhere;
+          return mapped;
+        });
       });
     });
 }
@@ -307,6 +343,21 @@ function showDiscordClaimModal(session) {
 function closeDiscordClaimModal() {
   var modal = document.getElementById('discordClaimModal');
   if (modal) modal.style.display = 'none';
+}
+
+// Closes the claim modal and hands off to the public team switcher (#368) so the
+// "wrong team" hint (#212) is actionable, not just informational.
+function goToTeamSwitcher() {
+  closeDiscordClaimModal();
+  var sel = document.getElementById('teamSwitcherSelect');
+  if (!sel) return;
+  sel.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  sel.focus();
+  if (typeof sel.showPicker === 'function') {
+    try {
+      sel.showPicker();
+    } catch (_) {}
+  }
 }
 
 function submitCharacterClaim() {
