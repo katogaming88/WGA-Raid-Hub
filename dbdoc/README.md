@@ -38,6 +38,7 @@
 | public.set_updated_at | trigger |  | FUNCTION |
 | public.add_signup_to_roster | int4 | p_signup_id integer, p_is_trial boolean DEFAULT true, p_archive_player_id integer DEFAULT NULL::integer | FUNCTION |
 | public.claim_character | record | p_team_id integer, p_name_realm text | FUNCTION |
+| public.write_audit_log | int4 | p_team_id integer, p_action text, p_target_type text DEFAULT NULL::text, p_target_id integer DEFAULT NULL::integer, p_detail jsonb DEFAULT NULL::jsonb | FUNCTION |
 
 ## Enums
 

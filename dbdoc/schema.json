@@ -2894,6 +2894,12 @@
       "return_type": "record",
       "arguments": "p_team_id integer, p_name_realm text",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.write_audit_log",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_action text, p_target_type text DEFAULT NULL::text, p_target_id integer DEFAULT NULL::integer, p_detail jsonb DEFAULT NULL::jsonb",
+      "type": "FUNCTION"
     }
   ],
   "enums": [
