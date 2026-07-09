@@ -1,7 +1,12 @@
 // ── Admin subtab management ───────────────────────────────────────────────
 
 function buildAdminTab() {
-  switchAdminSubTab('properties', document.getElementById('admin-subtab-btn-properties'));
+  // Team-leader-only access (window._adminAccessLevel === 'officers', set by
+  // showAdminTab in officer.html) hides the Properties/Bot Config/Data
+  // Export/Danger Zone sub-tab buttons, so this always lands them on
+  // Officers instead of a subtab they can't navigate away from.
+  var defaultSub = window._adminAccessLevel === 'officers' ? 'officers' : 'properties';
+  switchAdminSubTab(defaultSub, document.getElementById('admin-subtab-btn-' + defaultSub));
 }
 
 function switchAdminSubTab(name, btnEl) {

@@ -225,6 +225,7 @@ function resolveDiscordSession(session) {
           username: session.user.user_metadata.full_name || session.user.user_metadata.name,
           nameRealm: nameRealm,
           isOfficer: !!member && (member.role === 'officer' || member.role === 'team_leader'),
+          isTeamLeader: !!member && member.role === 'team_leader',
           isAdmin: !!adminResult.data
         };
         if (nameRealm) return mapped;
@@ -410,7 +411,8 @@ function submitCharacterClaim() {
       }
       var updated = Object.assign({}, session, {
         nameRealm: row.name_realm,
-        isOfficer: row.role === 'officer' || row.role === 'team_leader'
+        isOfficer: row.role === 'officer' || row.role === 'team_leader',
+        isTeamLeader: row.role === 'team_leader'
       });
       setDiscordSession(updated);
       renderDiscordNav(updated);
@@ -420,6 +422,20 @@ function submitCharacterClaim() {
     .catch(function () {
       claimFailed();
     });
+}
+
+// Admin tab access level for a resolved session: true grants the full tab
+// (site admins), 'officers' grants only the Officers sub-tab (team leaders --
+// the "Team leaders write team_members" policy already covers their grant/
+// revoke writes, they just had no UI path to it before), false hides the tab
+// entirely. Callers with their own no-session fallback (the legacy password
+// login has no Discord session at all) branch around this rather than folding
+// that case in here.
+function adminAccessLevel(session) {
+  if (!session) return false;
+  if (session.isAdmin) return true;
+  if (session.isTeamLeader) return 'officers';
+  return false;
 }
 
 // ── Officer claim management (#365) ──────────────────────────────────────────
