@@ -6,6 +6,19 @@ Issues carrying a decision are tagged with the `decision` label: `gh issue list 
 
 ---
 
+## 2026-07-09 -- Roster edits (#216): Role dropdown dropped, Class+Spec write together
+
+The old Player Settings panel (`js/common.js`) had three independent controls -- Role, Class, Spec -- each firing its own write, matching the old sheet's three separate columns. The migrated `players` table only has `class_spec_id` (a single FK into `classes_specs`, which pairs each class+spec with exactly one `role`); there's no column an independent role write or a class-only write could land on.
+
+- **Role select removed entirely, replaced with a static read-only display of the derived value.** An independent role override doesn't fit the schema -- role always follows from whichever class_spec_id is set, so a selectable Role dropdown could only ever silently disagree with Class/Spec or do nothing.
+- **Class and Spec stay as two dropdowns, but only Spec's onchange fires a write.** Picking a new Class only repopulates the Spec dropdown client-side (`officerUpdateClass`); the write (`officerSaveClassSpec` -> `updateClassSpecSupabase` in `js/tabs/tab-roster.js`) fires once a Spec is chosen, reading Class's current DOM value at that point and resolving both to one `classes_specs` row before updating `class_spec_id`. This mirrors the only state that's ever actually valid to write: a complete (class, spec) pair.
+- **Audit label reuses `'Spec Changed'`** (not a new `'Class/Spec Changed'` label) since the historical backfill (`20260709140000_backfill_audit_log_detail.sql`) already maps `Spec Changed`/`Class Changed`/`Role Changed` to the same `'Changed to ' || to` summary shape -- one combined write reusing an existing label keeps the Audit Log tab's convention intact without adding a fourth near-duplicate action name.
+- **Roster reads now include `players.id`** (`js/common.js` `fetchSupabaseRoster`/`mapSupabaseRoster`) so writes can target a row by primary key instead of `name_realm`, matching the `.eq('id', playerId)` pattern #216 called for.
+
+[Full discussion -> #216](https://github.com/katogaming88/WGA-Raid-Hub/issues/216)
+
+---
+
 ## 2026-07-09 -- Historical audit_log.detail backfilled in place, legacy changed_by dropped rather than preserved
 
 The Stage C import (#320) wrote the raw `{target, from, to, changed_by}` shape into `audit_log.detail` for every historical row; `write_audit_log()` (#214) and the Audit Log tab rewire (#378) both expect a single human-readable summary string instead. Migration `20260709140000_backfill_audit_log_detail.sql` (#377, split from #215) converts existing rows in place via `UPDATE ... WHERE jsonb_typeof(detail) = 'object'`.
