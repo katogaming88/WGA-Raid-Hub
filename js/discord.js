@@ -318,7 +318,9 @@ function goToTeamSwitcher() {
   sel.scrollIntoView({ block: 'center', behavior: 'smooth' });
   sel.focus();
   if (typeof sel.showPicker === 'function') {
-    try { sel.showPicker(); } catch (_) {}
+    try {
+      sel.showPicker();
+    } catch (_) {}
   }
 }
 
