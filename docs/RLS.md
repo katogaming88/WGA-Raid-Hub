@@ -29,7 +29,7 @@ One thing the matrix hides on purpose: every table also carries a `claude_reader
 | Table | Public SELECT | Officer | Team leader | Notes |
 | --- | --- | --- | --- | --- |
 | attendance | yes | all ops | (via officer) | |
-| audit_log | no | SELECT +site | | No write policy; writes are service-role only |
+| audit_log | no | SELECT +site | | No INSERT policy; only write path is `write_audit_log()` (SECURITY DEFINER, officer/team_leader/site_admin, [#214](https://github.com/katogaming88/WGA-Raid-Hub/issues/214)) |
 | bis_items | yes | all ops | (via officer) | Team resolved through `players.team_id` subquery |
 | bis_requests | no | SELECT, UPDATE | | No INSERT policy; submissions are service-role only |
 | classes_specs | yes | | | Read-only lookup; no write policy |
