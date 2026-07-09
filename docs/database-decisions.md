@@ -6,6 +6,19 @@ Issues carrying a decision are tagged with the `decision` label: `gh issue list 
 
 ---
 
+## 2026-07-09 -- Historical audit_log.detail backfilled in place, legacy changed_by dropped rather than preserved
+
+The Stage C import (#320) wrote the raw `{target, from, to, changed_by}` shape into `audit_log.detail` for every historical row; `write_audit_log()` (#214) and the Audit Log tab rewire (#378) both expect a single human-readable summary string instead. Migration `20260709140000_backfill_audit_log_detail.sql` (#377, split from #215) converts existing rows in place via `UPDATE ... WHERE jsonb_typeof(detail) = 'object'`.
+
+- **One-time SQL backfill over fixing the importer and re-importing.** `scripts/import/tables/audit.js` doesn't need to change -- its own idempotency guard (`NOT EXISTS` on `(team_id, created_at, action)`) has nothing to do with this conversion, and a wipe-and-reimport would touch production data via delete+reinsert for no benefit over an in-place `UPDATE`.
+- **Rerun-safe by construction, not by a migration-tracking table.** The `jsonb_typeof(detail) = 'object'` scope means a row already converted to a plain string is left alone on a second run, and any future write through `write_audit_log()` that happens to pass a jsonb object as `p_detail` would also need this same guard kept in mind if this migration ever needs to be edited.
+- **Legacy `detail.changed_by` (a free-text Discord username, not an `auth.users` link) is dropped, not preserved.** Every historical row already has `actor_id = null` and always will (the sheet's Changed By was never an account link) -- these rows were never going to resolve a CHANGED BY through `resolve_actor_name()` (#376) regardless of what happens to `detail`, so keeping `changed_by` around in some structured form would only complicate the tab (#378) for a display gap that already existed. Confirmed with Kat rather than assumed.
+- **Two corrections to the conversion map** as originally proposed in #215's comments, found by reconciling against the real distinct-action list in production (not just the `gs/wgaWebApp.gs` call sites): `Trial Status Changed`/`Bench Status Changed` store `to`/`from` as the literal strings `"TRUE"`/`"FALSE"`, not booleans; `Officer Granted`/`Officer Revoked`'s `to` is a raw Discord snowflake id, not human-readable, so both were moved from "use TO directly" into the empty-detail bucket -- TARGET (the username) already carries the meaningful part.
+
+[Full discussion -> #377](https://github.com/katogaming88/WGA-Raid-Hub/issues/377)
+
+---
+
 ## 2026-07-09 -- Actor-name resolution reads auth.users PII, so it's gated like a read policy, not just an execute grant
 
 `resolve_actor_name(p_actor_id uuid, p_team_id integer)` (migration `20260709130000_resolve_actor_name.sql`, #376, split from #215) resolves `audit_log.actor_id` to a display name for the Audit Log tab's CHANGED BY column.
