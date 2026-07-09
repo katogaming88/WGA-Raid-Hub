@@ -264,8 +264,13 @@ function _esc(str) {
 }
 
 // Called by discord.js when a stored session is successfully validated on page load.
-// Checks for the wga_open_profile flag set by officer.html "My Profile" navigation.
+// officer-quick-actions.js (loaded before this file) also wants this hook -- only
+// one function named onDiscordSessionRestored can exist in the global scope, and
+// this file's declaration is the one that wins since it loads last, so it has to
+// call _qaRefresh() itself (#371) or the officer bar/player selector/claim prompt
+// silently never react to a restored session.
 function onDiscordSessionRestored(session) {
+  if (typeof _qaRefresh === 'function') _qaRefresh();
   if (session && session.nameRealm && sessionStorage.getItem('wga_open_profile')) {
     sessionStorage.removeItem('wga_open_profile');
     autoOpenClaimedProfile(session.nameRealm);
