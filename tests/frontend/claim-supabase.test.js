@@ -49,7 +49,7 @@ function makeSelect() {
 function makeClient(config) {
   const captured = { byTable: {}, rpc: null };
   function builder(resolve) {
-    const calls = { select: null, eq: [], is: [], order: [], limit: null, maybeSingle: false };
+    const calls = { select: null, eq: [], neq: [], is: [], order: [], limit: null, maybeSingle: false };
     const b = {
       select(c) {
         calls.select = c;
@@ -57,6 +57,10 @@ function makeClient(config) {
       },
       eq(c, v) {
         calls.eq.push([c, v]);
+        return b;
+      },
+      neq(c, v) {
+        calls.neq.push([c, v]);
         return b;
       },
       is(c, v) {
@@ -105,6 +109,10 @@ function baseSandbox(els, store) {
   return {
     TEAM_SLUG: 'phoenix',
     _teamCfg: { supabaseTeamId: 1 },
+    TEAMS: {
+      phoenix: { name: 'Team Phoenix', supabaseTeamId: 1 },
+      hellfire: { name: 'Hellfire Rollers', supabaseTeamId: 2 }
+    },
     console,
     document: {
       getElementById: (id) => els[id] || null,
@@ -325,6 +333,52 @@ describe('resolveDiscordSession', () => {
     // no player lookup issued when there is no member row
     expect(captured.byTable.players).toBeUndefined();
   });
+
+  // "Members read own team_members" (#212) has no team_id filter, so a raider's
+  // row on another team is visible from this team's page too -- used to tell
+  // "never claimed anywhere" apart from "claimed, just on the other team".
+  describe('claimedElsewhere (#368 follow-up)', () => {
+    function setupElsewhere(elsewhereRows) {
+      let teamMembersCalls = 0;
+      const { client, captured } = makeClient({
+        team_members: () => {
+          teamMembersCalls += 1;
+          // First call: this-team lookup (no local member). Second call: the
+          // cross-team findClaimElsewhere() query.
+          return teamMembersCalls === 1 ? { data: null, error: null } : { data: elsewhereRows, error: null };
+        },
+        rpc: { is_site_admin: () => ({ data: false, error: null }) }
+      });
+      const sandbox = loadDiscordJs({ supabaseClient: client });
+      return { sandbox, captured };
+    }
+
+    it('sets claimedElsewhere with the team and character when found on another team', async () => {
+      const { sandbox, captured } = setupElsewhere([{ team_id: 2, players: [{ name_realm: 'Alt-Illidan' }] }]);
+      const mapped = await sandbox.resolveDiscordSession(session);
+      expect(mapped.nameRealm).toBeNull();
+      expect(mapped.claimedElsewhere).toEqual({
+        teamSlug: 'hellfire',
+        teamName: 'Hellfire Rollers',
+        nameRealm: 'Alt-Illidan'
+      });
+      const q = captured.byTable.team_members;
+      expect(q.eq).toEqual([['auth_user_id', 'u1']]);
+      expect(q.neq).toEqual([['team_id', 1]]);
+    });
+
+    it('leaves claimedElsewhere null when the other team row has no linked player', async () => {
+      const { sandbox } = setupElsewhere([{ team_id: 2, players: [] }]);
+      const mapped = await sandbox.resolveDiscordSession(session);
+      expect(mapped.claimedElsewhere).toBeNull();
+    });
+
+    it('leaves claimedElsewhere null when there is no row on any other team', async () => {
+      const { sandbox } = setupElsewhere([]);
+      const mapped = await sandbox.resolveDiscordSession(session);
+      expect(mapped.claimedElsewhere).toBeNull();
+    });
+  });
 });
 
 describe('_renderClaimPrompt', () => {
@@ -334,12 +388,34 @@ describe('_renderClaimPrompt', () => {
       claimPromptName: makeEl(),
       claimPromptLoading: makeEl({ style: { display: '' } }),
       claimPromptDesc: makeEl({ style: { display: 'none' } }),
+      claimPromptElsewhereDesc: makeEl({ style: { display: 'none' } }),
+      claimPromptElsewhereWho: makeEl(),
+      claimPromptElsewhereChar: makeEl(),
+      claimPromptElsewhereTeam: makeEl(),
       claimPromptBtn: makeEl({ style: { display: 'none' } })
     };
     let current = null;
     const sandbox = loadQuickActions({ els, getSession: () => current });
     return { els, sandbox, setSession: (s) => (current = s) };
   }
+
+  it('shows the elsewhere message and wires the button to switch teams (#368 follow-up)', () => {
+    const { els, sandbox, setSession } = setup();
+    setSession({
+      username: 'Kato',
+      nameRealm: null,
+      claimedElsewhere: { teamSlug: 'hellfire', teamName: 'Hellfire Rollers', nameRealm: 'Alt-Illidan' }
+    });
+    sandbox._renderClaimPrompt();
+    expect(els.claimPromptCard.style.display).toBe('');
+    expect(els.claimPromptDesc.style.display).toBe('none');
+    expect(els.claimPromptElsewhereDesc.style.display).toBe('');
+    expect(els.claimPromptElsewhereWho.textContent).toBe('Kato');
+    expect(els.claimPromptElsewhereChar.textContent).toBe('Alt-Illidan');
+    expect(els.claimPromptElsewhereTeam.textContent).toBe('Hellfire Rollers');
+    expect(els.claimPromptBtn.textContent).toBe('Switch to Hellfire Rollers');
+    expect(typeof els.claimPromptBtn.onclick).toBe('function');
+  });
 
   it('shows the box and sets the name when logged in without a claim', () => {
     const { els, sandbox, setSession } = setup();

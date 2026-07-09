@@ -62,7 +62,8 @@
       <h2 id="claimPromptHeading">Claim your character</h2>
       <p id="claimPromptLoading" style="display:none">Checking your account...</p>
       <p id="claimPromptDesc">Welcome, <strong id="claimPromptName"></strong>! Link a character to your account to unlock your raider profile.</p>
-      <button type="button" class="btn btn-gold" id="claimPromptBtn" aria-describedby="claimPromptDesc" onclick="showDiscordClaimModal(getDiscordSession())">Claim your character</button>
+      <p id="claimPromptElsewhereDesc" style="display:none">Welcome, <strong id="claimPromptElsewhereWho"></strong>! You've already claimed <strong id="claimPromptElsewhereChar"></strong> on <strong id="claimPromptElsewhereTeam"></strong>. Switch teams to view your profile.</p>
+      <button type="button" class="btn btn-gold" id="claimPromptBtn" aria-describedby="claimPromptDesc">Claim your character</button>
     </section>
     <div id="landingStats" class="pub-stats"></div>
     <div class="landing-card" id="playerSelectorCard">
