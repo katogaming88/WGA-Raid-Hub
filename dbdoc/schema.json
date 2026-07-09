@@ -19,7 +19,7 @@
         {
           "name": "player_id",
           "type": "integer",
-          "nullable": false
+          "nullable": true
         },
         {
           "name": "raid_date",
@@ -100,7 +100,7 @@
         {
           "name": "attendance_player_id_fkey",
           "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL",
           "table": "public.attendance",
           "referenced_table": "public.players",
           "columns": [
@@ -2413,8 +2413,8 @@
       "parent_columns": [
         "id"
       ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
     },
     {
       "table": "public.attendance",

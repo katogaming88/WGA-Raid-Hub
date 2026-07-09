@@ -6,6 +6,27 @@ Issues carrying a decision are tagged with the `decision` label: `gh issue list 
 
 ---
 
+## 2026-07-09 -- Attendance writes (#218): writes-only, reads deliberately staying on Apps Script for now
+
+Unlike roster (#216) and BiS (#217), attendance's Supabase table doesn't yet have a live pipeline feeding it real data. Checked the live DB before starting:
+
+```
+ team_id | count |    max     |    min
+---------+-------+------------+------------
+       1 |   829 | 2026-06-25 | 2026-03-17
+```
+
+Hellfire and Immolation have zero rows. Phoenix's 829 rows are a one-time historical import, frozen at 2026-06-25 -- the pipeline that actually produces new attendance data (`refreshAttendanceWCL` in `gs/Attendance.gs`, run weekly) still writes only to the Google Sheet, and that migration is a separate issue (#223, Phase 7), not done yet.
+
+- **Writes move to Supabase; reads stay on the Apps Script Sheet.** Migrating grid reads now (mirroring #217's BiS precedent) would show an empty grid for any team without the historical import and a stale one for Phoenix, since nothing populates new raid nights in Supabase until #223 ships. `setPlayerStatus`/`toggleReportExcluded` (`js/tabs/tab-attendance.js`) now write to `attendance` via upsert/update, but `getAttendanceGrid` keeps reading the Sheet.
+- **Accepted interim quirk: an officer's edit is session-only until reads migrate.** Since the grid still reads the untouched Sheet, a page reload shows the Sheet's stale value again -- the edit only persists in Supabase and in the existing local `_attendanceGrid` patch for the rest of that browser session. Confirmed acceptable with Kat: officer attendance workflows aren't moving onto this path in practice until the whole pipeline (including #223) is on Supabase; this PR exists to have the write half ready and waiting, not to be used for real edits yet.
+- **`attendance.player_id`'s FK reconciled to `ON DELETE SET NULL`** (migration `20260709170000_attendance_player_id_set_null.sql`), matching `rclc_loot` and the decision #250 already called for but never actually migrated (the baseline dump still showed `ON DELETE CASCADE`). Column made nullable to support it; `check_team_id_matches_player()` already guards on `new.player_id is not null`, so this doesn't need a trigger change. Safety net only -- soft-delete via `archived_at` (#216/#258) is the only path roster removal takes today.
+- **Audit action names and shapes carried over unchanged from GAS**: `'Attendance Status Set'` targets the player (`target_type: 'players'`, matching #216/#217's TARGET-durability reasoning), detail `"<old> -> <new>"` (matches the historical backfill's format for this exact action). `'Report Excluded'`/`'Report Exclusion Removed'` have no single player to target (they apply to a whole raid night), so `target_type`/`target_id` are `null` and the raid date goes in the detail string instead.
+
+[Full discussion -> #218](https://github.com/katogaming88/WGA-Raid-Hub/issues/218)
+
+---
+
 ## 2026-07-09 -- BiS list edits (#217): editor reworked to instant per-row writes; audit entries target the player, not the bis_items row
 
 The old officer BiS editor (`js/tabs/tab-bis.js`) staged add/remove in a local array and pushed the whole list on one "Save" click, because the GAS `setBisItems` handler it called only ever supported rewriting a player's entire BiS column at once. `bis_items` supports true per-row insert/update/delete, and the issue itself flagged the editor's shape as an open design call rather than something to port as-is.

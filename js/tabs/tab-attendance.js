@@ -183,7 +183,15 @@ function renderAttendanceGrid() {
   }
 }
 
-var ATTENDANCE_STATUSES = ['Present', 'Bench', 'Medical Leave', 'Excused', 'No Show', 'Not on Roster'];
+var ATTENDANCE_STATUSES = [
+  'Present',
+  'Bench',
+  'Medical Leave',
+  'Excused',
+  'Extended Leave',
+  'No Show',
+  'Not on Roster'
+];
 
 function renderNightGrid(index) {
   var table = document.getElementById('attendGridTable');
@@ -250,6 +258,23 @@ function escHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+// Attendance grid reads still come from the Apps Script Sheet (#218 scope
+// note: the WCL sync pipeline that populates new raid nights hasn't moved to
+// Supabase yet -- that's #223 -- so migrating reads now would show an empty
+// grid for any team without a historical import and a stale one for Phoenix).
+// Only the two writes below move to Supabase. Known interim quirk: since the
+// grid itself still reads the untouched Sheet, an officer's edit persists
+// only for the rest of this browser session (the local _attendanceGrid patch
+// below) until reads migrate alongside #223.
+function attendFindRosterPlayer(firstName) {
+  var norm = normalise(firstName);
+  var roster = (DATA && DATA.roster) || [];
+  for (var i = 0; i < roster.length; i++) {
+    if (normalise(roster[i].firstName) === norm) return roster[i];
+  }
+  return null;
+}
+
 function setPlayerStatus(selectEl) {
   var date = selectEl.getAttribute('data-date');
   var firstName = selectEl.getAttribute('data-name');
@@ -259,47 +284,67 @@ function setPlayerStatus(selectEl) {
   var indicator = row ? row.querySelector('.attend-save-ind') : null;
 
   if (!status) return;
+  var player = attendFindRosterPlayer(firstName);
+  if (!player || !player.id) {
+    selectEl.value = oldStatus || '';
+    if (indicator) {
+      indicator.textContent = 'Error';
+      indicator.style.color = 'var(--melee)';
+      setTimeout(function () {
+        if (indicator) indicator.textContent = '';
+      }, 3000);
+    }
+    return;
+  }
+
   selectEl.disabled = true;
   if (indicator) {
     indicator.textContent = 'Saving...';
     indicator.style.color = 'var(--text-muted)';
   }
 
-  var data = { date: date, firstName: firstName, status: status, oldStatus: oldStatus };
-  jsonpRequest(
-    WEB_APP_URL + '?action=setAttendanceStatus&data=' + encodeURIComponent(JSON.stringify(data)),
-    function (err, result) {
+  supabaseClient
+    .from('attendance')
+    .upsert(
+      { team_id: _teamCfg.supabaseTeamId, player_id: player.id, raid_date: date, status: status },
+      { onConflict: 'team_id,player_id,raid_date' }
+    )
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      return writeAuditLog('Attendance Status Set', 'players', player.id, (oldStatus || '(none)') + ' -> ' + status);
+    })
+    .then(function () {
       selectEl.disabled = false;
-      if (!err && result && result.success) {
-        selectEl.setAttribute('data-old', status);
-        var nightSelect = document.getElementById('attendNightSelect');
-        var idx = nightSelect ? parseInt(nightSelect.value) : -1;
-        if (idx >= 0 && Array.isArray(_attendanceGrid) && _attendanceGrid[idx]) {
-          var players = _attendanceGrid[idx].players;
-          for (var i = 0; i < players.length; i++) {
-            if (players[i].name === firstName) {
-              players[i].status = status;
-              players[i].source = 'Officer';
-              break;
-            }
+      selectEl.setAttribute('data-old', status);
+      var nightSelect = document.getElementById('attendNightSelect');
+      var idx = nightSelect ? parseInt(nightSelect.value) : -1;
+      if (idx >= 0 && Array.isArray(_attendanceGrid) && _attendanceGrid[idx]) {
+        var players = _attendanceGrid[idx].players;
+        for (var i = 0; i < players.length; i++) {
+          if (players[i].name === firstName) {
+            players[i].status = status;
+            players[i].source = 'Officer';
+            break;
           }
         }
-        if (indicator) {
-          indicator.innerHTML = '&#10003;';
-          indicator.style.color = 'var(--heal)';
-        }
-      } else {
-        selectEl.value = oldStatus || '';
-        if (indicator) {
-          indicator.textContent = 'Error';
-          indicator.style.color = 'var(--melee)';
-          setTimeout(function () {
-            if (indicator) indicator.textContent = '';
-          }, 3000);
-        }
       }
-    }
-  );
+      if (indicator) {
+        indicator.innerHTML = '&#10003;';
+        indicator.style.color = 'var(--heal)';
+      }
+    })
+    .catch(function (err) {
+      selectEl.disabled = false;
+      selectEl.value = oldStatus || '';
+      console.warn('Failed to save attendance status.', err);
+      if (indicator) {
+        indicator.textContent = 'Error';
+        indicator.style.color = 'var(--melee)';
+        setTimeout(function () {
+          if (indicator) indicator.textContent = '';
+        }, 3000);
+      }
+    });
 }
 
 function toggleReportExcluded(index) {
@@ -312,28 +357,32 @@ function toggleReportExcluded(index) {
   }
 
   var newExcluded = !raid.excluded;
-  jsonpRequest(
-    WEB_APP_URL + '?action=setReportExcluded&date=' + encodeURIComponent(raid.date) + '&excluded=' + newExcluded,
-    function (err, result) {
-      if (!err && result && result.success) {
-        raid.excluded = newExcluded;
-        // Update dropdown label
-        var nightSelect = document.getElementById('attendNightSelect');
-        if (nightSelect && nightSelect.options[index]) {
-          var baseTitle = raid.title.replace(/ \[EXCLUDED\]$/, '');
-          nightSelect.options[index].textContent = baseTitle + (newExcluded ? ' [EXCLUDED]' : '');
-        }
-        renderNightGrid(index);
-      } else {
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = newExcluded ? 'Exclude Report' : 'Remove Exclusion';
-        }
-        var errMsg = err ? err.message : result && result.error ? result.error : 'Error saving.';
-        alert('Failed to update report exclusion: ' + errMsg);
+  supabaseClient
+    .from('attendance')
+    .update({ report_excluded: newExcluded })
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('raid_date', raid.date)
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      return writeAuditLog(newExcluded ? 'Report Excluded' : 'Report Exclusion Removed', null, null, raid.date);
+    })
+    .then(function () {
+      raid.excluded = newExcluded;
+      // Update dropdown label
+      var nightSelect = document.getElementById('attendNightSelect');
+      if (nightSelect && nightSelect.options[index]) {
+        var baseTitle = raid.title.replace(/ \[EXCLUDED\]$/, '');
+        nightSelect.options[index].textContent = baseTitle + (newExcluded ? ' [EXCLUDED]' : '');
       }
-    }
-  );
+      renderNightGrid(index);
+    })
+    .catch(function (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = newExcluded ? 'Exclude Report' : 'Remove Exclusion';
+      }
+      alert('Failed to update report exclusion: ' + err.message);
+    });
 }
 
 function refreshAttendanceWCL() {
