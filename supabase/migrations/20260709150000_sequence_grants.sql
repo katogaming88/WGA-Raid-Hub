@@ -6,7 +6,7 @@
 -- on its backing sequence *before* RLS is reached, and #312 never granted
 -- that -- nothing had tried an insert through PostgREST until #216's Add
 -- Player flow hit it: "permission denied for sequence players_id_seq" even
--- though the row-level "Officers write players" policy permits the insert.
+-- though the row-level "Officers write players" RLS rule permits the insert.
 -- Same class of gap #332 flagged for service_role, just the anon/
 -- authenticated half.
 --
