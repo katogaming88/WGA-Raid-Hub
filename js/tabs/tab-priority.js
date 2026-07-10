@@ -1,5 +1,15 @@
 var ARMOR_SLOT_ORDER = ['HEAD', 'SHOULDERS', 'CHEST', 'GLOVES', 'LEGS', 'CLOAK', 'BRACERS', 'BELT', 'BOOTS'];
 
+// btoa() only accepts a binary string of code units 0-255; converting UTF-8
+// bytes to that form first matches Utilities.base64Encode(str, UTF_8)'s
+// behavior for non-ASCII player names (#360).
+function _utf8ToBase64(str) {
+  var bytes = new TextEncoder().encode(str);
+  var binary = '';
+  for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
 function fetchExportString() {
   var btn = document.getElementById('prioExportLoadBtn');
   var body = document.getElementById('prioExportBody');
@@ -9,20 +19,20 @@ function fetchExportString() {
     btn.textContent = 'Loading...';
   }
 
-  jsonpRequest(WEB_APP_URL + '?action=getExportString', function (err, result) {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'Regenerate';
-    }
-    var str = !err && result && result.exportString ? result.exportString : '';
-    area.value = str;
-    area.placeholder = err
-      ? err.message
-      : str
-        ? ''
-        : 'No export string found. Run Export Priority Data from the spreadsheet first.';
-    body.style.display = '';
-  });
+  var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+
+  supabaseClient
+    .rpc('build_rclc_export', { p_team_id: _teamCfg.supabaseTeamId, p_season: season })
+    .then(function (result) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Regenerate';
+      }
+      var str = !result.error && result.data ? _utf8ToBase64(JSON.stringify(result.data)) : '';
+      area.value = str;
+      area.placeholder = result.error ? result.error.message : '';
+      body.style.display = '';
+    });
 }
 
 function copyExportString() {
