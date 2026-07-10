@@ -593,10 +593,19 @@ function prioEditRenderList() {
           scoreData.weightedTotal +
           '</span>';
       }
-      if (scoreData.statusLabel) {
+      // "Has Heroic" (mythic track only -- still eligible for mythic, but
+      // penalized) gets its own badge instead of sitting in the grey status
+      // text, same as the BiS pool's "H" badge -- easy to miss otherwise.
+      var statusParts = (scoreData.statusLabel || '').split(', ').filter(function (p) {
+        return p !== 'Has Heroic';
+      });
+      var hasHeroicStatus = (scoreData.statusLabel || '').indexOf('Has Heroic') !== -1;
+      if (hasHeroicStatus)
+        html += '<span class="prio-diff-badge prio-diff-heroic" title="Has the Heroic version">H</span>';
+      if (statusParts.length) {
         html +=
           '<span style="font-size:0.75rem;color:var(--text-muted);font-style:italic;margin-left:2px;">(' +
-          scoreData.statusLabel +
+          statusParts.join(', ') +
           ')</span>';
       }
     }
