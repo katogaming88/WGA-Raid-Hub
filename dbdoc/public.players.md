@@ -18,6 +18,7 @@
 | team_member_id | integer |  | true |  | [public.team_members](public.team_members.md) |  |
 | archived_at | timestamp with time zone |  | true |  |  |  |
 | updated_at | timestamp with time zone |  | true |  |  |  |
+| bis_allowed | boolean | false | false |  |  |  |
 
 ## Constraints
 
@@ -76,6 +77,7 @@ erDiagram
   integer team_member_id FK
   timestamp_with_time_zone archived_at
   timestamp_with_time_zone updated_at
+  boolean bis_allowed
 }
 "public.attendance" {
   integer id
@@ -98,9 +100,10 @@ erDiagram
   integer id
   integer team_id FK
   integer player_id FK
-  integer bis_req_item_id FK
   timestamp_with_time_zone submitted_at
   text status
+  text bis_link
+  text player_note
 }
 "public.rclc_loot" {
   integer id

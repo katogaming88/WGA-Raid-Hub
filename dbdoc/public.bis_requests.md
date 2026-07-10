@@ -7,9 +7,10 @@
 | id | integer | nextval('bis_requests_id_seq'::regclass) | false |  |  |  |
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
 | player_id | integer |  | true |  | [public.players](public.players.md) |  |
-| bis_req_item_id | integer |  | false |  | [public.items](public.items.md) |  |
 | submitted_at | timestamp with time zone | now() | false |  |  |  |
 | status | text | 'pending'::text | false |  |  |  |
+| bis_link | text |  | false |  |  |  |
+| player_note | text |  | true |  |  |  |
 
 ## Constraints
 
@@ -17,7 +18,6 @@
 | ---- | ---- | ---------- |
 | bis_requests_status_check | CHECK | CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text]))) |
 | bis_requests_pkey | PRIMARY KEY | PRIMARY KEY (id) |
-| bis_requests_bis_req_item_id_fkey | FOREIGN KEY | FOREIGN KEY (bis_req_item_id) REFERENCES items(id) ON DELETE SET NULL |
 | bis_requests_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL |
 | bis_requests_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 
@@ -40,15 +40,15 @@ erDiagram
 
 "public.bis_requests" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.bis_requests" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
-"public.bis_requests" }o--|| "public.items" : "FOREIGN KEY (bis_req_item_id) REFERENCES items(id) ON DELETE SET NULL"
 
 "public.bis_requests" {
   integer id
   integer team_id FK
   integer player_id FK
-  integer bis_req_item_id FK
   timestamp_with_time_zone submitted_at
   text status
+  text bis_link
+  text player_note
 }
 "public.teams" {
   integer id
@@ -70,15 +70,7 @@ erDiagram
   integer team_member_id FK
   timestamp_with_time_zone archived_at
   timestamp_with_time_zone updated_at
-}
-"public.items" {
-  integer id
-  integer wow_item_id
-  text name
-  text slot
-  text armor_type
-  integer sort_id
-  boolean is_placeholder
+  boolean bis_allowed
 }
 ```
 

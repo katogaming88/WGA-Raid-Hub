@@ -8,6 +8,22 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.32.7] - 2026-07-13
+
+### Frontend
+
+- **Wired the BiS link submission/approval flow to Supabase (#404)** -- `submitBiS`/`getPendingBiS`/`approveBiS`/`rejectBiS`/`updateBisLink`/`allowBisForPlayer`/`revokeBisForPlayer` were still 100% GAS despite `bis_requests` existing in Supabase since day one; a freshly-approved link never reached the roster's Supabase-sourced `players.bis_link` read. Raider submission now calls the new `submit_bis_link` RPC; officer approve/reject and manual link edits write `bis_requests`/`players` directly (existing officer-write RLS already covered both). The pending-BiS nav badge also switched to Supabase.
+- **Per-player BiS submission gating moved to `players.bis_allowed`** (a boolean column) instead of a GAS Script Property array, so `allowBisForPlayer`/`revokeBisForPlayer` stay usable by any officer -- routing it through `team_settings`/`set_team_setting()` instead would have restricted the toggle to team leaders only.
+- Moved `findRosterPlayerByNameRealm()` from `js/signup.js` (index.html-only) to `js/common.js` (loaded on both pages), since the BiS toggle on officer.html now needs it too.
+
+### Backend
+
+- **Repurposed `bis_requests` (#404)**: dropped `bis_req_item_id` (a mandatory FK to `items` that never fit this feature -- the live flow submits a whole BiS list URL, not a per-item request) and added `bis_link text not null`/`player_note text`. Table had zero rows and zero references anywhere, confirmed before altering.
+- **New `submit_bis_link` RPC**: SECURITY DEFINER, granted to `anon` (submission runs unauthenticated on the public roster page, same trust model as the GAS action it replaces). Re-validates the submission gate server-side (`bisSubmissionsOpen` team-wide or the player's own `bis_allowed`) rather than trusting the client's decision to show the form.
+- Added `players.bis_allowed boolean not null default false`.
+
+---
+
 ## [3.32.6] - 2026-07-12
 
 ### Frontend

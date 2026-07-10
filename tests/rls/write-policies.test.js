@@ -127,7 +127,8 @@ describe('site_admins is site-admin only', () => {
 
 describe('request tables have no INSERT path (service role only)', () => {
   const REQUEST_INSERTS = {
-    bis_requests: 'insert into public.bis_requests (team_id, player_id, bis_req_item_id) values (1, 1, 2)',
+    bis_requests:
+      "insert into public.bis_requests (team_id, player_id, bis_link) values (1, 1, 'https://example.com/test')",
     mplus_exclusion_requests:
       "insert into public.mplus_exclusion_requests (team_id, player_id, reason) values (1, 2, 'test')",
     season_signups:

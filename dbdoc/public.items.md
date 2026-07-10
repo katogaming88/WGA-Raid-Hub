@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('items_id_seq'::regclass) | false | [public.bis_items](public.bis_items.md) [public.bis_requests](public.bis_requests.md) [public.item_bosses](public.item_bosses.md) [public.rclc_loot](public.rclc_loot.md) [public.priority_order](public.priority_order.md) [public.self_received_requests](public.self_received_requests.md) |  |  |
+| id | integer | nextval('items_id_seq'::regclass) | false | [public.bis_items](public.bis_items.md) [public.item_bosses](public.item_bosses.md) [public.rclc_loot](public.rclc_loot.md) [public.priority_order](public.priority_order.md) [public.self_received_requests](public.self_received_requests.md) |  |  |
 | wow_item_id | integer |  | true |  |  |  |
 | name | text |  | false |  |  |  |
 | slot | text |  | false |  |  |  |
@@ -32,7 +32,6 @@
 erDiagram
 
 "public.bis_items" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
-"public.bis_requests" }o--|| "public.items" : "FOREIGN KEY (bis_req_item_id) REFERENCES items(id) ON DELETE SET NULL"
 "public.item_bosses" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.rclc_loot" }o--o| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
 "public.priority_order" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id)"
@@ -54,14 +53,6 @@ erDiagram
   boolean obtained
   timestamp_with_time_zone updated_at
   text slot
-}
-"public.bis_requests" {
-  integer id
-  integer team_id FK
-  integer player_id FK
-  integer bis_req_item_id FK
-  timestamp_with_time_zone submitted_at
-  text status
 }
 "public.item_bosses" {
   integer item_id FK
