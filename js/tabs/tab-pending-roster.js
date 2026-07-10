@@ -3,6 +3,8 @@ var _pendingMissingSignups = [];
 var _pendingFilterRole = null;
 var _pendingSwapOnly = false;
 var _pendingSortKey = 'name';
+var _pendingSelected = {}; // signupId -> true, for checked entries in the selection-based push
+var _pendingBatchMessage = ''; // last "N of M added, ..." summary from a batch push
 
 // Map of nameRealm.toLowerCase() -> current roster player, for diff/conflict checks.
 function buildPendingRosterMap() {
@@ -38,6 +40,8 @@ function buildPendingRosterTab() {
   var loaded = { entries: false, missing: false };
   _pendingRosterEntries = [];
   _pendingMissingSignups = [];
+  _pendingSelected = {};
+  _pendingBatchMessage = '';
 
   function tryRender() {
     if (!loaded.entries || !loaded.missing) return;
@@ -71,6 +75,15 @@ function renderPendingRoster(entries, missing) {
   var container = document.getElementById('pendingRosterContainer');
   if (!container) return;
 
+  // Drop selections for signups no longer in the pending list (already pushed/removed).
+  var stillPending = {};
+  entries.forEach(function (e) {
+    stillPending[e.signupId] = true;
+  });
+  Object.keys(_pendingSelected).forEach(function (id) {
+    if (!stillPending[id]) delete _pendingSelected[id];
+  });
+
   var rosterMap = buildPendingRosterMap();
   var html = '<div style="margin-top:1.5rem;">';
 
@@ -92,6 +105,7 @@ function renderPendingRoster(entries, missing) {
       html +=
         '<p style="color:var(--text-muted);font-size:1rem;margin-top:1rem;">No pending entries match the current filter.</p>';
     } else {
+      html += buildPendingSelectionBarHtml(visible);
       visible.forEach(function (e) {
         html += buildPendingCardHtml(e, rosterMap);
       });
@@ -180,6 +194,143 @@ function togglePendingSwapOnly() {
 function togglePendingSortKey() {
   _pendingSortKey = _pendingSortKey === 'class' ? 'name' : 'class';
   renderPendingRoster(_pendingRosterEntries, _pendingMissingSignups);
+}
+
+// ── Selection-based push ─────────────────────────────────────────────────────
+
+function buildPendingSelectionBarHtml(visible) {
+  var selectedCount = visible.filter(function (e) {
+    return !!_pendingSelected[e.signupId];
+  }).length;
+  var allSelected = visible.length > 0 && selectedCount === visible.length;
+
+  var messageHtml = _pendingBatchMessage
+    ? '<span id="pendingBatchPushStatus" style="font-size:0.85rem;color:var(--text-muted);">' +
+      escHtml(_pendingBatchMessage) +
+      '</span>'
+    : '<span id="pendingBatchPushStatus" style="font-size:0.85rem;color:var(--text-muted);"></span>';
+
+  return (
+    '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.6rem;margin-bottom:0.75rem;' +
+    'padding:0.5rem 0.75rem;background:var(--bg-alt);border:1px solid var(--border);border-radius:6px;">' +
+    '<label style="display:flex;align-items:center;gap:0.35rem;font-size:0.85rem;color:var(--text-muted);cursor:pointer;">' +
+    '<input type="checkbox" onchange="toggleSelectAllPending()"' +
+    (allSelected ? ' checked' : '') +
+    ' style="accent-color:var(--gold-light);">Select All' +
+    '</label>' +
+    '<span style="font-size:0.85rem;color:var(--text-muted);">' +
+    selectedCount +
+    ' selected</span>' +
+    '<button id="pendingBatchPushBtn" class="btn btn-gold" onclick="batchAddSelectedToRoster()"' +
+    (selectedCount ? '' : ' disabled') +
+    ' style="font-size:0.88rem;padding:0.25rem 0.75rem;">Add Selected to Roster</button>' +
+    messageHtml +
+    '</div>'
+  );
+}
+
+function togglePendingSelected(signupId) {
+  if (_pendingSelected[signupId]) {
+    delete _pendingSelected[signupId];
+  } else {
+    _pendingSelected[signupId] = true;
+  }
+  renderPendingRoster(_pendingRosterEntries, _pendingMissingSignups);
+}
+
+function toggleSelectAllPending() {
+  var visible = getFilteredSortedPendingEntries(_pendingRosterEntries);
+  var allSelected = visible.length > 0 && visible.every(function (e) {
+    return !!_pendingSelected[e.signupId];
+  });
+  visible.forEach(function (e) {
+    if (allSelected) {
+      delete _pendingSelected[e.signupId];
+    } else {
+      _pendingSelected[e.signupId] = true;
+    }
+  });
+  renderPendingRoster(_pendingRosterEntries, _pendingMissingSignups);
+}
+
+function batchAddSelectedToRoster() {
+  var ids = Object.keys(_pendingSelected)
+    .map(Number)
+    .filter(function (id) {
+      return _pendingRosterEntries.some(function (e) {
+        return e.signupId === id;
+      });
+    });
+  if (!ids.length) return;
+
+  _pendingBatchMessage = '';
+  var btn = document.getElementById('pendingBatchPushBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Adding...';
+  }
+
+  var results = { success: 0, failed: [] };
+  var remaining = ids.length;
+
+  ids.forEach(function (signupId) {
+    var entry = _pendingRosterEntries.filter(function (e) {
+      return e.signupId === signupId;
+    })[0];
+    var card = document.querySelector('.signup-response-card[data-row="' + signupId + '"]');
+    var trialEl = card ? card.querySelector('.pending-trial-checkbox') : null;
+    var swapEl = card ? card.querySelector('.pending-swap-select') : null;
+
+    if (swapEl && !swapEl.value) {
+      results.failed.push({
+        name: entry ? entry.nameRealm : signupId,
+        reason: 'missing archive selection'
+      });
+      finishOne();
+      return;
+    }
+
+    supabaseClient
+      .rpc('add_signup_to_roster', {
+        p_signup_id: signupId,
+        p_is_trial: !!(trialEl && trialEl.checked),
+        p_archive_player_id: swapEl && swapEl.value ? parseInt(swapEl.value, 10) : null
+      })
+      .then(function (result) {
+        if (result.error) {
+          results.failed.push({ name: entry ? entry.nameRealm : signupId, reason: result.error.message });
+        } else {
+          results.success++;
+          delete _pendingSelected[signupId];
+          _pendingRosterEntries = _pendingRosterEntries.filter(function (e) {
+            return e.signupId !== signupId;
+          });
+        }
+        finishOne();
+      });
+  });
+
+  function finishOne() {
+    remaining--;
+    if (remaining > 0) return;
+    _pendingBatchMessage =
+      results.success +
+      ' of ' +
+      ids.length +
+      ' added' +
+      (results.failed.length
+        ? ', ' +
+          results.failed.length +
+          ' failed: ' +
+          results.failed
+            .map(function (f) {
+              return f.name + ' (' + f.reason + ')';
+            })
+            .join('; ')
+        : '');
+    updateNavBadges();
+    renderPendingRoster(_pendingRosterEntries, _pendingMissingSignups);
+  }
 }
 
 // ── Stats panel ──────────────────────────────────────────────────────────────
@@ -387,7 +538,9 @@ function togglePendingBuffCoverage() {
 // every pending entry in one GAS call; that model doesn't carry over to the
 // signup_id-keyed Supabase data (#328). Each card below gets its own
 // "Add to Roster" control (trial toggle + main-swap picker) that calls
-// add_signup_to_roster() directly. A bulk selection UX is #273's job.
+// add_signup_to_roster() directly, plus a selection checkbox so the batch
+// "Add Selected to Roster" push (see the Selection-based push section above)
+// can loop the same per-row values across a chosen subset (#273).
 
 function buildPendingCardHtml(e, rosterMap) {
   rosterMap = rosterMap || {};
@@ -402,6 +555,11 @@ function buildPendingCardHtml(e, rosterMap) {
     e.signupId +
     '">' +
     '<div class="signup-response-header">' +
+    '<input type="checkbox" class="pending-select-checkbox" onchange="togglePendingSelected(' +
+    e.signupId +
+    ')"' +
+    (_pendingSelected[e.signupId] ? ' checked' : '') +
+    ' style="accent-color:var(--gold-light);margin-right:0.4rem;">' +
     '<span class="signup-response-name">' +
     escHtml(e.nameRealm) +
     '</span>' +
@@ -525,6 +683,7 @@ function addSignupToRoster(signupId, btnEl) {
         return;
       }
       if (card) card.remove();
+      delete _pendingSelected[signupId];
       _pendingRosterEntries = _pendingRosterEntries.filter(function (e) {
         return e.signupId !== signupId;
       });
@@ -556,6 +715,7 @@ function removePendingRosterRow(signupId, btnEl) {
       }
       var card = document.querySelector('.signup-response-card[data-row="' + signupId + '"]');
       if (card) card.remove();
+      delete _pendingSelected[signupId];
       _pendingRosterEntries = _pendingRosterEntries.filter(function (e) {
         return e.signupId !== signupId;
       });
