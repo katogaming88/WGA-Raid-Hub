@@ -2641,23 +2641,20 @@ function loadAttendanceHistory(firstName) {
   document.head.appendChild(script);
 }
 
-// Resets the collapsed/loaded state and reloads, bypassing
-// loadAttendanceHistory's expand/collapse toggle (which would otherwise just
-// collapse the already-open card instead of refreshing its contents).
-function refreshAttendanceHistory(firstName) {
-  var content = document.getElementById('attend-history-' + firstName);
-  if (content) {
-    content.dataset.loaded = '';
-    content.style.display = 'none';
-  }
-  loadAttendanceHistory(firstName);
-}
+// getPlayerAttendanceFull (the source loadAttendanceHistory fetches from) is
+// still an Apps Script/Sheets read -- it has no idea about rows written
+// straight to Supabase's attendance table, so a GAS re-fetch after
+// addAttendanceNight's write would just show the same stale list again. This
+// cache lets that write update the rendered card in place instead of relying
+// on a round-trip that can never see it.
+var _attendHistCache = {};
 
 // #241: renders the existing per-night history (unchanged from before) plus
 // an "Add raid night" control for creating a row on a night the player has
 // none for at all -- the gap the old card had no way to fill, since every
 // row it could show already had to exist first.
 function renderAttendanceHistoryCard(firstName, content, history) {
+  _attendHistCache[firstName] = history;
   var addControlHtml = '<div id="attend-add-night-' + firstName + '"></div>';
 
   if (!history.length) {
@@ -2866,7 +2863,7 @@ function addAttendanceNight(firstName) {
       return writeAuditLog('Attendance Status Set', 'players', player.id, '(none) -> ' + status + ' (' + date + ')');
     })
     .then(function () {
-      refreshAttendanceHistory(firstName);
+      applyNewAttendanceNight(firstName, date, status);
     })
     .catch(function (err) {
       dateSel.disabled = false;
@@ -2880,6 +2877,22 @@ function addAttendanceNight(firstName) {
         }, 3000);
       }
     });
+}
+
+// Updates the rendered card in place after a successful add, instead of
+// re-fetching history from GAS (which can never see a write that landed
+// straight in Supabase -- see the _attendHistCache comment above).
+function applyNewAttendanceNight(firstName, date, status) {
+  var content = document.getElementById('attend-history-' + firstName);
+  if (!content) return;
+  var history = (_attendHistCache[firstName] || []).filter(function (e) {
+    return e.date !== date;
+  });
+  history.push({ date: date, status: status });
+  history.sort(function (a, b) {
+    return b.date < a.date ? -1 : b.date > a.date ? 1 : 0;
+  });
+  renderAttendanceHistoryCard(firstName, content, history);
 }
 
 // Second write path onto the same attendance table setPlayerStatus()

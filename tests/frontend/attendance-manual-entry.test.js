@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
@@ -187,17 +187,19 @@ describe('addAttendanceNight (#241)', () => {
     const els = {
       'attend-add-date-Kato': makeEl({ value: '2026-07-08' }),
       'attend-add-status-Kato': makeEl({ value: 'Present' }),
-      'attend-add-ind-Kato': makeEl()
+      'attend-add-ind-Kato': makeEl(),
+      // applyNewAttendanceNight re-renders into this on success -- must exist
+      // for the in-place update path (no GAS round-trip, see next describe).
+      'attend-history-Kato': makeEl()
     };
     const { client, calls } = makeSupabase({
       upsert: () => ({ data: null, error: null }),
-      rpc: () => rpcResult || { data: null, error: null }
+      rpc: () => rpcResult || { data: null, error: null },
+      // renderAddAttendanceNightControl's re-render after the update queries
+      // raid dates again; empty is fine, not the point of these tests.
+      select: () => ({ data: [], error: null })
     });
     const sandbox = loadSandbox({ supabaseClient: client, els, roster: [player()] });
-    // refreshAttendanceHistory looks up '#attend-history-Kato', which doesn't
-    // exist in this test's minimal DOM -- harmless no-op, but stub
-    // loadAttendanceHistory so it doesn't try to inject a <script> tag.
-    sandbox.loadAttendanceHistory = vi.fn();
     return { els, sandbox, calls };
   }
 
@@ -228,13 +230,13 @@ describe('addAttendanceNight (#241)', () => {
     expect(calls.rpc.params.p_detail).toContain('2026-07-08');
   });
 
-  it('refreshes the history card after a successful add', async () => {
-    const { sandbox } = setup();
+  it('updates the card in place with the new night, without a GAS re-fetch', async () => {
+    const { els, sandbox } = setup();
     sandbox.addAttendanceNight('Kato');
     await flush();
     await flush();
 
-    expect(sandbox.loadAttendanceHistory).toHaveBeenCalledWith('Kato');
+    expect(els['attend-history-Kato'].innerHTML).toContain('2026-07-08');
   });
 
   it('does nothing when no date/status is selected', () => {
@@ -258,7 +260,6 @@ describe('addAttendanceNight (#241)', () => {
       upsert: () => ({ data: null, error: { message: 'boom' } })
     });
     const sandbox = loadSandbox({ supabaseClient: client, els, roster: [player()] });
-    sandbox.loadAttendanceHistory = vi.fn();
 
     sandbox.addAttendanceNight('Kato');
     await flush();
