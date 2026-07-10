@@ -240,9 +240,11 @@ function togglePendingSelected(signupId) {
 
 function toggleSelectAllPending() {
   var visible = getFilteredSortedPendingEntries(_pendingRosterEntries);
-  var allSelected = visible.length > 0 && visible.every(function (e) {
-    return !!_pendingSelected[e.signupId];
-  });
+  var allSelected =
+    visible.length > 0 &&
+    visible.every(function (e) {
+      return !!_pendingSelected[e.signupId];
+    });
   visible.forEach(function (e) {
     if (allSelected) {
       delete _pendingSelected[e.signupId];
