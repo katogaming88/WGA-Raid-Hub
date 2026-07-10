@@ -72,7 +72,7 @@ function loadSandbox({ supabaseClient, els = {}, confirmResult = true, alertSpy 
   const sandbox = {
     TEAM_SLUG: 'phoenix',
     _teamCfg: { supabaseTeamId: 1 },
-    TEAMS: { phoenix: { name: 'Team Phoenix', supabaseTeamId: 1 } },
+    TEAMS: { phoenix: { name: 'Phoenix', supabaseTeamId: 1 } },
     supabaseClient,
     console,
     document: { getElementById: (id) => els[id] || null },
@@ -159,7 +159,7 @@ describe('fetchTeamClaims', () => {
     const claims = await sandbox.fetchTeamClaims();
 
     const q = captured.byTable.players[0];
-    expect(q.select).toBe('name_realm, team_members(id, discord_id, role)');
+    expect(q.select).toBe('name_realm, team_members(id, discord_id, auth_user_id, role)');
     expect(q.eq).toEqual([['team_id', 1]]);
     expect(q.not).toEqual([['team_member_id', 'is', null]]);
     expect(q.is).toEqual([['archived_at', null]]);

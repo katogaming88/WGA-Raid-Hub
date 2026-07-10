@@ -3,7 +3,7 @@ var TEAMS = {
   phoenix: {
     gasUrl:
       'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec',
-    name: 'Team Phoenix',
+    name: 'Phoenix',
     officerPass: 'phoenix2',
     supabaseTeamId: 1
   },
@@ -13,6 +13,18 @@ var TEAMS = {
     name: 'Hellfire Rollers',
     officerPass: 'hellfire2',
     supabaseTeamId: 2
+  },
+  // No GAS deployment -- Immolation was created directly in Supabase, unlike
+  // Phoenix/Hellfire's pre-migration Sheets. Known limitation: loadData()
+  // (js/common.js) still loads its core/heavy chunks from gasUrl regardless
+  // of migration progress elsewhere, so the site won't actually load data for
+  // this team until enough of that pipeline is GAS-independent. This entry
+  // just gives team-switching/claims code something to point at.
+  immolation: {
+    gasUrl: '',
+    name: 'Immolation',
+    officerPass: 'immolation2026',
+    supabaseTeamId: 3
   }
 };
 
@@ -26,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.25.0';
+var VERSION = '3.26.0';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -93,7 +105,7 @@ function initTeamUI() {
   document.title = TEAM_NAME + (suffix ? ' -- ' + suffix : '');
   var nameEl = document.getElementById('headerTeamName');
   if (nameEl) nameEl.textContent = TEAM_NAME;
-  ['teamSwitcherSelect', 'officerPromptTeamSelect'].forEach(function (id) {
+  ['teamSwitcherSelect', 'officerPromptTeamSelect', 'claimModalTeamSelect'].forEach(function (id) {
     var sel = document.getElementById(id);
     if (!sel) return;
     sel.innerHTML = '';
@@ -816,6 +828,56 @@ function mapSupabaseBisItems(rows) {
   return map;
 }
 
+// Item lookup reads come from Supabase (items is a global, un-team-scoped
+// reference table -- no auth needed, RLS already permits public read).
+// heavy.itemSlots/itemArmorTypes (the GAS "Item Lookup" sheet) go stale the
+// moment an item only ever gets created in Supabase and never mirrored into
+// that sheet -- e.g. an item resolved automatically during an RCLC loot
+// import (#219) is real in the database but invisible to the BiS Manager's
+// item search, which reads DATA.itemSlots. Resolves to the raw rows, or null
+// on any failure so the caller falls back to the GAS-only maps.
+function fetchSupabaseItems() {
+  if (!supabaseClient) return Promise.resolve(null);
+  var query = supabaseClient
+    .from('items')
+    .select('name, slot, armor_type')
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Supabase items query failed, using Apps Script Item Lookup only.', result.error.message);
+        return null;
+      }
+      return result.data && result.data.length ? result.data : null;
+    })
+    .catch(function (err) {
+      console.warn('Supabase items query failed, using Apps Script Item Lookup only.', err);
+      return null;
+    });
+  var timeout = new Promise(function (resolve) {
+    setTimeout(function () {
+      resolve(null);
+    }, 10000);
+  });
+  return Promise.race([query, timeout]);
+}
+
+// Merges Supabase's items on top of the GAS heavy chunk's itemSlots/
+// itemArmorTypes maps (name -> slot / name -> armor_type) rather than
+// replacing them outright, so an item the Item Lookup sheet still knows
+// about but Supabase doesn't (not fully backfilled yet) keeps working.
+// Supabase wins on a name collision, since it's the authoritative source
+// going forward.
+function mergeSupabaseItemMaps(rows, gasItemSlots, gasItemArmorTypes) {
+  var itemSlots = Object.assign({}, gasItemSlots || {});
+  var itemArmorTypes = Object.assign({}, gasItemArmorTypes || {});
+  (rows || []).forEach(function (row) {
+    var name = String(row.name || '').trim();
+    if (!name) return;
+    itemSlots[name] = row.slot || '';
+    if (row.armor_type) itemArmorTypes[name] = row.armor_type;
+  });
+  return { itemSlots: itemSlots, itemArmorTypes: itemArmorTypes };
+}
+
 // onCoreReady fires once the fast core chunk is loaded and the page can render.
 // onHeavyReady (optional) fires once loot/attendance/BiS/priority data arrives.
 function loadData(onCoreReady, onHeavyReady) {
@@ -833,6 +895,8 @@ function loadData(onCoreReady, onHeavyReady) {
   var lootPromise = fetchSupabaseLoot();
   // Fired alongside; the heavy callback waits for it before setting bisList.
   var bisItemsPromise = fetchSupabaseBisItems();
+  // Fired alongside; the heavy callback waits for it before setting itemSlots.
+  var itemsPromise = fetchSupabaseItems();
 
   window._rosterCoreCallback = function (data) {
     delete window._rosterCoreCallback;
@@ -859,9 +923,10 @@ function loadData(onCoreReady, onHeavyReady) {
       window._rosterHeavyCallback = function (heavy) {
         delete window._rosterHeavyCallback;
         if (!heavy || heavy.error) return;
-        Promise.all([lootPromise, bisItemsPromise]).then(function (results) {
+        Promise.all([lootPromise, bisItemsPromise, itemsPromise]).then(function (results) {
           var lootRows = results[0];
           var bisRows = results[1];
+          var itemRows = results[2];
           var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
           DATA.lootCounts = mappedLoot || {};
           DATA.attendanceDetails = heavy.attendanceDetails;
@@ -870,8 +935,9 @@ function loadData(onCoreReady, onHeavyReady) {
           var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
           DATA.bisList = mappedBis && Object.keys(mappedBis).length ? mappedBis : heavy.bisList;
           DATA.priorityOrder = heavy.priorityOrder;
-          DATA.itemSlots = heavy.itemSlots;
-          DATA.itemArmorTypes = heavy.itemArmorTypes || {};
+          var mergedItems = mergeSupabaseItemMaps(itemRows, heavy.itemSlots, heavy.itemArmorTypes);
+          DATA.itemSlots = mergedItems.itemSlots;
+          DATA.itemArmorTypes = mergedItems.itemArmorTypes;
           DATA.itemBosses = heavy.itemBosses || {};
           DATA.selfReceived = heavy.selfReceived;
           if (typeof populateBossFilters === 'function') populateBossFilters();

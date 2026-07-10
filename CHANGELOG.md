@@ -8,6 +8,22 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.26.0] - 2026-07-09
+
+### Frontend
+- **Priority tab now opens on Priority List by default** -- it was defaulting to Contested Items, despite Priority List being the plain read-only view most officers want first.
+- **The Discord claim modal's "wrong team" hint is now a real team-switcher dropdown inside the modal itself**, not a link that closed the modal to open the nav bar's separate switcher. A guess-based "auto-switch to the one other team we know about" approach was tried first, but doesn't hold up with more than two teams (a raider could have claims on several other teams, or the target team's slug might not even resolve) -- a real dropdown scales to any number of teams without guessing. The nav bar's switcher is unchanged; this is a second, independent instance of the same picker, reusing `initTeamUI()`'s existing per-element population loop.
+- **Discord Claims list now shows the actual Discord display name alongside the raw Discord ID** (Roster tab), resolved via a new `resolve_discord_display_name()` function, so officers can visually confirm the right account claimed the right character instead of only seeing an opaque snowflake id.
+- **Fixed a stale-session bug**: the cached mapped Discord session (`localStorage`, keyed per team) wasn't invalidated when a *different* Discord account signed in on the same browser, so a browser that previously had an officer's cached session could briefly show officer status for a newly-signed-in, non-officer account until the fresh check completed. The cache now checks the signed-in user's id before rendering anything from it.
+- **Added Immolation as a third team** (`TEAMS.immolation`, `js/common.js`) -- it already existed in Supabase (`teams.id = 3`) but had no client-side config, so nothing team-related (switcher, claims) could resolve it. Known limitation: it has no Apps Script deployment (created directly in Supabase, unlike Phoenix/Hellfire's pre-migration Sheets), and `loadData()`'s core/heavy chunk loading is still GAS-dependent regardless of migration progress elsewhere -- so the site won't actually load data for this team until enough of that pipeline no longer needs a GAS backend. Not addressed here; this just gives team-switching/claims code something correct to point at.
+- **Fixed the BiS Manager's item search silently missing an item that's actually in the GAS "Item Lookup" sheet.** The immediate cause was a stale `CFG.itemDataStart` row offset in `gs/wgaWebApp.gs` (a sheet cleanup shifted every row up by one; the hardcoded start-row didn't move with it, so row 2 was silently skipped) -- but the deeper issue is that item search has depended solely on that GAS sheet the whole time, with no fallback to Supabase's own `items` table, which has carried the real item catalog since #217/#219. Item search now merges Supabase's `items` on top of the GAS-sourced list as a safety net regardless of sheet alignment; full retirement of the GAS sheet as the item-catalog source is tracked separately (#391).
+- **Renamed "Team Phoenix" to "Phoenix"** for naming consistency with Hellfire Rollers and Immolation, neither of which carries a generic "Team" prefix.
+
+### Backend
+- **`resolve_discord_display_name()` RPC** -- small `SECURITY DEFINER` function reading `auth.users`' Discord display name for the Discord Claims list, gated the same officer/team_leader-or-site-admin way as `resolve_actor_name()` (#376). Deliberately not a reuse of `resolve_actor_name()`: that function's resolution order prefers a linked character's nickname first, which is the wrong priority for verifying which real Discord account performed a claim.
+
+---
+
 ## [3.25.0] - 2026-07-09
 
 ### Frontend

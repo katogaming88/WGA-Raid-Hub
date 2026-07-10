@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Team Phoenix -- Roster</title>
+<title>Phoenix -- Roster</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
 <header class="header">
   <a href="index.html" class="header-link">
     <span class="header-emblem">🔥</span>
-    <h1 id="headerTeamName">Team Phoenix</h1>
+    <h1 id="headerTeamName">Phoenix</h1>
     <p class="header-sub">Raid Hub</p>
   </a>
   <div class="header-divider"></div>
@@ -80,7 +80,7 @@
     <div id="landingProgression"></div>
     <div id="landingLoot" class="pub-loot"></div>
   </div>
-  <div class="footer">We Go Again &middot; <span class="team-name">Team Phoenix</span> &middot; v<span id="versionNum"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
+  <div class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNum"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
 </div>
 
 <!-- Roster -->
@@ -88,13 +88,13 @@
   <div class="landing-body">
     <div id="rosterView" class="pub-loot"></div>
   </div>
-  <div class="footer">We Go Again &middot; <span class="team-name">Team Phoenix</span> &middot; v<span id="versionNumRoster"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
+  <div class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNumRoster"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
 </div>
 
 <!-- Profile -->
 <div id="profileViewWrap" class="view">
   <div id="profileView"></div>
-  <div class="footer">We Go Again &middot; <span class="team-name">Team Phoenix</span> &middot; v<span id="versionNumProfile"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
+  <div class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNumProfile"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
 </div>
 
 <!-- Signup -->
@@ -104,7 +104,7 @@
       <div id="signupForm"></div>
     </div>
   </div>
-  <div class="footer">We Go Again &middot; <span class="team-name">Team Phoenix</span> &middot; v<span id="versionNumSignup"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
+  <div class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNumSignup"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></div>
 </div>
 
 <!-- Discord claiming modal -->
@@ -115,7 +115,11 @@
     <select id="claimCharacterSelect" class="add-player-input" style="width:100%;margin-bottom:8px">
       <option value="">-- Select your character --</option>
     </select>
-    <p class="form-error">Don't see your character? You might be on the wrong team. You're currently viewing <strong class="team-name">Team Phoenix</strong>. <a href="#" class="form-error-link" onclick="goToTeamSwitcher();return false;">Switch teams</a></p>
+    <p class="form-error">Don't see your character? You might be on the wrong team. You're currently viewing <strong class="team-name">Phoenix</strong>.</p>
+    <div class="claim-modal-team-switch">
+      <span>Switch team:</span>
+      <select id="claimModalTeamSelect" class="team-switcher" title="Switch team"></select>
+    </div>
     <p id="claimError" class="form-error" style="display:none"></p>
     <div class="modal-actions">
       <button class="btn btn-gold claim-submit-btn" onclick="submitCharacterClaim()">Confirm claim</button>
