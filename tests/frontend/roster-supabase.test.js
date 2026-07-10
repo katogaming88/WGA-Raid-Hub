@@ -65,6 +65,12 @@ function mockSupabase(result) {
     range() {
       return builder;
     },
+    // ...and the team_settings query (#221); result().data here is either
+    // SUPABASE_ROW (no .config key, so applyTeamSettingsToData() is a no-op)
+    // or null, so reusing the same result() is safe for these tests.
+    maybeSingle() {
+      return builder;
+    },
     then(onFulfilled, onRejected) {
       return Promise.resolve()
         .then(() => result())

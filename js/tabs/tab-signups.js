@@ -19,13 +19,17 @@ function setSignupsOpen(open) {
     btn.textContent = 'Saving...';
   }
 
-  jsonpRequest(WEB_APP_URL + '?action=setSignupsOpen&value=' + (open ? 'true' : 'false'), function (err, result) {
-    if (btn) btn.disabled = false;
-    if (!err && result && result.success) {
-      if (DATA) DATA.signupsOpen = result.signupsOpen;
-    }
-    renderSignupToggle();
-  });
+  saveTeamSetting({ signupsOpen: open })
+    .then(function () {
+      if (btn) btn.disabled = false;
+      if (DATA) DATA.signupsOpen = open;
+      writeAuditLog(open ? 'Signups Opened' : 'Signups Closed', '', '', '');
+      renderSignupToggle();
+    })
+    .catch(function () {
+      if (btn) btn.disabled = false;
+      renderSignupToggle();
+    });
 }
 
 // Two FKs from season_signups to classes_specs (class_spec_id, swap_class_spec_id)

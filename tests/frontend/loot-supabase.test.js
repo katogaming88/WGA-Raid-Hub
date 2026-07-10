@@ -65,11 +65,20 @@ function mockSupabase({ lootPages = [], rosterResult } = {}) {
         calls.ranges.push([from, to]);
         return builder;
       },
+      maybeSingle() {
+        // team_settings (#221) fires alongside the roster query; this suite
+        // isn't exercising it, so fall back to whatever the Apps Script core
+        // payload already set, same as the other untested tables below.
+        return builder;
+      },
       then(onFulfilled, onRejected) {
         return Promise.resolve()
           .then(() => {
             if (table === 'players') {
               return rosterResult ? rosterResult() : { data: null, error: { message: 'roster not mocked' } };
+            }
+            if (table === 'team_settings') {
+              return { data: null, error: { message: 'team_settings not mocked' } };
             }
             // bis_items, items, item_bosses, and priority_order are separate
             // queries loadData() fires alongside the loot pages (#217 item

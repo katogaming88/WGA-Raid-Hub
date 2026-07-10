@@ -30,6 +30,9 @@ function loadAdminProperties() {
   var content = document.getElementById('adminPropsContent');
   if (content) content.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">Loading...</p>';
 
+  // Season/flag fields now come from DATA (Supabase team_settings, #221) --
+  // only the bot config fields still come from the GAS getAdminProperties
+  // action (#222 scope).
   jsonpRequest(WEB_APP_URL + '?action=getAdminProperties', function (err, result) {
     if (err || !result) {
       if (content)
@@ -38,14 +41,14 @@ function loadAdminProperties() {
       return;
     }
     var rows = [
-      ['Season Name', result.seasonName || '(not set)'],
-      ['Season Start', result.seasonStart || '(not set)'],
-      ['Season End', result.seasonEnd || '(not set)'],
-      ['Archived Seasons', result.seasonHistoryCount + ' season(s)'],
-      ['Raid Progression', result.raidProgressionCount + ' raid(s)'],
-      ['Signups Open', result.signupsOpen === 'true' ? 'Yes' : 'No'],
-      ['BiS Submissions Open', result.bisSubmissionsOpen === 'true' ? 'Yes' : 'No'],
-      ['M+ Exclusions Open', result.mPlusExclusionsOpen === 'true' ? 'Yes' : 'No'],
+      ['Season Name', (DATA && DATA.seasonName) || '(not set)'],
+      ['Season Start', (DATA && DATA.seasonStart) || '(not set)'],
+      ['Season End', (DATA && DATA.seasonEnd) || '(not set)'],
+      ['Archived Seasons', ((DATA && DATA.seasonHistory) || []).length + ' season(s)'],
+      ['Raid Progression', ((DATA && DATA.raidProgression) || []).length + ' raid(s)'],
+      ['Signups Open', DATA && DATA.signupsOpen ? 'Yes' : 'No'],
+      ['BiS Submissions Open', DATA && DATA.bisSubmissionsOpen ? 'Yes' : 'No'],
+      ['M+ Exclusions Open', DATA && DATA.mPlusExclusionsOpen ? 'Yes' : 'No'],
       ['Bot URL', result.botUrl || '(using default)'],
       ['Bot Secret', result.botSecretMasked || '(not set)']
     ];

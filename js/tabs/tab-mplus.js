@@ -16,16 +16,17 @@ function toggleMPlusOpen() {
     btn.textContent = 'Saving...';
   }
 
-  jsonpRequest(
-    WEB_APP_URL + '?action=setMPlusExclusionsOpen&value=' + (open ? 'true' : 'false'),
-    function (err, result) {
+  saveTeamSetting({ mPlusExclusionsOpen: open })
+    .then(function () {
       if (btn) btn.disabled = false;
-      if (!err && result && result.success) {
-        if (DATA) DATA.mPlusExclusionsOpen = result.mPlusExclusionsOpen;
-      }
+      if (DATA) DATA.mPlusExclusionsOpen = open;
+      writeAuditLog(open ? 'M+ Exclusions Opened' : 'M+ Exclusions Closed', '', '', '');
       renderMPlusToggle();
-    }
-  );
+    })
+    .catch(function () {
+      if (btn) btn.disabled = false;
+      renderMPlusToggle();
+    });
 }
 
 function confirmClearAllMPlusExclusions() {

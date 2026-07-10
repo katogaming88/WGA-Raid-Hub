@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.32.3';
+var VERSION = '3.32.4';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -921,6 +921,87 @@ function mapSupabasePriorityOrder(rows, seasonCode) {
   return result;
 }
 
+// Season config reads come from Supabase (#221): team_settings.config is the
+// one jsonb blob holding everything that used to be Script Properties keys
+// (season name/dates/history, raid progression, trial thresholds, the
+// signup/BiS/M+ toggles, the active signup season). Fires in parallel with
+// the core chunk, same as fetchSupabaseRoster(); applyTeamSettingsToData()
+// overlays it onto DATA once both are in, falling back to whatever the Apps
+// Script core payload already put there (still Script Properties, until the
+// live rows are backfilled) if the row is missing or a key isn't set yet.
+function fetchSupabaseSettings() {
+  if (!supabaseClient) return Promise.resolve(null);
+  var query = supabaseClient
+    .from('team_settings')
+    .select('config')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .maybeSingle()
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Supabase team_settings query failed, using Apps Script season config.', result.error.message);
+        return null;
+      }
+      return result.data ? result.data.config : null;
+    })
+    .catch(function (err) {
+      console.warn('Supabase team_settings query failed, using Apps Script season config.', err);
+      return null;
+    });
+  var timeout = new Promise(function (resolve) {
+    setTimeout(function () {
+      resolve(null);
+    }, 10000);
+  });
+  return Promise.race([query, timeout]);
+}
+
+var SEASON_CONFIG_KEYS = [
+  'seasonName',
+  'seasonStart',
+  'seasonEnd',
+  'seasonHistory',
+  'raidProgression',
+  'trialWeeks',
+  'trialAttend',
+  'signupsOpen',
+  'bisSubmissionsOpen',
+  'mPlusExclusionsOpen'
+];
+
+/**
+ * Overlays team_settings.config onto DATA, key by key, so a config missing a
+ * given key (not backfilled yet, or a brand-new team) keeps whatever the Apps
+ * Script core payload already set for it instead of clobbering it with
+ * undefined. activeSignupSeason maps to DATA.signupSeason, matching the Apps
+ * Script field name tab-season.js already reads/writes.
+ * @param {any} data - the DATA object being built from the core chunk
+ * @param {Object|null} config - team_settings.config, or null if the query failed/found nothing
+ */
+function applyTeamSettingsToData(data, config) {
+  if (!config) return;
+  SEASON_CONFIG_KEYS.forEach(function (key) {
+    if (config[key] !== undefined) data[key] = config[key];
+  });
+  if (config.activeSignupSeason !== undefined) data.signupSeason = config.activeSignupSeason;
+}
+
+/**
+ * Merges p_updates into team_settings.config for the current team and
+ * returns the new config, mirroring the old jsonpRequest(...&action=set...)
+ * callback pattern but via the set_team_setting RPC (#221). Restricted to
+ * team_leader/site_admin by the "Team leaders write settings" RLS policy.
+ * @param {Object} updates
+ * @returns {Promise<Object>}
+ */
+function saveTeamSetting(updates) {
+  return supabaseClient
+    .rpc('set_team_setting', { p_team_id: _teamCfg.supabaseTeamId, p_updates: updates })
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      return result.data;
+    });
+}
+
 // Item catalog reads come exclusively from Supabase (#391): the GAS "Item
 // Lookup" sheet is retired as a data source for the web app now that
 // scripts/fetch-items.js seeds items/item_bosses from Wowhead every tier
@@ -1027,6 +1108,8 @@ function loadData(onCoreReady, onHeavyReady) {
 
   // Fired in parallel with the core chunk; the core callback waits for it.
   var rosterPromise = fetchSupabaseRoster();
+  // Fired alongside; the core callback waits for it before overlaying season config.
+  var settingsPromise = fetchSupabaseSettings();
   // Fired alongside; the heavy callback waits for it before setting lootCounts.
   var lootPromise = fetchSupabaseLoot();
   // Fired alongside; the heavy callback waits for it before setting bisList.
@@ -1044,9 +1127,12 @@ function loadData(onCoreReady, onHeavyReady) {
       showError('Could not load roster data. ' + data.error);
       return;
     }
-    rosterPromise.then(function (rows) {
+    Promise.all([rosterPromise, settingsPromise]).then(function (results) {
+      var rows = results[0];
+      var settingsConfig = results[1];
       var mapped = rows ? mapSupabaseRoster(rows, data.roster) : null;
       if (mapped && mapped.length) data.roster = mapped;
+      applyTeamSettingsToData(data, settingsConfig);
       DATA = data;
       DATA._loadedAt = new Date();
       try {

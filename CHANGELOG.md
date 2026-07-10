@@ -8,9 +8,22 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.32.4] - 2026-07-12
+
+### Frontend
+
+- **Season config migrated off Apps Script Script Properties, onto Supabase (#221, Phase 6)** -- the Season tab (name/start/end dates, trial promotion thresholds, raid progression, archive/unarchive) and the Signups/BiS/M+ Exclusions open-closed toggles now read from and write to `team_settings.config` instead of Script Properties. Archiving a season now embeds the roster snapshot (nameRealm/role/isTrial/isBench/joinDate/attendance, computed client-side same as always) directly on the `seasonHistory` entry instead of a separate `rosterSnapshot_<timestamp>` Script Property, so "View Roster" on an archived season renders instantly with no round trip. The Admin tab's Properties Inspector now shows these same fields from `DATA`; Bot URL/Secret stay on the Apps Script `getAdminProperties` action (#222 scope). Both live teams' current Script Properties values need a one-time backfill into `team_settings.config` via the Supabase SQL Editor before this ships live -- see the PR description.
+
+### Backend
+
+- **`set_team_setting`/`archive_current_season`/`unarchive_season` (#221)** -- three new `SECURITY INVOKER` RPCs on `team_settings`. All three rely entirely on the existing "Team leaders write settings" RLS rule (unchanged) for authorization -- a caller without team_leader/site_admin gets a clear "Not authorized" exception rather than a silently-discarded write, since a plain `update ... returning x into v` with 0 rows affected otherwise leaves `v` NULL with no error raised.
+
+---
+
 ## [3.32.3] - 2026-07-11
 
 ### Frontend
+
 - **Manual attendance entry from the player detail panel (#241)** -- the officer roster tab's player-profile Attendance history card previously could only edit a raid night the player already had a row for; if a player was added mid-season and had zero attendance rows at all, it just showed "No attendance records found" with no way to create one. The card now always shows an **Add raid night** control (date + status dropdowns, reusing the same `attendance` upsert + `write_audit_log` shape `saveAttendanceFromCard` already established) offering every team raid date the player has no row for yet, on or after their join date. Adding a player with a join date also now bulk-writes `Not on Roster` for every earlier raid night the team has any attendance row for, so a mid-season add doesn't leave the whole pre-join history blank/editable -- those nights display read-only, matching how an existing `Not on Roster` row already rendered. Existing rosters added before this ships aren't backfilled retroactively; only new adds going forward get it.
 - **Attendance history card now reads from Supabase, not Apps Script (#241 follow-up)** -- caught during manual verification: `getPlayerAttendanceFull` (the card's read source since before #218) reads the Attendance Google Sheet, which has no visibility into writes this card -- or the pre-existing per-row edit dropdown, live since #218 -- make straight to Supabase. A saved change reverted on the next page load because the Sheet-sourced read never saw it, for both the new "add" feature and the older edit path. `loadAttendanceHistory` now queries `attendance` directly (the full historical CSV import in #320 already backfilled it, so an empty result means the player genuinely has none), falling back to the old GAS action only on a query error, the same convention as the roster/BiS/priority_order reads migrated earlier in Phase 5.
 
@@ -19,9 +32,11 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.32.2] - 2026-07-11
 
 ### Frontend
+
 - **RCLootCouncil priority export string migrated to Supabase (#335, Phase 5)** -- the Priority tab's Generate/Regenerate button now calls the new `build_rclc_export()` RPC and base64-encodes the JSON client-side, instead of reading a value cached from a Google Sheets custom menu action (`exportPriorityData()`) that no longer has a home once Sheets is retired. The `players` object is unchanged in shape; `priority` is a new shape, `{ [wow_item_id]: { H: [...], M: [...] } }`, split by `priority_order.track` instead of GAS's single flat per-item list -- the old sheet never distinguished Heroic/Mythic priority, but merging both into one list risked surfacing a Mythic-only-ranked player during a Heroic award (or vice versa). The companion addon, `RCLootCouncil_PriorityLoot` (separate repo), reads the raid's live difficulty via `GetInstanceInfo()` at vote/award time to pick the right track -- see that repo's own changelog for the corresponding update. The "no export string found, run the spreadsheet menu action" empty state is gone; generation is now always live.
 
 ### Backend
+
 - **`build_rclc_export(p_team_id, p_season)` (#335)** -- new `SECURITY INVOKER` RPC building the export payload from `bis_items`/`priority_order`/`items`/`players` directly. Slot key for the `players` object prefers `bis_items.slot` (the BiS Manager's 16-slot grid override, #320) and falls back to `items.slot` for legacy rows, defaulting to the first numbered row (ring1/trinket1) for the Finger/Trinket ambiguity that column can't resolve either. Rows on a placeholder item (M+/Crafted/Catalyst, no `wow_item_id`) are excluded -- RCLootCouncil needs a real item id to award against.
 
 ---
@@ -29,6 +44,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.32.1] - 2026-07-10
 
 ### Frontend
+
 - **Selection-based push to roster for the Pending Roster tab (#273)** -- replaces the implicit "push everything" model with an explicit checkbox per pending card (unchecked by default) and a filter-aware **Select All** control, so an officer can push a chosen subset without deleting entries they don't want first. The **Add Selected to Roster** button loops `add_signup_to_roster()` once per checked signup, reusing each card's own trial-toggle/archive-picker values, and reports a per-batch summary (e.g. "8 of 10 added, 2 failed: ..."). A main-swap row with no archive target picked, or a server-rejected row, fails only that row without blocking the rest of the batch. Does not port the old GAS `pushPendingToRoster(removeAbsent)` roster-purge behavior -- no Supabase equivalent exists and it's out of the scope agreed on the issue.
 
 ---
@@ -36,6 +52,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.32.0] - 2026-07-10
 
 ### Frontend
+
 - **Officer signup review and Add to Roster UI migrated to Supabase (#328, Phase 5)** -- the Signups and Pending Roster tabs now read/write `season_signups` and the `pending_roster` view directly instead of the Apps Script payload. Approve/Deny update `status`/`reviewed_at`/`reviewed_by`/optional `signup_officer_note` under the existing "Officers update signups" RLS policy (Discord-logged-in officers now carry a `teamMemberId` in their session for this; password-only officers leave `reviewed_by` null, which the column allows). Pending Roster gets a new per-row **Add to Roster** control -- trial toggle (default checked) and, for main-swap signups, an old-character picker -- that calls `add_signup_to_roster()`. **Remove from Pending** now sets `status = 'rejected'` instead of deleting. The old bulk "Push to Roster" area is removed: it operated on Apps Script Sheets row indices, which don't exist in the signup_id-keyed Supabase data; #273 will build its per-row-selection replacement. GAS handlers (`getSignups`, `approveSignup`, `denySignup`, `getPendingRoster`, `removePendingRoster`, `pushPendingToRoster`) are left in place, unused, per the established Phase 5 retirement convention. The raider-facing signup submission form still writes to the Apps Script Sheet -- no Supabase INSERT path exists yet, so `season_signups` stays empty until that's built separately.
 
 ---
@@ -43,9 +60,11 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.31.0] - 2026-07-10
 
 ### Frontend
+
 - **New officer "Reports" tab, reading directly from Supabase (#227, Phase 5)** -- four sub-tabs, each backed by one of the new views below: **Raid Nights Since Last Item** (role and sort filter chips, plus severity coloring on the nights-since count scaled to the highest value currently shown, so the color bands stay meaningful as a season's raid-night count grows); **BiS Demand vs Awards** (season filter, ranks items by active-roster BiS demand next to how many times each was actually awarded); **Priority Order Health** (season filter, two panels -- "Stale Entries" for priority-order rows pointing at now-archived players, and "Missing From Priority Order" for active non-bench players absent from priority order entirely for a season); **Season Loot Pace** (season/track/slot filters, items awarded per week of season next to the same week in the prior season alphabetically). None of these have an Apps Script equivalent or fallback -- they only exist in Supabase.
 
 ### Backend
+
 - **Four new officer report views (#227)**: `rnlsi`, `bis_demand_vs_awards`, `priority_order_stale_entries`, `priority_order_gaps`, `season_loot_pace` -- all `SECURITY INVOKER`, all built on the now-fully-migrated loot/attendance/BiS/priority tables (#216-#220). None take a season/team parameter (views can't be parameterized); each returns `team_id`/`season` as output columns for the caller to filter on. `season_loot_pace`'s "week of season" is proxied from the earliest tracked loot award per season, since there's no season-start-date column yet (that's #221's scope, Phase 6, not landed).
 
 ---
@@ -53,9 +72,11 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.30.0] - 2026-07-10
 
 ### Frontend
-- **Priority generator migrated to Supabase (#220, Phase 5)** -- the "Suggest Order" and "Save Priority" actions in the priority edit modal now call the new `generate_priority_order()`/`save_priority_order()` RPCs instead of the Apps Script `?action=generatePriorityOrder`/`?action=savePriorityOrder` endpoints. The blend the issue flagged as needing to be resolved first turned out not to be a live formula at all: it's the Scoring sheet's Weighted Total column, `=IFERROR(Performance*0.5 + Attendance*0.5, "")`, confirmed from the live cell formula -- the new RPC reads `scoring.performance_score`/`attendance_score` directly, exactly like the sheet does today. Role/status/item-ownership multipliers (bench/trial stacking, mythic/heroic "already has item" penalties and bonuses) are ported verbatim from `generatePriorityForItem()` (`gs/wgaWebApp.gs`) -- the web-app implementation, not the sheet-menu version in `gs/PriorityGenerator.gs`, which lacks the item-ownership penalties. The priority-order *read* path (`DATA.priorityOrder`, used by the Priority List and Unmanaged Items tabs) now also reads directly from Supabase's `priority_order` table, with the Apps Script heavy chunk kept as a fallback if that query fails -- same pattern already used for `bis_items`/roster. GAS's `generatePriorityForItem`/`savePriorityOrderForItem` are left in place, unused, per the established Phase 5 convention of retiring GAS write handlers all at once once the whole migration finishes rather than per-issue.
+
+- **Priority generator migrated to Supabase (#220, Phase 5)** -- the "Suggest Order" and "Save Priority" actions in the priority edit modal now call the new `generate_priority_order()`/`save_priority_order()` RPCs instead of the Apps Script `?action=generatePriorityOrder`/`?action=savePriorityOrder` endpoints. The blend the issue flagged as needing to be resolved first turned out not to be a live formula at all: it's the Scoring sheet's Weighted Total column, `=IFERROR(Performance*0.5 + Attendance*0.5, "")`, confirmed from the live cell formula -- the new RPC reads `scoring.performance_score`/`attendance_score` directly, exactly like the sheet does today. Role/status/item-ownership multipliers (bench/trial stacking, mythic/heroic "already has item" penalties and bonuses) are ported verbatim from `generatePriorityForItem()` (`gs/wgaWebApp.gs`) -- the web-app implementation, not the sheet-menu version in `gs/PriorityGenerator.gs`, which lacks the item-ownership penalties. The priority-order _read_ path (`DATA.priorityOrder`, used by the Priority List and Unmanaged Items tabs) now also reads directly from Supabase's `priority_order` table, with the Apps Script heavy chunk kept as a fallback if that query fails -- same pattern already used for `bis_items`/roster. GAS's `generatePriorityForItem`/`savePriorityOrderForItem` are left in place, unused, per the established Phase 5 convention of retiring GAS write handlers all at once once the whole migration finishes rather than per-issue.
 
 ### Backend
+
 - **`generate_priority_order()`/`save_priority_order()` (#220)** -- new `SECURITY INVOKER` RPCs (RLS already grants officers direct read/write on every table touched, the same reasoning that moved `import_rclc_loot()` (#219) off `SECURITY DEFINER`). `save_priority_order()` fully replaces (delete+reinsert) any existing ranks for the given `(team_id, season, item_id, track)` in one transaction and writes exactly one `audit_log` entry per save. Note: `priority_order.track` uses `'Hero'`/`'Myth'` (#343's difficulty->track rename), not the `'Heroic'`/`'Mythic'` values the original issue text predated.
 
 ---
@@ -63,6 +84,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.29.0] - 2026-07-10
 
 ### Frontend
+
 - **BiS Manager editor redesigned around a fixed 16-slot grid instead of a search-then-add flat list (#393)** -- a BiS list only ever has one item per slot, so the editor now shows every slot (Head/Neck/Shoulder/.../Finger 1/Finger 2/Trinket 1/Trinket 2/Weapon/Off Hand) up front; an empty row gets a "+ Add" that opens a search scoped to items that actually fit that slot (plus M+/Crafted/Catalyst placeholders, always offered everywhere), a filled row shows its item with Obtained/remove inline. This replaces the 3.28.0 placeholder-only slot picker -- `bis_items.slot` is now set for every row added through the editor, real items included, not just placeholders, since "Finger"/"Trinket" alone can't say which of the two numbered rows a real ring or trinket is for either. Legacy rows added before this feature (no `bis_items.slot` recorded) fall back to a best-effort placement by their catalog slot; anything that still doesn't land in a row (unrecognised slot, or both numbered rows already taken) surfaces in an "Other" section below the grid so nothing silently disappears.
 - **BiS editor rows are now bordered and zebra-striped** so each row's Obtained checkbox and remove button stay visually paired with its slot/item text across the empty space a wide panel leaves between them -- previously plain flex rows with no visual grouping, which got confusing once multiple rows could share the same item text (e.g. "M+" on both Finger slots).
 - **`getSlotColor()`'s slot-name vocabulary corrected to match `items.slot`** (`js/common.js`) -- it was still checking the old GAS sheet's plural naming (`SHOULDERS`/`GLOVES`/`BOOTS`/`CLOAK`/`BRACERS`/`BELT`, `RING`), which never matched Supabase's singular `items.slot` values (`Shoulder`/`Hands`/`Feet`/`Back`/`Wrist`/`Waist`, `Finger`) seeded by `fetch-items.js` -- real armor pieces were silently rendering in the default text color instead of their role color. Found while building the slot grid, where the mismatch was immediately visible.
@@ -72,10 +94,12 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.28.0] - 2026-07-10
 
 ### Frontend
+
 - **Item catalog now reads exclusively from Supabase's `items`/`item_bosses` tables (#391)** -- the GAS "Item Lookup" sheet (`getItemSlots()`/`getItemArmorTypes()`/`getItemBosses()` in `gs/wgaWebApp.gs`) is retired as a data source for the web app. `scripts/fetch-items.js` already seeds `items`/`item_bosses` from Wowhead every tier, so there's no reason to maintain two parallel catalogs; the PR #390 stopgap (merging Supabase on top of GAS) is replaced with a Supabase-only read. A failed/empty Supabase query now resolves to an empty catalog rather than silently falling back to stale GAS data, matching how loot reads behaved after #209/#358. The GAS functions themselves are left in place, unused, for now -- officer-side spreadsheet tooling (dropdown validation, Export.gs) still depends on the "Item Lookup" sheet existing.
 - **Placeholder BiS entries (M+, Crafted, Catalyst) can now be given a real slot, and shown up to twice for dual-slot gear (#393)** -- these entries previously showed the literal word "Placeholder" as their slot, since `items.slot` is `NOT NULL` and those stand-ins store that sentinel (they name a loot source, not a gear slot). The BiS Manager's item search now prompts for a slot (Head/Neck/Shoulder/.../Finger 1/Finger 2/Trinket 1/Trinket 2/Weapon/Off Hand) when adding a placeholder item, written to a new `bis_items.slot` override column; a real item still adds in one click and keeps deriving its slot from `items.slot` as always. This also lets the same placeholder be aimed at two different slots for one player (e.g. both Finger slots at "M+"), previously blocked outright since two placeholder rows for a player always shared `item_id`. The original per-row slot data from the old GAS BiS List sheet was already lost at the #217/#320 migration and can't be restored -- this only fixes the slot going forward.
 
 ### Backend
+
 - **`bis_items.slot` (#393)** -- nullable officer-chosen slot override, used only for placeholder BiS rows (`items.is_placeholder`). `bis_items_no_dupe_item_key` moved from a plain `(player_id, item_id)` unique constraint to a `(player_id, item_id, coalesce(slot, ''))` expression index so two placeholder rows can coexist for the same player when their slots differ, while real items (slot always null) still dedupe exactly as before.
 
 ---
@@ -83,15 +107,17 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.26.0] - 2026-07-09
 
 ### Frontend
+
 - **Priority tab now opens on Priority List by default** -- it was defaulting to Contested Items, despite Priority List being the plain read-only view most officers want first.
 - **The Discord claim modal's "wrong team" hint is now a real team-switcher dropdown inside the modal itself**, not a link that closed the modal to open the nav bar's separate switcher. A guess-based "auto-switch to the one other team we know about" approach was tried first, but doesn't hold up with more than two teams (a raider could have claims on several other teams, or the target team's slug might not even resolve) -- a real dropdown scales to any number of teams without guessing. The nav bar's switcher is unchanged; this is a second, independent instance of the same picker, reusing `initTeamUI()`'s existing per-element population loop.
 - **Discord Claims list now shows the actual Discord display name alongside the raw Discord ID** (Roster tab), resolved via a new `resolve_discord_display_name()` function, so officers can visually confirm the right account claimed the right character instead of only seeing an opaque snowflake id.
-- **Fixed a stale-session bug**: the cached mapped Discord session (`localStorage`, keyed per team) wasn't invalidated when a *different* Discord account signed in on the same browser, so a browser that previously had an officer's cached session could briefly show officer status for a newly-signed-in, non-officer account until the fresh check completed. The cache now checks the signed-in user's id before rendering anything from it.
+- **Fixed a stale-session bug**: the cached mapped Discord session (`localStorage`, keyed per team) wasn't invalidated when a _different_ Discord account signed in on the same browser, so a browser that previously had an officer's cached session could briefly show officer status for a newly-signed-in, non-officer account until the fresh check completed. The cache now checks the signed-in user's id before rendering anything from it.
 - **Added Immolation as a third team** (`TEAMS.immolation`, `js/common.js`) -- it already existed in Supabase (`teams.id = 3`) but had no client-side config, so nothing team-related (switcher, claims) could resolve it. Known limitation: it has no Apps Script deployment (created directly in Supabase, unlike Phoenix/Hellfire's pre-migration Sheets), and `loadData()`'s core/heavy chunk loading is still GAS-dependent regardless of migration progress elsewhere -- so the site won't actually load data for this team until enough of that pipeline no longer needs a GAS backend. Not addressed here; this just gives team-switching/claims code something correct to point at.
 - **Fixed the BiS Manager's item search silently missing an item that's actually in the GAS "Item Lookup" sheet.** The immediate cause was a stale `CFG.itemDataStart` row offset in `gs/wgaWebApp.gs` (a sheet cleanup shifted every row up by one; the hardcoded start-row didn't move with it, so row 2 was silently skipped) -- but the deeper issue is that item search has depended solely on that GAS sheet the whole time, with no fallback to Supabase's own `items` table, which has carried the real item catalog since #217/#219. Item search now merges Supabase's `items` on top of the GAS-sourced list as a safety net regardless of sheet alignment; full retirement of the GAS sheet as the item-catalog source is tracked separately (#391).
 - **Renamed "Team Phoenix" to "Phoenix"** for naming consistency with Hellfire Rollers and Immolation, neither of which carries a generic "Team" prefix.
 
 ### Backend
+
 - **`resolve_discord_display_name()` RPC** -- small `SECURITY DEFINER` function reading `auth.users`' Discord display name for the Discord Claims list, gated the same officer/team_leader-or-site-admin way as `resolve_actor_name()` (#376). Deliberately not a reuse of `resolve_actor_name()`: that function's resolution order prefers a linked character's nickname first, which is the wrong priority for verifying which real Discord account performed a claim.
 
 ---
@@ -99,9 +125,11 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.25.0] - 2026-07-09
 
 ### Frontend
+
 - **RCLootCouncil paste import moved to Supabase (#219, Phase 5)** -- both the officer dashboard's Loot Import tab and the public-page officer quick-actions bar's paste widget (two separate call sites, both migrated) now import through `import_rclc_loot()` instead of the Apps Script `appendLootRows` action. Each import resolves the player (creating an archived stub for an unrecognized name-realm, never a null link), resolves the item by its numeric item ID first and name as a fallback, derives the track (Champion/Hero/Myth) from the instance string's difficulty suffix, and reads the boss straight off the export -- all server-side in one RPC call instead of the old chunked JSONP round-trips. Duplicate protection is a real unique constraint (`dedupe_key`, team + RCLC id) rather than app-level checking, so re-importing the same export is a safe no-op. Every newly-imported row logs itself via `write_audit_log()` (#214); the confirmation banner now also reports items that couldn't be resolved against the season's Item Lookup. The "Import History" sub-tab now shows the last 100 imports sourced from the audit log instead of the (permanently empty, going forward) Apps Script sheet -- no "Clear All" button in this version, since there's still no safe way to select only paste-imported rows out of `rclc_loot` for deletion (see `docs/database-decisions.md`).
 
 ### Backend
+
 - **`import_rclc_loot()` RPC** (#219) -- `SECURITY INVOKER` function that resolves player/item, derives track, computes the dedupe key, and inserts into `rclc_loot` with `on conflict (dedupe_key) do nothing`, logging one `audit_log` entry per newly-inserted row. Uses `INVOKER` rather than `DEFINER` since officers already have full RLS write access to both `players` and `rclc_loot` directly (same reasoning as `add_signup_to_roster()`); an unresolved item is left `item_id = null` rather than auto-created, since that would require `DEFINER` (`items` grants no authenticated role a direct write).
 
 ---
@@ -109,9 +137,11 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.24.0] - 2026-07-09
 
 ### Frontend
-- **Attendance status/exclusion writes moved to Supabase (#218, Phase 5)** -- setting a player's per-night attendance status (both from the Attendance tab's per-night grid and the player profile's "Attendance" history card -- two separate write paths, both migrated) and toggling a raid night's report-exclusion flag now write straight to `attendance` instead of the Apps Script `setAttendanceStatus`/`setReportExcluded` actions, each logging itself via `write_audit_log()` (#214). Added the missing `Extended Leave` status to both status dropdowns to match what the database has always allowed. Unlike roster and BiS, the attendance grid's *reads* deliberately stay on Apps Script for now -- the weekly WCL sync that actually populates new raid nights hasn't moved to Supabase yet (a separate issue, #223), so migrating reads today would show an empty grid for any team without a historical import. Known interim quirk: since writes go to Supabase but reads still come from the untouched Sheet, an officer's edit persists only for the rest of that browser session until reads migrate alongside #223 (see `docs/database-decisions.md`).
+
+- **Attendance status/exclusion writes moved to Supabase (#218, Phase 5)** -- setting a player's per-night attendance status (both from the Attendance tab's per-night grid and the player profile's "Attendance" history card -- two separate write paths, both migrated) and toggling a raid night's report-exclusion flag now write straight to `attendance` instead of the Apps Script `setAttendanceStatus`/`setReportExcluded` actions, each logging itself via `write_audit_log()` (#214). Added the missing `Extended Leave` status to both status dropdowns to match what the database has always allowed. Unlike roster and BiS, the attendance grid's _reads_ deliberately stay on Apps Script for now -- the weekly WCL sync that actually populates new raid nights hasn't moved to Supabase yet (a separate issue, #223), so migrating reads today would show an empty grid for any team without a historical import. Known interim quirk: since writes go to Supabase but reads still come from the untouched Sheet, an officer's edit persists only for the rest of that browser session until reads migrate alongside #223 (see `docs/database-decisions.md`).
 
 ### Backend
+
 - **`attendance.player_id`'s FK reconciled to `ON DELETE SET NULL`** (#218) -- matches `rclc_loot` and the decision #250 already called for but never actually migrated (the baseline schema dump still showed `ON DELETE CASCADE`). Safety net only, in case a `players` row is ever hard-deleted outside the app's soft-delete path.
 
 ---
@@ -119,13 +149,15 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.23.0] - 2026-07-09
 
 ### Frontend
-- **BiS list edits moved to Supabase (#217, Phase 5)** -- adding an item, removing an item, and a new "mark obtained" toggle on the officer BiS Lists editor now write straight to `bis_items` instead of the Apps Script `setBisItems` action, each logging itself via `write_audit_log()` (#214). The editor no longer stages changes behind a Save button -- each action fires its own instant write, since `bis_items` supports true per-row inserts/updates/deletes (the old GAS handler only supported rewriting a player's whole BiS column at once). "Obtained" is a brand-new concept with no Sheet equivalent; it's separate from the existing loot-based BiS completion badge on the profile page, which still derives from actual RCLootCouncil/self-received history. BiS list *reads* also moved to Supabase in this same release (ahead of the issue's literal writes-only scope) so a page reload always reflects the true current state instead of a stale Apps Script snapshot the moment any write landed. Apps Script keeps its `setBisItems` handler in place, unused, until the whole Phase 5 write migration is verified.
+
+- **BiS list edits moved to Supabase (#217, Phase 5)** -- adding an item, removing an item, and a new "mark obtained" toggle on the officer BiS Lists editor now write straight to `bis_items` instead of the Apps Script `setBisItems` action, each logging itself via `write_audit_log()` (#214). The editor no longer stages changes behind a Save button -- each action fires its own instant write, since `bis_items` supports true per-row inserts/updates/deletes (the old GAS handler only supported rewriting a player's whole BiS column at once). "Obtained" is a brand-new concept with no Sheet equivalent; it's separate from the existing loot-based BiS completion badge on the profile page, which still derives from actual RCLootCouncil/self-received history. BiS list _reads_ also moved to Supabase in this same release (ahead of the issue's literal writes-only scope) so a page reload always reflects the true current state instead of a stale Apps Script snapshot the moment any write landed. Apps Script keeps its `setBisItems` handler in place, unused, until the whole Phase 5 write migration is verified.
 
 ---
 
 ## [3.22.0] - 2026-07-09
 
 ### Frontend
+
 - **Roster edits moved to Supabase (#216, Phase 5)** -- add player, remove player, and the trial/bench/join-date/class/spec field edits on the officer Roster tab now write straight to `players` instead of going through the Apps Script `addPlayer`/`removePlayer`/`updatePlayerField` actions; every write logs itself via `write_audit_log()` (#214). "Remove player" is a soft-delete (`archived_at` set, not a hard delete) so historical loot/BiS/attendance rows referencing the player stay intact; re-adding a previously archived name-realm un-archives the same row instead of erroring or duplicating. Apps Script keeps its roster-write handlers in place, unused, until this path is verified side by side. The Player Settings panel's standalone Role dropdown is gone -- role is now a read-only derived display, since the migrated schema resolves it from a single class+spec pairing (`class_spec_id`) rather than storing it independently; picking a new Class only repopulates the Spec dropdown, and the write fires once Spec is chosen (see `docs/database-decisions.md`, 2026-07-09).
 
 ---
@@ -133,9 +165,11 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.21.0] - 2026-07-09
 
 ### Frontend
+
 - **Audit Log tab rewired to Supabase (#378)** -- the officer dashboard's Audit Log tab read from the legacy GAS `?action=getAuditLog` JSONP endpoint; it now reads `audit_log` directly. Columns collapse the old From/To pair into a single DETAIL column, holding the human-readable summary string `write_audit_log()` (#214) and the #377 backfill both write. CHANGED BY resolves `actor_id` through `resolve_actor_name()` (#376) instead of showing a raw uuid; TARGET resolves `target_type = 'players'` rows to a character name (no other `target_type` is written by any flow yet, so nothing else resolves). Historical rows (before #214) have no `actor_id`/`target_type` and permanently lost their original TARGET value in the #377 backfill, so CHANGED BY and TARGET show blank for anything from before this shipped -- accepted, not a bug.
 
 ### Backend
+
 - **anon/authenticated granted USAGE on public sequences (#383)** -- #312 granted base table DML to anon/authenticated so RLS could be reached on a write, but never granted USAGE on the identity sequences behind serial columns; found when #216's Add Player flow hit `permission denied for sequence players_id_seq` despite the row-level policy permitting the insert. Same class of gap #332 flagged for service_role. One additive migration, same shape as #312.
 
 ---
@@ -143,10 +177,12 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.20.0] - 2026-07-09
 
 ### Frontend
+
 - **Officer claim management and promotion on Supabase (#365)** -- The roster tab's Discord Claims table and the admin tab's officer promotion picker read live `DATA.discordClaims`/`DATA.officerDiscordIds` from the GAS core payload, which went stale the moment #212 moved claim writes to Supabase; the admin tab's promote action was already dead code since #211 moved officer access to `team_members.role`. Both panels now read through a shared `fetchTeamClaims()` (`js/discord.js`): claimed, unarchived players on the team joined to their linked `team_members` row for `discord_id` and `role`. Removing a claim clears `players.team_member_id`; granting/revoking officer access updates `team_members.role` directly between `raider` and `officer` through PostgREST, covered by the existing "Officers write players" and "Team leaders write team_members" policies -- no new SQL needed. The claims table now shows Discord ID instead of a display name and drops the claimed-date column, since neither is stored anywhere in Supabase. Team leaders are intentionally excluded from the officer picker -- it only replaces the old flat officer on/off toggle, not the separate team-leader tier.
 - **Team leaders can now reach the Officers sub-tab without site-admin access (#365 follow-up)** -- The Admin tab was a single site-admin-gated nav item, so a team leader had to go through a site admin to promote a raider to officer even though the "Team leaders write team_members" policy already let them make that write. `showAdminTab()` now takes a tri-state access level (`adminAccessLevel()` in `js/discord.js`: full for site admins, `'officers'`-only for team leaders, none otherwise) instead of a plain boolean; a team-leader-only session gets the Admin nav item but only the Officers sub-tab -- Properties, Bot Config, Data Export, and Danger Zone stay hidden and reachable only by site admins.
 
 ### Backend
+
 - **Audit log write path (#214)** -- `audit_log` had no client write path (anon/authenticated hold no INSERT grant on the table), so no Phase 5 officer write feature would have anywhere to record its action. `write_audit_log(p_team_id, p_action, p_target_type, p_target_id, p_detail)` is now the one SECURITY DEFINER function meant to ever insert into it: same definer pattern as `is_site_admin()`/`claim_character()`, gated to officer/team_leader-or-site-admin callers, `actor_id` always set from `auth.uid()` rather than a caller-supplied value.
 - **Actor-name resolution for the audit log (#376)** -- `resolve_actor_name(p_actor_id, p_team_id)` resolves an `audit_log.actor_id` uuid to a display name for the upcoming Audit Log tab rewire: the linked player's nickname, else the character-name part of their `name_realm`, else (for a site admin acting on a team they don't belong to) their Discord display name read from `auth.users`. Since that last path surfaces another person's PII, the function re-checks the same officer/team_leader-or-site-admin gate `"Officers read audit_log"` already enforces, rather than relying on the `EXECUTE` grant alone.
 - **Backfilled historical audit_log.detail to the summary-string convention (#377)** -- the Stage C import (#320) had written the raw `{target, from, to, changed_by}` shape into `detail`; existing rows now carry a single human-readable summary string matching what `write_audit_log()` (#214) and the Audit Log tab rewire (#378) expect. Legacy `changed_by` values are dropped, not preserved -- every historical row's `actor_id` is null and always will be, so CHANGED BY was never going to resolve for these rows regardless.
@@ -156,6 +192,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.19.2] - 2026-07-09
 
 ### Frontend
+
 - **Added a team switcher to the public page (#368)** -- `index.html`'s nav had no way to move between teams; only `officer.html` exposed the `teamSwitcherSelect` dropdown. A raider landing on the wrong team's link (bad bookmark, stale Discord link) had to manually edit the `?team=` query param. Reuses the existing shared `initTeamUI()`/`switchTeam()` plumbing, so it inherits Discord session carry-over across the switch for free.
 - **Added a "wrong team" hint to the claim modal (#212)** -- A raider who doesn't see their character in the claim dropdown had no signal that they might be viewing the wrong team's roster. The hint now names the currently-viewed team and links straight into the new public team switcher (`goToTeamSwitcher()` in `js/discord.js`) rather than just stating the problem. This was the last remaining piece of #212, deliberately deferred behind #368 landing first.
 - **The landing "Claim your character" prompt now recognizes a claim on the other team** -- `resolveDiscordSession()` scopes its `team_members` lookup to the current team, so a raider who already claimed a character on the other team looked identical to one who'd never claimed anything -- same generic prompt, no signal they were just on the wrong page. `findClaimElsewhere()` in `js/discord.js` uses the `Members read own team_members` policy (#212), which isn't team-scoped, to check the other team for an existing claim; if found, the landing card swaps to "You've already claimed {character} on {team}" with a button that calls `switchTeam()` directly instead of the generic claim flow.
@@ -165,6 +202,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.19.1] - 2026-07-09
 
 ### Frontend
+
 - **Fixed the claim prompt getting stuck on "Checking your account..." after login (#371)** -- `js/roster.js` and `js/officer-quick-actions.js` both declared a global `onDiscordSessionRestored` function. `roster.js` loads last on `index.html`, so its declaration silently won the naming collision -- `officer-quick-actions.js`'s version, the one that refreshes the officer bar, player selector, and claim prompt, has been dead code since #370 shipped. It only went unnoticed because most logins fire a `SIGNED_IN` event (a different, non-colliding hook); a `getSession()`-restored session firing `INITIAL_SESSION` instead hit the collision and never updated the UI. Fixed by having `roster.js`'s version call `_qaRefresh()` itself and removing the shadowed duplicate.
 - **Added loading feedback while a Discord session resolves** -- The gap between a Discord login completing and the mapped session resolving (a `team_members` lookup, then a `players` lookup and an `is_site_admin` check) had no visual feedback. If the tab lost focus during that window, the browser would defer those requests until it regained focus, so login could look like it silently failed for several seconds. The nav button now shows a disabled "Signing in..." state during that gap, and the persistent "Claim your character" box (#370) shows a "Checking your account..." placeholder instead of staying invisible. Both are skipped when a cached session is already available, so returning users don't see a pointless flash. The lookup itself is now bounded by a 15-second timeout, so a stalled request (accepted but never answered, which the browser's own `fetch()` has no default timeout for) falls back to a retryable logged-out state instead of leaving the loading state on screen indefinitely.
 - **Reworded the claim prompt** -- "Link your Discord to a character to see your priority standing and mark loot you receive" is now "Link a character to your account to unlock your raider profile," a general framing that doesn't call out specific features.
@@ -174,9 +212,11 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.19.0] - 2026-07-08
 
 ### Frontend
+
 - **Raider character claim flow (#212)** -- Claiming a character now writes through Supabase. The claim dropdown lists only unclaimed roster members, read live from the database instead of the old Apps Script claims list, and confirming a claim calls the `claim_character` function, which links the character to your Discord identity and rejects one that is missing, archived, or already taken. On login the site resolves your claimed character through the canonical `players.team_member_id` link, so your profile and priority standing show up. A persistent "Claim your character" box on the home page gives you a way back to claiming whenever you are logged in without a character, not only the one-shot modal right after login.
 
 ### Backend
+
 - **Raider character claim flow, backend half (#212)** -- Added `claim_character(team_id, name_realm)`, a `SECURITY DEFINER` function that links a raider's chosen character to the person layer: it sets `players.team_member_id` to the caller's `team_members` row, creating that row with `role = 'raider'` on a first claim and reusing an unlinked row imported from the Discord Claims sheet (#338) rather than duplicating it. It refuses a character that is archived, missing, or already claimed. A new self-read RLS policy lets a member read their own `team_members` row, which the login session read (`resolveDiscordSession`) needs for a raider's `nameRealm` to resolve. A one-time backfill links the pre-migrated claims to their `players` rows on the canonical `team_member_id` model. The frontend that calls this ships separately (v3.19.0). Also captures the `on_auth_user_created` trigger in a migration: it was created by hand in the dashboard and existed only on production, so local and CI stacks could not exercise the claim path against it until now.
 
 ---
@@ -184,6 +224,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.18.1] - 2026-07-08
 
 ### Frontend
+
 - **Audit log records the acting officer again (#364)** -- The Supabase login swap (#211) dropped the Discord session token from the client session, and that token was the only thing that told Apps Script who made a change. Officer writes still served by Apps Script (attendance, BiS, received items, and the rest until Phase 5) were logging a blank "changed by" as a result. The site now sends the signed-in officer's Discord username as `changedBy` instead, and Apps Script uses it when no token is present (old cached sessions that still send a token keep working). Both team deployments need a redeploy for the Apps Script half to take effect; until then attribution stays blank, the same as before this change.
 
 ---
@@ -191,6 +232,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.18.0] - 2026-07-08
 
 ### Frontend
+
 - **Discord login now goes through Supabase Auth (#211)** -- Replaced the hand-rolled popup OAuth flow (`discord-callback.html`, `window.open`, `postMessage` relay, CSRF `state` param) with Supabase's `signInWithOAuth()` full-page redirect. `js/discord.js` maps the resulting Supabase auth session to the `{ username, nameRealm, isOfficer, isAdmin }` shape `officer.js` already consumes via `onDiscordLoginComplete` / `onDiscordSessionRestored` / `onDiscordInitNoSession` / `onDiscordLogout`, so no changes were needed there. Role and admin tier come from `team_members` and `is_site_admin()` respectively. Login mechanism only -- the character-claim write (#212) and removing the now-redundant GAS OAuth redirect (#213) are separate follow-ups; `discord-callback.html` is deleted since the new flow no longer needs a relay page.
 
 ---
@@ -198,6 +240,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.17.2] - 2026-07-08
 
 ### Frontend
+
 - **Removed the Apps Script loot fallback (#210 cutover cleanup)** -- Both team GAS deployments were redeployed to drop `lootCounts` (retired in #358), confirmed live via the `heavy` chunk. The frontend no longer falls back to `heavy.lootCounts` when the Supabase loot query fails; it now resolves to an empty loot feed instead, since there is no longer an alternate source to fall back to.
 
 ---
@@ -205,6 +248,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.17.1] - 2026-07-08
 
 ### Frontend
+
 - **Fixed unreadable Discord reauth button on the officer password prompt** -- `.site-nav-discord` is styled for the transparent top-nav bar, but the reauth "Continue with Discord" button in the officer prompt pairs it with `.btn` instead of `.site-nav-item`, so it had no background set and fell back to the browser's default white button with `--text-muted` text on top -- washed out and hard to read. Added a `.btn.site-nav-discord` variant with a blurple-tinted background matching the surrounding reauth box.
 
 ---
@@ -212,6 +256,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.17.0] - 2026-07-08
 
 ### Frontend
+
 - **Public loot reads from Supabase (#209)** -- The loot feed (player cards, Recent Loot, landing totals, fairness and priority views) now builds from the `rclc_loot` table instead of the Apps Script heavy payload. Rows are remapped client-side to the exact shape the Apps Script emitted -- same first-name keys, award dates formatted in the sheet's Eastern timezone, Hero/Myth/Champion tracks shown under the Heroic/Mythic/Other labels the UI expects, and the stored season code shown under its sheet display name -- so nothing changes visually. The query fetches every season for the team and pages past PostgREST's 1000-row cap; on any failure it falls back to the Apps Script loot feed while that still exists. The Apps Script stops serving `lootCounts` (both team deployments need a redeploy after this merge). One sheet-era artifact is deliberately not reproduced: the old feed collapsed a genuine same-minute double drop into one entry, so phoenix's item total now reads 156 where the sheet showed 155.
 
 ---
@@ -219,9 +264,11 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.16.0] - 2026-07-07
 
 ### Frontend
+
 - **Public roster reads from Supabase (#208)** -- Both pages now load the roster from the `players` table (with class/spec/role joined from `classes_specs`) instead of the Apps Script payload. The rows are mapped to the exact shape the Apps Script emitted, so nothing changes visually. Attendance and the M+ exclusion fields still merge in from the Apps Script payload: attendance is computed live from the Attendance sheet, and the M+ request flow stays officer-gated until Phase 5. If the Supabase query fails, times out, or returns nothing, the page falls back to the Apps Script roster and keeps working. New frontend unit tests (`npm run test:frontend`) cover the mapping and the fallback, with their own CI job.
 
 ### Backend
+
 - **Departed characters keep their loot history (#209)** -- The loot importer now creates archived stub players rows for names no longer on the Roster (the same treatment attendance and scoring always had) instead of leaving `player_id` null, so every imported loot row carries character attribution. A one-time relink script backfills the 67 phoenix rows imported before the change (24 departed characters); the upcoming Supabase loot read depends on it, since a player-keyed read would otherwise drop those items from the public loot totals and Recent Loot feed.
 - **Roster re-imports reconcile instead of insert-only (#208)** -- Re-applying a team's generated import now updates changed player fields from the Roster export (spec swaps, nicknames, trial/bench flags, BiS links, join dates), revives a returning player's archived row in place (keeping their history), and archives active players who left the sheet roster. Unchanged rows are not touched, so `updated_at` still means a real edit, and a second apply reports zero affected rows. All other sections stay insert-only. This is the roster refresh path while the site reads players from Supabase but roster edits still happen on the sheet (until Phase 5): regenerate from a directory holding just a fresh Roster.csv (see the header of scripts/import/generate.js) and re-apply. The M+ exclusion fields are never overwritten on update.
 
@@ -230,6 +277,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.15.2] - 2026-07-07
 
 ### Added
+
 - **Type checking for the frontend JS (#331)** -- `js/common.js` now opts into TypeScript's checker with `// @ts-check` and JSDoc annotations, and a new "Type check" step in the lint CI runs `tsc --noEmit` (also available locally as `npm run typecheck`). There is still no build step: the `.js` files ship exactly as they are, and a new `js/globals.d.ts` declares the window globals (the supabase CDN client and the JSONP callbacks) for the checker only. The remaining `js/` files opt in as they get touched; generated Supabase types come after the Phase 2 schema settles, per the issue.
 
 ---
@@ -237,6 +285,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.15.1] - 2026-07-07
 
 ### Fixed
+
 - **`scripts/fetch-items.js` runs again (#301)** -- The script still used a CommonJS `require` after `scripts/` became an ES module package, so `node scripts/fetch-items.js` threw before doing anything. The require is now an import, and the script only starts its Wowhead fetches when executed directly, so the test suite can load it without hitting the network.
 
 ---
@@ -244,6 +293,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.15.0] - 2026-07-07
 
 ### Changed
+
 - **Loot columns store item track, named and valued as track (#343)** -- The `difficulty` columns on `rclc_loot`, `self_received_requests`, and `priority_order` are renamed to `track` and store the real upgrade-track names: Champion, Hero, Myth (previously the hybrid Champion/Heroic/Mythic). The columns always meant track: the app translated Normal drops to "champion", and self-received uses the values for vault/crafted/catalyst items that never dropped at a raid difficulty. The migration updates existing rows in place; the importers translate the sheet's difficulty words on the way in; priority_order stays Hero/Myth only, since Champion loot is handled by loot council outside the priority system. The sheet and current UI keep their vocabulary until the Phase 2/5 switches.
 
 ---
@@ -251,6 +301,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.14.0] - 2026-07-07
 
 ### Added
+
 - **Discord Claims import into team_members (#338)** -- The importer now reads a team's Discord Claims tab and backfills each claim as a `team_members` row (`role = 'raider'`), so the auth trigger can match a raider's Discord ID on their first Supabase login and existing claims carry over instead of everyone re-claiming. A claim for an already-seeded officer or team leader keeps the existing role and only fills in a missing `name_realm`. Claim IDs mangled by sheet number formatting (scientific notation loses digits) are skipped with a printed warning, since a truncated ID would silently never match at login. Verified on the local stack: 6 of hellfire's 7 claims import (one skipped for a mangled ID), seeded officer rows keep their roles and gain their character links, and a second apply changes nothing.
 
 ---
@@ -258,6 +309,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.13.3] - 2026-07-07
 
 ### Fixed
+
 - **Roster import accepts the full-sheet export layout (#320)** -- The hellfire Roster export ships the sheet's two banner rows (title and description) above the header, which the roster parser rejected because it expected the header in row 1. The parser now locates the header row by content within the first few rows, so both the cleaned phoenix layout and the full-sheet hellfire layout import. Verified against the hellfire export on the local stack: 15 players and 59 audit rows import, and a second apply inserts zero rows. The hellfire signup-flow tabs (Pending Roster, Discord Claims, Roster Responses) are out of scope for the historical import and stay in the sheet until the signup flow itself moves.
 
 ---
@@ -265,6 +317,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.13.2] - 2026-07-07
 
 ### Added
+
 - **`.env.example` template is now tracked** -- the root `.gitignore` was ignoring the example env file along with the real one, so the template never traveled with the repo. The ignore rule now covers only `.env`/`.env.local`; `.env.example` documents the expected variables (Supabase URL and keys, pooler `DATABASE_URL`) with empty values.
 
 ---
@@ -272,6 +325,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.13.1] - 2026-07-07
 
 ### Changed
+
 - **Clarified the Admin Danger Zone's "Clear M+ Exclusions" label** -- renamed to "Clear M+ Exclusion Requests" to distinguish it from the M+ Exclusions tab's own "Clear All Exclusions," which clears a different thing (the active exclusion flag on players, not the request history).
 
 ---
@@ -279,6 +333,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.13.0] - 2026-07-07
 
 ### Added
+
 - **supabase-js client on both pages (#207)** -- index.html and officer.html now load the supabase-js v2 library and initialize a shared client in `js/common.js`, and each team's config carries its Supabase team id (verified against the live `teams` table). Nothing reads from Supabase yet: the JSONP backend stays in charge of every feature, and if the CDN script fails to load the site works exactly as before. This is the foundation for the Phase 2 public read switches (#208, #209).
 
 ---
@@ -286,13 +341,16 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.12.2] - 2026-07-07
 
 ### Fixed
+
 - **Loot Data import accepts the export's two-digit-year dates (#320)** -- The real Loot Data export writes its date column as `3/19/26`, which the import date parser rejected (it only knew 4-digit years). The parser now accepts `M/d/yy` with or without a time, expanding to `20yy`. Verified against the phoenix export on the local stack: all 156 loot rows import (102 Heroic, 54 Mythic, season MID1, Eastern timestamps), 19 old-tier items auto-created, and a second apply inserts zero rows.
 - **Schema reference doc matches the live difficulty vocabulary** -- `docs/database-schema-reference.md` still described the `rclc_loot.difficulty` CHECK as Normal/Heroic/Mythic; the live constraint is Champion/Heroic/Mythic with Normal translated to Champion on import (decided on #320).
+
 ---
 
 ## [3.12.1] - 2026-07-07
 
 ### Fixed
+
 - **Import generators match the real CSV exports (#320)** -- The parsers were written against the raw sheet tab layouts, but the actual exports are flattened: headers sit in row 1, the Roster and Scoring tabs carry different column sets, and player names arrive as "First-Realm - Nickname". The Roster, Scoring, and Item Lookup parsers now read the exported layouts, dash-separated nicknames are stripped everywhere names are matched, and M/d/yyyy join dates are accepted. The Item Lookup's "Crafting" placeholder row is renamed to "Crafted" on import to match the app vocabulary the BiS cells already use, and the Attendance parser skips the export's excluded-reports trailer and blank-status rows with a printed warning instead of aborting. Verified end to end against the phoenix exports on the local stack: full generate, apply, and a second apply inserting zero rows.
 
 ---
@@ -300,6 +358,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.12.0] - 2026-07-06
 
 ### Added
+
 - **Signup-to-roster promotion in the database** -- The old sheet's Pending Roster tab is now a signup state instead of a table: approved signups waiting for the roster add are exactly `season_signups` rows at `status = 'approved'`, readable by officers through the new `pending_roster` view. A new `add_signup_to_roster()` function performs the add as one transaction: it creates the player (or unarchives a returning character, or links an already-active member without resetting their trial flag and join date), archives the old character on a main swap, and marks the signup `added`. A CHECK constraint guarantees a signup can only link to a player once it is `added`. Authorization rides on the existing officer policies; applicant names stay invisible to the public until the add happens.
 
 ---
@@ -307,6 +366,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.11.0] - 2026-07-06
 
 ### Added
+
 - **Self Received Requests import (#320, decided in #322)** -- Migration adds `difficulty`, `source`, and `note` columns to `self_received_requests`, and a new generator imports the tab with the mixed Source values split the same way the app reads them: a "Mythic:"/"Heroic:" prefix wins, a bare value defaults to Mythic, and the base tier stores as Champion. The legacy loot export's response and note columns are dropped on import per the same decision.
 
 ---
@@ -314,6 +374,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.10.0] - 2026-07-06
 
 ### Added
+
 - **One-time data migration tooling, stage C (#320)** -- Import generators for loot, the M+ request history, and the officer audit log. Loot merges Pasted Loot and the legacy external tracker export, translates the base difficulty tier to Champion (per the decision on #320), derives legacy seasons from a date-ranges config, creates items rows for old-tier gear the Item Registry never knew, and dedupes on team-prefixed keys so a re-apply or a refresh export inserts only new rows. Audit rows keep their action text verbatim with the target/old/new/changed-by context folded into a jsonb detail blob. Timestamps convert from the spreadsheet's wall-clock timezone at apply time, so DST is Postgres's problem, not the generator's.
 
 ---
@@ -321,6 +382,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.9.0] - 2026-07-06
 
 ### Added
+
 - **One-time data migration tooling, stage B (#320)** -- Import generators for the three history tables. Attendance locates its columns by header text (the #228 cleanup changed the export layout), validates statuses against the schema's allowed list, and flags duplicate player/date rows; departed players referenced only by history import as archived stub rows. The BiS grid and priority ranking grid reshape from their wide sheet layouts into normal rows, with duplicate BiS cells collapsed and every item reference checked against the Item Lookup export before apply.
 
 ---
@@ -328,6 +390,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.8.0] - 2026-07-06
 
 ### Added
+
 - **One-time data migration tooling, stage A (#320)** -- New `scripts/import/` generators turn per-team CSV exports of the Google Sheet tabs into one reviewable, transactional SQL file per team (`node scripts/import/generate.js --team phoenix --season "..."`). This stage covers items + item_bosses (with a cross-team registry mismatch report), players (M+ exclusion state derived from approved requests, departed players kept as archived stubs so history FKs hold), and scoring. Re-applying a file inserts only new rows, so the pre-cutover refresh is a plain re-run. CSVs and generated SQL live in the new gitignored `data/` directory.
 - **Natural unique keys on the reference tables** -- Migration adds `unique (class, spec)` on classes_specs and a unique index on `items (lower(name))`, giving the import SQL real ON CONFLICT targets. A double-applied import (SQL Editor or psql) now converges instead of duplicating reference rows; the classes-specs generator from #321 emits the matching conflict clause.
 - **Import test suite** -- `npm run test:import` runs vitest unit tests for the CSV parsing, name normalization (diacritics, nicknames), SQL escaping, and per-table generators.
@@ -337,6 +400,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.7.4] - 2026-07-05
 
 ### Added
+
 - **Generated database schema docs** -- New `dbdoc/` directory with a markdown page and Mermaid ER diagram per table, generated from the migrations with [tbls](https://github.com/k1LoW/tbls) (`npm run db:docs`). A new schema-docs CI check fails any PR whose migrations no longer match the committed docs, so the diagrams cannot silently drift.
 - **RLS policy reference** -- `docs/RLS.md` documents the row-level-security policy matrix for all 20 tables (tbls cannot introspect policies). CI requires it to be updated whenever a migration touches policy SQL. Writing it surfaced two policy defects on `player_wcl_season_perf`, filed as #293.
 - **Raw RLS policy export** -- `docs/rls_policies.csv` holds every policy as one spreadsheet-friendly row, generated straight from `pg_policies` with `npm run db:rls`. CI regenerates it and fails the PR if the committed CSV is stale.
@@ -346,6 +410,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.7.3] - 2026-07-05
 
 ### Changed
+
 - **Split officer promotion out of the Discord Claims tab** -- The Roster tab's Discord Claims sub-tab showed Grant/Revoke Officer buttons alongside claim data, duplicating the Admin tab's Officers sub-tab. Discord Claims is now purely a read-only view of who claimed what character, with a consistent "Remove" action for every viewer (previously only non-admins had it). The Officers sub-tab now lists only current officers (with Revoke), plus a new "Promote a claimed character to officer" picker built from claimed users who aren't officers yet -- replacing the old free-text Discord ID field, which required knowing a raw ID that was never shown anywhere in the UI.
 
 ---
@@ -353,6 +418,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.7.2] - 2026-07-05
 
 ### Fixed
+
 - **Stale "Who are you?" label on the profile selector card** -- The public landing page's card only ever renders once someone's already logged in with Discord and claimed a character, so asking "who are you?" no longer made sense. Now reads "Your Profile" for raiders (just their own "View My Profile" button) and "Look Up a Raider" for officers (who get the full character dropdown).
 
 ---
@@ -360,6 +426,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.7.1] - 2026-07-04
 
 ### Added
+
 - **Public Roster tab** -- A new "Roster" nav item on the public landing page shows who's currently on the roster (name, class, spec) grouped by role, with no login required. Read-only -- no attendance, loot counts, or BiS data, and no edit controls (those stay behind the officer-only profile dropdown). Reuses the same class-badge styling as the officer BiS Lists tab.
 
 ---
@@ -367,6 +434,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.7.0] - 2026-07-04
 
 ### Added
+
 - **Signup mismatch confirmations for logged-in Discord users** -- If a signer is logged in with a claimed character, two new checks now catch likely mistakes before submission:
   - **Different Name-Realm than the claim** -- typed at Step 1, this is checked immediately, before any class/spec is picked. A typo can land on a genuinely different real character (e.g. typing `Katorri` when your claim is `Katorrí`, which happens to be someone else's actual character on the same realm), so this is no longer silently assumed to be an intentional main swap. Step 1 shows exactly what's claimed vs. what was typed, naming both characters, and requires an explicit confirmation before continuing. If confirmed, the claimed character is automatically recorded as the main-swap source later at submission -- no manual re-typing needed.
   - **Same Name-Realm, different class** -- the character's class can't actually change, so picking a class that doesn't match the claimed character's roster record is almost certainly a misclick. A confirmation checkbox naming both the recorded and selected class appears at the spec step and blocks progress until checked.
@@ -377,6 +445,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.6.9] - 2026-07-04
 
 ### Fixed
+
 - **Main-swap checkbox not obvious as a checkbox** -- The "I'm switching mains this season" toggle used the hidden-input/pill-button style meant for grouped chip selections (like off-spec), so as a standalone full-width control it read as a static label rather than something clickable. It now renders as a visible native checkbox with a gold accent, matching the pattern used elsewhere on the site (e.g. the Pending Roster "remove absent" toggle).
 
 ---
@@ -384,9 +453,11 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.6.8] - 2026-07-04
 
 ### Fixed
+
 - **Main swap on the signup form was an auto-filled text box** -- The field silently pre-filled with the signer's own claimed character, making it look like everyone was swapping mains by default. It's now a checkbox ("I'm switching mains this season"). If the Discord user has a claimed character, it's shown read-only; otherwise a text box appears, validated with the same name-formatting rules as character names (catches malformed entries like `mmyumbeans - Illidan` before submission).
 
 ### Added
+
 - **Pending Roster diff preview** -- The push banner now shows how many entries are new vs. updates vs. missing signups, computed against the live roster, before confirming a push.
 - **Pending Roster conflict highlighting** -- Cards with a main swap get a highlighted border, a New/Update badge, and a note on whether the old character is still on the roster (so officers know if "remove absent" is needed to clean it up).
 - **Pending Roster sort/filter controls** -- Role chips, a "Main Swap Only" toggle, and Name/Class sort for the pending entry list.
@@ -396,6 +467,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.6.7] - 2026-06-29
 
 ### Added
+
 - **Devotion Aura buff coverage tracking** -- Devotion Aura (provided by all Paladins) is now included in the raid buff coverage panel.
 - **Signup history viewer** -- A new History sub-tab on the Signups tab shows all Roster Responses entries for the current signup season, grouped by status (Approved / Pending / Denied). Read-only reference view so officers can see the full signup picture alongside the active submission queue.
 
@@ -404,12 +476,14 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.6.6] - 2026-06-29
 
 ### Fixed
+
 - **Roster push overwrite bug** -- When multiple signups were pushed to the roster in one batch, any player whose role was stored as `DPS` or `Healer` (raw signup form values) was written to the sheet with an invalid role string. The next player's insertion point calculation skipped that row, causing them to be written to the same row and clobbering the previous player (root cause of Dayned being lost). The backend now resolves `DPS` and `Healer` to the correct `Melee`/`Ranged`/`Heal` value based on the player's main spec before writing to the roster.
 - **Pure DPS class role defaulting to Melee** -- Warlock, Mage, and Rogue signups had no role radio buttons, but the resolved role defaulted to `Melee` for all of them. Each class now carries a fixed role in `CLASS_SPECS` (`Ranged` for Warlock/Mage, `Melee` for Rogue).
 - **Hunter role not accounting for Survival (Melee)** -- Hunter previously defaulted to `Ranged`. Since Survival is a melee spec, Hunters now see a `Melee`/`Ranged` radio button on the signup form.
 - **Hybrid DPS/Healer role not resolving at signup time** -- Players selecting `DPS` or `Healer` on the signup form now have their role resolved to the specific raid role (`Melee`, `Ranged`, or `Heal`) based on their selected main spec before the signup is submitted.
 
 ### Added
+
 - **Character name validation** -- The public signup form and the officer Add Player modal now reject names that don't follow WoW naming rules: 2-12 characters, first letter capitalized, no additional capitals. Invalid names show an error with a corrected suggestion (e.g. "Did you mean Glizzygary?").
 
 ---
@@ -417,6 +491,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.6.5] - 2026-06-29
 
 ### Added
+
 - **Signup Season setting in Season Settings** -- Officers can now set the signup season label directly from the Season Settings tab. Previously the backend supported this but had no UI, meaning all signups were recorded with a blank season field. The field is now exposed, loaded on page open, and validates against empty saves.
 
 ---
@@ -424,6 +499,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.6.4] - 2026-06-28
 
 ### Fixed
+
 - **Attendance and WCL scores now pull from the Roster sheet** -- Player lists for attendance refresh, attendance score commit, WCL score refresh, and performance score commit were previously read from hardcoded rows 4-33 in the Scoring sheet (30-player cap). All four now source players directly from the Roster sheet, so anyone added to the Roster is automatically included. The Scoring sheet still stores scores per player but is no longer the source of truth for who is on the roster.
 
 ---
@@ -431,6 +507,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.6.3] - 2026-06-28
 
 ### Fixed
+
 - **Buff coverage styling** -- Buff names are now colored by their provider class (e.g. Druid orange for Mark of the Wild). Multi-class buffs (Heroism, Combat Res) remain white. Font size increased from ~0.77rem to 0.88rem on both the Roster and Pending Roster panels.
 
 ---
@@ -438,6 +515,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.6.2] - 2026-06-28
 
 ### Fixed
+
 - **Buff coverage not rendering on Roster tab** -- `buildRosterBuffCoverage` was only called in the heavy-data callback, so it never ran on initial load or after player saves. Moved the call into `buildOfficerDashboard` so it renders consistently.
 
 ---
@@ -445,6 +523,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.6.1] - 2026-06-28
 
 ### Added
+
 - **Buff/debuff coverage panel** -- Pending Roster tab now shows a collapsible Buff Coverage section (between Missing Signups and the Push area) with Raid Buffs, Boss Debuffs, and Utility grouped into three sections. Each buff shows a green checkmark (2+ players), yellow warning (1 player), or red X (not covered). Hovering a buff chip shows which players provide it.
 - **Compact buff summary on Roster tab** -- A compact always-visible buff/debuff summary appears above the roster table, showing the same green/yellow/red indicators for the current active roster (bench excluded).
 
@@ -453,6 +532,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.6.0] - 2026-06-28
 
 ### Added
+
 - **3-stage roster signup flow** -- Signups are now a full season registration flow: players submit a signup (class/spec/role/discord/mainswap/notes), officers approve into a Pending Roster staging area, then push to the official roster in bulk when signups close.
 - **Active signup season setting** -- A new Settings sheet stores a `signupSeason` key (e.g. `MN S1`) independent of the attendance season start date, so pre-season signups are attributed to the correct season. Officers set it via a new `setActiveSignupSeason` action.
 - **Season stamping** -- Every signup submission and pending roster entry is now stamped with the active signup season.
@@ -462,11 +542,13 @@ with each release split into `### Frontend` (drives the version number) and
 - **Pending Roster tab redesign** -- Stats panel (total + role breakdown), collapsible missing signups section grouped by role, simplified cards with mainswap/season indicators, and a two-step Push to Roster confirm flow with optional remove-absent checkbox.
 
 ### Changed
+
 - **Pending Roster sheet columns** -- Extended from 6 to 12 columns: Character-Realm, Class, Main Spec, Off Specs, Role, Discord, Mainswap, Notes, Season, Submitted At, Approved At, Status.
 - **Approve signup** -- Removed the old duplicate-on-roster guard (players are expected to already be on the roster for season re-registrations). Now passes mainswap, notes, and season through to the Pending Roster sheet.
 - **Officer.html help text** -- Updated Signups tab help to describe the push-based flow.
 
 ### Fixed
+
 - **ESLint no-useless-escape** -- Removed unnecessary `\/` and `\-` escapes in two date-parsing regexes.
 - **ESLint no-empty** -- Added `Logger.log()` bodies to previously-empty catch blocks.
 - **ESLint no-redeclare** -- Converted `var` to `const`/`let` in `getItemRecipients` loops to eliminate cross-loop re-declarations.
@@ -476,6 +558,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.5.5] - 2026-06-23
 
 ### Added
+
 - **Supabase migration plan** -- Added `docs/supabase-migration-plan.md`, a proposal for moving the Raid Hub off Google Sheets to Supabase and PostgreSQL: phased roadmap, security model (Row Level Security as the access boundary), data migration approach, the loot-feed retirement, and the decisions and setup needed to begin. Planning only; no application changes.
 
 ---
@@ -483,6 +566,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.5.4] - 2026-06-23
 
 ### Fixed
+
 - **Grant/Revoke Officer and Remove buttons broken on Roster tab** -- Same double-quote collision as the Admin tab fix in 3.5.3; the Roster tab's Discord Claims section had identical unescaped `JSON.stringify` calls in its `onclick` attributes. Also fixes the Remove button (`removeDiscordClaim`) on the same row.
 
 ---
@@ -490,6 +574,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.5.3] - 2026-06-23
 
 ### Fixed
+
 - **Grant/Revoke Officer buttons broken in Admin tab** -- The onclick attributes used `JSON.stringify` to embed Discord ID and username, which wraps strings in double quotes. Because the attribute itself also uses double quotes, the browser truncated the attribute at the first inner `"`, leaving an incomplete JS expression that threw `SyntaxError: Unexpected end of input`. Replaced the inner quotes with `&quot;` HTML entities so the onclick is valid.
 
 ---
@@ -497,6 +582,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.5.2] - 2026-06-23
 
 ### Fixed
+
 - **"Invalid or expired session" when claiming a character on Hellfire Rollers** -- The Discord login popup could not read `sessionStorage` from the opener window, so it always called Phoenix's GAS backend to create the session. Claiming a character on Hellfire's page then failed because Hellfire's GAS had no record of the token. The team slug is now encoded directly in the OAuth `state` parameter so the callback knows which backend to call without any cross-window storage coordination.
 
 ---
@@ -504,6 +590,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.5.1] - 2026-06-23
 
 ### Fixed
+
 - **Discord session lost when switching teams** -- Switching to a different team via the nav dropdown now preserves your Discord login. Previously the per-team session key (`wga_discord_<slug>`) caused the new page to find no stored token, forcing a re-login. The session is now copied to the destination team's key before navigation.
 
 ---
@@ -511,6 +598,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.5.0] - 2026-06-23
 
 ### Changed
+
 - **"Who are you?" selector is now gated behind Discord login** -- The player selector card on the landing page is hidden unless the visitor is logged in via Discord with a claimed character. This prevents anonymous profile browsing now that Discord auth is live.
   - **Non-officers** see a "View My Profile" button that opens their own profile -- no dropdown.
   - **Officers** see the full player dropdown for browsing plus a "View My Profile" button.
@@ -521,6 +609,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.4.2] - 2026-06-23
 
 ### Fixed
+
 - **Officer quick-actions bar disappears on hard refresh** -- The bar now renders immediately from the cached Discord session in localStorage instead of waiting for the async token-validation JSONP call to complete. The validation callback still corrects the bar if the token has since been invalidated.
 
 ---
@@ -528,6 +617,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.4.1] - 2026-06-23
 
 ### Changed
+
 - **Officer quick-actions: attendance refresh links to dashboard** -- After a successful WCL attendance refresh from the index page quick-actions bar, the status message now includes a "Review in Dashboard" link that opens `officer.html` directly on the Attendance tab.
 - **Officer dashboard: `?tab=` deep-link support** -- `officer.html?tab=attendance` (or any other tab name) now opens the dashboard with that tab active. Uses `openTab()`, a new programmatic helper that finds and clicks the correct sidebar nav button.
 
@@ -536,6 +626,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.4.0] - 2026-06-23
 
 ### Added
+
 - **Officer quick-actions bar on the index page** (#99) -- A compact bar appears below the site nav on the public roster page whenever a Discord-authenticated officer is logged in. Three actions are available without navigating to the full officer dashboard:
   - **Copy Priority Export** -- fetches the current priority export string from the backend and copies it to the clipboard in one click.
   - **Refresh Attendance** -- triggers a WCL attendance pull with inline progress and result feedback.
@@ -547,6 +638,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.3.2] - 2026-06-23
 
 ### Changed
+
 - **Attendance: auto-Bench players not in WCL log** -- Roster players who do not appear in the WCL log for a main raid night are now automatically marked `Bench` (source: `Auto`) instead of left blank. Officers can override individual rows to No Show / Excused as needed; manually set statuses are preserved on subsequent refreshes.
 
 ---
@@ -554,6 +646,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.3.1] - 2026-06-23
 
 ### Changed
+
 - **Attendance refresh: fewer WCL API calls** -- Three optimizations reduce the number of WCL queries on each pull:
   1. If `Season Start` is set, the initial report list query is filtered to that date (`startTime` param), so only current-season reports are fetched instead of the last 50 regardless of age.
   2. Reports whose date is already in the Attendance sheet skip zone + participant fetches entirely when either raid progression zone IDs are configured or a season start date is set (3 queries -> 0). When neither is set, only participant fetches are skipped (3 -> 1).
@@ -565,6 +658,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.3.0] - 2026-06-23
 
 ### Added
+
 - **Attendance: exclude report from web app** -- Each raid night in the Attendance > Manage tab now has an "Exclude Report" / "Remove Exclusion" toggle button. Toggling updates column F of the Attendance sheet directly, immediately reflects in the night selector label (`[EXCLUDED]`), and writes an audit log entry.
 
 ---
@@ -572,6 +666,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.2.0] - 2026-06-23
 
 ### Added
+
 - **Audit log: officer identity** (#112) -- All officer-initiated actions now populate the "Changed By" column in the Audit Log with the officer's Discord username. The Discord token is auto-injected into every backend request when a Discord session is active. Discord Claims (user self-service) are marked "N/A" in that column since no officer performs the action.
 
 ---
@@ -579,13 +674,16 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.1.0] - 2026-06-23
 
 ### Added
+
 - **Signup: Main Swap field** (#181) -- Raiders switching mains can enter their current character (Name-Realm) on the signup form. If Discord-authenticated, the field pre-fills with their claimed character. Officers see the main swap on the signup card (highlighted in gold). On approval, the old character is automatically removed from the Roster sheet and their Discord claim is cleared.
 - **Season archive: Roster snapshot** (#79) -- Archiving a season now captures a read-only snapshot of the roster (name, role, trial/bench status, join date, attendance %). Officers can expand a "View Roster" table for any archived season in the Season History tab.
 
 ### Fixed
+
 - **Duplicate signup guard** (#180) -- Approving a signup for a character already on the Roster sheet now returns a descriptive error to the officer rather than silently creating a duplicate entry.
 
 ### Changed
+
 - **Admin-only visibility** (#157) -- The team switcher dropdown in the nav bar is now hidden for non-admin officers (same gate as the Admin tab).
 
 ---
@@ -593,6 +691,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.0.10] - 2026-06-23
 
 ### Fixed
+
 - "My Profile" in the Discord nav dropdown now works on the officer dashboard. Clicking it navigates to the public roster page and automatically opens your character profile there.
 
 ---
@@ -600,6 +699,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.0.9] - 2026-06-23
 
 ### Fixed
+
 - Switching teams on the officer dashboard while Discord-authenticated no longer drops you to the password prompt on the new team. A "Continue with Discord" banner now appears at the top of the access prompt so you can re-authenticate with one click. The password form remains available below as a fallback.
 
 ---
@@ -607,9 +707,11 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.0.8] - 2026-06-23
 
 ### Fixed
+
 - Column headers in the Discord Claims and Officers tables now align with their data cells (headers were center-aligned by browser default while data was left-aligned).
 
 ### Added
+
 - Discord Claims table now shows a Role column (Officer/Raider) for each claimed user.
 - Admins see Grant Officer / Revoke buttons directly in the Discord Claims table; non-admin officers see only the Remove button.
 
@@ -618,6 +720,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.0.7] - 2026-06-22
 
 ### Changed
+
 - Discord login no longer auto-navigates to your character profile on login, session restore, or after claiming a character.
 - A persistent **My Profile** entry now appears in the Discord nav dropdown (when a character is claimed) so you can navigate to your profile on demand.
 
@@ -626,10 +729,12 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.0.6] - 2026-06-22
 
 ### Changed
+
 - Discord Claims moved from Admin to a new subtab under Roster, accessible to all officers.
 - Column widths in the Discord Claims table are now fixed to prevent content from spreading unevenly.
 
 ### Added
+
 - Officer management UI in the Admin tab (Officers subtab). Admins can grant or revoke officer dashboard access per Discord user, or manually grant by Discord ID for users who have not yet claimed a character.
 - Admin tab is now hidden from officers logged in via Discord; only users whose Discord ID is listed in the `adminDiscordIds` GAS Script Property can see it. Password login always shows Admin.
 - `isOfficer` is now controlled by an explicit `officerDiscordIds` GAS Script Property rather than roster priority rank.
@@ -639,6 +744,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.0.5] - 2026-06-22
 
 ### Changed
+
 - Discord Claims moved from Admin to a new subtab under Roster, accessible to all officers.
 - Column widths in the Discord Claims table are now fixed.
 
@@ -647,6 +753,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.0.4] - 2026-06-22
 
 ### Added
+
 - Discord Claims subtab under Admin on the officer dashboard. Shows all claimed characters with Discord username, character, and claimed date. Officers can remove a claim if a raider linked the wrong character -- the raider's active session is updated immediately and they will be prompted to re-claim on next login.
 
 ---
@@ -654,6 +761,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.0.3] - 2026-06-22
 
 ### Fixed
+
 - Claim character dropdown is now sorted alphabetically by Name-Realm.
 
 ---
@@ -661,6 +769,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.0.2] - 2026-06-22
 
 ### Fixed
+
 - Discord nav dropdown now anchors below the button instead of floating to the right edge of the screen.
 - Nav dropdown shows a "Claim your character" option when logged in but no character has been claimed yet.
 
@@ -669,6 +778,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.0.1] - 2026-06-22
 
 ### Fixed
+
 - Claim character dropdown now shows `Name-Realm Class` instead of `Name-Realm (Class Spec)` -- drops spec and parentheses to reduce visual noise.
 - Discord OAuth redirect URI corrected to match GitHub Pages URL casing (`WGA-Raid-Hub`). Fixes #166.
 
@@ -677,6 +787,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [3.0.0] - 2026-06-22
 
 ### Added
+
 - **Discord OAuth login.** Closes #25. Raiders and officers can now sign in with Discord -- the largest feature this app has shipped and the foundation for Phase 6 post-auth work.
   - **Login flow:** "Login with Discord" button in the site nav opens a popup. Discord redirects to a new `discord-callback.html` relay page on GitHub Pages, which forwards the authorization code to GAS server-side. The client secret never touches the browser.
   - **Session management:** GAS exchanges the code for a Discord access token, fetches the user profile, and creates a 30-day session token stored in `PropertiesService`. The frontend stores the token in `localStorage` (survives tab close and refresh).
@@ -690,6 +801,7 @@ with each release split into `### Frontend` (drives the version number) and
 - New files: `discord-callback.html`, `js/discord.js`.
 
 ### Setup required (before going live)
+
 1. Create a Discord application at discord.com/developers. Enable `identify` scope. Register redirect URI: `https://katogaming88.github.io/WGA-Raid-Hub/discord-callback.html`.
 2. Set `DISCORD_CLIENT_ID` (public) in `js/discord.js` (already set to the app client ID).
 3. Set `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` as Script Properties in both GAS deployments (Phoenix and Hellfire).
@@ -699,6 +811,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.29.0] - 2026-06-22
 
 ### Added
+
 - **Trial promotion improvements.** Closes #145.
   - Officers can now promote a trial player directly from the promotion alert with a "Promote" button on each row -- no longer need to navigate to the player profile.
   - Trial period duration and attendance threshold are now configurable in Season Settings and persisted to GAS script properties. Thresholds default to 4 weeks / 75% if not set.
@@ -709,6 +822,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.28.0] - 2026-06-22
 
 ### Added
+
 - **Team switcher in officer dashboard.** A dropdown in the officer nav bar lets the admin switch between team deployments (Team Phoenix, Hellfire Rollers). Selecting a team saves to sessionStorage and reloads the page against that team's GAS backend. Auth is namespaced per team so switching prompts for the correct officer password automatically. Switcher is officer-page only -- not visible on the public roster.
 - **Admin panel for super-admin.** A new Admin tab (officer page only) gives the admin full control over both team deployments:
   - **Properties Inspector** -- live read of all script properties (season name/dates, feature flags, bot URL, masked bot secret).
@@ -722,6 +836,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.27.0] - 2026-06-22
 
 ### Added
+
 - **Archived seasons view and unarchive capability.** Season History now shows rich cards (name, date range, raid count) in reverse-chronological order, each with an Unarchive button. Officers can restore any past season as the active season with a confirmation step -- the dialog warns if an active season would be overwritten. A new `unarchiveSeason` backend action handles the restore and logs it to the audit log. Closes #143.
 
 ---
@@ -729,12 +844,15 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.26.0] - 2026-06-22
 
 ### Added
+
 - **Priority over-allocation detection.** The Contested Items view now shows a warning banner listing any player who holds 1st priority on two or more item/difficulty combinations, helping officers spot over-allocation before loot decisions are made. Each affected player's chip in the item cards is also flagged with a red `!` badge. Closes #12.
 
 ### Fixed
+
 - **Rank labels now display in Contested Items.** Player chips in the Contested Items view were never showing rank numbers (#1, #2, etc.) due to a bug where the per-difficulty priority object was treated as a flat array. Ranks now render correctly with a difficulty suffix (e.g. `#1H`, `#2M`).
 
 ### Changed
+
 - **Contested Items moved from Loot tab to Priority tab.** It is a planning tool, not a loot history tool, so it now lives alongside Priority List and Unmanaged Items.
 - **Priority subtabs reordered to match officer workflow.** New order: Contested Items -> Unmanaged Items -> Priority List (what's being fought over -> what still needs a decision -> what's been decided). Contested Items is now the default landing subtab when opening Priority.
 
@@ -743,6 +861,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.25.0] - 2026-06-21
 
 ### Added
+
 - **Active M+ exclusion list in officer tab.** The M+ Exclusions tab now shows a "Currently Excluded" section above the pending request queue, listing every player whose exclusion is active with their officer note. No extra network call -- populated from the already-loaded roster data on tab switch. Closes #149.
 - **Rejection reason on raider card.** When an officer rejects an M+ exclusion request they are now prompted for an optional rejection reason (matching the existing approve note flow). The reason is saved to the sheet and shown on the raider's public card as a "Rejected" badge with the officer's note. If requests are open, the raider sees a Re-submit button. Closes #144.
 
@@ -751,6 +870,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.24.0] - 2026-06-21
 
 ### Added
+
 - **Champion (Normal) loot tier tracking in priority scoring.** The priority generator now recognises Normal-difficulty receipts from all three loot sources (Pasted Loot sheet, Loot Data IMPORTRANGE, and Self Received Requests). For Mythic priority, players with only a Normal receipt receive a 1.07x bonus (vs the 1.15x "No Version" bonus they incorrectly received before). For Heroic priority, Normal holders receive a 0.90x penalty and a "Has Champion" status label -- they are lower priority than players with no version, but still eligible. Self-received source prefixes "Champion:" and "Normal:" both route to the champion tier.
 
 ---
@@ -758,6 +878,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.23.0] - 2026-06-21
 
 ### Changed
+
 - **BiS List cleared on season archive.** When a season is archived via the officer dashboard, all player item columns (col B onwards from row 3) are now wiped so the sheet is ready for the next season's BiS lists. Slot labels and the player header row are preserved.
 
 ---
@@ -765,6 +886,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.22.0] - 2026-06-21
 
 ### Changed
+
 - **JSONP timeout handling across all data loading.** Added a `jsonpRequest(url, callback, timeoutMs)` helper to `common.js` (default 90s timeout, 120s for WCL refresh). All 50+ JSONP call sites across every officer tab now use this helper. If GAS hangs or is slow to respond, the request times out cleanly, re-enables the button, and shows "Request timed out. GAS may still be processing -- try again in a moment." instead of leaving the UI stuck indefinitely. Network errors show "Request failed. Check your connection."
 
 ---
@@ -772,6 +894,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.21.0] - 2026-06-21
 
 ### Added
+
 - **WCL Performance Scores tab** in the officer dashboard (`js/tabs/tab-scoring.js`). Officers can refresh WCL performance scores and commit them to the Scoring sheet without opening the spreadsheet.
 - **Three scoring windows**: Recent (last 2 reports), Trend (last 8 reports), Best (last 20 reports). Scores are ilvl bracket percentile / 10, giving a 0-10 scale. Best Score uses the single highest percentile across all 20 reports rather than an average.
 - **Inline score editing**: clicking any Recent Score cell opens a number input to manually override the value. The override is saved to the draft column (J) immediately via GAS and the cell updates in place.
@@ -783,6 +906,7 @@ with each release split into `### Frontend` (drives the version number) and
 - **Attendance-based scoring for tanks and healers** in the Priority Generator: instead of using the WCL performance score (col E), tanks receive `attendance * 0.50` and healers receive `attendance * 0.75` as their raw score, reflecting that these roles are not meaningfully ranked by DPS bracket percentile.
 
 ### Changed
+
 - `refreshPerformanceScores()` and `commitDraftScores()` in `WCL.gs` now delegate to extracted core functions (`refreshWclPerformanceCore`, `commitPerformanceScoresCore`) so the same logic is callable from the web app without triggering `SpreadsheetApp.getUi()` alerts.
 - `getRecentReports()` in `WCL.gs` now accepts a `limit` parameter instead of hardcoding 20, so all three scoring windows can share a single GQL fetch sliced in memory.
 - `BEST_REPORTS = 20` added to `Config.gs` alongside existing `RECENT_REPORTS` and `TREND_REPORTS` constants.
@@ -792,15 +916,18 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.20.0] - 2026-06-21
 
 ### Added
+
 - **Multi-tenant support.** A single frontend now serves both Team Phoenix and Hellfire Rollers. The active team is selected via `?team=phoenix` or `?team=hellfire` URL param (defaults to `phoenix`) and persists in `sessionStorage` so dropping the param mid-session doesn't reset the team. Each team has its own GAS backend URL, team name, and officer password in the `TEAMS` config in `common.js`. Closes #136.
 - **Team-scoped session storage keys** (`phoenix_officer` / `hellfire_officer`) prevent officer auth from bleeding between teams in the same browser.
 - **Inter-page link passthrough.** Officer Access, Back to Roster, and Cancel links now carry the `?team=` param so navigation stays on the correct team.
 
 ### Fixed
+
 - **Officer player card race condition.** Opening a player card then switching seasons triggered `buildRosterTable()` to wipe the inline card. Added `reopenSelectedPlayer()` which restores the card after every roster rebuild.
 - **Loot not showing in officer view after copying spreadsheet.** Loot Data sheet entries were added to `lootCounts` without a season tag, so the season filter excluded everything. `getLootCounts()` now reads `seasonName` from Script Properties and tags Loot Data entries accordingly.
 
 ### Changed
+
 - GAS web app file renamed from `PhoenixRosterWebApp.gs` to `wgaWebApp.gs`.
 - Removed `REPORT_NAME_FILTER` constant — WCL report fetching now returns all guild reports without filtering by title, accommodating teams with inconsistent report naming.
 - Changelog and footer links updated from `Phoenix-Roster` to `WGA-Raid-Hub` repo.
@@ -810,6 +937,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.19.0] - 2026-06-20
 
 ### Added
+
 - **BiS Manager tab** replaces the old BiS Submissions nav item. The tab now has two sub-tabs: Submissions (existing approve/reject workflow, unchanged) and BiS Lists. Closes #128.
 - **BiS Lists sub-tab** shows all roster players grouped by role with their current item count. Clicking Edit on any player opens an inline editor below their row with: a list of their current BiS items (each removable), an item search/autocomplete field sourced from the Item Lookup sheet, and Save/Cancel actions. Saves write back to the BiS List sheet and invalidate the heavy cache.
 - **Armor type filtering** in the BiS editor item search: results are automatically narrowed to items matching the player's armor type (Plate/Mail/Leather/Cloth derived from their class). Universal slots (Neck, Back, Ring, Trinket, Wrist, Cloak) and items with no armor type recorded are always shown regardless of class. Item Lookup col D = Armor Type; col E = Sort ID; col F = Boss.
@@ -819,6 +947,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.18.0] - 2026-06-20
 
 ### Added
+
 - **Raid Progression Tracker** on the public landing page. Displays all raids for the current season as side-by-side cards, each showing raid name, mythic kill count, progress bar, numbered boss list with first-kill dates, and an AOTC badge. Closes #80.
 - **Raid Progression editor** in Season Settings. Officers can add multiple raids per season, each with a name, optional mini-raid flag (suppresses AOTC), AOTC date, and a list of bosses with individual mythic kill dates. Progression data is persisted in Script Properties and included in the core payload; archived seasons include their raid progression.
 - **WCL auto-fill for boss kills.** Each raid card has a WCL Zone ID field and a "Fetch from WCL" button. Clicking it queries the WCL GraphQL API (using existing Script Property credentials) for all guild kills in that zone and populates boss names and first-kill dates automatically. Heroic kill of the last boss in range is used as the AOTC date.
@@ -826,6 +955,7 @@ with each release split into `### Frontend` (drives the version number) and
 - **"List" button** per raid card that queries WCL for all encounters in a zone and displays their IDs and names inline, making it easy to look up the correct encounter range before fetching.
 
 ### Changed
+
 - Landing page stat counters (Raiders, Items This Tier) moved above the character selector card.
 - Landing page max-widths widened to accommodate the side-by-side progression layout (landing card 380px -> 500px, stats 380px -> 500px, loot 480px -> 760px, selector 360px -> 460px).
 
@@ -834,6 +964,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.17.0] - 2026-06-20
 
 ### Added
+
 - **Priority order management** from the officer dashboard. Dedicated Priority tab lists all items from the BiS sheet, split into Heroic and Mythic rows per item. Officers can drag-and-drop reorder, manually add players from the pool, or hit "Suggest Order" to auto-generate a ranked list. Closes #111.
 - **Priority generator** scores eligible players by WCL performance × role multiplier (Tank ×0.50, Heal ×0.75, DPS ×1.00) with bench/trial penalties. Checks three loot sources (Pasted Loot, Loot Data, Self Received Requests) to exclude or penalize players who already have the item.
 - **Heroic/Mythic prio split.** Each item has separate Heroic and Mythic priority rows in the Priority Order sheet (col A = difficulty). The generator handles them independently: heroic loot recipients are excluded from heroic prio and penalized ×0.85 on mythic; players with no version get a ×1.15 bonus on mythic prio; self-received/officer-marked items exclude the player from all prio.
@@ -841,6 +972,7 @@ with each release split into `### Frontend` (drives the version number) and
 - Diacritic-insensitive name matching in the generator so players with accented names (e.g. Twañ) are correctly matched against loot records.
 
 ### Changed
+
 - Priority generator no longer pads results to exactly 10 players -- the suggested list stops when there are no more eligible players.
 - Priority tab count label no longer shows `/10`; shows the actual ranked count instead.
 - **Unmanaged Items** badge and list now only clear an item once both Heroic and Mythic priorities have been saved. Previously, saving one difficulty removed the item from the unmanaged tab entirely. Partially-configured items now show individual "Set Heroic" / "Set Mythic" buttons for whichever difficulty is still missing.
@@ -854,12 +986,14 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.16.0] - 2026-06-19
 
 ### Added
+
 - **Season selector** in the officer dashboard toolbar. A "Season:" dropdown filters loot counts, fairness, conflicts, and attendance to the selected season; "All Seasons" retains previous behavior. Defaults to the current season when one is configured. Hidden when no season data exists. Closes #115.
 - **Season history store.** Officers can now archive the current season (Season Settings tab), pushing it to an immutable history list with start and end dates. Past seasons appear as options in the season selector. Season history is persisted in Script Properties and included in the core payload.
 - **Season End Date** field in Season Settings. Officers can record when a season closes (independent of when the next one starts). Stored as `seasonEnd` in Script Properties.
 - **Client-side attendance %** computed from raw per-raid records (`rawAttendanceData` in the heavy payload), replacing the server-computed value for any season other than "current". Replicates the join-date window logic from the backend. Bench fairness sub-tab also filters raid nights to the selected season's date window.
 
 ### Changed
+
 - `getAttendanceDetails()` (heavy payload) now returns all-time penalty events without a season cutoff; the frontend filters them to the active season window when rendering the attendance scores list.
 - Loot items in `getLootCounts()` now include a `season` field (from column A of the Pasted Loot sheet) to enable client-side season filtering.
 - Season Settings tab redesigned into individual cards (Season Start Date, Season Name, Season End Date, Archive Season, Season History). Each card has its own `?` help button with a scoped inline tip, replacing the single cramped panel.
@@ -869,6 +1003,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.15.1] - 2026-06-19
 
 ### Added
+
 - **Attendance trend sparkline on player profile.** The attendance section now shows a small SVG line chart, visible by default without clicking anything. When data spans more than one calendar month, each dot represents a month with the Y position reflecting average attendance that month (green >= 90%, blue >= 70%, yellow >= 50%, red below). When only one month of data exists, individual raid nights are shown instead. Hovering a dot shows an instant tooltip with the month, average percentage, and raid count (or exact date and status for per-night mode). Covers all season data with no cap. Closes #42.
 
 ---
@@ -876,9 +1011,11 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.15.0] - 2026-06-19
 
 ### Added
+
 - **Bench Fairness sub-tab** on the Attendance tab. Shows how many times each raider has been benched, grouped by role (Tank / Heal / Melee / Ranged / Bench), sorted highest to lowest, with a bar chart and a raid-average reference line. Each row shows bench count and bench rate (benched / total raid nights appeared). Computed from the loaded attendance grid -- run "Refresh from WCL" first if no data appears. Closes #82.
 
 ### Changed
+
 - Attendance tab: the Manage Raid Attendance panel (night grid, WCL refresh, Commit Scores) is now its own **Manage** sub-tab. The tab bar now reads **Manage | Attendance Scores | Bench Fairness**. Manage is the default. This prevents the night grid from consuming the full viewport when you just want to check scores or bench fairness.
 
 ---
@@ -886,6 +1023,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.14.2] - 2026-06-19
 
 ### Added
+
 - Dedicated **Help tab** in the officer dashboard sidebar with a full workflow reference. Six step-by-step guides cover: importing RCLootCouncil loot history, refreshing attendance from WCL, manually editing attendance status, committing scores to the roster sheet, setting season start date and name, and the complete season reset workflow. Links within the guide jump directly to the relevant tab.
 
 ---
@@ -893,6 +1031,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.14.1] - 2026-06-19
 
 ### Added
+
 - Contextual help tips on the officer dashboard: every major tab and sub-tab now has a `?` button that toggles an inline tip panel explaining the workflow. Covered sections: Roster, Priority, all four Loot sub-tabs (Import, Import History, Contested Items, Loot Fairness), Attendance, Signups, BiS Submissions, M+ Exclusions, Received Item Requests, and Season Settings (which also includes the full season reset checklist).
 - Stat card hover tooltips: hovering any of the four summary cards at the top of the officer dashboard shows a short description of what the number counts.
 - Items Distributed stat card now has a difficulty filter badge (All / Heroic / Mythic) in its top-right corner. Clicking it cycles through the three views without affecting card height or layout.
@@ -902,6 +1041,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.14.0] - 2026-06-19
 
 ### Added
+
 - Officers can now edit a player's class, spec, and character name/realm directly from the player profile in the officer dashboard, without needing to delete and re-add the player. Class and spec save on dropdown change; name/realm changes require a Save button. Renaming a player migrates their officer notes to the new key automatically. All three changes are written to the audit log.
 
 ---
@@ -909,9 +1049,11 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.13.4] - 2026-06-19
 
 ### Added
+
 - Loot Import is now its own dedicated sub-tab in the Loot tab, separate from Import History. Import History shows stored entry count, most recent date, and the Clear All action; Import shows only the paste form.
 
 ### Fixed
+
 - "Clear All Loot History" button showed no feedback while the server request was in flight. It now disables and reads "Clearing..." until the response arrives.
 - Unmanaged Items notification badge (sidebar and sub-tab) was always blank on page load because the badge was computed at core-payload-ready time, before the heavy payload (which contains priority and item slot data) had loaded. Badge is now also recomputed when the heavy payload arrives.
 
@@ -920,6 +1062,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.13.3] - 2026-06-19
 
 ### Fixed
+
 - Loot dates still showed as raw strings after 2.13.2 because RCLC exports dates as `"2026/06/09"` and `String()` was passed through verbatim. The import frontend now parses `e.date` with `new Date()` and normalises it to `YYYY-MM-DD` before storing, so Google Sheets reliably converts it to a Date object and `Utilities.formatDate` formats both loot sources identically -- enabling cross-source deduplication to work. Existing imported data with bad dates should be cleared via Clear All and re-imported.
 
 ---
@@ -927,6 +1070,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.13.2] - 2026-06-19
 
 ### Fixed
+
 - Attendance source column incorrectly labeled all players as "Officer" on any re-run of "Refresh from WCL". Root cause: the sheet-reader only preserved the status, not the source, so on rebuild every player with a prior entry was re-tagged Officer regardless of whether the entry originated from WCL or an officer edit. The reader now stores both status and source; sources are preserved faithfully across refreshes.
 - "Refresh from WCL" success message auto-cleared after 6 seconds, leaving no indication the import completed if the officer wasn't watching. The message now stays visible until the next refresh.
 - Loot import duplicated entries when the same RCLC JSON was re-imported (e.g. after clearing addon data and re-exporting, which resets local RCLC entry IDs). Deduplication now uses both the RCLC ID and a composite key (player + item + instance + date) so identical loot is skipped even if the ID changed between exports.
@@ -938,6 +1082,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.13.1] - 2026-06-18
 
 ### Changed
+
 - Self-mark received source options: replaced "World Drop" with "Bonus Roll"
 
 ---
@@ -945,6 +1090,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.13.0] - 2026-06-18
 
 ### Added
+
 - Loot history import from the officer dashboard (#101). The Loot tab now has a third sub-tab, **Import History**, where officers can paste an RCLootCouncil JSON export directly into the web app.
   - Paste area accepts the standard RCLC JSON export (in-game: RCLootCouncil > Export > JSON). Works with any export size — one night, several nights, or the full season history.
   - Imports are **additive**: each paste appends new entries and automatically skips duplicates (deduped by the RCLC entry `id`). Re-pasting a night you already imported is safe.
@@ -961,6 +1107,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.12.0] - 2026-06-18
 
 ### Added
+
 - Attendance entry from the officer dashboard (#94). The Attendance tab now has a "Manage Raid Attendance" panel with three new capabilities:
   - **Refresh from WCL** button — triggers a full WCL fetch and rewrites the Attendance sheet without opening the spreadsheet. Shows a progress note ("This may take 30-60 seconds"), then displays a summary (X nights found, Y excluded) on completion.
   - **Night-by-night status grid** — after refresh (or on tab open if data exists), a dropdown lists every raid night. Selecting a night shows all roster players with their current status. Officers can change any status (Present / Bench / Medical Leave / Excused / No Show / Not on Roster) via a dropdown; each change auto-saves to the Attendance sheet and logs to the audit log.
@@ -979,11 +1126,13 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.11.1] - 2026-06-18
 
 ### Fixed
+
 - Excused absences now carry a partial penalty (weight 0.8) in the webapp attendance percentage, matching the Scoring sheet formula. Previously Excused was treated as a full penalty (same as No Show), causing attendance % to be understated for players with excused absences.
 - Players present in a WCL log but not in any ranked fight (e.g. joined mid-raid, sat out boss attempts) are now correctly detected as present. The combatants list (`masterData.actors`) is now always merged with rankings rather than used only as a last resort when rankings are completely empty.
 - Players with "Not on Roster" entries no longer have those raids counted in their attendance denominator, fixing badly deflated percentages for mid-season additions (e.g. showing 26.9% instead of 100%).
 
 ### Changed
+
 - Low-attendance threshold raised from 90% to 95% across the filter chip, attendance tab slider default, roster filter logic, and color bands.
 
 ---
@@ -991,6 +1140,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.11.0] - 2026-06-18
 
 ### Added
+
 - Season start date setting in a new Season Settings tab on the officer dashboard. Officers can set (or clear) the date the current raid season began; the value persists in Script Properties and is included in the core payload for all clients.
 - Mid-season join exclusion: raids between the season start date and a player's personal join date are excluded from their attendance penalty list and attendance percentage. The full attendance history view (expandable per-player) labels those excluded raids as "Not on Roster" in a greyed style so officers can still see the full timeline.
 - Attendance percentage now computed directly from the Attendance sheet rather than the Scoring sheet formula, giving accurate per-player denominators that respect both the season start and each player's join date. Closes #107.
@@ -1001,9 +1151,11 @@ with each release split into `### Frontend` (drives the version number) and
 - WCL API credentials moved from Config.gs to Script Properties via a `setWCLCredentials()` helper, keeping them out of version control.
 
 ### Fixed
+
 - Attendance % denominator now computed from player rows in the Attendance sheet rather than header rows. Header rows for some raids lacked a date in col A, causing those raids to be silently dropped from the denominator.
 
 ### Changed
+
 - WCL queries scoped to Team Phoenix guild tag ID rather than the overall guild ID.
 - Updated active tanks (added Adrestia, removed Hinda and Rothdar) and healers (added Kaya, removed Puddinpie) in Config.gs.
 
@@ -1012,6 +1164,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.10.0] - 2026-06-18
 
 ### Performance
+
 - Payload split into two separately cached JSONP chunks to eliminate load timeouts. A fast `?chunk=core` request (roster, toggle flags, bisAllowedPlayers, playerNotes) returns in under 1 second and lets both pages render immediately. A `?chunk=heavy` request (lootCounts, attendanceDetails, bisList, priorityOrder, itemSlots, selfReceived) fires right after and fills in loot counts, recent loot, BiS/priority content without blocking the visible render. Cache keys are invalidated precisely: roster mutations clear `rosterCore` only (300 s TTL); loot/BiS mutations clear `rosterHeavy` only (900 s TTL); the manual Clear Cache button clears both. Closes #104.
 
 ---
@@ -1019,6 +1172,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.9.0] - 2026-06-18
 
 ### Added
+
 - Join date per player tracked in Roster sheet column M. Automatically set to the current date when a player is added via the officer dashboard or approved from Pending Roster. Visible on the player profile (below the role/class badges) and in the officer roster table (below the class badge in the Player cell). Officers can manually set or correct a join date from the Player Settings panel on any profile. Changes are logged in the Officer Audit Log. Closes #77.
 - Officer Audit Log now records an entry whenever an RCLootCouncil export string is generated from the Priority tab.
 
@@ -1027,6 +1181,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.8.0] - 2026-06-18
 
 ### Added
+
 - RCLootCouncil export string accessible directly from the Priority tab in the officer dashboard. A card at the top of the tab has a Generate button that rebuilds the export string on demand (same logic as the spreadsheet Export Priority Data function, minus the dialog) and displays it in a copyable text area. The freshly generated string is also written back to `Export!A11` to keep it in sync. No spreadsheet access needed. Closes #98.
 
 ---
@@ -1034,6 +1189,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.7.3] - 2026-06-18
 
 ### Fixed
+
 - Attendance history now sorts newest-to-oldest by date regardless of sheet row order.
 
 ---
@@ -1041,6 +1197,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.7.2] - 2026-06-18
 
 ### Fixed
+
 - Clicking anywhere inside the BiS List, Items Received, or Attendance sections no longer collapses them. The toggle is now scoped to the section header row only for all three sections.
 
 ---
@@ -1048,6 +1205,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.7.0] - 2026-06-18
 
 ### Added
+
 - Full attendance history per player in the officer profile panel. An "Attendance History" section appears below the attendance bar when viewing any player as an officer. On first click it fetches the complete date-by-date log (all statuses, not just penalties) via a new `getPlayerAttendanceFull` endpoint. Shows a summary line (e.g. "42 Present, 2 Late, 1 No Show") followed by a scrollable list newest-first, colour-coded by status. Result is cached for the session so subsequent toggles don't re-fetch. Closes #14.
 
 ---
@@ -1055,6 +1213,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.6.1] - 2026-06-17
 
 ### Changed
+
 - Class/spec badge on the player profile and officer roster now shows spec name only (e.g., "Demonology" instead of "Warlock - Demonology"); badge color remains the class color. Falls back to class name if no spec is set. Officer roster badge now uses the same pill styling as the profile header.
 
 ---
@@ -1062,6 +1221,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.6.0] - 2026-06-17
 
 ### Added
+
 - "Fully BiS" badge on the player profile header -- appears automatically when a player has received every item on their BiS list (from any source: raid loot, M+, crafted, etc.). Visible to both raiders and officers. Closes #40.
 
 ---
@@ -1069,6 +1229,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.5.0] - 2026-06-17
 
 ### Added
+
 - Officer action audit log -- every officer mutation is now recorded in an append-only "Officer Audit Log" sheet. Covers: player add/remove, role/spec/trial/bench changes, BiS approvals/rejections/direct updates/submission toggles, signup approvals/denials, self-received approvals/rejections, loot direct-marks, M+ exclusion toggles/approvals/rejections/bulk-clear, officer note changes, and open/close toggles for signups, BiS submissions, and M+ exclusions. Closes #83.
 - Dedicated Audit Log tab in the officer dashboard with Time, Changed By, Action, Target, From, and To columns. URLs (e.g. BiS links) render as truncated clickable links. Live search filter across officer, action, and player name.
 - "Changed By" column schema in place for when Discord OAuth ships -- blank for now, wired up and ready (#25).
@@ -1078,6 +1239,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.4.3] - 2026-06-17
 
 ### Added
+
 - Pending action count badges on officer tab nav buttons -- Signups, BiS Submissions, M+ Exclusions, and Received Item Requests each show a red count badge when items need attention; Signups badge combines open signups and pending roster entries, with a separate badge on the Pending Roster sub-tab. Badges load on dashboard open and refresh automatically after any approve/reject action. Closes #76.
 
 ---
@@ -1085,6 +1247,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.4.2] - 2026-06-17
 
 ### Added
+
 - Last received item highlight on the player profile -- shows the most recent loot upgrade(s) prominently with item name colored by difficulty, date, and a gold accent, always visible without expanding the full history. Groups multiple items received on the same night. Closes #41.
 - Date now shown on every entry in the expanded Items Received list alongside slot and difficulty.
 
@@ -1093,6 +1256,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.4.1] - 2026-06-17
 
 ### Added
+
 - BiS completion percentage in the player profile header -- shows percentage complete and received/total count, calculated from raid loot history and self-reported items. Closes #39.
 
 ---
@@ -1100,6 +1264,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.4.0] - 2026-06-17
 
 ### Added
+
 - Unmanaged Items sub-tab on the Priority tab -- lists all items with no players ranked yet, grouped by slot type with collapsible armor sub-sections (Head, Shoulders, etc.). Closes #13.
 - Red notification badge on the Priority sidebar nav button and on the Unmanaged Items sub-tab chip showing the count of unmanaged items; badge appears immediately on dashboard load.
 - Armor slot sub-sections (Head, Shoulders, Chest, etc.) are now individually collapsible on both the Priority List and Unmanaged Items tabs.
@@ -1109,9 +1274,11 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.3.1] - 2026-06-16
 
 ### Fixed
+
 - Version number now appears in the footer on the profile and signup views (was only shown on the landing view).
 
 ### Changed
+
 - Player card section labels renamed for clarity: "BiS Checklist" -> "BiS List", "BiS Link" -> "BiS Source".
 - M+ Exclusion section moved below BiS List on the player card.
 
@@ -1120,12 +1287,14 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.3.0] - 2026-06-16
 
 ### Added
+
 - M+ Excl. column on the officer roster table with a green checkmark for excluded players, matching the BiS Link column style.
 - Officer direct mark received: when an officer marks an item as received from the player profile, it is approved immediately without going through the approval queue. The source badge and green row highlight appear inline without a reload.
 - Mark received button now shows on M+, Crafted, and Catalyst BiS rows (previously hidden). Source dropdown is pre-selected to match the known source.
 - Player Settings section in the officer profile is now collapsible, starting collapsed. Clicking the section label expands or collapses it without affecting the controls inside.
 
 ### Changed
+
 - Officer dashboard tab layout restructured: Contested Items and Loot Fairness merged under a single Loot tab with sub-tabs. Priority remains a standalone tab. Received Item Requests moved to the bottom of the sidebar.
 - Signups and Pending Roster are now sub-tabs within the Signups tab rather than separate sidebar entries.
 - Player profile in the officer roster now opens as an inline row directly below the clicked player instead of at the bottom of the page. Clicking the same player again closes it.
@@ -1137,6 +1306,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.2.0] - 2026-06-16
 
 ### Added
+
 - Signup approve/deny: officer approve writes applicant to Pending Roster sheet and marks status in Roster Responses; deny marks the row as Denied. Status badges shown on all signup cards.
 - Pending Roster tab in the officer dashboard: lists approved applicants awaiting formal roster placement, with Add to Roster (pre-fills the Add Player modal) and Remove buttons.
 - M+ Exclusion system: raiders submit a Raider.io profile link from their character profile to request exclusion from dungeon loot consideration. Officers open/close the form via a toggle in the M+ Exclusions tab.
@@ -1148,6 +1318,7 @@ with each release split into `### Frontend` (drives the version number) and
 - M+ Excl. column on the officer roster table with a green checkmark for excluded players, matching the BiS Link column style.
 
 ### Fixed
+
 - Add to Roster in the Pending Roster tab was silently failing because `prompt()` is blocked in GAS iframes -- replaced with an inline nickname form using `addEventListener`.
 - Approve/Cancel buttons in the inline nick prompt were unresponsive -- root cause was two child divs inside a `display:flex` row parent; fixed by wrapping injected HTML in a single `width:100%` container.
 - Player added from Pending Roster did not appear in the roster tab until a full reload -- `buildRosterTable()` and `buildStatsBar()` are now called immediately on success.
@@ -1159,6 +1330,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.1.0] - 2026-06-15
 
 ### Added
+
 - Discord notifications via the team-phoenix bot for all three raider submission actions: raid signup, self-received item request, and BiS list submission
 - `sendToBot()` helper in `PhoenixRosterWebApp.gs` posts to `/signup`, `/selfreceived`, and `/bis` endpoints on the bot after each write
 
@@ -1167,6 +1339,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.0.6] - 2026-06-15
 
 ### Reverted
+
 - Removed mobile overflow hiding and roster table scroll wrapper -- the officer dashboard is desktop-first and the overflow-x:hidden approach was clipping UI elements. PR #67 toolbar/nav improvements are kept.
 
 ---
@@ -1174,6 +1347,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.0.5] - 2026-06-15
 
 ### Fixed
+
 - Mobile horizontal scroll: apply `overflow-x:hidden` to both `html` and `body` -- setting it on `body` alone allows browsers to transfer the scroll to the `html` element
 
 ---
@@ -1181,6 +1355,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.0.4] - 2026-06-15
 
 ### Fixed
+
 - Page-level horizontal scroll on mobile suppressed; only the roster table container scrolls horizontally
 
 ---
@@ -1188,6 +1363,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.0.3] - 2026-06-15
 
 ### Changed
+
 - Roster table on mobile: BiS Link column hidden to reduce width; table wrapped in a horizontal scroll container so only the table scrolls, not the whole page
 
 ---
@@ -1195,6 +1371,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.0.2] - 2026-06-15
 
 ### Changed
+
 - Officer dashboard switched back to centered layout at `max-width:1600px` so the header and content share the same centre column on wide screens
 - Officer mobile layout: toolbar now stacks title above buttons (no more mid-word button wrapping); nav tabs replaced wrapping rows with a single horizontal scroll strip
 
@@ -1203,11 +1380,13 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.0.1] - 2026-06-15
 
 ### Added
+
 - Landing page stats row: Raiders count and Items This Tier, displayed below the selection card
 - Landing page Recent Loot: last 10 items distributed across all players, sorted by date, showing player name, item, difficulty badge, and date
 - Clicking the header on any page navigates back to the roster
 
 ### Changed
+
 - Officer dashboard is now left-aligned so the sidebar sits near the left edge on wide screens; max-width raised to 1400px
 - Landing content wrapped in a card panel (dark background, gold top accent border) for visual presence on wide screens
 - Header subtitle changed from "Loot Priority" to "Raid Hub" on both pages
@@ -1219,6 +1398,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [2.0.0] - 2026-06-15
 
 ### Changed
+
 - Split monolithic `app.js` (2130 lines) into 12 focused modules: `common.js`, `roster.js`, `signup.js`, `officer.js`, and 8 tab-specific files under `js/tabs/`
 - Officer panel moved to a dedicated `officer.html` page; `index.html` now serves public views only (roster, profile, signup)
 - Officer password gate now appears immediately on `officer.html` load -- no data is fetched until authentication succeeds
@@ -1230,6 +1410,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [1.8.0] - 2026-06-15
 
 ### Added
+
 - Items Received on player profiles now shows the slot and difficulty for each item
 - Slot label uses the same color coding as the BiS priority list
 - Tier token names (e.g. "Voidcast Fanatical Nullcore") resolve correctly via prefix match against Item Lookup, handling the armor-type suffix added in the sheet
@@ -1239,12 +1420,14 @@ with each release split into `### Frontend` (drives the version number) and
 ## [1.7.0] - 2026-06-15
 
 ### Added
+
 - Officer profile view: "Player Settings" section to change a player's role, trial status, and bench status without editing the sheet directly
 - Role change also updates the Priority column (Tank=3, Heal=4, DPS=5); Raid Leader and Officer priorities (1-2) are left untouched
 - Bench toggle writes priority 6 when benching; derives the correct priority from the player's role when un-benching
 - Officer notes per player -- free-text, stored server-side, visible only in the officer dashboard
 
 ### Changed
+
 - "Requests" nav tab renamed to "Received Item Requests" for clarity
 
 ---
@@ -1252,6 +1435,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [1.6.0] - 2026-06-15
 
 ### Added
+
 - BiS list URL submission built into the webapp -- raiders submit from their character profile (replaces the Google Form)
 - Officers can open/close BiS submissions globally from the new "BiS Submissions" officer dashboard tab
 - Officers can grant per-player BiS submission access from the raider's profile card, independent of the global toggle
@@ -1261,6 +1445,7 @@ with each release split into `### Frontend` (drives the version number) and
 - Apps Script: setBisSubmissionsOpen, submitBiS, getPendingBiS, approveBiS, rejectBiS, updateBisLink, allowBisForPlayer, revokeBisForPlayer actions; bisSubmissionsOpen and bisAllowedPlayers included in buildPayload
 
 ### Changed
+
 - Muted and dim text colors lightened (--text-muted: #c4bdb2, --text-dim: #aea9a0) for better readability on dark backgrounds
 - Base font size increased to 18px with a comprehensive rem-scale bump across all small text
 - Stat card number size reduced to 1.8rem; stat label to 0.8rem to prevent oversizing at new base
@@ -1271,6 +1456,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [1.5.0] - 2026-06-15
 
 ### Added
+
 - Raiders can mark BiS items as received outside of raid (M+, Great Vault, Crafted, Catalyst, World Drop) directly from their character profile
 - Inline source picker form expands per item -- source required, notes optional
 - Submissions go to a new "Self Received Requests" sheet with status Pending/Approved/Rejected
@@ -1280,6 +1466,7 @@ with each release split into `### Frontend` (drives the version number) and
 - TODO(auth) markers in both Apps Script and JS indicate where Discord OAuth will bypass officer approval
 
 ### Notes
+
 - Self-reported items are excluded from Loot Fairness -- that tab reflects RCLootCouncil raid distributions only
 
 ---
@@ -1287,6 +1474,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [1.4.0] - 2026-06-15
 
 ### Added
+
 - Season signup form -- multi-step flow (character/realm, class grid, spec/off-specs/role, Discord/notes, confirmation) accessible from the landing page
 - Custom realm combobox with live filtering across all NA and OCE realms
 - Off-spec checkboxes exclude whichever main spec is selected and update live on change
@@ -1299,6 +1487,7 @@ with each release split into `### Frontend` (drives the version number) and
 - Color-coded class and spec display on player profiles and the roster table
 
 ### Changed
+
 - Apps Script write pattern established: GET-based `?action=...` JSONP calls handle all writes (`submitSignup`, `deleteSignup`, `setSignupsOpen`) -- no POST endpoint required
 
 ---
@@ -1306,6 +1495,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [1.3.0] - 2026-06-14
 
 ### Added
+
 - Officer view sidebar navigation — vertical nav replaces flat tab bar, sticky on desktop and collapses to horizontal row on mobile
 - Stats bar at the top of the officer dashboard showing Raiders count, Avg Attendance, Items Distributed, and BiS Submitted ratio
 - "Data as of HH:MM" timestamp in the officer toolbar showing when the roster was last fetched
@@ -1319,6 +1509,7 @@ with each release split into `### Frontend` (drives the version number) and
 - Backend: `lootCounts` now includes `heroicCount`, `mythicCount`, and per-item `difficulty` field
 
 ### Changed
+
 - Loot Fairness bars are now grouped by role (Tanks / Healers / Melee / Ranged / Bench) with coloured section headers
 - Loot Fairness bars increased from 6px to 10px height
 - Roster attendance column now shows a mini progress bar below the percentage
@@ -1331,6 +1522,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [1.2.0] - 2026-06-14
 
 ### Added
+
 - Priority tab in the officer dashboard — full ranked list for every item, grouped by type (Trinkets, Armor by slot, Weapons, Jewelry)
 - Player names in priority lists are role-coloured with a role badge (TANK / HEAL / MELEE / RANGED) to the right
 - By Raid sort placeholder (disabled until raid source data is available)
@@ -1340,6 +1532,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [1.1.0] - 2026-06-14
 
 ### Added
+
 - Sort chips on the officer roster (Name / Attendance / Items) — clicking twice reverses order
 - Player name search filters the roster live as you type
 - BiS item search filters roster to players who have a specific item in their BiS list, with a player count badge
@@ -1351,6 +1544,7 @@ with each release split into `### Frontend` (drives the version number) and
 ## [1.0.0] - 2026-06-14
 
 ### Added
+
 - Raider view: character select, attendance bar, items received, BiS link, loot priority table
 - Officer dashboard with password login (session-scoped)
 - Roster tab: full player table with attendance, items received, BiS link status, trial/bench tags
