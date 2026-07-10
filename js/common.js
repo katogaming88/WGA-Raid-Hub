@@ -774,7 +774,7 @@ function fetchSupabaseBisItems() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('bis_items')
-    .select('player_id, item_id, obtained, items(name, slot), players!inner(name_realm, team_id)')
+    .select('player_id, item_id, obtained, items(name, slot, is_placeholder), players!inner(name_realm, team_id)')
     .eq('players.team_id', _teamCfg.supabaseTeamId)
     .then(function (result) {
       if (result.error) {
@@ -819,7 +819,10 @@ function mapSupabaseBisItems(rows) {
     if (!map[firstName]) map[firstName] = [];
     map[firstName].push({
       item: itemRow.name,
-      slot: itemRow.slot || '',
+      // Placeholder rows (M+/Crafted/Catalyst) store the literal 'Placeholder'
+      // in items.slot since it's NOT NULL -- blank it here rather than
+      // surfacing that sentinel as a slot name.
+      slot: itemRow.is_placeholder ? '' : itemRow.slot || '',
       obtained: !!row.obtained,
       playerId: row.player_id,
       itemId: row.item_id
@@ -840,7 +843,7 @@ function fetchSupabaseItems() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('items')
-    .select('name, slot, armor_type')
+    .select('name, slot, armor_type, is_placeholder')
     .then(function (result) {
       if (result.error) {
         console.warn('Supabase items query failed.', result.error.message);
@@ -889,13 +892,17 @@ function fetchSupabaseItemBosses() {
 
 // Builds the DATA.itemSlots/itemArmorTypes maps (name -> slot / name ->
 // armor_type) straight from Supabase's items rows -- no GAS merge, per #391.
+// Placeholder rows (M+, Crafted, Catalyst -- items.slot is NOT NULL, so those
+// stand-ins store the literal string 'Placeholder' since they name a loot
+// source rather than a gear slot) map to '' here rather than surfacing that
+// sentinel as if it were a real slot name in the UI.
 function buildItemMaps(rows) {
   var itemSlots = {};
   var itemArmorTypes = {};
   (rows || []).forEach(function (row) {
     var name = String(row.name || '').trim();
     if (!name) return;
-    itemSlots[name] = row.slot || '';
+    itemSlots[name] = row.is_placeholder ? '' : row.slot || '';
     if (row.armor_type) itemArmorTypes[name] = row.armor_type;
   });
   return { itemSlots: itemSlots, itemArmorTypes: itemArmorTypes };
