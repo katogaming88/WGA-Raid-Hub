@@ -754,7 +754,7 @@ function prioEditGenerate() {
 
   var itemId = (DATA.itemIds || {})[PRIO_EDIT.item];
   var track = PRIO_EDIT.difficulty === 'Mythic' ? 'Myth' : 'Hero';
-  var season = window.DATA && DATA.seasonName ? DATA.seasonName.trim() : '';
+  var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
 
   if (!itemId) {
     btn.disabled = false;
@@ -840,7 +840,7 @@ function prioEditSave() {
   }
 
   var track = PRIO_EDIT.difficulty === 'Mythic' ? 'Myth' : 'Hero';
-  var season = window.DATA && DATA.seasonName ? DATA.seasonName.trim() : '';
+  var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
 
   saveBtn.disabled = true;
   saveBtn.textContent = 'Saving...';

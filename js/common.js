@@ -660,6 +660,19 @@ function mapSupabaseRoster(rows, jsonpRoster) {
 /** @type {Object<string, string>} */
 var SEASON_LABELS = { MID1: 'Midnight Season 1' };
 
+// Reverse of SEASON_LABELS: Apps Script's display name (DATA.seasonName,
+// officer-typed free text in Season Settings) -> the shorthand code Supabase
+// write paths need (scoring.season/priority_order.season/rclc_loot.season).
+// Falls through to the input unchanged for a season not yet in SEASON_LABELS
+// (or one an officer already set to the shorthand directly), same
+// unknown-codes-pass-through behavior as the forward map.
+function seasonCodeForDisplay(displayName) {
+  for (var code in SEASON_LABELS) {
+    if (SEASON_LABELS[code] === displayName) return code;
+  }
+  return displayName;
+}
+
 // Public loot reads come from Supabase (#209): all seasons for the team,
 // newest first, paged past PostgREST's 1000-row cap. Resolves to the combined
 // rows, or null on any failure/empty -- the Apps Script no longer serves
@@ -879,15 +892,17 @@ function fetchSupabasePriorityOrder() {
  * {itemName: {heroic: [firstName...], mythic: [firstName...]}}, ordered by
  * rank -- so tab-priority.js's render functions need no changes.
  * @param {any[]} rows - priority_order rows with embedded items and players
- * @param {string} seasonName - current season, to filter rows to (DATA.seasonName)
+ * @param {string} seasonCode - current season's shorthand code (e.g. 'MID1') to filter rows to --
+ *   NOT DATA.seasonName directly, which is Apps Script's free-text display label; pass it through
+ *   seasonCodeForDisplay() first, same as priority_order.season/scoring.season/rclc_loot.season all store.
  * @returns {Object<string, {heroic?: string[], mythic?: string[]}>}
  */
-function mapSupabasePriorityOrder(rows, seasonName) {
+function mapSupabasePriorityOrder(rows, seasonCode) {
   /** @type {Object<string, {heroic?: string[], mythic?: string[]}>} */
   var result = {};
   (rows || [])
     .filter(function (row) {
-      return row.season === seasonName;
+      return row.season === seasonCode;
     })
     .sort(function (a, b) {
       return a.rank - b.rank;
@@ -1062,7 +1077,9 @@ function loadData(onCoreReady, onHeavyReady) {
             DATA.recentAttendanceTrend = heavy.recentAttendanceTrend;
             var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
             DATA.bisList = mappedBis && Object.keys(mappedBis).length ? mappedBis : heavy.bisList;
-            var mappedPriority = priorityRows ? mapSupabasePriorityOrder(priorityRows, DATA.seasonName) : null;
+            var mappedPriority = priorityRows
+              ? mapSupabasePriorityOrder(priorityRows, seasonCodeForDisplay(DATA.seasonName || ''))
+              : null;
             DATA.priorityOrder =
               mappedPriority && Object.keys(mappedPriority).length ? mappedPriority : heavy.priorityOrder;
             var itemMaps = buildItemMaps(itemRows);
