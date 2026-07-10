@@ -319,6 +319,7 @@ describe('resolveDiscordSession', () => {
     const mapped = await sandbox.resolveDiscordSession(session);
     expect(mapped).toEqual({
       authUserId: 'u1',
+      teamMemberId: 5,
       username: 'Kato',
       nameRealm: 'Linked-Illidan',
       isOfficer: false,

@@ -280,7 +280,11 @@ function renderSignupHistory(signups) {
         escHtml(s.nameRealm) +
         '</span>' +
         '<span class="signup-status-badge ' +
-        (st === 'Approved' || st === 'Rostered' ? 'signup-status-open' : st === 'Denied' ? 'signup-status-closed' : '') +
+        (st === 'Approved' || st === 'Rostered'
+          ? 'signup-status-open'
+          : st === 'Denied'
+            ? 'signup-status-closed'
+            : '') +
         '" style="font-size:0.7rem;padding:0.1rem 0.5rem;margin-left:0.4rem;">' +
         st +
         '</span>' +
