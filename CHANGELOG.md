@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.32.1] - 2026-07-10
+
+### Frontend
+- **Selection-based push to roster for the Pending Roster tab (#273)** -- replaces the implicit "push everything" model with an explicit checkbox per pending card (unchecked by default) and a filter-aware **Select All** control, so an officer can push a chosen subset without deleting entries they don't want first. The **Add Selected to Roster** button loops `add_signup_to_roster()` once per checked signup, reusing each card's own trial-toggle/archive-picker values, and reports a per-batch summary (e.g. "8 of 10 added, 2 failed: ..."). A main-swap row with no archive target picked, or a server-rejected row, fails only that row without blocking the rest of the batch. Does not port the old GAS `pushPendingToRoster(removeAbsent)` roster-purge behavior -- no Supabase equivalent exists and it's out of the scope agreed on the issue.
+
+---
+
 ## [3.32.0] - 2026-07-10
 
 ### Frontend
