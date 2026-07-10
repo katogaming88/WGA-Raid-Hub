@@ -618,7 +618,11 @@ function toggleBisItemObtained(index, checked) {
   var msgEl = document.getElementById('bisListSaveMsg');
   if (msgEl) msgEl.textContent = 'Saving...';
   bisSlotFilter(
-    supabaseClient.from('bis_items').update({ obtained: checked }).eq('player_id', player.id).eq('item_id', entry.itemId),
+    supabaseClient
+      .from('bis_items')
+      .update({ obtained: checked })
+      .eq('player_id', player.id)
+      .eq('item_id', entry.itemId),
     entry.dbSlot
   )
     .then(function (result) {

@@ -774,9 +774,7 @@ function fetchSupabaseBisItems() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('bis_items')
-    .select(
-      'player_id, item_id, obtained, slot, items(name, slot, is_placeholder), players!inner(name_realm, team_id)'
-    )
+    .select('player_id, item_id, obtained, slot, items(name, slot, is_placeholder), players!inner(name_realm, team_id)')
     .eq('players.team_id', _teamCfg.supabaseTeamId)
     .then(function (result) {
       if (result.error) {
