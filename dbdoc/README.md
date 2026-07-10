@@ -6,7 +6,7 @@
 | ---- | ------- | ------- | ---- |
 | [public.attendance](public.attendance.md) | 7 |  | BASE TABLE |
 | [public.audit_log](public.audit_log.md) | 8 |  | BASE TABLE |
-| [public.bis_items](public.bis_items.md) | 5 |  | BASE TABLE |
+| [public.bis_items](public.bis_items.md) | 6 |  | BASE TABLE |
 | [public.bis_requests](public.bis_requests.md) | 6 |  | BASE TABLE |
 | [public.classes_specs](public.classes_specs.md) | 4 |  | BASE TABLE |
 | [public.item_bosses](public.item_bosses.md) | 2 |  | BASE TABLE |
@@ -126,6 +126,7 @@ erDiagram
   integer item_id FK
   boolean obtained
   timestamp_with_time_zone updated_at
+  text slot
 }
 "public.bis_requests" {
   integer id

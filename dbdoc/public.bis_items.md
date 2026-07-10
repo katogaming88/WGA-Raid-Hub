@@ -9,12 +9,12 @@
 | item_id | integer |  | false |  | [public.items](public.items.md) |  |
 | obtained | boolean | false | false |  |  |  |
 | updated_at | timestamp with time zone |  | true |  |  |  |
+| slot | text |  | true |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| bis_items_no_dupe_item_key | UNIQUE | UNIQUE (player_id, item_id) |
 | bis_items_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | bis_items_item_id_fkey | FOREIGN KEY | FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL |
 | bis_items_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
@@ -23,8 +23,8 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| bis_items_no_dupe_item_key | CREATE UNIQUE INDEX bis_items_no_dupe_item_key ON public.bis_items USING btree (player_id, item_id) |
 | bis_items_pkey | CREATE UNIQUE INDEX bis_items_pkey ON public.bis_items USING btree (id) |
+| bis_items_no_dupe_item_key | CREATE UNIQUE INDEX bis_items_no_dupe_item_key ON public.bis_items USING btree (player_id, item_id, COALESCE(slot, ''::text)) |
 
 ## Triggers
 
@@ -46,6 +46,7 @@ erDiagram
   integer item_id FK
   boolean obtained
   timestamp_with_time_zone updated_at
+  text slot
 }
 "public.players" {
   integer id

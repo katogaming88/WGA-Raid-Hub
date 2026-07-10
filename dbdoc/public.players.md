@@ -92,6 +92,7 @@ erDiagram
   integer item_id FK
   boolean obtained
   timestamp_with_time_zone updated_at
+  text slot
 }
 "public.bis_requests" {
   integer id
