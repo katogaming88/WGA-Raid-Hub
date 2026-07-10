@@ -19,13 +19,15 @@ function setBisSubmissionsOpen(open) {
     btn.textContent = 'Saving...';
   }
 
-  jsonpRequest(
-    WEB_APP_URL + '?action=setBisSubmissionsOpen&value=' + (open ? 'true' : 'false'),
-    function (err, result) {
+  saveTeamSetting({ bisSubmissionsOpen: open }).then(
+    function () {
       if (btn) btn.disabled = false;
-      if (!err) {
-        if (DATA) DATA.bisSubmissionsOpen = open;
-      }
+      if (DATA) DATA.bisSubmissionsOpen = open;
+      writeAuditLog(open ? 'BiS Submissions Opened' : 'BiS Submissions Closed', null, null, null);
+      renderBisToggle();
+    },
+    function () {
+      if (btn) btn.disabled = false;
       renderBisToggle();
     }
   );

@@ -63,11 +63,11 @@ function renderSeasonHistory() {
         ')</span>';
     html += '</div>';
     html += '<div style="display:flex;gap:0.4rem;">';
-    if (s.snapshotKey) {
+    if (s.roster) {
       html +=
-        '<button class="btn btn-muted" style="font-size:0.8rem;padding:2px 10px;white-space:nowrap;" onclick="toggleSeasonSnapshot(\'' +
-        s.snapshotKey +
-        '\', this)">View Roster</button>';
+        '<button class="btn btn-muted" style="font-size:0.8rem;padding:2px 10px;white-space:nowrap;" onclick="toggleSeasonSnapshot(' +
+        i +
+        ', this)">View Roster</button>';
     }
     html +=
       '<button class="btn btn-muted" style="font-size:0.8rem;padding:2px 10px;white-space:nowrap;" onclick="confirmUnarchiveSeason(' +
@@ -75,8 +75,8 @@ function renderSeasonHistory() {
       ')">Unarchive</button>';
     html += '</div>';
     html += '</div>';
-    if (s.snapshotKey) {
-      html += '<div id="snapshot-' + s.snapshotKey + '" style="display:none;margin-top:0.5rem;"></div>';
+    if (s.roster) {
+      html += '<div id="snapshot-' + i + '" style="display:none;margin-top:0.5rem;"></div>';
     }
     html += '</div>';
   }
@@ -85,8 +85,13 @@ function renderSeasonHistory() {
   if (confirmEl) confirmEl.style.display = 'none';
 }
 
-function toggleSeasonSnapshot(key, btnEl) {
-  var panel = document.getElementById('snapshot-' + key);
+// The roster snapshot lives inline on the seasonHistory entry itself
+// (history[index].roster, see archive_current_season() in
+// 20260712100000_team_settings_season_config.sql) rather than behind a
+// separate lookup key, so this just renders what's already in DATA -- no
+// round trip needed (#221 follow-up to the old getRosterSnapshot GAS action).
+function toggleSeasonSnapshot(index, btnEl) {
+  var panel = document.getElementById('snapshot-' + index);
   if (!panel) return;
   if (panel.style.display !== 'none') {
     panel.style.display = 'none';
@@ -98,57 +103,45 @@ function toggleSeasonSnapshot(key, btnEl) {
     btnEl.textContent = 'Hide Roster';
     return;
   }
-  btnEl.disabled = true;
-  btnEl.textContent = 'Loading...';
-  jsonpRequest(WEB_APP_URL + '?action=getRosterSnapshot&key=' + encodeURIComponent(key), function (err, result) {
-    btnEl.disabled = false;
-    btnEl.textContent = 'Hide Roster';
-    if (err || !result || result.error) {
-      panel.innerHTML =
-        '<p style="color:var(--melee);font-size:0.88rem;">' +
-        (result && result.error ? result.error : 'Failed to load snapshot.') +
-        '</p>';
-      panel.style.display = '';
-      return;
-    }
-    var players = result.players || [];
-    panel.dataset.loaded = '1';
-    if (!players.length) {
-      panel.innerHTML =
-        '<p style="font-size:0.88rem;color:var(--text-muted);">No roster data captured for this season.</p>';
-      panel.style.display = '';
-      return;
-    }
-    var roleOrder = { Tank: 0, Heal: 1, Melee: 2, Ranged: 3 };
-    players.sort(function (a, b) {
-      var ra = roleOrder[a.role] !== undefined ? roleOrder[a.role] : 9;
-      var rb = roleOrder[b.role] !== undefined ? roleOrder[b.role] : 9;
-      if (ra !== rb) return ra - rb;
-      return a.nameRealm.localeCompare(b.nameRealm);
-    });
-    var html = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin-top:0.25rem;">';
-    html +=
-      '<thead><tr style="color:var(--text-muted);text-align:left;border-bottom:1px solid rgba(255,255,255,0.1);">';
-    html += '<th style="padding:0.2rem 0.5rem 0.2rem 0;">Player</th>';
-    html += '<th style="padding:0.2rem 0.5rem;">Role</th>';
-    html += '<th style="padding:0.2rem 0.5rem;">Status</th>';
-    html += '<th style="padding:0.2rem 0.5rem;">Join Date</th>';
-    html += '<th style="padding:0.2rem 0;">Attendance</th>';
-    html += '</tr></thead><tbody>';
-    players.forEach(function (p) {
-      var status = p.isBench ? 'Bench' : p.isTrial ? 'Trial' : 'Roster';
-      html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">';
-      html += '<td style="padding:0.18rem 0.5rem 0.18rem 0;color:var(--text);">' + p.nameRealm + '</td>';
-      html += '<td style="padding:0.18rem 0.5rem;color:var(--text-muted);">' + (p.role || '-') + '</td>';
-      html += '<td style="padding:0.18rem 0.5rem;color:var(--text-muted);">' + status + '</td>';
-      html += '<td style="padding:0.18rem 0.5rem;color:var(--text-muted);">' + (p.joinDate || '-') + '</td>';
-      html += '<td style="padding:0.18rem 0;color:var(--text-muted);">' + (p.attendance || '-') + '</td>';
-      html += '</tr>';
-    });
-    html += '</tbody></table>';
-    panel.innerHTML = html;
+  var history = (DATA && DATA.seasonHistory) || [];
+  var season = history[index];
+  var players = (season && season.roster) || [];
+  panel.dataset.loaded = '1';
+  btnEl.textContent = 'Hide Roster';
+  if (!players.length) {
+    panel.innerHTML =
+      '<p style="font-size:0.88rem;color:var(--text-muted);">No roster data captured for this season.</p>';
     panel.style.display = '';
+    return;
+  }
+  var roleOrder = { Tank: 0, Heal: 1, Melee: 2, Ranged: 3 };
+  players = players.slice().sort(function (a, b) {
+    var ra = roleOrder[a.role] !== undefined ? roleOrder[a.role] : 9;
+    var rb = roleOrder[b.role] !== undefined ? roleOrder[b.role] : 9;
+    if (ra !== rb) return ra - rb;
+    return a.nameRealm.localeCompare(b.nameRealm);
   });
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin-top:0.25rem;">';
+  html += '<thead><tr style="color:var(--text-muted);text-align:left;border-bottom:1px solid rgba(255,255,255,0.1);">';
+  html += '<th style="padding:0.2rem 0.5rem 0.2rem 0;">Player</th>';
+  html += '<th style="padding:0.2rem 0.5rem;">Role</th>';
+  html += '<th style="padding:0.2rem 0.5rem;">Status</th>';
+  html += '<th style="padding:0.2rem 0.5rem;">Join Date</th>';
+  html += '<th style="padding:0.2rem 0;">Attendance</th>';
+  html += '</tr></thead><tbody>';
+  players.forEach(function (p) {
+    var status = p.isBench ? 'Bench' : p.isTrial ? 'Trial' : 'Roster';
+    html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">';
+    html += '<td style="padding:0.18rem 0.5rem 0.18rem 0;color:var(--text);">' + p.nameRealm + '</td>';
+    html += '<td style="padding:0.18rem 0.5rem;color:var(--text-muted);">' + (p.role || '-') + '</td>';
+    html += '<td style="padding:0.18rem 0.5rem;color:var(--text-muted);">' + status + '</td>';
+    html += '<td style="padding:0.18rem 0.5rem;color:var(--text-muted);">' + (p.joinDate || '-') + '</td>';
+    html += '<td style="padding:0.18rem 0;color:var(--text-muted);">' + (p.attendance || '-') + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  panel.innerHTML = html;
+  panel.style.display = '';
 }
 
 var _unarchiveIndex = -1;
@@ -178,31 +171,36 @@ function executeUnarchiveSeason() {
   var btn = document.getElementById('seasonUnarchiveExecBtn');
   if (confirmEl) confirmEl.style.display = 'none';
   if (btn) btn.disabled = true;
+  var index = _unarchiveIndex;
 
-  jsonpRequest(WEB_APP_URL + '?action=unarchiveSeason&index=' + _unarchiveIndex, function (err, result) {
-    if (btn) btn.disabled = false;
-    if (!err && result && result.success) {
-      var season = result.season;
+  supabaseClient
+    .rpc('unarchive_season', { p_team_id: _teamCfg.supabaseTeamId, p_index: index })
+    .then(function (result) {
+      if (btn) btn.disabled = false;
+      if (result.error) throw new Error(result.error.message);
+      var season = result.data.season;
       DATA.seasonName = season.name || '';
       DATA.seasonStart = season.start || '';
       DATA.seasonEnd = season.end || '';
       DATA.raidProgression = season.raids || [];
-      if (DATA.seasonHistory) DATA.seasonHistory.splice(_unarchiveIndex, 1);
+      DATA.seasonHistory = result.data.config.seasonHistory || [];
       _unarchiveIndex = -1;
       buildSeasonTab();
       populateSeasonSelector();
+      return writeAuditLog('Season Unarchived', null, null, season.name || '');
+    })
+    .then(function () {
       if (status) {
         status.textContent = 'Season restored.';
         setTimeout(function () {
           if (status) status.textContent = '';
         }, 3000);
       }
-    } else {
-      if (status) {
-        status.textContent = err ? err.message : 'Error restoring season.';
-      }
-    }
-  });
+    })
+    .catch(function (err) {
+      if (btn) btn.disabled = false;
+      if (status) status.textContent = err.message || 'Error restoring season.';
+    });
 }
 
 function confirmClearSeasonStart() {
@@ -250,6 +248,25 @@ function confirmArchiveSeason() {
   if (el) el.style.display = '';
 }
 
+// Roster snapshot is computed client-side from the roster already in DATA
+// (nameRealm/role/isTrial/isBench/joinDate/attendance -- the same fields the
+// old GAS archiveSeason() read straight off the sheets) and passed to the
+// archive_current_season RPC, which stores it inline on the new history
+// entry rather than in a separate lookup key (#221).
+function buildSeasonArchiveRosterSnapshot() {
+  var roster = (DATA && DATA.roster) || [];
+  return roster.map(function (p) {
+    return {
+      nameRealm: p.nameRealm,
+      role: p.role,
+      isTrial: !!p.isTrial,
+      isBench: !!p.isBench,
+      joinDate: p.joinDate || '',
+      attendance: p.attendance || ''
+    };
+  });
+}
+
 function executeArchiveSeason() {
   var el = document.getElementById('seasonArchiveConfirm');
   var status = document.getElementById('seasonArchiveStatus');
@@ -258,38 +275,39 @@ function executeArchiveSeason() {
   if (btn) {
     btn.disabled = true;
   }
+  var archivedName = DATA.seasonName;
 
-  jsonpRequest(WEB_APP_URL + '?action=archiveSeason', function (err, result) {
-    if (btn) btn.disabled = false;
-    if (!err && result && result.success) {
-      var archived = {
-        name: DATA.seasonName,
-        start: DATA.seasonStart,
-        end: DATA.seasonEnd || '',
-        raids: JSON.parse(JSON.stringify(DATA.raidProgression || [])),
-        snapshotKey: result.snapshotKey || ''
-      };
-      if (!DATA.seasonHistory) DATA.seasonHistory = [];
-      DATA.seasonHistory.push(archived);
-      DATA.seasonName = '';
-      DATA.seasonStart = '';
-      DATA.seasonEnd = '';
-      DATA.raidProgression = [];
+  supabaseClient
+    .rpc('archive_current_season', {
+      p_team_id: _teamCfg.supabaseTeamId,
+      p_roster_snapshot: buildSeasonArchiveRosterSnapshot()
+    })
+    .then(function (result) {
+      if (btn) btn.disabled = false;
+      if (result.error) throw new Error(result.error.message);
+      var config = result.data;
+      DATA.seasonName = config.seasonName || '';
+      DATA.seasonStart = config.seasonStart || '';
+      DATA.seasonEnd = config.seasonEnd || '';
+      DATA.raidProgression = config.raidProgression || [];
+      DATA.seasonHistory = config.seasonHistory || [];
       SEASON_RAIDS = [];
       buildSeasonTab();
       populateSeasonSelector();
+      return writeAuditLog('Season Archived', null, null, archivedName);
+    })
+    .then(function () {
       if (status) {
         status.textContent = 'Season archived.';
         setTimeout(function () {
           if (status) status.textContent = '';
         }, 3000);
       }
-    } else {
-      if (status) {
-        status.textContent = err ? err.message : 'Error archiving season.';
-      }
-    }
-  });
+    })
+    .catch(function (err) {
+      if (btn) btn.disabled = false;
+      if (status) status.textContent = err.message || 'Error archiving season.';
+    });
 }
 
 function syncAttendancePct() {
@@ -339,12 +357,12 @@ function saveSignupSeason() {
     btn.textContent = 'Saving...';
   }
 
-  jsonpRequest(WEB_APP_URL + '?action=setActiveSignupSeason&season=' + encodeURIComponent(val), function (err, result) {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'Save';
-    }
-    if (!err && result && result.success) {
+  saveTeamSetting({ activeSignupSeason: val })
+    .then(function () {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      }
       if (DATA) DATA.signupSeason = val;
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
@@ -352,10 +370,14 @@ function saveSignupSeason() {
           if (status) status.textContent = '';
         }, 2000);
       }
-    } else {
-      if (status) status.textContent = err ? err.message : 'Error saving.';
-    }
-  });
+    })
+    .catch(function (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      }
+      if (status) status.textContent = err.message || 'Error saving.';
+    });
 }
 
 function saveSeasonName() {
@@ -368,27 +390,30 @@ function saveSeasonName() {
     btn.textContent = 'Saving...';
   }
 
-  jsonpRequest(WEB_APP_URL + '?action=setSeasonName&value=' + encodeURIComponent(val), function (err, result) {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'Save';
-    }
-    if (!err && result && result.success) {
-      if (DATA) DATA.seasonName = result.seasonName;
-      if (input) input.value = result.seasonName || '';
+  saveTeamSetting({ seasonName: val })
+    .then(function () {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      }
+      if (DATA) DATA.seasonName = val;
+      if (input) input.value = val;
       populateSeasonSelector();
+      writeAuditLog('Season Name Set', null, null, val);
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {
           if (status) status.textContent = '';
         }, 2000);
       }
-    } else {
-      if (status) {
-        status.textContent = err ? err.message : 'Error saving.';
+    })
+    .catch(function (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
       }
-    }
-  });
+      if (status) status.textContent = err.message || 'Error saving.';
+    });
 }
 
 function saveSeasonStart() {
@@ -405,27 +430,30 @@ function saveSeasonStart() {
     btn.textContent = 'Saving...';
   }
 
-  jsonpRequest(WEB_APP_URL + '?action=setSeasonStart&value=' + encodeURIComponent(val), function (err, result) {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'Save';
-    }
-    if (!err && result && result.success) {
-      if (DATA) DATA.seasonStart = result.seasonStart;
-      if (input) input.value = result.seasonStart || '';
+  saveTeamSetting({ seasonStart: val })
+    .then(function () {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      }
+      if (DATA) DATA.seasonStart = val;
+      if (input) input.value = val;
       populateSeasonSelector();
+      writeAuditLog('Season Start Set', null, null, val);
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {
           if (status) status.textContent = '';
         }, 2000);
       }
-    } else {
-      if (status) {
-        status.textContent = err ? err.message : 'Error saving.';
+    })
+    .catch(function (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
       }
-    }
-  });
+      if (status) status.textContent = err.message || 'Error saving.';
+    });
 }
 
 function saveSeasonEnd() {
@@ -442,26 +470,29 @@ function saveSeasonEnd() {
     btn.textContent = 'Saving...';
   }
 
-  jsonpRequest(WEB_APP_URL + '?action=setSeasonEnd&value=' + encodeURIComponent(val), function (err, result) {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'Save';
-    }
-    if (!err && result && result.success) {
-      if (DATA) DATA.seasonEnd = result.seasonEnd;
-      if (input) input.value = result.seasonEnd || '';
+  saveTeamSetting({ seasonEnd: val })
+    .then(function () {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      }
+      if (DATA) DATA.seasonEnd = val;
+      if (input) input.value = val;
+      writeAuditLog('Season End Set', null, null, val);
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {
           if (status) status.textContent = '';
         }, 2000);
       }
-    } else {
-      if (status) {
-        status.textContent = err ? err.message : 'Error saving.';
+    })
+    .catch(function (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
       }
-    }
-  });
+      if (status) status.textContent = err.message || 'Error saving.';
+    });
 }
 
 // -- Raid Progression --
@@ -740,28 +771,28 @@ function saveRaidProgression() {
     btn.textContent = 'Saving...';
   }
 
-  jsonpRequest(
-    WEB_APP_URL + '?action=saveRaidProgression&data=' + encodeURIComponent(JSON.stringify(SEASON_RAIDS)),
-    function (err, result) {
+  saveTeamSetting({ raidProgression: SEASON_RAIDS })
+    .then(function () {
       if (btn) {
         btn.disabled = false;
         btn.textContent = 'Save Progression';
       }
-      if (!err && result && result.success) {
-        DATA.raidProgression = JSON.parse(JSON.stringify(SEASON_RAIDS));
-        if (status) {
-          status.textContent = 'Saved!';
-          setTimeout(function () {
-            if (status) status.textContent = '';
-          }, 2500);
-        }
-      } else {
-        if (status) {
-          status.textContent = err ? err.message : 'Error saving.';
-        }
+      DATA.raidProgression = JSON.parse(JSON.stringify(SEASON_RAIDS));
+      writeAuditLog('Raid Progression Saved', null, null, SEASON_RAIDS.length + ' raid(s)');
+      if (status) {
+        status.textContent = 'Saved!';
+        setTimeout(function () {
+          if (status) status.textContent = '';
+        }, 2500);
       }
-    }
-  );
+    })
+    .catch(function (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save Progression';
+      }
+      if (status) status.textContent = err.message || 'Error saving.';
+    });
 }
 
 function saveTrialThresholds() {
@@ -776,28 +807,31 @@ function saveTrialThresholds() {
     btn.textContent = 'Saving...';
   }
 
-  jsonpRequest(WEB_APP_URL + '?action=setTrialThresholds&weeks=' + weeks + '&attend=' + attend, function (err, result) {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'Save';
-    }
-    if (!err && result && result.success) {
-      if (DATA) {
-        DATA.trialWeeks = result.trialWeeks;
-        DATA.trialAttend = result.trialAttend;
+  saveTeamSetting({ trialWeeks: weeks, trialAttend: attend })
+    .then(function () {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
       }
-      PROMO_THRESHOLDS.weeks = result.trialWeeks;
-      PROMO_THRESHOLDS.attend = result.trialAttend;
+      if (DATA) {
+        DATA.trialWeeks = weeks;
+        DATA.trialAttend = attend;
+      }
+      PROMO_THRESHOLDS.weeks = weeks;
+      PROMO_THRESHOLDS.attend = attend;
+      writeAuditLog('Trial Thresholds Set', null, null, weeks + ' wk / ' + attend + '%');
       if (status) {
         status.textContent = 'Saved!';
         setTimeout(function () {
           if (status) status.textContent = '';
         }, 2000);
       }
-    } else {
-      if (status) {
-        status.textContent = err ? err.message : 'Error saving.';
+    })
+    .catch(function (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
       }
-    }
-  });
+      if (status) status.textContent = err.message || 'Error saving.';
+    });
 }

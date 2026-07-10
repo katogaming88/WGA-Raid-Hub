@@ -50,6 +50,9 @@
 | public.generate_priority_order | record | p_team_id integer, p_season text, p_item_id integer, p_track text | FUNCTION |
 | public.save_priority_order | int4 | p_team_id integer, p_season text, p_item_id integer, p_track text, p_player_ids jsonb | FUNCTION |
 | public.build_rclc_export | jsonb | p_team_id integer, p_season text | FUNCTION |
+| public.set_team_setting | jsonb | p_team_id integer, p_updates jsonb | FUNCTION |
+| public.archive_current_season | jsonb | p_team_id integer, p_roster_snapshot jsonb | FUNCTION |
+| public.unarchive_season | jsonb | p_team_id integer, p_index integer | FUNCTION |
 
 ## Enums
 

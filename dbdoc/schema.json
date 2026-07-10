@@ -3159,6 +3159,24 @@
       "return_type": "jsonb",
       "arguments": "p_team_id integer, p_season text",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_team_setting",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer, p_updates jsonb",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.archive_current_season",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer, p_roster_snapshot jsonb",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.unarchive_season",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer, p_index integer",
+      "type": "FUNCTION"
     }
   ],
   "enums": [
