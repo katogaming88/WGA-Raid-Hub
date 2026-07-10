@@ -883,6 +883,7 @@ function fetchSupabasePriorityOrder() {
  * @returns {Object<string, {heroic?: string[], mythic?: string[]}>}
  */
 function mapSupabasePriorityOrder(rows, seasonName) {
+  /** @type {Object<string, {heroic?: string[], mythic?: string[]}>} */
   var result = {};
   (rows || [])
     .filter(function (row) {
