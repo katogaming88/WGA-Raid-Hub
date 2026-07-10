@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.32.2] - 2026-07-11
+
+### Frontend
+- **RCLootCouncil priority export string migrated to Supabase (#335, Phase 5)** -- the Priority tab's Generate/Regenerate button now calls the new `build_rclc_export()` RPC and base64-encodes the JSON client-side, instead of reading a value cached from a Google Sheets custom menu action (`exportPriorityData()`) that no longer has a home once Sheets is retired. The `players` object is unchanged in shape; `priority` is a new shape, `{ [wow_item_id]: { H: [...], M: [...] } }`, split by `priority_order.track` instead of GAS's single flat per-item list -- the old sheet never distinguished Heroic/Mythic priority, but merging both into one list risked surfacing a Mythic-only-ranked player during a Heroic award (or vice versa). The companion addon, `RCLootCouncil_PriorityLoot` (separate repo), reads the raid's live difficulty via `GetInstanceInfo()` at vote/award time to pick the right track -- see that repo's own changelog for the corresponding update. The "no export string found, run the spreadsheet menu action" empty state is gone; generation is now always live.
+
+### Backend
+- **`build_rclc_export(p_team_id, p_season)` (#335)** -- new `SECURITY INVOKER` RPC building the export payload from `bis_items`/`priority_order`/`items`/`players` directly. Slot key for the `players` object prefers `bis_items.slot` (the BiS Manager's 16-slot grid override, #320) and falls back to `items.slot` for legacy rows, defaulting to the first numbered row (ring1/trinket1) for the Finger/Trinket ambiguity that column can't resolve either. Rows on a placeholder item (M+/Crafted/Catalyst, no `wow_item_id`) are excluded -- RCLootCouncil needs a real item id to award against.
+
+---
+
 ## [3.32.1] - 2026-07-10
 
 ### Frontend
