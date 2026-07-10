@@ -223,6 +223,7 @@ function resolveDiscordSession(session) {
         var nameRealm = (linked && linked.name_realm) || (member && member.name_realm) || null;
         var mapped = {
           authUserId: session.user.id,
+          teamMemberId: member ? member.id : null,
           username: session.user.user_metadata.full_name || session.user.user_metadata.name,
           nameRealm: nameRealm,
           isOfficer: !!member && (member.role === 'officer' || member.role === 'team_leader'),

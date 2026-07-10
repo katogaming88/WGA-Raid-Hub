@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.32.0] - 2026-07-10
+
+### Frontend
+- **Officer signup review and Add to Roster UI migrated to Supabase (#328, Phase 5)** -- the Signups and Pending Roster tabs now read/write `season_signups` and the `pending_roster` view directly instead of the Apps Script payload. Approve/Deny update `status`/`reviewed_at`/`reviewed_by`/optional `signup_officer_note` under the existing "Officers update signups" RLS policy (Discord-logged-in officers now carry a `teamMemberId` in their session for this; password-only officers leave `reviewed_by` null, which the column allows). Pending Roster gets a new per-row **Add to Roster** control -- trial toggle (default checked) and, for main-swap signups, an old-character picker -- that calls `add_signup_to_roster()`. **Remove from Pending** now sets `status = 'rejected'` instead of deleting. The old bulk "Push to Roster" area is removed: it operated on Apps Script Sheets row indices, which don't exist in the signup_id-keyed Supabase data; #273 will build its per-row-selection replacement. GAS handlers (`getSignups`, `approveSignup`, `denySignup`, `getPendingRoster`, `removePendingRoster`, `pushPendingToRoster`) are left in place, unused, per the established Phase 5 retirement convention. The raider-facing signup submission form still writes to the Apps Script Sheet -- no Supabase INSERT path exists yet, so `season_signups` stays empty until that's built separately.
+
+---
+
 ## [3.31.0] - 2026-07-10
 
 ### Frontend

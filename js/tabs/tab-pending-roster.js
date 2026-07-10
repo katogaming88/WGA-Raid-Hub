@@ -14,6 +14,22 @@ function buildPendingRosterMap() {
   return map;
 }
 
+// Maps a pending_roster view row to the shape the render functions expect.
+function mapPendingRosterRow(row) {
+  return {
+    signupId: row.signup_id,
+    nameRealm: row.signup_name_realm,
+    className: row.class || '',
+    mainSpec: row.spec || '',
+    role: row.role || '',
+    offSpecs: row.off_specs || '',
+    mainSwap: !!row.main_swap,
+    notes: row.player_note || '',
+    officerNote: row.signup_officer_note || '',
+    season: row.season || ''
+  };
+}
+
 function buildPendingRosterTab() {
   var container = document.getElementById('pendingRosterContainer');
   if (!container) return;
@@ -28,11 +44,21 @@ function buildPendingRosterTab() {
     renderPendingRoster(_pendingRosterEntries, _pendingMissingSignups);
   }
 
-  jsonpRequest(WEB_APP_URL + '?action=getPendingRoster', function (err, result) {
-    _pendingRosterEntries = err ? [] : result.entries || [];
+  if (!supabaseClient) {
+    _pendingRosterEntries = [];
     loaded.entries = true;
     tryRender();
-  });
+  } else {
+    supabaseClient
+      .from('pending_roster')
+      .select('*')
+      .eq('team_id', _teamCfg.supabaseTeamId)
+      .then(function (result) {
+        _pendingRosterEntries = result.error ? [] : (result.data || []).map(mapPendingRosterRow);
+        loaded.entries = true;
+        tryRender();
+      });
+  }
 
   jsonpRequest(WEB_APP_URL + '?action=getMissingSignups', function (err, result) {
     _pendingMissingSignups = err ? [] : result.missing || [];
@@ -60,7 +86,6 @@ function renderPendingRoster(entries, missing) {
     html +=
       '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No approved signups in the pending roster.</p>';
   } else {
-    html += buildPushAreaHtml(entries, missing, rosterMap);
     html += buildPendingControlsHtml();
     var visible = getFilteredSortedPendingEntries(entries);
     if (!visible.length) {
@@ -356,127 +381,13 @@ function togglePendingBuffCoverage() {
   if (icon) icon.innerHTML = visible ? '&#9654;' : '&#9660;';
 }
 
-// ── Push to Roster area ──────────────────────────────────────────────────────
-
-function buildPushAreaHtml(entries, missing, rosterMap) {
-  var missingCount = missing.length;
-  var added = 0,
-    updated = 0;
-  entries.forEach(function (e) {
-    if (e.nameRealm && rosterMap[e.nameRealm.toLowerCase()]) updated++;
-    else added++;
-  });
-
-  var diffParts = [];
-  if (added) diffParts.push('<span style="color:var(--heal);font-weight:600;">' + added + ' new</span>');
-  if (updated) diffParts.push('<span style="color:var(--gold-light);font-weight:600;">' + updated + ' updated</span>');
-  if (missingCount)
-    diffParts.push(
-      '<span style="color:var(--melee);font-weight:600;">' +
-        missingCount +
-        ' missing signup' +
-        (missingCount !== 1 ? 's' : '') +
-        '</span> (only removed if checked below)'
-    );
-
-  return (
-    '<div id="pendingPushArea" style="margin-bottom:1.25rem;padding:0.85rem;background:var(--bg-alt);' +
-    'border:1px solid var(--border);border-radius:6px;">' +
-    '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">' +
-    '<span style="font-size:0.9rem;color:var(--text-muted);">Push all ' +
-    entries.length +
-    ' pending entries to the official roster: ' +
-    diffParts.join(', ') +
-    '.</span>' +
-    '<button class="btn request-approve-btn" id="pendingPushBtn" onclick="showPushConfirm()" ' +
-    'style="font-size:0.88rem;padding:0.3rem 1rem;white-space:nowrap;">Push to Roster</button>' +
-    '</div>' +
-    '<div id="pendingPushConfirm" style="display:none;margin-top:0.85rem;padding-top:0.75rem;' +
-    'border-top:1px solid var(--border);">' +
-    '<label style="display:flex;align-items:flex-start;gap:0.5rem;font-size:0.9rem;color:var(--text);' +
-    'cursor:pointer;margin-bottom:0.75rem;">' +
-    '<input type="checkbox" id="pendingPushRemoveAbsent" style="margin-top:0.15rem;accent-color:var(--melee);">' +
-    '<span>Also remove roster members not in the pending roster' +
-    (missingCount
-      ? ' <span style="color:var(--melee);font-weight:600;">(' +
-        missingCount +
-        ' missing signup' +
-        (missingCount !== 1 ? 's' : '') +
-        ')</span>'
-      : '') +
-    '</span>' +
-    '</label>' +
-    '<div style="display:flex;gap:0.5rem;">' +
-    '<button class="btn request-approve-btn" id="pendingPushConfirmBtn" onclick="confirmPushToRoster(this)" ' +
-    'style="font-size:0.88rem;padding:0.25rem 0.75rem;">Confirm Push</button>' +
-    '<button class="btn btn-muted" onclick="hidePushConfirm()" ' +
-    'style="font-size:0.88rem;padding:0.25rem 0.75rem;">Cancel</button>' +
-    '</div>' +
-    '<div id="pendingPushResult" style="margin-top:0.6rem;font-size:0.88rem;"></div>' +
-    '</div>' +
-    '</div>'
-  );
-}
-
-function showPushConfirm() {
-  var confirm = document.getElementById('pendingPushConfirm');
-  var btn = document.getElementById('pendingPushBtn');
-  if (confirm) confirm.style.display = 'block';
-  if (btn) btn.style.display = 'none';
-}
-
-function hidePushConfirm() {
-  var confirm = document.getElementById('pendingPushConfirm');
-  var btn = document.getElementById('pendingPushBtn');
-  if (confirm) confirm.style.display = 'none';
-  if (btn) btn.style.display = '';
-}
-
-function confirmPushToRoster(btnEl) {
-  var removeAbsent = document.getElementById('pendingPushRemoveAbsent');
-  var remove = removeAbsent && removeAbsent.checked;
-  var resultEl = document.getElementById('pendingPushResult');
-
-  btnEl.disabled = true;
-  btnEl.textContent = 'Pushing...';
-
-  jsonpRequest(
-    WEB_APP_URL + '?action=pushPendingToRoster&removeAbsent=' + (remove ? 'true' : 'false'),
-    function (err, result) {
-      btnEl.disabled = false;
-      btnEl.textContent = 'Confirm Push';
-
-      if (err || !result || result.error) {
-        if (resultEl)
-          resultEl.innerHTML =
-            '<span style="color:var(--melee);">' +
-            (result && result.error ? result.error : 'Push failed. Try again.') +
-            '</span>';
-        return;
-      }
-
-      var lines = [];
-      if (result.added) lines.push(result.added + ' player' + (result.added !== 1 ? 's' : '') + ' added');
-      if (result.updated) lines.push(result.updated + ' player' + (result.updated !== 1 ? 's' : '') + ' updated');
-      if (result.removedAbsent && result.removed && result.removed.length)
-        lines.push(result.removed.length + ' removed: ' + result.removed.join(', '));
-      else if (!result.removedAbsent && result.removed && result.removed.length)
-        lines.push(result.removed.length + ' not in pending (not removed): ' + result.removed.join(', '));
-
-      if (resultEl)
-        resultEl.innerHTML =
-          '<span style="color:var(--text-muted);">Done. ' + (lines.join('; ') || 'No changes.') + '</span>';
-
-      // Reload after short delay
-      setTimeout(function () {
-        buildPendingRosterTab();
-        updateNavBadges();
-      }, 1800);
-    }
-  );
-}
-
 // ── Pending entry cards ──────────────────────────────────────────────────────
+//
+// The old bulk "Push to Roster" area operated on Sheets row indices and pushed
+// every pending entry in one GAS call; that model doesn't carry over to the
+// signup_id-keyed Supabase data (#328). Each card below gets its own
+// "Add to Roster" control (trial toggle + main-swap picker) that calls
+// add_signup_to_roster() directly. A bulk selection UX is #273's job.
 
 function buildPendingCardHtml(e, rosterMap) {
   rosterMap = rosterMap || {};
@@ -488,11 +399,11 @@ function buildPendingCardHtml(e, rosterMap) {
     '<div class="signup-response-card" style="' +
     borderStyle +
     '" data-row="' +
-    e.rowIndex +
+    e.signupId +
     '">' +
     '<div class="signup-response-header">' +
     '<span class="signup-response-name">' +
-    e.nameRealm +
+    escHtml(e.nameRealm) +
     '</span>' +
     '<span style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;' +
     'margin-left:0.4rem;color:' +
@@ -505,7 +416,7 @@ function buildPendingCardHtml(e, rosterMap) {
     html +=
       '<span style="font-size:0.7rem;color:var(--text-muted);background:var(--bg-alt);' +
       'border:1px solid var(--border);border-radius:3px;padding:0.1rem 0.4rem;margin-left:0.4rem;">' +
-      e.season +
+      escHtml(e.season) +
       '</span>';
 
   html += '</div>';
@@ -524,33 +435,23 @@ function buildPendingCardHtml(e, rosterMap) {
       '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Role: <span style="color:var(--text);">' +
       e.role +
       '</span></div>';
-  if (e.discord)
+  if (e.mainSwap)
     html +=
-      '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Discord: <span style="color:var(--text);">' +
-      e.discord +
-      '</span></div>';
-  if (e.mainSwap) {
-    var swapStillOnRoster = !!rosterMap[e.mainSwap.toLowerCase()];
-    html +=
-      '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Main swap: ' +
-      '<span style="color:var(--gold-light);font-weight:600;">' +
-      e.mainSwap +
-      '</span>' +
-      (swapStillOnRoster
-        ? ' <span style="color:var(--melee);font-size:0.85rem;">(still on roster -- check "remove absent" to clean up)</span>'
-        : ' <span style="color:var(--text-muted);font-size:0.85rem;">(already off roster)</span>') +
-      '</div>';
-  }
+      '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">' +
+      '<span style="color:var(--gold-light);font-weight:600;">Main swap requested</span> ' +
+      '<span style="font-size:0.85rem;">-- select the old character to archive below.</span></div>';
   if (e.notes)
     html +=
       '<div style="font-size:0.9rem;color:var(--text-muted);margin-top:0.35rem;font-style:italic;">' +
-      e.notes +
+      escHtml(e.notes) +
       '</div>';
 
+  html += buildAddToRosterControlHtml(e);
+
   html +=
-    '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);">' +
+    '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
     '<button class="btn btn-danger" onclick="removePendingRosterRow(' +
-    e.rowIndex +
+    e.signupId +
     ',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Remove from Pending</button>' +
     '</div>' +
     '</div>';
@@ -558,29 +459,108 @@ function buildPendingCardHtml(e, rosterMap) {
   return html;
 }
 
+// Per-row "Add to Roster" control: trial toggle (default checked) and, for
+// main-swap signups, a picker of active roster members to archive
+// (add_signup_to_roster's p_archive_player_id, team-scoped in the function).
+function buildAddToRosterControlHtml(e) {
+  var roster = (window.DATA && DATA.roster) || [];
+  var swapPicker = '';
+  if (e.mainSwap) {
+    var options = roster
+      .map(function (p) {
+        return '<option value="' + p.id + '">' + escHtml(p.nameRealm) + '</option>';
+      })
+      .join('');
+    swapPicker =
+      '<select class="pending-swap-select" style="font-size:0.85rem;padding:0.2rem 0.4rem;' +
+      'background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);margin-right:0.5rem;">' +
+      '<option value="">-- character to archive --</option>' +
+      options +
+      '</select>';
+  }
+
+  return (
+    '<div class="pending-add-roster" style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;' +
+    'margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);">' +
+    '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;color:var(--text-muted);cursor:pointer;">' +
+    '<input type="checkbox" class="pending-trial-checkbox" checked style="accent-color:var(--gold-light);">Trial' +
+    '</label>' +
+    swapPicker +
+    '<button class="btn request-approve-btn pending-add-btn" onclick="addSignupToRoster(' +
+    e.signupId +
+    ',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Add to Roster</button>' +
+    '<span class="pending-add-error" style="color:var(--melee);font-size:0.85rem;"></span>' +
+    '</div>'
+  );
+}
+
+// ── Add to Roster ─────────────────────────────────────────────────────────────
+
+function addSignupToRoster(signupId, btnEl) {
+  var card = btnEl.closest('.signup-response-card');
+  var trialEl = card ? card.querySelector('.pending-trial-checkbox') : null;
+  var swapEl = card ? card.querySelector('.pending-swap-select') : null;
+  var errEl = card ? card.querySelector('.pending-add-error') : null;
+
+  if (swapEl && !swapEl.value) {
+    if (errEl) errEl.textContent = 'Select the character to archive for this main swap.';
+    return;
+  }
+
+  if (errEl) errEl.textContent = '';
+  btnEl.disabled = true;
+  btnEl.textContent = 'Adding...';
+
+  supabaseClient
+    .rpc('add_signup_to_roster', {
+      p_signup_id: signupId,
+      p_is_trial: !!(trialEl && trialEl.checked),
+      p_archive_player_id: swapEl && swapEl.value ? parseInt(swapEl.value, 10) : null
+    })
+    .then(function (result) {
+      if (result.error) {
+        btnEl.disabled = false;
+        btnEl.textContent = 'Add to Roster';
+        if (errEl) errEl.textContent = result.error.message;
+        return;
+      }
+      if (card) card.remove();
+      _pendingRosterEntries = _pendingRosterEntries.filter(function (e) {
+        return e.signupId !== signupId;
+      });
+      renderPendingRoster(_pendingRosterEntries, _pendingMissingSignups);
+      updateNavBadges();
+    });
+}
+
 // ── Remove from pending ──────────────────────────────────────────────────────
 
-function removePendingRosterRow(rowIndex, btnEl) {
+function removePendingRosterRow(signupId, btnEl) {
   if (btnEl) {
     btnEl.disabled = true;
     btnEl.textContent = '...';
   }
 
-  jsonpRequest(WEB_APP_URL + '?action=removePendingRoster&row=' + rowIndex, function (err, result) {
-    if (err || (result && result.error)) {
-      if (btnEl) {
-        btnEl.disabled = false;
-        btnEl.textContent = 'Remove from Pending';
+  supabaseClient
+    .from('season_signups')
+    .update({ status: 'rejected' })
+    .eq('id', signupId)
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(function (result) {
+      if (result.error) {
+        if (btnEl) {
+          btnEl.disabled = false;
+          btnEl.textContent = 'Remove from Pending';
+        }
+        return;
       }
-      return;
-    }
-    var card = document.querySelector('.signup-response-card[data-row="' + rowIndex + '"]');
-    if (card) card.remove();
-    _pendingRosterEntries = _pendingRosterEntries.filter(function (e) {
-      return e.rowIndex !== rowIndex;
+      var card = document.querySelector('.signup-response-card[data-row="' + signupId + '"]');
+      if (card) card.remove();
+      _pendingRosterEntries = _pendingRosterEntries.filter(function (e) {
+        return e.signupId !== signupId;
+      });
+      // Re-render stats with the updated list
+      renderPendingRoster(_pendingRosterEntries, _pendingMissingSignups);
+      updateNavBadges();
     });
-    // Re-render stats and push area with updated list
-    renderPendingRoster(_pendingRosterEntries, _pendingMissingSignups);
-    updateNavBadges();
-  });
 }
