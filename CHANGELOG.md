@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.32.5] - 2026-07-12
+
+### Frontend
+
+- **Retired the dead GAS Discord OAuth code path (#222, Phase 6)** -- `discordTokenExchange`/`discordApiGet`/`discordOAuthCallback`/`generateSessionToken` (and the `discordCallback` action that called them) read `DISCORD_CLIENT_ID`/`DISCORD_CLIENT_SECRET` from Script Properties to mint a `discordSession_*` token, but nothing has called that route since `discord-callback.html` was deleted when login moved to Supabase Auth's Discord provider (#363) -- confirmed via a full grep of `js/` and every `.html` page for any reference to `discordCallback`/`discord-callback.html`, found none. `validateDiscordSession`/`claimCharacterForSession` and their routes are left in place (they don't read either secret, and `resolveChangedBy()`/`requestSelfReceived`'s `sessionToken` param still call `validateDiscordSession` for any pre-#363 session that might still be live) -- only the code that actually read the two Script Properties is removed. `DISCORD_CLIENT_ID`/`DISCORD_CLIENT_SECRET` still need to be deleted from the Apps Script project's Script Properties by hand (a separate store from Supabase, no CLI/SQL path to it). `WCL_CLIENT_SECRET` and `BOT_WEBHOOK_SECRET` stay in Script Properties -- they're still the live path for WCL sync and bot notifications; their Edge Function replacement is Phase 7 ("Integrations"), not yet built, despite the values already sitting dormant in Supabase's Edge Function secrets vault since Phase 1.
+
+---
+
 ## [3.32.4] - 2026-07-12
 
 ### Frontend
