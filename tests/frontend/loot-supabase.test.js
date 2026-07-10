@@ -71,12 +71,16 @@ function mockSupabase({ lootPages = [], rosterResult } = {}) {
             if (table === 'players') {
               return rosterResult ? rosterResult() : { data: null, error: { message: 'roster not mocked' } };
             }
-            // bis_items is a separate query loadData() fires alongside the loot
-            // pages (#217); this suite is only exercising lootCounts wiring, so
-            // it isn't mocked and should fall back to the heavy payload's
-            // bisList untouched, same as the 'players' default above.
+            // bis_items and items are separate queries loadData() fires
+            // alongside the loot pages (#217, item search fix); this suite is
+            // only exercising lootCounts wiring, so neither is mocked and
+            // both should fall back to the heavy payload's bisList/itemSlots
+            // untouched, same as the 'players' default above.
             if (table === 'bis_items') {
               return { data: null, error: { message: 'bis_items not mocked' } };
+            }
+            if (table === 'items') {
+              return { data: null, error: { message: 'items not mocked' } };
             }
             const result = lootPages[Math.min(page, lootPages.length - 1)];
             page++;

@@ -6,6 +6,18 @@ Issues carrying a decision are tagged with the `decision` label: `gh issue list 
 
 ---
 
+## 2026-07-09 -- Discord Claims display name (#389): new function, not a reuse of resolve_actor_name()
+
+The Roster tab's Discord Claims list only ever showed the raw Discord snowflake id, making it hard for an officer to visually confirm the right account claimed the right character. `resolve_actor_name()` (#376) already resolves an actor uuid to a display name, but for a different purpose (the audit log's CHANGED BY column) with a resolution order that's wrong here: linked-character nickname/name first, Discord display name only as a last resort for a site admin acting cross-team.
+
+- **New `resolve_discord_display_name(p_actor_id uuid, p_team_id integer)` function** instead of adding a mode flag to `resolve_actor_name()`. The claims-verification use case specifically wants the raw Discord display name every time, not the identity resolveAuditName prioritizes -- showing a claimed character's own nickname back as "the Discord name" would defeat the purpose (confirming the human behind the claim, not the character).
+- **Same SECURITY DEFINER shape and gate** as `resolve_actor_name()`/`write_audit_log()`: officer/team_leader-or-site-admin on the team, since it's still surfacing `auth.users` PII not exposed to anon/authenticated directly.
+- **Resolved client-side per claim, not joined in the query** -- `fetchTeamClaims()` (`js/discord.js`) only calls it for rows with a non-null `auth_user_id` (a pre-listed officer awaiting their first login has none yet), since a SECURITY DEFINER function can't be embedded in a PostgREST select the way a foreign-key join can.
+
+[Full discussion -> #389](https://github.com/katogaming88/WGA-Raid-Hub/issues/389)
+
+---
+
 ## 2026-07-09 -- RCLC loot import (#219): SECURITY INVOKER RPC, instance-suffix track, boss/itemID read straight off the export
 
 The GAS paste-import only ever carried `id, player, date, itemName, instance` into the "Pasted Loot" sheet -- no difficulty, boss, or item-id derivation existed anywhere in the import path. Migrating this needed real new logic, not a straight port, and a sample live RCLC JSON export (provided by Kat) settled several things the issue itself had flagged as open:

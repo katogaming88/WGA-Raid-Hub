@@ -222,6 +222,7 @@ function resolveDiscordSession(session) {
         var adminResult = results[1];
         var nameRealm = (linked && linked.name_realm) || (member && member.name_realm) || null;
         var mapped = {
+          authUserId: session.user.id,
           username: session.user.user_metadata.full_name || session.user.user_metadata.name,
           nameRealm: nameRealm,
           isOfficer: !!member && (member.role === 'officer' || member.role === 'team_leader'),
@@ -266,6 +267,16 @@ function initDiscordLogin() {
         fallBackToNoSession();
         return;
       }
+      // The cache is keyed per-team, not per-Discord-account, so a browser
+      // that previously had a *different* account's mapped session (e.g. an
+      // officer's) cached here would otherwise render that stale isOfficer
+      // flag for this account until resolveDiscordSession() corrects it a
+      // moment later. Drop it immediately whenever the signed-in user
+      // doesn't match who the cache belongs to.
+      var cached = getDiscordSession();
+      if (cached && cached.authUserId && cached.authUserId !== session.user.id) {
+        clearDiscordSession();
+      }
       markResolving();
       withTimeout(resolveDiscordSession(session), 15000)
         .then(function (mapped) {
@@ -279,6 +290,14 @@ function initDiscordLogin() {
 
   supabaseClient.auth.onAuthStateChange(function (event, session) {
     if (event === 'SIGNED_IN' && session) {
+      // Same stale-cache guard as the initial getSession() check above --
+      // this is the path that actually fires right after a fresh Discord
+      // login, so it's the one most likely to render a previous account's
+      // cached officer status against the newly-signed-in account.
+      var cachedOnSignIn = getDiscordSession();
+      if (cachedOnSignIn && cachedOnSignIn.authUserId && cachedOnSignIn.authUserId !== session.user.id) {
+        clearDiscordSession();
+      }
       markResolving();
       withTimeout(resolveDiscordSession(session), 15000)
         .then(function (mapped) {
@@ -307,6 +326,29 @@ function showDiscordClaimModal(session) {
   if (!modal) return;
   document.getElementById('claimDiscordName').textContent = session.username || '';
   document.getElementById('claimError').style.display = 'none';
+
+  // "Switch teams" link: when resolveDiscordSession() already found the
+  // raider's character on a specific other team (claimedElsewhere), switch
+  // straight there instead of just opening the team switcher dropdown for
+  // them to pick manually (#368 follow-up, matching the same pattern the
+  // officer quick-actions claim prompt already uses).
+  var wrongTeamLink = document.getElementById('claimWrongTeamLink');
+  if (wrongTeamLink) {
+    var elsewhere = session.claimedElsewhere;
+    if (elsewhere && elsewhere.teamSlug) {
+      wrongTeamLink.textContent = 'Switch to ' + (elsewhere.teamName || 'your other team');
+      wrongTeamLink.onclick = function (e) {
+        e.preventDefault();
+        switchTeam(elsewhere.teamSlug);
+      };
+    } else {
+      wrongTeamLink.textContent = 'Switch teams';
+      wrongTeamLink.onclick = function (e) {
+        e.preventDefault();
+        goToTeamSwitcher();
+      };
+    }
+  }
   // Show the modal immediately; the character list fills in when the query
   // resolves (one round-trip). Blocking on the read would make the button that
   // opened the modal feel unresponsive.
@@ -446,18 +488,45 @@ function adminAccessLevel(session) {
 // tab's claims table and the admin tab's promotion picker share this fetch.
 function fetchTeamClaims() {
   if (!supabaseClient) return Promise.resolve([]);
+  var teamId = _teamCfg.supabaseTeamId;
   return supabaseClient
     .from('players')
-    .select('name_realm, team_members(id, discord_id, role)')
-    .eq('team_id', _teamCfg.supabaseTeamId)
+    .select('name_realm, team_members(id, discord_id, auth_user_id, role)')
+    .eq('team_id', teamId)
     .not('team_member_id', 'is', null)
     .is('archived_at', null)
     .order('name_realm')
     .then(function (result) {
       if (result.error) return [];
-      return (result.data || []).map(function (row) {
+      var claims = (result.data || []).map(function (row) {
         var tm = row.team_members || {};
-        return { nameRealm: row.name_realm, teamMemberId: tm.id, discordId: tm.discord_id, role: tm.role };
+        return {
+          nameRealm: row.name_realm,
+          teamMemberId: tm.id,
+          discordId: tm.discord_id,
+          authUserId: tm.auth_user_id,
+          role: tm.role
+        };
+      });
+      // Discord display name: resolved separately, not joined --
+      // it's auth.users PII behind a SECURITY DEFINER function, not a plain
+      // FK select. Only worth resolving for a claim that's actually linked
+      // (a pre-listed officer awaiting their first login has no
+      // auth_user_id yet).
+      var withAuth = claims.filter(function (c) {
+        return c.authUserId;
+      });
+      if (!withAuth.length) return claims;
+      return Promise.all(
+        withAuth.map(function (c) {
+          return supabaseClient
+            .rpc('resolve_discord_display_name', { p_actor_id: c.authUserId, p_team_id: teamId })
+            .then(function (nameResult) {
+              c.discordName = nameResult.error ? '' : nameResult.data || '';
+            });
+        })
+      ).then(function () {
+        return claims;
       });
     });
 }

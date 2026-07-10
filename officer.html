@@ -185,13 +185,13 @@
               </div>
             </div>
             <div class="filter-bar" style="margin-bottom:0.5rem;">
-              <button class="filter-chip active" id="prio-subtab-btn-conflicts"
+              <button class="filter-chip active" id="prio-subtab-btn-list"
+                onclick="switchPrioritySubTab('list', this)">Priority List</button>
+              <button class="filter-chip" id="prio-subtab-btn-conflicts"
                 onclick="switchPrioritySubTab('conflicts', this)">Contested Items</button>
               <button class="filter-chip" id="prio-subtab-btn-unmanaged"
                 onclick="switchPrioritySubTab('unmanaged', this)">Unmanaged Items <span class="nav-notif"
                   id="prioSubBadge" style="display:none;"></span></button>
-              <button class="filter-chip" id="prio-subtab-btn-list"
-                onclick="switchPrioritySubTab('list', this)">Priority List</button>
               <button class="help-btn" onclick="toggleHelp('help-priority')" title="Show help">?</button>
             </div>
             <div id="help-priority" class="help-tip" style="margin-bottom:0.75rem;">

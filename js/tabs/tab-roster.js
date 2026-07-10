@@ -1223,13 +1223,19 @@ function renderDiscordClaims() {
           '<button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="removeDiscordClaim(' +
           jsonNr +
           ')">Remove</button>';
+        var discordCell = c.discordName
+          ? escHtml(c.discordName) +
+            '<br><span style="font-size:0.8rem;color:var(--text-dim);">' +
+            escHtml(c.discordId) +
+            '</span>'
+          : escHtml(c.discordId);
         return (
           '<tr>' +
           '<td style="width:35%">' +
           escHtml(c.nameRealm) +
           '</td>' +
           '<td style="width:30%">' +
-          escHtml(c.discordId) +
+          discordCell +
           '</td>' +
           '<td style="width:20%">' +
           roleCell +
@@ -1245,7 +1251,7 @@ function renderDiscordClaims() {
       '<table class="loot-table" style="width:100%;table-layout:fixed;">' +
       '<thead><tr>' +
       '<th style="width:35%;text-align:left">Character</th>' +
-      '<th style="width:30%;text-align:left">Discord ID</th>' +
+      '<th style="width:30%;text-align:left">Discord</th>' +
       '<th style="width:20%;text-align:left">Role</th>' +
       '<th style="width:15%"></th>' +
       '</tr></thead>' +

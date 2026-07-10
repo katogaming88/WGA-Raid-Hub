@@ -8,6 +8,20 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.26.0] - 2026-07-09
+
+### Frontend
+- **Priority tab now opens on Priority List by default** -- it was defaulting to Contested Items, despite Priority List being the plain read-only view most officers want first.
+- **"Switch teams" now switches automatically** wherever the app already knows which team a raider's character is claimed on (the Discord claim modal's wrong-team hint, and the officer quick-actions claim prompt), instead of just opening the team switcher dropdown for a manual pick.
+- **Discord Claims list now shows the actual Discord display name alongside the raw Discord ID** (Roster tab), resolved via a new `resolve_discord_display_name()` function, so officers can visually confirm the right account claimed the right character instead of only seeing an opaque snowflake id.
+- **Fixed a stale-session bug**: the cached mapped Discord session (`localStorage`, keyed per team) wasn't invalidated when a *different* Discord account signed in on the same browser, so a browser that previously had an officer's cached session could briefly show officer status for a newly-signed-in, non-officer account until the fresh check completed. The cache now checks the signed-in user's id before rendering anything from it.
+- **Fixed the BiS Manager's item search silently missing items that exist in Supabase but were never added to the GAS "Item Lookup" sheet** (e.g. an item resolved automatically during an RCLC loot import, #219) -- item search/autocomplete now merges Supabase's `items` table on top of the GAS-sourced item list instead of relying on the GAS sheet alone.
+
+### Backend
+- **`resolve_discord_display_name()` RPC** -- small `SECURITY DEFINER` function reading `auth.users`' Discord display name for the Discord Claims list, gated the same officer/team_leader-or-site-admin way as `resolve_actor_name()` (#376). Deliberately not a reuse of `resolve_actor_name()`: that function's resolution order prefers a linked character's nickname first, which is the wrong priority for verifying which real Discord account performed a claim.
+
+---
+
 ## [3.25.0] - 2026-07-09
 
 ### Frontend
