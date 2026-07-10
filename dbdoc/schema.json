@@ -2395,6 +2395,234 @@
         "public.season_signups",
         "public.classes_specs"
       ]
+    },
+    {
+      "name": "public.rnlsi",
+      "type": "VIEW",
+      "columns": [
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "name_realm",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "last_award_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "raid_nights_since_last_item",
+          "type": "bigint",
+          "nullable": true
+        }
+      ],
+      "def": "CREATE VIEW rnlsi AS (\n SELECT p.id AS player_id,\n    p.team_id,\n    p.name_realm,\n    cs.role,\n    la.last_award_at,\n    ( SELECT count(DISTINCT a.raid_date) AS count\n           FROM attendance a\n          WHERE ((a.team_id = p.team_id) AND ((la.last_award_at IS NULL) OR (a.raid_date \u003e (la.last_award_at)::date)))) AS raid_nights_since_last_item\n   FROM ((players p\n     LEFT JOIN classes_specs cs ON ((cs.id = p.class_spec_id)))\n     LEFT JOIN LATERAL ( SELECT max(rl.awarded_at) AS last_award_at\n           FROM rclc_loot rl\n          WHERE (rl.player_id = p.id)) la ON (true))\n  WHERE (p.archived_at IS NULL)\n  ORDER BY p.team_id, cs.role, ( SELECT count(DISTINCT a.raid_date) AS count\n           FROM attendance a\n          WHERE ((a.team_id = p.team_id) AND ((la.last_award_at IS NULL) OR (a.raid_date \u003e (la.last_award_at)::date)))) DESC\n)",
+      "referenced_tables": [
+        "public.attendance",
+        "public.players",
+        "public.classes_specs",
+        "LATERAL",
+        "public.rclc_loot"
+      ]
+    },
+    {
+      "name": "public.bis_demand_vs_awards",
+      "type": "VIEW",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "item_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "item_name",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "slot",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "demand_count",
+          "type": "bigint",
+          "nullable": true
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "awarded_count",
+          "type": "bigint",
+          "nullable": true
+        }
+      ],
+      "def": "CREATE VIEW bis_demand_vs_awards AS (\n WITH demand AS (\n         SELECT p.team_id,\n            bi.item_id,\n            count(DISTINCT bi.player_id) AS demand_count\n           FROM (bis_items bi\n             JOIN players p ON ((p.id = bi.player_id)))\n          WHERE (p.archived_at IS NULL)\n          GROUP BY p.team_id, bi.item_id\n        ), awards AS (\n         SELECT rclc_loot.team_id,\n            rclc_loot.item_id,\n            rclc_loot.season,\n            count(*) AS awarded_count\n           FROM rclc_loot\n          WHERE (rclc_loot.item_id IS NOT NULL)\n          GROUP BY rclc_loot.team_id, rclc_loot.item_id, rclc_loot.season\n        )\n SELECT d.team_id,\n    d.item_id,\n    i.name AS item_name,\n    i.slot,\n    d.demand_count,\n    a.season,\n    COALESCE(a.awarded_count, (0)::bigint) AS awarded_count\n   FROM ((demand d\n     JOIN items i ON ((i.id = d.item_id)))\n     LEFT JOIN awards a ON (((a.team_id = d.team_id) AND (a.item_id = d.item_id))))\n  ORDER BY d.team_id, d.demand_count DESC, COALESCE(a.awarded_count, (0)::bigint)\n)",
+      "referenced_tables": [
+        "public.bis_items",
+        "public.players",
+        "public.rclc_loot",
+        "public.items",
+        "awards"
+      ]
+    },
+    {
+      "name": "public.priority_order_stale_entries",
+      "type": "VIEW",
+      "columns": [
+        {
+          "name": "priority_order_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "item_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "item_name",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "track",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "rank",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "name_realm",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "def": "CREATE VIEW priority_order_stale_entries AS (\n SELECT po.id AS priority_order_id,\n    po.team_id,\n    po.season,\n    po.item_id,\n    i.name AS item_name,\n    po.track,\n    po.rank,\n    po.player_id,\n    p.name_realm,\n    p.archived_at\n   FROM ((priority_order po\n     JOIN players p ON ((p.id = po.player_id)))\n     JOIN items i ON ((i.id = po.item_id)))\n  WHERE (p.archived_at IS NOT NULL)\n  ORDER BY po.team_id, po.season, i.name, po.track, po.rank\n)",
+      "referenced_tables": [
+        "public.priority_order",
+        "public.players",
+        "public.items"
+      ]
+    },
+    {
+      "name": "public.priority_order_gaps",
+      "type": "VIEW",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "name_realm",
+          "type": "text",
+          "nullable": true
+        }
+      ],
+      "def": "CREATE VIEW priority_order_gaps AS (\n SELECT DISTINCT s.team_id,\n    s.season,\n    p.id AS player_id,\n    p.name_realm\n   FROM (( SELECT DISTINCT priority_order.team_id,\n            priority_order.season\n           FROM priority_order) s\n     JOIN players p ON ((p.team_id = s.team_id)))\n  WHERE ((p.archived_at IS NULL) AND (NOT p.is_bench) AND (NOT (EXISTS ( SELECT 1\n           FROM priority_order po\n          WHERE ((po.team_id = s.team_id) AND (po.season = s.season) AND (po.player_id = p.id))))))\n  ORDER BY s.team_id, s.season, p.name_realm\n)",
+      "referenced_tables": [
+        "public.priority_order",
+        "public.players"
+      ]
+    },
+    {
+      "name": "public.season_loot_pace",
+      "type": "VIEW",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "season_week",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "track",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "slot",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "items_awarded",
+          "type": "bigint",
+          "nullable": true
+        }
+      ],
+      "def": "CREATE VIEW season_loot_pace AS (\n WITH season_bounds AS (\n         SELECT rclc_loot.team_id,\n            rclc_loot.season,\n            min(rclc_loot.awarded_at) AS season_start\n           FROM rclc_loot\n          GROUP BY rclc_loot.team_id, rclc_loot.season\n        )\n SELECT rl.team_id,\n    rl.season,\n    ((floor((EXTRACT(epoch FROM (rl.awarded_at - sb.season_start)) / ((7 * 86400))::numeric)))::integer + 1) AS season_week,\n    rl.track,\n    i.slot,\n    count(*) AS items_awarded\n   FROM ((rclc_loot rl\n     JOIN season_bounds sb ON (((sb.team_id = rl.team_id) AND (sb.season = rl.season))))\n     LEFT JOIN items i ON ((i.id = rl.item_id)))\n  GROUP BY rl.team_id, rl.season, ((floor((EXTRACT(epoch FROM (rl.awarded_at - sb.season_start)) / ((7 * 86400))::numeric)))::integer + 1), rl.track, i.slot\n  ORDER BY rl.team_id, rl.season, ((floor((EXTRACT(epoch FROM (rl.awarded_at - sb.season_start)) / ((7 * 86400))::numeric)))::integer + 1)\n)",
+      "referenced_tables": [
+        "public.rclc_loot",
+        "rl.awarded_at",
+        "public.items"
+      ]
     }
   ],
   "relations": [

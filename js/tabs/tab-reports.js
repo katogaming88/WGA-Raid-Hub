@@ -108,7 +108,9 @@ function renderRnlsiTable() {
   }
 
   var filtered = REPORTS_STATE.rnlsiRoleFilter
-    ? rows.filter(function (r) { return r.role === REPORTS_STATE.rnlsiRoleFilter; })
+    ? rows.filter(function (r) {
+        return r.role === REPORTS_STATE.rnlsiRoleFilter;
+      })
     : rows;
   if (!filtered.length) {
     container.innerHTML = '<p style="color:var(--text-muted);">No players in this role.</p>';
@@ -169,7 +171,11 @@ function loadBisDemandReport() {
       }
       REPORTS_STATE.bisDemandRows = result.data || [];
       var select = document.getElementById('reportsBisSeasonFilter');
-      var seasons = reportsUniqueSorted(REPORTS_STATE.bisDemandRows.map(function (r) { return r.season; }));
+      var seasons = reportsUniqueSorted(
+        REPORTS_STATE.bisDemandRows.map(function (r) {
+          return r.season;
+        })
+      );
       var current = reportsCurrentSeasonCode();
       select.innerHTML = seasons
         .map(function (s) {
@@ -249,9 +255,15 @@ function loadPriorityHealthReport() {
     REPORTS_STATE.gapRows = results[1].data || [];
     var select = document.getElementById('reportsPriorityHealthSeasonFilter');
     var seasons = reportsUniqueSorted(
-      REPORTS_STATE.staleRows.map(function (r) { return r.season; }).concat(
-        REPORTS_STATE.gapRows.map(function (r) { return r.season; })
-      )
+      REPORTS_STATE.staleRows
+        .map(function (r) {
+          return r.season;
+        })
+        .concat(
+          REPORTS_STATE.gapRows.map(function (r) {
+            return r.season;
+          })
+        )
     );
     var current = reportsCurrentSeasonCode();
     select.innerHTML = seasons
@@ -329,8 +341,16 @@ function loadLootPaceReport() {
       REPORTS_STATE.lootPaceRows = result.data || [];
       var seasonSelect = document.getElementById('reportsPaceSeasonFilter');
       var slotSelect = document.getElementById('reportsPaceSlotFilter');
-      var seasons = reportsUniqueSorted(REPORTS_STATE.lootPaceRows.map(function (r) { return r.season; }));
-      var slots = reportsUniqueSorted(REPORTS_STATE.lootPaceRows.map(function (r) { return r.slot; }));
+      var seasons = reportsUniqueSorted(
+        REPORTS_STATE.lootPaceRows.map(function (r) {
+          return r.season;
+        })
+      );
+      var slots = reportsUniqueSorted(
+        REPORTS_STATE.lootPaceRows.map(function (r) {
+          return r.slot;
+        })
+      );
       var current = reportsCurrentSeasonCode();
       seasonSelect.innerHTML = seasons
         .map(function (s) {
@@ -351,7 +371,11 @@ function loadLootPaceReport() {
 
 function renderLootPaceTable() {
   var container = document.getElementById('reportsPaceContent');
-  var seasons = reportsUniqueSorted(REPORTS_STATE.lootPaceRows.map(function (r) { return r.season; }));
+  var seasons = reportsUniqueSorted(
+    REPORTS_STATE.lootPaceRows.map(function (r) {
+      return r.season;
+    })
+  );
   var season = document.getElementById('reportsPaceSeasonFilter').value;
   var track = document.getElementById('reportsPaceTrackFilter').value;
   var slot = document.getElementById('reportsPaceSlotFilter').value;
@@ -375,7 +399,9 @@ function renderLootPaceTable() {
   var prevMap = prevSeason ? weeklyTotals(filterRows(prevSeason)) : {};
   var weeks = reportsUniqueSorted(
     Object.keys(curMap).map(Number).concat(Object.keys(prevMap).map(Number)),
-    function (a, b) { return a - b; }
+    function (a, b) {
+      return a - b;
+    }
   );
 
   if (!weeks.length) {
