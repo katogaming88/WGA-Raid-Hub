@@ -616,6 +616,36 @@ function prioEditRenderList() {
   prioEditUpdateVersionWarning();
 }
 
+// Whether firstName already has the current item at Heroic/Mythic, per
+// DATA.lootCounts. Shared by the pool render (badge + block add) and
+// prioEditAdd()'s guard, so "Show all roster" can't bypass the pool's
+// filtering.
+function prioEditLootFlags(firstName) {
+  var itemLower = PRIO_EDIT.item.toLowerCase();
+  var lootCounts = DATA.lootCounts || {};
+  var loot = lootCounts[firstName.toLowerCase()] || null;
+  var flags = { hasHeroic: false, hasMythic: false };
+  if (loot && loot.items) {
+    for (var j = 0; j < loot.items.length; j++) {
+      if (loot.items[j].name.toLowerCase() !== itemLower) continue;
+      if (loot.items[j].difficulty === 'Heroic') flags.hasHeroic = true;
+      else if (loot.items[j].difficulty === 'Mythic') flags.hasMythic = true;
+    }
+  }
+  return flags;
+}
+
+// Whether firstName can be added to the currently-open track's ranked list.
+// Matches generate_priority_order()'s exclusion rule: a mythic recipient is
+// done with the item entirely (blocked from both tracks); a heroic
+// recipient is only blocked from heroic (still eligible, penalized, for
+// mythic).
+function prioEditIsBlocked(firstName) {
+  var flags = prioEditLootFlags(firstName);
+  var isMythic = PRIO_EDIT.difficulty === 'Mythic';
+  return flags.hasMythic || (!isMythic && flags.hasHeroic);
+}
+
 function prioEditRenderPool() {
   var pool = document.getElementById('prioEditPool');
   var ranked = PRIO_EDIT.ranked;
@@ -640,8 +670,6 @@ function prioEditRenderPool() {
   }
 
   var isMythic = PRIO_EDIT.difficulty === 'Mythic';
-  var lootCounts = DATA.lootCounts || {};
-  var itemLower = PRIO_EDIT.item.toLowerCase();
 
   var available = candidates.filter(function (n) {
     return !rankedSet[normalise(n)];
@@ -665,38 +693,28 @@ function prioEditRenderPool() {
     var display = player ? player.nick || player.firstName : firstName;
     var role = player ? player.role : '';
     var nEnc = encodeURIComponent(firstName);
-    var hasHeroic = false;
-    var hasMythic = false;
-    var loot = lootCounts[firstName.toLowerCase()] || null;
-    if (loot && loot.items) {
-      for (var j = 0; j < loot.items.length; j++) {
-        if (loot.items[j].name.toLowerCase() !== itemLower) continue;
-        if (loot.items[j].difficulty === 'Heroic') hasHeroic = true;
-        else if (loot.items[j].difficulty === 'Mythic') hasMythic = true;
-      }
-    }
-    // A mythic recipient is excluded from Suggest Order on both tracks, not
-    // just mythic (matches generate_priority_order()'s exclusion rule) --
-    // flag it regardless of which track is open so it isn't a silent gap in
-    // the ranked list. A heroic recipient is only excluded from heroic
-    // (still eligible, penalized, for mythic), so that badge stays mythic-only.
-    var excludedTitle = hasMythic
-      ? 'Already has the Mythic version -- excluded from Suggest Order'
-      : isMythic && hasHeroic
-        ? 'Has the Heroic version'
+    var flags = prioEditLootFlags(firstName);
+    // A mythic recipient can't go on either track's list -- they're done
+    // with the item entirely (matches generate_priority_order()'s exclusion
+    // rule). A heroic recipient is only blocked from heroic; still eligible,
+    // penalized, for mythic.
+    var blocked = flags.hasMythic || (!isMythic && flags.hasHeroic);
+    var badgeTitle = flags.hasMythic
+      ? 'Already has the Mythic version -- cannot be added to either list'
+      : flags.hasHeroic
+        ? isMythic
+          ? 'Has the Heroic version'
+          : 'Already has the Heroic version -- cannot be added to the Heroic list'
         : '';
-    html +=
-      '<div class="prio-pool-item"' +
-      (hasMythic ? ' style="opacity:0.55;"' : '') +
-      ' onclick="prioEditAdd(decodeURIComponent(\'' +
-      nEnc +
-      '\'))">';
+    html += '<div class="prio-pool-item"' + (blocked ? ' style="opacity:0.55;cursor:default;"' : '');
+    if (!blocked) html += ' onclick="prioEditAdd(decodeURIComponent(\'' + nEnc + '\'))"';
+    html += '>';
     html += '<span class="prio-pool-name">' + display + '</span>';
     if (role) html += '<span class="prio-role-badge prio-role-' + role + '">' + role.toUpperCase() + '</span>';
-    if (hasMythic) html += '<span class="prio-diff-badge prio-diff-mythic" title="' + excludedTitle + '">M</span>';
-    else if (isMythic && hasHeroic)
-      html += '<span class="prio-diff-badge prio-diff-heroic" title="' + excludedTitle + '">H</span>';
-    html += '<span class="prio-pool-add">+</span>';
+    if (flags.hasMythic) html += '<span class="prio-diff-badge prio-diff-mythic" title="' + badgeTitle + '">M</span>';
+    else if (flags.hasHeroic)
+      html += '<span class="prio-diff-badge prio-diff-heroic" title="' + badgeTitle + '">H</span>';
+    if (!blocked) html += '<span class="prio-pool-add">+</span>';
     html += '</div>';
   }
   pool.innerHTML = html;
@@ -705,6 +723,11 @@ function prioEditRenderPool() {
 function prioEditAdd(firstName) {
   if (PRIO_EDIT.ranked.length >= 10) {
     document.getElementById('prioEditStatus').textContent = 'Maximum 10 players per item.';
+    return;
+  }
+  if (prioEditIsBlocked(firstName)) {
+    document.getElementById('prioEditStatus').textContent =
+      firstName + ' already has this item at that difficulty and cannot be added.';
     return;
   }
   if (PRIO_EDIT.ranked.indexOf(firstName) === -1) {
