@@ -8,8 +8,13 @@
 -- gives officers somewhere to put it going forward; historical rows stay
 -- null (unrecoverable, same acceptance as the audit_log TARGET backfill).
 --
--- Null for every real item -- the slot comes from items.slot for those, this
--- column only matters when bis_items.item_id points at an is_placeholder row.
+-- Not placeholder-only: items.slot alone can't say which of the two Finger
+-- or Trinket rows a real ring/trinket is meant for either, so the BiS
+-- Manager's slot-grid editor (js/tabs/tab-bis.js, BIS_SLOTS) writes this
+-- column for every row it creates, real items included. Null only for
+-- legacy rows written before this column existed, which fall back to
+-- deriving their slot from items.slot client-side (unambiguous for every
+-- catalog slot except Finger/Trinket).
 alter table public.bis_items add column slot text;
 
 -- bis_items_no_dupe_item_key previously blocked a second row for the same

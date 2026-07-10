@@ -8,6 +8,15 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.29.0] - 2026-07-10
+
+### Frontend
+- **BiS Manager editor redesigned around a fixed 16-slot grid instead of a search-then-add flat list (#393)** -- a BiS list only ever has one item per slot, so the editor now shows every slot (Head/Neck/Shoulder/.../Finger 1/Finger 2/Trinket 1/Trinket 2/Weapon/Off Hand) up front; an empty row gets a "+ Add" that opens a search scoped to items that actually fit that slot (plus M+/Crafted/Catalyst placeholders, always offered everywhere), a filled row shows its item with Obtained/remove inline. This replaces the 3.28.0 placeholder-only slot picker -- `bis_items.slot` is now set for every row added through the editor, real items included, not just placeholders, since "Finger"/"Trinket" alone can't say which of the two numbered rows a real ring or trinket is for either. Legacy rows added before this feature (no `bis_items.slot` recorded) fall back to a best-effort placement by their catalog slot; anything that still doesn't land in a row (unrecognised slot, or both numbered rows already taken) surfaces in an "Other" section below the grid so nothing silently disappears.
+- **BiS editor rows are now bordered and zebra-striped** so each row's Obtained checkbox and remove button stay visually paired with its slot/item text across the empty space a wide panel leaves between them -- previously plain flex rows with no visual grouping, which got confusing once multiple rows could share the same item text (e.g. "M+" on both Finger slots).
+- **`getSlotColor()`'s slot-name vocabulary corrected to match `items.slot`** (`js/common.js`) -- it was still checking the old GAS sheet's plural naming (`SHOULDERS`/`GLOVES`/`BOOTS`/`CLOAK`/`BRACERS`/`BELT`, `RING`), which never matched Supabase's singular `items.slot` values (`Shoulder`/`Hands`/`Feet`/`Back`/`Wrist`/`Waist`, `Finger`) seeded by `fetch-items.js` -- real armor pieces were silently rendering in the default text color instead of their role color. Found while building the slot grid, where the mismatch was immediately visible.
+
+---
+
 ## [3.28.0] - 2026-07-10
 
 ### Frontend

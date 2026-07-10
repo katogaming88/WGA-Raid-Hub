@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.28.0';
+var VERSION = '3.29.0';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -821,15 +821,18 @@ function mapSupabaseBisItems(rows) {
     if (!map[firstName]) map[firstName] = [];
     map[firstName].push({
       item: itemRow.name,
-      // Placeholder rows (M+/Crafted/Catalyst) store the literal 'Placeholder'
-      // in items.slot since it's NOT NULL, so that never surfaces as a slot
-      // name -- bis_items.slot is the officer-chosen override that exists
-      // specifically for these rows (#391 follow-up), used when present.
-      slot: itemRow.is_placeholder ? row.slot || '' : itemRow.slot || '',
-      // The raw bis_items.slot column value (always null for real items) --
-      // tab-bis.js needs this, not the display slot above, to target the
-      // exact row on delete/update now that a placeholder item can have more
-      // than one row per player (distinguished by slot).
+      // bis_items.slot is the canonical BIS_SLOTS row an officer assigned
+      // this entry to (js/tabs/tab-bis.js, #393 follow-up) -- every row added
+      // through that editor carries one now, real items included, since
+      // "Finger"/"Trinket" alone can't say which of the two numbered slots an
+      // item is for. Falls back to the item's own catalog slot only for
+      // legacy real-item rows added before this existed; placeholder rows
+      // (M+/Crafted/Catalyst) never fall back, since items.slot is the
+      // literal 'Placeholder' sentinel for those (items.slot is NOT NULL).
+      slot: row.slot || (itemRow.is_placeholder ? '' : itemRow.slot || ''),
+      // The raw bis_items.slot column value -- tab-bis.js needs this, not the
+      // display slot above, to target the exact row on delete/update now that
+      // more than one row can share an item_id (distinguished by slot).
       dbSlot: row.slot || null,
       obtained: !!row.obtained,
       playerId: row.player_id,
@@ -1154,12 +1157,15 @@ function lookupItemSlot(itemName) {
   return '';
 }
 
+// Slot vocabulary matches items.slot / BIS_SLOTS (js/tabs/tab-bis.js), the
+// Supabase-native naming fetch-items.js seeds -- singular, "Finger"/"Hands"/
+// "Feet" etc, not the old GAS sheet's plural "Shoulders"/"Gloves"/"Boots".
 function getSlotColor(slot) {
   var s = (slot || '').toUpperCase();
   if (s === 'TRINKET' || s === 'TRINKET 1' || s === 'TRINKET 2') return 'var(--gold)';
-  if (s === 'NECK' || s === 'RING' || s === 'RING 1' || s === 'RING 2') return 'var(--ranged)';
-  if (s === '1H/2H' || s === 'OH') return 'var(--melee)';
-  if (['HEAD', 'SHOULDERS', 'CHEST', 'GLOVES', 'LEGS', 'CLOAK', 'BRACERS', 'BELT', 'BOOTS'].indexOf(s) >= 0)
+  if (s === 'NECK' || s === 'FINGER' || s === 'FINGER 1' || s === 'FINGER 2') return 'var(--ranged)';
+  if (['WEAPON', 'TWO-HAND', 'ONE-HAND', 'RANGED', 'OFF HAND'].indexOf(s) >= 0) return 'var(--melee)';
+  if (['HEAD', 'SHOULDER', 'CHEST', 'HANDS', 'LEGS', 'BACK', 'WRIST', 'WAIST', 'FEET'].indexOf(s) >= 0)
     return 'var(--tank)';
   return 'var(--text)';
 }
