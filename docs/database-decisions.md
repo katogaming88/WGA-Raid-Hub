@@ -6,6 +6,19 @@ Issues carrying a decision are tagged with the `decision` label: `gh issue list 
 
 ---
 
+## 2026-07-13 -- bis_requests repurposed for BiS link submissions (#404): dropped bis_req_item_id, gating moved to players.bis_allowed
+
+`bis_requests` existed since `initial_schema.sql` with Officers read/update RLS already in place, but nothing ever wrote to it (confirmed 0 rows, 0 references in `js/`). Its shape -- `bis_req_item_id integer NOT NULL`, an FK to `items` -- couldn't hold what the live raider-facing feature actually submits: a whole BiS list URL (`js/common.js` `submitBiSForm` -> GAS `submitBiS`), one per player, unrelated to any single item. It looks like it was scaffolded generically alongside the other request tables (`self_received_requests`, `mplus_exclusion_requests`) assuming a per-item shape this feature never matched.
+
+- **Repurposed the existing table rather than adding a second one**, since it was empty and unreferenced anywhere: dropped `bis_req_item_id`, added `bis_link text not null` and `player_note text`.
+- **New `submit_bis_link()` RPC, SECURITY DEFINER, granted to `anon`** -- the submission form runs unauthenticated on the public roster page, same trust model as the GAS action it replaces. Re-validates the gate server-side (`team_settings.config.bisSubmissionsOpen` team-wide, or the player's own `bis_allowed`) rather than trusting the client's decision to show the form.
+- **Per-player submission gating (`allowBisForPlayer`/`revokeBisForPlayer`) moved to a `players.bis_allowed` boolean column, not `team_settings`.** GAS stored this as a Script Property array toggled by any officer, no role distinction. The natural Supabase home for team-wide config, `set_team_setting()` (#221), is gated by "Team leaders write settings" -- routing a per-player toggle through it would have tightened today's any-officer access down to team_leader/site_admin only. A column on `players` keeps it on that table's existing officer-write rule instead (already officer *and* team_leader), so the toggle stays exactly as accessible as it is today, with no new RPC.
+- **Officer approve/reject and manual link edits write `bis_requests`/`players` directly** (two separate calls, not one transaction) -- both tables already have officer-write RLS, matching the direct-write pattern `js/tabs/tab-roster.js` already uses elsewhere. A failure between the two calls just leaves the request pending for a retry, no partial state an officer could act on incorrectly.
+
+[Full discussion -> #404](https://github.com/katogaming88/WGA-Raid-Hub/issues/404)
+
+---
+
 ## 2026-07-12 -- season_signups write path (#403): SECURITY DEFINER RPC granted to anon, no anti-spam token yet
 
 `season_signups` had no INSERT path of any kind -- only officer read/update -- because the public signup form (`js/signup.js`) still wrote exclusively to the GAS "Roster Responses" Sheet, which the officer Signups/Pending Roster tabs stopped reading when they switched to Supabase-only reads in #328. Every real signup submitted since then landed somewhere no officer screen ever reads.

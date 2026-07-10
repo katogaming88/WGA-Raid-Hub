@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.32.6';
+var VERSION = '3.32.7';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -585,7 +585,9 @@ function fetchSupabaseRoster() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('players')
-    .select('id, name_realm, nickname, is_trial, is_bench, bis_link, join_date, classes_specs(class, spec, role)')
+    .select(
+      'id, name_realm, nickname, is_trial, is_bench, bis_link, bis_allowed, join_date, classes_specs(class, spec, role)'
+    )
     .eq('team_id', _teamCfg.supabaseTeamId)
     .is('archived_at', null)
     .order('name_realm')
@@ -642,6 +644,7 @@ function mapSupabaseRoster(rows, jsonpRoster) {
       spec: cs.spec || '',
       role: cs.role,
       bisLink: row.bis_link || '',
+      bisAllowed: !!row.bis_allowed,
       joinDate: row.join_date || '',
       mPlusExcluded: !!jsonpRow.mPlusExcluded,
       mPlusNote: jsonpRow.mPlusNote || '',
@@ -1557,14 +1560,29 @@ function formatJoinDate(dateStr) {
   return months[m] + ' ' + parseInt(parts[2], 10) + ', ' + parts[0];
 }
 
+// Shared by both pages (index.html's signup/claim flow and officer.html's
+// BiS toggle) -- lives here rather than signup.js since only index.html
+// loads that file.
+function findRosterPlayerByNameRealm(nameRealm) {
+  if (!nameRealm || !window.DATA || !DATA.roster) return null;
+  var key = nameRealm.toLowerCase();
+  for (var i = 0; i < DATA.roster.length; i++) {
+    if ((DATA.roster[i].nameRealm || '').toLowerCase() === key) return DATA.roster[i];
+  }
+  return null;
+}
+
 // -- BiS state helpers ------------------------------------------------------
 function bisSubmissionsOpen() {
   return !!(DATA && DATA.bisSubmissionsOpen);
 }
 
+// bis_allowed lives on players (#404) so the officer-write RLS rule already
+// covering that table gates the toggle, instead of the team_leader-only
+// set_team_setting() path a team_settings array would have required.
 function bisAllowedFor(nameRealm) {
-  var allowed = DATA && DATA.bisAllowedPlayers;
-  return !!(allowed && allowed.indexOf(nameRealm) !== -1);
+  var player = findRosterPlayerByNameRealm(nameRealm);
+  return !!(player && player.bisAllowed);
 }
 
 // -- BiS form actions (used from profile on both pages) --------------------
@@ -1626,29 +1644,31 @@ function submitBiSForm(nameRealm, firstName) {
     if (urlEl) urlEl.style.borderColor = 'var(--melee)';
     return;
   }
-  var data = { nameRealm: nameRealm, bisLink: urlEl.value.trim(), notes: notesEl ? notesEl.value.trim() : '' };
   var formEl = document.getElementById('bisForm-' + firstName);
   if (formEl)
     formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
-  var cbName = '_submitBisCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
-  window[cbName] = function (result) {
-    delete window[cbName];
-    if (formEl) {
-      formEl.innerHTML = result.error
-        ? '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>'
-        : '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitted -- pending officer review.</p>';
-    }
-  };
-  var script = document.createElement('script');
-  script.onerror = function () {
-    delete window[cbName];
+
+  if (!supabaseClient) {
     if (formEl)
       formEl.innerHTML =
         '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
-  };
-  script.src =
-    WEB_APP_URL + '?action=submitBiS&data=' + encodeURIComponent(JSON.stringify(data)) + '&callback=' + cbName;
-  document.head.appendChild(script);
+    return;
+  }
+
+  supabaseClient
+    .rpc('submit_bis_link', {
+      p_team_id: _teamCfg.supabaseTeamId,
+      p_name_realm: nameRealm,
+      p_bis_link: urlEl.value.trim(),
+      p_player_note: notesEl ? notesEl.value.trim() : ''
+    })
+    .then(function (result) {
+      if (formEl) {
+        formEl.innerHTML = result.error
+          ? '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>'
+          : '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitted -- pending officer review.</p>';
+      }
+    });
 }
 
 function officerUpdateBisLink(nameRealm, firstName) {
@@ -1657,33 +1677,35 @@ function officerUpdateBisLink(nameRealm, firstName) {
     if (urlEl) urlEl.style.borderColor = 'var(--melee)';
     return;
   }
-  var data = { nameRealm: nameRealm, url: urlEl.value.trim() };
+  var url = urlEl.value.trim();
   var formEl = document.getElementById('bisForm-' + firstName);
   if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Saving...</p>';
-  var cbName = '_updateBisCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
-  window[cbName] = function (result) {
-    delete window[cbName];
-    if (formEl) {
-      formEl.innerHTML = result.error
-        ? '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to save. Try again.</p>'
-        : '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">BiS link updated. Clear cache to refresh.</p>';
-    }
-  };
-  var script = document.createElement('script');
-  script.onerror = function () {
-    delete window[cbName];
+
+  if (!supabaseClient) {
     if (formEl)
       formEl.innerHTML =
         '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to save. Try again.</p>';
-  };
-  script.src =
-    WEB_APP_URL +
-    '?action=updateBisLink&data=' +
-    encodeURIComponent(JSON.stringify(data)) +
-    _getAuditChangedByParam() +
-    '&callback=' +
-    cbName;
-  document.head.appendChild(script);
+    return;
+  }
+
+  var player = findRosterPlayerByNameRealm(nameRealm);
+  supabaseClient
+    .from('players')
+    .update({ bis_link: url })
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('name_realm', nameRealm)
+    .then(function (result) {
+      if (result.error) {
+        if (formEl)
+          formEl.innerHTML =
+            '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to save. Try again.</p>';
+        return;
+      }
+      if (formEl)
+        formEl.innerHTML =
+          '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">BiS link updated. Clear cache to refresh.</p>';
+      writeAuditLog('BiS Link Updated', 'players', player ? player.id : null, url);
+    });
 }
 
 function updateBisAllowDiv(nameRealm, firstName) {
@@ -1713,52 +1735,41 @@ function updateBisAllowDiv(nameRealm, firstName) {
   }
 }
 
-function allowBisForPlayer(nameRealm, firstName) {
+function setBisAllowedForPlayer(nameRealm, firstName, allowed) {
   var divEl = document.getElementById('bisAllowDiv-' + firstName);
   if (divEl) divEl.innerHTML = '<span style="font-size:0.95rem;color:var(--text-muted);">Saving...</span>';
-  var cbName = '_allowBisCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
-  window[cbName] = function (result) {
-    delete window[cbName];
-    if (result && result.success && DATA) DATA.bisAllowedPlayers = result.bisAllowedPlayers;
+
+  if (!supabaseClient) {
     updateBisAllowDiv(nameRealm, firstName);
-  };
-  var script = document.createElement('script');
-  script.onerror = function () {
-    delete window[cbName];
-    updateBisAllowDiv(nameRealm, firstName);
-  };
-  script.src =
-    WEB_APP_URL +
-    '?action=allowBisForPlayer&data=' +
-    encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })) +
-    _getAuditChangedByParam() +
-    '&callback=' +
-    cbName;
-  document.head.appendChild(script);
+    return;
+  }
+
+  var player = findRosterPlayerByNameRealm(nameRealm);
+  supabaseClient
+    .from('players')
+    .update({ bis_allowed: allowed })
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('name_realm', nameRealm)
+    .then(function (result) {
+      if (!result.error && player) player.bisAllowed = allowed;
+      if (!result.error) {
+        writeAuditLog(
+          allowed ? 'BiS Submission Enabled' : 'BiS Submission Revoked',
+          'players',
+          player ? player.id : null,
+          null
+        );
+      }
+      updateBisAllowDiv(nameRealm, firstName);
+    });
+}
+
+function allowBisForPlayer(nameRealm, firstName) {
+  setBisAllowedForPlayer(nameRealm, firstName, true);
 }
 
 function revokeBisForPlayer(nameRealm, firstName) {
-  var divEl = document.getElementById('bisAllowDiv-' + firstName);
-  if (divEl) divEl.innerHTML = '<span style="font-size:0.95rem;color:var(--text-muted);">Saving...</span>';
-  var cbName = '_revokeBisCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
-  window[cbName] = function (result) {
-    delete window[cbName];
-    if (result && result.success && DATA) DATA.bisAllowedPlayers = result.bisAllowedPlayers;
-    updateBisAllowDiv(nameRealm, firstName);
-  };
-  var script = document.createElement('script');
-  script.onerror = function () {
-    delete window[cbName];
-    updateBisAllowDiv(nameRealm, firstName);
-  };
-  script.src =
-    WEB_APP_URL +
-    '?action=revokeBisForPlayer&data=' +
-    encodeURIComponent(JSON.stringify({ nameRealm: nameRealm })) +
-    _getAuditChangedByParam() +
-    '&callback=' +
-    cbName;
-  document.head.appendChild(script);
+  setBisAllowedForPlayer(nameRealm, firstName, false);
 }
 
 // -- Self-received (raider marks item from profile) ------------------------

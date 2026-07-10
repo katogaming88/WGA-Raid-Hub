@@ -336,15 +336,6 @@ function buildClassMismatchWarningHtml() {
   );
 }
 
-function findRosterPlayerByNameRealm(nameRealm) {
-  if (!nameRealm || !window.DATA || !DATA.roster) return null;
-  var key = nameRealm.toLowerCase();
-  for (var i = 0; i < DATA.roster.length; i++) {
-    if ((DATA.roster[i].nameRealm || '').toLowerCase() === key) return DATA.roster[i];
-  }
-  return null;
-}
-
 function signupSelectClass(cls) {
   signupData.className = cls;
   signupData.mainSpec = '';

@@ -77,6 +77,7 @@ erDiagram
   integer team_member_id FK
   timestamp_with_time_zone archived_at
   timestamp_with_time_zone updated_at
+  boolean bis_allowed
 }
 "public.items" {
   integer id

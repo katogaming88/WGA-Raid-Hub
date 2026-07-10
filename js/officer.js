@@ -266,7 +266,6 @@ function setNavBadge(id, count) {
 function updateNavBadges() {
   jsonpRequest(WEB_APP_URL + '?action=getPendingCounts', function (err, result) {
     if (err || !result) return;
-    setNavBadge('bisNavBadge', result.bis || 0);
     setNavBadge('mplusNavBadge', result.mplus || 0);
     setNavBadge('requestsNavBadge', result.requests || 0);
   });
@@ -275,13 +274,36 @@ function updateNavBadges() {
     setNavBadge('signupsNavBadge', counts.signups + counts.pendingRoster);
     setNavBadge('pendingRosterSubBadge', counts.pendingRoster);
   });
+  fetchSupabaseBisCount(function (err, count) {
+    if (err) return;
+    setNavBadge('bisNavBadge', count);
+  });
 }
 
-// signups/pendingRoster nav badge counts, read from Supabase now that the
-// officer Signups/Pending Roster tabs are Supabase-only (#328, #403) -- the
-// GAS getPendingCounts equivalents counted rows in a sheet neither tab reads
-// anymore. bis/mplus/requests above stay GAS-sourced until their own tables
-// get a write path (#404/#405/#406).
+function fetchSupabaseBisCount(callback) {
+  if (!supabaseClient) {
+    callback(new Error('Not connected to Supabase.'));
+    return;
+  }
+  supabaseClient
+    .from('bis_requests')
+    .select('id', { count: 'exact', head: true })
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('status', 'pending')
+    .then(function (result) {
+      if (result.error) {
+        callback(result.error);
+        return;
+      }
+      callback(null, result.count || 0);
+    });
+}
+
+// signups/pendingRoster/bis nav badge counts, read from Supabase now that the
+// officer Signups/Pending Roster/BiS tabs are Supabase-only (#328, #403,
+// #404) -- the GAS getPendingCounts equivalents counted rows in sheets none
+// of these tabs read anymore. mplus/requests above stay GAS-sourced until
+// their own tables get a write path (#405/#406).
 function fetchSupabaseSignupCounts(callback) {
   if (!supabaseClient) {
     callback(new Error('Not connected to Supabase.'));

@@ -50,8 +50,8 @@ insert into public.players (id, team_id, name_realm, class_spec_id) values
 insert into public.audit_log (id, team_id, actor_id, action) values
   (1, 1, '00000000-0000-0000-0000-000000000001', 'seed_test_action');
 
-insert into public.bis_requests (id, team_id, player_id, bis_req_item_id, status) values
-  (1, 1, 1, 1, 'pending');
+insert into public.bis_requests (id, team_id, player_id, bis_link, status) values
+  (1, 1, 1, 'https://example.com/seed-bis-link', 'pending');
 
 insert into public.mplus_exclusion_requests (id, team_id, player_id, reason, status) values
   (1, 1, 1, 'seed test reason', 'pending');

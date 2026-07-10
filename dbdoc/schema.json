@@ -350,11 +350,6 @@
           "nullable": true
         },
         {
-          "name": "bis_req_item_id",
-          "type": "integer",
-          "nullable": false
-        },
-        {
           "name": "submitted_at",
           "type": "timestamp with time zone",
           "nullable": false,
@@ -365,6 +360,16 @@
           "type": "text",
           "nullable": false,
           "default": "'pending'::text"
+        },
+        {
+          "name": "bis_link",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "player_note",
+          "type": "text",
+          "nullable": true
         }
       ],
       "indexes": [
@@ -395,19 +400,6 @@
           "table": "public.bis_requests",
           "referenced_table": "",
           "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "bis_requests_bis_req_item_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (bis_req_item_id) REFERENCES items(id) ON DELETE SET NULL",
-          "table": "public.bis_requests",
-          "referenced_table": "public.items",
-          "columns": [
-            "bis_req_item_id"
-          ],
-          "referenced_columns": [
             "id"
           ]
         },
@@ -1150,6 +1142,12 @@
           "name": "updated_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "bis_allowed",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
         }
       ],
       "indexes": [
@@ -2694,19 +2692,6 @@
     {
       "table": "public.bis_requests",
       "columns": [
-        "bis_req_item_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.items",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (bis_req_item_id) REFERENCES items(id) ON DELETE SET NULL"
-    },
-    {
-      "table": "public.bis_requests",
-      "columns": [
         "player_id"
       ],
       "cardinality": "zero_or_more",
@@ -3182,6 +3167,12 @@
       "name": "public.submit_season_signup",
       "return_type": "int4",
       "arguments": "p_team_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.submit_bis_link",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_name_realm text, p_bis_link text, p_player_note text DEFAULT NULL::text",
       "type": "FUNCTION"
     }
   ],

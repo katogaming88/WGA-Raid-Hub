@@ -7,14 +7,14 @@
 | [public.attendance](public.attendance.md) | 7 |  | BASE TABLE |
 | [public.audit_log](public.audit_log.md) | 8 |  | BASE TABLE |
 | [public.bis_items](public.bis_items.md) | 6 |  | BASE TABLE |
-| [public.bis_requests](public.bis_requests.md) | 6 |  | BASE TABLE |
+| [public.bis_requests](public.bis_requests.md) | 7 |  | BASE TABLE |
 | [public.classes_specs](public.classes_specs.md) | 4 |  | BASE TABLE |
 | [public.item_bosses](public.item_bosses.md) | 2 |  | BASE TABLE |
 | [public.items](public.items.md) | 7 |  | BASE TABLE |
 | [public.rclc_loot](public.rclc_loot.md) | 10 |  | BASE TABLE |
 | [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) | 9 |  | BASE TABLE |
 | [public.player_wcl_season_perf](public.player_wcl_season_perf.md) | 7 |  | BASE TABLE |
-| [public.players](public.players.md) | 14 |  | BASE TABLE |
+| [public.players](public.players.md) | 15 |  | BASE TABLE |
 | [public.priority_order](public.priority_order.md) | 8 |  | BASE TABLE |
 | [public.scoring](public.scoring.md) | 10 |  | BASE TABLE |
 | [public.season_signups](public.season_signups.md) | 16 |  | BASE TABLE |
@@ -54,6 +54,7 @@
 | public.archive_current_season | jsonb | p_team_id integer, p_roster_snapshot jsonb | FUNCTION |
 | public.unarchive_season | jsonb | p_team_id integer, p_index integer | FUNCTION |
 | public.submit_season_signup | int4 | p_team_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text | FUNCTION |
+| public.submit_bis_link | int4 | p_team_id integer, p_name_realm text, p_bis_link text, p_player_note text DEFAULT NULL::text | FUNCTION |
 
 ## Enums
 
@@ -83,7 +84,6 @@ erDiagram
 "public.audit_log" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.bis_items" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
 "public.bis_items" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
-"public.bis_requests" }o--|| "public.items" : "FOREIGN KEY (bis_req_item_id) REFERENCES items(id) ON DELETE SET NULL"
 "public.bis_requests" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.bis_requests" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.item_bosses" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
@@ -144,9 +144,10 @@ erDiagram
   integer id
   integer team_id FK
   integer player_id FK
-  integer bis_req_item_id FK
   timestamp_with_time_zone submitted_at
   text status
+  text bis_link
+  text player_note
 }
 "public.classes_specs" {
   integer id
@@ -214,6 +215,7 @@ erDiagram
   integer team_member_id FK
   timestamp_with_time_zone archived_at
   timestamp_with_time_zone updated_at
+  boolean bis_allowed
 }
 "public.priority_order" {
   integer id

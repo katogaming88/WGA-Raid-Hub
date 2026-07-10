@@ -71,9 +71,10 @@ erDiagram
   integer id
   integer team_id FK
   integer player_id FK
-  integer bis_req_item_id FK
   timestamp_with_time_zone submitted_at
   text status
+  text bis_link
+  text player_note
 }
 "public.rclc_loot" {
   integer id
@@ -122,6 +123,7 @@ erDiagram
   integer team_member_id FK
   timestamp_with_time_zone archived_at
   timestamp_with_time_zone updated_at
+  boolean bis_allowed
 }
 "public.priority_order" {
   integer id

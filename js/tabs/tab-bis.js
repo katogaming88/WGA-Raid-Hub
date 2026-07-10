@@ -39,14 +39,37 @@ function buildBisTab() {
   container.innerHTML =
     '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">Loading submissions...</p>';
 
-  jsonpRequest(WEB_APP_URL + '?action=getPendingBiS', function (err, result) {
-    if (err) {
-      var c = document.getElementById('bisContainer');
-      if (c) c.innerHTML = '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">' + err.message + '</p>';
-      return;
-    }
-    renderBisSubmissions(result.submissions || []);
-  });
+  if (!supabaseClient) {
+    container.innerHTML =
+      '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">Not connected to Supabase.</p>';
+    return;
+  }
+
+  supabaseClient
+    .from('bis_requests')
+    .select('id, bis_link, player_note, submitted_at, players(name_realm)')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('status', 'pending')
+    .order('submitted_at', { ascending: false })
+    .then(function (result) {
+      if (result.error) {
+        var c = document.getElementById('bisContainer');
+        if (c)
+          c.innerHTML =
+            '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">' + result.error.message + '</p>';
+        return;
+      }
+      var submissions = (result.data || []).map(function (row) {
+        return {
+          id: row.id,
+          nameRealm: (row.players && row.players.name_realm) || '',
+          bisLink: row.bis_link || '',
+          notes: row.player_note || '',
+          timestamp: row.submitted_at ? new Date(row.submitted_at).toLocaleString() : ''
+        };
+      });
+      renderBisSubmissions(submissions);
+    });
 }
 
 function renderBisSubmissions(submissions) {
@@ -67,7 +90,7 @@ function renderBisSubmissions(submissions) {
   submissions.forEach(function (s) {
     html +=
       '<div class="request-card" data-row="' +
-      s.rowIndex +
+      s.id +
       '" data-name-realm="' +
       s.nameRealm.replace(/"/g, '&quot;') +
       '" data-bis-link="' +
@@ -95,10 +118,10 @@ function renderBisSubmissions(submissions) {
         : '') +
       '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
       '<button class="btn request-approve-btn" onclick="approveBisSubmission(' +
-      s.rowIndex +
+      s.id +
       ', this)">Approve</button>' +
       '<button class="btn request-reject-btn" onclick="rejectBisSubmission(' +
-      s.rowIndex +
+      s.id +
       ', this)">Reject</button>' +
       '</div>' +
       '</div>';
@@ -106,40 +129,70 @@ function renderBisSubmissions(submissions) {
   container.innerHTML = html + '</div>';
 }
 
-function approveBisSubmission(rowIndex, btnEl) {
-  var card = document.querySelector('.request-card[data-row="' + rowIndex + '"]');
+// Approve writes both bis_requests.status and players.bis_link -- two
+// separate officer-writable tables, no RPC needed (mirrors the direct-write
+// pattern tab-roster.js already uses). Not atomic, but a failure between the
+// two calls just leaves the request pending for a retry -- no partial state
+// an officer could act on incorrectly.
+function approveBisSubmission(requestId, btnEl) {
+  var card = document.querySelector('.request-card[data-row="' + requestId + '"]');
   var nameRealm = card ? card.getAttribute('data-name-realm') : '';
   var bisLink = card ? card.getAttribute('data-bis-link') : '';
   btnEl.disabled = true;
   btnEl.textContent = '...';
-  var data = { row: rowIndex, nameRealm: nameRealm, url: bisLink };
-  jsonpRequest(
-    WEB_APP_URL + '?action=approveBiS&data=' + encodeURIComponent(JSON.stringify(data)),
-    function (err, result) {
-      if (err || (result && result.error)) {
+
+  supabaseClient
+    .from('bis_requests')
+    .update({ status: 'approved' })
+    .eq('id', requestId)
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(function (result) {
+      if (result.error) {
         btnEl.disabled = false;
         btnEl.textContent = 'Approve';
         return;
       }
-      if (card) card.remove();
-      checkEmptyBisSubmissions();
-    }
-  );
+      var player = findRosterPlayerByNameRealm(nameRealm);
+      supabaseClient
+        .from('players')
+        .update({ bis_link: bisLink })
+        .eq('team_id', _teamCfg.supabaseTeamId)
+        .eq('name_realm', nameRealm)
+        .then(function (playerResult) {
+          if (playerResult.error) {
+            btnEl.disabled = false;
+            btnEl.textContent = 'Approve';
+            return;
+          }
+          writeAuditLog('BiS Approved', 'players', player ? player.id : null, bisLink);
+          if (card) card.remove();
+          checkEmptyBisSubmissions();
+        });
+    });
 }
 
-function rejectBisSubmission(rowIndex, btnEl) {
+function rejectBisSubmission(requestId, btnEl) {
   btnEl.disabled = true;
   btnEl.textContent = '...';
-  jsonpRequest(WEB_APP_URL + '?action=rejectBiS&row=' + rowIndex, function (err, result) {
-    if (err || (result && result.error)) {
-      btnEl.disabled = false;
-      btnEl.textContent = 'Reject';
-      return;
-    }
-    var card = document.querySelector('.request-card[data-row="' + rowIndex + '"]');
-    if (card) card.remove();
-    checkEmptyBisSubmissions();
-  });
+  var card = document.querySelector('.request-card[data-row="' + requestId + '"]');
+  var nameRealm = card ? card.getAttribute('data-name-realm') : '';
+
+  supabaseClient
+    .from('bis_requests')
+    .update({ status: 'rejected' })
+    .eq('id', requestId)
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(function (result) {
+      if (result.error) {
+        btnEl.disabled = false;
+        btnEl.textContent = 'Reject';
+        return;
+      }
+      var player = findRosterPlayerByNameRealm(nameRealm);
+      writeAuditLog('BiS Rejected', 'players', player ? player.id : null, null);
+      if (card) card.remove();
+      checkEmptyBisSubmissions();
+    });
 }
 
 function checkEmptyBisSubmissions() {
