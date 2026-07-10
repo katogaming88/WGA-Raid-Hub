@@ -257,18 +257,14 @@
           "name": "updated_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "slot",
+          "type": "text",
+          "nullable": true
         }
       ],
       "indexes": [
-        {
-          "name": "bis_items_no_dupe_item_key",
-          "def": "CREATE UNIQUE INDEX bis_items_no_dupe_item_key ON public.bis_items USING btree (player_id, item_id)",
-          "table": "public.bis_items",
-          "columns": [
-            "player_id",
-            "item_id"
-          ]
-        },
         {
           "name": "bis_items_pkey",
           "def": "CREATE UNIQUE INDEX bis_items_pkey ON public.bis_items USING btree (id)",
@@ -276,20 +272,19 @@
           "columns": [
             "id"
           ]
+        },
+        {
+          "name": "bis_items_no_dupe_item_key",
+          "def": "CREATE UNIQUE INDEX bis_items_no_dupe_item_key ON public.bis_items USING btree (player_id, item_id, COALESCE(slot, ''::text))",
+          "table": "public.bis_items",
+          "columns": [
+            "player_id",
+            "item_id",
+            "coalesce"
+          ]
         }
       ],
       "constraints": [
-        {
-          "name": "bis_items_no_dupe_item_key",
-          "type": "UNIQUE",
-          "def": "UNIQUE (player_id, item_id)",
-          "table": "public.bis_items",
-          "referenced_table": "",
-          "columns": [
-            "player_id",
-            "item_id"
-          ]
-        },
         {
           "name": "bis_items_pkey",
           "type": "PRIMARY KEY",

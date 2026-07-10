@@ -6,6 +6,18 @@ Issues carrying a decision are tagged with the `decision` label: `gh issue list 
 
 ---
 
+## 2026-07-10 -- bis_items.slot (#393): officer-chosen slot for placeholder entries
+
+Placeholder BiS entries (M+, Crafted, Catalyst) were displaying the literal word "Placeholder" as their slot -- `items.slot` is `NOT NULL`, and those rows store that sentinel since they name a loot source, not a gear slot. The old GAS BiS List sheet carried the real slot per-row instead (a player wrote "M+" into whichever slot's row they meant); that context was discarded at the #217/#320 migration, when `bis_items` collapsed to `(player_id, item_id)` with no home for it -- a known, documented, unrecoverable loss (`scripts/import/tables/bis.js`), same acceptance as the audit_log TARGET backfill (#377).
+
+- **Added `bis_items.slot text`, nullable.** Originally scoped to placeholder rows only, but extended same-day once the editor moved to a fixed slot grid (below): "Finger"/"Trinket" alone can't say which of the two numbered rows a *real* ring or trinket is for either, so every row the editor writes now carries an explicit `slot`, not just placeholder rows. Stays null only for legacy rows written before this column existed.
+- **`bis_items_no_dupe_item_key` changed from `UNIQUE (player_id, item_id)` to a `UNIQUE (player_id, item_id, coalesce(slot, ''))` expression index**, so the same item (placeholder or real) can be aimed at two different slots for one player (e.g. both Finger slots at "M+", or two different rings each explicitly slotted). Legacy rows with `slot` still null keep deduping exactly as before, since `coalesce(slot, '')` collapses them all to `''`.
+- **Frontend:** the BiS Manager editor became a fixed 16-slot grid (`BIS_SLOTS`, `js/tabs/tab-bis.js`) instead of a flat search-then-add list -- every row an officer fills writes its canonical slot to `bis_items.slot`, and the grid's per-row search is scoped to items whose catalog slot fits that row (`BIS_CATALOG_SLOT_TO_ROWS`), with M+/Crafted/Catalyst placeholders always offered everywhere. Delete/toggle-obtained now filter on `slot` too (`.eq('slot', ...)` / `.is('slot', null)`), since `item_id` alone no longer uniquely targets a row once more than one can share it.
+
+[Full discussion -> #393](https://github.com/katogaming88/WGA-Raid-Hub/issues/393)
+
+---
+
 ## 2026-07-09 -- Discord Claims display name (#389): new function, not a reuse of resolve_actor_name()
 
 The Roster tab's Discord Claims list only ever showed the raw Discord snowflake id, making it hard for an officer to visually confirm the right account claimed the right character. `resolve_actor_name()` (#376) already resolves an actor uuid to a display name, but for a different purpose (the audit log's CHANGED BY column) with a resolution order that's wrong here: linked-character nickname/name first, Discord display name only as a last resort for a site admin acting cross-team.

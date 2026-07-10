@@ -64,11 +64,15 @@ export function bisSql(teamId, cells, registry, knownItems) {
     valueRows.push([playerIdSql(teamId, nameRealm), itemIdSql(cell.item)]);
   }
 
+  // bis_items_no_dupe_item_key is now a 3-column expression index (#391
+  // follow-up: bis_items.slot lets officers disambiguate a second Finger/
+  // Trinket placeholder going forward) -- this importer never populates slot,
+  // so every inserted row conflicts on the same coalesce(slot, '') = ''.
   const sql = insertStatement(
     'bis_items',
     ['player_id', 'item_id'],
     valueRows,
-    'on conflict (player_id, item_id) do nothing'
+    "on conflict (player_id, item_id, coalesce(slot, '')) do nothing"
   );
   return { sql, count: valueRows.length, collapsed, warnings };
 }

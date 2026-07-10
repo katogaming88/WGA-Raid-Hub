@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.26.0';
+var VERSION = '3.29.0';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -774,7 +774,7 @@ function fetchSupabaseBisItems() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('bis_items')
-    .select('player_id, item_id, obtained, items(name, slot), players!inner(name_realm, team_id)')
+    .select('player_id, item_id, obtained, slot, items(name, slot, is_placeholder), players!inner(name_realm, team_id)')
     .eq('players.team_id', _teamCfg.supabaseTeamId)
     .then(function (result) {
       if (result.error) {
@@ -804,10 +804,10 @@ function fetchSupabaseBisItems() {
  * getBisItems()'s normalised lookup. Carries obtained/playerId/itemId so the
  * BiS Lists editor (tab-bis.js) can write back without a second lookup.
  * @param {any[]} rows - bis_items rows with embedded items and players
- * @returns {Object<string, {item: string, slot: string, obtained: boolean, playerId: number, itemId: number}[]>}
+ * @returns {Object<string, {item: string, slot: string, dbSlot: string|null, obtained: boolean, playerId: number, itemId: number}[]>}
  */
 function mapSupabaseBisItems(rows) {
-  /** @type {Object<string, {item: string, slot: string, obtained: boolean, playerId: number, itemId: number}[]>} */
+  /** @type {Object<string, {item: string, slot: string, dbSlot: string|null, obtained: boolean, playerId: number, itemId: number}[]>} */
   var map = {};
   (rows || []).forEach(function (row) {
     var players = row.players || {};
@@ -819,7 +819,19 @@ function mapSupabaseBisItems(rows) {
     if (!map[firstName]) map[firstName] = [];
     map[firstName].push({
       item: itemRow.name,
-      slot: itemRow.slot || '',
+      // bis_items.slot is the canonical BIS_SLOTS row an officer assigned
+      // this entry to (js/tabs/tab-bis.js, #393 follow-up) -- every row added
+      // through that editor carries one now, real items included, since
+      // "Finger"/"Trinket" alone can't say which of the two numbered slots an
+      // item is for. Falls back to the item's own catalog slot only for
+      // legacy real-item rows added before this existed; placeholder rows
+      // (M+/Crafted/Catalyst) never fall back, since items.slot is the
+      // literal 'Placeholder' sentinel for those (items.slot is NOT NULL).
+      slot: row.slot || (itemRow.is_placeholder ? '' : itemRow.slot || ''),
+      // The raw bis_items.slot column value -- tab-bis.js needs this, not the
+      // display slot above, to target the exact row on delete/update now that
+      // more than one row can share an item_id (distinguished by slot).
+      dbSlot: row.slot || null,
       obtained: !!row.obtained,
       playerId: row.player_id,
       itemId: row.item_id
@@ -828,28 +840,28 @@ function mapSupabaseBisItems(rows) {
   return map;
 }
 
-// Item lookup reads come from Supabase (items is a global, un-team-scoped
-// reference table -- no auth needed, RLS already permits public read).
-// heavy.itemSlots/itemArmorTypes (the GAS "Item Lookup" sheet) go stale the
-// moment an item only ever gets created in Supabase and never mirrored into
-// that sheet -- e.g. an item resolved automatically during an RCLC loot
-// import (#219) is real in the database but invisible to the BiS Manager's
-// item search, which reads DATA.itemSlots. Resolves to the raw rows, or null
-// on any failure so the caller falls back to the GAS-only maps.
+// Item catalog reads come exclusively from Supabase (#391): the GAS "Item
+// Lookup" sheet is retired as a data source for the web app now that
+// scripts/fetch-items.js seeds items/item_bosses from Wowhead every tier
+// (docs/updating-fetch-items-for-new-tier.md). items is a global,
+// un-team-scoped reference table -- no auth needed, RLS already permits
+// public read. Resolves to the raw rows, or null on any failure/empty so
+// the caller renders an empty catalog rather than silently serving stale
+// GAS data.
 function fetchSupabaseItems() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('items')
-    .select('name, slot, armor_type')
+    .select('name, slot, armor_type, is_placeholder')
     .then(function (result) {
       if (result.error) {
-        console.warn('Supabase items query failed, using Apps Script Item Lookup only.', result.error.message);
+        console.warn('Supabase items query failed.', result.error.message);
         return null;
       }
       return result.data && result.data.length ? result.data : null;
     })
     .catch(function (err) {
-      console.warn('Supabase items query failed, using Apps Script Item Lookup only.', err);
+      console.warn('Supabase items query failed.', err);
       return null;
     });
   var timeout = new Promise(function (resolve) {
@@ -860,22 +872,63 @@ function fetchSupabaseItems() {
   return Promise.race([query, timeout]);
 }
 
-// Merges Supabase's items on top of the GAS heavy chunk's itemSlots/
-// itemArmorTypes maps (name -> slot / name -> armor_type) rather than
-// replacing them outright, so an item the Item Lookup sheet still knows
-// about but Supabase doesn't (not fully backfilled yet) keeps working.
-// Supabase wins on a name collision, since it's the authoritative source
-// going forward.
-function mergeSupabaseItemMaps(rows, gasItemSlots, gasItemArmorTypes) {
-  var itemSlots = Object.assign({}, gasItemSlots || {});
-  var itemArmorTypes = Object.assign({}, gasItemArmorTypes || {});
+// item_bosses shares the same retirement (#391): joined through items for
+// the item name, since tab-priority.js's boss filter indexes DATA.itemBosses
+// by item name. Resolves to the raw rows, or null on any failure/empty.
+function fetchSupabaseItemBosses() {
+  if (!supabaseClient) return Promise.resolve(null);
+  var query = supabaseClient
+    .from('item_bosses')
+    .select('boss, items(name)')
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Supabase item_bosses query failed.', result.error.message);
+        return null;
+      }
+      return result.data && result.data.length ? result.data : null;
+    })
+    .catch(function (err) {
+      console.warn('Supabase item_bosses query failed.', err);
+      return null;
+    });
+  var timeout = new Promise(function (resolve) {
+    setTimeout(function () {
+      resolve(null);
+    }, 10000);
+  });
+  return Promise.race([query, timeout]);
+}
+
+// Builds the DATA.itemSlots/itemArmorTypes maps (name -> slot / name ->
+// armor_type) straight from Supabase's items rows -- no GAS merge, per #391.
+// Placeholder rows (M+, Crafted, Catalyst -- items.slot is NOT NULL, so those
+// stand-ins store the literal string 'Placeholder' since they name a loot
+// source rather than a gear slot) map to '' here rather than surfacing that
+// sentinel as if it were a real slot name in the UI.
+function buildItemMaps(rows) {
+  var itemSlots = {};
+  var itemArmorTypes = {};
+  var itemPlaceholders = {};
   (rows || []).forEach(function (row) {
     var name = String(row.name || '').trim();
     if (!name) return;
-    itemSlots[name] = row.slot || '';
+    itemSlots[name] = row.is_placeholder ? '' : row.slot || '';
     if (row.armor_type) itemArmorTypes[name] = row.armor_type;
+    if (row.is_placeholder) itemPlaceholders[name] = true;
   });
-  return { itemSlots: itemSlots, itemArmorTypes: itemArmorTypes };
+  return { itemSlots: itemSlots, itemArmorTypes: itemArmorTypes, itemPlaceholders: itemPlaceholders };
+}
+
+// Maps item_bosses rows (joined through items) to the DATA.itemBosses shape
+// the GAS heavy chunk used to emit: item name -> single boss string.
+function mapSupabaseItemBosses(rows) {
+  var map = {};
+  (rows || []).forEach(function (row) {
+    var name = row.items && row.items.name ? String(row.items.name).trim() : '';
+    var boss = String(row.boss || '').trim();
+    if (name && boss) map[name] = boss;
+  });
+  return map;
 }
 
 // onCoreReady fires once the fast core chunk is loaded and the page can render.
@@ -897,6 +950,8 @@ function loadData(onCoreReady, onHeavyReady) {
   var bisItemsPromise = fetchSupabaseBisItems();
   // Fired alongside; the heavy callback waits for it before setting itemSlots.
   var itemsPromise = fetchSupabaseItems();
+  // Fired alongside; the heavy callback waits for it before setting itemBosses.
+  var itemBossesPromise = fetchSupabaseItemBosses();
 
   window._rosterCoreCallback = function (data) {
     delete window._rosterCoreCallback;
@@ -923,10 +978,11 @@ function loadData(onCoreReady, onHeavyReady) {
       window._rosterHeavyCallback = function (heavy) {
         delete window._rosterHeavyCallback;
         if (!heavy || heavy.error) return;
-        Promise.all([lootPromise, bisItemsPromise, itemsPromise]).then(function (results) {
+        Promise.all([lootPromise, bisItemsPromise, itemsPromise, itemBossesPromise]).then(function (results) {
           var lootRows = results[0];
           var bisRows = results[1];
           var itemRows = results[2];
+          var itemBossRows = results[3];
           var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
           DATA.lootCounts = mappedLoot || {};
           DATA.attendanceDetails = heavy.attendanceDetails;
@@ -935,10 +991,11 @@ function loadData(onCoreReady, onHeavyReady) {
           var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
           DATA.bisList = mappedBis && Object.keys(mappedBis).length ? mappedBis : heavy.bisList;
           DATA.priorityOrder = heavy.priorityOrder;
-          var mergedItems = mergeSupabaseItemMaps(itemRows, heavy.itemSlots, heavy.itemArmorTypes);
-          DATA.itemSlots = mergedItems.itemSlots;
-          DATA.itemArmorTypes = mergedItems.itemArmorTypes;
-          DATA.itemBosses = heavy.itemBosses || {};
+          var itemMaps = buildItemMaps(itemRows);
+          DATA.itemSlots = itemMaps.itemSlots;
+          DATA.itemArmorTypes = itemMaps.itemArmorTypes;
+          DATA.itemPlaceholders = itemMaps.itemPlaceholders;
+          DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
           DATA.selfReceived = heavy.selfReceived;
           if (typeof populateBossFilters === 'function') populateBossFilters();
           if (onHeavyReady) onHeavyReady();
@@ -1098,12 +1155,15 @@ function lookupItemSlot(itemName) {
   return '';
 }
 
+// Slot vocabulary matches items.slot / BIS_SLOTS (js/tabs/tab-bis.js), the
+// Supabase-native naming fetch-items.js seeds -- singular, "Finger"/"Hands"/
+// "Feet" etc, not the old GAS sheet's plural "Shoulders"/"Gloves"/"Boots".
 function getSlotColor(slot) {
   var s = (slot || '').toUpperCase();
   if (s === 'TRINKET' || s === 'TRINKET 1' || s === 'TRINKET 2') return 'var(--gold)';
-  if (s === 'NECK' || s === 'RING' || s === 'RING 1' || s === 'RING 2') return 'var(--ranged)';
-  if (s === '1H/2H' || s === 'OH') return 'var(--melee)';
-  if (['HEAD', 'SHOULDERS', 'CHEST', 'GLOVES', 'LEGS', 'CLOAK', 'BRACERS', 'BELT', 'BOOTS'].indexOf(s) >= 0)
+  if (s === 'NECK' || s === 'FINGER' || s === 'FINGER 1' || s === 'FINGER 2') return 'var(--ranged)';
+  if (['WEAPON', 'TWO-HAND', 'ONE-HAND', 'RANGED', 'OFF HAND'].indexOf(s) >= 0) return 'var(--melee)';
+  if (['HEAD', 'SHOULDER', 'CHEST', 'HANDS', 'LEGS', 'BACK', 'WRIST', 'WAIST', 'FEET'].indexOf(s) >= 0)
     return 'var(--tank)';
   return 'var(--text)';
 }
