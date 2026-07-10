@@ -187,7 +187,7 @@ function executeUnarchiveSeason() {
       _unarchiveIndex = -1;
       buildSeasonTab();
       populateSeasonSelector();
-      return writeAuditLog('Season Unarchived', '', '', season.name || '');
+      return writeAuditLog('Season Unarchived', null, null, season.name || '');
     })
     .then(function () {
       if (status) {
@@ -294,7 +294,7 @@ function executeArchiveSeason() {
       SEASON_RAIDS = [];
       buildSeasonTab();
       populateSeasonSelector();
-      return writeAuditLog('Season Archived', '', '', archivedName);
+      return writeAuditLog('Season Archived', null, null, archivedName);
     })
     .then(function () {
       if (status) {
@@ -399,7 +399,7 @@ function saveSeasonName() {
       if (DATA) DATA.seasonName = val;
       if (input) input.value = val;
       populateSeasonSelector();
-      writeAuditLog('Season Name Set', '', '', val);
+      writeAuditLog('Season Name Set', null, null, val);
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {
@@ -439,7 +439,7 @@ function saveSeasonStart() {
       if (DATA) DATA.seasonStart = val;
       if (input) input.value = val;
       populateSeasonSelector();
-      writeAuditLog('Season Start Set', '', '', val);
+      writeAuditLog('Season Start Set', null, null, val);
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {
@@ -478,7 +478,7 @@ function saveSeasonEnd() {
       }
       if (DATA) DATA.seasonEnd = val;
       if (input) input.value = val;
-      writeAuditLog('Season End Set', '', '', val);
+      writeAuditLog('Season End Set', null, null, val);
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {
@@ -778,7 +778,7 @@ function saveRaidProgression() {
         btn.textContent = 'Save Progression';
       }
       DATA.raidProgression = JSON.parse(JSON.stringify(SEASON_RAIDS));
-      writeAuditLog('Raid Progression Saved', '', '', SEASON_RAIDS.length + ' raid(s)');
+      writeAuditLog('Raid Progression Saved', null, null, SEASON_RAIDS.length + ' raid(s)');
       if (status) {
         status.textContent = 'Saved!';
         setTimeout(function () {
@@ -819,7 +819,7 @@ function saveTrialThresholds() {
       }
       PROMO_THRESHOLDS.weeks = weeks;
       PROMO_THRESHOLDS.attend = attend;
-      writeAuditLog('Trial Thresholds Set', '', '', weeks + ' wk / ' + attend + '%');
+      writeAuditLog('Trial Thresholds Set', null, null, weeks + ' wk / ' + attend + '%');
       if (status) {
         status.textContent = 'Saved!';
         setTimeout(function () {

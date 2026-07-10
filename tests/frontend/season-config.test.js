@@ -77,7 +77,9 @@ describe('saveSeasonName (#221)', () => {
 
     expect(saveTeamSettingCalls).toEqual([{ seasonName: 'New Season' }]);
     expect(sandbox.DATA.seasonName).toBe('New Season');
-    expect(auditLogCalls).toEqual([{ action: 'Season Name Set', targetType: '', targetId: '', detail: 'New Season' }]);
+    expect(auditLogCalls).toEqual([
+      { action: 'Season Name Set', targetType: null, targetId: null, detail: 'New Season' }
+    ]);
     expect(els.seasonNameStatus.textContent).toBe('Saved!');
     expect(els.seasonNameSaveBtn.disabled).toBe(false);
   });

@@ -20,7 +20,7 @@ function toggleMPlusOpen() {
     .then(function () {
       if (btn) btn.disabled = false;
       if (DATA) DATA.mPlusExclusionsOpen = open;
-      writeAuditLog(open ? 'M+ Exclusions Opened' : 'M+ Exclusions Closed', '', '', '');
+      writeAuditLog(open ? 'M+ Exclusions Opened' : 'M+ Exclusions Closed', null, null, null);
       renderMPlusToggle();
     })
     .catch(function () {
