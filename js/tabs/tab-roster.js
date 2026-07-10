@@ -667,9 +667,76 @@ function addPlayerToRosterSupabase(payload) {
       if (writeResult.error) throw new Error(writeResult.error.message);
       var playerId = writeResult.data.id;
       var detail = [payload.class, payload.spec, payload.role].filter(Boolean).join(' ');
-      return writeAuditLog('Player Added', 'players', playerId, detail).then(function () {
-        return playerId;
+      return writeAuditLog('Player Added', 'players', playerId, detail)
+        .then(function () {
+          return backfillNotOnRosterForPlayer(teamId, playerId, payload.joinDate);
+        })
+        .catch(function (err) {
+          // Best-effort: the player is already added successfully at this
+          // point, so a backfill failure shouldn't surface as an add failure.
+          console.warn('Not on Roster backfill failed.', err);
+        })
+        .then(function () {
+          return playerId;
+        });
+    });
+}
+
+// #241: marks every raid night the team has any attendance row for, dated
+// before this player's join date, as "Not on Roster" for this player -- so
+// a mid-season add doesn't leave every pre-join night blank/editable in the
+// player detail panel. Only fills nights this player has no row for yet
+// (never overwrites a real historical status, which matters for the
+// reactivate-an-archived-player path above).
+function backfillNotOnRosterForPlayer(teamId, playerId, joinDate) {
+  if (!joinDate) return Promise.resolve();
+
+  return supabaseClient
+    .from('attendance')
+    .select('raid_date')
+    .eq('team_id', teamId)
+    .lt('raid_date', joinDate)
+    .then(function (allResult) {
+      if (allResult.error) throw new Error(allResult.error.message);
+      var seen = {};
+      (allResult.data || []).forEach(function (row) {
+        if (row.raid_date) seen[row.raid_date] = true;
       });
+      var preJoinDates = Object.keys(seen);
+      if (!preJoinDates.length) return;
+
+      return supabaseClient
+        .from('attendance')
+        .select('raid_date')
+        .eq('team_id', teamId)
+        .eq('player_id', playerId)
+        .then(function (existingResult) {
+          if (existingResult.error) throw new Error(existingResult.error.message);
+          var existing = {};
+          (existingResult.data || []).forEach(function (row) {
+            if (row.raid_date) existing[row.raid_date] = true;
+          });
+          var missing = preJoinDates.filter(function (d) {
+            return !existing[d];
+          });
+          if (!missing.length) return;
+
+          var rows = missing.map(function (d) {
+            return { team_id: teamId, player_id: playerId, raid_date: d, status: 'Not on Roster' };
+          });
+          return supabaseClient
+            .from('attendance')
+            .insert(rows)
+            .then(function (insertResult) {
+              if (insertResult.error) throw new Error(insertResult.error.message);
+              return writeAuditLog(
+                'Attendance Backfilled',
+                'players',
+                playerId,
+                missing.length + ' pre-join night(s) marked Not on Roster'
+              );
+            });
+        });
     });
 }
 
