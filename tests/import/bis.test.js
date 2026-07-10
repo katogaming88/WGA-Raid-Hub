@@ -35,7 +35,7 @@ describe('bisSql', () => {
     expect(count).toBe(4); // 6 cells, Slayer's Band dup + M+ dup collapsed
     expect(collapsed).toBe(2);
     expect(warnings).toHaveLength(0);
-    expect(sql).toContain('on conflict (player_id, item_id) do nothing');
+    expect(sql).toContain("on conflict (player_id, item_id, coalesce(slot, '')) do nothing");
     expect(sql).toContain("lower('M+')");
   });
   it('warns when a cell names an item missing from the Item Lookup', () => {

@@ -338,6 +338,7 @@ function toggleBisListEditor(firstName, nameRealm) {
     _bisListEditor = { firstName: firstName, nameRealm: nameRealm };
     _bisListSearch = '';
   }
+  _bisPendingPlaceholder = null;
   buildBisListsTab();
 }
 
@@ -393,15 +394,34 @@ function bisEditorHTML() {
       '<p style="color:var(--text-muted);font-size:0.92rem;margin:0 0 0.6rem;">No items yet -- search below to add.</p>';
   }
 
+  if (_bisPendingPlaceholder) {
+    html +=
+      '<div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.5rem;">' +
+      '<span style="font-size:0.9rem;color:var(--text-muted);">Which slot is "' +
+      _bisPendingPlaceholder +
+      '" for?</span>' +
+      '<select id="bisPlaceholderSlotSelect" class="self-received-source" style="font-size:0.9rem;">' +
+      PLACEHOLDER_SLOT_OPTIONS.map(function (s) {
+        return '<option value="' + s + '">' + s + '</option>';
+      }).join('') +
+      '</select>' +
+      '<button class="btn btn-gold" style="font-size:0.85rem;padding:0.2rem 0.65rem;" ' +
+      'onclick="bisListConfirmPlaceholder(document.getElementById(\'bisPlaceholderSlotSelect\').value)">Add</button>' +
+      '<button class="btn btn-muted" style="font-size:0.85rem;padding:0.2rem 0.65rem;" ' +
+      'onclick="bisListCancelPlaceholder()">Cancel</button>' +
+      '</div>';
+  } else {
+    html +=
+      '<div style="position:relative;margin-bottom:0.5rem;">' +
+      '<input type="text" id="bisListSearchInput" placeholder="Search items to add..." ' +
+      'class="self-received-source" style="width:100%;box-sizing:border-box;font-size:0.95rem;" ' +
+      'oninput="bisListOnInput()" autocomplete="off">' +
+      '<div id="bisListDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;' +
+      'background:var(--bg-card);border:1px solid var(--border);border-radius:4px;z-index:100;' +
+      'max-height:200px;overflow-y:auto;"></div>' +
+      '</div>';
+  }
   html +=
-    '<div style="position:relative;margin-bottom:0.5rem;">' +
-    '<input type="text" id="bisListSearchInput" placeholder="Search items to add..." ' +
-    'class="self-received-source" style="width:100%;box-sizing:border-box;font-size:0.95rem;" ' +
-    'oninput="bisListOnInput()" autocomplete="off">' +
-    '<div id="bisListDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;' +
-    'background:var(--bg-card);border:1px solid var(--border);border-radius:4px;z-index:100;' +
-    'max-height:200px;overflow-y:auto;"></div>' +
-    '</div>' +
     '<div style="display:flex;gap:0.5rem;align-items:center;">' +
     '<span id="bisListSaveMsg" style="font-size:0.92rem;color:var(--text-muted);"></span>' +
     '</div>';
@@ -428,6 +448,15 @@ function refreshBisEditorPanel() {
   }
 }
 
+// A placeholder item (M+/Crafted/Catalyst) can now have more than one row per
+// player, distinguished only by bis_items.slot (#391 follow-up, e.g. two
+// Finger slots both aimed at "M+") -- .eq('item_id', ...) alone would match
+// every one of them. entry.dbSlot is the raw column value (null for every
+// real item, since only placeholder rows ever get one written).
+function bisSlotFilter(query, dbSlot) {
+  return dbSlot ? query.eq('slot', dbSlot) : query.is('slot', null);
+}
+
 function removeBisListItem(index) {
   if (!_bisListEditor) return;
   var entry = getBisItems(_bisListEditor.firstName)[index];
@@ -435,11 +464,10 @@ function removeBisListItem(index) {
   if (!entry || !player || !player.id || entry.itemId == null) return;
   var msgEl = document.getElementById('bisListSaveMsg');
   if (msgEl) msgEl.textContent = 'Removing...';
-  supabaseClient
-    .from('bis_items')
-    .delete()
-    .eq('player_id', player.id)
-    .eq('item_id', entry.itemId)
+  bisSlotFilter(
+    supabaseClient.from('bis_items').delete().eq('player_id', player.id).eq('item_id', entry.itemId),
+    entry.dbSlot
+  )
     .then(function (result) {
       if (result.error) throw new Error(result.error.message);
       return writeAuditLog('BiS Item Removed', 'players', player.id, bisItemAuditDetail(entry.item, entry.slot));
@@ -448,7 +476,7 @@ function removeBisListItem(index) {
       var key = bisListKeyFor(_bisListEditor.firstName);
       if (DATA.bisList && DATA.bisList[key]) {
         DATA.bisList[key] = DATA.bisList[key].filter(function (e) {
-          return e.itemId !== entry.itemId;
+          return !(e.itemId === entry.itemId && (e.dbSlot || null) === (entry.dbSlot || null));
         });
       }
       // Rebuilds the whole tab, not just refreshBisEditorPanel() -- the row's
@@ -469,11 +497,10 @@ function toggleBisItemObtained(index, checked) {
   if (!entry || !player || !player.id || entry.itemId == null) return;
   var msgEl = document.getElementById('bisListSaveMsg');
   if (msgEl) msgEl.textContent = 'Saving...';
-  supabaseClient
-    .from('bis_items')
-    .update({ obtained: checked })
-    .eq('player_id', player.id)
-    .eq('item_id', entry.itemId)
+  bisSlotFilter(
+    supabaseClient.from('bis_items').update({ obtained: checked }).eq('player_id', player.id).eq('item_id', entry.itemId),
+    entry.dbSlot
+  )
     .then(function (result) {
       if (result.error) throw new Error(result.error.message);
       var detail =
@@ -553,19 +580,26 @@ function bisListOnInput() {
     return;
   }
 
+  var itemPlaceholders = DATA.itemPlaceholders || {};
+
   dropdown.innerHTML = matches
     .map(function (name) {
       var slot = itemSlots[name] || '';
-      var already = existing[normalise(name)];
+      var isPlaceholder = !!itemPlaceholders[name];
+      // Placeholder items can be added more than once (a different slot each
+      // time), so "already added" only disables real items -- a placeholder
+      // duplicate is caught at slot-confirm time instead (bisListConfirmPlaceholder).
+      var already = existing[normalise(name)] && !isPlaceholder;
+      var onPick = isPlaceholder
+        ? "bisListPickPlaceholderItem('" + name.replace(/'/g, "\\'") + "')"
+        : "bisListPickItem('" + name.replace(/'/g, "\\'") + "','" + slot.replace(/'/g, "\\'") + "')";
       return (
         '<div class="realm-option" style="display:flex;gap:0.5rem;align-items:center;' +
         (already ? 'opacity:0.45;pointer-events:none;' : '') +
         '" ' +
-        'onmousedown="bisListPickItem(\'' +
-        name.replace(/'/g, "\\'") +
-        "','" +
-        slot.replace(/'/g, "\\'") +
-        '\')">' +
+        'onmousedown="' +
+        onPick +
+        '">' +
         '<span style="min-width:5rem;font-size:0.85rem;color:' +
         getSlotColor(slot) +
         ';">' +
@@ -612,7 +646,104 @@ function bisListPickItem(itemName, slot) {
       var key = bisListKeyFor(firstName);
       if (!DATA.bisList) DATA.bisList = {};
       if (!DATA.bisList[key]) DATA.bisList[key] = [];
-      DATA.bisList[key].push({ item: itemName, slot: slot, obtained: false, playerId: player.id, itemId: itemId });
+      DATA.bisList[key].push({
+        item: itemName,
+        slot: slot,
+        dbSlot: null,
+        obtained: false,
+        playerId: player.id,
+        itemId: itemId
+      });
+      buildBisListsTab();
+    })
+    .catch(function (err) {
+      var msg = document.getElementById('bisListSaveMsg');
+      if (msg) msg.textContent = 'Failed: ' + err.message;
+    });
+}
+
+// Placeholder items (M+/Crafted/Catalyst) name a loot source, not a gear
+// slot, so bisListPickItem's one-click add doesn't apply -- the officer picks
+// which slot this particular placeholder is standing in for first (#391
+// follow-up), which also lets the same placeholder appear twice for a player
+// (e.g. both Finger slots aimed at "M+"), distinguished by that chosen slot.
+var PLACEHOLDER_SLOT_OPTIONS = [
+  'Head',
+  'Neck',
+  'Shoulder',
+  'Back',
+  'Chest',
+  'Wrist',
+  'Hands',
+  'Waist',
+  'Legs',
+  'Feet',
+  'Finger 1',
+  'Finger 2',
+  'Trinket 1',
+  'Trinket 2',
+  'Weapon',
+  'Off Hand'
+];
+
+var _bisPendingPlaceholder = null; // item name awaiting a slot choice, or null
+
+function bisListPickPlaceholderItem(itemName) {
+  _bisPendingPlaceholder = itemName;
+  _bisListSearch = '';
+  var dropdown = document.getElementById('bisListDropdown');
+  if (dropdown) dropdown.style.display = 'none';
+  refreshBisEditorPanel();
+}
+
+function bisListCancelPlaceholder() {
+  _bisPendingPlaceholder = null;
+  refreshBisEditorPanel();
+}
+
+function bisListConfirmPlaceholder(slot) {
+  if (!_bisPendingPlaceholder || !_bisListEditor || !slot) return;
+  var itemName = _bisPendingPlaceholder;
+  var existing = getBisItems(_bisListEditor.firstName);
+  for (var i = 0; i < existing.length; i++) {
+    if (existing[i].item === itemName && (existing[i].dbSlot || '') === slot) {
+      var dupMsg = document.getElementById('bisListSaveMsg');
+      if (dupMsg) dupMsg.textContent = itemName + ' (' + slot + ') is already on this list.';
+      return;
+    }
+  }
+  var player = bisFindRosterPlayer(_bisListEditor.firstName);
+  if (!player || !player.id) return;
+  var firstName = _bisListEditor.firstName;
+  _bisPendingPlaceholder = null;
+  var msgEl = document.getElementById('bisListSaveMsg');
+  if (msgEl) msgEl.textContent = 'Adding...';
+  resolveItemId(itemName)
+    .then(function (itemId) {
+      return supabaseClient
+        .from('bis_items')
+        .insert({ player_id: player.id, item_id: itemId, slot: slot })
+        .then(function (result) {
+          if (result.error) throw new Error(result.error.message);
+          return writeAuditLog('BiS Item Added', 'players', player.id, bisItemAuditDetail(itemName, slot)).then(
+            function () {
+              return itemId;
+            }
+          );
+        });
+    })
+    .then(function (itemId) {
+      var key = bisListKeyFor(firstName);
+      if (!DATA.bisList) DATA.bisList = {};
+      if (!DATA.bisList[key]) DATA.bisList[key] = [];
+      DATA.bisList[key].push({
+        item: itemName,
+        slot: slot,
+        dbSlot: slot,
+        obtained: false,
+        playerId: player.id,
+        itemId: itemId
+      });
       buildBisListsTab();
     })
     .catch(function (err) {

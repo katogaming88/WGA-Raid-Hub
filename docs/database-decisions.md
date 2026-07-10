@@ -6,6 +6,18 @@ Issues carrying a decision are tagged with the `decision` label: `gh issue list 
 
 ---
 
+## 2026-07-10 -- bis_items.slot (#393): officer-chosen slot for placeholder entries
+
+Placeholder BiS entries (M+, Crafted, Catalyst) were displaying the literal word "Placeholder" as their slot -- `items.slot` is `NOT NULL`, and those rows store that sentinel since they name a loot source, not a gear slot. The old GAS BiS List sheet carried the real slot per-row instead (a player wrote "M+" into whichever slot's row they meant); that context was discarded at the #217/#320 migration, when `bis_items` collapsed to `(player_id, item_id)` with no home for it -- a known, documented, unrecoverable loss (`scripts/import/tables/bis.js`), same acceptance as the audit_log TARGET backfill (#377).
+
+- **Added `bis_items.slot text`, nullable.** Officer-chosen override, used only when `item_id` points at an `is_placeholder` item; stays null for every real item, whose slot keeps deriving from `items.slot`.
+- **`bis_items_no_dupe_item_key` changed from `UNIQUE (player_id, item_id)` to a `UNIQUE (player_id, item_id, coalesce(slot, ''))` expression index**, so the same placeholder can be aimed at two different slots for one player (e.g. both Finger slots at "M+") -- previously blocked outright, since two placeholder rows for the same player always shared `item_id`. Real items still dedupe exactly as before: `slot` is always null for them, so `coalesce(slot, '')` is always `''`, and a second copy of the same real item still conflicts.
+- **Frontend:** the BiS Manager's item search branches on a new `DATA.itemPlaceholders` map -- a real item still one-click-adds; a placeholder item prompts for a slot (a fixed list including `Finger 1`/`Finger 2`/`Trinket 1`/`Trinket 2`) before inserting. Delete/toggle-obtained now filter on `slot` too (`.eq('slot', ...)` / `.is('slot', null)`), since `item_id` alone no longer uniquely targets a row once a placeholder can appear more than once.
+
+[Full discussion -> #393](https://github.com/katogaming88/WGA-Raid-Hub/issues/393)
+
+---
+
 ## 2026-07-09 -- Discord Claims display name (#389): new function, not a reuse of resolve_actor_name()
 
 The Roster tab's Discord Claims list only ever showed the raw Discord snowflake id, making it hard for an officer to visually confirm the right account claimed the right character. `resolve_actor_name()` (#376) already resolves an actor uuid to a display name, but for a different purpose (the audit log's CHANGED BY column) with a resolution order that's wrong here: linked-character nickname/name first, Discord display name only as a last resort for a site admin acting cross-team.

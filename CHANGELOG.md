@@ -8,11 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [3.27.0] - 2026-07-10
+## [3.28.0] - 2026-07-10
 
 ### Frontend
 - **Item catalog now reads exclusively from Supabase's `items`/`item_bosses` tables (#391)** -- the GAS "Item Lookup" sheet (`getItemSlots()`/`getItemArmorTypes()`/`getItemBosses()` in `gs/wgaWebApp.gs`) is retired as a data source for the web app. `scripts/fetch-items.js` already seeds `items`/`item_bosses` from Wowhead every tier, so there's no reason to maintain two parallel catalogs; the PR #390 stopgap (merging Supabase on top of GAS) is replaced with a Supabase-only read. A failed/empty Supabase query now resolves to an empty catalog rather than silently falling back to stale GAS data, matching how loot reads behaved after #209/#358. The GAS functions themselves are left in place, unused, for now -- officer-side spreadsheet tooling (dropdown validation, Export.gs) still depends on the "Item Lookup" sheet existing.
-- **Fixed placeholder BiS entries (M+, Crafted, Catalyst) showing the literal word "Placeholder" as their slot.** `items.slot` is `NOT NULL`, so those stand-ins (which name a loot source, not a gear slot) store the sentinel string `'Placeholder'` in the database -- both the BiS item map and the BiS list join now blank that out to `''` instead of surfacing it as if it were a real slot name.
+- **Placeholder BiS entries (M+, Crafted, Catalyst) can now be given a real slot, and shown up to twice for dual-slot gear (#393)** -- these entries previously showed the literal word "Placeholder" as their slot, since `items.slot` is `NOT NULL` and those stand-ins store that sentinel (they name a loot source, not a gear slot). The BiS Manager's item search now prompts for a slot (Head/Neck/Shoulder/.../Finger 1/Finger 2/Trinket 1/Trinket 2/Weapon/Off Hand) when adding a placeholder item, written to a new `bis_items.slot` override column; a real item still adds in one click and keeps deriving its slot from `items.slot` as always. This also lets the same placeholder be aimed at two different slots for one player (e.g. both Finger slots at "M+"), previously blocked outright since two placeholder rows for a player always shared `item_id`. The original per-row slot data from the old GAS BiS List sheet was already lost at the #217/#320 migration and can't be restored -- this only fixes the slot going forward.
+
+### Backend
+- **`bis_items.slot` (#393)** -- nullable officer-chosen slot override, used only for placeholder BiS rows (`items.is_placeholder`). `bis_items_no_dupe_item_key` moved from a plain `(player_id, item_id)` unique constraint to a `(player_id, item_id, coalesce(slot, ''))` expression index so two placeholder rows can coexist for the same player when their slots differ, while real items (slot always null) still dedupe exactly as before.
 
 ---
 

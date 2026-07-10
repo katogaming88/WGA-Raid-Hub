@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.27.0';
+var VERSION = '3.28.0';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -774,7 +774,9 @@ function fetchSupabaseBisItems() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('bis_items')
-    .select('player_id, item_id, obtained, items(name, slot, is_placeholder), players!inner(name_realm, team_id)')
+    .select(
+      'player_id, item_id, obtained, slot, items(name, slot, is_placeholder), players!inner(name_realm, team_id)'
+    )
     .eq('players.team_id', _teamCfg.supabaseTeamId)
     .then(function (result) {
       if (result.error) {
@@ -804,10 +806,10 @@ function fetchSupabaseBisItems() {
  * getBisItems()'s normalised lookup. Carries obtained/playerId/itemId so the
  * BiS Lists editor (tab-bis.js) can write back without a second lookup.
  * @param {any[]} rows - bis_items rows with embedded items and players
- * @returns {Object<string, {item: string, slot: string, obtained: boolean, playerId: number, itemId: number}[]>}
+ * @returns {Object<string, {item: string, slot: string, dbSlot: string|null, obtained: boolean, playerId: number, itemId: number}[]>}
  */
 function mapSupabaseBisItems(rows) {
-  /** @type {Object<string, {item: string, slot: string, obtained: boolean, playerId: number, itemId: number}[]>} */
+  /** @type {Object<string, {item: string, slot: string, dbSlot: string|null, obtained: boolean, playerId: number, itemId: number}[]>} */
   var map = {};
   (rows || []).forEach(function (row) {
     var players = row.players || {};
@@ -820,9 +822,15 @@ function mapSupabaseBisItems(rows) {
     map[firstName].push({
       item: itemRow.name,
       // Placeholder rows (M+/Crafted/Catalyst) store the literal 'Placeholder'
-      // in items.slot since it's NOT NULL -- blank it here rather than
-      // surfacing that sentinel as a slot name.
-      slot: itemRow.is_placeholder ? '' : itemRow.slot || '',
+      // in items.slot since it's NOT NULL, so that never surfaces as a slot
+      // name -- bis_items.slot is the officer-chosen override that exists
+      // specifically for these rows (#391 follow-up), used when present.
+      slot: itemRow.is_placeholder ? row.slot || '' : itemRow.slot || '',
+      // The raw bis_items.slot column value (always null for real items) --
+      // tab-bis.js needs this, not the display slot above, to target the
+      // exact row on delete/update now that a placeholder item can have more
+      // than one row per player (distinguished by slot).
+      dbSlot: row.slot || null,
       obtained: !!row.obtained,
       playerId: row.player_id,
       itemId: row.item_id
@@ -899,13 +907,15 @@ function fetchSupabaseItemBosses() {
 function buildItemMaps(rows) {
   var itemSlots = {};
   var itemArmorTypes = {};
+  var itemPlaceholders = {};
   (rows || []).forEach(function (row) {
     var name = String(row.name || '').trim();
     if (!name) return;
     itemSlots[name] = row.is_placeholder ? '' : row.slot || '';
     if (row.armor_type) itemArmorTypes[name] = row.armor_type;
+    if (row.is_placeholder) itemPlaceholders[name] = true;
   });
-  return { itemSlots: itemSlots, itemArmorTypes: itemArmorTypes };
+  return { itemSlots: itemSlots, itemArmorTypes: itemArmorTypes, itemPlaceholders: itemPlaceholders };
 }
 
 // Maps item_bosses rows (joined through items) to the DATA.itemBosses shape
@@ -983,6 +993,7 @@ function loadData(onCoreReady, onHeavyReady) {
           var itemMaps = buildItemMaps(itemRows);
           DATA.itemSlots = itemMaps.itemSlots;
           DATA.itemArmorTypes = itemMaps.itemArmorTypes;
+          DATA.itemPlaceholders = itemMaps.itemPlaceholders;
           DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
           DATA.selfReceived = heavy.selfReceived;
           if (typeof populateBossFilters === 'function') populateBossFilters();
