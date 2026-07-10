@@ -752,42 +752,61 @@ function prioEditGenerate() {
   btn.textContent = 'Generating...';
   status.textContent = '';
 
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=generatePriorityOrder' +
-      '&item=' +
-      encodeURIComponent(PRIO_EDIT.item) +
-      '&difficulty=' +
-      encodeURIComponent(PRIO_EDIT.difficulty),
-    function (err, result) {
+  var itemId = (DATA.itemIds || {})[PRIO_EDIT.item];
+  var track = PRIO_EDIT.difficulty === 'Mythic' ? 'Myth' : 'Hero';
+  var season = window.DATA && DATA.seasonName ? DATA.seasonName.trim() : '';
+
+  if (!itemId) {
+    btn.disabled = false;
+    btn.textContent = 'Suggest Order';
+    status.textContent = 'Item not found in catalog.';
+    return;
+  }
+
+  supabaseClient
+    .rpc('generate_priority_order', {
+      p_team_id: _teamCfg.supabaseTeamId,
+      p_season: season,
+      p_item_id: itemId,
+      p_track: track
+    })
+    .then(function (result) {
       btn.disabled = false;
       btn.textContent = 'Suggest Order';
-      if (err) {
-        status.textContent = err.message;
+      if (result.error) throw new Error(result.error.message);
+      var rows = result.data || [];
+      if (!rows.length) {
+        status.textContent = 'No BiS players found for this item.';
         return;
       }
-      if (result.error) {
-        status.textContent = 'Error: ' + result.error;
-        return;
-      }
-      var players = result.players || [];
-      if (!players.length) {
-        status.textContent = result.warning || 'No BiS players found.';
-        return;
-      }
+      var rosterById = {};
+      (DATA.roster || []).forEach(function (p) {
+        rosterById[p.id] = p;
+      });
       var scoreMap = {};
-      players.forEach(function (p) {
-        scoreMap[p.firstName] = p;
+      var ranked = [];
+      rows.forEach(function (r) {
+        var player = rosterById[r.player_id];
+        var firstName = player ? player.firstName : (r.name_realm || '').split('-')[0].trim();
+        scoreMap[firstName] = {
+          firstName: firstName,
+          weightedTotal: r.weighted_total,
+          role: r.role,
+          statusLabel: r.status_label || ''
+        };
+        ranked.push(firstName);
       });
       PRIO_EDIT.scores = scoreMap;
-      PRIO_EDIT.ranked = players.map(function (p) {
-        return p.firstName;
-      });
+      PRIO_EDIT.ranked = ranked;
       status.textContent = 'Suggested order loaded. Review and adjust as needed.';
       prioEditRenderList();
       prioEditRenderPool();
-    }
-  );
+    })
+    .catch(function (err) {
+      btn.disabled = false;
+      btn.textContent = 'Suggest Order';
+      status.textContent = err.message;
+    });
 }
 
 // -- Save --
@@ -798,27 +817,47 @@ function prioEditSave() {
   var errEl = document.getElementById('prioEditError');
   errEl.style.display = 'none';
 
+  var itemId = (DATA.itemIds || {})[PRIO_EDIT.item];
+  if (!itemId) {
+    errEl.textContent = 'Item not found in catalog.';
+    errEl.style.display = '';
+    return;
+  }
+
+  var rosterMap = {};
+  (DATA.roster || []).forEach(function (p) {
+    rosterMap[normalise(p.firstName)] = p;
+  });
+  var playerIds = [];
+  for (var i = 0; i < PRIO_EDIT.ranked.length; i++) {
+    var player = rosterMap[normalise(PRIO_EDIT.ranked[i])];
+    if (!player || !player.id) {
+      errEl.textContent = 'Unknown roster player: ' + PRIO_EDIT.ranked[i];
+      errEl.style.display = '';
+      return;
+    }
+    playerIds.push(player.id);
+  }
+
+  var track = PRIO_EDIT.difficulty === 'Mythic' ? 'Myth' : 'Hero';
+  var season = window.DATA && DATA.seasonName ? DATA.seasonName.trim() : '';
+
   saveBtn.disabled = true;
   saveBtn.textContent = 'Saving...';
   status.textContent = '';
 
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=savePriorityOrder' +
-      '&item=' +
-      encodeURIComponent(PRIO_EDIT.item) +
-      '&difficulty=' +
-      encodeURIComponent(PRIO_EDIT.difficulty) +
-      '&players=' +
-      encodeURIComponent(JSON.stringify(PRIO_EDIT.ranked)),
-    function (err, result) {
+  supabaseClient
+    .rpc('save_priority_order', {
+      p_team_id: _teamCfg.supabaseTeamId,
+      p_season: season,
+      p_item_id: itemId,
+      p_track: track,
+      p_player_ids: playerIds
+    })
+    .then(function (result) {
       saveBtn.disabled = false;
       saveBtn.textContent = 'Save Priority';
-      if (err || (result && result.error)) {
-        errEl.textContent = err ? err.message : 'Error: ' + result.error;
-        errEl.style.display = '';
-        return;
-      }
+      if (result.error) throw new Error(result.error.message);
       DATA.priorityOrder = DATA.priorityOrder || {};
       if (!DATA.priorityOrder[PRIO_EDIT.item]) DATA.priorityOrder[PRIO_EDIT.item] = {};
       DATA.priorityOrder[PRIO_EDIT.item][PRIO_EDIT.difficulty.toLowerCase()] = PRIO_EDIT.ranked.slice();
@@ -826,8 +865,13 @@ function prioEditSave() {
       buildUnmanagedTab();
       updateUnmanagedBadge();
       closePrioEditModal();
-    }
-  );
+    })
+    .catch(function (err) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save Priority';
+      errEl.textContent = err.message;
+      errEl.style.display = '';
+    });
 }
 
 function getRoleColor(role) {

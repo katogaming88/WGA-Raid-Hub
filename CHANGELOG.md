@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.30.0] - 2026-07-10
+
+### Frontend
+- **Priority generator migrated to Supabase (#220, Phase 5)** -- the "Suggest Order" and "Save Priority" actions in the priority edit modal now call the new `generate_priority_order()`/`save_priority_order()` RPCs instead of the Apps Script `?action=generatePriorityOrder`/`?action=savePriorityOrder` endpoints. The blend the issue flagged as needing to be resolved first turned out not to be a live formula at all: it's the Scoring sheet's Weighted Total column, `=IFERROR(Performance*0.5 + Attendance*0.5, "")`, confirmed from the live cell formula -- the new RPC reads `scoring.performance_score`/`attendance_score` directly, exactly like the sheet does today. Role/status/item-ownership multipliers (bench/trial stacking, mythic/heroic "already has item" penalties and bonuses) are ported verbatim from `generatePriorityForItem()` (`gs/wgaWebApp.gs`) -- the web-app implementation, not the sheet-menu version in `gs/PriorityGenerator.gs`, which lacks the item-ownership penalties. The priority-order *read* path (`DATA.priorityOrder`, used by the Priority List and Unmanaged Items tabs) now also reads directly from Supabase's `priority_order` table, with the Apps Script heavy chunk kept as a fallback if that query fails -- same pattern already used for `bis_items`/roster. GAS's `generatePriorityForItem`/`savePriorityOrderForItem` are left in place, unused, per the established Phase 5 convention of retiring GAS write handlers all at once once the whole migration finishes rather than per-issue.
+
+### Backend
+- **`generate_priority_order()`/`save_priority_order()` (#220)** -- new `SECURITY INVOKER` RPCs (RLS already grants officers direct read/write on every table touched, the same reasoning that moved `import_rclc_loot()` (#219) off `SECURITY DEFINER`). `save_priority_order()` fully replaces (delete+reinsert) any existing ranks for the given `(team_id, season, item_id, track)` in one transaction and writes exactly one `audit_log` entry per save. Note: `priority_order.track` uses `'Hero'`/`'Myth'` (#343's difficulty->track rename), not the `'Heroic'`/`'Mythic'` values the original issue text predated.
+
+---
+
 ## [3.29.0] - 2026-07-10
 
 ### Frontend

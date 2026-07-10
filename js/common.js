@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.29.0';
+var VERSION = '3.30.0';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -840,6 +840,71 @@ function mapSupabaseBisItems(rows) {
   return map;
 }
 
+// Priority order reads come from Supabase (#220). priority_order carries its
+// own team_id (unlike bis_items), so no join-through-players filter is
+// needed. Not season-filtered here -- same reason fetchSupabaseLoot() isn't:
+// this promise fires before DATA.seasonName is known (in parallel with the
+// core chunk), so the season filter is applied downstream in
+// mapSupabasePriorityOrder() once DATA is populated. Resolves to the raw
+// rows, or null on any failure/empty so the caller falls back to the Apps
+// Script heavy chunk's priorityOrder.
+function fetchSupabasePriorityOrder() {
+  if (!supabaseClient) return Promise.resolve(null);
+  var query = supabaseClient
+    .from('priority_order')
+    .select('item_id, track, rank, season, items(name), players(name_realm)')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Supabase priority_order query failed, using Apps Script priority order.', result.error.message);
+        return null;
+      }
+      return result.data && result.data.length ? result.data : null;
+    })
+    .catch(function (err) {
+      console.warn('Supabase priority_order query failed, using Apps Script priority order.', err);
+      return null;
+    });
+  var timeout = new Promise(function (resolve) {
+    setTimeout(function () {
+      resolve(null);
+    }, 10000);
+  });
+  return Promise.race([query, timeout]);
+}
+
+/**
+ * Maps priority_order rows (filtered to the current season) to the
+ * DATA.priorityOrder shape the Apps Script heavy chunk emits:
+ * {itemName: {heroic: [firstName...], mythic: [firstName...]}}, ordered by
+ * rank -- so tab-priority.js's render functions need no changes.
+ * @param {any[]} rows - priority_order rows with embedded items and players
+ * @param {string} seasonName - current season, to filter rows to (DATA.seasonName)
+ * @returns {Object<string, {heroic?: string[], mythic?: string[]}>}
+ */
+function mapSupabasePriorityOrder(rows, seasonName) {
+  var result = {};
+  (rows || [])
+    .filter(function (row) {
+      return row.season === seasonName;
+    })
+    .sort(function (a, b) {
+      return a.rank - b.rank;
+    })
+    .forEach(function (row) {
+      var itemName = row.items && row.items.name ? String(row.items.name).trim() : '';
+      var nameRealm = row.players && row.players.name_realm ? String(row.players.name_realm) : '';
+      if (!itemName || !nameRealm) return;
+      var diff = row.track === 'Myth' ? 'mythic' : row.track === 'Hero' ? 'heroic' : null;
+      if (!diff) return;
+      var firstName = nameRealm.split('-')[0].trim();
+      if (!result[itemName]) result[itemName] = {};
+      if (!result[itemName][diff]) result[itemName][diff] = [];
+      result[itemName][diff].push(firstName);
+    });
+  return result;
+}
+
 // Item catalog reads come exclusively from Supabase (#391): the GAS "Item
 // Lookup" sheet is retired as a data source for the web app now that
 // scripts/fetch-items.js seeds items/item_bosses from Wowhead every tier
@@ -852,7 +917,7 @@ function fetchSupabaseItems() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('items')
-    .select('name, slot, armor_type, is_placeholder')
+    .select('id, name, slot, armor_type, is_placeholder')
     .then(function (result) {
       if (result.error) {
         console.warn('Supabase items query failed.', result.error.message);
@@ -909,14 +974,16 @@ function buildItemMaps(rows) {
   var itemSlots = {};
   var itemArmorTypes = {};
   var itemPlaceholders = {};
+  var itemIds = {};
   (rows || []).forEach(function (row) {
     var name = String(row.name || '').trim();
     if (!name) return;
     itemSlots[name] = row.is_placeholder ? '' : row.slot || '';
     if (row.armor_type) itemArmorTypes[name] = row.armor_type;
     if (row.is_placeholder) itemPlaceholders[name] = true;
+    if (row.id != null) itemIds[name] = row.id;
   });
-  return { itemSlots: itemSlots, itemArmorTypes: itemArmorTypes, itemPlaceholders: itemPlaceholders };
+  return { itemSlots: itemSlots, itemArmorTypes: itemArmorTypes, itemPlaceholders: itemPlaceholders, itemIds: itemIds };
 }
 
 // Maps item_bosses rows (joined through items) to the DATA.itemBosses shape
@@ -952,6 +1019,8 @@ function loadData(onCoreReady, onHeavyReady) {
   var itemsPromise = fetchSupabaseItems();
   // Fired alongside; the heavy callback waits for it before setting itemBosses.
   var itemBossesPromise = fetchSupabaseItemBosses();
+  // Fired alongside; the heavy callback waits for it before setting priorityOrder.
+  var priorityOrderPromise = fetchSupabasePriorityOrder();
 
   window._rosterCoreCallback = function (data) {
     delete window._rosterCoreCallback;
@@ -978,28 +1047,34 @@ function loadData(onCoreReady, onHeavyReady) {
       window._rosterHeavyCallback = function (heavy) {
         delete window._rosterHeavyCallback;
         if (!heavy || heavy.error) return;
-        Promise.all([lootPromise, bisItemsPromise, itemsPromise, itemBossesPromise]).then(function (results) {
-          var lootRows = results[0];
-          var bisRows = results[1];
-          var itemRows = results[2];
-          var itemBossRows = results[3];
-          var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
-          DATA.lootCounts = mappedLoot || {};
-          DATA.attendanceDetails = heavy.attendanceDetails;
-          DATA.rawAttendanceData = heavy.rawAttendanceData;
-          DATA.recentAttendanceTrend = heavy.recentAttendanceTrend;
-          var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
-          DATA.bisList = mappedBis && Object.keys(mappedBis).length ? mappedBis : heavy.bisList;
-          DATA.priorityOrder = heavy.priorityOrder;
-          var itemMaps = buildItemMaps(itemRows);
-          DATA.itemSlots = itemMaps.itemSlots;
-          DATA.itemArmorTypes = itemMaps.itemArmorTypes;
-          DATA.itemPlaceholders = itemMaps.itemPlaceholders;
-          DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
-          DATA.selfReceived = heavy.selfReceived;
-          if (typeof populateBossFilters === 'function') populateBossFilters();
-          if (onHeavyReady) onHeavyReady();
-        });
+        Promise.all([lootPromise, bisItemsPromise, itemsPromise, itemBossesPromise, priorityOrderPromise]).then(
+          function (results) {
+            var lootRows = results[0];
+            var bisRows = results[1];
+            var itemRows = results[2];
+            var itemBossRows = results[3];
+            var priorityRows = results[4];
+            var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
+            DATA.lootCounts = mappedLoot || {};
+            DATA.attendanceDetails = heavy.attendanceDetails;
+            DATA.rawAttendanceData = heavy.rawAttendanceData;
+            DATA.recentAttendanceTrend = heavy.recentAttendanceTrend;
+            var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
+            DATA.bisList = mappedBis && Object.keys(mappedBis).length ? mappedBis : heavy.bisList;
+            var mappedPriority = priorityRows ? mapSupabasePriorityOrder(priorityRows, DATA.seasonName) : null;
+            DATA.priorityOrder =
+              mappedPriority && Object.keys(mappedPriority).length ? mappedPriority : heavy.priorityOrder;
+            var itemMaps = buildItemMaps(itemRows);
+            DATA.itemSlots = itemMaps.itemSlots;
+            DATA.itemArmorTypes = itemMaps.itemArmorTypes;
+            DATA.itemPlaceholders = itemMaps.itemPlaceholders;
+            DATA.itemIds = itemMaps.itemIds;
+            DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
+            DATA.selfReceived = heavy.selfReceived;
+            if (typeof populateBossFilters === 'function') populateBossFilters();
+            if (onHeavyReady) onHeavyReady();
+          }
+        );
       };
       heavyScript.src = WEB_APP_URL + '?chunk=heavy&callback=_rosterHeavyCallback';
       document.head.appendChild(heavyScript);
