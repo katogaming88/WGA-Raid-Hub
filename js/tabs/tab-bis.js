@@ -358,14 +358,22 @@ function bisEditorHTML() {
     '</div>';
 
   if (items.length) {
-    html += '<div style="display:flex;flex-direction:column;gap:0.2rem;margin-bottom:0.6rem;">';
+    html += '<div style="display:flex;flex-direction:column;gap:2px;margin-bottom:0.6rem;">';
     for (var i = 0; i < items.length; i++) {
       var slot = items[i].slot || '';
       var item = items[i].item || '';
       var obtained = !!items[i].obtained;
       var slotC = getSlotColor(slot);
+      // A zebra-striped, bordered band per row so the eye can track straight
+      // across from slot/item to its Obtained/remove controls without losing
+      // the row in the empty space a wide panel leaves between them --
+      // several rows can share the same item text (e.g. "M+" on both Finger
+      // slots), so left-to-right alignment alone wasn't enough of a cue.
       html +=
-        '<div style="display:flex;align-items:center;gap:0.5rem;font-size:0.95rem;padding:0.15rem 0;">' +
+        '<div style="display:flex;align-items:center;gap:0.5rem;font-size:0.95rem;padding:0.3rem 0.5rem;' +
+        'border-radius:4px;border:1px solid var(--border);' +
+        (i % 2 ? 'background:rgba(255,255,255,0.03);' : 'background:transparent;') +
+        '">' +
         '<span style="min-width:5rem;color:' +
         slotC +
         ';font-size:0.85rem;">' +
