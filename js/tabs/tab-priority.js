@@ -593,10 +593,19 @@ function prioEditRenderList() {
           scoreData.weightedTotal +
           '</span>';
       }
-      if (scoreData.statusLabel) {
+      // "Has Heroic" (mythic track only -- still eligible for mythic, but
+      // penalized) gets its own badge instead of sitting in the grey status
+      // text, same as the BiS pool's "H" badge -- easy to miss otherwise.
+      var statusParts = (scoreData.statusLabel || '').split(', ').filter(function (p) {
+        return p !== 'Has Heroic';
+      });
+      var hasHeroicStatus = (scoreData.statusLabel || '').indexOf('Has Heroic') !== -1;
+      if (hasHeroicStatus)
+        html += '<span class="prio-diff-badge prio-diff-heroic" title="Has the Heroic version">H</span>';
+      if (statusParts.length) {
         html +=
           '<span style="font-size:0.75rem;color:var(--text-muted);font-style:italic;margin-left:2px;">(' +
-          scoreData.statusLabel +
+          statusParts.join(', ') +
           ')</span>';
       }
     }
@@ -605,6 +614,36 @@ function prioEditRenderList() {
   }
   list.innerHTML = html;
   prioEditUpdateVersionWarning();
+}
+
+// Whether firstName already has the current item at Heroic/Mythic, per
+// DATA.lootCounts. Shared by the pool render (badge + block add) and
+// prioEditAdd()'s guard, so "Show all roster" can't bypass the pool's
+// filtering.
+function prioEditLootFlags(firstName) {
+  var itemLower = PRIO_EDIT.item.toLowerCase();
+  var lootCounts = DATA.lootCounts || {};
+  var loot = lootCounts[firstName.toLowerCase()] || null;
+  var flags = { hasHeroic: false, hasMythic: false };
+  if (loot && loot.items) {
+    for (var j = 0; j < loot.items.length; j++) {
+      if (loot.items[j].name.toLowerCase() !== itemLower) continue;
+      if (loot.items[j].difficulty === 'Heroic') flags.hasHeroic = true;
+      else if (loot.items[j].difficulty === 'Mythic') flags.hasMythic = true;
+    }
+  }
+  return flags;
+}
+
+// Whether firstName can be added to the currently-open track's ranked list.
+// Matches generate_priority_order()'s exclusion rule: a mythic recipient is
+// done with the item entirely (blocked from both tracks); a heroic
+// recipient is only blocked from heroic (still eligible, penalized, for
+// mythic).
+function prioEditIsBlocked(firstName) {
+  var flags = prioEditLootFlags(firstName);
+  var isMythic = PRIO_EDIT.difficulty === 'Mythic';
+  return flags.hasMythic || (!isMythic && flags.hasHeroic);
 }
 
 function prioEditRenderPool() {
@@ -631,8 +670,6 @@ function prioEditRenderPool() {
   }
 
   var isMythic = PRIO_EDIT.difficulty === 'Mythic';
-  var lootCounts = DATA.lootCounts || {};
-  var itemLower = PRIO_EDIT.item.toLowerCase();
 
   var available = candidates.filter(function (n) {
     return !rankedSet[normalise(n)];
@@ -656,23 +693,28 @@ function prioEditRenderPool() {
     var display = player ? player.nick || player.firstName : firstName;
     var role = player ? player.role : '';
     var nEnc = encodeURIComponent(firstName);
-    var hasHeroic = false;
-    if (isMythic) {
-      var loot = lootCounts[firstName.toLowerCase()] || null;
-      if (loot && loot.items) {
-        for (var j = 0; j < loot.items.length; j++) {
-          if (loot.items[j].name.toLowerCase() === itemLower && loot.items[j].difficulty === 'Heroic') {
-            hasHeroic = true;
-            break;
-          }
-        }
-      }
-    }
-    html += '<div class="prio-pool-item" onclick="prioEditAdd(decodeURIComponent(\'' + nEnc + '\'))">';
+    var flags = prioEditLootFlags(firstName);
+    // A mythic recipient can't go on either track's list -- they're done
+    // with the item entirely (matches generate_priority_order()'s exclusion
+    // rule). A heroic recipient is only blocked from heroic; still eligible,
+    // penalized, for mythic.
+    var blocked = flags.hasMythic || (!isMythic && flags.hasHeroic);
+    var badgeTitle = flags.hasMythic
+      ? 'Already has the Mythic version -- cannot be added to either list'
+      : flags.hasHeroic
+        ? isMythic
+          ? 'Has the Heroic version'
+          : 'Already has the Heroic version -- cannot be added to the Heroic list'
+        : '';
+    html += '<div class="prio-pool-item"' + (blocked ? ' style="opacity:0.55;cursor:default;"' : '');
+    if (!blocked) html += ' onclick="prioEditAdd(decodeURIComponent(\'' + nEnc + '\'))"';
+    html += '>';
     html += '<span class="prio-pool-name">' + display + '</span>';
     if (role) html += '<span class="prio-role-badge prio-role-' + role + '">' + role.toUpperCase() + '</span>';
-    if (hasHeroic) html += '<span class="prio-diff-badge prio-diff-heroic" title="Has Heroic version">H</span>';
-    html += '<span class="prio-pool-add">+</span>';
+    if (flags.hasMythic) html += '<span class="prio-diff-badge prio-diff-mythic" title="' + badgeTitle + '">M</span>';
+    else if (flags.hasHeroic)
+      html += '<span class="prio-diff-badge prio-diff-heroic" title="' + badgeTitle + '">H</span>';
+    if (!blocked) html += '<span class="prio-pool-add">+</span>';
     html += '</div>';
   }
   pool.innerHTML = html;
@@ -681,6 +723,11 @@ function prioEditRenderPool() {
 function prioEditAdd(firstName) {
   if (PRIO_EDIT.ranked.length >= 10) {
     document.getElementById('prioEditStatus').textContent = 'Maximum 10 players per item.';
+    return;
+  }
+  if (prioEditIsBlocked(firstName)) {
+    document.getElementById('prioEditStatus').textContent =
+      firstName + ' already has this item at that difficulty and cannot be added.';
     return;
   }
   if (PRIO_EDIT.ranked.indexOf(firstName) === -1) {
@@ -752,42 +799,61 @@ function prioEditGenerate() {
   btn.textContent = 'Generating...';
   status.textContent = '';
 
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=generatePriorityOrder' +
-      '&item=' +
-      encodeURIComponent(PRIO_EDIT.item) +
-      '&difficulty=' +
-      encodeURIComponent(PRIO_EDIT.difficulty),
-    function (err, result) {
+  var itemId = (DATA.itemIds || {})[PRIO_EDIT.item];
+  var track = PRIO_EDIT.difficulty === 'Mythic' ? 'Myth' : 'Hero';
+  var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+
+  if (!itemId) {
+    btn.disabled = false;
+    btn.textContent = 'Suggest Order';
+    status.textContent = 'Item not found in catalog.';
+    return;
+  }
+
+  supabaseClient
+    .rpc('generate_priority_order', {
+      p_team_id: _teamCfg.supabaseTeamId,
+      p_season: season,
+      p_item_id: itemId,
+      p_track: track
+    })
+    .then(function (result) {
       btn.disabled = false;
       btn.textContent = 'Suggest Order';
-      if (err) {
-        status.textContent = err.message;
+      if (result.error) throw new Error(result.error.message);
+      var rows = result.data || [];
+      if (!rows.length) {
+        status.textContent = 'No BiS players found for this item.';
         return;
       }
-      if (result.error) {
-        status.textContent = 'Error: ' + result.error;
-        return;
-      }
-      var players = result.players || [];
-      if (!players.length) {
-        status.textContent = result.warning || 'No BiS players found.';
-        return;
-      }
+      var rosterById = {};
+      (DATA.roster || []).forEach(function (p) {
+        rosterById[p.id] = p;
+      });
       var scoreMap = {};
-      players.forEach(function (p) {
-        scoreMap[p.firstName] = p;
+      var ranked = [];
+      rows.forEach(function (r) {
+        var player = rosterById[r.player_id];
+        var firstName = player ? player.firstName : (r.name_realm || '').split('-')[0].trim();
+        scoreMap[firstName] = {
+          firstName: firstName,
+          weightedTotal: r.weighted_total,
+          role: r.role,
+          statusLabel: r.status_label || ''
+        };
+        ranked.push(firstName);
       });
       PRIO_EDIT.scores = scoreMap;
-      PRIO_EDIT.ranked = players.map(function (p) {
-        return p.firstName;
-      });
+      PRIO_EDIT.ranked = ranked;
       status.textContent = 'Suggested order loaded. Review and adjust as needed.';
       prioEditRenderList();
       prioEditRenderPool();
-    }
-  );
+    })
+    .catch(function (err) {
+      btn.disabled = false;
+      btn.textContent = 'Suggest Order';
+      status.textContent = err.message;
+    });
 }
 
 // -- Save --
@@ -798,27 +864,47 @@ function prioEditSave() {
   var errEl = document.getElementById('prioEditError');
   errEl.style.display = 'none';
 
+  var itemId = (DATA.itemIds || {})[PRIO_EDIT.item];
+  if (!itemId) {
+    errEl.textContent = 'Item not found in catalog.';
+    errEl.style.display = '';
+    return;
+  }
+
+  var rosterMap = {};
+  (DATA.roster || []).forEach(function (p) {
+    rosterMap[normalise(p.firstName)] = p;
+  });
+  var playerIds = [];
+  for (var i = 0; i < PRIO_EDIT.ranked.length; i++) {
+    var player = rosterMap[normalise(PRIO_EDIT.ranked[i])];
+    if (!player || !player.id) {
+      errEl.textContent = 'Unknown roster player: ' + PRIO_EDIT.ranked[i];
+      errEl.style.display = '';
+      return;
+    }
+    playerIds.push(player.id);
+  }
+
+  var track = PRIO_EDIT.difficulty === 'Mythic' ? 'Myth' : 'Hero';
+  var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+
   saveBtn.disabled = true;
   saveBtn.textContent = 'Saving...';
   status.textContent = '';
 
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=savePriorityOrder' +
-      '&item=' +
-      encodeURIComponent(PRIO_EDIT.item) +
-      '&difficulty=' +
-      encodeURIComponent(PRIO_EDIT.difficulty) +
-      '&players=' +
-      encodeURIComponent(JSON.stringify(PRIO_EDIT.ranked)),
-    function (err, result) {
+  supabaseClient
+    .rpc('save_priority_order', {
+      p_team_id: _teamCfg.supabaseTeamId,
+      p_season: season,
+      p_item_id: itemId,
+      p_track: track,
+      p_player_ids: playerIds
+    })
+    .then(function (result) {
       saveBtn.disabled = false;
       saveBtn.textContent = 'Save Priority';
-      if (err || (result && result.error)) {
-        errEl.textContent = err ? err.message : 'Error: ' + result.error;
-        errEl.style.display = '';
-        return;
-      }
+      if (result.error) throw new Error(result.error.message);
       DATA.priorityOrder = DATA.priorityOrder || {};
       if (!DATA.priorityOrder[PRIO_EDIT.item]) DATA.priorityOrder[PRIO_EDIT.item] = {};
       DATA.priorityOrder[PRIO_EDIT.item][PRIO_EDIT.difficulty.toLowerCase()] = PRIO_EDIT.ranked.slice();
@@ -826,8 +912,13 @@ function prioEditSave() {
       buildUnmanagedTab();
       updateUnmanagedBadge();
       closePrioEditModal();
-    }
-  );
+    })
+    .catch(function (err) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save Priority';
+      errEl.textContent = err.message;
+      errEl.style.display = '';
+    });
 }
 
 function getRoleColor(role) {

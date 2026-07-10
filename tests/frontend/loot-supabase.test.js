@@ -71,16 +71,28 @@ function mockSupabase({ lootPages = [], rosterResult } = {}) {
             if (table === 'players') {
               return rosterResult ? rosterResult() : { data: null, error: { message: 'roster not mocked' } };
             }
-            // bis_items and items are separate queries loadData() fires
-            // alongside the loot pages (#217, item search fix); this suite is
-            // only exercising lootCounts wiring, so neither is mocked and
-            // both should fall back to the heavy payload's bisList/itemSlots
-            // untouched, same as the 'players' default above.
+            // bis_items, items, item_bosses, and priority_order are separate
+            // queries loadData() fires alongside the loot pages (#217 item
+            // search fix, #220 priority generator); this suite is only
+            // exercising lootCounts wiring, so none of them are mocked and
+            // all should fall back to the heavy payload's
+            // bisList/itemSlots/itemBosses/priorityOrder untouched, same as
+            // the 'players' default above. Without an explicit branch here,
+            // these would fall through to the loot-page queue below and get
+            // mistaken for real rows, since lootRow()'s fields
+            // (items.name/players.name_realm/track/season) happen to overlap
+            // what mapSupabasePriorityOrder() reads.
             if (table === 'bis_items') {
               return { data: null, error: { message: 'bis_items not mocked' } };
             }
             if (table === 'items') {
               return { data: null, error: { message: 'items not mocked' } };
+            }
+            if (table === 'item_bosses') {
+              return { data: null, error: { message: 'item_bosses not mocked' } };
+            }
+            if (table === 'priority_order') {
+              return { data: null, error: { message: 'priority_order not mocked' } };
             }
             const result = lootPages[Math.min(page, lootPages.length - 1)];
             page++;
