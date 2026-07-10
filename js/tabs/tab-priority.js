@@ -657,21 +657,36 @@ function prioEditRenderPool() {
     var role = player ? player.role : '';
     var nEnc = encodeURIComponent(firstName);
     var hasHeroic = false;
-    if (isMythic) {
-      var loot = lootCounts[firstName.toLowerCase()] || null;
-      if (loot && loot.items) {
-        for (var j = 0; j < loot.items.length; j++) {
-          if (loot.items[j].name.toLowerCase() === itemLower && loot.items[j].difficulty === 'Heroic') {
-            hasHeroic = true;
-            break;
-          }
-        }
+    var hasMythic = false;
+    var loot = lootCounts[firstName.toLowerCase()] || null;
+    if (loot && loot.items) {
+      for (var j = 0; j < loot.items.length; j++) {
+        if (loot.items[j].name.toLowerCase() !== itemLower) continue;
+        if (loot.items[j].difficulty === 'Heroic') hasHeroic = true;
+        else if (loot.items[j].difficulty === 'Mythic') hasMythic = true;
       }
     }
-    html += '<div class="prio-pool-item" onclick="prioEditAdd(decodeURIComponent(\'' + nEnc + '\'))">';
+    // A mythic recipient is excluded from Suggest Order on both tracks, not
+    // just mythic (matches generate_priority_order()'s exclusion rule) --
+    // flag it regardless of which track is open so it isn't a silent gap in
+    // the ranked list. A heroic recipient is only excluded from heroic
+    // (still eligible, penalized, for mythic), so that badge stays mythic-only.
+    var excludedTitle = hasMythic
+      ? 'Already has the Mythic version -- excluded from Suggest Order'
+      : isMythic && hasHeroic
+        ? 'Has the Heroic version'
+        : '';
+    html +=
+      '<div class="prio-pool-item"' +
+      (hasMythic ? ' style="opacity:0.55;"' : '') +
+      ' onclick="prioEditAdd(decodeURIComponent(\'' +
+      nEnc +
+      '\'))">';
     html += '<span class="prio-pool-name">' + display + '</span>';
     if (role) html += '<span class="prio-role-badge prio-role-' + role + '">' + role.toUpperCase() + '</span>';
-    if (hasHeroic) html += '<span class="prio-diff-badge prio-diff-heroic" title="Has Heroic version">H</span>';
+    if (hasMythic) html += '<span class="prio-diff-badge prio-diff-mythic" title="' + excludedTitle + '">M</span>';
+    else if (isMythic && hasHeroic)
+      html += '<span class="prio-diff-badge prio-diff-heroic" title="' + excludedTitle + '">H</span>';
     html += '<span class="prio-pool-add">+</span>';
     html += '</div>';
   }
