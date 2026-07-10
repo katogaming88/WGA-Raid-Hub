@@ -158,12 +158,6 @@ function renderSignupStep() {
     html =
       '<div class="signup-step-label">Step 4 of 4</div>' +
       '<h2 class="signup-step-title">Additional Information</h2>' +
-      '<div class="signup-field">' +
-      '<span class="signup-label">Discord Name <span class="signup-optional">(optional -- only if different from your character name)</span></span>' +
-      '<input type="text" id="signupDiscord" class="signup-input" placeholder="YourDiscord" value="' +
-      (signupData.discord || '') +
-      '">' +
-      '</div>' +
       mainSwapFieldHtml +
       '<div class="signup-field">' +
       '<span class="signup-label">Anything else officers should know? <span class="signup-optional">(optional)</span></span>' +
@@ -446,8 +440,6 @@ function signupBack() {
 }
 
 function submitSignup() {
-  signupData.discord = (document.getElementById('signupDiscord').value || '').trim();
-
   var discordSession = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
   var hasClaim = !!(discordSession && discordSession.nameRealm);
   var claimDiffers = hasClaim && signupData.matchesClaim === false;
@@ -486,33 +478,57 @@ function submitSignup() {
     btn.textContent = 'Submitting...';
   }
 
-  var cbName = '_submitSignupCb';
-  window[cbName] = function (result) {
-    delete window[cbName];
-    if (result && result.success) {
-      signupStep = 5;
-      renderSignupStep();
-    } else {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Submit';
-      }
-      var err = document.getElementById('signupError');
-      if (err) err.textContent = 'Submission failed. Please try again or contact an officer on Discord.';
-    }
-  };
-
-  var script = document.createElement('script');
-  script.onerror = function () {
-    delete window[cbName];
+  if (!supabaseClient) {
     if (btn) {
       btn.disabled = false;
       btn.textContent = 'Submit';
     }
-    var err = document.getElementById('signupError');
-    if (err) err.textContent = 'Submission failed. Please try again or contact an officer on Discord.';
-  };
-  script.src =
-    WEB_APP_URL + '?action=submitSignup&data=' + encodeURIComponent(JSON.stringify(signupData)) + '&callback=' + cbName;
-  document.head.appendChild(script);
+    var noClientErr = document.getElementById('signupError');
+    if (noClientErr) noClientErr.textContent = 'Submission failed. Please try again or contact an officer on Discord.';
+    return;
+  }
+
+  supabaseClient
+    .rpc('submit_season_signup', {
+      p_team_id: _teamCfg.supabaseTeamId,
+      p_name_realm: signupData.charName + '-' + signupData.realm,
+      p_class: signupData.className,
+      p_spec: signupData.mainSpec,
+      p_off_specs: (signupData.offSpecs || []).join(', '),
+      p_main_swap: !!signupData.mainSwap,
+      p_player_note: signupData.notes
+    })
+    .then(function (result) {
+      if (result.error) {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Submit';
+        }
+        var err = document.getElementById('signupError');
+        if (err) err.textContent = 'Submission failed. Please try again or contact an officer on Discord.';
+        return;
+      }
+
+      // Best-effort Discord notification via the existing GAS bot relay (#224
+      // will move this to an Edge Function). Not gated on its result -- the
+      // Supabase insert above is the write of record.
+      var cbName = '_submitSignupCb';
+      window[cbName] = function () {
+        delete window[cbName];
+      };
+      var script = document.createElement('script');
+      script.onerror = function () {
+        delete window[cbName];
+      };
+      script.src =
+        WEB_APP_URL +
+        '?action=submitSignup&data=' +
+        encodeURIComponent(JSON.stringify(signupData)) +
+        '&callback=' +
+        cbName;
+      document.head.appendChild(script);
+
+      signupStep = 5;
+      renderSignupStep();
+    });
 }

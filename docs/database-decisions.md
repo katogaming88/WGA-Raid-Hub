@@ -6,6 +6,20 @@ Issues carrying a decision are tagged with the `decision` label: `gh issue list 
 
 ---
 
+## 2026-07-12 -- season_signups write path (#403): SECURITY DEFINER RPC granted to anon, no anti-spam token yet
+
+`season_signups` had no INSERT path of any kind -- only officer read/update -- because the public signup form (`js/signup.js`) still wrote exclusively to the GAS "Roster Responses" Sheet, which the officer Signups/Pending Roster tabs stopped reading when they switched to Supabase-only reads in #328. Every real signup submitted since then landed somewhere no officer screen ever reads.
+
+- **New `submit_season_signup()` RPC, SECURITY DEFINER, granted to `anon` (and `authenticated`)** -- unlike `claim_character()` (#212), which requires `auth.uid()`, this form runs for prospective recruits with no Discord session at all, so `anon` must be able to call it directly. It checks `team_settings.config.signupsOpen` server-side (the form's client-side gate was cosmetic only) and resolves `class_spec_id`/`swap_class_spec_id` from class/spec text itself, forcing `status = 'pending'`. `season_signups` still grants `anon` no direct table INSERT -- this function is the only write path.
+- **No anti-spam token for v1.** #328's original out-of-scope note wanted an Edge Function with a spam token; Edge Functions are Phase 7 and don't exist yet. The `signupsOpen` server-side check alone is already strictly tighter than the status quo (GAS's `submitSignup` had no server-side gate at all), so shipping the RPC now without a token is not a regression. A token or the Edge Function replacement can be added later without a breaking change to the form's payload shape.
+- **The free-text Discord Name field is dropped from the form**, per the #340 decision: the verified Discord link lives on `team_members` via the Claims flow now, and the typed handle predates that.
+- **The GAS `submitSignup` call stays in place, called after the Supabase write succeeds**, solely for its Discord bot notification side effect -- #224 owns moving that notification to an Edge Function. No GAS code changed in this PR.
+- **One-time historical backfill**: Hellfire's GAS sheet held ~21 real MID2 signups (Phoenix's sheet only had 2 June test rows, skipped). Cross-referenced against the live `players` table for team 2 to resolve each row's status: already-rostered names became `status = 'added'` with `approved_player_id` set (settled history, not a live queue item); the sheet's one `Denied` row became `rejected`; two names with no roster match and no denial (`Dhbruh-Dalaran`, flagged during the audit that opened #403, and `Poplockndots-Thrall`, found during this backfill) became `status = 'approved'` with `approved_player_id` left null, surfacing them in Pending Roster for an officer to actually decide on rather than leaving them invisible.
+
+[Full discussion -> #403](https://github.com/katogaming88/WGA-Raid-Hub/issues/403)
+
+---
+
 ## 2026-07-10 -- bis_items.slot (#393): officer-chosen slot for placeholder entries
 
 Placeholder BiS entries (M+, Crafted, Catalyst) were displaying the literal word "Placeholder" as their slot -- `items.slot` is `NOT NULL`, and those rows store that sentinel since they name a loot source, not a gear slot. The old GAS BiS List sheet carried the real slot per-row instead (a player wrote "M+" into whichever slot's row they meant); that context was discarded at the #217/#320 migration, when `bis_items` collapsed to `(player_id, item_id)` with no home for it -- a known, documented, unrecoverable loss (`scripts/import/tables/bis.js`), same acceptance as the audit_log TARGET backfill (#377).

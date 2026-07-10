@@ -8,6 +8,19 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.32.6] - 2026-07-12
+
+### Frontend
+
+- **Fixed the public signup form writing to a Sheet no officer screen reads (#403)** -- since the officer Signups/Pending Roster tabs switched to Supabase-only reads in #328, `submitSignup` kept writing exclusively to the GAS "Roster Responses" Sheet, so every real signup submitted since then was invisible to officers. `js/signup.js` now calls the new `submit_season_signup` RPC as the write of record; the existing GAS `submitSignup` call is still fired afterward, unchanged, purely for its Discord bot notification side effect (#224 will move that to an Edge Function). The free-text "Discord Name" field is dropped from the form per the #340 decision -- the verified Discord link now lives on `team_members` via the Claims flow. `getMissingSignups`/the signups+pendingRoster nav badge counts also switched from the orphaned GAS sheet to Supabase (`season_signups`/`pending_roster`/`DATA.roster`).
+
+### Backend
+
+- **`submit_season_signup` RPC (#403)**: SECURITY DEFINER, granted to `anon`, gated on `team_settings.config.signupsOpen` -- season_signups had no INSERT path of any kind before this (officer read/update only).
+- **One-time historical backfill (#403)**: ~21 real MID2 signup rows recovered from Hellfire's GAS "Roster Responses" sheet into `season_signups`, so the officer Signups tab isn't blank post-cutover. Two approved-but-never-rostered rows (`Dhbruh-Dalaran`, `Poplockndots-Thrall`) land as `status = 'approved'` so they surface in Pending Roster for an officer to act on.
+
+---
+
 ## [3.32.5] - 2026-07-12
 
 ### Frontend

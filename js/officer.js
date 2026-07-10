@@ -266,11 +266,43 @@ function setNavBadge(id, count) {
 function updateNavBadges() {
   jsonpRequest(WEB_APP_URL + '?action=getPendingCounts', function (err, result) {
     if (err || !result) return;
-    setNavBadge('signupsNavBadge', (result.signups || 0) + (result.pendingRoster || 0));
-    setNavBadge('pendingRosterSubBadge', result.pendingRoster || 0);
     setNavBadge('bisNavBadge', result.bis || 0);
     setNavBadge('mplusNavBadge', result.mplus || 0);
     setNavBadge('requestsNavBadge', result.requests || 0);
+  });
+  fetchSupabaseSignupCounts(function (err, counts) {
+    if (err || !counts) return;
+    setNavBadge('signupsNavBadge', counts.signups + counts.pendingRoster);
+    setNavBadge('pendingRosterSubBadge', counts.pendingRoster);
+  });
+}
+
+// signups/pendingRoster nav badge counts, read from Supabase now that the
+// officer Signups/Pending Roster tabs are Supabase-only (#328, #403) -- the
+// GAS getPendingCounts equivalents counted rows in a sheet neither tab reads
+// anymore. bis/mplus/requests above stay GAS-sourced until their own tables
+// get a write path (#404/#405/#406).
+function fetchSupabaseSignupCounts(callback) {
+  if (!supabaseClient) {
+    callback(new Error('Not connected to Supabase.'));
+    return;
+  }
+  Promise.all([
+    supabaseClient
+      .from('season_signups')
+      .select('id', { count: 'exact', head: true })
+      .eq('team_id', _teamCfg.supabaseTeamId)
+      .eq('status', 'pending'),
+    supabaseClient
+      .from('pending_roster')
+      .select('signup_id', { count: 'exact', head: true })
+      .eq('team_id', _teamCfg.supabaseTeamId)
+  ]).then(function (results) {
+    if (results[0].error || results[1].error) {
+      callback(results[0].error || results[1].error);
+      return;
+    }
+    callback(null, { signups: results[0].count || 0, pendingRoster: results[1].count || 0 });
   });
 }
 

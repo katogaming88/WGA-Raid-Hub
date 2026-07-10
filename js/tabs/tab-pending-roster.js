@@ -64,11 +64,48 @@ function buildPendingRosterTab() {
       });
   }
 
-  jsonpRequest(WEB_APP_URL + '?action=getMissingSignups', function (err, result) {
-    _pendingMissingSignups = err ? [] : result.missing || [];
+  fetchMissingSignups(function (err, missing) {
+    _pendingMissingSignups = err ? [] : missing;
     loaded.missing = true;
     tryRender();
   });
+}
+
+// Roster members with no live season_signups row (any status but 'rejected')
+// for the active signup season. Was GAS getMissingSignups(), which compared
+// against the same GAS "Roster Responses" sheet the officer tabs stopped
+// reading in #328 (#403) -- both sides now read Supabase.
+function fetchMissingSignups(callback) {
+  var roster = (window.DATA && DATA.roster) || [];
+  if (!supabaseClient) {
+    callback(null, []);
+    return;
+  }
+  supabaseClient
+    .from('season_signups')
+    .select('signup_name_realm, status, season')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(function (result) {
+      if (result.error) {
+        callback(result.error);
+        return;
+      }
+      var season = DATA && DATA.signupSeason;
+      var submitted = {};
+      (result.data || []).forEach(function (row) {
+        if (row.status === 'rejected') return;
+        if (season && row.season !== season) return;
+        if (row.signup_name_realm) submitted[row.signup_name_realm.toLowerCase()] = true;
+      });
+      var missing = roster
+        .filter(function (p) {
+          return p.nameRealm && !submitted[p.nameRealm.toLowerCase()];
+        })
+        .map(function (p) {
+          return { nameRealm: p.nameRealm, className: p.class, spec: p.spec, role: p.role };
+        });
+      callback(null, missing);
+    });
 }
 
 function renderPendingRoster(entries, missing) {
