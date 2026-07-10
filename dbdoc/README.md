@@ -53,6 +53,7 @@
 | public.set_team_setting | jsonb | p_team_id integer, p_updates jsonb | FUNCTION |
 | public.archive_current_season | jsonb | p_team_id integer, p_roster_snapshot jsonb | FUNCTION |
 | public.unarchive_season | jsonb | p_team_id integer, p_index integer | FUNCTION |
+| public.submit_season_signup | int4 | p_team_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text | FUNCTION |
 
 ## Enums
 

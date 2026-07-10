@@ -521,7 +521,11 @@ function submitSignup() {
         delete window[cbName];
       };
       script.src =
-        WEB_APP_URL + '?action=submitSignup&data=' + encodeURIComponent(JSON.stringify(signupData)) + '&callback=' + cbName;
+        WEB_APP_URL +
+        '?action=submitSignup&data=' +
+        encodeURIComponent(JSON.stringify(signupData)) +
+        '&callback=' +
+        cbName;
       document.head.appendChild(script);
 
       signupStep = 5;

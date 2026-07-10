@@ -293,7 +293,10 @@ function fetchSupabaseSignupCounts(callback) {
       .select('id', { count: 'exact', head: true })
       .eq('team_id', _teamCfg.supabaseTeamId)
       .eq('status', 'pending'),
-    supabaseClient.from('pending_roster').select('signup_id', { count: 'exact', head: true }).eq('team_id', _teamCfg.supabaseTeamId)
+    supabaseClient
+      .from('pending_roster')
+      .select('signup_id', { count: 'exact', head: true })
+      .eq('team_id', _teamCfg.supabaseTeamId)
   ]).then(function (results) {
     if (results[0].error || results[1].error) {
       callback(results[0].error || results[1].error);
