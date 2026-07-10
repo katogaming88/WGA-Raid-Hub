@@ -72,7 +72,7 @@ function loadSandbox({ supabaseClient, els = {}, confirmResult = true, alertSpy 
   const sandbox = {
     TEAM_SLUG: 'phoenix',
     _teamCfg: { supabaseTeamId: 1 },
-    TEAMS: { phoenix: { name: 'Team Phoenix', supabaseTeamId: 1 } },
+    TEAMS: { phoenix: { name: 'Phoenix', supabaseTeamId: 1 } },
     supabaseClient,
     console,
     document: { getElementById: (id) => els[id] || null },

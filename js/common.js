@@ -3,7 +3,7 @@ var TEAMS = {
   phoenix: {
     gasUrl:
       'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec',
-    name: 'Team Phoenix',
+    name: 'Phoenix',
     officerPass: 'phoenix2',
     supabaseTeamId: 1
   },

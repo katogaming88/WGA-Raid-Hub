@@ -110,7 +110,7 @@ function baseSandbox(els, store) {
     TEAM_SLUG: 'phoenix',
     _teamCfg: { supabaseTeamId: 1 },
     TEAMS: {
-      phoenix: { name: 'Team Phoenix', supabaseTeamId: 1 },
+      phoenix: { name: 'Phoenix', supabaseTeamId: 1 },
       hellfire: { name: 'Hellfire Rollers', supabaseTeamId: 2 }
     },
     console,
