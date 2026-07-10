@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.26.0';
+var VERSION = '3.27.0';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -828,14 +828,14 @@ function mapSupabaseBisItems(rows) {
   return map;
 }
 
-// Item lookup reads come from Supabase (items is a global, un-team-scoped
-// reference table -- no auth needed, RLS already permits public read).
-// heavy.itemSlots/itemArmorTypes (the GAS "Item Lookup" sheet) go stale the
-// moment an item only ever gets created in Supabase and never mirrored into
-// that sheet -- e.g. an item resolved automatically during an RCLC loot
-// import (#219) is real in the database but invisible to the BiS Manager's
-// item search, which reads DATA.itemSlots. Resolves to the raw rows, or null
-// on any failure so the caller falls back to the GAS-only maps.
+// Item catalog reads come exclusively from Supabase (#391): the GAS "Item
+// Lookup" sheet is retired as a data source for the web app now that
+// scripts/fetch-items.js seeds items/item_bosses from Wowhead every tier
+// (docs/updating-fetch-items-for-new-tier.md). items is a global,
+// un-team-scoped reference table -- no auth needed, RLS already permits
+// public read. Resolves to the raw rows, or null on any failure/empty so
+// the caller renders an empty catalog rather than silently serving stale
+// GAS data.
 function fetchSupabaseItems() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
@@ -843,13 +843,13 @@ function fetchSupabaseItems() {
     .select('name, slot, armor_type')
     .then(function (result) {
       if (result.error) {
-        console.warn('Supabase items query failed, using Apps Script Item Lookup only.', result.error.message);
+        console.warn('Supabase items query failed.', result.error.message);
         return null;
       }
       return result.data && result.data.length ? result.data : null;
     })
     .catch(function (err) {
-      console.warn('Supabase items query failed, using Apps Script Item Lookup only.', err);
+      console.warn('Supabase items query failed.', err);
       return null;
     });
   var timeout = new Promise(function (resolve) {
@@ -860,15 +860,38 @@ function fetchSupabaseItems() {
   return Promise.race([query, timeout]);
 }
 
-// Merges Supabase's items on top of the GAS heavy chunk's itemSlots/
-// itemArmorTypes maps (name -> slot / name -> armor_type) rather than
-// replacing them outright, so an item the Item Lookup sheet still knows
-// about but Supabase doesn't (not fully backfilled yet) keeps working.
-// Supabase wins on a name collision, since it's the authoritative source
-// going forward.
-function mergeSupabaseItemMaps(rows, gasItemSlots, gasItemArmorTypes) {
-  var itemSlots = Object.assign({}, gasItemSlots || {});
-  var itemArmorTypes = Object.assign({}, gasItemArmorTypes || {});
+// item_bosses shares the same retirement (#391): joined through items for
+// the item name, since tab-priority.js's boss filter indexes DATA.itemBosses
+// by item name. Resolves to the raw rows, or null on any failure/empty.
+function fetchSupabaseItemBosses() {
+  if (!supabaseClient) return Promise.resolve(null);
+  var query = supabaseClient
+    .from('item_bosses')
+    .select('boss, items(name)')
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Supabase item_bosses query failed.', result.error.message);
+        return null;
+      }
+      return result.data && result.data.length ? result.data : null;
+    })
+    .catch(function (err) {
+      console.warn('Supabase item_bosses query failed.', err);
+      return null;
+    });
+  var timeout = new Promise(function (resolve) {
+    setTimeout(function () {
+      resolve(null);
+    }, 10000);
+  });
+  return Promise.race([query, timeout]);
+}
+
+// Builds the DATA.itemSlots/itemArmorTypes maps (name -> slot / name ->
+// armor_type) straight from Supabase's items rows -- no GAS merge, per #391.
+function buildItemMaps(rows) {
+  var itemSlots = {};
+  var itemArmorTypes = {};
   (rows || []).forEach(function (row) {
     var name = String(row.name || '').trim();
     if (!name) return;
@@ -876,6 +899,18 @@ function mergeSupabaseItemMaps(rows, gasItemSlots, gasItemArmorTypes) {
     if (row.armor_type) itemArmorTypes[name] = row.armor_type;
   });
   return { itemSlots: itemSlots, itemArmorTypes: itemArmorTypes };
+}
+
+// Maps item_bosses rows (joined through items) to the DATA.itemBosses shape
+// the GAS heavy chunk used to emit: item name -> single boss string.
+function mapSupabaseItemBosses(rows) {
+  var map = {};
+  (rows || []).forEach(function (row) {
+    var name = row.items && row.items.name ? String(row.items.name).trim() : '';
+    var boss = String(row.boss || '').trim();
+    if (name && boss) map[name] = boss;
+  });
+  return map;
 }
 
 // onCoreReady fires once the fast core chunk is loaded and the page can render.
@@ -897,6 +932,8 @@ function loadData(onCoreReady, onHeavyReady) {
   var bisItemsPromise = fetchSupabaseBisItems();
   // Fired alongside; the heavy callback waits for it before setting itemSlots.
   var itemsPromise = fetchSupabaseItems();
+  // Fired alongside; the heavy callback waits for it before setting itemBosses.
+  var itemBossesPromise = fetchSupabaseItemBosses();
 
   window._rosterCoreCallback = function (data) {
     delete window._rosterCoreCallback;
@@ -923,10 +960,11 @@ function loadData(onCoreReady, onHeavyReady) {
       window._rosterHeavyCallback = function (heavy) {
         delete window._rosterHeavyCallback;
         if (!heavy || heavy.error) return;
-        Promise.all([lootPromise, bisItemsPromise, itemsPromise]).then(function (results) {
+        Promise.all([lootPromise, bisItemsPromise, itemsPromise, itemBossesPromise]).then(function (results) {
           var lootRows = results[0];
           var bisRows = results[1];
           var itemRows = results[2];
+          var itemBossRows = results[3];
           var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
           DATA.lootCounts = mappedLoot || {};
           DATA.attendanceDetails = heavy.attendanceDetails;
@@ -935,10 +973,10 @@ function loadData(onCoreReady, onHeavyReady) {
           var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
           DATA.bisList = mappedBis && Object.keys(mappedBis).length ? mappedBis : heavy.bisList;
           DATA.priorityOrder = heavy.priorityOrder;
-          var mergedItems = mergeSupabaseItemMaps(itemRows, heavy.itemSlots, heavy.itemArmorTypes);
-          DATA.itemSlots = mergedItems.itemSlots;
-          DATA.itemArmorTypes = mergedItems.itemArmorTypes;
-          DATA.itemBosses = heavy.itemBosses || {};
+          var itemMaps = buildItemMaps(itemRows);
+          DATA.itemSlots = itemMaps.itemSlots;
+          DATA.itemArmorTypes = itemMaps.itemArmorTypes;
+          DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
           DATA.selfReceived = heavy.selfReceived;
           if (typeof populateBossFilters === 'function') populateBossFilters();
           if (onHeavyReady) onHeavyReady();

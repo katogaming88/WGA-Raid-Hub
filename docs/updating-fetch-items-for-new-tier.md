@@ -2,6 +2,8 @@
 
 `scripts/fetch-items.js` generates `items.csv` and `item_bosses_raw.csv` for seeding the `items` and `item_bosses` Supabase tables at the start of a new raid tier. It reads a hand-curated list of item IDs, then queries Wowhead per item for the name, slot, and boss source. See [issue #132](https://github.com/katogaming88/WGA-Raid-Hub/issues/132) for the full manual SQL workflow and column reference this feeds into.
 
+This is now the **sole** source for the web app's item catalog (name/slot/armor-type/boss) -- the GAS "Item Lookup" sheet was retired as a data source in [#391](https://github.com/katogaming88/WGA-Raid-Hub/issues/391). There's no second catalog to keep in sync each tier; whatever lands in `items`/`item_bosses` via this workflow is what the site shows.
+
 ## What to update each tier
 
 ### 1. `TOKEN_SLOT_KEYWORDS` (top of the file)

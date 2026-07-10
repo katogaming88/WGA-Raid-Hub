@@ -1289,9 +1289,11 @@ function buildHeavyPayload(sheets) {
     generatedAt:            new Date().toISOString(),
     priorityOrder:          getPriorityOrder(sheets),
     bisList:                getBisList(sheets),
-    itemSlots:              getItemSlots(sheets),
-    itemArmorTypes:         getItemArmorTypes(sheets),
-    itemBosses:             getItemBosses(sheets),
+    // itemSlots/itemArmorTypes/itemBosses retired (#391): the site reads the
+    // item catalog from Supabase items/item_bosses exclusively. getItemSlots/
+    // getItemArmorTypes/getItemBosses are left defined but unused, matching
+    // how prior write migrations retired GAS handlers only once the whole
+    // phase shipped.
     // lootCounts retired (#209): the site reads loot from Supabase rclc_loot.
     attendanceDetails:      getAttendanceDetails(sheets),
     rawAttendanceData:      getRawAttendanceData(sheets),

@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.27.0] - 2026-07-10
+
+### Frontend
+- **Item catalog now reads exclusively from Supabase's `items`/`item_bosses` tables (#391)** -- the GAS "Item Lookup" sheet (`getItemSlots()`/`getItemArmorTypes()`/`getItemBosses()` in `gs/wgaWebApp.gs`) is retired as a data source for the web app. `scripts/fetch-items.js` already seeds `items`/`item_bosses` from Wowhead every tier, so there's no reason to maintain two parallel catalogs; the PR #390 stopgap (merging Supabase on top of GAS) is replaced with a Supabase-only read. A failed/empty Supabase query now resolves to an empty catalog rather than silently falling back to stale GAS data, matching how loot reads behaved after #209/#358. The GAS functions themselves are left in place, unused, for now -- officer-side spreadsheet tooling (dropdown validation, Export.gs) still depends on the "Item Lookup" sheet existing.
+
+---
+
 ## [3.26.0] - 2026-07-09
 
 ### Frontend
