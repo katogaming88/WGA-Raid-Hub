@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.32.3] - 2026-07-11
+
+### Frontend
+- **Manual attendance entry from the player detail panel (#241)** -- the officer roster tab's player-profile Attendance history card previously could only edit a raid night the player already had a row for; if a player was added mid-season and had zero attendance rows at all, it just showed "No attendance records found" with no way to create one. The card now always shows an **Add raid night** control (date + status dropdowns, reusing the same `attendance` upsert + `write_audit_log` shape `saveAttendanceFromCard` already established) offering every team raid date the player has no row for yet, on or after their join date. Adding a player with a join date also now bulk-writes `Not on Roster` for every earlier raid night the team has any attendance row for, so a mid-season add doesn't leave the whole pre-join history blank/editable -- those nights display read-only, matching how an existing `Not on Roster` row already rendered. Existing rosters added before this ships aren't backfilled retroactively; only new adds going forward get it.
+- **Attendance history card now reads from Supabase, not Apps Script (#241 follow-up)** -- caught during manual verification: `getPlayerAttendanceFull` (the card's read source since before #218) reads the Attendance Google Sheet, which has no visibility into writes this card -- or the pre-existing per-row edit dropdown, live since #218 -- make straight to Supabase. A saved change reverted on the next page load because the Sheet-sourced read never saw it, for both the new "add" feature and the older edit path. `loadAttendanceHistory` now queries `attendance` directly (the full historical CSV import in #320 already backfilled it, so an empty result means the player genuinely has none), falling back to the old GAS action only on a query error, the same convention as the roster/BiS/priority_order reads migrated earlier in Phase 5.
+
+---
+
 ## [3.32.2] - 2026-07-11
 
 ### Frontend

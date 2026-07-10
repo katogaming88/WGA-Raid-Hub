@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.32.2';
+var VERSION = '3.32.3';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -2595,6 +2595,15 @@ function renderProfile(firstName, backTo, container) {
   if (backTo === 'officer') updateBisAllowDiv(player.nameRealm, player.firstName);
 }
 
+// #241 follow-up: reads straight from Supabase's attendance table instead of
+// the GAS getPlayerAttendanceFull action, which reads the Attendance Google
+// Sheet and has no visibility into writes this card (or the Attendance tab,
+// #218) make straight to Supabase -- confirmed via manual testing, a change
+// reverted on page reload because the Sheet-sourced read never saw it. The
+// full historical import (#320) already backfilled every Sheet row into
+// Supabase, so an empty result here means the player genuinely has no
+// history, not that the read needs to fall back to GAS; only a query error
+// falls back, same convention as fetchSupabaseRoster/BiS/priority_order.
 function loadAttendanceHistory(firstName) {
   var content = document.getElementById('attend-history-' + firstName);
   if (!content) return;
@@ -2616,6 +2625,47 @@ function loadAttendanceHistory(firstName) {
     '<span style="color:var(--text-muted);font-size:0.95rem;padding:0.5rem 0;display:block;">Loading...</span>';
   content.style.display = 'block';
 
+  var norm = normalise(firstName);
+  var roster = (DATA && DATA.roster) || [];
+  var player = null;
+  for (var i = 0; i < roster.length; i++) {
+    if (normalise(roster[i].firstName) === norm) {
+      player = roster[i];
+      break;
+    }
+  }
+
+  if (!player || !player.id || !supabaseClient) {
+    loadAttendanceHistoryFromGAS(firstName, content, hint);
+    return;
+  }
+
+  supabaseClient
+    .from('attendance')
+    .select('raid_date, status')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('player_id', player.id)
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Supabase attendance query failed, using Apps Script history.', result.error.message);
+        loadAttendanceHistoryFromGAS(firstName, content, hint);
+        return;
+      }
+      content.dataset.loaded = '1';
+      if (hint) hint.textContent = 'click to collapse';
+
+      var history = (result.data || []).map(function (row) {
+        return { date: row.raid_date, status: row.status };
+      });
+      history.sort(function (a, b) {
+        return b.date < a.date ? -1 : b.date > a.date ? 1 : 0;
+      });
+
+      renderAttendanceHistoryCard(firstName, content, history);
+    });
+}
+
+function loadAttendanceHistoryFromGAS(firstName, content, hint) {
   var cbName = '_attendHistCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
   window[cbName] = function (result) {
     delete window[cbName];
@@ -2627,82 +2677,7 @@ function loadAttendanceHistory(firstName) {
       return b.date < a.date ? -1 : b.date > a.date ? 1 : 0;
     });
 
-    if (!history.length) {
-      content.innerHTML =
-        '<p style="color:var(--text-muted);font-size:0.95rem;padding:0.5rem 0;">No attendance records found.</p>';
-      return;
-    }
-
-    var counts = {};
-    for (var i = 0; i < history.length; i++) {
-      /** @type {string} */
-      var s = history[i].status;
-      counts[s] = (counts[s] || 0) + 1;
-    }
-
-    function statusColor(s) {
-      if (s === 'Present') return 'var(--heal)';
-      if (s === 'Late') return 'var(--gold)';
-      if (s === 'No Show') return 'var(--melee)';
-      if (s === 'Medical Leave') return '#7EC8E3';
-      if (s === 'Not on Roster') return 'var(--text-muted)';
-      return 'var(--gold-light)';
-    }
-
-    var summaryParts = [];
-    var order = ['Present', 'Late', 'No Show', 'Excused', 'Medical Leave'];
-    for (var oi = 0; oi < order.length; oi++) {
-      var st = order[oi];
-      if (counts[st])
-        summaryParts.push('<span style="color:' + statusColor(st) + ';">' + counts[st] + ' ' + st + '</span>');
-    }
-    var otherKeys = Object.keys(counts).filter(function (k) {
-      return order.indexOf(k) === -1;
-    });
-    for (var ok = 0; ok < otherKeys.length; ok++) {
-      summaryParts.push(
-        '<span style="color:var(--text-muted);">' + counts[otherKeys[ok]] + ' ' + otherKeys[ok] + '</span>'
-      );
-    }
-
-    var CARD_STATUSES = ['Present', 'Bench', 'Medical Leave', 'Excused', 'Extended Leave', 'No Show', 'Not on Roster'];
-
-    var html =
-      '<div style="font-size:0.88rem;color:var(--text-muted);margin-bottom:0.6rem;display:flex;gap:0.5rem;flex-wrap:wrap;">' +
-      summaryParts.join('<span style="color:var(--border-mid);">|</span>') +
-      '</div>';
-    html += '<div style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:4px;">';
-    for (var j = 0; j < history.length; j++) {
-      var entry = history[j];
-      var isNOR = entry.status === 'Not on Roster';
-      html +=
-        '<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.95rem;padding:0.28rem 0.75rem;border-bottom:1px solid var(--border);gap:0.5rem;">';
-      html += '<span style="color:var(--text);white-space:nowrap;">' + entry.date + '</span>';
-      if (isNOR) {
-        html += '<span style="color:' + statusColor(entry.status) + ';font-weight:600;">' + entry.status + '</span>';
-      } else {
-        html += '<div style="display:flex;align-items:center;gap:0.4rem;">';
-        html += '<div class="attend-status-wrap">';
-        html +=
-          '<select class="attend-status-select attend-card-status-select" data-date="' +
-          entry.date +
-          '" data-name="' +
-          firstName +
-          '" data-old="' +
-          entry.status +
-          '" onchange="saveAttendanceFromCard(this)">';
-        for (var k = 0; k < CARD_STATUSES.length; k++) {
-          var s = CARD_STATUSES[k];
-          html += '<option value="' + s + '"' + (entry.status === s ? ' selected' : '') + '>' + s + '</option>';
-        }
-        html += '</select></div>';
-        html += '<span class="attend-save-ind" style="min-width:40px;text-align:right;"></span>';
-        html += '</div>';
-      }
-      html += '</div>';
-    }
-    html += '</div>';
-    content.innerHTML = html;
+    renderAttendanceHistoryCard(firstName, content, history);
   };
 
   var script = document.createElement('script');
@@ -2714,6 +2689,260 @@ function loadAttendanceHistory(firstName) {
   script.src =
     WEB_APP_URL + '?action=getPlayerAttendanceFull&firstName=' + encodeURIComponent(firstName) + '&callback=' + cbName;
   document.head.appendChild(script);
+}
+
+// getPlayerAttendanceFull (the source loadAttendanceHistory fetches from) is
+// still an Apps Script/Sheets read -- it has no idea about rows written
+// straight to Supabase's attendance table, so a GAS re-fetch after
+// addAttendanceNight's write would just show the same stale list again. This
+// cache lets that write update the rendered card in place instead of relying
+// on a round-trip that can never see it.
+var _attendHistCache = {};
+
+// #241: renders the existing per-night history (unchanged from before) plus
+// an "Add raid night" control for creating a row on a night the player has
+// none for at all -- the gap the old card had no way to fill, since every
+// row it could show already had to exist first.
+function renderAttendanceHistoryCard(firstName, content, history) {
+  _attendHistCache[firstName] = history;
+  var addControlHtml = '<div id="attend-add-night-' + firstName + '"></div>';
+
+  if (!history.length) {
+    content.innerHTML =
+      '<p style="color:var(--text-muted);font-size:0.95rem;padding:0.5rem 0;">No attendance records found.</p>' +
+      addControlHtml;
+    renderAddAttendanceNightControl(firstName, history);
+    return;
+  }
+
+  var counts = {};
+  for (var i = 0; i < history.length; i++) {
+    /** @type {string} */
+    var s = history[i].status;
+    counts[s] = (counts[s] || 0) + 1;
+  }
+
+  function statusColor(s) {
+    if (s === 'Present') return 'var(--heal)';
+    if (s === 'Late') return 'var(--gold)';
+    if (s === 'No Show') return 'var(--melee)';
+    if (s === 'Medical Leave') return '#7EC8E3';
+    if (s === 'Not on Roster') return 'var(--text-muted)';
+    return 'var(--gold-light)';
+  }
+
+  var summaryParts = [];
+  var order = ['Present', 'Late', 'No Show', 'Excused', 'Medical Leave'];
+  for (var oi = 0; oi < order.length; oi++) {
+    var st = order[oi];
+    if (counts[st])
+      summaryParts.push('<span style="color:' + statusColor(st) + ';">' + counts[st] + ' ' + st + '</span>');
+  }
+  var otherKeys = Object.keys(counts).filter(function (k) {
+    return order.indexOf(k) === -1;
+  });
+  for (var ok = 0; ok < otherKeys.length; ok++) {
+    summaryParts.push(
+      '<span style="color:var(--text-muted);">' + counts[otherKeys[ok]] + ' ' + otherKeys[ok] + '</span>'
+    );
+  }
+
+  var CARD_STATUSES = ['Present', 'Bench', 'Medical Leave', 'Excused', 'Extended Leave', 'No Show', 'Not on Roster'];
+
+  var html =
+    '<div style="font-size:0.88rem;color:var(--text-muted);margin-bottom:0.6rem;display:flex;gap:0.5rem;flex-wrap:wrap;">' +
+    summaryParts.join('<span style="color:var(--border-mid);">|</span>') +
+    '</div>';
+  html += '<div style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:4px;">';
+  for (var j = 0; j < history.length; j++) {
+    var entry = history[j];
+    var isNOR = entry.status === 'Not on Roster';
+    html +=
+      '<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.95rem;padding:0.28rem 0.75rem;border-bottom:1px solid var(--border);gap:0.5rem;">';
+    html += '<span style="color:var(--text);white-space:nowrap;">' + entry.date + '</span>';
+    if (isNOR) {
+      html += '<span style="color:' + statusColor(entry.status) + ';font-weight:600;">' + entry.status + '</span>';
+    } else {
+      html += '<div style="display:flex;align-items:center;gap:0.4rem;">';
+      html += '<div class="attend-status-wrap">';
+      html +=
+        '<select class="attend-status-select attend-card-status-select" data-date="' +
+        entry.date +
+        '" data-name="' +
+        firstName +
+        '" data-old="' +
+        entry.status +
+        '" onchange="saveAttendanceFromCard(this)">';
+      for (var k = 0; k < CARD_STATUSES.length; k++) {
+        var s = CARD_STATUSES[k];
+        html += '<option value="' + s + '"' + (entry.status === s ? ' selected' : '') + '>' + s + '</option>';
+      }
+      html += '</select></div>';
+      html += '<span class="attend-save-ind" style="min-width:40px;text-align:right;"></span>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  content.innerHTML = html + addControlHtml;
+  renderAddAttendanceNightControl(firstName, history);
+}
+
+// #241: populates the "Add raid night" control with every raid date the team
+// has an attendance row for (from anyone), minus dates this player already
+// has a row for (shown above) and minus dates before the player's join date
+// (those are backfilled as "Not on Roster" automatically -- see
+// backfillNotOnRosterForPlayer in tab-roster.js -- and aren't manual-entry
+// candidates).
+function renderAddAttendanceNightControl(firstName, history) {
+  var container = document.getElementById('attend-add-night-' + firstName);
+  if (!container || !supabaseClient) return;
+
+  var norm = normalise(firstName);
+  var roster = (DATA && DATA.roster) || [];
+  var player = null;
+  for (var i = 0; i < roster.length; i++) {
+    if (normalise(roster[i].firstName) === norm) {
+      player = roster[i];
+      break;
+    }
+  }
+  if (!player || !player.id) return;
+
+  var existingDates = {};
+  for (var h = 0; h < history.length; h++) existingDates[history[h].date] = true;
+
+  supabaseClient
+    .from('attendance')
+    .select('raid_date')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(function (result) {
+      if (result.error) return;
+      var seen = {};
+      var dates = [];
+      (result.data || []).forEach(function (row) {
+        var d = row.raid_date;
+        if (!d || seen[d] || existingDates[d]) return;
+        if (player.joinDate && d < player.joinDate) return;
+        seen[d] = true;
+        dates.push(d);
+      });
+      if (!dates.length) return;
+      dates.sort();
+
+      var CARD_STATUSES = [
+        'Present',
+        'Bench',
+        'Medical Leave',
+        'Excused',
+        'Extended Leave',
+        'No Show',
+        'Not on Roster'
+      ];
+      var dateOptions = dates
+        .map(function (d) {
+          return '<option value="' + d + '">' + d + '</option>';
+        })
+        .join('');
+      var statusOptions = CARD_STATUSES.map(function (s) {
+        return '<option value="' + s + '">' + s + '</option>';
+      }).join('');
+      var nameSafe = firstName.replace(/'/g, "\\'");
+
+      container.innerHTML =
+        '<div style="display:flex;align-items:center;gap:0.4rem;margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border);flex-wrap:wrap;">' +
+        '<span style="font-size:0.9rem;color:var(--text-muted);">Add raid night:</span>' +
+        '<select id="attend-add-date-' +
+        firstName +
+        '" style="font-size:0.9rem;padding:0.15rem 0.35rem;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);">' +
+        dateOptions +
+        '</select>' +
+        '<select id="attend-add-status-' +
+        firstName +
+        '" style="font-size:0.9rem;padding:0.15rem 0.35rem;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);">' +
+        statusOptions +
+        '</select>' +
+        '<button class="btn btn-gold" style="font-size:0.85rem;padding:0.2rem 0.6rem;" onclick="addAttendanceNight(\'' +
+        nameSafe +
+        '\')">Add</button>' +
+        '<span id="attend-add-ind-' +
+        firstName +
+        '" style="font-size:0.85rem;"></span>' +
+        '</div>';
+    });
+}
+
+// #241: creates the attendance row saveAttendanceFromCard's per-row dropdown
+// has nothing to edit until it exists -- same upsert + audit log shape, just
+// a different entry point (a brand-new date instead of an existing row).
+function addAttendanceNight(firstName) {
+  var dateSel = /** @type {HTMLSelectElement} */ (document.getElementById('attend-add-date-' + firstName));
+  var statusSel = /** @type {HTMLSelectElement} */ (document.getElementById('attend-add-status-' + firstName));
+  var ind = document.getElementById('attend-add-ind-' + firstName);
+  if (!dateSel || !statusSel) return;
+  var date = dateSel.value;
+  var status = statusSel.value;
+  if (!date || !status) return;
+
+  var norm = normalise(firstName);
+  var roster = (DATA && DATA.roster) || [];
+  var player = null;
+  for (var i = 0; i < roster.length; i++) {
+    if (normalise(roster[i].firstName) === norm) {
+      player = roster[i];
+      break;
+    }
+  }
+  if (!player || !player.id) return;
+
+  dateSel.disabled = true;
+  statusSel.disabled = true;
+  if (ind) {
+    ind.textContent = 'Saving...';
+    ind.style.color = 'var(--text-muted)';
+  }
+
+  supabaseClient
+    .from('attendance')
+    .upsert(
+      { team_id: _teamCfg.supabaseTeamId, player_id: player.id, raid_date: date, status: status },
+      { onConflict: 'team_id,player_id,raid_date' }
+    )
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      return writeAuditLog('Attendance Status Set', 'players', player.id, '(none) -> ' + status + ' (' + date + ')');
+    })
+    .then(function () {
+      applyNewAttendanceNight(firstName, date, status);
+    })
+    .catch(function (err) {
+      dateSel.disabled = false;
+      statusSel.disabled = false;
+      console.warn('Failed to add attendance night.', err);
+      if (ind) {
+        ind.textContent = 'Error';
+        ind.style.color = 'var(--melee)';
+        setTimeout(function () {
+          if (ind) ind.textContent = '';
+        }, 3000);
+      }
+    });
+}
+
+// Updates the rendered card in place after a successful add, instead of
+// re-fetching history from GAS (which can never see a write that landed
+// straight in Supabase -- see the _attendHistCache comment above).
+function applyNewAttendanceNight(firstName, date, status) {
+  var content = document.getElementById('attend-history-' + firstName);
+  if (!content) return;
+  var history = (_attendHistCache[firstName] || []).filter(function (e) {
+    return e.date !== date;
+  });
+  history.push({ date: date, status: status });
+  history.sort(function (a, b) {
+    return b.date < a.date ? -1 : b.date > a.date ? 1 : 0;
+  });
+  renderAttendanceHistoryCard(firstName, content, history);
 }
 
 // Second write path onto the same attendance table setPlayerStatus()
