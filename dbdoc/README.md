@@ -25,6 +25,11 @@
 | [public.team_settings](public.team_settings.md) | 3 |  | BASE TABLE |
 | [public.teams](public.teams.md) | 3 |  | BASE TABLE |
 | [public.pending_roster](public.pending_roster.md) | 14 |  | VIEW |
+| [public.rnlsi](public.rnlsi.md) | 6 |  | VIEW |
+| [public.bis_demand_vs_awards](public.bis_demand_vs_awards.md) | 7 |  | VIEW |
+| [public.priority_order_stale_entries](public.priority_order_stale_entries.md) | 10 |  | VIEW |
+| [public.priority_order_gaps](public.priority_order_gaps.md) | 4 |  | VIEW |
+| [public.season_loot_pace](public.season_loot_pace.md) | 6 |  | VIEW |
 
 ## Stored procedures and functions
 
@@ -302,6 +307,49 @@ erDiagram
   text signup_officer_note
   timestamp_with_time_zone reviewed_at
   integer reviewed_by
+}
+"public.rnlsi" {
+  integer player_id
+  integer team_id
+  text name_realm
+  text role
+  timestamp_with_time_zone last_award_at
+  bigint raid_nights_since_last_item
+}
+"public.bis_demand_vs_awards" {
+  integer team_id
+  integer item_id
+  text item_name
+  text slot
+  bigint demand_count
+  text season
+  bigint awarded_count
+}
+"public.priority_order_stale_entries" {
+  integer priority_order_id
+  integer team_id
+  text season
+  integer item_id
+  text item_name
+  text track
+  integer rank
+  integer player_id
+  text name_realm
+  timestamp_with_time_zone archived_at
+}
+"public.priority_order_gaps" {
+  integer team_id
+  text season
+  integer player_id
+  text name_realm
+}
+"public.season_loot_pace" {
+  integer team_id
+  text season
+  integer season_week
+  text track
+  text slot
+  bigint items_awarded
 }
 ```
 
