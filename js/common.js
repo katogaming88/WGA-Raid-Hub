@@ -13,6 +13,18 @@ var TEAMS = {
     name: 'Hellfire Rollers',
     officerPass: 'hellfire2',
     supabaseTeamId: 2
+  },
+  // No GAS deployment -- Immolation was created directly in Supabase, unlike
+  // Phoenix/Hellfire's pre-migration Sheets. Known limitation: loadData()
+  // (js/common.js) still loads its core/heavy chunks from gasUrl regardless
+  // of migration progress elsewhere, so the site won't actually load data for
+  // this team until enough of that pipeline is GAS-independent. This entry
+  // just gives team-switching/claims code something to point at.
+  immolation: {
+    gasUrl: '',
+    name: 'Immolation',
+    officerPass: 'immolation2026',
+    supabaseTeamId: 3
   }
 };
 
@@ -93,7 +105,7 @@ function initTeamUI() {
   document.title = TEAM_NAME + (suffix ? ' -- ' + suffix : '');
   var nameEl = document.getElementById('headerTeamName');
   if (nameEl) nameEl.textContent = TEAM_NAME;
-  ['teamSwitcherSelect', 'officerPromptTeamSelect'].forEach(function (id) {
+  ['teamSwitcherSelect', 'officerPromptTeamSelect', 'claimModalTeamSelect'].forEach(function (id) {
     var sel = document.getElementById(id);
     if (!sel) return;
     sel.innerHTML = '';

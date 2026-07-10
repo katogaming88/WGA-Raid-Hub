@@ -327,28 +327,6 @@ function showDiscordClaimModal(session) {
   document.getElementById('claimDiscordName').textContent = session.username || '';
   document.getElementById('claimError').style.display = 'none';
 
-  // "Switch teams" link: when resolveDiscordSession() already found the
-  // raider's character on a specific other team (claimedElsewhere), switch
-  // straight there instead of just opening the team switcher dropdown for
-  // them to pick manually (#368 follow-up, matching the same pattern the
-  // officer quick-actions claim prompt already uses).
-  var wrongTeamLink = document.getElementById('claimWrongTeamLink');
-  if (wrongTeamLink) {
-    var elsewhere = session.claimedElsewhere;
-    if (elsewhere && elsewhere.teamSlug) {
-      wrongTeamLink.textContent = 'Switch to ' + (elsewhere.teamName || 'your other team');
-      wrongTeamLink.onclick = function (e) {
-        e.preventDefault();
-        switchTeam(elsewhere.teamSlug);
-      };
-    } else {
-      wrongTeamLink.textContent = 'Switch teams';
-      wrongTeamLink.onclick = function (e) {
-        e.preventDefault();
-        goToTeamSwitcher();
-      };
-    }
-  }
   // Show the modal immediately; the character list fills in when the query
   // resolves (one round-trip). Blocking on the read would make the button that
   // opened the modal feel unresponsive.

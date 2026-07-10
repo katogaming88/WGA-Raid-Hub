@@ -115,7 +115,7 @@
     <select id="claimCharacterSelect" class="add-player-input" style="width:100%;margin-bottom:8px">
       <option value="">-- Select your character --</option>
     </select>
-    <p class="form-error">Don't see your character? You might be on the wrong team. You're currently viewing <strong class="team-name">Team Phoenix</strong>. <a href="#" id="claimWrongTeamLink" class="form-error-link" onclick="goToTeamSwitcher();return false;">Switch teams</a></p>
+    <p class="form-error">Don't see your character? You might be on the wrong team. You're currently viewing <strong class="team-name">Team Phoenix</strong>. Switch team: <select id="claimModalTeamSelect" class="team-switcher" title="Switch team"></select></p>
     <p id="claimError" class="form-error" style="display:none"></p>
     <div class="modal-actions">
       <button class="btn btn-gold claim-submit-btn" onclick="submitCharacterClaim()">Confirm claim</button>
