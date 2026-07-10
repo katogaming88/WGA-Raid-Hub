@@ -15,7 +15,7 @@ const COMMON_JS = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 function makeEl(extra) {
-  return Object.assign({ style: {}, textContent: '', innerHTML: '', disabled: false, value: '' }, extra);
+  return Object.assign({ style: {}, textContent: '', innerHTML: '', disabled: false, value: '', dataset: {} }, extra);
 }
 
 // Chainable mock matching what these functions actually call:
@@ -72,6 +72,7 @@ function makeSupabase(config) {
 }
 
 function loadSandbox({ supabaseClient, els = {}, roster = [] } = {}) {
+  const createdScripts = [];
   const sandbox = {
     window: {},
     location: { search: '', pathname: '/' },
@@ -79,7 +80,11 @@ function loadSandbox({ supabaseClient, els = {}, roster = [] } = {}) {
     localStorage: { getItem: () => null, setItem: () => {} },
     document: {
       getElementById: (id) => els[id] || null,
-      createElement: () => ({}),
+      createElement: () => {
+        const el = {};
+        createdScripts.push(el);
+        return el;
+      },
       head: { appendChild: () => {} }
     },
     console,
@@ -95,6 +100,8 @@ function loadSandbox({ supabaseClient, els = {}, roster = [] } = {}) {
   sandbox.supabaseClient = supabaseClient;
   sandbox._teamCfg = { supabaseTeamId: 1 };
   sandbox.DATA = { roster };
+  sandbox.WEB_APP_URL = 'https://example.test/gas';
+  sandbox._createdScripts = createdScripts;
   return sandbox;
 }
 
@@ -112,6 +119,48 @@ describe('renderAttendanceHistoryCard (#241)', () => {
 
     expect(container.innerHTML).toContain('No attendance records found');
     expect(container.innerHTML).toContain('attend-add-night-Kato');
+  });
+});
+
+describe('loadAttendanceHistory (#241 follow-up)', () => {
+  it("reads the player's attendance rows straight from Supabase, not GAS", async () => {
+    const els = { 'attend-history-Kato': makeEl({ style: { display: 'none' } }) };
+    const { client, calls } = makeSupabase({
+      select: () => ({
+        data: [
+          { raid_date: '2026-07-01', status: 'Present' },
+          { raid_date: '2026-06-25', status: 'No Show' }
+        ],
+        error: null
+      })
+    });
+    const sandbox = loadSandbox({ supabaseClient: client, els, roster: [player()] });
+
+    sandbox.loadAttendanceHistory('Kato');
+    await flush();
+
+    expect(calls.selects[0].table).toBe('attendance');
+    expect(calls.selects[0].eq).toEqual([
+      ['team_id', 1],
+      ['player_id', 5]
+    ]);
+    expect(sandbox._createdScripts).toHaveLength(0);
+    expect(els['attend-history-Kato'].innerHTML).toContain('2026-07-01');
+    expect(els['attend-history-Kato'].innerHTML).toContain('2026-06-25');
+  });
+
+  it('falls back to the GAS action when the Supabase query errors', async () => {
+    const els = { 'attend-history-Kato': makeEl({ style: { display: 'none' } }) };
+    const { client } = makeSupabase({
+      select: () => ({ data: null, error: { message: 'boom' } })
+    });
+    const sandbox = loadSandbox({ supabaseClient: client, els, roster: [player()] });
+
+    sandbox.loadAttendanceHistory('Kato');
+    await flush();
+
+    expect(sandbox._createdScripts).toHaveLength(1);
+    expect(sandbox._createdScripts[0].src).toContain('getPlayerAttendanceFull');
   });
 });
 

@@ -2595,6 +2595,15 @@ function renderProfile(firstName, backTo, container) {
   if (backTo === 'officer') updateBisAllowDiv(player.nameRealm, player.firstName);
 }
 
+// #241 follow-up: reads straight from Supabase's attendance table instead of
+// the GAS getPlayerAttendanceFull action, which reads the Attendance Google
+// Sheet and has no visibility into writes this card (or the Attendance tab,
+// #218) make straight to Supabase -- confirmed via manual testing, a change
+// reverted on page reload because the Sheet-sourced read never saw it. The
+// full historical import (#320) already backfilled every Sheet row into
+// Supabase, so an empty result here means the player genuinely has no
+// history, not that the read needs to fall back to GAS; only a query error
+// falls back, same convention as fetchSupabaseRoster/BiS/priority_order.
 function loadAttendanceHistory(firstName) {
   var content = document.getElementById('attend-history-' + firstName);
   if (!content) return;
@@ -2616,6 +2625,47 @@ function loadAttendanceHistory(firstName) {
     '<span style="color:var(--text-muted);font-size:0.95rem;padding:0.5rem 0;display:block;">Loading...</span>';
   content.style.display = 'block';
 
+  var norm = normalise(firstName);
+  var roster = (DATA && DATA.roster) || [];
+  var player = null;
+  for (var i = 0; i < roster.length; i++) {
+    if (normalise(roster[i].firstName) === norm) {
+      player = roster[i];
+      break;
+    }
+  }
+
+  if (!player || !player.id || !supabaseClient) {
+    loadAttendanceHistoryFromGAS(firstName, content, hint);
+    return;
+  }
+
+  supabaseClient
+    .from('attendance')
+    .select('raid_date, status')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('player_id', player.id)
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Supabase attendance query failed, using Apps Script history.', result.error.message);
+        loadAttendanceHistoryFromGAS(firstName, content, hint);
+        return;
+      }
+      content.dataset.loaded = '1';
+      if (hint) hint.textContent = 'click to collapse';
+
+      var history = (result.data || []).map(function (row) {
+        return { date: row.raid_date, status: row.status };
+      });
+      history.sort(function (a, b) {
+        return b.date < a.date ? -1 : b.date > a.date ? 1 : 0;
+      });
+
+      renderAttendanceHistoryCard(firstName, content, history);
+    });
+}
+
+function loadAttendanceHistoryFromGAS(firstName, content, hint) {
   var cbName = '_attendHistCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
   window[cbName] = function (result) {
     delete window[cbName];
