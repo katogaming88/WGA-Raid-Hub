@@ -56,6 +56,10 @@ function switchTab(name) {
   }
   if (name === 'mplus') buildMPlusTab();
   if (name === 'audit') buildAuditTab();
+  if (name === 'reports') {
+    resetReportsSubTab();
+    buildReportsTab();
+  }
   if (name === 'season') buildSeasonTab();
   if (name === 'admin') buildAdminTab();
 }
@@ -143,6 +147,33 @@ function switchPrioritySubTab(name, btnEl) {
   if (name === 'list') buildPriorityTab();
   if (name === 'unmanaged') buildUnmanagedTab();
   if (name === 'conflicts') buildConflicts();
+}
+
+function resetReportsSubTab() {
+  document.querySelectorAll('[id^="reports-subtab-btn-"]').forEach(function (b) {
+    b.classList.remove('active');
+  });
+  var defaultBtn = document.getElementById('reports-subtab-btn-rnlsi');
+  if (defaultBtn) defaultBtn.classList.add('active');
+  ['rnlsi', 'bisDemand', 'priorityHealth', 'lootPace'].forEach(function (name) {
+    var sub = document.getElementById('reports-sub-' + name);
+    if (sub) sub.style.display = name === 'rnlsi' ? '' : 'none';
+  });
+}
+
+function switchReportsSubTab(name, btnEl) {
+  document.querySelectorAll('[id^="reports-subtab-btn-"]').forEach(function (b) {
+    b.classList.remove('active');
+  });
+  if (btnEl) btnEl.classList.add('active');
+  ['rnlsi', 'bisDemand', 'priorityHealth', 'lootPace'].forEach(function (subName) {
+    var sub = document.getElementById('reports-sub-' + subName);
+    if (sub) sub.style.display = subName === name ? '' : 'none';
+  });
+  if (name === 'rnlsi') loadRnlsiReport();
+  if (name === 'bisDemand') loadBisDemandReport();
+  if (name === 'priorityHealth') loadPriorityHealthReport();
+  if (name === 'lootPace') loadLootPaceReport();
 }
 
 function resetLootSubTab() {

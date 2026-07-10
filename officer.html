@@ -78,6 +78,7 @@
           <div class="nav-admin-divider"></div>
           <button class="nav-item" onclick="switchTab('season')">Season Settings</button>
           <button class="nav-item" onclick="switchTab('audit')">Audit Log</button>
+          <button class="nav-item" onclick="switchTab('reports')">Reports</button>
           <button class="nav-item" onclick="switchTab('help')">Help</button>
           <div class="nav-admin-divider"></div>
           <button class="nav-item nav-item-admin" id="adminNavBtn" onclick="switchTab('admin')" style="display:none;">Admin</button>
@@ -436,6 +437,96 @@
                 style="max-width:320px;">
             </div>
             <div id="auditContainer"></div>
+          </div>
+
+          <!-- Reports tab -->
+          <div id="tab-reports" class="tab-panel">
+            <div class="filter-bar" style="margin-bottom:0.5rem;">
+              <button class="filter-chip active" id="reports-subtab-btn-rnlsi"
+                onclick="switchReportsSubTab('rnlsi', this)">Raid Nights Since Last Item</button>
+              <button class="filter-chip" id="reports-subtab-btn-bisDemand"
+                onclick="switchReportsSubTab('bisDemand', this)">BiS Demand vs Awards</button>
+              <button class="filter-chip" id="reports-subtab-btn-priorityHealth"
+                onclick="switchReportsSubTab('priorityHealth', this)">Priority Order Health</button>
+              <button class="filter-chip" id="reports-subtab-btn-lootPace"
+                onclick="switchReportsSubTab('lootPace', this)">Season Loot Pace</button>
+              <button class="help-btn" onclick="toggleHelp('help-reports')" title="Show help">?</button>
+            </div>
+            <div id="help-reports" class="help-tip" style="margin-bottom:0.75rem;">
+              <strong>Raid Nights Since Last Item</strong> -- how many raid nights have passed since each player's
+              last loot award, grouped by role.<br>
+              <strong>BiS Demand vs Awards</strong> -- ranks items by how many active players want them on their BiS
+              list, next to how many times each has actually been awarded in the selected season. High demand + low
+              awards is what to prioritize.<br>
+              <strong>Priority Order Health</strong> -- flags stale priority order entries for players no longer on
+              the active roster, and active non-bench players missing from priority order entirely for a season.<br>
+              <strong>Season Loot Pace</strong> -- items awarded per week of the season, compared to the same week
+              last season. "Week 1" is measured from the first tracked loot award of the season, not the raid-lockout
+              calendar, since Supabase doesn't store a season start date yet.
+            </div>
+
+            <div id="reports-sub-rnlsi">
+              <div class="filter-bar" style="margin-bottom:0.35rem;">
+                <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Role:</span>
+                <button class="filter-chip" onclick="toggleRnlsiRole('Tank')" id="rnlsi-chip-role-Tank">Tanks</button>
+                <button class="filter-chip" onclick="toggleRnlsiRole('Heal')" id="rnlsi-chip-role-Heal">Healers</button>
+                <button class="filter-chip" onclick="toggleRnlsiRole('Melee')" id="rnlsi-chip-role-Melee">Melee</button>
+                <button class="filter-chip" onclick="toggleRnlsiRole('Ranged')" id="rnlsi-chip-role-Ranged">Ranged</button>
+              </div>
+              <div class="filter-bar" style="margin-bottom:0.75rem;">
+                <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
+                <button class="filter-chip" onclick="toggleRnlsiSort('player')" id="rnlsi-chip-sort-player">Player</button>
+                <button class="filter-chip" onclick="toggleRnlsiSort('lastAward')" id="rnlsi-chip-sort-lastAward">Last Award</button>
+                <button class="filter-chip active" onclick="toggleRnlsiSort('nights')" id="rnlsi-chip-sort-nights">Raid Nights Since</button>
+              </div>
+              <div id="reportsRnlsiContent"><p style="color:var(--text-muted);">Loading...</p></div>
+            </div>
+
+            <div id="reports-sub-bisDemand" style="display:none;">
+              <div class="filter-bar" style="margin-bottom:0.75rem;">
+                <select id="reportsBisSeasonFilter" class="roster-search-input"
+                  style="width:auto;min-width:180px;margin-bottom:0;" onchange="renderBisDemandTable()"></select>
+              </div>
+              <div id="reportsBisDemandContent"><p style="color:var(--text-muted);">Loading...</p></div>
+            </div>
+
+            <div id="reports-sub-priorityHealth" style="display:none;">
+              <div class="filter-bar" style="margin-bottom:0.75rem;">
+                <select id="reportsPriorityHealthSeasonFilter" class="roster-search-input"
+                  style="width:auto;min-width:180px;margin-bottom:0;" onchange="renderPriorityHealthTables()"></select>
+              </div>
+              <div class="section-label" style="margin-bottom:0.1rem;">Stale Entries</div>
+              <p style="color:var(--text-muted);font-size:0.85rem;margin:0 0 0.5rem;">
+                Players ranked in this season's priority order who are no longer on the active roster (archived).
+                Clean these up.
+              </p>
+              <div id="reportsPriorityStaleContent"><p style="color:var(--text-muted);">Loading...</p></div>
+              <div class="section-label" style="margin:1rem 0 0.1rem;">Missing From Priority Order</div>
+              <p style="color:var(--text-muted);font-size:0.85rem;margin:0 0 0.5rem;">
+                Active, non-bench players with no priority order entry at all this season -- for any item. Gaps to
+                fill in.
+              </p>
+              <div id="reportsPriorityGapsContent"></div>
+            </div>
+
+            <div id="reports-sub-lootPace" style="display:none;">
+              <div class="filter-bar" style="margin-bottom:0.75rem;">
+                <select id="reportsPaceSeasonFilter" class="roster-search-input"
+                  style="width:auto;min-width:160px;margin-bottom:0;" onchange="renderLootPaceTable()"></select>
+                <select id="reportsPaceTrackFilter" class="roster-search-input"
+                  style="width:auto;min-width:140px;margin-bottom:0;" onchange="renderLootPaceTable()">
+                  <option value="">All Tracks</option>
+                  <option value="Myth">Mythic</option>
+                  <option value="Hero">Heroic</option>
+                  <option value="Champion">Champion</option>
+                </select>
+                <select id="reportsPaceSlotFilter" class="roster-search-input"
+                  style="width:auto;min-width:140px;margin-bottom:0;" onchange="renderLootPaceTable()">
+                  <option value="">All Slots</option>
+                </select>
+              </div>
+              <div id="reportsPaceContent"><p style="color:var(--text-muted);">Loading...</p></div>
+            </div>
           </div>
 
           <!-- Season Settings tab -->
@@ -932,6 +1023,7 @@
   <script src="js/tabs/tab-mplus.js"></script>
   <script src="js/tabs/tab-priority.js"></script>
   <script src="js/tabs/tab-audit.js"></script>
+  <script src="js/tabs/tab-reports.js"></script>
   <script src="js/tabs/tab-season.js"></script>
   <script src="js/tabs/tab-loot-import.js"></script>
   <script src="js/tabs/tab-scoring.js"></script>

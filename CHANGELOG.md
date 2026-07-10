@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.31.0] - 2026-07-10
+
+### Frontend
+- **New officer "Reports" tab, reading directly from Supabase (#227, Phase 5)** -- four sub-tabs, each backed by one of the new views below: **Raid Nights Since Last Item** (role and sort filter chips, plus severity coloring on the nights-since count scaled to the highest value currently shown, so the color bands stay meaningful as a season's raid-night count grows); **BiS Demand vs Awards** (season filter, ranks items by active-roster BiS demand next to how many times each was actually awarded); **Priority Order Health** (season filter, two panels -- "Stale Entries" for priority-order rows pointing at now-archived players, and "Missing From Priority Order" for active non-bench players absent from priority order entirely for a season); **Season Loot Pace** (season/track/slot filters, items awarded per week of season next to the same week in the prior season alphabetically). None of these have an Apps Script equivalent or fallback -- they only exist in Supabase.
+
+### Backend
+- **Four new officer report views (#227)**: `rnlsi`, `bis_demand_vs_awards`, `priority_order_stale_entries`, `priority_order_gaps`, `season_loot_pace` -- all `SECURITY INVOKER`, all built on the now-fully-migrated loot/attendance/BiS/priority tables (#216-#220). None take a season/team parameter (views can't be parameterized); each returns `team_id`/`season` as output columns for the caller to filter on. `season_loot_pace`'s "week of season" is proxied from the earliest tracked loot award per season, since there's no season-start-date column yet (that's #221's scope, Phase 6, not landed).
+
+---
+
 ## [3.30.0] - 2026-07-10
 
 ### Frontend
