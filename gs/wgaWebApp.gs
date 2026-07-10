@@ -980,18 +980,14 @@ function doGet(e) {
     }
 
     // ── Discord OAuth actions ─────────────────────────────────────────────
-
-    if (action === 'discordCallback') {
-      const code = String(e.parameter.code || '').trim();
-      if (!code) return jsonpResponse(callback, { success: false, error: 'Missing code' });
-      try {
-        const result = discordOAuthCallback(code);
-        return jsonpResponse(callback, result);
-      } catch (err) {
-        Logger.log('discordCallback error: ' + err);
-        return jsonpResponse(callback, { success: false, error: err.message });
-      }
-    }
+    // discordOAuthCallback (Discord token exchange, DISCORD_CLIENT_ID/SECRET)
+    // and the discordCallback route that called it are retired (#222):
+    // discord-callback.html was deleted when login moved to Supabase Auth's
+    // Discord provider (#363), so nothing has created a new discordSession_*
+    // token since. validateDiscordSession/claimCharacterForSession stay --
+    // resolveChangedBy() and requestSelfReceived's sessionToken param still
+    // call validateDiscordSession for any pre-#363 session that might still
+    // be live, even though no code path can mint a new one anymore.
 
     if (action === 'validateDiscordSession') {
       const token = String(e.parameter.token || '').trim();
@@ -2989,96 +2985,15 @@ function fetchWclProgressionData(zoneId) {
 }
 
 // ── Discord OAuth helpers ─────────────────────────────────────────────────────
+// The OAuth code exchange (discordTokenExchange/discordApiGet/
+// discordOAuthCallback/generateSessionToken, DISCORD_TOKEN_URL/
+// DISCORD_API_BASE/DISCORD_REDIRECT_URI, and the DISCORD_CLIENT_ID/
+// DISCORD_CLIENT_SECRET Script Properties they read) is retired (#222) --
+// see the comment above the removed discordCallback route. Only
+// validateDiscordSession survives, for any pre-#363 discordSession_* token
+// that might still be presented; DISCORD_SESSION_TTL_DAYS stays with it.
 
-var DISCORD_TOKEN_URL = 'https://discord.com/api/oauth2/token';
-var DISCORD_API_BASE  = 'https://discord.com/api/v10';
-var DISCORD_REDIRECT_URI = 'https://katogaming88.github.io/WGA-Raid-Hub/discord-callback.html';
 var DISCORD_SESSION_TTL_DAYS = 30;
-
-function generateSessionToken() {
-  return Utilities.getUuid().replace(/-/g, '');
-}
-
-function discordTokenExchange(code) {
-  const props    = PropertiesService.getScriptProperties();
-  const clientId = props.getProperty('DISCORD_CLIENT_ID');
-  const secret   = props.getProperty('DISCORD_CLIENT_SECRET');
-  if (!clientId || !secret) throw new Error('Discord credentials not configured in Script Properties');
-
-  const response = UrlFetchApp.fetch(DISCORD_TOKEN_URL, {
-    method:           'post',
-    contentType:      'application/x-www-form-urlencoded',
-    payload:          'client_id=' + encodeURIComponent(clientId) +
-                      '&client_secret=' + encodeURIComponent(secret) +
-                      '&grant_type=authorization_code' +
-                      '&code=' + encodeURIComponent(code) +
-                      '&redirect_uri=' + encodeURIComponent(DISCORD_REDIRECT_URI),
-    muteHttpExceptions: true
-  });
-
-  const status = response.getResponseCode();
-  const body   = JSON.parse(response.getContentText());
-  if (status !== 200 || !body.access_token) {
-    Logger.log('Discord token exchange failed (' + status + '): ' + response.getContentText());
-    throw new Error('Discord token exchange failed: ' + (body.error_description || body.error || status));
-  }
-  return body.access_token;
-}
-
-function discordApiGet(accessToken, path) {
-  const response = UrlFetchApp.fetch(DISCORD_API_BASE + path, {
-    method:             'get',
-    headers:            { 'Authorization': 'Bearer ' + accessToken },
-    muteHttpExceptions: true
-  });
-  const status = response.getResponseCode();
-  if (status !== 200) {
-    Logger.log('Discord API GET ' + path + ' failed (' + status + '): ' + response.getContentText());
-    throw new Error('Discord API error: ' + status);
-  }
-  return JSON.parse(response.getContentText());
-}
-
-function discordOAuthCallback(code) {
-  const accessToken = discordTokenExchange(code);
-  const user        = discordApiGet(accessToken, '/users/@me');
-
-  const discordId = String(user.id       || '');
-  const username  = String(user.username || '');
-  const avatar    = String(user.avatar   || '');
-  if (!discordId) throw new Error('Could not retrieve Discord user ID');
-
-  // Look up any existing character claim for this Discord ID
-  const ss         = SpreadsheetApp.getActiveSpreadsheet();
-  const sheets     = {};
-  for (const sheet of ss.getSheets()) { sheets[sheet.getName()] = sheet; }
-  const claims   = getDiscordClaims(sheets);
-  const existing = claims.find(function(c) { return c.discordId === discordId; });
-  const nameRealm  = existing ? existing.nameRealm : null;
-  const isOfficer  = isOfficerDiscordId(discordId);
-  const isAdmin    = isAdminDiscordId(discordId);
-
-  const token     = generateSessionToken();
-  const sessionData = {
-    discordId:  discordId,
-    username:   username,
-    avatar:     avatar,
-    nameRealm:  nameRealm,
-    createdAt:  new Date().toISOString()
-  };
-  PropertiesService.getScriptProperties().setProperty('discordSession_' + token, JSON.stringify(sessionData));
-
-  return {
-    success:    true,
-    token:      token,
-    discordId:  discordId,
-    username:   username,
-    avatar:     avatar,
-    nameRealm:  nameRealm,
-    isOfficer:  isOfficer,
-    isAdmin:    isAdmin
-  };
-}
 
 function validateDiscordSession(token) {
   if (!token) return { valid: false };
