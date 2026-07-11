@@ -14,7 +14,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 - **Wired player rename and officer notes to Supabase (#407).** `renamePlayer` and `savePlayerNote` (`js/tabs/tab-roster.js`) were the last two officer roster writes still GAS-only -- renaming updated only the GAS Roster sheet, and officer notes lived in a GAS Script Property keyed by name-realm. Both now write straight to `players` (rename updates `name_realm` in place by `id`, so historical `rclc_loot`/`bis_items`/`attendance` rows stay linked; notes use the already-existing but previously-dead `players.officer_notes` column). `officer_notes` is now part of the roster's normal Supabase read (`fetchSupabaseRoster`), replacing the separate `DATA.playerNotes` GAS map.
 
-## [3.32.11] - 2026-07-11
+## [3.32.11] - 2026-07-10
 
 ### Frontend
 
