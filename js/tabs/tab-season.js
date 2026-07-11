@@ -145,9 +145,11 @@ function _renderSeasonPerfFetchRow(season, historyIndex) {
 
   var html =
     '<div style="margin-top:0.6rem;padding-top:0.5rem;border-top:1px dashed rgba(255,255,255,0.08);display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">';
+  html += '<span style="font-size:0.85rem;color:var(--text-muted);">WCL Performance Baseline:</span>';
   html +=
-    '<span style="font-size:0.85rem;color:var(--text-muted);">WCL Performance Baseline:</span>';
-  html += '<select id="seasonPerfRaidSelect-' + historyIndex + '" class="add-player-input" style="font-size:0.85rem;padding:0.2rem 0.4rem;">';
+    '<select id="seasonPerfRaidSelect-' +
+    historyIndex +
+    '" class="add-player-input" style="font-size:0.85rem;padding:0.2rem 0.4rem;">';
   zoneGroups.forEach(function (g, j) {
     html +=
       '<option value="' +
@@ -211,13 +213,15 @@ function fetchSeasonPerf(historyIndex) {
       var result = res.data;
       if (res.error || !result || !result.success) {
         if (status) {
-          status.textContent = 'Error: ' + (result && result.error ? result.error : res.error ? res.error.message : 'Unknown error');
+          status.textContent =
+            'Error: ' + (result && result.error ? result.error : res.error ? res.error.message : 'Unknown error');
           status.style.color = 'var(--melee)';
         }
         return;
       }
       if (status) {
-        status.textContent = result.updated + ' player(s) updated' + (result.noData ? ', ' + result.noData + ' with no data' : '') + '.';
+        status.textContent =
+          result.updated + ' player(s) updated' + (result.noData ? ', ' + result.noData + ' with no data' : '') + '.';
         status.style.color = 'var(--heal)';
       }
       _seedScoringFromSeasonPerf(result.players);
