@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.33.7';
+var VERSION = '3.33.8';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -2078,6 +2078,19 @@ function submitMPlusExclusionForm(nameRealm, firstName) {
           ? '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>'
           : '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Request submitted! An officer will review it shortly.</p>';
       }
+      if (!result.error) {
+        supabaseClient.functions.invoke('discord-bot-webhook', {
+          body: {
+            action: 'mplus',
+            team: TEAM_SLUG,
+            payload: {
+              nameRealm: nameRealm,
+              raiderioUrl: urlEl.value.trim(),
+              notes: notesEl ? notesEl.value.trim() : ''
+            }
+          }
+        });
+      }
     });
 }
 
@@ -2111,6 +2124,19 @@ function submitBiSForm(nameRealm, firstName) {
         formEl.innerHTML = result.error
           ? '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>'
           : '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitted -- pending officer review.</p>';
+      }
+      if (!result.error) {
+        supabaseClient.functions.invoke('discord-bot-webhook', {
+          body: {
+            action: 'bis',
+            team: TEAM_SLUG,
+            payload: {
+              nameRealm: nameRealm,
+              bisLink: urlEl.value.trim(),
+              notes: notesEl ? notesEl.value.trim() : ''
+            }
+          }
+        });
       }
     });
 }
@@ -2351,6 +2377,20 @@ function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId) {
       if (autoApproved && DATA && DATA.selfReceived) {
         if (!DATA.selfReceived[firstName]) DATA.selfReceived[firstName] = [];
         DATA.selfReceived[firstName].push({ item: item, slot: slot, source: diff + ': ' + sourceEl.value });
+      } else {
+        supabaseClient.functions.invoke('discord-bot-webhook', {
+          body: {
+            action: 'selfreceived',
+            team: TEAM_SLUG,
+            payload: {
+              player: nameRealm,
+              item: item,
+              slot: slot,
+              source: sourceEl.value,
+              notes: notesEl ? notesEl.value : ''
+            }
+          }
+        });
       }
       formEl.innerHTML =
         '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">' +

@@ -83,31 +83,10 @@ const CFG = {
   attendDataStart:  2,  // First data row
 };
 
-var BOT_BASE_URL = PropertiesService.getScriptProperties().getProperty('BOT_BASE_URL') || 'http://129.80.178.227:3000';
-var BOT_WEBHOOK_SECRET = PropertiesService.getScriptProperties().getProperty('BOT_WEBHOOK_SECRET') || 'teamPhoenixPPCBot';
-
 var HAS_HEROIC_MULTIPLIER            = 0.85; // mythic prio penalty for players who already have the heroic version
 var HAS_CHAMPION_MULTIPLIER          = 1.07; // mythic prio small bonus for players who only have the champion (normal) version
 var HAS_NEITHER_MULTIPLIER           = 1.15; // mythic prio bonus for players who have no version of the item at all
 var HAS_CHAMPION_FOR_HEROIC_MULT     = 0.90; // heroic prio penalty for players who already have the champion (normal) version
-
-function sendToBot(path, payload) {
-  try {
-    var options = {
-      method: 'post',
-      contentType: 'application/json',
-      headers: { 'x-webhook-secret': BOT_WEBHOOK_SECRET },
-      payload: payload,
-      muteHttpExceptions: true
-    };
-    var response = UrlFetchApp.fetch(BOT_BASE_URL + path, options);
-    if (response.getResponseCode() !== 200) {
-      Logger.log('Bot error on ' + path + ': ' + response.getResponseCode() + ' - ' + response.getContentText());
-    }
-  } catch (err) {
-    Logger.log('sendToBot failed for ' + path + ': ' + err);
-  }
-}
 
 function doGet(e) {
   try {
@@ -489,17 +468,6 @@ function doGet(e) {
     if (action === 'submitSignup') {
       const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
       writeSignup(data);
-      sendToBot('/signup', JSON.stringify({
-        charName:    data.charName    || '',
-        realm:       data.realm       || '',
-        className:   data.className   || '',
-        mainSpec:    data.mainSpec    || '',
-        offSpecs:    (data.offSpecs || []).join(', '),
-        role:        data.role        || '',
-        discord:     data.discord     || '',
-        notes:       data.notes       || '',
-        submittedAt: new Date().toISOString()
-      }));
       return jsonpResponse(callback, { success: true });
     }
 
@@ -528,14 +496,6 @@ function doGet(e) {
       }
       if (!autoApproved) {
         writeSelfReceivedRequest(data);
-        sendToBot('/selfreceived', JSON.stringify({
-          player:      data.player  || '',
-          item:        data.item    || '',
-          slot:        data.slot    || '',
-          source:      data.source  || '',
-          notes:       data.notes   || '',
-          submittedAt: new Date().toISOString()
-        }));
       }
       return jsonpResponse(callback, { success: true, autoApproved: autoApproved });
     }
@@ -574,12 +534,6 @@ function doGet(e) {
     if (action === 'submitBiS') {
       const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
       writeBiSSubmission(data);
-      sendToBot('/bis', JSON.stringify({
-        nameRealm:   data.nameRealm || '',
-        bisLink:     data.bisLink   || '',
-        notes:       data.notes     || '',
-        submittedAt: new Date().toISOString()
-      }));
       return jsonpResponse(callback, { success: true });
     }
 
@@ -790,12 +744,6 @@ function doGet(e) {
     if (action === 'submitMPlusExclusion') {
       const data = JSON.parse(decodeURIComponent(e.parameter.data || '{}'));
       writeMPlusExclusionRequest(data);
-      sendToBot('/mplus', JSON.stringify({
-        nameRealm:   data.nameRealm   || '',
-        raiderioUrl: data.raiderioUrl || '',
-        notes:       data.notes       || '',
-        submittedAt: new Date().toISOString()
-      }));
       return jsonpResponse(callback, { success: true });
     }
 
