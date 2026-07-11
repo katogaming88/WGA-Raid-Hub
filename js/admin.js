@@ -392,7 +392,10 @@ function formatAuditDetail(detail) {
   if (detail == null) return '';
   if (typeof detail === 'string') return detail;
   return Object.keys(detail)
-    .map(function (k) { return k + ': ' + detail[k]; })
+    .map(function (k) {
+      var v = detail[k];
+      return k + ': ' + (v != null && typeof v === 'object' ? JSON.stringify(v) : v);
+    })
     .join(', ');
 }
 

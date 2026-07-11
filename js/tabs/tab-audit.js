@@ -2,9 +2,21 @@
 // audit_log instead of the legacy GAS ?action=getAuditLog JSONP endpoint.
 // Columns collapse the old From/To pair into a single human-readable
 // DETAIL column (#214/#377 write the summary string convention detail
-// already holds); CHANGED BY resolves actor_id through resolve_actor_name()
+// already holds, plus the jsonb objects set_team_setting() started writing
+// with #232); CHANGED BY resolves actor_id through resolve_actor_name()
 // (#376) instead of a raw uuid.
 var _auditEntries = [];
+
+function formatAuditDetail(detail) {
+  if (detail == null) return '';
+  if (typeof detail === 'string') return detail;
+  return Object.keys(detail)
+    .map(function (k) {
+      var v = detail[k];
+      return k + ': ' + (v != null && typeof v === 'object' ? JSON.stringify(v) : v);
+    })
+    .join(', ');
+}
 
 function buildAuditTab() {
   var container = document.getElementById('auditContainer');
@@ -39,7 +51,7 @@ function buildAuditTab() {
               changedBy: row.actor_id ? actorNames[row.actor_id] || '' : '',
               action: row.action || '',
               target: auditTargetName(row, targetNames),
-              detail: typeof row.detail === 'string' ? row.detail : ''
+              detail: formatAuditDetail(row.detail)
             };
           });
           renderAuditLog();
