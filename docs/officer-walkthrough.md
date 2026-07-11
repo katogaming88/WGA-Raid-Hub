@@ -144,9 +144,7 @@ Three sub-tabs:
   - **Commit Scores to Sheet** -- recalculates every player's attendance % and writes it to the
     Scoring sheet. Safe to run repeatedly; always recalculates from scratch.
 - **Attendance Scores** -- threshold slider (default 95%); lists players at or below it with
-  their specific penalty dates. Separate **Sync % to Roster Sheet** button here updates the
-  Roster's own Attendance % column from live data -- use it if the roster view looks stale
-  after manual edits.
+  their specific penalty dates.
 - **Bench Fairness** -- attendance view scoped to bench players specifically.
 
 ---

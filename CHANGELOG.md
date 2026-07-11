@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.9] - 2026-07-11
+
+### Frontend
+
+- **Removed the dead "Sync % to Roster Sheet" button (#419 follow-up).** Left over from before #434 (#223 stage 3) moved the roster table's Attendance % column onto Supabase -- the button pushed computed percentages into the old GAS Roster sheet, which the roster view stopped reading once that migration shipped, but nobody removed the button itself. Already flagged as legacy in its own help text; now the button, its `syncAttendancePct()` handler (`js/tabs/tab-season.js`), and the matching GAS action (`gs/wgaWebApp.gs`) are gone.
+
 ## [3.33.8] - 2026-07-11
 
 ### Frontend

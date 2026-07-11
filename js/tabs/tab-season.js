@@ -314,34 +314,6 @@ function executeArchiveSeason() {
     });
 }
 
-function syncAttendancePct() {
-  var btn = document.getElementById('syncAttendPctBtn');
-  var status = document.getElementById('syncAttendPctStatus');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Syncing...';
-  }
-
-  jsonpRequest(WEB_APP_URL + '?action=syncAttendancePct', function (err, result) {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'Sync to Roster Sheet';
-    }
-    if (!err && result && result.success) {
-      if (status) {
-        status.textContent = 'Synced!';
-        setTimeout(function () {
-          if (status) status.textContent = '';
-        }, 2000);
-      }
-    } else {
-      if (status) {
-        status.textContent = err ? err.message : 'Error syncing.';
-      }
-    }
-  });
-}
-
 function saveSignupSeason() {
   var input = document.getElementById('signupSeasonInput');
   var val = input ? input.value.trim() : '';

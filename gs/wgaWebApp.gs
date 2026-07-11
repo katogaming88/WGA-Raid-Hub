@@ -158,28 +158,6 @@ function doGet(e) {
       return jsonpResponse(callback, { success: true, mPlusExclusionsOpen: open });
     }
 
-    if (action === 'syncAttendancePct') {
-      const ss = SpreadsheetApp.getActiveSpreadsheet();
-      const sheets = {};
-      for (const sheet of ss.getSheets()) { sheets[sheet.getName()] = sheet; }
-      const seasonStart = props.getProperty('seasonStart') || '';
-      const joinDateMap = buildJoinDateMap(sheets);
-      const attendMap   = buildAttendanceMap(sheets, seasonStart, joinDateMap);
-      const rosterSheet = sheets[CFG.rosterSheet];
-      if (rosterSheet) {
-        const data = rosterSheet.getDataRange().getValues();
-        for (let i = CFG.rosterDataStart - 1; i < data.length; i++) {
-          const nameRealm = String(data[i][CFG.rosterPlayerCol - 1] || '').trim();
-          if (!nameRealm) continue;
-          const firstName = nameRealm.split('-')[0].trim();
-          const pct = attendMap[firstName] || '';
-          rosterSheet.getRange(i + 1, 3).setValue(pct);
-        }
-      }
-      cache.remove('rosterCore');
-      return jsonpResponse(callback, { success: true });
-    }
-
     if (action === 'refreshAttendanceWCL') {
       try {
         const result = refreshAttendanceCore();
