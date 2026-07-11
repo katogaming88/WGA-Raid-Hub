@@ -734,7 +734,7 @@ function backfillNotOnRosterForPlayer(teamId, playerId, joinDate) {
           if (!missing.length) return;
 
           var rows = missing.map(function (d) {
-            return { team_id: teamId, player_id: playerId, raid_date: d, status: 'Not on Roster' };
+            return { team_id: teamId, player_id: playerId, raid_date: d, status: 'Not on Roster', source: 'WCL' };
           });
           return supabaseClient
             .from('attendance')

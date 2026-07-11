@@ -89,6 +89,8 @@ erDiagram
   text status
   boolean report_excluded
   text report_id
+  text source
+  text report_title
 }
 "public.bis_items" {
   integer id

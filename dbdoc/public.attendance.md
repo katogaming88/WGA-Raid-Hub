@@ -11,11 +11,14 @@
 | status | text | 'Present'::text | false |  |  |  |
 | report_excluded | boolean | false | false |  |  |  |
 | report_id | text |  | true |  |  |  |
+| source | text | 'Officer'::text | false |  |  |  |
+| report_title | text |  | true |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| attendance_source_check | CHECK | CHECK ((source = ANY (ARRAY['WCL'::text, 'Officer'::text, 'Auto (Bench)'::text]))) |
 | attendance_status_check | CHECK | CHECK ((status = ANY (ARRAY['Present'::text, 'Bench'::text, 'Medical Leave'::text, 'Excused'::text, 'Extended Leave'::text, 'No Show'::text, 'Not on Roster'::text]))) |
 | attendance_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | attendance_team_id_player_id_raid_date_key | UNIQUE | UNIQUE (team_id, player_id, raid_date) |
@@ -51,6 +54,8 @@ erDiagram
   text status
   boolean report_excluded
   text report_id
+  text source
+  text report_title
 }
 "public.teams" {
   integer id

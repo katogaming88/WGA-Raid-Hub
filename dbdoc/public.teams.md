@@ -60,6 +60,8 @@ erDiagram
   text status
   boolean report_excluded
   text report_id
+  text source
+  text report_title
 }
 "public.audit_log" {
   integer id

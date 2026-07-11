@@ -403,10 +403,16 @@ function clearCache() {
 
 // -- Season selector ----------------------------------------------------------
 
+// Shared by the live roster attendance % (computeSeasonAttendancePct below)
+// and the Attendance tab's "Commit Attendance Scores" (js/tabs/tab-attendance.js),
+// so both represent the same metric. "Not on Roster" and any night with no
+// row at all are excluded from both numerator and denominator (not weighted
+// 0 -- see gs/Attendance.gs's ATTENDANCE_WEIGHTS this ports).
 var ATTENDANCE_WEIGHTS_JS = {
   Present: 1.0,
   Bench: 1.0,
   'Medical Leave': 1.0,
+  'Extended Leave': 1.0,
   Excused: 0.8,
   'No Show': 0.0
 };

@@ -42,6 +42,17 @@
           "name": "report_id",
           "type": "text",
           "nullable": true
+        },
+        {
+          "name": "source",
+          "type": "text",
+          "nullable": false,
+          "default": "'Officer'::text"
+        },
+        {
+          "name": "report_title",
+          "type": "text",
+          "nullable": true
         }
       ],
       "indexes": [
@@ -65,6 +76,16 @@
         }
       ],
       "constraints": [
+        {
+          "name": "attendance_source_check",
+          "type": "CHECK",
+          "def": "CHECK ((source = ANY (ARRAY['WCL'::text, 'Officer'::text, 'Auto (Bench)'::text])))",
+          "table": "public.attendance",
+          "referenced_table": "",
+          "columns": [
+            "source"
+          ]
+        },
         {
           "name": "attendance_status_check",
           "type": "CHECK",

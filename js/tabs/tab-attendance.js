@@ -126,25 +126,72 @@ function loadAttendanceGrid() {
   if (nightRow) nightRow.style.display = 'none';
   if (table) table.innerHTML = '';
 
-  jsonpRequest(WEB_APP_URL + '?action=getAttendanceGrid', function (err, result) {
-    if (err || !result || !result.success) {
-      _attendanceGrid = null;
-      if (status) {
-        status.textContent = err
-          ? err.message
-          : result && result.error
-            ? 'Error: ' + result.error
-            : 'No attendance data yet. Run "Refresh from WCL" first.';
-        status.style.color = err ? 'var(--melee)' : 'var(--text-muted)';
+  supabaseClient
+    .from('attendance')
+    .select('raid_date, report_title, report_excluded, player_id, status, source')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .order('raid_date', { ascending: false })
+    .then(function (result) {
+      if (result.error) {
+        _attendanceGrid = null;
+        if (status) {
+          status.textContent = 'Error: ' + result.error.message;
+          status.style.color = 'var(--melee)';
+        }
+        return;
       }
-      return;
-    }
-    _attendanceGrid = result.raids || [];
-    if (status) status.textContent = '';
-    renderAttendanceGrid();
-    var benchEl = document.getElementById('attend-sub-bench');
-    if (benchEl && benchEl.style.display !== 'none') buildBenchFairness();
-  });
+
+      var roster = (DATA && DATA.roster) || [];
+      var rosterById = {};
+      roster.forEach(function (p) {
+        rosterById[p.id] = p;
+      });
+
+      var nightsByDate = {};
+      var order = [];
+      (result.data || []).forEach(function (row) {
+        if (!nightsByDate[row.raid_date]) {
+          nightsByDate[row.raid_date] = {
+            date: row.raid_date,
+            title: row.report_title || row.raid_date,
+            excluded: !!row.report_excluded,
+            players: [],
+            seen: {}
+          };
+          order.push(row.raid_date);
+        }
+        var night = nightsByDate[row.raid_date];
+        var p = rosterById[row.player_id];
+        night.players.push({
+          name: p ? p.firstName : 'Player ' + row.player_id,
+          status: row.status,
+          source: row.source
+        });
+        night.seen[row.player_id] = true;
+      });
+
+      // Roster players without a row for this night still need to show up
+      // (no status), so an officer can fill one in from the grid -- matches
+      // GAS's behavior of always listing the full roster per night.
+      order.forEach(function (date) {
+        var night = nightsByDate[date];
+        roster.forEach(function (p) {
+          if (!night.seen[p.id]) night.players.push({ name: p.firstName, status: '', source: '' });
+        });
+        night.players.sort(function (a, b) {
+          return a.name.localeCompare(b.name);
+        });
+        delete night.seen;
+      });
+
+      _attendanceGrid = order.map(function (date) {
+        return nightsByDate[date];
+      });
+      if (status) status.textContent = '';
+      renderAttendanceGrid();
+      var benchEl = document.getElementById('attend-sub-bench');
+      if (benchEl && benchEl.style.display !== 'none') buildBenchFairness();
+    });
 }
 
 function renderAttendanceGrid() {
@@ -155,7 +202,7 @@ function renderAttendanceGrid() {
 
   if (!_attendanceGrid || !Array.isArray(_attendanceGrid) || !_attendanceGrid.length) {
     if (status) {
-      status.textContent = 'No raid nights in Attendance sheet. Run "Refresh from WCL" first.';
+      status.textContent = 'No raid nights recorded yet. Run "Refresh from WCL" first.';
       status.style.color = 'var(--text-muted)';
     }
     if (nightRow) nightRow.style.display = 'none';
@@ -306,7 +353,7 @@ function setPlayerStatus(selectEl) {
   supabaseClient
     .from('attendance')
     .upsert(
-      { team_id: _teamCfg.supabaseTeamId, player_id: player.id, raid_date: date, status: status },
+      { team_id: _teamCfg.supabaseTeamId, player_id: player.id, raid_date: date, status: status, source: 'Officer' },
       { onConflict: 'team_id,player_id,raid_date' }
     )
     .then(function (result) {
@@ -397,32 +444,39 @@ function refreshAttendanceWCL() {
     status.style.color = 'var(--text-muted)';
   }
 
-  jsonpRequest(WEB_APP_URL + '?action=refreshAttendanceWCL', function (err, result) {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'Refresh from WCL';
-    }
-    if (!err && result && result.success) {
-      if (status) {
-        status.textContent =
-          'Done: ' +
-          result.mainNights +
-          ' night' +
-          (result.mainNights !== 1 ? 's' : '') +
-          ' found, ' +
-          result.excluded +
-          ' excluded.';
-        status.style.color = 'var(--heal)';
+  supabaseClient.functions
+    .invoke('wcl-sync', { body: { action: 'refreshAttendance', teamId: _teamCfg.supabaseTeamId } })
+    .then(function (res) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Refresh from WCL';
       }
-      _attendanceGrid = null;
-      loadAttendanceGrid();
-    } else {
-      if (status) {
-        status.textContent = err ? err.message : result && result.error ? result.error : 'Error refreshing.';
-        status.style.color = 'var(--melee)';
+      var result = res.data;
+      if (!res.error && result && result.success) {
+        if (status) {
+          status.textContent =
+            'Done: ' +
+            result.mainNights +
+            ' night' +
+            (result.mainNights !== 1 ? 's' : '') +
+            ' found, ' +
+            result.excluded +
+            ' excluded.';
+          status.style.color = 'var(--heal)';
+        }
+        _attendanceGrid = null;
+        loadAttendanceGrid();
+      } else {
+        if (status) {
+          status.textContent = res.error
+            ? res.error.message
+            : result && result.error
+              ? result.error
+              : 'Error refreshing.';
+          status.style.color = 'var(--melee)';
+        }
       }
-    }
-  });
+    });
 }
 
 function confirmCommitScores() {
@@ -445,30 +499,82 @@ function executeCommitScores() {
   }
   if (status) status.textContent = '';
 
-  jsonpRequest(WEB_APP_URL + '?action=commitAttendanceScores', function (err, result) {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'Commit Scores to Sheet';
-    }
-    if (!err && result && result.success) {
+  supabaseClient
+    .from('attendance')
+    .select('player_id, raid_date, status, report_excluded')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+
+      var byPlayer = {};
+      var nightSet = {};
+      (result.data || []).forEach(function (row) {
+        if (row.report_excluded) return;
+        var weight = ATTENDANCE_WEIGHTS_JS[row.status];
+        if (weight === undefined) return;
+        if (!byPlayer[row.player_id]) byPlayer[row.player_id] = { sum: 0, nights: 0 };
+        byPlayer[row.player_id].sum += weight;
+        byPlayer[row.player_id].nights += 1;
+        nightSet[row.raid_date] = true;
+      });
+
+      var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+      var rows = Object.keys(byPlayer).map(function (playerId) {
+        var agg = byPlayer[playerId];
+        var ratio = agg.sum / agg.nights;
+        return {
+          player_id: parseInt(playerId, 10),
+          season: season,
+          attendance_score: Math.min(Math.round(ratio * 10 * 100) / 100, 10),
+          attendance_pct: Math.round(ratio * 1000) / 10
+        };
+      });
+      var totalNights = Object.keys(nightSet).length;
+
+      if (rows.length === 0) return { committed: 0, totalNights: totalNights };
+
+      return supabaseClient
+        .from('scoring')
+        .upsert(rows, { onConflict: 'player_id,season' })
+        .then(function (upsertResult) {
+          if (upsertResult.error) throw new Error(upsertResult.error.message);
+          return writeAuditLog(
+            'Attendance Scores Committed',
+            null,
+            null,
+            rows.length + ' players, ' + totalNights + ' nights'
+          ).then(function () {
+            return { committed: rows.length, totalNights: totalNights };
+          });
+        });
+    })
+    .then(function (summary) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Commit Attendance Scores';
+      }
       if (status) {
         status.textContent =
-          result.committed +
+          summary.committed +
           ' players scored (' +
-          result.totalRaids +
+          summary.totalNights +
           ' night' +
-          (result.totalRaids !== 1 ? 's' : '') +
+          (summary.totalNights !== 1 ? 's' : '') +
           ')';
         status.style.color = 'var(--heal)';
         setTimeout(function () {
           if (status) status.textContent = '';
         }, 6000);
       }
-    } else {
+    })
+    .catch(function (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Commit Attendance Scores';
+      }
       if (status) {
-        status.textContent = err ? err.message : result && result.error ? result.error : 'Error committing scores.';
+        status.textContent = 'Error committing scores: ' + err.message;
         status.style.color = 'var(--melee)';
       }
-    }
-  });
+    });
 }

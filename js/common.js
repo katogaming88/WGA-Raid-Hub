@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.33.6';
+var VERSION = '3.33.7';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -1302,6 +1302,99 @@ function mapSupabaseItemBosses(rows) {
   return map;
 }
 
+// Attendance reads come from Supabase's normalized `attendance` table (#223
+// stage 3) instead of GAS's heavy attendanceDetails/rawAttendanceData/
+// recentAttendanceTrend payload: refreshAttendance (wcl-sync Edge Function)
+// writes into this table now instead of the GAS Attendance sheet those were
+// read from, so that sheet -- and everything derived from it -- stops
+// updating the moment this ships. Falls back to the GAS heavy payload only
+// if the Supabase query itself fails/times out (resultRows === null); an
+// empty-but-successful result is trusted as genuinely no data yet, not
+// reached around, since Supabase is authoritative for attendance from here on.
+function fetchSupabaseAttendanceRaw() {
+  if (!supabaseClient) return Promise.resolve(null);
+  var query = supabaseClient
+    .from('attendance')
+    .select('player_id, raid_date, status, report_excluded')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Supabase attendance query failed.', result.error.message);
+        return null;
+      }
+      return result.data || [];
+    })
+    .catch(function (err) {
+      console.warn('Supabase attendance query failed.', err);
+      return null;
+    });
+  var timeout = new Promise(function (resolve) {
+    setTimeout(function () {
+      resolve(null);
+    }, 10000);
+  });
+  return Promise.race([query, timeout]);
+}
+
+// Builds the {raidDates, players, joinDates} shape GAS's getRawAttendanceData
+// used to emit, from raw attendance rows + the already-loaded roster.
+// Excluded reports are dropped entirely (never count as raid nights),
+// matching GAS's exclude-checkbox handling.
+function mapSupabaseAttendanceRaw(rows, roster) {
+  var byId = {};
+  (roster || []).forEach(function (p) {
+    byId[p.id] = p;
+  });
+
+  var raidDateSet = {};
+  var players = {};
+  (rows || []).forEach(function (row) {
+    if (row.report_excluded) return;
+    var p = byId[row.player_id];
+    if (!p) return;
+    raidDateSet[row.raid_date] = true;
+    if (!players[p.firstName]) players[p.firstName] = [];
+    players[p.firstName].push({ date: row.raid_date, status: row.status });
+  });
+
+  Object.keys(players).forEach(function (name) {
+    players[name].sort(function (a, b) {
+      return a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
+    });
+  });
+
+  var joinDates = {};
+  (roster || []).forEach(function (p) {
+    if (p.joinDate) joinDates[p.firstName] = p.joinDate;
+  });
+
+  return { raidDates: Object.keys(raidDateSet).sort(), players: players, joinDates: joinDates };
+}
+
+// Matches GAS's getAttendanceDetails: only the "penalizing" statuses.
+function mapSupabaseAttendanceDetails(rawPlayers) {
+  var details = {};
+  Object.keys(rawPlayers || {}).forEach(function (name) {
+    var penalties = rawPlayers[name].filter(function (r) {
+      return r.status === 'No Show' || r.status === 'Excused';
+    });
+    if (penalties.length) details[name] = penalties;
+  });
+  return details;
+}
+
+// Matches GAS's getRecentAttendanceTrend: full history minus Not on Roster.
+function mapSupabaseAttendanceTrend(rawPlayers) {
+  var trend = {};
+  Object.keys(rawPlayers || {}).forEach(function (name) {
+    var nights = rawPlayers[name].filter(function (r) {
+      return r.status !== 'Not on Roster';
+    });
+    if (nights.length) trend[name] = nights;
+  });
+  return trend;
+}
+
 // onCoreReady fires once the fast core chunk is loaded and the page can render.
 // onHeavyReady (optional) fires once loot/attendance/BiS/priority data arrives.
 function loadData(onCoreReady, onHeavyReady) {
@@ -1331,6 +1424,8 @@ function loadData(onCoreReady, onHeavyReady) {
   var priorityOrderPromise = fetchSupabasePriorityOrder();
   // Fired alongside; the heavy callback waits for it before setting selfReceived.
   var selfReceivedPromise = fetchSupabaseSelfReceived();
+  // Fired alongside; the heavy callback waits for it before setting rawAttendanceData/attendanceDetails/recentAttendanceTrend.
+  var attendancePromise = fetchSupabaseAttendanceRaw();
 
   window._rosterCoreCallback = function (data) {
     delete window._rosterCoreCallback;
@@ -1367,7 +1462,8 @@ function loadData(onCoreReady, onHeavyReady) {
           itemsPromise,
           itemBossesPromise,
           priorityOrderPromise,
-          selfReceivedPromise
+          selfReceivedPromise,
+          attendancePromise
         ]).then(function (results) {
           var lootRows = results[0];
           var bisRows = results[1];
@@ -1375,11 +1471,17 @@ function loadData(onCoreReady, onHeavyReady) {
           var itemBossRows = results[3];
           var priorityRows = results[4];
           var selfReceivedRows = results[5];
+          var attendanceRows = results[6];
           var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
           DATA.lootCounts = mappedLoot || {};
-          DATA.attendanceDetails = heavy.attendanceDetails;
-          DATA.rawAttendanceData = heavy.rawAttendanceData;
-          DATA.recentAttendanceTrend = heavy.recentAttendanceTrend;
+          var mappedAttendance = attendanceRows !== null ? mapSupabaseAttendanceRaw(attendanceRows, DATA.roster) : null;
+          DATA.rawAttendanceData = mappedAttendance || heavy.rawAttendanceData;
+          DATA.attendanceDetails = mappedAttendance
+            ? mapSupabaseAttendanceDetails(mappedAttendance.players)
+            : heavy.attendanceDetails;
+          DATA.recentAttendanceTrend = mappedAttendance
+            ? mapSupabaseAttendanceTrend(mappedAttendance.players)
+            : heavy.recentAttendanceTrend;
           var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
           DATA.bisList = mappedBis && Object.keys(mappedBis).length ? mappedBis : heavy.bisList;
           var mappedPriority = priorityRows
