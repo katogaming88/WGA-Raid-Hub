@@ -1570,6 +1570,22 @@ function loadData(onCoreReady, onHeavyReady) {
           var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
           DATA.lootCounts = mappedLoot || {};
           var mappedAttendance = attendanceRows !== null ? mapSupabaseAttendanceRaw(attendanceRows, DATA.roster) : null;
+          // TEMP DEBUG (#223 attendance % investigation, remove once resolved)
+          console.log(
+            '[attendance debug] VERSION=' +
+              VERSION +
+              ' attendanceRows=' +
+              (attendanceRows === null
+                ? 'NULL (Supabase fetch failed -- using GAS fallback)'
+                : attendanceRows.length + ' rows') +
+              ' mappedAttendance=' +
+              (mappedAttendance
+                ? mappedAttendance.raidDates.length + ' raidDates'
+                : 'null (using heavy.rawAttendanceData)')
+          );
+          if (mappedAttendance) {
+            console.log('[attendance debug] sample player keys:', Object.keys(mappedAttendance.players).slice(0, 5));
+          }
           DATA.rawAttendanceData = mappedAttendance || heavy.rawAttendanceData;
           DATA.attendanceDetails = mappedAttendance
             ? mapSupabaseAttendanceDetails(mappedAttendance.players)
