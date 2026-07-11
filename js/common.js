@@ -1443,15 +1443,38 @@ function lookupItemSlot(itemName) {
   return '';
 }
 
-// Slot vocabulary matches items.slot / BIS_SLOTS (js/tabs/tab-bis.js), the
-// Supabase-native naming fetch-items.js seeds -- singular, "Finger"/"Hands"/
-// "Feet" etc, not the old GAS sheet's plural "Shoulders"/"Gloves"/"Boots".
+// Recognizes two vocabularies: the BIS_SLOTS row labels tab-bis.js's own
+// editor passes ("Hands"/"Waist"/"Feet"/"Wrist"/"Back"/"Shoulder"/"Finger
+// 1"/"Off Hand"/"Weapon"), and the raw items.slot catalog values every other
+// caller (tab-priority.js, tab-conflicts.js, renderProfile) passes straight
+// from DATA.itemSlots -- the Item Lookup sheet's actual "slot" column
+// vocabulary (scripts/import/tables/items.js), which is plural/abbreviated
+// ("Shoulders"/"Gloves"/"Belt"/"Boots"/"Bracers"/"Cloak"/"Ring"/"1H/2H"/"OH")
+// and doesn't match BIS_SLOTS 1:1 (see BIS_CATALOG_SLOT_TO_ROWS).
 function getSlotColor(slot) {
   var s = (slot || '').toUpperCase();
   if (s === 'TRINKET' || s === 'TRINKET 1' || s === 'TRINKET 2') return 'var(--gold)';
-  if (s === 'NECK' || s === 'FINGER' || s === 'FINGER 1' || s === 'FINGER 2') return 'var(--ranged)';
-  if (['WEAPON', 'TWO-HAND', 'ONE-HAND', 'RANGED', 'OFF HAND'].indexOf(s) >= 0) return 'var(--melee)';
-  if (['HEAD', 'SHOULDER', 'CHEST', 'HANDS', 'LEGS', 'BACK', 'WRIST', 'WAIST', 'FEET'].indexOf(s) >= 0)
+  if (['NECK', 'FINGER', 'FINGER 1', 'FINGER 2', 'RING'].indexOf(s) >= 0) return 'var(--ranged)';
+  if (['WEAPON', 'TWO-HAND', 'ONE-HAND', 'RANGED', 'OFF HAND', '1H/2H', 'OH'].indexOf(s) >= 0) return 'var(--melee)';
+  if (
+    [
+      'HEAD',
+      'SHOULDER',
+      'SHOULDERS',
+      'CHEST',
+      'HANDS',
+      'GLOVES',
+      'LEGS',
+      'BACK',
+      'CLOAK',
+      'WRIST',
+      'BRACERS',
+      'WAIST',
+      'BELT',
+      'FEET',
+      'BOOTS'
+    ].indexOf(s) >= 0
+  )
     return 'var(--tank)';
   return 'var(--text)';
 }
