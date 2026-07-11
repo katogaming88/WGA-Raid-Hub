@@ -31,6 +31,19 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+// GAS formatted every WCL-derived date via Utilities.formatDate(ts,
+// Session.getScriptTimeZone(), 'yyyy-MM-dd') -- America/New_York throughout
+// this app (js/common.js, migrations, docs/database-decisions.md). Report
+// startTime is a UTC epoch ms; a raid starting evening US time can already
+// be past midnight UTC, so a naive `.toISOString().slice(0,10)` silently
+// shifts it to the wrong calendar day -- this reproduces GAS's timezone-
+// correct date instead.
+const REPORT_TIME_ZONE = 'America/New_York';
+function formatReportDate(ms: number): string {
+  // en-CA formats as YYYY-MM-DD, conveniently matching the date column format.
+  return new Intl.DateTimeFormat('en-CA', { timeZone: REPORT_TIME_ZONE }).format(new Date(ms));
+}
+
 // ── WCL API helpers (ported from gs/WCL.gs) ─────────────────────────────────
 
 async function getAccessToken(): Promise<string | null> {
@@ -143,7 +156,7 @@ async function fetchProgression(zoneId: number, guildId: number) {
 
   function formatDate(ms: number | null): string {
     if (!ms) return '';
-    return new Date(ms).toISOString().slice(0, 10);
+    return formatReportDate(ms);
   }
 
   const bosses = encIds.map((encId) => {
@@ -498,7 +511,7 @@ async function refreshAttendance(
   const sorted = [...reports].sort((a: any, b: any) => b.startTime - a.startTime);
 
   for (const report of sorted) {
-    const date = new Date(report.startTime).toISOString().slice(0, 10);
+    const date = formatReportDate(report.startTime);
 
     if (cachedReportIds.has(report.code)) {
       mainNights++;
