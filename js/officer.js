@@ -266,7 +266,6 @@ function setNavBadge(id, count) {
 function updateNavBadges() {
   jsonpRequest(WEB_APP_URL + '?action=getPendingCounts', function (err, result) {
     if (err || !result) return;
-    setNavBadge('mplusNavBadge', result.mplus || 0);
     setNavBadge('requestsNavBadge', result.requests || 0);
   });
   fetchSupabaseSignupCounts(function (err, counts) {
@@ -274,19 +273,23 @@ function updateNavBadges() {
     setNavBadge('signupsNavBadge', counts.signups + counts.pendingRoster);
     setNavBadge('pendingRosterSubBadge', counts.pendingRoster);
   });
-  fetchSupabaseBisCount(function (err, count) {
+  fetchSupabasePendingCount('bis_requests', function (err, count) {
     if (err) return;
     setNavBadge('bisNavBadge', count);
   });
+  fetchSupabasePendingCount('mplus_exclusion_requests', function (err, count) {
+    if (err) return;
+    setNavBadge('mplusNavBadge', count);
+  });
 }
 
-function fetchSupabaseBisCount(callback) {
+function fetchSupabasePendingCount(table, callback) {
   if (!supabaseClient) {
     callback(new Error('Not connected to Supabase.'));
     return;
   }
   supabaseClient
-    .from('bis_requests')
+    .from(table)
     .select('id', { count: 'exact', head: true })
     .eq('team_id', _teamCfg.supabaseTeamId)
     .eq('status', 'pending')
@@ -299,11 +302,11 @@ function fetchSupabaseBisCount(callback) {
     });
 }
 
-// signups/pendingRoster/bis nav badge counts, read from Supabase now that the
-// officer Signups/Pending Roster/BiS tabs are Supabase-only (#328, #403,
-// #404) -- the GAS getPendingCounts equivalents counted rows in sheets none
-// of these tabs read anymore. mplus/requests above stay GAS-sourced until
-// their own tables get a write path (#405/#406).
+// signups/pendingRoster/bis/mplus nav badge counts, read from Supabase now
+// that the officer Signups/Pending Roster/BiS/M+ tabs are Supabase-only
+// (#328, #403, #404, #405) -- the GAS getPendingCounts equivalents counted
+// rows in sheets none of these tabs read anymore. requests above stays
+// GAS-sourced until self_received_requests gets a write path (#406).
 function fetchSupabaseSignupCounts(callback) {
   if (!supabaseClient) {
     callback(new Error('Not connected to Supabase.'));

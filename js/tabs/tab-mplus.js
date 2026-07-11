@@ -34,17 +34,29 @@ function confirmClearAllMPlusExclusions() {
   if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
 }
 
+// Bulk-clears the roster's live exclusion flag directly (#405) -- unlike GAS,
+// which also flipped any "Approved" request rows to a 'Reset' sentinel so a
+// re-scan of the sheet wouldn't re-count them, the exclusion state now lives
+// only on players.m_plus_excluded, so there's nothing else to reconcile.
 function executeClearAllMPlusExclusions() {
   var confirmEl = document.getElementById('mplusClearConfirm');
   if (confirmEl) confirmEl.style.display = 'none';
+  if (!supabaseClient) return;
 
-  jsonpRequest(WEB_APP_URL + '?action=clearAllMPlusExclusions', function (err, result) {
-    if (!err && result && result.success && DATA && DATA.roster) {
+  supabaseClient
+    .from('players')
+    .update({ m_plus_excluded: false })
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('m_plus_excluded', true)
+    .then(function (result) {
+      if (result.error || !DATA || !DATA.roster) return;
       DATA.roster.forEach(function (p) {
         p.mPlusExcluded = false;
       });
-    }
-  });
+      writeAuditLog('All M+ Exclusions Cleared', null, null, null);
+      renderActiveExclusions();
+      buildRosterTable();
+    });
 }
 
 function buildMPlusTab() {
@@ -55,14 +67,37 @@ function buildMPlusTab() {
   container.innerHTML =
     '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">Loading submissions...</p>';
 
-  jsonpRequest(WEB_APP_URL + '?action=getMPlusExclusions', function (err, result) {
-    if (err) {
-      var c = document.getElementById('mplusContainer');
-      if (c) c.innerHTML = '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">' + err.message + '</p>';
-      return;
-    }
-    renderMPlusSubmissions(result.submissions || []);
-  });
+  if (!supabaseClient) {
+    container.innerHTML =
+      '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">Not connected to Supabase.</p>';
+    return;
+  }
+
+  supabaseClient
+    .from('mplus_exclusion_requests')
+    .select('id, reason, raiderio_url, submitted_at, players(name_realm)')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('status', 'pending')
+    .order('submitted_at', { ascending: false })
+    .then(function (result) {
+      if (result.error) {
+        var c = document.getElementById('mplusContainer');
+        if (c)
+          c.innerHTML =
+            '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">' + result.error.message + '</p>';
+        return;
+      }
+      var submissions = (result.data || []).map(function (row) {
+        return {
+          id: row.id,
+          nameRealm: (row.players && row.players.name_realm) || '',
+          raiderioUrl: row.raiderio_url || '',
+          notes: row.reason || '',
+          timestamp: row.submitted_at ? new Date(row.submitted_at).toLocaleString() : ''
+        };
+      });
+      renderMPlusSubmissions(submissions);
+    });
 }
 
 function renderActiveExclusions() {
@@ -113,7 +148,7 @@ function renderMPlusSubmissions(submissions) {
     var nrSafe = s.nameRealm.replace(/'/g, "\\'");
     html +=
       '<div class="request-card" data-row="' +
-      s.rowIndex +
+      s.id +
       '">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
       '<div>' +
@@ -137,12 +172,12 @@ function renderMPlusSubmissions(submissions) {
         : '') +
       '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
       '<button class="btn request-approve-btn" onclick="approveMPlusExclusion(' +
-      s.rowIndex +
+      s.id +
       ",'" +
       nrSafe +
       '\',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Approve</button>' +
       '<button class="btn btn-danger" onclick="rejectMPlusExclusion(' +
-      s.rowIndex +
+      s.id +
       ",'" +
       nrSafe +
       '\',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Reject</button>' +
@@ -200,29 +235,56 @@ function approveMPlusExclusion(rowIndex, nameRealm, btnEl) {
   }
 }
 
-function confirmApproveMPlusExclusion(rowIndex, nameRealm, note, btnEl) {
+// Approve both settles the request and flips the roster's live exclusion
+// flag in one action (#405) -- GAS decoupled these into two separate manual
+// steps (approve the request, then remember to also flip the roster
+// toggle), which meant an approved request could sit approved without ever
+// actually excluding the player. Two officer-writable tables, no RPC needed,
+// same pattern as #404's BiS approve.
+function confirmApproveMPlusExclusion(requestId, nameRealm, note, btnEl) {
   btnEl.disabled = true;
   btnEl.textContent = '...';
 
-  var data = { row: rowIndex, nameRealm: nameRealm, note: note };
-  jsonpRequest(
-    WEB_APP_URL + '?action=approveMPlusExclusion&data=' + encodeURIComponent(JSON.stringify(data)),
-    function (err, result) {
-      if (err || (result && result.error)) {
+  supabaseClient
+    .from('mplus_exclusion_requests')
+    .update({ status: 'approved', officer_notes: note || null })
+    .eq('id', requestId)
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(function (result) {
+      if (result.error) {
         btnEl.disabled = false;
         btnEl.textContent = 'Approve';
         return;
       }
-      var card = document.querySelector('.request-card[data-row="' + rowIndex + '"]');
-      if (card) card.remove();
-      var container = document.getElementById('mplusContainer');
-      if (container && !container.querySelector('.request-card')) {
-        container.innerHTML =
-          '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No pending M+ exclusion requests.</p>';
-      }
-      updateNavBadges();
-    }
-  );
+      var player = findRosterPlayerByNameRealm(nameRealm);
+      supabaseClient
+        .from('players')
+        .update({ m_plus_excluded: true, m_plus_note: note || null })
+        .eq('team_id', _teamCfg.supabaseTeamId)
+        .eq('name_realm', nameRealm)
+        .then(function (playerResult) {
+          if (playerResult.error) {
+            btnEl.disabled = false;
+            btnEl.textContent = 'Approve';
+            return;
+          }
+          if (player) {
+            player.mPlusExcluded = true;
+            player.mPlusNote = note || '';
+          }
+          writeAuditLog('M+ Exclusion Approved', 'players', player ? player.id : null, note || null);
+          var card = document.querySelector('.request-card[data-row="' + requestId + '"]');
+          if (card) card.remove();
+          var container = document.getElementById('mplusContainer');
+          if (container && !container.querySelector('.request-card')) {
+            container.innerHTML =
+              '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No pending M+ exclusion requests.</p>';
+          }
+          renderActiveExclusions();
+          buildRosterTable();
+          updateNavBadges();
+        });
+    });
 }
 
 function rejectMPlusExclusion(rowIndex, nameRealm, btnEl) {
@@ -268,25 +330,33 @@ function rejectMPlusExclusion(rowIndex, nameRealm, btnEl) {
   if (confirmBtn) {
     confirmBtn.addEventListener('click', function () {
       var note = noteInput ? noteInput.value.trim() : '';
-      confirmRejectMPlusExclusion(rowIndex, note, confirmBtn);
+      confirmRejectMPlusExclusion(rowIndex, nameRealm, note, confirmBtn);
     });
   }
 }
 
-function confirmRejectMPlusExclusion(rowIndex, note, btnEl) {
+function confirmRejectMPlusExclusion(requestId, nameRealm, note, btnEl) {
   btnEl.disabled = true;
   btnEl.textContent = '...';
 
-  var data = { row: rowIndex, note: note };
-  jsonpRequest(
-    WEB_APP_URL + '?action=rejectMPlusExclusion&data=' + encodeURIComponent(JSON.stringify(data)),
-    function (err, result) {
-      if (err || (result && result.error)) {
+  supabaseClient
+    .from('mplus_exclusion_requests')
+    .update({ status: 'rejected', officer_notes: note || null })
+    .eq('id', requestId)
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(function (result) {
+      if (result.error) {
         btnEl.disabled = false;
         btnEl.textContent = 'Reject';
         return;
       }
-      var card = document.querySelector('.request-card[data-row="' + rowIndex + '"]');
+      var player = findRosterPlayerByNameRealm(nameRealm);
+      if (player) {
+        player.mPlusRejected = true;
+        player.mPlusRejectionNote = note || '';
+      }
+      writeAuditLog('M+ Exclusion Rejected', 'players', player ? player.id : null, note || null);
+      var card = document.querySelector('.request-card[data-row="' + requestId + '"]');
       if (card) card.remove();
       var container = document.getElementById('mplusContainer');
       if (container && !container.querySelector('.request-card')) {
@@ -294,6 +364,5 @@ function confirmRejectMPlusExclusion(rowIndex, note, btnEl) {
           '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No pending M+ exclusion requests.</p>';
       }
       updateNavBadges();
-    }
-  );
+    });
 }

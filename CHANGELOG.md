@@ -8,6 +8,19 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.32.8] - 2026-07-14
+
+### Frontend
+
+- **Wired the M+ exclusion request/approval flow to Supabase (#405)** -- `submitMPlusExclusion`/`getMPlusExclusions`/`approveMPlusExclusion`/`rejectMPlusExclusion`/`setMPlusExcluded`/`clearAllMPlusExclusions` were still 100% GAS despite `mplus_exclusion_requests` existing since day one; the roster's `mPlusExcluded`/`mPlusNote`/`mPlusRejected`/`mPlusRejectionNote` fields all still came from the GAS core payload. Raider submission now calls the new `submit_mplus_exclusion` RPC; the manual roster toggle and bulk-clear write `players.m_plus_excluded` directly; the pending-request nav badge switched to Supabase.
+- **Approve now sets the roster's exclusion flag directly**, instead of only marking the request approved and leaving a separate manual toggle for the officer to remember (GAS's actual behavior -- an approved request could sit approved without the player ever actually being excluded). Reject leaves the request rejected; the raider's "Rejected" badge is derived live from the most recent rejected request per player rather than a persisted column, since `players` has no rejection-state columns of its own.
+
+### Backend
+
+- **New `submit_mplus_exclusion` RPC**: SECURITY DEFINER, granted to `anon` (same trust model as the GAS action it replaces -- submission runs unauthenticated on the public roster page). Re-validates `mPlusExclusionsOpen` server-side. No schema changes needed otherwise -- `mplus_exclusion_requests` already fit the feature exactly, unlike `bis_requests` (#404).
+
+---
+
 ## [3.32.7] - 2026-07-13
 
 ### Frontend
