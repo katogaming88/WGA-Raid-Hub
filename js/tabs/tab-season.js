@@ -641,7 +641,7 @@ function renderRaidProgressionCards() {
       i +
       ')">Remove</button>';
     html += '</div>';
-    html += '<div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.75rem;">';
+    html += '<div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.5rem;">';
     html += '<span style="font-size:0.82rem;color:var(--text-muted);white-space:nowrap;">WCL Zone ID</span>';
     html +=
       '<input class="raid-zone-input add-player-input" type="number" placeholder="e.g. 46" value="' +
@@ -651,6 +651,10 @@ function renderRaidProgressionCards() {
       '<button class="btn btn-muted" style="font-size:0.78rem;padding:2px 8px;" onclick="listWclEncounters(' +
       i +
       ')">List</button>';
+    html += '</div>';
+    html +=
+      '<p style="font-size:0.8rem;color:var(--melee);margin:0 0 0.5rem;">Click List first to see encounter IDs and set the Encounters from/to range -- fetching without narrowing the range pulls every fight logged in that zone, including M+ dungeon bosses.</p>';
+    html += '<div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.75rem;">';
     html += '<span style="font-size:0.82rem;color:var(--text-muted);white-space:nowrap;">Encounters</span>';
     html +=
       '<input class="raid-enc-start add-player-input" type="number" placeholder="from" value="' +
@@ -667,8 +671,6 @@ function renderRaidProgressionCards() {
       ')">Fetch from WCL</button>';
     html += '<span id="wclFetchStatus_' + i + '" style="font-size:0.8rem;color:var(--text-muted);"></span>';
     html += '</div>';
-    html +=
-      '<p style="font-size:0.8rem;color:var(--melee);margin:-0.4rem 0 0.75rem;">Click List first to see encounter IDs and set the Encounters from/to range -- fetching without narrowing the range pulls every fight logged in that zone, including M+ dungeon bosses.</p>';
     html +=
       '<div id="wclEncList_' +
       i +
