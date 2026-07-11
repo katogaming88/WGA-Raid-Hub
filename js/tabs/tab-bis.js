@@ -517,7 +517,7 @@ function bisSlotRowHTML(label, colorSlot, index, entry, isEmpty, isActive, rowPo
   var html =
     '<div style="display:flex;align-items:center;gap:0.5rem;font-size:0.95rem;padding:0.3rem 0.5rem;' +
     'border-radius:4px;border:1px solid var(--border);background:' +
-    (rowPosition % 2 ? 'rgba(255,255,255,0.03)' : 'transparent') +
+    (rowPosition % 2 ? 'var(--bg-elevated)' : 'var(--bg-card)') +
     ';">' +
     '<span style="min-width:5rem;color:' +
     getSlotColor(colorSlot) +
