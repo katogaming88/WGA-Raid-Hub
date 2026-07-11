@@ -16,6 +16,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ### Backend
 
+- **New `submit_self_received()`/`direct_mark_received()` RPCs (#406)**: both SECURITY DEFINER, since `self_received_requests` allows no direct INSERT for anyone, officers included. `submit_self_received()` is granted to `anon`+`authenticated` (raider submission) and auto-approves when the caller's linked character matches the one submitted for; `direct_mark_received()` is granted to `authenticated` only and checks the officer/team_leader/site_admin role in the function body.
 - **Site admins can now read/update the four request tables cross-team (#413)**: `season_signups`, `bis_requests`, `mplus_exclusion_requests`, and `self_received_requests` were the only officer-scoped tables missing the `OR is_site_admin()` clause every other one already has (`audit_log`, `team_members`, `team_settings`, `season_snapshots`). A site admin who isn't personally an officer/team_leader on a given team saw zero rows in these four for that team -- found while verifying #403's historical Hellfire signup backfill actually landed (it had; the officer viewing it just wasn't a `team_members` row on that team).
 
 ## [3.32.9] - 2026-07-10
