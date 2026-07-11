@@ -232,7 +232,14 @@ Three sub-tabs: **Settings**, **Raid Progression**, **History**.
 - **Archive Current Season** -- pushes the current Season Name/Start/End into history so it
   appears in the season selector going forward; see the Rollover workflow above.
 - **Season History** -- past archived seasons, with an **Unarchive** option to restore one as
-  active if it was archived by mistake.
+  active if it was archived by mistake. The most recently archived season also has a
+  **WCL Performance Baseline** fetch (#264) -- picks a raid tier from that season, pulls each
+  DPS roster player's best character-page performance average (highest difficulty they logged,
+  mythic if any, heroic otherwise) from WCL, and writes it to `player_wcl_season_perf`. Also
+  seeds `scoring.performance_score` for the *new* season so heroic priority generation has a
+  baseline number before any current-season raid reports exist -- never overwrites a real
+  Commit Performance Scores result, only fills in players with no score yet. Run once, right
+  after archiving the old season and starting the new one.
 
 ---
 

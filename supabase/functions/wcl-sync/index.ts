@@ -6,7 +6,10 @@
 // the Attendance tab's "Refresh from WCL" write (refreshAttendance) -- see
 // js/tabs/tab-scoring.js and js/tabs/tab-attendance.js for why the commit/
 // manual-edit steps in both features stay direct Supabase writes rather
-// than more actions here.
+// than more actions here. fetchSeasonPerf (#264) is a later addition: an
+// officer-triggered, once-per-season fetch of previous-season character-page
+// performance into player_wcl_season_perf, the baseline heroic priority
+// generation reads before the new season has report data of its own.
 //
 // No service-role key: officers already have full RLS write access to
 // attendance/scoring via their own session (docs/RLS.md), so this function
@@ -600,6 +603,126 @@ async function refreshAttendance(
   return { success: true, mainNights, excluded };
 }
 
+// Ported from #264: officer-triggered fetch of each roster DPS player's
+// *previous* season heroic/mythic character-page performance, written to
+// player_wcl_season_perf as the baseline heroic priority reads before the
+// current season has enough of its own report data (see refreshPerformance
+// above for that ongoing-season path). Guild-scoped, same as every other
+// action here.
+//
+// No `difficulty` argument on zoneRankings -- confirmed live against the
+// WCL API that omitting it resolves to whichever difficulty the character
+// actually has the most recent/highest data for that zone (mythic if they
+// have any mythic kills logged, heroic otherwise), matching the character
+// page's own "Highest Difficulty" filter exactly. Simpler and more correct
+// than guessing via an explicit mythic-then-heroic fallback.
+async function fetchSeasonPerf(
+  guildId: number,
+  teamId: number,
+  season: string,
+  zoneId: number,
+  supabase: ReturnType<typeof createClient>
+) {
+  const { data: players, error: playersError } = await supabase
+    .from('players')
+    .select('id, name_realm, classes_specs(role)')
+    .eq('team_id', teamId)
+    .is('archived_at', null);
+  if (playersError) throw new Error(playersError.message);
+
+  // Tanks/healers are excluded from WCL-derived performance everywhere else
+  // in this app (refreshPerformance's classRoleToScoringRole skip) -- their
+  // Performance score is always officer-set manually, never WCL-sourced.
+  const rosterByFirstName = new Map<string, { playerId: number; displayName: string }>();
+  for (const p of players || []) {
+    const classSpec = Array.isArray(p.classes_specs) ? p.classes_specs[0] : p.classes_specs;
+    const role = classSpec?.role;
+    if (role !== 'Melee' && role !== 'Ranged') continue;
+    const displayName = String(p.name_realm).split('-')[0].trim();
+    const firstName = displayName.toLowerCase();
+    if (!firstName) continue;
+    rosterByFirstName.set(firstName, { playerId: p.id, displayName });
+  }
+  if (rosterByFirstName.size === 0) {
+    return { success: true, updated: 0, noData: 0, players: [] };
+  }
+
+  const token = await getAccessToken();
+  if (!token) throw new Error('Failed to get WCL access token. Check WCL_CLIENT_ID/WCL_CLIENT_SECRET.');
+
+  const matched: Array<{ playerId: number; name: string; bestPerfAvg: number; medianPerfAvg: number }> = [];
+  const remaining = new Set(rosterByFirstName.keys());
+  let page = 1;
+  let hasMorePages = true;
+  const MAX_PAGES = 10; // 1000 guild members -- far beyond any real roster, just a runaway-loop guard
+
+  while (hasMorePages && remaining.size > 0 && page <= MAX_PAGES) {
+    const query = `
+      query {
+        guildData {
+          guild(id: ${guildId}) {
+            members(limit: 100, page: ${page}) {
+              has_more_pages
+              data {
+                name
+                zoneRankings(zoneID: ${zoneId}, metric: dps)
+              }
+            }
+          }
+        }
+      }
+    `;
+    const result = await wclQuery(token, query);
+    const membersResult = result?.data?.guildData?.guild?.members;
+    const members = membersResult?.data || [];
+    hasMorePages = !!membersResult?.has_more_pages;
+
+    for (const member of members) {
+      const firstName = String(member.name || '').trim().toLowerCase();
+      if (!firstName || !remaining.has(firstName)) continue;
+      const rankings = member.zoneRankings;
+      const bestPerfAvg = rankings?.bestPerformanceAverage;
+      if (bestPerfAvg == null) continue;
+      const roster = rosterByFirstName.get(firstName)!;
+      matched.push({
+        playerId: roster.playerId,
+        name: roster.displayName,
+        bestPerfAvg,
+        medianPerfAvg: rankings?.medianPerformanceAverage ?? bestPerfAvg
+      });
+      remaining.delete(firstName);
+    }
+    page++;
+  }
+
+  if (matched.length > 0) {
+    const rows = matched.map((m) => ({
+      player_id: m.playerId,
+      team_id: teamId,
+      season,
+      best_perf_avg: m.bestPerfAvg,
+      median_perf_avg: m.medianPerfAvg,
+      fetched_at: new Date().toISOString()
+    }));
+    const { error: upsertError } = await supabase
+      .from('player_wcl_season_perf')
+      .upsert(rows, { onConflict: 'player_id,season' });
+    if (upsertError) throw new Error(upsertError.message);
+  }
+
+  return {
+    success: true,
+    updated: matched.length,
+    noData: remaining.size,
+    players: matched.map((m) => ({
+      playerId: m.playerId,
+      name: m.name,
+      bestPerfAvg: m.bestPerfAvg,
+      medianPerfAvg: m.medianPerfAvg
+    }))
+  };
+}
+
 // ── Entry point ──────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -612,7 +735,7 @@ Deno.serve(async (req) => {
   // `.error` themselves rather than unpacking supabase-js's FunctionsHttpError
   // (which requires reading error.context separately to get this same body).
   try {
-    const { action, teamId, zoneId } = await req.json();
+    const { action, teamId, zoneId, season } = await req.json();
 
     if (!action || !teamId) {
       return jsonResponse({ success: false, error: 'Missing action or teamId' });
@@ -689,6 +812,22 @@ Deno.serve(async (req) => {
       const token = await getAccessToken();
       if (!token) return jsonResponse({ success: false, error: 'Failed to get WCL access token. Check WCL_CLIENT_ID/WCL_CLIENT_SECRET.' });
       const result = await refreshAttendance(token, team.wcl_guild_id, teamId, supabase);
+      return jsonResponse(result);
+    }
+
+    if (action === 'fetchSeasonPerf') {
+      if (!zoneId) return jsonResponse({ success: false, error: 'Missing zoneId' });
+      if (!season) return jsonResponse({ success: false, error: 'Missing season' });
+      const { data: team, error: teamError } = await supabase
+        .from('teams')
+        .select('wcl_guild_id')
+        .eq('id', teamId)
+        .maybeSingle();
+      if (teamError) return jsonResponse({ success: false, error: teamError.message });
+      if (!team?.wcl_guild_id) {
+        return jsonResponse({ success: false, error: 'No WCL guild ID configured for this team' });
+      }
+      const result = await fetchSeasonPerf(team.wcl_guild_id, teamId, season, zoneId, supabase);
       return jsonResponse(result);
     }
 

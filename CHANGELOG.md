@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.10] - 2026-07-11
+
+### Frontend
+
+- **Officer-triggered WCL season performance fetch (#264).** Season History's most recently archived season now offers a "WCL Performance Baseline" fetch: pick a raid tier from that season, pull each DPS roster player's best character-page performance average from WarcraftLogs (whichever difficulty they actually logged highest -- mythic if any, heroic otherwise, matching the character page's own "Highest Difficulty" filter), and write it to `player_wcl_season_perf` (new `fetchSeasonPerf` action on the `wcl-sync` Edge Function). Tanks/healers are excluded, same as every other WCL-derived performance path in this app -- their score is always officer-set.
+- **Seeds `scoring.performance_score` for the new season from that fetch (#394-lite).** Before this, heroic priority generation had nothing to read until an officer ran a real "Commit Performance Scores" pass against current-season raid reports -- now the fetch above also seeds a starting number per player, but only for players with no `scoring` row yet this season (`ignoreDuplicates: true` upsert), so it can never clobber a real commit. No blended/weighted formula between previous-season baseline and current-season data -- that's deliberately deferred; this is a one-time fallback that real commits simply overwrite once they happen.
+
 ## [3.33.9] - 2026-07-11
 
 ### Frontend
