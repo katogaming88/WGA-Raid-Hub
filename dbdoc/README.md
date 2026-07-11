@@ -23,7 +23,7 @@
 | [public.site_admins](public.site_admins.md) | 3 |  | BASE TABLE |
 | [public.team_members](public.team_members.md) | 7 |  | BASE TABLE |
 | [public.team_settings](public.team_settings.md) | 3 |  | BASE TABLE |
-| [public.teams](public.teams.md) | 3 |  | BASE TABLE |
+| [public.teams](public.teams.md) | 4 |  | BASE TABLE |
 | [public.pending_roster](public.pending_roster.md) | 14 |  | VIEW |
 | [public.rnlsi](public.rnlsi.md) | 6 |  | VIEW |
 | [public.bis_demand_vs_awards](public.bis_demand_vs_awards.md) | 7 |  | VIEW |
@@ -58,6 +58,12 @@
 | public.submit_mplus_exclusion | int4 | p_team_id integer, p_name_realm text, p_raiderio_url text DEFAULT NULL::text, p_reason text DEFAULT NULL::text | FUNCTION |
 | public.submit_self_received | record | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text | FUNCTION |
 | public.direct_mark_received | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text | FUNCTION |
+| public.admin_create_team | int4 | p_name text, p_slug text | FUNCTION |
+| public.admin_update_team | void | p_team_id integer, p_name text, p_slug text | FUNCTION |
+| public.admin_set_team_archived | void | p_team_id integer, p_archived boolean | FUNCTION |
+| public.admin_list_site_admins | record |  | FUNCTION |
+| public.admin_grant_site_admin | int4 | p_discord_id text | FUNCTION |
+| public.admin_revoke_site_admin | void | p_discord_id text | FUNCTION |
 
 ## Enums
 
@@ -84,7 +90,7 @@ erDiagram
 
 "public.attendance" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.attendance" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
-"public.audit_log" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.audit_log" }o--o| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.bis_items" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
 "public.bis_items" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.bis_requests" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
@@ -302,6 +308,7 @@ erDiagram
   integer id
   text name
   text slug
+  timestamp_with_time_zone archived_at
 }
 "public.pending_roster" {
   integer signup_id

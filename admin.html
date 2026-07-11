@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>We Go Again -- Site Admin</title>
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+
+<body>
+
+  <header class="header">
+    <a href="admin.html" class="header-link">
+      <span class="header-emblem">⚙️</span>
+      <h1>Site Admin</h1>
+      <p class="header-sub">We Go Again</p>
+    </a>
+    <div class="header-divider"></div>
+  </header>
+
+  <nav class="site-nav">
+    <a href="index.html" class="site-nav-item">Back to Roster</a>
+    <div class="site-nav-right">
+      <span class="site-nav-item" id="adminWhoAmI"></span>
+    </div>
+  </nav>
+
+  <div id="adminLoadingMsg" class="state-msg">
+    <div class="spinner"></div><br>Checking access...
+  </div>
+
+  <div id="adminLoginPrompt" class="state-msg" style="display:none;">
+    <p>Sign in with the Discord account that holds site admin access.</p>
+    <button class="btn site-nav-discord" onclick="adminLoginWithDiscord()">Login with Discord</button>
+  </div>
+
+  <div id="adminDeniedMsg" class="state-msg" style="display:none;">
+    <p>This account does not have site admin access.</p>
+    <a href="index.html" class="btn btn-muted">Back to Roster</a>
+  </div>
+
+  <div id="adminView" class="admin-page" style="display:none;">
+    <div class="officer-body">
+      <nav class="officer-sidebar">
+        <button class="nav-item active" onclick="switchTab('teams')">Teams</button>
+        <button class="nav-item" onclick="switchTab('siteadmins')">Site Admins</button>
+        <button class="nav-item" onclick="switchTab('flags')">Feature Flags</button>
+        <button class="nav-item" onclick="switchTab('audit')">Audit Log</button>
+      </nav>
+
+      <div class="officer-main">
+        <div id="tab-teams" class="tab-panel active">
+          <table class="roster-table admin-team-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Slug</th>
+                <th>Status</th>
+                <th><button class="btn btn-gold" style="font-size:0.82rem;padding:0.25rem 0.75rem;white-space:nowrap;" onclick="showCreateTeamModal()">+ New Team</button></th>
+              </tr>
+            </thead>
+            <tbody id="adminTeamRows"></tbody>
+          </table>
+        </div>
+
+        <div id="tab-siteadmins" class="tab-panel">
+          <p class="admin-hint">Grant by Discord user ID -- enable Developer Mode in Discord (User Settings &rarr;
+            Advanced), then right-click the account and choose "Copy User ID".</p>
+          <div class="admin-grant-row">
+            <input type="text" id="grantDiscordId" placeholder="Discord user ID">
+            <button class="btn btn-gold" onclick="submitGrantSiteAdmin()">Grant</button>
+          </div>
+          <p id="grantSiteAdminError" style="display:none;font-size:0.88rem;color:var(--melee);"></p>
+          <table class="roster-table admin-team-table">
+            <thead>
+              <tr>
+                <th>Discord Account</th>
+                <th>Discord ID</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="adminSiteAdminRows"></tbody>
+          </table>
+        </div>
+
+        <div id="tab-flags" class="tab-panel">
+          <p class="admin-hint">Toggling a flag saves immediately and takes effect on that team's next page load.</p>
+          <div class="admin-flags-table-wrap">
+            <table class="roster-table admin-flags-table">
+              <thead>
+                <tr id="adminFlagsHeaderRow"><th>Team</th></tr>
+              </thead>
+              <tbody id="adminFlagsRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="tab-audit" class="tab-panel">
+          <div class="admin-audit-controls">
+            <select id="adminAuditTeamFilter" class="team-switcher" onchange="loadAuditLog()"></select>
+            <input type="text" id="adminAuditSearch" class="roster-search-input"
+              placeholder="Search by officer, action, target, or detail..." oninput="renderAuditRows()">
+          </div>
+          <div id="adminAuditCount" class="admin-hint"></div>
+          <div style="overflow-x:auto;">
+            <table class="roster-table audit-table" style="width:100%;">
+              <thead>
+                <tr>
+                  <th style="white-space:nowrap;">Time</th>
+                  <th>Team</th>
+                  <th>Changed By</th>
+                  <th>Action</th>
+                  <th>Target</th>
+                  <th>Detail</th>
+                </tr>
+              </thead>
+              <tbody id="adminAuditRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create/edit team modal -->
+  <div id="teamModal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <h3 class="modal-title" id="teamModalTitle">New Team</h3>
+      <input type="hidden" id="teamModalId">
+      <label class="admin-field-label" for="teamModalName">Name</label>
+      <input type="text" id="teamModalName" placeholder="Team name">
+      <label class="admin-field-label" for="teamModalSlug">Slug</label>
+      <input type="text" id="teamModalSlug" placeholder="team-slug">
+      <p id="teamModalError" style="display:none;font-size:0.88rem;color:var(--melee);"></p>
+      <div class="modal-actions">
+        <button class="btn btn-gold" onclick="submitTeamModal()">Save</button>
+        <button class="btn btn-muted" onclick="hideTeamModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">We Go Again &middot; Site Admin &middot; <a class="footer-link"
+      href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank"
+      rel="noopener">Changelog</a></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/admin.js"></script>
+
+</body>
+
+</html>

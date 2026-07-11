@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | id | integer | nextval('audit_log_id_seq'::regclass) | false |  |  |  |
-| team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
+| team_id | integer |  | true |  | [public.teams](public.teams.md) |  |
 | actor_id | uuid |  | true |  |  |  |
 | action | text |  | false |  |  |  |
 | target_type | text |  | true |  |  |  |
@@ -32,7 +32,7 @@
 ```mermaid
 erDiagram
 
-"public.audit_log" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.audit_log" }o--o| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.audit_log" {
   integer id
@@ -48,6 +48,7 @@ erDiagram
   integer id
   text name
   text slug
+  timestamp_with_time_zone archived_at
 }
 ```
 

@@ -144,7 +144,7 @@
         {
           "name": "team_id",
           "type": "integer",
-          "nullable": false
+          "nullable": true
         },
         {
           "name": "actor_id",
@@ -2257,6 +2257,11 @@
           "name": "slug",
           "type": "text",
           "nullable": false
+        },
+        {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "nullable": true
         }
       ],
       "indexes": [
@@ -2665,7 +2670,7 @@
       "parent_columns": [
         "id"
       ],
-      "parent_cardinality": "exactly_one",
+      "parent_cardinality": "zero_or_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     },
     {
@@ -3196,6 +3201,42 @@
       "name": "public.direct_mark_received",
       "return_type": "int4",
       "arguments": "p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_create_team",
+      "return_type": "int4",
+      "arguments": "p_name text, p_slug text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_update_team",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_name text, p_slug text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_set_team_archived",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_archived boolean",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_list_site_admins",
+      "return_type": "record",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_grant_site_admin",
+      "return_type": "int4",
+      "arguments": "p_discord_id text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_revoke_site_admin",
+      "return_type": "void",
+      "arguments": "p_discord_id text",
       "type": "FUNCTION"
     }
   ],

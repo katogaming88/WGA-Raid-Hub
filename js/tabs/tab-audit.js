@@ -2,9 +2,47 @@
 // audit_log instead of the legacy GAS ?action=getAuditLog JSONP endpoint.
 // Columns collapse the old From/To pair into a single human-readable
 // DETAIL column (#214/#377 write the summary string convention detail
-// already holds); CHANGED BY resolves actor_id through resolve_actor_name()
+// already holds, plus the jsonb objects set_team_setting() started writing
+// with #232); CHANGED BY resolves actor_id through resolve_actor_name()
 // (#376) instead of a raw uuid.
 var _auditEntries = [];
+
+// Known short keys that don't title-case cleanly on their own (bis -> BiS,
+// not Bis; mplus -> M+, not Mplus).
+var AUDIT_DETAIL_LABELS = { bis: 'BiS', mplus: 'M+' };
+
+function humanizeAuditKey(key) {
+  if (AUDIT_DETAIL_LABELS[key]) return AUDIT_DETAIL_LABELS[key];
+  var spaced = key.replace(/_/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2');
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+function humanizeAuditValue(v) {
+  if (typeof v === 'boolean') return v ? 'On' : 'Off';
+  return String(v);
+}
+
+// Flattens nested objects to just their leaf key/value pairs -- a feature
+// flag diff like {features: {bench: false}} renders as "Bench: Off" rather
+// than repeating the (here, uninformative) parent key name.
+function humanizeAuditEntries(obj, out) {
+  Object.keys(obj).forEach(function (k) {
+    var v = obj[k];
+    if (v != null && typeof v === 'object' && !Array.isArray(v)) {
+      humanizeAuditEntries(v, out);
+    } else {
+      out.push(humanizeAuditKey(k) + ': ' + humanizeAuditValue(v));
+    }
+  });
+}
+
+function formatAuditDetail(detail) {
+  if (detail == null) return '';
+  if (typeof detail === 'string') return detail;
+  var out = [];
+  humanizeAuditEntries(detail, out);
+  return out.join(', ');
+}
 
 function buildAuditTab() {
   var container = document.getElementById('auditContainer');
@@ -39,7 +77,7 @@ function buildAuditTab() {
               changedBy: row.actor_id ? actorNames[row.actor_id] || '' : '',
               action: row.action || '',
               target: auditTargetName(row, targetNames),
-              detail: typeof row.detail === 'string' ? row.detail : ''
+              detail: formatAuditDetail(row.detail)
             };
           });
           renderAuditLog();

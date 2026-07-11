@@ -79,6 +79,7 @@ erDiagram
   integer id
   text name
   text slug
+  timestamp_with_time_zone archived_at
 }
 "public.classes_specs" {
   integer id
