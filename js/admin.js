@@ -1,0 +1,518 @@
+// Site admin dashboard (admin.html) -- #232 stage 1 (team management) and
+// stage 2 (site admin grant/revoke).
+//
+// Deliberately standalone rather than reusing common.js/discord.js: both are
+// built around a single active team (_teamCfg, TEAM_SLUG-keyed session
+// storage, resolveDiscordSession() querying that team's team_members row).
+// This page isn't scoped to a team, so it gets its own minimal Supabase
+// client and a lean auth check that only needs is_site_admin().
+
+var SUPABASE_URL = 'https://kxgjqnpwfklbgrxdgmmv.supabase.co';
+var SUPABASE_ANON_KEY = 'sb_publishable_OdTUOR0Do1ThdKUPBh5inA_OWq78POC';
+var supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+var _adminTeams = [];
+
+function adminLoginWithDiscord() {
+  if (!supabaseClient) return;
+  supabaseClient.auth.signInWithOAuth({
+    provider: 'discord',
+    options: { redirectTo: window.location.origin + window.location.pathname }
+  });
+}
+
+function adminLogout() {
+  if (!supabaseClient) return;
+  supabaseClient.auth.signOut().then(function () {
+    window.location.href = 'index.html';
+  });
+}
+
+function showState(name) {
+  ['adminLoadingMsg', 'adminLoginPrompt', 'adminDeniedMsg', 'adminView'].forEach(function (id) {
+    document.getElementById(id).style.display = id === name ? '' : 'none';
+  });
+}
+
+// Same nav-item/tab-panel setup and switchTab() shape as officer.js. All
+// four tabs' data is small (a handful of teams/site admins/flag rows and up
+// to 300 audit entries), so it's loaded eagerly on login rather than
+// per-tab -- switching tabs here is pure visibility toggling, no fetch.
+function switchTab(name) {
+  document.querySelectorAll('.nav-item').forEach(function (b) {
+    b.classList.remove('active');
+  });
+  document.querySelectorAll('.tab-panel').forEach(function (p) {
+    p.classList.remove('active');
+  });
+  event.target.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+function checkAdminAccess() {
+  if (!supabaseClient) {
+    showState('adminDeniedMsg');
+    return;
+  }
+  supabaseClient.auth.getSession().then(function (result) {
+    var session = result.data.session;
+    if (!session) {
+      showState('adminLoginPrompt');
+      return;
+    }
+    supabaseClient.rpc('is_site_admin').then(function (adminResult) {
+      if (!adminResult.data) {
+        showState('adminDeniedMsg');
+        return;
+      }
+      var name = session.user.user_metadata.full_name || session.user.user_metadata.name || 'Admin';
+      var who = document.getElementById('adminWhoAmI');
+      who.textContent = name + ' (log out)';
+      who.style.cursor = 'pointer';
+      who.onclick = adminLogout;
+      showState('adminView');
+      loadTeams().then(function () {
+        loadFeatureFlags();
+        populateAuditTeamFilter();
+        loadAuditLog();
+      });
+      loadSiteAdmins();
+    });
+  });
+}
+
+function loadTeams() {
+  return supabaseClient
+    .from('teams')
+    .select('id, name, slug, archived_at')
+    .order('id')
+    .then(function (result) {
+      _adminTeams = result.data || [];
+      renderTeamRows();
+    });
+}
+
+function renderTeamRows() {
+  var tbody = document.getElementById('adminTeamRows');
+  tbody.innerHTML = _adminTeams
+    .map(function (team) {
+      var archived = !!team.archived_at;
+      return (
+        '<tr' + (archived ? ' class="admin-archived-row"' : '') + '>' +
+        '<td>' + escapeHtml(team.name) + '</td>' +
+        '<td>' + escapeHtml(team.slug) + '</td>' +
+        '<td><span class="admin-status-badge ' + (archived ? 'admin-status-archived' : 'admin-status-active') + '">' +
+        (archived ? 'Archived' : 'Active') + '</span></td>' +
+        '<td class="admin-row-actions">' +
+        '<button class="btn btn-gold" onclick="showEditTeamModal(' + team.id + ')">Edit</button>' +
+        '<button class="btn ' + (archived ? 'btn-muted' : 'btn-danger') + '" onclick="toggleArchiveTeam(' + team.id + ')">' + (archived ? 'Unarchive' : 'Archive') + '</button>' +
+        '</td>' +
+        '</tr>'
+      );
+    })
+    .join('');
+}
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
+}
+
+function showCreateTeamModal() {
+  document.getElementById('teamModalTitle').textContent = 'New Team';
+  document.getElementById('teamModalId').value = '';
+  document.getElementById('teamModalName').value = '';
+  document.getElementById('teamModalSlug').value = '';
+  document.getElementById('teamModalError').style.display = 'none';
+  document.getElementById('teamModal').style.display = 'flex';
+}
+
+function showEditTeamModal(teamId) {
+  var team = _adminTeams.filter(function (t) { return t.id === teamId; })[0];
+  if (!team) return;
+  document.getElementById('teamModalTitle').textContent = 'Edit Team';
+  document.getElementById('teamModalId').value = team.id;
+  document.getElementById('teamModalName').value = team.name;
+  document.getElementById('teamModalSlug').value = team.slug;
+  document.getElementById('teamModalError').style.display = 'none';
+  document.getElementById('teamModal').style.display = 'flex';
+}
+
+function hideTeamModal() {
+  document.getElementById('teamModal').style.display = 'none';
+}
+
+function submitTeamModal() {
+  var id = document.getElementById('teamModalId').value;
+  var name = document.getElementById('teamModalName').value.trim();
+  var slug = document.getElementById('teamModalSlug').value.trim();
+  var errorEl = document.getElementById('teamModalError');
+  errorEl.style.display = 'none';
+
+  if (!name || !slug) {
+    errorEl.textContent = 'Name and slug are required.';
+    errorEl.style.display = '';
+    return;
+  }
+
+  var call = id
+    ? supabaseClient.rpc('admin_update_team', { p_team_id: parseInt(id, 10), p_name: name, p_slug: slug })
+    : supabaseClient.rpc('admin_create_team', { p_name: name, p_slug: slug });
+
+  call.then(function (result) {
+    if (result.error) {
+      errorEl.textContent = result.error.message;
+      errorEl.style.display = '';
+      return;
+    }
+    hideTeamModal();
+    loadTeams();
+  });
+}
+
+function toggleArchiveTeam(teamId) {
+  var team = _adminTeams.filter(function (t) { return t.id === teamId; })[0];
+  if (!team) return;
+  var archiving = !team.archived_at;
+  var verb = archiving ? 'archive' : 'unarchive';
+  if (!confirm('Are you sure you want to ' + verb + ' ' + team.name + '?')) return;
+
+  supabaseClient.rpc('admin_set_team_archived', { p_team_id: teamId, p_archived: archiving }).then(function (result) {
+    if (result.error) {
+      alert(result.error.message);
+      return;
+    }
+    loadTeams();
+  });
+}
+
+var _adminSiteAdmins = [];
+
+function loadSiteAdmins() {
+  supabaseClient.rpc('admin_list_site_admins').then(function (result) {
+    _adminSiteAdmins = result.data || [];
+    renderSiteAdminRows();
+  });
+}
+
+function renderSiteAdminRows() {
+  var tbody = document.getElementById('adminSiteAdminRows');
+  tbody.innerHTML = _adminSiteAdmins
+    .map(function (sa) {
+      return (
+        '<tr>' +
+        '<td>' + escapeHtml(sa.display_name || '(not yet logged in)') + '</td>' +
+        '<td class="admin-discord-id">' + escapeHtml(sa.discord_id) + '</td>' +
+        '<td class="admin-row-actions">' +
+        '<button class="btn btn-danger" onclick="submitRevokeSiteAdmin(\'' + escapeHtml(sa.discord_id) + '\')">Revoke</button>' +
+        '</td>' +
+        '</tr>'
+      );
+    })
+    .join('');
+}
+
+function submitGrantSiteAdmin() {
+  var input = document.getElementById('grantDiscordId');
+  var discordId = input.value.trim();
+  var errorEl = document.getElementById('grantSiteAdminError');
+  errorEl.style.display = 'none';
+
+  if (!discordId) {
+    errorEl.textContent = 'Discord user ID is required.';
+    errorEl.style.display = '';
+    return;
+  }
+
+  supabaseClient.rpc('admin_grant_site_admin', { p_discord_id: discordId }).then(function (result) {
+    if (result.error) {
+      errorEl.textContent = result.error.message;
+      errorEl.style.display = '';
+      return;
+    }
+    input.value = '';
+    loadSiteAdmins();
+  });
+}
+
+function submitRevokeSiteAdmin(discordId) {
+  if (!confirm('Revoke site admin access for this Discord account?')) return;
+
+  supabaseClient.rpc('admin_revoke_site_admin', { p_discord_id: discordId }).then(function (result) {
+    if (result.error) {
+      alert(result.error.message);
+      return;
+    }
+    loadSiteAdmins();
+  });
+}
+
+// Mirrors #231's feature schema (team_settings.config.features). Missing
+// key -- either the whole `features` object or one flag within it -- reads
+// as enabled, matching current behavior (no team's webapp checks these yet,
+// so "unset" has to mean "on" or every existing team would go dark the
+// moment this panel starts writing to a team's config for the first time).
+var FEATURE_FLAGS = [
+  { key: 'loot', label: 'Loot' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'bis', label: 'BiS' },
+  { key: 'scoring', label: 'Scoring' },
+  { key: 'mplus', label: 'M+' },
+  { key: 'fairness', label: 'Fairness' },
+  { key: 'bench', label: 'Bench' }
+];
+
+var _adminTeamSettings = {}; // team_id -> config
+
+function loadFeatureFlags() {
+  var ids = _adminTeams.map(function (t) { return t.id; });
+  if (!ids.length) {
+    renderFeatureFlagsTable();
+    return Promise.resolve();
+  }
+  return supabaseClient
+    .from('team_settings')
+    .select('team_id, config')
+    .in('team_id', ids)
+    .then(function (result) {
+      _adminTeamSettings = {};
+      (result.data || []).forEach(function (row) {
+        _adminTeamSettings[row.team_id] = row.config || {};
+      });
+      renderFeatureFlagsTable();
+    });
+}
+
+function flagEnabled(teamId, key) {
+  var config = _adminTeamSettings[teamId];
+  var features = config && config.features;
+  if (!features || !(key in features)) return true;
+  return !!features[key];
+}
+
+function renderFeatureFlagsTable() {
+  var headerRow = document.getElementById('adminFlagsHeaderRow');
+  headerRow.innerHTML =
+    '<th>Team</th>' + FEATURE_FLAGS.map(function (f) { return '<th>' + f.label + '</th>'; }).join('');
+
+  var tbody = document.getElementById('adminFlagsRows');
+  tbody.innerHTML = _adminTeams
+    .map(function (team) {
+      var archived = !!team.archived_at;
+      return (
+        '<tr' + (archived ? ' class="admin-archived-row"' : '') + '>' +
+        '<td>' + escapeHtml(team.name) + '</td>' +
+        FEATURE_FLAGS.map(function (f) {
+          var checked = flagEnabled(team.id, f.key);
+          return (
+            '<td><input type="checkbox" ' + (checked ? 'checked' : '') +
+            ' onchange="toggleFeatureFlag(' + team.id + ',\'' + f.key + '\',this.checked)"></td>'
+          );
+        }).join('') +
+        '</tr>'
+      );
+    })
+    .join('');
+}
+
+function toggleFeatureFlag(teamId, key, enabled) {
+  var config = _adminTeamSettings[teamId] || {};
+  var features = {};
+  FEATURE_FLAGS.forEach(function (f) {
+    features[f.key] = flagEnabled(teamId, f.key);
+  });
+  features[key] = enabled;
+
+  supabaseClient.rpc('set_team_setting', { p_team_id: teamId, p_updates: { features: features } }).then(function (result) {
+    if (result.error) {
+      alert(result.error.message);
+      renderFeatureFlagsTable(); // revert the checkbox to last-known state
+      return;
+    }
+    config.features = features;
+    _adminTeamSettings[teamId] = config;
+  });
+}
+
+// Cross-team audit log. No new read path needed: "Officers read audit_log"
+// already lets is_site_admin() through with no team_id restriction, so a
+// plain select (no .eq('team_id', ...)) returns every team's rows for a
+// site admin caller -- the per-team officer tab (tab-audit.js) just never
+// exercises that branch since it always filters to _teamCfg.supabaseTeamId.
+var _adminAuditEntries = [];
+
+function populateAuditTeamFilter() {
+  var select = document.getElementById('adminAuditTeamFilter');
+  var options = ['<option value="all">All Teams</option>', '<option value="site">Site-level</option>'];
+  _adminTeams.forEach(function (team) {
+    options.push('<option value="' + team.id + '">' + escapeHtml(team.name) + '</option>');
+  });
+  select.innerHTML = options.join('');
+}
+
+function loadAuditLog() {
+  var filter = (document.getElementById('adminAuditTeamFilter') || {}).value || 'all';
+  var query = supabaseClient
+    .from('audit_log')
+    .select('team_id, actor_id, action, target_type, target_id, detail, created_at')
+    .order('created_at', { ascending: false })
+    .limit(300);
+
+  if (filter === 'site') query = query.is('team_id', null);
+  else if (filter !== 'all') query = query.eq('team_id', parseInt(filter, 10));
+
+  return query.then(function (result) {
+    var rows = result.data || [];
+    return Promise.all([resolveAuditActorNames(rows), resolveAuditTargetNames(rows)]).then(function (maps) {
+      var actorNames = maps[0];
+      var targetNames = maps[1];
+      _adminAuditEntries = rows.map(function (row) {
+        return {
+          ts: row.created_at,
+          team: teamNameById(row.team_id),
+          changedBy: row.actor_id ? actorNames[row.actor_id + '|' + row.team_id] || '' : '',
+          action: row.action || '',
+          target: auditTargetName(row, targetNames),
+          detail: formatAuditDetail(row.detail)
+        };
+      });
+      renderAuditRows();
+    });
+  });
+}
+
+function teamNameById(teamId) {
+  if (teamId == null) return 'Site-level';
+  var team = _adminTeams.filter(function (t) { return t.id === teamId; })[0];
+  return team ? team.name : 'Team #' + teamId;
+}
+
+function formatAuditDetail(detail) {
+  if (detail == null) return '';
+  if (typeof detail === 'string') return detail;
+  return Object.keys(detail)
+    .map(function (k) { return k + ': ' + detail[k]; })
+    .join(', ');
+}
+
+function resolveAuditActorNames(rows) {
+  var pairs = {};
+  rows.forEach(function (r) {
+    if (r.actor_id) pairs[r.actor_id + '|' + r.team_id] = { actorId: r.actor_id, teamId: r.team_id };
+  });
+  var keys = Object.keys(pairs);
+  if (!keys.length) return Promise.resolve({});
+  return Promise.all(
+    keys.map(function (key) {
+      return supabaseClient
+        .rpc('resolve_actor_name', { p_actor_id: pairs[key].actorId, p_team_id: pairs[key].teamId })
+        .then(function (result) {
+          return { key: key, name: result.error ? '' : result.data || '' };
+        });
+    })
+  ).then(function (results) {
+    var map = {};
+    results.forEach(function (r) {
+      map[r.key] = r.name;
+    });
+    return map;
+  });
+}
+
+// Only 'players' and 'team' target_types resolve today -- 'site_admin'
+// (grant/revoke) has no meaningful name beyond the discord_id already in
+// detail, so it's left blank rather than guessed at.
+function resolveAuditTargetNames(rows) {
+  var playerIds = [];
+  var seen = {};
+  rows.forEach(function (r) {
+    if (r.target_type === 'players' && r.target_id != null && !seen[r.target_id]) {
+      seen[r.target_id] = true;
+      playerIds.push(r.target_id);
+    }
+  });
+  if (!playerIds.length) return Promise.resolve({});
+  return supabaseClient
+    .from('players')
+    .select('id, name_realm')
+    .in('id', playerIds)
+    .then(function (result) {
+      var map = {};
+      (result.data || []).forEach(function (p) {
+        map[p.id] = p.name_realm;
+      });
+      return map;
+    });
+}
+
+function auditTargetName(row, targetNames) {
+  if (row.target_type === 'players' && row.target_id != null) return targetNames[row.target_id] || '';
+  if (row.target_type === 'team' && row.target_id != null) return teamNameById(row.target_id);
+  return '';
+}
+
+function renderAuditRows() {
+  var search = (document.getElementById('adminAuditSearch') || {}).value || '';
+  var searchLow = search.trim().toLowerCase();
+  var countEl = document.getElementById('adminAuditCount');
+  var tbody = document.getElementById('adminAuditRows');
+
+  var entries = searchLow
+    ? _adminAuditEntries.filter(function (e) {
+        return (
+          (e.team || '').toLowerCase().indexOf(searchLow) !== -1 ||
+          (e.changedBy || '').toLowerCase().indexOf(searchLow) !== -1 ||
+          (e.action || '').toLowerCase().indexOf(searchLow) !== -1 ||
+          (e.target || '').toLowerCase().indexOf(searchLow) !== -1 ||
+          (e.detail || '').toLowerCase().indexOf(searchLow) !== -1
+        );
+      })
+    : _adminAuditEntries;
+
+  countEl.textContent = entries.length + ' entr' + (entries.length !== 1 ? 'ies' : 'y') + ' (most recent 300)';
+
+  if (!entries.length) {
+    tbody.innerHTML =
+      '<tr><td colspan="6" style="color:var(--text-muted);">' +
+      (searchLow ? 'No entries match your search.' : 'No audit log entries yet.') +
+      '</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = entries
+    .map(function (e) {
+      return (
+        '<tr>' +
+        '<td style="white-space:nowrap;">' + escapeHtml(auditFormatTs(e.ts)) + '</td>' +
+        '<td>' + escapeHtml(e.team) + '</td>' +
+        '<td>' + escapeHtml(e.changedBy) + '</td>' +
+        '<td>' + escapeHtml(e.action) + '</td>' +
+        '<td>' + escapeHtml(e.target) + '</td>' +
+        '<td>' + escapeHtml(e.detail) + '</td>' +
+        '</tr>'
+      );
+    })
+    .join('');
+}
+
+// created_at arrives as an ISO timestamptz string; same 'yyyy-MM-dd HH:mm'
+// shape as the officer dashboard's audit tab (js/tabs/tab-audit.js), in the
+// viewer's local time.
+function auditFormatTs(iso) {
+  if (!iso) return '';
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return String(iso);
+  function pad(n) {
+    return n < 10 ? '0' + n : String(n);
+  }
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+if (supabaseClient) {
+  supabaseClient.auth.onAuthStateChange(function (event) {
+    if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') checkAdminAccess();
+  });
+}
+
+checkAdminAccess();
