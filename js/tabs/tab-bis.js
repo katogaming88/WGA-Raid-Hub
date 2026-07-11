@@ -253,27 +253,30 @@ var BIS_SLOTS = [
 ];
 
 // Maps an items.slot catalog value to the BIS_SLOTS row(s) an item with that
-// slot can fill. Finger/Trinket map to both numbered rows since the catalog
-// can't say which; the three weapon-ish catalog slots collapse to one
-// "Weapon" row -- this app has never modeled 2H vs 1H+OH as different BiS
-// slots, matching the old GAS sheet.
+// slot can fill. Keys are the literal values the item importer pulls from
+// the Item Lookup sheet's "slot" column (scripts/import/tables/items.js) --
+// not the BIS_SLOTS row labels, which use different (friendlier) names for
+// several of the same slots (Gloves -> Hands, Belt -> Waist, Boots -> Feet,
+// Bracers -> Wrist, Cloak -> Back, Shoulders -> Shoulder, Ring -> Finger).
+// Finger/Trinket map to both numbered rows since the catalog can't say
+// which; the single "1H/2H" weapon catalog slot (and "OH") collapse to the
+// Weapon/Off Hand rows -- this app has never modeled 2H vs 1H+OH as
+// different BiS slots, matching the old GAS sheet.
 var BIS_CATALOG_SLOT_TO_ROWS = {
   Head: ['Head'],
   Neck: ['Neck'],
-  Shoulder: ['Shoulder'],
-  Back: ['Back'],
+  Shoulders: ['Shoulder'],
+  Cloak: ['Back'],
   Chest: ['Chest'],
-  Wrist: ['Wrist'],
-  Hands: ['Hands'],
-  Waist: ['Waist'],
+  Bracers: ['Wrist'],
+  Gloves: ['Hands'],
+  Belt: ['Waist'],
   Legs: ['Legs'],
-  Feet: ['Feet'],
-  Finger: ['Finger 1', 'Finger 2'],
+  Boots: ['Feet'],
+  Ring: ['Finger 1', 'Finger 2'],
   Trinket: ['Trinket 1', 'Trinket 2'],
-  'Two-Hand': ['Weapon'],
-  'One-Hand': ['Weapon'],
-  Ranged: ['Weapon'],
-  'Off Hand': ['Off Hand']
+  '1H/2H': ['Weapon'],
+  OH: ['Off Hand']
 };
 
 var BIS_ARMOR_TYPES = { Plate: true, Mail: true, Leather: true, Cloth: true };
@@ -510,10 +513,12 @@ function bisSlotBuckets(items) {
   return { buckets: buckets, leftover: leftover };
 }
 
-function bisSlotRowHTML(label, colorSlot, index, entry, isEmpty, isActive) {
+function bisSlotRowHTML(label, colorSlot, index, entry, isEmpty, isActive, rowPosition) {
   var html =
     '<div style="display:flex;align-items:center;gap:0.5rem;font-size:0.95rem;padding:0.3rem 0.5rem;' +
-    'border-radius:4px;border:1px solid var(--border);">' +
+    'border-radius:4px;border:1px solid var(--border);background:' +
+    (rowPosition % 2 ? 'var(--bg-elevated)' : 'var(--bg-card)') +
+    ';">' +
     '<span style="min-width:5rem;color:' +
     getSlotColor(colorSlot) +
     ';font-size:0.85rem;">' +
@@ -591,7 +596,8 @@ function bisEditorHTML() {
       bucket ? bucket.index : -1,
       bucket ? bucket.entry : null,
       !bucket,
-      _bisActiveSlot === slotName
+      _bisActiveSlot === slotName,
+      s
     );
   }
   html += '</div>';
@@ -600,8 +606,8 @@ function bisEditorHTML() {
     html +=
       '<p style="font-size:0.82rem;color:var(--text-dim);margin:0.3rem 0 0.2rem;">Other (doesn\'t match a standard slot):</p>' +
       '<div style="display:flex;flex-direction:column;gap:2px;margin-bottom:0.6rem;">';
-    leftover.forEach(function (u) {
-      html += bisSlotRowHTML(u.entry.slot || '?', u.entry.slot, u.index, u.entry, false, false);
+    leftover.forEach(function (u, li) {
+      html += bisSlotRowHTML(u.entry.slot || '?', u.entry.slot, u.index, u.entry, false, false, li);
     });
     html += '</div>';
   }
