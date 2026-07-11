@@ -1119,10 +1119,11 @@ function onDiscordLogout() {
   officerLogout();
 }
 
-// access: true for the full tab (site admins), 'officers' for team leaders
-// (Officers sub-tab only -- Properties/Bot Config/Data Export/Danger Zone stay
-// site-admin only), falsy to hide the tab. buildAdminTab() (tab-admin.js)
-// reads window._adminAccessLevel to pick the right default sub-tab on click.
+// access: true for the full tab (site admins and password login),
+// 'team_leader' for the team-leader surfaces (#317), falsy to hide the tab.
+// The sub-tab map lives in adminSubTabVisibility (tab-admin.js), which
+// buildAdminTab() also reads (via window._adminAccessLevel) to pick the
+// default sub-tab on click.
 function showAdminTab(access) {
   var btn = document.getElementById('adminNavBtn');
   var show = !!access;
@@ -1131,10 +1132,10 @@ function showAdminTab(access) {
   if (ts) ts.style.display = show ? '' : 'none';
 
   window._adminAccessLevel = access;
-  var officersOnly = access === 'officers';
-  ['properties', 'botconfig', 'export', 'danger'].forEach(function (sub) {
+  var vis = adminSubTabVisibility(access);
+  ADMIN_SUBTABS.forEach(function (sub) {
     var subBtn = document.getElementById('admin-subtab-btn-' + sub);
-    if (subBtn) subBtn.style.display = officersOnly ? 'none' : '';
+    if (subBtn) subBtn.style.display = vis[sub] ? '' : 'none';
   });
 }
 
