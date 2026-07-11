@@ -31,16 +31,19 @@ document.addEventListener('DOMContentLoaded', function () {
 function refreshWclPerformance() {
   var btn = document.getElementById('refreshPerfBtn');
   var status = document.getElementById('refreshPerfStatus');
+  var progress = document.getElementById('refreshPerfProgress');
   if (btn) btn.disabled = true;
   if (status) {
     status.textContent = 'Fetching from WCL...';
     status.style.color = 'var(--text-muted)';
   }
+  if (progress) progress.classList.add('active');
 
   supabaseClient.functions
     .invoke('wcl-sync', { body: { action: 'refreshPerformance', teamId: _teamCfg.supabaseTeamId } })
     .then(function (res) {
       if (btn) btn.disabled = false;
+      if (progress) progress.classList.remove('active');
       var result = res.data;
       if (!res.error && result && result.success) {
         var statusText =

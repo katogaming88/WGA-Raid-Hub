@@ -294,6 +294,7 @@
                     <span id="commitScoresStatus" style="font-size:0.92rem;"></span>
                   </div>
                 </div>
+                <div id="refreshWCLProgress" class="wcl-progress-bar"><div class="wcl-progress-bar-fill"></div></div>
                 <div id="help-attendance" class="help-tip">
                   <strong>Refresh from WCL</strong> -- pulls the latest raid nights from Warcraft Logs and populates the
                   attendance grid. Run this after each raid night.<br>
@@ -350,6 +351,7 @@
                 <span id="commitPerfStatus" style="font-size:0.92rem;"></span>
               </div>
             </div>
+            <div id="refreshPerfProgress" class="wcl-progress-bar"><div class="wcl-progress-bar-fill"></div></div>
             <div id="help-scoring" class="help-tip" style="margin-top:0.5rem;margin-bottom:0.75rem;">
               <strong>Refresh from WCL</strong> -- fetches the last raid reports from WCL and calculates ilvl bracket % scores for each DPS and healer. Writes draft scores to columns J (Recent) and K (Trend) of the Scoring sheet. Tanks are skipped and marked Manual.<br>
               <strong>Commit to Scoring Sheet</strong> -- copies Recent Scores (column J) into the Performance column (C), which is what the Priority Generator uses. Safe to run multiple times.

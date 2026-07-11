@@ -435,6 +435,7 @@ function toggleReportExcluded(index) {
 function refreshAttendanceWCL() {
   var btn = document.getElementById('refreshWCLBtn');
   var status = document.getElementById('refreshWCLStatus');
+  var progress = document.getElementById('refreshWCLProgress');
   if (btn) {
     btn.disabled = true;
     btn.textContent = 'Refreshing...';
@@ -443,6 +444,7 @@ function refreshAttendanceWCL() {
     status.textContent = 'This may take 30-60 seconds...';
     status.style.color = 'var(--text-muted)';
   }
+  if (progress) progress.classList.add('active');
 
   supabaseClient.functions
     .invoke('wcl-sync', { body: { action: 'refreshAttendance', teamId: _teamCfg.supabaseTeamId } })
@@ -451,6 +453,7 @@ function refreshAttendanceWCL() {
         btn.disabled = false;
         btn.textContent = 'Refresh from WCL';
       }
+      if (progress) progress.classList.remove('active');
       var result = res.data;
       if (!res.error && result && result.success) {
         if (status) {

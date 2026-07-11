@@ -73,6 +73,15 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 .spinner { display:inline-block; width:20px; height:20px; border:2px solid var(--border-mid); border-top-color:var(--gold-dim); border-radius:50%; animation:spin 0.8s linear infinite; margin-bottom:0.75rem; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
+/* Indeterminate progress bar for long-running WCL fetches (Attendance/Scoring
+   "Refresh from WCL") -- these are single request/response Edge Function
+   calls with no real progress to report, so this is just "still working"
+   feedback, not a completion percentage. */
+.wcl-progress-bar { display:none; width:100%; max-width:320px; height:4px; margin-top:0.5rem; background:var(--bg-input); border-radius:2px; overflow:hidden; }
+.wcl-progress-bar.active { display:block; }
+.wcl-progress-bar-fill { width:40%; height:100%; background:var(--gold-dim); border-radius:2px; animation:wcl-progress-slide 1.2s ease-in-out infinite; }
+@keyframes wcl-progress-slide { 0% { transform:translateX(-100%); } 100% { transform:translateX(350%); } }
+
 /* Views */
 .view { display:none; flex:1; flex-direction:column; }
 .view.active { display:flex; }
