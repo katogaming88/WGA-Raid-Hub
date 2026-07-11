@@ -163,7 +163,7 @@ function checkMaintenanceMode() {
 // itself blocked by it.
 function showMaintenanceBanner(message) {
   document.querySelectorAll('.view, #loadingMsg, #officerPrompt, .site-nav').forEach(function (el) {
-    el.style.display = 'none';
+    /** @type {HTMLElement} */ (el).style.display = 'none';
   });
   var banner = document.getElementById('maintenanceBanner');
   if (!banner) return;
