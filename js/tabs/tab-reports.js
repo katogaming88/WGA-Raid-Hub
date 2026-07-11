@@ -31,7 +31,7 @@ function reportsUniqueSorted(values, compareFn) {
 }
 
 function reportsSeasonLabel(code) {
-  return (SEASON_LABELS && SEASON_LABELS[code]) || code;
+  return (typeof seasonDisplayName === 'function' && seasonDisplayName(code)) || code;
 }
 
 function reportsCurrentSeasonCode() {

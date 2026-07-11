@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.32.13';
+var VERSION = '3.32.14';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -705,40 +705,44 @@ function mapSupabaseRoster(rows, jsonpRoster, mplusRejections) {
   return players;
 }
 
-// Season code -> display-name map (#209, formalized as the permanent
-// mechanism on #341): scoring.season/priority_order.season/rclc_loot.season
-// store the compact code ('MID1', decided on #320) as a stable join/filter
-// key, while officers see and type the free-text display name
-// (DATA.seasonName, Season Settings tab -> team_settings.config via
-// saveTeamSetting(), #221) -- translate on read. Deliberately a hardcoded
-// frontend map rather than a DB table or a settings.config key: season
-// codes change a handful of times a year at most, and adding a new one
-// already requires a code change to be reachable at all (nothing generates
-// "MID2" on its own). Unknown codes pass through unchanged.
+// Season code -> display-name translation (#209, formalized as the
+// permanent mechanism on #341): scoring.season/priority_order.season/
+// rclc_loot.season store the compact code ('MID1', decided on #320) as a
+// stable join/filter key, while officers see and type the free-text
+// display name (DATA.seasonName, Season Settings tab -> team_settings.config
+// via saveTeamSetting(), #221) -- translate on read/write.
 //
-// Runbook: when starting a new season (after archive_current_season, before
-// typing the new season's display name into Season Settings), add its code
-// here in the same PR. seasonCodeForDisplay() below only matches an *exact*
-// SEASON_LABELS value -- if the new season's code is missing, every write
-// that resolves p_season from DATA.seasonName (rclc_loot import, priority
-// generation, the export string) silently falls through to storing the full
-// display string as the season key instead of a short code, which still
-// works internally (self-consistent) but breaks the compact/stable-key
-// design and looks inconsistent next to 'MID1'.
+// Two layers, checked in order:
+//  1. SEASON_LABELS -- an explicit override map for anything that doesn't
+//     fit the pattern below (a renamed season, a one-off historical name,
+//     a future expansion with different naming). Empty by design: every
+//     season so far (MID1, and every ordinary Midnight season after it)
+//     matches the pattern layer without needing an entry here.
+//  2. SEASON_CODE_RE / SEASON_DISPLAY_RE -- 'MID' + a number <-> 'Midnight
+//     Season ' + the same number, both directions. MID2, MID3, etc.
+//     translate automatically the moment they show up in data, with no code
+//     change required at each season boundary -- the earlier version of
+//     this mechanism (a single hardcoded MID1 entry) would have silently
+//     mis-translated every season after the first until someone remembered
+//     to add it.
+// Falls through to the input unchanged if neither layer matches.
 /** @type {Object<string, string>} */
-var SEASON_LABELS = { MID1: 'Midnight Season 1' };
+var SEASON_LABELS = {};
+var SEASON_CODE_RE = /^MID(\d+)$/;
+var SEASON_DISPLAY_RE = /^Midnight Season (\d+)$/;
 
-// Reverse of SEASON_LABELS: the officer-typed display name -> the shorthand
-// code Supabase write paths need (scoring.season/priority_order.season/
-// rclc_loot.season). Falls through to the input unchanged for a season not
-// yet in SEASON_LABELS (or one an officer already set to the shorthand
-// directly), same unknown-codes-pass-through behavior as the forward map --
-// see the runbook note above for why that's a trap, not a safe default.
+function seasonDisplayName(code) {
+  if (SEASON_LABELS[code]) return SEASON_LABELS[code];
+  var m = SEASON_CODE_RE.exec(code || '');
+  return m ? 'Midnight Season ' + m[1] : code;
+}
+
 function seasonCodeForDisplay(displayName) {
   for (var code in SEASON_LABELS) {
     if (SEASON_LABELS[code] === displayName) return code;
   }
-  return displayName;
+  var m = SEASON_DISPLAY_RE.exec(displayName || '');
+  return m ? 'MID' + m[1] : displayName;
 }
 
 // Public loot reads come from Supabase (#209): all seasons for the team,
@@ -840,7 +844,7 @@ function mapSupabaseLoot(rows) {
       name: row.items && row.items.name ? row.items.name : 'Unknown Item',
       difficulty: difficulty,
       date: date,
-      season: SEASON_LABELS[row.season] || row.season || ''
+      season: seasonDisplayName(row.season) || ''
     });
   });
   return result;
