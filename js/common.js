@@ -712,37 +712,61 @@ function mapSupabaseRoster(rows, jsonpRoster, mplusRejections) {
 // display name (DATA.seasonName, Season Settings tab -> team_settings.config
 // via saveTeamSetting(), #221) -- translate on read/write.
 //
-// Two layers, checked in order:
+// Three layers, checked in order:
 //  1. SEASON_LABELS -- an explicit override map for anything that doesn't
-//     fit the pattern below (a renamed season, a one-off historical name,
-//     a future expansion with different naming). Empty by design: every
-//     season so far (MID1, and every ordinary Midnight season after it)
-//     matches the pattern layer without needing an entry here.
-//  2. SEASON_CODE_RE / SEASON_DISPLAY_RE -- 'MID' + a number <-> 'Midnight
-//     Season ' + the same number, both directions. MID2, MID3, etc.
-//     translate automatically the moment they show up in data, with no code
-//     change required at each season boundary -- the earlier version of
-//     this mechanism (a single hardcoded MID1 entry) would have silently
-//     mis-translated every season after the first until someone remembered
-//     to add it.
-// Falls through to the input unchanged if neither layer matches.
+//     fit the pattern below (a renamed season, a one-off historical name).
+//     Empty by design: every season so far matches the pattern layer.
+//  2. The pattern, '<codePrefix><N>' <-> '<displayPrefix> <N>', both
+//     directions -- MID2, MID3, etc. translate automatically the moment
+//     they show up in data, no code change required at each season
+//     boundary (the earlier version of this mechanism, a single hardcoded
+//     MID1 entry, would have silently mis-translated every season after
+//     the first until someone remembered to add it).
+//  3. The prefixes themselves come from team_settings.config
+//     (DATA.seasonCodePrefix/DATA.seasonDisplayPrefix, officer-editable in
+//     Season Settings, same saveTeamSetting() path as seasonName), defaulting
+//     to 'MID'/'Midnight Season' when unset -- so a future expansion whose
+//     codes don't start with 'MID' is a one-time settings edit, not a code
+//     change, either.
+// Falls through to the input unchanged if nothing matches.
+//
+// Per-team setting is an interim choice: every team plays the same
+// real-world expansion timeline, so this is really cross-team config that
+// belongs on the site admin dashboard once #232 exists, not something each
+// team's officers set independently (risk of two teams drifting to
+// different prefixes for what's actually the same expansion). Noted on
+// #232; keep this as the override mechanism even after that lands.
 /** @type {Object<string, string>} */
 var SEASON_LABELS = {};
-var SEASON_CODE_RE = /^MID(\d+)$/;
-var SEASON_DISPLAY_RE = /^Midnight Season (\d+)$/;
+
+function _seasonCodePrefix() {
+  return (DATA && DATA.seasonCodePrefix) || 'MID';
+}
+
+function _seasonDisplayPrefix() {
+  return (DATA && DATA.seasonDisplayPrefix) || 'Midnight Season';
+}
+
+function _escapeRegExp(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function seasonDisplayName(code) {
   if (SEASON_LABELS[code]) return SEASON_LABELS[code];
-  var m = SEASON_CODE_RE.exec(code || '');
-  return m ? 'Midnight Season ' + m[1] : code;
+  var displayPrefix = _seasonDisplayPrefix();
+  var re = new RegExp('^' + _escapeRegExp(_seasonCodePrefix()) + '(\\d+)$');
+  var m = re.exec(code || '');
+  return m ? displayPrefix + ' ' + m[1] : code;
 }
 
 function seasonCodeForDisplay(displayName) {
   for (var code in SEASON_LABELS) {
     if (SEASON_LABELS[code] === displayName) return code;
   }
-  var m = SEASON_DISPLAY_RE.exec(displayName || '');
-  return m ? 'MID' + m[1] : displayName;
+  var codePrefix = _seasonCodePrefix();
+  var re = new RegExp('^' + _escapeRegExp(_seasonDisplayPrefix()) + ' (\\d+)$');
+  var m = re.exec(displayName || '');
+  return m ? codePrefix + m[1] : displayName;
 }
 
 // Public loot reads come from Supabase (#209): all seasons for the team,
@@ -1095,7 +1119,12 @@ var SEASON_CONFIG_KEYS = [
   'trialAttend',
   'signupsOpen',
   'bisSubmissionsOpen',
-  'mPlusExclusionsOpen'
+  'mPlusExclusionsOpen',
+  // Season code <-> display-name translation prefixes (#341); consumed by
+  // seasonDisplayName()/seasonCodeForDisplay() above, defaulting to
+  // 'MID'/'Midnight Season' when unset so existing teams need no backfill.
+  'seasonCodePrefix',
+  'seasonDisplayPrefix'
 ];
 
 /**
