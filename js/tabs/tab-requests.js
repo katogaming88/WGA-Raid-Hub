@@ -3,14 +3,41 @@ function buildRequestsTab() {
   if (!container) return;
   container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">Loading requests...</p>';
 
-  jsonpRequest(WEB_APP_URL + '?action=getPendingRequests', function (err, result) {
-    if (err) {
-      var c = document.getElementById('requestsContainer');
-      if (c) c.innerHTML = '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">' + err.message + '</p>';
-      return;
-    }
-    renderPendingRequests(result.requests || []);
-  });
+  if (!supabaseClient) {
+    container.innerHTML =
+      '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">Not connected to Supabase.</p>';
+    return;
+  }
+
+  supabaseClient
+    .from('self_received_requests')
+    .select('id, track, source, note, submitted_at, players(name_realm), items(name, slot)')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('status', 'pending')
+    .order('submitted_at', { ascending: false })
+    .then(function (result) {
+      if (result.error) {
+        var c = document.getElementById('requestsContainer');
+        if (c)
+          c.innerHTML =
+            '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">' + result.error.message + '</p>';
+        return;
+      }
+      var requests = (result.data || []).map(function (row) {
+        var itemRow = row.items || {};
+        var diff = row.track === 'Myth' ? 'Mythic' : row.track === 'Hero' ? 'Heroic' : row.track || '';
+        return {
+          id: row.id,
+          nameRealm: (row.players && row.players.name_realm) || '',
+          item: itemRow.name || '',
+          slot: itemRow.slot || '',
+          source: (diff ? diff + ': ' : '') + (row.source || ''),
+          notes: row.note || '',
+          timestamp: row.submitted_at ? new Date(row.submitted_at).toLocaleString() : ''
+        };
+      });
+      renderPendingRequests(requests);
+    });
 }
 
 function renderPendingRequests(requests) {
@@ -31,11 +58,13 @@ function renderPendingRequests(requests) {
   requests.forEach(function (r) {
     html +=
       '<div class="request-card" data-row="' +
-      r.rowIndex +
+      r.id +
+      '" data-name-realm="' +
+      r.nameRealm.replace(/"/g, '&quot;') +
       '">' +
       '<div class="request-card-header">' +
       '<span class="request-player">' +
-      r.player +
+      r.nameRealm.split('-')[0] +
       '</span>' +
       '<span class="signup-response-time">' +
       r.timestamp +
@@ -55,10 +84,10 @@ function renderPendingRequests(requests) {
         : '') +
       '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
       '<button class="btn request-approve-btn" onclick="approveRequest(' +
-      r.rowIndex +
+      r.id +
       ', this)">Approve</button>' +
       '<button class="btn request-reject-btn" onclick="rejectRequest(' +
-      r.rowIndex +
+      r.id +
       ', this)">Reject</button>' +
       '</div>' +
       '</div>';
@@ -66,34 +95,56 @@ function renderPendingRequests(requests) {
   container.innerHTML = html + '</div>';
 }
 
-function approveRequest(rowIndex, btnEl) {
+// Approve/reject are plain updates -- self_received_requests already has
+// Officers update RLS in place (#406), unlike the insert path which has to
+// go through submit_self_received()/direct_mark_received() since request
+// tables have no INSERT policy for anyone.
+function approveRequest(requestId, btnEl) {
   btnEl.disabled = true;
   btnEl.textContent = '...';
-  jsonpRequest(WEB_APP_URL + '?action=approveRequest&row=' + rowIndex, function (err, result) {
-    if (err || (result && result.error)) {
-      btnEl.disabled = false;
-      btnEl.textContent = 'Approve';
-      return;
-    }
-    var card = document.querySelector('.request-card[data-row="' + rowIndex + '"]');
-    if (card) card.remove();
-    checkEmptyRequests();
-  });
+  var card = document.querySelector('.request-card[data-row="' + requestId + '"]');
+  var nameRealm = card ? card.getAttribute('data-name-realm') : '';
+
+  supabaseClient
+    .from('self_received_requests')
+    .update({ status: 'approved' })
+    .eq('id', requestId)
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(function (result) {
+      if (result.error) {
+        btnEl.disabled = false;
+        btnEl.textContent = 'Approve';
+        return;
+      }
+      var player = findRosterPlayerByNameRealm(nameRealm);
+      writeAuditLog('Self-Received Approved', 'players', player ? player.id : null, null);
+      if (card) card.remove();
+      checkEmptyRequests();
+    });
 }
 
-function rejectRequest(rowIndex, btnEl) {
+function rejectRequest(requestId, btnEl) {
   btnEl.disabled = true;
   btnEl.textContent = '...';
-  jsonpRequest(WEB_APP_URL + '?action=rejectRequest&row=' + rowIndex, function (err, result) {
-    if (err || (result && result.error)) {
-      btnEl.disabled = false;
-      btnEl.textContent = 'Reject';
-      return;
-    }
-    var card = document.querySelector('.request-card[data-row="' + rowIndex + '"]');
-    if (card) card.remove();
-    checkEmptyRequests();
-  });
+  var card = document.querySelector('.request-card[data-row="' + requestId + '"]');
+  var nameRealm = card ? card.getAttribute('data-name-realm') : '';
+
+  supabaseClient
+    .from('self_received_requests')
+    .update({ status: 'rejected' })
+    .eq('id', requestId)
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(function (result) {
+      if (result.error) {
+        btnEl.disabled = false;
+        btnEl.textContent = 'Reject';
+        return;
+      }
+      var player = findRosterPlayerByNameRealm(nameRealm);
+      writeAuditLog('Self-Received Rejected', 'players', player ? player.id : null, null);
+      if (card) card.remove();
+      checkEmptyRequests();
+    });
 }
 
 function checkEmptyRequests() {

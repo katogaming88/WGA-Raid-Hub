@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.32.9';
+var VERSION = '3.32.10';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -891,6 +891,64 @@ function mapSupabaseBisItems(rows) {
   return map;
 }
 
+// Self-received reads come from Supabase (#406): self_received_requests
+// carries its own team_id (unlike bis_items), so no join-through-players
+// filter is needed. Only 'approved' rows are pulled -- pending/rejected
+// requests are officer-queue-only (js/tabs/tab-requests.js), not shown on a
+// player's profile. Resolves to the raw rows, or null on any failure so the
+// caller falls back to the Apps Script heavy chunk's selfReceived.
+function fetchSupabaseSelfReceived() {
+  if (!supabaseClient) return Promise.resolve(null);
+  var query = supabaseClient
+    .from('self_received_requests')
+    .select('track, source, players(name_realm), items(name, slot)')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('status', 'approved')
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Supabase self-received query failed, using Apps Script selfReceived.', result.error.message);
+        return null;
+      }
+      return result.data && result.data.length ? result.data : null;
+    })
+    .catch(function (err) {
+      console.warn('Supabase self-received query failed, using Apps Script selfReceived.', err);
+      return null;
+    });
+  var timeout = new Promise(function (resolve) {
+    setTimeout(function () {
+      resolve(null);
+    }, 10000);
+  });
+  return Promise.race([query, timeout]);
+}
+
+// Maps self_received_requests rows to the DATA.selfReceived shape the Apps
+// Script heavy chunk emits (firstName -> array of {item, slot, source}), so
+// no render code changes. source is rebuilt as "Track: source" to match the
+// combined string submitSelfReceivedRequest/submitDirectMarkReceived used to
+// send GAS as one field, since getSelfReceivedItems()'s callers display it
+// as a single badge.
+function mapSupabaseSelfReceived(rows) {
+  var map = {};
+  (rows || []).forEach(function (row) {
+    var players = row.players || {};
+    var nameRealm = String(players.name_realm || '').trim();
+    if (!nameRealm) return;
+    var firstName = nameRealm.split('-')[0].trim();
+    var itemRow = row.items || {};
+    if (!itemRow.name) return;
+    var diff = row.track === 'Myth' ? 'Mythic' : row.track === 'Hero' ? 'Heroic' : row.track || '';
+    if (!map[firstName]) map[firstName] = [];
+    map[firstName].push({
+      item: itemRow.name,
+      slot: itemRow.slot || '',
+      source: (diff ? diff + ': ' : '') + (row.source || '')
+    });
+  });
+  return map;
+}
+
 // Priority order reads come from Supabase (#220). priority_order carries its
 // own team_id (unlike bis_items), so no join-through-players filter is
 // needed. Not season-filtered here -- same reason fetchSupabaseLoot() isn't:
@@ -1160,6 +1218,8 @@ function loadData(onCoreReady, onHeavyReady) {
   var itemBossesPromise = fetchSupabaseItemBosses();
   // Fired alongside; the heavy callback waits for it before setting priorityOrder.
   var priorityOrderPromise = fetchSupabasePriorityOrder();
+  // Fired alongside; the heavy callback waits for it before setting selfReceived.
+  var selfReceivedPromise = fetchSupabaseSelfReceived();
 
   window._rosterCoreCallback = function (data) {
     delete window._rosterCoreCallback;
@@ -1190,36 +1250,44 @@ function loadData(onCoreReady, onHeavyReady) {
       window._rosterHeavyCallback = function (heavy) {
         delete window._rosterHeavyCallback;
         if (!heavy || heavy.error) return;
-        Promise.all([lootPromise, bisItemsPromise, itemsPromise, itemBossesPromise, priorityOrderPromise]).then(
-          function (results) {
-            var lootRows = results[0];
-            var bisRows = results[1];
-            var itemRows = results[2];
-            var itemBossRows = results[3];
-            var priorityRows = results[4];
-            var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
-            DATA.lootCounts = mappedLoot || {};
-            DATA.attendanceDetails = heavy.attendanceDetails;
-            DATA.rawAttendanceData = heavy.rawAttendanceData;
-            DATA.recentAttendanceTrend = heavy.recentAttendanceTrend;
-            var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
-            DATA.bisList = mappedBis && Object.keys(mappedBis).length ? mappedBis : heavy.bisList;
-            var mappedPriority = priorityRows
-              ? mapSupabasePriorityOrder(priorityRows, seasonCodeForDisplay(DATA.seasonName || ''))
-              : null;
-            DATA.priorityOrder =
-              mappedPriority && Object.keys(mappedPriority).length ? mappedPriority : heavy.priorityOrder;
-            var itemMaps = buildItemMaps(itemRows);
-            DATA.itemSlots = itemMaps.itemSlots;
-            DATA.itemArmorTypes = itemMaps.itemArmorTypes;
-            DATA.itemPlaceholders = itemMaps.itemPlaceholders;
-            DATA.itemIds = itemMaps.itemIds;
-            DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
-            DATA.selfReceived = heavy.selfReceived;
-            if (typeof populateBossFilters === 'function') populateBossFilters();
-            if (onHeavyReady) onHeavyReady();
-          }
-        );
+        Promise.all([
+          lootPromise,
+          bisItemsPromise,
+          itemsPromise,
+          itemBossesPromise,
+          priorityOrderPromise,
+          selfReceivedPromise
+        ]).then(function (results) {
+          var lootRows = results[0];
+          var bisRows = results[1];
+          var itemRows = results[2];
+          var itemBossRows = results[3];
+          var priorityRows = results[4];
+          var selfReceivedRows = results[5];
+          var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
+          DATA.lootCounts = mappedLoot || {};
+          DATA.attendanceDetails = heavy.attendanceDetails;
+          DATA.rawAttendanceData = heavy.rawAttendanceData;
+          DATA.recentAttendanceTrend = heavy.recentAttendanceTrend;
+          var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
+          DATA.bisList = mappedBis && Object.keys(mappedBis).length ? mappedBis : heavy.bisList;
+          var mappedPriority = priorityRows
+            ? mapSupabasePriorityOrder(priorityRows, seasonCodeForDisplay(DATA.seasonName || ''))
+            : null;
+          DATA.priorityOrder =
+            mappedPriority && Object.keys(mappedPriority).length ? mappedPriority : heavy.priorityOrder;
+          var itemMaps = buildItemMaps(itemRows);
+          DATA.itemSlots = itemMaps.itemSlots;
+          DATA.itemArmorTypes = itemMaps.itemArmorTypes;
+          DATA.itemPlaceholders = itemMaps.itemPlaceholders;
+          DATA.itemIds = itemMaps.itemIds;
+          DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
+          var mappedSelfReceived = selfReceivedRows ? mapSupabaseSelfReceived(selfReceivedRows) : null;
+          DATA.selfReceived =
+            mappedSelfReceived && Object.keys(mappedSelfReceived).length ? mappedSelfReceived : heavy.selfReceived;
+          if (typeof populateBossFilters === 'function') populateBossFilters();
+          if (onHeavyReady) onHeavyReady();
+        });
       };
       heavyScript.src = WEB_APP_URL + '?chunk=heavy&callback=_rosterHeavyCallback';
       document.head.appendChild(heavyScript);
@@ -1805,7 +1873,14 @@ function revokeBisForPlayer(nameRealm, firstName) {
 }
 
 // -- Self-received (raider marks item from profile) ------------------------
-function showSelfReceivedForm(firstName, item, slot, rowId, defaultSource, isOfficer) {
+// 'Mythic'/'Heroic'/'Champion' is the UI vocabulary (matches the diff select
+// below); self_received_requests.track stores the same Hero/Myth/Champion
+// values as rclc_loot (js/common.js mapSupabaseLoot, js/tabs/tab-priority.js).
+function _selfReceivedTrackFromDiff(diff) {
+  return diff === 'Mythic' ? 'Myth' : diff === 'Heroic' ? 'Hero' : diff;
+}
+
+function showSelfReceivedForm(firstName, nameRealm, item, slot, rowId, defaultSource, isOfficer) {
   if (event) event.stopPropagation();
   var formEl = document.getElementById('form-' + rowId);
   if (!formEl) return;
@@ -1826,11 +1901,32 @@ function showSelfReceivedForm(firstName, item, slot, rowId, defaultSource, isOff
       '</option>';
   }
   var fnSafe = firstName.replace(/'/g, "\\'");
+  var nrSafe = nameRealm.replace(/'/g, "\\'");
   var itemSafe = item.replace(/'/g, "\\'");
   var slotSafe = slot.replace(/'/g, "\\'");
   var submitFn = isOfficer
-    ? "submitDirectMarkReceived('" + fnSafe + "','" + itemSafe + "','" + slotSafe + "','" + rowId + "')"
-    : "submitSelfReceivedRequest('" + fnSafe + "','" + itemSafe + "','" + slotSafe + "','" + rowId + "')";
+    ? "submitDirectMarkReceived('" +
+      fnSafe +
+      "','" +
+      nrSafe +
+      "','" +
+      itemSafe +
+      "','" +
+      slotSafe +
+      "','" +
+      rowId +
+      "')"
+    : "submitSelfReceivedRequest('" +
+      fnSafe +
+      "','" +
+      nrSafe +
+      "','" +
+      itemSafe +
+      "','" +
+      slotSafe +
+      "','" +
+      rowId +
+      "')";
   var submitLabel = isOfficer ? 'Mark received' : 'Submit request';
   var noteText = isOfficer
     ? ''
@@ -1870,7 +1966,7 @@ function showSelfReceivedForm(firstName, item, slot, rowId, defaultSource, isOff
   formEl.style.display = 'block';
 }
 
-function submitSelfReceivedRequest(firstName, item, slot, rowId) {
+function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId) {
   var sourceEl = /** @type {HTMLSelectElement} */ (document.getElementById('src-' + rowId));
   var notesEl = /** @type {HTMLTextAreaElement} */ (document.getElementById('notes-' + rowId));
   var diffEl = /** @type {HTMLSelectElement} */ (document.getElementById('diff-' + rowId));
@@ -1879,59 +1975,52 @@ function submitSelfReceivedRequest(firstName, item, slot, rowId) {
     return;
   }
   var diff = diffEl ? diffEl.value : 'Mythic';
-  var source = diff + ': ' + sourceEl.value;
-  var data = { player: firstName, item: item, slot: slot, source: source, notes: notesEl ? notesEl.value : '' };
   var formEl = document.getElementById('form-' + rowId);
   if (formEl)
     formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
-  var cbName = '_selfRecCb' + rowId.replace(/[^a-zA-Z0-9]/g, '_');
-  window[cbName] = function (result) {
-    delete window[cbName];
-    if (formEl) {
-      if (result.error) {
-        formEl.innerHTML =
-          '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
-      } else if (result.autoApproved) {
-        formEl.innerHTML =
-          '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Marked as received.</p>';
-        var btn = /** @type {HTMLElement} */ (
-          document.querySelector('#bisrow-' + firstName + '-' + rowId.split('-').pop() + ' .mark-received-btn')
-        );
-        if (btn) btn.style.display = 'none';
-      } else {
-        formEl.innerHTML =
-          '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Request submitted -- pending officer approval.</p>';
-        var btn = /** @type {HTMLElement} */ (
-          document.querySelector('#bisrow-' + firstName + '-' + rowId.split('-').pop() + ' .mark-received-btn')
-        );
-        if (btn) btn.style.display = 'none';
-      }
-    }
-  };
-  // Include the Discord session token so GAS can auto-approve for verified raiders.
-  var sessionToken = '';
-  try {
-    var ds = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
-    if (ds && ds.token) sessionToken = ds.token;
-  } catch (_) {}
-  var script = document.createElement('script');
-  script.onerror = function () {
-    delete window[cbName];
+
+  if (!supabaseClient) {
     if (formEl)
       formEl.innerHTML =
         '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
-  };
-  script.src =
-    WEB_APP_URL +
-    '?action=requestSelfReceived&data=' +
-    encodeURIComponent(JSON.stringify(data)) +
-    (sessionToken ? '&sessionToken=' + encodeURIComponent(sessionToken) : '') +
-    '&callback=' +
-    cbName;
-  document.head.appendChild(script);
+    return;
+  }
+
+  supabaseClient
+    .rpc('submit_self_received', {
+      p_team_id: _teamCfg.supabaseTeamId,
+      p_name_realm: nameRealm,
+      p_item_name: item,
+      p_track: _selfReceivedTrackFromDiff(diff),
+      p_source: sourceEl.value,
+      p_note: notesEl ? notesEl.value : ''
+    })
+    .then(function (result) {
+      if (!formEl) return;
+      if (result.error) {
+        formEl.innerHTML =
+          '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+        return;
+      }
+      var row = result.data && result.data[0];
+      var autoApproved = !!(row && row.auto_approved);
+      if (autoApproved && DATA && DATA.selfReceived) {
+        if (!DATA.selfReceived[firstName]) DATA.selfReceived[firstName] = [];
+        DATA.selfReceived[firstName].push({ item: item, slot: slot, source: diff + ': ' + sourceEl.value });
+      }
+      formEl.innerHTML =
+        '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">' +
+        (autoApproved ? 'Marked as received.' : 'Request submitted -- pending officer approval.') +
+        '</p>';
+      var btn = /** @type {HTMLElement} */ (
+        document.querySelector('#bisrow-' + firstName + '-' + rowId.split('-').pop() + ' .mark-received-btn')
+      );
+      if (btn) btn.style.display = 'none';
+      if (autoApproved) refreshBisCompletion(firstName);
+    });
 }
 
-function submitDirectMarkReceived(firstName, item, slot, rowId) {
+function submitDirectMarkReceived(firstName, nameRealm, item, slot, rowId) {
   var sourceEl = /** @type {HTMLSelectElement} */ (document.getElementById('src-' + rowId));
   var notesEl = /** @type {HTMLTextAreaElement} */ (document.getElementById('notes-' + rowId));
   var diffEl = /** @type {HTMLSelectElement} */ (document.getElementById('diff-' + rowId));
@@ -1941,45 +2030,45 @@ function submitDirectMarkReceived(firstName, item, slot, rowId) {
   }
   var diff = diffEl ? diffEl.value : 'Mythic';
   var source = diff + ': ' + sourceEl.value;
-  var data = { player: firstName, item: item, slot: slot, source: source, notes: notesEl ? notesEl.value : '' };
   var formEl = document.getElementById('form-' + rowId);
   if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Saving...</p>';
-  var cbName = '_directRecCb' + rowId.replace(/[^a-zA-Z0-9]/g, '_');
-  window[cbName] = function (result) {
-    delete window[cbName];
-    if (formEl) {
-      if (result.error) {
-        formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed. Try again.</p>';
-      } else {
-        formEl.style.display = 'none';
-        var rowEl = document.getElementById(rowId);
-        if (rowEl) {
-          rowEl.classList.add('bis-received');
-          var btn = rowEl.querySelector('.mark-received-btn');
-          if (btn) btn.outerHTML = '<span class="bis-self-received-badge">' + source + '</span>';
-        }
-        if (DATA && DATA.selfReceived) {
-          if (!DATA.selfReceived[firstName]) DATA.selfReceived[firstName] = [];
-          DATA.selfReceived[firstName].push({ item: item, slot: slot, source: source });
-        }
-        refreshBisCompletion(firstName);
-      }
-    }
-  };
-  var script = document.createElement('script');
-  script.onerror = function () {
-    delete window[cbName];
+
+  if (!supabaseClient) {
     if (formEl)
       formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed. Try again.</p>';
-  };
-  script.src =
-    WEB_APP_URL +
-    '?action=directMarkReceived&data=' +
-    encodeURIComponent(JSON.stringify(data)) +
-    _getAuditChangedByParam() +
-    '&callback=' +
-    cbName;
-  document.head.appendChild(script);
+    return;
+  }
+
+  supabaseClient
+    .rpc('direct_mark_received', {
+      p_team_id: _teamCfg.supabaseTeamId,
+      p_name_realm: nameRealm,
+      p_item_name: item,
+      p_track: _selfReceivedTrackFromDiff(diff),
+      p_source: sourceEl.value,
+      p_note: notesEl ? notesEl.value : ''
+    })
+    .then(function (result) {
+      if (!formEl) return;
+      if (result.error) {
+        formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed. Try again.</p>';
+        return;
+      }
+      formEl.style.display = 'none';
+      var rowEl = document.getElementById(rowId);
+      if (rowEl) {
+        rowEl.classList.add('bis-received');
+        var btn = rowEl.querySelector('.mark-received-btn');
+        if (btn) btn.outerHTML = '<span class="bis-self-received-badge">' + source + '</span>';
+      }
+      if (DATA && DATA.selfReceived) {
+        if (!DATA.selfReceived[firstName]) DATA.selfReceived[firstName] = [];
+        DATA.selfReceived[firstName].push({ item: item, slot: slot, source: source });
+      }
+      var markedPlayer = findRosterPlayerByNameRealm(nameRealm);
+      writeAuditLog('Loot Marked Received', 'players', markedPlayer ? markedPlayer.id : null, item);
+      refreshBisCompletion(firstName);
+    });
 }
 
 // -- Player profile (shared between public and officer pages) --------------
@@ -2286,6 +2375,8 @@ function renderProfile(firstName, backTo, container) {
     var markRecvBtn =
       '<button class="mark-received-btn" style="font-size:0.78rem;padding:2px 7px;margin-top:2px;" onclick="event.stopPropagation();showSelfReceivedForm(\'' +
       player.firstName.replace(/'/g, "\\'") +
+      "','" +
+      player.nameRealm.replace(/'/g, "\\'") +
       "','" +
       item.replace(/'/g, "\\'") +
       "','" +

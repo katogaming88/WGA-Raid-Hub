@@ -8,10 +8,15 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## 2026-07-10 (backend only, no version bump)
+## [3.32.10] - 2026-07-10
+
+### Frontend
+
+- **Wired self-received loot requests to Supabase (#406).** `self_received_requests` already had "Officers read/update" RLS in place and fit the live feature's fields exactly (`track`/`source`/`note`) -- it just never had an INSERT path or any frontend reference, so raider submission, officer approve/reject, and officer direct-mark were all still GAS-only. Adds `submit_self_received()` and `direct_mark_received()` (both SECURITY DEFINER, since request tables have no INSERT policy for anyone, officers included), moves the officer Requests tab onto direct Supabase reads/updates, and switches a player's approved self-received items to a Supabase-sourced read with the Apps Script heavy chunk as fallback. The GAS auto-approve-on-matching-Discord-session check is replaced with a real `auth.uid()` lookup through `players.team_member_id -> team_members.auth_user_id`, now that #222 has login itself on Supabase Auth -- no more trusting a client-supplied legacy session token.
 
 ### Backend
 
+- **New `submit_self_received()`/`direct_mark_received()` RPCs (#406)**: both SECURITY DEFINER, since `self_received_requests` allows no direct INSERT for anyone, officers included. `submit_self_received()` is granted to `anon`+`authenticated` (raider submission) and auto-approves when the caller's linked character matches the one submitted for; `direct_mark_received()` is granted to `authenticated` only and checks the officer/team_leader/site_admin role in the function body.
 - **Site admins can now read/update the four request tables cross-team (#413)**: `season_signups`, `bis_requests`, `mplus_exclusion_requests`, and `self_received_requests` were the only officer-scoped tables missing the `OR is_site_admin()` clause every other one already has (`audit_log`, `team_members`, `team_settings`, `season_snapshots`). A site admin who isn't personally an officer/team_leader on a given team saw zero rows in these four for that team -- found while verifying #403's historical Hellfire signup backfill actually landed (it had; the officer viewing it just wasn't a `team_members` row on that team).
 
 ## [3.32.9] - 2026-07-10

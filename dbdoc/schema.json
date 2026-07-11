@@ -3180,6 +3180,18 @@
       "return_type": "int4",
       "arguments": "p_team_id integer, p_name_realm text, p_raiderio_url text DEFAULT NULL::text, p_reason text DEFAULT NULL::text",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.submit_self_received",
+      "return_type": "record",
+      "arguments": "p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.direct_mark_received",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text",
+      "type": "FUNCTION"
     }
   ],
   "enums": [
