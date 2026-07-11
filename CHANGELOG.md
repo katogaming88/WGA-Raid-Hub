@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.3] - 2026-07-11
+
+### Frontend
+
+- **Per-team feature flags now actually do something (#231).** #232 already built the storage (`team_settings.config.features`) and a site-admin cross-team toggle grid, but nothing in the app read the flags -- toggling one had zero visible effect. Two things land together: a team-leader self-serve toggle panel (new "Feature Flags" sub-tab on the officer dashboard's Admin tab, `js/tabs/tab-admin.js`, same `saveTeamSetting()`/`set_team_setting` write path #232's grid uses -- no new backend), and the actual gating logic. `js/common.js`'s `applyTeamSettingsToData()` now stashes `config.features` onto `DATA.features`; a new `featureEnabled(key)` helper (missing key/object reads as enabled, same fallback `js/admin.js` already used) is the single source of truth both officer.html and index.html check. **loot** hides the Loot tab's Import/History sub-tabs, the Received Item Requests nav-item, and the public self-received request form -- the Loot nav-item itself only fully disappears if `fairness` is also off, since Loot Fairness lives inside that same tab. **priority** hides the Priority nav-item. **bis** hides the BiS Manager nav-item and the profile card's BiS Link/BiS List sections (form and read-only display alike). **scoring** hides the Scoring nav-item (there's no separate WCL score display elsewhere to gate). **mplus** hides the M+ Exclusions nav-item and the profile card's M+ Exclusion section. **fairness** hides the Loot tab's Fairness sub-tab and the Attendance tab's Bench Fairness sub-tab. **bench** hides the per-player bench toggle button on the roster profile card (the read-only Bench status tag/roster grouping stay, since a team simply never sets `isBench` if unused). `resetLootSubTab()` now picks a visible default sub-tab instead of hardcoding Import, so a team with only Fairness enabled doesn't land on a blank hidden panel; `applyFeatureFlagVisibility()` also bounces off a tab the user is currently on if it just got hidden by a live toggle.
+
 ## [3.33.2] - 2026-07-11
 
 ### Frontend

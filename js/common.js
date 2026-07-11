@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.33.2';
+var VERSION = '3.33.3';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -1178,6 +1178,18 @@ function applyTeamSettingsToData(data, config) {
     if (config[key] !== undefined) data[key] = config[key];
   });
   if (config.activeSignupSeason !== undefined) data.signupSeason = config.activeSignupSeason;
+  data.features = config.features || {};
+}
+
+// Per-team feature flags (#231). Missing key -- either DATA.features itself
+// (no team has ever saved any) or one flag within it -- reads as enabled;
+// unset has to mean "on" or every existing team goes dark the moment this
+// ships, since no team has ever had occasion to set these before now. Same
+// fallback js/admin.js's site-admin panel already uses.
+function featureEnabled(key) {
+  var features = DATA && DATA.features;
+  if (!features || !(key in features)) return true;
+  return !!features[key];
 }
 
 /**
@@ -2691,20 +2703,22 @@ function renderProfile(firstName, backTo, container) {
       (player.isTrial ? 'Remove Trial' : 'Mark as Trial') +
       '</button>' +
       '</div>' +
-      '<div style="display:flex;align-items:center;gap:0.75rem;">' +
-      '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Bench</span>' +
-      '<button id="benchToggle-' +
-      player.firstName +
-      '" class="btn ' +
-      (player.isBench ? 'btn-gold' : 'btn-muted') +
-      '" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="togglePlayerBench(\'' +
-      nrSafe +
-      "','" +
-      fnSafe +
-      '\')">' +
-      (player.isBench ? 'Remove from Bench' : 'Move to Bench') +
-      '</button>' +
-      '</div>' +
+      (featureEnabled('bench')
+        ? '<div style="display:flex;align-items:center;gap:0.75rem;">' +
+          '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Bench</span>' +
+          '<button id="benchToggle-' +
+          player.firstName +
+          '" class="btn ' +
+          (player.isBench ? 'btn-gold' : 'btn-muted') +
+          '" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="togglePlayerBench(\'' +
+          nrSafe +
+          "','" +
+          fnSafe +
+          '\')">' +
+          (player.isBench ? 'Remove from Bench' : 'Move to Bench') +
+          '</button>' +
+          '</div>'
+        : '') +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
       '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">M+ Excl.</span>' +
       '<button id="mplusExclToggle-' +
@@ -2855,75 +2869,79 @@ function renderProfile(firstName, backTo, container) {
       ? '<div id="attend-history-' + player.firstName + '" style="display:none;margin-top:0.6rem;"></div>'
       : attendExtra) +
     '</div>' +
-    '<div class="profile-section">' +
-    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var l=document.getElementById(\'loot-list-' +
-    player.firstName +
-    "');l.style.display=l.style.display==='none'?'grid':'none';\">Items Received <span style=\"font-size:0.95rem;color:var(--text-dim);\">click to expand</span></div>" +
-    '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">' +
-    lootCount +
-    ' item' +
-    (lootCount !== 1 ? 's' : '') +
-    (ACTIVE_SEASON ? ' — ' + ACTIVE_SEASON : ' this tier') +
-    '</div>' +
-    (lastItems.length
-      ? (function () {
-          var lastDate = lastItems[0].date || '';
-          var itemLines = '';
-          for (var lx = 0; lx < lastItems.length; lx++) {
-            var lxi = lastItems[lx];
-            var lxColor =
-              lxi.difficulty === 'Mythic' ? '#b085f0' : lxi.difficulty === 'Heroic' ? '#4dd9e0' : 'var(--gold)';
-            itemLines +=
-              '<div' +
-              (lx > 0 ? ' style="margin-top:0.3rem;padding-top:0.3rem;border-top:1px solid var(--border);"' : '') +
-              '>' +
-              '<div style="font-size:1rem;color:' +
-              lxColor +
-              ';font-weight:600;">' +
-              lxi.name +
-              '</div>' +
-              (lxi.difficulty
-                ? '<div style="font-size:0.88rem;color:var(--text-muted);margin-top:0.1rem;">' +
-                  lxi.difficulty +
-                  '</div>'
-                : '') +
-              '</div>';
-          }
-          return (
-            '<div style="margin-top:0.6rem;padding:0.5rem 0.75rem;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:space-between;">' +
-            '<div style="flex:1;min-width:0;">' +
-            '<div style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Last received' +
-            (lastDate ? ' - ' + lastDate : '') +
-            '</div>' +
-            itemLines +
-            '</div>' +
-            '<span style="font-size:1.8rem;font-weight:700;color:var(--gold);line-height:1;margin-left:0.75rem;">&#8679;</span>' +
-            '</div>'
-          );
-        })()
+    (featureEnabled('loot')
+      ? '<div class="profile-section">' +
+        '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var l=document.getElementById(\'loot-list-' +
+        player.firstName +
+        "');l.style.display=l.style.display==='none'?'grid':'none';\">Items Received <span style=\"font-size:0.95rem;color:var(--text-dim);\">click to expand</span></div>" +
+        '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">' +
+        lootCount +
+        ' item' +
+        (lootCount !== 1 ? 's' : '') +
+        (ACTIVE_SEASON ? ' — ' + ACTIVE_SEASON : ' this tier') +
+        '</div>' +
+        (lastItems.length
+          ? (function () {
+              var lastDate = lastItems[0].date || '';
+              var itemLines = '';
+              for (var lx = 0; lx < lastItems.length; lx++) {
+                var lxi = lastItems[lx];
+                var lxColor =
+                  lxi.difficulty === 'Mythic' ? '#b085f0' : lxi.difficulty === 'Heroic' ? '#4dd9e0' : 'var(--gold)';
+                itemLines +=
+                  '<div' +
+                  (lx > 0 ? ' style="margin-top:0.3rem;padding-top:0.3rem;border-top:1px solid var(--border);"' : '') +
+                  '>' +
+                  '<div style="font-size:1rem;color:' +
+                  lxColor +
+                  ';font-weight:600;">' +
+                  lxi.name +
+                  '</div>' +
+                  (lxi.difficulty
+                    ? '<div style="font-size:0.88rem;color:var(--text-muted);margin-top:0.1rem;">' +
+                      lxi.difficulty +
+                      '</div>'
+                    : '') +
+                  '</div>';
+              }
+              return (
+                '<div style="margin-top:0.6rem;padding:0.5rem 0.75rem;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:space-between;">' +
+                '<div style="flex:1;min-width:0;">' +
+                '<div style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Last received' +
+                (lastDate ? ' - ' + lastDate : '') +
+                '</div>' +
+                itemLines +
+                '</div>' +
+                '<span style="font-size:1.8rem;font-weight:700;color:var(--gold);line-height:1;margin-left:0.75rem;">&#8679;</span>' +
+                '</div>'
+              );
+            })()
+          : '') +
+        '<div id="loot-list-' +
+        player.firstName +
+        '" style="display:none;margin-top:0.75rem;grid-template-columns:1fr 1fr;gap:0 1rem;">' +
+        lootItemsHTML +
+        '</div>' +
+        '</div>'
       : '') +
-    '<div id="loot-list-' +
-    player.firstName +
-    '" style="display:none;margin-top:0.75rem;grid-template-columns:1fr 1fr;gap:0 1rem;">' +
-    lootItemsHTML +
-    '</div>' +
-    '</div>' +
-    '<div class="profile-section"><div class="section-label">BiS Link</div>' +
-    bisHTML +
-    '</div>' +
-    '<div class="profile-section">' +
-    '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var l=document.getElementById(\'prio-list-' +
-    player.firstName +
-    "');l.style.display=l.style.display==='none'?'block':'none';\">BiS List" +
-    bisCompletionHTML +
-    '<span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
-    '<div id="prio-list-' +
-    player.firstName +
-    '" style="display:none;">' +
-    priorityHTML +
-    '</div>' +
-    '</div>' +
-    (mplusHTML
+    (featureEnabled('bis')
+      ? '<div class="profile-section"><div class="section-label">BiS Link</div>' +
+        bisHTML +
+        '</div>' +
+        '<div class="profile-section">' +
+        '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var l=document.getElementById(\'prio-list-' +
+        player.firstName +
+        "');l.style.display=l.style.display==='none'?'block':'none';\">BiS List" +
+        bisCompletionHTML +
+        '<span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
+        '<div id="prio-list-' +
+        player.firstName +
+        '" style="display:none;">' +
+        priorityHTML +
+        '</div>' +
+        '</div>'
+      : '') +
+    (mplusHTML && featureEnabled('mplus')
       ? '<div class="profile-section"><div class="section-label">M+ Exclusion</div>' + mplusHTML + '</div>'
       : '') +
     officerActionsHTML +

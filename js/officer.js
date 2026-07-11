@@ -176,19 +176,13 @@ function switchReportsSubTab(name, btnEl) {
   if (name === 'lootPace') loadLootPaceReport();
 }
 
+// Defaults to Import, unless #231's loot flag is off and fairness isn't --
+// the Loot tab can be reached with only its Fairness sub-tab enabled (see
+// applyFeatureFlagVisibility), so defaulting to a hidden Import chip would
+// land on a blank panel behind an invisible tab.
 function resetLootSubTab() {
-  document.querySelectorAll('[id^="loot-subtab-btn-"]').forEach(function (b) {
-    b.classList.remove('active');
-  });
-  var defaultBtn = document.getElementById('loot-subtab-btn-import');
-  if (defaultBtn) defaultBtn.classList.add('active');
-  var subFairness = document.getElementById('loot-sub-fairness');
-  var subImport = document.getElementById('loot-sub-import');
-  var subHistory = document.getElementById('loot-sub-history');
-  if (subFairness) subFairness.style.display = 'none';
-  if (subImport) subImport.style.display = '';
-  if (subHistory) subHistory.style.display = 'none';
-  buildLootImportForm();
+  var defaultName = featureEnabled('loot') || !featureEnabled('fairness') ? 'import' : 'fairness';
+  switchLootSubTab(defaultName, document.getElementById('loot-subtab-btn-' + defaultName));
 }
 
 function switchLootSubTab(name, btnEl) {
@@ -351,6 +345,46 @@ function buildOfficerDashboard() {
   }
   var tabParam = (location.search.match(/[?&]tab=([^&]+)/) || [])[1];
   if (tabParam) openTab(tabParam);
+  applyFeatureFlagVisibility();
+}
+
+// Per-team feature flags (#231). Hides nav-items/sub-tab chips this team has
+// turned off; called once after DATA (and DATA.features) loads, and again
+// after a toggle on the Admin tab's Feature Flags sub-tab so the change is
+// visible without a reload. loot and fairness both live partly inside the
+// Loot tab (Loot Fairness is a fairness sub-tab, not a loot one, #231's own
+// split) -- the Loot nav-item itself only disappears if both are off.
+function applyFeatureFlagVisibility() {
+  function setVisible(id, visible) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = visible ? '' : 'none';
+  }
+
+  var lootOn = featureEnabled('loot');
+  var priorityOn = featureEnabled('priority');
+  var bisOn = featureEnabled('bis');
+  var scoringOn = featureEnabled('scoring');
+  var mplusOn = featureEnabled('mplus');
+  var fairnessOn = featureEnabled('fairness');
+
+  setVisible('navTab-priority', priorityOn);
+  setVisible('navTab-bis', bisOn);
+  setVisible('navTab-scoring', scoringOn);
+  setVisible('navTab-mplus', mplusOn);
+  setVisible('navTab-requests', lootOn);
+  setVisible('navTab-loot', lootOn || fairnessOn);
+
+  setVisible('loot-subtab-btn-import', lootOn);
+  setVisible('loot-subtab-btn-history', lootOn);
+  setVisible('loot-subtab-btn-fairness', fairnessOn);
+  setVisible('attend-subtab-btn-bench', fairnessOn);
+
+  // If a tab the user is currently sitting on just got hidden, bounce to
+  // Roster (always visible) instead of leaving a blank panel.
+  var activeNav = document.querySelector('.nav-item.active');
+  if (activeNav && activeNav.style.display === 'none') {
+    openTab('roster');
+  }
 }
 
 function clearCache() {
