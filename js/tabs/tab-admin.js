@@ -1,6 +1,6 @@
 // ── Admin subtab management ───────────────────────────────────────────────
 
-var ADMIN_SUBTABS = ['properties', 'botconfig', 'export', 'officers', 'danger'];
+var ADMIN_SUBTABS = ['properties', 'botconfig', 'export', 'officers', 'features', 'danger'];
 
 // Which sub-tabs each access level may see (#317, honoring the RLS split from
 // #294). true (site admins, and the legacy password login) sees everything;
@@ -39,6 +39,7 @@ function switchAdminSubTab(name, btnEl) {
   if (name === 'properties') loadAdminProperties();
   if (name === 'botconfig') loadBotConfig();
   if (name === 'officers') renderOfficerManagement();
+  if (name === 'features') renderAdminFeatureFlags();
   if (name === 'danger') renderDangerZone();
 }
 
@@ -488,5 +489,59 @@ function revokeOfficer(teamMemberId, nameRealm) {
       }
       renderOfficerManagement();
       if (typeof renderDiscordClaims === 'function') renderDiscordClaims();
+    });
+}
+
+// ── Feature Flags (#231) ──────────────────────────────────────────────────
+// Team-leader/site-admin self-serve version of the same toggle list
+// js/admin.js's site-admin dashboard has, scoped to this team only. Both
+// write through the same saveTeamSetting({features: {...}}) path
+// (set_team_setting RPC), whose RLS already accepts a team_leader or site
+// admin -- no new write path needed here either.
+var ADMIN_FEATURE_FLAGS = [
+  { key: 'loot', label: 'Loot Import & Tracking' },
+  { key: 'priority', label: 'Priority Order' },
+  { key: 'bis', label: 'BiS Lists' },
+  { key: 'scoring', label: 'Scoring' },
+  { key: 'mplus', label: 'M+ Exclusions' },
+  { key: 'fairness', label: 'Fairness Charts' },
+  { key: 'bench', label: 'Bench Management' }
+];
+
+function renderAdminFeatureFlags() {
+  var el = document.getElementById('adminFeatureFlagsContent');
+  if (!el) return;
+  el.innerHTML = ADMIN_FEATURE_FLAGS.map(function (f) {
+    var checked = featureEnabled(f.key);
+    return (
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--border);">' +
+      '<span>' +
+      escHtml(f.label) +
+      '</span>' +
+      '<input type="checkbox" style="width:1.1rem;height:1.1rem;accent-color:var(--gold);cursor:pointer;" ' +
+      (checked ? 'checked' : '') +
+      ' onchange="toggleAdminFeatureFlag(\'' +
+      f.key +
+      '\',this.checked)">' +
+      '</div>'
+    );
+  }).join('');
+}
+
+function toggleAdminFeatureFlag(key, enabled) {
+  var features = {};
+  ADMIN_FEATURE_FLAGS.forEach(function (f) {
+    features[f.key] = featureEnabled(f.key);
+  });
+  features[key] = enabled;
+
+  saveTeamSetting({ features: features })
+    .then(function (config) {
+      DATA.features = config.features || {};
+      applyFeatureFlagVisibility();
+    })
+    .catch(function (err) {
+      alert(err.message);
+      renderAdminFeatureFlags(); // revert the checkbox to last-known state
     });
 }

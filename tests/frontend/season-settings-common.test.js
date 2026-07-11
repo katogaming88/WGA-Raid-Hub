@@ -154,7 +154,12 @@ describe('applyTeamSettingsToData', () => {
     const sandbox = loadCommonJs();
     const data = { seasonName: 'From GAS', seasonStart: '2026-01-01', signupsOpen: true };
     sandbox.applyTeamSettingsToData(data, { seasonName: 'From Supabase' });
-    expect(data).toEqual({ seasonName: 'From Supabase', seasonStart: '2026-01-01', signupsOpen: true });
+    expect(data).toEqual({
+      seasonName: 'From Supabase',
+      seasonStart: '2026-01-01',
+      signupsOpen: true,
+      features: {}
+    });
   });
 });
 
