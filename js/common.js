@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.32.12';
+var VERSION = '3.32.13';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -64,6 +64,20 @@ function writeAuditLog(action, targetType, targetId, detail) {
     .then(function (result) {
       if (result.error) console.warn('Failed to write audit log entry.', result.error.message);
     });
+}
+
+// Shared by the Priority tab's export box (js/tabs/tab-priority.js) and
+// index.html's Quick Actions "Copy Priority Export" button
+// (js/officer-quick-actions.js) -- both build the same RCLC-import string
+// from build_rclc_export(), so the base64 step lives here once (#408).
+// btoa() only accepts a binary string of code units 0-255; converting UTF-8
+// bytes to that form first matches Utilities.base64Encode(str, UTF_8)'s
+// behavior for non-ASCII player names (#360).
+function _utf8ToBase64(str) {
+  var bytes = new TextEncoder().encode(str);
+  var binary = '';
+  for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
 }
 
 // Audit-log attribution for the officer writes still served by Apps Script.

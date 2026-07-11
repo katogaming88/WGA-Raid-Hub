@@ -1,15 +1,7 @@
 var ARMOR_SLOT_ORDER = ['HEAD', 'SHOULDERS', 'CHEST', 'GLOVES', 'LEGS', 'CLOAK', 'BRACERS', 'BELT', 'BOOTS'];
 
-// btoa() only accepts a binary string of code units 0-255; converting UTF-8
-// bytes to that form first matches Utilities.base64Encode(str, UTF_8)'s
-// behavior for non-ASCII player names (#360).
-function _utf8ToBase64(str) {
-  var bytes = new TextEncoder().encode(str);
-  var binary = '';
-  for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
-}
-
+// _utf8ToBase64() moved to js/common.js (#408) so index.html's Quick Actions
+// export button can share it too.
 function fetchExportString() {
   var btn = document.getElementById('prioExportLoadBtn');
   var body = document.getElementById('prioExportBody');

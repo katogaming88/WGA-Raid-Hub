@@ -171,6 +171,13 @@ function _qaSetStatus(msg, color) {
 }
 
 // ── Copy Priority Export ──────────────────────────────────────────────────────
+// Calls the same build_rclc_export() RPC the Priority tab's Generate/Regenerate
+// button uses (js/tabs/tab-priority.js), instead of the GAS getExportString
+// action -- that recomputed from the Google Sheets "BiS List"/"Priority
+// Order" tabs, which stopped being the live data source once the BiS List
+// Editor (#391/#393) and priority generator (#220) migrated to Supabase, so
+// this button and the Priority tab could disagree on which raiders were
+// actually prioritized for what (#408).
 
 function qaExportString() {
   var btn = document.getElementById('oqaExportBtn');
@@ -180,16 +187,27 @@ function qaExportString() {
   }
   _qaSetStatus('Fetching export string...', 'var(--text-muted)');
 
-  jsonpRequest(
-    WEB_APP_URL + '?action=getExportString',
-    function (err, result) {
+  if (!supabaseClient) {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Copy Priority Export';
+    }
+    _qaSetStatus('Not connected to Supabase.', 'var(--melee)');
+    return;
+  }
+
+  var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+
+  supabaseClient
+    .rpc('build_rclc_export', { p_team_id: _teamCfg.supabaseTeamId, p_season: season })
+    .then(function (result) {
       if (btn) {
         btn.disabled = false;
         btn.textContent = 'Copy Priority Export';
       }
-      var str = !err && result && result.exportString ? result.exportString : '';
+      var str = !result.error && result.data ? _utf8ToBase64(JSON.stringify(result.data)) : '';
       if (!str) {
-        _qaSetStatus(err ? err.message : 'No export string found.', 'var(--melee)');
+        _qaSetStatus(result.error ? result.error.message : 'No export string found.', 'var(--melee)');
         return;
       }
       navigator.clipboard
@@ -203,9 +221,7 @@ function qaExportString() {
         .catch(function () {
           _qaSetStatus('Copy failed -- check browser permissions.', 'var(--melee)');
         });
-    },
-    20000
-  );
+    });
 }
 
 // ── Refresh Attendance ────────────────────────────────────────────────────────
