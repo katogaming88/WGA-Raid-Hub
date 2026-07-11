@@ -2262,6 +2262,11 @@
           "name": "archived_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "wcl_guild_id",
+          "type": "integer",
+          "nullable": true
         }
       ],
       "indexes": [

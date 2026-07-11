@@ -8,6 +8,7 @@
 | name | text |  | false |  |  |  |
 | slug | text |  | false |  |  |  |
 | archived_at | timestamp with time zone |  | true |  |  |  |
+| wcl_guild_id | integer |  | true |  |  |  |
 
 ## Constraints
 
@@ -49,6 +50,7 @@ erDiagram
   text name
   text slug
   timestamp_with_time_zone archived_at
+  integer wcl_guild_id
 }
 "public.attendance" {
   integer id

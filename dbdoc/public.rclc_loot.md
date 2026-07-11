@@ -65,6 +65,7 @@ erDiagram
   text name
   text slug
   timestamp_with_time_zone archived_at
+  integer wcl_guild_id
 }
 "public.players" {
   integer id

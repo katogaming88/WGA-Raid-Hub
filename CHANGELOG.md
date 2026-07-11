@@ -8,7 +8,15 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [3.33.3] - 2026-07-11
+## [3.33.4] - 2026-07-11
+
+### Frontend
+
+- **First piece of WCL sync off Apps Script (#223, stage 1 of 3).** Season Settings' raid progression picker ("List Encounters"/"Fetch from WCL" on each raid card) now calls a new `wcl-sync` Supabase Edge Function instead of GAS's `getWclZoneEncounters`/`fetchWclProgression` actions. Read-only, no Supabase writes -- chosen as the first stage specifically to validate the new Edge Function scaffolding, auth pattern, and secrets access with minimal risk before the larger write-heavy stages (WCL performance scoring, attendance sync) build on top of it. No service-role key: the function forwards the caller's own session JWT (auto-attached by `supabase.functions.invoke()`), so RLS/`my_team_role` gate everything exactly like every other direct-write call site in this app already does -- the only real secret is `WCL_CLIENT_ID`/`WCL_CLIENT_SECRET` (kept off the client, already configured per #205). Response shapes are unchanged (`{zoneName, encounters}` / `{success, bosses, aotcDate}`), so the rest of the raid-progression UI needed no changes.
+
+### Backend
+
+- **Adds `supabase/functions/wcl-sync/index.ts`** (first Edge Function in this repo) and **`teams.wcl_guild_id`** (#223): a nullable per-team column, since GAS hardcoded this per-deployment (`gs/Config.gs`, Phoenix's guild only) but the new Edge Function is one shared multi-tenant function. Set directly via the SQL Editor for now, same as every other one-off admin value in this schema -- Hellfire's guild ID still needs to be backfilled before its raid progression picker will work end-to-end.
 
 ### Frontend
 

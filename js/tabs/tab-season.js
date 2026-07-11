@@ -732,6 +732,11 @@ function _escAttr(str) {
     .replace(/"/g, '&quot;');
 }
 
+// #223 stage 1: these two used to call GAS (?action=getWclZoneEncounters /
+// ?action=fetchWclProgression); both now go through the wcl-sync Edge
+// Function instead, which forwards this session's own JWT so the function's
+// officer/team_leader/site_admin check runs as this user (see the function's
+// own header comment for why no service-role key is involved).
 function listWclEncounters(idx) {
   raidCollectFromDOM();
   var zoneId = SEASON_RAIDS[idx].wclZoneId ? parseInt(SEASON_RAIDS[idx].wclZoneId, 10) : 0;
@@ -746,24 +751,25 @@ function listWclEncounters(idx) {
     el.textContent = 'Loading...';
   }
 
-  jsonpRequest(
-    WEB_APP_URL + '?action=getWclZoneEncounters&zoneId=' + encodeURIComponent(zoneId),
-    function (err, result) {
+  supabaseClient.functions
+    .invoke('wcl-sync', { body: { action: 'getZoneEncounters', teamId: _teamCfg.supabaseTeamId, zoneId: zoneId } })
+    .then(function (result) {
       if (!el) return;
-      if (err || !result || result.error) {
-        el.textContent = err ? err.message : 'Error: ' + ((result && result.error) || 'Unknown');
+      if (result.error || !result.data || !result.data.success) {
+        el.textContent = result.error
+          ? result.error.message
+          : 'Error: ' + ((result.data && result.data.error) || 'Unknown');
         return;
       }
-      var lines = (result.encounters || []).map(function (e) {
+      var lines = (result.data.encounters || []).map(function (e) {
         return e.id + ' -- ' + e.name;
       });
       el.innerHTML =
         '<strong style="color:var(--text);">' +
-        (result.zoneName || 'Zone ' + zoneId) +
+        (result.data.zoneName || 'Zone ' + zoneId) +
         '</strong><br>' +
         lines.join('<br>');
-    }
-  );
+    });
 }
 
 function fetchWclForRaid(idx) {
@@ -780,16 +786,20 @@ function fetchWclForRaid(idx) {
     status.textContent = 'Fetching from WCL...';
   }
 
-  jsonpRequest(
-    WEB_APP_URL + '?action=fetchWclProgression&zoneId=' + encodeURIComponent(zoneId),
-    function (err, result) {
-      if (err || !result || result.error) {
-        if (status) status.textContent = err ? err.message : 'Error: ' + ((result && result.error) || 'Unknown');
+  supabaseClient.functions
+    .invoke('wcl-sync', { body: { action: 'fetchProgression', teamId: _teamCfg.supabaseTeamId, zoneId: zoneId } })
+    .then(function (result) {
+      if (result.error || !result.data || !result.data.success) {
+        if (status)
+          status.textContent = result.error
+            ? result.error.message
+            : 'Error: ' + ((result.data && result.data.error) || 'Unknown');
         return;
       }
+      var data = result.data;
       var encStart = parseInt(SEASON_RAIDS[idx].encounterStart, 10) || 0;
       var encEnd = parseInt(SEASON_RAIDS[idx].encounterEnd, 10) || 0;
-      var filtered = (result.bosses || []).filter(function (b) {
+      var filtered = (data.bosses || []).filter(function (b) {
         if (encStart && b.encounterID < encStart) return false;
         if (encEnd && b.encounterID > encEnd) return false;
         return true;
@@ -809,8 +819,7 @@ function fetchWclForRaid(idx) {
           if (s) s.textContent = '';
         }, 3000);
       }
-    }
-  );
+    });
 }
 
 function saveRaidProgression() {

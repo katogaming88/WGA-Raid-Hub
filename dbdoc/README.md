@@ -23,7 +23,7 @@
 | [public.site_admins](public.site_admins.md) | 3 |  | BASE TABLE |
 | [public.team_members](public.team_members.md) | 7 |  | BASE TABLE |
 | [public.team_settings](public.team_settings.md) | 3 |  | BASE TABLE |
-| [public.teams](public.teams.md) | 4 |  | BASE TABLE |
+| [public.teams](public.teams.md) | 5 |  | BASE TABLE |
 | [public.pending_roster](public.pending_roster.md) | 14 |  | VIEW |
 | [public.rnlsi](public.rnlsi.md) | 6 |  | VIEW |
 | [public.bis_demand_vs_awards](public.bis_demand_vs_awards.md) | 7 |  | VIEW |
@@ -311,6 +311,7 @@ erDiagram
   text name
   text slug
   timestamp_with_time_zone archived_at
+  integer wcl_guild_id
 }
 "public.pending_roster" {
   integer signup_id
