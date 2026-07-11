@@ -113,7 +113,7 @@ function buildStatsBar() {
     bisCount = 0;
   for (var i = 0; i < raiders.length; i++) {
     var p = raiders[i];
-    var pct = parseInt(p.attendance);
+    var pct = parseInt(getDisplayAttendancePct(p));
     if (!isNaN(pct)) {
       totalAttend += pct;
       attendCount++;
@@ -206,7 +206,7 @@ function buildRosterTable() {
 
   for (var i = 0; i < DATA.roster.length; i++) {
     var p = DATA.roster[i];
-    if (activeFilters.lowAttend && (parseInt(p.attendance) || 0) >= 95) continue;
+    if (activeFilters.lowAttend && (parseInt(getDisplayAttendancePct(p)) || 0) >= 95) continue;
     if (activeFilters.noBis && p.bisLink) continue;
     if (activeFilters.trial && !p.isTrial) continue;
     if (activeFilters.bench && !p.isBench) continue;
@@ -734,7 +734,7 @@ function backfillNotOnRosterForPlayer(teamId, playerId, joinDate) {
           if (!missing.length) return;
 
           var rows = missing.map(function (d) {
-            return { team_id: teamId, player_id: playerId, raid_date: d, status: 'Not on Roster' };
+            return { team_id: teamId, player_id: playerId, raid_date: d, status: 'Not on Roster', source: 'WCL' };
           });
           return supabaseClient
             .from('attendance')
@@ -907,16 +907,6 @@ function officerUpdateClass(nameRealm, firstName, newClass) {
 // already in use (active or archived) fails with a constraint-violation
 // error surfaced through the normal "Failed to save." path, same as any
 // other write failure here.
-//
-// Known gap: the roster table's summary Attendance % column (player.attendance,
-// mapSupabaseRoster in js/common.js) is a name-matched merge from the Apps
-// Script Roster/Attendance sheet, not the real per-night Supabase attendance
-// rows the player detail card reads (those stay correctly linked by id, same
-// as loot/BiS). Since this rename never touches GAS, that name match breaks
-// for a renamed player until the sheet's own name is corrected there too --
-// tracked as #419, a follow-up for whenever attendance's read side migrates
-// off Apps Script (#218 is the write-side precedent; reads were deliberately
-// left on GAS for now).
 function renamePlayerSupabase(oldNameRealm, newNameRealm) {
   var player = findRosterPlayer(oldNameRealm);
   if (!player || !player.id) return Promise.reject(new Error('Unknown player.'));
@@ -1071,7 +1061,7 @@ function buildTrialPromoAlert() {
   for (var i = 0; i < roster.length; i++) {
     var p = roster[i];
     if (!p.isTrial || !p.joinDate) continue;
-    var pct = parseInt(p.attendance);
+    var pct = parseInt(getDisplayAttendancePct(p));
     if (isNaN(pct) || pct < minAttend) continue;
     var parts = p.joinDate.split('-');
     if (parts.length < 3) continue;
@@ -1108,7 +1098,8 @@ function buildTrialPromoAlert() {
     var r = ready[j];
     var p = r.p;
     var name = p.nick || p.firstName;
-    var aColor = attendColor(parseInt(p.attendance));
+    var pAtt = getDisplayAttendancePct(p);
+    var aColor = attendColor(parseInt(pAtt));
     var roleColor =
       p.role === 'Tank'
         ? 'var(--tank)'
@@ -1141,7 +1132,7 @@ function buildTrialPromoAlert() {
         '</span>';
     html += '</div></div></td>';
     html += '<td style="color:var(--gold-light);font-weight:600;">' + r.ageWeeks + ' wk</td>';
-    html += '<td><span style="color:' + aColor + ';font-weight:700;">' + (p.attendance || '-') + '</span></td>';
+    html += '<td><span style="color:' + aColor + ';font-weight:700;">' + (pAtt || '-') + '</span></td>';
     html +=
       '<td><button class="btn btn-gold" style="font-size:0.82rem;padding:0.2rem 0.6rem;white-space:nowrap;" onclick="event.stopPropagation();promoteTrialPlayer(\'' +
       nrSafe +

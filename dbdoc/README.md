@@ -4,7 +4,7 @@
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
-| [public.attendance](public.attendance.md) | 7 |  | BASE TABLE |
+| [public.attendance](public.attendance.md) | 9 |  | BASE TABLE |
 | [public.audit_log](public.audit_log.md) | 8 |  | BASE TABLE |
 | [public.bis_items](public.bis_items.md) | 6 |  | BASE TABLE |
 | [public.bis_requests](public.bis_requests.md) | 7 |  | BASE TABLE |
@@ -132,6 +132,8 @@ erDiagram
   text status
   boolean report_excluded
   text report_id
+  text source
+  text report_title
 }
 "public.audit_log" {
   integer id

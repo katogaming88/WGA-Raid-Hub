@@ -129,7 +129,7 @@ describe('backfillNotOnRosterForPlayer (#241)', () => {
     expect(calls.inserts).toHaveLength(1);
     expect(calls.inserts[0].table).toBe('attendance');
     expect(calls.inserts[0].rows).toEqual([
-      { team_id: 1, player_id: 5, raid_date: '2026-06-08', status: 'Not on Roster' }
+      { team_id: 1, player_id: 5, raid_date: '2026-06-08', status: 'Not on Roster', source: 'WCL' }
     ]);
   });
 

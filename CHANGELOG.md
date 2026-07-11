@@ -8,6 +8,19 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.7] - 2026-07-11
+
+### Frontend
+
+- **WCL sync off Apps Script, stage 3 of 3 -- final stage (#223).** The Attendance tab's "Refresh from WCL" now calls the `wcl-sync` Edge Function's new `refreshAttendance` action, writing directly into `attendance` (source='WCL'/'Auto (Bench)') instead of GAS's Attendance sheet. This also unblocks the Manage grid's read side, which was explicitly waiting on this stage (`js/tabs/tab-attendance.js`'s old #218 comment) -- `getAttendanceGrid` now queries `attendance` directly, grouping rows by raid night and filling in blank/no-status entries for any roster player without a row yet so officers can still fill gaps in from the grid. "Commit Attendance Scores" is a direct client read+aggregate+write into `scoring.attendance_score`/`attendance_pct` (no WCL secret needed, same reasoning as stage 2's commit), with a session-only manual-edit flow -- no more round trip to a GAS cell nothing ever read back.
+- **Roster attendance %, the Scores sub-tab's "below threshold" list, and the bench-fairness trend now also read from Supabase** (`DATA.rawAttendanceData`/`attendanceDetails`/`recentAttendanceTrend`, `js/common.js`) instead of GAS's heavy payload -- those were built by reading the same Attendance sheet the refresh above stops writing to, so leaving them GAS-sourced would have made every attendance display in the app freeze the moment this shipped. Falls back to the GAS heavy payload only if the Supabase query itself fails, not merely because it's empty (Supabase is authoritative for attendance from here on).
+- Extended Leave (a status already present in `attendance`'s schema but never given a GAS weight) counts as full credit (1.0), same as Present/Bench/Medical Leave.
+- Both "Refresh from WCL" buttons (Attendance and Scoring) now show an indeterminate progress bar (`.wcl-progress-bar`, `css/styles.css`) while the request is in flight -- these are single request/response Edge Function calls with no real progress to report, so this is "still working" feedback, not a completion percentage.
+
+### Backend
+
+- **Adds `attendance.source`/`attendance.report_title`** (#223): `source` (WCL/Officer/Auto (Bench)) is what lets a refresh tell which existing rows are safe to overwrite vs. an officer's manual edit, mirroring the column GAS's Attendance sheet used for the same purpose. `report_title` is a nullable per-row echo of the WCL report title, purely so the night-selector shows something more useful than a bare date. `report_id` (added in stage 1, never actually written until now) is also now populated, and used as the incremental-refresh cache key.
+
 ## [3.33.6] - 2026-07-11
 
 ### Frontend

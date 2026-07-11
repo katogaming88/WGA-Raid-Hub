@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.33.6';
+var VERSION = '3.33.7';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -1302,6 +1302,207 @@ function mapSupabaseItemBosses(rows) {
   return map;
 }
 
+// Attendance reads come from Supabase's normalized `attendance` table (#223
+// stage 3) instead of GAS's heavy attendanceDetails/rawAttendanceData/
+// recentAttendanceTrend payload: refreshAttendance (wcl-sync Edge Function)
+// writes into this table now instead of the GAS Attendance sheet those were
+// read from, so that sheet -- and everything derived from it -- stops
+// updating the moment this ships. Falls back to the GAS heavy payload only
+// if the Supabase query itself fails/times out (resultRows === null); an
+// empty-but-successful result is trusted as genuinely no data yet, not
+// reached around, since Supabase is authoritative for attendance from here on.
+// No timeout race against the GAS heavy payload here, unlike this repo's
+// other fetchSupabaseX() helpers -- for those, a slow query racing a stale-
+// but-still-updating GAS fallback is a reasonable tradeoff. For attendance,
+// the GAS fallback is permanently frozen (refreshAttendance stopped writing
+// to that sheet), so silently substituting it on mere slowness would swap
+// correct data for confidently-wrong data instead of just being slow. Only
+// a genuine query failure (caught below) falls back.
+//
+// Paginated (PostgREST caps an unpaginated select at 1000 rows server-side):
+// a season or two of attendance easily exceeds that for an active team, and
+// without an explicit order, which 1000 rows come back on any given request
+// isn't even guaranteed stable -- silently truncating produced different,
+// wrong attendance percentages on different page loads instead of an
+// obvious failure.
+var ATTENDANCE_FETCH_PAGE_SIZE = 1000;
+function fetchSupabaseAttendanceRaw() {
+  if (!supabaseClient) return Promise.resolve(null);
+
+  function fetchPage(offset, accumulated) {
+    return supabaseClient
+      .from('attendance')
+      .select('player_id, raid_date, status, report_excluded')
+      .eq('team_id', _teamCfg.supabaseTeamId)
+      .order('id', { ascending: true })
+      .range(offset, offset + ATTENDANCE_FETCH_PAGE_SIZE - 1)
+      .then(function (result) {
+        if (result.error) {
+          console.warn('Supabase attendance query failed.', result.error.message);
+          return null;
+        }
+        var rows = result.data || [];
+        var all = accumulated.concat(rows);
+        if (rows.length < ATTENDANCE_FETCH_PAGE_SIZE) return all;
+        return fetchPage(offset + ATTENDANCE_FETCH_PAGE_SIZE, all);
+      });
+  }
+
+  return fetchPage(0, []).catch(function (err) {
+    console.warn('Supabase attendance query failed.', err);
+    return null;
+  });
+}
+
+// Builds the {raidDates, players, joinDates} shape GAS's getRawAttendanceData
+// used to emit, from raw attendance rows + the already-loaded roster.
+// Excluded reports are dropped entirely (never count as raid nights),
+// matching GAS's exclude-checkbox handling.
+function mapSupabaseAttendanceRaw(rows, roster) {
+  var byId = {};
+  (roster || []).forEach(function (p) {
+    byId[p.id] = p;
+  });
+
+  var raidDateSet = {};
+  var players = {};
+  (rows || []).forEach(function (row) {
+    if (row.report_excluded) return;
+    var p = byId[row.player_id];
+    if (!p) return;
+    raidDateSet[row.raid_date] = true;
+    if (!players[p.firstName]) players[p.firstName] = [];
+    players[p.firstName].push({ date: row.raid_date, status: row.status });
+  });
+
+  Object.keys(players).forEach(function (name) {
+    players[name].sort(function (a, b) {
+      return a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
+    });
+  });
+
+  var joinDates = {};
+  (roster || []).forEach(function (p) {
+    if (p.joinDate) joinDates[p.firstName] = p.joinDate;
+  });
+
+  return { raidDates: Object.keys(raidDateSet).sort(), players: players, joinDates: joinDates };
+}
+
+// Matches GAS's getAttendanceDetails: only the "penalizing" statuses.
+function mapSupabaseAttendanceDetails(rawPlayers) {
+  var details = {};
+  Object.keys(rawPlayers || {}).forEach(function (name) {
+    var penalties = rawPlayers[name].filter(function (r) {
+      return r.status === 'No Show' || r.status === 'Excused';
+    });
+    if (penalties.length) details[name] = penalties;
+  });
+  return details;
+}
+
+// Matches GAS's getRecentAttendanceTrend: full history minus Not on Roster.
+function mapSupabaseAttendanceTrend(rawPlayers) {
+  var trend = {};
+  Object.keys(rawPlayers || {}).forEach(function (name) {
+    var nights = rawPlayers[name].filter(function (r) {
+      return r.status !== 'Not on Roster';
+    });
+    if (nights.length) trend[name] = nights;
+  });
+  return trend;
+}
+
+// Shared by the roster table's Attendance column, the player profile card's
+// attendance bar (both below), and the Attendance tab's "Commit Attendance
+// Scores" (js/tabs/tab-attendance.js), so all four represent the same
+// metric. Lives here rather than officer.js because the profile card is
+// shared by index.html (public) and officer.html -- index.html never loads
+// officer.js. "Not on Roster" and any night with no row at all are excluded
+// from both numerator and denominator (not weighted 0 -- see
+// gs/Attendance.gs's ATTENDANCE_WEIGHTS this ports).
+var ATTENDANCE_WEIGHTS_JS = {
+  Present: 1.0,
+  Bench: 1.0,
+  'Medical Leave': 1.0,
+  'Extended Leave': 1.0,
+  Excused: 0.8,
+  'No Show': 0.0
+};
+
+// Returns { start, end } date strings for the active season, or { start: null, end: null }
+function getSeasonDateRange() {
+  if (!ACTIVE_SEASON) return { start: null, end: null };
+  var history = (DATA && DATA.seasonHistory) || [];
+  var current = (DATA && DATA.seasonName) || '';
+  var all = history.slice();
+  if (current) all.push({ name: current, start: DATA.seasonStart || '', end: DATA.seasonEnd || '' });
+  for (var i = 0; i < all.length; i++) {
+    if (all[i].name === ACTIVE_SEASON) {
+      return { start: all[i].start || null, end: all[i].end || null };
+    }
+  }
+  return { start: null, end: null };
+}
+
+// Computes attendance % for a player for the active season from rawAttendanceData.
+// Returns a string like "95.0%", "100.0%" for a player with no recorded
+// nights yet, or null only if rawAttendanceData itself failed to load.
+//
+// Denominator is this player's own recorded nights only (status !== 'Not on
+// Roster'), same as executeCommitScores' scoring.attendance_pct calculation
+// (js/tabs/tab-attendance.js) -- a team-wide raid-night count was ported
+// from GAS's buildAttendanceMap here initially, but that counted any night
+// this player has no row for at all (WCL didn't find them, not bench-
+// flagged, no officer override yet) as an implicit zero, silently dragging
+// the percentage down for nights nobody ever actually marked them absent
+// for. GAS itself was inconsistent about this (its commit-to-Scoring
+// calculation already used the player's own night count, not the team's) --
+// this makes both agree on the same definition.
+function computeSeasonAttendancePct(firstName) {
+  var raw = DATA && DATA.rawAttendanceData;
+  if (!raw) return null;
+
+  var range = getSeasonDateRange();
+  var start = range.start;
+  var end = range.end;
+  var playerRecs = (raw.players || {})[firstName] || [];
+  var joinDate = (raw.joinDates || {})[firstName] || '';
+
+  // Determine this player's effective start within the season
+  var effectiveStart = joinDate && (!start || joinDate > start) ? joinDate : start || '';
+
+  var eligibleRecs = playerRecs.filter(function (r) {
+    return (
+      (!effectiveStart || r.date >= effectiveStart) &&
+      (!start || r.date >= start) &&
+      (!end || r.date <= end) &&
+      r.status !== 'Not on Roster'
+    );
+  });
+  // A player with zero recorded nights yet (brand-new roster add) hasn't
+  // missed anything -- default to full credit rather than 0%, which would
+  // otherwise read as a red flag before they've had a single chance to raid.
+  if (!eligibleRecs.length) return '100.0%';
+
+  var sum = eligibleRecs.reduce(function (acc, r) {
+    var w = ATTENDANCE_WEIGHTS_JS[r.status];
+    return acc + (w != null ? w : 0);
+  }, 0);
+
+  return (Math.round((sum / eligibleRecs.length) * 1000) / 10).toFixed(1) + '%';
+}
+
+// Returns attendance % for a player: prefers computed value from rawAttendanceData
+// (works for any season, including All Seasons); falls back to server p.attendance.
+function getDisplayAttendancePct(player) {
+  if (DATA && DATA.rawAttendanceData) {
+    var computed = computeSeasonAttendancePct(player.firstName);
+    if (computed !== null) return computed;
+  }
+  return player.attendance || '0%';
+}
+
 // onCoreReady fires once the fast core chunk is loaded and the page can render.
 // onHeavyReady (optional) fires once loot/attendance/BiS/priority data arrives.
 function loadData(onCoreReady, onHeavyReady) {
@@ -1331,6 +1532,8 @@ function loadData(onCoreReady, onHeavyReady) {
   var priorityOrderPromise = fetchSupabasePriorityOrder();
   // Fired alongside; the heavy callback waits for it before setting selfReceived.
   var selfReceivedPromise = fetchSupabaseSelfReceived();
+  // Fired alongside; the heavy callback waits for it before setting rawAttendanceData/attendanceDetails/recentAttendanceTrend.
+  var attendancePromise = fetchSupabaseAttendanceRaw();
 
   window._rosterCoreCallback = function (data) {
     delete window._rosterCoreCallback;
@@ -1367,7 +1570,8 @@ function loadData(onCoreReady, onHeavyReady) {
           itemsPromise,
           itemBossesPromise,
           priorityOrderPromise,
-          selfReceivedPromise
+          selfReceivedPromise,
+          attendancePromise
         ]).then(function (results) {
           var lootRows = results[0];
           var bisRows = results[1];
@@ -1375,11 +1579,17 @@ function loadData(onCoreReady, onHeavyReady) {
           var itemBossRows = results[3];
           var priorityRows = results[4];
           var selfReceivedRows = results[5];
+          var attendanceRows = results[6];
           var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
           DATA.lootCounts = mappedLoot || {};
-          DATA.attendanceDetails = heavy.attendanceDetails;
-          DATA.rawAttendanceData = heavy.rawAttendanceData;
-          DATA.recentAttendanceTrend = heavy.recentAttendanceTrend;
+          var mappedAttendance = attendanceRows !== null ? mapSupabaseAttendanceRaw(attendanceRows, DATA.roster) : null;
+          DATA.rawAttendanceData = mappedAttendance || heavy.rawAttendanceData;
+          DATA.attendanceDetails = mappedAttendance
+            ? mapSupabaseAttendanceDetails(mappedAttendance.players)
+            : heavy.attendanceDetails;
+          DATA.recentAttendanceTrend = mappedAttendance
+            ? mapSupabaseAttendanceTrend(mappedAttendance.players)
+            : heavy.recentAttendanceTrend;
           var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
           DATA.bisList = mappedBis && Object.keys(mappedBis).length ? mappedBis : heavy.bisList;
           var mappedPriority = priorityRows
@@ -2235,8 +2445,8 @@ function renderProfile(firstName, backTo, container) {
     : '';
 
   // Attendance
-  var attendPct = player.attendance || '-';
-  var barWidth = player.attendance || '0%';
+  var attendPct = getDisplayAttendancePct(player);
+  var barWidth = attendPct;
   var attendDetail = (DATA.attendanceDetails || {})[player.firstName] || [];
   var hasPenalties = attendDetail.length > 0;
   var attendExtra = '';

@@ -2,10 +2,11 @@
 // (gs/WCL.gs, gs/Attendance.gs, gs/wgaWebApp.gs) into a Supabase Edge
 // Function. Stage 1: the two read-only WCL proxies behind Season Settings'
 // raid progression picker (getZoneEncounters, fetchProgression). Stage 2:
-// the Scoring tab's "Refresh from WCL" read (refreshPerformance) -- see
-// js/tabs/tab-scoring.js for why the commit/manual-edit steps stay direct
-// Supabase writes rather than more actions here. Stage 3 (attendance sync)
-// adds more actions to this same dispatcher later.
+// the Scoring tab's "Refresh from WCL" read (refreshPerformance). Stage 3:
+// the Attendance tab's "Refresh from WCL" write (refreshAttendance) -- see
+// js/tabs/tab-scoring.js and js/tabs/tab-attendance.js for why the commit/
+// manual-edit steps in both features stay direct Supabase writes rather
+// than more actions here.
 //
 // No service-role key: officers already have full RLS write access to
 // attendance/scoring via their own session (docs/RLS.md), so this function
@@ -28,6 +29,36 @@ function jsonResponse(body: unknown, status = 200) {
     status,
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
   });
+}
+
+// GAS formatted every WCL-derived date via Utilities.formatDate(ts,
+// Session.getScriptTimeZone(), 'yyyy-MM-dd') -- America/New_York throughout
+// this app (js/common.js, migrations, docs/database-decisions.md). Report
+// startTime is a UTC epoch ms; a raid starting evening US time can already
+// be past midnight UTC, so a naive `.toISOString().slice(0,10)` silently
+// shifts it to the wrong calendar day -- this reproduces GAS's timezone-
+// correct date instead.
+const REPORT_TIME_ZONE = 'America/New_York';
+// A raid that runs past midnight still belongs to the night it started, not
+// the calendar day its report timestamp technically falls on -- reports
+// starting in the small hours (before this cutoff, local time) are dated as
+// the previous day instead.
+const EARLY_MORNING_CUTOFF_HOUR = 6;
+
+function formatReportDate(ms: number): string {
+  // en-CA formats as YYYY-MM-DD, conveniently matching the date column format.
+  const localDate = new Intl.DateTimeFormat('en-CA', { timeZone: REPORT_TIME_ZONE }).format(new Date(ms));
+  const localHour = parseInt(
+    new Intl.DateTimeFormat('en-US', { timeZone: REPORT_TIME_ZONE, hourCycle: 'h23', hour: '2-digit' }).format(
+      new Date(ms)
+    ),
+    10
+  );
+  if (localHour >= EARLY_MORNING_CUTOFF_HOUR) return localDate;
+  // Pure calendar-date arithmetic (not ms/DST math) to step back one day.
+  const d = new Date(`${localDate}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
 }
 
 // ── WCL API helpers (ported from gs/WCL.gs) ─────────────────────────────────
@@ -142,7 +173,7 @@ async function fetchProgression(zoneId: number, guildId: number) {
 
   function formatDate(ms: number | null): string {
     if (!ms) return '';
-    return new Date(ms).toISOString().slice(0, 10);
+    return formatReportDate(ms);
   }
 
   const bosses = encIds.map((encId) => {
@@ -353,6 +384,222 @@ async function refreshPerformance(
   };
 }
 
+// Ported from gs/Attendance.gs's refreshAttendanceCore + helpers. Guild-
+// scoped -- needs the calling team's wcl_guild_id. Writes attendance rows
+// directly (source='WCL'/'Auto (Bench)') rather than a sheet -- see the
+// attendance.source migration comment for why that column exists. The
+// commit step (weighted score/pct into scoring) stays a direct client
+// write, same reasoning as refreshPerformance/js/tabs/tab-scoring.js: no
+// WCL secret is needed to aggregate rows that are already in the table.
+const SEASON_REPORT_LIMIT = 50;
+const ALT_RUN_KEYWORD = 'Alt';
+
+async function getReportZone(token: string, reportCode: string): Promise<number | null> {
+  const query = `query { reportData { report(code: "${reportCode}") { zone { id } } } }`;
+  const result = await wclQuery(token, query);
+  return result?.data?.reportData?.report?.zone?.id ?? null;
+}
+
+// Ported from gs/Attendance.gs's getReportParticipants: combines ranked-fight
+// characters (mythic->heroic fallback, unlike refreshPerformance this is NOT
+// role-filtered -- any character in the log counts as present) with a
+// masterData.actors combatant dump, to also catch players present on nights
+// with no ranked boss kill (wipes-only, non-kill logs).
+async function getReportParticipants(token: string, reportCode: string): Promise<Set<string>> {
+  const names = new Set<string>();
+
+  const fights = await fetchReportFights(token, reportCode);
+  for (const fight of fights) {
+    if (!fight.roles) continue;
+    for (const roleKey of ['dps', 'healers', 'tanks'] as const) {
+      const entries = fight.roles[roleKey]?.characters || [];
+      for (const character of entries) {
+        if (character.name) names.add(String(character.name).split('-')[0].trim().toLowerCase());
+      }
+    }
+  }
+
+  const combatantsQuery = `
+    query {
+      reportData {
+        report(code: "${reportCode}") {
+          masterData { actors(type: "Player") { name } }
+        }
+      }
+    }
+  `;
+  const combatantsResult = await wclQuery(token, combatantsQuery);
+  const actors = combatantsResult?.data?.reportData?.report?.masterData?.actors || [];
+  for (const actor of actors) {
+    if (actor.name) names.add(String(actor.name).split('-')[0].trim().toLowerCase());
+  }
+
+  return names;
+}
+
+async function refreshAttendance(
+  token: string,
+  guildId: number,
+  teamId: number,
+  supabase: ReturnType<typeof createClient>
+) {
+  const { data: settingsRow } = await supabase
+    .from('team_settings')
+    .select('config')
+    .eq('team_id', teamId)
+    .maybeSingle();
+  const config: any = (settingsRow as any)?.config || {};
+  const seasonStart: string | null = config.seasonStart || null;
+  const raidProgression: any[] = Array.isArray(config.raidProgression) ? config.raidProgression : [];
+  const validZoneIds = new Set(
+    raidProgression.map((r) => parseInt(r.wclZoneId, 10)).filter((id) => !Number.isNaN(id))
+  );
+  const startTimeMs = seasonStart && !Number.isNaN(Date.parse(seasonStart)) ? Date.parse(seasonStart) : null;
+
+  const reportsQuery = `
+    query {
+      reportData {
+        reports(guildID: ${guildId}, limit: ${SEASON_REPORT_LIMIT}${startTimeMs ? `, startTime: ${startTimeMs}` : ''}) {
+          data { code title startTime }
+        }
+      }
+    }
+  `;
+  const reportsResult = await wclQuery(token, reportsQuery);
+  const reports = (reportsResult?.data?.reportData?.reports?.data || []).filter((r: any) => r.title);
+  if (reports.length === 0) return { success: true, mainNights: 0, excluded: 0 };
+
+  // A report already recorded (some attendance row references its code) is
+  // trusted as a known main night and skipped entirely -- no zone or
+  // participant re-fetch. Excluded reports never get attendance rows, so
+  // they're re-classified every refresh; that's a cheap single zone-fetch
+  // each, not the 3x-per-report cost stage 2 had to solve for.
+  const { data: existingReportRows, error: existingReportsError } = await supabase
+    .from('attendance')
+    .select('report_id')
+    .eq('team_id', teamId)
+    .not('report_id', 'is', null);
+  if (existingReportsError) throw new Error(existingReportsError.message);
+  const cachedReportIds = new Set((existingReportRows || []).map((r: any) => r.report_id));
+
+  const { data: players, error: playersError } = await supabase
+    .from('players')
+    .select('id, name_realm, is_bench, join_date')
+    .eq('team_id', teamId)
+    .is('archived_at', null);
+  if (playersError) throw new Error(playersError.message);
+
+  const roster = (players || [])
+    .map((p: any) => ({
+      playerId: p.id as number,
+      firstName: String(p.name_realm).split('-')[0].trim().toLowerCase(),
+      isBench: !!p.is_bench,
+      joinDate: p.join_date as string | null
+    }))
+    .filter((p) => p.firstName);
+
+  // Rows already set by an officer are never touched by a refresh -- same
+  // "Auto sources are always recomputed, Officer sources are sticky" rule
+  // gs/Attendance.gs's readExistingAttendance enforced via the sheet.
+  const { data: existingStatusRows, error: existingStatusError } = await supabase
+    .from('attendance')
+    .select('player_id, raid_date, source')
+    .eq('team_id', teamId);
+  if (existingStatusError) throw new Error(existingStatusError.message);
+  const officerLocked = new Set(
+    (existingStatusRows || [])
+      .filter((r: any) => r.source === 'Officer')
+      .map((r: any) => `${r.raid_date}|${r.player_id}`)
+  );
+
+  let mainNights = 0;
+  let excluded = 0;
+  let latestNewZoneId: number | null = null;
+  // Keyed by player_id|raid_date rather than a plain array: attendance's
+  // unique constraint is (team_id, player_id, raid_date), not report_id, so
+  // two reports landing on the same calendar date would otherwise produce
+  // two rows for the same conflict target in one upsert batch -- Postgres
+  // rejects that ("ON CONFLICT DO UPDATE command cannot affect row a second
+  // time"). A Map collapses same-date duplicates to one row (last report
+  // processed wins), which is the same "one report per date" limitation
+  // this table already has via toggleReportExcluded/setPlayerStatus.
+  const rowsToUpsert = new Map<string, any>();
+
+  const sorted = [...reports].sort((a: any, b: any) => b.startTime - a.startTime);
+
+  for (const report of sorted) {
+    const date = formatReportDate(report.startTime);
+
+    if (cachedReportIds.has(report.code)) {
+      mainNights++;
+      continue;
+    }
+
+    if (String(report.title).includes(ALT_RUN_KEYWORD)) {
+      excluded++;
+      continue;
+    }
+
+    const zoneId = await getReportZone(token, report.code);
+
+    // Classification, matching gs/Attendance.gs's refreshAttendanceCore:
+    // raid-progression zones take priority; a season-start filter with no
+    // progression trusts every report the query already returned; with
+    // neither configured, fall back to comparing against the most recent
+    // *new* report's zone (a non-persisted stand-in for GAS's script-
+    // property-backed "current zone" heuristic).
+    let isMain: boolean;
+    if (validZoneIds.size > 0) {
+      isMain = zoneId != null && validZoneIds.has(zoneId);
+    } else if (startTimeMs) {
+      isMain = true;
+    } else {
+      if (latestNewZoneId === null) latestNewZoneId = zoneId;
+      isMain = zoneId === latestNewZoneId;
+    }
+
+    if (!isMain) {
+      excluded++;
+      continue;
+    }
+
+    mainNights++;
+    const participants = await getReportParticipants(token, report.code);
+
+    for (const player of roster) {
+      if (officerLocked.has(`${date}|${player.playerId}`)) continue;
+
+      const base = {
+        team_id: teamId,
+        player_id: player.playerId,
+        raid_date: date,
+        report_id: report.code,
+        report_title: report.title,
+        report_excluded: false
+      };
+
+      const key = `${player.playerId}|${date}`;
+      if (participants.has(player.firstName)) {
+        rowsToUpsert.set(key, { ...base, status: 'Present', source: 'WCL' });
+      } else if (player.isBench) {
+        rowsToUpsert.set(key, { ...base, status: 'Bench', source: 'Auto (Bench)' });
+      } else if (player.joinDate && date < player.joinDate) {
+        rowsToUpsert.set(key, { ...base, status: 'Not on Roster', source: 'WCL' });
+      }
+      // else: left unset -- officer fills the status in manually via the grid.
+    }
+  }
+
+  if (rowsToUpsert.size > 0) {
+    const { error: upsertError } = await supabase
+      .from('attendance')
+      .upsert([...rowsToUpsert.values()], { onConflict: 'team_id,player_id,raid_date' });
+    if (upsertError) throw new Error(upsertError.message);
+  }
+
+  return { success: true, mainNights, excluded };
+}
+
 // ── Entry point ──────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -426,6 +673,22 @@ Deno.serve(async (req) => {
       const token = await getAccessToken();
       if (!token) return jsonResponse({ success: false, error: 'Failed to get WCL access token. Check WCL_CLIENT_ID/WCL_CLIENT_SECRET.' });
       const result = await refreshPerformance(token, team.wcl_guild_id, teamId, supabase);
+      return jsonResponse(result);
+    }
+
+    if (action === 'refreshAttendance') {
+      const { data: team, error: teamError } = await supabase
+        .from('teams')
+        .select('wcl_guild_id')
+        .eq('id', teamId)
+        .maybeSingle();
+      if (teamError) return jsonResponse({ success: false, error: teamError.message });
+      if (!team?.wcl_guild_id) {
+        return jsonResponse({ success: false, error: 'No WCL guild ID configured for this team' });
+      }
+      const token = await getAccessToken();
+      if (!token) return jsonResponse({ success: false, error: 'Failed to get WCL access token. Check WCL_CLIENT_ID/WCL_CLIENT_SECRET.' });
+      const result = await refreshAttendance(token, team.wcl_guild_id, teamId, supabase);
       return jsonResponse(result);
     }
 
