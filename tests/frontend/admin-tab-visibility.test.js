@@ -53,11 +53,10 @@ function makeSandbox({ access, els = {} } = {}) {
 }
 
 describe('adminSubTabVisibility (#317)', () => {
-  it('shows all six sub-tabs at full access', () => {
+  it('shows all five sub-tabs at full access', () => {
     const { sandbox } = makeSandbox({ access: true });
     expect(sandbox.adminSubTabVisibility(true)).toEqual({
       properties: true,
-      botconfig: true,
       export: true,
       officers: true,
       features: true,
@@ -69,7 +68,6 @@ describe('adminSubTabVisibility (#317)', () => {
     const { sandbox } = makeSandbox({ access: 'team_leader' });
     expect(sandbox.adminSubTabVisibility('team_leader')).toEqual({
       properties: true,
-      botconfig: true,
       export: false,
       officers: true,
       features: true,
@@ -81,7 +79,6 @@ describe('adminSubTabVisibility (#317)', () => {
     const { sandbox } = makeSandbox({ access: false });
     expect(sandbox.adminSubTabVisibility(false)).toEqual({
       properties: false,
-      botconfig: false,
       export: false,
       officers: false,
       features: false,

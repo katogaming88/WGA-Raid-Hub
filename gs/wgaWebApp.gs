@@ -411,7 +411,6 @@ function doGet(e) {
     if (action === 'getAdminProperties') {
       const history    = JSON.parse(props.getProperty('seasonHistory')    || '[]');
       const raids      = JSON.parse(props.getProperty('raidProgression')  || '[]');
-      const botSecret  = props.getProperty('BOT_WEBHOOK_SECRET') || '';
       return jsonpResponse(callback, {
         seasonName:           props.getProperty('seasonName')          || '',
         seasonStart:          props.getProperty('seasonStart')         || '',
@@ -421,25 +420,7 @@ function doGet(e) {
         signupsOpen:          props.getProperty('signupsOpen')         || 'false',
         bisSubmissionsOpen:   props.getProperty('bisSubmissionsOpen')  || 'false',
         mPlusExclusionsOpen:  props.getProperty('mPlusExclusionsOpen') || 'false',
-        botUrl:               props.getProperty('BOT_BASE_URL')        || '',
-        botSecretMasked:      botSecret ? '****' + botSecret.slice(-4) : '(not set)',
       });
-    }
-
-    if (action === 'setBotUrl') {
-      const val = String(e.parameter.value || '').trim();
-      if (val) props.setProperty('BOT_BASE_URL', val);
-      else     props.deleteProperty('BOT_BASE_URL');
-      appendAuditLog('Admin: Bot URL Updated', '', '', val || '(cleared)');
-      return jsonpResponse(callback, { success: true });
-    }
-
-    if (action === 'setBotSecret') {
-      const val = String(e.parameter.value || '').trim();
-      if (val) props.setProperty('BOT_WEBHOOK_SECRET', val);
-      else     props.deleteProperty('BOT_WEBHOOK_SECRET');
-      appendAuditLog('Admin: Bot Secret Updated', '', '', '(redacted)');
-      return jsonpResponse(callback, { success: true });
     }
 
     if (action === 'dangerClearSeasonHistory') {
