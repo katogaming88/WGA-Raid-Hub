@@ -55,32 +55,37 @@ var ROSTER_FIELD_COLUMN = {
   isTrial: 'is_trial',
   isBench: 'is_bench',
   joinDate: 'join_date',
-  mPlusExcluded: 'm_plus_excluded'
+  mPlusExcluded: 'm_plus_excluded',
+  officerNote: 'officer_notes'
 };
 var ROSTER_FIELD_AUDIT_LABEL = {
   isTrial: 'Trial Status Changed',
   isBench: 'Bench Status Changed',
   joinDate: 'Join Date Changed',
-  mPlusExcluded: 'M+ Exclusion Toggled'
+  mPlusExcluded: 'M+ Exclusion Toggled',
+  officerNote: 'Officer Note Changed'
 };
+// Fields that store their raw value as-is rather than coercing to boolean.
+var ROSTER_FIELD_RAW_VALUE = { joinDate: true, officerNote: true };
 
 function rosterFieldAuditDetail(field, value) {
   if (field === 'isTrial') return value ? 'Trial added' : 'Trial removed';
   if (field === 'isBench') return value ? 'Moved to bench' : 'Removed from bench';
   if (field === 'joinDate') return 'Changed to ' + value;
   if (field === 'mPlusExcluded') return value ? 'Excluded' : 'Exclusion removed';
+  if (field === 'officerNote') return value ? 'Changed to ' + value : 'Cleared';
   return null;
 }
 
 // Targeted update for the fields that map 1:1 onto a players column
-// (isTrial/isBench/joinDate). class/spec go through officerSaveClassSpec
-// instead, since they resolve to one FK together.
+// (isTrial/isBench/joinDate/officerNote). class/spec go through
+// officerSaveClassSpec instead, since they resolve to one FK together.
 function updateRosterFieldSupabase(nameRealm, field, value) {
   var player = findRosterPlayer(nameRealm);
   var column = ROSTER_FIELD_COLUMN[field];
   if (!player || !player.id || !column) return Promise.reject(new Error('Unknown player or field.'));
   var payload = {};
-  payload[column] = field === 'joinDate' ? value || null : !!value;
+  payload[column] = ROSTER_FIELD_RAW_VALUE[field] ? value || null : !!value;
   return supabaseClient
     .from('players')
     .update(payload)
@@ -895,6 +900,36 @@ function officerUpdateClass(nameRealm, firstName, newClass) {
   }
 }
 
+// Renaming updates players.name_realm in place by id, so the row's id --
+// and every rclc_loot/bis_items/attendance row that references it -- stays
+// linked (#407). Guarded by the same players_team_id_name_realm_key unique
+// constraint addPlayerToRosterSupabase relies on: a rename onto a name
+// already in use (active or archived) fails with a constraint-violation
+// error surfaced through the normal "Failed to save." path, same as any
+// other write failure here.
+//
+// Known gap: the roster table's summary Attendance % column (player.attendance,
+// mapSupabaseRoster in js/common.js) is a name-matched merge from the Apps
+// Script Roster/Attendance sheet, not the real per-night Supabase attendance
+// rows the player detail card reads (those stay correctly linked by id, same
+// as loot/BiS). Since this rename never touches GAS, that name match breaks
+// for a renamed player until the sheet's own name is corrected there too --
+// tracked as #419, a follow-up for whenever attendance's read side migrates
+// off Apps Script (#218 is the write-side precedent; reads were deliberately
+// left on GAS for now).
+function renamePlayerSupabase(oldNameRealm, newNameRealm) {
+  var player = findRosterPlayer(oldNameRealm);
+  if (!player || !player.id) return Promise.reject(new Error('Unknown player.'));
+  return supabaseClient
+    .from('players')
+    .update({ name_realm: newNameRealm })
+    .eq('id', player.id)
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      return writeAuditLog('Player Renamed', 'players', player.id, oldNameRealm + ' -> ' + newNameRealm);
+    });
+}
+
 function officerRenamePlayer(nameRealm, firstName) {
   var nameInput = document.getElementById('editNameInput-' + firstName);
   var realmSel = document.getElementById('editRealmSelect-' + firstName);
@@ -906,33 +941,28 @@ function officerRenamePlayer(nameRealm, firstName) {
   if (newNameRealm.toLowerCase() === nameRealm.toLowerCase()) return;
   var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
   if (msgEl) msgEl.textContent = 'Saving...';
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=renamePlayer&data=' +
-      encodeURIComponent(JSON.stringify({ oldNameRealm: nameRealm, newNameRealm: newNameRealm })),
-    function (err, result) {
-      if (!err && result && result.success && DATA) {
-        var player = DATA.roster.find(function (p) {
-          return p.nameRealm === nameRealm;
-        });
-        if (player) {
-          player.nameRealm = newNameRealm;
-          player.firstName = newName;
-          player.realm = newRealm;
-        }
-        selectedOfficerPlayer = null;
-        var inlineRow = document.getElementById('inlineProfileRow');
-        if (inlineRow) inlineRow.remove();
+  runRosterWrite(renamePlayerSupabase(nameRealm, newNameRealm), msgEl).then(function (ok) {
+    if (!ok) return;
+    selectedOfficerPlayer = null;
+    var inlineRow = document.getElementById('inlineProfileRow');
+    if (inlineRow) inlineRow.remove();
+    // Full reload rather than patching DATA.roster in place: lootCounts,
+    // bisList, and the jsonp-merged attendance field (js/common.js) are all
+    // keyed by the player's name, not id, so a rename leaves every one of
+    // those client-side maps pointing at the old name until they're
+    // refetched (#407 follow-up). buildRosterTable() alone only re-renders
+    // the roster row itself, which is why the name updated but the profile
+    // card's Items Received / BiS List went blank until a manual page reload.
+    loadData(
+      function () {
+        buildOfficerDashboard();
+      },
+      function () {
+        buildStatsBar();
         buildRosterTable();
       }
-      if (msgEl) {
-        msgEl.textContent = err || (result && result.error) ? 'Failed to save.' : 'Saved.';
-        setTimeout(function () {
-          if (msgEl) msgEl.textContent = '';
-        }, 2000);
-      }
-    }
-  );
+    );
+  });
 }
 
 function togglePlayerTrial(nameRealm, firstName) {
@@ -1008,31 +1038,16 @@ function toggleMPlusExcluded(nameRealm, firstName) {
 
 function savePlayerNote(nameRealm, firstName) {
   var noteEl = document.getElementById('playerNote-' + firstName);
-  var msgEl = document.getElementById('playerNoteMsg-' + firstName);
   if (!noteEl) return;
   var note = noteEl.value.trim();
+  var msgEl = document.getElementById('playerNoteMsg-' + firstName);
   if (msgEl) msgEl.textContent = 'Saving...';
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=savePlayerNote&data=' +
-      encodeURIComponent(JSON.stringify({ nameRealm: nameRealm, note: note })),
-    function (err, result) {
-      if (!err && result && result.success && DATA) {
-        if (!DATA.playerNotes) DATA.playerNotes = {};
-        if (note) {
-          DATA.playerNotes[nameRealm] = note;
-        } else {
-          delete DATA.playerNotes[nameRealm];
-        }
-      }
-      if (msgEl) {
-        msgEl.textContent = err || (result && result.error) ? 'Failed to save.' : 'Saved.';
-        setTimeout(function () {
-          if (msgEl) msgEl.textContent = '';
-        }, 2000);
-      }
+  runRosterWrite(updateRosterFieldSupabase(nameRealm, 'officerNote', note), msgEl).then(function (ok) {
+    if (ok) {
+      var player = findRosterPlayer(nameRealm);
+      if (player) player.officerNote = note;
     }
-  );
+  });
 }
 
 // -- Trial promotion tracking (#78) ----------------------------------------

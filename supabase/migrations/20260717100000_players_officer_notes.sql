@@ -1,0 +1,16 @@
+-- Adds players.officer_notes (#407).
+--
+-- #407's premise -- "players.officer_notes already exists as a column in
+-- the schema but is never read or written anywhere in js/" -- was wrong: the
+-- column that actually exists is mplus_exclusion_requests.officer_notes
+-- (initial_schema.sql), a different table entirely. dbdoc/public.players.md's
+-- relations diagram embeds mplus_exclusion_requests' full column list next to
+-- players' own for the FK diagram, which is what got misread as a players
+-- column both when the issue was filed and when this migration's own PR first
+-- shipped without it -- confirmed against the live database only after
+-- roster loads started failing with "column players.officer_notes does not
+-- exist" once the code went out.
+--
+-- No RLS change needed: "Officers write players" already grants UPDATE on
+-- the whole row to officer/team_leader, same as every other players column.
+alter table public.players add column officer_notes text;

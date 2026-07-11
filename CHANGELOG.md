@@ -8,7 +8,17 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [3.32.11] - 2026-07-11
+## [3.32.12] - 2026-07-10
+
+### Frontend
+
+- **Wired player rename and officer notes to Supabase (#407).** `renamePlayer` and `savePlayerNote` (`js/tabs/tab-roster.js`) were the last two officer roster writes still GAS-only -- renaming updated only the GAS Roster sheet, and officer notes lived in a GAS Script Property keyed by name-realm. Both now write straight to `players` (rename updates `name_realm` in place by `id`, so historical `rclc_loot`/`bis_items`/`attendance` rows stay linked; notes use the new `players.officer_notes` column, see Backend). `officer_notes` is now part of the roster's normal Supabase read (`fetchSupabaseRoster`), replacing the separate `DATA.playerNotes` GAS map. Renaming now triggers a full data reload (rather than patching the roster row in place) so the profile card's Items Received/BiS List -- both keyed client-side by name -- resolve correctly under the new name instead of staying blank until a manual page reload. **Known gap, tracked as #419**: the roster table's summary Attendance % is still a name-matched merge from the GAS Roster/Attendance sheet (not yet migrated, #218), so it goes stale for a renamed player until that sheet's own name is corrected too -- the player detail card's real per-night attendance (Supabase, linked by id) is unaffected.
+
+### Backend
+
+- **Adds `players.officer_notes` (#407)**: #407's premise -- that this column already existed in the schema but was simply unused -- was wrong. The column that actually exists is `mplus_exclusion_requests.officer_notes`, a different table; `dbdoc/public.players.md`'s relations diagram embeds that table's full column list next to `players`' own for the FK diagram, which is what got misread as a `players` column, both when the issue was filed and when this fix's PR first shipped without the column. Confirmed against the live database only after roster loads started failing with `column players.officer_notes does not exist`.
+
+## [3.32.11] - 2026-07-10
 
 ### Frontend
 
