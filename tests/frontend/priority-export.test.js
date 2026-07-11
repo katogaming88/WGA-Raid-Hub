@@ -42,6 +42,15 @@ function makeSandbox({ rpcResult, els = {} } = {}) {
     seasonCodeForDisplay: (name) => (name === 'Season 1' ? 'S1' : name),
     _teamCfg: { supabaseTeamId: 1 },
     supabaseClient,
+    // _utf8ToBase64() moved to js/common.js (#408) so index.html's Quick
+    // Actions export button can share it too; stubbed here rather than
+    // loading the whole of common.js just for this one helper.
+    _utf8ToBase64(str) {
+      var bytes = new TextEncoder().encode(str);
+      var binary = '';
+      for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      return btoa(binary);
+    },
     btoa,
     TextEncoder,
     setTimeout,

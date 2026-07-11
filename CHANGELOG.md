@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.32.13] - 2026-07-10
+
+### Frontend
+
+- **Unified the two "Copy Priority Export" entry points onto one data source (#408).** The Priority tab's Generate/Regenerate button (`js/tabs/tab-priority.js`, #335) already called the `build_rclc_export` Supabase RPC (live `bis_items`/`priority_order` data); Quick Actions' "Copy Priority Export" button (`js/officer-quick-actions.js`, on the public page) still called the GAS `getExportString` action, which recomputed from the Google Sheets "BiS List"/"Priority Order" tabs -- both of which stopped being the live data source once the BiS List Editor (#391/#393) and priority generator (#220) migrated to Supabase. Whichever button an officer reached for first determined whether the export reflected current reality or a stale spreadsheet snapshot. Quick Actions now calls the same RPC; the shared UTF-8-safe base64 encoding step (`_utf8ToBase64`, #360) moved from `tab-priority.js` to `common.js` so both pages can use it.
+
 ## [3.32.12] - 2026-07-10
 
 ### Frontend
