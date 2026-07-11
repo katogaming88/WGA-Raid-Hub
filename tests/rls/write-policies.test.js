@@ -157,6 +157,12 @@ describe('request tables allow officer review updates', () => {
     const res = await queryAs('authenticated', OFFICER_T2, sql);
     expect(res.rowCount).toBe(0);
   });
+  // #413: site admin has no team_members row on team 1 at all, unlike the
+  // officer/raider/team-2-officer cases above.
+  it('site admin can update a team 1 request despite no team_members role there', async () => {
+    const res = await queryAs('authenticated', SITE_ADMIN, sql);
+    expect(res.rowCount).toBe(1);
+  });
 });
 
 describe('add_signup_to_roster is officer-gated through RLS', () => {

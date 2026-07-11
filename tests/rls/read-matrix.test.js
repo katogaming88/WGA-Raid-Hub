@@ -112,6 +112,19 @@ describe('site admin visibility', () => {
   it('team 1 team leader cannot see site_admins', async () => {
     expect(await countAs('authenticated', TEAM_LEADER_T1, 'site_admins')).toBe(0);
   });
+
+  // #413: a site admin has no team_members row on any team (seed.sql), so
+  // seeing team 1's rows here already proves cross-team access -- these four
+  // were the only officer-scoped tables missing the is_site_admin()
+  // OR-clause every other gated table already has.
+  for (const table of ['season_signups', 'bis_requests', 'mplus_exclusion_requests', 'self_received_requests']) {
+    it(`site admin sees ${table} rows despite no team_members role anywhere`, async () => {
+      expect(await countAs('authenticated', SITE_ADMIN, table, 'team_id = 1')).toBeGreaterThan(0);
+    });
+  }
+  it('site admin sees season_signups rows on team 2 too', async () => {
+    expect(await countAs('authenticated', SITE_ADMIN, 'season_signups', 'team_id = 2')).toBeGreaterThan(0);
+  });
 });
 
 afterAll(() => pool.end());
