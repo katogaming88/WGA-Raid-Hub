@@ -446,16 +446,16 @@ function submitCharacterClaim() {
 }
 
 // Admin tab access level for a resolved session: true grants the full tab
-// (site admins), 'officers' grants only the Officers sub-tab (team leaders --
-// the "Team leaders write team_members" policy already covers their grant/
-// revoke writes, they just had no UI path to it before), false hides the tab
-// entirely. Callers with their own no-session fallback (the legacy password
-// login has no Discord session at all) branch around this rather than folding
-// that case in here.
+// (site admins), 'team_leader' grants the team-leader surfaces (#317: the
+// Properties, Bot Config, and Officers sub-tabs plus Clear Season History in
+// the Danger Zone -- the sub-tab map lives in adminSubTabVisibility in
+// tab-admin.js), false hides the tab entirely. Callers with their own
+// no-session fallback (the legacy password login has no Discord session at
+// all) branch around this rather than folding that case in here.
 function adminAccessLevel(session) {
   if (!session) return false;
   if (session.isAdmin) return true;
-  if (session.isTeamLeader) return 'officers';
+  if (session.isTeamLeader) return 'team_leader';
   return false;
 }
 

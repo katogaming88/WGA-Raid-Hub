@@ -257,10 +257,11 @@ Three sub-tabs: **Settings**, **Raid Progression**, **History**.
 
 ## Admin tab (reference only -- not part of the normal weekly flow)
 
-Restricted to admins: it's hidden for regular officers, and shows automatically for anyone
-logged in via the plain officer password (no Discord session) since there's no way to tell
-admins apart from officers without one. In practice this is usually one person per team.
-Five sub-tabs:
+Restricted by role: site admins see the whole tab, team leaders see the Properties, Bot
+Config, and Officers sub-tabs plus Clear Season History in the Danger Zone, and regular
+officers don't see the tab at all. Anyone logged in via the plain officer password (no
+Discord session) gets the full tab, since there's no role to check without one. In practice
+this is usually one or two people per team. Five sub-tabs:
 
 - **Properties** -- read-only live snapshot of GAS Script Properties: season name/dates,
   archived season count, raid progression count, whether Signups/BiS Submissions/M+ Exclusions
@@ -270,10 +271,12 @@ Five sub-tabs:
 - **Data Export** -- downloads everything currently loaded in the dashboard (roster, loot
   history, priority order, BiS lists, season history, scoring) as JSON. No server call --
   exports straight from the in-memory cache, so it reflects whatever's currently loaded.
-- **Officers** -- grant or revoke *officer* access by Discord ID. Making someone a full *admin*
-  is **not** done here -- that requires manually adding their Discord ID to `adminDiscordIds`
-  in GAS Script Properties directly, outside this UI.
-- **Danger Zone** -- permanent, irreversible wipes. Each one clears an entire sheet:
+- **Officers** -- grant or revoke *officer* access for claimed characters (writes
+  `team_members.role` in Supabase). Making someone a *team leader* or *site admin* is **not**
+  done here -- team leader is a direct `team_members.role` change and site admin is a row in
+  the `site_admins` table, both currently database-side only.
+- **Danger Zone** -- permanent, irreversible wipes. Team leaders see only Clear Season
+  History; the sheet wipes below it are site-admin only:
   - Clear Season History -- deletes all archived seasons
   - Clear Loot Data -- wipes imported RCLootCouncil loot entries
   - Clear Pasted Loot -- wipes the Pasted Loot sheet

@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.0] - 2026-07-11
+
+### Frontend
+
+- **The Admin tab now honors the officer/team-leader split the RLS policies already enforce (#317).** Team leaders (Discord login, `team_members.role = 'team_leader'`) now see the Properties, Bot Config, and Officers sub-tabs plus Clear Season History in the Danger Zone -- previously they got only the Officers sub-tab, even though the `team_settings` and `season_snapshots` policies already accept them. Data Export and the seven sheet-wipe danger ops stay site-admin only ("no change intended there" per the #294 decision), and plain officers still see no Admin tab. The sub-tab map lives in a new `adminSubTabVisibility()` (`js/tabs/tab-admin.js`) that both `showAdminTab()` (`officer.html`) and the landing-sub-tab pick share, and `renderDangerZone()`/`executeDangerOp()` filter ops through `visibleDangerOps()`. The internal access level string `'officers'` was renamed to `'team_leader'` since it now grants more than the Officers sub-tab. UI-only change: the visibility filter is not a security boundary (RLS is, where Supabase backs the write).
+
 ## [3.32.14] - 2026-07-10
 
 ### Frontend

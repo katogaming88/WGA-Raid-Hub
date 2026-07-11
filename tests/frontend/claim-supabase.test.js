@@ -646,11 +646,11 @@ describe('onDiscordSessionRestored (#371 collision regression)', () => {
   });
 });
 
-// #365 follow-up: the Admin tab's Officers sub-tab was site-admin-gated even
-// though the "Team leaders write team_members" RLS policy already lets a team
-// leader grant/revoke officer access -- there was just no UI path to it.
-// adminAccessLevel() is the single source of truth both showAdminTab() call
-// sites (officer.html, js/officer.js) defer to for the tri-state result.
+// #365 follow-up, reshaped by #317: adminAccessLevel() is the single source
+// of truth both showAdminTab() call sites (officer.html, js/officer.js) defer
+// to for the tri-state result. 'team_leader' grants the team-leader surfaces
+// (the sub-tab map itself lives in adminSubTabVisibility, tested in
+// admin-tab-visibility.test.js); true grants everything.
 describe('adminAccessLevel', () => {
   function load() {
     const sandbox = loadDiscordJs({ supabaseClient: null });
@@ -667,9 +667,9 @@ describe('adminAccessLevel', () => {
     expect(sandbox.adminAccessLevel({ isAdmin: true, isTeamLeader: true })).toBe(true);
   });
 
-  it('grants officers-only access to a team leader who is not a site admin', () => {
+  it('grants team_leader access to a team leader who is not a site admin', () => {
     const sandbox = load();
-    expect(sandbox.adminAccessLevel({ isAdmin: false, isTeamLeader: true })).toBe('officers');
+    expect(sandbox.adminAccessLevel({ isAdmin: false, isTeamLeader: true })).toBe('team_leader');
   });
 
   it('denies access to a plain officer or raider', () => {

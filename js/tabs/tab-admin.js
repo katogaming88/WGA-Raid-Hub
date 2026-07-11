@@ -1,11 +1,29 @@
 // ── Admin subtab management ───────────────────────────────────────────────
 
+var ADMIN_SUBTABS = ['properties', 'botconfig', 'export', 'officers', 'danger'];
+
+// Which sub-tabs each access level may see (#317, honoring the RLS split from
+// #294). true (site admins, and the legacy password login) sees everything;
+// 'team_leader' sees the surfaces backed by the three team-leader-only tables
+// (team_settings, team_members, season_snapshots) but not Data Export; any
+// other value sees nothing. showAdminTab (officer.html) applies this map to
+// the sub-tab buttons; buildAdminTab uses it to pick the landing sub-tab.
+function adminSubTabVisibility(access) {
+  var vis = {};
+  ADMIN_SUBTABS.forEach(function (sub) {
+    if (access === true) vis[sub] = true;
+    else if (access === 'team_leader') vis[sub] = sub !== 'export';
+    else vis[sub] = false;
+  });
+  return vis;
+}
+
 function buildAdminTab() {
-  // Team-leader-only access (window._adminAccessLevel === 'officers', set by
-  // showAdminTab in officer.html) hides the Properties/Bot Config/Data
-  // Export/Danger Zone sub-tab buttons, so this always lands them on
-  // Officers instead of a subtab they can't navigate away from.
-  var defaultSub = window._adminAccessLevel === 'officers' ? 'officers' : 'properties';
+  var vis = adminSubTabVisibility(window._adminAccessLevel);
+  var defaultSub =
+    ADMIN_SUBTABS.filter(function (sub) {
+      return vis[sub];
+    })[0] || 'properties';
   switchAdminSubTab(defaultSub, document.getElementById('admin-subtab-btn-' + defaultSub));
 }
 
@@ -14,7 +32,7 @@ function switchAdminSubTab(name, btnEl) {
     b.classList.remove('active');
   });
   if (btnEl) btnEl.classList.add('active');
-  ['properties', 'botconfig', 'export', 'officers', 'danger'].forEach(function (sub) {
+  ADMIN_SUBTABS.forEach(function (sub) {
     var el = document.getElementById('admin-sub-' + sub);
     if (el) el.style.display = sub === name ? '' : 'none';
   });
@@ -190,7 +208,10 @@ var DANGER_OPS = [
     label: 'Clear Season History',
     desc: 'Permanently deletes all archived seasons from script properties.',
     action: 'dangerClearSeasonHistory',
-    sheet: null
+    sheet: null,
+    // The one danger op mapped to a team-leader-only table (season_snapshots,
+    // per the #294 decision); the sheet wipes below stay site-admin only.
+    teamLeader: true
   },
   {
     key: 'clearLootData',
@@ -243,6 +264,16 @@ var DANGER_OPS = [
   }
 ];
 
+// Danger ops visible at a given access level: site admins (and the legacy
+// password login) see all of them, team leaders only the ops flagged
+// teamLeader (#317).
+function visibleDangerOps(access) {
+  if (access === true) return DANGER_OPS;
+  return DANGER_OPS.filter(function (op) {
+    return op.teamLeader;
+  });
+}
+
 function renderDangerZone() {
   var content = document.getElementById('adminDangerContent');
   if (!content) return;
@@ -252,7 +283,7 @@ function renderDangerZone() {
     TEAM_NAME +
     '</strong> to confirm each action.' +
     '</p>';
-  DANGER_OPS.forEach(function (op) {
+  visibleDangerOps(window._adminAccessLevel).forEach(function (op) {
     html += '<div class="admin-danger-card">';
     html += '<div class="admin-danger-label">' + op.label + '</div>';
     html += '<p class="admin-danger-desc">' + op.desc + '</p>';
@@ -286,6 +317,10 @@ function executeDangerOp(key) {
     }
   }
   if (!op) return;
+  // Keep execute consistent with what renderDangerZone showed. Not a security
+  // boundary: the GAS endpoint is unauthenticated by design, and the real
+  // enforcement is RLS on the Supabase-backed surfaces.
+  if (window._adminAccessLevel !== true && !op.teamLeader) return;
 
   var input = document.getElementById('danger-confirm-' + key);
   var btn = document.getElementById('danger-btn-' + key);

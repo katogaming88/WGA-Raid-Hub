@@ -52,7 +52,7 @@ Accessible via Discord OAuth (primary) or password fallback (session lasts 2 hou
 | **Received Item Requests** | -- | Approve or reject raider self-mark requests. Approving writes the item to their loot history. Officers can also mark items received directly from the Roster tab player card. |
 | **Season Settings** | -- | Season Start Date (attendance window start), Season Name (applied to imported loot), Season End Date (optional close date), Raid Progression (boss kill dates shown publicly), Archive Season (pushes season to history and resets settings), Season History (list of past seasons). |
 | **Audit Log** | -- | Append-only log of every officer action -- player changes, approvals, loot marks, status changes -- with timestamp, actor, action, target, and old/new values. Live search filter. |
-| **Admin** | Properties / Bot Config / Data Export / Officers / Danger Zone | Visible to admins only (Discord login) or password login. Officers subtab: grant/revoke officer dashboard access per Discord user. Properties: manage GAS script properties. |
+| **Admin** | Properties / Bot Config / Data Export / Officers / Danger Zone | Visible to site admins and team leaders (Discord login) or password login. Team leaders see Properties, Bot Config, Officers, and Clear Season History in the Danger Zone; Data Export and the sheet wipes are site-admin only. Officers sub-tab: grant or revoke officer dashboard access for claimed characters. |
 | **Help** | -- | Officer workflow reference guide covering common tasks. |
 
 Officer controls on the Roster tab (player card):
