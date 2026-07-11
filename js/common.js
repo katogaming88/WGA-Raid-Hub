@@ -1446,7 +1446,8 @@ function getSeasonDateRange() {
 }
 
 // Computes attendance % for a player for the active season from rawAttendanceData.
-// Returns a string like "95.0%" or null if data unavailable.
+// Returns a string like "95.0%", "100.0%" for a player with no recorded
+// nights yet, or null only if rawAttendanceData itself failed to load.
 //
 // Denominator is this player's own recorded nights only (status !== 'Not on
 // Roster'), same as executeCommitScores' scoring.attendance_pct calculation
@@ -1479,7 +1480,10 @@ function computeSeasonAttendancePct(firstName) {
       r.status !== 'Not on Roster'
     );
   });
-  if (!eligibleRecs.length) return null;
+  // A player with zero recorded nights yet (brand-new roster add) hasn't
+  // missed anything -- default to full credit rather than 0%, which would
+  // otherwise read as a red flag before they've had a single chance to raid.
+  if (!eligibleRecs.length) return '100.0%';
 
   var sum = eligibleRecs.reduce(function (acc, r) {
     var w = ATTENDANCE_WEIGHTS_JS[r.status];
