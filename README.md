@@ -46,7 +46,7 @@ Accessible via Discord OAuth (primary) or password fallback (session lasts 2 hou
 | **Loot** | Import / Import History / Contested Items / Loot Fairness | Import: paste RCLootCouncil JSON to write loot to the sheet. Import History: view previously imported batches. Contested Items: every raid item sorted by how many players have it on their BiS, with each player's priority rank. Loot Fairness: bar chart of items received per player, filterable by Heroic or Mythic. |
 | **Priority** | Priority List / Unmanaged Items | RCLootCouncil export string generator (generate and copy to clipboard). Priority List: full priority order per item, filterable by boss and searchable; each item has a Priority Generator button to auto-rank players by blended score with an editable, saveable order. Unmanaged Items: BiS items with no priority order yet assigned, with badge count. |
 | **BiS Manager** | Submissions / BiS Lists | Submissions: open/close BiS submissions globally or per player; approve or reject submitted links (approving writes the URL to the Roster sheet). BiS Lists: role-grouped player table; Edit opens an inline item editor with the player's current BiS items, BiS source link, and armor-type-filtered item search/autocomplete. |
-| **Attendance** | Manage / Attendance Scores / Bench Fairness | Manage: attendance grid editable per player per night; Refresh from WCL pulls latest raid nights; Commit Scores writes attendance % to the Scoring sheet. Attendance Scores: players below a threshold (adjustable slider), sorted lowest first. Bench Fairness: bench player attendance comparison. |
+| **Attendance** | Manage / Attendance Scores / Bench Fairness | Manage: attendance grid editable per player per night; Refresh from WCL pulls latest raid nights; Commit Attendance Scores writes attendance % to Scoring. Attendance Scores: players below a threshold (adjustable slider), sorted lowest first. Bench Fairness: bench player attendance comparison. |
 | **Signups** | Signups / Pending Roster | Signups: open/close the public signup form; review, approve, or deny signup submissions. Pending Roster: approved applicants waiting to be added to the roster. |
 | **M+ Exclusions** | -- | Review and approve or reject M+ exclusion requests submitted by raiders. Toggle exclusion per player manually. |
 | **Received Item Requests** | -- | Approve or reject raider self-mark requests. Approving writes the item to their loot history. Officers can also mark items received directly from the Roster tab player card. |
@@ -194,7 +194,7 @@ See issue #132 for the full workflow for populating this sheet from Wowhead each
 | Loot imported | Loot > Import -- paste RCLootCouncil JSON; entries are tagged with the current season name |
 | Priority updated | Priority tab > Priority Generator button per item; edit and Save |
 | RCLootCouncil sync | Priority tab > Generate export string; copy and paste in-game |
-| Attendance refreshed | Attendance > Manage > Refresh from WCL, then Commit Scores to Sheet |
+| Attendance refreshed | Attendance > Manage > Refresh from WCL, then Commit Attendance Scores |
 | New tier starts | Repopulate Item Lookup sheet -- see issue #132 |
 | Season rollover | Season Settings -- see Archive Season rollover workflow and issue #131 |
 

@@ -21,11 +21,11 @@ once they've seen it walked through once.
    RCLootCouncil JSON export, click Import. Duplicates are skipped automatically -- safe to
    paste multiple nights at once or re-paste an old export.
 2. **Attendance tab -> Manage** -- Refresh from WCL (pulls the latest raid nights), review/edit
-   any player statuses in the grid, then Commit Scores to Sheet (recalculates attendance % for
+   any player statuses in the grid, then Commit Attendance Scores (recalculates attendance % for
    everyone -- safe to run multiple times, always recalculates from scratch).
-3. **Scoring tab** -- Refresh from WCL (calculates ilvl-bracket scores for DPS/healers), enter
-   manual scores for tanks, then Commit to Scoring Sheet (copies Recent Score into the official
-   Performance value Priority Generator uses).
+3. **Scoring tab** -- Refresh from WCL (calculates ilvl-bracket scores for DPS), enter manual
+   scores for tanks/healers, then Commit Performance Scores (saves the Recent score into the
+   official Performance value Priority Generator uses).
 4. **Priority tab** -- re-run Suggest Order for any item that just became contested.
 
 ### Ongoing -- review these as submissions come in
@@ -141,8 +141,8 @@ Three sub-tabs:
     No Show, or Not on Roster. Saves immediately (checkmark confirms).
   - **Exclude Report** toggle per raid night -- for alt runs or the wrong zone getting pulled
     in; excludes that whole night from scoring.
-  - **Commit Scores to Sheet** -- recalculates every player's attendance % and writes it to the
-    Scoring sheet. Safe to run repeatedly; always recalculates from scratch.
+  - **Commit Attendance Scores** -- recalculates every player's attendance % and saves it to
+    Scoring. Safe to run repeatedly; always recalculates from scratch.
 - **Attendance Scores** -- threshold slider (default 95%); lists players at or below it with
   their specific penalty dates.
 - **Bench Fairness** -- attendance view scoped to bench players specifically.
@@ -151,13 +151,12 @@ Three sub-tabs:
 
 ## Scoring tab
 
-- **Refresh from WCL** -- calculates an ilvl-bracket percentile score for DPS and healers from
-  recent Warcraft Logs reports, writing draft values into Recent and Trend. Tanks (and healers,
-  per how scores are calculated) don't get an automatic score -- click their cell to enter one
-  manually.
+- **Refresh from WCL** -- calculates an ilvl-bracket percentile score for DPS from recent
+  Warcraft Logs reports, holding draft Recent/Trend/Best values in a session cache. Tanks and
+  healers don't get an automatic score -- click their cell to enter one manually.
 - "use" next to the Trend score applies the widest-lookback Best score instead of Recent, if
   that reads more fairly for someone with a rough recent run.
-- **Commit to Scoring Sheet** -- copies the Recent Score into the official Performance value
+- **Commit Performance Scores** -- saves the Recent score into the official Performance value
   that Priority Generator actually reads. Safe to run repeatedly.
 - Color legend: green >=7.0 (Strong), gold >=5.0 (Average), dim <5.0 (Below average), purple
   (Trend fallback -- no recent data), red (No data), grey (Excluded -- Tank/Healer).

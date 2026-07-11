@@ -8,7 +8,11 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [3.33.10] - 2026-07-11
+## [3.33.11] - 2026-07-11
+
+### Frontend
+
+- **Renamed the Scoring tab's "Commit to Scoring Sheet" button to "Commit Performance Scores" (#242).** It's been writing directly to `scoring.performance_score` in Supabase since #432 (#223 stage 2) -- the label and its help text (including the confirm-banner prompt) still described the old GAS behavior of copying a "Recent Score" spreadsheet column into a "Performance" column, which was actively wrong, not just stale phrasing. The Attendance tab's matching button was already renamed to "Commit Attendance Scores" in an earlier pass; this finishes the other half. Also fixed a handful of leftover "Scoring sheet"/"Commit Scores to Sheet" references in the Season Rollover Guide help card, `docs/officer-walkthrough.md`, and `README.md` that no longer matched the current button labels, and corrected stale wording claiming healers get an automatic WCL performance score (they're manual, same as tanks).
 
 ### Frontend
 
