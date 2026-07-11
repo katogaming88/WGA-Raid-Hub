@@ -6,6 +6,18 @@ Issues carrying a decision are tagged with the `decision` label: `gh issue list 
 
 ---
 
+## 2026-07-16 -- Self-received request write path (#406): both submit and direct-mark go through SECURITY DEFINER RPCs, auto-approve now checks real Supabase Auth
+
+`self_received_requests` fit the live feature exactly (`track`/`source`/`note` match `submitSelfReceivedRequest`'s payload one-to-one) -- it just never had an INSERT path or any frontend reference, matching #404/#405's finding for the other two request tables.
+
+- **Two new RPCs, both SECURITY DEFINER: `submit_self_received()` (raider, granted to `anon`+`authenticated`) and `direct_mark_received()` (officer, granted to `authenticated` only).** Unlike `submit_bis_link()`/`submit_mplus_exclusion()`, the officer path here also needed a definer function rather than a plain RLS-gated insert -- `tests/rls/write-policies.test.js` already asserts request tables have no INSERT policy for anyone, officers included, so `direct_mark_received()` checks `my_team_role()`/`is_site_admin()` inside the function body instead.
+- **Auto-approve now checks `auth.uid()` through `players.team_member_id -> team_members.auth_user_id`, replacing GAS's legacy Discord OAuth session-token check.** #222 already moved login itself onto Supabase Auth (`js/discord.js`'s `getDiscordSession()` wraps a real Supabase Auth session, not a GAS token), so "is the submitting raider signed in as this character" is a straight join instead of a client-supplied token GAS had to independently validate.
+- **`DATA.selfReceived` (a player's approved self-received items, used for BiS-completion and profile badges) now reads from Supabase first, falling back to the Apps Script heavy chunk** -- same pattern as `bisList`/`priorityOrder` (#217, #220). Only `approved` rows are pulled; pending/rejected stay officer-queue-only.
+
+[Full discussion -> #406](https://github.com/katogaming88/WGA-Raid-Hub/issues/406)
+
+---
+
 ## 2026-07-15 -- Site-admin cross-team access on request tables (#413): four tables were missing OR is_site_admin()
 
 While verifying #403's historical Hellfire signup backfill actually landed in production, the officer Signups History tab showed "No signups recorded" despite the data being confirmed correct via direct read-only access. Root cause: `my_team_role(team_id)` resolves per-team from `team_members`, and Kat's own account isn't a `team_members` row on Hellfire's team (a different Discord account holds team_leader there) -- so as far as RLS was concerned, the account had zero role on that team, same as any stranger.

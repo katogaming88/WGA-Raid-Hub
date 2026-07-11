@@ -8,7 +8,11 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## 2026-07-10 (backend only, no version bump)
+## [3.32.10] - 2026-07-10
+
+### Frontend
+
+- **Wired self-received loot requests to Supabase (#406).** `self_received_requests` already had "Officers read/update" RLS in place and fit the live feature's fields exactly (`track`/`source`/`note`) -- it just never had an INSERT path or any frontend reference, so raider submission, officer approve/reject, and officer direct-mark were all still GAS-only. Adds `submit_self_received()` and `direct_mark_received()` (both SECURITY DEFINER, since request tables have no INSERT policy for anyone, officers included), moves the officer Requests tab onto direct Supabase reads/updates, and switches a player's approved self-received items to a Supabase-sourced read with the Apps Script heavy chunk as fallback. The GAS auto-approve-on-matching-Discord-session check is replaced with a real `auth.uid()` lookup through `players.team_member_id -> team_members.auth_user_id`, now that #222 has login itself on Supabase Auth -- no more trusting a client-supplied legacy session token.
 
 ### Backend
 

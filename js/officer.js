@@ -264,10 +264,6 @@ function setNavBadge(id, count) {
 }
 
 function updateNavBadges() {
-  jsonpRequest(WEB_APP_URL + '?action=getPendingCounts', function (err, result) {
-    if (err || !result) return;
-    setNavBadge('requestsNavBadge', result.requests || 0);
-  });
   fetchSupabaseSignupCounts(function (err, counts) {
     if (err || !counts) return;
     setNavBadge('signupsNavBadge', counts.signups + counts.pendingRoster);
@@ -280,6 +276,10 @@ function updateNavBadges() {
   fetchSupabasePendingCount('mplus_exclusion_requests', function (err, count) {
     if (err) return;
     setNavBadge('mplusNavBadge', count);
+  });
+  fetchSupabasePendingCount('self_received_requests', function (err, count) {
+    if (err) return;
+    setNavBadge('requestsNavBadge', count);
   });
 }
 
@@ -302,11 +302,10 @@ function fetchSupabasePendingCount(table, callback) {
     });
 }
 
-// signups/pendingRoster/bis/mplus nav badge counts, read from Supabase now
-// that the officer Signups/Pending Roster/BiS/M+ tabs are Supabase-only
-// (#328, #403, #404, #405) -- the GAS getPendingCounts equivalents counted
-// rows in sheets none of these tabs read anymore. requests above stays
-// GAS-sourced until self_received_requests gets a write path (#406).
+// signups/pendingRoster/bis/mplus/requests nav badge counts, read from
+// Supabase now that every officer request tab is Supabase-only (#328, #403,
+// #404, #405, #406) -- the GAS getPendingCounts equivalents counted rows in
+// sheets none of these tabs read anymore.
 function fetchSupabaseSignupCounts(callback) {
   if (!supabaseClient) {
     callback(new Error('Not connected to Supabase.'));

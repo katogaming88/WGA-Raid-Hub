@@ -56,6 +56,8 @@
 | public.submit_season_signup | int4 | p_team_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text | FUNCTION |
 | public.submit_bis_link | int4 | p_team_id integer, p_name_realm text, p_bis_link text, p_player_note text DEFAULT NULL::text | FUNCTION |
 | public.submit_mplus_exclusion | int4 | p_team_id integer, p_name_realm text, p_raiderio_url text DEFAULT NULL::text, p_reason text DEFAULT NULL::text | FUNCTION |
+| public.submit_self_received | record | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text | FUNCTION |
+| public.direct_mark_received | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text | FUNCTION |
 
 ## Enums
 
