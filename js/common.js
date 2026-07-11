@@ -1311,9 +1311,16 @@ function mapSupabaseItemBosses(rows) {
 // if the Supabase query itself fails/times out (resultRows === null); an
 // empty-but-successful result is trusted as genuinely no data yet, not
 // reached around, since Supabase is authoritative for attendance from here on.
+// No timeout race against the GAS heavy payload here, unlike this repo's
+// other fetchSupabaseX() helpers -- for those, a slow query racing a stale-
+// but-still-updating GAS fallback is a reasonable tradeoff. For attendance,
+// the GAS fallback is permanently frozen (refreshAttendance stopped writing
+// to that sheet), so silently substituting it on mere slowness would swap
+// correct data for confidently-wrong data instead of just being slow. Only
+// a genuine query failure (caught below) falls back.
 function fetchSupabaseAttendanceRaw() {
   if (!supabaseClient) return Promise.resolve(null);
-  var query = supabaseClient
+  return supabaseClient
     .from('attendance')
     .select('player_id, raid_date, status, report_excluded')
     .eq('team_id', _teamCfg.supabaseTeamId)
@@ -1328,12 +1335,6 @@ function fetchSupabaseAttendanceRaw() {
       console.warn('Supabase attendance query failed.', err);
       return null;
     });
-  var timeout = new Promise(function (resolve) {
-    setTimeout(function () {
-      resolve(null);
-    }, 10000);
-  });
-  return Promise.race([query, timeout]);
 }
 
 // Builds the {raidDates, players, joinDates} shape GAS's getRawAttendanceData
