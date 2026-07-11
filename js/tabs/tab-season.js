@@ -668,6 +668,8 @@ function renderRaidProgressionCards() {
     html += '<span id="wclFetchStatus_' + i + '" style="font-size:0.8rem;color:var(--text-muted);"></span>';
     html += '</div>';
     html +=
+      '<p style="font-size:0.8rem;color:var(--melee);margin:-0.4rem 0 0.75rem;">Click List first to see encounter IDs and set the Encounters from/to range -- fetching without narrowing the range pulls every fight logged in that zone, including M+ dungeon bosses.</p>';
+    html +=
       '<div id="wclEncList_' +
       i +
       '" style="display:none;font-size:0.8rem;color:var(--text-muted);background:rgba(0,0,0,0.2);border-radius:4px;padding:0.5rem 0.75rem;margin-bottom:0.75rem;line-height:1.8;"></div>';
