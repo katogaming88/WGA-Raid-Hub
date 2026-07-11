@@ -98,16 +98,18 @@ function renderSeasonHistory() {
 
 // #264: only raids with a WCL zone ID recorded can be fetched from.
 //
-// Multiple raid-progression entries can share the same WCL zone -- this
-// app tracks content-patch "wings" of one raid as separate boss-kill-date
-// entries (e.g. Dreamrift/Voidspire/March on Quel'Danas all point at the
-// same WCL zone 46, confirmed live), but WCL's zoneRankings is scoped by
-// zone alone, so querying any of them returns identical data under a
-// different, confusing label. The picker dedupes to one option per
-// distinct zone, using whichever entry in that zone has the most bosses as
-// its label (the "real" raid tier, as opposed to a one/two-boss
-// content-patch wing sharing the same zone) -- and defaults to the
-// non-mini-raid zone with the most total bosses across its entries.
+// Multiple raid-progression entries can share the same WCL zone -- most
+// seasons have just one raid instance, but a season with several separate
+// raid releases (e.g. Dreamrift/Voidspire/March on Quel'Danas were three
+// distinct raids across one season, confirmed live) can still have WCL
+// scope its performance rankings to one season-wide zone (46) spanning all
+// of them, rather than a zone per raid. Since zoneRankings is scoped by
+// zone alone, querying any of those raid-progression entries returns
+// identical data under a different, confusing label. The picker dedupes to
+// one option per distinct zone, using whichever entry in that zone has the
+// most bosses as its label (the main raid, as opposed to a shorter release
+// sharing the same zone) -- and defaults to the non-mini-raid zone with the
+// most total bosses across its entries.
 function _renderSeasonPerfFetchRow(season, historyIndex) {
   var raids = (season.raids || []).filter(function (r) {
     return r.wclZoneId;
