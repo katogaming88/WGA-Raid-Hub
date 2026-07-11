@@ -34,10 +34,12 @@ function showState(name) {
   });
 }
 
-// Same nav-item/tab-panel setup and switchTab() shape as officer.js. All
-// four tabs' data is small (a handful of teams/site admins/flag rows and up
-// to 300 audit entries), so it's loaded eagerly on login rather than
-// per-tab -- switching tabs here is pure visibility toggling, no fetch.
+// Same nav-item/tab-panel setup and switchTab() shape as officer.js,
+// including its per-tab refresh-on-switch convention -- data is loaded once
+// eagerly at login too (so a first paint doesn't need a click first), but
+// without refetching here, switching to Audit Log after toggling a flag on
+// the Feature Flags tab would still show whatever was fetched at login,
+// same problem officer.js avoids by rebuilding each tab on every switch.
 function switchTab(name) {
   document.querySelectorAll('.nav-item').forEach(function (b) {
     b.classList.remove('active');
@@ -47,6 +49,10 @@ function switchTab(name) {
   });
   event.target.classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'teams') loadTeams();
+  if (name === 'siteadmins') loadSiteAdmins();
+  if (name === 'flags') loadTeams().then(loadFeatureFlags);
+  if (name === 'audit') loadAuditLog();
 }
 
 function checkAdminAccess() {
