@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.32.9] - 2026-07-16
+
+### Frontend
+
+- **Fixed Pending Roster card layout and Trial defaulting.** The card header's `justify-content:space-between` (shared with the Signups tab, which has no selection checkbox) spread the checkbox/name/badges across the row once a checkbox was added for the selection-based push feature, leaving the name visually adrift from the class/spec line below it -- grouped checkbox+name+New/Update badge into one flex item so they stay clustered at the left edge. The `Trial` checkbox also no longer defaults on for every card: roster signups are normally returning raiders re-upping for next season, not new recruits, so it now defaults on only for genuinely new characters (and off for main-swap signups, which are always a returning raider under a new name even when the name itself is new to the roster).
+
 ## [3.32.8] - 2026-07-14
 
 ### Frontend
