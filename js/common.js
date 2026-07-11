@@ -1318,23 +1318,40 @@ function mapSupabaseItemBosses(rows) {
 // to that sheet), so silently substituting it on mere slowness would swap
 // correct data for confidently-wrong data instead of just being slow. Only
 // a genuine query failure (caught below) falls back.
+//
+// Paginated (PostgREST caps an unpaginated select at 1000 rows server-side):
+// a season or two of attendance easily exceeds that for an active team, and
+// without an explicit order, which 1000 rows come back on any given request
+// isn't even guaranteed stable -- silently truncating produced different,
+// wrong attendance percentages on different page loads instead of an
+// obvious failure.
+var ATTENDANCE_FETCH_PAGE_SIZE = 1000;
 function fetchSupabaseAttendanceRaw() {
   if (!supabaseClient) return Promise.resolve(null);
-  return supabaseClient
-    .from('attendance')
-    .select('player_id, raid_date, status, report_excluded')
-    .eq('team_id', _teamCfg.supabaseTeamId)
-    .then(function (result) {
-      if (result.error) {
-        console.warn('Supabase attendance query failed.', result.error.message);
-        return null;
-      }
-      return result.data || [];
-    })
-    .catch(function (err) {
-      console.warn('Supabase attendance query failed.', err);
-      return null;
-    });
+
+  function fetchPage(offset, accumulated) {
+    return supabaseClient
+      .from('attendance')
+      .select('player_id, raid_date, status, report_excluded')
+      .eq('team_id', _teamCfg.supabaseTeamId)
+      .order('id', { ascending: true })
+      .range(offset, offset + ATTENDANCE_FETCH_PAGE_SIZE - 1)
+      .then(function (result) {
+        if (result.error) {
+          console.warn('Supabase attendance query failed.', result.error.message);
+          return null;
+        }
+        var rows = result.data || [];
+        var all = accumulated.concat(rows);
+        if (rows.length < ATTENDANCE_FETCH_PAGE_SIZE) return all;
+        return fetchPage(offset + ATTENDANCE_FETCH_PAGE_SIZE, all);
+      });
+  }
+
+  return fetchPage(0, []).catch(function (err) {
+    console.warn('Supabase attendance query failed.', err);
+    return null;
+  });
 }
 
 // Builds the {raidDates, players, joinDates} shape GAS's getRawAttendanceData
@@ -1430,6 +1447,17 @@ function getSeasonDateRange() {
 
 // Computes attendance % for a player for the active season from rawAttendanceData.
 // Returns a string like "95.0%" or null if data unavailable.
+//
+// Denominator is this player's own recorded nights only (status !== 'Not on
+// Roster'), same as executeCommitScores' scoring.attendance_pct calculation
+// (js/tabs/tab-attendance.js) -- a team-wide raid-night count was ported
+// from GAS's buildAttendanceMap here initially, but that counted any night
+// this player has no row for at all (WCL didn't find them, not bench-
+// flagged, no officer override yet) as an implicit zero, silently dragging
+// the percentage down for nights nobody ever actually marked them absent
+// for. GAS itself was inconsistent about this (its commit-to-Scoring
+// calculation already used the player's own night count, not the team's) --
+// this makes both agree on the same definition.
 function computeSeasonAttendancePct(firstName) {
   var raw = DATA && DATA.rawAttendanceData;
   if (!raw) return null;
@@ -1437,47 +1465,28 @@ function computeSeasonAttendancePct(firstName) {
   var range = getSeasonDateRange();
   var start = range.start;
   var end = range.end;
-  var allDates = raw.raidDates || [];
   var playerRecs = (raw.players || {})[firstName] || [];
   var joinDate = (raw.joinDates || {})[firstName] || '';
 
-  // Filter raid dates to the season window
-  var seasonDates = allDates.filter(function (d) {
-    return (!start || d >= start) && (!end || d <= end);
-  });
-
   // Determine this player's effective start within the season
   var effectiveStart = joinDate && (!start || joinDate > start) ? joinDate : start || '';
-  var eligible = effectiveStart
-    ? seasonDates.filter(function (d) {
-        return d >= effectiveStart;
-      })
-    : seasonDates;
 
-  if (!eligible.length) return null;
-
-  // Filter player records to eligible window
   var eligibleRecs = playerRecs.filter(function (r) {
-    return (!effectiveStart || r.date >= effectiveStart) && (!start || r.date >= start) && (!end || r.date <= end);
+    return (
+      (!effectiveStart || r.date >= effectiveStart) &&
+      (!start || r.date >= start) &&
+      (!end || r.date <= end) &&
+      r.status !== 'Not on Roster'
+    );
   });
-
-  // Exclude "Not on Roster" dates from countable denominator
-  var norDates = {};
-  eligibleRecs.forEach(function (r) {
-    if (r.status === 'Not on Roster') norDates[r.date] = true;
-  });
-  var countable = eligible.filter(function (d) {
-    return !norDates[d];
-  }).length;
-  if (!countable) return null;
+  if (!eligibleRecs.length) return null;
 
   var sum = eligibleRecs.reduce(function (acc, r) {
-    if (r.status === 'Not on Roster') return acc;
     var w = ATTENDANCE_WEIGHTS_JS[r.status];
     return acc + (w != null ? w : 0);
   }, 0);
 
-  return (Math.round((sum / countable) * 1000) / 10).toFixed(1) + '%';
+  return (Math.round((sum / eligibleRecs.length) * 1000) / 10).toFixed(1) + '%';
 }
 
 // Returns attendance % for a player: prefers computed value from rawAttendanceData
