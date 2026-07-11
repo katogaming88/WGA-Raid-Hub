@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.32.11] - 2026-07-11
+
+### Frontend
+
+- **Fixed BiS list editor rejecting real items for Hands/Waist/Feet/Weapon/Off Hand (and, less visibly, Shoulder/Back/Wrist/Finger).** `BIS_CATALOG_SLOT_TO_ROWS` (`js/tabs/tab-bis.js`) mapped a slot vocabulary (`Hands`/`Waist`/`Feet`/`Two-Hand`/`One-Hand`/`Ranged`/`Off Hand`) that never matched what `items.slot` actually stores -- confirmed against the live table, which uses `Gloves`/`Belt`/`Boots`/`Bracers`/`Cloak`/`Shoulders`/`1H/2H`/`OH` (the literal values the Item Lookup sheet's "slot" column uses). Only `Head`/`Neck`/`Chest`/`Legs`/`Trinket` happened to match by coincidence, which is why those slots worked while the rest only ever offered the M+/Crafted/Catalyst placeholders in the item search. `getSlotColor` (`js/common.js`) had the same wrong vocabulary baked in, silently graying out slot-color coding on the Priority and Conflicts tabs and player profiles for the same items; extended it to recognize both vocabularies.
+- **Zebra-striped the BiS list editor's slot rows** -- with every row the same bordered box and background, a dense 16-slot list was hard to scan row-to-row; alternating rows now get a faint background tint.
+
 ## [3.32.10] - 2026-07-10
 
 ### Frontend

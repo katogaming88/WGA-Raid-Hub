@@ -513,10 +513,12 @@ function bisSlotBuckets(items) {
   return { buckets: buckets, leftover: leftover };
 }
 
-function bisSlotRowHTML(label, colorSlot, index, entry, isEmpty, isActive) {
+function bisSlotRowHTML(label, colorSlot, index, entry, isEmpty, isActive, rowPosition) {
   var html =
     '<div style="display:flex;align-items:center;gap:0.5rem;font-size:0.95rem;padding:0.3rem 0.5rem;' +
-    'border-radius:4px;border:1px solid var(--border);">' +
+    'border-radius:4px;border:1px solid var(--border);background:' +
+    (rowPosition % 2 ? 'rgba(255,255,255,0.03)' : 'transparent') +
+    ';">' +
     '<span style="min-width:5rem;color:' +
     getSlotColor(colorSlot) +
     ';font-size:0.85rem;">' +
@@ -594,7 +596,8 @@ function bisEditorHTML() {
       bucket ? bucket.index : -1,
       bucket ? bucket.entry : null,
       !bucket,
-      _bisActiveSlot === slotName
+      _bisActiveSlot === slotName,
+      s
     );
   }
   html += '</div>';
@@ -603,8 +606,8 @@ function bisEditorHTML() {
     html +=
       '<p style="font-size:0.82rem;color:var(--text-dim);margin:0.3rem 0 0.2rem;">Other (doesn\'t match a standard slot):</p>' +
       '<div style="display:flex;flex-direction:column;gap:2px;margin-bottom:0.6rem;">';
-    leftover.forEach(function (u) {
-      html += bisSlotRowHTML(u.entry.slot || '?', u.entry.slot, u.index, u.entry, false, false);
+    leftover.forEach(function (u, li) {
+      html += bisSlotRowHTML(u.entry.slot || '?', u.entry.slot, u.index, u.entry, false, false, li);
     });
     html += '</div>';
   }
