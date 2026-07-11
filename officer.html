@@ -1,1886 +1,1164 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Phoenix -- Officer</title>
-    <link
-      rel="icon"
-      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>"
-    />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="css/styles.css" />
-    <link rel="stylesheet" href="css/officer.css" />
-  </head>
 
-  <body>
-    <header class="header">
-      <a href="index.html" class="header-link">
-        <span class="header-emblem">🔥</span>
-        <h1 id="headerTeamName">Phoenix</h1>
-        <p class="header-sub">Raid Hub</p>
-      </a>
-      <div class="header-divider"></div>
-    </header>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phoenix -- Officer</title>
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/officer.css">
+</head>
 
-    <nav class="site-nav" id="siteNav">
-      <a href="index.html" class="site-nav-item" id="navHome" data-tooltip="Back to the roster overview">Home</a>
-      <div class="site-nav-right">
-        <select id="teamSwitcherSelect" class="team-switcher" title="Switch team"></select>
-        <button
-          class="site-nav-item site-nav-discord"
-          id="navDiscord"
-          onclick="loginWithDiscord()"
-          data-tooltip="Sign in with Discord -- officers with a claimed character bypass the password prompt"
-        >
-          Login with Discord
-        </button>
-        <button
-          class="site-nav-item active"
-          id="navOfficer"
-          data-tooltip="Officer dashboard -- manage roster, loot, and signups"
-        >
-          Officer Access
-        </button>
-      </div>
-    </nav>
+<body>
 
-    <div id="loadingMsg" class="state-msg">
-      <div class="spinner"></div>
-      <br />Loading roster data...
+  <header class="header">
+    <a href="index.html" class="header-link">
+      <span class="header-emblem">🔥</span>
+      <h1 id="headerTeamName">Phoenix</h1>
+      <p class="header-sub">Raid Hub</p>
+    </a>
+    <div class="header-divider"></div>
+  </header>
+
+  <nav class="site-nav" id="siteNav">
+    <a href="index.html" class="site-nav-item" id="navHome" data-tooltip="Back to the roster overview">Home</a>
+    <div class="site-nav-right">
+      <select id="teamSwitcherSelect" class="team-switcher" title="Switch team"></select>
+      <button class="site-nav-item site-nav-discord" id="navDiscord" onclick="loginWithDiscord()" data-tooltip="Sign in with Discord -- officers with a claimed character bypass the password prompt">Login with Discord</button>
+      <button class="site-nav-item active" id="navOfficer" data-tooltip="Officer dashboard -- manage roster, loot, and signups">Officer Access</button>
     </div>
+  </nav>
 
-    <div id="officerViewWrap" class="view">
-      <div id="officerView">
-        <div class="officer-toolbar">
-          <div>
-            <h2>Officer Dashboard</h2>
-            <span id="dataTimestamp" class="data-timestamp"></span>
-          </div>
-          <div class="season-selector-wrap" id="seasonSelectorWrap" style="display: none">
-            <label class="season-selector-label" for="seasonSelector">Season:</label>
-            <select id="seasonSelector" class="season-selector-select" onchange="setActiveSeason(this.value)"></select>
-          </div>
-          <div style="display: flex; gap: 0.5rem">
-            <button id="clearCacheBtn" class="btn btn-muted" onclick="clearCache()">Clear Cache</button>
-            <a href="index.html" class="btn btn-muted">Back to Roster</a>
-            <button class="btn btn-muted" onclick="officerLogout()">Log out</button>
-          </div>
+  <div id="loadingMsg" class="state-msg">
+    <div class="spinner"></div><br>Loading roster data...
+  </div>
+
+  <div id="officerViewWrap" class="view">
+    <div id="officerView">
+      <div class="officer-toolbar">
+        <div>
+          <h2>Officer Dashboard</h2>
+          <span id="dataTimestamp" class="data-timestamp"></span>
         </div>
+        <div class="season-selector-wrap" id="seasonSelectorWrap" style="display:none;">
+          <label class="season-selector-label" for="seasonSelector">Season:</label>
+          <select id="seasonSelector" class="season-selector-select" onchange="setActiveSeason(this.value)"></select>
+        </div>
+        <div style="display:flex;gap:0.5rem;">
+          <button id="clearCacheBtn" class="btn btn-muted" onclick="clearCache()">Clear Cache</button>
+          <a href="index.html" class="btn btn-muted">Back to Roster</a>
+          <button class="btn btn-muted" onclick="officerLogout()">Log out</button>
+        </div>
+      </div>
 
-        <div id="officerStats" class="officer-stats"></div>
+      <div id="officerStats" class="officer-stats"></div>
 
-        <div class="officer-body">
-          <nav class="officer-sidebar">
-            <button class="nav-item active" onclick="switchTab('roster')">Roster</button>
-            <button class="nav-item" onclick="switchTab('loot')">Loot</button>
-            <button class="nav-item" onclick="switchTab('priority')">
-              Priority<span class="nav-notif nav-notif-abs" id="prioNavBadge" style="display: none"></span>
-            </button>
-            <button class="nav-item" onclick="switchTab('bis')">
-              BiS Manager<span class="nav-notif nav-notif-abs" id="bisNavBadge" style="display: none"></span>
-            </button>
-            <button class="nav-item" onclick="switchTab('attendance')">Attendance</button>
-            <button class="nav-item" onclick="switchTab('scoring')">Scoring</button>
-            <button class="nav-item" onclick="switchTab('signups')">
-              Signups<span class="nav-notif nav-notif-abs" id="signupsNavBadge" style="display: none"></span>
-            </button>
-            <button class="nav-item" onclick="switchTab('mplus')">
-              M+ Exclusions<span class="nav-notif nav-notif-abs" id="mplusNavBadge" style="display: none"></span>
-            </button>
-            <button class="nav-item" onclick="switchTab('requests')">
-              Received Item Requests<span
-                class="nav-notif nav-notif-abs"
-                id="requestsNavBadge"
-                style="display: none"
-              ></span>
-            </button>
-            <div class="nav-admin-divider"></div>
-            <button class="nav-item" onclick="switchTab('season')">Season Settings</button>
-            <button class="nav-item" onclick="switchTab('audit')">Audit Log</button>
-            <button class="nav-item" onclick="switchTab('reports')">Reports</button>
-            <button class="nav-item" onclick="switchTab('help')">Help</button>
-            <div class="nav-admin-divider"></div>
-            <button class="nav-item nav-item-admin" id="adminNavBtn" onclick="switchTab('admin')" style="display: none">
-              Admin
-            </button>
-          </nav>
+      <div class="officer-body">
+        <nav class="officer-sidebar">
+          <button class="nav-item active" onclick="switchTab('roster')">Roster</button>
+          <button class="nav-item" onclick="switchTab('loot')">Loot</button>
+          <button class="nav-item" onclick="switchTab('priority')">Priority<span class="nav-notif nav-notif-abs"
+              id="prioNavBadge" style="display:none;"></span></button>
+          <button class="nav-item" onclick="switchTab('bis')">BiS Manager<span class="nav-notif nav-notif-abs"
+              id="bisNavBadge" style="display:none;"></span></button>
+          <button class="nav-item" onclick="switchTab('attendance')">Attendance</button>
+          <button class="nav-item" onclick="switchTab('scoring')">Scoring</button>
+          <button class="nav-item" onclick="switchTab('signups')">Signups<span class="nav-notif nav-notif-abs"
+              id="signupsNavBadge" style="display:none;"></span></button>
+          <button class="nav-item" onclick="switchTab('mplus')">M+ Exclusions<span class="nav-notif nav-notif-abs"
+              id="mplusNavBadge" style="display:none;"></span></button>
+          <button class="nav-item" onclick="switchTab('requests')">Received Item Requests<span
+              class="nav-notif nav-notif-abs" id="requestsNavBadge" style="display:none;"></span></button>
+          <div class="nav-admin-divider"></div>
+          <button class="nav-item" onclick="switchTab('season')">Season Settings</button>
+          <button class="nav-item" onclick="switchTab('audit')">Audit Log</button>
+          <button class="nav-item" onclick="switchTab('reports')">Reports</button>
+          <button class="nav-item" onclick="switchTab('help')">Help</button>
+          <div class="nav-admin-divider"></div>
+          <button class="nav-item nav-item-admin" id="adminNavBtn" onclick="switchTab('admin')" style="display:none;">Admin</button>
+        </nav>
 
-          <div class="officer-main">
-            <!-- Roster tab -->
-            <div id="tab-roster" class="tab-panel active">
-              <div class="filter-bar" style="margin-bottom: 1rem">
-                <button
-                  class="filter-chip active"
-                  id="roster-subtab-btn-roster"
-                  onclick="switchRosterSubTab('roster', this)"
-                >
-                  Roster
-                </button>
-                <button
-                  class="filter-chip"
-                  id="roster-subtab-btn-discord"
-                  onclick="switchRosterSubTab('discord', this)"
-                >
-                  Discord Claims
-                </button>
-              </div>
-
-              <div id="roster-sub-roster">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem">
-                  <span class="section-label" style="margin-bottom: 0"
-                    >Roster<button class="help-btn" onclick="toggleHelp('help-roster')" title="Show help">
-                      ?
-                    </button></span
-                  >
-                </div>
-                <div id="help-roster" class="help-tip" style="margin-top: 0; margin-bottom: 0.75rem">
-                  Click a player row to open their <strong>profile card</strong> below the table. From there you can
-                  edit class, spec, role, trial/bench status, join date, BiS link, nickname, M+ exclusion, and officer
-                  notes.<br />
-                  To rename a player (character name or realm change), use the <strong>Name/Realm</strong> field in
-                  their profile card and click Save. This also updates their name in the Attendance and Loot sheets.<br />
-                  <strong>+ Add Player</strong> button in the top-right of the roster table header adds a new player
-                  directly to the Roster sheet.<br />
-                  The <strong>trial promotion banner</strong> appears automatically when a trial has been on the roster
-                  long enough with sufficient attendance to warrant a promotion review.
-                </div>
-                <div class="roster-search-row">
-                  <input
-                    type="text"
-                    id="rosterSearch"
-                    class="roster-search-input"
-                    placeholder="Search player..."
-                    oninput="buildRosterTable()"
-                  />
-                  <div class="bis-search-wrap">
-                    <input
-                      type="text"
-                      id="bisItemSearch"
-                      class="roster-search-input"
-                      placeholder="Has BiS item..."
-                      oninput="buildRosterTable()"
-                    />
-                    <span id="bisItemCount" class="bis-item-count"></span>
-                  </div>
-                </div>
-                <div class="filter-bar" style="margin-bottom: 0.35rem">
-                  <span style="font-size: 0.78rem; color: var(--text); margin-right: 0.25rem">Filter:</span>
-                  <button class="filter-chip" onclick="toggleFilter('lowAttend')" id="chip-lowAttend">
-                    Low Attendance (&lt;95%)
-                  </button>
-                  <button class="filter-chip" onclick="toggleFilter('noBis')" id="chip-noBis">No BiS Link</button>
-                  <button class="filter-chip" onclick="toggleFilter('trial')" id="chip-trial">Trials Only</button>
-                  <button class="filter-chip" onclick="toggleFilter('bench')" id="chip-bench">Bench Only</button>
-                </div>
-                <div class="filter-bar">
-                  <span style="font-size: 0.78rem; color: var(--text); margin-right: 0.25rem">Role:</span>
-                  <button class="filter-chip" onclick="toggleRole('Tank')" id="chip-role-Tank">Tanks</button>
-                  <button class="filter-chip" onclick="toggleRole('Heal')" id="chip-role-Heal">Healers</button>
-                  <button class="filter-chip" onclick="toggleRole('Melee')" id="chip-role-Melee">Melee</button>
-                  <button class="filter-chip" onclick="toggleRole('Ranged')" id="chip-role-Ranged">Ranged</button>
-                </div>
-                <div class="filter-bar" style="margin-bottom: 0.35rem">
-                  <span style="font-size: 0.78rem; color: var(--text); margin-right: 0.25rem">Sort:</span>
-                  <button class="filter-chip" onclick="toggleSort('name')" id="chip-sort-name">Name</button>
-                  <button class="filter-chip" onclick="toggleSort('attendance')" id="chip-sort-attendance">
-                    Attendance
-                  </button>
-                  <button class="filter-chip" onclick="toggleSort('items')" id="chip-sort-items">Items</button>
-                </div>
-                <div id="trialPromoAlert"></div>
-                <div id="rosterBuffCoverage"></div>
-                <table class="roster-table" id="rosterTable"></table>
-                <div id="officerProfile"></div>
-              </div>
-
-              <div id="roster-sub-discord" style="display: none">
-                <p class="signup-officer-note" style="margin-bottom: 0.75rem">
-                  Characters claimed by raiders via Discord login. Remove a claim if a raider linked the wrong
-                  character. Officer promotion happens in the Admin tab's Officers sub-tab.
-                </p>
-                <div id="rosterDiscordClaimsContent"></div>
-              </div>
+        <div class="officer-main">
+          <!-- Roster tab -->
+          <div id="tab-roster" class="tab-panel active">
+            <div class="filter-bar" style="margin-bottom:1rem;">
+              <button class="filter-chip active" id="roster-subtab-btn-roster"
+                onclick="switchRosterSubTab('roster', this)">Roster</button>
+              <button class="filter-chip" id="roster-subtab-btn-discord"
+                onclick="switchRosterSubTab('discord', this)">Discord Claims</button>
             </div>
 
-            <!-- Loot tab (Import + Import History + Loot Fairness sub-tabs) -->
-            <div id="tab-loot" class="tab-panel">
-              <div class="filter-bar" style="margin-bottom: 1rem">
-                <button
-                  class="filter-chip active"
-                  id="loot-subtab-btn-import"
-                  onclick="switchLootSubTab('import', this)"
-                >
-                  Import
-                </button>
-                <button class="filter-chip" id="loot-subtab-btn-history" onclick="switchLootSubTab('history', this)">
-                  Import History
-                </button>
-                <button class="filter-chip" id="loot-subtab-btn-fairness" onclick="switchLootSubTab('fairness', this)">
-                  Loot Fairness
-                </button>
+            <div id="roster-sub-roster">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+                <span class="section-label" style="margin-bottom:0;">Roster<button class="help-btn" onclick="toggleHelp('help-roster')" title="Show help">?</button></span>
               </div>
-              <div id="loot-sub-fairness" style="display: none">
-                <div class="filter-bar" style="margin-bottom: 1rem">
-                  <span style="font-size: 0.78rem; color: var(--text); margin-right: 0.25rem">Difficulty:</span>
-                  <button class="filter-chip active" id="diff-chip-all" onclick="setDiffFilter('all')">All</button>
-                  <button class="filter-chip" id="diff-chip-heroic" onclick="setDiffFilter('heroic')">Heroic</button>
-                  <button class="filter-chip" id="diff-chip-mythic" onclick="setDiffFilter('mythic')">Mythic</button>
+              <div id="help-roster" class="help-tip" style="margin-top:0;margin-bottom:0.75rem;">
+                Click a player row to open their <strong>profile card</strong> below the table. From there you can edit class, spec, role, trial/bench status, join date, BiS link, nickname, M+ exclusion, and officer notes.<br>
+                To rename a player (character name or realm change), use the <strong>Name/Realm</strong> field in their profile card and click Save. This also updates their name in the Attendance and Loot sheets.<br>
+                <strong>+ Add Player</strong> button in the top-right of the roster table header adds a new player directly to the Roster sheet.<br>
+                The <strong>trial promotion banner</strong> appears automatically when a trial has been on the roster long enough with sufficient attendance to warrant a promotion review.
+              </div>
+              <div class="roster-search-row">
+                <input type="text" id="rosterSearch" class="roster-search-input" placeholder="Search player..."
+                  oninput="buildRosterTable()">
+                <div class="bis-search-wrap">
+                  <input type="text" id="bisItemSearch" class="roster-search-input" placeholder="Has BiS item..."
+                    oninput="buildRosterTable()">
+                  <span id="bisItemCount" class="bis-item-count"></span>
                 </div>
-                <div id="fairnessContent"></div>
               </div>
-              <div id="loot-sub-import"></div>
-              <div id="loot-sub-history" style="display: none"></div>
+              <div class="filter-bar" style="margin-bottom:0.35rem;">
+                <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Filter:</span>
+                <button class="filter-chip" onclick="toggleFilter('lowAttend')" id="chip-lowAttend">Low Attendance
+                  (&lt;95%)</button>
+                <button class="filter-chip" onclick="toggleFilter('noBis')" id="chip-noBis">No BiS Link</button>
+                <button class="filter-chip" onclick="toggleFilter('trial')" id="chip-trial">Trials Only</button>
+                <button class="filter-chip" onclick="toggleFilter('bench')" id="chip-bench">Bench Only</button>
+              </div>
+              <div class="filter-bar">
+                <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Role:</span>
+                <button class="filter-chip" onclick="toggleRole('Tank')" id="chip-role-Tank">Tanks</button>
+                <button class="filter-chip" onclick="toggleRole('Heal')" id="chip-role-Heal">Healers</button>
+                <button class="filter-chip" onclick="toggleRole('Melee')" id="chip-role-Melee">Melee</button>
+                <button class="filter-chip" onclick="toggleRole('Ranged')" id="chip-role-Ranged">Ranged</button>
+              </div>
+              <div class="filter-bar" style="margin-bottom:0.35rem;">
+                <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
+                <button class="filter-chip" onclick="toggleSort('name')" id="chip-sort-name">Name</button>
+                <button class="filter-chip" onclick="toggleSort('attendance')"
+                  id="chip-sort-attendance">Attendance</button>
+                <button class="filter-chip" onclick="toggleSort('items')" id="chip-sort-items">Items</button>
+              </div>
+              <div id="trialPromoAlert"></div>
+              <div id="rosterBuffCoverage"></div>
+              <table class="roster-table" id="rosterTable"></table>
+              <div id="officerProfile"></div>
             </div>
 
-            <!-- Priority tab -->
-            <div id="tab-priority" class="tab-panel">
-              <div class="prio-export-card">
-                <div class="prio-export-header">
-                  <span class="prio-export-label">RCLootCouncil Export String</span>
-                  <button class="btn btn-muted" id="prioExportLoadBtn" onclick="fetchExportString()">Generate</button>
-                </div>
-                <div id="prioExportBody" style="display: none">
-                  <textarea id="prioExportStr" class="prio-export-textarea" readonly></textarea>
-                  <div class="prio-export-actions">
-                    <button class="btn btn-gold" onclick="copyExportString()">Copy to Clipboard</button>
-                    <span id="prioExportCopyMsg" class="prio-export-copy-msg" style="display: none">Copied!</span>
-                  </div>
-                </div>
-              </div>
-              <div class="filter-bar" style="margin-bottom: 0.5rem">
-                <button
-                  class="filter-chip active"
-                  id="prio-subtab-btn-list"
-                  onclick="switchPrioritySubTab('list', this)"
-                >
-                  Priority List
-                </button>
-                <button
-                  class="filter-chip"
-                  id="prio-subtab-btn-conflicts"
-                  onclick="switchPrioritySubTab('conflicts', this)"
-                >
-                  Contested Items
-                </button>
-                <button
-                  class="filter-chip"
-                  id="prio-subtab-btn-unmanaged"
-                  onclick="switchPrioritySubTab('unmanaged', this)"
-                >
-                  Unmanaged Items <span class="nav-notif" id="prioSubBadge" style="display: none"></span>
-                </button>
-                <button class="help-btn" onclick="toggleHelp('help-priority')" title="Show help">?</button>
-              </div>
-              <div id="help-priority" class="help-tip" style="margin-bottom: 0.75rem">
-                <strong>RCLootCouncil Export String</strong> -- click Generate to build an encoded string from the
-                current priority order and roster. Copy it and paste it into RCLootCouncil in-game to sync loot
-                priorities to your council.<br />
-                <strong>Priority List</strong> -- read-only view of every item's ranked priority order as set in the
-                Priority Order sheet. Use the search box to jump to a specific item.<br />
-                <strong>Unmanaged Items</strong> -- items that appear in players' BiS lists but have no priority order
-                assigned yet in the sheet. The badge count shows how many need attention.<br />
-                <strong>Contested Items</strong> -- items wanted by multiple players, showing current priority
-                assignments and flagging any player holding 1st priority on more than one item.
-              </div>
-              <div id="prio-sub-list">
-                <div class="filter-bar" style="margin-bottom: 0.75rem">
-                  <select
-                    id="prioBossFilter"
-                    class="roster-search-input"
-                    style="width: auto; min-width: 160px; margin-bottom: 0"
-                    onchange="buildPriorityTab()"
-                  >
-                    <option value="">All Bosses</option>
-                  </select>
-                  <label
-                    style="
-                      display: flex;
-                      align-items: center;
-                      gap: 6px;
-                      font-size: 0.85rem;
-                      color: var(--text-muted);
-                      cursor: pointer;
-                      margin-left: 4px;
-                    "
-                  >
-                    <input type="checkbox" id="prioHideEmpty" onchange="buildPriorityTab()" /> Hide empty
-                  </label>
-                </div>
-                <input
-                  type="text"
-                  id="prioSearch"
-                  class="roster-search-input"
-                  placeholder="Search items..."
-                  oninput="buildPriorityTab()"
-                  style="margin-bottom: 1rem"
-                />
-                <div id="priorityContent"></div>
-              </div>
-              <div id="prio-sub-unmanaged" style="display: none">
-                <div class="filter-bar" style="margin-bottom: 0.75rem">
-                  <select
-                    id="unmanagedBossFilter"
-                    class="roster-search-input"
-                    style="width: auto; min-width: 160px; margin-bottom: 0"
-                    onchange="buildUnmanagedTab()"
-                  >
-                    <option value="">All Bosses</option>
-                  </select>
-                </div>
-                <input
-                  type="text"
-                  id="unmanagedSearch"
-                  class="roster-search-input"
-                  placeholder="Search items..."
-                  oninput="buildUnmanagedTab()"
-                  style="margin-bottom: 1rem"
-                />
-                <div id="unmanagedContent"></div>
-              </div>
-              <div id="prio-sub-conflicts" style="display: none">
-                <div id="conflictsContent"></div>
-              </div>
+            <div id="roster-sub-discord" style="display:none;">
+              <p class="signup-officer-note" style="margin-bottom:0.75rem;">Characters claimed by raiders via Discord login. Remove a claim if a raider linked the wrong character. Officer promotion happens in the Admin tab's Officers sub-tab.</p>
+              <div id="rosterDiscordClaimsContent"></div>
             </div>
+          </div>
 
-            <!-- BiS Manager tab -->
-            <div id="tab-bis" class="tab-panel">
-              <div class="filter-bar" style="margin-bottom: 1rem">
-                <button
-                  class="filter-chip active"
-                  id="bis-subtab-btn-submissions"
-                  onclick="switchBisSubTab('submissions', this)"
-                >
-                  Submissions
-                </button>
-                <button class="filter-chip" id="bis-subtab-btn-lists" onclick="switchBisSubTab('lists', this)">
-                  BiS Lists
-                </button>
-              </div>
-              <div id="bis-sub-submissions">
-                <div class="signup-officer-panel">
-                  <div class="signup-status-row">
-                    <span class="signup-status-label"
-                      >BiS Submissions<button class="help-btn" onclick="toggleHelp('help-bis')" title="Show help">
-                        ?
-                      </button></span
-                    >
-                    <span class="signup-status-badge signup-status-closed" id="bisStatusBadge">CLOSED</span>
-                  </div>
-                  <div id="help-bis" class="help-tip">
-                    Open submissions to show the BiS submit form to raiders. Close it when you don't want unsolicited
-                    updates.<br />
-                    To let a specific player submit outside of an open window, use the per-player
-                    <strong>Allow BiS Submit</strong> toggle in their officer profile card on the Roster tab.<br />
-                    <strong>Approve</strong> updates the player's BiS link in the Roster sheet. <strong>Reject</strong>
-                    discards the submission without changing anything.
-                  </div>
-                  <div style="margin-top: 1rem">
-                    <button class="btn btn-muted" id="bisToggleBtn" onclick="toggleBisSubmissionsOpen()">
-                      Open Submissions
-                    </button>
-                  </div>
-                  <p class="signup-officer-note">
-                    Toggling submissions shows or hides the BiS list submit form for raiders.
-                  </p>
-                </div>
-                <div id="bisContainer"></div>
-              </div>
-              <div id="bis-sub-lists" style="display: none">
-                <div id="bis-lists-container"></div>
-              </div>
+          <!-- Loot tab (Import + Import History + Loot Fairness sub-tabs) -->
+          <div id="tab-loot" class="tab-panel">
+            <div class="filter-bar" style="margin-bottom:1rem;">
+              <button class="filter-chip active" id="loot-subtab-btn-import"
+                onclick="switchLootSubTab('import', this)">Import</button>
+              <button class="filter-chip" id="loot-subtab-btn-history"
+                onclick="switchLootSubTab('history', this)">Import History</button>
+              <button class="filter-chip" id="loot-subtab-btn-fairness"
+                onclick="switchLootSubTab('fairness', this)">Loot Fairness</button>
             </div>
-
-            <!-- Attendance tab -->
-            <div id="tab-attendance" class="tab-panel">
-              <div class="filter-bar" style="margin-bottom: 1rem">
-                <button
-                  class="filter-chip active"
-                  id="attend-subtab-btn-manage"
-                  onclick="switchAttendSubTab('manage', this)"
-                >
-                  Manage
-                </button>
-                <button class="filter-chip" id="attend-subtab-btn-scores" onclick="switchAttendSubTab('scores', this)">
-                  Attendance Scores
-                </button>
-                <button class="filter-chip" id="attend-subtab-btn-bench" onclick="switchAttendSubTab('bench', this)">
-                  Bench Fairness
-                </button>
+            <div id="loot-sub-fairness" style="display:none;">
+              <div class="filter-bar" style="margin-bottom:1rem;">
+                <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Difficulty:</span>
+                <button class="filter-chip active" id="diff-chip-all" onclick="setDiffFilter('all')">All</button>
+                <button class="filter-chip" id="diff-chip-heroic" onclick="setDiffFilter('heroic')">Heroic</button>
+                <button class="filter-chip" id="diff-chip-mythic" onclick="setDiffFilter('mythic')">Mythic</button>
               </div>
-              <div id="attend-sub-manage">
-                <div class="attend-manage-panel">
-                  <div class="attend-manage-header">
-                    <span class="section-label" style="margin-bottom: 0"
-                      >Manage Raid Attendance<button
-                        class="help-btn"
-                        onclick="toggleHelp('help-attendance')"
-                        title="Show help"
-                      >
-                        ?
-                      </button></span
-                    >
-                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap">
-                      <button class="btn btn-muted" id="refreshWCLBtn" onclick="refreshAttendanceWCL()">
-                        Refresh from WCL
-                      </button>
-                      <span id="refreshWCLStatus" style="font-size: 0.92rem"></span>
-                      <button
-                        class="btn btn-gold"
-                        id="commitScoresBtn"
-                        onclick="confirmCommitScores()"
-                        style="margin-left: 0.5rem"
-                      >
-                        Commit Scores to Sheet
-                      </button>
-                      <span id="commitScoresStatus" style="font-size: 0.92rem"></span>
-                    </div>
-                  </div>
-                  <div id="help-attendance" class="help-tip">
-                    <strong>Refresh from WCL</strong> -- pulls the latest raid nights from Warcraft Logs and populates
-                    the attendance grid. Run this after each raid night.<br />
-                    <strong>Commit Scores to Sheet</strong> -- calculates each player's attendance % and writes it to
-                    the Scoring sheet. Safe to run multiple times; it always recalculates from scratch. Run this when
-                    you want the roster view to reflect current scores.<br />
-                    <strong>Manual edits</strong> -- click any status cell in the grid to change a player's attendance
-                    for that night (Present, Late, Excused, No Show, etc.).<br />
-                    <strong>Sync % to Roster Sheet</strong> -- updates the attendance % column on the Roster sheet from
-                    live data. Use this if the roster display is stale after manual edits.
-                  </div>
-                  <div id="commitConfirmBanner" class="attend-confirm-banner" style="display: none">
-                    Calculate and write attendance scores for all players to the Scoring sheet?
-                    <button class="btn btn-gold" onclick="executeCommitScores()" style="margin-left: 1rem">
-                      Yes, Commit
-                    </button>
-                    <button class="btn btn-muted" onclick="cancelCommitScores()" style="margin-left: 0.5rem">
-                      Cancel
-                    </button>
-                  </div>
-                  <div
-                    id="attendGridStatus"
-                    style="font-size: 0.95rem; color: var(--text-muted); padding: 0.5rem 0"
-                  ></div>
-                  <div id="attendGridNightRow" style="display: none; margin-bottom: 0.75rem">
-                    <div class="attend-status-wrap" style="display: inline-block">
-                      <select
-                        id="attendNightSelect"
-                        class="attend-night-select"
-                        onchange="renderNightGrid(this.selectedIndex)"
-                      ></select>
-                    </div>
-                  </div>
-                  <div id="attendGridTable"></div>
-                </div>
-              </div>
-              <div id="attend-sub-scores" style="display: none">
-                <div class="attend-threshold-row">
-                  <span class="attend-threshold-label"
-                    >Show at or below <strong id="attendThresholdVal">95%</strong></span
-                  >
-                  <input
-                    type="range"
-                    id="attendThreshold"
-                    class="attend-slider"
-                    min="0"
-                    max="100"
-                    value="95"
-                    oninput="
-                      document.getElementById('attendThresholdVal').textContent = this.value + '%';
-                      buildAttendanceTab();
-                    "
-                  />
-                  <button
-                    class="btn btn-gold"
-                    id="syncAttendPctBtn"
-                    onclick="syncAttendancePct()"
-                    style="margin-left: auto"
-                  >
-                    Sync % to Roster Sheet
-                  </button>
-                  <span id="syncAttendPctStatus" style="font-size: 0.92rem; color: var(--heal)"></span>
-                </div>
-                <div id="attendanceContent"></div>
-              </div>
-              <div id="attend-sub-bench" style="display: none">
-                <div id="benchFairnessContent"></div>
-              </div>
+              <div id="fairnessContent"></div>
             </div>
+            <div id="loot-sub-import"></div>
+            <div id="loot-sub-history" style="display:none;"></div>
+          </div>
 
-            <!-- Scoring tab -->
-            <div id="tab-scoring" class="tab-panel">
-              <div class="attend-manage-header">
-                <span class="section-label" style="margin-bottom: 0"
-                  >WCL Performance Scores<button
-                    class="help-btn"
-                    onclick="toggleHelp('help-scoring')"
-                    title="Show help"
-                  >
-                    ?
-                  </button></span
-                >
-                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap">
-                  <button class="btn btn-muted" id="refreshPerfBtn" onclick="refreshWclPerformance()">
-                    Refresh from WCL
-                  </button>
-                  <span id="refreshPerfStatus" style="font-size: 0.92rem"></span>
-                  <button
-                    class="btn btn-gold"
-                    id="commitPerfBtn"
-                    onclick="confirmCommitPerformance()"
-                    style="margin-left: 0.5rem"
-                  >
-                    Commit to Scoring Sheet
-                  </button>
-                  <span id="commitPerfStatus" style="font-size: 0.92rem"></span>
-                </div>
+          <!-- Priority tab -->
+          <div id="tab-priority" class="tab-panel">
+            <div class="prio-export-card">
+              <div class="prio-export-header">
+                <span class="prio-export-label">RCLootCouncil Export String</span>
+                <button class="btn btn-muted" id="prioExportLoadBtn" onclick="fetchExportString()">Generate</button>
               </div>
-              <div id="help-scoring" class="help-tip" style="margin-top: 0.5rem; margin-bottom: 0.75rem">
-                <strong>Refresh from WCL</strong> -- fetches the last raid reports from WCL and calculates ilvl bracket
-                % scores for each DPS and healer. Writes draft scores to columns J (Recent) and K (Trend) of the Scoring
-                sheet. Tanks are skipped and marked Manual.<br />
-                <strong>Commit to Scoring Sheet</strong> -- copies Recent Scores (column J) into the Performance column
-                (C), which is what the Priority Generator uses. Safe to run multiple times.
-              </div>
-              <div id="perfConfirmBanner" class="attend-confirm-banner" style="display: none">
-                Copy Recent Scores (column J) into the Performance column (C) for all players?
-                <button class="btn btn-gold" onclick="executeCommitPerformance()" style="margin-left: 1rem">
-                  Yes, Commit
-                </button>
-                <button class="btn btn-muted" onclick="cancelCommitPerformance()" style="margin-left: 0.5rem">
-                  Cancel
-                </button>
-              </div>
-              <div id="scoringStatus" style="font-size: 0.95rem; color: var(--text-muted); padding: 0.5rem 0"></div>
-              <div
-                style="
-                  display: flex;
-                  flex-wrap: wrap;
-                  gap: 1rem;
-                  font-size: 0.8rem;
-                  color: var(--text-muted);
-                  padding: 0.25rem 0 0.75rem;
-                  border-top: 1px solid var(--border);
-                  margin-top: 0.25rem;
-                "
-              >
-                <span><span style="color: var(--heal); font-weight: 700">&#9632;</span> &gt;= 7.0 &mdash; Strong</span>
-                <span><span style="color: var(--gold); font-weight: 700">&#9632;</span> &gt;= 5.0 &mdash; Average</span>
-                <span
-                  ><span style="color: var(--text-dim); font-weight: 700">&#9632;</span> &lt; 5.0 &mdash; Below
-                  average</span
-                >
-                <span
-                  ><span style="color: #b085f0; font-weight: 700">&#9632;</span> Trend fallback (no recent data)</span
-                >
-                <span><span style="color: var(--melee); font-weight: 700">&#9632;</span> No data</span>
-                <span
-                  ><span style="color: var(--text-muted); font-weight: 700">&#9632;</span> Excluded (Tank/Healer)</span
-                >
-                <span style="color: var(--text-dim)">Scores = ilvl bracket percentile / 10</span>
-              </div>
-              <div id="scoringContent"></div>
-            </div>
-
-            <!-- Signups tab -->
-            <div id="tab-signups" class="tab-panel">
-              <div class="filter-bar" style="margin-bottom: 1rem">
-                <button
-                  class="filter-chip active"
-                  id="signups-subtab-btn-signups"
-                  onclick="switchSignupsSubTab('signups', this)"
-                >
-                  Signups
-                </button>
-                <button
-                  class="filter-chip"
-                  id="signups-subtab-btn-pendingRoster"
-                  onclick="switchSignupsSubTab('pendingRoster', this)"
-                >
-                  Pending Roster <span class="nav-notif" id="pendingRosterSubBadge" style="display: none"></span>
-                </button>
-                <button
-                  class="filter-chip"
-                  id="signups-subtab-btn-history"
-                  onclick="switchSignupsSubTab('history', this)"
-                >
-                  History
-                </button>
-              </div>
-              <div id="signups-sub-signups">
-                <div class="signup-officer-panel">
-                  <div class="signup-status-row">
-                    <span class="signup-status-label"
-                      >Roster Signups<button class="help-btn" onclick="toggleHelp('help-signups')" title="Show help">
-                        ?
-                      </button></span
-                    >
-                    <span class="signup-status-badge signup-status-closed" id="signupStatusBadge">CLOSED</span>
-                  </div>
-                  <div id="help-signups" class="help-tip">
-                    Open signups to show the Sign Up button on the landing page for roster members to declare their
-                    class/spec for the season. Close it when signup collection is done.<br />
-                    Submitted signups appear in the queue below -- <strong>Approve</strong> moves them to the Pending
-                    Roster sub-tab; <strong>Deny</strong> marks them rejected. A player who re-submits will overwrite
-                    their existing pending entry.<br />
-                    On the Pending Roster sub-tab, review the composition and missing signups, then use
-                    <strong>Push to Roster</strong> to apply all pending entries to the official roster at once.
-                    Optionally remove roster members who did not submit a signup.
-                  </div>
-                  <div style="margin-top: 1rem">
-                    <button class="btn btn-muted" id="signupToggleBtn" onclick="toggleSignupsOpen()">
-                      Open Signups
-                    </button>
-                  </div>
-                  <p class="signup-officer-note">Toggling signups shows or hides the Sign Up button for applicants.</p>
-                </div>
-                <div id="signupsResponsesContainer"></div>
-              </div>
-              <div id="signups-sub-pendingRoster" style="display: none">
-                <div id="pendingRosterContainer"></div>
-              </div>
-              <div id="signups-sub-history" style="display: none">
-                <div id="signupHistoryContainer"></div>
-              </div>
-            </div>
-
-            <!-- Self Received Requests tab -->
-            <div id="tab-requests" class="tab-panel">
-              <div class="signup-officer-panel" style="margin-bottom: 1rem">
-                <div class="signup-status-row">
-                  <span class="signup-status-label"
-                    >Received Item Requests<button
-                      class="help-btn"
-                      onclick="toggleHelp('help-requests')"
-                      title="Show help"
-                    >
-                      ?
-                    </button></span
-                  >
-                </div>
-                <div id="help-requests" class="help-tip">
-                  Raiders submit requests for items received outside of raid (M+, Great Vault, Crafted, Catalyst, Bonus
-                  Roll).<br />
-                  <strong>Approve</strong> marks the item as received in their loot history, which affects loot fairness
-                  scores and priority standing.<br />
-                  <strong>Reject</strong> dismisses the request with no change to their record.<br />
-                  Officers can also mark items received directly from a player's profile card on the Roster tab -- this
-                  bypasses the approval queue and takes effect immediately.
-                </div>
-              </div>
-              <div id="requestsContainer"></div>
-            </div>
-
-            <!-- Audit Log tab -->
-            <div id="tab-audit" class="tab-panel">
-              <div style="margin-bottom: 1rem">
-                <input
-                  type="text"
-                  id="auditSearch"
-                  class="roster-search-input"
-                  placeholder="Search by officer, action, player, or detail..."
-                  oninput="renderAuditLog()"
-                  style="max-width: 320px"
-                />
-              </div>
-              <div id="auditContainer"></div>
-            </div>
-
-            <!-- Reports tab -->
-            <div id="tab-reports" class="tab-panel">
-              <div class="filter-bar" style="margin-bottom: 0.5rem">
-                <button
-                  class="filter-chip active"
-                  id="reports-subtab-btn-rnlsi"
-                  onclick="switchReportsSubTab('rnlsi', this)"
-                >
-                  Raid Nights Since Last Item
-                </button>
-                <button
-                  class="filter-chip"
-                  id="reports-subtab-btn-bisDemand"
-                  onclick="switchReportsSubTab('bisDemand', this)"
-                >
-                  BiS Demand vs Awards
-                </button>
-                <button
-                  class="filter-chip"
-                  id="reports-subtab-btn-priorityHealth"
-                  onclick="switchReportsSubTab('priorityHealth', this)"
-                >
-                  Priority Order Health
-                </button>
-                <button
-                  class="filter-chip"
-                  id="reports-subtab-btn-lootPace"
-                  onclick="switchReportsSubTab('lootPace', this)"
-                >
-                  Season Loot Pace
-                </button>
-                <button class="help-btn" onclick="toggleHelp('help-reports')" title="Show help">?</button>
-              </div>
-              <div id="help-reports" class="help-tip" style="margin-bottom: 0.75rem">
-                <strong>Raid Nights Since Last Item</strong> -- how many raid nights have passed since each player's
-                last loot award, grouped by role.<br />
-                <strong>BiS Demand vs Awards</strong> -- ranks items by how many active players want them on their BiS
-                list, next to how many times each has actually been awarded in the selected season. High demand + low
-                awards is what to prioritize.<br />
-                <strong>Priority Order Health</strong> -- flags stale priority order entries for players no longer on
-                the active roster, and active non-bench players missing from priority order entirely for a season.<br />
-                <strong>Season Loot Pace</strong> -- items awarded per week of the season, compared to the same week
-                last season. "Week 1" is measured from the first tracked loot award of the season, not the raid-lockout
-                calendar, since Supabase doesn't store a season start date yet.
-              </div>
-
-              <div id="reports-sub-rnlsi">
-                <div class="filter-bar" style="margin-bottom: 0.35rem">
-                  <span style="font-size: 0.78rem; color: var(--text); margin-right: 0.25rem">Role:</span>
-                  <button class="filter-chip" onclick="toggleRnlsiRole('Tank')" id="rnlsi-chip-role-Tank">Tanks</button>
-                  <button class="filter-chip" onclick="toggleRnlsiRole('Heal')" id="rnlsi-chip-role-Heal">
-                    Healers
-                  </button>
-                  <button class="filter-chip" onclick="toggleRnlsiRole('Melee')" id="rnlsi-chip-role-Melee">
-                    Melee
-                  </button>
-                  <button class="filter-chip" onclick="toggleRnlsiRole('Ranged')" id="rnlsi-chip-role-Ranged">
-                    Ranged
-                  </button>
-                </div>
-                <div class="filter-bar" style="margin-bottom: 0.75rem">
-                  <span style="font-size: 0.78rem; color: var(--text); margin-right: 0.25rem">Sort:</span>
-                  <button class="filter-chip" onclick="toggleRnlsiSort('player')" id="rnlsi-chip-sort-player">
-                    Player
-                  </button>
-                  <button class="filter-chip" onclick="toggleRnlsiSort('lastAward')" id="rnlsi-chip-sort-lastAward">
-                    Last Award
-                  </button>
-                  <button class="filter-chip active" onclick="toggleRnlsiSort('nights')" id="rnlsi-chip-sort-nights">
-                    Raid Nights Since
-                  </button>
-                </div>
-                <div id="reportsRnlsiContent"><p style="color: var(--text-muted)">Loading...</p></div>
-              </div>
-
-              <div id="reports-sub-bisDemand" style="display: none">
-                <div class="filter-bar" style="margin-bottom: 0.75rem">
-                  <select
-                    id="reportsBisSeasonFilter"
-                    class="roster-search-input"
-                    style="width: auto; min-width: 180px; margin-bottom: 0"
-                    onchange="renderBisDemandTable()"
-                  ></select>
-                </div>
-                <div id="reportsBisDemandContent"><p style="color: var(--text-muted)">Loading...</p></div>
-              </div>
-
-              <div id="reports-sub-priorityHealth" style="display: none">
-                <div class="filter-bar" style="margin-bottom: 0.75rem">
-                  <select
-                    id="reportsPriorityHealthSeasonFilter"
-                    class="roster-search-input"
-                    style="width: auto; min-width: 180px; margin-bottom: 0"
-                    onchange="renderPriorityHealthTables()"
-                  ></select>
-                </div>
-                <div class="section-label" style="margin-bottom: 0.1rem">Stale Entries</div>
-                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 0.5rem">
-                  Players ranked in this season's priority order who are no longer on the active roster (archived).
-                  Clean these up.
-                </p>
-                <div id="reportsPriorityStaleContent"><p style="color: var(--text-muted)">Loading...</p></div>
-                <div class="section-label" style="margin: 1rem 0 0.1rem">Missing From Priority Order</div>
-                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 0.5rem">
-                  Active, non-bench players with no priority order entry at all this season -- for any item. Gaps to
-                  fill in.
-                </p>
-                <div id="reportsPriorityGapsContent"></div>
-              </div>
-
-              <div id="reports-sub-lootPace" style="display: none">
-                <div class="filter-bar" style="margin-bottom: 0.75rem">
-                  <select
-                    id="reportsPaceSeasonFilter"
-                    class="roster-search-input"
-                    style="width: auto; min-width: 160px; margin-bottom: 0"
-                    onchange="renderLootPaceTable()"
-                  ></select>
-                  <select
-                    id="reportsPaceTrackFilter"
-                    class="roster-search-input"
-                    style="width: auto; min-width: 140px; margin-bottom: 0"
-                    onchange="renderLootPaceTable()"
-                  >
-                    <option value="">All Tracks</option>
-                    <option value="Myth">Mythic</option>
-                    <option value="Hero">Heroic</option>
-                    <option value="Champion">Champion</option>
-                  </select>
-                  <select
-                    id="reportsPaceSlotFilter"
-                    class="roster-search-input"
-                    style="width: auto; min-width: 140px; margin-bottom: 0"
-                    onchange="renderLootPaceTable()"
-                  >
-                    <option value="">All Slots</option>
-                  </select>
-                </div>
-                <div id="reportsPaceContent"><p style="color: var(--text-muted)">Loading...</p></div>
-              </div>
-            </div>
-
-            <!-- Season Settings tab -->
-            <div id="tab-season" class="tab-panel">
-              <div class="filter-chips" style="margin-bottom: 1rem">
-                <button
-                  id="season-subtab-btn-settings"
-                  class="filter-chip active"
-                  onclick="switchSeasonSubTab('settings', this)"
-                >
-                  Settings
-                </button>
-                <button
-                  id="season-subtab-btn-progression"
-                  class="filter-chip"
-                  onclick="switchSeasonSubTab('progression', this)"
-                >
-                  Raid Progression
-                </button>
-                <button
-                  id="season-subtab-btn-history"
-                  class="filter-chip"
-                  onclick="switchSeasonSubTab('history', this)"
-                >
-                  History
-                </button>
-              </div>
-
-              <div id="season-sub-settings" class="season-settings-wrap">
-                <!-- Season Name -->
-                <div class="help-ref-card">
-                  <h4 class="help-ref-title">
-                    Season Name<button class="help-btn" onclick="toggleHelp('help-season-name')" title="Show help">
-                      ?
-                    </button>
-                  </h4>
-                  <div id="help-season-name" class="help-tip">
-                    This label is applied to every loot entry imported through RCLootCouncil while the name is set. It
-                    is used by the <strong>Season</strong> toolbar dropdown to let you filter loot, fairness, and
-                    attendance to a specific season. Set this before importing loot at the start of each season.
-                  </div>
-                  <p class="signup-officer-note" style="margin-top: 0.25rem">
-                    The current season label applied to all imported RCLootCouncil loot (e.g. Season 1).
-                  </p>
-                  <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem">
-                    <input
-                      type="text"
-                      id="seasonNameInput"
-                      class="add-player-input"
-                      placeholder="e.g. Season 1"
-                      style="max-width: 220px; font-size: 0.95rem; padding: 0.35rem 0.6rem"
-                    />
-                    <button class="btn btn-gold" id="seasonNameSaveBtn" onclick="saveSeasonName()">Save</button>
-                    <span id="seasonNameStatus" style="font-size: 0.92rem; color: var(--heal)"></span>
-                  </div>
-                </div>
-
-                <!-- Season Code Prefix -->
-                <div class="help-ref-card">
-                  <h4 class="help-ref-title">
-                    Season Code Prefix<button
-                      class="help-btn"
-                      onclick="toggleHelp('help-season-code-prefix')"
-                      title="Show help"
-                    >
-                      ?
-                    </button>
-                  </h4>
-                  <div id="help-season-code-prefix" class="help-tip">
-                    Controls how season codes (the compact keys stored with loot, priority, and scoring data, e.g. MID1)
-                    translate to and from the season names you type elsewhere on this page. Every season numbered under
-                    the current prefix translates automatically -- you only need to change this once, when a new
-                    expansion's season codes stop starting with the current prefix. Leave both fields blank to reset to
-                    the defaults (MID / Midnight Season).
-                  </div>
-                  <p class="signup-officer-note" style="margin-top: 0.25rem">
-                    Only change this at an expansion boundary -- not for a routine new season.
-                  </p>
-                  <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem">
-                    <input
-                      type="text"
-                      id="seasonCodePrefixInput"
-                      class="add-player-input"
-                      placeholder="MID"
-                      style="max-width: 100px; font-size: 0.95rem; padding: 0.35rem 0.6rem"
-                    />
-                    <span style="color: var(--text-muted)">&lt;-&gt;</span>
-                    <input
-                      type="text"
-                      id="seasonDisplayPrefixInput"
-                      class="add-player-input"
-                      placeholder="Midnight Season"
-                      style="max-width: 220px; font-size: 0.95rem; padding: 0.35rem 0.6rem"
-                    />
-                    <button class="btn btn-gold" id="seasonCodePrefixSaveBtn" onclick="saveSeasonCodePrefixes()">
-                      Save
-                    </button>
-                    <span id="seasonCodePrefixStatus" style="font-size: 0.92rem; color: var(--heal)"></span>
-                  </div>
-                </div>
-
-                <!-- Signup Season -->
-                <div class="help-ref-card">
-                  <h4 class="help-ref-title">
-                    Signup Season<button class="help-btn" onclick="toggleHelp('help-signup-season')" title="Show help">
-                      ?
-                    </button>
-                  </h4>
-                  <div id="help-signup-season" class="help-tip">
-                    The season label stamped on every signup submission. Set this before opening signups so all
-                    responses are tagged correctly. If left blank, signups will be recorded with no season and will not
-                    appear in the Missing Signups list once a season is set.
-                  </div>
-                  <p class="signup-officer-note" style="margin-top: 0.25rem">
-                    The season label applied to incoming signup submissions (e.g. MN Season 1).
-                  </p>
-                  <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem">
-                    <input
-                      type="text"
-                      id="signupSeasonInput"
-                      class="add-player-input"
-                      placeholder="e.g. MN Season 1"
-                      style="max-width: 220px; font-size: 0.95rem; padding: 0.35rem 0.6rem"
-                    />
-                    <button class="btn btn-gold" id="signupSeasonSaveBtn" onclick="saveSignupSeason()">Save</button>
-                    <span id="signupSeasonStatus" style="font-size: 0.92rem; color: var(--heal)"></span>
-                  </div>
-                </div>
-
-                <!-- Season Start Date -->
-                <div class="help-ref-card">
-                  <h4 class="help-ref-title">
-                    Season Start Date<button
-                      class="help-btn"
-                      onclick="toggleHelp('help-season-start')"
-                      title="Show help"
-                    >
-                      ?
-                    </button>
-                  </h4>
-                  <div id="help-season-start" class="help-tip">
-                    Raids before this date are excluded from attendance scoring. Players who joined after this date use
-                    their own join date as the window start instead, so latecomers are not penalised for raids they were
-                    not part of. Leave blank to include all raids in scoring (no season filter).
-                  </div>
-                  <p class="signup-officer-note" style="margin-top: 0.25rem">Set the date this raid season began.</p>
-                  <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem">
-                    <input
-                      type="date"
-                      id="seasonStartInput"
-                      class="add-player-input"
-                      style="max-width: 180px; font-size: 0.95rem; padding: 0.35rem 0.6rem"
-                    />
-                    <button class="btn btn-gold" id="seasonStartSaveBtn" onclick="saveSeasonStart()">Save</button>
-                    <button class="btn btn-danger" onclick="confirmClearSeasonStart()">Clear</button>
-                    <span id="seasonStartStatus" style="font-size: 0.92rem; color: var(--heal)"></span>
-                  </div>
-                  <div
-                    id="seasonClearConfirm"
-                    style="
-                      display: none;
-                      margin-top: 0.75rem;
-                      padding: 0.75rem;
-                      background: rgba(255, 124, 92, 0.08);
-                      border: 1px solid rgba(255, 124, 92, 0.25);
-                      border-radius: 4px;
-                    "
-                  >
-                    <span style="font-size: 0.92rem; color: var(--melee)"
-                      >This will remove the season start date and include all raids in attendance scoring.</span
-                    >
-                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem">
-                      <button class="btn btn-danger" onclick="executeClearSeasonStart()">Yes, Clear</button>
-                      <button
-                        class="btn btn-muted"
-                        onclick="document.getElementById('seasonClearConfirm').style.display = 'none'"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Season End Date -->
-                <div class="help-ref-card">
-                  <h4 class="help-ref-title">
-                    Season End Date<button class="help-btn" onclick="toggleHelp('help-season-end')" title="Show help">
-                      ?
-                    </button>
-                  </h4>
-                  <div id="help-season-end" class="help-tip">
-                    Optional. Set this when the current season closes before the next one officially begins -- for
-                    example if your guild stops raiding a week before the new patch. When set, it acts as the upper
-                    bound for attendance and loot filtering in the season selector. Leave blank if the season is still
-                    active.
-                  </div>
-                  <p class="signup-officer-note" style="margin-top: 0.25rem">
-                    Optional close date for the current season. Leave blank if the season is still ongoing.
-                  </p>
-                  <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem">
-                    <input
-                      type="date"
-                      id="seasonEndInput"
-                      class="add-player-input"
-                      style="max-width: 180px; font-size: 0.95rem; padding: 0.35rem 0.6rem"
-                    />
-                    <button class="btn btn-gold" id="seasonEndSaveBtn" onclick="saveSeasonEnd()">Save</button>
-                    <button class="btn btn-danger" onclick="confirmClearSeasonEnd()">Clear</button>
-                    <span id="seasonEndStatus" style="font-size: 0.92rem; color: var(--heal)"></span>
-                  </div>
-                  <div
-                    id="seasonEndClearConfirm"
-                    style="
-                      display: none;
-                      margin-top: 0.75rem;
-                      padding: 0.75rem;
-                      background: rgba(255, 124, 92, 0.08);
-                      border: 1px solid rgba(255, 124, 92, 0.25);
-                      border-radius: 4px;
-                    "
-                  >
-                    <span style="font-size: 0.92rem; color: var(--melee)">This will remove the season end date.</span>
-                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem">
-                      <button class="btn btn-danger" onclick="executeClearSeasonEnd()">Yes, Clear</button>
-                      <button
-                        class="btn btn-muted"
-                        onclick="document.getElementById('seasonEndClearConfirm').style.display = 'none'"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Trial Promotion Thresholds -->
-                <div class="help-ref-card">
-                  <h4 class="help-ref-title">Trial Promotion Thresholds</h4>
-                  <p class="signup-officer-note" style="margin-top: 0.25rem">
-                    A trial player appears in the promotion alert once they meet both thresholds.
-                  </p>
-                  <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.75rem">
-                    <span style="font-size: 0.92rem; color: var(--text-muted)">At least</span>
-                    <input
-                      type="number"
-                      id="trialWeeksInput"
-                      class="add-player-input"
-                      min="1"
-                      max="52"
-                      style="max-width: 70px; font-size: 0.95rem; padding: 0.35rem 0.6rem"
-                    />
-                    <span style="font-size: 0.92rem; color: var(--text-muted)">weeks on roster and</span>
-                    <input
-                      type="number"
-                      id="trialAttendInput"
-                      class="add-player-input"
-                      min="0"
-                      max="100"
-                      style="max-width: 70px; font-size: 0.95rem; padding: 0.35rem 0.6rem"
-                    />
-                    <span style="font-size: 0.92rem; color: var(--text-muted)">% attendance</span>
-                    <button class="btn btn-gold" id="trialThresholdsSaveBtn" onclick="saveTrialThresholds()">
-                      Save
-                    </button>
-                    <span id="trialThresholdsStatus" style="font-size: 0.92rem; color: var(--heal)"></span>
-                  </div>
-                </div>
-              </div>
-              <!-- /season-sub-settings -->
-
-              <div id="season-sub-progression" class="season-settings-wrap" style="display: none">
-                <div class="help-ref-card">
-                  <h4 class="help-ref-title">
-                    Raid Progression<button class="help-btn" onclick="toggleHelp('help-raid-prog')" title="Show help">
-                      ?
-                    </button>
-                  </h4>
-                  <div id="help-raid-prog" class="help-tip">
-                    Track mythic progression and AOTC dates for each raid in the current season. Multiple raids can be
-                    added (e.g. if the season has a mid-patch raid). Boss kill dates appear on the public landing page.
-                    Mini-raids (single or small standalone bosses) have no AOTC date. Progression is archived with the
-                    season when you archive it.
-                  </div>
-                  <p class="signup-officer-note" style="margin-top: 0.25rem">
-                    Add one block per raid in the current season. Boss kill dates are shown publicly.
-                  </p>
-                  <div
-                    id="raidProgressionCards"
-                    style="display: flex; flex-direction: column; gap: 1rem; margin-top: 0.75rem"
-                  ></div>
-                  <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem">
-                    <button class="btn btn-muted" onclick="raidAddRaid()">+ Add Raid</button>
-                    <button class="btn btn-gold" id="raidSaveBtn" onclick="saveRaidProgression()">
-                      Save Progression
-                    </button>
-                    <span id="raidProgressionStatus" style="font-size: 0.92rem; color: var(--heal)"></span>
-                  </div>
-                </div>
-              </div>
-              <!-- /season-sub-progression -->
-
-              <div id="season-sub-history" class="season-settings-wrap" style="display: none">
-                <!-- Archive Season -->
-                <div class="help-ref-card">
-                  <h4 class="help-ref-title">
-                    Archive Current Season<button
-                      class="help-btn"
-                      onclick="toggleHelp('help-season-archive')"
-                      title="Show help"
-                    >
-                      ?
-                    </button>
-                  </h4>
-                  <div id="help-season-archive" class="help-tip">
-                    Archiving pushes the current Season Name, Start Date, and End Date into the season history list.
-                    Once archived, the season appears in the <strong>Season</strong> toolbar dropdown so officers can
-                    filter by it at any time. After archiving, set a new Season Name and Start Date for the next season.
-                    <br /><br />
-                    <strong>Rollover workflow:</strong>
-                    <ol style="margin: 0.35rem 0 0; padding-left: 1.25rem">
-                      <li>Set an <strong>End Date</strong> if the season closes before the next one starts.</li>
-                      <li>Click <strong>Archive Current Season</strong> below.</li>
-                      <li>Set the new <strong>Season Name</strong> and <strong>Start Date</strong>.</li>
-                      <li>
-                        Re-import this season's loot via <strong>Loot &gt; Import</strong> -- entries are tagged with
-                        the new name automatically.
-                      </li>
-                      <li>
-                        Click <strong>Refresh from WCL</strong> on the Attendance tab to pull the new season's raids.
-                      </li>
-                    </ol>
-                  </div>
-                  <p class="signup-officer-note" style="margin-top: 0.25rem">
-                    Move the current season into history so it appears in the season selector dropdown.
-                  </p>
-                  <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem">
-                    <button class="btn btn-danger" onclick="confirmArchiveSeason()">Archive Current Season</button>
-                    <span id="seasonArchiveStatus" style="font-size: 0.92rem; color: var(--heal)"></span>
-                  </div>
-                  <div
-                    id="seasonArchiveConfirm"
-                    style="
-                      display: none;
-                      margin-top: 0.75rem;
-                      padding: 0.75rem;
-                      background: rgba(255, 124, 92, 0.08);
-                      border: 1px solid rgba(255, 124, 92, 0.25);
-                      border-radius: 4px;
-                    "
-                  >
-                    <span id="seasonArchiveConfirmMsg" style="font-size: 0.92rem; color: var(--melee)"></span>
-                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem">
-                      <button class="btn btn-danger" id="seasonArchiveExecBtn" onclick="executeArchiveSeason()">
-                        Yes, Archive
-                      </button>
-                      <button
-                        class="btn btn-muted"
-                        onclick="document.getElementById('seasonArchiveConfirm').style.display = 'none'"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Season History -->
-                <div id="seasonHistoryWrap" class="help-ref-card" style="display: none">
-                  <h4 class="help-ref-title">Season History</h4>
-                  <p class="signup-officer-note" style="margin-top: 0.25rem">
-                    Past archived seasons. Use Unarchive to restore a season as the active one if it was archived by
-                    mistake.
-                  </p>
-                  <div
-                    id="seasonHistoryList"
-                    style="margin-top: 0.5rem; font-size: 0.92rem; color: var(--text-muted)"
-                  ></div>
-                  <div
-                    id="seasonUnarchiveConfirm"
-                    style="
-                      display: none;
-                      margin-top: 0.75rem;
-                      padding: 0.75rem;
-                      background: rgba(255, 124, 92, 0.08);
-                      border: 1px solid rgba(255, 124, 92, 0.25);
-                      border-radius: 4px;
-                    "
-                  >
-                    <span id="seasonUnarchiveConfirmMsg" style="font-size: 0.92rem; color: var(--melee)"></span>
-                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem">
-                      <button class="btn btn-danger" id="seasonUnarchiveExecBtn" onclick="executeUnarchiveSeason()">
-                        Yes, Restore
-                      </button>
-                      <button
-                        class="btn btn-muted"
-                        onclick="document.getElementById('seasonUnarchiveConfirm').style.display = 'none'"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                  <span
-                    id="seasonUnarchiveStatus"
-                    style="font-size: 0.92rem; color: var(--heal); display: block; margin-top: 0.5rem"
-                  ></span>
-                </div>
-              </div>
-              <!-- /season-sub-history -->
-            </div>
-
-            <!-- Help tab -->
-            <div id="tab-help" class="tab-panel">
-              <div class="help-reference">
-                <h3 class="help-ref-heading">Officer Workflow Reference</h3>
-
-                <div class="help-ref-card">
-                  <h4 class="help-ref-title">Import RCLootCouncil loot history</h4>
-                  <ol class="help-ref-steps">
-                    <li>
-                      Confirm <strong>Season Name</strong> is set in
-                      <a
-                        href="#"
-                        onclick="
-                          switchTab('season');
-                          return false;
-                        "
-                        >Season Settings</a
-                      >
-                      (e.g. "Season 2"). New entries will be tagged with this label.
-                    </li>
-                    <li>In-game, open RCLootCouncil and use its export feature to copy your loot history JSON.</li>
-                    <li>
-                      Go to <strong>Loot &gt; Import</strong>, paste the JSON into the text box, and click
-                      <strong>Import</strong>.
-                    </li>
-                    <li>
-                      Duplicate entries are skipped automatically -- you can paste multiple nights at once or re-paste
-                      old exports safely.
-                    </li>
-                  </ol>
-                </div>
-
-                <div class="help-ref-card">
-                  <h4 class="help-ref-title">Refresh attendance from Warcraft Logs</h4>
-                  <ol class="help-ref-steps">
-                    <li>Go to the <strong>Attendance</strong> tab.</li>
-                    <li>
-                      Click <strong>Refresh from WCL</strong>. This pulls the latest raid nights from Warcraft Logs and
-                      populates the attendance grid.
-                    </li>
-                    <li>Select a raid night from the dropdown to review or edit player statuses.</li>
-                  </ol>
-                </div>
-
-                <div class="help-ref-card">
-                  <h4 class="help-ref-title">Manually edit attendance status</h4>
-                  <ol class="help-ref-steps">
-                    <li>Go to the <strong>Attendance</strong> tab and select the raid night from the dropdown.</li>
-                    <li>
-                      Find the player in the grid and use the status dropdown on their row to set: <em>Present</em>,
-                      <em>Bench</em>, <em>Excused</em>, <em>Medical Leave</em>, <em>No Show</em>, or
-                      <em>Not on Roster</em>.
-                    </li>
-                    <li>The change saves immediately -- a checkmark confirms success.</li>
-                  </ol>
-                </div>
-
-                <div class="help-ref-card">
-                  <h4 class="help-ref-title">Commit attendance scores to the roster sheet</h4>
-                  <ol class="help-ref-steps">
-                    <li>
-                      After reviewing the attendance grid, click <strong>Commit Scores to Sheet</strong> on the
-                      Attendance tab.
-                    </li>
-                    <li>
-                      Confirm the prompt. This calculates each player's attendance percentage and writes it to the
-                      Google Sheet roster.
-                    </li>
-                    <li>Run this after any manual edits or a WCL refresh to keep the public roster view up to date.</li>
-                  </ol>
-                </div>
-
-                <div class="help-ref-card">
-                  <h4 class="help-ref-title">Set season start date and season name</h4>
-                  <ol class="help-ref-steps">
-                    <li>
-                      Go to
-                      <a
-                        href="#"
-                        onclick="
-                          switchTab('season');
-                          return false;
-                        "
-                        >Season Settings</a
-                      >.
-                    </li>
-                    <li>
-                      Set the <strong>Season Start Date</strong> to the first day of the current raid season. Raids
-                      before this date are excluded from attendance scoring.
-                    </li>
-                    <li>
-                      Set the <strong>Season Name</strong> (e.g. "Season 2"). This label is applied to all future loot
-                      imports -- set it before importing loot.
-                    </li>
-                  </ol>
-                </div>
-
-                <div class="help-ref-card">
-                  <h4 class="help-ref-title">Season reset workflow</h4>
-                  <ol class="help-ref-steps">
-                    <li>
-                      Go to
-                      <a
-                        href="#"
-                        onclick="
-                          switchTab('season');
-                          return false;
-                        "
-                        >Season Settings</a
-                      >
-                      and update the <strong>Season Start Date</strong> to the new season's first raid day.
-                    </li>
-                    <li>
-                      Update the <strong>Season Name</strong> (e.g. "Season 2") so new loot imports are tagged
-                      correctly.
-                    </li>
-                    <li>
-                      Go to <strong>Loot &gt; Import History</strong> and click
-                      <strong>Clear All Loot History</strong> to remove last season's entries.
-                    </li>
-                    <li>Re-import this season's loot via <strong>Loot &gt; Import</strong>.</li>
-                    <li>
-                      On the <strong>Attendance</strong> tab, click <strong>Refresh from WCL</strong> to pull the new
-                      season's raid nights.
-                    </li>
-                    <li>Commit updated scores via <strong>Commit Scores to Sheet</strong>.</li>
-                  </ol>
+              <div id="prioExportBody" style="display:none;">
+                <textarea id="prioExportStr" class="prio-export-textarea" readonly></textarea>
+                <div class="prio-export-actions">
+                  <button class="btn btn-gold" onclick="copyExportString()">Copy to Clipboard</button>
+                  <span id="prioExportCopyMsg" class="prio-export-copy-msg" style="display:none;">Copied!</span>
                 </div>
               </div>
             </div>
-
-            <!-- Admin tab -->
-            <div id="tab-admin" class="tab-panel">
-              <div class="filter-bar" style="margin-bottom: 1rem">
-                <button
-                  class="filter-chip active"
-                  id="admin-subtab-btn-properties"
-                  onclick="switchAdminSubTab('properties', this)"
-                >
-                  Properties
-                </button>
-                <button
-                  class="filter-chip"
-                  id="admin-subtab-btn-botconfig"
-                  onclick="switchAdminSubTab('botconfig', this)"
-                >
-                  Bot Config
-                </button>
-                <button class="filter-chip" id="admin-subtab-btn-export" onclick="switchAdminSubTab('export', this)">
-                  Data Export
-                </button>
-                <button
-                  class="filter-chip"
-                  id="admin-subtab-btn-officers"
-                  onclick="switchAdminSubTab('officers', this)"
-                >
-                  Officers
-                </button>
-                <button class="filter-chip" id="admin-subtab-btn-danger" onclick="switchAdminSubTab('danger', this)">
-                  Danger Zone
-                </button>
-              </div>
-
-              <!-- Properties -->
-              <div id="admin-sub-properties">
-                <div class="help-ref-card" style="margin-bottom: 1rem">
-                  <h4 class="help-ref-title">Script Properties</h4>
-                  <p class="signup-officer-note" style="margin-top: 0.25rem">
-                    Live read of key GAS script properties for this team.
-                  </p>
-                  <div id="adminPropsContent" style="margin-top: 0.75rem"></div>
-                  <div style="margin-top: 0.75rem">
-                    <button class="btn btn-muted" onclick="loadAdminProperties()">Refresh</button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Bot Config -->
-              <div id="admin-sub-botconfig" style="display: none">
-                <div class="help-ref-card" style="margin-bottom: 1rem">
-                  <h4 class="help-ref-title">Bot URL</h4>
-                  <p class="signup-officer-note" style="margin-top: 0.25rem">
-                    The base URL of the Discord bot server. Leave blank to use the compiled default.
-                  </p>
-                  <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem">
-                    <input
-                      type="text"
-                      id="adminBotUrlInput"
-                      class="add-player-input"
-                      style="flex: 1; min-width: 200px; max-width: 420px; font-size: 0.95rem; padding: 0.35rem 0.6rem"
-                    />
-                    <button class="btn btn-gold" id="adminBotUrlBtn" onclick="saveBotUrl()">Save</button>
-                    <span id="adminBotUrlStatus" style="font-size: 0.92rem; color: var(--heal)"></span>
-                  </div>
-                </div>
-                <div class="help-ref-card">
-                  <h4 class="help-ref-title">Bot Webhook Secret</h4>
-                  <p class="signup-officer-note" style="margin-top: 0.25rem">
-                    The shared secret sent in the X-Webhook-Secret header. Current value is masked -- enter a new value
-                    to replace it.
-                  </p>
-                  <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem">
-                    <input
-                      type="password"
-                      id="adminBotSecretInput"
-                      class="add-player-input"
-                      placeholder="New secret value"
-                      style="flex: 1; min-width: 200px; max-width: 420px; font-size: 0.95rem; padding: 0.35rem 0.6rem"
-                    />
-                    <button class="btn btn-gold" id="adminBotSecretBtn" onclick="saveBotSecret()">Save</button>
-                    <span id="adminBotSecretStatus" style="font-size: 0.92rem; color: var(--heal)"></span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Data Export -->
-              <div id="admin-sub-export" style="display: none">
-                <div class="help-ref-card">
-                  <h4 class="help-ref-title">Export All Data</h4>
-                  <p class="signup-officer-note" style="margin-top: 0.25rem">
-                    Downloads everything currently loaded in the dashboard (roster, loot history, priority order, BiS
-                    lists, season history, scoring) as a JSON file. No GAS call -- exports from the in-memory cache.
-                  </p>
-                  <div style="margin-top: 0.75rem">
-                    <button class="btn btn-gold" id="adminExportBtn" onclick="downloadExport()">Download JSON</button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Officers -->
-              <div id="admin-sub-officers" style="display: none">
-                <p class="signup-officer-note" style="margin-bottom: 0.75rem">
-                  Officers can access the officer dashboard. Team leaders and site admins can promote a claimed
-                  character to officer or revoke it from here.
-                </p>
-                <div id="adminOfficersContent"></div>
-              </div>
-
-              <!-- Danger Zone -->
-              <div id="admin-sub-danger" style="display: none">
-                <div id="adminDangerContent"></div>
-              </div>
+            <div class="filter-bar" style="margin-bottom:0.5rem;">
+              <button class="filter-chip active" id="prio-subtab-btn-list"
+                onclick="switchPrioritySubTab('list', this)">Priority List</button>
+              <button class="filter-chip" id="prio-subtab-btn-conflicts"
+                onclick="switchPrioritySubTab('conflicts', this)">Contested Items</button>
+              <button class="filter-chip" id="prio-subtab-btn-unmanaged"
+                onclick="switchPrioritySubTab('unmanaged', this)">Unmanaged Items <span class="nav-notif"
+                  id="prioSubBadge" style="display:none;"></span></button>
+              <button class="help-btn" onclick="toggleHelp('help-priority')" title="Show help">?</button>
             </div>
+            <div id="help-priority" class="help-tip" style="margin-bottom:0.75rem;">
+              <strong>RCLootCouncil Export String</strong> -- click Generate to build an encoded string from the current priority order and roster. Copy it and paste it into RCLootCouncil in-game to sync loot priorities to your council.<br>
+              <strong>Priority List</strong> -- read-only view of every item's ranked priority order as set in the Priority Order sheet. Use the search box to jump to a specific item.<br>
+              <strong>Unmanaged Items</strong> -- items that appear in players' BiS lists but have no priority order assigned yet in the sheet. The badge count shows how many need attention.<br>
+              <strong>Contested Items</strong> -- items wanted by multiple players, showing current priority assignments and flagging any player holding 1st priority on more than one item.
+            </div>
+            <div id="prio-sub-list">
+              <div class="filter-bar" style="margin-bottom:0.75rem;">
+                <select id="prioBossFilter" class="roster-search-input" style="width:auto;min-width:160px;margin-bottom:0;"
+                  onchange="buildPriorityTab()">
+                  <option value="">All Bosses</option>
+                </select>
+                <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--text-muted);cursor:pointer;margin-left:4px;">
+                  <input type="checkbox" id="prioHideEmpty" onchange="buildPriorityTab()"> Hide empty
+                </label>
+              </div>
+              <input type="text" id="prioSearch" class="roster-search-input" placeholder="Search items..."
+                oninput="buildPriorityTab()" style="margin-bottom:1rem;">
+              <div id="priorityContent"></div>
+            </div>
+            <div id="prio-sub-unmanaged" style="display:none;">
+              <div class="filter-bar" style="margin-bottom:0.75rem;">
+                <select id="unmanagedBossFilter" class="roster-search-input" style="width:auto;min-width:160px;margin-bottom:0;"
+                  onchange="buildUnmanagedTab()">
+                  <option value="">All Bosses</option>
+                </select>
+              </div>
+              <input type="text" id="unmanagedSearch" class="roster-search-input" placeholder="Search items..."
+                oninput="buildUnmanagedTab()" style="margin-bottom:1rem;">
+              <div id="unmanagedContent"></div>
+            </div>
+            <div id="prio-sub-conflicts" style="display:none;">
+              <div id="conflictsContent"></div>
+            </div>
+          </div>
 
-            <!-- M+ Exclusions tab -->
-            <div id="tab-mplus" class="tab-panel">
+          <!-- BiS Manager tab -->
+          <div id="tab-bis" class="tab-panel">
+            <div class="filter-bar" style="margin-bottom:1rem;">
+              <button class="filter-chip active" id="bis-subtab-btn-submissions" onclick="switchBisSubTab('submissions', this)">Submissions</button>
+              <button class="filter-chip" id="bis-subtab-btn-lists" onclick="switchBisSubTab('lists', this)">BiS Lists</button>
+            </div>
+            <div id="bis-sub-submissions">
               <div class="signup-officer-panel">
                 <div class="signup-status-row">
-                  <span class="signup-status-label"
-                    >M+ Exclusion Requests<button class="help-btn" onclick="toggleHelp('help-mplus')" title="Show help">
-                      ?
-                    </button></span
-                  >
-                  <span class="signup-status-badge signup-status-closed" id="mplusStatusBadge">CLOSED</span>
+                  <span class="signup-status-label">BiS Submissions<button class="help-btn"
+                      onclick="toggleHelp('help-bis')" title="Show help">?</button></span>
+                  <span class="signup-status-badge signup-status-closed" id="bisStatusBadge">CLOSED</span>
                 </div>
-                <div id="help-mplus" class="help-tip">
-                  Open requests to let raiders submit an exclusion with their Raider.io profile and a reason. Approved
-                  players are marked M+ excluded on the roster view.<br />
-                  You can also toggle a player's M+ exclusion directly from their officer profile card on the Roster tab
-                  without them submitting a request.<br />
-                  <strong>Clear All Exclusions</strong> removes every exclusion at once -- use this at the start of a
-                  new season when the M+ pool resets.
+                <div id="help-bis" class="help-tip">
+                  Open submissions to show the BiS submit form to raiders. Close it when you don't want unsolicited
+                  updates.<br>
+                  To let a specific player submit outside of an open window, use the per-player <strong>Allow BiS
+                    Submit</strong> toggle in their officer profile card on the Roster tab.<br>
+                  <strong>Approve</strong> updates the player's BiS link in the Roster sheet. <strong>Reject</strong>
+                  discards the submission without changing anything.
                 </div>
-                <div style="margin-top: 1rem; display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center">
-                  <button class="btn btn-muted" id="mplusToggleBtn" onclick="toggleMPlusOpen()">Open Requests</button>
-                  <button class="btn btn-danger" onclick="confirmClearAllMPlusExclusions()">
-                    Clear All Exclusions
-                  </button>
+                <div style="margin-top:1rem;">
+                  <button class="btn btn-muted" id="bisToggleBtn" onclick="toggleBisSubmissionsOpen()">Open
+                    Submissions</button>
                 </div>
-                <div
-                  id="mplusClearConfirm"
-                  style="
-                    display: none;
-                    margin-top: 0.75rem;
-                    padding: 0.75rem;
-                    background: rgba(255, 124, 92, 0.08);
-                    border: 1px solid rgba(255, 124, 92, 0.25);
-                    border-radius: 4px;
-                  "
-                >
-                  <span style="font-size: 0.92rem; color: var(--melee)"
-                    >This will remove all M+ exclusions for all players. Use at season reset.</span
-                  >
-                  <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem">
-                    <button class="btn btn-danger" onclick="executeClearAllMPlusExclusions()">Yes, Clear All</button>
-                    <button
-                      class="btn btn-muted"
-                      onclick="document.getElementById('mplusClearConfirm').style.display = 'none'"
-                    >
-                      Cancel
-                    </button>
+                <p class="signup-officer-note">Toggling submissions shows or hides the BiS list submit form for raiders.</p>
+              </div>
+              <div id="bisContainer"></div>
+            </div>
+            <div id="bis-sub-lists" style="display:none;">
+              <div id="bis-lists-container"></div>
+            </div>
+          </div>
+
+          <!-- Attendance tab -->
+          <div id="tab-attendance" class="tab-panel">
+            <div class="filter-bar" style="margin-bottom:1rem;">
+              <button class="filter-chip active" id="attend-subtab-btn-manage"
+                onclick="switchAttendSubTab('manage', this)">Manage</button>
+              <button class="filter-chip" id="attend-subtab-btn-scores"
+                onclick="switchAttendSubTab('scores', this)">Attendance Scores</button>
+              <button class="filter-chip" id="attend-subtab-btn-bench"
+                onclick="switchAttendSubTab('bench', this)">Bench Fairness</button>
+            </div>
+            <div id="attend-sub-manage">
+              <div class="attend-manage-panel">
+                <div class="attend-manage-header">
+                  <span class="section-label" style="margin-bottom:0;">Manage Raid Attendance<button class="help-btn"
+                      onclick="toggleHelp('help-attendance')" title="Show help">?</button></span>
+                  <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                    <button class="btn btn-muted" id="refreshWCLBtn" onclick="refreshAttendanceWCL()">Refresh from
+                      WCL</button>
+                    <span id="refreshWCLStatus" style="font-size:0.92rem;"></span>
+                    <button class="btn btn-gold" id="commitScoresBtn" onclick="confirmCommitScores()"
+                      style="margin-left:0.5rem;">Commit Scores to Sheet</button>
+                    <span id="commitScoresStatus" style="font-size:0.92rem;"></span>
                   </div>
                 </div>
-                <p class="signup-officer-note">Toggling opens or closes the M+ exclusion request form for raiders.</p>
-              </div>
-              <div style="margin-top: 1.5rem">
-                <div
-                  style="
-                    font-size: 0.9rem;
-                    letter-spacing: 0.16em;
-                    text-transform: uppercase;
-                    color: var(--text-muted);
-                    font-weight: 600;
-                  "
-                >
-                  Currently Excluded
+                <div id="help-attendance" class="help-tip">
+                  <strong>Refresh from WCL</strong> -- pulls the latest raid nights from Warcraft Logs and populates the
+                  attendance grid. Run this after each raid night.<br>
+                  <strong>Commit Scores to Sheet</strong> -- calculates each player's attendance % and writes it to the
+                  Scoring sheet. Safe to run multiple times; it always recalculates from scratch. Run this when you want
+                  the roster view to reflect current scores.<br>
+                  <strong>Manual edits</strong> -- click any status cell in the grid to change a player's attendance for
+                  that night (Present, Late, Excused, No Show, etc.).<br>
+                  <strong>Sync % to Roster Sheet</strong> -- updates the attendance % column on the Roster sheet from live
+                  data. Use this if the roster display is stale after manual edits.
                 </div>
-                <div id="mplusActiveContainer"></div>
+                <div id="commitConfirmBanner" class="attend-confirm-banner" style="display:none;">
+                  Calculate and write attendance scores for all players to the Scoring sheet?
+                  <button class="btn btn-gold" onclick="executeCommitScores()" style="margin-left:1rem;">Yes,
+                    Commit</button>
+                  <button class="btn btn-muted" onclick="cancelCommitScores()"
+                    style="margin-left:0.5rem;">Cancel</button>
+                </div>
+                <div id="attendGridStatus" style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;"></div>
+                <div id="attendGridNightRow" style="display:none;margin-bottom:0.75rem;">
+                  <div class="attend-status-wrap" style="display:inline-block;">
+                    <select id="attendNightSelect" class="attend-night-select"
+                      onchange="renderNightGrid(this.selectedIndex)"></select>
+                  </div>
+                </div>
+                <div id="attendGridTable"></div>
               </div>
-              <div id="mplusContainer"></div>
+            </div>
+            <div id="attend-sub-scores" style="display:none;">
+              <div class="attend-threshold-row">
+                <span class="attend-threshold-label">Show at or below <strong id="attendThresholdVal">95%</strong></span>
+                <input type="range" id="attendThreshold" class="attend-slider" min="0" max="100" value="95"
+                  oninput="document.getElementById('attendThresholdVal').textContent=this.value+'%';buildAttendanceTab();">
+                <button class="btn btn-gold" id="syncAttendPctBtn" onclick="syncAttendancePct()"
+                  style="margin-left:auto;">Sync % to Roster Sheet</button>
+                <span id="syncAttendPctStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+              </div>
+              <div id="attendanceContent"></div>
+            </div>
+            <div id="attend-sub-bench" style="display:none;">
+              <div id="benchFairnessContent"></div>
             </div>
           </div>
-        </div>
-      </div>
-      <div class="footer">
-        We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNum"></span> &middot;
-        <a
-          class="footer-link"
-          href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md"
-          target="_blank"
-          rel="noopener"
-          >Changelog</a
-        >
-      </div>
-    </div>
 
-    <!-- Priority Edit modal -->
-    <div id="prioEditModal" class="officer-prompt">
-      <div class="officer-prompt-box prio-edit-box">
-        <div class="prio-edit-header">
-          <span class="prio-edit-title" id="prioEditTitle">Set Priority</span>
-          <span class="prio-item-slot" id="prioEditSlot"></span>
-          <div class="prio-diff-toggle">
-            <button class="filter-chip active" id="prioEditDiffHeroic" onclick="prioEditSwitchDiff('heroic')">
-              Heroic
-            </button>
-            <button class="filter-chip" id="prioEditDiffMythic" onclick="prioEditSwitchDiff('mythic')">Mythic</button>
-          </div>
-        </div>
-        <div class="prio-edit-body">
-          <div class="prio-edit-ranked">
-            <div class="prio-edit-section-label">
-              Priority Order <span id="prioEditCount" style="color: var(--text-dim); font-weight: 400"></span>
+          <!-- Scoring tab -->
+          <div id="tab-scoring" class="tab-panel">
+            <div class="attend-manage-header">
+              <span class="section-label" style="margin-bottom:0;">WCL Performance Scores<button class="help-btn" onclick="toggleHelp('help-scoring')" title="Show help">?</button></span>
+              <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                <button class="btn btn-muted" id="refreshPerfBtn" onclick="refreshWclPerformance()">Refresh from WCL</button>
+                <span id="refreshPerfStatus" style="font-size:0.92rem;"></span>
+                <button class="btn btn-gold" id="commitPerfBtn" onclick="confirmCommitPerformance()" style="margin-left:0.5rem;">Commit to Scoring Sheet</button>
+                <span id="commitPerfStatus" style="font-size:0.92rem;"></span>
+              </div>
             </div>
-            <div id="prioEditList" class="prio-drag-list"></div>
-            <p class="prio-edit-hint">Drag to reorder. Click a player on the right to add.</p>
+            <div id="help-scoring" class="help-tip" style="margin-top:0.5rem;margin-bottom:0.75rem;">
+              <strong>Refresh from WCL</strong> -- fetches the last raid reports from WCL and calculates ilvl bracket % scores for each DPS and healer. Writes draft scores to columns J (Recent) and K (Trend) of the Scoring sheet. Tanks are skipped and marked Manual.<br>
+              <strong>Commit to Scoring Sheet</strong> -- copies Recent Scores (column J) into the Performance column (C), which is what the Priority Generator uses. Safe to run multiple times.
+            </div>
+            <div id="perfConfirmBanner" class="attend-confirm-banner" style="display:none;">
+              Copy Recent Scores (column J) into the Performance column (C) for all players?
+              <button class="btn btn-gold" onclick="executeCommitPerformance()" style="margin-left:1rem;">Yes, Commit</button>
+              <button class="btn btn-muted" onclick="cancelCommitPerformance()" style="margin-left:0.5rem;">Cancel</button>
+            </div>
+            <div id="scoringStatus" style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;"></div>
+            <div style="display:flex;flex-wrap:wrap;gap:1rem;font-size:0.8rem;color:var(--text-muted);padding:0.25rem 0 0.75rem;border-top:1px solid var(--border);margin-top:0.25rem;">
+              <span><span style="color:var(--heal);font-weight:700;">&#9632;</span> &gt;= 7.0 &mdash; Strong</span>
+              <span><span style="color:var(--gold);font-weight:700;">&#9632;</span> &gt;= 5.0 &mdash; Average</span>
+              <span><span style="color:var(--text-dim);font-weight:700;">&#9632;</span> &lt; 5.0 &mdash; Below average</span>
+              <span><span style="color:#b085f0;font-weight:700;">&#9632;</span> Trend fallback (no recent data)</span>
+              <span><span style="color:var(--melee);font-weight:700;">&#9632;</span> No data</span>
+              <span><span style="color:var(--text-muted);font-weight:700;">&#9632;</span> Excluded (Tank/Healer)</span>
+              <span style="color:var(--text-dim);">Scores = ilvl bracket percentile / 10</span>
+            </div>
+            <div id="scoringContent"></div>
           </div>
-          <div class="prio-edit-pool-col">
-            <div class="prio-edit-section-label" id="prioEditPoolLabel">BiS Players</div>
-            <div id="prioEditPool" class="prio-pool-list"></div>
-            <button
-              class="btn btn-muted prio-edit-show-all"
-              id="prioEditShowAllBtn"
-              onclick="prioEditToggleAllRoster()"
-            >
-              Show all roster
-            </button>
+
+          <!-- Signups tab -->
+          <div id="tab-signups" class="tab-panel">
+            <div class="filter-bar" style="margin-bottom:1rem;">
+              <button class="filter-chip active" id="signups-subtab-btn-signups"
+                onclick="switchSignupsSubTab('signups', this)">Signups</button>
+              <button class="filter-chip" id="signups-subtab-btn-pendingRoster"
+                onclick="switchSignupsSubTab('pendingRoster', this)">Pending Roster <span class="nav-notif"
+                  id="pendingRosterSubBadge" style="display:none;"></span></button>
+              <button class="filter-chip" id="signups-subtab-btn-history"
+                onclick="switchSignupsSubTab('history', this)">History</button>
+            </div>
+            <div id="signups-sub-signups">
+              <div class="signup-officer-panel">
+                <div class="signup-status-row">
+                  <span class="signup-status-label">Roster Signups<button class="help-btn"
+                      onclick="toggleHelp('help-signups')" title="Show help">?</button></span>
+                  <span class="signup-status-badge signup-status-closed" id="signupStatusBadge">CLOSED</span>
+                </div>
+                <div id="help-signups" class="help-tip">
+                  Open signups to show the Sign Up button on the landing page for roster members to declare their
+                  class/spec for the season. Close it when signup collection is done.<br>
+                  Submitted signups appear in the queue below -- <strong>Approve</strong> moves them to the Pending
+                  Roster sub-tab; <strong>Deny</strong> marks them rejected. A player who re-submits will overwrite
+                  their existing pending entry.<br>
+                  On the Pending Roster sub-tab, review the composition and missing signups, then use
+                  <strong>Push to Roster</strong> to apply all pending entries to the official roster at once.
+                  Optionally remove roster members who did not submit a signup.
+                </div>
+                <div style="margin-top:1rem;">
+                  <button class="btn btn-muted" id="signupToggleBtn" onclick="toggleSignupsOpen()">Open Signups</button>
+                </div>
+                <p class="signup-officer-note">Toggling signups shows or hides the Sign Up button for applicants.</p>
+              </div>
+              <div id="signupsResponsesContainer"></div>
+            </div>
+            <div id="signups-sub-pendingRoster" style="display:none;">
+              <div id="pendingRosterContainer"></div>
+            </div>
+            <div id="signups-sub-history" style="display:none;">
+              <div id="signupHistoryContainer"></div>
+            </div>
           </div>
-        </div>
-        <p id="prioEditError" style="display: none; font-size: 0.85rem; color: var(--melee); margin-top: 0.25rem"></p>
-        <div
-          id="prioEditVersionWarning"
-          style="
-            display: none;
-            background: rgba(255, 180, 0, 0.08);
-            border: 1px solid rgba(255, 180, 0, 0.35);
-            border-radius: 6px;
-            padding: 0.6rem 0.85rem;
-            margin-top: 0.5rem;
-            font-size: 0.83rem;
-            color: var(--gold);
-            line-height: 1.45;
-          "
-        >
-          <strong>Note:</strong> One or more players with no version of this item are ranked below players who already
-          have the Heroic version. Consider manually moving "No Version" players higher -- they benefit more from the
-          upgrade.
-        </div>
-        <div class="prio-edit-actions">
-          <button class="btn btn-muted" id="prioEditGenBtn" onclick="prioEditGenerate()">Suggest Order</button>
-          <span class="prio-edit-status" id="prioEditStatus"></span>
-          <button class="btn btn-muted" onclick="closePrioEditModal()">Cancel</button>
-          <button class="btn btn-gold" id="prioEditSaveBtn" onclick="prioEditSave()">Save Priority</button>
+
+          <!-- Self Received Requests tab -->
+          <div id="tab-requests" class="tab-panel">
+            <div class="signup-officer-panel" style="margin-bottom:1rem;">
+              <div class="signup-status-row">
+                <span class="signup-status-label">Received Item Requests<button class="help-btn"
+                    onclick="toggleHelp('help-requests')" title="Show help">?</button></span>
+              </div>
+              <div id="help-requests" class="help-tip">
+                Raiders submit requests for items received outside of raid (M+, Great Vault, Crafted, Catalyst, Bonus
+                Roll).<br>
+                <strong>Approve</strong> marks the item as received in their loot history, which affects loot fairness
+                scores and priority standing.<br>
+                <strong>Reject</strong> dismisses the request with no change to their record.<br>
+                Officers can also mark items received directly from a player's profile card on the Roster tab -- this
+                bypasses the approval queue and takes effect immediately.
+              </div>
+            </div>
+            <div id="requestsContainer"></div>
+          </div>
+
+          <!-- Audit Log tab -->
+          <div id="tab-audit" class="tab-panel">
+            <div style="margin-bottom:1rem;">
+              <input type="text" id="auditSearch" class="roster-search-input"
+                placeholder="Search by officer, action, player, or detail..." oninput="renderAuditLog()"
+                style="max-width:320px;">
+            </div>
+            <div id="auditContainer"></div>
+          </div>
+
+          <!-- Reports tab -->
+          <div id="tab-reports" class="tab-panel">
+            <div class="filter-bar" style="margin-bottom:0.5rem;">
+              <button class="filter-chip active" id="reports-subtab-btn-rnlsi"
+                onclick="switchReportsSubTab('rnlsi', this)">Raid Nights Since Last Item</button>
+              <button class="filter-chip" id="reports-subtab-btn-bisDemand"
+                onclick="switchReportsSubTab('bisDemand', this)">BiS Demand vs Awards</button>
+              <button class="filter-chip" id="reports-subtab-btn-priorityHealth"
+                onclick="switchReportsSubTab('priorityHealth', this)">Priority Order Health</button>
+              <button class="filter-chip" id="reports-subtab-btn-lootPace"
+                onclick="switchReportsSubTab('lootPace', this)">Season Loot Pace</button>
+              <button class="help-btn" onclick="toggleHelp('help-reports')" title="Show help">?</button>
+            </div>
+            <div id="help-reports" class="help-tip" style="margin-bottom:0.75rem;">
+              <strong>Raid Nights Since Last Item</strong> -- how many raid nights have passed since each player's
+              last loot award, grouped by role.<br>
+              <strong>BiS Demand vs Awards</strong> -- ranks items by how many active players want them on their BiS
+              list, next to how many times each has actually been awarded in the selected season. High demand + low
+              awards is what to prioritize.<br>
+              <strong>Priority Order Health</strong> -- flags stale priority order entries for players no longer on
+              the active roster, and active non-bench players missing from priority order entirely for a season.<br>
+              <strong>Season Loot Pace</strong> -- items awarded per week of the season, compared to the same week
+              last season. "Week 1" is measured from the first tracked loot award of the season, not the raid-lockout
+              calendar, since Supabase doesn't store a season start date yet.
+            </div>
+
+            <div id="reports-sub-rnlsi">
+              <div class="filter-bar" style="margin-bottom:0.35rem;">
+                <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Role:</span>
+                <button class="filter-chip" onclick="toggleRnlsiRole('Tank')" id="rnlsi-chip-role-Tank">Tanks</button>
+                <button class="filter-chip" onclick="toggleRnlsiRole('Heal')" id="rnlsi-chip-role-Heal">Healers</button>
+                <button class="filter-chip" onclick="toggleRnlsiRole('Melee')" id="rnlsi-chip-role-Melee">Melee</button>
+                <button class="filter-chip" onclick="toggleRnlsiRole('Ranged')" id="rnlsi-chip-role-Ranged">Ranged</button>
+              </div>
+              <div class="filter-bar" style="margin-bottom:0.75rem;">
+                <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Sort:</span>
+                <button class="filter-chip" onclick="toggleRnlsiSort('player')" id="rnlsi-chip-sort-player">Player</button>
+                <button class="filter-chip" onclick="toggleRnlsiSort('lastAward')" id="rnlsi-chip-sort-lastAward">Last Award</button>
+                <button class="filter-chip active" onclick="toggleRnlsiSort('nights')" id="rnlsi-chip-sort-nights">Raid Nights Since</button>
+              </div>
+              <div id="reportsRnlsiContent"><p style="color:var(--text-muted);">Loading...</p></div>
+            </div>
+
+            <div id="reports-sub-bisDemand" style="display:none;">
+              <div class="filter-bar" style="margin-bottom:0.75rem;">
+                <select id="reportsBisSeasonFilter" class="roster-search-input"
+                  style="width:auto;min-width:180px;margin-bottom:0;" onchange="renderBisDemandTable()"></select>
+              </div>
+              <div id="reportsBisDemandContent"><p style="color:var(--text-muted);">Loading...</p></div>
+            </div>
+
+            <div id="reports-sub-priorityHealth" style="display:none;">
+              <div class="filter-bar" style="margin-bottom:0.75rem;">
+                <select id="reportsPriorityHealthSeasonFilter" class="roster-search-input"
+                  style="width:auto;min-width:180px;margin-bottom:0;" onchange="renderPriorityHealthTables()"></select>
+              </div>
+              <div class="section-label" style="margin-bottom:0.1rem;">Stale Entries</div>
+              <p style="color:var(--text-muted);font-size:0.85rem;margin:0 0 0.5rem;">
+                Players ranked in this season's priority order who are no longer on the active roster (archived).
+                Clean these up.
+              </p>
+              <div id="reportsPriorityStaleContent"><p style="color:var(--text-muted);">Loading...</p></div>
+              <div class="section-label" style="margin:1rem 0 0.1rem;">Missing From Priority Order</div>
+              <p style="color:var(--text-muted);font-size:0.85rem;margin:0 0 0.5rem;">
+                Active, non-bench players with no priority order entry at all this season -- for any item. Gaps to
+                fill in.
+              </p>
+              <div id="reportsPriorityGapsContent"></div>
+            </div>
+
+            <div id="reports-sub-lootPace" style="display:none;">
+              <div class="filter-bar" style="margin-bottom:0.75rem;">
+                <select id="reportsPaceSeasonFilter" class="roster-search-input"
+                  style="width:auto;min-width:160px;margin-bottom:0;" onchange="renderLootPaceTable()"></select>
+                <select id="reportsPaceTrackFilter" class="roster-search-input"
+                  style="width:auto;min-width:140px;margin-bottom:0;" onchange="renderLootPaceTable()">
+                  <option value="">All Tracks</option>
+                  <option value="Myth">Mythic</option>
+                  <option value="Hero">Heroic</option>
+                  <option value="Champion">Champion</option>
+                </select>
+                <select id="reportsPaceSlotFilter" class="roster-search-input"
+                  style="width:auto;min-width:140px;margin-bottom:0;" onchange="renderLootPaceTable()">
+                  <option value="">All Slots</option>
+                </select>
+              </div>
+              <div id="reportsPaceContent"><p style="color:var(--text-muted);">Loading...</p></div>
+            </div>
+          </div>
+
+          <!-- Season Settings tab -->
+          <div id="tab-season" class="tab-panel">
+            <div class="filter-chips" style="margin-bottom:1rem;">
+              <button id="season-subtab-btn-settings"    class="filter-chip active" onclick="switchSeasonSubTab('settings',this)">Settings</button>
+              <button id="season-subtab-btn-progression" class="filter-chip"        onclick="switchSeasonSubTab('progression',this)">Raid Progression</button>
+              <button id="season-subtab-btn-history"     class="filter-chip"        onclick="switchSeasonSubTab('history',this)">History</button>
+            </div>
+
+            <div id="season-sub-settings" class="season-settings-wrap">
+
+              <!-- Season Name -->
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Season Name<button class="help-btn" onclick="toggleHelp('help-season-name')" title="Show help">?</button></h4>
+                <div id="help-season-name" class="help-tip">
+                  This label is applied to every loot entry imported through RCLootCouncil while the name is set. It is used by the <strong>Season</strong> toolbar dropdown to let you filter loot, fairness, and attendance to a specific season. Set this before importing loot at the start of each season.
+                </div>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">The current season label applied to all imported RCLootCouncil loot (e.g. Season 1).</p>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <input type="text" id="seasonNameInput" class="add-player-input" placeholder="e.g. Season 1"
+                    style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-gold" id="seasonNameSaveBtn" onclick="saveSeasonName()">Save</button>
+                  <span id="seasonNameStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+              </div>
+
+              <!-- Season Code Prefix -->
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Season Code Prefix<button class="help-btn" onclick="toggleHelp('help-season-code-prefix')" title="Show help">?</button></h4>
+                <div id="help-season-code-prefix" class="help-tip">
+                  Controls how season codes (the compact keys stored with loot, priority, and scoring data, e.g. MID1) translate to and from the season names you type elsewhere on this page. Every season numbered under the current prefix translates automatically -- you only need to change this once, when a new expansion's season codes stop starting with the current prefix. Leave both fields blank to reset to the defaults (MID / Midnight Season).
+                </div>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Only change this at an expansion boundary -- not for a routine new season.</p>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <input type="text" id="seasonCodePrefixInput" class="add-player-input" placeholder="MID"
+                    style="max-width:100px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <span style="color:var(--text-muted);">&lt;-&gt;</span>
+                  <input type="text" id="seasonDisplayPrefixInput" class="add-player-input" placeholder="Midnight Season"
+                    style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-gold" id="seasonCodePrefixSaveBtn" onclick="saveSeasonCodePrefixes()">Save</button>
+                  <span id="seasonCodePrefixStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+              </div>
+
+              <!-- Signup Season -->
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Signup Season<button class="help-btn" onclick="toggleHelp('help-signup-season')" title="Show help">?</button></h4>
+                <div id="help-signup-season" class="help-tip">
+                  The season label stamped on every signup submission. Set this before opening signups so all responses are tagged correctly. If left blank, signups will be recorded with no season and will not appear in the Missing Signups list once a season is set.
+                </div>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">The season label applied to incoming signup submissions (e.g. MN Season 1).</p>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <input type="text" id="signupSeasonInput" class="add-player-input" placeholder="e.g. MN Season 1"
+                    style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-gold" id="signupSeasonSaveBtn" onclick="saveSignupSeason()">Save</button>
+                  <span id="signupSeasonStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+              </div>
+
+              <!-- Season Start Date -->
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Season Start Date<button class="help-btn" onclick="toggleHelp('help-season-start')" title="Show help">?</button></h4>
+                <div id="help-season-start" class="help-tip">
+                  Raids before this date are excluded from attendance scoring. Players who joined after this date use their own join date as the window start instead, so latecomers are not penalised for raids they were not part of.
+                  Leave blank to include all raids in scoring (no season filter).
+                </div>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Set the date this raid season began.</p>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <input type="date" id="seasonStartInput" class="add-player-input"
+                    style="max-width:180px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-gold" id="seasonStartSaveBtn" onclick="saveSeasonStart()">Save</button>
+                  <button class="btn btn-danger" onclick="confirmClearSeasonStart()">Clear</button>
+                  <span id="seasonStartStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+                <div id="seasonClearConfirm"
+                  style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
+                  <span style="font-size:0.92rem;color:var(--melee);">This will remove the season start date and include
+                    all raids in attendance scoring.</span>
+                  <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                    <button class="btn btn-danger" onclick="executeClearSeasonStart()">Yes, Clear</button>
+                    <button class="btn btn-muted"
+                      onclick="document.getElementById('seasonClearConfirm').style.display='none'">Cancel</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Season End Date -->
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Season End Date<button class="help-btn" onclick="toggleHelp('help-season-end')" title="Show help">?</button></h4>
+                <div id="help-season-end" class="help-tip">
+                  Optional. Set this when the current season closes before the next one officially begins -- for example if your guild stops raiding a week before the new patch. When set, it acts as the upper bound for attendance and loot filtering in the season selector. Leave blank if the season is still active.
+                </div>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Optional close date for the current season. Leave blank if the season is still ongoing.</p>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <input type="date" id="seasonEndInput" class="add-player-input"
+                    style="max-width:180px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-gold" id="seasonEndSaveBtn" onclick="saveSeasonEnd()">Save</button>
+                  <button class="btn btn-danger" onclick="confirmClearSeasonEnd()">Clear</button>
+                  <span id="seasonEndStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+                <div id="seasonEndClearConfirm"
+                  style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
+                  <span style="font-size:0.92rem;color:var(--melee);">This will remove the season end date.</span>
+                  <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                    <button class="btn btn-danger" onclick="executeClearSeasonEnd()">Yes, Clear</button>
+                    <button class="btn btn-muted"
+                      onclick="document.getElementById('seasonEndClearConfirm').style.display='none'">Cancel</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Trial Promotion Thresholds -->
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Trial Promotion Thresholds</h4>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">A trial player appears in the promotion alert once they meet both thresholds.</p>
+                <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <span style="font-size:0.92rem;color:var(--text-muted);">At least</span>
+                  <input type="number" id="trialWeeksInput" class="add-player-input" min="1" max="52" style="max-width:70px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <span style="font-size:0.92rem;color:var(--text-muted);">weeks on roster and</span>
+                  <input type="number" id="trialAttendInput" class="add-player-input" min="0" max="100" style="max-width:70px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <span style="font-size:0.92rem;color:var(--text-muted);">% attendance</span>
+                  <button class="btn btn-gold" id="trialThresholdsSaveBtn" onclick="saveTrialThresholds()">Save</button>
+                  <span id="trialThresholdsStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+              </div>
+
+            </div><!-- /season-sub-settings -->
+
+            <div id="season-sub-progression" class="season-settings-wrap" style="display:none;">
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Raid Progression<button class="help-btn" onclick="toggleHelp('help-raid-prog')" title="Show help">?</button></h4>
+                <div id="help-raid-prog" class="help-tip">
+                  Track mythic progression and AOTC dates for each raid in the current season. Multiple raids can be added (e.g. if the season has a mid-patch raid). Boss kill dates appear on the public landing page. Mini-raids (single or small standalone bosses) have no AOTC date. Progression is archived with the season when you archive it.
+                </div>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Add one block per raid in the current season. Boss kill dates are shown publicly.</p>
+                <div id="raidProgressionCards" style="display:flex;flex-direction:column;gap:1rem;margin-top:0.75rem;"></div>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <button class="btn btn-muted" onclick="raidAddRaid()">+ Add Raid</button>
+                  <button class="btn btn-gold" id="raidSaveBtn" onclick="saveRaidProgression()">Save Progression</button>
+                  <span id="raidProgressionStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+              </div>
+            </div><!-- /season-sub-progression -->
+
+            <div id="season-sub-history" class="season-settings-wrap" style="display:none;">
+              <!-- Archive Season -->
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Archive Current Season<button class="help-btn" onclick="toggleHelp('help-season-archive')" title="Show help">?</button></h4>
+                <div id="help-season-archive" class="help-tip">
+                  Archiving pushes the current Season Name, Start Date, and End Date into the season history list. Once archived, the season appears in the <strong>Season</strong> toolbar dropdown so officers can filter by it at any time. After archiving, set a new Season Name and Start Date for the next season.
+                  <br><br>
+                  <strong>Rollover workflow:</strong>
+                  <ol style="margin:0.35rem 0 0;padding-left:1.25rem;">
+                    <li>Set an <strong>End Date</strong> if the season closes before the next one starts.</li>
+                    <li>Click <strong>Archive Current Season</strong> below.</li>
+                    <li>Set the new <strong>Season Name</strong> and <strong>Start Date</strong>.</li>
+                    <li>Re-import this season's loot via <strong>Loot &gt; Import</strong> -- entries are tagged with the new name automatically.</li>
+                    <li>Click <strong>Refresh from WCL</strong> on the Attendance tab to pull the new season's raids.</li>
+                  </ol>
+                </div>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Move the current season into history so it appears in the season selector dropdown.</p>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <button class="btn btn-danger" onclick="confirmArchiveSeason()">Archive Current Season</button>
+                  <span id="seasonArchiveStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+                <div id="seasonArchiveConfirm"
+                  style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
+                  <span id="seasonArchiveConfirmMsg" style="font-size:0.92rem;color:var(--melee);"></span>
+                  <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                    <button class="btn btn-danger" id="seasonArchiveExecBtn" onclick="executeArchiveSeason()">Yes, Archive</button>
+                    <button class="btn btn-muted"
+                      onclick="document.getElementById('seasonArchiveConfirm').style.display='none'">Cancel</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Season History -->
+              <div id="seasonHistoryWrap" class="help-ref-card" style="display:none;">
+                <h4 class="help-ref-title">Season History</h4>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Past archived seasons. Use Unarchive to restore a season as the active one if it was archived by mistake.</p>
+                <div id="seasonHistoryList" style="margin-top:0.5rem;font-size:0.92rem;color:var(--text-muted);"></div>
+                <div id="seasonUnarchiveConfirm"
+                  style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
+                  <span id="seasonUnarchiveConfirmMsg" style="font-size:0.92rem;color:var(--melee);"></span>
+                  <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                    <button class="btn btn-danger" id="seasonUnarchiveExecBtn" onclick="executeUnarchiveSeason()">Yes, Restore</button>
+                    <button class="btn btn-muted"
+                      onclick="document.getElementById('seasonUnarchiveConfirm').style.display='none'">Cancel</button>
+                  </div>
+                </div>
+                <span id="seasonUnarchiveStatus" style="font-size:0.92rem;color:var(--heal);display:block;margin-top:0.5rem;"></span>
+              </div>
+            </div><!-- /season-sub-history -->
+
+          </div>
+
+          <!-- Help tab -->
+          <div id="tab-help" class="tab-panel">
+            <div class="help-reference">
+              <h3 class="help-ref-heading">Officer Workflow Reference</h3>
+
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Import RCLootCouncil loot history</h4>
+                <ol class="help-ref-steps">
+                  <li>Confirm <strong>Season Name</strong> is set in <a href="#" onclick="switchTab('season');return false;">Season Settings</a> (e.g. "Season 2"). New entries will be tagged with this label.</li>
+                  <li>In-game, open RCLootCouncil and use its export feature to copy your loot history JSON.</li>
+                  <li>Go to <strong>Loot &gt; Import</strong>, paste the JSON into the text box, and click <strong>Import</strong>.</li>
+                  <li>Duplicate entries are skipped automatically -- you can paste multiple nights at once or re-paste old exports safely.</li>
+                </ol>
+              </div>
+
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Refresh attendance from Warcraft Logs</h4>
+                <ol class="help-ref-steps">
+                  <li>Go to the <strong>Attendance</strong> tab.</li>
+                  <li>Click <strong>Refresh from WCL</strong>. This pulls the latest raid nights from Warcraft Logs and populates the attendance grid.</li>
+                  <li>Select a raid night from the dropdown to review or edit player statuses.</li>
+                </ol>
+              </div>
+
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Manually edit attendance status</h4>
+                <ol class="help-ref-steps">
+                  <li>Go to the <strong>Attendance</strong> tab and select the raid night from the dropdown.</li>
+                  <li>Find the player in the grid and use the status dropdown on their row to set: <em>Present</em>, <em>Bench</em>, <em>Excused</em>, <em>Medical Leave</em>, <em>No Show</em>, or <em>Not on Roster</em>.</li>
+                  <li>The change saves immediately -- a checkmark confirms success.</li>
+                </ol>
+              </div>
+
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Commit attendance scores to the roster sheet</h4>
+                <ol class="help-ref-steps">
+                  <li>After reviewing the attendance grid, click <strong>Commit Scores to Sheet</strong> on the Attendance tab.</li>
+                  <li>Confirm the prompt. This calculates each player's attendance percentage and writes it to the Google Sheet roster.</li>
+                  <li>Run this after any manual edits or a WCL refresh to keep the public roster view up to date.</li>
+                </ol>
+              </div>
+
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Set season start date and season name</h4>
+                <ol class="help-ref-steps">
+                  <li>Go to <a href="#" onclick="switchTab('season');return false;">Season Settings</a>.</li>
+                  <li>Set the <strong>Season Start Date</strong> to the first day of the current raid season. Raids before this date are excluded from attendance scoring.</li>
+                  <li>Set the <strong>Season Name</strong> (e.g. "Season 2"). This label is applied to all future loot imports -- set it before importing loot.</li>
+                </ol>
+              </div>
+
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Season reset workflow</h4>
+                <ol class="help-ref-steps">
+                  <li>Go to <a href="#" onclick="switchTab('season');return false;">Season Settings</a> and update the <strong>Season Start Date</strong> to the new season's first raid day.</li>
+                  <li>Update the <strong>Season Name</strong> (e.g. "Season 2") so new loot imports are tagged correctly.</li>
+                  <li>Go to <strong>Loot &gt; Import History</strong> and click <strong>Clear All Loot History</strong> to remove last season's entries.</li>
+                  <li>Re-import this season's loot via <strong>Loot &gt; Import</strong>.</li>
+                  <li>On the <strong>Attendance</strong> tab, click <strong>Refresh from WCL</strong> to pull the new season's raid nights.</li>
+                  <li>Commit updated scores via <strong>Commit Scores to Sheet</strong>.</li>
+                </ol>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Admin tab -->
+          <div id="tab-admin" class="tab-panel">
+            <div class="filter-bar" style="margin-bottom:1rem;">
+              <button class="filter-chip active" id="admin-subtab-btn-properties"
+                onclick="switchAdminSubTab('properties', this)">Properties</button>
+              <button class="filter-chip" id="admin-subtab-btn-botconfig"
+                onclick="switchAdminSubTab('botconfig', this)">Bot Config</button>
+              <button class="filter-chip" id="admin-subtab-btn-export"
+                onclick="switchAdminSubTab('export', this)">Data Export</button>
+              <button class="filter-chip" id="admin-subtab-btn-officers"
+                onclick="switchAdminSubTab('officers', this)">Officers</button>
+              <button class="filter-chip" id="admin-subtab-btn-danger"
+                onclick="switchAdminSubTab('danger', this)">Danger Zone</button>
+            </div>
+
+            <!-- Properties -->
+            <div id="admin-sub-properties">
+              <div class="help-ref-card" style="margin-bottom:1rem;">
+                <h4 class="help-ref-title">Script Properties</h4>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Live read of key GAS script properties for this team.</p>
+                <div id="adminPropsContent" style="margin-top:0.75rem;"></div>
+                <div style="margin-top:0.75rem;">
+                  <button class="btn btn-muted" onclick="loadAdminProperties()">Refresh</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bot Config -->
+            <div id="admin-sub-botconfig" style="display:none;">
+              <div class="help-ref-card" style="margin-bottom:1rem;">
+                <h4 class="help-ref-title">Bot URL</h4>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">The base URL of the Discord bot server. Leave blank to use the compiled default.</p>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <input type="text" id="adminBotUrlInput" class="add-player-input"
+                    style="flex:1;min-width:200px;max-width:420px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-gold" id="adminBotUrlBtn" onclick="saveBotUrl()">Save</button>
+                  <span id="adminBotUrlStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+              </div>
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Bot Webhook Secret</h4>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">The shared secret sent in the X-Webhook-Secret header. Current value is masked -- enter a new value to replace it.</p>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <input type="password" id="adminBotSecretInput" class="add-player-input"
+                    placeholder="New secret value"
+                    style="flex:1;min-width:200px;max-width:420px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-gold" id="adminBotSecretBtn" onclick="saveBotSecret()">Save</button>
+                  <span id="adminBotSecretStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Data Export -->
+            <div id="admin-sub-export" style="display:none;">
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Export All Data</h4>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Downloads everything currently loaded in the dashboard (roster, loot history, priority order, BiS lists, season history, scoring) as a JSON file. No GAS call -- exports from the in-memory cache.</p>
+                <div style="margin-top:0.75rem;">
+                  <button class="btn btn-gold" id="adminExportBtn" onclick="downloadExport()">Download JSON</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Officers -->
+            <div id="admin-sub-officers" style="display:none;">
+              <p class="signup-officer-note" style="margin-bottom:0.75rem;">Officers can access the officer dashboard. Team leaders and site admins can promote a claimed character to officer or revoke it from here.</p>
+              <div id="adminOfficersContent"></div>
+            </div>
+
+            <!-- Danger Zone -->
+            <div id="admin-sub-danger" style="display:none;">
+              <div id="adminDangerContent"></div>
+            </div>
+          </div>
+
+          <!-- M+ Exclusions tab -->
+          <div id="tab-mplus" class="tab-panel">
+            <div class="signup-officer-panel">
+              <div class="signup-status-row">
+                <span class="signup-status-label">M+ Exclusion Requests<button class="help-btn"
+                    onclick="toggleHelp('help-mplus')" title="Show help">?</button></span>
+                <span class="signup-status-badge signup-status-closed" id="mplusStatusBadge">CLOSED</span>
+              </div>
+              <div id="help-mplus" class="help-tip">
+                Open requests to let raiders submit an exclusion with their Raider.io profile and a reason. Approved
+                players are marked M+ excluded on the roster view.<br>
+                You can also toggle a player's M+ exclusion directly from their officer profile card on the Roster tab
+                without them submitting a request.<br>
+                <strong>Clear All Exclusions</strong> removes every exclusion at once -- use this at the start of a new
+                season when the M+ pool resets.
+              </div>
+              <div style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center;">
+                <button class="btn btn-muted" id="mplusToggleBtn" onclick="toggleMPlusOpen()">Open Requests</button>
+                <button class="btn btn-danger" onclick="confirmClearAllMPlusExclusions()">Clear All Exclusions</button>
+              </div>
+              <div id="mplusClearConfirm"
+                style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
+                <span style="font-size:0.92rem;color:var(--melee);">This will remove all M+ exclusions for all players.
+                  Use at season reset.</span>
+                <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                  <button class="btn btn-danger" onclick="executeClearAllMPlusExclusions()">Yes, Clear All</button>
+                  <button class="btn btn-muted"
+                    onclick="document.getElementById('mplusClearConfirm').style.display='none'">Cancel</button>
+                </div>
+              </div>
+              <p class="signup-officer-note">Toggling opens or closes the M+ exclusion request form for raiders.</p>
+            </div>
+            <div style="margin-top:1.5rem;">
+              <div style="font-size:0.9rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;">Currently Excluded</div>
+              <div id="mplusActiveContainer"></div>
+            </div>
+            <div id="mplusContainer"></div>
+          </div>
+
         </div>
       </div>
     </div>
+    <div class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNum"></span> &middot; <a
+        class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank"
+        rel="noopener">Changelog</a></div>
+  </div>
 
-    <!-- Add Player modal -->
-    <div id="addPlayerModal" class="officer-prompt">
-      <div class="officer-prompt-box" style="max-width: 400px">
-        <h2>Add Player</h2>
-        <div style="display: flex; flex-direction: column; gap: 0.6rem">
-          <div>
-            <label class="add-player-label">Character Name</label>
-            <input id="addPlayerName" type="text" class="add-player-input" placeholder="Katorri" autocomplete="off" />
-          </div>
-          <div style="position: relative">
-            <label class="add-player-label">Realm</label>
-            <input
-              id="addPlayerRealm"
-              type="text"
-              class="add-player-input"
-              placeholder="Barthilas"
-              autocomplete="off"
-            />
-            <div
-              id="addPlayerRealmDropdown"
-              style="
-                display: none;
-                position: absolute;
-                top: 100%;
-                left: 0;
-                right: 0;
-                max-height: 160px;
-                overflow-y: auto;
-                background: var(--bg-elevated);
-                border: 1px solid var(--border-mid);
-                border-top: none;
-                border-radius: 0 0 3px 3px;
-                z-index: 200;
-              "
-            ></div>
-          </div>
-          <div>
-            <label class="add-player-label">Nickname (optional)</label>
-            <input id="addPlayerNick" type="text" class="add-player-input" placeholder="Kato" autocomplete="off" />
-          </div>
-          <div>
-            <label class="add-player-label">Class</label>
-            <select id="addPlayerClass" class="add-player-input" onchange="addPlayerClassChanged()">
-              <option value="">-- Select class --</option>
-            </select>
-          </div>
-          <div>
-            <label class="add-player-label">Spec</label>
-            <select id="addPlayerSpec" class="add-player-input">
-              <option value="">-- Select spec --</option>
-            </select>
-          </div>
-          <div>
-            <label class="add-player-label">Role</label>
-            <select id="addPlayerRole" class="add-player-input">
-              <option value="Tank">Tank</option>
-              <option value="Heal">Heal</option>
-              <option value="Melee" selected>Melee</option>
-              <option value="Ranged">Ranged</option>
-            </select>
-          </div>
-          <div>
-            <label class="add-player-label">Join Date</label>
-            <input id="addPlayerJoinDate" type="date" class="add-player-input" />
-          </div>
-          <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem">
-            <input id="addPlayerTrial" type="checkbox" style="width: auto; accent-color: var(--gold)" />
-            <label style="font-size: 0.92rem; color: var(--text-muted); letter-spacing: 0.06em">Mark as Trial</label>
-          </div>
-        </div>
-        <p id="addPlayerError" style="display: none; font-size: 0.88rem; color: var(--melee); margin-top: 0.25rem"></p>
-        <div class="prompt-buttons" style="margin-top: 0.5rem">
-          <button class="btn btn-gold" onclick="submitAddPlayer()">Add Player</button>
-          <button class="btn btn-muted" onclick="hideAddPlayerModal()">Cancel</button>
+  <!-- Priority Edit modal -->
+  <div id="prioEditModal" class="officer-prompt">
+    <div class="officer-prompt-box prio-edit-box">
+      <div class="prio-edit-header">
+        <span class="prio-edit-title" id="prioEditTitle">Set Priority</span>
+        <span class="prio-item-slot" id="prioEditSlot"></span>
+        <div class="prio-diff-toggle">
+          <button class="filter-chip active" id="prioEditDiffHeroic" onclick="prioEditSwitchDiff('heroic')">Heroic</button>
+          <button class="filter-chip" id="prioEditDiffMythic" onclick="prioEditSwitchDiff('mythic')">Mythic</button>
         </div>
       </div>
-    </div>
-
-    <!-- Officer password prompt -->
-    <div id="officerPrompt" class="officer-prompt">
-      <div class="officer-prompt-box">
-        <h2>Officer Access</h2>
-        <select id="officerPromptTeamSelect" class="team-switcher" style="width: 100%; margin-bottom: 0.25rem"></select>
-        <div
-          id="officerDiscordReauth"
-          style="
-            display: none;
-            margin-bottom: 0.75rem;
-            padding: 0.6rem 0.75rem;
-            background: rgba(88, 101, 242, 0.1);
-            border: 1px solid rgba(88, 101, 242, 0.3);
-            border-radius: 4px;
-          "
-        >
-          <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0 0 0.5rem 0">
-            Continue as <strong id="reauthUsername" style="color: var(--text)"></strong>
-          </p>
-          <button
-            class="btn site-nav-discord"
-            style="width: 100%; padding: 0.35rem 0.5rem; font-size: 0.88rem"
-            onclick="loginWithDiscord()"
-          >
-            Continue with Discord
-          </button>
+      <div class="prio-edit-body">
+        <div class="prio-edit-ranked">
+          <div class="prio-edit-section-label">Priority Order <span id="prioEditCount" style="color:var(--text-dim);font-weight:400;"></span></div>
+          <div id="prioEditList" class="prio-drag-list"></div>
+          <p class="prio-edit-hint">Drag to reorder. Click a player on the right to add.</p>
         </div>
-        <input
-          id="officerPassword"
-          type="password"
-          placeholder="Password"
-          onkeydown="if (event.key === 'Enter') submitOfficerPassword();"
-        />
-        <p id="officerError" style="display: none; font-size: 0.88rem; color: var(--melee)">Incorrect password</p>
-        <div class="prompt-buttons">
-          <button class="btn btn-gold" onclick="submitOfficerPassword()">Enter</button>
-          <a href="index.html" class="btn btn-muted">Cancel</a>
+        <div class="prio-edit-pool-col">
+          <div class="prio-edit-section-label" id="prioEditPoolLabel">BiS Players</div>
+          <div id="prioEditPool" class="prio-pool-list"></div>
+          <button class="btn btn-muted prio-edit-show-all" id="prioEditShowAllBtn" onclick="prioEditToggleAllRoster()">Show all roster</button>
         </div>
       </div>
+      <p id="prioEditError" style="display:none;font-size:0.85rem;color:var(--melee);margin-top:0.25rem;"></p>
+      <div id="prioEditVersionWarning" style="display:none;background:rgba(255,180,0,0.08);border:1px solid rgba(255,180,0,0.35);border-radius:6px;padding:0.6rem 0.85rem;margin-top:0.5rem;font-size:0.83rem;color:var(--gold);line-height:1.45;">
+        <strong>Note:</strong> One or more players with no version of this item are ranked below players who already have the Heroic version. Consider manually moving "No Version" players higher -- they benefit more from the upgrade.
+      </div>
+      <div class="prio-edit-actions">
+        <button class="btn btn-muted" id="prioEditGenBtn" onclick="prioEditGenerate()">Suggest Order</button>
+        <span class="prio-edit-status" id="prioEditStatus"></span>
+        <button class="btn btn-muted" onclick="closePrioEditModal()">Cancel</button>
+        <button class="btn btn-gold" id="prioEditSaveBtn" onclick="prioEditSave()">Save Priority</button>
+      </div>
     </div>
+  </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/common.js"></script>
-    <script src="js/discord.js"></script>
-    <script src="js/officer.js"></script>
-    <script src="js/tabs/tab-roster.js"></script>
-    <script src="js/tabs/tab-conflicts.js"></script>
-    <script src="js/tabs/tab-fairness.js"></script>
-    <script src="js/tabs/tab-attendance.js"></script>
-    <script src="js/tabs/tab-bench-fairness.js"></script>
-    <script src="js/tabs/tab-signups.js"></script>
-    <script src="js/tabs/tab-requests.js"></script>
-    <script src="js/tabs/tab-bis.js"></script>
-    <script src="js/tabs/tab-pending-roster.js"></script>
-    <script src="js/tabs/tab-mplus.js"></script>
-    <script src="js/tabs/tab-priority.js"></script>
-    <script src="js/tabs/tab-audit.js"></script>
-    <script src="js/tabs/tab-reports.js"></script>
-    <script src="js/tabs/tab-season.js"></script>
-    <script src="js/tabs/tab-loot-import.js"></script>
-    <script src="js/tabs/tab-scoring.js"></script>
-    <script src="js/tabs/tab-admin.js"></script>
-    <script>
-      document.getElementById('versionNum').textContent = VERSION;
-      document.title = TEAM_NAME + ' -- Officer';
-      document.getElementById('headerTeamName').textContent = TEAM_NAME;
-      document.querySelectorAll('.team-name').forEach(function (el) {
-        el.textContent = TEAM_NAME;
-      });
-      if (TEAM_SLUG !== 'phoenix') {
-        document.querySelectorAll('a[href="index.html"]').forEach(function (a) {
-          a.href = 'index.html?team=' + TEAM_SLUG;
-        });
-      }
-      initTeamUI();
+  <!-- Add Player modal -->
+  <div id="addPlayerModal" class="officer-prompt">
+    <div class="officer-prompt-box" style="max-width:400px;">
+      <h2>Add Player</h2>
+      <div style="display:flex;flex-direction:column;gap:0.6rem;">
+        <div>
+          <label class="add-player-label">Character Name</label>
+          <input id="addPlayerName" type="text" class="add-player-input" placeholder="Katorri" autocomplete="off">
+        </div>
+        <div style="position:relative;">
+          <label class="add-player-label">Realm</label>
+          <input id="addPlayerRealm" type="text" class="add-player-input" placeholder="Barthilas" autocomplete="off">
+          <div id="addPlayerRealmDropdown"
+            style="display:none;position:absolute;top:100%;left:0;right:0;max-height:160px;overflow-y:auto;background:var(--bg-elevated);border:1px solid var(--border-mid);border-top:none;border-radius:0 0 3px 3px;z-index:200;">
+          </div>
+        </div>
+        <div>
+          <label class="add-player-label">Nickname (optional)</label>
+          <input id="addPlayerNick" type="text" class="add-player-input" placeholder="Kato" autocomplete="off">
+        </div>
+        <div>
+          <label class="add-player-label">Class</label>
+          <select id="addPlayerClass" class="add-player-input" onchange="addPlayerClassChanged()">
+            <option value="">-- Select class --</option>
+          </select>
+        </div>
+        <div>
+          <label class="add-player-label">Spec</label>
+          <select id="addPlayerSpec" class="add-player-input">
+            <option value="">-- Select spec --</option>
+          </select>
+        </div>
+        <div>
+          <label class="add-player-label">Role</label>
+          <select id="addPlayerRole" class="add-player-input">
+            <option value="Tank">Tank</option>
+            <option value="Heal">Heal</option>
+            <option value="Melee" selected>Melee</option>
+            <option value="Ranged">Ranged</option>
+          </select>
+        </div>
+        <div>
+          <label class="add-player-label">Join Date</label>
+          <input id="addPlayerJoinDate" type="date" class="add-player-input">
+        </div>
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.2rem;">
+          <input id="addPlayerTrial" type="checkbox" style="width:auto;accent-color:var(--gold);">
+          <label style="font-size:0.92rem;color:var(--text-muted);letter-spacing:0.06em;">Mark as Trial</label>
+        </div>
+      </div>
+      <p id="addPlayerError" style="display:none;font-size:0.88rem;color:var(--melee);margin-top:0.25rem;"></p>
+      <div class="prompt-buttons" style="margin-top:0.5rem;">
+        <button class="btn btn-gold" onclick="submitAddPlayer()">Add Player</button>
+        <button class="btn btn-muted" onclick="hideAddPlayerModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
 
-      // When switching teams while Discord-authenticated, store a hint so the new page
-      // can show "Continue with Discord" instead of jumping straight to the password prompt.
-      (function () {
-        var ts = document.getElementById('teamSwitcherSelect');
-        if (ts) {
-          ts.onchange = function () {
-            var ds = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
-            if (ds && ds.username) sessionStorage.setItem('wga_discord_reauth', ds.username);
-            switchTeam(this.value);
-          };
-        }
-      })();
+  <!-- Officer password prompt -->
+  <div id="officerPrompt" class="officer-prompt">
+    <div class="officer-prompt-box">
+      <h2>Officer Access</h2>
+      <select id="officerPromptTeamSelect" class="team-switcher" style="width:100%;margin-bottom:0.25rem;"></select>
+      <div id="officerDiscordReauth" style="display:none;margin-bottom:0.75rem;padding:0.6rem 0.75rem;background:rgba(88,101,242,0.1);border:1px solid rgba(88,101,242,0.3);border-radius:4px;">
+        <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 0.5rem 0;">Continue as <strong id="reauthUsername" style="color:var(--text);"></strong></p>
+        <button class="btn site-nav-discord" style="width:100%;padding:0.35rem 0.5rem;font-size:0.88rem;" onclick="loginWithDiscord()">Continue with Discord</button>
+      </div>
+      <input id="officerPassword" type="password" placeholder="Password"
+        onkeydown="if(event.key==='Enter')submitOfficerPassword();" />
+      <p id="officerError" style="display:none;font-size:0.88rem;color:var(--melee);">Incorrect password</p>
+      <div class="prompt-buttons">
+        <button class="btn btn-gold" onclick="submitOfficerPassword()">Enter</button>
+        <a href="index.html" class="btn btn-muted">Cancel</a>
+      </div>
+    </div>
+  </div>
 
-      // Called by discord.js after a successful Discord login popup completes.
-      function onDiscordLoginComplete(session) {
-        if (session.isOfficer) {
-          _grantOfficerAccessViaDiscord(session);
-        } else {
-          var errEl = document.getElementById('officerError');
-          if (errEl) {
-            errEl.textContent =
-              'Your character (' + (session.nameRealm || session.username) + ') does not have officer access.';
-            errEl.style.display = '';
-          }
-          showOfficerPrompt();
-        }
-      }
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/common.js"></script>
+  <script src="js/discord.js"></script>
+  <script src="js/officer.js"></script>
+  <script src="js/tabs/tab-roster.js"></script>
+  <script src="js/tabs/tab-conflicts.js"></script>
+  <script src="js/tabs/tab-fairness.js"></script>
+  <script src="js/tabs/tab-attendance.js"></script>
+  <script src="js/tabs/tab-bench-fairness.js"></script>
+  <script src="js/tabs/tab-signups.js"></script>
+  <script src="js/tabs/tab-requests.js"></script>
+  <script src="js/tabs/tab-bis.js"></script>
+  <script src="js/tabs/tab-pending-roster.js"></script>
+  <script src="js/tabs/tab-mplus.js"></script>
+  <script src="js/tabs/tab-priority.js"></script>
+  <script src="js/tabs/tab-audit.js"></script>
+  <script src="js/tabs/tab-reports.js"></script>
+  <script src="js/tabs/tab-season.js"></script>
+  <script src="js/tabs/tab-loot-import.js"></script>
+  <script src="js/tabs/tab-scoring.js"></script>
+  <script src="js/tabs/tab-admin.js"></script>
+  <script>
+document.getElementById('versionNum').textContent = VERSION;
+document.title = TEAM_NAME + ' -- Officer';
+document.getElementById('headerTeamName').textContent = TEAM_NAME;
+document.querySelectorAll('.team-name').forEach(function(el){el.textContent=TEAM_NAME;});
+if (TEAM_SLUG !== 'phoenix') {
+  document.querySelectorAll('a[href="index.html"]').forEach(function(a){a.href='index.html?team='+TEAM_SLUG;});
+}
+initTeamUI();
 
-      // Called by discord.js when a stored session is validated on page load.
-      function onDiscordSessionRestored(session) {
-        if (session.isOfficer && !isOfficerSessionValid()) {
-          _grantOfficerAccessViaDiscord(session);
-        } else if (!isOfficerSessionValid()) {
-          // Discord auth succeeded but the character is not an officer -- fall back to password.
-          showOfficerPrompt();
-        }
-      }
+// When switching teams while Discord-authenticated, store a hint so the new page
+// can show "Continue with Discord" instead of jumping straight to the password prompt.
+(function() {
+  var ts = document.getElementById('teamSwitcherSelect');
+  if (ts) {
+    ts.onchange = function() {
+      var ds = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
+      if (ds && ds.username) sessionStorage.setItem('wga_discord_reauth', ds.username);
+      switchTeam(this.value);
+    };
+  }
+})();
 
-      // Called by discord.js when no valid Discord session exists (no stored token or expired).
-      function onDiscordInitNoSession() {
-        var reauthUser = sessionStorage.getItem('wga_discord_reauth');
-        if (reauthUser) {
-          sessionStorage.removeItem('wga_discord_reauth');
-          showDiscordReauthPrompt(reauthUser);
-          return;
-        }
-        if (!isOfficerSessionValid()) showOfficerPrompt();
-      }
+// Called by discord.js after a successful Discord login popup completes.
+function onDiscordLoginComplete(session) {
+  if (session.isOfficer) {
+    _grantOfficerAccessViaDiscord(session);
+  } else {
+    var errEl = document.getElementById('officerError');
+    if (errEl) {
+      errEl.textContent = 'Your character (' + (session.nameRealm || session.username) + ') does not have officer access.';
+      errEl.style.display = '';
+    }
+    showOfficerPrompt();
+  }
+}
 
-      function showDiscordReauthPrompt(username) {
-        var hint = document.getElementById('officerDiscordReauth');
-        var nameEl = document.getElementById('reauthUsername');
-        if (hint && nameEl) {
-          nameEl.textContent = username;
-          hint.style.display = '';
-        }
-        showOfficerPrompt();
-      }
+// Called by discord.js when a stored session is validated on page load.
+function onDiscordSessionRestored(session) {
+  if (session.isOfficer && !isOfficerSessionValid()) {
+    _grantOfficerAccessViaDiscord(session);
+  } else if (!isOfficerSessionValid()) {
+    // Discord auth succeeded but the character is not an officer -- fall back to password.
+    showOfficerPrompt();
+  }
+}
 
-      // Called by discord.js on logout.
-      function onDiscordLogout() {
-        officerLogout();
-      }
+// Called by discord.js when no valid Discord session exists (no stored token or expired).
+function onDiscordInitNoSession() {
+  var reauthUser = sessionStorage.getItem('wga_discord_reauth');
+  if (reauthUser) {
+    sessionStorage.removeItem('wga_discord_reauth');
+    showDiscordReauthPrompt(reauthUser);
+    return;
+  }
+  if (!isOfficerSessionValid()) showOfficerPrompt();
+}
 
-      // access: true for the full tab (site admins), 'officers' for team leaders
-      // (Officers sub-tab only -- Properties/Bot Config/Data Export/Danger Zone stay
-      // site-admin only), falsy to hide the tab. buildAdminTab() (tab-admin.js)
-      // reads window._adminAccessLevel to pick the right default sub-tab on click.
-      function showAdminTab(access) {
-        var btn = document.getElementById('adminNavBtn');
-        var show = !!access;
-        if (btn) btn.style.display = show ? '' : 'none';
-        var ts = document.getElementById('teamSwitcherSelect');
-        if (ts) ts.style.display = show ? '' : 'none';
+function showDiscordReauthPrompt(username) {
+  var hint = document.getElementById('officerDiscordReauth');
+  var nameEl = document.getElementById('reauthUsername');
+  if (hint && nameEl) {
+    nameEl.textContent = username;
+    hint.style.display = '';
+  }
+  showOfficerPrompt();
+}
 
-        window._adminAccessLevel = access;
-        var officersOnly = access === 'officers';
-        ['properties', 'botconfig', 'export', 'danger'].forEach(function (sub) {
-          var subBtn = document.getElementById('admin-subtab-btn-' + sub);
-          if (subBtn) subBtn.style.display = officersOnly ? 'none' : '';
-        });
-      }
+// Called by discord.js on logout.
+function onDiscordLogout() {
+  officerLogout();
+}
 
-      function _grantOfficerAccessViaDiscord(session) {
-        // Establish the password-based session flag so the rest of officer.js works unchanged.
-        sessionStorage.setItem(_SESSION_KEY, '1');
-        sessionStorage.setItem(_SESSION_TS_KEY, String(Date.now()));
-        hideOfficerPrompt();
-        document.getElementById('loadingMsg').style.display = '';
-        loadData(
-          function () {
-            buildOfficerDashboard();
-            showAdminTab(session ? adminAccessLevel(session) : false);
-            document.getElementById('officerViewWrap').classList.add('active');
-            document.getElementById('loadingMsg').style.display = 'none';
-          },
-          function () {
-            buildStatsBar();
-            buildRosterTable();
-            reopenSelectedPlayer();
-          }
-        );
-      }
-    </script>
-  </body>
+// access: true for the full tab (site admins), 'officers' for team leaders
+// (Officers sub-tab only -- Properties/Bot Config/Data Export/Danger Zone stay
+// site-admin only), falsy to hide the tab. buildAdminTab() (tab-admin.js)
+// reads window._adminAccessLevel to pick the right default sub-tab on click.
+function showAdminTab(access) {
+  var btn = document.getElementById('adminNavBtn');
+  var show = !!access;
+  if (btn) btn.style.display = show ? '' : 'none';
+  var ts = document.getElementById('teamSwitcherSelect');
+  if (ts) ts.style.display = show ? '' : 'none';
+
+  window._adminAccessLevel = access;
+  var officersOnly = access === 'officers';
+  ['properties', 'botconfig', 'export', 'danger'].forEach(function (sub) {
+    var subBtn = document.getElementById('admin-subtab-btn-' + sub);
+    if (subBtn) subBtn.style.display = officersOnly ? 'none' : '';
+  });
+}
+
+function _grantOfficerAccessViaDiscord(session) {
+  // Establish the password-based session flag so the rest of officer.js works unchanged.
+  sessionStorage.setItem(_SESSION_KEY, '1');
+  sessionStorage.setItem(_SESSION_TS_KEY, String(Date.now()));
+  hideOfficerPrompt();
+  document.getElementById('loadingMsg').style.display = '';
+  loadData(
+    function() {
+      buildOfficerDashboard();
+      showAdminTab(session ? adminAccessLevel(session) : false);
+      document.getElementById('officerViewWrap').classList.add('active');
+      document.getElementById('loadingMsg').style.display = 'none';
+    },
+    function() {
+      buildStatsBar();
+      buildRosterTable();
+      reopenSelectedPlayer();
+    }
+  );
+}
+</script>
+</body>
+
 </html>
