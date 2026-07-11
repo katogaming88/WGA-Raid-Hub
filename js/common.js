@@ -15,11 +15,11 @@ var TEAMS = {
     supabaseTeamId: 2
   },
   // No GAS deployment -- Immolation was created directly in Supabase, unlike
-  // Phoenix/Hellfire's pre-migration Sheets. Known limitation: loadData()
-  // (js/common.js) still loads its core/heavy chunks from gasUrl regardless
-  // of migration progress elsewhere, so the site won't actually load data for
-  // this team until enough of that pipeline is GAS-independent. This entry
-  // just gives team-switching/claims code something to point at.
+  // Phoenix/Hellfire's pre-migration Sheets. loadData() detects the empty
+  // gasUrl and builds DATA entirely from the Supabase reads instead of
+  // injecting the core/heavy JSONP chunks (#426); the page renders from
+  // whatever Supabase has (empty roster/attendance until the team is seeded)
+  // rather than hanging on a request that can never resolve.
   immolation: {
     gasUrl: '',
     name: 'Immolation',
@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.33.11';
+var VERSION = '3.33.12';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -1535,13 +1535,17 @@ function loadData(onCoreReady, onHeavyReady) {
   // Fired alongside; the heavy callback waits for it before setting rawAttendanceData/attendanceDetails/recentAttendanceTrend.
   var attendancePromise = fetchSupabaseAttendanceRaw();
 
-  window._rosterCoreCallback = function (data) {
-    delete window._rosterCoreCallback;
-    if (data.error) {
-      showError('Could not load roster data. ' + data.error);
-      return;
-    }
-    Promise.all([rosterPromise, settingsPromise, mplusRejectionsPromise]).then(function (results) {
+  // Overlays the Supabase roster/settings/M+ rejections onto the core payload,
+  // publishes DATA, and runs onCoreReady. Resolves true on success, or false if
+  // onCoreReady threw -- so the caller skips the heavy stage, matching the old
+  // inline early-return. `data` is the GAS core chunk, or a bare { roster: [] }
+  // on the GAS-independent path (#426). onSuccess (optional) runs synchronously
+  // right after a successful onCoreReady -- the GAS path uses it to wire
+  // _rosterHeavyCallback in the same tick, before the microtask that resumes
+  // any awaiter of onCoreReady, so a heavy callback that fires immediately
+  // still finds it installed.
+  function applyCoreData(data, onSuccess) {
+    return Promise.all([rosterPromise, settingsPromise, mplusRejectionsPromise]).then(function (results) {
       var rows = results[0];
       var settingsConfig = results[1];
       var mplusRejections = results[2];
@@ -1554,9 +1558,88 @@ function loadData(onCoreReady, onHeavyReady) {
         onCoreReady();
       } catch (e) {
         showError('Could not load roster data. ' + e.message);
-        return;
+        return false;
       }
+      if (onSuccess) onSuccess();
+      return true;
+    });
+  }
 
+  // Merges the heavy Supabase reads into DATA, falling back to the GAS heavy
+  // chunk field-by-field where Supabase has nothing yet. `heavy` is the GAS
+  // heavy chunk, or a bare {} on the GAS-independent path (#426) -- every
+  // fallback is guarded (`|| {}` / `|| null`) so an absent GAS chunk yields an
+  // empty container rather than undefined, since a few write paths
+  // (tab-bis.js, tab-priority.js) index these without their own guard.
+  function applyHeavyData(heavy) {
+    return Promise.all([
+      lootPromise,
+      bisItemsPromise,
+      itemsPromise,
+      itemBossesPromise,
+      priorityOrderPromise,
+      selfReceivedPromise,
+      attendancePromise
+    ]).then(function (results) {
+      var lootRows = results[0];
+      var bisRows = results[1];
+      var itemRows = results[2];
+      var itemBossRows = results[3];
+      var priorityRows = results[4];
+      var selfReceivedRows = results[5];
+      var attendanceRows = results[6];
+      var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
+      DATA.lootCounts = mappedLoot || {};
+      var mappedAttendance = attendanceRows !== null ? mapSupabaseAttendanceRaw(attendanceRows, DATA.roster) : null;
+      DATA.rawAttendanceData = mappedAttendance || heavy.rawAttendanceData || null;
+      DATA.attendanceDetails = mappedAttendance
+        ? mapSupabaseAttendanceDetails(mappedAttendance.players)
+        : heavy.attendanceDetails || {};
+      DATA.recentAttendanceTrend = mappedAttendance
+        ? mapSupabaseAttendanceTrend(mappedAttendance.players)
+        : heavy.recentAttendanceTrend || {};
+      var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
+      DATA.bisList = mappedBis && Object.keys(mappedBis).length ? mappedBis : heavy.bisList || {};
+      var mappedPriority = priorityRows
+        ? mapSupabasePriorityOrder(priorityRows, seasonCodeForDisplay(DATA.seasonName || ''))
+        : null;
+      DATA.priorityOrder =
+        mappedPriority && Object.keys(mappedPriority).length ? mappedPriority : heavy.priorityOrder || {};
+      var itemMaps = buildItemMaps(itemRows);
+      DATA.itemSlots = itemMaps.itemSlots;
+      DATA.itemArmorTypes = itemMaps.itemArmorTypes;
+      DATA.itemPlaceholders = itemMaps.itemPlaceholders;
+      DATA.itemIds = itemMaps.itemIds;
+      DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
+      var mappedSelfReceived = selfReceivedRows ? mapSupabaseSelfReceived(selfReceivedRows) : null;
+      DATA.selfReceived =
+        mappedSelfReceived && Object.keys(mappedSelfReceived).length ? mappedSelfReceived : heavy.selfReceived || {};
+      if (typeof populateBossFilters === 'function') populateBossFilters();
+      if (onHeavyReady) onHeavyReady();
+    });
+  }
+
+  // GAS-independent path (#426): a team with no GAS deployment (gasUrl:'')
+  // can't inject the core/heavy JSONP <script>s -- an empty WEB_APP_URL makes
+  // their src resolve to the current page, which loads as a script, never fires
+  // onerror, and never calls the callbacks, so DATA stays null until the 15s
+  // timeout. Build DATA entirely from the Supabase reads instead, stubbing the
+  // GAS chunks with empty payloads (roster seeded to [] so DATA.roster is an
+  // array even when the team has no players yet).
+  if (!WEB_APP_URL) {
+    applyCoreData({ roster: [] }).then(function (ok) {
+      if (ok) applyHeavyData({});
+    });
+    return;
+  }
+
+  window._rosterCoreCallback = function (data) {
+    delete window._rosterCoreCallback;
+    if (data.error) {
+      showError('Could not load roster data. ' + data.error);
+      return;
+    }
+    applyCoreData(data, function () {
       var heavyScript = document.createElement('script');
       heavyScript.onerror = function () {
         delete window._rosterHeavyCallback;
@@ -1564,51 +1647,7 @@ function loadData(onCoreReady, onHeavyReady) {
       window._rosterHeavyCallback = function (heavy) {
         delete window._rosterHeavyCallback;
         if (!heavy || heavy.error) return;
-        Promise.all([
-          lootPromise,
-          bisItemsPromise,
-          itemsPromise,
-          itemBossesPromise,
-          priorityOrderPromise,
-          selfReceivedPromise,
-          attendancePromise
-        ]).then(function (results) {
-          var lootRows = results[0];
-          var bisRows = results[1];
-          var itemRows = results[2];
-          var itemBossRows = results[3];
-          var priorityRows = results[4];
-          var selfReceivedRows = results[5];
-          var attendanceRows = results[6];
-          var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
-          DATA.lootCounts = mappedLoot || {};
-          var mappedAttendance = attendanceRows !== null ? mapSupabaseAttendanceRaw(attendanceRows, DATA.roster) : null;
-          DATA.rawAttendanceData = mappedAttendance || heavy.rawAttendanceData;
-          DATA.attendanceDetails = mappedAttendance
-            ? mapSupabaseAttendanceDetails(mappedAttendance.players)
-            : heavy.attendanceDetails;
-          DATA.recentAttendanceTrend = mappedAttendance
-            ? mapSupabaseAttendanceTrend(mappedAttendance.players)
-            : heavy.recentAttendanceTrend;
-          var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
-          DATA.bisList = mappedBis && Object.keys(mappedBis).length ? mappedBis : heavy.bisList;
-          var mappedPriority = priorityRows
-            ? mapSupabasePriorityOrder(priorityRows, seasonCodeForDisplay(DATA.seasonName || ''))
-            : null;
-          DATA.priorityOrder =
-            mappedPriority && Object.keys(mappedPriority).length ? mappedPriority : heavy.priorityOrder;
-          var itemMaps = buildItemMaps(itemRows);
-          DATA.itemSlots = itemMaps.itemSlots;
-          DATA.itemArmorTypes = itemMaps.itemArmorTypes;
-          DATA.itemPlaceholders = itemMaps.itemPlaceholders;
-          DATA.itemIds = itemMaps.itemIds;
-          DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
-          var mappedSelfReceived = selfReceivedRows ? mapSupabaseSelfReceived(selfReceivedRows) : null;
-          DATA.selfReceived =
-            mappedSelfReceived && Object.keys(mappedSelfReceived).length ? mappedSelfReceived : heavy.selfReceived;
-          if (typeof populateBossFilters === 'function') populateBossFilters();
-          if (onHeavyReady) onHeavyReady();
-        });
+        applyHeavyData(heavy);
       };
       heavyScript.src = WEB_APP_URL + '?chunk=heavy&callback=_rosterHeavyCallback';
       document.head.appendChild(heavyScript);
