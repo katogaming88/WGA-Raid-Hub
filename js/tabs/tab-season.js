@@ -82,11 +82,174 @@ function renderSeasonHistory() {
     if (s.roster) {
       html += '<div id="snapshot-' + i + '" style="display:none;margin-top:0.5rem;"></div>';
     }
+    // #264: WCL season performance fetch is only offered for the most
+    // recently archived season -- once a new season has started, that's
+    // "the previous season" heroic priority needs a baseline from. Earlier
+    // history entries are old news by the time a new season begins.
+    if (i === history.length - 1) {
+      html += _renderSeasonPerfFetchRow(s, i);
+    }
     html += '</div>';
   }
   list.innerHTML = html;
   var confirmEl = document.getElementById('seasonUnarchiveConfirm');
   if (confirmEl) confirmEl.style.display = 'none';
+}
+
+// #264: only raids with a WCL zone ID recorded can be fetched from.
+//
+// Multiple raid-progression entries can share the same WCL zone -- most
+// seasons have just one raid instance, but a season with several separate
+// raid releases (e.g. Dreamrift/Voidspire/March on Quel'Danas were three
+// distinct raids across one season, confirmed live) can still have WCL
+// scope its performance rankings to one season-wide zone (46) spanning all
+// of them, rather than a zone per raid. Since zoneRankings is scoped by
+// zone alone, querying any of those raid-progression entries returns
+// identical data under a different, confusing label. The picker dedupes to
+// one option per distinct zone, using whichever entry in that zone has the
+// most bosses as its label (the main raid, as opposed to a shorter release
+// sharing the same zone) -- and defaults to the non-mini-raid zone with the
+// most total bosses across its entries.
+function _renderSeasonPerfFetchRow(season, historyIndex) {
+  var raids = (season.raids || []).filter(function (r) {
+    return r.wclZoneId;
+  });
+  if (!raids.length) return '';
+
+  var byZone = {};
+  var zoneOrder = [];
+  raids.forEach(function (r) {
+    var zoneId = r.wclZoneId;
+    if (!byZone[zoneId]) {
+      byZone[zoneId] = { zoneId: zoneId, label: r, bossCount: 0, allMini: true };
+      zoneOrder.push(zoneId);
+    }
+    var group = byZone[zoneId];
+    var bossCount = (r.bosses || []).length;
+    group.bossCount += bossCount;
+    if (!r.isMiniRaid) group.allMini = false;
+    if (bossCount > (group.label.bosses || []).length) group.label = r;
+  });
+  var zoneGroups = zoneOrder.map(function (zoneId) {
+    return byZone[zoneId];
+  });
+
+  var defaultIdx = zoneGroups.length - 1;
+  var bestBossCount = -1;
+  zoneGroups.forEach(function (g, j) {
+    if (!g.allMini && g.bossCount > bestBossCount) {
+      bestBossCount = g.bossCount;
+      defaultIdx = j;
+    }
+  });
+
+  var html =
+    '<div style="margin-top:0.6rem;padding-top:0.5rem;border-top:1px dashed rgba(255,255,255,0.08);display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">';
+  html += '<span style="font-size:0.85rem;color:var(--text-muted);">WCL Performance Baseline:</span>';
+  html +=
+    '<select id="seasonPerfRaidSelect-' +
+    historyIndex +
+    '" class="add-player-input" style="font-size:0.85rem;padding:0.2rem 0.4rem;">';
+  zoneGroups.forEach(function (g, j) {
+    html +=
+      '<option value="' +
+      _escAttr(g.zoneId) +
+      '"' +
+      (j === defaultIdx ? ' selected' : '') +
+      '>' +
+      _escAttr(g.label.name || 'Raid ' + (j + 1)) +
+      '</option>';
+  });
+  html += '</select>';
+  html +=
+    '<button class="btn btn-muted" style="font-size:0.8rem;padding:2px 10px;" id="seasonPerfFetchBtn-' +
+    historyIndex +
+    '" onclick="fetchSeasonPerf(' +
+    historyIndex +
+    ')">Fetch WCL Performance</button>';
+  html += '<span id="seasonPerfFetchStatus-' + historyIndex + '" style="font-size:0.85rem;"></span>';
+  html += '</div>';
+  return html;
+}
+
+// #264: officer-triggered, once-per-season fetch of the just-archived
+// season's character-page performance (best/median heroic-or-higher DPS
+// average per roster player) into player_wcl_season_perf -- the baseline
+// heroic priority generation reads before the new season has raid reports
+// of its own. Also seeds scoring.performance_score for the new season so
+// generate_priority_order has a number to work with immediately, without
+// ever overwriting a real executeCommitPerformance() commit (see the
+// ignoreDuplicates upsert below).
+function fetchSeasonPerf(historyIndex) {
+  var history = (DATA && DATA.seasonHistory) || [];
+  var season = history[historyIndex];
+  var select = document.getElementById('seasonPerfRaidSelect-' + historyIndex);
+  var btn = document.getElementById('seasonPerfFetchBtn-' + historyIndex);
+  var status = document.getElementById('seasonPerfFetchStatus-' + historyIndex);
+  if (!season || !select) return;
+
+  var zoneId = parseInt(select.value, 10);
+  var seasonCode = seasonCodeForDisplay((season.name || '').trim());
+  if (!zoneId || !seasonCode) return;
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Fetching...';
+  }
+  if (status) {
+    status.textContent = 'This may take a minute...';
+    status.style.color = 'var(--text-muted)';
+  }
+
+  supabaseClient.functions
+    .invoke('wcl-sync', {
+      body: { action: 'fetchSeasonPerf', teamId: _teamCfg.supabaseTeamId, season: seasonCode, zoneId: zoneId }
+    })
+    .then(function (res) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Fetch WCL Performance';
+      }
+      var result = res.data;
+      if (res.error || !result || !result.success) {
+        if (status) {
+          status.textContent =
+            'Error: ' + (result && result.error ? result.error : res.error ? res.error.message : 'Unknown error');
+          status.style.color = 'var(--melee)';
+        }
+        return;
+      }
+      if (status) {
+        status.textContent =
+          result.updated + ' player(s) updated' + (result.noData ? ', ' + result.noData + ' with no data' : '') + '.';
+        status.style.color = 'var(--heal)';
+      }
+      _seedScoringFromSeasonPerf(result.players);
+    });
+}
+
+// Seeds scoring.performance_score for the *current* season from each
+// player's fetched previous-season best_perf_avg -- but only for players
+// with no scoring row yet this season (ignoreDuplicates: true), so a real
+// executeCommitPerformance() commit (js/tabs/tab-scoring.js), now or later,
+// is never clobbered by this baseline. Best-effort: not gated on its result,
+// same reasoning as this app's other post-write notification/seed calls --
+// the player_wcl_season_perf upsert above is the write of record for #264
+// itself.
+function _seedScoringFromSeasonPerf(players) {
+  if (!players || !players.length || !supabaseClient) return;
+  var currentSeasonCode = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+  if (!currentSeasonCode) return;
+
+  var rows = players.map(function (p) {
+    return {
+      player_id: p.playerId,
+      season: currentSeasonCode,
+      performance_score: p.bestPerfAvg
+    };
+  });
+
+  supabaseClient.from('scoring').upsert(rows, { onConflict: 'player_id,season', ignoreDuplicates: true });
 }
 
 // The roster snapshot lives inline on the seasonHistory entry itself

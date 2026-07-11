@@ -6,7 +6,10 @@
 // the Attendance tab's "Refresh from WCL" write (refreshAttendance) -- see
 // js/tabs/tab-scoring.js and js/tabs/tab-attendance.js for why the commit/
 // manual-edit steps in both features stay direct Supabase writes rather
-// than more actions here.
+// than more actions here. fetchSeasonPerf (#264) is a later addition: an
+// officer-triggered, once-per-season fetch of previous-season character-page
+// performance into player_wcl_season_perf, the baseline heroic priority
+// generation reads before the new season has report data of its own.
 //
 // No service-role key: officers already have full RLS write access to
 // attendance/scoring via their own session (docs/RLS.md), so this function
@@ -600,6 +603,132 @@ async function refreshAttendance(
   return { success: true, mainNights, excluded };
 }
 
+// Ported from #264: officer-triggered fetch of each roster DPS player's
+// *previous* season heroic/mythic character-page performance, written to
+// player_wcl_season_perf as the baseline heroic priority reads before the
+// current season has enough of its own report data (see refreshPerformance
+// above for that ongoing-season path).
+//
+// Queries each character directly (characterData.character(name, serverSlug,
+// serverRegion)) rather than guildData.guild(id).members() -- confirmed live
+// that guild-membership silently misses real roster players who are
+// currently tagged to a different guild on WCL's side (e.g. a large parent/
+// community guild rather than the specific raid-team guild stored in
+// teams.wcl_guild_id). A direct character lookup doesn't care what guild WCL
+// thinks someone is in.
+//
+// No `difficulty` argument on zoneRankings -- confirmed live that omitting
+// it resolves to whichever difficulty the character actually has the
+// highest data for that zone (mythic if they have any mythic kills logged,
+// heroic otherwise), matching the character page's own "Highest Difficulty"
+// filter exactly.
+function realmToServerSlug(realm: string): string {
+  const r = String(realm).trim();
+  // An apostrophe is just dropped, not hyphenated (e.g. Mal'Ganis -> malganis
+  // -- confirmed live; a uniform "punctuation becomes a hyphen" rule gets
+  // this one wrong, returning no character at all).
+  if (r.indexOf("'") !== -1) {
+    return r.replace(/'/g, '').toLowerCase();
+  }
+  return r
+    .replace(/([a-z])([A-Z])/g, '$1-$2') // EarthenRing -> Earthen-Ring
+    .replace(/([a-zA-Z])(\d)/g, '$1-$2') // Area52 -> Area-52
+    .replace(/\s+/g, '-') // Area 52 / Argent Dawn -> hyphenated
+    .toLowerCase();
+}
+
+// Batched via GraphQL aliases (confirmed live) rather than one request per
+// character -- keeps this to a handful of round trips for a normal-sized
+// roster instead of one per player.
+const CHARACTERS_PER_QUERY = 10;
+
+async function fetchSeasonPerf(teamId: number, season: string, zoneId: number, supabase: ReturnType<typeof createClient>) {
+  const { data: players, error: playersError } = await supabase
+    .from('players')
+    .select('id, name_realm, classes_specs(role)')
+    .eq('team_id', teamId)
+    .is('archived_at', null);
+  if (playersError) throw new Error(playersError.message);
+
+  // Tanks/healers are excluded from WCL-derived performance everywhere else
+  // in this app (refreshPerformance's classRoleToScoringRole skip) -- their
+  // Performance score is always officer-set manually, never WCL-sourced.
+  const roster: Array<{ playerId: number; displayName: string; firstName: string; serverSlug: string }> = [];
+  for (const p of players || []) {
+    const classSpec = Array.isArray(p.classes_specs) ? p.classes_specs[0] : p.classes_specs;
+    const role = classSpec?.role;
+    if (role !== 'Melee' && role !== 'Ranged') continue;
+    const parts = String(p.name_realm).split('-');
+    const displayName = (parts[0] || '').trim();
+    const realm = parts.slice(1).join('-').trim();
+    if (!displayName || !realm) continue;
+    roster.push({ playerId: p.id, displayName, firstName: displayName, serverSlug: realmToServerSlug(realm) });
+  }
+  if (roster.length === 0) {
+    return { success: true, updated: 0, noData: 0, players: [] };
+  }
+
+  const token = await getAccessToken();
+  if (!token) throw new Error('Failed to get WCL access token. Check WCL_CLIENT_ID/WCL_CLIENT_SECRET.');
+
+  const matched: Array<{ playerId: number; name: string; bestPerfAvg: number; medianPerfAvg: number }> = [];
+  let noData = 0;
+
+  for (let i = 0; i < roster.length; i += CHARACTERS_PER_QUERY) {
+    const chunk = roster.slice(i, i + CHARACTERS_PER_QUERY);
+    const aliasedFields = chunk
+      .map(
+        (p, j) =>
+          `p${j}: character(name: ${JSON.stringify(p.firstName)}, serverSlug: ${JSON.stringify(p.serverSlug)}, serverRegion: "US") { zoneRankings(zoneID: ${zoneId}, metric: dps) }`
+      )
+      .join('\n');
+    const query = `query { characterData { ${aliasedFields} } }`;
+    const result = await wclQuery(token, query);
+    const characterData = result?.data?.characterData || {};
+
+    chunk.forEach((p, j) => {
+      const bestPerfAvg = characterData[`p${j}`]?.zoneRankings?.bestPerformanceAverage;
+      if (bestPerfAvg == null) {
+        noData++;
+        return;
+      }
+      matched.push({
+        playerId: p.playerId,
+        name: p.displayName,
+        bestPerfAvg,
+        medianPerfAvg: characterData[`p${j}`]?.zoneRankings?.medianPerformanceAverage ?? bestPerfAvg
+      });
+    });
+  }
+
+  if (matched.length > 0) {
+    const rows = matched.map((m) => ({
+      player_id: m.playerId,
+      team_id: teamId,
+      season,
+      best_perf_avg: m.bestPerfAvg,
+      median_perf_avg: m.medianPerfAvg,
+      fetched_at: new Date().toISOString()
+    }));
+    const { error: upsertError } = await supabase
+      .from('player_wcl_season_perf')
+      .upsert(rows, { onConflict: 'player_id,season' });
+    if (upsertError) throw new Error(upsertError.message);
+  }
+
+  return {
+    success: true,
+    updated: matched.length,
+    noData,
+    players: matched.map((m) => ({
+      playerId: m.playerId,
+      name: m.name,
+      bestPerfAvg: m.bestPerfAvg,
+      medianPerfAvg: m.medianPerfAvg
+    }))
+  };
+}
+
 // ── Entry point ──────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -612,7 +741,7 @@ Deno.serve(async (req) => {
   // `.error` themselves rather than unpacking supabase-js's FunctionsHttpError
   // (which requires reading error.context separately to get this same body).
   try {
-    const { action, teamId, zoneId } = await req.json();
+    const { action, teamId, zoneId, season } = await req.json();
 
     if (!action || !teamId) {
       return jsonResponse({ success: false, error: 'Missing action or teamId' });
@@ -689,6 +818,16 @@ Deno.serve(async (req) => {
       const token = await getAccessToken();
       if (!token) return jsonResponse({ success: false, error: 'Failed to get WCL access token. Check WCL_CLIENT_ID/WCL_CLIENT_SECRET.' });
       const result = await refreshAttendance(token, team.wcl_guild_id, teamId, supabase);
+      return jsonResponse(result);
+    }
+
+    if (action === 'fetchSeasonPerf') {
+      if (!zoneId) return jsonResponse({ success: false, error: 'Missing zoneId' });
+      if (!season) return jsonResponse({ success: false, error: 'Missing season' });
+      // No wcl_guild_id lookup here -- unlike every other action in this
+      // file, fetchSeasonPerf queries each character directly rather than
+      // through guild membership, so it has no guild-ID dependency at all.
+      const result = await fetchSeasonPerf(teamId, season, zoneId, supabase);
       return jsonResponse(result);
     }
 

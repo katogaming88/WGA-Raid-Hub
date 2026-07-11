@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.10] - 2026-07-11
+
+### Frontend
+
+- **Officer-triggered WCL season performance fetch (#264).** Season History's most recently archived season now offers a "WCL Performance Baseline" fetch: pick a raid tier from that season, pull each DPS roster player's best character-page performance average from WarcraftLogs (whichever difficulty they actually logged highest -- mythic if any, heroic otherwise, matching the character page's own "Highest Difficulty" filter), and write it to `player_wcl_season_perf` (new `fetchSeasonPerf` action on the `wcl-sync` Edge Function). Tanks/healers are excluded, same as every other WCL-derived performance path in this app -- their score is always officer-set. Queries each character directly by name/realm/region rather than through WCL guild membership -- live testing against the real Phoenix roster found guild membership silently misses real players currently tagged to a different guild on WCL's side (a large parent/community guild rather than the specific raid-team guild `teams.wcl_guild_id` points at), so a per-character lookup is what actually reaches everyone.
+- **Seeds `scoring.performance_score` for the new season from that fetch (#394-lite).** Before this, heroic priority generation had nothing to read until an officer ran a real "Commit Performance Scores" pass against current-season raid reports -- now the fetch above also seeds a starting number per player, but only for players with no `scoring` row yet this season (`ignoreDuplicates: true` upsert), so it can never clobber a real commit. No blended/weighted formula between previous-season baseline and current-season data -- that's deliberately deferred; this is a one-time fallback that real commits simply overwrite once they happen.
+- The raid-tier picker dedupes by WCL zone rather than listing every raid-progression entry -- a season with multiple separate raid releases can still have WCL scope its rankings to one season-wide zone spanning all of them (confirmed live on a real season with 3 raids sharing one zone), so listing each entry separately offered 3 options that silently returned identical data under different labels.
+
 ## [3.33.9] - 2026-07-11
 
 ### Frontend
