@@ -229,6 +229,7 @@ select#playerSelect option { background:#1a1d27; }
 .roster-table td { padding:0.55rem 0.75rem; border-bottom:1px solid var(--border); font-size:1rem; vertical-align:middle; color:var(--text); }
 .roster-table td:not(:first-child) { text-align:center; }
 .roster-table tr.group-header td { font-size:0.97rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-muted); font-weight:600; padding:0.75rem 0.75rem 0.3rem; background:transparent; border-bottom:none; }
+.audit-table td:last-child { text-align:left; word-break:break-word; }
 .roster-table tr.player-row { cursor:pointer; transition:background 0.1s; }
 .roster-table tr.player-row:hover { background:var(--bg-elevated); }
 .roster-table tr.player-row.selected { background:rgba(214,163,68,0.06); }
