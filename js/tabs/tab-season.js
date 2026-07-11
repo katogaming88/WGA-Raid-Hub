@@ -96,37 +96,64 @@ function renderSeasonHistory() {
   if (confirmEl) confirmEl.style.display = 'none';
 }
 
-// #264: only raids with a WCL zone ID recorded can be fetched from --
-// defaults to the last non-mini-raid tier in the season (the most-progressed
-// "real" raid), falling back to the last raid at all if every entry is a
-// mini-raid.
+// #264: only raids with a WCL zone ID recorded can be fetched from.
+//
+// Multiple raid-progression entries can share the same WCL zone -- this
+// app tracks content-patch "wings" of one raid as separate boss-kill-date
+// entries (e.g. Dreamrift/Voidspire/March on Quel'Danas all point at the
+// same WCL zone 46, confirmed live), but WCL's zoneRankings is scoped by
+// zone alone, so querying any of them returns identical data under a
+// different, confusing label. The picker dedupes to one option per
+// distinct zone, using whichever entry in that zone has the most bosses as
+// its label (the "real" raid tier, as opposed to a one/two-boss
+// content-patch wing sharing the same zone) -- and defaults to the
+// non-mini-raid zone with the most total bosses across its entries.
 function _renderSeasonPerfFetchRow(season, historyIndex) {
   var raids = (season.raids || []).filter(function (r) {
     return r.wclZoneId;
   });
   if (!raids.length) return '';
 
-  var defaultIdx = raids.length - 1;
-  for (var j = raids.length - 1; j >= 0; j--) {
-    if (!raids[j].isMiniRaid) {
-      defaultIdx = j;
-      break;
+  var byZone = {};
+  var zoneOrder = [];
+  raids.forEach(function (r) {
+    var zoneId = r.wclZoneId;
+    if (!byZone[zoneId]) {
+      byZone[zoneId] = { zoneId: zoneId, label: r, bossCount: 0, allMini: true };
+      zoneOrder.push(zoneId);
     }
-  }
+    var group = byZone[zoneId];
+    var bossCount = (r.bosses || []).length;
+    group.bossCount += bossCount;
+    if (!r.isMiniRaid) group.allMini = false;
+    if (bossCount > (group.label.bosses || []).length) group.label = r;
+  });
+  var zoneGroups = zoneOrder.map(function (zoneId) {
+    return byZone[zoneId];
+  });
+
+  var defaultIdx = zoneGroups.length - 1;
+  var bestBossCount = -1;
+  zoneGroups.forEach(function (g, j) {
+    if (!g.allMini && g.bossCount > bestBossCount) {
+      bestBossCount = g.bossCount;
+      defaultIdx = j;
+    }
+  });
 
   var html =
     '<div style="margin-top:0.6rem;padding-top:0.5rem;border-top:1px dashed rgba(255,255,255,0.08);display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">';
   html +=
     '<span style="font-size:0.85rem;color:var(--text-muted);">WCL Performance Baseline:</span>';
   html += '<select id="seasonPerfRaidSelect-' + historyIndex + '" class="add-player-input" style="font-size:0.85rem;padding:0.2rem 0.4rem;">';
-  raids.forEach(function (r, j) {
+  zoneGroups.forEach(function (g, j) {
     html +=
       '<option value="' +
-      _escAttr(r.wclZoneId) +
+      _escAttr(g.zoneId) +
       '"' +
       (j === defaultIdx ? ' selected' : '') +
       '>' +
-      _escAttr(r.name || 'Raid ' + (j + 1)) +
+      _escAttr(g.label.name || 'Raid ' + (j + 1)) +
       '</option>';
   });
   html += '</select>';
