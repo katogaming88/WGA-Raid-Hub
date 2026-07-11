@@ -98,14 +98,31 @@ function renderTeamRows() {
     .map(function (team) {
       var archived = !!team.archived_at;
       return (
-        '<tr' + (archived ? ' class="admin-archived-row"' : '') + '>' +
-        '<td>' + escapeHtml(team.name) + '</td>' +
-        '<td>' + escapeHtml(team.slug) + '</td>' +
-        '<td><span class="admin-status-badge ' + (archived ? 'admin-status-archived' : 'admin-status-active') + '">' +
-        (archived ? 'Archived' : 'Active') + '</span></td>' +
+        '<tr' +
+        (archived ? ' class="admin-archived-row"' : '') +
+        '>' +
+        '<td>' +
+        escapeHtml(team.name) +
+        '</td>' +
+        '<td>' +
+        escapeHtml(team.slug) +
+        '</td>' +
+        '<td><span class="admin-status-badge ' +
+        (archived ? 'admin-status-archived' : 'admin-status-active') +
+        '">' +
+        (archived ? 'Archived' : 'Active') +
+        '</span></td>' +
         '<td class="admin-row-actions">' +
-        '<button class="btn btn-gold" onclick="showEditTeamModal(' + team.id + ')">Edit</button>' +
-        '<button class="btn ' + (archived ? 'btn-muted' : 'btn-danger') + '" onclick="toggleArchiveTeam(' + team.id + ')">' + (archived ? 'Unarchive' : 'Archive') + '</button>' +
+        '<button class="btn btn-gold" onclick="showEditTeamModal(' +
+        team.id +
+        ')">Edit</button>' +
+        '<button class="btn ' +
+        (archived ? 'btn-muted' : 'btn-danger') +
+        '" onclick="toggleArchiveTeam(' +
+        team.id +
+        ')">' +
+        (archived ? 'Unarchive' : 'Archive') +
+        '</button>' +
         '</td>' +
         '</tr>'
       );
@@ -129,7 +146,9 @@ function showCreateTeamModal() {
 }
 
 function showEditTeamModal(teamId) {
-  var team = _adminTeams.filter(function (t) { return t.id === teamId; })[0];
+  var team = _adminTeams.filter(function (t) {
+    return t.id === teamId;
+  })[0];
   if (!team) return;
   document.getElementById('teamModalTitle').textContent = 'Edit Team';
   document.getElementById('teamModalId').value = team.id;
@@ -172,7 +191,9 @@ function submitTeamModal() {
 }
 
 function toggleArchiveTeam(teamId) {
-  var team = _adminTeams.filter(function (t) { return t.id === teamId; })[0];
+  var team = _adminTeams.filter(function (t) {
+    return t.id === teamId;
+  })[0];
   if (!team) return;
   var archiving = !team.archived_at;
   var verb = archiving ? 'archive' : 'unarchive';
@@ -202,10 +223,16 @@ function renderSiteAdminRows() {
     .map(function (sa) {
       return (
         '<tr>' +
-        '<td>' + escapeHtml(sa.display_name || '(not yet logged in)') + '</td>' +
-        '<td class="admin-discord-id">' + escapeHtml(sa.discord_id) + '</td>' +
+        '<td>' +
+        escapeHtml(sa.display_name || '(not yet logged in)') +
+        '</td>' +
+        '<td class="admin-discord-id">' +
+        escapeHtml(sa.discord_id) +
+        '</td>' +
         '<td class="admin-row-actions">' +
-        '<button class="btn btn-danger" onclick="submitRevokeSiteAdmin(\'' + escapeHtml(sa.discord_id) + '\')">Revoke</button>' +
+        '<button class="btn btn-danger" onclick="submitRevokeSiteAdmin(\'' +
+        escapeHtml(sa.discord_id) +
+        '\')">Revoke</button>' +
         '</td>' +
         '</tr>'
       );
@@ -266,7 +293,9 @@ var FEATURE_FLAGS = [
 var _adminTeamSettings = {}; // team_id -> config
 
 function loadFeatureFlags() {
-  var ids = _adminTeams.map(function (t) { return t.id; });
+  var ids = _adminTeams.map(function (t) {
+    return t.id;
+  });
   if (!ids.length) {
     renderFeatureFlagsTable();
     return Promise.resolve();
@@ -294,20 +323,32 @@ function flagEnabled(teamId, key) {
 function renderFeatureFlagsTable() {
   var headerRow = document.getElementById('adminFlagsHeaderRow');
   headerRow.innerHTML =
-    '<th>Team</th>' + FEATURE_FLAGS.map(function (f) { return '<th>' + f.label + '</th>'; }).join('');
+    '<th>Team</th>' +
+    FEATURE_FLAGS.map(function (f) {
+      return '<th>' + f.label + '</th>';
+    }).join('');
 
   var tbody = document.getElementById('adminFlagsRows');
   tbody.innerHTML = _adminTeams
     .map(function (team) {
       var archived = !!team.archived_at;
       return (
-        '<tr' + (archived ? ' class="admin-archived-row"' : '') + '>' +
-        '<td>' + escapeHtml(team.name) + '</td>' +
+        '<tr' +
+        (archived ? ' class="admin-archived-row"' : '') +
+        '>' +
+        '<td>' +
+        escapeHtml(team.name) +
+        '</td>' +
         FEATURE_FLAGS.map(function (f) {
           var checked = flagEnabled(team.id, f.key);
           return (
-            '<td><input type="checkbox" ' + (checked ? 'checked' : '') +
-            ' onchange="toggleFeatureFlag(' + team.id + ',\'' + f.key + '\',this.checked)"></td>'
+            '<td><input type="checkbox" ' +
+            (checked ? 'checked' : '') +
+            ' onchange="toggleFeatureFlag(' +
+            team.id +
+            ",'" +
+            f.key +
+            '\',this.checked)"></td>'
           );
         }).join('') +
         '</tr>'
@@ -324,15 +365,17 @@ function toggleFeatureFlag(teamId, key, enabled) {
   });
   features[key] = enabled;
 
-  supabaseClient.rpc('set_team_setting', { p_team_id: teamId, p_updates: { features: features } }).then(function (result) {
-    if (result.error) {
-      alert(result.error.message);
-      renderFeatureFlagsTable(); // revert the checkbox to last-known state
-      return;
-    }
-    config.features = features;
-    _adminTeamSettings[teamId] = config;
-  });
+  supabaseClient
+    .rpc('set_team_setting', { p_team_id: teamId, p_updates: { features: features } })
+    .then(function (result) {
+      if (result.error) {
+        alert(result.error.message);
+        renderFeatureFlagsTable(); // revert the checkbox to last-known state
+        return;
+      }
+      config.features = features;
+      _adminTeamSettings[teamId] = config;
+    });
 }
 
 // Cross-team audit log. No new read path needed: "Officers read audit_log"
@@ -384,7 +427,9 @@ function loadAuditLog() {
 
 function teamNameById(teamId) {
   if (teamId == null) return 'Site-level';
-  var team = _adminTeams.filter(function (t) { return t.id === teamId; })[0];
+  var team = _adminTeams.filter(function (t) {
+    return t.id === teamId;
+  })[0];
   return team ? team.name : 'Team #' + teamId;
 }
 
@@ -487,12 +532,24 @@ function renderAuditRows() {
     .map(function (e) {
       return (
         '<tr>' +
-        '<td style="white-space:nowrap;">' + escapeHtml(auditFormatTs(e.ts)) + '</td>' +
-        '<td>' + escapeHtml(e.team) + '</td>' +
-        '<td>' + escapeHtml(e.changedBy) + '</td>' +
-        '<td>' + escapeHtml(e.action) + '</td>' +
-        '<td>' + escapeHtml(e.target) + '</td>' +
-        '<td>' + escapeHtml(e.detail) + '</td>' +
+        '<td style="white-space:nowrap;">' +
+        escapeHtml(auditFormatTs(e.ts)) +
+        '</td>' +
+        '<td>' +
+        escapeHtml(e.team) +
+        '</td>' +
+        '<td>' +
+        escapeHtml(e.changedBy) +
+        '</td>' +
+        '<td>' +
+        escapeHtml(e.action) +
+        '</td>' +
+        '<td>' +
+        escapeHtml(e.target) +
+        '</td>' +
+        '<td>' +
+        escapeHtml(e.detail) +
+        '</td>' +
         '</tr>'
       );
     })
@@ -509,7 +566,17 @@ function auditFormatTs(iso) {
   function pad(n) {
     return n < 10 ? '0' + n : String(n);
   }
-  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  return (
+    d.getFullYear() +
+    '-' +
+    pad(d.getMonth() + 1) +
+    '-' +
+    pad(d.getDate()) +
+    ' ' +
+    pad(d.getHours()) +
+    ':' +
+    pad(d.getMinutes())
+  );
 }
 
 if (supabaseClient) {
