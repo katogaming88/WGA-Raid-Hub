@@ -594,6 +594,7 @@ function buildPendingCardHtml(e, rosterMap) {
     e.signupId +
     '">' +
     '<div class="signup-response-header">' +
+    '<div style="display:flex;align-items:center;">' +
     '<input type="checkbox" class="pending-select-checkbox" onchange="togglePendingSelected(' +
     e.signupId +
     ')"' +
@@ -607,7 +608,8 @@ function buildPendingCardHtml(e, rosterMap) {
     (isNew ? 'var(--heal)' : 'var(--text-muted)') +
     ';">' +
     (isNew ? 'New' : 'Update') +
-    '</span>';
+    '</span>' +
+    '</div>';
 
   if (e.season)
     html +=
@@ -643,7 +645,7 @@ function buildPendingCardHtml(e, rosterMap) {
       escHtml(e.notes) +
       '</div>';
 
-  html += buildAddToRosterControlHtml(e);
+  html += buildAddToRosterControlHtml(e, isNew);
 
   html +=
     '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
@@ -656,10 +658,13 @@ function buildPendingCardHtml(e, rosterMap) {
   return html;
 }
 
-// Per-row "Add to Roster" control: trial toggle (default checked) and, for
-// main-swap signups, a picker of active roster members to archive
-// (add_signup_to_roster's p_archive_player_id, team-scoped in the function).
-function buildAddToRosterControlHtml(e) {
+// Per-row "Add to Roster" control: trial toggle and, for main-swap signups,
+// a picker of active roster members to archive (add_signup_to_roster's
+// p_archive_player_id, team-scoped in the function). Trial defaults on only
+// for genuinely new characters -- roster signups are normally returning
+// raiders re-upping for next season, not new recruits, so defaulting every
+// card to Trial mismarked them.
+function buildAddToRosterControlHtml(e, isNew) {
   var roster = (window.DATA && DATA.roster) || [];
   var swapPicker = '';
   if (e.mainSwap) {
@@ -676,11 +681,17 @@ function buildAddToRosterControlHtml(e) {
       '</select>';
   }
 
+  // A main-swap signup is a returning raider under a new character name even
+  // when the name itself is new to the roster, so it defaults off too.
+  var defaultTrial = isNew && !e.mainSwap;
+
   return (
     '<div class="pending-add-roster" style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;' +
     'margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);">' +
     '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;color:var(--text-muted);cursor:pointer;">' +
-    '<input type="checkbox" class="pending-trial-checkbox" checked style="accent-color:var(--gold-light);">Trial' +
+    '<input type="checkbox" class="pending-trial-checkbox"' +
+    (defaultTrial ? ' checked' : '') +
+    ' style="accent-color:var(--gold-light);">Trial' +
     '</label>' +
     swapPicker +
     '<button class="btn request-approve-btn pending-add-btn" onclick="addSignupToRoster(' +
