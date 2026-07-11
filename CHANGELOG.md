@@ -8,13 +8,19 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [3.32.9] - 2026-07-16
+## 2026-07-10 (backend only, no version bump)
+
+### Backend
+
+- **Site admins can now read/update the four request tables cross-team (#413)**: `season_signups`, `bis_requests`, `mplus_exclusion_requests`, and `self_received_requests` were the only officer-scoped tables missing the `OR is_site_admin()` clause every other one already has (`audit_log`, `team_members`, `team_settings`, `season_snapshots`). A site admin who isn't personally an officer/team_leader on a given team saw zero rows in these four for that team -- found while verifying #403's historical Hellfire signup backfill actually landed (it had; the officer viewing it just wasn't a `team_members` row on that team).
+
+## [3.32.9] - 2026-07-10
 
 ### Frontend
 
 - **Fixed Pending Roster card layout and Trial defaulting.** The card header's `justify-content:space-between` (shared with the Signups tab, which has no selection checkbox) spread the checkbox/name/badges across the row once a checkbox was added for the selection-based push feature, leaving the name visually adrift from the class/spec line below it -- grouped checkbox+name+New/Update badge into one flex item so they stay clustered at the left edge. The `Trial` checkbox also no longer defaults on for every card: roster signups are normally returning raiders re-upping for next season, not new recruits, so it now defaults on only for genuinely new characters (and off for main-swap signups, which are always a returning raider under a new name even when the name itself is new to the roster).
 
-## [3.32.8] - 2026-07-14
+## [3.32.8] - 2026-07-10
 
 ### Frontend
 
@@ -27,7 +33,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [3.32.7] - 2026-07-13
+## [3.32.7] - 2026-07-10
 
 ### Frontend
 
@@ -43,7 +49,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [3.32.6] - 2026-07-12
+## [3.32.6] - 2026-07-10
 
 ### Frontend
 
@@ -56,7 +62,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [3.32.5] - 2026-07-12
+## [3.32.5] - 2026-07-10
 
 ### Frontend
 
@@ -64,7 +70,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [3.32.4] - 2026-07-12
+## [3.32.4] - 2026-07-10
 
 ### Frontend
 
@@ -77,7 +83,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [3.32.3] - 2026-07-11
+## [3.32.3] - 2026-07-10
 
 ### Frontend
 
@@ -86,7 +92,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [3.32.2] - 2026-07-11
+## [3.32.2] - 2026-07-10
 
 ### Frontend
 

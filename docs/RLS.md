@@ -31,19 +31,19 @@ One thing the matrix hides on purpose: every table also carries a `claude_reader
 | attendance | yes | all ops | (via officer) | |
 | audit_log | no | SELECT +site | | No INSERT policy; only write path is `write_audit_log()` (SECURITY DEFINER, officer/team_leader/site_admin, [#214](https://github.com/katogaming88/WGA-Raid-Hub/issues/214)) |
 | bis_items | yes | all ops | (via officer) | Team resolved through `players.team_id` subquery |
-| bis_requests | no | SELECT, UPDATE | | No INSERT policy; submissions are service-role only |
+| bis_requests | no | SELECT +site, UPDATE +site | | No table INSERT policy; `submit_bis_link()` (SECURITY DEFINER) is the only write path ([#404](https://github.com/katogaming88/WGA-Raid-Hub/issues/404)) |
 | classes_specs | yes | | | Read-only lookup; no write policy |
 | item_bosses | yes | | | Read-only lookup; no write policy |
 | items | yes | | | Read-only lookup; no write policy |
-| mplus_exclusion_requests | no | SELECT, UPDATE | | No INSERT policy; submissions are service-role only |
+| mplus_exclusion_requests | no | SELECT +site, UPDATE +site | | No table INSERT policy; `submit_mplus_exclusion()` (SECURITY DEFINER) is the only write path ([#405](https://github.com/katogaming88/WGA-Raid-Hub/issues/405)) |
 | player_wcl_season_perf | yes | all ops | (via officer) | |
 | players | yes | all ops | (via officer) | |
 | priority_order | yes | all ops | (via officer) | |
 | rclc_loot | yes | all ops | (via officer) | |
 | scoring | yes | all ops | (via officer) | Team resolved through `players.team_id` subquery |
-| season_signups | no | SELECT, UPDATE | | No INSERT policy; submissions are service-role only |
+| season_signups | no | SELECT +site, UPDATE +site | | No table INSERT policy; `submit_season_signup()` (SECURITY DEFINER) is the only write path ([#403](https://github.com/katogaming88/WGA-Raid-Hub/issues/403)) |
 | season_snapshots | yes | | all ops +site | |
-| self_received_requests | no | SELECT, UPDATE | | No INSERT policy; submissions are service-role only |
+| self_received_requests | no | SELECT +site, UPDATE +site | | No INSERT policy; raider submission flow not yet migrated off Apps Script ([#406](https://github.com/katogaming88/WGA-Raid-Hub/issues/406)) |
 | site_admins | no | | | Site admins only: SELECT and all ops via `is_site_admin()` |
 | team_members | no | SELECT +site | all ops +site | Members also read their own row (`auth_user_id = auth.uid()`) |
 | team_settings | yes | | all ops +site | |
@@ -60,7 +60,7 @@ None of these carries a policy of its own. The view and the `SECURITY INVOKER` f
 ## Known issues
 
 - `service_role` is missing base DML grants on every table, the same defect [#284](https://github.com/katogaming88/WGA-Raid-Hub/issues/284) fixed for `anon` and `authenticated`. service_role bypasses policies but not grants, so server-side writes (Edge Functions, service-key integrations) will fail until it gets the same treatment. Flagged on #284.
-- The four request tables (`bis_requests`, `mplus_exclusion_requests`, `self_received_requests`, `season_signups`) have no INSERT policies. Raider-facing submission flows will need them (or an Edge Function using the service role) when those features move off Apps Script.
+- `self_received_requests` has no INSERT path (raider submission flow not yet migrated off Apps Script, [#406](https://github.com/katogaming88/WGA-Raid-Hub/issues/406)). `season_signups`/`bis_requests`/`mplus_exclusion_requests` each got a narrow SECURITY DEFINER RPC instead of a table INSERT policy ([#403](https://github.com/katogaming88/WGA-Raid-Hub/issues/403)/[#404](https://github.com/katogaming88/WGA-Raid-Hub/issues/404)/[#405](https://github.com/katogaming88/WGA-Raid-Hub/issues/405)) -- this note was stale until [#413](https://github.com/katogaming88/WGA-Raid-Hub/issues/413) caught it, since none of those three PRs touched policy SQL and the CI check that enforces updating this file only fires on a policy diff.
 
 ## Verifying against a live database
 

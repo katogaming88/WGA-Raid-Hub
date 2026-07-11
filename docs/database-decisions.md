@@ -6,6 +6,20 @@ Issues carrying a decision are tagged with the `decision` label: `gh issue list 
 
 ---
 
+## 2026-07-15 -- Site-admin cross-team access on request tables (#413): four tables were missing OR is_site_admin()
+
+While verifying #403's historical Hellfire signup backfill actually landed in production, the officer Signups History tab showed "No signups recorded" despite the data being confirmed correct via direct read-only access. Root cause: `my_team_role(team_id)` resolves per-team from `team_members`, and Kat's own account isn't a `team_members` row on Hellfire's team (a different Discord account holds team_leader there) -- so as far as RLS was concerned, the account had zero role on that team, same as any stranger.
+
+That's expected behavior for a plain officer -- but Kat is also a site admin, and every other officer-scoped table already ORs in `is_site_admin()` so a site admin isn't limited to only the teams where they personally hold a `team_members` role (`audit_log`, `team_members`, `team_settings`, `season_snapshots`). Auditing every "Officers read/update" policy in the schema found four that never got this clause when `initial_schema.sql` created them: `season_signups`, `bis_requests`, `mplus_exclusion_requests`, `self_received_requests` -- all four "request" tables, all predating #403/#404/#405 (those PRs added RPCs/columns to three of them but never touched their read/update policies).
+
+- **Added `OR is_site_admin()` to the read and update policies on all four tables**, matching the existing pattern exactly (`my_team_role(team_id) = ANY (ARRAY['officer','team_leader']) OR is_site_admin()`).
+- **Updated `docs/RLS.md`'s per-table matrix and "Known issues" section**, which had also gone stale: it still said the write path for `season_signups`/`bis_requests`/`mplus_exclusion_requests` was "service-role only," true before #403-#405 but superseded once each got a narrow SECURITY DEFINER RPC. Those three PRs never triggered the "update RLS.md" CI check because none of them touched policy SQL -- only this PR's actual policy change did, which is exactly the gap that let the note go stale silently.
+- **RLS test coverage added** (`tests/rls/read-matrix.test.js`, `write-policies.test.js`): site admin (a UID with no `team_members` row on either seeded team) can read all four tables and update at least one, proving the fix rather than just the policy text.
+
+[Full discussion -> #413](https://github.com/katogaming88/WGA-Raid-Hub/issues/413)
+
+---
+
 ## 2026-07-14 -- M+ exclusion write path (#405): approve now sets players.m_plus_excluded directly, rejection state derived live
 
 Unlike `bis_requests` (#404), `mplus_exclusion_requests` already fit the live feature exactly (`reason`/`raiderio_url`/`status` match `submitMPlusExclusion`'s payload one-to-one) -- it just never got an INSERT path or any frontend reference. Confirmed 0 rows in production before writing this.
