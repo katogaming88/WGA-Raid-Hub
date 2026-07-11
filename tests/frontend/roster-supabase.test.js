@@ -103,14 +103,11 @@ describe('mapSupabaseRoster', () => {
     const jsonp = [
       {
         nameRealm: 'Katorri-Stormrage',
-        attendance: '97.3%',
-        mPlusExcluded: true,
-        mPlusNote: 'weeknight scheduling',
-        mPlusRejected: false,
-        mPlusRejectionNote: ''
+        attendance: '97.3%'
       }
     ];
-    expect(sandbox.mapSupabaseRoster([SUPABASE_ROW], jsonp)).toEqual([
+    const row = { ...SUPABASE_ROW, m_plus_excluded: true, m_plus_note: 'weeknight scheduling' };
+    expect(sandbox.mapSupabaseRoster([row], jsonp)).toEqual([
       {
         nameRealm: 'Katorri-Stormrage',
         firstName: 'Katorri',
@@ -175,23 +172,28 @@ describe('mapSupabaseRoster', () => {
     ]);
   });
 
-  it('merges the JSONP-only fields case-insensitively by nameRealm', () => {
-    const jsonp = [
-      {
-        nameRealm: 'KATORRI-Stormrage',
-        attendance: '88.0%',
-        mPlusExcluded: true,
-        mPlusNote: 'approved for this season',
-        mPlusRejected: true,
-        mPlusRejectionNote: 'resubmit next season'
-      }
-    ];
+  it('merges the JSONP-only attendance field case-insensitively by nameRealm', () => {
+    const jsonp = [{ nameRealm: 'KATORRI-Stormrage', attendance: '88.0%' }];
     const mapped = sandbox.mapSupabaseRoster([SUPABASE_ROW], jsonp);
     expect(mapped[0].attendance).toBe('88.0%');
-    expect(mapped[0].mPlusExcluded).toBe(true);
-    expect(mapped[0].mPlusNote).toBe('approved for this season');
+  });
+
+  it('resolves mPlusRejected/mPlusRejectionNote from the rejections map, keyed by player id', () => {
+    const row = { ...SUPABASE_ROW, id: 7 };
+    const rejections = { 7: 'resubmit next season' };
+    const mapped = sandbox.mapSupabaseRoster([row], [], rejections);
+    expect(mapped[0].mPlusExcluded).toBe(false);
     expect(mapped[0].mPlusRejected).toBe(true);
     expect(mapped[0].mPlusRejectionNote).toBe('resubmit next season');
+  });
+
+  it('mPlusExcluded takes priority over a stale rejection entry', () => {
+    const row = { ...SUPABASE_ROW, id: 7, m_plus_excluded: true };
+    const rejections = { 7: 'resubmit next season' };
+    const mapped = sandbox.mapSupabaseRoster([row], [], rejections);
+    expect(mapped[0].mPlusExcluded).toBe(true);
+    expect(mapped[0].mPlusRejected).toBe(false);
+    expect(mapped[0].mPlusRejectionNote).toBe('');
   });
 
   it('skips rows without a role or name, like getRoster() does', () => {

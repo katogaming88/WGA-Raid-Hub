@@ -6,6 +6,19 @@ Issues carrying a decision are tagged with the `decision` label: `gh issue list 
 
 ---
 
+## 2026-07-14 -- M+ exclusion write path (#405): approve now sets players.m_plus_excluded directly, rejection state derived live
+
+Unlike `bis_requests` (#404), `mplus_exclusion_requests` already fit the live feature exactly (`reason`/`raiderio_url`/`status` match `submitMPlusExclusion`'s payload one-to-one) -- it just never got an INSERT path or any frontend reference. Confirmed 0 rows in production before writing this.
+
+- **New `submit_mplus_exclusion()` RPC, SECURITY DEFINER, granted to `anon`** -- same trust model as `submit_bis_link()`/`submit_season_signup()`: the form runs unauthenticated on the public roster page. Re-validates `mPlusExclusionsOpen` server-side.
+- **Approve now sets `players.m_plus_excluded`/`m_plus_note` directly, in the same officer action as marking the request approved.** GAS decoupled these: `approveMPlusExclusion` only ever updated the request's own status/note, and a *separate* manual roster toggle (`setMPlusExcluded`, a Script Property array) was the only thing that actually excluded the player from weekly M+ requirements. That meant an approved request could sit approved indefinitely without the player ever actually being excluded, if the officer forgot the second step. Collapsing this into one write matches #404's BiS approve precedent (which also writes `players.bis_link` directly) and closes a real gap rather than just porting GAS's behavior faithfully.
+- **`mPlusRejected`/`mPlusRejectionNote` are derived live from the most recent rejected request per player, not new `players` columns.** GAS tracked these via a Script-Property-backed scan of the whole exclusion sheet; `players` has no rejection-state columns, and adding one for what's fundamentally a request-table fact (was the raider's most recent submission turned down) would just duplicate state already in `mplus_exclusion_requests`. `fetchSupabaseMPlusRejections()` (`js/common.js`) queries the latest `rejected` row per `player_id` alongside the roster fetch and merges it in client-side.
+- **Bulk "clear all" now just resets `players.m_plus_excluded = false` for the whole team**, with nothing else to reconcile -- GAS's version additionally flipped any `Approved` sheet rows to a `Reset` sentinel status so a later re-scan wouldn't double-count them; that bookkeeping only existed because the sheet itself was the source of truth for exclusion state. Since exclusion now lives solely on `players`, clearing it is the whole operation.
+
+[Full discussion -> #405](https://github.com/katogaming88/WGA-Raid-Hub/issues/405)
+
+---
+
 ## 2026-07-13 -- bis_requests repurposed for BiS link submissions (#404): dropped bis_req_item_id, gating moved to players.bis_allowed
 
 `bis_requests` existed since `initial_schema.sql` with Officers read/update RLS already in place, but nothing ever wrote to it (confirmed 0 rows, 0 references in `js/`). Its shape -- `bis_req_item_id integer NOT NULL`, an FK to `items` -- couldn't hold what the live raider-facing feature actually submits: a whole BiS list URL (`js/common.js` `submitBiSForm` -> GAS `submitBiS`), one per player, unrelated to any single item. It looks like it was scaffolded generically alongside the other request tables (`self_received_requests`, `mplus_exclusion_requests`) assuming a per-item shape this feature never matched.

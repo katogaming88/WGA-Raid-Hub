@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.32.7';
+var VERSION = '3.32.8';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -586,7 +586,7 @@ function fetchSupabaseRoster() {
   var query = supabaseClient
     .from('players')
     .select(
-      'id, name_realm, nickname, is_trial, is_bench, bis_link, bis_allowed, join_date, classes_specs(class, spec, role)'
+      'id, name_realm, nickname, is_trial, is_bench, bis_link, bis_allowed, m_plus_excluded, m_plus_note, join_date, classes_specs(class, spec, role)'
     )
     .eq('team_id', _teamCfg.supabaseTeamId)
     .is('archived_at', null)
@@ -610,18 +610,51 @@ function fetchSupabaseRoster() {
   return Promise.race([query, timeout]);
 }
 
+// Most recent rejected mplus_exclusion_requests row per player (#405).
+// players has no rejected/rejection-note columns of its own -- a rejection is
+// only ever a request-table event, so "is this player currently showing a
+// rejection badge" is derived live from the latest request instead of a
+// persisted flag. Resolves to a plain object keyed by player_id, or {} on any
+// failure so a player simply shows no rejection badge rather than blocking
+// the roster load.
+function fetchSupabaseMPlusRejections() {
+  if (!supabaseClient) return Promise.resolve({});
+  return supabaseClient
+    .from('mplus_exclusion_requests')
+    .select('player_id, officer_notes, submitted_at')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('status', 'rejected')
+    .order('submitted_at', { ascending: false })
+    .then(function (result) {
+      if (result.error) return {};
+      var byPlayer = {};
+      (result.data || []).forEach(function (row) {
+        // Ordered newest-first: keep only the first (most recent) row seen per player.
+        if (row.player_id != null && !(row.player_id in byPlayer)) {
+          byPlayer[row.player_id] = row.officer_notes || '';
+        }
+      });
+      return byPlayer;
+    })
+    .catch(function () {
+      return {};
+    });
+}
+
 /**
  * Maps Supabase players rows to the roster shape the Apps Script core payload
  * emits (see getRoster() in gs/wgaWebApp.gs), so no render code changes.
  * @param {any[]} rows - players rows with embedded classes_specs
  * @param {any[]} [jsonpRoster] - the Apps Script roster from the core payload
+ * @param {Object} [mplusRejections] - player_id -> rejection note, from fetchSupabaseMPlusRejections()
  * @returns {any[]}
  */
-function mapSupabaseRoster(rows, jsonpRoster) {
+function mapSupabaseRoster(rows, jsonpRoster, mplusRejections) {
   var jsonpByName = {};
   (jsonpRoster || []).forEach(function (p) {
     if (p && p.nameRealm) jsonpByName[String(p.nameRealm).toLowerCase()] = p;
   });
+  mplusRejections = mplusRejections || {};
   var players = [];
   (rows || []).forEach(function (row) {
     var nameRealm = String(row.name_realm || '').trim();
@@ -631,6 +664,8 @@ function mapSupabaseRoster(rows, jsonpRoster) {
     if (!cs.role) return;
     var parts = nameRealm.split('-');
     var jsonpRow = jsonpByName[nameRealm.toLowerCase()] || {};
+    var mPlusExcluded = !!row.m_plus_excluded;
+    var mPlusRejected = !mPlusExcluded && row.id in mplusRejections;
     players.push({
       id: row.id,
       nameRealm: nameRealm,
@@ -646,10 +681,10 @@ function mapSupabaseRoster(rows, jsonpRoster) {
       bisLink: row.bis_link || '',
       bisAllowed: !!row.bis_allowed,
       joinDate: row.join_date || '',
-      mPlusExcluded: !!jsonpRow.mPlusExcluded,
-      mPlusNote: jsonpRow.mPlusNote || '',
-      mPlusRejected: !!jsonpRow.mPlusRejected,
-      mPlusRejectionNote: jsonpRow.mPlusRejectionNote || ''
+      mPlusExcluded: mPlusExcluded,
+      mPlusNote: row.m_plus_note || '',
+      mPlusRejected: mPlusRejected,
+      mPlusRejectionNote: mPlusRejected ? mplusRejections[row.id] : ''
     });
   });
   return players;
@@ -1113,6 +1148,8 @@ function loadData(onCoreReady, onHeavyReady) {
   var rosterPromise = fetchSupabaseRoster();
   // Fired alongside; the core callback waits for it before overlaying season config.
   var settingsPromise = fetchSupabaseSettings();
+  // Fired alongside; the core callback waits for it before mapping the roster's M+ rejection badges.
+  var mplusRejectionsPromise = fetchSupabaseMPlusRejections();
   // Fired alongside; the heavy callback waits for it before setting lootCounts.
   var lootPromise = fetchSupabaseLoot();
   // Fired alongside; the heavy callback waits for it before setting bisList.
@@ -1130,10 +1167,11 @@ function loadData(onCoreReady, onHeavyReady) {
       showError('Could not load roster data. ' + data.error);
       return;
     }
-    Promise.all([rosterPromise, settingsPromise]).then(function (results) {
+    Promise.all([rosterPromise, settingsPromise, mplusRejectionsPromise]).then(function (results) {
       var rows = results[0];
       var settingsConfig = results[1];
-      var mapped = rows ? mapSupabaseRoster(rows, data.roster) : null;
+      var mplusRejections = results[2];
+      var mapped = rows ? mapSupabaseRoster(rows, data.roster, mplusRejections) : null;
       if (mapped && mapped.length) data.roster = mapped;
       applyTeamSettingsToData(data, settingsConfig);
       DATA = data;
@@ -1605,36 +1643,30 @@ function submitMPlusExclusionForm(nameRealm, firstName) {
     if (urlEl) urlEl.style.borderColor = 'var(--melee)';
     return;
   }
-  var data = { nameRealm: nameRealm, raiderioUrl: urlEl.value.trim(), notes: notesEl ? notesEl.value.trim() : '' };
   if (formEl)
     formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
-  var cbName = '_submitMPlusCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
-  window[cbName] = function (result) {
-    delete window[cbName];
-    if (result && result.success) {
-      if (formEl)
-        formEl.innerHTML =
-          '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Request submitted! An officer will review it shortly.</p>';
-    } else {
-      if (formEl)
-        formEl.innerHTML =
-          '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
-    }
-  };
-  var script = document.createElement('script');
-  script.onerror = function () {
-    delete window[cbName];
+
+  if (!supabaseClient) {
     if (formEl)
       formEl.innerHTML =
         '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
-  };
-  script.src =
-    WEB_APP_URL +
-    '?action=submitMPlusExclusion&data=' +
-    encodeURIComponent(JSON.stringify(data)) +
-    '&callback=' +
-    cbName;
-  document.head.appendChild(script);
+    return;
+  }
+
+  supabaseClient
+    .rpc('submit_mplus_exclusion', {
+      p_team_id: _teamCfg.supabaseTeamId,
+      p_name_realm: nameRealm,
+      p_raiderio_url: urlEl.value.trim(),
+      p_reason: notesEl ? notesEl.value.trim() : ''
+    })
+    .then(function (result) {
+      if (formEl) {
+        formEl.innerHTML = result.error
+          ? '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>'
+          : '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Request submitted! An officer will review it shortly.</p>';
+      }
+    });
 }
 
 function submitBiSForm(nameRealm, firstName) {

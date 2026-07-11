@@ -3174,6 +3174,12 @@
       "return_type": "int4",
       "arguments": "p_team_id integer, p_name_realm text, p_bis_link text, p_player_note text DEFAULT NULL::text",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.submit_mplus_exclusion",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_name_realm text, p_raiderio_url text DEFAULT NULL::text, p_reason text DEFAULT NULL::text",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

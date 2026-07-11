@@ -51,17 +51,24 @@ function runRosterWrite(promise, msgEl) {
     });
 }
 
-var ROSTER_FIELD_COLUMN = { isTrial: 'is_trial', isBench: 'is_bench', joinDate: 'join_date' };
+var ROSTER_FIELD_COLUMN = {
+  isTrial: 'is_trial',
+  isBench: 'is_bench',
+  joinDate: 'join_date',
+  mPlusExcluded: 'm_plus_excluded'
+};
 var ROSTER_FIELD_AUDIT_LABEL = {
   isTrial: 'Trial Status Changed',
   isBench: 'Bench Status Changed',
-  joinDate: 'Join Date Changed'
+  joinDate: 'Join Date Changed',
+  mPlusExcluded: 'M+ Exclusion Toggled'
 };
 
 function rosterFieldAuditDetail(field, value) {
   if (field === 'isTrial') return value ? 'Trial added' : 'Trial removed';
   if (field === 'isBench') return value ? 'Moved to bench' : 'Removed from bench';
   if (field === 'joinDate') return 'Changed to ' + value;
+  if (field === 'mPlusExcluded') return value ? 'Excluded' : 'Exclusion removed';
   return null;
 }
 
@@ -984,35 +991,19 @@ function toggleMPlusExcluded(nameRealm, firstName) {
     btn.disabled = true;
     btn.textContent = 'Saving...';
   }
-  jsonpRequest(
-    WEB_APP_URL +
-      '?action=setMPlusExcluded&nameRealm=' +
-      encodeURIComponent(nameRealm) +
-      '&value=' +
-      (newVal ? 'true' : 'false'),
-    function (err, result) {
-      if (!err && result && result.success && DATA) {
-        var p = DATA.roster.find(function (p) {
-          return p.nameRealm === nameRealm;
-        });
-        if (p) p.mPlusExcluded = newVal;
-        buildRosterTable();
-      }
-      var newBtn = document.getElementById('mplusExclToggle-' + firstName);
-      if (newBtn) {
-        newBtn.disabled = false;
-        newBtn.className = 'btn ' + (newVal ? 'btn-gold' : 'btn-muted');
-        newBtn.textContent = newVal ? 'Remove Exclusion' : 'Mark as Excluded';
-      }
-      var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
-      if (msgEl) {
-        msgEl.textContent = err || (result && result.error) ? 'Failed to save.' : 'Saved.';
-        setTimeout(function () {
-          if (msgEl) msgEl.textContent = '';
-        }, 2000);
-      }
+  var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
+  runRosterWrite(updateRosterFieldSupabase(nameRealm, 'mPlusExcluded', newVal), msgEl).then(function (ok) {
+    if (ok) {
+      player.mPlusExcluded = newVal;
+      buildRosterTable();
     }
-  );
+    var newBtn = document.getElementById('mplusExclToggle-' + firstName);
+    if (newBtn) {
+      newBtn.disabled = false;
+      newBtn.className = 'btn ' + (newVal ? 'btn-gold' : 'btn-muted');
+      newBtn.textContent = newVal ? 'Remove Exclusion' : 'Mark as Excluded';
+    }
+  });
 }
 
 function savePlayerNote(nameRealm, firstName) {
