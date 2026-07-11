@@ -1,6 +1,6 @@
 // ── Admin subtab management ───────────────────────────────────────────────
 
-var ADMIN_SUBTABS = ['properties', 'botconfig', 'export', 'officers', 'features', 'danger'];
+var ADMIN_SUBTABS = ['properties', 'export', 'officers', 'features', 'danger'];
 
 // Which sub-tabs each access level may see (#317, honoring the RLS split from
 // #294). true (site admins, and the legacy password login) sees everything;
@@ -37,7 +37,6 @@ function switchAdminSubTab(name, btnEl) {
     if (el) el.style.display = sub === name ? '' : 'none';
   });
   if (name === 'properties') loadAdminProperties();
-  if (name === 'botconfig') loadBotConfig();
   if (name === 'officers') renderOfficerManagement();
   if (name === 'features') renderAdminFeatureFlags();
   if (name === 'danger') renderDangerZone();
@@ -47,125 +46,23 @@ function switchAdminSubTab(name, btnEl) {
 
 function loadAdminProperties() {
   var content = document.getElementById('adminPropsContent');
-  if (content) content.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">Loading...</p>';
 
-  // Season/flag fields now come from DATA (Supabase team_settings, #221) --
-  // only the bot config fields still come from the GAS getAdminProperties
-  // action (#222 scope).
-  jsonpRequest(WEB_APP_URL + '?action=getAdminProperties', function (err, result) {
-    if (err || !result) {
-      if (content)
-        content.innerHTML =
-          '<p style="color:var(--melee);">' + (err ? err.message : 'Error loading properties') + '</p>';
-      return;
-    }
-    var rows = [
-      ['Season Name', (DATA && DATA.seasonName) || '(not set)'],
-      ['Season Start', (DATA && DATA.seasonStart) || '(not set)'],
-      ['Season End', (DATA && DATA.seasonEnd) || '(not set)'],
-      ['Archived Seasons', ((DATA && DATA.seasonHistory) || []).length + ' season(s)'],
-      ['Raid Progression', ((DATA && DATA.raidProgression) || []).length + ' raid(s)'],
-      ['Signups Open', DATA && DATA.signupsOpen ? 'Yes' : 'No'],
-      ['BiS Submissions Open', DATA && DATA.bisSubmissionsOpen ? 'Yes' : 'No'],
-      ['M+ Exclusions Open', DATA && DATA.mPlusExclusionsOpen ? 'Yes' : 'No'],
-      ['Bot URL', result.botUrl || '(using default)'],
-      ['Bot Secret', result.botSecretMasked || '(not set)']
-    ];
-    var html = '<table class="admin-props-table">';
-    rows.forEach(function (r) {
-      html += '<tr><td class="admin-prop-key">' + r[0] + '</td><td class="admin-prop-val">' + r[1] + '</td></tr>';
-    });
-    html += '</table>';
-    if (content) content.innerHTML = html;
+  var rows = [
+    ['Season Name', (DATA && DATA.seasonName) || '(not set)'],
+    ['Season Start', (DATA && DATA.seasonStart) || '(not set)'],
+    ['Season End', (DATA && DATA.seasonEnd) || '(not set)'],
+    ['Archived Seasons', ((DATA && DATA.seasonHistory) || []).length + ' season(s)'],
+    ['Raid Progression', ((DATA && DATA.raidProgression) || []).length + ' raid(s)'],
+    ['Signups Open', DATA && DATA.signupsOpen ? 'Yes' : 'No'],
+    ['BiS Submissions Open', DATA && DATA.bisSubmissionsOpen ? 'Yes' : 'No'],
+    ['M+ Exclusions Open', DATA && DATA.mPlusExclusionsOpen ? 'Yes' : 'No']
+  ];
+  var html = '<table class="admin-props-table">';
+  rows.forEach(function (r) {
+    html += '<tr><td class="admin-prop-key">' + r[0] + '</td><td class="admin-prop-val">' + r[1] + '</td></tr>';
   });
-}
-
-// ── Bot Config ────────────────────────────────────────────────────────────
-
-function loadBotConfig() {
-  var urlInput = document.getElementById('adminBotUrlInput');
-  if (urlInput) urlInput.placeholder = 'Loading...';
-
-  jsonpRequest(WEB_APP_URL + '?action=getAdminProperties', function (err, result) {
-    if (!err && result) {
-      if (urlInput) {
-        urlInput.value = result.botUrl || '';
-        urlInput.placeholder = 'e.g. http://server:3000';
-      }
-    } else {
-      if (urlInput) urlInput.placeholder = 'Could not load current value';
-    }
-  });
-}
-
-function saveBotUrl() {
-  var input = document.getElementById('adminBotUrlInput');
-  var status = document.getElementById('adminBotUrlStatus');
-  var btn = document.getElementById('adminBotUrlBtn');
-  var val = input ? input.value.trim() : '';
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
-  }
-
-  jsonpRequest(WEB_APP_URL + '?action=setBotUrl&value=' + encodeURIComponent(val), function (err, result) {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'Save';
-    }
-    if (!err && result && result.success) {
-      if (status) {
-        status.textContent = 'Saved!';
-        setTimeout(function () {
-          if (status) status.textContent = '';
-        }, 2500);
-      }
-    } else {
-      if (status) {
-        status.textContent = err ? err.message : 'Error saving.';
-      }
-    }
-  });
-}
-
-function saveBotSecret() {
-  var input = document.getElementById('adminBotSecretInput');
-  var status = document.getElementById('adminBotSecretStatus');
-  var btn = document.getElementById('adminBotSecretBtn');
-  var val = input ? input.value.trim() : '';
-  if (!val) {
-    if (status) {
-      status.textContent = 'Enter a secret first.';
-      setTimeout(function () {
-        if (status) status.textContent = '';
-      }, 2000);
-    }
-    return;
-  }
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
-  }
-
-  jsonpRequest(WEB_APP_URL + '?action=setBotSecret&value=' + encodeURIComponent(val), function (err, result) {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'Save';
-    }
-    if (!err && result && result.success) {
-      if (input) input.value = '';
-      if (status) {
-        status.textContent = 'Saved!';
-        setTimeout(function () {
-          if (status) status.textContent = '';
-        }, 2500);
-      }
-    } else {
-      if (status) {
-        status.textContent = err ? err.message : 'Error saving.';
-      }
-    }
-  });
+  html += '</table>';
+  if (content) content.innerHTML = html;
 }
 
 // ── Data Export ───────────────────────────────────────────────────────────

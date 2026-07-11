@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.8] - 2026-07-11
+
+### Frontend
+
+- **Discord bot notifications off Apps Script (#224).** Signup, self-received-loot, BiS-link, and M+ exclusion notifications now post through the new `discord-bot-webhook` Edge Function instead of GAS's `sendToBot()`. Fixes a silent regression from Phase 5: self-received/BiS/M+ exclusion stopped notifying the bot entirely once their write paths moved to Supabase RPCs with no GAS relay (only signup's stopgap relay in `js/signup.js` still worked) -- all four now notify again, and signup's relay is replaced with a direct Edge Function call rather than generalized. `js/common.js`'s `submitSelfReceivedRequest`/`submitBiSForm`/`submitMPlusExclusionForm` each fire a best-effort `discord-bot-webhook` call after their RPC succeeds (self-received only when not auto-approved, matching GAS's prior behavior).
+- **Removed the Admin tab's Bot Config sub-tab.** Bot URL/secret now live in Supabase Edge Function secrets (`BOT_WEBHOOK_URL_<TEAM>`/`BOT_WEBHOOK_SECRET_<TEAM>`), which aren't writable from a running web app -- unlike GAS Script Properties, there's no API for the app to change them, so the in-app "type a value, click Save" form could no longer do anything real. Changing them now happens in the Supabase dashboard. The Properties sub-tab's Bot URL/Secret rows are also gone, and `getAdminProperties`/`setBotUrl`/`setBotSecret` are dropped from `gs/wgaWebApp.gs`.
+
 ## [3.33.7] - 2026-07-11
 
 ### Frontend

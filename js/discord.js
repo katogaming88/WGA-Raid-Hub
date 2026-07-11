@@ -447,9 +447,9 @@ function submitCharacterClaim() {
 
 // Admin tab access level for a resolved session: true grants the full tab
 // (site admins), 'team_leader' grants the team-leader surfaces (#317: the
-// Properties, Bot Config, and Officers sub-tabs plus Clear Season History in
-// the Danger Zone -- the sub-tab map lives in adminSubTabVisibility in
-// tab-admin.js), false hides the tab entirely. Callers with their own
+// Properties and Officers sub-tabs plus Clear Season History in the Danger
+// Zone -- the sub-tab map lives in adminSubTabVisibility in tab-admin.js),
+// false hides the tab entirely. Callers with their own
 // no-session fallback (the legacy password login has no Discord session at
 // all) branch around this rather than folding that case in here.
 function adminAccessLevel(session) {

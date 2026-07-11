@@ -257,17 +257,16 @@ Three sub-tabs: **Settings**, **Raid Progression**, **History**.
 
 ## Admin tab (reference only -- not part of the normal weekly flow)
 
-Restricted by role: site admins see the whole tab, team leaders see the Properties, Bot
-Config, and Officers sub-tabs plus Clear Season History in the Danger Zone, and regular
+Restricted by role: site admins see the whole tab, team leaders see the Properties and
+Officers sub-tabs plus Clear Season History in the Danger Zone, and regular
 officers don't see the tab at all. Anyone logged in via the plain officer password (no
 Discord session) gets the full tab, since there's no role to check without one. In practice
-this is usually one or two people per team. Five sub-tabs:
+this is usually one or two people per team. Four sub-tabs:
 
-- **Properties** -- read-only live snapshot of GAS Script Properties: season name/dates,
+- **Properties** -- read-only live snapshot of this team's season settings: season name/dates,
   archived season count, raid progression count, whether Signups/BiS Submissions/M+ Exclusions
-  are open, and the bot URL/secret (masked). Has its own Refresh button.
-- **Bot Config** -- Bot URL (blank uses the compiled default) and Bot Webhook Secret (the
-  shared secret sent in the `X-Webhook-Secret` header; masked, enter a new value to replace it).
+  are open. Has its own Refresh button. (Discord bot URLs/secrets are Supabase Edge Function
+  secrets now, #224 -- edit them in the Supabase dashboard, not here.)
 - **Data Export** -- downloads everything currently loaded in the dashboard (roster, loot
   history, priority order, BiS lists, season history, scoring) as JSON. No server call --
   exports straight from the in-memory cache, so it reflects whatever's currently loaded.

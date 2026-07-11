@@ -500,24 +500,25 @@ function submitSignup() {
         return;
       }
 
-      // Best-effort Discord notification via the existing GAS bot relay (#224
-      // will move this to an Edge Function). Not gated on its result -- the
-      // Supabase insert above is the write of record.
-      var cbName = '_submitSignupCb';
-      window[cbName] = function () {
-        delete window[cbName];
-      };
-      var script = document.createElement('script');
-      script.onerror = function () {
-        delete window[cbName];
-      };
-      script.src =
-        WEB_APP_URL +
-        '?action=submitSignup&data=' +
-        encodeURIComponent(JSON.stringify(signupData)) +
-        '&callback=' +
-        cbName;
-      document.head.appendChild(script);
+      // Best-effort Discord notification via the discord-bot-webhook Edge
+      // Function. Not gated on its result -- the Supabase insert above is
+      // the write of record.
+      supabaseClient.functions.invoke('discord-bot-webhook', {
+        body: {
+          action: 'signup',
+          team: TEAM_SLUG,
+          payload: {
+            charName: signupData.charName || '',
+            realm: signupData.realm || '',
+            className: signupData.className || '',
+            mainSpec: signupData.mainSpec || '',
+            offSpecs: (signupData.offSpecs || []).join(', '),
+            role: signupData.role || '',
+            discord: signupData.discord || '',
+            notes: signupData.notes || ''
+          }
+        }
+      });
 
       signupStep = 5;
       renderSignupStep();
