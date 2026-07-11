@@ -485,7 +485,15 @@ async function refreshAttendance(
   let mainNights = 0;
   let excluded = 0;
   let latestNewZoneId: number | null = null;
-  const rowsToUpsert: any[] = [];
+  // Keyed by player_id|raid_date rather than a plain array: attendance's
+  // unique constraint is (team_id, player_id, raid_date), not report_id, so
+  // two reports landing on the same calendar date would otherwise produce
+  // two rows for the same conflict target in one upsert batch -- Postgres
+  // rejects that ("ON CONFLICT DO UPDATE command cannot affect row a second
+  // time"). A Map collapses same-date duplicates to one row (last report
+  // processed wins), which is the same "one report per date" limitation
+  // this table already has via toggleReportExcluded/setPlayerStatus.
+  const rowsToUpsert = new Map<string, any>();
 
   const sorted = [...reports].sort((a: any, b: any) => b.startTime - a.startTime);
 
@@ -540,21 +548,22 @@ async function refreshAttendance(
         report_excluded: false
       };
 
+      const key = `${player.playerId}|${date}`;
       if (participants.has(player.firstName)) {
-        rowsToUpsert.push({ ...base, status: 'Present', source: 'WCL' });
+        rowsToUpsert.set(key, { ...base, status: 'Present', source: 'WCL' });
       } else if (player.isBench) {
-        rowsToUpsert.push({ ...base, status: 'Bench', source: 'Auto (Bench)' });
+        rowsToUpsert.set(key, { ...base, status: 'Bench', source: 'Auto (Bench)' });
       } else if (player.joinDate && date < player.joinDate) {
-        rowsToUpsert.push({ ...base, status: 'Not on Roster', source: 'WCL' });
+        rowsToUpsert.set(key, { ...base, status: 'Not on Roster', source: 'WCL' });
       }
       // else: left unset -- officer fills the status in manually via the grid.
     }
   }
 
-  if (rowsToUpsert.length > 0) {
+  if (rowsToUpsert.size > 0) {
     const { error: upsertError } = await supabase
       .from('attendance')
-      .upsert(rowsToUpsert, { onConflict: 'team_id,player_id,raid_date' });
+      .upsert([...rowsToUpsert.values()], { onConflict: 'team_id,player_id,raid_date' });
     if (upsertError) throw new Error(upsertError.message);
   }
 
