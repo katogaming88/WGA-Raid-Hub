@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.5] - 2026-07-11
+
+### Frontend
+
+- **WCL sync off Apps Script, stage 2 of 3 (#223).** The Scoring tab's "Refresh from WCL" now calls the `wcl-sync` Edge Function's new `refreshPerformance` action instead of GAS's `refreshWclPerformance`, using the same per-team `wcl_guild_id` and forwarded-JWT auth pattern stage 1 established. The "Commit" and manual-score-edit steps, however, move to **direct Supabase writes from the client** rather than more Edge Function actions -- GAS's `setManualScore`/`commitPerformanceScores` only ever wrote to sheet cells the app never read back (the frontend has always sourced its state from a `sessionStorage` cache of whatever `refreshWclPerformance` returned), so there was no server-side "draft" to actually replace. Manual edits (including "use best score") now update the cached score array synchronously with no network round trip; "Commit" upserts straight into `scoring` (`recent_score`/`trend_score`/`best_score`/`performance_score`) via the same officer-RLS + `writeAuditLog()` pattern every other officer write in this app already uses (e.g. `js/tabs/tab-attendance.js`'s attendance status writes). Also fetches each report's WCL rankings once instead of GAS's up-to-3x redundant refetch across the overlapping recent/trend/best windows, to stay well inside the Edge Function's execution limit.
+
 ## [3.33.4] - 2026-07-11
 
 ### Frontend

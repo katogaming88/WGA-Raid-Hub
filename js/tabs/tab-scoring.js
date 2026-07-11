@@ -37,11 +37,12 @@ function refreshWclPerformance() {
     status.style.color = 'var(--text-muted)';
   }
 
-  jsonpRequest(
-    WEB_APP_URL + '?action=refreshWclPerformance',
-    function (err, result) {
+  supabaseClient.functions
+    .invoke('wcl-sync', { body: { action: 'refreshPerformance', teamId: _teamCfg.supabaseTeamId } })
+    .then(function (res) {
       if (btn) btn.disabled = false;
-      if (!err && result && result.success) {
+      var result = res.data;
+      if (!res.error && result && result.success) {
         var statusText =
           result.updated +
           ' player(s) updated (' +
@@ -60,13 +61,13 @@ function refreshWclPerformance() {
         _saveScoresCache(freshScores, statusText);
       } else {
         if (status) {
-          status.textContent = err ? err.message : 'Error: ' + ((result && result.error) || 'Unknown error');
+          status.textContent = res.error
+            ? res.error.message
+            : 'Error: ' + ((result && result.error) || 'Unknown error');
           status.style.color = 'var(--melee)';
         }
       }
-    },
-    120000
-  );
+    });
 }
 
 function renderScoresTable(scores) {
@@ -214,7 +215,6 @@ function editScoreCell(el) {
       el.style.color = origColor;
       return;
     }
-    el.innerHTML = '<span style="color:var(--text-muted);">Saving...</span>';
     saveManualScore(playerName, val, el, origColor);
   }
 
@@ -230,43 +230,29 @@ function editScoreCell(el) {
   });
 }
 
+// Manual edits are pending-draft state only -- nothing is written to
+// Supabase until "Commit" (executeCommitPerformance). GAS used to persist
+// this to a sheet cell the app never read back, so there's no server round
+// trip to replace here.
 function saveManualScore(playerName, score, cellEl, origColor) {
-  jsonpRequest(
-    WEB_APP_URL + '?action=setManualScore&firstName=' + encodeURIComponent(playerName) + '&score=' + score,
-    function (err, result) {
-      if (!err && result && result.success) {
-        var scoreStr = score.toFixed(2);
-        var color = score >= 7 ? 'var(--heal)' : score >= 5 ? 'var(--gold)' : 'var(--text-dim)';
-        cellEl.setAttribute('data-score', scoreStr);
-        cellEl.style.color = color;
-        cellEl.innerHTML = scoreStr + ' <span style="font-size:0.7rem;opacity:0.4;font-weight:400;">edit</span>';
-        var cached = _loadScoresCache();
-        if (cached && cached.scores) {
-          for (var ci = 0; ci < cached.scores.length; ci++) {
-            if (cached.scores[ci].name.toLowerCase() === playerName.toLowerCase()) {
-              cached.scores[ci].recent = score;
-              cached.scores[ci].noData = false;
-              cached.scores[ci].usedTrend = false;
-              cached.scores[ci].committed = false;
-              break;
-            }
-          }
-          _saveScoresCache(cached.scores, cached.status);
-        }
-      } else {
-        cellEl.style.color = origColor;
-        cellEl.innerHTML =
-          (cellEl.getAttribute('data-score') || 'No data') +
-          ' <span style="font-size:0.7rem;opacity:0.4;font-weight:400;">edit</span>';
-        var msg = err ? err.message : (result && result.error) || 'Unknown error';
-        var statusEl = document.getElementById('refreshPerfStatus');
-        if (statusEl) {
-          statusEl.textContent = 'Error saving score: ' + msg;
-          statusEl.style.color = 'var(--melee)';
-        }
+  var scoreStr = score.toFixed(2);
+  var color = score >= 7 ? 'var(--heal)' : score >= 5 ? 'var(--gold)' : 'var(--text-dim)';
+  cellEl.setAttribute('data-score', scoreStr);
+  cellEl.style.color = color;
+  cellEl.innerHTML = scoreStr + ' <span style="font-size:0.7rem;opacity:0.4;font-weight:400;">edit</span>';
+  var cached = _loadScoresCache();
+  if (cached && cached.scores) {
+    for (var ci = 0; ci < cached.scores.length; ci++) {
+      if (cached.scores[ci].name.toLowerCase() === playerName.toLowerCase()) {
+        cached.scores[ci].recent = score;
+        cached.scores[ci].noData = false;
+        cached.scores[ci].usedTrend = false;
+        cached.scores[ci].committed = false;
+        break;
       }
     }
-  );
+    _saveScoresCache(cached.scores, cached.status);
+  }
 }
 
 function useBestScore(bestCell) {
@@ -281,7 +267,6 @@ function useBestScore(bestCell) {
   var origColor = recentCell.style.color;
   recentCell.setAttribute('data-name', name);
   recentCell.setAttribute('data-score', best.toFixed(2));
-  recentCell.innerHTML = '<span style="color:var(--text-muted);">Saving...</span>';
   saveManualScore(name, best, recentCell, origColor);
 }
 
@@ -305,26 +290,57 @@ function executeCommitPerformance() {
     status.style.color = 'var(--text-muted)';
   }
 
-  jsonpRequest(WEB_APP_URL + '?action=commitPerformanceScores', function (err, result) {
+  var cached = _loadScoresCache();
+  var allScores = (cached && cached.scores) || [];
+  var committable = allScores.filter(function (s) {
+    return s.role !== 'tank' && !s.manual && !s.noData && s.recent !== null && s.recent !== undefined;
+  });
+
+  var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+  var rows = committable.map(function (s) {
+    return {
+      player_id: s.playerId,
+      season: season,
+      recent_score: s.recent,
+      trend_score: s.trend,
+      best_score: s.best,
+      performance_score: s.recent
+    };
+  });
+
+  if (rows.length === 0) {
     if (btn) btn.disabled = false;
-    if (!err && result && result.success) {
+    if (status) {
+      status.textContent = 'Nothing to commit.';
+      status.style.color = 'var(--text-muted)';
+    }
+    return;
+  }
+
+  supabaseClient
+    .from('scoring')
+    .upsert(rows, { onConflict: 'player_id,season' })
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      return writeAuditLog('Performance Scores Committed', null, null, rows.length + ' players');
+    })
+    .then(function () {
+      if (btn) btn.disabled = false;
       if (status) {
-        status.textContent = result.committed + ' player(s) committed to Performance column.';
+        status.textContent = rows.length + ' player(s) committed to Performance column.';
         status.style.color = 'var(--heal)';
       }
-      var cached = _loadScoresCache();
-      if (cached && cached.scores) {
-        cached.scores.forEach(function (s) {
-          if (!s.manual && !s.noData && s.recent !== null) s.committed = true;
-        });
-        _saveScoresCache(cached.scores, cached.status);
-        renderScoresTable(cached.scores);
-      }
-    } else {
+      allScores.forEach(function (s) {
+        if (!s.manual && !s.noData && s.recent !== null) s.committed = true;
+      });
+      _saveScoresCache(allScores, cached.status);
+      renderScoresTable(allScores);
+    })
+    .catch(function (err) {
+      if (btn) btn.disabled = false;
       if (status) {
-        status.textContent = err ? err.message : 'Error: ' + ((result && result.error) || 'Unknown error');
+        status.textContent = 'Error: ' + err.message;
         status.style.color = 'var(--melee)';
       }
-    }
-  });
+    });
 }
