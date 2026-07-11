@@ -14,7 +14,7 @@
 | [public.rclc_loot](public.rclc_loot.md) | 10 |  | BASE TABLE |
 | [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) | 9 |  | BASE TABLE |
 | [public.player_wcl_season_perf](public.player_wcl_season_perf.md) | 7 |  | BASE TABLE |
-| [public.players](public.players.md) | 15 |  | BASE TABLE |
+| [public.players](public.players.md) | 16 |  | BASE TABLE |
 | [public.priority_order](public.priority_order.md) | 8 |  | BASE TABLE |
 | [public.scoring](public.scoring.md) | 10 |  | BASE TABLE |
 | [public.season_signups](public.season_signups.md) | 16 |  | BASE TABLE |
@@ -219,6 +219,7 @@ erDiagram
   timestamp_with_time_zone archived_at
   timestamp_with_time_zone updated_at
   boolean bis_allowed
+  text officer_notes
 }
 "public.priority_order" {
   integer id

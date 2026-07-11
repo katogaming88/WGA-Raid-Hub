@@ -19,6 +19,7 @@
 | archived_at | timestamp with time zone |  | true |  |  |  |
 | updated_at | timestamp with time zone |  | true |  |  |  |
 | bis_allowed | boolean | false | false |  |  |  |
+| officer_notes | text |  | true |  |  |  |
 
 ## Constraints
 
@@ -78,6 +79,7 @@ erDiagram
   timestamp_with_time_zone archived_at
   timestamp_with_time_zone updated_at
   boolean bis_allowed
+  text officer_notes
 }
 "public.attendance" {
   integer id

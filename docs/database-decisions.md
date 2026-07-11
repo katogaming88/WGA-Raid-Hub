@@ -6,6 +6,18 @@ Issues carrying a decision are tagged with the `decision` label: `gh issue list 
 
 ---
 
+## 2026-07-17 -- players.officer_notes (#407): the column #407 assumed already existed had to be added
+
+#407's premise -- "`players.officer_notes` already exists as a column in the schema but is never read or written anywhere in `js/`" -- was wrong. The column that actually exists is `mplus_exclusion_requests.officer_notes` (`initial_schema.sql`), a different table entirely; `dbdoc/public.players.md`'s relations diagram embeds that table's full column list next to `players`' own for the FK diagram, which is what got misread as a `players` column both when the issue was filed and when this fix's own PR first shipped without the column. Confirmed against the live database only after roster loads started failing with `column players.officer_notes does not exist`, well after the frontend write path (`renamePlayer`/`savePlayerNote`) had already been wired to it.
+
+- **Plain `alter table ... add column officer_notes text`, no default, matching `m_plus_note`'s shape** -- an officer free-text field with no structural constraints of its own.
+- **No RLS change**: `Officers write players` already grants UPDATE on the whole row to officer/team_leader; a new nullable column needs no new grant.
+- **Takeaway for future request-table/column audits**: verify a claimed-existing column against the live database (or at minimum a full-text match on the exact table name in `dbdoc/schema.json`, not a substring/adjacent-context match) before writing the frontend side against it -- `dbdoc/`'s per-table relations diagrams intentionally embed related tables' columns for the ER diagram, which reads identically to that table's own column list at a skim.
+
+[Full discussion -> #407](https://github.com/katogaming88/WGA-Raid-Hub/issues/407)
+
+---
+
 ## 2026-07-16 -- Self-received request write path (#406): both submit and direct-mark go through SECURITY DEFINER RPCs, auto-approve now checks real Supabase Auth
 
 `self_received_requests` fit the live feature exactly (`track`/`source`/`note` match `submitSelfReceivedRequest`'s payload one-to-one) -- it just never had an INSERT path or any frontend reference, matching #404/#405's finding for the other two request tables.

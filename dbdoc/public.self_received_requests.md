@@ -78,6 +78,7 @@ erDiagram
   timestamp_with_time_zone archived_at
   timestamp_with_time_zone updated_at
   boolean bis_allowed
+  text officer_notes
 }
 "public.items" {
   integer id
