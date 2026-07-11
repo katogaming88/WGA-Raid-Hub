@@ -161,9 +161,14 @@ describe('mapSupabaseLoot', () => {
     expect(map.katorri.items[0].date).toBe('Mar 17, 2026');
   });
 
-  it('passes unknown season codes through unchanged', () => {
+  it('translates a season code that has never been hardcoded (#341 pattern match)', () => {
     const map = sandbox.mapSupabaseLoot([lootRow({ season: 'MID2' })]);
-    expect(map.katorri.items[0].season).toBe('MID2');
+    expect(map.katorri.items[0].season).toBe('Midnight Season 2');
+  });
+
+  it('passes a season code matching neither an override nor the pattern through unchanged', () => {
+    const map = sandbox.mapSupabaseLoot([lootRow({ season: 'DF3' })]);
+    expect(map.katorri.items[0].season).toBe('DF3');
   });
 
   it('skips rows without a linked player and defaults missing item names', () => {

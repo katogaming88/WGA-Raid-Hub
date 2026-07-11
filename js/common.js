@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.32.13';
+var VERSION = '3.32.14';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -705,25 +705,68 @@ function mapSupabaseRoster(rows, jsonpRoster, mplusRejections) {
   return players;
 }
 
-// Interim season display map (#209): rclc_loot.season stores the community
-// shorthand ('MID1', decided on #320), while the season filter and the Apps
-// Script payloads use the sheet's display names. Translate on read until the
-// seasons vocabulary consolidates when season state moves off the sheet
-// (Phase 5). Unknown codes pass through unchanged.
+// Season code -> display-name translation (#209, formalized as the
+// permanent mechanism on #341): scoring.season/priority_order.season/
+// rclc_loot.season store the compact code ('MID1', decided on #320) as a
+// stable join/filter key, while officers see and type the free-text
+// display name (DATA.seasonName, Season Settings tab -> team_settings.config
+// via saveTeamSetting(), #221) -- translate on read/write.
+//
+// Three layers, checked in order:
+//  1. SEASON_LABELS -- an explicit override map for anything that doesn't
+//     fit the pattern below (a renamed season, a one-off historical name).
+//     Empty by design: every season so far matches the pattern layer.
+//  2. The pattern, '<codePrefix><N>' <-> '<displayPrefix> <N>', both
+//     directions -- MID2, MID3, etc. translate automatically the moment
+//     they show up in data, no code change required at each season
+//     boundary (the earlier version of this mechanism, a single hardcoded
+//     MID1 entry, would have silently mis-translated every season after
+//     the first until someone remembered to add it).
+//  3. The prefixes themselves come from team_settings.config
+//     (DATA.seasonCodePrefix/DATA.seasonDisplayPrefix, officer-editable in
+//     Season Settings, same saveTeamSetting() path as seasonName), defaulting
+//     to 'MID'/'Midnight Season' when unset -- so a future expansion whose
+//     codes don't start with 'MID' is a one-time settings edit, not a code
+//     change, either.
+// Falls through to the input unchanged if nothing matches.
+//
+// Per-team setting is an interim choice: every team plays the same
+// real-world expansion timeline, so this is really cross-team config that
+// belongs on the site admin dashboard once #232 exists, not something each
+// team's officers set independently (risk of two teams drifting to
+// different prefixes for what's actually the same expansion). Noted on
+// #232; keep this as the override mechanism even after that lands.
 /** @type {Object<string, string>} */
-var SEASON_LABELS = { MID1: 'Midnight Season 1' };
+var SEASON_LABELS = {};
 
-// Reverse of SEASON_LABELS: Apps Script's display name (DATA.seasonName,
-// officer-typed free text in Season Settings) -> the shorthand code Supabase
-// write paths need (scoring.season/priority_order.season/rclc_loot.season).
-// Falls through to the input unchanged for a season not yet in SEASON_LABELS
-// (or one an officer already set to the shorthand directly), same
-// unknown-codes-pass-through behavior as the forward map.
+function _seasonCodePrefix() {
+  return (DATA && DATA.seasonCodePrefix) || 'MID';
+}
+
+function _seasonDisplayPrefix() {
+  return (DATA && DATA.seasonDisplayPrefix) || 'Midnight Season';
+}
+
+function _escapeRegExp(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function seasonDisplayName(code) {
+  if (SEASON_LABELS[code]) return SEASON_LABELS[code];
+  var displayPrefix = _seasonDisplayPrefix();
+  var re = new RegExp('^' + _escapeRegExp(_seasonCodePrefix()) + '(\\d+)$');
+  var m = re.exec(code || '');
+  return m ? displayPrefix + ' ' + m[1] : code;
+}
+
 function seasonCodeForDisplay(displayName) {
   for (var code in SEASON_LABELS) {
     if (SEASON_LABELS[code] === displayName) return code;
   }
-  return displayName;
+  var codePrefix = _seasonCodePrefix();
+  var re = new RegExp('^' + _escapeRegExp(_seasonDisplayPrefix()) + ' (\\d+)$');
+  var m = re.exec(displayName || '');
+  return m ? codePrefix + m[1] : displayName;
 }
 
 // Public loot reads come from Supabase (#209): all seasons for the team,
@@ -825,7 +868,7 @@ function mapSupabaseLoot(rows) {
       name: row.items && row.items.name ? row.items.name : 'Unknown Item',
       difficulty: difficulty,
       date: date,
-      season: SEASON_LABELS[row.season] || row.season || ''
+      season: seasonDisplayName(row.season) || ''
     });
   });
   return result;
@@ -1076,7 +1119,12 @@ var SEASON_CONFIG_KEYS = [
   'trialAttend',
   'signupsOpen',
   'bisSubmissionsOpen',
-  'mPlusExclusionsOpen'
+  'mPlusExclusionsOpen',
+  // Season code <-> display-name translation prefixes (#341); consumed by
+  // seasonDisplayName()/seasonCodeForDisplay() above, defaulting to
+  // 'MID'/'Midnight Season' when unset so existing teams need no backfill.
+  'seasonCodePrefix',
+  'seasonDisplayPrefix'
 ];
 
 /**

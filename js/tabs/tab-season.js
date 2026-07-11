@@ -24,6 +24,10 @@ function buildSeasonTab() {
   var trialAttendInput = document.getElementById('trialAttendInput');
   if (trialWeeksInput) trialWeeksInput.value = DATA && DATA.trialWeeks != null ? DATA.trialWeeks : 4;
   if (trialAttendInput) trialAttendInput.value = DATA && DATA.trialAttend != null ? DATA.trialAttend : 75;
+  var codePrefixInput = document.getElementById('seasonCodePrefixInput');
+  var displayPrefixInput = document.getElementById('seasonDisplayPrefixInput');
+  if (codePrefixInput) codePrefixInput.value = (DATA && DATA.seasonCodePrefix) || 'MID';
+  if (displayPrefixInput) displayPrefixInput.value = (DATA && DATA.seasonDisplayPrefix) || 'Midnight Season';
   SEASON_RAIDS = JSON.parse(JSON.stringify((DATA && DATA.raidProgression) || []));
   // Reset to Settings subtab; Progression and History render lazily on switch
   var defaultBtn = document.getElementById('season-subtab-btn-settings');
@@ -402,6 +406,53 @@ function saveSeasonName() {
       writeAuditLog('Season Name Set', null, null, val);
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
+        setTimeout(function () {
+          if (status) status.textContent = '';
+        }, 2000);
+      }
+    })
+    .catch(function (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      }
+      if (status) status.textContent = err.message || 'Error saving.';
+    });
+}
+
+// Only needed once a season code stops matching the current
+// <codePrefix><N>/<displayPrefix> N pattern -- an expansion change, not a
+// routine new season within Midnight (js/common.js seasonDisplayName()/
+// seasonCodeForDisplay(), #341). Blank inputs fall back to the shipped
+// defaults ('MID'/'Midnight Season') rather than saving an empty prefix that
+// would match every season code.
+function saveSeasonCodePrefixes() {
+  var codeInput = document.getElementById('seasonCodePrefixInput');
+  var displayInput = document.getElementById('seasonDisplayPrefixInput');
+  var codeVal = (codeInput ? codeInput.value.trim() : '') || 'MID';
+  var displayVal = (displayInput ? displayInput.value.trim() : '') || 'Midnight Season';
+  var btn = document.getElementById('seasonCodePrefixSaveBtn');
+  var status = document.getElementById('seasonCodePrefixStatus');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+  }
+
+  saveTeamSetting({ seasonCodePrefix: codeVal, seasonDisplayPrefix: displayVal })
+    .then(function () {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      }
+      if (DATA) {
+        DATA.seasonCodePrefix = codeVal;
+        DATA.seasonDisplayPrefix = displayVal;
+      }
+      if (codeInput) codeInput.value = codeVal;
+      if (displayInput) displayInput.value = displayVal;
+      writeAuditLog('Season Code Prefix Changed', null, null, codeVal + ' / ' + displayVal);
+      if (status) {
+        status.textContent = 'Saved!';
         setTimeout(function () {
           if (status) status.textContent = '';
         }, 2000);

@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.32.14] - 2026-07-10
+
+### Frontend
+
+- **Season codes translate automatically for every future season, not just `MID1` (#341).** `seasonDisplayName()`/`seasonCodeForDisplay()` (`js/common.js`) now derive `MID2`, `MID3`, etc. <-> `Midnight Season 2`, `Midnight Season 3`, etc. from a pattern instead of requiring a hardcoded `SEASON_LABELS` entry per season -- the previous single-entry map would have silently mistranslated (or failed to translate) every season after the first until someone remembered to add it. `SEASON_LABELS` survives as an explicit override for anything that doesn't fit the pattern. Even the `MID`/`Midnight Season` prefixes themselves are no longer hardcoded: a new "Season Code Prefix" field in Season Settings (`team_settings.config.seasonCodePrefix`/`seasonDisplayPrefix`) lets officers repoint the pattern at a new expansion's naming without a code change, defaulting to today's values when unset.
+
 ## [3.32.13] - 2026-07-10
 
 ### Frontend
