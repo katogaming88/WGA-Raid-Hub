@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.6] - 2026-07-11
+
+### Frontend
+
+- **Fixed audit log layout drift between `admin.html` and `officer.html`.** `.admin-page`'s max-width (1100px) had fallen out of sync with `#officerView`'s (1600px), so the site-admin Audit Log rendered noticeably narrower than the officer dashboard's despite sharing the same table markup/CSS -- now matched exactly (max-width and padding). Also centered the Detail column (`.audit-table td:last-child`, `css/styles.css`) on both pages, which had been left-aligned while every other column in `.roster-table`-based tables centers by default.
+
 ## [3.33.5] - 2026-07-11
 
 ### Frontend
