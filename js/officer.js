@@ -510,47 +510,56 @@ function getDisplayAttendancePct(player) {
   return player.attendance || '0%';
 }
 
-// -- Boot: check password session first; Discord session validation happens via
-//    onDiscordSessionRestored() in officer.html once discord.js calls initDiscordLogin().
-if (!isOfficerSessionValid()) {
-  sessionStorage.removeItem(_SESSION_KEY);
-  sessionStorage.removeItem(_SESSION_TS_KEY);
-  document.getElementById('loadingMsg').style.display = 'none';
-  // Check for a Discord session before showing the password prompt.
-  // initDiscordLogin() (discord.js) calls onDiscordSessionRestored() which will call
-  // _grantOfficerAccessViaDiscord() if the session is valid and the user is an officer.
-  // Defer by one tick so the inline script callbacks (onDiscordInitNoSession etc.)
-  // defined at the bottom of officer.html are available before initDiscordLogin fires.
-  setTimeout(function () {
-    if (typeof initDiscordLogin === 'function') {
-      initDiscordLogin();
-    } else {
-      showOfficerPrompt();
-    }
-  }, 0);
-} else {
-  // Session restored from sessionStorage (page reload) -- update Discord nav from cached session
-  // without waiting for server validation, so the button reflects the logged-in state immediately.
-  if (typeof renderDiscordNav === 'function' && typeof getDiscordSession === 'function') {
-    renderDiscordNav(getDiscordSession());
+// -- Boot: maintenance mode gates everything below (#245) -- checked before
+//    the password session check, before the Discord session check, before
+//    any data loads. Check password session first; Discord session
+//    validation happens via onDiscordSessionRestored() in officer.html once
+//    discord.js calls initDiscordLogin().
+checkMaintenanceMode().then(function (maint) {
+  if (maint.enabled) {
+    showMaintenanceBanner(maint.message);
+    return;
   }
-  loadData(
-    function () {
-      buildOfficerDashboard();
-      // Check Discord session for isAdmin
-      if (typeof showAdminTab === 'function') {
-        var ds = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
-        // No Discord session means password login -- show the full Admin tab.
-        showAdminTab(ds ? adminAccessLevel(ds) : true);
+  if (!isOfficerSessionValid()) {
+    sessionStorage.removeItem(_SESSION_KEY);
+    sessionStorage.removeItem(_SESSION_TS_KEY);
+    document.getElementById('loadingMsg').style.display = 'none';
+    // Check for a Discord session before showing the password prompt.
+    // initDiscordLogin() (discord.js) calls onDiscordSessionRestored() which will call
+    // _grantOfficerAccessViaDiscord() if the session is valid and the user is an officer.
+    // Defer by one tick so the inline script callbacks (onDiscordInitNoSession etc.)
+    // defined at the bottom of officer.html are available before initDiscordLogin fires.
+    setTimeout(function () {
+      if (typeof initDiscordLogin === 'function') {
+        initDiscordLogin();
+      } else {
+        showOfficerPrompt();
       }
-      document.getElementById('officerViewWrap').classList.add('active');
-      document.getElementById('loadingMsg').style.display = 'none';
-    },
-    function () {
-      buildStatsBar();
-      buildRosterTable();
-      updateUnmanagedBadge();
-      reopenSelectedPlayer();
+    }, 0);
+  } else {
+    // Session restored from sessionStorage (page reload) -- update Discord nav from cached session
+    // without waiting for server validation, so the button reflects the logged-in state immediately.
+    if (typeof renderDiscordNav === 'function' && typeof getDiscordSession === 'function') {
+      renderDiscordNav(getDiscordSession());
     }
-  );
-}
+    loadData(
+      function () {
+        buildOfficerDashboard();
+        // Check Discord session for isAdmin
+        if (typeof showAdminTab === 'function') {
+          var ds = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
+          // No Discord session means password login -- show the full Admin tab.
+          showAdminTab(ds ? adminAccessLevel(ds) : true);
+        }
+        document.getElementById('officerViewWrap').classList.add('active');
+        document.getElementById('loadingMsg').style.display = 'none';
+      },
+      function () {
+        buildStatsBar();
+        buildRosterTable();
+        updateUnmanagedBadge();
+        reopenSelectedPlayer();
+      }
+    );
+  }
+});

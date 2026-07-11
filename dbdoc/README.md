@@ -30,6 +30,7 @@
 | [public.priority_order_stale_entries](public.priority_order_stale_entries.md) | 10 |  | VIEW |
 | [public.priority_order_gaps](public.priority_order_gaps.md) | 4 |  | VIEW |
 | [public.season_loot_pace](public.season_loot_pace.md) | 6 |  | VIEW |
+| [public.site_settings](public.site_settings.md) | 4 |  | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -64,6 +65,7 @@
 | public.admin_list_site_admins | record |  | FUNCTION |
 | public.admin_grant_site_admin | int4 | p_discord_id text | FUNCTION |
 | public.admin_revoke_site_admin | void | p_discord_id text | FUNCTION |
+| public.admin_set_maintenance_mode | void | p_enabled boolean, p_message text DEFAULT NULL::text | FUNCTION |
 
 ## Enums
 
@@ -368,6 +370,12 @@ erDiagram
   text track
   text slot
   bigint items_awarded
+}
+"public.site_settings" {
+  integer id
+  boolean maintenance_mode
+  text maintenance_message
+  timestamp_with_time_zone updated_at
 }
 ```
 

@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.33.1';
+var VERSION = '3.33.2';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -134,6 +134,42 @@ function initTeamUI() {
       switchTeam(this.value);
     };
   });
+}
+
+// Maintenance mode (#245). Checked at the earliest point each page's boot
+// sequence branches (js/roster.js, js/officer.js), before loadData() or any
+// login prompt -- degrades to "not in maintenance" on any error/no-row
+// rather than blocking the whole site over a transient Supabase hiccup.
+function checkMaintenanceMode() {
+  if (!supabaseClient) return Promise.resolve({ enabled: false });
+  return supabaseClient
+    .from('site_settings')
+    .select('maintenance_mode, maintenance_message')
+    .eq('id', 1)
+    .maybeSingle()
+    .then(function (result) {
+      if (result.error || !result.data) return { enabled: false };
+      return { enabled: !!result.data.maintenance_mode, message: result.data.maintenance_message };
+    })
+    .catch(function () {
+      return { enabled: false };
+    });
+}
+
+// Full-page takeover: hides the loading spinner, nav, and any officer login
+// prompt, and shows the banner instead. admin.html doesn't include this file
+// at all (js/admin.js is deliberately standalone, see its own header
+// comment), so the dashboard that turns maintenance mode back off is never
+// itself blocked by it.
+function showMaintenanceBanner(message) {
+  document.querySelectorAll('.view, #loadingMsg, #officerPrompt, .site-nav').forEach(function (el) {
+    /** @type {HTMLElement} */ (el).style.display = 'none';
+  });
+  var banner = document.getElementById('maintenanceBanner');
+  if (!banner) return;
+  banner.style.display = '';
+  var msgEl = document.getElementById('maintenanceBannerMessage');
+  if (msgEl) msgEl.textContent = message || 'The site is temporarily down for maintenance. Please check back soon.';
 }
 
 function jsonpRequest(url, callback, timeoutMs) {

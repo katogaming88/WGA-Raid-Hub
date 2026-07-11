@@ -622,6 +622,7 @@ describe('onDiscordSessionRestored (#371 collision regression)', () => {
       window: {},
       console,
       loadData: () => {}, // no-op: roster.js's own boot call, not under test here
+      checkMaintenanceMode: () => Promise.resolve({ enabled: false }), // common.js stub, same reason
       _qaRefresh: qaRefresh
     };
     sandbox.window.DATA = null;

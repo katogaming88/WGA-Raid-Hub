@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.2] - 2026-07-11
+
+### Frontend
+
+- **Site-wide maintenance mode (#245).** A new Maintenance tab on `admin.html` lets a site admin flip a toggle (with an optional custom message) that immediately blanks both `index.html` and the officer dashboard (`officer.html`) with a "Down for Maintenance" banner, checked before any data loads or login prompt shows -- `js/roster.js` and `js/officer.js`'s boot sequences now gate everything behind a `checkMaintenanceMode()` call in `common.js`. `admin.html` itself is never blocked (it doesn't include `common.js` at all, by the same standalone design from #232), so the toggle can always be turned back off. Every toggle writes to the cross-team Audit Log (`maintenance_mode_enabled`/`maintenance_mode_disabled`, with the message in Detail).
+
+### Backend
+
+- **Adds `site_settings` (singleton) and `admin_set_maintenance_mode()` (#245)**: a fixed id=1 row (`maintenance_mode boolean`, `maintenance_message text`) with public SELECT (every page, including anonymous visitors, needs to read this before anything else loads) and no write policy at all -- `admin_set_maintenance_mode()` (`SECURITY DEFINER`, gated on `is_site_admin()`) is the only write path, same shape as `bis_requests`/`self_received_requests`. Updates `docs/RLS.md` and `tests/rls/` (a new `maintenance-mode.test.js`, plus `site_settings` added to the public-read matrix) since this is the first genuinely new RLS policy since #232 started (public SELECT + a `claude_readers` policy).
+
 ## [3.33.1] - 2026-07-11
 
 ### Frontend

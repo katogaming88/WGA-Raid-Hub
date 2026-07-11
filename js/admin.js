@@ -1,5 +1,6 @@
-// Site admin dashboard (admin.html) -- #232 stage 1 (team management) and
-// stage 2 (site admin grant/revoke).
+// Site admin dashboard (admin.html) -- #232 (team management, site admin
+// grant/revoke, feature flags, cross-team audit log) and #245 (maintenance
+// mode).
 //
 // Deliberately standalone rather than reusing common.js/discord.js: both are
 // built around a single active team (_teamCfg, TEAM_SLUG-keyed session
@@ -53,6 +54,7 @@ function switchTab(name) {
   if (name === 'siteadmins') loadSiteAdmins();
   if (name === 'flags') loadTeams().then(loadFeatureFlags);
   if (name === 'audit') loadAuditLog();
+  if (name === 'maintenance') loadMaintenanceStatus();
 }
 
 function checkAdminAccess() {
@@ -83,6 +85,7 @@ function checkAdminAccess() {
         loadAuditLog();
       });
       loadSiteAdmins();
+      loadMaintenanceStatus();
     });
   });
 }
@@ -609,6 +612,52 @@ function auditFormatTs(iso) {
     ':' +
     pad(d.getMinutes())
   );
+}
+
+function loadMaintenanceStatus() {
+  return supabaseClient
+    .from('site_settings')
+    .select('maintenance_mode, maintenance_message')
+    .eq('id', 1)
+    .maybeSingle()
+    .then(function (result) {
+      var row = result.data || { maintenance_mode: false, maintenance_message: '' };
+      renderMaintenanceStatus(row);
+    });
+}
+
+function renderMaintenanceStatus(row) {
+  var statusEl = document.getElementById('maintenanceStatus');
+  var enabled = !!row.maintenance_mode;
+  statusEl.textContent = enabled ? 'Maintenance mode is ON' : 'Maintenance mode is OFF';
+  statusEl.className = 'admin-maintenance-status ' + (enabled ? 'admin-status-on' : 'admin-status-off');
+  document.getElementById('maintenanceMessage').value = row.maintenance_message || '';
+  document.getElementById('maintenanceEnableBtn').style.display = enabled ? 'none' : '';
+  document.getElementById('maintenanceDisableBtn').style.display = enabled ? '' : 'none';
+}
+
+function submitMaintenanceMode(enabled) {
+  var message = document.getElementById('maintenanceMessage').value.trim();
+  var errorEl = document.getElementById('maintenanceError');
+  errorEl.style.display = 'none';
+
+  if (
+    enabled &&
+    !confirm('Enable maintenance mode? The public site and officer dashboard will show a banner instead of loading.')
+  )
+    return;
+  if (!enabled && !confirm('Disable maintenance mode?')) return;
+
+  supabaseClient
+    .rpc('admin_set_maintenance_mode', { p_enabled: enabled, p_message: message || null })
+    .then(function (result) {
+      if (result.error) {
+        errorEl.textContent = result.error.message;
+        errorEl.style.display = '';
+        return;
+      }
+      loadMaintenanceStatus();
+    });
 }
 
 if (supabaseClient) {
