@@ -297,25 +297,31 @@ function autoOpenClaimedProfile(nameRealm) {
   renderProfile(firstName, 'landing');
 }
 
-// Boot
-loadData(
-  function () {
-    populateDropdown();
-    buildPublicStats();
-    buildProgression();
-    showView('landing');
-    // Init Discord session after core data is ready so the profile deep-link can
-    // find the claimed character in the now-populated player dropdown.
-    if (typeof initDiscordLogin === 'function') initDiscordLogin();
-  },
-  function () {
-    buildPublicStats();
-    buildProgression();
-    buildRecentLoot();
-    var sel = document.getElementById('playerSelect');
-    var profileWrap = document.getElementById('profileViewWrap');
-    if (sel && sel.value && profileWrap && profileWrap.classList.contains('active')) {
-      renderProfile(sel.value, 'landing');
-    }
+// Boot -- maintenance mode gates loadData() entirely, before any data loads.
+checkMaintenanceMode().then(function (maint) {
+  if (maint.enabled) {
+    showMaintenanceBanner(maint.message);
+    return;
   }
-);
+  loadData(
+    function () {
+      populateDropdown();
+      buildPublicStats();
+      buildProgression();
+      showView('landing');
+      // Init Discord session after core data is ready so the profile deep-link can
+      // find the claimed character in the now-populated player dropdown.
+      if (typeof initDiscordLogin === 'function') initDiscordLogin();
+    },
+    function () {
+      buildPublicStats();
+      buildProgression();
+      buildRecentLoot();
+      var sel = document.getElementById('playerSelect');
+      var profileWrap = document.getElementById('profileViewWrap');
+      if (sel && sel.value && profileWrap && profileWrap.classList.contains('active')) {
+        renderProfile(sel.value, 'landing');
+      }
+    }
+  );
+});

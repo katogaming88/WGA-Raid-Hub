@@ -17,6 +17,7 @@ const PUBLIC_READ = [
   'rclc_loot',
   'scoring',
   'season_snapshots',
+  'site_settings',
   'team_settings',
   'teams'
 ];

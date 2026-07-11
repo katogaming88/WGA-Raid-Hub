@@ -45,6 +45,7 @@ One thing the matrix hides on purpose: every table also carries a `claude_reader
 | season_snapshots | yes | | all ops +site | |
 | self_received_requests | no | SELECT +site, UPDATE +site | | No table INSERT policy; `submit_self_received()`/`direct_mark_received()` (both SECURITY DEFINER) are the only write paths ([#406](https://github.com/katogaming88/WGA-Raid-Hub/issues/406)) |
 | site_admins | no | | | Site admins only: SELECT and all ops via `is_site_admin()` |
+| site_settings | yes | | | Singleton row (id=1); no write policy, `admin_set_maintenance_mode()` (SECURITY DEFINER) is the only write path ([#245](https://github.com/katogaming88/WGA-Raid-Hub/issues/245)) |
 | team_members | no | SELECT +site | all ops +site | Members also read their own row (`auth_user_id = auth.uid()`) |
 | team_settings | yes | | all ops +site | |
 | teams | yes | | | Read-only lookup; no write policy |

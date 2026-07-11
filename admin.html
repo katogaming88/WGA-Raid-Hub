@@ -54,6 +54,7 @@
         <button class="nav-item" onclick="switchTab('siteadmins')">Site Admins</button>
         <button class="nav-item" onclick="switchTab('flags')">Feature Flags</button>
         <button class="nav-item" onclick="switchTab('audit')">Audit Log</button>
+        <button class="nav-item" onclick="switchTab('maintenance')">Maintenance</button>
       </nav>
 
       <div class="officer-main">
@@ -125,6 +126,21 @@
               <tbody id="adminAuditRows"></tbody>
             </table>
           </div>
+        </div>
+
+        <div id="tab-maintenance" class="tab-panel">
+          <p class="admin-hint">When enabled, index.html and officer.html show a maintenance banner instead of
+            loading data. This page always stays reachable so maintenance mode can be turned back off.</p>
+          <p id="maintenanceStatus" class="admin-maintenance-status"></p>
+          <label class="admin-field-label" for="maintenanceMessage">Message (shown on the banner)</label>
+          <input type="text" id="maintenanceMessage" placeholder="e.g. Down for a database migration, back soon">
+          <div class="admin-maintenance-actions">
+            <button class="btn btn-danger" id="maintenanceEnableBtn" onclick="submitMaintenanceMode(true)">Enable
+              Maintenance Mode</button>
+            <button class="btn btn-gold" id="maintenanceDisableBtn" onclick="submitMaintenanceMode(false)"
+              style="display:none;">Disable Maintenance Mode</button>
+          </div>
+          <p id="maintenanceError" style="display:none;font-size:0.88rem;color:var(--melee);"></p>
         </div>
       </div>
     </div>
