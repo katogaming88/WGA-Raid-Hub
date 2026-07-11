@@ -39,9 +39,26 @@ function jsonResponse(body: unknown, status = 200) {
 // shifts it to the wrong calendar day -- this reproduces GAS's timezone-
 // correct date instead.
 const REPORT_TIME_ZONE = 'America/New_York';
+// A raid that runs past midnight still belongs to the night it started, not
+// the calendar day its report timestamp technically falls on -- reports
+// starting in the small hours (before this cutoff, local time) are dated as
+// the previous day instead.
+const EARLY_MORNING_CUTOFF_HOUR = 6;
+
 function formatReportDate(ms: number): string {
   // en-CA formats as YYYY-MM-DD, conveniently matching the date column format.
-  return new Intl.DateTimeFormat('en-CA', { timeZone: REPORT_TIME_ZONE }).format(new Date(ms));
+  const localDate = new Intl.DateTimeFormat('en-CA', { timeZone: REPORT_TIME_ZONE }).format(new Date(ms));
+  const localHour = parseInt(
+    new Intl.DateTimeFormat('en-US', { timeZone: REPORT_TIME_ZONE, hourCycle: 'h23', hour: '2-digit' }).format(
+      new Date(ms)
+    ),
+    10
+  );
+  if (localHour >= EARLY_MORNING_CUTOFF_HOUR) return localDate;
+  // Pure calendar-date arithmetic (not ms/DST math) to step back one day.
+  const d = new Date(`${localDate}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
 }
 
 // ── WCL API helpers (ported from gs/WCL.gs) ─────────────────────────────────
