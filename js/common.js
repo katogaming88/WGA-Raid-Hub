@@ -705,20 +705,35 @@ function mapSupabaseRoster(rows, jsonpRoster, mplusRejections) {
   return players;
 }
 
-// Interim season display map (#209): rclc_loot.season stores the community
-// shorthand ('MID1', decided on #320), while the season filter and the Apps
-// Script payloads use the sheet's display names. Translate on read until the
-// seasons vocabulary consolidates when season state moves off the sheet
-// (Phase 5). Unknown codes pass through unchanged.
+// Season code -> display-name map (#209, formalized as the permanent
+// mechanism on #341): scoring.season/priority_order.season/rclc_loot.season
+// store the compact code ('MID1', decided on #320) as a stable join/filter
+// key, while officers see and type the free-text display name
+// (DATA.seasonName, Season Settings tab -> team_settings.config via
+// saveTeamSetting(), #221) -- translate on read. Deliberately a hardcoded
+// frontend map rather than a DB table or a settings.config key: season
+// codes change a handful of times a year at most, and adding a new one
+// already requires a code change to be reachable at all (nothing generates
+// "MID2" on its own). Unknown codes pass through unchanged.
+//
+// Runbook: when starting a new season (after archive_current_season, before
+// typing the new season's display name into Season Settings), add its code
+// here in the same PR. seasonCodeForDisplay() below only matches an *exact*
+// SEASON_LABELS value -- if the new season's code is missing, every write
+// that resolves p_season from DATA.seasonName (rclc_loot import, priority
+// generation, the export string) silently falls through to storing the full
+// display string as the season key instead of a short code, which still
+// works internally (self-consistent) but breaks the compact/stable-key
+// design and looks inconsistent next to 'MID1'.
 /** @type {Object<string, string>} */
 var SEASON_LABELS = { MID1: 'Midnight Season 1' };
 
-// Reverse of SEASON_LABELS: Apps Script's display name (DATA.seasonName,
-// officer-typed free text in Season Settings) -> the shorthand code Supabase
-// write paths need (scoring.season/priority_order.season/rclc_loot.season).
-// Falls through to the input unchanged for a season not yet in SEASON_LABELS
-// (or one an officer already set to the shorthand directly), same
-// unknown-codes-pass-through behavior as the forward map.
+// Reverse of SEASON_LABELS: the officer-typed display name -> the shorthand
+// code Supabase write paths need (scoring.season/priority_order.season/
+// rclc_loot.season). Falls through to the input unchanged for a season not
+// yet in SEASON_LABELS (or one an officer already set to the shorthand
+// directly), same unknown-codes-pass-through behavior as the forward map --
+// see the runbook note above for why that's a trap, not a safe default.
 function seasonCodeForDisplay(displayName) {
   for (var code in SEASON_LABELS) {
     if (SEASON_LABELS[code] === displayName) return code;
