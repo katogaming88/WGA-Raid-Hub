@@ -125,7 +125,8 @@ describe('mapSupabaseRoster', () => {
         mPlusExcluded: true,
         mPlusNote: 'weeknight scheduling',
         mPlusRejected: false,
-        mPlusRejectionNote: ''
+        mPlusRejectionNote: '',
+        officerNote: ''
       }
     ]);
   });
@@ -167,7 +168,8 @@ describe('mapSupabaseRoster', () => {
         mPlusExcluded: false,
         mPlusNote: '',
         mPlusRejected: false,
-        mPlusRejectionNote: ''
+        mPlusRejectionNote: '',
+        officerNote: ''
       }
     ]);
   });

@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.32.11';
+var VERSION = '3.32.12';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -586,7 +586,7 @@ function fetchSupabaseRoster() {
   var query = supabaseClient
     .from('players')
     .select(
-      'id, name_realm, nickname, is_trial, is_bench, bis_link, bis_allowed, m_plus_excluded, m_plus_note, join_date, classes_specs(class, spec, role)'
+      'id, name_realm, nickname, is_trial, is_bench, bis_link, bis_allowed, m_plus_excluded, m_plus_note, join_date, officer_notes, classes_specs(class, spec, role)'
     )
     .eq('team_id', _teamCfg.supabaseTeamId)
     .is('archived_at', null)
@@ -684,7 +684,8 @@ function mapSupabaseRoster(rows, jsonpRoster, mplusRejections) {
       mPlusExcluded: mPlusExcluded,
       mPlusNote: row.m_plus_note || '',
       mPlusRejected: mPlusRejected,
-      mPlusRejectionNote: mPlusRejected ? mplusRejections[row.id] : ''
+      mPlusRejectionNote: mPlusRejected ? mplusRejections[row.id] : '',
+      officerNote: row.officer_notes || ''
     });
   });
   return players;
@@ -2477,7 +2478,7 @@ function renderProfile(firstName, backTo, container) {
 
   var officerActionsHTML = '';
   if (backTo === 'officer') {
-    var currentNote = ((DATA && DATA.playerNotes) || {})[player.nameRealm] || '';
+    var currentNote = player.officerNote || '';
     var fnSafe = player.firstName.replace(/'/g, "\\'");
     var nrSafe = player.nameRealm.replace(/'/g, "\\'");
     var classKeys = Object.keys(CLASS_SPECS).sort();
