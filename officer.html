@@ -342,17 +342,17 @@
               <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
                 <button class="btn btn-muted" id="refreshPerfBtn" onclick="refreshWclPerformance()">Refresh from WCL</button>
                 <span id="refreshPerfStatus" style="font-size:0.92rem;"></span>
-                <button class="btn btn-gold" id="commitPerfBtn" onclick="confirmCommitPerformance()" style="margin-left:0.5rem;">Commit to Scoring Sheet</button>
+                <button class="btn btn-gold" id="commitPerfBtn" onclick="confirmCommitPerformance()" style="margin-left:0.5rem;">Commit Performance Scores</button>
                 <span id="commitPerfStatus" style="font-size:0.92rem;"></span>
               </div>
             </div>
             <div id="refreshPerfProgress" class="wcl-progress-bar"><div class="wcl-progress-bar-fill"></div></div>
             <div id="help-scoring" class="help-tip" style="margin-top:0.5rem;margin-bottom:0.75rem;">
-              <strong>Refresh from WCL</strong> -- fetches the last raid reports from WCL and calculates ilvl bracket % scores for each DPS and healer. Writes draft scores to columns J (Recent) and K (Trend) of the Scoring sheet. Tanks are skipped and marked Manual.<br>
-              <strong>Commit to Scoring Sheet</strong> -- copies Recent Scores (column J) into the Performance column (C), which is what the Priority Generator uses. Safe to run multiple times.
+              <strong>Refresh from WCL</strong> -- fetches the last raid reports from WCL and calculates ilvl bracket % scores (Recent/Trend/Best) for each DPS player. Tanks and healers are skipped and marked Manual. Scores are held in a session draft until committed.<br>
+              <strong>Commit Performance Scores</strong> -- saves the Recent score from the draft above into Scoring (<code>performance_score</code>), which is what the Priority Generator uses. Safe to run multiple times; it always recalculates from scratch.
             </div>
             <div id="perfConfirmBanner" class="attend-confirm-banner" style="display:none;">
-              Copy Recent Scores (column J) into the Performance column (C) for all players?
+              Calculate and write performance scores for all players to Scoring?
               <button class="btn btn-gold" onclick="executeCommitPerformance()" style="margin-left:1rem;">Yes, Commit</button>
               <button class="btn btn-muted" onclick="cancelCommitPerformance()" style="margin-left:0.5rem;">Cancel</button>
             </div>
@@ -761,11 +761,11 @@
               </div>
 
               <div class="help-ref-card">
-                <h4 class="help-ref-title">Commit attendance scores to the roster sheet</h4>
+                <h4 class="help-ref-title">Commit attendance scores</h4>
                 <ol class="help-ref-steps">
-                  <li>After reviewing the attendance grid, click <strong>Commit Scores to Sheet</strong> on the Attendance tab.</li>
-                  <li>Confirm the prompt. This calculates each player's attendance percentage and writes it to the Google Sheet roster.</li>
-                  <li>Run this after any manual edits or a WCL refresh to keep the public roster view up to date.</li>
+                  <li>After reviewing the attendance grid, click <strong>Commit Attendance Scores</strong> on the Attendance tab.</li>
+                  <li>Confirm the prompt. This calculates each player's weighted attendance score/% and saves it to Scoring, which is what the Priority Generator uses.</li>
+                  <li>The roster's live attendance % display doesn't depend on this -- it's already computed fresh from attendance data on every load. Run this after any manual edits or a WCL refresh to keep Scoring current for the Priority Generator.</li>
                 </ol>
               </div>
 
@@ -786,7 +786,7 @@
                   <li>Go to <strong>Loot &gt; Import History</strong> and click <strong>Clear All Loot History</strong> to remove last season's entries.</li>
                   <li>Re-import this season's loot via <strong>Loot &gt; Import</strong>.</li>
                   <li>On the <strong>Attendance</strong> tab, click <strong>Refresh from WCL</strong> to pull the new season's raid nights.</li>
-                  <li>Commit updated scores via <strong>Commit Scores to Sheet</strong>.</li>
+                  <li>Commit updated scores via <strong>Commit Attendance Scores</strong>.</li>
                 </ol>
               </div>
 

@@ -77,7 +77,7 @@ function renderScoresTable(scores) {
   var el = document.getElementById('scoringContent');
   if (!el) return;
   if (!scores.length) {
-    el.innerHTML = '<p style="color:var(--text-muted);padding:0.5rem 0;">No players found in Scoring sheet.</p>';
+    el.innerHTML = '<p style="color:var(--text-muted);padding:0.5rem 0;">No players found.</p>';
     return;
   }
 
