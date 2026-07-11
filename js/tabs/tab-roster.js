@@ -907,6 +907,16 @@ function officerUpdateClass(nameRealm, firstName, newClass) {
 // already in use (active or archived) fails with a constraint-violation
 // error surfaced through the normal "Failed to save." path, same as any
 // other write failure here.
+//
+// Known gap: the roster table's summary Attendance % column (player.attendance,
+// mapSupabaseRoster in js/common.js) is a name-matched merge from the Apps
+// Script Roster/Attendance sheet, not the real per-night Supabase attendance
+// rows the player detail card reads (those stay correctly linked by id, same
+// as loot/BiS). Since this rename never touches GAS, that name match breaks
+// for a renamed player until the sheet's own name is corrected there too --
+// tracked as #419, a follow-up for whenever attendance's read side migrates
+// off Apps Script (#218 is the write-side precedent; reads were deliberately
+// left on GAS for now).
 function renamePlayerSupabase(oldNameRealm, newNameRealm) {
   var player = findRosterPlayer(oldNameRealm);
   if (!player || !player.id) return Promise.reject(new Error('Unknown player.'));
@@ -933,16 +943,25 @@ function officerRenamePlayer(nameRealm, firstName) {
   if (msgEl) msgEl.textContent = 'Saving...';
   runRosterWrite(renamePlayerSupabase(nameRealm, newNameRealm), msgEl).then(function (ok) {
     if (!ok) return;
-    var player = findRosterPlayer(nameRealm);
-    if (player) {
-      player.nameRealm = newNameRealm;
-      player.firstName = newName;
-      player.realm = newRealm;
-    }
     selectedOfficerPlayer = null;
     var inlineRow = document.getElementById('inlineProfileRow');
     if (inlineRow) inlineRow.remove();
-    buildRosterTable();
+    // Full reload rather than patching DATA.roster in place: lootCounts,
+    // bisList, and the jsonp-merged attendance field (js/common.js) are all
+    // keyed by the player's name, not id, so a rename leaves every one of
+    // those client-side maps pointing at the old name until they're
+    // refetched (#407 follow-up). buildRosterTable() alone only re-renders
+    // the roster row itself, which is why the name updated but the profile
+    // card's Items Received / BiS List went blank until a manual page reload.
+    loadData(
+      function () {
+        buildOfficerDashboard();
+      },
+      function () {
+        buildStatsBar();
+        buildRosterTable();
+      }
+    );
   });
 }
 
