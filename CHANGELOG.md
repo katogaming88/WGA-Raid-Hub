@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.31] - 2026-07-12
+
+### Frontend
+
+- **officer.html's nav now matches index.html.** The officer dashboard's top nav was missing Roster, Streams, Sign Up, and Help -- officers had no way to reach those pages without manually editing the URL. Added them as links back to index.html (which now honors a `#roster`/`#streams`/`#signup`/`#help` deep-link on load to open the right view) (#354). Renamed the officer dashboard's own sidebar "Help" tab to "Officer Guide" to avoid confusion with the new raider-facing "Help" link that now sits right next to it in the top nav.
+
 ## [3.33.30] - 2026-07-12
 
 ### Frontend
