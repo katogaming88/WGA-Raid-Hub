@@ -38,7 +38,7 @@ if (_teamParam && _teamParam in TEAMS) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.33.25';
+var VERSION = '3.33.26';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -1258,6 +1258,61 @@ function mapSupabaseStreamers(rows) {
   return mapped;
 }
 
+// Current-team mythic pull count/best % (#285), synced by the
+// wcl-progression-sync Edge Function (cron, see .github/workflows/
+// wcl-progression-sync.yml). Joins through raid_encounters/raid_zones since
+// team_raid_progress only stores encounter_id -- the boss-name join key
+// buildProgression() actually needs comes from the embedded encounter row.
+function fetchSupabaseRaidProgress() {
+  if (!supabaseClient) return Promise.resolve(null);
+  var query = supabaseClient
+    .from('team_raid_progress')
+    .select(
+      'mythic_pulls, mythic_best_pct, mythic_report_code, mythic_fight_id, ' +
+        'raid_encounters(name, raid_zones(wcl_zone_id))'
+    )
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Supabase team_raid_progress query failed.', result.error.message);
+        return null;
+      }
+      return result.data && result.data.length ? result.data : null;
+    })
+    .catch(function (err) {
+      console.warn('Supabase team_raid_progress query failed.', err);
+      return null;
+    });
+  var timeout = new Promise(function (resolve) {
+    setTimeout(function () {
+      resolve(null);
+    }, 10000);
+  });
+  return Promise.race([query, timeout]);
+}
+
+// Keyed by "<wclZoneId>|<normalised boss name>" so buildProgression() can
+// look a boss up by the same (raid.wclZoneId, boss.name) pair it already
+// renders from DATA.raidProgression, with no encounterID needed on the
+// config side (see wcl-progression-sync's header comment for why that
+// field can't be trusted there).
+function mapSupabaseRaidProgress(rows) {
+  var map = {};
+  (rows || []).forEach(function (row) {
+    var encounter = row.raid_encounters || {};
+    var zone = encounter.raid_zones || {};
+    var name = normalise(encounter.name || '');
+    if (!zone.wcl_zone_id || !name) return;
+    map[zone.wcl_zone_id + '|' + name] = {
+      pulls: row.mythic_pulls,
+      bestPct: row.mythic_best_pct,
+      reportCode: row.mythic_report_code,
+      fightId: row.mythic_fight_id
+    };
+  });
+  return map;
+}
+
 // Maps self_received_requests rows to the DATA.selfReceived shape the Apps
 // Script heavy chunk emits (firstName -> array of {item, slot, source}), so
 // no render code changes. source is rebuilt as "Track: source" to match the
@@ -1781,6 +1836,8 @@ function loadData(onCoreReady, onHeavyReady) {
   // -- consistent with the rest of this batch, which never conditions on
   // which page loaded it.
   var streamersPromise = fetchSupabaseStreamers();
+  // Fired alongside; the heavy callback waits for it before setting raidProgress.
+  var raidProgressPromise = fetchSupabaseRaidProgress();
 
   // Builds DATA from the Supabase roster/settings/M+ rejections, then runs
   // onCoreReady. GAS is retired (#225) -- there is no core payload to overlay
@@ -1826,7 +1883,8 @@ function loadData(onCoreReady, onHeavyReady) {
       priorityOrderPromise,
       selfReceivedPromise,
       attendancePromise,
-      streamersPromise
+      streamersPromise,
+      raidProgressPromise
     ]).then(function (results) {
       var lootRows = results[0];
       var bisRows = results[1];
@@ -1836,6 +1894,7 @@ function loadData(onCoreReady, onHeavyReady) {
       var selfReceivedRows = results[5];
       var attendanceRows = results[6];
       var streamerRows = results[7];
+      var raidProgressRows = results[8];
       var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
       DATA.lootCounts = mappedLoot || {};
       var mappedAttendance = attendanceRows !== null ? mapSupabaseAttendanceRaw(attendanceRows, DATA.roster) : null;
@@ -1857,6 +1916,7 @@ function loadData(onCoreReady, onHeavyReady) {
       var mappedSelfReceived = selfReceivedRows ? mapSupabaseSelfReceived(selfReceivedRows) : null;
       DATA.selfReceived = mappedSelfReceived || {};
       DATA.streamers = mapSupabaseStreamers(streamerRows);
+      DATA.raidProgress = mapSupabaseRaidProgress(raidProgressRows);
       if (typeof populateBossFilters === 'function') populateBossFilters();
       if (onHeavyReady) onHeavyReady();
     });

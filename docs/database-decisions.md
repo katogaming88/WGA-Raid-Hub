@@ -8,6 +8,20 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-07-12 -- Mythic pull count/best % progression (#285): normalized WCL reference tables + a GitHub Actions cron, not a JSON blob or a manual-only refresh
+
+Landing-page ask: show live pull count/best % on the current work-in-progress mythic boss, and total pulls on already-killed bosses, matching WCL's own reports view. `team_settings.config.raidProgression` already holds an officer-curated raid/boss list (Season Settings' "Refresh from WCL" button), but that list only stores `{name, mythicDate}` per boss -- no WCL encounter ID -- and only updates when an officer manually clicks refresh.
+
+- **New `raid_zones`/`raid_encounters` tables, not reusing the config JSON.** Same category as `items`/`classes_specs`: shared reference data, public read, no authenticated write policy (only a service-role sync or manual SQL Editor edit ever touches them). `team_raid_progress` is the per-team row, one per encounter, upserted by the sync.
+- **The sync re-queries WCL's `zone(id).encounters` every run rather than trusting `config.raidProgression`'s boss list for encounter IDs**, since `tab-season.js`'s `fetchWclForRaid()` discards the ID WCL returns before saving. The landing page's render side has the same gap -- it joins `DATA.raidProgress` to a boss by `(wclZoneId, normalised boss name)`, not encounter ID, since that's the only key `config.raidProgression` actually carries client-side.
+- **A new `wcl-progression-sync` Edge Function on a GitHub Actions cron, not `wcl-sync` or a manual button.** `wcl-sync`'s existing actions all forward a real officer's JWT and are gated by `my_team_role()`; there's no logged-in officer for a scheduled job, so this new function uses the service-role key + a shared `x-cron-secret` header, mirroring `twitch-live-check` (chosen there because no `pg_cron`/`pg_net` infrastructure exists in this project's Supabase instance).
+- **Cadence: every 30 minutes, but only Tue/Thu/Mon 9:30pm-midnight Eastern** (Kat's actual raid nights, Monday being the standing makeup/extra-day slot) -- pull counts only change during raid nights, so polling the rest of the week would just waste WCL API calls for no fresher data. GitHub Actions cron is UTC-only with no DST awareness, so the schedule is padded an hour on each side to cover both US DST offsets without a biannual manual edit (see `.github/workflows/wcl-progression-sync.yml`'s header comment for the exact UTC math).
+- **`team_raid_progress` still gets an officer/team-leader write policy** even though the sync is the only writer today, matching the `streamers`/`player_wcl_season_perf` pattern of leaving a manual-correction path open.
+
+[Full discussion -> #285](https://github.com/katogaming88/WGA-Raid-Hub/issues/285)
+
+---
+
 ## 2026-07-11 -- Danger Zone request-table clears (#225): five single-purpose RPCs, not one generic one; loot stays a direct delete
 
 The Danger Zone's seven "Clear ___ Sheet" ops were the last GAS call sites left standing once #386/#423/#453/#455 finished migrating everything else -- retiring Apps Script (#225) meant finally giving them a real destination instead of a dead GAS action.

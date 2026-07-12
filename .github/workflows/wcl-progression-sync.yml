@@ -1,0 +1,58 @@
+name: WCL Progression Sync
+
+# #285: keeps team_raid_progress (current mythic boss pulls/best %, killed-
+# boss total pulls) current by calling the wcl-progression-sync Edge
+# Function on a schedule -- same reasoning as twitch-live-check.yml: no
+# cron/pg_net infrastructure exists inside Supabase for this project yet, so
+# GitHub Actions is the trigger instead.
+#
+# Requires one repo secret: WCL_PROGRESS_SYNC_SECRET, matching the same
+# value set as the Edge Function's WCL_PROGRESS_SYNC_SECRET env var (Project
+# Settings > Edge Functions > Secrets) -- an arbitrary shared secret, not a
+# WCL credential itself. Without it matching, the function returns 401.
+#
+# Cadence: every 30 minutes, only during raid hours -- Tue/Thu/Mon,
+# 9:30pm-midnight Eastern (the Monday slot is the team's standing makeup/
+# extra-day night; update the cron below if that day ever changes). Kat's
+# call: boss-pull progress only actually changes during raid nights, so
+# there's no reason to poll WCL the other 4.5 days a week.
+#
+# GitHub Actions cron is UTC-only and does not adjust for US DST, so the
+# schedule below is intentionally padded by an hour on each side to cover
+# both offsets year-round without needing a manual twice-a-year edit:
+#   EDT (Mar-Nov, UTC-4): 9:30pm-midnight ET = 01:30-04:00 UTC next day
+#   EST (Nov-Mar, UTC-5): 9:30pm-midnight ET = 02:30-05:00 UTC next day
+#   -> polls 01:00-05:30 UTC to cover both with buffer room either side.
+# A UTC weekday is one calendar day ahead of the Eastern evening it follows,
+# so Mon/Tue/Thu ET nights land on Tue/Wed/Fri UTC (cron dow 2,3,5).
+on:
+  schedule:
+    - cron: '0,30 1-5 * * 2,3,5'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call wcl-progression-sync
+        env:
+          CRON_SECRET: ${{ secrets.WCL_PROGRESS_SYNC_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "WCL_PROGRESS_SYNC_SECRET repo secret is not set -- skipping."
+            exit 1
+          fi
+          http_code=$(curl -sS -o /tmp/response.json -w "%{http_code}" \
+            -X POST "https://kxgjqnpwfklbgrxdgmmv.supabase.co/functions/v1/wcl-progression-sync" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "Content-Type: application/json")
+          echo "HTTP $http_code"
+          cat /tmp/response.json
+          echo
+          if [ "$http_code" -ge 300 ]; then
+            exit 1
+          fi

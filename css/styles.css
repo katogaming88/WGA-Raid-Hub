@@ -127,6 +127,9 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 .prog-boss-name { flex:1; font-size:1rem; color:var(--text-muted); }
 .prog-boss-killed .prog-boss-name { color:var(--text); }
 .prog-boss-date { font-size:0.91rem; color:var(--text-dim); white-space:nowrap; }
+.prog-boss-pulls { font-size:0.87rem; color:var(--text-dim); white-space:nowrap; margin-left:0.4rem; }
+a.prog-boss-pulls { text-decoration:none; }
+a.prog-boss-pulls:hover { color:var(--gold); text-decoration:underline; }
 .prog-aotc { display:inline-flex; align-items:center; gap:0.4rem; margin-top:0.65rem; font-size:0.89rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); background:rgba(214,163,68,0.1); border:1px solid rgba(214,163,68,0.3); border-radius:4px; padding:0.2rem 0.6rem; }
 .prog-aotc-date { font-weight:400; color:var(--text-muted); letter-spacing:0; text-transform:none; }
 

@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.26] - 2026-07-12
+
+### Frontend
+
+- **Landing page now shows mythic pull count / best % on the progression card (#285).** The current work-in-progress boss shows its pull count and best % remaining so far; already-killed bosses show their total pulls next to the existing kill date, matching WCL's own reports view. Clicking either links straight to the relevant WCL report/fight. Sourced from new `raid_zones`/`raid_encounters`/`team_raid_progress` tables, synced by a new `wcl-progression-sync` Edge Function on a GitHub Actions cron (every 30 min, Tue/Thu/Mon 9:30pm-midnight Eastern raid hours only) -- see `docs/database-decisions.md` for why this isn't a JSON blob or manual-only refresh.
+
+### Backend
+
+- Added `raid_zones`/`raid_encounters` (shared WCL reference data) and `team_raid_progress` (per-team sync target) tables, plus the `wcl-progression-sync` Edge Function and its GitHub Actions cron workflow (#285).
+
 ## [3.33.25] - 2026-07-12
 
 ### Frontend
