@@ -17,6 +17,7 @@ with each release split into `### Frontend` (drives the version number) and
 ### Backend
 
 - Added `raid_zones`/`raid_encounters` (shared WCL reference data) and `team_raid_progress` (per-team sync target) tables, plus the `wcl-progression-sync` Edge Function and its GitHub Actions cron workflow (#285).
+- **Fixed `wcl-progression-sync` undercounting mythic pulls (#285).** Its `reports(guildID, zoneID, limit)` call only fetched one page (100 reports); an active progression guild's report count for a single zone across a season can exceed that, silently dropping the oldest reports and undercounting `mythic_pulls` relative to what WCL's own boss page shows (confirmed live: 145 pulls shown here vs. 174 on WCL). Now paginates via `has_more_pages` until exhausted (capped at 20 pages as a runaway guard).
 
 ## [3.33.25] - 2026-07-12
 
