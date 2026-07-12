@@ -3611,7 +3611,20 @@ function renderProfile(firstName, backTo, container) {
         '</div>'
       : '') +
     (mplusHTML && featureEnabled('mplus')
-      ? '<div class="profile-section"><div class="section-label">M+ Exclusion</div>' + mplusHTML + '</div>'
+      ? '<div class="profile-section"><div class="section-label">M+ Exclusion' +
+        (backTo !== 'officer'
+          ? '<button class="help-btn" onclick="toggleHelp(\'help-mplus-' +
+            player.firstName +
+            '\')" title="Show help">?</button>'
+          : '') +
+        '</div>' +
+        (backTo !== 'officer'
+          ? '<div id="help-mplus-' +
+            player.firstName +
+            '" class="help-tip">If you don\'t need weekly Mythic+ loot, submit your Raider.io profile to request exclusion from the M+ portion of loot priority. An officer reviews the request; once approved you\'re no longer required to run the weekly M+ dungeons.</div>'
+          : '') +
+        mplusHTML +
+        '</div>'
       : '') +
     (typeof ownStreamerSectionHTML === 'function' ? ownStreamerSectionHTML(player, backTo) : '') +
     officerActionsHTML +
