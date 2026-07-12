@@ -117,7 +117,7 @@ function buildConflicts() {
     html += '<span>' + item + '</span>';
     if (slot)
       html +=
-        '<span style="font-size:0.97rem;color:' +
+        '<span style="font-size:1rem;color:' +
         getSlotColor(slot) +
         ';text-transform:uppercase;letter-spacing:0.08em;">' +
         slot +

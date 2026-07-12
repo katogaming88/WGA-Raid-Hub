@@ -3,19 +3,19 @@
 .admin-team-table th:last-child { text-align:right; }
 .admin-team-table td:first-child { color:var(--text); font-weight:600; }
 .admin-team-table tr.admin-archived-row td { color:var(--text-muted); }
-.admin-team-table .admin-status-badge { font-size:0.86rem; letter-spacing:0.08em; text-transform:uppercase; padding:0.15rem 0.5rem; border-radius:3px; }
+.admin-team-table .admin-status-badge { font-size:0.95rem; letter-spacing:0.08em; text-transform:uppercase; padding:0.15rem 0.5rem; border-radius:3px; }
 .admin-team-table .admin-status-active { background:rgba(120,200,120,0.12); color:#8fd98f; }
 .admin-team-table .admin-status-archived { background:rgba(160,160,160,0.12); color:var(--text-muted); }
 .admin-team-table .admin-row-actions { display:flex; gap:0.4rem; justify-content:flex-end; }
-.admin-team-table .admin-row-actions .btn { padding:0.35rem 0.75rem; font-size:0.82rem; }
+.admin-team-table .admin-row-actions .btn { padding:0.35rem 0.75rem; font-size:0.91rem; }
 
-.admin-field-label { font-size:0.86rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:-0.5rem; }
+.admin-field-label { font-size:0.95rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:-0.5rem; }
 #teamModal input[type="text"] { background:var(--bg-elevated); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; padding:0.5rem 0.65rem; font-family:'Rajdhani',sans-serif; font-size:1rem; }
 
-.admin-hint { font-size:0.94rem; color:var(--text-muted); margin:0 0 1rem; }
+.admin-hint { font-size:1.02rem; color:var(--text-muted); margin:0 0 1rem; }
 .admin-grant-row { display:flex; gap:0.5rem; margin-bottom:0.75rem; }
 .admin-grant-row input[type="text"] { flex:1; background:var(--bg-elevated); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; padding:0.5rem 0.65rem; font-family:'Rajdhani',sans-serif; font-size:1rem; }
-.admin-team-table td.admin-discord-id { color:var(--text-muted); font-size:0.94rem; }
+.admin-team-table td.admin-discord-id { color:var(--text-muted); font-size:1.02rem; }
 
 .admin-flags-table-wrap { overflow-x:auto; }
 .admin-flags-table { min-width:640px; }

@@ -101,7 +101,7 @@ function buildBenchFairness() {
       var e = players[i];
       var width = Math.round((e.benched / maxBenched) * 100) + '%';
       html += '<div class="fairness-row">';
-      html += '<span style="font-size:0.9rem;color:var(--text);font-weight:500;">' + e.name + '</span>';
+      html += '<span style="font-size:1.02rem;color:var(--text);font-weight:500;">' + e.name + '</span>';
       html +=
         '<div class="fairness-bar-wrap"><div class="fairness-bar" style="width:' +
         width +
@@ -113,7 +113,7 @@ function buildBenchFairness() {
       html +=
         '<span class="fairness-count">' +
         e.benched +
-        '<span style="font-size:0.75rem;color:var(--text-muted);font-weight:400;margin-left:3px;">(' +
+        '<span style="font-size:0.89rem;color:var(--text-muted);font-weight:400;margin-left:3px;">(' +
         e.rate +
         '%)</span></span>';
       html += '</div>';

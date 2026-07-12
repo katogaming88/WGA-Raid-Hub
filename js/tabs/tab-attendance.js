@@ -79,7 +79,7 @@ function buildAttendanceTab() {
         '<span class="attend-player-name">' +
         (p.nick || p.firstName) +
         (p.firstName !== (p.nick || p.firstName)
-          ? ' <span style="font-size:0.95rem;color:var(--text-muted);">(' + p.firstName + ')</span>'
+          ? ' <span style="font-size:1.07rem;color:var(--text-muted);">(' + p.firstName + ')</span>'
           : '') +
         '</span>';
       html += '<span style="font-size:1rem;font-weight:700;color:' + color + ';">' + att + '</span>';
@@ -259,7 +259,7 @@ function renderNightGrid(index) {
     '</span>';
   if (raid.excluded) html += '<span style="color:var(--melee);margin-left:0.75rem;">Excluded from scoring</span>';
   html +=
-    '<button id="excludeReportBtn" class="btn btn-muted" style="margin-left:auto;font-size:0.85rem;padding:0.2rem 0.65rem;" onclick="toggleReportExcluded(' +
+    '<button id="excludeReportBtn" class="btn btn-muted" style="margin-left:auto;font-size:0.97rem;padding:0.2rem 0.65rem;" onclick="toggleReportExcluded(' +
     index +
     ')">' +
     (raid.excluded ? 'Remove Exclusion' : 'Exclude Report') +

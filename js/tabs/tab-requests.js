@@ -50,7 +50,7 @@ function renderPendingRequests(requests) {
   }
   var html =
     '<div style="margin-top:1.5rem;">' +
-    '<div style="font-size:0.9rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:0.75rem;">' +
+    '<div style="font-size:1.02rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:0.75rem;">' +
     requests.length +
     ' pending request' +
     (requests.length !== 1 ? 's' : '') +
@@ -74,11 +74,11 @@ function renderPendingRequests(requests) {
       r.item +
       (r.slot ? ' <span style="color:var(--text-muted);font-weight:400;">(' + r.slot + ')</span>' : '') +
       '</div>' +
-      '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Source: <span style="color:var(--text);">' +
+      '<div style="font-size:1.04rem;color:var(--text-muted);margin-top:0.2rem;">Source: <span style="color:var(--text);">' +
       r.source +
       '</span></div>' +
       (r.notes
-        ? '<div style="font-size:0.97rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' +
+        ? '<div style="font-size:1rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' +
           r.notes +
           '</div>'
         : '') +

@@ -259,7 +259,7 @@ function buildRosterTable() {
   }
 
   var html =
-    '<thead><tr><th>Player</th><th>Attendance</th><th>Items</th><th>BiS Link</th><th>M+ Excl.</th><th>Status</th><th><button class="btn btn-gold" style="font-size:0.82rem;padding:0.25rem 0.75rem;white-space:nowrap;" onclick="showAddPlayerModal()">+ Add Player</button></th></tr></thead><tbody>';
+    '<thead><tr><th>Player</th><th>Attendance</th><th>Items</th><th>BiS Link</th><th>M+ Excl.</th><th>Status</th><th><button class="btn btn-gold" style="font-size:0.95rem;padding:0.25rem 0.75rem;white-space:nowrap;" onclick="showAddPlayerModal()">+ Add Player</button></th></tr></thead><tbody>';
   var totalRows = 0;
 
   for (var r = 0; r < order.length; r++) {
@@ -312,7 +312,7 @@ function buildRosterTable() {
         name +
         '</span>' +
         (p.firstName !== name
-          ? '<span style="font-size:0.95rem;color:var(--text-muted);">(' + p.firstName + ')</span>'
+          ? '<span style="font-size:1.07rem;color:var(--text-muted);">(' + p.firstName + ')</span>'
           : '') +
         '</div>' +
         (p.class
@@ -323,7 +323,7 @@ function buildRosterTable() {
             '</span>'
           : '') +
         (p.joinDate
-          ? '<span style="font-size:0.82rem;color:var(--text-dim);">Joined: ' + formatJoinDate(p.joinDate) + '</span>'
+          ? '<span style="font-size:0.95rem;color:var(--text-dim);">Joined: ' + formatJoinDate(p.joinDate) + '</span>'
           : '') +
         '</div>' +
         '</div></td>' +
@@ -1086,7 +1086,7 @@ function buildTrialPromoAlert() {
   html += '<span class="trial-promo-count">' + ready.length + ' ready for review</span>';
   html += '</div>';
   html +=
-    '<p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 0.75rem;">Thresholds: ' +
+    '<p style="font-size:0.97rem;color:var(--text-muted);margin:0 0 0.75rem;">Thresholds: ' +
     PROMO_THRESHOLDS.weeks +
     ' wk on roster, ' +
     PROMO_THRESHOLDS.attend +
@@ -1134,7 +1134,7 @@ function buildTrialPromoAlert() {
     html += '<td style="color:var(--gold-light);font-weight:600;">' + r.ageWeeks + ' wk</td>';
     html += '<td><span style="color:' + aColor + ';font-weight:700;">' + (pAtt || '-') + '</span></td>';
     html +=
-      '<td><button class="btn btn-gold" style="font-size:0.82rem;padding:0.2rem 0.6rem;white-space:nowrap;" onclick="event.stopPropagation();promoteTrialPlayer(\'' +
+      '<td><button class="btn btn-gold" style="font-size:0.95rem;padding:0.2rem 0.6rem;white-space:nowrap;" onclick="event.stopPropagation();promoteTrialPlayer(\'' +
       nrSafe +
       "','" +
       fnSafe +
@@ -1203,13 +1203,13 @@ function buildRosterBuffCoverage() {
   var html =
     '<div style="margin-bottom:0.75rem;padding:0.7rem 0.85rem;background:var(--bg-alt);' +
     'border:1px solid var(--border);border-radius:6px;">' +
-    '<span style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.12em;' +
+    '<span style="font-size:0.91rem;text-transform:uppercase;letter-spacing:0.12em;' +
     'color:var(--text-muted);font-weight:700;display:block;margin-bottom:0.5rem;">Buff Coverage</span>';
 
   sections.forEach(function (sec) {
     html +=
       '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.25rem;margin-bottom:0.4rem;">' +
-      '<span style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;' +
+      '<span style="font-size:0.87rem;text-transform:uppercase;letter-spacing:0.08em;' +
       'color:var(--text-dim);font-weight:600;min-width:4.5rem;">' +
       sec.label +
       '</span>';
@@ -1231,7 +1231,7 @@ function buildRosterBuffCoverage() {
       html +=
         '<span style="display:inline-flex;align-items:center;gap:0.3rem;background:var(--bg);' +
         'border:1px solid var(--border);border-radius:4px;padding:0.2rem 0.55rem;' +
-        'font-size:0.88rem;cursor:default;">' +
+        'font-size:1rem;cursor:default;">' +
         '<span style="color:' +
         color +
         ';font-weight:700;">' +
@@ -1270,10 +1270,10 @@ function switchRosterSubTab(name, btnEl) {
 function renderDiscordClaims() {
   var el = document.getElementById('rosterDiscordClaimsContent');
   if (!el || !supabaseClient) return;
-  el.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">Loading...</p>';
+  el.innerHTML = '<p style="color:var(--text-muted);font-size:1.02rem;">Loading...</p>';
   fetchTeamClaims().then(function (claims) {
     if (!claims.length) {
-      el.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">No characters have been claimed yet.</p>';
+      el.innerHTML = '<p style="color:var(--text-muted);font-size:1.02rem;">No characters have been claimed yet.</p>';
       return;
     }
     var rows = claims
@@ -1284,12 +1284,12 @@ function renderDiscordClaims() {
           : '<span style="color:var(--text-muted)">Raider</span>';
         var jsonNr = JSON.stringify(c.nameRealm).replace(/"/g, '&quot;');
         var actionCell =
-          '<button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="removeDiscordClaim(' +
+          '<button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.89rem;" onclick="removeDiscordClaim(' +
           jsonNr +
           ')">Remove</button>';
         var discordCell = c.discordName
           ? escHtml(c.discordName) +
-            '<br><span style="font-size:0.8rem;color:var(--text-dim);">' +
+            '<br><span style="font-size:0.93rem;color:var(--text-dim);">' +
             escHtml(c.discordId) +
             '</span>'
           : escHtml(c.discordId);

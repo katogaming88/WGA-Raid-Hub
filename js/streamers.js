@@ -247,7 +247,7 @@ function ownStreamerSectionHTML(player, backTo) {
     '" placeholder="Schedule note (optional)" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;">' +
     _esc(note) +
     '</textarea>' +
-    '<label style="display:flex;align-items:center;gap:0.4rem;margin-top:0.5rem;font-size:0.92rem;color:var(--text-muted);">' +
+    '<label style="display:flex;align-items:center;gap:0.4rem;margin-top:0.5rem;font-size:1.04rem;color:var(--text-muted);">' +
     '<input type="checkbox" id="streamerOptOut-' +
     player.firstName +
     '"' +
@@ -255,17 +255,17 @@ function ownStreamerSectionHTML(player, backTo) {
     '> Opt out of showing on other teams&#39; pages (guild-wide)' +
     '</label>' +
     '<div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.5rem;">' +
-    '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="saveOwnStreamer(\'' +
+    '<button class="btn btn-gold" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="saveOwnStreamer(\'' +
     fnSafe +
     '\')">Save</button>' +
     (existing
-      ? '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="removeOwnStreamer(\'' +
+      ? '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="removeOwnStreamer(\'' +
         fnSafe +
         '\')">Remove</button>'
       : '') +
     '<span id="streamerSaveMsg-' +
     player.firstName +
-    '" style="font-size:0.9rem;color:var(--text-muted);"></span>' +
+    '" style="font-size:1.02rem;color:var(--text-muted);"></span>' +
     '</div>' +
     '</div>'
   );

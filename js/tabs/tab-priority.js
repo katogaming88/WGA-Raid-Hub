@@ -146,7 +146,7 @@ function buildUnmanagedTab() {
   var GROUP_ORDER = ['Trinket', 'Armor', 'Weapon', 'Jewelry', 'Other'];
   var GROUP_LABELS = { Trinket: 'Trinkets', Armor: 'Armor', Weapon: 'Weapons', Jewelry: 'Jewelry', Other: 'Other' };
   var html =
-    '<p style="font-size:0.88rem;color:var(--text-muted);margin-bottom:1rem;">' +
+    '<p style="font-size:1rem;color:var(--text-muted);margin-bottom:1rem;">' +
     items.length +
     ' item' +
     (items.length === 1 ? '' : 's') +
@@ -218,7 +218,7 @@ function renderUnmanagedItem(item, slot) {
   out += '<span class="prio-item-name">' + item + '</span>';
   if (slot) out += '<span class="prio-item-slot" style="color:' + getSlotColor(slot) + ';">' + slot + '</span>';
   if (boss)
-    out += '<span class="prio-item-slot" style="color:var(--text-muted);font-size:0.82rem;">' + boss + '</span>';
+    out += '<span class="prio-item-slot" style="color:var(--text-muted);font-size:0.95rem;">' + boss + '</span>';
   out +=
     '<span class="prio-item-count" style="color:#c0392b;">' +
     (!hasHeroic && !hasMythic ? 'No rankings' : 'Incomplete') +
@@ -226,14 +226,14 @@ function renderUnmanagedItem(item, slot) {
   out += '<span style="margin-left:auto;display:flex;gap:6px;">';
   if (!hasHeroic)
     out +=
-      '<button class="btn btn-muted" style="font-size:0.8rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' +
+      '<button class="btn btn-muted" style="font-size:0.93rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' +
       itemEnc +
       "'),'" +
       (slot || '') +
       "',true,'heroic')\">Set Heroic</button>";
   if (!hasMythic)
     out +=
-      '<button class="btn btn-muted" style="font-size:0.8rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' +
+      '<button class="btn btn-muted" style="font-size:0.93rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' +
       itemEnc +
       "'),'" +
       (slot || '') +
@@ -326,12 +326,12 @@ function buildPriorityTab() {
       out += '<span class="prio-diff-badge prio-diff-' + diff + '">' + diffLabel + '</span>';
       if (slot) out += '<span class="prio-item-slot" style="color:' + getSlotColor(slot) + ';">' + slot + '</span>';
       if (boss)
-        out += '<span class="prio-item-slot" style="color:var(--text-muted);font-size:0.82rem;">' + boss + '</span>';
+        out += '<span class="prio-item-slot" style="color:var(--text-muted);font-size:0.95rem;">' + boss + '</span>';
       if (!ranked.length) {
         out +=
           '<span class="prio-item-count" style="color:var(--text-muted);font-style:italic;">Nobody assigned</span>';
         out +=
-          '<button class="btn btn-muted" style="margin-left:auto;font-size:0.8rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' +
+          '<button class="btn btn-muted" style="margin-left:auto;font-size:0.93rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' +
           itemEnc +
           "'),'" +
           (slot || '') +
@@ -343,7 +343,7 @@ function buildPriorityTab() {
       }
       out += '<span class="prio-item-count">' + ranked.length + ' ranked</span>';
       out +=
-        '<button class="btn btn-muted" style="margin-left:auto;font-size:0.8rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' +
+        '<button class="btn btn-muted" style="margin-left:auto;font-size:0.93rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' +
         itemEnc +
         "'),'" +
         (slot || '') +
@@ -591,7 +591,7 @@ function prioEditRenderList() {
     if (scoreData) {
       if (scoreData.weightedTotal !== null && scoreData.weightedTotal !== undefined) {
         html +=
-          '<span style="font-size:0.78rem;color:var(--text-muted);margin-left:4px;">Score: ' +
+          '<span style="font-size:0.91rem;color:var(--text-muted);margin-left:4px;">Score: ' +
           scoreData.weightedTotal +
           '</span>';
       }
@@ -606,7 +606,7 @@ function prioEditRenderList() {
         html += '<span class="prio-diff-badge prio-diff-heroic" title="Has the Heroic version">H</span>';
       if (statusParts.length) {
         html +=
-          '<span style="font-size:0.75rem;color:var(--text-muted);font-style:italic;margin-left:2px;">(' +
+          '<span style="font-size:0.89rem;color:var(--text-muted);font-style:italic;margin-left:2px;">(' +
           statusParts.join(', ') +
           ')</span>';
       }
@@ -691,7 +691,7 @@ function prioEditRenderPool() {
 
   if (!available.length) {
     pool.innerHTML =
-      '<div style="font-size:0.82rem;color:var(--text-muted);font-style:italic;padding:0.3rem 0;">All ' +
+      '<div style="font-size:0.95rem;color:var(--text-muted);font-style:italic;padding:0.3rem 0;">All ' +
       (PRIO_EDIT.showAllRoster ? 'roster' : 'BiS') +
       ' players added.</div>';
     return;

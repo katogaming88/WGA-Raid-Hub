@@ -117,7 +117,7 @@ function renderSignupResponses(signups) {
 
   var html =
     '<div style="margin-top:1.5rem;">' +
-    '<div style="font-size:0.9rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:0.75rem;">' +
+    '<div style="font-size:1.02rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:0.75rem;">' +
     signups.length +
     ' submission' +
     (signups.length !== 1 ? 's' : '') +
@@ -131,21 +131,21 @@ function renderSignupResponses(signups) {
       ? ''
       : '<span class="signup-status-badge ' +
         (s.status === 'approved' ? 'signup-status-open' : 'signup-status-closed') +
-        '" style="font-size:0.7rem;padding:0.1rem 0.5rem;margin-left:0.4rem;">' +
+        '" style="font-size:0.85rem;padding:0.1rem 0.5rem;margin-left:0.4rem;">' +
         statusLabel +
         '</span>';
     var actionBtns = isPending
       ? '<div class="signup-review-actions" style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);">' +
         '<input type="text" class="signup-officer-note-input" placeholder="Officer note (optional)" ' +
-        'style="width:100%;box-sizing:border-box;margin-bottom:0.5rem;padding:0.3rem 0.5rem;font-size:0.85rem;' +
+        'style="width:100%;box-sizing:border-box;margin-bottom:0.5rem;padding:0.3rem 0.5rem;font-size:0.97rem;' +
         'background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);">' +
         '<div style="display:flex;gap:0.5rem;">' +
         '<button class="btn request-approve-btn" onclick="approveSignupRow(' +
         s.id +
-        ',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Approve</button>' +
+        ',this)" style="font-size:1rem;padding:0.25rem 0.75rem;">Approve</button>' +
         '<button class="btn btn-danger" onclick="denySignupRow(' +
         s.id +
-        ',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Deny</button>' +
+        ',this)" style="font-size:1rem;padding:0.25rem 0.75rem;">Deny</button>' +
         '</div>' +
         '</div>'
       : '';
@@ -174,21 +174,21 @@ function renderSignupResponses(signups) {
       '</div>';
     if (s.role)
       html +=
-        '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Role: <span style="color:var(--text);">' +
+        '<div style="font-size:1.04rem;color:var(--text-muted);margin-top:0.2rem;">Role: <span style="color:var(--text);">' +
         s.role +
         '</span></div>';
     if (s.mainSwap)
       html +=
-        '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">' +
+        '<div style="font-size:1.04rem;color:var(--text-muted);margin-top:0.2rem;">' +
         '<span style="color:var(--gold-light);font-weight:600;">Main swap requested</span></div>';
     if (s.notes)
       html +=
-        '<div style="font-size:0.97rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' +
+        '<div style="font-size:1rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' +
         escHtml(s.notes) +
         '</div>';
     if (!isPending && s.officerNote)
       html +=
-        '<div style="font-size:0.88rem;color:var(--text-muted);margin-top:0.4rem;font-style:italic;">' +
+        '<div style="font-size:1rem;color:var(--text-muted);margin-top:0.4rem;font-style:italic;">' +
         'Officer note: ' +
         escHtml(s.officerNote) +
         '</div>';
@@ -252,7 +252,7 @@ function renderSignupHistory(signups) {
 
   var html =
     '<div style="margin-top:1.5rem;">' +
-    '<div style="font-size:0.9rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);' +
+    '<div style="font-size:1.02rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);' +
     'font-weight:600;margin-bottom:0.75rem;">' +
     filtered.length +
     ' signup' +
@@ -265,7 +265,7 @@ function renderSignupHistory(signups) {
     if (!group || !group.length) return;
     html +=
       '<div style="margin-bottom:1.5rem;">' +
-      '<div style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.12em;color:' +
+      '<div style="font-size:0.91rem;text-transform:uppercase;letter-spacing:0.12em;color:' +
       (statusColors[st] || 'var(--text-muted)') +
       ';font-weight:700;margin-bottom:0.5rem;">' +
       st +
@@ -289,7 +289,7 @@ function renderSignupHistory(signups) {
           : st === 'Denied'
             ? 'signup-status-closed'
             : '') +
-        '" style="font-size:0.7rem;padding:0.1rem 0.5rem;margin-left:0.4rem;">' +
+        '" style="font-size:0.85rem;padding:0.1rem 0.5rem;margin-left:0.4rem;">' +
         st +
         '</span>' +
         '</div>' +
@@ -307,21 +307,21 @@ function renderSignupHistory(signups) {
         '</div>';
       if (s.role)
         html +=
-          '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Role: <span style="color:var(--text);">' +
+          '<div style="font-size:1.04rem;color:var(--text-muted);margin-top:0.2rem;">Role: <span style="color:var(--text);">' +
           s.role +
           '</span></div>';
       if (s.mainSwap)
         html +=
-          '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">' +
+          '<div style="font-size:1.04rem;color:var(--text-muted);margin-top:0.2rem;">' +
           '<span style="color:var(--gold-light);font-weight:600;">Main swap requested</span></div>';
       if (s.notes)
         html +=
-          '<div style="font-size:0.97rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' +
+          '<div style="font-size:1rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' +
           escHtml(s.notes) +
           '</div>';
       if (s.officerNote)
         html +=
-          '<div style="font-size:0.88rem;color:var(--text-muted);margin-top:0.4rem;font-style:italic;">' +
+          '<div style="font-size:1rem;color:var(--text-muted);margin-top:0.4rem;font-style:italic;">' +
           'Officer note: ' +
           escHtml(s.officerNote) +
           '</div>';
@@ -375,7 +375,7 @@ function approveSignupRow(signupId, btnEl) {
         if (!existing) {
           existing = document.createElement('p');
           existing.className = 'signup-action-error';
-          existing.style.cssText = 'color:var(--melee);font-size:0.88rem;margin:0.4rem 0 0;';
+          existing.style.cssText = 'color:var(--melee);font-size:1rem;margin:0.4rem 0 0;';
           btnEl.parentNode.insertBefore(existing, btnEl.parentNode.firstChild);
         }
         existing.textContent = result.error.message;
@@ -412,7 +412,7 @@ function denySignupRow(signupId, btnEl) {
       if (nameEl && nameEl.parentNode) {
         var badge = document.createElement('span');
         badge.className = 'signup-status-badge signup-status-closed';
-        badge.style.cssText = 'font-size:0.7rem;padding:0.1rem 0.5rem;margin-left:0.4rem;';
+        badge.style.cssText = 'font-size:0.85rem;padding:0.1rem 0.5rem;margin-left:0.4rem;';
         badge.textContent = 'Denied';
         nameEl.parentNode.appendChild(badge);
       }

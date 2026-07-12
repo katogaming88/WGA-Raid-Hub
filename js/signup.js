@@ -130,7 +130,7 @@ function renderSignupStep() {
     if (claimDiffers) {
       mainSwapFieldHtml =
         '<div class="signup-field">' +
-        '<p style="margin:0;font-size:0.92rem;color:var(--text-muted);">This will be recorded as switching from your claimed character <strong style="color:var(--text);">' +
+        '<p style="margin:0;font-size:1.04rem;color:var(--text-muted);">This will be recorded as switching from your claimed character <strong style="color:var(--text);">' +
         discordSession.nameRealm +
         '</strong>.</p>' +
         '</div>';
@@ -281,14 +281,14 @@ function buildClaimDiffersWarningHtml() {
   return (
     '<div style="margin:0.5rem 0 1rem;padding:0.7rem 0.85rem;background:var(--bg-alt);' +
     'border:1px solid var(--gold-dim);border-radius:4px;">' +
-    '<p style="margin:0 0 0.5rem;font-size:0.92rem;color:var(--text-muted);">You\'re signed in with <strong style="color:var(--text);">' +
+    '<p style="margin:0 0 0.5rem;font-size:1.04rem;color:var(--text-muted);">You\'re signed in with <strong style="color:var(--text);">' +
     signupData.claimNameRealm +
     '</strong> claimed, but typed <strong style="color:var(--text);">' +
     signupData.charName +
     '-' +
     signupData.realm +
     "</strong> above. Double-check the spelling if that's not what you meant.</p>" +
-    '<label style="display:flex;align-items:center;gap:0.55rem;font-size:0.95rem;color:var(--text);cursor:pointer;">' +
+    '<label style="display:flex;align-items:center;gap:0.55rem;font-size:1.07rem;color:var(--text);cursor:pointer;">' +
     '<input type="checkbox" id="signupClaimDiffersConfirm"' +
     (signupData.claimDiffersConfirmed ? ' checked' : '') +
     ' style="width:1.1rem;height:1.1rem;accent-color:var(--gold-light);cursor:pointer;flex-shrink:0;">' +
@@ -315,14 +315,14 @@ function buildClassMismatchWarningHtml() {
   return (
     '<div style="margin:0.5rem 0 1rem;padding:0.7rem 0.85rem;background:var(--bg-alt);' +
     'border:1px solid var(--gold-dim);border-radius:4px;">' +
-    '<p style="margin:0 0 0.5rem;font-size:0.92rem;color:var(--text-muted);">Your claimed character <strong style="color:var(--text);">' +
+    '<p style="margin:0 0 0.5rem;font-size:1.04rem;color:var(--text-muted);">Your claimed character <strong style="color:var(--text);">' +
     signupData.claimNameRealm +
     '</strong> is on file as a <strong style="color:var(--text);">' +
     claimedPlayer.class +
     '</strong>, but you selected <strong style="color:var(--text);">' +
     signupData.className +
     "</strong>. A character's class doesn't change, so this usually means the wrong class got clicked. If you meant to sign up a different character instead, go back and check the name/realm.</p>" +
-    '<label style="display:flex;align-items:center;gap:0.55rem;font-size:0.95rem;color:var(--text);cursor:pointer;">' +
+    '<label style="display:flex;align-items:center;gap:0.55rem;font-size:1.07rem;color:var(--text);cursor:pointer;">' +
     '<input type="checkbox" id="signupClassMismatchConfirm"' +
     (signupData.classMismatchConfirmed ? ' checked' : '') +
     ' style="width:1.1rem;height:1.1rem;accent-color:var(--gold-light);cursor:pointer;flex-shrink:0;">' +

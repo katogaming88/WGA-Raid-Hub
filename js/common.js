@@ -1771,7 +1771,7 @@ function getSeasonLootEntry(firstName) {
 // -- Render helpers ---------------------------------------------------------
 function rankPillHTML(rank) {
   if (rank === null)
-    return '<span style="font-size:0.97rem;color:var(--text-dim);min-width:40px;text-align:center;">-</span>';
+    return '<span style="font-size:1rem;color:var(--text-dim);min-width:40px;text-align:center;">-</span>';
   var t = Math.min((rank - 1) / 14, 1);
   var rv = Math.round(214 + (100 - 214) * t),
     gv = Math.round(163 + (100 - 163) * t),
@@ -1848,7 +1848,7 @@ function showAttendTip(evt, text) {
     tip = document.createElement('div');
     tip.id = 'attend-trend-tip';
     tip.style.cssText =
-      'position:fixed;background:var(--bg-elevated);border:1px solid var(--border-mid);border-radius:4px;padding:0.45rem 0.7rem;font-size:0.8rem;color:var(--text-muted);white-space:nowrap;pointer-events:none;z-index:200;font-family:Rajdhani,sans-serif;letter-spacing:0.03em;';
+      'position:fixed;background:var(--bg-elevated);border:1px solid var(--border-mid);border-radius:4px;padding:0.45rem 0.7rem;font-size:0.93rem;color:var(--text-muted);white-space:nowrap;pointer-events:none;z-index:200;font-family:Rajdhani,sans-serif;letter-spacing:0.03em;';
     document.body.appendChild(tip);
   }
   tip.textContent = text;
@@ -2076,12 +2076,12 @@ function submitMPlusExclusionForm(nameRealm, firstName) {
     return;
   }
   if (formEl)
-    formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
+    formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
 
   if (!supabaseClient) {
     if (formEl)
       formEl.innerHTML =
-        '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+        '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
     return;
   }
 
@@ -2095,8 +2095,8 @@ function submitMPlusExclusionForm(nameRealm, firstName) {
     .then(function (result) {
       if (formEl) {
         formEl.innerHTML = result.error
-          ? '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>'
-          : '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Request submitted! An officer will review it shortly.</p>';
+          ? '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>'
+          : '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">Request submitted! An officer will review it shortly.</p>';
       }
       if (!result.error) {
         supabaseClient.functions.invoke('discord-bot-webhook', {
@@ -2123,12 +2123,12 @@ function submitBiSForm(nameRealm, firstName) {
   }
   var formEl = document.getElementById('bisForm-' + firstName);
   if (formEl)
-    formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
+    formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
 
   if (!supabaseClient) {
     if (formEl)
       formEl.innerHTML =
-        '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+        '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
     return;
   }
 
@@ -2142,8 +2142,8 @@ function submitBiSForm(nameRealm, firstName) {
     .then(function (result) {
       if (formEl) {
         formEl.innerHTML = result.error
-          ? '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>'
-          : '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitted -- pending officer review.</p>';
+          ? '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>'
+          : '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">Submitted -- pending officer review.</p>';
       }
       if (!result.error) {
         supabaseClient.functions.invoke('discord-bot-webhook', {
@@ -2169,12 +2169,12 @@ function officerUpdateBisLink(nameRealm, firstName) {
   }
   var url = urlEl.value.trim();
   var formEl = document.getElementById('bisForm-' + firstName);
-  if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Saving...</p>';
+  if (formEl) formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">Saving...</p>';
 
   if (!supabaseClient) {
     if (formEl)
       formEl.innerHTML =
-        '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to save. Try again.</p>';
+        '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to save. Try again.</p>';
     return;
   }
 
@@ -2188,12 +2188,12 @@ function officerUpdateBisLink(nameRealm, firstName) {
       if (result.error) {
         if (formEl)
           formEl.innerHTML =
-            '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to save. Try again.</p>';
+            '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to save. Try again.</p>';
         return;
       }
       if (formEl)
         formEl.innerHTML =
-          '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">BiS link updated. Clear cache to refresh.</p>';
+          '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">BiS link updated. Clear cache to refresh.</p>';
       writeAuditLog('BiS Link Updated', 'players', player ? player.id : null, url);
     });
 }
@@ -2205,14 +2205,14 @@ function updateBisAllowDiv(nameRealm, firstName) {
   divEl.innerHTML = '';
   var btn = document.createElement('button');
   btn.className = 'btn btn-muted';
-  btn.style.cssText = 'font-size:0.92rem;padding:0.25rem 0.75rem;';
+  btn.style.cssText = 'font-size:1.04rem;padding:0.25rem 0.75rem;';
   if (allowed) {
     btn.textContent = 'Revoke BiS Access';
     btn.onclick = function () {
       revokeBisForPlayer(nameRealm, firstName);
     };
     var badge = document.createElement('span');
-    badge.style.cssText = 'font-size:0.9rem;color:var(--heal);margin-left:0.5rem;';
+    badge.style.cssText = 'font-size:1.02rem;color:var(--heal);margin-left:0.5rem;';
     badge.textContent = 'Submission open';
     divEl.appendChild(btn);
     divEl.appendChild(badge);
@@ -2227,7 +2227,7 @@ function updateBisAllowDiv(nameRealm, firstName) {
 
 function setBisAllowedForPlayer(nameRealm, firstName, allowed) {
   var divEl = document.getElementById('bisAllowDiv-' + firstName);
-  if (divEl) divEl.innerHTML = '<span style="font-size:0.95rem;color:var(--text-muted);">Saving...</span>';
+  if (divEl) divEl.innerHTML = '<span style="font-size:1.07rem;color:var(--text-muted);">Saving...</span>';
 
   if (!supabaseClient) {
     updateBisAllowDiv(nameRealm, firstName);
@@ -2352,12 +2352,12 @@ function showSelfReceivedForm(firstName, nameRealm, item, slot, rowId, defaultSo
     rowId +
     '" placeholder="Notes (optional)" rows="2"></textarea>' +
     '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
-    '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="event.stopPropagation();' +
+    '<button class="btn btn-gold" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="event.stopPropagation();' +
     submitFn +
     '">' +
     submitLabel +
     '</button>' +
-    '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="event.stopPropagation();document.getElementById(\'form-' +
+    '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="event.stopPropagation();document.getElementById(\'form-' +
     rowId +
     "').style.display='none'\">Cancel</button>" +
     '</div>' +
@@ -2378,12 +2378,12 @@ function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId, dbSl
   var diff = diffEl ? diffEl.value : 'Mythic';
   var formEl = document.getElementById('form-' + rowId);
   if (formEl)
-    formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
+    formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
 
   if (!supabaseClient) {
     if (formEl)
       formEl.innerHTML =
-        '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+        '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
     return;
   }
 
@@ -2405,7 +2405,7 @@ function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId, dbSl
       if (!formEl) return;
       if (result.error) {
         formEl.innerHTML =
-          '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+          '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
         return;
       }
       var row = result.data && result.data[0];
@@ -2429,7 +2429,7 @@ function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId, dbSl
         });
       }
       formEl.innerHTML =
-        '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">' +
+        '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">' +
         (autoApproved ? 'Marked as received.' : 'Request submitted -- pending officer approval.') +
         '</p>';
       var btn = /** @type {HTMLElement} */ (
@@ -2451,11 +2451,11 @@ function submitDirectMarkReceived(firstName, nameRealm, item, slot, rowId, dbSlo
   var diff = diffEl ? diffEl.value : 'Mythic';
   var source = diff + ': ' + sourceEl.value;
   var formEl = document.getElementById('form-' + rowId);
-  if (formEl) formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--text-muted);padding:0.5rem 0;">Saving...</p>';
+  if (formEl) formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">Saving...</p>';
 
   if (!supabaseClient) {
     if (formEl)
-      formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed. Try again.</p>';
+      formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed. Try again.</p>';
     return;
   }
 
@@ -2474,7 +2474,7 @@ function submitDirectMarkReceived(firstName, nameRealm, item, slot, rowId, dbSlo
     .then(function (result) {
       if (!formEl) return;
       if (result.error) {
-        formEl.innerHTML = '<p style="font-size:0.95rem;color:var(--melee);padding:0.5rem 0;">Failed. Try again.</p>';
+        formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed. Try again.</p>';
         return;
       }
       formEl.style.display = 'none';
@@ -2576,9 +2576,7 @@ function renderProfile(firstName, backTo, container) {
       lootItemsHTML +=
         '<div style="font-size:1rem;color:var(--text);padding:0.3rem 0;border-bottom:1px solid var(--border);">' +
         li_name +
-        (li_sub
-          ? '<div style="font-size:0.88rem;color:var(--text-muted);margin-top:0.1rem;">' + li_sub + '</div>'
-          : '') +
+        (li_sub ? '<div style="font-size:1rem;color:var(--text-muted);margin-top:0.1rem;">' + li_sub + '</div>' : '') +
         '</div>';
     }
   }
@@ -2595,7 +2593,7 @@ function renderProfile(firstName, backTo, container) {
     var bisAllowed = bisAllowedFor(player.nameRealm);
     bisActionHTML =
       '<div style="margin-top:0.75rem;">' +
-      '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="toggleBisForm(\'' +
+      '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="toggleBisForm(\'' +
       player.firstName.replace(/'/g, "\\'") +
       '\')">Update BiS Link</button>' +
       '<div id="bisForm-' +
@@ -2610,7 +2608,7 @@ function renderProfile(firstName, backTo, container) {
       "','" +
       player.firstName.replace(/'/g, "\\'") +
       '\')">Save</button>' +
-      '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.25rem 0.75rem;" onclick="document.getElementById(\'bisForm-' +
+      '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.25rem 0.75rem;" onclick="document.getElementById(\'bisForm-' +
       player.firstName +
       "').style.display='none'\">Cancel</button>" +
       '</div>' +
@@ -2623,7 +2621,7 @@ function renderProfile(firstName, backTo, container) {
     var bisBtnLabel = player.bisLink ? 'Update BiS List' : 'Submit BiS List';
     bisActionHTML =
       '<div style="margin-top:0.75rem;">' +
-      '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="toggleBisForm(\'' +
+      '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="toggleBisForm(\'' +
       player.firstName.replace(/'/g, "\\'") +
       '\')">' +
       bisBtnLabel +
@@ -2638,12 +2636,12 @@ function renderProfile(firstName, backTo, container) {
       player.firstName +
       '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
       '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
-      '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="submitBiSForm(\'' +
+      '<button class="btn btn-gold" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="submitBiSForm(\'' +
       player.nameRealm.replace(/'/g, "\\'") +
       "','" +
       player.firstName.replace(/'/g, "\\'") +
       '\')">Submit</button>' +
-      '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'bisForm-' +
+      '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'bisForm-' +
       player.firstName +
       "').style.display='none'\">Cancel</button>" +
       '</div>' +
@@ -2662,11 +2660,11 @@ function renderProfile(firstName, backTo, container) {
   } else if (player.mPlusExcluded) {
     mplusHTML =
       '<div style="display:flex;align-items:center;gap:0.5rem;">' +
-      '<span class="signup-status-badge signup-status-open" style="font-size:0.8rem;">Excluded</span>' +
-      '<span style="font-size:0.92rem;color:var(--text-muted);">No longer required to do weekly M+ dungeons.</span>' +
+      '<span class="signup-status-badge signup-status-open" style="font-size:0.93rem;">Excluded</span>' +
+      '<span style="font-size:1.04rem;color:var(--text-muted);">No longer required to do weekly M+ dungeons.</span>' +
       '</div>' +
       (player.mPlusNote
-        ? '<div style="font-size:0.92rem;color:var(--text);margin-top:0.4rem;font-style:italic;">' +
+        ? '<div style="font-size:1.04rem;color:var(--text);margin-top:0.4rem;font-style:italic;">' +
           player.mPlusNote +
           '</div>'
         : '');
@@ -2675,24 +2673,24 @@ function renderProfile(firstName, backTo, container) {
     var nrMplusR = player.nameRealm.replace(/'/g, "\\'");
     mplusHTML =
       '<div style="display:flex;align-items:center;gap:0.5rem;">' +
-      '<span class="signup-status-badge signup-status-closed" style="font-size:0.8rem;">Rejected</span>' +
-      '<span style="font-size:0.92rem;color:var(--text-muted);">Your M+ exclusion request was not approved.</span>' +
+      '<span class="signup-status-badge signup-status-closed" style="font-size:0.93rem;">Rejected</span>' +
+      '<span style="font-size:1.04rem;color:var(--text-muted);">Your M+ exclusion request was not approved.</span>' +
       '</div>' +
       (player.mPlusRejectionNote
-        ? '<div style="margin-top:0.5rem;padding:0.4rem 0.6rem;background:rgba(255,124,92,0.08);border-left:3px solid var(--melee);border-radius:3px;font-size:0.92rem;color:var(--text);font-style:italic;">' +
+        ? '<div style="margin-top:0.5rem;padding:0.4rem 0.6rem;background:rgba(255,124,92,0.08);border-left:3px solid var(--melee);border-radius:3px;font-size:1.04rem;color:var(--text);font-style:italic;">' +
           player.mPlusRejectionNote +
           '</div>'
         : '');
     if (DATA && DATA.mPlusExclusionsOpen) {
       mplusHTML +=
         '<div style="margin-top:0.75rem;">' +
-        '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="toggleMPlusForm(\'' +
+        '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="toggleMPlusForm(\'' +
         fnMplusR +
         '\')">Re-submit Request</button>' +
         '<div id="mplusForm-' +
         player.firstName +
         '" style="display:none;margin-top:0.75rem;">' +
-        '<div style="font-size:0.92rem;color:var(--text-muted);margin-bottom:0.5rem;">Submit your Raider.io profile to request exclusion from dungeon loot priority.</div>' +
+        '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.5rem;">Submit your Raider.io profile to request exclusion from dungeon loot priority.</div>' +
         '<input type="url" id="mplusUrl-' +
         player.firstName +
         '" placeholder="https://raider.io/characters/..." class="self-received-source" style="max-width:100%;font-size:1rem;">' +
@@ -2700,12 +2698,12 @@ function renderProfile(firstName, backTo, container) {
         player.firstName +
         '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
         '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
-        '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="submitMPlusExclusionForm(\'' +
+        '<button class="btn btn-gold" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="submitMPlusExclusionForm(\'' +
         nrMplusR +
         "','" +
         fnMplusR +
         '\')">Submit</button>' +
-        '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'mplusForm-' +
+        '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'mplusForm-' +
         player.firstName +
         "').style.display='none'\">Cancel</button>" +
         '</div>' +
@@ -2718,13 +2716,13 @@ function renderProfile(firstName, backTo, container) {
       var fnMplus = player.firstName.replace(/'/g, "\\'");
       var nrMplus = player.nameRealm.replace(/'/g, "\\'");
       mplusHTML =
-        '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="toggleMPlusForm(\'' +
+        '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="toggleMPlusForm(\'' +
         fnMplus +
         '\')">Request M+ Exclusion</button>' +
         '<div id="mplusForm-' +
         player.firstName +
         '" style="display:none;margin-top:0.75rem;">' +
-        '<div style="font-size:0.92rem;color:var(--text-muted);margin-bottom:0.5rem;">Submit your Raider.io profile to request exclusion from dungeon loot priority.</div>' +
+        '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.5rem;">Submit your Raider.io profile to request exclusion from dungeon loot priority.</div>' +
         '<input type="url" id="mplusUrl-' +
         player.firstName +
         '" placeholder="https://raider.io/characters/..." class="self-received-source" style="max-width:100%;font-size:1rem;">' +
@@ -2732,12 +2730,12 @@ function renderProfile(firstName, backTo, container) {
         player.firstName +
         '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
         '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
-        '<button class="btn btn-gold" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="submitMPlusExclusionForm(\'' +
+        '<button class="btn btn-gold" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="submitMPlusExclusionForm(\'' +
         nrMplus +
         "','" +
         fnMplus +
         '\')">Submit</button>' +
-        '<button class="btn btn-muted" style="font-size:0.92rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'mplusForm-' +
+        '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'mplusForm-' +
         player.firstName +
         "').style.display='none'\">Cancel</button>" +
         '</div>' +
@@ -2745,7 +2743,7 @@ function renderProfile(firstName, backTo, container) {
         '</div>';
     } else {
       mplusHTML =
-        '<span style="font-size:0.92rem;color:var(--text-muted);">M+ exclusion requests are currently closed.</span>';
+        '<span style="font-size:1.04rem;color:var(--text-muted);">M+ exclusion requests are currently closed.</span>';
     }
   }
 
@@ -2792,7 +2790,7 @@ function renderProfile(firstName, backTo, container) {
       rowId +
       '" style="grid-template-columns:auto auto 1fr auto;">';
     rows += isGen
-      ? '<span style="font-size:0.97rem;color:var(--text-dim);min-width:40px;text-align:center;">-</span>'
+      ? '<span style="font-size:1rem;color:var(--text-dim);min-width:40px;text-align:center;">-</span>'
       : rankPillHTML(rank);
     rows += '<span class="priority-item-slot" style="color:' + getSlotColor(slot) + ';">' + slot + '</span>';
     rows += '<span class="priority-item-name" style="text-align:right;" title="' + item + '">' + item + '</span>';
@@ -2800,7 +2798,7 @@ function renderProfile(firstName, backTo, container) {
     var isOfficer = backTo === 'officer';
     var officerFlag = isOfficer ? 'true' : 'false';
     var markRecvBtn =
-      '<button class="mark-received-btn" style="font-size:0.78rem;padding:2px 7px;margin-top:2px;" onclick="event.stopPropagation();showSelfReceivedForm(\'' +
+      '<button class="mark-received-btn" style="font-size:0.91rem;padding:2px 7px;margin-top:2px;" onclick="event.stopPropagation();showSelfReceivedForm(\'' +
       player.firstName.replace(/'/g, "\\'") +
       "','" +
       player.nameRealm.replace(/'/g, "\\'") +
@@ -2850,7 +2848,7 @@ function renderProfile(firstName, backTo, container) {
   var bisCompletionHTML = bisItems.length
     ? '<span id="bis-completion-' +
       player.firstName +
-      '" style="font-size:0.95rem;"><span style="color:var(--gold-light);font-weight:600;">' +
+      '" style="font-size:1.07rem;"><span style="color:var(--gold-light);font-weight:600;">' +
       Math.round((bisReceivedCount / bisItems.length) * 100) +
       '%</span><span style="color:var(--text-muted);font-weight:400;"> (' +
       bisReceivedCount +
@@ -2867,9 +2865,9 @@ function renderProfile(firstName, backTo, container) {
   var priorityHTML = bisItems.length
     ? '<div class="priority-list">' +
       '<div class="priority-row" style="grid-template-columns:auto auto 1fr;background:transparent;border:none;padding:0.2rem 0.8rem;">' +
-      '<span style="font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);">Prio</span>' +
-      '<span style="font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);">Slot</span>' +
-      '<span style="font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);text-align:right;">Item / Source</span>' +
+      '<span style="font-size:1.02rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);">Prio</span>' +
+      '<span style="font-size:1.02rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);">Slot</span>' +
+      '<span style="font-size:1.02rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);text-align:right;">Item / Source</span>' +
       '</div>' +
       rows +
       '</div>'
@@ -2931,22 +2929,22 @@ function renderProfile(firstName, backTo, container) {
       fnSafe +
       "');var open=d.style.display!=='none';d.style.display=open?'none':'';hint.textContent=open?'click to expand':'click to collapse';\">Player Settings<span id=\"player-settings-hint-" +
       fnSafe +
-      '" style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
+      '" style="font-size:1.07rem;color:var(--text-dim);">click to expand</span></div>' +
       '<div id="player-settings-' +
       fnSafe +
       '" style="display:none;">' +
       '<div style="display:flex;flex-direction:column;gap:0.75rem;margin-top:0.5rem;">' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
-      '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Role</span>' +
-      '<span style="font-size:0.92rem;color:var(--text);">' +
+      '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">Role</span>' +
+      '<span style="font-size:1.04rem;color:var(--text);">' +
       (player.role || '-') +
       '</span>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
-      '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Class</span>' +
+      '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">Class</span>' +
       '<select id="classSelect-' +
       player.firstName +
-      '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:12rem;" onchange="officerUpdateClass(\'' +
+      '" class="self-received-source" style="font-size:1.04rem;padding:0.25rem 0.5rem;max-width:12rem;" onchange="officerUpdateClass(\'' +
       nrSafe +
       "','" +
       fnSafe +
@@ -2955,10 +2953,10 @@ function renderProfile(firstName, backTo, container) {
       '</select>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
-      '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Spec</span>' +
+      '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">Spec</span>' +
       '<select id="specSelect-' +
       player.firstName +
-      '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:12rem;" onchange="officerSaveClassSpec(\'' +
+      '" class="self-received-source" style="font-size:1.04rem;padding:0.25rem 0.5rem;max-width:12rem;" onchange="officerSaveClassSpec(\'' +
       nrSafe +
       "','" +
       fnSafe +
@@ -2967,30 +2965,30 @@ function renderProfile(firstName, backTo, container) {
       '</select>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">' +
-      '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Name</span>' +
+      '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">Name</span>' +
       '<input type="text" id="editNameInput-' +
       player.firstName +
       '" value="' +
       player.firstName +
-      '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:9rem;">' +
+      '" class="self-received-source" style="font-size:1.04rem;padding:0.25rem 0.5rem;max-width:9rem;">' +
       '<select id="editRealmSelect-' +
       player.firstName +
-      '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:10rem;">' +
+      '" class="self-received-source" style="font-size:1.04rem;padding:0.25rem 0.5rem;max-width:10rem;">' +
       realmOptHtml +
       '</select>' +
-      '<button class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="officerRenamePlayer(\'' +
+      '<button class="btn btn-muted" style="font-size:1rem;padding:0.25rem 0.75rem;" onclick="officerRenamePlayer(\'' +
       nrSafe +
       "','" +
       fnSafe +
       '\')">Save</button>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
-      '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Trial</span>' +
+      '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">Trial</span>' +
       '<button id="trialToggle-' +
       player.firstName +
       '" class="btn ' +
       (player.isTrial ? 'btn-gold' : 'btn-muted') +
-      '" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="togglePlayerTrial(\'' +
+      '" style="font-size:1rem;padding:0.25rem 0.75rem;" onclick="togglePlayerTrial(\'' +
       nrSafe +
       "','" +
       fnSafe +
@@ -3000,12 +2998,12 @@ function renderProfile(firstName, backTo, container) {
       '</div>' +
       (featureEnabled('bench')
         ? '<div style="display:flex;align-items:center;gap:0.75rem;">' +
-          '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Bench</span>' +
+          '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">Bench</span>' +
           '<button id="benchToggle-' +
           player.firstName +
           '" class="btn ' +
           (player.isBench ? 'btn-gold' : 'btn-muted') +
-          '" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="togglePlayerBench(\'' +
+          '" style="font-size:1rem;padding:0.25rem 0.75rem;" onclick="togglePlayerBench(\'' +
           nrSafe +
           "','" +
           fnSafe +
@@ -3015,12 +3013,12 @@ function renderProfile(firstName, backTo, container) {
           '</div>'
         : '') +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
-      '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">M+ Excl.</span>' +
+      '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">M+ Excl.</span>' +
       '<button id="mplusExclToggle-' +
       player.firstName +
       '" class="btn ' +
       (player.mPlusExcluded ? 'btn-gold' : 'btn-muted') +
-      '" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="toggleMPlusExcluded(\'' +
+      '" style="font-size:1rem;padding:0.25rem 0.75rem;" onclick="toggleMPlusExcluded(\'' +
       nrSafe +
       "','" +
       fnSafe +
@@ -3029,13 +3027,13 @@ function renderProfile(firstName, backTo, container) {
       '</button>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
-      '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Joined</span>' +
+      '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">Joined</span>' +
       '<input type="date" id="joinDateInput-' +
       player.firstName +
       '" value="' +
       (player.joinDate || '') +
-      '" class="self-received-source" style="font-size:0.92rem;padding:0.25rem 0.5rem;max-width:12rem;">' +
-      '<button class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="saveJoinDate(\'' +
+      '" class="self-received-source" style="font-size:1.04rem;padding:0.25rem 0.5rem;max-width:12rem;">' +
+      '<button class="btn btn-muted" style="font-size:1rem;padding:0.25rem 0.75rem;" onclick="saveJoinDate(\'' +
       nrSafe +
       "','" +
       fnSafe +
@@ -3043,12 +3041,12 @@ function renderProfile(firstName, backTo, container) {
       '</div>' +
       '<div id="playerSettingsMsg-' +
       player.firstName +
-      '" style="font-size:0.92rem;color:var(--text-muted);min-height:1.2rem;"></div>' +
+      '" style="font-size:1.04rem;color:var(--text-muted);min-height:1.2rem;"></div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;padding-top:0.25rem;border-top:1px solid var(--border);margin-top:0.5rem;">' +
-      '<span style="font-size:0.92rem;color:var(--text-muted);min-width:3.5rem;">Remove</span>' +
+      '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">Remove</span>' +
       '<button id="removePlayerBtn-' +
       player.firstName +
-      '" class="btn btn-danger" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="confirmRemovePlayer(\'' +
+      '" class="btn btn-danger" style="font-size:1rem;padding:0.25rem 0.75rem;" onclick="confirmRemovePlayer(\'' +
       nrSafe +
       "','" +
       fnSafe +
@@ -3056,37 +3054,37 @@ function renderProfile(firstName, backTo, container) {
       '<div id="removePlayerConfirm-' +
       player.firstName +
       '" style="display:none;gap:0.5rem;align-items:center;">' +
-      '<span style="font-size:0.92rem;color:var(--melee);">Confirm?</span>' +
-      '<button class="btn btn-danger" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="executeRemovePlayer(\'' +
+      '<span style="font-size:1.04rem;color:var(--melee);">Confirm?</span>' +
+      '<button class="btn btn-danger" style="font-size:1rem;padding:0.25rem 0.75rem;" onclick="executeRemovePlayer(\'' +
       nrSafe +
       "','" +
       fnSafe +
       '\')">Yes, Remove</button>' +
-      '<button class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="cancelRemovePlayer(\'' +
+      '<button class="btn btn-muted" style="font-size:1rem;padding:0.25rem 0.75rem;" onclick="cancelRemovePlayer(\'' +
       fnSafe +
       '\')">Cancel</button>' +
       '</div>' +
       '<span id="removePlayerMsg-' +
       player.firstName +
-      '" style="display:none;font-size:0.92rem;"></span>' +
+      '" style="display:none;font-size:1.04rem;"></span>' +
       '</div>' +
       '</div>' +
       '<div style="margin-top:1rem;">' +
-      '<div style="font-size:0.88rem;color:var(--text-muted);margin-bottom:0.35rem;text-transform:uppercase;letter-spacing:0.08em;">Officer Notes</div>' +
+      '<div style="font-size:1rem;color:var(--text-muted);margin-bottom:0.35rem;text-transform:uppercase;letter-spacing:0.08em;">Officer Notes</div>' +
       '<textarea id="playerNote-' +
       player.firstName +
-      '" rows="3" class="self-received-notes" style="width:100%;box-sizing:border-box;font-size:0.92rem;">' +
+      '" rows="3" class="self-received-notes" style="width:100%;box-sizing:border-box;font-size:1.04rem;">' +
       currentNote.replace(/</g, '&lt;').replace(/>/g, '&gt;') +
       '</textarea>' +
       '<div style="display:flex;gap:0.5rem;margin-top:0.4rem;align-items:center;">' +
-      '<button class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;" onclick="savePlayerNote(\'' +
+      '<button class="btn btn-muted" style="font-size:1rem;padding:0.25rem 0.75rem;" onclick="savePlayerNote(\'' +
       nrSafe +
       "','" +
       fnSafe +
       '\')">Save Note</button>' +
       '<span id="playerNoteMsg-' +
       player.firstName +
-      '" style="font-size:0.92rem;color:var(--text-muted);"></span>' +
+      '" style="font-size:1.04rem;color:var(--text-muted);"></span>' +
       '</div>' +
       '</div>' +
       '</div>' +
@@ -3101,7 +3099,7 @@ function renderProfile(firstName, backTo, container) {
     '<div style="padding:0.6rem 1.25rem;border-bottom:1px solid var(--border);">' +
     '<button onclick="' +
     backAction +
-    '" style="background:none;border:none;color:var(--text);font-family:\'Rajdhani\',sans-serif;font-size:0.9rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;padding:0;">' +
+    '" style="background:none;border:none;color:var(--text);font-family:\'Rajdhani\',sans-serif;font-size:1.02rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;padding:0;">' +
     backLabel +
     '</button>' +
     '</div>' +
@@ -3131,7 +3129,7 @@ function renderProfile(firstName, backTo, container) {
     fullyBisBadge +
     '</div>' +
     (player.joinDate
-      ? '<div style="font-size:0.9rem;color:var(--text-muted);margin-top:0.35rem;">Joined: ' +
+      ? '<div style="font-size:1.02rem;color:var(--text-muted);margin-top:0.35rem;">Joined: ' +
         formatJoinDate(player.joinDate) +
         '</div>'
       : '') +
@@ -3149,9 +3147,9 @@ function renderProfile(firstName, backTo, container) {
         : '') +
     '>Attendance' +
     (backTo === 'officer'
-      ? '<span class="attend-history-hint" style="font-size:0.95rem;color:var(--text-dim);">click to expand</span>'
+      ? '<span class="attend-history-hint" style="font-size:1.07rem;color:var(--text-dim);">click to expand</span>'
       : hasPenalties
-        ? '<span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span>'
+        ? '<span style="font-size:1.07rem;color:var(--text-dim);">click to expand</span>'
         : '') +
     '</div>' +
     '<div class="attend-row"><div class="attend-bar-wrap"><div class="attend-bar" style="width:' +
@@ -3168,7 +3166,7 @@ function renderProfile(firstName, backTo, container) {
       ? '<div class="profile-section">' +
         '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var l=document.getElementById(\'loot-list-' +
         player.firstName +
-        "');l.style.display=l.style.display==='none'?'grid':'none';\">Items Received <span style=\"font-size:0.95rem;color:var(--text-dim);\">click to expand</span></div>" +
+        "');l.style.display=l.style.display==='none'?'grid':'none';\">Items Received <span style=\"font-size:1.07rem;color:var(--text-dim);\">click to expand</span></div>" +
         '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">' +
         lootCount +
         ' item' +
@@ -3193,7 +3191,7 @@ function renderProfile(firstName, backTo, container) {
                   lxi.name +
                   '</div>' +
                   (lxi.difficulty
-                    ? '<div style="font-size:0.88rem;color:var(--text-muted);margin-top:0.1rem;">' +
+                    ? '<div style="font-size:1rem;color:var(--text-muted);margin-top:0.1rem;">' +
                       lxi.difficulty +
                       '</div>'
                     : '') +
@@ -3202,7 +3200,7 @@ function renderProfile(firstName, backTo, container) {
               return (
                 '<div style="margin-top:0.6rem;padding:0.5rem 0.75rem;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:space-between;">' +
                 '<div style="flex:1;min-width:0;">' +
-                '<div style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Last received' +
+                '<div style="font-size:0.93rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Last received' +
                 (lastDate ? ' - ' + lastDate : '') +
                 '</div>' +
                 itemLines +
@@ -3228,7 +3226,7 @@ function renderProfile(firstName, backTo, container) {
         player.firstName +
         "');l.style.display=l.style.display==='none'?'block':'none';\">BiS List" +
         bisCompletionHTML +
-        '<span style="font-size:0.95rem;color:var(--text-dim);">click to expand</span></div>' +
+        '<span style="font-size:1.07rem;color:var(--text-dim);">click to expand</span></div>' +
         '<div id="prio-list-' +
         player.firstName +
         '" style="display:none;">' +
@@ -3279,7 +3277,7 @@ function loadAttendanceHistory(firstName) {
   }
 
   content.innerHTML =
-    '<span style="color:var(--text-muted);font-size:0.95rem;padding:0.5rem 0;display:block;">Loading...</span>';
+    '<span style="color:var(--text-muted);font-size:1.07rem;padding:0.5rem 0;display:block;">Loading...</span>';
   content.style.display = 'block';
 
   var norm = normalise(firstName);
@@ -3294,7 +3292,7 @@ function loadAttendanceHistory(firstName) {
 
   if (!player || !player.id || !supabaseClient) {
     content.innerHTML =
-      '<p style="color:var(--melee);font-size:0.95rem;padding:0.5rem 0;">Failed to load. Try again.</p>';
+      '<p style="color:var(--melee);font-size:1.07rem;padding:0.5rem 0;">Failed to load. Try again.</p>';
     return;
   }
 
@@ -3307,7 +3305,7 @@ function loadAttendanceHistory(firstName) {
       if (result.error) {
         console.warn('Supabase attendance query failed.', result.error.message);
         content.innerHTML =
-          '<p style="color:var(--melee);font-size:0.95rem;padding:0.5rem 0;">Failed to load. Try again.</p>';
+          '<p style="color:var(--melee);font-size:1.07rem;padding:0.5rem 0;">Failed to load. Try again.</p>';
         return;
       }
       content.dataset.loaded = '1';
@@ -3342,7 +3340,7 @@ function renderAttendanceHistoryCard(firstName, content, history) {
 
   if (!history.length) {
     content.innerHTML =
-      '<p style="color:var(--text-muted);font-size:0.95rem;padding:0.5rem 0;">No attendance records found.</p>' +
+      '<p style="color:var(--text-muted);font-size:1.07rem;padding:0.5rem 0;">No attendance records found.</p>' +
       addControlHtml;
     renderAddAttendanceNightControl(firstName, history);
     return;
@@ -3383,7 +3381,7 @@ function renderAttendanceHistoryCard(firstName, content, history) {
   var CARD_STATUSES = ['Present', 'Bench', 'Medical Leave', 'Excused', 'Extended Leave', 'No Show', 'Not on Roster'];
 
   var html =
-    '<div style="font-size:0.88rem;color:var(--text-muted);margin-bottom:0.6rem;display:flex;gap:0.5rem;flex-wrap:wrap;">' +
+    '<div style="font-size:1rem;color:var(--text-muted);margin-bottom:0.6rem;display:flex;gap:0.5rem;flex-wrap:wrap;">' +
     summaryParts.join('<span style="color:var(--border-mid);">|</span>') +
     '</div>';
   html += '<div style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:4px;">';
@@ -3391,7 +3389,7 @@ function renderAttendanceHistoryCard(firstName, content, history) {
     var entry = history[j];
     var isNOR = entry.status === 'Not on Roster';
     html +=
-      '<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.95rem;padding:0.28rem 0.75rem;border-bottom:1px solid var(--border);gap:0.5rem;">';
+      '<div style="display:flex;justify-content:space-between;align-items:center;font-size:1.07rem;padding:0.28rem 0.75rem;border-bottom:1px solid var(--border);gap:0.5rem;">';
     html += '<span style="color:var(--text);white-space:nowrap;">' + entry.date + '</span>';
     if (isNOR) {
       html += '<span style="color:' + statusColor(entry.status) + ';font-weight:600;">' + entry.status + '</span>';
@@ -3484,23 +3482,23 @@ function renderAddAttendanceNightControl(firstName, history) {
 
       container.innerHTML =
         '<div style="display:flex;align-items:center;gap:0.4rem;margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border);flex-wrap:wrap;">' +
-        '<span style="font-size:0.9rem;color:var(--text-muted);">Add raid night:</span>' +
+        '<span style="font-size:1.02rem;color:var(--text-muted);">Add raid night:</span>' +
         '<select id="attend-add-date-' +
         firstName +
-        '" style="font-size:0.9rem;padding:0.15rem 0.35rem;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);">' +
+        '" style="font-size:1.02rem;padding:0.15rem 0.35rem;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);">' +
         dateOptions +
         '</select>' +
         '<select id="attend-add-status-' +
         firstName +
-        '" style="font-size:0.9rem;padding:0.15rem 0.35rem;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);">' +
+        '" style="font-size:1.02rem;padding:0.15rem 0.35rem;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);">' +
         statusOptions +
         '</select>' +
-        '<button class="btn btn-gold" style="font-size:0.85rem;padding:0.2rem 0.6rem;" onclick="addAttendanceNight(\'' +
+        '<button class="btn btn-gold" style="font-size:0.97rem;padding:0.2rem 0.6rem;" onclick="addAttendanceNight(\'' +
         nameSafe +
         '\')">Add</button>' +
         '<span id="attend-add-ind-' +
         firstName +
-        '" style="font-size:0.85rem;"></span>' +
+        '" style="font-size:0.97rem;"></span>' +
         '</div>';
     });
 }
