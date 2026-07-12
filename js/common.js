@@ -3621,7 +3621,7 @@ function renderProfile(firstName, backTo, container) {
         (backTo !== 'officer'
           ? '<div id="help-mplus-' +
             player.firstName +
-            '" class="help-tip">If you don\'t need weekly Mythic+ loot, submit your Raider.io profile to request exclusion from the M+ portion of loot priority. An officer reviews the request; once approved you\'re no longer required to run the weekly M+ dungeons.</div>'
+            '" class="help-tip">Once you no longer have any gear upgrades to obtain through the Great Vault via M+ dungeons, you can request exclusion from running them. Submit your Raider.io profile; an officer reviews the request and, once approved, you\'re no longer required to run them weekly.</div>'
           : '') +
         mplusHTML +
         '</div>'
