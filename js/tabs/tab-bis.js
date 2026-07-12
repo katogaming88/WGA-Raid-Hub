@@ -131,7 +131,7 @@ function renderBisSubmissions(submissions) {
       ', this)">Approve</button>' +
       '<button class="btn request-reject-btn" onclick="rejectBisSubmission(' +
       s.id +
-      ',\'' +
+      ",'" +
       s.nameRealm.replace(/'/g, "\\'") +
       '\', this)">Reject</button>' +
       '</div>' +
