@@ -51,6 +51,7 @@ Reference notes for walking a raider through the site -- not published to raider
 - Their profile shows their current BiS link (if they've submitted one)
 - Hit Submit / Update and paste in the new link
 - An officer reviews and approves it -- once approved it updates in the system
+- If the link itself hasn't changed but the list behind it has (e.g. they reordered items on the same wowhead/raidbots page), use **My List Changed (Same Link)** instead of resubmitting the link -- this flags it for an officer to recheck without needing a new URL
 
 ### Mark an item as received (self-report)
 - Use this for items received outside of raid -- M+, Great Vault, Crafted, Catalyst, World Drop
