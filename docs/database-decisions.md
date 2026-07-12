@@ -4,23 +4,11 @@ A running record of settled database/schema decisions and the reasoning behind t
 
 Issues carrying a decision are tagged with the `decision` label: `gh issue list --label decision --state all`.
 
----
-
-## 2026-07-25 -- Self-received approval syncs bis_items.obtained (#386): a slot column plus a one-way trigger, not RPC-side writes
-
-Approving a self-received item should tick the matching BiS row as obtained, so BiS Manager stays the one place officers actively *edit* a list and "Mark received" is only a received-state signal (#217's stated intent). Three decisions fell out of it.
-
-- **Added `self_received_requests.slot` (nullable text)** rather than matching on `(player_id, item_id)` alone. `bis_items` is unique on `(player_id, item_id, coalesce(slot, ''))`, and the placeholder items -- `M+`, `Crafted`, `Catalyst` (`items.is_placeholder`) -- name a loot *source* rather than a piece of gear, so one player legitimately lists `M+` against six different slots (10 such rows live at the time of writing). An approved `M+` with no slot could not say which of those rows it filled; flipping all of them would fill six slots from one drop. The frontend already knew the answer (the "Mark received" button is rendered per BiS row) and simply had nowhere to put it.
-- **The button sends the raw `bis_items.slot`, not the displayed slot name.** These diverge routinely -- the item catalog says `Boots`/`Gloves`/`Trinket` where `bis_items` says `Feet`/`Hands`/`Trinket 1` (and 30 live rows carry a blank BiS slot against a `Trinket` catalog slot). `mapSupabaseBisItems()` already exposed both as `entry.slot` (display) and `entry.dbSlot` (raw), for exactly this reason on the tab-bis.js delete/update path. Sending the display slot would have made the trigger match nothing for most real items -- a silent no-op, not an error.
-- **The flip lives in a trigger on `self_received_requests`, not inside `submit_self_received()`/`direct_mark_received()`.** There is a third path to `approved` that is neither RPC: the officer Requests tab (`js/tabs/tab-requests.js`) approves a pending row with a plain `UPDATE`. A trigger catches all three (raider auto-approve, officer direct-mark, queue approval) and cannot be bypassed by a fourth. `SECURITY DEFINER`, since a raider auto-approving their own item is not an officer and writes to `bis_items` are restricted to officers.
-- **One-way on purpose**: approving sets `obtained = true`; rejecting or reverting an approval never sets it back to `false`. An officer may have ticked the box by hand for an unrelated reason, and clearing it here would silently discard that. Unticking stays a deliberate officer action in BiS Manager.
-- **Both RPCs were dropped and recreated, not `CREATE OR REPLACE`d.** A function is identified by `(name, argument types)`, so adding `p_slot` would have left the old 6-argument version in place as an overload that PostgREST could still resolve calls to.
-
-[Full discussion -> #386](https://github.com/katogaming88/WGA-Raid-Hub/issues/386)
+Each heading's date is the real calendar date the decision was made. It is deliberately **not** taken from the accompanying migration's filename: those timestamps only have to increase monotonically, and have drifted well ahead of real time (the migration written on 2026-07-11 is named `20260726...`). Entries from 2026-07-12 through 2026-07-18 were dated that way by mistake and have been corrected to when they were actually committed.
 
 ---
 
-## 2026-07-26 -- Item catalog slot vocabulary (#453): re-derived from Wowhead, not translated; duplicates deleted, not merged
+## 2026-07-11 -- Item catalog slot vocabulary (#453): re-derived from Wowhead, not translated; duplicates deleted, not merged
 
 `items.slot` held a vocabulary hand-typed into the retired GAS "Item Lookup" spreadsheet (`Boots`, `Gloves`, `Belt`, `Bracers`, `Cloak`, `Shoulders`, `Ring`, `1H/2H`, `OH`, `Unknown`). The game, Wowhead, `scripts/fetch-items.js`, and `bis_items.slot` all say `Feet`, `Hands`, `Waist`, `Wrist`, `Back`, `Shoulder`, `Finger`, and split weapons into `One-Hand`/`Two-Hand`/`Ranged` -- so the catalog was the only thing out of step, and every consumer carried a synonym table to bridge it. Surfaced while building #386, where the display slot and `bis_items.slot` diverging nearly shipped a silent no-op.
 
@@ -35,7 +23,21 @@ Approving a self-received item should tick the matching BiS row as obtained, so 
 
 ---
 
-## 2026-07-18 -- Season-code to display-name mapping (#341): stays a frontend translation, now pattern-derived instead of hardcoded per season
+## 2026-07-11 -- Self-received approval syncs bis_items.obtained (#386): a slot column plus a one-way trigger, not RPC-side writes
+
+Approving a self-received item should tick the matching BiS row as obtained, so BiS Manager stays the one place officers actively *edit* a list and "Mark received" is only a received-state signal (#217's stated intent). Three decisions fell out of it.
+
+- **Added `self_received_requests.slot` (nullable text)** rather than matching on `(player_id, item_id)` alone. `bis_items` is unique on `(player_id, item_id, coalesce(slot, ''))`, and the placeholder items -- `M+`, `Crafted`, `Catalyst` (`items.is_placeholder`) -- name a loot *source* rather than a piece of gear, so one player legitimately lists `M+` against six different slots (10 such rows live at the time of writing). An approved `M+` with no slot could not say which of those rows it filled; flipping all of them would fill six slots from one drop. The frontend already knew the answer (the "Mark received" button is rendered per BiS row) and simply had nowhere to put it.
+- **The button sends the raw `bis_items.slot`, not the displayed slot name.** These diverge routinely -- the item catalog says `Boots`/`Gloves`/`Trinket` where `bis_items` says `Feet`/`Hands`/`Trinket 1` (and 30 live rows carry a blank BiS slot against a `Trinket` catalog slot). `mapSupabaseBisItems()` already exposed both as `entry.slot` (display) and `entry.dbSlot` (raw), for exactly this reason on the tab-bis.js delete/update path. Sending the display slot would have made the trigger match nothing for most real items -- a silent no-op, not an error.
+- **The flip lives in a trigger on `self_received_requests`, not inside `submit_self_received()`/`direct_mark_received()`.** There is a third path to `approved` that is neither RPC: the officer Requests tab (`js/tabs/tab-requests.js`) approves a pending row with a plain `UPDATE`. A trigger catches all three (raider auto-approve, officer direct-mark, queue approval) and cannot be bypassed by a fourth. `SECURITY DEFINER`, since a raider auto-approving their own item is not an officer and writes to `bis_items` are restricted to officers.
+- **One-way on purpose**: approving sets `obtained = true`; rejecting or reverting an approval never sets it back to `false`. An officer may have ticked the box by hand for an unrelated reason, and clearing it here would silently discard that. Unticking stays a deliberate officer action in BiS Manager.
+- **Both RPCs were dropped and recreated, not `CREATE OR REPLACE`d.** A function is identified by `(name, argument types)`, so adding `p_slot` would have left the old 6-argument version in place as an overload that PostgREST could still resolve calls to.
+
+[Full discussion -> #386](https://github.com/katogaming88/WGA-Raid-Hub/issues/386)
+
+---
+
+## 2026-07-10 -- Season-code to display-name mapping (#341): stays a frontend translation, now pattern-derived instead of hardcoded per season
 
 `scoring.season`/`priority_order.season`/`rclc_loot.season` store a compact code (`MID1`, decided on #320) as the stable join/filter key across those tables, while officers see and type a free-text display name (`DATA.seasonName`, Season Settings tab -> `team_settings.config` via `saveTeamSetting()`, #221). Something has to translate between the two on every read/write that touches season data.
 
@@ -48,7 +50,7 @@ Approving a self-received item should tick the matching BiS row as obtained, so 
 
 ---
 
-## 2026-07-17 -- players.officer_notes (#407): the column #407 assumed already existed had to be added
+## 2026-07-10 -- players.officer_notes (#407): the column #407 assumed already existed had to be added
 
 #407's premise -- "`players.officer_notes` already exists as a column in the schema but is never read or written anywhere in `js/`" -- was wrong. The column that actually exists is `mplus_exclusion_requests.officer_notes` (`initial_schema.sql`), a different table entirely; `dbdoc/public.players.md`'s relations diagram embeds that table's full column list next to `players`' own for the FK diagram, which is what got misread as a `players` column both when the issue was filed and when this fix's own PR first shipped without the column. Confirmed against the live database only after roster loads started failing with `column players.officer_notes does not exist`, well after the frontend write path (`renamePlayer`/`savePlayerNote`) had already been wired to it.
 
@@ -60,7 +62,7 @@ Approving a self-received item should tick the matching BiS row as obtained, so 
 
 ---
 
-## 2026-07-16 -- Self-received request write path (#406): both submit and direct-mark go through SECURITY DEFINER RPCs, auto-approve now checks real Supabase Auth
+## 2026-07-10 -- Self-received request write path (#406): both submit and direct-mark go through SECURITY DEFINER RPCs, auto-approve now checks real Supabase Auth
 
 `self_received_requests` fit the live feature exactly (`track`/`source`/`note` match `submitSelfReceivedRequest`'s payload one-to-one) -- it just never had an INSERT path or any frontend reference, matching #404/#405's finding for the other two request tables.
 
@@ -72,7 +74,7 @@ Approving a self-received item should tick the matching BiS row as obtained, so 
 
 ---
 
-## 2026-07-15 -- Site-admin cross-team access on request tables (#413): four tables were missing OR is_site_admin()
+## 2026-07-10 -- Site-admin cross-team access on request tables (#413): four tables were missing OR is_site_admin()
 
 While verifying #403's historical Hellfire signup backfill actually landed in production, the officer Signups History tab showed "No signups recorded" despite the data being confirmed correct via direct read-only access. Root cause: `my_team_role(team_id)` resolves per-team from `team_members`, and Kat's own account isn't a `team_members` row on Hellfire's team (a different Discord account holds team_leader there) -- so as far as RLS was concerned, the account had zero role on that team, same as any stranger.
 
@@ -86,7 +88,7 @@ That's expected behavior for a plain officer -- but Kat is also a site admin, an
 
 ---
 
-## 2026-07-14 -- M+ exclusion write path (#405): approve now sets players.m_plus_excluded directly, rejection state derived live
+## 2026-07-10 -- M+ exclusion write path (#405): approve now sets players.m_plus_excluded directly, rejection state derived live
 
 Unlike `bis_requests` (#404), `mplus_exclusion_requests` already fit the live feature exactly (`reason`/`raiderio_url`/`status` match `submitMPlusExclusion`'s payload one-to-one) -- it just never got an INSERT path or any frontend reference. Confirmed 0 rows in production before writing this.
 
@@ -99,7 +101,7 @@ Unlike `bis_requests` (#404), `mplus_exclusion_requests` already fit the live fe
 
 ---
 
-## 2026-07-13 -- bis_requests repurposed for BiS link submissions (#404): dropped bis_req_item_id, gating moved to players.bis_allowed
+## 2026-07-10 -- bis_requests repurposed for BiS link submissions (#404): dropped bis_req_item_id, gating moved to players.bis_allowed
 
 `bis_requests` existed since `initial_schema.sql` with Officers read/update RLS already in place, but nothing ever wrote to it (confirmed 0 rows, 0 references in `js/`). Its shape -- `bis_req_item_id integer NOT NULL`, an FK to `items` -- couldn't hold what the live raider-facing feature actually submits: a whole BiS list URL (`js/common.js` `submitBiSForm` -> GAS `submitBiS`), one per player, unrelated to any single item. It looks like it was scaffolded generically alongside the other request tables (`self_received_requests`, `mplus_exclusion_requests`) assuming a per-item shape this feature never matched.
 
@@ -112,7 +114,7 @@ Unlike `bis_requests` (#404), `mplus_exclusion_requests` already fit the live fe
 
 ---
 
-## 2026-07-12 -- season_signups write path (#403): SECURITY DEFINER RPC granted to anon, no anti-spam token yet
+## 2026-07-10 -- season_signups write path (#403): SECURITY DEFINER RPC granted to anon, no anti-spam token yet
 
 `season_signups` had no INSERT path of any kind -- only officer read/update -- because the public signup form (`js/signup.js`) still wrote exclusively to the GAS "Roster Responses" Sheet, which the officer Signups/Pending Roster tabs stopped reading when they switched to Supabase-only reads in #328. Every real signup submitted since then landed somewhere no officer screen ever reads.
 
