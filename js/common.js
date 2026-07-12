@@ -38,7 +38,7 @@ if (_teamParam && _teamParam in TEAMS) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.33.18';
+var VERSION = '3.33.19';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -741,6 +741,24 @@ function _escapeRegExp(str) {
   return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// Escapes HTML-significant characters before interpolating raider-supplied
+// free text into a raw HTML string built by concatenation (an attribute
+// value or text node) rather than DOM APIs. #286's own self-service streamer
+// editor (js/streamers.js) called this without it ever being defined here --
+// a real bug (ReferenceError the moment the section rendered) as well as a
+// real gap: a schedule note is the kind of free-text field a raider fully
+// controls, and most of this codebase's other string-built render functions
+// don't escape their inputs at all, so this exists specifically for new
+// call sites like that one rather than a blanket retrofit.
+function _esc(str) {
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function seasonDisplayName(code) {
   if (SEASON_LABELS[code]) return SEASON_LABELS[code];
   var displayPrefix = _seasonDisplayPrefix();
@@ -969,6 +987,71 @@ function fetchSupabaseSelfReceived() {
     }, 10000);
   });
   return Promise.race([query, timeout]);
+}
+
+// Streamers reads are guild-wide (#286): every team's rows, not scoped to
+// _teamCfg.supabaseTeamId like every other fetchSupabaseX() here -- seeing
+// across teams is the actual reason this feature needs Supabase instead of
+// the old per-team GAS silos. Joins players (name_realm/nickname) directly
+// rather than resolving through DATA.roster, since DATA.roster is single-
+// team-scoped and has no entry for a streamer on the other team.
+function fetchSupabaseStreamers() {
+  if (!supabaseClient) return Promise.resolve(null);
+  var query = supabaseClient
+    .from('streamers')
+    .select(
+      'id, team_id, player_id, twitch_channel, schedule_note, guild_wide_opt_out, is_live, players(name_realm, nickname)'
+    )
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Supabase streamers query failed.', result.error.message);
+        return null;
+      }
+      return result.data && result.data.length ? result.data : null;
+    })
+    .catch(function (err) {
+      console.warn('Supabase streamers query failed.', err);
+      return null;
+    });
+  var timeout = new Promise(function (resolve) {
+    setTimeout(function () {
+      resolve(null);
+    }, 10000);
+  });
+  return Promise.race([query, timeout]);
+}
+
+// Maps streamers rows (joined through players) to the shape js/streamers.js's
+// render code already expects (team_slug, not team_id, so its existing
+// team-comparison logic needs no changes). display_name/player_first_name
+// come from the joined player row, not DATA.roster -- DATA.roster is
+// single-team-scoped and has no entry for a streamer on the other team.
+// There is no separate "stream persona" column; the self-service editor has
+// never had a field for one, so this reuses the same nickname-or-first-name
+// every other view in the app displays a player by.
+function mapSupabaseStreamers(rows) {
+  var idToSlug = {};
+  Object.keys(TEAMS).forEach(function (slug) {
+    idToSlug[TEAMS[slug].supabaseTeamId] = slug;
+  });
+  var mapped = [];
+  (rows || []).forEach(function (row) {
+    var player = row.players || {};
+    var nameRealm = String(player.name_realm || '').trim();
+    if (!nameRealm) return;
+    var firstName = nameRealm.split('-')[0].trim();
+    mapped.push({
+      id: row.id,
+      team_slug: idToSlug[row.team_id] || '',
+      player_first_name: firstName,
+      display_name: player.nickname || firstName,
+      twitch_channel: row.twitch_channel,
+      schedule_note: row.schedule_note || '',
+      guild_wide_opt_out: !!row.guild_wide_opt_out,
+      is_live: !!row.is_live
+    });
+  });
+  return mapped;
 }
 
 // Maps self_received_requests rows to the DATA.selfReceived shape the Apps
@@ -1488,6 +1571,12 @@ function loadData(onCoreReady, onHeavyReady) {
   var selfReceivedPromise = fetchSupabaseSelfReceived();
   // Fired alongside; the heavy callback waits for it before setting rawAttendanceData/attendanceDetails/recentAttendanceTrend.
   var attendancePromise = fetchSupabaseAttendanceRaw();
+  // Fired alongside; the heavy callback waits for it before setting streamers.
+  // Fires on every page (officer.html included) same as every other heavy
+  // field, even though only index.html's js/streamers.js reads DATA.streamers
+  // -- consistent with the rest of this batch, which never conditions on
+  // which page loaded it.
+  var streamersPromise = fetchSupabaseStreamers();
 
   // Builds DATA from the Supabase roster/settings/M+ rejections, then runs
   // onCoreReady. GAS is retired (#225) -- there is no core payload to overlay
@@ -1532,7 +1621,8 @@ function loadData(onCoreReady, onHeavyReady) {
       itemBossesPromise,
       priorityOrderPromise,
       selfReceivedPromise,
-      attendancePromise
+      attendancePromise,
+      streamersPromise
     ]).then(function (results) {
       var lootRows = results[0];
       var bisRows = results[1];
@@ -1541,6 +1631,7 @@ function loadData(onCoreReady, onHeavyReady) {
       var priorityRows = results[4];
       var selfReceivedRows = results[5];
       var attendanceRows = results[6];
+      var streamerRows = results[7];
       var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
       DATA.lootCounts = mappedLoot || {};
       var mappedAttendance = attendanceRows !== null ? mapSupabaseAttendanceRaw(attendanceRows, DATA.roster) : null;
@@ -1561,6 +1652,7 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
       var mappedSelfReceived = selfReceivedRows ? mapSupabaseSelfReceived(selfReceivedRows) : null;
       DATA.selfReceived = mappedSelfReceived || {};
+      DATA.streamers = mapSupabaseStreamers(streamerRows);
       if (typeof populateBossFilters === 'function') populateBossFilters();
       if (onHeavyReady) onHeavyReady();
     });
@@ -3142,6 +3234,7 @@ function renderProfile(firstName, backTo, container) {
     (mplusHTML && featureEnabled('mplus')
       ? '<div class="profile-section"><div class="section-label">M+ Exclusion</div>' + mplusHTML + '</div>'
       : '') +
+    (typeof ownStreamerSectionHTML === 'function' ? ownStreamerSectionHTML(player, backTo) : '') +
     officerActionsHTML +
     '</div>';
 

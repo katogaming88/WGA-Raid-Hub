@@ -53,6 +53,10 @@ site_admins,Site Admins read site_admins,public,SELECT,PERMISSIVE,is_site_admin(
 site_admins,Site Admins write site_admins,public,ALL,PERMISSIVE,is_site_admin(),is_site_admin()
 site_settings,Claude readers read site_settings,claude_readers,SELECT,PERMISSIVE,true,
 site_settings,Public read site_settings,public,SELECT,PERMISSIVE,true,
+streamers,Claude readers read streamers,claude_readers,SELECT,PERMISSIVE,true,
+streamers,Officers write streamers,public,ALL,PERMISSIVE,"(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))","(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))"
+streamers,Public read streamers,public,SELECT,PERMISSIVE,true,
+streamers,Raiders manage own streamer,public,ALL,PERMISSIVE,is_own_player(player_id),is_own_player(player_id)
 team_members,Claude readers read team_members,claude_readers,SELECT,PERMISSIVE,true,
 team_members,Members read own team_members,public,SELECT,PERMISSIVE,(auth_user_id = auth.uid()),
 team_members,Officers read own team_members,public,SELECT,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())",

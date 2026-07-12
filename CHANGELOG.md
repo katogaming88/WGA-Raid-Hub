@@ -8,6 +8,18 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.19] - 2026-07-12
+
+### Frontend
+
+- **Guild-wide Twitch streams (#286) are wired to real Supabase data.** The landing-page live banner, floating widget, Streams tab, and the self-service editor on a raider's own profile now read/write the real `streamers` table instead of a hardcoded mock array. Two real bugs caught in the process: the self-service editor called an HTML-escaping helper (`_esc()`) that was never actually defined anywhere, which would have thrown the moment a raider's own profile rendered; and every raider-controlled field the stream cards render site-wide (display name, channel, schedule note) went out unescaped, harmless with hardcoded mock data but a real gap now that it's genuine user input -- both fixed, with a test that reverts the fix and confirms a `<script>`/`<img onerror>` payload is caught.
+- **The live-streamers banner now sits below the officer quick-actions bar**, not above it -- was pushing the officer-only controls down a row for no reason.
+
+### Backend
+
+- **`streamers`' officer-write RLS policy fixed before ever reaching production.** It checked `my_team_role(team_id) = any('officer','admin')`, but `team_members.role` never holds `'admin'` (that's the separate, global `site_admins` concept) -- team leaders could never have written via the officer-override path. Fixed to `'team_leader'`, matching every other officer-write policy in the schema.
+- **`twitch-live-check` Edge Function + a GitHub Actions cron** (every 5 minutes) keep `streamers.is_live`/`last_checked_at` current by polling Twitch's Helix API for every linked channel. No cron/pg_net infrastructure exists in this project yet, so GitHub Actions is the trigger rather than new Postgres extensions. Needs manual setup before it does anything: a Twitch Developer app (`TWITCH_CLIENT_ID`/`TWITCH_CLIENT_SECRET`), a shared `TWITCH_LIVE_CHECK_SECRET` (Supabase Edge Function secret + matching GitHub Actions repo secret), and deploying with `--no-verify-jwt` since the cron calls it with no Supabase session at all -- see the function's own header comment for the exact steps.
+
 ## [3.33.18] - 2026-07-11
 
 ### Frontend
