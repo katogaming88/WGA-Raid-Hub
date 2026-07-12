@@ -53,6 +53,12 @@ create policy "Raiders manage own streamer" on "public"."streamers"
     using ("public"."is_own_player"("player_id"))
     with check ("public"."is_own_player"("player_id"));
 
+-- 'officer'/'team_leader' -- team_members.role never holds 'admin' (that's
+-- the separate, global site_admins concept, gated via is_site_admin()
+-- elsewhere in this schema). The original draft checked for 'admin' here,
+-- which could never match a real row and would have locked team leaders out
+-- of the officer-override path entirely. Caught before this was ever applied
+-- to production.
 create policy "Officers write streamers" on "public"."streamers"
-    using (("public"."my_team_role"("team_id") = any (array['officer'::text, 'admin'::text])))
-    with check (("public"."my_team_role"("team_id") = any (array['officer'::text, 'admin'::text])));
+    using (("public"."my_team_role"("team_id") = any (array['officer'::text, 'team_leader'::text])))
+    with check (("public"."my_team_role"("team_id") = any (array['officer'::text, 'team_leader'::text])));

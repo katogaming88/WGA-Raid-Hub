@@ -1,62 +1,18 @@
 // #286: guild-wide Twitch streams (landing page section + Streamers tab).
 //
-// MOCK DATA: supabase-js isn't wired into the frontend yet (see supabase/migrations/
-// 20260705000000_streamers.sql for the real schema). MOCK_STREAMERS stands in for a
-// `select * from streamers` read -- public/no-secret, so swapping it for a real
-// Supabase client call later shouldn't need to change anything below this block.
-// team_slug spans both teams because Guild Streams need to see across teams, which
-// today's per-team GAS silos can't do -- that's the reason this feature needs Supabase.
-var MOCK_STREAMERS = [
-  {
-    id: 1,
-    team_slug: 'phoenix',
-    player_first_name: 'Kato',
-    display_name: 'Kato Gaming',
-    twitch_channel: 'katogaming',
-    schedule_note: 'Raids Tue/Thu 8pm ET, farm runs on weekends.',
-    guild_wide_opt_out: false,
-    is_live: true
-  },
-  {
-    id: 2,
-    team_slug: 'phoenix',
-    player_first_name: 'Ashlynn',
-    display_name: 'AshlynnTV',
-    twitch_channel: 'ashlynntv',
-    schedule_note: '',
-    guild_wide_opt_out: false,
-    is_live: false
-  },
-  {
-    id: 3,
-    team_slug: 'hellfire',
-    player_first_name: 'Brakka',
-    display_name: 'BrakkaBoom',
-    twitch_channel: 'brakkaboom',
-    schedule_note: 'VODs posted the next day.',
-    guild_wide_opt_out: false,
-    is_live: true
-  },
-  {
-    id: 4,
-    team_slug: 'hellfire',
-    player_first_name: 'Novabyte',
-    display_name: 'Novabyte',
-    twitch_channel: 'novabyte',
-    schedule_note: '',
-    guild_wide_opt_out: true,
-    is_live: false
-  }
-];
-
+// DATA.streamers (js/common.js's fetchSupabaseStreamers()/mapSupabaseStreamers())
+// is the live read -- populated by loadData() same as every other DATA field.
+// Guild-wide, not team-scoped: Guild Streams need to see across teams, which
+// today's per-team GAS silos couldn't do -- that's the reason this feature
+// needed Supabase in the first place.
 function getTeamStreamers() {
-  return MOCK_STREAMERS.filter(function (s) {
+  return (DATA.streamers || []).filter(function (s) {
     return s.team_slug === TEAM_SLUG;
   });
 }
 
 function getGuildStreamers() {
-  return MOCK_STREAMERS.filter(function (s) {
+  return (DATA.streamers || []).filter(function (s) {
     return s.team_slug !== TEAM_SLUG && !s.guild_wide_opt_out;
   });
 }
@@ -67,8 +23,9 @@ function getVisibleStreamers() {
 
 function getOwnStreamer(firstName) {
   var norm = normalise(firstName);
-  for (var i = 0; i < MOCK_STREAMERS.length; i++) {
-    var s = MOCK_STREAMERS[i];
+  var streamers = DATA.streamers || [];
+  for (var i = 0; i < streamers.length; i++) {
+    var s = streamers[i];
     if (s.team_slug === TEAM_SLUG && normalise(s.player_first_name) === norm) return s;
   }
   return null;
@@ -128,16 +85,16 @@ function streamerCardHTML(s, opts) {
     '<div class="stream-card-body">' +
     '<div class="stream-card-header">' +
     '<span class="stream-name">' +
-    s.display_name +
+    _esc(s.display_name) +
     '</span>' +
     (s.is_live ? '<span class="stream-live-dot" title="Live now"></span>' : '') +
     '<a class="stream-twitch-link" href="https://twitch.tv/' +
     encodeURIComponent(s.twitch_channel) +
     '" target="_blank" rel="noopener">twitch.tv/' +
-    s.twitch_channel +
+    _esc(s.twitch_channel) +
     '</a>' +
     '</div>' +
-    (s.schedule_note ? '<p class="stream-note">' + s.schedule_note + '</p>' : '') +
+    (s.schedule_note ? '<p class="stream-note">' + _esc(s.schedule_note) + '</p>' : '') +
     (profileLink ? '<div class="stream-card-footer">' + profileLink + '</div>' : '') +
     '</div>' +
     '</div>'
@@ -310,13 +267,18 @@ function ownStreamerSectionHTML(player, backTo) {
     player.firstName +
     '" style="font-size:0.9rem;color:var(--text-muted);"></span>' +
     '</div>' +
-    '<p class="self-received-note">Preview only for now -- not yet saved to a database (Supabase wiring lands separately).</p>' +
     '</div>'
   );
 }
 
 var TWITCH_CHANNEL_RE = /^[a-zA-Z0-9_]{4,25}$/;
 
+// Writes straight to Supabase's streamers table (#286) -- the "Raiders manage
+// own streamer" RLS policy (is_own_player(player_id)) is the real enforcement,
+// so player_id only has to be correct, not trusted; a lie there is rejected
+// server-side regardless of what the client sends. upsert on the player_id
+// unique constraint covers both "first time" and "editing" in one call rather
+// than branching on getOwnStreamer() first.
 function saveOwnStreamer(firstName) {
   var channelEl = document.getElementById('streamerChannel-' + firstName);
   var noteEl = document.getElementById('streamerNote-' + firstName);
@@ -334,45 +296,101 @@ function saveOwnStreamer(firstName) {
     return;
   }
 
-  var existing = getOwnStreamer(firstName);
-  if (existing) {
-    existing.twitch_channel = channel;
-    existing.schedule_note = noteEl ? noteEl.value.trim() : '';
-    existing.guild_wide_opt_out = !!(optOutEl && optOutEl.checked);
-  } else {
-    var norm = normalise(firstName);
-    var player = null;
-    for (var i = 0; i < (DATA.roster || []).length; i++) {
-      if (normalise(DATA.roster[i].firstName) === norm) {
-        player = DATA.roster[i];
-        break;
-      }
+  var norm = normalise(firstName);
+  var player = null;
+  for (var i = 0; i < (DATA.roster || []).length; i++) {
+    if (normalise(DATA.roster[i].firstName) === norm) {
+      player = DATA.roster[i];
+      break;
     }
-    MOCK_STREAMERS.push({
-      id: MOCK_STREAMERS.length + 1,
-      team_slug: TEAM_SLUG,
-      player_first_name: firstName,
-      display_name: player ? player.nick || player.firstName : firstName,
-      twitch_channel: channel,
-      schedule_note: noteEl ? noteEl.value.trim() : '',
-      guild_wide_opt_out: !!(optOutEl && optOutEl.checked),
-      is_live: false
-    });
+  }
+  if (!player || !player.id || !supabaseClient) {
+    if (msgEl) {
+      msgEl.style.color = 'var(--melee)';
+      msgEl.textContent = 'Failed to save. Try again.';
+    }
+    return;
   }
 
-  buildStreamWidget();
-  renderProfile(firstName, 'landing');
+  var note = noteEl ? noteEl.value.trim() : '';
+  var optOut = !!(optOutEl && optOutEl.checked);
+
+  if (msgEl) {
+    msgEl.style.color = 'var(--text-muted)';
+    msgEl.textContent = 'Saving...';
+  }
+
+  supabaseClient
+    .from('streamers')
+    .upsert(
+      {
+        team_id: _teamCfg.supabaseTeamId,
+        player_id: player.id,
+        twitch_channel: channel,
+        schedule_note: note,
+        guild_wide_opt_out: optOut
+      },
+      { onConflict: 'player_id' }
+    )
+    .select('id, is_live')
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      var row = result.data && result.data[0] ? result.data[0] : null;
+      var existing = getOwnStreamer(firstName);
+      var entry = {
+        id: row ? row.id : existing ? existing.id : null,
+        team_slug: TEAM_SLUG,
+        player_first_name: firstName,
+        display_name: player.nick || player.firstName,
+        twitch_channel: channel,
+        schedule_note: note,
+        guild_wide_opt_out: optOut,
+        is_live: row ? !!row.is_live : !!(existing && existing.is_live)
+      };
+      if (!DATA.streamers) DATA.streamers = [];
+      var idx = -1;
+      for (var j = 0; j < DATA.streamers.length; j++) {
+        if (DATA.streamers[j].team_slug === TEAM_SLUG && normalise(DATA.streamers[j].player_first_name) === norm) {
+          idx = j;
+          break;
+        }
+      }
+      if (idx >= 0) DATA.streamers[idx] = entry;
+      else DATA.streamers.push(entry);
+      buildStreamWidget();
+      renderProfile(firstName, 'landing');
+    })
+    .catch(function (err) {
+      if (msgEl) {
+        msgEl.style.color = 'var(--melee)';
+        msgEl.textContent = err.message || 'Failed to save. Try again.';
+      }
+    });
 }
 
 function removeOwnStreamer(firstName) {
   if (!confirm('Remove your streamer entry? This cannot be undone.')) return;
-  var norm = normalise(firstName);
-  for (var i = 0; i < MOCK_STREAMERS.length; i++) {
-    if (MOCK_STREAMERS[i].team_slug === TEAM_SLUG && normalise(MOCK_STREAMERS[i].player_first_name) === norm) {
-      MOCK_STREAMERS.splice(i, 1);
-      break;
-    }
-  }
-  buildStreamWidget();
-  renderProfile(firstName, 'landing');
+  var existing = getOwnStreamer(firstName);
+  var msgEl = document.getElementById('streamerSaveMsg-' + firstName);
+  if (!existing || !supabaseClient) return;
+
+  supabaseClient
+    .from('streamers')
+    .delete()
+    .eq('id', existing.id)
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      var norm = normalise(firstName);
+      DATA.streamers = (DATA.streamers || []).filter(function (s) {
+        return !(s.team_slug === TEAM_SLUG && normalise(s.player_first_name) === norm);
+      });
+      buildStreamWidget();
+      renderProfile(firstName, 'landing');
+    })
+    .catch(function (err) {
+      if (msgEl) {
+        msgEl.style.color = 'var(--melee)';
+        msgEl.textContent = err.message || 'Failed to remove. Try again.';
+      }
+    });
 }

@@ -16,7 +16,7 @@ This file documents the RLS policies on every public table. The generated schema
 
 ### How to read this matrix
 
-RLS is deny-by-default: with RLS enabled (it is, on all 20 tables), nobody can touch any row unless a policy explicitly grants it. Policies are additive; if any one policy matches an actor and operation, the action is allowed. Each row below summarizes which grants exist for that table.
+RLS is deny-by-default: with RLS enabled (it is, on all 21 tables), nobody can touch any row unless a policy explicitly grants it. Policies are additive; if any one policy matches an actor and operation, the action is allowed. Each row below summarizes which grants exist for that table.
 
 - **Public SELECT**: "yes" means a `FOR SELECT USING (true)` policy exists, so anyone (including anonymous visitors) can read every row. This is how the public site serves roster, loot, and standings without login. "no" means there is no public read path.
 - **Officer**: what a team officer can do, scoped to their own team's rows via `my_team_role(team_id)`. "all ops" covers SELECT, INSERT, UPDATE, and DELETE. "SELECT, UPDATE" means they can see and modify existing rows but cannot insert or delete. Team leaders pass every officer check too, since these policies accept both roles.
@@ -45,6 +45,7 @@ One thing the matrix hides on purpose: every table also carries a `claude_reader
 | self_received_requests | no | SELECT +site, UPDATE +site | | No table INSERT policy; `submit_self_received()`/`direct_mark_received()` (both SECURITY DEFINER) are the only write paths ([#406](https://github.com/katogaming88/WGA-Raid-Hub/issues/406)) |
 | site_admins | no | | | Site admins only: SELECT and all ops via `is_site_admin()` |
 | site_settings | yes | | | Singleton row (id=1); no write policy, `admin_set_maintenance_mode()` (SECURITY DEFINER) is the only write path ([#245](https://github.com/katogaming88/WGA-Raid-Hub/issues/245)) |
+| streamers | yes | all ops | (via officer) | First self-service write policy in the schema ([#286](https://github.com/katogaming88/WGA-Raid-Hub/issues/286)): a raider can also INSERT/UPDATE/DELETE their own row via `is_own_player(player_id)`, independent of the officer/team-leader grant |
 | team_members | no | SELECT +site | all ops +site | Members also read their own row (`auth_user_id = auth.uid()`) |
 | team_settings | yes | | all ops +site | |
 | teams | yes | | | Read-only lookup; no write policy |

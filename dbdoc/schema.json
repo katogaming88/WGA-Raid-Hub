@@ -2589,6 +2589,142 @@
       ]
     },
     {
+      "name": "public.streamers",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('streamers_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "twitch_channel",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "schedule_note",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "guild_wide_opt_out",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "is_live",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "last_checked_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "streamers_pkey",
+          "def": "CREATE UNIQUE INDEX streamers_pkey ON public.streamers USING btree (id)",
+          "table": "public.streamers",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "streamers_player_id_key",
+          "def": "CREATE UNIQUE INDEX streamers_player_id_key ON public.streamers USING btree (player_id)",
+          "table": "public.streamers",
+          "columns": [
+            "player_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "streamers_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.streamers",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "streamers_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.streamers",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "streamers_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.streamers",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "streamers_player_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (player_id)",
+          "table": "public.streamers",
+          "referenced_table": "",
+          "columns": [
+            "player_id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_streamers_team_id_check",
+          "def": "CREATE TRIGGER trg_streamers_team_id_check BEFORE INSERT OR UPDATE ON public.streamers FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        },
+        {
+          "name": "trg_streamers_updated_at",
+          "def": "CREATE TRIGGER trg_streamers_updated_at BEFORE UPDATE ON public.streamers FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
       "name": "public.site_settings",
       "type": "BASE TABLE",
       "columns": [
@@ -3056,6 +3192,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.streamers",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.streamers",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -3195,6 +3357,12 @@
       "name": "public.unarchive_season",
       "return_type": "jsonb",
       "arguments": "p_team_id integer, p_index integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.is_own_player",
+      "return_type": "bool",
+      "arguments": "p_player_id integer",
       "type": "FUNCTION"
     },
     {
