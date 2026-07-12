@@ -700,12 +700,15 @@ interface BiSBody {
   bisLink?: string;
   notes?: string;
   submittedAt?: string;
+  // #278: raider flagged that the list behind an unchanged link needs a
+  // recheck, rather than submitting a new link -- same queue, different embed.
+  sameLink?: boolean;
 }
 
 app.post('/bis', async (req: Request, res: Response): Promise<void> => {
   if (!checkSecret(req, res)) return;
 
-  const { nameRealm, bisLink, notes, submittedAt } =
+  const { nameRealm, bisLink, notes, submittedAt, sameLink } =
     req.body as BiSBody;
 
   if (!nameRealm || !bisLink) {
@@ -722,7 +725,7 @@ app.post('/bis', async (req: Request, res: Response): Promise<void> => {
 
   const embed = new EmbedBuilder()
     .setColor(0x1abc9c)
-    .setTitle('New BiS List Submission')
+    .setTitle(sameLink ? 'BiS List Flagged -- Items Changed' : 'New BiS List Submission')
     .addFields(
       { name: 'Player', value: nameRealm },
       { name: 'Submitted At', value: `<t:${unixTs}:f>` },
@@ -731,9 +734,13 @@ app.post('/bis', async (req: Request, res: Response): Promise<void> => {
     )
     .setFooter({ text: 'BiS List System' });
 
+  const pingText = sameLink
+    ? 'BiS list items changed (same link) -- please recheck!'
+    : 'New BiS list submission received!';
+
   if (ROSTER_PING_ROLE_ID) {
     await channel.send({
-      content: `<@&${ROSTER_PING_ROLE_ID}> New BiS list submission received!`,
+      content: `<@&${ROSTER_PING_ROLE_ID}> ${pingText}`,
       embeds: [embed],
     });
   } else {
