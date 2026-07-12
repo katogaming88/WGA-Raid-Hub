@@ -174,6 +174,17 @@ update public.items
 -- It does introduce one value the CASE has never seen: 'Held In Off-hand',
 -- Wowhead's name for off-hand-only items (tomes, orbs). Those share the addon's
 -- 'oh' key with shields. Body is otherwise unchanged from #335.
+--
+-- SYNC REMINDER: whatever this function returns is decoded client-side by a
+-- separate repo, RCLootCouncil_PriorityLoot (Data/db.lua's
+-- RCPL_Data_SaveImportedData/RCPL_Data_GetPlayerPriority), which hardcodes
+-- its own expectations of the { players, priority } shape, slot-key
+-- vocabulary (helm/neck/shoulders/.../mh2h/oh), and per-track (H/M) keys.
+-- There is no automated contract test between the two repos. Any change here
+-- that touches the returned shape needs a matching check (and likely a PR)
+-- against that addon's Data/db.lua, Modules/importFrame.lua, and README.md
+-- before it ships -- see that repo's CHANGELOG.md for the last time this
+-- happened (v0.2.0/v0.2.1, paired with #335 and this migration).
 create or replace function public.build_rclc_export(
   p_team_id integer,
   p_season text

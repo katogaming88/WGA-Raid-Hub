@@ -2,6 +2,12 @@ var ARMOR_SLOT_ORDER = ['HEAD', 'SHOULDERS', 'CHEST', 'GLOVES', 'LEGS', 'CLOAK',
 
 // _utf8ToBase64() moved to js/common.js (#408) so index.html's Quick Actions
 // export button can share it too.
+//
+// The payload itself comes from supabaseClient.rpc('build_rclc_export', ...)
+// (see supabase/migrations/*_rclc_export.sql and the SYNC REMINDER in
+// *_item_catalog_slot_normalization.sql) -- its shape is hardcoded on the
+// decoding side by a separate repo, RCLootCouncil_PriorityLoot. Any change to
+// what that RPC returns needs a matching check against that addon.
 function fetchExportString() {
   var btn = document.getElementById('prioExportLoadBtn');
   var body = document.getElementById('prioExportBody');
