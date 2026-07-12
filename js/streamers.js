@@ -113,7 +113,7 @@ function streamerCardHTML(s, opts) {
   var profileLink = player
     ? '<a href="javascript:void(0)" onclick="showView(\'profile\');renderProfile(\'' +
       player.firstName.replace(/'/g, "\\'") +
-      "','landing')\" class=\"stream-profile-link\">View profile</a>"
+      '\',\'landing\')" class="stream-profile-link">View profile</a>'
     : '';
 
   return (
@@ -227,9 +227,7 @@ function buildStreamWidget() {
   });
 
   widget.style.display = '';
-  pill.innerHTML = live.length
-    ? '<span class="stream-widget-dot"></span>' + live.length + ' Live'
-    : 'Streams';
+  pill.innerHTML = live.length ? '<span class="stream-widget-dot"></span>' + live.length + ' Live' : 'Streams';
 
   panel.innerHTML = live.length
     ? '<div class="stream-widget-list">' +
@@ -256,7 +254,8 @@ function buildStreamersTab() {
   if (!container) return;
   var visible = getVisibleStreamers();
   if (!visible.length) {
-    container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No streamers linked yet.</p>';
+    container.innerHTML =
+      '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No streamers linked yet.</p>';
     return;
   }
   var html = '<div class="stream-grid stream-grid-big">';

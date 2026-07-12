@@ -22,9 +22,13 @@ function showView(name) {
     var el = document.getElementById(id);
     if (el) el.classList.remove('active');
   });
-  var activeNav = { landing: 'navHome', profile: 'navHome', signup: 'navSignup', roster: 'navRoster', streamers: 'navStreamers' }[
-    name
-  ];
+  var activeNav = {
+    landing: 'navHome',
+    profile: 'navHome',
+    signup: 'navSignup',
+    roster: 'navRoster',
+    streamers: 'navStreamers'
+  }[name];
   if (activeNav) {
     var el = document.getElementById(activeNav);
     if (el) el.classList.add('active');
