@@ -717,6 +717,51 @@ function raidRemoveBoss(raidIdx, bossIdx) {
   renderRaidProgressionCards();
 }
 
+// -- Boss reordering (drag-and-drop) --
+
+var _raidBossDrag = { raidIdx: -1, bossIdx: -1 };
+
+function raidBossDragStart(e, raidIdx, bossIdx) {
+  raidCollectFromDOM();
+  _raidBossDrag.raidIdx = raidIdx;
+  _raidBossDrag.bossIdx = bossIdx;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function raidBossDragOver(e, raidIdx, bossIdx) {
+  if (raidIdx !== _raidBossDrag.raidIdx) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  var rows = document.querySelectorAll('.raid-boss-row');
+  rows.forEach(function (el) {
+    el.classList.remove('drag-over');
+  });
+  if (bossIdx !== _raidBossDrag.bossIdx) e.currentTarget.classList.add('drag-over');
+}
+
+function raidBossDrop(e, raidIdx, toIdx) {
+  if (raidIdx !== _raidBossDrag.raidIdx) return;
+  e.preventDefault();
+  var fromIdx = _raidBossDrag.bossIdx;
+  if (fromIdx === toIdx || fromIdx < 0) return;
+  var bosses = SEASON_RAIDS[raidIdx].bosses;
+  var moved = bosses.splice(fromIdx, 1)[0];
+  bosses.splice(toIdx, 0, moved);
+  _raidBossDrag.raidIdx = -1;
+  _raidBossDrag.bossIdx = -1;
+  renderRaidProgressionCards();
+}
+
+function raidBossDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.raid-boss-row').forEach(function (el) {
+    el.classList.remove('drag-over');
+  });
+  _raidBossDrag.raidIdx = -1;
+  _raidBossDrag.bossIdx = -1;
+}
+
 function raidCollectFromDOM() {
   var wrap = document.getElementById('raidProgressionCards');
   if (!wrap) return;
@@ -825,7 +870,26 @@ function renderRaidProgressionCards() {
       html += '<div style="display:flex;flex-direction:column;gap:0.4rem;margin-bottom:0.5rem;">';
       for (var j = 0; j < raid.bosses.length; j++) {
         var boss = raid.bosses[j];
-        html += '<div class="raid-boss-row" style="display:flex;align-items:center;gap:0.5rem;">';
+        html +=
+          '<div class="raid-boss-row prio-drag-item" draggable="true"' +
+          ' ondragstart="raidBossDragStart(event,' +
+          i +
+          ',' +
+          j +
+          ')"' +
+          ' ondragover="raidBossDragOver(event,' +
+          i +
+          ',' +
+          j +
+          ')"' +
+          ' ondrop="raidBossDrop(event,' +
+          i +
+          ',' +
+          j +
+          ')"' +
+          ' ondragend="raidBossDragEnd(event)"' +
+          '>';
+        html += '<span class="prio-drag-handle" title="Drag to reorder">&#8942;&#8942;</span>';
         html +=
           '<span style="font-size:0.8rem;color:var(--text-muted);min-width:1.2rem;text-align:right;">' +
           (j + 1) +

@@ -38,7 +38,7 @@ if (_teamParam && _teamParam in TEAMS) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.33.19';
+var VERSION = '3.33.20';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -96,7 +96,12 @@ function switchTeam(slug) {
     }
   } catch (_) {}
   sessionStorage.setItem('wga_team', slug);
-  location.href = location.pathname;
+  // Always include ?team= so the URL genuinely changes even when there was no
+  // query string to begin with (e.g. switching away from the default team) --
+  // assigning location.href the exact same URL the page is already on can be
+  // treated as a soft reload that reuses cached/in-memory resources (fonts
+  // included) instead of a real fresh navigation.
+  location.href = location.pathname + '?team=' + slug;
 }
 
 function initTeamUI() {
