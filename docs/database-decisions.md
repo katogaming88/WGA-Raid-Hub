@@ -6,6 +6,20 @@ Issues carrying a decision are tagged with the `decision` label: `gh issue list 
 
 ---
 
+## 2026-07-25 -- Self-received approval syncs bis_items.obtained (#386): a slot column plus a one-way trigger, not RPC-side writes
+
+Approving a self-received item should tick the matching BiS row as obtained, so BiS Manager stays the one place officers actively *edit* a list and "Mark received" is only a received-state signal (#217's stated intent). Three decisions fell out of it.
+
+- **Added `self_received_requests.slot` (nullable text)** rather than matching on `(player_id, item_id)` alone. `bis_items` is unique on `(player_id, item_id, coalesce(slot, ''))`, and the placeholder items -- `M+`, `Crafted`, `Catalyst` (`items.is_placeholder`) -- name a loot *source* rather than a piece of gear, so one player legitimately lists `M+` against six different slots (10 such rows live at the time of writing). An approved `M+` with no slot could not say which of those rows it filled; flipping all of them would fill six slots from one drop. The frontend already knew the answer (the "Mark received" button is rendered per BiS row) and simply had nowhere to put it.
+- **The button sends the raw `bis_items.slot`, not the displayed slot name.** These diverge routinely -- the item catalog says `Boots`/`Gloves`/`Trinket` where `bis_items` says `Feet`/`Hands`/`Trinket 1` (and 30 live rows carry a blank BiS slot against a `Trinket` catalog slot). `mapSupabaseBisItems()` already exposed both as `entry.slot` (display) and `entry.dbSlot` (raw), for exactly this reason on the tab-bis.js delete/update path. Sending the display slot would have made the trigger match nothing for most real items -- a silent no-op, not an error.
+- **The flip lives in a trigger on `self_received_requests`, not inside `submit_self_received()`/`direct_mark_received()`.** There is a third path to `approved` that is neither RPC: the officer Requests tab (`js/tabs/tab-requests.js`) approves a pending row with a plain `UPDATE`. A trigger catches all three (raider auto-approve, officer direct-mark, queue approval) and cannot be bypassed by a fourth. `SECURITY DEFINER`, since a raider auto-approving their own item is not an officer and writes to `bis_items` are restricted to officers.
+- **One-way on purpose**: approving sets `obtained = true`; rejecting or reverting an approval never sets it back to `false`. An officer may have ticked the box by hand for an unrelated reason, and clearing it here would silently discard that. Unticking stays a deliberate officer action in BiS Manager.
+- **Both RPCs were dropped and recreated, not `CREATE OR REPLACE`d.** A function is identified by `(name, argument types)`, so adding `p_slot` would have left the old 6-argument version in place as an overload that PostgREST could still resolve calls to.
+
+[Full discussion -> #386](https://github.com/katogaming88/WGA-Raid-Hub/issues/386)
+
+---
+
 ## 2026-07-18 -- Season-code to display-name mapping (#341): stays a frontend translation, now pattern-derived instead of hardcoded per season
 
 `scoring.season`/`priority_order.season`/`rclc_loot.season` store a compact code (`MID1`, decided on #320) as the stable join/filter key across those tables, while officers see and type a free-text display name (`DATA.seasonName`, Season Settings tab -> `team_settings.config` via `saveTeamSetting()`, #221). Something has to translate between the two on every read/write that touches season data.

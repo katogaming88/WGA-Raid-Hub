@@ -13,6 +13,7 @@
 | track | text |  | true |  |  |  |
 | source | text |  | true |  |  |  |
 | note | text |  | true |  |  |  |
+| slot | text |  | true |  |  | BiS slot the request was raised against, mirroring bis_items.slot. Lets an approval target one row when the same item -- notably an is_placeholder source like M+ -- sits in several slots. Null on rows predating #386. |
 
 ## Constraints
 
@@ -36,6 +37,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | trg_self_received_requests_team_id_check | CREATE TRIGGER trg_self_received_requests_team_id_check BEFORE INSERT OR UPDATE ON public.self_received_requests FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player() |
+| trg_self_received_sync_bis_obtained | CREATE TRIGGER trg_self_received_sync_bis_obtained AFTER INSERT OR UPDATE OF status ON public.self_received_requests FOR EACH ROW WHEN ((new.status = 'approved'::text)) EXECUTE FUNCTION sync_bis_obtained_from_self_received() |
 
 ## Relations
 
@@ -56,6 +58,7 @@ erDiagram
   text track
   text source
   text note
+  text slot
 }
 "public.teams" {
   integer id

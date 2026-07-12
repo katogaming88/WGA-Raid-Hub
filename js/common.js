@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.33.14';
+var VERSION = '3.33.15';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -2289,7 +2289,13 @@ function _selfReceivedTrackFromDiff(diff) {
   return diff === 'Mythic' ? 'Myth' : diff === 'Heroic' ? 'Hero' : diff;
 }
 
-function showSelfReceivedForm(firstName, nameRealm, item, slot, rowId, defaultSource, isOfficer) {
+// dbSlot is the raw bis_items.slot of the row this button was rendered for, as
+// distinct from `slot` (the display slot, which prefers the item catalog's own
+// slot name). They diverge routinely -- the catalog says "Boots"/"Gloves"/
+// "Trinket" where bis_items says "Feet"/"Hands"/"Trinket 1" -- so only dbSlot
+// can identify which BiS row an approval fills (#386). `slot` stays the display
+// value used for the optimistic DATA.selfReceived patch below.
+function showSelfReceivedForm(firstName, nameRealm, item, slot, rowId, defaultSource, isOfficer, dbSlot) {
   if (event) event.stopPropagation();
   var formEl = document.getElementById('form-' + rowId);
   if (!formEl) return;
@@ -2313,6 +2319,7 @@ function showSelfReceivedForm(firstName, nameRealm, item, slot, rowId, defaultSo
   var nrSafe = nameRealm.replace(/'/g, "\\'");
   var itemSafe = item.replace(/'/g, "\\'");
   var slotSafe = slot.replace(/'/g, "\\'");
+  var dbSlotSafe = String(dbSlot || '').replace(/'/g, "\\'");
   var submitFn = isOfficer
     ? "submitDirectMarkReceived('" +
       fnSafe +
@@ -2324,6 +2331,8 @@ function showSelfReceivedForm(firstName, nameRealm, item, slot, rowId, defaultSo
       slotSafe +
       "','" +
       rowId +
+      "','" +
+      dbSlotSafe +
       "')"
     : "submitSelfReceivedRequest('" +
       fnSafe +
@@ -2335,6 +2344,8 @@ function showSelfReceivedForm(firstName, nameRealm, item, slot, rowId, defaultSo
       slotSafe +
       "','" +
       rowId +
+      "','" +
+      dbSlotSafe +
       "')";
   var submitLabel = isOfficer ? 'Mark received' : 'Submit request';
   var noteText = isOfficer
@@ -2375,7 +2386,7 @@ function showSelfReceivedForm(firstName, nameRealm, item, slot, rowId, defaultSo
   formEl.style.display = 'block';
 }
 
-function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId) {
+function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId, dbSlot) {
   var sourceEl = /** @type {HTMLSelectElement} */ (document.getElementById('src-' + rowId));
   var notesEl = /** @type {HTMLTextAreaElement} */ (document.getElementById('notes-' + rowId));
   var diffEl = /** @type {HTMLSelectElement} */ (document.getElementById('diff-' + rowId));
@@ -2402,7 +2413,12 @@ function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId) {
       p_item_name: item,
       p_track: _selfReceivedTrackFromDiff(diff),
       p_source: sourceEl.value,
-      p_note: notesEl ? notesEl.value : ''
+      p_note: notesEl ? notesEl.value : '',
+      // The raw bis_items.slot, not the display slot -- approval flips exactly
+      // this row (#386). Empty for legacy rows that never had a slot, which the
+      // trigger handles by only inferring a target when the item occupies a
+      // single slot for that player.
+      p_slot: dbSlot || ''
     })
     .then(function (result) {
       if (!formEl) return;
@@ -2443,7 +2459,7 @@ function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId) {
     });
 }
 
-function submitDirectMarkReceived(firstName, nameRealm, item, slot, rowId) {
+function submitDirectMarkReceived(firstName, nameRealm, item, slot, rowId, dbSlot) {
   var sourceEl = /** @type {HTMLSelectElement} */ (document.getElementById('src-' + rowId));
   var notesEl = /** @type {HTMLTextAreaElement} */ (document.getElementById('notes-' + rowId));
   var diffEl = /** @type {HTMLSelectElement} */ (document.getElementById('diff-' + rowId));
@@ -2469,7 +2485,10 @@ function submitDirectMarkReceived(firstName, nameRealm, item, slot, rowId) {
       p_item_name: item,
       p_track: _selfReceivedTrackFromDiff(diff),
       p_source: sourceEl.value,
-      p_note: notesEl ? notesEl.value : ''
+      p_note: notesEl ? notesEl.value : '',
+      // See submitSelfReceivedRequest: the raw bis_items.slot, targeting the
+      // exact row this button was rendered for (#386).
+      p_slot: dbSlot || ''
     })
     .then(function (result) {
       if (!formEl) return;
@@ -2776,6 +2795,10 @@ function renderProfile(firstName, backTo, container) {
       bisSlot = entry.slot;
     var rank = getRank(player.firstName, item);
     var slot = (DATA.itemSlots || {})[item] || bisSlot || '';
+    // The raw bis_items.slot for this row, which "Mark received" sends so the
+    // approval flips this exact row rather than every row sharing the item
+    // (#386). Distinct from `slot` above, which prefers the catalog's name.
+    var dbSlot = entry.dbSlot || '';
     var isGen = item === 'M+' || item === 'Crafted' || item === 'Catalyst';
     var received = receivedMap[normalise(item)] || null;
     var selfRec = selfRecMap[normalise(item)] || null;
@@ -2810,7 +2833,9 @@ function renderProfile(firstName, backTo, container) {
       defaultSrc.replace(/'/g, "\\'") +
       "'," +
       officerFlag +
-      ')">Mark received</button>';
+      ",'" +
+      dbSlot.replace(/'/g, "\\'") +
+      '\')">Mark received</button>';
     if (received) {
       var badges = '';
       for (var rv = 0; rv < received.length; rv++) {
