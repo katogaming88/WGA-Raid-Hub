@@ -3575,6 +3575,12 @@
       "return_type": "trigger",
       "arguments": "",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.flag_bis_list_changed",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_name_realm text, p_player_note text DEFAULT NULL::text",
+      "type": "FUNCTION"
     }
   ],
   "enums": [
