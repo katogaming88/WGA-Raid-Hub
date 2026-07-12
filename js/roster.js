@@ -367,7 +367,14 @@ checkMaintenanceMode().then(function (maint) {
       buildPublicStats();
       buildProgression();
       buildStreamWidget();
-      showView('landing');
+      // Deep-link support for officer.html's nav (#354) -- its Roster/Streams/Sign
+      // Up/Help links point back at index.html since those views only exist here.
+      var hashView = { roster: 'roster', streams: 'streamers', signup: 'signup', help: 'help' }[
+        (location.hash || '').replace('#', '')
+      ];
+      if (hashView === 'signup') showSignupView();
+      else if (hashView) showView(hashView);
+      else showView('landing');
       // Init Discord session after core data is ready so the profile deep-link can
       // find the claimed character in the now-populated player dropdown.
       if (typeof initDiscordLogin === 'function') initDiscordLogin();
