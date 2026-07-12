@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.23] - 2026-07-12
+
+### Frontend
+
+- **"Clear read" in the notification bell dropdown.** A header row with a "Clear read" link appears whenever the dropdown has at least one already-read notification, hiding it from view -- and staying hidden across refreshes and future logins. Doesn't touch the `notifications` table at all (no new raider-writable delete path): a per-character "cleared through" id is kept in `localStorage`, so this resets if the raider ever clears site data, which also logs them out of Discord at the same time anyway.
+
 ## [3.33.22] - 2026-07-12
 
 ### Frontend

@@ -47,6 +47,9 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 .nav-bell { position:relative; font-size:1.1rem !important; padding:0.65rem 0.75rem !important; }
 .notif-dropdown { position:absolute; top:100%; right:0; background:var(--bg-elevated); border:1px solid var(--border-mid); border-radius:4px; min-width:280px; max-width:340px; max-height:360px; overflow-y:auto; z-index:300; box-shadow:0 4px 12px rgba(0,0,0,0.5); }
 .notif-empty { padding:0.75rem 1rem; font-size:0.94rem; color:var(--text-muted); }
+.notif-header { display:flex; justify-content:flex-end; padding:0.4rem 0.75rem; border-bottom:1px solid var(--border); }
+.notif-clear-btn { background:none; border:none; color:var(--text-muted); font-size:0.85rem; cursor:pointer; padding:0; }
+.notif-clear-btn:hover { color:var(--gold); text-decoration:underline; }
 .notif-row { padding:0.6rem 1rem; border-bottom:1px solid var(--border); }
 .notif-row:last-child { border-bottom:none; }
 .notif-row.notif-unread { background:rgba(214,163,68,0.07); }

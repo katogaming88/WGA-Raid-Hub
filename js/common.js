@@ -38,7 +38,7 @@ if (_teamParam && _teamParam in TEAMS) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.33.22';
+var VERSION = '3.33.23';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -114,15 +114,44 @@ function markNotificationsRead(ids) {
 // (js/discord.js) on every session state change, so it covers login,
 // restored-session, logout, and claim on both index.html and officer.html.
 var _notifCache = [];
+var _notifNameRealm = null; // current session's linked character, for the cleared-threshold storage key
+
+// "Clear read" (below) never deletes/mutates notifications rows -- it only
+// remembers, per browser and per linked character, the highest id that was
+// cleared so already-read rows below that id stay hidden across refreshes.
+// Keyed like DISCORD_SESSION_KEY (js/discord.js): one browser is assumed to
+// be one raider at a time per team, plus the character name so a later claim
+// of a different alt on the same browser doesn't inherit an unrelated clear.
+function _notifClearedStorageKey(nameRealm) {
+  return 'wga_notif_cleared_' + TEAM_SLUG + '_' + nameRealm;
+}
+
+function _getNotifClearedThreshold() {
+  if (!_notifNameRealm) return 0;
+  try {
+    return parseInt(localStorage.getItem(_notifClearedStorageKey(_notifNameRealm)), 10) || 0;
+  } catch (_) {
+    return 0;
+  }
+}
+
+function _setNotifClearedThreshold(id) {
+  if (!_notifNameRealm) return;
+  try {
+    localStorage.setItem(_notifClearedStorageKey(_notifNameRealm), String(id));
+  } catch (_) {}
+}
 
 function renderNotifBell(session) {
   var btn = document.getElementById('navBell');
   if (!btn) return;
   if (!session || !session.nameRealm) {
     btn.style.display = 'none';
+    _notifNameRealm = null;
     closeNotifDropdown();
     return;
   }
+  _notifNameRealm = session.nameRealm;
   btn.style.display = '';
   refreshNotifBell();
 }
@@ -186,15 +215,44 @@ function closeNotifDropdown() {
   document.removeEventListener('click', _closeNotifDropdownOnOutsideClick);
 }
 
+// "Clear read" doesn't delete or mutate any notifications row -- it raises
+// the cleared-threshold (persisted in localStorage) to the highest id
+// currently in view, so every already-read row hides on this and future
+// renders (including after a refresh) without touching the DB. A
+// notification that arrives later and gets read still shows normally, since
+// its id is above the threshold.
+function clearReadNotifications(ev) {
+  if (ev) ev.stopPropagation();
+  var maxReadId = 0;
+  _notifCache.forEach(function (n) {
+    if (n.read && n.id > maxReadId) maxReadId = n.id;
+  });
+  if (maxReadId > 0) _setNotifClearedThreshold(maxReadId);
+  renderNotifDropdown();
+}
+
+function _visibleNotifRows() {
+  var threshold = _getNotifClearedThreshold();
+  return _notifCache.filter(function (n) {
+    return !n.read || n.id > threshold;
+  });
+}
+
 function renderNotifDropdown() {
   var dd = document.getElementById('notifDropdown');
   if (!dd) return;
-  if (!_notifCache.length) {
+  var rows = _visibleNotifRows();
+  if (!rows.length) {
     dd.innerHTML = '<div class="notif-empty">No notifications yet.</div>';
     return;
   }
-  var html = '';
-  _notifCache.forEach(function (n) {
+  var hasRead = rows.some(function (n) {
+    return n.read;
+  });
+  var html = hasRead
+    ? '<div class="notif-header"><button class="notif-clear-btn" onclick="clearReadNotifications(event)">Clear read</button></div>'
+    : '';
+  rows.forEach(function (n) {
     html +=
       '<div class="notif-row' +
       (n.read ? '' : ' notif-unread') +
