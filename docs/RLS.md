@@ -42,7 +42,6 @@ One thing the matrix hides on purpose: every table also carries a `claude_reader
 | rclc_loot | yes | all ops | (via officer) | |
 | scoring | yes | all ops | (via officer) | Team resolved through `players.team_id` subquery |
 | season_signups | no | SELECT +site, UPDATE +site | | No table INSERT policy; `submit_season_signup()` (SECURITY DEFINER) is the only write path ([#403](https://github.com/katogaming88/WGA-Raid-Hub/issues/403)) |
-| season_snapshots | yes | | all ops +site | |
 | self_received_requests | no | SELECT +site, UPDATE +site | | No table INSERT policy; `submit_self_received()`/`direct_mark_received()` (both SECURITY DEFINER) are the only write paths ([#406](https://github.com/katogaming88/WGA-Raid-Hub/issues/406)) |
 | site_admins | no | | | Site admins only: SELECT and all ops via `is_site_admin()` |
 | site_settings | yes | | | Singleton row (id=1); no write policy, `admin_set_maintenance_mode()` (SECURITY DEFINER) is the only write path ([#245](https://github.com/katogaming88/WGA-Raid-Hub/issues/245)) |
