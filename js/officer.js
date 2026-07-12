@@ -387,20 +387,6 @@ function applyFeatureFlagVisibility() {
   }
 }
 
-function clearCache() {
-  var btn = document.getElementById('clearCacheBtn');
-  btn.disabled = true;
-  btn.textContent = 'Clearing...';
-
-  jsonpRequest(WEB_APP_URL + '?action=clearCache', function (err, data) {
-    btn.textContent = !err && data && data.success ? 'Cleared!' : 'Error';
-    setTimeout(function () {
-      btn.textContent = 'Clear Cache';
-      btn.disabled = false;
-    }, 2000);
-  });
-}
-
 // -- Season selector ----------------------------------------------------------
 
 // ATTENDANCE_WEIGHTS_JS/getSeasonDateRange/computeSeasonAttendancePct/

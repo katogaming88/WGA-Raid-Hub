@@ -3150,6 +3150,36 @@
       "type": "FUNCTION"
     },
     {
+      "name": "public.danger_clear_bis_requests",
+      "return_type": "int4",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.danger_clear_season_signups",
+      "return_type": "int4",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.danger_clear_pending_roster",
+      "return_type": "int4",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.danger_clear_mplus_exclusion_requests",
+      "return_type": "int4",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.danger_clear_self_received_requests",
+      "return_type": "int4",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
       "name": "public.set_team_setting",
       "return_type": "jsonb",
       "arguments": "p_team_id integer, p_updates jsonb",

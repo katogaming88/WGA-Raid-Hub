@@ -8,6 +8,20 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-07-11 -- Danger Zone request-table clears (#225): five single-purpose RPCs, not one generic one; loot stays a direct delete
+
+The Danger Zone's seven "Clear ___ Sheet" ops were the last GAS call sites left standing once #386/#423/#453/#455 finished migrating everything else -- retiring Apps Script (#225) meant finally giving them a real destination instead of a dead GAS action.
+
+- **Five separate `danger_clear_*` functions, not one function parameterized by table name.** Every other request-table write in this schema (`submit_self_received`, `direct_mark_received`, `set_team_setting`, etc.) is single-purpose SECURITY DEFINER, and a table-name-as-parameter design would mean building a `delete from` statement dynamically -- avoidable SQL-injection-adjacent surface for a feature that only ever needed five fixed targets.
+- **All five are `is_site_admin()`-only, not `my_team_role() OR is_site_admin()`.** None of the underlying `DANGER_OPS` entries carry `teamLeader: true` except Clear Season History (the #294 decision), so these five stay narrower than the officer-or-site-admin shape `direct_mark_received()` uses.
+- **`danger_clear_pending_roster` is a distinct, narrower op from `danger_clear_season_signups`.** The old GAS "Pending Roster" sheet was specifically the queue of approved-but-not-yet-added signups, not every signup ever submitted -- matched here to the `pending_roster` view's own definition (`status = 'approved' and approved_player_id is null`) rather than reusing the full-clear RPC with a filter flag, so the two operations can't be confused by a caller passing the wrong argument.
+- **`rclc_loot` ("Clear Loot Data") gets no RPC at all.** Officers already hold a direct `ALL` grant on it for their own team (the same grant the loot-import path uses), so a Danger Zone SECURITY DEFINER wrapper would be narrowing access that already exists, not widening it. Stays a plain client-side delete.
+- **"Clear Pasted Loot Sheet" is retired outright, not migrated.** #219 replaced the old paste-to-sheet-then-import flow with a direct paste-to-RPC import (`import_rclc_loot()`) that writes straight to `rclc_loot` with no staging table, so the sheet this op used to clear has had no Supabase-side equivalent since #219 shipped.
+
+[Full discussion -> #225](https://github.com/katogaming88/WGA-Raid-Hub/issues/225)
+
+---
+
 ## 2026-07-11 -- Dropped season_snapshots (#455): designed to replace the season history blob, never actually used
 
 Surfaced while fixing #423 (Danger Zone's Clear Season History op described itself as clearing this table -- it never did). `season_snapshots` (`team_id`, `season`, `snapped_at`, `data jsonb`) was designed in the original migration plan (`docs/supabase-migration-plan.md`) to hold one row per archived season per team, explicitly called out as replacing "the season history blob" from the GAS Script Properties era.

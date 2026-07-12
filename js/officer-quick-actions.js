@@ -1,5 +1,5 @@
 // Officer quick-actions bar + player selector gating (index.html only).
-// Depends on: common.js (WEB_APP_URL, jsonpRequest), discord.js (getDiscordSession)
+// Depends on: common.js (supabaseClient, _teamCfg), discord.js (getDiscordSession)
 
 function _qaIsOfficer() {
   var s = typeof getDiscordSession === 'function' && getDiscordSession();
@@ -226,6 +226,13 @@ function qaExportString() {
 
 // ── Refresh Attendance ────────────────────────────────────────────────────────
 
+// Was still calling GAS's ?action=refreshAttendanceWCL directly (#225) --
+// tab-attendance.js's refreshAttendanceWCL() already moved to the wcl-sync
+// Edge Function's refreshAttendance action (#223), so this button and the
+// real Attendance tab were two different paths that could disagree, the same
+// shape of bug the priority-export inconsistency was before #335 fixed it.
+// The Edge Function's response carries the same success/mainNights/excluded/
+// error fields the GAS action did, so only the transport changes here.
 function qaRefreshAttendance() {
   var btn = document.getElementById('oqaAttendBtn');
   if (btn) {
@@ -234,14 +241,15 @@ function qaRefreshAttendance() {
   }
   _qaSetStatus('This may take 30-60 seconds...', 'var(--text-muted)');
 
-  jsonpRequest(
-    WEB_APP_URL + '?action=refreshAttendanceWCL',
-    function (err, result) {
+  supabaseClient.functions
+    .invoke('wcl-sync', { body: { action: 'refreshAttendance', teamId: _teamCfg.supabaseTeamId } })
+    .then(function (res) {
       if (btn) {
         btn.disabled = false;
         btn.textContent = 'Refresh Attendance';
       }
-      if (!err && result && result.success) {
+      var result = res.data;
+      if (!res.error && result && result.success) {
         var msg =
           'Done: ' +
           result.mainNights +
@@ -262,11 +270,12 @@ function qaRefreshAttendance() {
             '" style="color:var(--gold-light);text-decoration:underline;">Review in Dashboard</a>';
         }
       } else {
-        _qaSetStatus(err ? err.message : result && result.error ? result.error : 'Error refreshing.', 'var(--melee)');
+        _qaSetStatus(
+          res.error ? res.error.message : result && result.error ? result.error : 'Error refreshing.',
+          'var(--melee)'
+        );
       }
-    },
-    90000
-  );
+    });
 }
 
 // ── Paste Loot Import ─────────────────────────────────────────────────────────

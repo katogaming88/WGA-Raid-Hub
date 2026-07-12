@@ -100,70 +100,67 @@ function downloadExport() {
 
 // ── Danger Zone ───────────────────────────────────────────────────────────
 
+// Every op is Supabase-native now (#225). Each carries a supabaseFn (the
+// clear*Supabase() function below it does its work through), so
+// executeDangerOp() has one dispatch path for all of them -- no more GAS
+// action/sheet pair or jsonpRequest fallback.
 var DANGER_OPS = [
   {
     key: 'clearSeasonHistory',
     label: 'Clear Season History',
     desc: "Permanently deletes all archived seasons from this team's settings.",
-    // Supabase-native (#423): since #221 archived seasons live in
-    // team_settings.config.seasonHistory, not GAS Script Properties. This op
-    // used to call the GAS dangerClearSeasonHistory action, which cleared the
-    // old store and left the canonical one untouched -- reporting success while
-    // the archived seasons survived. Handled by the op.supabase branch in
-    // executeDangerOp() instead of the GAS sheet path below.
+    // #423: since #221 archived seasons live in team_settings.config
+    // .seasonHistory, not GAS Script Properties (or season_snapshots, which
+    // never held real data and was dropped, #455).
     supabase: true,
-    // The one team-leader-scoped danger op (the #294 decision); the sheet wipes
-    // below stay site-admin only.
+    supabaseFn: clearSeasonHistorySupabase,
+    // The one team-leader-scoped danger op (the #294 decision); the rest stay
+    // site-admin only.
     teamLeader: true
   },
   {
     key: 'clearLootData',
-    label: 'Clear Loot Data Sheet',
-    desc: 'Wipes all imported RCLootCouncil loot entries from the Loot Data sheet.',
-    action: 'dangerClearSheet',
-    sheet: 'Loot Data'
-  },
-  {
-    key: 'clearPastedLoot',
-    label: 'Clear Pasted Loot Sheet',
-    desc: 'Wipes all rows from the Pasted Loot sheet.',
-    action: 'dangerClearSheet',
-    sheet: 'Pasted Loot'
+    label: 'Clear Loot Data',
+    desc: 'Wipes all imported RCLootCouncil loot entries for this team.',
+    supabase: true,
+    supabaseFn: clearLootDataSupabase
   },
   {
     key: 'clearBisSubs',
     label: 'Clear BiS Submissions',
-    desc: 'Wipes all rows from the BiS Responses sheet.',
-    action: 'dangerClearSheet',
-    sheet: 'BiS Responses'
+    desc: 'Wipes all pending BiS link submissions for this team.',
+    supabase: true,
+    supabaseFn: clearBisRequestsSupabase
   },
   {
     key: 'clearSignups',
     label: 'Clear Signups',
-    desc: 'Wipes all rows from the Roster Responses (signup applications) sheet.',
-    action: 'dangerClearSheet',
-    sheet: 'Roster Responses'
+    desc: 'Wipes all signup applications for this team, any status.',
+    supabase: true,
+    supabaseFn: clearSeasonSignupsSupabase
   },
   {
     key: 'clearMplus',
     label: 'Clear M+ Exclusion Requests',
-    desc: 'Wipes all rows from the M+ Exclusion Requests sheet.',
-    action: 'dangerClearSheet',
-    sheet: 'M+ Exclusion Requests'
+    desc: 'Wipes all M+ exclusion requests for this team.',
+    supabase: true,
+    supabaseFn: clearMplusExclusionRequestsSupabase
   },
   {
     key: 'clearPending',
     label: 'Clear Pending Roster',
-    desc: 'Wipes all rows from the Pending Roster sheet.',
-    action: 'dangerClearSheet',
-    sheet: 'Pending Roster'
+    // Narrower than Clear Signups: matches the pending_roster view's own
+    // definition (status = 'approved' and approved_player_id is null).
+    desc: 'Wipes approved signups not yet added to the roster, leaving other signups alone.',
+    supabase: true,
+    supabaseFn: clearPendingRosterSupabase
   },
   {
     key: 'clearSelfReceived',
     label: 'Clear Self-Received',
-    desc: 'Wipes all rows from the Self Received Requests sheet.',
-    action: 'dangerClearSheet',
-    sheet: 'Self Received Requests'
+    desc: 'Wipes all self-received loot requests for this team.',
+    supabase: true,
+    supabaseFn: clearSelfReceivedRequestsSupabase
   }
 ];
 
@@ -221,8 +218,8 @@ function executeDangerOp(key) {
   }
   if (!op) return;
   // Keep execute consistent with what renderDangerZone showed. Not a security
-  // boundary: the GAS endpoint is unauthenticated by design, and the real
-  // enforcement is RLS on the Supabase-backed surfaces.
+  // boundary in itself -- every op's real enforcement is in its Supabase RPC
+  // (is_site_admin(), or the underlying grant for the one op with none).
   if (window._adminAccessLevel !== true && !op.teamLeader) return;
 
   var input = document.getElementById('danger-confirm-' + key);
@@ -246,7 +243,10 @@ function executeDangerOp(key) {
     btn.textContent = 'Working...';
   }
 
-  function finish(err, ok) {
+  // count is optional -- the row-count RPCs pass it for a more specific
+  // status message; clearSeasonHistorySupabase (no natural row count) omits
+  // it and gets the generic "Done."
+  function finish(err, ok, count) {
     if (btn) {
       btn.disabled = false;
       btn.textContent = op.label;
@@ -255,7 +255,8 @@ function executeDangerOp(key) {
       if (input) input.value = '';
       if (status) {
         status.style.color = 'var(--heal)';
-        status.textContent = 'Done.';
+        status.textContent =
+          typeof count === 'number' ? 'Cleared ' + count + ' row' + (count === 1 ? '' : 's') + '.' : 'Done.';
         setTimeout(function () {
           if (status) status.textContent = '';
         }, 3000);
@@ -268,19 +269,7 @@ function executeDangerOp(key) {
     }
   }
 
-  // Season history clears the canonical Supabase store directly (#423); the
-  // sheet-wipe ops stay on GAS until Apps Script is retired (#225).
-  if (op.supabase) {
-    clearSeasonHistorySupabase(finish);
-    return;
-  }
-
-  var url = WEB_APP_URL + '?action=' + encodeURIComponent(op.action);
-  if (op.sheet) url += '&sheet=' + encodeURIComponent(op.sheet);
-
-  jsonpRequest(url, function (err, result) {
-    finish(err, result && result.success);
-  });
+  op.supabaseFn(finish);
 }
 
 // Clears team_settings.config.seasonHistory via the same set_team_setting RPC
@@ -300,6 +289,118 @@ function clearSeasonHistorySupabase(finish) {
     })
     .then(function () {
       finish(null, true);
+    })
+    .catch(function (err) {
+      finish(err);
+    });
+}
+
+// The one op with no dedicated RPC: officers already have a direct ALL grant
+// on rclc_loot for their own team (js/tabs/tab-loot-import.js's import path
+// relies on the same grant), so a Danger Zone clear needs no
+// SECURITY DEFINER wrapper. Loot backs enough surfaces at once -- profile
+// cards, loot history, BiS "received" badges -- that patching each in place
+// isn't worth it; reload once the delete and audit log both land.
+function clearLootDataSupabase(finish) {
+  supabaseClient
+    .from('rclc_loot')
+    .delete()
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      return writeAuditLog('Loot Data Cleared', null, null, null);
+    })
+    .then(function () {
+      finish(null, true);
+      setTimeout(function () {
+        location.reload();
+      }, 1200);
+    })
+    .catch(function (err) {
+      finish(err);
+    });
+}
+
+function clearBisRequestsSupabase(finish) {
+  supabaseClient
+    .rpc('danger_clear_bis_requests', { p_team_id: _teamCfg.supabaseTeamId })
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      if (typeof buildBisTab === 'function') buildBisTab();
+      return writeAuditLog('BiS Submissions Cleared', null, null, null).then(function () {
+        finish(null, true, result.data);
+      });
+    })
+    .catch(function (err) {
+      finish(err);
+    });
+}
+
+// Clears every signup application for the team, any status -- distinct from
+// clearPendingRosterSupabase below, which only clears the approved-but-not-
+// yet-added subset. Both queues (Signups and Pending Roster) can read from
+// the same season_signups rows, so both re-render.
+function clearSeasonSignupsSupabase(finish) {
+  supabaseClient
+    .rpc('danger_clear_season_signups', { p_team_id: _teamCfg.supabaseTeamId })
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      if (typeof buildSignupsTab === 'function') buildSignupsTab();
+      if (typeof buildPendingRosterTab === 'function') buildPendingRosterTab();
+      return writeAuditLog('Signups Cleared', null, null, null).then(function () {
+        finish(null, true, result.data);
+      });
+    })
+    .catch(function (err) {
+      finish(err);
+    });
+}
+
+function clearMplusExclusionRequestsSupabase(finish) {
+  supabaseClient
+    .rpc('danger_clear_mplus_exclusion_requests', { p_team_id: _teamCfg.supabaseTeamId })
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      if (typeof buildMPlusTab === 'function') buildMPlusTab();
+      return writeAuditLog('M+ Exclusion Requests Cleared', null, null, null).then(function () {
+        finish(null, true, result.data);
+      });
+    })
+    .catch(function (err) {
+      finish(err);
+    });
+}
+
+// The old GAS "Pending Roster" sheet was the queue of approved signups not
+// yet pushed to the roster, not every signup ever submitted -- matches the
+// pending_roster view's own definition (status = 'approved' and
+// approved_player_id is null). A rejected or already-pushed signup survives;
+// clearSeasonSignupsSupabase is the op for wiping everything.
+function clearPendingRosterSupabase(finish) {
+  supabaseClient
+    .rpc('danger_clear_pending_roster', { p_team_id: _teamCfg.supabaseTeamId })
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      if (typeof buildPendingRosterTab === 'function') buildPendingRosterTab();
+      if (typeof buildSignupsTab === 'function') buildSignupsTab();
+      return writeAuditLog('Pending Roster Cleared', null, null, null).then(function () {
+        finish(null, true, result.data);
+      });
+    })
+    .catch(function (err) {
+      finish(err);
+    });
+}
+
+function clearSelfReceivedRequestsSupabase(finish) {
+  supabaseClient
+    .rpc('danger_clear_self_received_requests', { p_team_id: _teamCfg.supabaseTeamId })
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      if (typeof buildRequestsTab === 'function') buildRequestsTab();
+      return writeAuditLog('Self-Received Requests Cleared', null, null, null).then(function () {
+        finish(null, true, result.data);
+      });
     })
     .catch(function (err) {
       finish(err);
