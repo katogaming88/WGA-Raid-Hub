@@ -104,11 +104,16 @@ var DANGER_OPS = [
   {
     key: 'clearSeasonHistory',
     label: 'Clear Season History',
-    desc: 'Permanently deletes all archived seasons from script properties.',
-    action: 'dangerClearSeasonHistory',
-    sheet: null,
-    // The one danger op mapped to a team-leader-only table (season_snapshots,
-    // per the #294 decision); the sheet wipes below stay site-admin only.
+    desc: "Permanently deletes all archived seasons from this team's settings.",
+    // Supabase-native (#423): since #221 archived seasons live in
+    // team_settings.config.seasonHistory, not GAS Script Properties. This op
+    // used to call the GAS dangerClearSeasonHistory action, which cleared the
+    // old store and left the canonical one untouched -- reporting success while
+    // the archived seasons survived. Handled by the op.supabase branch in
+    // executeDangerOp() instead of the GAS sheet path below.
+    supabase: true,
+    // The one team-leader-scoped danger op (the #294 decision); the sheet wipes
+    // below stay site-admin only.
     teamLeader: true
   },
   {
@@ -241,15 +246,12 @@ function executeDangerOp(key) {
     btn.textContent = 'Working...';
   }
 
-  var url = WEB_APP_URL + '?action=' + encodeURIComponent(op.action);
-  if (op.sheet) url += '&sheet=' + encodeURIComponent(op.sheet);
-
-  jsonpRequest(url, function (err, result) {
+  function finish(err, ok) {
     if (btn) {
       btn.disabled = false;
       btn.textContent = op.label;
     }
-    if (!err && result && result.success) {
+    if (!err && ok) {
       if (input) input.value = '';
       if (status) {
         status.style.color = 'var(--heal)';
@@ -264,7 +266,43 @@ function executeDangerOp(key) {
         status.textContent = err ? err.message : 'Error.';
       }
     }
+  }
+
+  // Season history clears the canonical Supabase store directly (#423); the
+  // sheet-wipe ops stay on GAS until Apps Script is retired (#225).
+  if (op.supabase) {
+    clearSeasonHistorySupabase(finish);
+    return;
+  }
+
+  var url = WEB_APP_URL + '?action=' + encodeURIComponent(op.action);
+  if (op.sheet) url += '&sheet=' + encodeURIComponent(op.sheet);
+
+  jsonpRequest(url, function (err, result) {
+    finish(err, result && result.success);
   });
+}
+
+// Clears team_settings.config.seasonHistory via the same set_team_setting RPC
+// the Season Settings tab writes through (#221), so the "Archived Seasons"
+// count and the Season tab's history list both reflect it without a reload.
+// season_snapshots is intentionally untouched: nothing writes it (archive
+// stores its roster snapshot inline on the seasonHistory entry), so it holds no
+// archived-season data to clear.
+function clearSeasonHistorySupabase(finish) {
+  saveTeamSetting({ seasonHistory: [] })
+    .then(function (config) {
+      if (DATA) DATA.seasonHistory = (config && config.seasonHistory) || [];
+      if (typeof buildSeasonTab === 'function') buildSeasonTab();
+      loadAdminProperties();
+      return writeAuditLog('Season History Cleared', null, null, null);
+    })
+    .then(function () {
+      finish(null, true);
+    })
+    .catch(function (err) {
+      finish(err);
+    });
 }
 
 // ── Officer Management ────────────────────────────────────────────────────────
