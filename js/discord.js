@@ -291,8 +291,19 @@ function initDiscordLogin() {
     })
     .catch(fallBackToNoSession);
 
+  // supabase-js re-validates the session (and re-fires SIGNED_IN, not just
+  // TOKEN_REFRESHED) whenever the tab regains focus/visibility, even though
+  // nothing about the session actually changed. Without this guard, tabbing
+  // back to officer.html reran the entire login-complete pipeline -- showing
+  // the loading overlay and rebuilding the dashboard -- which is what made an
+  // open player-settings panel appear to close on its own.
+  var _lastSignedInUserId = null;
+
   supabaseClient.auth.onAuthStateChange(function (event, session) {
     if (event === 'SIGNED_IN' && session) {
+      if (_lastSignedInUserId === session.user.id) return;
+      _lastSignedInUserId = session.user.id;
+
       // Same stale-cache guard as the initial getSession() check above --
       // this is the path that actually fires right after a fresh Discord
       // login, so it's the one most likely to render a previous account's
@@ -315,6 +326,7 @@ function initDiscordLogin() {
         .catch(fallBackToNoSession);
     }
     if (event === 'SIGNED_OUT') {
+      _lastSignedInUserId = null;
       clearDiscordSession();
       renderDiscordNav(null);
       if (typeof onDiscordLogout === 'function') onDiscordLogout();

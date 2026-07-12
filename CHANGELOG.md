@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.25] - 2026-07-12
+
+### Frontend
+
+- **Fixed the officer player-settings panel closing when the browser tab regained focus.** Supabase's auth client re-validates the session (and re-fires a `SIGNED_IN` event, not just `TOKEN_REFRESHED`) whenever `officer.html` regains visibility, even though the session itself hadn't changed. That handler always ran the full login-complete pipeline, which shows the loading overlay and rebuilds the officer dashboard from scratch -- wiping an open player-settings panel and only reopening it once the reload finished. `js/discord.js`'s `onAuthStateChange` handler now tracks the last user ID it actually processed a `SIGNED_IN` for and skips the pipeline on a repeat fire for the same user, resetting on `SIGNED_OUT` so a genuine re-login still runs it.
+
 ## [3.33.24] - 2026-07-12
 
 ### Frontend
