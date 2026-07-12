@@ -154,20 +154,28 @@ async function syncTeamZone(
   const encounters: Array<{ id: number; name: string }> = zone.encounters || [];
   if (encounters.length === 0) return { zoneName: zone.name, encounters: 0 };
 
-  // reports(guildID, zoneID, limit) only returns one page (up to REPORT_LIMIT
-  // reports) -- a season's worth of raid nights on one zone easily exceeds
-  // that for an active progression guild logging every pull, which silently
-  // dropped older reports and undercounted mythic_pulls relative to what WCL
-  // itself shows on the boss's own page (confirmed live: this app showed 145
-  // pulls on a boss WCL reported 174 for). Paginate through has_more_pages
-  // instead of trusting one call, capped at MAX_PAGES as a runaway guard.
+  // No zoneID filter on the reports() query, deliberately -- confirmed live
+  // that filtering by zoneID undercounted pulls relative to WCL's own guild
+  // progress page (this app showed 145 pulls on a boss WCL's
+  // /guild/progress/<id>?zone=<id> page showed 174 for). A report's own zone
+  // tag isn't reliable enough to filter on: wcl-sync's refreshAttendance hit
+  // the same gap and works around it by classifying each report itself
+  // rather than trusting reports(zoneID:) -- see getReportZone there. This
+  // does the equivalent by fetching every one of the guild's reports and
+  // keeping only fights whose encounterID belongs to this zone's own
+  // encounter list (checked against encounterIdByWcl below), rather than
+  // trusting the report-level zone.
+  //
+  // reports(guildID, limit) also only returns one page (up to REPORT_LIMIT
+  // reports) per call -- paginate through has_more_pages instead of trusting
+  // a single call, capped at MAX_REPORT_PAGES as a runaway guard.
   const reports: Array<{ code: string; startTime: number; fights: any[] }> = [];
   let page = 1;
   for (;;) {
     const reportsQuery = `
       query {
         reportData {
-          reports(guildID: ${guildId}, zoneID: ${zoneId}, limit: ${REPORT_LIMIT}, page: ${page}) {
+          reports(guildID: ${guildId}, limit: ${REPORT_LIMIT}, page: ${page}) {
             data {
               code
               startTime
@@ -242,7 +250,10 @@ async function syncTeamZone(
   for (const report of reports) {
     for (const fight of report.fights || []) {
       const encId = fight.encounterID;
-      if (encId == null) continue;
+      // Only this zone's own bosses -- the query above fetches every report
+      // for the guild, not just ones tagged to this zone (see the comment
+      // above the reports() query for why).
+      if (encId == null || !encounterIdByWcl.has(encId)) continue;
       const e = entryFor(encId);
       e.pulls++;
       if (fight.kill) {

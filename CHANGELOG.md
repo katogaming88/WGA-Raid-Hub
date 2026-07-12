@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.27] - 2026-07-12
+
+### Frontend
+
+- **Killed bosses on the progression card now show in green (#285).** The boss name, kill date, and pull-count badge all pick up `--heal` once a boss is killed, matching the green used for other "done" indicators (BiS checkmarks, etc.) instead of the same muted color as an in-progress boss.
+
 ## [3.33.26] - 2026-07-12
 
 ### Frontend
