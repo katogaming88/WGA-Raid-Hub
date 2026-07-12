@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.30] - 2026-07-12
+
+### Frontend
+
+- **Added a raider-facing Help tab.** index.html now has a Help tab covering the core raider workflows (claiming a character, submitting BiS, signing up, requesting a received item, checking priority/attendance), plus contextual `?` tooltips next to the relevant sections -- parity with officer.html's existing Help tab, reusing the same `toggleHelp()`/`.help-tip` pattern (#409).
+
 ## [3.33.29] - 2026-07-12
 
 ### Frontend

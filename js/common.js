@@ -38,7 +38,13 @@ if (_teamParam && _teamParam in TEAMS) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.33.29';
+var VERSION = '3.33.30';
+
+// Shared by the officer.html Help tab and index.html's raider Help tab/tips.
+function toggleHelp(id) {
+  var el = document.getElementById(id);
+  if (el) el.classList.toggle('open');
+}
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -3485,12 +3491,22 @@ function renderProfile(firstName, backTo, container) {
           "');d.style.display=d.style.display==='none'?'flex':'none';\""
         : '') +
     '>Attendance' +
+    (backTo !== 'officer'
+      ? '<button class="help-btn" onclick="event.stopPropagation();toggleHelp(\'help-attend-' +
+        player.firstName +
+        '\')" title="Show help">?</button>'
+      : '') +
     (backTo === 'officer'
       ? '<span class="attend-history-hint" style="font-size:1.07rem;color:var(--text-dim);">click to expand</span>'
       : hasPenalties
         ? '<span style="font-size:1.07rem;color:var(--text-dim);">click to expand</span>'
         : '') +
     '</div>' +
+    (backTo !== 'officer'
+      ? '<div id="help-attend-' +
+        player.firstName +
+        '" class="help-tip">Your attendance percentage is calculated from recent raid nights and feeds directly into your priority score -- higher attendance means higher priority for loot. Statuses like Excused or Medical Leave are weighted differently than a No Show. Contact an officer if a status on a specific night looks wrong.</div>'
+      : '') +
     '<div class="attend-row"><div class="attend-bar-wrap"><div class="attend-bar" style="width:' +
     barWidth +
     '"></div></div><span class="attend-label">' +
@@ -3557,7 +3573,18 @@ function renderProfile(firstName, backTo, container) {
         '</div>'
       : '') +
     (featureEnabled('bis')
-      ? '<div class="profile-section"><div class="section-label">BiS Link</div>' +
+      ? '<div class="profile-section"><div class="section-label">BiS Link' +
+        (backTo !== 'officer'
+          ? '<button class="help-btn" onclick="toggleHelp(\'help-bislink-' +
+            player.firstName +
+            '\')" title="Show help">?</button>'
+          : '') +
+        '</div>' +
+        (backTo !== 'officer'
+          ? '<div id="help-bislink-' +
+            player.firstName +
+            '" class="help-tip">Submit a link to your Best-in-Slot list (e.g. a wowhead or raidbots URL) so officers know what you\'re targeting. An officer reviews new submissions before they show here. If the link stays the same but the list behind it changes, use "My List Changed (Same Link)" to have it rechecked.</div>'
+          : '') +
         bisHTML +
         '</div>' +
         '<div class="profile-section">' +
@@ -3565,7 +3592,17 @@ function renderProfile(firstName, backTo, container) {
         player.firstName +
         "');l.style.display=l.style.display==='none'?'block':'none';\">BiS List" +
         bisCompletionHTML +
+        (backTo !== 'officer'
+          ? '<button class="help-btn" onclick="event.stopPropagation();toggleHelp(\'help-bislist-' +
+            player.firstName +
+            '\')" title="Show help">?</button>'
+          : '') +
         '<span style="font-size:1.07rem;color:var(--text-dim);">click to expand</span></div>' +
+        (backTo !== 'officer'
+          ? '<div id="help-bislist-' +
+            player.firstName +
+            '" class="help-tip">This is your tracked BiS items ranked by priority. When you receive one of these items in-game, click "Mark received" on its row and note how you got it -- an officer approves the request and it will count toward your BiS completion above.</div>'
+          : '') +
         '<div id="prio-list-' +
         player.firstName +
         '" style="display:none;">' +
@@ -3574,7 +3611,20 @@ function renderProfile(firstName, backTo, container) {
         '</div>'
       : '') +
     (mplusHTML && featureEnabled('mplus')
-      ? '<div class="profile-section"><div class="section-label">M+ Exclusion</div>' + mplusHTML + '</div>'
+      ? '<div class="profile-section"><div class="section-label">M+ Exclusion' +
+        (backTo !== 'officer'
+          ? '<button class="help-btn" onclick="toggleHelp(\'help-mplus-' +
+            player.firstName +
+            '\')" title="Show help">?</button>'
+          : '') +
+        '</div>' +
+        (backTo !== 'officer'
+          ? '<div id="help-mplus-' +
+            player.firstName +
+            '" class="help-tip">Once you no longer have any gear upgrades to obtain through the Great Vault via M+ dungeons, you can request exclusion from running them. Submit your Raider.io profile; an officer reviews the request and, once approved, you\'re no longer required to run them weekly.</div>'
+          : '') +
+        mplusHTML +
+        '</div>'
       : '') +
     (typeof ownStreamerSectionHTML === 'function' ? ownStreamerSectionHTML(player, backTo) : '') +
     officerActionsHTML +

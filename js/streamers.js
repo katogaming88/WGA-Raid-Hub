@@ -236,7 +236,14 @@ function ownStreamerSectionHTML(player, backTo) {
   var optOut = existing ? existing.guild_wide_opt_out : false;
 
   return (
-    '<div class="profile-section"><div class="section-label">Your Stream</div>' +
+    '<div class="profile-section"><div class="section-label">Your Stream' +
+    '<button class="help-btn" onclick="toggleHelp(\'help-stream-' +
+    player.firstName +
+    '\')" title="Show help">?</button>' +
+    '</div>' +
+    '<div id="help-stream-' +
+    player.firstName +
+    '" class="help-tip">Link your Twitch channel to appear on the Streams tab whenever you go live. The schedule note is optional and shows alongside your stream card. Opting out of guild-wide sharing keeps your stream off other teams\' pages while still showing it here.</div>' +
     '<input type="text" id="streamerChannel-' +
     player.firstName +
     '" placeholder="Twitch channel name" class="self-received-source" style="max-width:100%;font-size:1rem;" value="' +
