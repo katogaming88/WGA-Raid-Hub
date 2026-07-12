@@ -1775,94 +1775,6 @@
       ]
     },
     {
-      "name": "public.season_snapshots",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "id",
-          "type": "integer",
-          "nullable": false,
-          "default": "nextval('season_snapshots_id_seq'::regclass)"
-        },
-        {
-          "name": "team_id",
-          "type": "integer",
-          "nullable": false
-        },
-        {
-          "name": "season",
-          "type": "text",
-          "nullable": false
-        },
-        {
-          "name": "snapped_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        },
-        {
-          "name": "data",
-          "type": "jsonb",
-          "nullable": false
-        }
-      ],
-      "indexes": [
-        {
-          "name": "season_snapshots_pkey",
-          "def": "CREATE UNIQUE INDEX season_snapshots_pkey ON public.season_snapshots USING btree (id)",
-          "table": "public.season_snapshots",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "season_snapshots_team_id_season_key",
-          "def": "CREATE UNIQUE INDEX season_snapshots_team_id_season_key ON public.season_snapshots USING btree (team_id, season)",
-          "table": "public.season_snapshots",
-          "columns": [
-            "team_id",
-            "season"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "season_snapshots_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.season_snapshots",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "season_snapshots_team_id_season_key",
-          "type": "UNIQUE",
-          "def": "UNIQUE (team_id, season)",
-          "table": "public.season_snapshots",
-          "referenced_table": "",
-          "columns": [
-            "team_id",
-            "season"
-          ]
-        },
-        {
-          "name": "season_snapshots_team_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
-          "table": "public.season_snapshots",
-          "referenced_table": "public.teams",
-          "columns": [
-            "team_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        }
-      ]
-    },
-    {
       "name": "public.self_received_requests",
       "type": "BASE TABLE",
       "columns": [
@@ -3069,19 +2981,6 @@
     },
     {
       "table": "public.season_signups",
-      "columns": [
-        "team_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.teams",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.season_snapshots",
       "columns": [
         "team_id"
       ],

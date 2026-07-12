@@ -4,10 +4,10 @@ var ADMIN_SUBTABS = ['properties', 'export', 'officers', 'features', 'danger'];
 
 // Which sub-tabs each access level may see (#317, honoring the RLS split from
 // #294). true (site admins, and the legacy password login) sees everything;
-// 'team_leader' sees the surfaces backed by the three team-leader-only tables
-// (team_settings, team_members, season_snapshots) but not Data Export; any
-// other value sees nothing. showAdminTab (officer.html) applies this map to
-// the sub-tab buttons; buildAdminTab uses it to pick the landing sub-tab.
+// 'team_leader' sees the surfaces backed by the team-leader-scoped tables
+// (team_settings, team_members) but not Data Export; any other value sees
+// nothing. showAdminTab (officer.html) applies this map to the sub-tab
+// buttons; buildAdminTab uses it to pick the landing sub-tab.
 function adminSubTabVisibility(access) {
   var vis = {};
   ADMIN_SUBTABS.forEach(function (sub) {
@@ -286,9 +286,10 @@ function executeDangerOp(key) {
 // Clears team_settings.config.seasonHistory via the same set_team_setting RPC
 // the Season Settings tab writes through (#221), so the "Archived Seasons"
 // count and the Season tab's history list both reflect it without a reload.
-// season_snapshots is intentionally untouched: nothing writes it (archive
-// stores its roster snapshot inline on the seasonHistory entry), so it holds no
-// archived-season data to clear.
+// Archive stores its roster snapshot inline on the seasonHistory entry itself,
+// so this is the whole record -- no separate table to clear alongside it (the
+// season_snapshots table this comment used to carve out as untouched no longer
+// exists, #455).
 function clearSeasonHistorySupabase(finish) {
   saveTeamSetting({ seasonHistory: [] })
     .then(function (config) {

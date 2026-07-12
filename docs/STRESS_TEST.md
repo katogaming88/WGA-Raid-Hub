@@ -17,7 +17,7 @@ Steps to run a user stress test against a copy of the app without touching produ
 - Run the full schema migration SQL from `docs/supabase-setup-guide.md` (issue #202)
   against it: reference tables, `teams`, `team_members`, `players`, `scoring`,
   `bis_items`, `loot`, `attendance`, `priority_order`, the request queue tables,
-  `audit_log`, `settings`, `season_snapshots`, RLS enabled on everything, and all
+  `audit_log`, `settings`, RLS enabled on everything, and all
   policies including `my_team_role()` / `is_site_admin()` and the auth trigger.
 - Seed the `teams` row(s) you need (e.g. `Phoenix` / `phoenix`).
 

@@ -86,9 +86,6 @@ insert into public.rclc_loot (id, team_id, player_id, item_id, track, season) va
 insert into public.player_wcl_season_perf (player_id, team_id, season) values
   (1, 1, 'seed-season');
 
-insert into public.season_snapshots (id, team_id, season, data) values
-  (1, 1, 'seed-season', '{}');
-
 insert into public.team_settings (team_id, config) values
   (1, '{}'),
   (2, '{}');
@@ -114,4 +111,3 @@ select setval('public.bis_items_id_seq', 10);
 select setval('public.scoring_id_seq', 10);
 select setval('public.priority_order_id_seq', 10);
 select setval('public.loot_id_seq', 10);
-select setval('public.season_snapshots_id_seq', 10);

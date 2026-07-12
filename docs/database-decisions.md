@@ -8,6 +8,19 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-07-11 -- Dropped season_snapshots (#455): designed to replace the season history blob, never actually used
+
+Surfaced while fixing #423 (Danger Zone's Clear Season History op described itself as clearing this table -- it never did). `season_snapshots` (`team_id`, `season`, `snapped_at`, `data jsonb`) was designed in the original migration plan (`docs/supabase-migration-plan.md`) to hold one row per archived season per team, explicitly called out as replacing "the season history blob" from the GAS Script Properties era.
+
+- **What actually shipped instead:** #221 (PR #401) built the real archive/unarchive feature against `team_settings.config.seasonHistory` -- an array inside the general-purpose settings JSON blob -- rather than a `season_snapshots` row. That decision was never written down anywhere; it reads as an oversight, not a reconsideration. The table shipped with correct RLS from day one (team-leader write, per the #294 decision) and stayed accurately documented through several later RLS audits, but nothing in `js/` ever read or wrote it.
+- **Verified dead before dropping:** 0 rows on both live teams, zero references anywhere in `js/`, zero foreign keys from any other table. The drop migration re-checks the row count at migration time rather than trusting that to still hold.
+- **Not editing `docs/supabase-setup-guide.md`.** Rex owns later phases there per standing practice; this drop is noted for him separately rather than touched into the locked file.
+- **Existing decision-log entries mentioning `season_snapshots`** (RLS policy history, e.g. the #413 and #294 entries below) are left as-is -- they're accurate records of decisions made about the table while it existed, not claims that it's still in use.
+
+[Full discussion -> #455](https://github.com/katogaming88/WGA-Raid-Hub/issues/455)
+
+---
+
 ## 2026-07-11 -- Item catalog slot vocabulary (#453): re-derived from Wowhead, not translated; duplicates deleted, not merged
 
 `items.slot` held a vocabulary hand-typed into the retired GAS "Item Lookup" spreadsheet (`Boots`, `Gloves`, `Belt`, `Bracers`, `Cloak`, `Shoulders`, `Ring`, `1H/2H`, `OH`, `Unknown`). The game, Wowhead, `scripts/fetch-items.js`, and `bis_items.slot` all say `Feet`, `Hands`, `Waist`, `Wrist`, `Back`, `Shoulder`, `Finger`, and split weapons into `One-Hand`/`Two-Hand`/`Ranged` -- so the catalog was the only thing out of step, and every consumer carried a synonym table to bridge it. Surfaced while building #386, where the display slot and `bis_items.slot` diverging nearly shipped a silent no-op.

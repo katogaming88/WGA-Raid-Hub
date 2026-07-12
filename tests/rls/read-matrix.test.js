@@ -16,7 +16,6 @@ const PUBLIC_READ = [
   'priority_order',
   'rclc_loot',
   'scoring',
-  'season_snapshots',
   'site_settings',
   'team_settings',
   'teams'

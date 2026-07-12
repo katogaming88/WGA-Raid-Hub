@@ -27,7 +27,6 @@ Includes notes on redundancies and why they exist.
 - [team_members](#team_members)
 - [teams](#teams)
 - [team_settings](#team_settings)
-- [season_snapshots](#season_snapshots)
 - [audit_log](#audit_log)
 - [site_admins](#site_admins)
 - [scoring](#scoring)
@@ -221,20 +220,6 @@ Key-value config blob per team. One row per team.
 | `team_id` | int4  | PK + FK -> `teams.id`                                                      |
 | `config`  | jsonb | Freeform settings (loot rules, scoring weights, display preferences, etc.) |
 | `updated_at` | timestamptz | Auto-set on every UPDATE via trigger                            |
-
----
-
-## `season_snapshots`
-
-Point-in-time snapshots of team state at the end of or during a season.
-
-| Column       | Type        | Purpose                                                                |
-| ------------ | ----------- | ---------------------------------------------------------------------- |
-| `id`         | int4        | PK                                                                     |
-| `team_id`    | int4        | FK -> `teams.id`                                                       |
-| `season`     | text        | The season being snapshotted                                           |
-| `snapped_at` | timestamptz | When the snapshot was taken                                            |
-| `data`       | jsonb       | Full serialized team state (roster, scores, loot, etc.) at that moment |
 
 ---
 

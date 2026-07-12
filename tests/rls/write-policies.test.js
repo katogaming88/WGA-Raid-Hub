@@ -99,21 +99,6 @@ describe('team_settings is team-leader and site-admin only', () => {
   });
 });
 
-describe('season_snapshots is team-leader and site-admin only', () => {
-  const sql = "insert into public.season_snapshots (team_id, season, data) values (1, 'test-season', '{}')";
-  it('team 1 team leader can insert', async () => {
-    const res = await queryAs('authenticated', TEAM_LEADER_T1, sql);
-    expect(res.rowCount).toBe(1);
-  });
-  it('site admin can insert', async () => {
-    const res = await queryAs('authenticated', SITE_ADMIN, sql);
-    expect(res.rowCount).toBe(1);
-  });
-  it('team 1 officer cannot insert', async () => {
-    await expectDenied('authenticated', OFFICER_T1, sql);
-  });
-});
-
 describe('site_admins is site-admin only', () => {
   const sql = "insert into public.site_admins (discord_id) values ('discord-new-site-admin')";
   it('site admin can insert', async () => {

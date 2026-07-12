@@ -18,7 +18,6 @@
 | [public.priority_order](public.priority_order.md) | 8 |  | BASE TABLE |
 | [public.scoring](public.scoring.md) | 10 |  | BASE TABLE |
 | [public.season_signups](public.season_signups.md) | 16 |  | BASE TABLE |
-| [public.season_snapshots](public.season_snapshots.md) | 5 |  | BASE TABLE |
 | [public.self_received_requests](public.self_received_requests.md) | 10 |  | BASE TABLE |
 | [public.site_admins](public.site_admins.md) | 3 |  | BASE TABLE |
 | [public.team_members](public.team_members.md) | 7 |  | BASE TABLE |
@@ -118,7 +117,6 @@ erDiagram
 "public.season_signups" }o--o| "public.players" : "FOREIGN KEY (approved_player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.season_signups" }o--o| "public.team_members" : "FOREIGN KEY (reviewed_by) REFERENCES team_members(id) ON DELETE SET NULL"
 "public.season_signups" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
-"public.season_snapshots" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.self_received_requests" }o--|| "public.items" : "FOREIGN KEY (self_item_id) REFERENCES items(id) ON DELETE SET NULL"
 "public.self_received_requests" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.self_received_requests" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
@@ -271,13 +269,6 @@ erDiagram
   text signup_officer_note
   integer approved_player_id FK
   timestamp_with_time_zone updated_at
-}
-"public.season_snapshots" {
-  integer id
-  integer team_id FK
-  text season
-  timestamp_with_time_zone snapped_at
-  jsonb data
 }
 "public.self_received_requests" {
   integer id
