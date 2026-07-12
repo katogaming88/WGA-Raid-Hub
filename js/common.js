@@ -38,7 +38,7 @@ if (_teamParam && _teamParam in TEAMS) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.33.21';
+var VERSION = '3.33.22';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -2302,6 +2302,55 @@ function submitBiSForm(nameRealm, firstName) {
     });
 }
 
+// -- "My list changed (same link)" flag (#278) ------------------------------
+function toggleBisFlagForm(firstName) {
+  var form = document.getElementById('bisFlagForm-' + firstName);
+  if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+function submitBisFlag(nameRealm, firstName) {
+  var notesEl = /** @type {HTMLTextAreaElement} */ (document.getElementById('bisFlagNotes-' + firstName));
+  var formEl = document.getElementById('bisFlagForm-' + firstName);
+  if (formEl)
+    formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
+
+  if (!supabaseClient) {
+    if (formEl)
+      formEl.innerHTML =
+        '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+    return;
+  }
+
+  supabaseClient
+    .rpc('flag_bis_list_changed', {
+      p_team_id: _teamCfg.supabaseTeamId,
+      p_name_realm: nameRealm,
+      p_player_note: notesEl ? notesEl.value.trim() : ''
+    })
+    .then(function (result) {
+      if (formEl) {
+        formEl.innerHTML = result.error
+          ? '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>'
+          : '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">Flagged for officer review.</p>';
+      }
+      if (!result.error) {
+        var player = findRosterPlayerByNameRealm(nameRealm);
+        supabaseClient.functions.invoke('discord-bot-webhook', {
+          body: {
+            action: 'bis',
+            team: TEAM_SLUG,
+            payload: {
+              nameRealm: nameRealm,
+              bisLink: player ? player.bisLink : '',
+              notes: notesEl ? notesEl.value.trim() : '',
+              sameLink: true
+            }
+          }
+        });
+      }
+    });
+}
+
 function officerUpdateBisLink(nameRealm, firstName) {
   var urlEl = /** @type {HTMLInputElement} */ (document.getElementById('bisUrl-' + firstName));
   if (!urlEl || !urlEl.value.trim()) {
@@ -2758,39 +2807,70 @@ function renderProfile(firstName, backTo, container) {
       '<div id="bisAllowDiv-' +
       player.firstName +
       '" style="margin-top:0.5rem;"></div>';
-  } else if (bisSubmissionsOpen() || bisAllowedFor(player.nameRealm)) {
-    var bisBtnLabel = player.bisLink ? 'Update BiS List' : 'Submit BiS List';
-    bisActionHTML =
-      '<div style="margin-top:0.75rem;">' +
-      '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="toggleBisForm(\'' +
-      player.firstName.replace(/'/g, "\\'") +
-      '\')">' +
-      bisBtnLabel +
-      '</button>' +
-      '<div id="bisForm-' +
-      player.firstName +
-      '" style="display:none;margin-top:0.75rem;">' +
-      '<input type="url" id="bisUrl-' +
-      player.firstName +
-      '" placeholder="Paste your BiS list URL" class="self-received-source" style="max-width:100%;font-size:1rem;">' +
-      '<textarea id="bisNotes-' +
-      player.firstName +
-      '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
-      '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
-      '<button class="btn btn-gold" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="submitBiSForm(\'' +
-      player.nameRealm.replace(/'/g, "\\'") +
-      "','" +
-      player.firstName.replace(/'/g, "\\'") +
-      '\')">Submit</button>' +
-      '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'bisForm-' +
-      player.firstName +
-      "').style.display='none'\">Cancel</button>" +
-      '</div>' +
-      '<p class="self-received-note">An officer will review your submission. Once approved it will appear on your profile.</p>' +
-      '</div>' +
-      '</div>';
   } else {
     bisActionHTML = '';
+    if (bisSubmissionsOpen() || bisAllowedFor(player.nameRealm)) {
+      var bisBtnLabel = player.bisLink ? 'Update BiS List' : 'Submit BiS List';
+      bisActionHTML +=
+        '<div style="margin-top:0.75rem;">' +
+        '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="toggleBisForm(\'' +
+        player.firstName.replace(/'/g, "\\'") +
+        '\')">' +
+        bisBtnLabel +
+        '</button>' +
+        '<div id="bisForm-' +
+        player.firstName +
+        '" style="display:none;margin-top:0.75rem;">' +
+        '<input type="url" id="bisUrl-' +
+        player.firstName +
+        '" placeholder="Paste your BiS list URL" class="self-received-source" style="max-width:100%;font-size:1rem;">' +
+        '<textarea id="bisNotes-' +
+        player.firstName +
+        '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
+        '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
+        '<button class="btn btn-gold" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="submitBiSForm(\'' +
+        player.nameRealm.replace(/'/g, "\\'") +
+        "','" +
+        player.firstName.replace(/'/g, "\\'") +
+        '\')">Submit</button>' +
+        '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'bisForm-' +
+        player.firstName +
+        "').style.display='none'\">Cancel</button>" +
+        '</div>' +
+        '<p class="self-received-note">An officer will review your submission. Once approved it will appear on your profile.</p>' +
+        '</div>' +
+        '</div>';
+    }
+    // Always-available even when submissions are closed and this character
+    // isn't individually allow-listed: this doesn't change the link on file,
+    // it just re-queues it so an officer knows to recheck items behind it
+    // (#278). Only makes sense once there's a link to flag.
+    if (player.bisLink) {
+      bisActionHTML +=
+        '<div style="margin-top:0.75rem;">' +
+        '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="toggleBisFlagForm(\'' +
+        player.firstName.replace(/'/g, "\\'") +
+        '\')">My List Changed (Same Link)</button>' +
+        '<div id="bisFlagForm-' +
+        player.firstName +
+        '" style="display:none;margin-top:0.75rem;">' +
+        '<textarea id="bisFlagNotes-' +
+        player.firstName +
+        '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;"></textarea>' +
+        '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
+        '<button class="btn btn-gold" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="submitBisFlag(\'' +
+        player.nameRealm.replace(/'/g, "\\'") +
+        "','" +
+        player.firstName.replace(/'/g, "\\'") +
+        '\')">Flag for Review</button>' +
+        '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'bisFlagForm-' +
+        player.firstName +
+        "').style.display='none'\">Cancel</button>" +
+        '</div>' +
+        '<p class="self-received-note">Use this when the link on file hasn\'t changed but the list behind it has. An officer will recheck your tracked items.</p>' +
+        '</div>' +
+        '</div>';
+    }
   }
   var bisHTML = bisStatusHTML + bisActionHTML;
 

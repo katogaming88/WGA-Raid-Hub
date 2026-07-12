@@ -391,6 +391,11 @@
           "name": "player_note",
           "type": "text",
           "nullable": true
+        },
+        {
+          "name": "officer_notes",
+          "type": "text",
+          "nullable": true
         }
       ],
       "indexes": [
@@ -1443,12 +1448,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_priority_order_updated_at",
-          "def": "CREATE TRIGGER trg_priority_order_updated_at BEFORE UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
-        },
-        {
           "name": "trg_priority_order_team_id_check",
           "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        },
+        {
+          "name": "trg_priority_order_updated_at",
+          "def": "CREATE TRIGGER trg_priority_order_updated_at BEFORE UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
     },
@@ -3574,6 +3579,12 @@
       "name": "public.sync_bis_obtained_from_self_received",
       "return_type": "trigger",
       "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.flag_bis_list_changed",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_name_realm text, p_player_note text DEFAULT NULL::text",
       "type": "FUNCTION"
     }
   ],

@@ -60,12 +60,18 @@ function buildBisTab() {
         return;
       }
       var submissions = (result.data || []).map(function (row) {
+        var nameRealm = (row.players && row.players.name_realm) || '';
+        var bisLink = row.bis_link || '';
+        var rosterPlayer = findRosterPlayerByNameRealm(nameRealm);
         return {
           id: row.id,
-          nameRealm: (row.players && row.players.name_realm) || '',
-          bisLink: row.bis_link || '',
+          nameRealm: nameRealm,
+          bisLink: bisLink,
           notes: row.player_note || '',
-          timestamp: row.submitted_at ? new Date(row.submitted_at).toLocaleString() : ''
+          timestamp: row.submitted_at ? new Date(row.submitted_at).toLocaleString() : '',
+          // #278: the link on file didn't change -- this is a "recheck the
+          // items behind it" flag, not a new-link submission.
+          sameLink: !!(rosterPlayer && rosterPlayer.bisLink && rosterPlayer.bisLink === bisLink)
         };
       });
       renderBisSubmissions(submissions);
@@ -100,6 +106,9 @@ function renderBisSubmissions(submissions) {
       '<span class="request-player">' +
       s.nameRealm +
       '</span>' +
+      (s.sameLink
+        ? '<span class="signup-status-badge signup-status-open" style="margin-left:0.5rem;">Same link -- items changed</span>'
+        : '') +
       '<span class="signup-response-time">' +
       s.timestamp +
       '</span>' +
@@ -122,7 +131,9 @@ function renderBisSubmissions(submissions) {
       ', this)">Approve</button>' +
       '<button class="btn request-reject-btn" onclick="rejectBisSubmission(' +
       s.id +
-      ', this)">Reject</button>' +
+      ",'" +
+      s.nameRealm.replace(/'/g, "\\'") +
+      '\', this)">Reject</button>' +
       '</div>' +
       '</div>';
   });
@@ -172,15 +183,63 @@ function approveBisSubmission(requestId, btnEl) {
     });
 }
 
-function rejectBisSubmission(requestId, btnEl) {
+// Mirrors tab-mplus.js's rejectMPlusExclusion/confirmRejectMPlusExclusion:
+// swaps the Approve/Reject pair for an inline note field so an officer can
+// leave a reason before confirming, rather than rejecting blind.
+function rejectBisSubmission(requestId, nameRealm, btnEl) {
+  var actionsDiv = btnEl.parentNode;
+  var noteId = '_bisRejectNote' + requestId;
+  var nrSafe = nameRealm.replace(/'/g, "\\'");
+  actionsDiv.innerHTML =
+    '<div style="width:100%;">' +
+    '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.4rem;">Rejection reason (optional, shown to raider):</div>' +
+    '<textarea id="' +
+    noteId +
+    '" rows="2" placeholder="e.g. Link is broken, please resubmit" style="width:100%;box-sizing:border-box;background:var(--bg-alt);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:0.4rem 0.5rem;font-size:1rem;resize:vertical;"></textarea>' +
+    '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
+    '<button id="_bisRejectConfirm' +
+    requestId +
+    '" class="btn btn-danger" style="font-size:1rem;padding:0.25rem 0.75rem;">Reject</button>' +
+    '<button id="_bisRejectCancel' +
+    requestId +
+    '" class="btn btn-muted" style="font-size:1rem;padding:0.25rem 0.75rem;">Cancel</button>' +
+    '</div>' +
+    '</div>';
+
+  var noteInput = document.getElementById(noteId);
+  var confirmBtn = document.getElementById('_bisRejectConfirm' + requestId);
+  var cancelBtn = document.getElementById('_bisRejectCancel' + requestId);
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function () {
+      actionsDiv.innerHTML =
+        '<button class="btn request-approve-btn" onclick="approveBisSubmission(' +
+        requestId +
+        ', this)">Approve</button>' +
+        '<button class="btn request-reject-btn" onclick="rejectBisSubmission(' +
+        requestId +
+        ",'" +
+        nrSafe +
+        '\', this)">Reject</button>';
+    });
+  }
+
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', function () {
+      var note = noteInput ? noteInput.value.trim() : '';
+      confirmRejectBisSubmission(requestId, nameRealm, note, confirmBtn);
+    });
+  }
+}
+
+function confirmRejectBisSubmission(requestId, nameRealm, note, btnEl) {
   btnEl.disabled = true;
   btnEl.textContent = '...';
   var card = document.querySelector('.request-card[data-row="' + requestId + '"]');
-  var nameRealm = card ? card.getAttribute('data-name-realm') : '';
 
   supabaseClient
     .from('bis_requests')
-    .update({ status: 'rejected' })
+    .update({ status: 'rejected', officer_notes: note || null })
     .eq('id', requestId)
     .eq('team_id', _teamCfg.supabaseTeamId)
     .then(function (result) {
@@ -190,8 +249,10 @@ function rejectBisSubmission(requestId, btnEl) {
         return;
       }
       var player = findRosterPlayerByNameRealm(nameRealm);
-      writeAuditLog('BiS Rejected', 'players', player ? player.id : null, null);
-      if (player) notifyPlayer(player.id, 'Your BiS list link was rejected.');
+      writeAuditLog('BiS Rejected', 'players', player ? player.id : null, note || null);
+      if (player) {
+        notifyPlayer(player.id, 'Your BiS list link was rejected.' + (note ? ' Reason: ' + note : ''));
+      }
       if (card) card.remove();
       checkEmptyBisSubmissions();
     });
