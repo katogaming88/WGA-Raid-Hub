@@ -110,6 +110,10 @@ async function wclQuery(token: string, query: string): Promise<any | null> {
 }
 
 const REPORT_LIMIT = 100;
+// 20 pages * 100/page = 2000 reports per zone per run -- far beyond any real
+// season's report count, just a guard against an unexpected has_more_pages
+// loop (e.g. a WCL response that never actually terminates).
+const MAX_REPORT_PAGES = 20;
 const MYTHIC_DIFF = 5;
 
 type RaidConfigEntry = {
@@ -143,32 +147,49 @@ async function syncTeamZone(
   const zoneId = parseInt(String(raid.wclZoneId || ''), 10);
   if (!zoneId || Number.isNaN(zoneId)) return null;
 
-  const query = `
-    query {
-      worldData {
-        zone(id: ${zoneId}) { name encounters { id name } }
-      }
-      reportData {
-        reports(guildID: ${guildId}, zoneID: ${zoneId}, limit: ${REPORT_LIMIT}) {
-          data {
-            code
-            startTime
-            fights(difficulty: ${MYTHIC_DIFF}) {
-              id
-              encounterID
-              kill
-              bossPercentage
-            }
-          }
-        }
-      }
-    }
-  `;
-  const result = await wclQuery(token, query);
-  const zone = result?.data?.worldData?.zone;
+  const zoneQuery = `query { worldData { zone(id: ${zoneId}) { name encounters { id name } } } }`;
+  const zoneResult = await wclQuery(token, zoneQuery);
+  const zone = zoneResult?.data?.worldData?.zone;
   if (!zone) return null;
   const encounters: Array<{ id: number; name: string }> = zone.encounters || [];
   if (encounters.length === 0) return { zoneName: zone.name, encounters: 0 };
+
+  // reports(guildID, zoneID, limit) only returns one page (up to REPORT_LIMIT
+  // reports) -- a season's worth of raid nights on one zone easily exceeds
+  // that for an active progression guild logging every pull, which silently
+  // dropped older reports and undercounted mythic_pulls relative to what WCL
+  // itself shows on the boss's own page (confirmed live: this app showed 145
+  // pulls on a boss WCL reported 174 for). Paginate through has_more_pages
+  // instead of trusting one call, capped at MAX_PAGES as a runaway guard.
+  const reports: Array<{ code: string; startTime: number; fights: any[] }> = [];
+  let page = 1;
+  for (;;) {
+    const reportsQuery = `
+      query {
+        reportData {
+          reports(guildID: ${guildId}, zoneID: ${zoneId}, limit: ${REPORT_LIMIT}, page: ${page}) {
+            data {
+              code
+              startTime
+              fights(difficulty: ${MYTHIC_DIFF}) {
+                id
+                encounterID
+                kill
+                bossPercentage
+              }
+            }
+            has_more_pages
+          }
+        }
+      }
+    `;
+    const pageResult = await wclQuery(token, reportsQuery);
+    const pageReports = pageResult?.data?.reportData?.reports;
+    if (!pageReports) break;
+    reports.push(...(pageReports.data || []));
+    if (!pageReports.has_more_pages || page >= MAX_REPORT_PAGES) break;
+    page++;
+  }
 
   const { data: zoneRow, error: zoneError } = await supabase
     .from('raid_zones')
@@ -201,8 +222,6 @@ async function syncTeamZone(
   const encounterIdByWcl = new Map<number, number>();
   for (const row of savedEncounters || []) encounterIdByWcl.set(row.wcl_encounter_id as number, row.id as number);
 
-  const reports: Array<{ code: string; startTime: number; fights: any[] }> =
-    result?.data?.reportData?.reports?.data || [];
   const agg = new Map<number, EncounterAgg>();
   function entryFor(encId: number): EncounterAgg {
     if (!agg.has(encId)) {
