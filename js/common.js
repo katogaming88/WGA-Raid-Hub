@@ -38,7 +38,7 @@ if (_teamParam && _teamParam in TEAMS) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.33.21';
+var VERSION = '3.33.22';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -186,6 +186,19 @@ function closeNotifDropdown() {
   document.removeEventListener('click', _closeNotifDropdownOnOutsideClick);
 }
 
+// "Clear read" only drops already-read rows from the local dropdown view --
+// notifications has no raider-writable delete path (RLS only grants
+// mark-as-read), so this is display-state only and reappears on next login/
+// refreshNotifBell() refetch. Placed in header so it's not confused for a
+// per-row action.
+function clearReadNotifications(ev) {
+  if (ev) ev.stopPropagation();
+  _notifCache = _notifCache.filter(function (n) {
+    return !n.read;
+  });
+  renderNotifDropdown();
+}
+
 function renderNotifDropdown() {
   var dd = document.getElementById('notifDropdown');
   if (!dd) return;
@@ -193,7 +206,12 @@ function renderNotifDropdown() {
     dd.innerHTML = '<div class="notif-empty">No notifications yet.</div>';
     return;
   }
-  var html = '';
+  var hasRead = _notifCache.some(function (n) {
+    return n.read;
+  });
+  var html = hasRead
+    ? '<div class="notif-header"><button class="notif-clear-btn" onclick="clearReadNotifications(event)">Clear read</button></div>'
+    : '';
   _notifCache.forEach(function (n) {
     html +=
       '<div class="notif-row' +

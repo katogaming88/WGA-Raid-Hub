@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.22] - 2026-07-12
+
+### Frontend
+
+- **"Clear read" in the notification bell dropdown.** A header row with a "Clear read" link appears whenever the dropdown has at least one already-read notification, dropping it from the local view. Display-only -- `notifications` has no raider-writable delete path, so cleared rows come back on the next login/refetch, same as any other locally-computed UI state.
+
 ## [3.33.21] - 2026-07-12
 
 ### Frontend
