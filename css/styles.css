@@ -463,6 +463,7 @@ select#playerSelect option { background:#1a1d27; }
 .footer { text-align:center; padding:1.5rem; font-size:1.04rem; color:var(--text); letter-spacing:0.12em; text-transform:uppercase; border-top:1px solid var(--border); margin-top:auto; }
 .footer-link { color:var(--text-muted); text-decoration:none; transition:color 0.15s; }
 .footer-link:hover { color:var(--gold); }
+.footer-icon-link { display:inline-flex; align-items:center; vertical-align:middle; }
 
 /* Season Signup */
 #signupView { padding:2rem 2rem 3rem; max-width:560px; width:100%; margin:0 auto; }

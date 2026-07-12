@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.28] - 2026-07-12
+
+### Frontend
+
+- **Added a Patreon link to the public site's footer.** A small icon-only link (Kat's Patreon) next to the existing Changelog link, on every public-facing view.
+
 ## [3.33.27] - 2026-07-12
 
 ### Frontend
