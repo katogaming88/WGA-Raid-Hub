@@ -7,7 +7,7 @@
 | [public.attendance](public.attendance.md) | 9 |  | BASE TABLE |
 | [public.audit_log](public.audit_log.md) | 8 |  | BASE TABLE |
 | [public.bis_items](public.bis_items.md) | 6 |  | BASE TABLE |
-| [public.bis_requests](public.bis_requests.md) | 7 |  | BASE TABLE |
+| [public.bis_requests](public.bis_requests.md) | 8 |  | BASE TABLE |
 | [public.classes_specs](public.classes_specs.md) | 4 |  | BASE TABLE |
 | [public.item_bosses](public.item_bosses.md) | 2 |  | BASE TABLE |
 | [public.items](public.items.md) | 7 |  | BASE TABLE |
@@ -75,6 +75,7 @@
 | public.submit_self_received | record | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_slot text DEFAULT NULL::text | FUNCTION |
 | public.direct_mark_received | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_slot text DEFAULT NULL::text | FUNCTION |
 | public.sync_bis_obtained_from_self_received | trigger |  | FUNCTION |
+| public.flag_bis_list_changed | int4 | p_team_id integer, p_name_realm text, p_player_note text DEFAULT NULL::text | FUNCTION |
 
 ## Enums
 
@@ -173,6 +174,7 @@ erDiagram
   text status
   text bis_link
   text player_note
+  text officer_notes
 }
 "public.classes_specs" {
   integer id

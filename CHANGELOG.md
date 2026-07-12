@@ -8,11 +8,23 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [3.33.22] - 2026-07-12
+## [3.33.23] - 2026-07-12
 
 ### Frontend
 
 - **"Clear read" in the notification bell dropdown.** A header row with a "Clear read" link appears whenever the dropdown has at least one already-read notification, dropping it from the local view. Display-only -- `notifications` has no raider-writable delete path, so cleared rows come back on the next login/refetch, same as any other locally-computed UI state.
+
+## [3.33.22] - 2026-07-12
+
+### Frontend
+
+- **"My List Changed (Same Link)" flag on a raider's own BiS section (#278).** Until now, `submitBiS` only fired when the link itself changed, and even then only during an open submission window or with an officer's individual allow-list -- so a raider whose Raidbots/sheet contents changed in place (link unchanged) had no way to signal officers to go recheck their tracked items. This new action is always available (no submission-window or allow-list gate) whenever the raider already has a link on file, and lands in the same Pending BiS review queue with a "Same link -- items changed" badge so officers know to go recheck the BiS Lists tab rather than treat it as a new link. Also fires the same Discord bot notification as a regular BiS submission (reusing the `bis` webhook action, distinguished by a `sameLink` flag), so officers are pinged in Discord the same way a fresh link submission already was.
+- **Officers can now leave a reason when rejecting a BiS submission (#278).** Rejecting a Pending BiS entry (a fresh link or a "same link" flag) swaps the Approve/Reject buttons for an inline optional note field, mirroring the M+ exclusion rejection flow -- the raider's in-app notification includes the reason when one's given.
+
+### Backend
+
+- **`flag_bis_list_changed()` (#278).** SECURITY DEFINER, granted to anon like `submit_bis_link()` (#404) -- re-queues the player's existing `players.bis_link` into `bis_requests` without the submission-window/allow-list gate, since it isn't granting a new link. Collapses into the existing pending row if one's already queued for the same link, so repeat clicks don't pile up duplicates.
+- **`bis_requests.officer_notes` (#278).** Same shape as `mplus_exclusion_requests.officer_notes` -- an optional reason an officer can attach when rejecting a request, surfaced to the raider via `notify_player()`.
 
 ## [3.33.21] - 2026-07-12
 
