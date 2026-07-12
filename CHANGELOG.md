@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.22] - 2026-07-12
+
+### Frontend
+
+- **"My List Changed (Same Link)" flag on a raider's own BiS section (#278).** Until now, `submitBiS` only fired when the link itself changed, and even then only during an open submission window or with an officer's individual allow-list -- so a raider whose Raidbots/sheet contents changed in place (link unchanged) had no way to signal officers to go recheck their tracked items. This new action is always available (no submission-window or allow-list gate) whenever the raider already has a link on file, and lands in the same Pending BiS review queue with a "Same link -- items changed" badge so officers know to go recheck the BiS Lists tab rather than treat it as a new link.
+
+### Backend
+
+- **`flag_bis_list_changed()` (#278).** SECURITY DEFINER, granted to anon like `submit_bis_link()` (#404) -- re-queues the player's existing `players.bis_link` into `bis_requests` without the submission-window/allow-list gate, since it isn't granting a new link. Collapses into the existing pending row if one's already queued for the same link, so repeat clicks don't pile up duplicates.
+
 ## [3.33.21] - 2026-07-12
 
 ### Frontend

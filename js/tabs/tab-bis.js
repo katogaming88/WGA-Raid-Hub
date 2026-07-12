@@ -60,12 +60,18 @@ function buildBisTab() {
         return;
       }
       var submissions = (result.data || []).map(function (row) {
+        var nameRealm = (row.players && row.players.name_realm) || '';
+        var bisLink = row.bis_link || '';
+        var rosterPlayer = findRosterPlayerByNameRealm(nameRealm);
         return {
           id: row.id,
-          nameRealm: (row.players && row.players.name_realm) || '',
-          bisLink: row.bis_link || '',
+          nameRealm: nameRealm,
+          bisLink: bisLink,
           notes: row.player_note || '',
-          timestamp: row.submitted_at ? new Date(row.submitted_at).toLocaleString() : ''
+          timestamp: row.submitted_at ? new Date(row.submitted_at).toLocaleString() : '',
+          // #278: the link on file didn't change -- this is a "recheck the
+          // items behind it" flag, not a new-link submission.
+          sameLink: !!(rosterPlayer && rosterPlayer.bisLink && rosterPlayer.bisLink === bisLink)
         };
       });
       renderBisSubmissions(submissions);
@@ -100,6 +106,9 @@ function renderBisSubmissions(submissions) {
       '<span class="request-player">' +
       s.nameRealm +
       '</span>' +
+      (s.sameLink
+        ? '<span class="signup-status-badge signup-status-open" style="margin-left:0.5rem;">Same link -- items changed</span>'
+        : '') +
       '<span class="signup-response-time">' +
       s.timestamp +
       '</span>' +
