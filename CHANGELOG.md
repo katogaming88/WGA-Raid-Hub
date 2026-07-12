@@ -8,7 +8,11 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [3.33.13] - 2026-07-11
+## [3.33.14] - 2026-07-11
+
+### Frontend
+
+- **Fixed accented roster names silently escaping the priority pool's loot-exclusion rule (#360).** `DATA.lootCounts` is keyed by diacritic-stripped names (`normalise()`), but `prioEditLootFlags()` looked its entry up with `lootCounts[firstName.toLowerCase()]`, which preserves accents -- so an accented name could never match its own key and always came back with no loot. The visible symptom was a missing "has the Heroic version" badge, but the same function backs `prioEditIsBlocked()`, which enforces the exclusion rule shared with `generate_priority_order()`: a mythic recipient is done with an item and a heroic recipient is blocked from the heroic track. Because the lookup silently missed, **an accented player who had already received an item could be ranked for it again**, in both the pool render and the "Show all roster" add path. Now goes through the existing `getLootEntry()` helper, which normalises both sides -- the same thing every other loot consumer already did. Consolidating on that helper also leaves exactly one place that knows how `lootCounts` is keyed, which is what #359 will want to change.
 
 ### Frontend
 

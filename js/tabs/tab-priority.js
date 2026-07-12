@@ -622,10 +622,19 @@ function prioEditRenderList() {
 // DATA.lootCounts. Shared by the pool render (badge + block add) and
 // prioEditAdd()'s guard, so "Show all roster" can't bypass the pool's
 // filtering.
+//
+// Goes through getLootEntry() rather than indexing DATA.lootCounts directly:
+// the map's keys are diacritic-stripped by normalise(), but a raw
+// firstName.toLowerCase() lookup preserves accents, so it could never match an
+// accented roster name (lowercasing "Katorri" with an accented i leaves the
+// accent on; the key has it stripped). That silently returned no loot for those
+// players, so they never got the "has Heroic version" badge AND were never
+// blocked by prioEditIsBlocked() -- letting someone who already received the
+// item be ranked for it again (#360). getLootEntry() normalises both sides,
+// which is what every other loot consumer already does.
 function prioEditLootFlags(firstName) {
   var itemLower = PRIO_EDIT.item.toLowerCase();
-  var lootCounts = DATA.lootCounts || {};
-  var loot = lootCounts[firstName.toLowerCase()] || null;
+  var loot = getLootEntry(firstName);
   var flags = { hasHeroic: false, hasMythic: false };
   if (loot && loot.items) {
     for (var j = 0; j < loot.items.length; j++) {
