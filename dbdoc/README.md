@@ -30,6 +30,7 @@
 | [public.priority_order_gaps](public.priority_order_gaps.md) | 4 |  | VIEW |
 | [public.season_loot_pace](public.season_loot_pace.md) | 6 |  | VIEW |
 | [public.streamers](public.streamers.md) | 10 |  | BASE TABLE |
+| [public.notifications](public.notifications.md) | 6 |  | BASE TABLE |
 | [public.site_settings](public.site_settings.md) | 4 |  | BASE TABLE |
 
 ## Stored procedures and functions
@@ -61,6 +62,7 @@
 | public.unarchive_season | jsonb | p_team_id integer, p_index integer | FUNCTION |
 | public.is_own_player | bool | p_player_id integer | FUNCTION |
 | public.submit_season_signup | int4 | p_team_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text | FUNCTION |
+| public.notify_player | int4 | p_player_id integer, p_message text | FUNCTION |
 | public.submit_bis_link | int4 | p_team_id integer, p_name_realm text, p_bis_link text, p_player_note text DEFAULT NULL::text | FUNCTION |
 | public.submit_mplus_exclusion | int4 | p_team_id integer, p_name_realm text, p_raiderio_url text DEFAULT NULL::text, p_reason text DEFAULT NULL::text | FUNCTION |
 | public.admin_create_team | int4 | p_name text, p_slug text | FUNCTION |
@@ -131,6 +133,8 @@ erDiagram
 "public.team_settings" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.streamers" |o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.streamers" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.notifications" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.notifications" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -386,6 +390,14 @@ erDiagram
   boolean is_live
   timestamp_with_time_zone last_checked_at
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone created_at
+}
+"public.notifications" {
+  integer id
+  integer team_id FK
+  integer player_id FK
+  text message
+  boolean read
   timestamp_with_time_zone created_at
 }
 "public.site_settings" {

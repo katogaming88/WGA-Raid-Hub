@@ -2725,6 +2725,107 @@
       ]
     },
     {
+      "name": "public.notifications",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('notifications_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "message",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "read",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "notifications_pkey",
+          "def": "CREATE UNIQUE INDEX notifications_pkey ON public.notifications USING btree (id)",
+          "table": "public.notifications",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "idx_notifications_player_unread",
+          "def": "CREATE INDEX idx_notifications_player_unread ON public.notifications USING btree (player_id) WHERE (NOT read)",
+          "table": "public.notifications",
+          "columns": [
+            "player_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "notifications_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.notifications",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "notifications_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.notifications",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "notifications_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.notifications",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_notifications_team_id_check",
+          "def": "CREATE TRIGGER trg_notifications_team_id_check BEFORE INSERT OR UPDATE ON public.notifications FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        }
+      ]
+    },
+    {
       "name": "public.site_settings",
       "type": "BASE TABLE",
       "columns": [
@@ -3218,6 +3319,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.notifications",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.notifications",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -3369,6 +3496,12 @@
       "name": "public.submit_season_signup",
       "return_type": "int4",
       "arguments": "p_team_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.notify_player",
+      "return_type": "int4",
+      "arguments": "p_player_id integer, p_message text",
       "type": "FUNCTION"
     },
     {

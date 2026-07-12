@@ -16,7 +16,7 @@ This file documents the RLS policies on every public table. The generated schema
 
 ### How to read this matrix
 
-RLS is deny-by-default: with RLS enabled (it is, on all 21 tables), nobody can touch any row unless a policy explicitly grants it. Policies are additive; if any one policy matches an actor and operation, the action is allowed. Each row below summarizes which grants exist for that table.
+RLS is deny-by-default: with RLS enabled (it is, on all 22 tables), nobody can touch any row unless a policy explicitly grants it. Policies are additive; if any one policy matches an actor and operation, the action is allowed. Each row below summarizes which grants exist for that table.
 
 - **Public SELECT**: "yes" means a `FOR SELECT USING (true)` policy exists, so anyone (including anonymous visitors) can read every row. This is how the public site serves roster, loot, and standings without login. "no" means there is no public read path.
 - **Officer**: what a team officer can do, scoped to their own team's rows via `my_team_role(team_id)`. "all ops" covers SELECT, INSERT, UPDATE, and DELETE. "SELECT, UPDATE" means they can see and modify existing rows but cannot insert or delete. Team leaders pass every officer check too, since these policies accept both roles.
@@ -24,7 +24,7 @@ RLS is deny-by-default: with RLS enabled (it is, on all 21 tables), nobody can t
 - **Notes**: exceptions and known gaps.
 - **A blank cell** means no policy grants that actor anything, so deny-by-default applies. A table with only Public SELECT (like `classes_specs` or `teams`) is a read-only lookup: everyone can read it and only the service role can write it. A table blank in every column except Notes (`site_admins`) is invisible to everyone but the actor named there.
 
-One thing the matrix hides on purpose: every table also carries a `claude_readers` SELECT policy (uniform across all 20 tables, so it is stated here instead of as a column).
+One thing the matrix hides on purpose: every table also carries a `claude_readers` SELECT policy (uniform across all 22 tables, so it is stated here instead of as a column).
 
 | Table | Public SELECT | Officer | Team leader | Notes |
 | --- | --- | --- | --- | --- |
@@ -36,6 +36,7 @@ One thing the matrix hides on purpose: every table also carries a `claude_reader
 | item_bosses | yes | | | Read-only lookup; no write policy |
 | items | yes | | | Read-only lookup; no write policy |
 | mplus_exclusion_requests | no | SELECT +site, UPDATE +site | | No table INSERT policy; `submit_mplus_exclusion()` (SECURITY DEFINER) is the only write path ([#405](https://github.com/katogaming88/WGA-Raid-Hub/issues/405)) |
+| notifications | no | | | No table INSERT policy for anyone, including officers; `notify_player()` (SECURITY DEFINER) is the only write path ([#151](https://github.com/katogaming88/WGA-Raid-Hub/issues/151)). A raider reads and marks-read their own rows via `is_own_player(player_id)`, same self-service predicate as `streamers` |
 | player_wcl_season_perf | yes | all ops | (via officer) | |
 | players | yes | all ops | (via officer) | |
 | priority_order | yes | all ops | (via officer) | |
@@ -59,6 +60,7 @@ None of these carries a policy of its own. The view and the `SECURITY INVOKER` f
 - **`claim_character(team_id, name_realm)`** (function): links a raider's chosen character to their person row, setting `players.team_member_id` and creating the `team_members` row (`role = 'raider'`) on a first claim, or reusing an unlinked row imported from the Discord Claims sheet ([#338](https://github.com/katogaming88/WGA-Raid-Hub/issues/338)). `SECURITY DEFINER` because a claiming raider has no role yet and cannot pass the `players` or `team_members` write policies; it validates that the character is an unarchived, unclaimed roster member of the team and derives the caller's Discord id from `auth.users` rather than trusting a parameter. EXECUTE is granted to `authenticated` only and revoked from `anon` and `public`.
 - **`submit_self_received(team_id, name_realm, item_name, track, source, note)`** (function): a raider's self-received loot submission, inserting `pending` unless the caller is authenticated as the named character (`players.team_member_id -> team_members.auth_user_id = auth.uid()`), in which case it inserts `approved` immediately ([#406](https://github.com/katogaming88/WGA-Raid-Hub/issues/406)). `SECURITY DEFINER` because `self_received_requests` has no INSERT policy for anyone. EXECUTE is granted to `anon` and `authenticated`.
 - **`direct_mark_received(team_id, name_realm, item_name, track, source, note)`** (function): an officer marking an item received on a raider's behalf, bypassing the approval queue -- inserts `approved` directly ([#406](https://github.com/katogaming88/WGA-Raid-Hub/issues/406)). `SECURITY DEFINER`, checking `my_team_role()`/`is_site_admin()` in the function body since (like `submit_self_received`) there's no INSERT policy to lean on. EXECUTE is granted to `authenticated` only and revoked from `anon` and `public`.
+- **`notify_player(player_id, message)`** (function): writes an in-app notification row for a raider, called from the officer-side approve/reject handlers for BiS link requests, self-received items, and M+ exclusion requests ([#151](https://github.com/katogaming88/WGA-Raid-Hub/issues/151)). Deliberately not wired to season signup approve/reject: an applicant has no `players` row (and so no way to resolve a notification target) until their signup is promoted to the roster, well after that step. `SECURITY DEFINER`, resolving `team_id` from `player_id` and checking `my_team_role()`/`is_site_admin()` in the function body -- same shape as `write_audit_log()`, and deliberately the only insert path onto `notifications` so a notification can't be forged or misattributed. EXECUTE is granted to `authenticated` only and revoked from `anon` and `public`.
 
 ## Known issues
 

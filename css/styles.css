@@ -42,6 +42,16 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 .discord-nav-dropdown { position:absolute; top:100%; right:0; background:var(--bg-elevated); border:1px solid var(--border-mid); border-radius:4px; min-width:120px; z-index:300; box-shadow:0 4px 12px rgba(0,0,0,0.5); }
 .discord-nav-dropdown button { display:block; width:100%; text-align:left; background:transparent; border:none; color:var(--text-muted); font-family:'Rajdhani',sans-serif; font-size:0.95rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.55rem 1rem; cursor:pointer; }
 .discord-nav-dropdown button:hover { color:var(--text); background:rgba(255,255,255,0.04); }
+/* In-app notification bell (#151) */
+.nav-bell-wrap { position:relative; display:flex; align-items:stretch; }
+.nav-bell { position:relative; font-size:1.1rem !important; padding:0.65rem 0.75rem !important; }
+.notif-dropdown { position:absolute; top:100%; right:0; background:var(--bg-elevated); border:1px solid var(--border-mid); border-radius:4px; min-width:280px; max-width:340px; max-height:360px; overflow-y:auto; z-index:300; box-shadow:0 4px 12px rgba(0,0,0,0.5); }
+.notif-empty { padding:0.75rem 1rem; font-size:0.94rem; color:var(--text-muted); }
+.notif-row { padding:0.6rem 1rem; border-bottom:1px solid var(--border); }
+.notif-row:last-child { border-bottom:none; }
+.notif-row.notif-unread { background:rgba(214,163,68,0.07); }
+.notif-message { font-size:0.94rem; color:var(--text); line-height:1.4; }
+.notif-time { font-size:0.79rem; color:var(--text-dim); margin-top:0.2rem; }
 /* Officer quick-actions bar */
 .officer-quick-bar { background:var(--bg-elevated); border-bottom:1px solid var(--border); padding:0.45rem 1rem 0.6rem; display:flex; flex-direction:column; gap:0; }
 .oqa-row { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
