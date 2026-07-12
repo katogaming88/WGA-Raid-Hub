@@ -11,6 +11,7 @@
 | status | text | 'pending'::text | false |  |  |  |
 | bis_link | text |  | false |  |  |  |
 | player_note | text |  | true |  |  |  |
+| officer_notes | text |  | true |  |  |  |
 
 ## Constraints
 
@@ -49,6 +50,7 @@ erDiagram
   text status
   text bis_link
   text player_note
+  text officer_notes
 }
 "public.teams" {
   integer id

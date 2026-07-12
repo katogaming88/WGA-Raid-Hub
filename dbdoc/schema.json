@@ -391,6 +391,11 @@
           "name": "player_note",
           "type": "text",
           "nullable": true
+        },
+        {
+          "name": "officer_notes",
+          "type": "text",
+          "nullable": true
         }
       ],
       "indexes": [

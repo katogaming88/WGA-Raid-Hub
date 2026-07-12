@@ -110,6 +110,7 @@ erDiagram
   text status
   text bis_link
   text player_note
+  text officer_notes
 }
 "public.rclc_loot" {
   integer id
