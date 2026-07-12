@@ -10,12 +10,12 @@ import { fileURLToPath } from 'node:url';
 
 const COMMON_JS = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../../js/common.js'), 'utf8');
 
-function loadCommonJs(supabase, consoleObj) {
+function loadCommonJs(supabase, consoleObj, search = '') {
   const windowObj = {};
   if (supabase) windowObj.supabase = supabase;
   const sandbox = {
     window: windowObj,
-    location: { search: '', pathname: '/' },
+    location: { search, pathname: '/' },
     sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
     localStorage: { getItem: () => null, setItem: () => {} },
     document: {
@@ -295,5 +295,49 @@ describe('loadData lootCounts wiring', () => {
     const mock = mockSupabase({ lootPages: [{ data: null, error: { message: 'nope' } }] });
     const sandbox = await runLoadData(mock);
     expect(sandbox.DATA.lootCounts).toEqual({});
+  });
+});
+
+// #426: a team with no GAS deployment (gasUrl:'', e.g. Immolation) must build
+// DATA straight from Supabase instead of injecting core/heavy JSONP that would
+// resolve to the current page and hang until the 15s timeout.
+describe('loadData GAS-independent path (empty gasUrl)', () => {
+  async function runGaslessLoadData(mock) {
+    const sandbox = loadCommonJs(mock.supabase, undefined, '?team=immolation');
+    expect(sandbox.WEB_APP_URL).toBe('');
+    const done = new Promise((resolve) => {
+      sandbox.loadData(
+        () => {},
+        () => resolve()
+      );
+    });
+    // Deliberately never call _rosterCoreCallback/_rosterHeavyCallback: there
+    // is no GAS deployment to fire them.
+    await done;
+    return sandbox;
+  }
+
+  it('builds DATA from Supabase without any GAS callback, seeding an empty roster', async () => {
+    const mock = mockSupabase({ lootPages: [{ data: [lootRow()], error: null }] });
+    const sandbox = await runGaslessLoadData(mock);
+    // The JSONP callbacks were never installed as globals -- nothing injected a script.
+    expect(sandbox.window._rosterCoreCallback).toBeUndefined();
+    expect(sandbox.window._rosterHeavyCallback).toBeUndefined();
+    // DATA is published from Supabase: roster defaults to [] (Immolation has no
+    // players yet), and the heavy Supabase reads still land.
+    expect(Array.isArray(sandbox.DATA.roster)).toBe(true);
+    expect(sandbox.DATA.roster).toEqual([]);
+    expect(Object.keys(sandbox.DATA.lootCounts)).toEqual(['katorri']);
+  });
+
+  it('renders empty containers (not undefined) when Supabase has no rows for the team', async () => {
+    const mock = mockSupabase({ lootPages: [{ data: [], error: null }] });
+    const sandbox = await runGaslessLoadData(mock);
+    // No GAS heavy chunk to fall back to, so these must be empty objects the
+    // write paths in tab-bis.js/tab-priority.js can safely index.
+    expect(sandbox.DATA.lootCounts).toEqual({});
+    expect(sandbox.DATA.bisList).toEqual({});
+    expect(sandbox.DATA.priorityOrder).toEqual({});
+    expect(sandbox.DATA.selfReceived).toEqual({});
   });
 });

@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.12] - 2026-07-11
+
+### Frontend
+
+- **Immolation home/officer pages no longer time out (#426).** A team with no GAS deployment (`gasUrl:''`, as Immolation was created directly in Supabase) previously hit a 15s "Request timed out." on every load: `loadData()` unconditionally injected the core/heavy JSONP `<script>`s from the team's `gasUrl`, and an empty base URL made them resolve to the current page -- which loads as a script, never 404s (so `onerror` never fires), and never calls the roster callbacks, so `DATA` stayed null. `loadData()` now detects the empty `gasUrl` and builds `DATA` entirely from the existing `fetchSupabase*` reads instead, stubbing the GAS chunks with empty payloads. The page renders from whatever Supabase has for the team (empty roster/attendance until it's seeded) rather than hanging. The core/heavy overlay logic was extracted into shared `applyCoreData()`/`applyHeavyData()` helpers so the GAS and GAS-independent paths run identical merges, and the heavy fallbacks now default to empty objects so the write paths in `tab-bis.js`/`tab-priority.js` can't index `undefined`.
+
 ## [3.33.11] - 2026-07-11
 
 ### Frontend
