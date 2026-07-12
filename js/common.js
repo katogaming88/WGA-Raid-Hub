@@ -38,7 +38,7 @@ if (_teamParam && _teamParam in TEAMS) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.33.20';
+var VERSION = '3.33.21';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -64,6 +64,147 @@ function writeAuditLog(action, targetType, targetId, detail) {
     .then(function (result) {
       if (result.error) console.warn('Failed to write audit log entry.', result.error.message);
     });
+}
+
+// In-app notification bell (#151). notify_player() is the only insert path
+// onto notifications (tests/rls/notifications.test.js asserts a raw insert is
+// denied to every role, mirroring write_audit_log()) -- called from the
+// officer-side approve/reject handlers for BiS/self-received/M+ requests
+// after their own write succeeds. Failing to notify doesn't undo the
+// approval/rejection; surfaced via console.warn like writeAuditLog().
+function notifyPlayer(playerId, message) {
+  if (!supabaseClient || playerId == null) return Promise.resolve();
+  return supabaseClient.rpc('notify_player', { p_player_id: playerId, p_message: message }).then(function (result) {
+    if (result.error) console.warn('Failed to write notification.', result.error.message);
+  });
+}
+
+// Raiders read/mark-read their own rows directly (RLS: is_own_player(player_id)),
+// no RPC needed -- same self-service shape as streamers.
+function fetchOwnNotifications() {
+  if (!supabaseClient) return Promise.resolve([]);
+  return supabaseClient
+    .from('notifications')
+    .select('id, message, read, created_at')
+    .order('created_at', { ascending: false })
+    .limit(20)
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Failed to fetch notifications.', result.error.message);
+        return [];
+      }
+      return result.data || [];
+    });
+}
+
+function markNotificationsRead(ids) {
+  if (!supabaseClient || !ids || !ids.length) return Promise.resolve();
+  return supabaseClient
+    .from('notifications')
+    .update({ read: true })
+    .in('id', ids)
+    .then(function (result) {
+      if (result.error) console.warn('Failed to mark notifications read.', result.error.message);
+    });
+}
+
+// Bell UI: shown only once a Discord session resolves to a linked character
+// (session.nameRealm) -- an unclaimed account has no player_id, so there's
+// nothing for RLS to scope notifications to. Called from renderDiscordNav()
+// (js/discord.js) on every session state change, so it covers login,
+// restored-session, logout, and claim on both index.html and officer.html.
+var _notifCache = [];
+
+function renderNotifBell(session) {
+  var btn = document.getElementById('navBell');
+  if (!btn) return;
+  if (!session || !session.nameRealm) {
+    btn.style.display = 'none';
+    closeNotifDropdown();
+    return;
+  }
+  btn.style.display = '';
+  refreshNotifBell();
+}
+
+function refreshNotifBell() {
+  var badge = document.getElementById('navBellBadge');
+  return fetchOwnNotifications().then(function (rows) {
+    _notifCache = rows;
+    var unread = rows.filter(function (r) {
+      return !r.read;
+    }).length;
+    if (badge) {
+      badge.textContent = unread;
+      badge.style.display = unread > 0 ? '' : 'none';
+    }
+    var dd = document.getElementById('notifDropdown');
+    if (dd && dd.style.display !== 'none') renderNotifDropdown();
+  });
+}
+
+function toggleNotifDropdown(ev) {
+  if (ev) ev.stopPropagation();
+  var dd = document.getElementById('notifDropdown');
+  if (!dd) return;
+  var opening = dd.style.display === 'none';
+  if (!opening) {
+    closeNotifDropdown();
+    return;
+  }
+  renderNotifDropdown();
+  dd.style.display = '';
+  document.addEventListener('click', _closeNotifDropdownOnOutsideClick);
+
+  var unreadIds = _notifCache
+    .filter(function (r) {
+      return !r.read;
+    })
+    .map(function (r) {
+      return r.id;
+    });
+  if (unreadIds.length) {
+    markNotificationsRead(unreadIds).then(function () {
+      _notifCache.forEach(function (r) {
+        r.read = true;
+      });
+      var badge = document.getElementById('navBellBadge');
+      if (badge) badge.style.display = 'none';
+    });
+  }
+}
+
+function _closeNotifDropdownOnOutsideClick(ev) {
+  var dd = document.getElementById('notifDropdown');
+  var btn = document.getElementById('navBell');
+  if (dd && !dd.contains(ev.target) && btn && !btn.contains(ev.target)) closeNotifDropdown();
+}
+
+function closeNotifDropdown() {
+  var dd = document.getElementById('notifDropdown');
+  if (dd) dd.style.display = 'none';
+  document.removeEventListener('click', _closeNotifDropdownOnOutsideClick);
+}
+
+function renderNotifDropdown() {
+  var dd = document.getElementById('notifDropdown');
+  if (!dd) return;
+  if (!_notifCache.length) {
+    dd.innerHTML = '<div class="notif-empty">No notifications yet.</div>';
+    return;
+  }
+  var html = '';
+  _notifCache.forEach(function (n) {
+    html +=
+      '<div class="notif-row' +
+      (n.read ? '' : ' notif-unread') +
+      '"><div class="notif-message">' +
+      _esc(n.message) +
+      '</div><div class="notif-time">' +
+      new Date(n.created_at).toLocaleString() +
+      '</div></div>';
+  });
+  dd.innerHTML = html;
 }
 
 // Shared by the Priority tab's export box (js/tabs/tab-priority.js) and

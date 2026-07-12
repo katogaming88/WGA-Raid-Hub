@@ -165,6 +165,7 @@ function approveBisSubmission(requestId, btnEl) {
             return;
           }
           writeAuditLog('BiS Approved', 'players', player ? player.id : null, bisLink);
+          if (player) notifyPlayer(player.id, 'Your BiS list link was approved.');
           if (card) card.remove();
           checkEmptyBisSubmissions();
         });
@@ -190,6 +191,7 @@ function rejectBisSubmission(requestId, btnEl) {
       }
       var player = findRosterPlayerByNameRealm(nameRealm);
       writeAuditLog('BiS Rejected', 'players', player ? player.id : null, null);
+      if (player) notifyPlayer(player.id, 'Your BiS list link was rejected.');
       if (card) card.remove();
       checkEmptyBisSubmissions();
     });

@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.21] - 2026-07-12
+
+### Frontend
+
+- **In-app notification bell (#151).** A raider now sees a bell in the nav (index.html and officer.html) when they've claimed a character, with a red badge for unread notifications. Opening it shows their last 20 notifications and marks the unread ones read. Fires when an officer approves or rejects their BiS list link, self-received item, or Mythic+ exclusion request -- rejection notifications for M+ exclusions include the officer's rejection reason, which the UI already collected "to be shown to the raider" but had no way to actually deliver until now. Season signup approve/reject deliberately isn't wired to this: an applicant has no `players` row (and so nothing to notify) until their signup is promoted to the roster, well past that step.
+
+### Backend
+
+- **`notifications` table + `notify_player()` (#151).** No direct INSERT policy for anyone, including officers -- `notify_player()` (SECURITY DEFINER, same shape as `write_audit_log()`) is the only way a row gets written, so a notification can't be forged or misattributed. A raider reads and marks-read their own rows via `is_own_player(player_id)`, the same self-service predicate `streamers` introduced.
+
 ## [3.33.20] - 2026-07-12
 
 ### Frontend

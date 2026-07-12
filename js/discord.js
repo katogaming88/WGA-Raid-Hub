@@ -49,6 +49,7 @@ function renderDiscordNav(session) {
     // Remove any logout dropdown if present
     var existing = document.getElementById('discordNavDropdown');
     if (existing) existing.parentNode.removeChild(existing);
+    if (typeof renderNotifBell === 'function') renderNotifBell(null);
     return;
   }
 
@@ -57,6 +58,7 @@ function renderDiscordNav(session) {
   btn.disabled = false;
   btn.title = 'Logged in as ' + session.username + (session.nameRealm ? ' (' + session.nameRealm + ')' : '');
   btn.classList.add('discord-logged-in');
+  if (typeof renderNotifBell === 'function') renderNotifBell(session);
 
   // Wire click to show a tiny logout dropdown
   btn.onclick = function (ev) {

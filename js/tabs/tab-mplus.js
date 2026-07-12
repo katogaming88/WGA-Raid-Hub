@@ -273,6 +273,7 @@ function confirmApproveMPlusExclusion(requestId, nameRealm, note, btnEl) {
             player.mPlusNote = note || '';
           }
           writeAuditLog('M+ Exclusion Approved', 'players', player ? player.id : null, note || null);
+          if (player) notifyPlayer(player.id, 'Your Mythic+ exclusion request was approved.');
           var card = document.querySelector('.request-card[data-row="' + requestId + '"]');
           if (card) card.remove();
           var container = document.getElementById('mplusContainer');
@@ -356,6 +357,9 @@ function confirmRejectMPlusExclusion(requestId, nameRealm, note, btnEl) {
         player.mPlusRejectionNote = note || '';
       }
       writeAuditLog('M+ Exclusion Rejected', 'players', player ? player.id : null, note || null);
+      if (player) {
+        notifyPlayer(player.id, 'Your Mythic+ exclusion request was rejected.' + (note ? ' Reason: ' + note : ''));
+      }
       var card = document.querySelector('.request-card[data-row="' + requestId + '"]');
       if (card) card.remove();
       var container = document.getElementById('mplusContainer');

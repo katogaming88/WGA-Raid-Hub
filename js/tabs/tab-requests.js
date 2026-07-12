@@ -61,6 +61,8 @@ function renderPendingRequests(requests) {
       r.id +
       '" data-name-realm="' +
       r.nameRealm.replace(/"/g, '&quot;') +
+      '" data-item="' +
+      r.item.replace(/"/g, '&quot;') +
       '">' +
       '<div class="request-card-header">' +
       '<span class="request-player">' +
@@ -104,6 +106,7 @@ function approveRequest(requestId, btnEl) {
   btnEl.textContent = '...';
   var card = document.querySelector('.request-card[data-row="' + requestId + '"]');
   var nameRealm = card ? card.getAttribute('data-name-realm') : '';
+  var item = card ? card.getAttribute('data-item') : '';
 
   supabaseClient
     .from('self_received_requests')
@@ -118,6 +121,7 @@ function approveRequest(requestId, btnEl) {
       }
       var player = findRosterPlayerByNameRealm(nameRealm);
       writeAuditLog('Self-Received Approved', 'players', player ? player.id : null, null);
+      if (player) notifyPlayer(player.id, 'Your self-received item (' + item + ') was approved.');
       if (card) card.remove();
       checkEmptyRequests();
     });
@@ -128,6 +132,7 @@ function rejectRequest(requestId, btnEl) {
   btnEl.textContent = '...';
   var card = document.querySelector('.request-card[data-row="' + requestId + '"]');
   var nameRealm = card ? card.getAttribute('data-name-realm') : '';
+  var item = card ? card.getAttribute('data-item') : '';
 
   supabaseClient
     .from('self_received_requests')
@@ -142,6 +147,7 @@ function rejectRequest(requestId, btnEl) {
       }
       var player = findRosterPlayerByNameRealm(nameRealm);
       writeAuditLog('Self-Received Rejected', 'players', player ? player.id : null, null);
+      if (player) notifyPlayer(player.id, 'Your self-received item (' + item + ') was rejected.');
       if (card) card.remove();
       checkEmptyRequests();
     });

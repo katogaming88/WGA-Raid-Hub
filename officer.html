@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.33.20">
-  <link rel="stylesheet" href="css/officer.css?v=3.33.20">
+  <link rel="stylesheet" href="css/styles.css?v=3.33.21">
+  <link rel="stylesheet" href="css/officer.css?v=3.33.21">
 </head>
 
 <body>
@@ -30,6 +30,12 @@
     <a href="index.html" class="site-nav-item" id="navHome" data-tooltip="Back to the roster overview">Home</a>
     <div class="site-nav-right">
       <select id="teamSwitcherSelect" class="team-switcher" title="Switch team"></select>
+      <div class="nav-bell-wrap">
+        <button class="site-nav-item nav-bell" id="navBell" onclick="toggleNotifDropdown(event)" style="display:none" data-tooltip="Notifications" title="Notifications">
+          &#128276;<span id="navBellBadge" class="nav-notif nav-notif-abs" style="display:none"></span>
+        </button>
+        <div id="notifDropdown" class="notif-dropdown" style="display:none"></div>
+      </div>
       <button class="site-nav-item site-nav-discord" id="navDiscord" onclick="loginWithDiscord()" data-tooltip="Sign in with Discord -- officers with a claimed character bypass the password prompt">Login with Discord</button>
       <button class="site-nav-item active" id="navOfficer" data-tooltip="Officer dashboard -- manage roster, loot, and signups">Officer Access</button>
     </div>
@@ -1010,26 +1016,26 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.33.20"></script>
-  <script src="js/discord.js?v=3.33.20"></script>
-  <script src="js/officer.js?v=3.33.20"></script>
-  <script src="js/tabs/tab-roster.js?v=3.33.20"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.33.20"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.33.20"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.33.20"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.33.20"></script>
-  <script src="js/tabs/tab-signups.js?v=3.33.20"></script>
-  <script src="js/tabs/tab-requests.js?v=3.33.20"></script>
-  <script src="js/tabs/tab-bis.js?v=3.33.20"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.33.20"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.33.20"></script>
-  <script src="js/tabs/tab-priority.js?v=3.33.20"></script>
-  <script src="js/tabs/tab-audit.js?v=3.33.20"></script>
-  <script src="js/tabs/tab-reports.js?v=3.33.20"></script>
-  <script src="js/tabs/tab-season.js?v=3.33.20"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.33.20"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.33.20"></script>
-  <script src="js/tabs/tab-admin.js?v=3.33.20"></script>
+  <script src="js/common.js?v=3.33.21"></script>
+  <script src="js/discord.js?v=3.33.21"></script>
+  <script src="js/officer.js?v=3.33.21"></script>
+  <script src="js/tabs/tab-roster.js?v=3.33.21"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.33.21"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.33.21"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.33.21"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.33.21"></script>
+  <script src="js/tabs/tab-signups.js?v=3.33.21"></script>
+  <script src="js/tabs/tab-requests.js?v=3.33.21"></script>
+  <script src="js/tabs/tab-bis.js?v=3.33.21"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.33.21"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.33.21"></script>
+  <script src="js/tabs/tab-priority.js?v=3.33.21"></script>
+  <script src="js/tabs/tab-audit.js?v=3.33.21"></script>
+  <script src="js/tabs/tab-reports.js?v=3.33.21"></script>
+  <script src="js/tabs/tab-season.js?v=3.33.21"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.33.21"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.33.21"></script>
+  <script src="js/tabs/tab-admin.js?v=3.33.21"></script>
   <script>
 document.getElementById('versionNum').textContent = VERSION;
 document.title = TEAM_NAME + ' -- Officer';
