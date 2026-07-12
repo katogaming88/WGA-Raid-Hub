@@ -253,30 +253,41 @@ var BIS_SLOTS = [
 ];
 
 // Maps an items.slot catalog value to the BIS_SLOTS row(s) an item with that
-// slot can fill. Keys are the literal values the item importer pulls from
-// the Item Lookup sheet's "slot" column (scripts/import/tables/items.js) --
-// not the BIS_SLOTS row labels, which use different (friendlier) names for
-// several of the same slots (Gloves -> Hands, Belt -> Waist, Boots -> Feet,
-// Bracers -> Wrist, Cloak -> Back, Shoulders -> Shoulder, Ring -> Finger).
-// Finger/Trinket map to both numbered rows since the catalog can't say
-// which; the single "1H/2H" weapon catalog slot (and "OH") collapse to the
-// Weapon/Off Hand rows -- this app has never modeled 2H vs 1H+OH as
-// different BiS slots, matching the old GAS sheet.
+// slot can fill. Both sides now speak the same vocabulary: items.slot holds the
+// canonical Wowhead/in-game slot name, so most entries are a straight 1:1 and
+// the old synonym half of this map (Boots -> Feet, Gloves -> Hands, Belt ->
+// Waist, Bracers -> Wrist, Cloak -> Back, Shoulders -> Shoulder, Ring ->
+// Finger) is gone with the hand-typed spreadsheet vocabulary it translated.
+//
+// What remains is the one mapping that is irreducible: an item's slot is a
+// *type* (a ring fits either finger; a trinket either trinket slot), while a
+// BIS_SLOTS row is a *position*. Only the officer's BiS assignment can say
+// which, so Finger/Trinket fan out to both numbered rows.
+//
+// Weapons collapse to the single Weapon row: this app has never modeled 2H vs
+// 1H+OH as different BiS slots. 'Held In Off-hand' is Wowhead's own name for
+// the off-hand-only items (tomes, orbs) that share the Off Hand row with
+// shields. Slotless catalog values -- 'Placeholder' (M+/Crafted/Catalyst) and
+// 'Curio' (a class-set trade token, not equippable) -- map to no row on
+// purpose: nothing about them names a gear position.
 var BIS_CATALOG_SLOT_TO_ROWS = {
   Head: ['Head'],
   Neck: ['Neck'],
-  Shoulders: ['Shoulder'],
-  Cloak: ['Back'],
+  Shoulder: ['Shoulder'],
+  Back: ['Back'],
   Chest: ['Chest'],
-  Bracers: ['Wrist'],
-  Gloves: ['Hands'],
-  Belt: ['Waist'],
+  Wrist: ['Wrist'],
+  Hands: ['Hands'],
+  Waist: ['Waist'],
   Legs: ['Legs'],
-  Boots: ['Feet'],
-  Ring: ['Finger 1', 'Finger 2'],
+  Feet: ['Feet'],
+  Finger: ['Finger 1', 'Finger 2'],
   Trinket: ['Trinket 1', 'Trinket 2'],
-  '1H/2H': ['Weapon'],
-  OH: ['Off Hand']
+  'One-Hand': ['Weapon'],
+  'Two-Hand': ['Weapon'],
+  Ranged: ['Weapon'],
+  'Off Hand': ['Off Hand'],
+  'Held In Off-hand': ['Off Hand']
 };
 
 var BIS_ARMOR_TYPES = { Plate: true, Mail: true, Leather: true, Cloth: true };

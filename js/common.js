@@ -38,7 +38,7 @@ var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
 var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.33.15';
+var VERSION = '3.33.16';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -1803,38 +1803,20 @@ function lookupItemSlot(itemName) {
   return '';
 }
 
-// Recognizes two vocabularies: the BIS_SLOTS row labels tab-bis.js's own
-// editor passes ("Hands"/"Waist"/"Feet"/"Wrist"/"Back"/"Shoulder"/"Finger
-// 1"/"Off Hand"/"Weapon"), and the raw items.slot catalog values every other
-// caller (tab-priority.js, tab-conflicts.js, renderProfile) passes straight
-// from DATA.itemSlots -- the Item Lookup sheet's actual "slot" column
-// vocabulary (scripts/import/tables/items.js), which is plural/abbreviated
-// ("Shoulders"/"Gloves"/"Belt"/"Boots"/"Bracers"/"Cloak"/"Ring"/"1H/2H"/"OH")
-// and doesn't match BIS_SLOTS 1:1 (see BIS_CATALOG_SLOT_TO_ROWS).
+// Takes either an items.slot catalog value (from DATA.itemSlots, passed by
+// tab-priority.js/tab-conflicts.js/renderProfile) or a BIS_SLOTS row label
+// (from tab-bis.js's editor). Those used to be two different vocabularies that
+// this function had to bridge by listing every synonym pair (BOOTS and FEET,
+// GLOVES and HANDS, ...); both now speak the canonical Wowhead/in-game names,
+// so the only values that differ between them are the numbered BiS positions
+// (FINGER vs FINGER 1) and the weapon rows.
 function getSlotColor(slot) {
   var s = (slot || '').toUpperCase();
-  if (s === 'TRINKET' || s === 'TRINKET 1' || s === 'TRINKET 2') return 'var(--gold)';
-  if (['NECK', 'FINGER', 'FINGER 1', 'FINGER 2', 'RING'].indexOf(s) >= 0) return 'var(--ranged)';
-  if (['WEAPON', 'TWO-HAND', 'ONE-HAND', 'RANGED', 'OFF HAND', '1H/2H', 'OH'].indexOf(s) >= 0) return 'var(--melee)';
-  if (
-    [
-      'HEAD',
-      'SHOULDER',
-      'SHOULDERS',
-      'CHEST',
-      'HANDS',
-      'GLOVES',
-      'LEGS',
-      'BACK',
-      'CLOAK',
-      'WRIST',
-      'BRACERS',
-      'WAIST',
-      'BELT',
-      'FEET',
-      'BOOTS'
-    ].indexOf(s) >= 0
-  )
+  if (['TRINKET', 'TRINKET 1', 'TRINKET 2'].indexOf(s) >= 0) return 'var(--gold)';
+  if (['NECK', 'FINGER', 'FINGER 1', 'FINGER 2'].indexOf(s) >= 0) return 'var(--ranged)';
+  if (['WEAPON', 'ONE-HAND', 'TWO-HAND', 'RANGED', 'OFF HAND', 'HELD IN OFF-HAND'].indexOf(s) >= 0)
+    return 'var(--melee)';
+  if (['HEAD', 'SHOULDER', 'CHEST', 'HANDS', 'LEGS', 'BACK', 'WRIST', 'WAIST', 'FEET'].indexOf(s) >= 0)
     return 'var(--tank)';
   return 'var(--text)';
 }

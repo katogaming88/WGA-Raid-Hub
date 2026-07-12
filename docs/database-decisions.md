@@ -20,6 +20,21 @@ Approving a self-received item should tick the matching BiS row as obtained, so 
 
 ---
 
+## 2026-07-26 -- Item catalog slot vocabulary (#453): re-derived from Wowhead, not translated; duplicates deleted, not merged
+
+`items.slot` held a vocabulary hand-typed into the retired GAS "Item Lookup" spreadsheet (`Boots`, `Gloves`, `Belt`, `Bracers`, `Cloak`, `Shoulders`, `Ring`, `1H/2H`, `OH`, `Unknown`). The game, Wowhead, `scripts/fetch-items.js`, and `bis_items.slot` all say `Feet`, `Hands`, `Waist`, `Wrist`, `Back`, `Shoulder`, `Finger`, and split weapons into `One-Hand`/`Two-Hand`/`Ranged` -- so the catalog was the only thing out of step, and every consumer carried a synonym table to bridge it. Surfaced while building #386, where the display slot and `bis_items.slot` diverging nearly shipped a silent no-op.
+
+- **Slots re-derived from Wowhead by `wow_item_id` (the `&xml` endpoint's `<inventorySlot>`), not string-translated from the old words.** A mapping table cannot split `1H/2H` into One-Hand (12 items) / Two-Hand (5) / Ranged (2), and cannot recover `Unknown` (19 items) at all -- together ~30% of the catalog. Every item carries a `wow_item_id`, so the authoritative source was available and guessing was unnecessary.
+- **The type-vs-position split is kept, because it is irreducible.** `items.slot` is an equip *type* (a ring fits either finger; Wowhead returns `Finger`, i.e. Blizzard's `InventoryType`), while `bis_items.slot` is a *position* (`Finger 1`). Only the officer's BiS assignment can say which, so `BIS_CATALOG_SLOT_TO_ROWS` still fans `Finger`/`Trinket` out to both numbered rows. This mirrors how the game models it (`INVTYPE_*` vs `INVSLOT_*`) and how the RCLootCouncil addon already does (`INVTYPE_FINGER = { "ring1", "ring2" }`).
+- **19 duplicate rows deleted rather than merged, and a unique index added on `wow_item_id`.** The catalog held 132 rows for 113 distinct items -- every tier token existed twice, once hand-filed with a slot and once seeded bare as `Unknown`. They evaded `unique(lower(name))` because the hand-filed rows carry an armor-type suffix (`Alnforged Riftbloom (Plate)`) and the seeded ones do not; nothing enforced uniqueness on `wow_item_id`. Confirmed against the live database that no `bis_items`, `rclc_loot`, `priority_order`, `self_received_requests` or `item_bosses` row referenced a duplicate, and that all 19 survivors kept their boss mapping -- so a delete was safe and a merge unnecessary. The migration guards this rather than trusting it: it raises if any reference exists at run time.
+- **Armor type dropped from tier-token names.** `Alnforged Riftbloom (Plate)` -> `Alnforged Riftbloom`; `items.armor_type` already stores `Plate`. The suffix was how the spreadsheet told four identically-named tokens apart, which the column now does. Only a suffix literally repeating `armor_type` is stripped, so `Chiming Void Curio (Tier)` -- a class-set trade token with no armor type -- is left alone. This has to run *after* the dedupe, since the bare names were exactly what the duplicate rows occupied.
+- **`Curio` and `Placeholder` map to no BiS row on purpose.** The one Curio is a class-set trade token ("trade this for powerful class set armor"), and the placeholders (M+/Crafted/Catalyst) name a loot source. Neither names a gear position, so neither is exportable as a BiS slot.
+- **Noted, not done: keying slots by the game's numeric `InventoryType`/`INVSLOT` id** with a reference table, which would buy FK integrity (`Trinket 3` becomes unstorable) and a natural sort order. Not needed to fix the above -- once the names are normalized they already agree -- so it stays a possible follow-up rather than scope here.
+
+[Full discussion -> #453](https://github.com/katogaming88/WGA-Raid-Hub/issues/453)
+
+---
+
 ## 2026-07-18 -- Season-code to display-name mapping (#341): stays a frontend translation, now pattern-derived instead of hardcoded per season
 
 `scoring.season`/`priority_order.season`/`rclc_loot.season` store a compact code (`MID1`, decided on #320) as the stable join/filter key across those tables, while officers see and type a free-text display name (`DATA.seasonName`, Season Settings tab -> `team_settings.config` via `saveTeamSetting()`, #221). Something has to translate between the two on every read/write that touches season data.
