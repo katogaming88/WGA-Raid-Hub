@@ -254,10 +254,12 @@ function buildProgression() {
       for (var j = 0; j < bosses.length; j++) {
         var boss = bosses[j];
         var killed_ = !!boss.mythicDate;
+        var progress = _raidProgressFor(raid, boss);
         html += '<div class="prog-boss' + (killed_ ? ' prog-boss-killed' : '') + '">';
         html += '<span class="prog-boss-num">' + (j + 1) + '</span>';
         html += '<span class="prog-boss-name">' + _esc(boss.name || 'Unknown') + '</span>';
         if (killed_) html += '<span class="prog-boss-date">' + boss.mythicDate + '</span>';
+        html += _renderPullsBadge(progress, killed_);
         html += '</div>';
       }
       html += '</div>';
@@ -269,6 +271,45 @@ function buildProgression() {
   }
   html += '</div>';
   el.innerHTML = html;
+}
+
+// Boss objects in DATA.raidProgression never carry a WCL encounterID
+// (tab-season.js's fetchWclForRaid() discards it before saving), so the
+// join to DATA.raidProgress -- keyed by "<wclZoneId>|<normalised name>" in
+// mapSupabaseRaidProgress() -- has to go through the same (zone, boss name)
+// pair used everywhere else in this card.
+function _raidProgressFor(raid, boss) {
+  var map = (DATA && DATA.raidProgress) || {};
+  var zoneId = raid.wclZoneId;
+  if (!zoneId || !boss || !boss.name) return null;
+  return map[zoneId + '|' + normalise(boss.name)] || null;
+}
+
+function _wclReportUrl(progress) {
+  if (!progress || !progress.reportCode) return '';
+  var url = 'https://www.warcraftlogs.com/reports/' + encodeURIComponent(progress.reportCode);
+  if (progress.fightId) url += '#fight=' + encodeURIComponent(progress.fightId);
+  return url;
+}
+
+// killed bosses: total pulls next to the existing kill date (matching WCL's
+// own reports view, e.g. "Belo'ren, Child of Al'ar -- Pulls: 81"). Still
+// in-progress: pulls plus best % remaining on the current best attempt.
+// Either way, a report link (when the sync found one) jumps straight to
+// that pull/kill on WCL.
+function _renderPullsBadge(progress, killed) {
+  if (!progress || progress.pulls == null) return '';
+  var text = progress.pulls + (progress.pulls === 1 ? ' pull' : ' pulls');
+  if (!killed && progress.bestPct != null) {
+    text += ' -- best ' + progress.bestPct + '%';
+  }
+  var url = _wclReportUrl(progress);
+  if (url) {
+    return (
+      '<a class="prog-boss-pulls" href="' + url + '" target="_blank" rel="noopener">' + _esc(text) + '</a>'
+    );
+  }
+  return '<span class="prog-boss-pulls">' + _esc(text) + '</span>';
 }
 
 function _esc(str) {

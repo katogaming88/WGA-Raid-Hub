@@ -35,6 +35,10 @@ players,Public read players,public,SELECT,PERMISSIVE,true,
 priority_order,Claude readers read priority_order,claude_readers,SELECT,PERMISSIVE,true,
 priority_order,Officers write priority_order,public,ALL,PERMISSIVE,"(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))","(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))"
 priority_order,Public read priority_order,public,SELECT,PERMISSIVE,true,
+raid_encounters,Claude readers read raid_encounters,claude_readers,SELECT,PERMISSIVE,true,
+raid_encounters,Public read raid_encounters,public,SELECT,PERMISSIVE,true,
+raid_zones,Claude readers read raid_zones,claude_readers,SELECT,PERMISSIVE,true,
+raid_zones,Public read raid_zones,public,SELECT,PERMISSIVE,true,
 rclc_loot,Claude readers read rclc_loot,claude_readers,SELECT,PERMISSIVE,true,
 rclc_loot,Officer write loot,public,ALL,PERMISSIVE,"(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))","(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))"
 rclc_loot,Public read loot,public,SELECT,PERMISSIVE,true,
@@ -64,6 +68,9 @@ team_members,Claude readers read team_members,claude_readers,SELECT,PERMISSIVE,t
 team_members,Members read own team_members,public,SELECT,PERMISSIVE,(auth_user_id = auth.uid()),
 team_members,Officers read own team_members,public,SELECT,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())",
 team_members,Team leaders write team_members,public,ALL,PERMISSIVE,((my_team_role(team_id) = 'team_leader'::text) OR is_site_admin()),((my_team_role(team_id) = 'team_leader'::text) OR is_site_admin())
+team_raid_progress,Claude readers read team_raid_progress,claude_readers,SELECT,PERMISSIVE,true,
+team_raid_progress,Officers write team_raid_progress,public,ALL,PERMISSIVE,"(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))","(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))"
+team_raid_progress,Public read team_raid_progress,public,SELECT,PERMISSIVE,true,
 team_settings,Claude readers read team_settings,claude_readers,SELECT,PERMISSIVE,true,
 team_settings,Public read settings,public,SELECT,PERMISSIVE,true,
 team_settings,Team leaders write settings,public,ALL,PERMISSIVE,((my_team_role(team_id) = 'team_leader'::text) OR is_site_admin()),((my_team_role(team_id) = 'team_leader'::text) OR is_site_admin())
