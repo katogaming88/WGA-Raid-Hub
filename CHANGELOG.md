@@ -8,6 +8,20 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.16] - 2026-07-11
+
+### Frontend
+
+- **Dropped the item-slot synonym tables (#453).** `getSlotColor()` had to list every pair (`BOOTS` and `FEET`, `GLOVES` and `HANDS`, `CLOAK` and `BACK`...) and `BIS_CATALOG_SLOT_TO_ROWS` existed largely to translate, because `items.slot` spoke a different dialect from `bis_items.slot`. Both now use the canonical in-game/Wowhead names, so what's left is only the mapping that can't be reduced: an item's slot is a *type* (a ring fits either finger), while a BiS row is a *position*, so `Finger`/`Trinket` still fan out to both numbered rows and every weapon type collapses to the single `Weapon` row.
+- **Fixed `scripts/fetch-items.js`, which was broken.** It fetched Wowhead's `/tooltip/item/{id}` endpoint, which Wowhead has removed -- it now 404s for *every* item, so the next tier fetch would have failed outright. Now reads the `&xml` endpoint, whose `<inventorySlot>` gives the canonical slot straight from the game data (no per-tier `SLOT_FROM_TYPE` guesswork for real items) and reports no slot at all for tier tokens, which is exactly the case the existing name-parsing fallback covers.
+
+### Backend
+
+- **Normalized the item catalog's slot vocabulary and de-duplicated it (#453).** `items.slot` held a vocabulary hand-typed into the retired GAS "Item Lookup" spreadsheet (`Boots`, `Gloves`, `Belt`, `Bracers`, `Cloak`, `Shoulders`, `Ring`, `1H/2H`, `OH`, `Unknown`) that matched neither the game, Wowhead, nor `bis_items.slot`. Every slot was re-derived from Wowhead by `wow_item_id` rather than translated from the old words -- a string mapping can't split `1H/2H` into One-Hand (12 items) / Two-Hand (5) / Ranged (2), and can't recover `Unknown` at all.
+- **Deleted 19 duplicate catalog rows and added a unique index on `wow_item_id`.** The catalog held 132 rows for 113 distinct items: every tier token existed twice, once hand-filed with a slot and once seeded bare as `Unknown`. They slipped past the `unique(lower(name))` index because the hand-filed rows carried an armor-type suffix and the seeded ones didn't, and there was no unique constraint on `wow_item_id` to catch it. Nothing referenced the duplicates (verified across `bis_items`, `rclc_loot`, `priority_order`, `self_received_requests` and `item_bosses`), so they're deleted rather than merged, behind a guard that refuses to run if that's ever untrue.
+- **Tier-token names no longer repeat their armor type.** `Alnforged Riftbloom (Plate)` becomes `Alnforged Riftbloom`, since `items.armor_type` already stores `Plate` -- the suffix was how the spreadsheet told four identically-named tokens apart, and the column does that job now. Only a suffix that literally repeats `armor_type` is stripped, so `Chiming Void Curio (Tier)` (a class-set trade token, no armor type) is left alone.
+- **`build_rclc_export` learned `Held In Off-hand`.** It keys off `coalesce(bis_items.slot, items.slot)`, and its CASE already covered the canonical names but had no arm for the legacy ones -- a BiS row with no slot of its own and a legacy catalog slot fell through to `null` and was dropped from the RCLootCouncil export. Nothing hit that in practice, and the normalization removes the possibility; the one genuinely new value (Wowhead's name for off-hand-only tomes and orbs) now maps to the addon's `oh` key alongside shields.
+
 ## [3.33.15] - 2026-07-11
 
 ### Frontend

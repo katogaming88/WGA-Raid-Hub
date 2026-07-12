@@ -668,6 +668,14 @@
           "columns": [
             "lower"
           ]
+        },
+        {
+          "name": "items_wow_item_id_key",
+          "def": "CREATE UNIQUE INDEX items_wow_item_id_key ON public.items USING btree (wow_item_id) WHERE (wow_item_id IS NOT NULL)",
+          "table": "public.items",
+          "columns": [
+            "wow_item_id"
+          ]
         }
       ],
       "constraints": [

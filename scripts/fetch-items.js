@@ -160,8 +160,6 @@ const SLOT_FROM_TYPE = {
   'Off-hand Frill': 'Off Hand'
 };
 
-const ARMOR_SLOTS = ['Head', 'Shoulder', 'Chest', 'Wrist', 'Hands', 'Waist', 'Legs', 'Feet'];
-
 // Tier token name parsing -- slot from keyword, armor type from suffix
 const TOKEN_ARMOR_SUFFIXES = {
   cast: 'Mail',
@@ -194,13 +192,21 @@ function getArmorType(wowheadType) {
   return wowheadType.endsWith(' Armor') ? wowheadType.slice(0, -6) : null;
 }
 
-function parseSlotFromTooltip(html) {
-  // Strip tags, then look for armor slot keywords
-  const text = html.replace(/<[^>]+>/g, ' ');
-  for (const slot of ARMOR_SLOTS) {
-    if (new RegExp(`\\b${slot}\\b`).test(text)) return slot;
-  }
-  return null;
+function parseNameFromXml(xml) {
+  const match = xml.match(/<name><!\[CDATA\[([\s\S]*?)\]\]><\/name>/);
+  return match ? match[1].trim() : '';
+}
+
+// Wowhead's <inventorySlot> is the item's equip location straight from the game
+// data ("Feet", "Finger", "Trinket", "Two-Hand", "Held In Off-hand"), and is the
+// same vocabulary items.slot and bis_items.slot now store. id="0" means the item
+// has no equip slot at all -- tier tokens and the class-set trade tokens -- which
+// returns null so the caller falls back to parsing the slot out of the name.
+function parseSlotFromXml(xml) {
+  const match = xml.match(/<inventorySlot id="(\d+)">([^<]*)<\/inventorySlot>/);
+  if (!match || match[1] === '0') return null;
+  const slot = match[2].trim();
+  return slot === '' ? null : slot;
 }
 
 function parseBossFromPage(html) {
@@ -231,15 +237,18 @@ async function main() {
 
   for (const [id, wowheadType] of filtered) {
     try {
-      const tooltipRes = await fetch(`https://www.wowhead.com/tooltip/item/${id}?dataEnv=4&locale=enus`, {
+      const xmlRes = await fetch(`https://www.wowhead.com/item=${id}&xml`, {
         headers: { 'User-Agent': 'Mozilla/5.0 (compatible; wga-item-seeder/1.0)' }
       });
-      if (!tooltipRes.ok) throw new Error(`Tooltip HTTP ${tooltipRes.status}`);
-      const tooltip = await tooltipRes.json();
+      if (!xmlRes.ok) throw new Error(`XML HTTP ${xmlRes.status}`);
+      const xml = await xmlRes.text();
 
-      const name = tooltip.name ?? '';
-      const knownSlot = SLOT_FROM_TYPE[wowheadType];
-      const slot = knownSlot ?? parseSlotFromTooltip(tooltip.tooltip ?? '');
+      const name = parseNameFromXml(xml);
+      // Wowhead's own <inventorySlot> is authoritative and needs no per-tier
+      // mapping, so it wins over SLOT_FROM_TYPE. It's empty for tier tokens
+      // (they trade for a set piece rather than being equipped), which is
+      // exactly the case parseTokenFromName() below exists to cover.
+      const slot = parseSlotFromXml(xml) ?? SLOT_FROM_TYPE[wowheadType] ?? null;
       const armor_type = getArmorType(wowheadType);
 
       await sleep(200);

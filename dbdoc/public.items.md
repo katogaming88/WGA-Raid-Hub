@@ -25,6 +25,7 @@
 | ---- | ---------- |
 | items_pkey | CREATE UNIQUE INDEX items_pkey ON public.items USING btree (id) |
 | items_lower_name_key | CREATE UNIQUE INDEX items_lower_name_key ON public.items USING btree (lower(name)) |
+| items_wow_item_id_key | CREATE UNIQUE INDEX items_wow_item_id_key ON public.items USING btree (wow_item_id) WHERE (wow_item_id IS NOT NULL) |
 
 ## Relations
 
