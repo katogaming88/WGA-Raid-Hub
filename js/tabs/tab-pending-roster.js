@@ -180,7 +180,7 @@ function buildPendingControlsHtml() {
     return (
       '<button onclick="' +
       onclick +
-      '" style="cursor:pointer;font-size:0.82rem;padding:0.2rem 0.65rem;border-radius:4px;' +
+      '" style="cursor:pointer;font-size:0.95rem;padding:0.2rem 0.65rem;border-radius:4px;' +
       'border:1px solid ' +
       (active ? color : 'var(--border)') +
       ';background:' +
@@ -242,25 +242,25 @@ function buildPendingSelectionBarHtml(visible) {
   var allSelected = visible.length > 0 && selectedCount === visible.length;
 
   var messageHtml = _pendingBatchMessage
-    ? '<span id="pendingBatchPushStatus" style="font-size:0.85rem;color:var(--text-muted);">' +
+    ? '<span id="pendingBatchPushStatus" style="font-size:0.97rem;color:var(--text-muted);">' +
       escHtml(_pendingBatchMessage) +
       '</span>'
-    : '<span id="pendingBatchPushStatus" style="font-size:0.85rem;color:var(--text-muted);"></span>';
+    : '<span id="pendingBatchPushStatus" style="font-size:0.97rem;color:var(--text-muted);"></span>';
 
   return (
     '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.6rem;margin-bottom:0.75rem;' +
     'padding:0.5rem 0.75rem;background:var(--bg-alt);border:1px solid var(--border);border-radius:6px;">' +
-    '<label style="display:flex;align-items:center;gap:0.35rem;font-size:0.85rem;color:var(--text-muted);cursor:pointer;">' +
+    '<label style="display:flex;align-items:center;gap:0.35rem;font-size:0.97rem;color:var(--text-muted);cursor:pointer;">' +
     '<input type="checkbox" onchange="toggleSelectAllPending()"' +
     (allSelected ? ' checked' : '') +
     ' style="accent-color:var(--gold-light);">Select All' +
     '</label>' +
-    '<span style="font-size:0.85rem;color:var(--text-muted);">' +
+    '<span style="font-size:0.97rem;color:var(--text-muted);">' +
     selectedCount +
     ' selected</span>' +
     '<button id="pendingBatchPushBtn" class="btn btn-gold" onclick="batchAddSelectedToRoster()"' +
     (selectedCount ? '' : ' disabled') +
-    ' style="font-size:0.88rem;padding:0.25rem 0.75rem;">Add Selected to Roster</button>' +
+    ' style="font-size:1rem;padding:0.25rem 0.75rem;">Add Selected to Roster</button>' +
     messageHtml +
     '</div>'
   );
@@ -385,7 +385,7 @@ function buildPendingStatsHtml(entries) {
     .map(function (r) {
       return (
         '<span style="display:inline-flex;align-items:center;gap:0.3rem;background:var(--bg-alt);' +
-        'border:1px solid var(--border);border-radius:4px;padding:0.2rem 0.6rem;font-size:0.85rem;">' +
+        'border:1px solid var(--border);border-radius:4px;padding:0.2rem 0.6rem;font-size:0.97rem;">' +
         '<span style="color:' +
         roleColors[r] +
         ';font-weight:700;">' +
@@ -401,7 +401,7 @@ function buildPendingStatsHtml(entries) {
 
   return (
     '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.25rem;">' +
-    '<span style="font-size:0.85rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;' +
+    '<span style="font-size:0.97rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;' +
     'letter-spacing:0.12em;margin-right:0.25rem;">' +
     entries.length +
     ' Pending</span>' +
@@ -423,12 +423,12 @@ function buildMissingSignupsHtml(missing) {
     '<div style="margin-bottom:1.25rem;border:1px solid var(--border);border-radius:6px;overflow:hidden;">' +
     '<div onclick="toggleMissingSignups()" style="cursor:pointer;display:flex;align-items:center;' +
     'justify-content:space-between;padding:0.6rem 0.85rem;background:var(--bg-alt);">' +
-    '<span style="font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.12em;color:' +
+    '<span style="font-size:0.97rem;font-weight:600;text-transform:uppercase;letter-spacing:0.12em;color:' +
     headerColor +
     ';">Missing Signups (' +
     missing.length +
     ')</span>' +
-    '<span id="pendingMissingIcon" style="font-size:0.8rem;color:var(--text-muted);">' +
+    '<span id="pendingMissingIcon" style="font-size:0.93rem;color:var(--text-muted);">' +
     icon +
     '</span>' +
     '</div>' +
@@ -440,7 +440,7 @@ function buildMissingSignupsHtml(missing) {
 
   if (!missing.length) {
     html +=
-      '<p style="color:var(--text-muted);font-size:0.9rem;margin:0;">All roster members have submitted a signup.</p>';
+      '<p style="color:var(--text-muted);font-size:1.02rem;margin:0;">All roster members have submitted a signup.</p>';
   } else {
     var byRole = { Tank: [], Heal: [], Melee: [], Ranged: [] };
     missing.forEach(function (p) {
@@ -453,7 +453,7 @@ function buildMissingSignupsHtml(missing) {
       if (!byRole[role].length) return;
       html +=
         '<div style="margin-bottom:0.5rem;">' +
-        '<span style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.1em;color:' +
+        '<span style="font-size:0.91rem;text-transform:uppercase;letter-spacing:0.1em;color:' +
         roleColors[role] +
         ';font-weight:700;">' +
         role +
@@ -464,7 +464,7 @@ function buildMissingSignupsHtml(missing) {
       byRole[role].forEach(function (p) {
         var clsColor = classColor(p.className);
         html +=
-          '<span style="font-size:0.82rem;background:var(--bg);border:1px solid var(--border);' +
+          '<span style="font-size:0.95rem;background:var(--bg);border:1px solid var(--border);' +
           'border-radius:4px;padding:0.15rem 0.5rem;color:' +
           clsColor +
           ';">' +
@@ -504,7 +504,7 @@ function buildPendingBuffCoverageHtml(coverage) {
   sections.forEach(function (sec) {
     bodyHtml +=
       '<div style="margin-bottom:0.6rem;">' +
-      '<span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;' +
+      '<span style="font-size:0.89rem;text-transform:uppercase;letter-spacing:0.1em;' +
       'color:var(--text-muted);font-weight:700;display:block;margin-bottom:0.35rem;">' +
       sec.label +
       '</span>' +
@@ -530,7 +530,7 @@ function buildPendingBuffCoverageHtml(coverage) {
         titleAttr +
         ' style="display:inline-flex;align-items:center;gap:0.3rem;' +
         'background:var(--bg);border:1px solid var(--border);border-radius:4px;' +
-        'padding:0.2rem 0.6rem;font-size:0.88rem;cursor:default;">' +
+        'padding:0.2rem 0.6rem;font-size:1rem;cursor:default;">' +
         '<span style="color:' +
         color +
         ';font-weight:700;">' +
@@ -541,7 +541,7 @@ function buildPendingBuffCoverageHtml(coverage) {
         ';">' +
         buff.name +
         '</span>' +
-        (count > 0 ? '<span style="color:' + color + ';font-weight:600;font-size:0.8rem;">' + count + '</span>' : '') +
+        (count > 0 ? '<span style="color:' + color + ';font-weight:600;font-size:0.93rem;">' + count + '</span>' : '') +
         '</span>';
     });
     bodyHtml += '</div></div>';
@@ -551,9 +551,9 @@ function buildPendingBuffCoverageHtml(coverage) {
     '<div style="margin-bottom:1.25rem;border:1px solid var(--border);border-radius:6px;overflow:hidden;">' +
     '<div onclick="togglePendingBuffCoverage()" style="cursor:pointer;display:flex;align-items:center;' +
     'justify-content:space-between;padding:0.6rem 0.85rem;background:var(--bg-alt);">' +
-    '<span style="font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.12em;' +
+    '<span style="font-size:0.97rem;font-weight:600;text-transform:uppercase;letter-spacing:0.12em;' +
     'color:var(--text-muted);">Buff Coverage</span>' +
-    '<span id="pendingBuffIcon" style="font-size:0.8rem;color:var(--text-muted);">&#9654;</span>' +
+    '<span id="pendingBuffIcon" style="font-size:0.93rem;color:var(--text-muted);">&#9654;</span>' +
     '</div>' +
     '<div id="pendingBuffCollapse" style="display:none;padding:0.75rem 0.85rem;">' +
     bodyHtml +
@@ -603,7 +603,7 @@ function buildPendingCardHtml(e, rosterMap) {
     '<span class="signup-response-name">' +
     escHtml(e.nameRealm) +
     '</span>' +
-    '<span style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;' +
+    '<span style="font-size:0.85rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;' +
     'margin-left:0.4rem;color:' +
     (isNew ? 'var(--heal)' : 'var(--text-muted)') +
     ';">' +
@@ -613,7 +613,7 @@ function buildPendingCardHtml(e, rosterMap) {
 
   if (e.season)
     html +=
-      '<span style="font-size:0.7rem;color:var(--text-muted);background:var(--bg-alt);' +
+      '<span style="font-size:0.85rem;color:var(--text-muted);background:var(--bg-alt);' +
       'border:1px solid var(--border);border-radius:3px;padding:0.1rem 0.4rem;margin-left:0.4rem;">' +
       escHtml(e.season) +
       '</span>';
@@ -631,17 +631,17 @@ function buildPendingCardHtml(e, rosterMap) {
 
   if (e.role)
     html +=
-      '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">Role: <span style="color:var(--text);">' +
+      '<div style="font-size:1.04rem;color:var(--text-muted);margin-top:0.2rem;">Role: <span style="color:var(--text);">' +
       e.role +
       '</span></div>';
   if (e.mainSwap)
     html +=
-      '<div style="font-size:0.92rem;color:var(--text-muted);margin-top:0.2rem;">' +
+      '<div style="font-size:1.04rem;color:var(--text-muted);margin-top:0.2rem;">' +
       '<span style="color:var(--gold-light);font-weight:600;">Main swap requested</span> ' +
-      '<span style="font-size:0.85rem;">-- select the old character to archive below.</span></div>';
+      '<span style="font-size:0.97rem;">-- select the old character to archive below.</span></div>';
   if (e.notes)
     html +=
-      '<div style="font-size:0.9rem;color:var(--text-muted);margin-top:0.35rem;font-style:italic;">' +
+      '<div style="font-size:1.02rem;color:var(--text-muted);margin-top:0.35rem;font-style:italic;">' +
       escHtml(e.notes) +
       '</div>';
 
@@ -651,7 +651,7 @@ function buildPendingCardHtml(e, rosterMap) {
     '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
     '<button class="btn btn-danger" onclick="removePendingRosterRow(' +
     e.signupId +
-    ',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Remove from Pending</button>' +
+    ',this)" style="font-size:1rem;padding:0.25rem 0.75rem;">Remove from Pending</button>' +
     '</div>' +
     '</div>';
 
@@ -674,7 +674,7 @@ function buildAddToRosterControlHtml(e, isNew) {
       })
       .join('');
     swapPicker =
-      '<select class="pending-swap-select" style="font-size:0.85rem;padding:0.2rem 0.4rem;' +
+      '<select class="pending-swap-select" style="font-size:0.97rem;padding:0.2rem 0.4rem;' +
       'background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);margin-right:0.5rem;">' +
       '<option value="">-- character to archive --</option>' +
       options +
@@ -688,7 +688,7 @@ function buildAddToRosterControlHtml(e, isNew) {
   return (
     '<div class="pending-add-roster" style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;' +
     'margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);">' +
-    '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;color:var(--text-muted);cursor:pointer;">' +
+    '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.97rem;color:var(--text-muted);cursor:pointer;">' +
     '<input type="checkbox" class="pending-trial-checkbox"' +
     (defaultTrial ? ' checked' : '') +
     ' style="accent-color:var(--gold-light);">Trial' +
@@ -696,8 +696,8 @@ function buildAddToRosterControlHtml(e, isNew) {
     swapPicker +
     '<button class="btn request-approve-btn pending-add-btn" onclick="addSignupToRoster(' +
     e.signupId +
-    ',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Add to Roster</button>' +
-    '<span class="pending-add-error" style="color:var(--melee);font-size:0.85rem;"></span>' +
+    ',this)" style="font-size:1rem;padding:0.25rem 0.75rem;">Add to Roster</button>' +
+    '<span class="pending-add-error" style="color:var(--melee);font-size:0.97rem;"></span>' +
     '</div>'
   );
 }

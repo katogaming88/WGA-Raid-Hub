@@ -123,7 +123,7 @@ function renderScoresTable(scores) {
 
     var dataScore = s.recent !== null ? s.recent.toFixed(2) : '';
     var committedBadge = s.committed
-      ? ' <span style="color:var(--heal);font-size:0.75rem;font-weight:400;opacity:0.85;">committed</span>'
+      ? ' <span style="color:var(--heal);font-size:0.89rem;font-weight:400;opacity:0.85;">committed</span>'
       : '';
     var recentTd;
     if (s.manual) {
@@ -143,7 +143,7 @@ function renderScoresTable(scores) {
         'onclick="editScoreCell(this)">' +
         recentDisplay +
         committedBadge +
-        ' <span style="font-size:0.7rem;opacity:0.4;font-weight:400;">edit</span>' +
+        ' <span style="font-size:0.85rem;opacity:0.4;font-weight:400;">edit</span>' +
         '</td>';
     }
 
@@ -156,7 +156,7 @@ function renderScoresTable(scores) {
         s.best.toFixed(2) +
         '">' +
         bestDisplay +
-        ' <span style="font-size:0.7rem;opacity:0.4;font-weight:400;cursor:pointer;" onclick="useBestScore(this.parentElement)">use</span>' +
+        ' <span style="font-size:0.85rem;opacity:0.4;font-weight:400;cursor:pointer;" onclick="useBestScore(this.parentElement)">use</span>' +
         '</td>'
       : '<td style="padding:0.4rem 0.75rem;color:' + bestColor + ';">' + bestDisplay + '</td>';
 
@@ -176,8 +176,8 @@ function renderScoresTable(scores) {
   }
 
   el.innerHTML =
-    '<table style="width:100%;border-collapse:collapse;margin-top:1rem;font-size:0.95rem;">' +
-    '<thead><tr style="border-bottom:1px solid var(--border);color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.06em;">' +
+    '<table style="width:100%;border-collapse:collapse;margin-top:1rem;font-size:1.07rem;">' +
+    '<thead><tr style="border-bottom:1px solid var(--border);color:var(--text-muted);font-size:0.93rem;text-transform:uppercase;letter-spacing:0.06em;">' +
     '<th style="padding:0.4rem 0.75rem;text-align:left;font-weight:500;">Player</th>' +
     '<th style="padding:0.4rem 0.75rem;text-align:left;font-weight:500;">Recent Score</th>' +
     '<th style="padding:0.4rem 0.75rem;text-align:left;font-weight:500;">Trend Score</th>' +
@@ -200,7 +200,7 @@ function editScoreCell(el) {
     '<input type="number" step="0.01" min="0" max="10" value="' +
     current +
     '" style="width:80px;background:var(--surface);color:var(--text);border:1px solid var(--gold);' +
-    'border-radius:3px;padding:0.15rem 0.3rem;font-size:0.9rem;" />';
+    'border-radius:3px;padding:0.15rem 0.3rem;font-size:1.02rem;" />';
   var input = el.querySelector('input');
   input.focus();
   input.select();
@@ -242,7 +242,7 @@ function saveManualScore(playerName, score, cellEl, origColor) {
   var color = score >= 7 ? 'var(--heal)' : score >= 5 ? 'var(--gold)' : 'var(--text-dim)';
   cellEl.setAttribute('data-score', scoreStr);
   cellEl.style.color = color;
-  cellEl.innerHTML = scoreStr + ' <span style="font-size:0.7rem;opacity:0.4;font-weight:400;">edit</span>';
+  cellEl.innerHTML = scoreStr + ' <span style="font-size:0.85rem;opacity:0.4;font-weight:400;">edit</span>';
   var cached = _loadScoresCache();
   if (cached && cached.scores) {
     for (var ci = 0; ci < cached.scores.length; ci++) {

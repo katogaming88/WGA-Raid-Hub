@@ -178,7 +178,7 @@ function renderDangerZone() {
   var content = document.getElementById('adminDangerContent');
   if (!content) return;
   var html =
-    '<p style="font-size:0.88rem;color:var(--melee);margin-bottom:1rem;">' +
+    '<p style="font-size:1rem;color:var(--melee);margin-bottom:1rem;">' +
     'These operations are permanent and cannot be undone. Type <strong>' +
     TEAM_NAME +
     '</strong> to confirm each action.' +
@@ -192,7 +192,7 @@ function renderDangerZone() {
       '<input type="text" class="add-player-input" id="danger-confirm-' +
       op.key +
       '"' +
-      ' placeholder="Type team name to confirm" style="max-width:240px;font-size:0.88rem;">';
+      ' placeholder="Type team name to confirm" style="max-width:240px;font-size:1rem;">';
     html +=
       '<button class="btn btn-danger" id="danger-btn-' +
       op.key +
@@ -202,7 +202,7 @@ function renderDangerZone() {
       '\')">' +
       op.label +
       '</button>';
-    html += '<span id="danger-status-' + op.key + '" style="font-size:0.85rem;"></span>';
+    html += '<span id="danger-status-' + op.key + '" style="font-size:0.97rem;"></span>';
     html += '</div></div>';
   });
   content.innerHTML = html;
@@ -412,7 +412,7 @@ function clearSelfReceivedRequestsSupabase(finish) {
 function renderOfficerManagement() {
   var el = document.getElementById('adminOfficersContent');
   if (!el || !supabaseClient) return;
-  el.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">Loading...</p>';
+  el.innerHTML = '<p style="color:var(--text-muted);font-size:1.02rem;">Loading...</p>';
   fetchTeamClaims().then(function (claims) {
     // Team leaders are a distinct top tier managed outside this picker; only
     // plain officers are promotable/revocable here (matches the old flat
@@ -429,7 +429,7 @@ function renderOfficerManagement() {
         var jsonId = JSON.stringify(c.teamMemberId);
         var jsonNr = JSON.stringify(c.nameRealm).replace(/"/g, '&quot;');
         var btn =
-          '<button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="revokeOfficer(' +
+          '<button class="btn btn-muted" style="padding:0.2rem 0.6rem;font-size:0.89rem;" onclick="revokeOfficer(' +
           jsonId +
           ',' +
           jsonNr +
@@ -453,7 +453,7 @@ function renderOfficerManagement() {
         '<tbody>' +
         rows +
         '</tbody></table>'
-      : '<p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">No officers yet.</p>';
+      : '<p style="color:var(--text-muted);font-size:1.02rem;margin-bottom:1rem;">No officers yet.</p>';
 
     // Promote a claimed character to officer
     var options = nonOfficerClaims
@@ -468,14 +468,14 @@ function renderOfficerManagement() {
         '<option value="">Select a claimed character...</option>' +
         options +
         '</select>' +
-        '<button class="btn" onclick="grantOfficerFromPicker()" style="padding:0.3rem 0.75rem;font-size:0.85rem;">Grant Officer</button>' +
-        '<span id="manualOfficerStatus" style="font-size:0.85rem;"></span>' +
+        '<button class="btn" onclick="grantOfficerFromPicker()" style="padding:0.3rem 0.75rem;font-size:0.97rem;">Grant Officer</button>' +
+        '<span id="manualOfficerStatus" style="font-size:0.97rem;"></span>' +
         '</div>'
-      : '<p style="color:var(--text-muted);font-size:0.9rem;">No claimed characters left to promote.</p>';
+      : '<p style="color:var(--text-muted);font-size:1.02rem;">No claimed characters left to promote.</p>';
 
     el.innerHTML =
       table +
-      '<p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.5rem;">Promote a claimed character to officer:</p>' +
+      '<p style="font-size:0.95rem;color:var(--text-muted);margin-bottom:0.5rem;">Promote a claimed character to officer:</p>' +
       promote;
   });
 }

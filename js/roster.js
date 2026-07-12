@@ -118,7 +118,7 @@ function buildPublicRosterTab() {
         dispName +
         '</span>' +
         (player.firstName !== dispName
-          ? '<span style="font-size:0.9rem;color:var(--text-muted);">(' + player.firstName + ')</span>'
+          ? '<span style="font-size:1.02rem;color:var(--text-muted);">(' + player.firstName + ')</span>'
           : '') +
         '</div></td>' +
         '<td>' +

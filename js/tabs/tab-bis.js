@@ -82,7 +82,7 @@ function renderBisSubmissions(submissions) {
   }
   var html =
     '<div style="margin-top:1.5rem;">' +
-    '<div style="font-size:0.9rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:0.75rem;">' +
+    '<div style="font-size:1.02rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:0.75rem;">' +
     submissions.length +
     ' pending submission' +
     (submissions.length !== 1 ? 's' : '') +
@@ -112,7 +112,7 @@ function renderBisSubmissions(submissions) {
       '</a>' +
       '</div>' +
       (s.notes
-        ? '<div style="font-size:0.97rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' +
+        ? '<div style="font-size:1rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' +
           s.notes +
           '</div>'
         : '') +
@@ -407,7 +407,7 @@ function buildBisListsTab() {
         dispName +
         '</span>' +
         (p.firstName !== dispName
-          ? '<span style="font-size:0.9rem;color:var(--text-muted);">(' + p.firstName + ')</span>'
+          ? '<span style="font-size:1.02rem;color:var(--text-muted);">(' + p.firstName + ')</span>'
           : '') +
         '</div>' +
         '</div></td>' +
@@ -427,7 +427,7 @@ function buildBisListsTab() {
         '</span></td>' +
         '<td><button class="btn ' +
         (isEditing ? 'btn-gold' : 'btn-muted') +
-        '" style="font-size:0.85rem;padding:0.2rem 0.65rem;" ' +
+        '" style="font-size:0.97rem;padding:0.2rem 0.65rem;" ' +
         'onclick="toggleBisListEditor(\'' +
         fnSafe +
         "','" +
@@ -526,13 +526,13 @@ function bisSlotBuckets(items) {
 
 function bisSlotRowHTML(label, colorSlot, index, entry, isEmpty, isActive, rowPosition) {
   var html =
-    '<div style="display:flex;align-items:center;gap:0.5rem;font-size:0.95rem;padding:0.3rem 0.5rem;' +
+    '<div style="display:flex;align-items:center;gap:0.5rem;font-size:1.07rem;padding:0.3rem 0.5rem;' +
     'border-radius:4px;border:1px solid var(--border);background:' +
     (rowPosition % 2 ? 'var(--bg-elevated)' : 'var(--bg-card)') +
     ';">' +
     '<span style="min-width:5rem;color:' +
     getSlotColor(colorSlot) +
-    ';font-size:0.85rem;">' +
+    ';font-size:0.97rem;">' +
     label +
     '</span>';
 
@@ -544,13 +544,13 @@ function bisSlotRowHTML(label, colorSlot, index, entry, isEmpty, isActive, rowPo
       '">' +
       entry.item +
       '</span>' +
-      '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.82rem;color:var(--text-muted);cursor:pointer;white-space:nowrap;">' +
+      '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.95rem;color:var(--text-muted);cursor:pointer;white-space:nowrap;">' +
       '<input type="checkbox" ' +
       (obtained ? 'checked' : '') +
       ' onchange="toggleBisItemObtained(' +
       index +
       ', this.checked)">Obtained</label>' +
-      '<button class="btn btn-muted" style="font-size:0.78rem;padding:1px 7px;color:var(--melee);" ' +
+      '<button class="btn btn-muted" style="font-size:0.91rem;padding:1px 7px;color:var(--melee);" ' +
       'onclick="removeBisListItem(' +
       index +
       ')">x</button>';
@@ -559,18 +559,18 @@ function bisSlotRowHTML(label, colorSlot, index, entry, isEmpty, isActive, rowPo
       '<div style="position:relative;flex:1;">' +
       '<input type="text" id="bisSlotSearchInput" placeholder="Search items for ' +
       label +
-      '..." class="self-received-source" style="width:100%;box-sizing:border-box;font-size:0.9rem;" ' +
+      '..." class="self-received-source" style="width:100%;box-sizing:border-box;font-size:1.02rem;" ' +
       'oninput="bisSlotOnInput()" autocomplete="off">' +
       '<div id="bisSlotDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;' +
       'background:var(--bg-card);border:1px solid var(--border);border-radius:4px;z-index:100;' +
       'max-height:200px;overflow-y:auto;"></div>' +
       '</div>' +
-      '<button class="btn btn-muted" style="font-size:0.78rem;padding:1px 7px;" ' +
+      '<button class="btn btn-muted" style="font-size:0.91rem;padding:1px 7px;" ' +
       'onclick="bisSlotCancelAdd()">Cancel</button>';
   } else if (isEmpty) {
     html +=
       '<span style="flex:1;color:var(--text-dim);font-style:italic;">-- empty --</span>' +
-      '<button class="btn btn-muted" style="font-size:0.78rem;padding:1px 7px;" ' +
+      '<button class="btn btn-muted" style="font-size:0.91rem;padding:1px 7px;" ' +
       'onclick="bisSlotStartAdd(\'' +
       label +
       '\')">+ Add</button>';
@@ -591,7 +591,7 @@ function bisEditorHTML() {
   var player = bisFindRosterPlayer(_bisListEditor.firstName);
   var bisLink = player && player.bisLink;
   html +=
-    '<div style="font-size:0.88rem;color:var(--text-muted);margin-bottom:0.5rem;">BiS Source: ' +
+    '<div style="font-size:1rem;color:var(--text-muted);margin-bottom:0.5rem;">BiS Source: ' +
     (bisLink
       ? '<a href="' + bisLink + '" target="_blank" rel="noopener" style="color:var(--gold);">' + bisLink + '</a>'
       : '<span style="color:var(--text-dim);">none</span>') +
@@ -615,7 +615,7 @@ function bisEditorHTML() {
 
   if (leftover.length) {
     html +=
-      '<p style="font-size:0.82rem;color:var(--text-dim);margin:0.3rem 0 0.2rem;">Other (doesn\'t match a standard slot):</p>' +
+      '<p style="font-size:0.95rem;color:var(--text-dim);margin:0.3rem 0 0.2rem;">Other (doesn\'t match a standard slot):</p>' +
       '<div style="display:flex;flex-direction:column;gap:2px;margin-bottom:0.6rem;">';
     leftover.forEach(function (u, li) {
       html += bisSlotRowHTML(u.entry.slot || '?', u.entry.slot, u.index, u.entry, false, false, li);
@@ -625,7 +625,7 @@ function bisEditorHTML() {
 
   html +=
     '<div style="display:flex;gap:0.5rem;align-items:center;">' +
-    '<span id="bisListSaveMsg" style="font-size:0.92rem;color:var(--text-muted);"></span>' +
+    '<span id="bisListSaveMsg" style="font-size:1.04rem;color:var(--text-muted);"></span>' +
     '</div>';
 
   html += '</div>';

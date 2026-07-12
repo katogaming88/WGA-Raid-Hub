@@ -53,14 +53,14 @@ function renderSeasonHistory() {
     html += '<div>';
     html += '<strong style="color:var(--text);">' + (s.name || '(unnamed)') + '</strong>';
     html +=
-      '<span style="font-size:0.85rem;color:var(--text-muted);margin-left:0.75rem;">' +
+      '<span style="font-size:0.97rem;color:var(--text-muted);margin-left:0.75rem;">' +
       (s.start || '-') +
       ' to ' +
       (s.end || 'ongoing') +
       '</span>';
     if (raidCount)
       html +=
-        '<span style="font-size:0.82rem;color:var(--text-muted);margin-left:0.5rem;">(' +
+        '<span style="font-size:0.95rem;color:var(--text-muted);margin-left:0.5rem;">(' +
         raidCount +
         ' raid' +
         (raidCount !== 1 ? 's' : '') +
@@ -69,12 +69,12 @@ function renderSeasonHistory() {
     html += '<div style="display:flex;gap:0.4rem;">';
     if (s.roster) {
       html +=
-        '<button class="btn btn-muted" style="font-size:0.8rem;padding:2px 10px;white-space:nowrap;" onclick="toggleSeasonSnapshot(' +
+        '<button class="btn btn-muted" style="font-size:0.93rem;padding:2px 10px;white-space:nowrap;" onclick="toggleSeasonSnapshot(' +
         i +
         ', this)">View Roster</button>';
     }
     html +=
-      '<button class="btn btn-muted" style="font-size:0.8rem;padding:2px 10px;white-space:nowrap;" onclick="confirmUnarchiveSeason(' +
+      '<button class="btn btn-muted" style="font-size:0.93rem;padding:2px 10px;white-space:nowrap;" onclick="confirmUnarchiveSeason(' +
       i +
       ')">Unarchive</button>';
     html += '</div>';
@@ -145,11 +145,11 @@ function _renderSeasonPerfFetchRow(season, historyIndex) {
 
   var html =
     '<div style="margin-top:0.6rem;padding-top:0.5rem;border-top:1px dashed rgba(255,255,255,0.08);display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">';
-  html += '<span style="font-size:0.85rem;color:var(--text-muted);">WCL Performance Baseline:</span>';
+  html += '<span style="font-size:0.97rem;color:var(--text-muted);">WCL Performance Baseline:</span>';
   html +=
     '<select id="seasonPerfRaidSelect-' +
     historyIndex +
-    '" class="add-player-input" style="font-size:0.85rem;padding:0.2rem 0.4rem;">';
+    '" class="add-player-input" style="font-size:0.97rem;padding:0.2rem 0.4rem;">';
   zoneGroups.forEach(function (g, j) {
     html +=
       '<option value="' +
@@ -162,12 +162,12 @@ function _renderSeasonPerfFetchRow(season, historyIndex) {
   });
   html += '</select>';
   html +=
-    '<button class="btn btn-muted" style="font-size:0.8rem;padding:2px 10px;" id="seasonPerfFetchBtn-' +
+    '<button class="btn btn-muted" style="font-size:0.93rem;padding:2px 10px;" id="seasonPerfFetchBtn-' +
     historyIndex +
     '" onclick="fetchSeasonPerf(' +
     historyIndex +
     ')">Fetch WCL Performance</button>';
-  html += '<span id="seasonPerfFetchStatus-' + historyIndex + '" style="font-size:0.85rem;"></span>';
+  html += '<span id="seasonPerfFetchStatus-' + historyIndex + '" style="font-size:0.97rem;"></span>';
   html += '</div>';
   return html;
 }
@@ -276,8 +276,7 @@ function toggleSeasonSnapshot(index, btnEl) {
   panel.dataset.loaded = '1';
   btnEl.textContent = 'Hide Roster';
   if (!players.length) {
-    panel.innerHTML =
-      '<p style="font-size:0.88rem;color:var(--text-muted);">No roster data captured for this season.</p>';
+    panel.innerHTML = '<p style="font-size:1rem;color:var(--text-muted);">No roster data captured for this season.</p>';
     panel.style.display = '';
     return;
   }
@@ -288,7 +287,7 @@ function toggleSeasonSnapshot(index, btnEl) {
     if (ra !== rb) return ra - rb;
     return a.nameRealm.localeCompare(b.nameRealm);
   });
-  var html = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin-top:0.25rem;">';
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:0.97rem;margin-top:0.25rem;">';
   html += '<thead><tr style="color:var(--text-muted);text-align:left;border-bottom:1px solid rgba(255,255,255,0.1);">';
   html += '<th style="padding:0.2rem 0.5rem 0.2rem 0;">Player</th>';
   html += '<th style="padding:0.2rem 0.5rem;">Role</th>';
@@ -717,6 +716,51 @@ function raidRemoveBoss(raidIdx, bossIdx) {
   renderRaidProgressionCards();
 }
 
+// -- Boss reordering (drag-and-drop) --
+
+var _raidBossDrag = { raidIdx: -1, bossIdx: -1 };
+
+function raidBossDragStart(e, raidIdx, bossIdx) {
+  raidCollectFromDOM();
+  _raidBossDrag.raidIdx = raidIdx;
+  _raidBossDrag.bossIdx = bossIdx;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function raidBossDragOver(e, raidIdx, bossIdx) {
+  if (raidIdx !== _raidBossDrag.raidIdx) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  var rows = document.querySelectorAll('.raid-boss-row');
+  rows.forEach(function (el) {
+    el.classList.remove('drag-over');
+  });
+  if (bossIdx !== _raidBossDrag.bossIdx) e.currentTarget.classList.add('drag-over');
+}
+
+function raidBossDrop(e, raidIdx, toIdx) {
+  if (raidIdx !== _raidBossDrag.raidIdx) return;
+  e.preventDefault();
+  var fromIdx = _raidBossDrag.bossIdx;
+  if (fromIdx === toIdx || fromIdx < 0) return;
+  var bosses = SEASON_RAIDS[raidIdx].bosses;
+  var moved = bosses.splice(fromIdx, 1)[0];
+  bosses.splice(toIdx, 0, moved);
+  _raidBossDrag.raidIdx = -1;
+  _raidBossDrag.bossIdx = -1;
+  renderRaidProgressionCards();
+}
+
+function raidBossDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.raid-boss-row').forEach(function (el) {
+    el.classList.remove('drag-over');
+  });
+  _raidBossDrag.raidIdx = -1;
+  _raidBossDrag.bossIdx = -1;
+}
+
 function raidCollectFromDOM() {
   var wrap = document.getElementById('raidProgressionCards');
   if (!wrap) return;
@@ -751,7 +795,7 @@ function renderRaidProgressionCards() {
   if (!wrap) return;
   if (!SEASON_RAIDS.length) {
     wrap.innerHTML =
-      '<p style="font-size:0.88rem;color:var(--text-muted);">No raids added yet. Click "+ Add Raid" to start.</p>';
+      '<p style="font-size:1rem;color:var(--text-muted);">No raids added yet. Click "+ Add Raid" to start.</p>';
     return;
   }
   var html = '';
@@ -764,83 +808,102 @@ function renderRaidProgressionCards() {
     html +=
       '<input class="raid-name-input add-player-input" placeholder="Raid name (e.g. Liberation of Undermine)" value="' +
       _escAttr(raid.name) +
-      '" style="flex:1;min-width:200px;font-size:0.95rem;padding:0.35rem 0.6rem;">';
+      '" style="flex:1;min-width:200px;font-size:1.07rem;padding:0.35rem 0.6rem;">';
     html +=
-      '<label style="display:flex;align-items:center;gap:5px;font-size:0.85rem;color:var(--text-muted);cursor:pointer;white-space:nowrap;"><input type="checkbox" class="raid-mini-check"' +
+      '<label style="display:flex;align-items:center;gap:5px;font-size:0.97rem;color:var(--text-muted);cursor:pointer;white-space:nowrap;"><input type="checkbox" class="raid-mini-check"' +
       (isMini ? ' checked' : '') +
       ' onchange="raidToggleMini(' +
       i +
       ',this)"> Mini-raid</label>';
     html +=
-      '<button class="btn btn-danger" style="padding:2px 10px;font-size:0.8rem;" onclick="raidRemoveRaid(' +
+      '<button class="btn btn-danger" style="padding:2px 10px;font-size:0.93rem;" onclick="raidRemoveRaid(' +
       i +
       ')">Remove</button>';
     html += '</div>';
     html += '<div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.5rem;">';
-    html += '<span style="font-size:0.82rem;color:var(--text-muted);white-space:nowrap;">WCL Zone ID</span>';
+    html += '<span style="font-size:0.95rem;color:var(--text-muted);white-space:nowrap;">WCL Zone ID</span>';
     html +=
       '<input class="raid-zone-input add-player-input" type="number" placeholder="e.g. 46" value="' +
       _escAttr(raid.wclZoneId || '') +
-      '" style="width:80px;font-size:0.88rem;padding:0.28rem 0.5rem;">';
+      '" style="width:80px;font-size:1rem;padding:0.28rem 0.5rem;">';
     html +=
-      '<button class="btn btn-muted" style="font-size:0.78rem;padding:2px 8px;" onclick="listWclEncounters(' +
+      '<button class="btn btn-muted" style="font-size:0.91rem;padding:2px 8px;" onclick="listWclEncounters(' +
       i +
       ')">List</button>';
     html += '</div>';
     html +=
-      '<p style="font-size:0.8rem;color:var(--melee);margin:0 0 0.5rem;">Click List first to see encounter IDs and set the Encounters from/to range -- fetching without narrowing the range pulls every fight logged in that zone, including M+ dungeon bosses.</p>';
+      '<p style="font-size:0.93rem;color:var(--melee);margin:0 0 0.5rem;">Click List first to see encounter IDs and set the Encounters from/to range -- fetching without narrowing the range pulls every fight logged in that zone, including M+ dungeon bosses.</p>';
     html += '<div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.75rem;">';
-    html += '<span style="font-size:0.82rem;color:var(--text-muted);white-space:nowrap;">Encounters</span>';
+    html += '<span style="font-size:0.95rem;color:var(--text-muted);white-space:nowrap;">Encounters</span>';
     html +=
       '<input class="raid-enc-start add-player-input" type="number" placeholder="from" value="' +
       _escAttr(raid.encounterStart || '') +
-      '" style="width:70px;font-size:0.88rem;padding:0.28rem 0.5rem;">';
-    html += '<span style="font-size:0.82rem;color:var(--text-muted);">-</span>';
+      '" style="width:70px;font-size:1rem;padding:0.28rem 0.5rem;">';
+    html += '<span style="font-size:0.95rem;color:var(--text-muted);">-</span>';
     html +=
       '<input class="raid-enc-end add-player-input" type="number" placeholder="to" value="' +
       _escAttr(raid.encounterEnd || '') +
-      '" style="width:70px;font-size:0.88rem;padding:0.28rem 0.5rem;">';
+      '" style="width:70px;font-size:1rem;padding:0.28rem 0.5rem;">';
     html +=
-      '<button class="btn btn-muted" style="font-size:0.82rem;padding:3px 12px;" onclick="fetchWclForRaid(' +
+      '<button class="btn btn-muted" style="font-size:0.95rem;padding:3px 12px;" onclick="fetchWclForRaid(' +
       i +
       ')">Fetch from WCL</button>';
-    html += '<span id="wclFetchStatus_' + i + '" style="font-size:0.8rem;color:var(--text-muted);"></span>';
+    html += '<span id="wclFetchStatus_' + i + '" style="font-size:0.93rem;color:var(--text-muted);"></span>';
     html += '</div>';
     html +=
       '<div id="wclEncList_' +
       i +
-      '" style="display:none;font-size:0.8rem;color:var(--text-muted);background:rgba(0,0,0,0.2);border-radius:4px;padding:0.5rem 0.75rem;margin-bottom:0.75rem;line-height:1.8;"></div>';
+      '" style="display:none;font-size:0.93rem;color:var(--text-muted);background:rgba(0,0,0,0.2);border-radius:4px;padding:0.5rem 0.75rem;margin-bottom:0.75rem;line-height:1.8;"></div>';
     if (!isMini) {
       html += '<div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">';
-      html += '<span style="font-size:0.85rem;color:var(--text-muted);white-space:nowrap;">AOTC Date</span>';
+      html += '<span style="font-size:0.97rem;color:var(--text-muted);white-space:nowrap;">AOTC Date</span>';
       html +=
         '<input type="date" class="raid-aotc-input add-player-input" value="' +
         _escAttr(raid.aotcDate || '') +
-        '" style="max-width:170px;font-size:0.9rem;padding:0.3rem 0.5rem;">';
+        '" style="max-width:170px;font-size:1.02rem;padding:0.3rem 0.5rem;">';
       html += '</div>';
     }
     html +=
-      '<div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.4rem;font-weight:600;letter-spacing:0.04em;">BOSSES</div>';
+      '<div style="font-size:0.93rem;color:var(--text-muted);margin-bottom:0.4rem;font-weight:600;letter-spacing:0.04em;">BOSSES</div>';
     if (raid.bosses.length) {
       html += '<div style="display:flex;flex-direction:column;gap:0.4rem;margin-bottom:0.5rem;">';
       for (var j = 0; j < raid.bosses.length; j++) {
         var boss = raid.bosses[j];
-        html += '<div class="raid-boss-row" style="display:flex;align-items:center;gap:0.5rem;">';
         html +=
-          '<span style="font-size:0.8rem;color:var(--text-muted);min-width:1.2rem;text-align:right;">' +
+          '<div class="raid-boss-row prio-drag-item" draggable="true"' +
+          ' ondragstart="raidBossDragStart(event,' +
+          i +
+          ',' +
+          j +
+          ')"' +
+          ' ondragover="raidBossDragOver(event,' +
+          i +
+          ',' +
+          j +
+          ')"' +
+          ' ondrop="raidBossDrop(event,' +
+          i +
+          ',' +
+          j +
+          ')"' +
+          ' ondragend="raidBossDragEnd(event)"' +
+          '>';
+        html += '<span class="prio-drag-handle" title="Drag to reorder">&#8942;&#8942;</span>';
+        html +=
+          '<span style="font-size:0.93rem;color:var(--text-muted);min-width:1.2rem;text-align:right;">' +
           (j + 1) +
           '</span>';
         html +=
           '<input class="boss-name-input add-player-input" placeholder="Boss name" value="' +
           _escAttr(boss.name) +
-          '" style="flex:1;font-size:0.88rem;padding:0.28rem 0.5rem;">';
-        html += '<span style="font-size:0.78rem;color:var(--text-muted);white-space:nowrap;">Mythic kill</span>';
+          '" style="flex:1;font-size:1rem;padding:0.28rem 0.5rem;">';
+        html += '<span style="font-size:0.91rem;color:var(--text-muted);white-space:nowrap;">Mythic kill</span>';
         html +=
           '<input type="date" class="boss-date-input add-player-input" value="' +
           _escAttr(boss.mythicDate || '') +
-          '" style="width:150px;font-size:0.88rem;padding:0.28rem 0.5rem;">';
+          '" style="width:150px;font-size:1rem;padding:0.28rem 0.5rem;">';
         html +=
-          '<button class="btn btn-muted" style="padding:2px 8px;font-size:0.78rem;" onclick="raidRemoveBoss(' +
+          '<button class="btn btn-muted" style="padding:2px 8px;font-size:0.91rem;" onclick="raidRemoveBoss(' +
           i +
           ',' +
           j +
@@ -850,7 +913,7 @@ function renderRaidProgressionCards() {
       html += '</div>';
     }
     html +=
-      '<button class="btn btn-muted" style="font-size:0.8rem;padding:3px 10px;" onclick="raidAddBoss(' +
+      '<button class="btn btn-muted" style="font-size:0.93rem;padding:3px 10px;" onclick="raidAddBoss(' +
       i +
       ')">+ Add Boss</button>';
     html += '</div>';

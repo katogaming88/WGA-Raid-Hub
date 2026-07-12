@@ -108,18 +108,18 @@ function renderActiveExclusions() {
   });
   if (!active.length) {
     container.innerHTML =
-      '<p style="color:var(--text-muted);font-size:0.95rem;margin-top:0.75rem;">No players currently excluded.</p>';
+      '<p style="color:var(--text-muted);font-size:1.07rem;margin-top:0.75rem;">No players currently excluded.</p>';
     return;
   }
   var html = '<div style="margin-top:0.75rem;display:flex;flex-direction:column;gap:0.4rem;">';
   active.forEach(function (p) {
     html +=
       '<div style="display:flex;align-items:baseline;gap:0.6rem;padding:0.4rem 0;border-bottom:1px solid var(--border);">' +
-      '<span style="font-size:0.97rem;font-weight:600;color:var(--text);min-width:140px;">' +
+      '<span style="font-size:1rem;font-weight:600;color:var(--text);min-width:140px;">' +
       p.nameRealm +
       '</span>' +
       (p.mPlusNote
-        ? '<span style="font-size:0.88rem;color:var(--text-muted);font-style:italic;">' + p.mPlusNote + '</span>'
+        ? '<span style="font-size:1rem;color:var(--text-muted);font-style:italic;">' + p.mPlusNote + '</span>'
         : '') +
       '</div>';
   });
@@ -138,7 +138,7 @@ function renderMPlusSubmissions(submissions) {
 
   var html =
     '<div style="margin-top:1.5rem;">' +
-    '<div style="font-size:0.9rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:0.75rem;">' +
+    '<div style="font-size:1.02rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:0.75rem;">' +
     submissions.length +
     ' pending request' +
     (submissions.length !== 1 ? 's' : '') +
@@ -155,7 +155,7 @@ function renderMPlusSubmissions(submissions) {
       '<div style="font-size:1.05rem;font-weight:600;color:var(--text);">' +
       s.nameRealm +
       '</div>' +
-      '<div style="font-size:0.88rem;color:var(--text-muted);margin-top:0.15rem;">' +
+      '<div style="font-size:1rem;color:var(--text-muted);margin-top:0.15rem;">' +
       s.timestamp +
       '</div>' +
       '</div>' +
@@ -163,10 +163,10 @@ function renderMPlusSubmissions(submissions) {
       (s.raiderioUrl
         ? '<div style="margin-top:0.5rem;"><a href="' +
           s.raiderioUrl +
-          '" target="_blank" rel="noopener" style="color:var(--gold);font-size:0.95rem;">View Raider.io Profile</a></div>'
+          '" target="_blank" rel="noopener" style="color:var(--gold);font-size:1.07rem;">View Raider.io Profile</a></div>'
         : '') +
       (s.notes
-        ? '<div style="font-size:0.95rem;color:var(--text);margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border);">' +
+        ? '<div style="font-size:1.07rem;color:var(--text);margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border);">' +
           s.notes +
           '</div>'
         : '') +
@@ -175,12 +175,12 @@ function renderMPlusSubmissions(submissions) {
       s.id +
       ",'" +
       nrSafe +
-      '\',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Approve</button>' +
+      '\',this)" style="font-size:1rem;padding:0.25rem 0.75rem;">Approve</button>' +
       '<button class="btn btn-danger" onclick="rejectMPlusExclusion(' +
       s.id +
       ",'" +
       nrSafe +
-      '\',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Reject</button>' +
+      '\',this)" style="font-size:1rem;padding:0.25rem 0.75rem;">Reject</button>' +
       '</div>' +
       '</div>';
   });
@@ -193,17 +193,17 @@ function approveMPlusExclusion(rowIndex, nameRealm, btnEl) {
   var noteId = '_mplusNote' + rowIndex;
   actionsDiv.innerHTML =
     '<div style="width:100%;">' +
-    '<div style="font-size:0.92rem;color:var(--text-muted);margin-bottom:0.4rem;">Officer note (optional):</div>' +
+    '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.4rem;">Officer note (optional):</div>' +
     '<textarea id="' +
     noteId +
-    '" rows="2" placeholder="e.g. Focus on getting sockets this week instead" style="width:100%;box-sizing:border-box;background:var(--bg-alt);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:0.4rem 0.5rem;font-size:0.88rem;resize:vertical;"></textarea>' +
+    '" rows="2" placeholder="e.g. Focus on getting sockets this week instead" style="width:100%;box-sizing:border-box;background:var(--bg-alt);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:0.4rem 0.5rem;font-size:1rem;resize:vertical;"></textarea>' +
     '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
     '<button id="_mplusApproveConfirm' +
     rowIndex +
-    '" class="btn request-approve-btn" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Approve</button>' +
+    '" class="btn request-approve-btn" style="font-size:1rem;padding:0.25rem 0.75rem;">Approve</button>' +
     '<button id="_mplusApproveCancel' +
     rowIndex +
-    '" class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Cancel</button>' +
+    '" class="btn btn-muted" style="font-size:1rem;padding:0.25rem 0.75rem;">Cancel</button>' +
     '</div>' +
     '</div>';
 
@@ -225,12 +225,12 @@ function approveMPlusExclusion(rowIndex, nameRealm, btnEl) {
         rowIndex +
         ",'" +
         nrSafe +
-        '\',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Approve</button>' +
+        '\',this)" style="font-size:1rem;padding:0.25rem 0.75rem;">Approve</button>' +
         '<button class="btn btn-danger" onclick="rejectMPlusExclusion(' +
         rowIndex +
         ",'" +
         nrSafe +
-        '\',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Reject</button>';
+        '\',this)" style="font-size:1rem;padding:0.25rem 0.75rem;">Reject</button>';
     });
   }
 }
@@ -293,17 +293,17 @@ function rejectMPlusExclusion(rowIndex, nameRealm, btnEl) {
   var nrSafe = nameRealm.replace(/'/g, "\\'");
   actionsDiv.innerHTML =
     '<div style="width:100%;">' +
-    '<div style="font-size:0.92rem;color:var(--text-muted);margin-bottom:0.4rem;">Rejection reason (optional, shown to raider):</div>' +
+    '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.4rem;">Rejection reason (optional, shown to raider):</div>' +
     '<textarea id="' +
     noteId +
-    '" rows="2" placeholder="e.g. You still need to meet the weekly M+ requirement" style="width:100%;box-sizing:border-box;background:var(--bg-alt);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:0.4rem 0.5rem;font-size:0.88rem;resize:vertical;"></textarea>' +
+    '" rows="2" placeholder="e.g. You still need to meet the weekly M+ requirement" style="width:100%;box-sizing:border-box;background:var(--bg-alt);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:0.4rem 0.5rem;font-size:1rem;resize:vertical;"></textarea>' +
     '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
     '<button id="_mplusRejectConfirm' +
     rowIndex +
-    '" class="btn btn-danger" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Reject</button>' +
+    '" class="btn btn-danger" style="font-size:1rem;padding:0.25rem 0.75rem;">Reject</button>' +
     '<button id="_mplusRejectCancel' +
     rowIndex +
-    '" class="btn btn-muted" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Cancel</button>' +
+    '" class="btn btn-muted" style="font-size:1rem;padding:0.25rem 0.75rem;">Cancel</button>' +
     '</div>' +
     '</div>';
 
@@ -318,12 +318,12 @@ function rejectMPlusExclusion(rowIndex, nameRealm, btnEl) {
         rowIndex +
         ",'" +
         nrSafe +
-        '\',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Approve</button>' +
+        '\',this)" style="font-size:1rem;padding:0.25rem 0.75rem;">Approve</button>' +
         '<button class="btn btn-danger" onclick="rejectMPlusExclusion(' +
         rowIndex +
         ",'" +
         nrSafe +
-        '\',this)" style="font-size:0.88rem;padding:0.25rem 0.75rem;">Reject</button>';
+        '\',this)" style="font-size:1rem;padding:0.25rem 0.75rem;">Reject</button>';
     });
   }
 

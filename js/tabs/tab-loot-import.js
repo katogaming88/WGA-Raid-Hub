@@ -51,7 +51,7 @@ function buildLootImportForm() {
   html += '</div>';
   html += '<div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.75rem;flex-wrap:wrap;">';
   html += '<button class="btn btn-gold" onclick="submitLootImport()">Import</button>';
-  html += '<span id="lootImportStatus" style="font-size:0.92rem;"></span>';
+  html += '<span id="lootImportStatus" style="font-size:1.04rem;"></span>';
   html += '</div>';
   html += '</div>';
 
@@ -147,9 +147,9 @@ function setLootImportStatus(text, color) {
 function buildLootHistoryTab() {
   var el = document.getElementById('loot-sub-history');
   if (!el) return;
-  el.innerHTML = '<p style="font-size:0.92rem;color:var(--text-muted);padding:0.5rem 0;">Loading...</p>';
+  el.innerHTML = '<p style="font-size:1.04rem;color:var(--text-muted);padding:0.5rem 0;">Loading...</p>';
   if (!supabaseClient) {
-    el.innerHTML = '<p style="font-size:0.92rem;color:var(--melee);padding:0.5rem 0;">Not connected to Supabase.</p>';
+    el.innerHTML = '<p style="font-size:1.04rem;color:var(--melee);padding:0.5rem 0;">Not connected to Supabase.</p>';
     return;
   }
 
@@ -164,7 +164,7 @@ function buildLootHistoryTab() {
     .then(function (result) {
       if (result.error) {
         el.innerHTML =
-          '<p style="font-size:0.92rem;color:var(--melee);padding:0.5rem 0;">' + escHtml(result.error.message) + '</p>';
+          '<p style="font-size:1.04rem;color:var(--melee);padding:0.5rem 0;">' + escHtml(result.error.message) + '</p>';
         return;
       }
       var rows = result.data || [];
@@ -195,7 +195,7 @@ function renderLootHistoryPanel(rows, targetNames) {
   }
 
   html +=
-    '<div style="font-size:0.88rem;color:var(--text-muted);margin:0.5rem 0;">' +
+    '<div style="font-size:1rem;color:var(--text-muted);margin:0.5rem 0;">' +
     rows.length +
     ' recent import' +
     (rows.length !== 1 ? 's' : '') +

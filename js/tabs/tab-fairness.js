@@ -74,7 +74,7 @@ function buildFairness() {
       var e = players[i];
       var width = Math.round((e.count / max) * 100) + '%';
       html += '<div class="fairness-row">';
-      html += '<span style="font-size:0.9rem;color:var(--text);font-weight:500;">' + e.name + '</span>';
+      html += '<span style="font-size:1.02rem;color:var(--text);font-weight:500;">' + e.name + '</span>';
       html +=
         '<div class="fairness-bar-wrap"><div class="fairness-bar" style="width:' +
         width +

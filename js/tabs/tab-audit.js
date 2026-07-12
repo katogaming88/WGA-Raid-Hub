@@ -209,7 +209,7 @@ function renderAuditLog() {
     .join('');
 
   container.innerHTML =
-    '<div style="font-size:0.88rem;color:var(--text-muted);margin-bottom:0.75rem;">' +
+    '<div style="font-size:1rem;color:var(--text-muted);margin-bottom:0.75rem;">' +
     entries.length +
     ' entr' +
     (entries.length !== 1 ? 'ies' : 'y') +
