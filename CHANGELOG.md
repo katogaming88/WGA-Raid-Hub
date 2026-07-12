@@ -8,7 +8,11 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [3.33.12] - 2026-07-11
+## [3.33.13] - 2026-07-11
+
+### Frontend
+
+- **Cache-bust CSS/JS with a `?v=<VERSION>` query on every asset tag (#431).** GitHub Pages serves every static asset with `Cache-Control: max-age=600`, so for up to 10 minutes after a deploy a browser with the site already open could run fresh HTML/JS against a stale cached CSS (or vice versa) -- the reported symptom of pages rendering with visibly wrong styling until a hard refresh. Every local `<link rel="stylesheet">`/`<script src="js/...">` in `index.html`/`officer.html`/`admin.html` now carries `?v=<VERSION>`, so every version bump forces a fresh fetch of every asset. The query string is hardcoded per tag (not injected) because `VERSION` is a runtime JS constant only known after `common.js` itself loads -- the one tag most likely to be served stale otherwise. External CDN/font URLs (jsDelivr, Google Fonts) are pinned upstream and left untagged. A new `asset-version-check` CI job (`tests/ci/asset-version-check.test.js`) keeps the ~30 tags in sync with `js/common.js`'s `VERSION`, failing the PR if a bump leaves any tag stale or a new asset tag ships without one.
 
 ### Frontend
 
