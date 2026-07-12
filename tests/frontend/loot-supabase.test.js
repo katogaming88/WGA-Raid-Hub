@@ -251,33 +251,21 @@ describe('fetchSupabaseLoot', () => {
   });
 });
 
-describe('loadData lootCounts wiring', () => {
-  function heavyPayload() {
-    return {
-      // No lootCounts: the Apps Script stopped serving it once #358 redeployed.
-      attendanceDetails: { some: 'attendance' },
-      bisList: ['bis'],
-      priorityOrder: ['prio'],
-      itemSlots: {},
-      selfReceived: []
-    };
-  }
-
+// GAS is retired (#225): loadData() no longer injects any core/heavy JSONP
+// <script>, waits on window._rosterCoreCallback/_rosterHeavyCallback, or falls
+// back to a GAS payload on a Supabase failure. It always builds DATA straight
+// from the Supabase reads, seeding an empty roster/containers where a query
+// has nothing -- the same path #426 originally built just for a gasUrl-less
+// team (Immolation) and #225 now makes universal.
+describe('loadData builds DATA from Supabase only', () => {
   async function runLoadData(mock) {
     const sandbox = loadCommonJs(mock.supabase);
-    const coreReady = new Promise((resolve) => {
+    await new Promise((resolve) => {
       sandbox.loadData(
-        () => resolve(),
-        () => sandbox._onHeavyDone && sandbox._onHeavyDone()
+        () => {},
+        () => resolve()
       );
     });
-    sandbox.window._rosterCoreCallback({ roster: [], seasonName: 'Midnight Season 1' });
-    await coreReady;
-    const heavyReady = new Promise((resolve) => {
-      sandbox._onHeavyDone = resolve;
-    });
-    sandbox.window._rosterHeavyCallback(heavyPayload());
-    await heavyReady;
     return sandbox;
   }
 
@@ -286,55 +274,29 @@ describe('loadData lootCounts wiring', () => {
     const sandbox = await runLoadData(mock);
     expect(Object.keys(sandbox.DATA.lootCounts)).toEqual(['katorri']);
     expect(sandbox.DATA.lootCounts.katorri.heroicCount).toBe(1);
-    // The rest of the heavy payload still lands.
-    expect(sandbox.DATA.bisList).toEqual(['bis']);
-    expect(sandbox.DATA.priorityOrder).toEqual(['prio']);
   });
 
-  it('resolves to an empty loot feed when the query fails (no Apps Script fallback anymore)', async () => {
+  it('resolves to an empty loot feed when the query fails', async () => {
     const mock = mockSupabase({ lootPages: [{ data: null, error: { message: 'nope' } }] });
     const sandbox = await runLoadData(mock);
     expect(sandbox.DATA.lootCounts).toEqual({});
   });
-});
 
-// #426: a team with no GAS deployment (gasUrl:'', e.g. Immolation) must build
-// DATA straight from Supabase instead of injecting core/heavy JSONP that would
-// resolve to the current page and hang until the 15s timeout.
-describe('loadData GAS-independent path (empty gasUrl)', () => {
-  async function runGaslessLoadData(mock) {
-    const sandbox = loadCommonJs(mock.supabase, undefined, '?team=immolation');
-    expect(sandbox.WEB_APP_URL).toBe('');
-    const done = new Promise((resolve) => {
-      sandbox.loadData(
-        () => {},
-        () => resolve()
-      );
-    });
-    // Deliberately never call _rosterCoreCallback/_rosterHeavyCallback: there
-    // is no GAS deployment to fire them.
-    await done;
-    return sandbox;
-  }
-
-  it('builds DATA from Supabase without any GAS callback, seeding an empty roster', async () => {
+  it('never installs the retired JSONP callback globals', async () => {
     const mock = mockSupabase({ lootPages: [{ data: [lootRow()], error: null }] });
-    const sandbox = await runGaslessLoadData(mock);
-    // The JSONP callbacks were never installed as globals -- nothing injected a script.
+    const sandbox = await runLoadData(mock);
     expect(sandbox.window._rosterCoreCallback).toBeUndefined();
     expect(sandbox.window._rosterHeavyCallback).toBeUndefined();
-    // DATA is published from Supabase: roster defaults to [] (Immolation has no
-    // players yet), and the heavy Supabase reads still land.
-    expect(Array.isArray(sandbox.DATA.roster)).toBe(true);
-    expect(sandbox.DATA.roster).toEqual([]);
-    expect(Object.keys(sandbox.DATA.lootCounts)).toEqual(['katorri']);
   });
 
-  it('renders empty containers (not undefined) when Supabase has no rows for the team', async () => {
+  it('seeds an empty array roster and empty containers when nothing is mocked', async () => {
     const mock = mockSupabase({ lootPages: [{ data: [], error: null }] });
-    const sandbox = await runGaslessLoadData(mock);
-    // No GAS heavy chunk to fall back to, so these must be empty objects the
-    // write paths in tab-bis.js/tab-priority.js can safely index.
+    const sandbox = await runLoadData(mock);
+    // Empty, not undefined -- the write paths in tab-bis.js/tab-priority.js
+    // index bisList/priorityOrder/selfReceived without their own guard, and
+    // there is no GAS payload left to have supplied a non-empty fallback.
+    expect(Array.isArray(sandbox.DATA.roster)).toBe(true);
+    expect(sandbox.DATA.roster).toEqual([]);
     expect(sandbox.DATA.lootCounts).toEqual({});
     expect(sandbox.DATA.bisList).toEqual({});
     expect(sandbox.DATA.priorityOrder).toEqual({});

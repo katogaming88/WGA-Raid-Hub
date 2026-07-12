@@ -100,7 +100,6 @@ function loadSandbox({ supabaseClient, els = {}, roster = [] } = {}) {
   sandbox.supabaseClient = supabaseClient;
   sandbox._teamCfg = { supabaseTeamId: 1 };
   sandbox.DATA = { roster };
-  sandbox.WEB_APP_URL = 'https://example.test/gas';
   sandbox._createdScripts = createdScripts;
   return sandbox;
 }
@@ -149,7 +148,11 @@ describe('loadAttendanceHistory (#241 follow-up)', () => {
     expect(els['attend-history-Kato'].innerHTML).toContain('2026-06-25');
   });
 
-  it('falls back to the GAS action when the Supabase query errors', async () => {
+  // #225: GAS is retired, so a query error (or an unresolvable player, below)
+  // has nothing left to fall back to -- it surfaces an inline error instead
+  // of silently substituting GAS data, same as fetchSupabaseRoster/BiS/
+  // priority_order's own no-fallback convention.
+  it('shows an inline error, not a GAS fallback, when the Supabase query errors', async () => {
     const els = { 'attend-history-Kato': makeEl({ style: { display: 'none' } }) };
     const { client } = makeSupabase({
       select: () => ({ data: null, error: { message: 'boom' } })
@@ -159,8 +162,19 @@ describe('loadAttendanceHistory (#241 follow-up)', () => {
     sandbox.loadAttendanceHistory('Kato');
     await flush();
 
-    expect(sandbox._createdScripts).toHaveLength(1);
-    expect(sandbox._createdScripts[0].src).toContain('getPlayerAttendanceFull');
+    expect(sandbox._createdScripts).toHaveLength(0);
+    expect(els['attend-history-Kato'].innerHTML).toContain('Failed to load. Try again.');
+  });
+
+  it('shows an inline error, not a GAS fallback, when no matching roster player is found', () => {
+    const els = { 'attend-history-Kato': makeEl({ style: { display: 'none' } }) };
+    const { client } = makeSupabase({});
+    const sandbox = loadSandbox({ supabaseClient: client, els, roster: [] });
+
+    sandbox.loadAttendanceHistory('Kato');
+
+    expect(sandbox._createdScripts).toHaveLength(0);
+    expect(els['attend-history-Kato'].innerHTML).toContain('Failed to load. Try again.');
   });
 });
 

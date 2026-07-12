@@ -1,4 +1,9 @@
 // @ts-check
+// gasUrl is kept on every team as a historical record of which Apps Script
+// deployment served it -- Kat's call when retiring GAS (#225) was to hold
+// onto that (and the gs/ source itself) for a while rather than delete it
+// outright, until there's no doubt it's never needed again. No code reads
+// gasUrl anymore: loadData() and every officer write path are Supabase-only.
 var TEAMS = {
   phoenix: {
     gasUrl:
@@ -14,12 +19,8 @@ var TEAMS = {
     officerPass: 'hellfire2',
     supabaseTeamId: 2
   },
-  // No GAS deployment -- Immolation was created directly in Supabase, unlike
-  // Phoenix/Hellfire's pre-migration Sheets. loadData() detects the empty
-  // gasUrl and builds DATA entirely from the Supabase reads instead of
-  // injecting the core/heavy JSONP chunks (#426); the page renders from
-  // whatever Supabase has (empty roster/attendance until the team is seeded)
-  // rather than hanging on a request that can never resolve.
+  // Never had a GAS deployment -- Immolation was created directly in
+  // Supabase, unlike Phoenix/Hellfire's pre-migration Sheets.
   immolation: {
     gasUrl: '',
     name: 'Immolation',
@@ -37,8 +38,7 @@ if (_teamParam && _teamParam in TEAMS) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var WEB_APP_URL = _teamCfg.gasUrl;
-var VERSION = '3.33.17';
+var VERSION = '3.33.18';
 
 // Supabase client. The publishable key is public by design (it maps to the
 // anon role); RLS is the security boundary, see docs/RLS.md. The guard keeps
@@ -78,21 +78,6 @@ function _utf8ToBase64(str) {
   var binary = '';
   for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
   return btoa(binary);
-}
-
-// Audit-log attribution for the officer writes still served by Apps Script.
-// Before the Supabase login swap (#211) this sent the Discord session token,
-// which GAS turned into the acting officer's name. The mapped session no
-// longer carries a token, so it now sends the resolved username directly as
-// changedBy. Same trust level as before: the GAS write actions are
-// unauthenticated either way, this is attribution, not authorization (#364).
-function _getAuditChangedByParam() {
-  try {
-    var s = typeof getDiscordSession === 'function' && getDiscordSession();
-    return s && s.username ? '&changedBy=' + encodeURIComponent(s.username) : '';
-  } catch (_) {
-    return '';
-  }
 }
 
 var DATA = null;
@@ -170,37 +155,6 @@ function showMaintenanceBanner(message) {
   banner.style.display = '';
   var msgEl = document.getElementById('maintenanceBannerMessage');
   if (msgEl) msgEl.textContent = message || 'The site is temporarily down for maintenance. Please check back soon.';
-}
-
-function jsonpRequest(url, callback, timeoutMs) {
-  var ms = timeoutMs || 90000;
-  var cbName = '_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1e9);
-  var timer;
-  var done = false;
-
-  function finish(err, result) {
-    if (done) return;
-    done = true;
-    clearTimeout(timer);
-    delete window[cbName];
-    callback(err, result);
-  }
-
-  window[cbName] = function (result) {
-    finish(null, result);
-  };
-
-  timer = setTimeout(function () {
-    finish(new Error('Request timed out. GAS may still be processing -- try again in a moment.'), null);
-  }, ms);
-
-  var script = document.createElement('script');
-  script.onerror = function () {
-    finish(new Error('Request failed. Check your connection.'), null);
-  };
-  if (url.indexOf(WEB_APP_URL) === 0) url += _getAuditChangedByParam();
-  script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cbName;
-  document.head.appendChild(script);
 }
 
 var WOW_REALMS = [
@@ -643,13 +597,13 @@ function fetchSupabaseRoster() {
     .order('name_realm')
     .then(function (result) {
       if (result.error) {
-        console.warn('Supabase roster query failed, using Apps Script roster.', result.error.message);
+        console.warn('Supabase roster query failed.', result.error.message);
         return null;
       }
       return result.data && result.data.length ? result.data : null;
     })
     .catch(function (err) {
-      console.warn('Supabase roster query failed, using Apps Script roster.', err);
+      console.warn('Supabase roster query failed.', err);
       return null;
     });
   var timeout = new Promise(function (resolve) {
@@ -923,13 +877,13 @@ function fetchSupabaseBisItems() {
     .eq('players.team_id', _teamCfg.supabaseTeamId)
     .then(function (result) {
       if (result.error) {
-        console.warn('Supabase BiS items query failed, using Apps Script BiS list.', result.error.message);
+        console.warn('Supabase BiS items query failed.', result.error.message);
         return null;
       }
       return result.data && result.data.length ? result.data : null;
     })
     .catch(function (err) {
-      console.warn('Supabase BiS items query failed, using Apps Script BiS list.', err);
+      console.warn('Supabase BiS items query failed.', err);
       return null;
     });
   var timeout = new Promise(function (resolve) {
@@ -1000,13 +954,13 @@ function fetchSupabaseSelfReceived() {
     .eq('status', 'approved')
     .then(function (result) {
       if (result.error) {
-        console.warn('Supabase self-received query failed, using Apps Script selfReceived.', result.error.message);
+        console.warn('Supabase self-received query failed.', result.error.message);
         return null;
       }
       return result.data && result.data.length ? result.data : null;
     })
     .catch(function (err) {
-      console.warn('Supabase self-received query failed, using Apps Script selfReceived.', err);
+      console.warn('Supabase self-received query failed.', err);
       return null;
     });
   var timeout = new Promise(function (resolve) {
@@ -1059,13 +1013,13 @@ function fetchSupabasePriorityOrder() {
     .eq('team_id', _teamCfg.supabaseTeamId)
     .then(function (result) {
       if (result.error) {
-        console.warn('Supabase priority_order query failed, using Apps Script priority order.', result.error.message);
+        console.warn('Supabase priority_order query failed.', result.error.message);
         return null;
       }
       return result.data && result.data.length ? result.data : null;
     })
     .catch(function (err) {
-      console.warn('Supabase priority_order query failed, using Apps Script priority order.', err);
+      console.warn('Supabase priority_order query failed.', err);
       return null;
     });
   var timeout = new Promise(function (resolve) {
@@ -1128,13 +1082,13 @@ function fetchSupabaseSettings() {
     .maybeSingle()
     .then(function (result) {
       if (result.error) {
-        console.warn('Supabase team_settings query failed, using Apps Script season config.', result.error.message);
+        console.warn('Supabase team_settings query failed.', result.error.message);
         return null;
       }
       return result.data ? result.data.config : null;
     })
     .catch(function (err) {
-      console.warn('Supabase team_settings query failed, using Apps Script season config.', err);
+      console.warn('Supabase team_settings query failed.', err);
       return null;
     });
   var timeout = new Promise(function (resolve) {
@@ -1535,20 +1489,20 @@ function loadData(onCoreReady, onHeavyReady) {
   // Fired alongside; the heavy callback waits for it before setting rawAttendanceData/attendanceDetails/recentAttendanceTrend.
   var attendancePromise = fetchSupabaseAttendanceRaw();
 
-  // Overlays the Supabase roster/settings/M+ rejections onto the core payload,
-  // publishes DATA, and runs onCoreReady. Resolves true on success, or false if
-  // onCoreReady threw -- so the caller skips the heavy stage, matching the old
-  // inline early-return. `data` is the GAS core chunk, or a bare { roster: [] }
-  // on the GAS-independent path (#426). onSuccess (optional) runs synchronously
-  // right after a successful onCoreReady -- the GAS path uses it to wire
-  // _rosterHeavyCallback in the same tick, before the microtask that resumes
-  // any awaiter of onCoreReady, so a heavy callback that fires immediately
-  // still finds it installed.
-  function applyCoreData(data, onSuccess) {
+  // Builds DATA from the Supabase roster/settings/M+ rejections, then runs
+  // onCoreReady. GAS is retired (#225) -- there is no core payload to overlay
+  // onto anymore, so this always starts from a bare { roster: [] } (an empty
+  // roster is correct for a team with no players yet, not a loading
+  // failure). Was applyCoreData(data, onSuccess): `data` came from the GAS
+  // core chunk (or that same bare stub on the GAS-independent path, #426),
+  // and onSuccess wired the GAS heavy-chunk callback in the same tick.
+  // Neither is needed once GAS calls nothing at all.
+  function applyCoreData() {
     return Promise.all([rosterPromise, settingsPromise, mplusRejectionsPromise]).then(function (results) {
       var rows = results[0];
       var settingsConfig = results[1];
       var mplusRejections = results[2];
+      var data = { roster: [] };
       var mapped = rows ? mapSupabaseRoster(rows, data.roster, mplusRejections) : null;
       if (mapped && mapped.length) data.roster = mapped;
       applyTeamSettingsToData(data, settingsConfig);
@@ -1560,18 +1514,17 @@ function loadData(onCoreReady, onHeavyReady) {
         showError('Could not load roster data. ' + e.message);
         return false;
       }
-      if (onSuccess) onSuccess();
       return true;
     });
   }
 
-  // Merges the heavy Supabase reads into DATA, falling back to the GAS heavy
-  // chunk field-by-field where Supabase has nothing yet. `heavy` is the GAS
-  // heavy chunk, or a bare {} on the GAS-independent path (#426) -- every
-  // fallback is guarded (`|| {}` / `|| null`) so an absent GAS chunk yields an
-  // empty container rather than undefined, since a few write paths
-  // (tab-bis.js, tab-priority.js) index these without their own guard.
-  function applyHeavyData(heavy) {
+  // Merges the heavy Supabase reads into DATA. Every field defaults to an
+  // empty container ({}, or null for rawAttendanceData) rather than
+  // undefined when its query fails or returns nothing -- there is no GAS
+  // heavy chunk left to fall back to (#225), and a few write paths
+  // (tab-bis.js, tab-priority.js) index bisList/priorityOrder/selfReceived
+  // without their own guard.
+  function applyHeavyData() {
     return Promise.all([
       lootPromise,
       bisItemsPromise,
@@ -1591,20 +1544,15 @@ function loadData(onCoreReady, onHeavyReady) {
       var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
       DATA.lootCounts = mappedLoot || {};
       var mappedAttendance = attendanceRows !== null ? mapSupabaseAttendanceRaw(attendanceRows, DATA.roster) : null;
-      DATA.rawAttendanceData = mappedAttendance || heavy.rawAttendanceData || null;
-      DATA.attendanceDetails = mappedAttendance
-        ? mapSupabaseAttendanceDetails(mappedAttendance.players)
-        : heavy.attendanceDetails || {};
-      DATA.recentAttendanceTrend = mappedAttendance
-        ? mapSupabaseAttendanceTrend(mappedAttendance.players)
-        : heavy.recentAttendanceTrend || {};
+      DATA.rawAttendanceData = mappedAttendance || null;
+      DATA.attendanceDetails = mappedAttendance ? mapSupabaseAttendanceDetails(mappedAttendance.players) : {};
+      DATA.recentAttendanceTrend = mappedAttendance ? mapSupabaseAttendanceTrend(mappedAttendance.players) : {};
       var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
-      DATA.bisList = mappedBis && Object.keys(mappedBis).length ? mappedBis : heavy.bisList || {};
+      DATA.bisList = mappedBis || {};
       var mappedPriority = priorityRows
         ? mapSupabasePriorityOrder(priorityRows, seasonCodeForDisplay(DATA.seasonName || ''))
         : null;
-      DATA.priorityOrder =
-        mappedPriority && Object.keys(mappedPriority).length ? mappedPriority : heavy.priorityOrder || {};
+      DATA.priorityOrder = mappedPriority || {};
       var itemMaps = buildItemMaps(itemRows);
       DATA.itemSlots = itemMaps.itemSlots;
       DATA.itemArmorTypes = itemMaps.itemArmorTypes;
@@ -1612,61 +1560,15 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.itemIds = itemMaps.itemIds;
       DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
       var mappedSelfReceived = selfReceivedRows ? mapSupabaseSelfReceived(selfReceivedRows) : null;
-      DATA.selfReceived =
-        mappedSelfReceived && Object.keys(mappedSelfReceived).length ? mappedSelfReceived : heavy.selfReceived || {};
+      DATA.selfReceived = mappedSelfReceived || {};
       if (typeof populateBossFilters === 'function') populateBossFilters();
       if (onHeavyReady) onHeavyReady();
     });
   }
 
-  // GAS-independent path (#426): a team with no GAS deployment (gasUrl:'')
-  // can't inject the core/heavy JSONP <script>s -- an empty WEB_APP_URL makes
-  // their src resolve to the current page, which loads as a script, never fires
-  // onerror, and never calls the callbacks, so DATA stays null until the 15s
-  // timeout. Build DATA entirely from the Supabase reads instead, stubbing the
-  // GAS chunks with empty payloads (roster seeded to [] so DATA.roster is an
-  // array even when the team has no players yet).
-  if (!WEB_APP_URL) {
-    applyCoreData({ roster: [] }).then(function (ok) {
-      if (ok) applyHeavyData({});
-    });
-    return;
-  }
-
-  window._rosterCoreCallback = function (data) {
-    delete window._rosterCoreCallback;
-    if (data.error) {
-      showError('Could not load roster data. ' + data.error);
-      return;
-    }
-    applyCoreData(data, function () {
-      var heavyScript = document.createElement('script');
-      heavyScript.onerror = function () {
-        delete window._rosterHeavyCallback;
-      };
-      window._rosterHeavyCallback = function (heavy) {
-        delete window._rosterHeavyCallback;
-        if (!heavy || heavy.error) return;
-        applyHeavyData(heavy);
-      };
-      heavyScript.src = WEB_APP_URL + '?chunk=heavy&callback=_rosterHeavyCallback';
-      document.head.appendChild(heavyScript);
-    });
-  };
-
-  var coreScript = document.createElement('script');
-  coreScript.onerror = function () {
-    delete window._rosterCoreCallback;
-    showError('Could not load roster data.');
-  };
-  coreScript.src = WEB_APP_URL + '?chunk=core&callback=_rosterCoreCallback';
-  document.head.appendChild(coreScript);
-
-  setTimeout(function () {
-    if (!DATA) {
-      showError('Request timed out.');
-    }
-  }, 15000);
+  applyCoreData().then(function (ok) {
+    if (ok) applyHeavyData();
+  });
 }
 
 // -- Data helpers -----------------------------------------------------------
@@ -3251,15 +3153,16 @@ function renderProfile(firstName, backTo, container) {
   if (backTo === 'officer') updateBisAllowDiv(player.nameRealm, player.firstName);
 }
 
-// #241 follow-up: reads straight from Supabase's attendance table instead of
-// the GAS getPlayerAttendanceFull action, which reads the Attendance Google
-// Sheet and has no visibility into writes this card (or the Attendance tab,
-// #218) make straight to Supabase -- confirmed via manual testing, a change
-// reverted on page reload because the Sheet-sourced read never saw it. The
-// full historical import (#320) already backfilled every Sheet row into
-// Supabase, so an empty result here means the player genuinely has no
-// history, not that the read needs to fall back to GAS; only a query error
-// falls back, same convention as fetchSupabaseRoster/BiS/priority_order.
+// #241 follow-up: reads straight from Supabase's attendance table. The GAS
+// getPlayerAttendanceFull action this used to fall back to read the
+// Attendance Google Sheet and had no visibility into writes this card (or
+// the Attendance tab, #218) make straight to Supabase -- confirmed via
+// manual testing, a change reverted on page reload because the Sheet-sourced
+// read never saw it. GAS is retired (#225), so there is no fallback left to
+// have; the full historical import (#320) already backfilled every Sheet row
+// into Supabase, so an empty result means the player genuinely has no
+// history, and a query error (or an unresolvable player) now surfaces an
+// inline error instead of silently substituting stale data.
 function loadAttendanceHistory(firstName) {
   var content = document.getElementById('attend-history-' + firstName);
   if (!content) return;
@@ -3292,7 +3195,8 @@ function loadAttendanceHistory(firstName) {
   }
 
   if (!player || !player.id || !supabaseClient) {
-    loadAttendanceHistoryFromGAS(firstName, content, hint);
+    content.innerHTML =
+      '<p style="color:var(--melee);font-size:0.95rem;padding:0.5rem 0;">Failed to load. Try again.</p>';
     return;
   }
 
@@ -3303,8 +3207,9 @@ function loadAttendanceHistory(firstName) {
     .eq('player_id', player.id)
     .then(function (result) {
       if (result.error) {
-        console.warn('Supabase attendance query failed, using Apps Script history.', result.error.message);
-        loadAttendanceHistoryFromGAS(firstName, content, hint);
+        console.warn('Supabase attendance query failed.', result.error.message);
+        content.innerHTML =
+          '<p style="color:var(--melee);font-size:0.95rem;padding:0.5rem 0;">Failed to load. Try again.</p>';
         return;
       }
       content.dataset.loaded = '1';
@@ -3319,32 +3224,6 @@ function loadAttendanceHistory(firstName) {
 
       renderAttendanceHistoryCard(firstName, content, history);
     });
-}
-
-function loadAttendanceHistoryFromGAS(firstName, content, hint) {
-  var cbName = '_attendHistCb' + firstName.replace(/[^a-zA-Z0-9]/g, '_');
-  window[cbName] = function (result) {
-    delete window[cbName];
-    content.dataset.loaded = '1';
-    if (hint) hint.textContent = 'click to collapse';
-
-    var history = (result && result.history) || [];
-    history = history.slice().sort(function (a, b) {
-      return b.date < a.date ? -1 : b.date > a.date ? 1 : 0;
-    });
-
-    renderAttendanceHistoryCard(firstName, content, history);
-  };
-
-  var script = document.createElement('script');
-  script.onerror = function () {
-    delete window[cbName];
-    content.innerHTML =
-      '<p style="color:var(--melee);font-size:0.95rem;padding:0.5rem 0;">Failed to load. Try again.</p>';
-  };
-  script.src =
-    WEB_APP_URL + '?action=getPlayerAttendanceFull&firstName=' + encodeURIComponent(firstName) + '&callback=' + cbName;
-  document.head.appendChild(script);
 }
 
 // getPlayerAttendanceFull (the source loadAttendanceHistory fetches from) is

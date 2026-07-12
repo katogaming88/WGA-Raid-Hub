@@ -245,50 +245,49 @@ describe('fetchSupabaseRoster', () => {
   });
 });
 
-describe('loadData roster override', () => {
-  function corePayload() {
-    return {
-      roster: [
-        {
-          nameRealm: 'Katorri-Stormrage',
-          firstName: 'Katorri',
-          attendance: '97.3%',
-          mPlusRejected: false,
-          mPlusRejectionNote: '',
-          nick: 'SheetNick'
-        }
-      ],
-      seasonName: 'MID1'
-    };
-  }
-
-  it('replaces DATA.roster with mapped Supabase rows before onCoreReady', async () => {
+// GAS is retired (#225): loadData() no longer waits on a core/heavy JSONP
+// payload from a GAS deployment (that whole path -- window._rosterCoreCallback/
+// _rosterHeavyCallback, the injected <script> tags -- is gone). It now always
+// builds DATA from a bare { roster: [] } seed plus the Supabase reads, the
+// same GAS-independent path #426 originally built just for Immolation
+// (js/tabs -- see loot-supabase.test.js's "loadData builds DATA from Supabase"
+// suite for the fuller heavy-stage coverage). These tests focus on the roster
+// stage specifically.
+describe('loadData roster stage', () => {
+  it('publishes DATA.roster from the mapped Supabase rows before onCoreReady', async () => {
     const { supabase } = mockSupabase(() => ({ data: [SUPABASE_ROW], error: null }));
     const sandbox = loadCommonJs(supabase);
     let rosterAtReady = null;
-    const ready = new Promise((resolve) => {
+    await new Promise((resolve) => {
       sandbox.loadData(() => {
         rosterAtReady = sandbox.DATA.roster;
         resolve();
       });
     });
-    sandbox.window._rosterCoreCallback(corePayload());
-    await ready;
     expect(rosterAtReady).toHaveLength(1);
-    // Supabase wins for its own fields, the JSONP payload for the merged ones.
     expect(rosterAtReady[0].nick).toBe('Kat');
-    expect(rosterAtReady[0].attendance).toBe('97.3%');
-    expect(sandbox.DATA.seasonName).toBe('MID1');
+    expect(rosterAtReady[0].nameRealm).toBe('Katorri-Stormrage');
   });
 
-  it('keeps the JSONP roster when the Supabase query fails', async () => {
+  // There is no GAS payload left to fall back to (#225), so a Supabase
+  // failure now means an empty roster, not a stale-but-present one -- a real
+  // behavior change from when a GAS core chunk was always the backstop.
+  it('resolves to an empty roster, not an error, when the Supabase query fails', async () => {
     const { supabase } = mockSupabase(() => ({ data: null, error: { message: 'nope' } }));
     const sandbox = loadCommonJs(supabase);
-    const ready = new Promise((resolve) => {
+    await new Promise((resolve) => {
       sandbox.loadData(() => resolve());
     });
-    sandbox.window._rosterCoreCallback(corePayload());
-    await ready;
-    expect(sandbox.DATA.roster[0].nick).toBe('SheetNick');
+    expect(sandbox.DATA.roster).toEqual([]);
+  });
+
+  it('the JSONP roster/callback globals from the retired GAS path no longer exist', async () => {
+    const { supabase } = mockSupabase(() => ({ data: [SUPABASE_ROW], error: null }));
+    const sandbox = loadCommonJs(supabase);
+    await new Promise((resolve) => {
+      sandbox.loadData(() => resolve());
+    });
+    expect(sandbox.window._rosterCoreCallback).toBeUndefined();
+    expect(sandbox.window._rosterHeavyCallback).toBeUndefined();
   });
 });

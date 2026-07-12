@@ -8,6 +8,18 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.18] - 2026-07-11
+
+### Frontend
+
+- **Apps Script is retired (#225).** Every remaining live GAS call site is gone: `loadData()`'s core/heavy JSONP chunk fetch (the primary roster/loot/BiS/priority/attendance load for Phoenix and Hellfire -- Immolation already used the GAS-independent path from #426, now made universal), the Danger Zone's seven "Clear ___ Sheet" ops, the Quick Actions "Refresh Attendance" button (which was still calling GAS directly while the real Attendance tab already used the `wcl-sync` Edge Function -- the same two-different-paths bug #335 fixed for priority export), the profile card's attendance-history GAS fallback, and the "Clear Cache" button (meaningless once there's no GAS script cache to clear). `jsonpRequest()` and its audit-attribution helper are deleted; `WEB_APP_URL` is gone. `TEAMS[team].gasUrl` stays as a historical record of which deployment served which team -- nothing reads it anymore, and (per Kat's call) the `gs/` Apps Script source itself is kept for now rather than deleted outright.
+- **A Supabase failure now shows an empty state, not a stale GAS fallback.** This is a real behavior change, not just a refactor: previously, if a Supabase query genuinely errored, several read paths (roster, BiS, priority order, self-received, attendance history) fell back to whatever GAS last had. With GAS gone there is nothing to fall back to, so those paths now show empty/error states directly -- correct given the circumstances, but worth knowing if something looks emptier than expected right after this ships.
+- **The Danger Zone's "Clear ___" ops are Supabase-native**, matching the fix #423 already made for Clear Season History. Five new SECURITY DEFINER RPCs (site-admin only) handle the four request tables plus the narrower "Pending Roster" subset (approved-but-not-yet-added signups, distinct from clearing every signup outright); Loot Data clears via a direct client delete, since officers already hold a grant on `rclc_loot` for their own team. Status messages now show the actual row count cleared. **"Clear Pasted Loot Sheet" is retired outright, not migrated** -- #219 replaced the old paste-to-sheet-then-import flow with a direct paste-to-RPC import with no staging table, so there was nothing left for it to clear.
+
+### Backend
+
+- **Five new `danger_clear_*` RPCs** for the Danger Zone's request-table clears (`danger_clear_bis_requests`, `danger_clear_season_signups`, `danger_clear_pending_roster`, `danger_clear_mplus_exclusion_requests`, `danger_clear_self_received_requests`), all SECURITY DEFINER, `is_site_admin()`-gated, returning the deleted row count.
+
 ## [3.33.17] - 2026-07-11
 
 ### Frontend
