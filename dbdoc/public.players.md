@@ -191,6 +191,7 @@ erDiagram
   text track
   text source
   text note
+  text slot
 }
 "public.teams" {
   integer id

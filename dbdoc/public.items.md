@@ -90,6 +90,7 @@ erDiagram
   text track
   text source
   text note
+  text slot
 }
 ```
 

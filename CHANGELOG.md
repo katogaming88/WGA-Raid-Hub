@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.15] - 2026-07-11
+
+### Frontend
+
+- **"Mark received" now ticks the matching BiS item as obtained (#386).** #217 gave officers an "Obtained" checkbox on `bis_items` and #406 moved the self-received flow onto Supabase, but nothing linked them -- a raider marking an item received (or an officer direct-marking it) left the BiS row unticked, so an officer had to repeat the action in BiS Manager. Approving a self-received item now flips the matching `bis_items` row automatically, keeping BiS Manager as the one place officers actively *edit* a list while "Mark received" is just the received-state signal. The "Mark received" button now sends the raw `bis_items.slot` of the row it was rendered for, rather than the displayed slot name -- the two diverge routinely (the item catalog says `Boots`/`Gloves`/`Trinket` where `bis_items` says `Feet`/`Hands`/`Trinket 1`), and only the raw value identifies which row an approval fills.
+
+### Backend
+
+- **`self_received_requests.slot` + a trigger that syncs `bis_items.obtained` (#386).** New nullable `slot` column records which BiS row a request was raised against. It's needed because `bis_items` is unique on `(player_id, item_id, coalesce(slot, ''))`: the placeholder items (`M+`, `Crafted`, `Catalyst` -- `items.is_placeholder`) name a loot *source* rather than a piece of gear, so one player legitimately lists `M+` against six different slots, and an approved `M+` previously could not say which of them it filled. `submit_self_received()` and `direct_mark_received()` gain a `p_slot` argument (dropped and recreated rather than replaced, since adding a parameter would otherwise leave the old 6-argument overload resolvable). The flip itself lives in a trigger rather than in those two functions, because there is a third path to `approved` -- the officer Requests tab updates `status` directly -- so a trigger catches all three and can't be bypassed by a fourth. It is deliberately one-way: approving sets `obtained = true`, but rejecting or reverting never clears it, since an officer may have ticked the box by hand and silently undoing that would be worse. A request with no slot (rows predating this) only infers a target when the item occupies exactly one slot for that player.
+
 ## [3.33.14] - 2026-07-11
 
 ### Frontend

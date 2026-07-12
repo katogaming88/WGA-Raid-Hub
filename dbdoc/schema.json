@@ -1905,6 +1905,12 @@
           "name": "note",
           "type": "text",
           "nullable": true
+        },
+        {
+          "name": "slot",
+          "type": "text",
+          "nullable": true,
+          "comment": "BiS slot the request was raised against, mirroring bis_items.slot. Lets an approval target one row when the same item -- notably an is_placeholder source like M+ -- sits in several slots. Null on rows predating #386."
         }
       ],
       "indexes": [
@@ -1992,6 +1998,10 @@
         {
           "name": "trg_self_received_requests_team_id_check",
           "def": "CREATE TRIGGER trg_self_received_requests_team_id_check BEFORE INSERT OR UPDATE ON public.self_received_requests FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        },
+        {
+          "name": "trg_self_received_sync_bis_obtained",
+          "def": "CREATE TRIGGER trg_self_received_sync_bis_obtained AFTER INSERT OR UPDATE OF status ON public.self_received_requests FOR EACH ROW WHEN ((new.status = 'approved'::text)) EXECUTE FUNCTION sync_bis_obtained_from_self_received()"
         }
       ]
     },
@@ -3269,18 +3279,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.submit_self_received",
-      "return_type": "record",
-      "arguments": "p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.direct_mark_received",
-      "return_type": "int4",
-      "arguments": "p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.admin_create_team",
       "return_type": "int4",
       "arguments": "p_name text, p_slug text",
@@ -3320,6 +3318,24 @@
       "name": "public.admin_set_maintenance_mode",
       "return_type": "void",
       "arguments": "p_enabled boolean, p_message text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.submit_self_received",
+      "return_type": "record",
+      "arguments": "p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_slot text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.direct_mark_received",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_slot text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.sync_bis_obtained_from_self_received",
+      "return_type": "trigger",
+      "arguments": "",
       "type": "FUNCTION"
     }
   ],

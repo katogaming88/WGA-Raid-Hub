@@ -19,7 +19,7 @@
 | [public.scoring](public.scoring.md) | 10 |  | BASE TABLE |
 | [public.season_signups](public.season_signups.md) | 16 |  | BASE TABLE |
 | [public.season_snapshots](public.season_snapshots.md) | 5 |  | BASE TABLE |
-| [public.self_received_requests](public.self_received_requests.md) | 9 |  | BASE TABLE |
+| [public.self_received_requests](public.self_received_requests.md) | 10 |  | BASE TABLE |
 | [public.site_admins](public.site_admins.md) | 3 |  | BASE TABLE |
 | [public.team_members](public.team_members.md) | 7 |  | BASE TABLE |
 | [public.team_settings](public.team_settings.md) | 3 |  | BASE TABLE |
@@ -57,8 +57,6 @@
 | public.submit_season_signup | int4 | p_team_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text | FUNCTION |
 | public.submit_bis_link | int4 | p_team_id integer, p_name_realm text, p_bis_link text, p_player_note text DEFAULT NULL::text | FUNCTION |
 | public.submit_mplus_exclusion | int4 | p_team_id integer, p_name_realm text, p_raiderio_url text DEFAULT NULL::text, p_reason text DEFAULT NULL::text | FUNCTION |
-| public.submit_self_received | record | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text | FUNCTION |
-| public.direct_mark_received | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text | FUNCTION |
 | public.admin_create_team | int4 | p_name text, p_slug text | FUNCTION |
 | public.admin_update_team | void | p_team_id integer, p_name text, p_slug text | FUNCTION |
 | public.admin_set_team_archived | void | p_team_id integer, p_archived boolean | FUNCTION |
@@ -66,6 +64,9 @@
 | public.admin_grant_site_admin | int4 | p_discord_id text | FUNCTION |
 | public.admin_revoke_site_admin | void | p_discord_id text | FUNCTION |
 | public.admin_set_maintenance_mode | void | p_enabled boolean, p_message text DEFAULT NULL::text | FUNCTION |
+| public.submit_self_received | record | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_slot text DEFAULT NULL::text | FUNCTION |
+| public.direct_mark_received | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_slot text DEFAULT NULL::text | FUNCTION |
+| public.sync_bis_obtained_from_self_received | trigger |  | FUNCTION |
 
 ## Enums
 
@@ -288,6 +289,7 @@ erDiagram
   text track
   text source
   text note
+  text slot
 }
 "public.site_admins" {
   integer id
