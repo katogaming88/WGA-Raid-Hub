@@ -6,11 +6,7 @@ var selectedOfficerPlayer = null;
 var activeFilters = {};
 var activeSort = { key: null, dir: 1 };
 // ACTIVE_SEASON is declared in common.js; officer.js updates it via setActiveSeason()
-
-function toggleHelp(id) {
-  var el = document.getElementById(id);
-  if (el) el.classList.toggle('open');
-}
+// toggleHelp() lives in common.js -- shared with index.html's raider Help tab.
 
 function showView(name) {
   document.getElementById('loadingMsg').style.display = 'none';

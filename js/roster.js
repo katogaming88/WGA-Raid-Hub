@@ -1,9 +1,11 @@
 // Public page: view switching, player dropdown, boot
 function showView(name) {
   document.getElementById('loadingMsg').style.display = 'none';
-  ['landingView', 'profileViewWrap', 'signupViewWrap', 'rosterViewWrap', 'streamersViewWrap'].forEach(function (id) {
-    document.getElementById(id).classList.remove('active');
-  });
+  ['landingView', 'profileViewWrap', 'signupViewWrap', 'rosterViewWrap', 'streamersViewWrap', 'helpViewWrap'].forEach(
+    function (id) {
+      document.getElementById(id).classList.remove('active');
+    }
+  );
   if (name === 'landing') {
     document.getElementById('landingView').classList.add('active');
     updateSignupNavItem();
@@ -18,7 +20,8 @@ function showView(name) {
     document.getElementById('streamersViewWrap').classList.add('active');
     buildStreamersTab();
   }
-  ['navHome', 'navSignup', 'navRoster', 'navStreamers'].forEach(function (id) {
+  if (name === 'help') document.getElementById('helpViewWrap').classList.add('active');
+  ['navHome', 'navSignup', 'navRoster', 'navStreamers', 'navHelp'].forEach(function (id) {
     var el = document.getElementById(id);
     if (el) el.classList.remove('active');
   });
@@ -27,7 +30,8 @@ function showView(name) {
     profile: 'navHome',
     signup: 'navSignup',
     roster: 'navRoster',
-    streamers: 'navStreamers'
+    streamers: 'navStreamers',
+    help: 'navHelp'
   }[name];
   if (activeNav) {
     var el = document.getElementById(activeNav);
