@@ -104,9 +104,10 @@ function renderSignupResponses(signups) {
   var container = document.getElementById('signupsResponsesContainer');
   if (!container) return;
 
-  // Approved/rostered signups move to the Pending Roster / roster tabs.
+  // Approved/rostered signups move to the Pending Roster / roster tabs;
+  // denied signups move to the History sub-tab. Only pending stays here.
   signups = signups.filter(function (s) {
-    return s.status !== 'approved' && s.status !== 'added';
+    return s.status === 'pending';
   });
 
   if (!signups.length) {
@@ -407,17 +408,11 @@ function denySignupRow(signupId, btnEl) {
       return;
     }
     var card = document.querySelector('.signup-response-card[data-row="' + signupId + '"]');
-    if (card) {
-      var nameEl = card.querySelector('.signup-response-name');
-      if (nameEl && nameEl.parentNode) {
-        var badge = document.createElement('span');
-        badge.className = 'signup-status-badge signup-status-closed';
-        badge.style.cssText = 'font-size:0.85rem;padding:0.1rem 0.5rem;margin-left:0.4rem;';
-        badge.textContent = 'Denied';
-        nameEl.parentNode.appendChild(badge);
-      }
-      var actionRow = card.querySelector('.signup-review-actions');
-      if (actionRow) actionRow.remove();
+    if (card) card.remove();
+    var container = document.getElementById('signupsResponsesContainer');
+    if (container && !container.querySelector('.signup-response-card')) {
+      container.innerHTML =
+        '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No signups submitted yet.</p>';
     }
     updateNavBadges();
   });

@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.29] - 2026-07-12
+
+### Frontend
+
+- **Denied signups no longer linger on the Signups subtab.** Denying a signup now removes its card immediately, matching the approve flow, and the subtab only ever shows pending submissions on reload -- denied signups still show up under History.
+
 ## [3.33.28] - 2026-07-12
 
 ### Frontend
