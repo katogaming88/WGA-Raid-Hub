@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.24] - 2026-07-12
+
+### Frontend
+
+- **Officers can now leave a note when approving a BiS submission (#278).** Approving a Pending BiS entry (a fresh link or a "same link" flag) swaps the Approve/Reject buttons for an inline optional note field, mirroring both the existing BiS rejection flow and M+ exclusion's approve flow. Stored in `bis_requests.officer_notes`, same column the rejection note already uses.
+
 ## [3.33.23] - 2026-07-12
 
 ### Frontend

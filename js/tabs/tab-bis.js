@@ -128,7 +128,9 @@ function renderBisSubmissions(submissions) {
       '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
       '<button class="btn request-approve-btn" onclick="approveBisSubmission(' +
       s.id +
-      ', this)">Approve</button>' +
+      ",'" +
+      s.nameRealm.replace(/'/g, "\\'") +
+      '\', this)">Approve</button>' +
       '<button class="btn request-reject-btn" onclick="rejectBisSubmission(' +
       s.id +
       ",'" +
@@ -140,21 +142,71 @@ function renderBisSubmissions(submissions) {
   container.innerHTML = html + '</div>';
 }
 
-// Approve writes both bis_requests.status and players.bis_link -- two
-// separate officer-writable tables, no RPC needed (mirrors the direct-write
-// pattern tab-roster.js already uses). Not atomic, but a failure between the
-// two calls just leaves the request pending for a retry -- no partial state
-// an officer could act on incorrectly.
-function approveBisSubmission(requestId, btnEl) {
+// Mirrors tab-mplus.js's approveMPlusExclusion: swaps the Approve/Reject
+// pair for an inline optional note field before confirming, same as
+// rejectBisSubmission below.
+function approveBisSubmission(requestId, nameRealm, btnEl) {
+  var actionsDiv = btnEl.parentNode;
+  var noteId = '_bisApproveNote' + requestId;
+  var nrSafe = nameRealm.replace(/'/g, "\\'");
+  actionsDiv.innerHTML =
+    '<div style="width:100%;">' +
+    '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.4rem;">Officer note (optional):</div>' +
+    '<textarea id="' +
+    noteId +
+    '" rows="2" placeholder="e.g. Looks good, nice upgrades this tier" style="width:100%;box-sizing:border-box;background:var(--bg-alt);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:0.4rem 0.5rem;font-size:1rem;resize:vertical;"></textarea>' +
+    '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
+    '<button id="_bisApproveConfirm' +
+    requestId +
+    '" class="btn request-approve-btn" style="font-size:1rem;padding:0.25rem 0.75rem;">Approve</button>' +
+    '<button id="_bisApproveCancel' +
+    requestId +
+    '" class="btn btn-muted" style="font-size:1rem;padding:0.25rem 0.75rem;">Cancel</button>' +
+    '</div>' +
+    '</div>';
+
+  var noteInput = document.getElementById(noteId);
+  var confirmBtn = document.getElementById('_bisApproveConfirm' + requestId);
+  var cancelBtn = document.getElementById('_bisApproveCancel' + requestId);
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function () {
+      actionsDiv.innerHTML =
+        '<button class="btn request-approve-btn" onclick="approveBisSubmission(' +
+        requestId +
+        ",'" +
+        nrSafe +
+        '\', this)">Approve</button>' +
+        '<button class="btn request-reject-btn" onclick="rejectBisSubmission(' +
+        requestId +
+        ",'" +
+        nrSafe +
+        '\', this)">Reject</button>';
+    });
+  }
+
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', function () {
+      var note = noteInput ? noteInput.value.trim() : '';
+      confirmApproveBisSubmission(requestId, nameRealm, note, confirmBtn);
+    });
+  }
+}
+
+// Writes both bis_requests.status and players.bis_link -- two separate
+// officer-writable tables, no RPC needed (mirrors the direct-write pattern
+// tab-roster.js already uses). Not atomic, but a failure between the two
+// calls just leaves the request pending for a retry -- no partial state an
+// officer could act on incorrectly.
+function confirmApproveBisSubmission(requestId, nameRealm, note, btnEl) {
   var card = document.querySelector('.request-card[data-row="' + requestId + '"]');
-  var nameRealm = card ? card.getAttribute('data-name-realm') : '';
   var bisLink = card ? card.getAttribute('data-bis-link') : '';
   btnEl.disabled = true;
   btnEl.textContent = '...';
 
   supabaseClient
     .from('bis_requests')
-    .update({ status: 'approved' })
+    .update({ status: 'approved', officer_notes: note || null })
     .eq('id', requestId)
     .eq('team_id', _teamCfg.supabaseTeamId)
     .then(function (result) {
