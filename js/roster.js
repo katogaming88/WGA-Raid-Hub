@@ -305,9 +305,7 @@ function _renderPullsBadge(progress, killed) {
   }
   var url = _wclReportUrl(progress);
   if (url) {
-    return (
-      '<a class="prog-boss-pulls" href="' + url + '" target="_blank" rel="noopener">' + _esc(text) + '</a>'
-    );
+    return '<a class="prog-boss-pulls" href="' + url + '" target="_blank" rel="noopener">' + _esc(text) + '</a>';
   }
   return '<span class="prog-boss-pulls">' + _esc(text) + '</span>';
 }

@@ -1448,12 +1448,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_priority_order_team_id_check",
-          "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
-        },
-        {
           "name": "trg_priority_order_updated_at",
           "def": "CREATE TRIGGER trg_priority_order_updated_at BEFORE UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_priority_order_team_id_check",
+          "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         }
       ]
     },
@@ -2831,6 +2831,306 @@
       ]
     },
     {
+      "name": "public.raid_zones",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('raid_zones_id_seq'::regclass)"
+        },
+        {
+          "name": "wcl_zone_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "is_mini_raid",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "sort_index",
+          "type": "integer",
+          "nullable": false,
+          "default": "0"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "raid_zones_pkey",
+          "def": "CREATE UNIQUE INDEX raid_zones_pkey ON public.raid_zones USING btree (id)",
+          "table": "public.raid_zones",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_zones_wcl_zone_id_season_key",
+          "def": "CREATE UNIQUE INDEX raid_zones_wcl_zone_id_season_key ON public.raid_zones USING btree (wcl_zone_id, season)",
+          "table": "public.raid_zones",
+          "columns": [
+            "wcl_zone_id",
+            "season"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "raid_zones_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.raid_zones",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_zones_wcl_zone_id_season_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (wcl_zone_id, season)",
+          "table": "public.raid_zones",
+          "referenced_table": "",
+          "columns": [
+            "wcl_zone_id",
+            "season"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.raid_encounters",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('raid_encounters_id_seq'::regclass)"
+        },
+        {
+          "name": "zone_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "wcl_encounter_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "sort_index",
+          "type": "integer",
+          "nullable": false,
+          "default": "0"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "raid_encounters_pkey",
+          "def": "CREATE UNIQUE INDEX raid_encounters_pkey ON public.raid_encounters USING btree (id)",
+          "table": "public.raid_encounters",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_encounters_zone_id_wcl_encounter_id_key",
+          "def": "CREATE UNIQUE INDEX raid_encounters_zone_id_wcl_encounter_id_key ON public.raid_encounters USING btree (zone_id, wcl_encounter_id)",
+          "table": "public.raid_encounters",
+          "columns": [
+            "zone_id",
+            "wcl_encounter_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "raid_encounters_zone_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (zone_id) REFERENCES raid_zones(id) ON DELETE CASCADE",
+          "table": "public.raid_encounters",
+          "referenced_table": "public.raid_zones",
+          "columns": [
+            "zone_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_encounters_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.raid_encounters",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_encounters_zone_id_wcl_encounter_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (zone_id, wcl_encounter_id)",
+          "table": "public.raid_encounters",
+          "referenced_table": "",
+          "columns": [
+            "zone_id",
+            "wcl_encounter_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.team_raid_progress",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('team_raid_progress_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "encounter_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "mythic_date",
+          "type": "date",
+          "nullable": true
+        },
+        {
+          "name": "heroic_date",
+          "type": "date",
+          "nullable": true
+        },
+        {
+          "name": "mythic_pulls",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "mythic_best_pct",
+          "type": "numeric(5,2)",
+          "nullable": true
+        },
+        {
+          "name": "mythic_report_code",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "mythic_fight_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_raid_progress_pkey",
+          "def": "CREATE UNIQUE INDEX team_raid_progress_pkey ON public.team_raid_progress USING btree (id)",
+          "table": "public.team_raid_progress",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_raid_progress_team_id_encounter_id_key",
+          "def": "CREATE UNIQUE INDEX team_raid_progress_team_id_encounter_id_key ON public.team_raid_progress USING btree (team_id, encounter_id)",
+          "table": "public.team_raid_progress",
+          "columns": [
+            "team_id",
+            "encounter_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_raid_progress_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.team_raid_progress",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_raid_progress_encounter_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE",
+          "table": "public.team_raid_progress",
+          "referenced_table": "public.raid_encounters",
+          "columns": [
+            "encounter_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_raid_progress_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.team_raid_progress",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_raid_progress_team_id_encounter_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, encounter_id)",
+          "table": "public.team_raid_progress",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "encounter_id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_team_raid_progress_updated_at",
+          "def": "CREATE TRIGGER trg_team_raid_progress_updated_at BEFORE UPDATE ON public.team_raid_progress FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
       "name": "public.site_settings",
       "type": "BASE TABLE",
       "columns": [
@@ -3350,6 +3650,45 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_encounters",
+      "columns": [
+        "zone_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.raid_zones",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (zone_id) REFERENCES raid_zones(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_raid_progress",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_raid_progress",
+      "columns": [
+        "encounter_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.raid_encounters",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
     }
   ],
   "functions": [

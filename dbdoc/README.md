@@ -31,6 +31,9 @@
 | [public.season_loot_pace](public.season_loot_pace.md) | 6 |  | VIEW |
 | [public.streamers](public.streamers.md) | 10 |  | BASE TABLE |
 | [public.notifications](public.notifications.md) | 6 |  | BASE TABLE |
+| [public.raid_zones](public.raid_zones.md) | 6 |  | BASE TABLE |
+| [public.raid_encounters](public.raid_encounters.md) | 5 |  | BASE TABLE |
+| [public.team_raid_progress](public.team_raid_progress.md) | 10 |  | BASE TABLE |
 | [public.site_settings](public.site_settings.md) | 4 |  | BASE TABLE |
 
 ## Stored procedures and functions
@@ -136,6 +139,9 @@ erDiagram
 "public.streamers" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.notifications" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.notifications" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.raid_encounters" }o--|| "public.raid_zones" : "FOREIGN KEY (zone_id) REFERENCES raid_zones(id) ON DELETE CASCADE"
+"public.team_raid_progress" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_raid_progress" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -401,6 +407,33 @@ erDiagram
   text message
   boolean read
   timestamp_with_time_zone created_at
+}
+"public.raid_zones" {
+  integer id
+  integer wcl_zone_id
+  text name
+  text season
+  boolean is_mini_raid
+  integer sort_index
+}
+"public.raid_encounters" {
+  integer id
+  integer zone_id FK
+  integer wcl_encounter_id
+  text name
+  integer sort_index
+}
+"public.team_raid_progress" {
+  integer id
+  integer team_id FK
+  integer encounter_id FK
+  date mythic_date
+  date heroic_date
+  integer mythic_pulls
+  numeric_5_2_ mythic_best_pct
+  text mythic_report_code
+  integer mythic_fight_id
+  timestamp_with_time_zone updated_at
 }
 "public.site_settings" {
   integer id
