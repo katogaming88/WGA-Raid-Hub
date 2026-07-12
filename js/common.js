@@ -2333,6 +2333,21 @@ function submitBisFlag(nameRealm, firstName) {
           ? '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>'
           : '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">Flagged for officer review.</p>';
       }
+      if (!result.error) {
+        var player = findRosterPlayerByNameRealm(nameRealm);
+        supabaseClient.functions.invoke('discord-bot-webhook', {
+          body: {
+            action: 'bis',
+            team: TEAM_SLUG,
+            payload: {
+              nameRealm: nameRealm,
+              bisLink: player ? player.bisLink : '',
+              notes: notesEl ? notesEl.value.trim() : '',
+              sameLink: true
+            }
+          }
+        });
+      }
     });
 }
 

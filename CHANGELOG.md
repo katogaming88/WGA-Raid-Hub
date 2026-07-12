@@ -12,7 +12,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ### Frontend
 
-- **"My List Changed (Same Link)" flag on a raider's own BiS section (#278).** Until now, `submitBiS` only fired when the link itself changed, and even then only during an open submission window or with an officer's individual allow-list -- so a raider whose Raidbots/sheet contents changed in place (link unchanged) had no way to signal officers to go recheck their tracked items. This new action is always available (no submission-window or allow-list gate) whenever the raider already has a link on file, and lands in the same Pending BiS review queue with a "Same link -- items changed" badge so officers know to go recheck the BiS Lists tab rather than treat it as a new link.
+- **"My List Changed (Same Link)" flag on a raider's own BiS section (#278).** Until now, `submitBiS` only fired when the link itself changed, and even then only during an open submission window or with an officer's individual allow-list -- so a raider whose Raidbots/sheet contents changed in place (link unchanged) had no way to signal officers to go recheck their tracked items. This new action is always available (no submission-window or allow-list gate) whenever the raider already has a link on file, and lands in the same Pending BiS review queue with a "Same link -- items changed" badge so officers know to go recheck the BiS Lists tab rather than treat it as a new link. Also fires the same Discord bot notification as a regular BiS submission (reusing the `bis` webhook action, distinguished by a `sameLink` flag), so officers are pinged in Discord the same way a fresh link submission already was.
 
 ### Backend
 
