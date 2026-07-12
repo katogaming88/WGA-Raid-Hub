@@ -26,9 +26,16 @@ function makeEl() {
   };
 }
 
-function makeSandbox({ access, els = {} } = {}) {
+function makeSandbox({ access, els = {}, saveTeamSettingResult } = {}) {
   const allEls = { ...els };
   const jsonpRequest = vi.fn();
+  // clearSeasonHistorySupabase() (#423) goes through saveTeamSetting()/
+  // writeAuditLog()/buildSeasonTab() -- common.js/tab-season.js helpers this
+  // sandbox doesn't load (same pattern as priority-export.test.js stubbing
+  // _utf8ToBase64 rather than pulling in all of common.js).
+  const saveTeamSetting = vi.fn(() => saveTeamSettingResult || Promise.resolve({ seasonHistory: [] }));
+  const writeAuditLog = vi.fn(() => Promise.resolve());
+  const buildSeasonTab = vi.fn();
   const sandbox = {
     console,
     window: { _adminAccessLevel: access },
@@ -40,17 +47,22 @@ function makeSandbox({ access, els = {} } = {}) {
       querySelectorAll: () => []
     },
     jsonpRequest,
+    saveTeamSetting,
+    writeAuditLog,
+    buildSeasonTab,
     WEB_APP_URL: 'https://gas.example/exec',
     TEAM_NAME: 'Phoenix Reborn',
-    DATA: null,
-    supabaseClient: null,
+    DATA: { seasonHistory: [{ name: 'Old Season' }] },
+    supabaseClient: {},
     setTimeout,
     clearTimeout
   };
   vm.createContext(sandbox);
   vm.runInContext(ADMIN_JS, sandbox, { filename: 'tab-admin.js' });
-  return { sandbox, els: allEls, jsonpRequest };
+  return { sandbox, els: allEls, jsonpRequest, saveTeamSetting, writeAuditLog, buildSeasonTab };
 }
+
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe('adminSubTabVisibility (#317)', () => {
   it('shows all five sub-tabs at full access', () => {
@@ -131,15 +143,6 @@ describe('executeDangerOp guard (#317)', () => {
     expect(jsonpRequest).not.toHaveBeenCalled();
   });
 
-  it('runs a team-leader-visible op with a valid confirm', () => {
-    const els = { 'danger-confirm-clearSeasonHistory': makeEl() };
-    els['danger-confirm-clearSeasonHistory'].value = 'Phoenix Reborn';
-    const { sandbox, jsonpRequest } = makeSandbox({ access: 'team_leader', els });
-    sandbox.executeDangerOp('clearSeasonHistory');
-    expect(jsonpRequest).toHaveBeenCalledTimes(1);
-    expect(jsonpRequest.mock.calls[0][0]).toContain('action=dangerClearSeasonHistory');
-  });
-
   it('still runs sheet wipes at full access', () => {
     const els = { 'danger-confirm-clearLootData': makeEl() };
     els['danger-confirm-clearLootData'].value = 'Phoenix Reborn';
@@ -147,6 +150,67 @@ describe('executeDangerOp guard (#317)', () => {
     sandbox.executeDangerOp('clearLootData');
     expect(jsonpRequest).toHaveBeenCalledTimes(1);
     expect(jsonpRequest.mock.calls[0][0]).toContain('action=dangerClearSheet');
+  });
+});
+
+describe('Clear Season History goes through Supabase, not GAS (#423)', () => {
+  function confirmedEls() {
+    const els = { 'danger-confirm-clearSeasonHistory': makeEl() };
+    els['danger-confirm-clearSeasonHistory'].value = 'Phoenix Reborn';
+    return els;
+  }
+
+  it('clears team_settings.config.seasonHistory via saveTeamSetting, never GAS', async () => {
+    const { sandbox, jsonpRequest, saveTeamSetting, writeAuditLog } = makeSandbox({
+      access: 'team_leader',
+      els: confirmedEls()
+    });
+    sandbox.executeDangerOp('clearSeasonHistory');
+    await flush();
+
+    expect(saveTeamSetting).toHaveBeenCalledTimes(1);
+    expect(saveTeamSetting).toHaveBeenCalledWith({ seasonHistory: [] });
+    // The old GAS action ("dangerClearSeasonHistory") is never called -- this
+    // was the actual bug: it cleared Script Properties while the archived
+    // seasons in team_settings.config survived (#423).
+    expect(jsonpRequest).not.toHaveBeenCalled();
+    expect(writeAuditLog).toHaveBeenCalledWith('Season History Cleared', null, null, null);
+  });
+
+  it('updates DATA.seasonHistory and re-renders the Season tab', async () => {
+    const { sandbox, buildSeasonTab } = makeSandbox({
+      access: 'team_leader',
+      els: confirmedEls(),
+      saveTeamSettingResult: Promise.resolve({ seasonHistory: [] })
+    });
+    expect(sandbox.DATA.seasonHistory).toEqual([{ name: 'Old Season' }]);
+    sandbox.executeDangerOp('clearSeasonHistory');
+    await flush();
+
+    expect(sandbox.DATA.seasonHistory).toEqual([]);
+    expect(buildSeasonTab).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows an error and leaves the button re-enabled if the RPC fails', async () => {
+    const els = confirmedEls();
+    els['danger-btn-clearSeasonHistory'] = makeEl();
+    els['danger-status-clearSeasonHistory'] = makeEl();
+    const { sandbox } = makeSandbox({
+      access: 'team_leader',
+      els,
+      saveTeamSettingResult: Promise.reject(new Error('RLS denied'))
+    });
+    sandbox.executeDangerOp('clearSeasonHistory');
+    await flush();
+
+    expect(els['danger-btn-clearSeasonHistory'].disabled).toBe(false);
+    expect(els['danger-status-clearSeasonHistory'].textContent).toBe('RLS denied');
+  });
+
+  it('still refuses without a matching team-name confirm', () => {
+    const { sandbox, saveTeamSetting } = makeSandbox({ access: 'team_leader', els: {} });
+    sandbox.executeDangerOp('clearSeasonHistory');
+    expect(saveTeamSetting).not.toHaveBeenCalled();
   });
 });
 

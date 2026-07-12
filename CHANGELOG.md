@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.17] - 2026-07-11
+
+### Frontend
+
+- **Fixed Danger Zone's "Clear Season History" clearing the wrong store (#423).** Since #221 moved season config onto Supabase, archived seasons live in `team_settings.config.seasonHistory` -- but this op still called the GAS `dangerClearSeasonHistory` action, which cleared Script Properties (a store nothing has read since #221) and left the real archived seasons untouched. Officers who ran it saw "Done." while their Season History list stayed exactly as it was. Now clears `config.seasonHistory` directly through the same `saveTeamSetting()`/`set_team_setting` RPC the Season Settings tab already writes through -- team-leader-gated, same as before -- and updates `DATA.seasonHistory` and the Season tab's rendered list immediately, no reload needed. `season_snapshots` (the table the op's old description named) was never the actual store; nothing has ever written it, so it's left untouched.
+
 ## [3.33.16] - 2026-07-11
 
 ### Frontend
