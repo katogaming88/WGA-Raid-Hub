@@ -1,0 +1,47 @@
+name: Twitch Live Check
+
+# #286: keeps streamers.is_live current by calling the twitch-live-check
+# Edge Function on a schedule -- no cron/pg_net infrastructure exists inside
+# Supabase for this project yet, so GitHub Actions is the trigger instead
+# (Kat's call: reuses infrastructure already in place, easy to see run
+# history/failures in the Actions tab, no new DB extensions).
+#
+# Requires one repo secret: TWITCH_LIVE_CHECK_SECRET, matching the same
+# value set as the Edge Function's TWITCH_LIVE_CHECK_SECRET env var (Project
+# Settings > Edge Functions > Secrets) -- an arbitrary shared secret, not a
+# Twitch credential itself. Without it matching, the function returns 401.
+on:
+  schedule:
+    # Every 5 minutes -- GitHub Actions' documented minimum cron granularity,
+    # and not a hard guarantee even at that (runs can be delayed under
+    # platform load). Fine for "is this streamer live," not suited to
+    # anything needing second-level accuracy.
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call twitch-live-check
+        env:
+          CRON_SECRET: ${{ secrets.TWITCH_LIVE_CHECK_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "TWITCH_LIVE_CHECK_SECRET repo secret is not set -- skipping."
+            exit 1
+          fi
+          http_code=$(curl -sS -o /tmp/response.json -w "%{http_code}" \
+            -X POST "https://kxgjqnpwfklbgrxdgmmv.supabase.co/functions/v1/twitch-live-check" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "Content-Type: application/json")
+          echo "HTTP $http_code"
+          cat /tmp/response.json
+          echo
+          if [ "$http_code" -ge 300 ]; then
+            exit 1
+          fi
