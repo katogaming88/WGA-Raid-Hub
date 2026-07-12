@@ -7,14 +7,15 @@ Reference notes for walking an officer through the dashboard -- not published to
 - Go to the officer page URL (not the public page)
 - They enter the officer password -- session lasts 2 hours, then it re-prompts
 - Point out the season selector dropdown in the toolbar -- it filters most views to a specific season
+- Top nav also has **Roster**, **Streams**, **Sign Up**, and **Help** links back to the public site (index.html) -- useful for checking how something looks from a raider's point of view without logging out
 
 ---
 
 ## Weekly / Recurring Workflow
 
 The day-to-day job as an officer comes down to three cadences. These are the app's own
-canonical steps (also built into the dashboard's Help tab) -- point people there directly
-once they've seen it walked through once.
+canonical steps (also built into the dashboard's Officer Guide tab) -- point people there
+directly once they've seen it walked through once.
 
 ### After each raid night
 1. **Loot tab -> Import** -- confirm Season Name is set in Season Settings, paste the
@@ -250,12 +251,13 @@ Three sub-tabs: **Settings**, **Raid Progression**, **History**.
 
 ---
 
-## Help tab
+## Officer Guide tab
 
-- The dashboard's own built-in "Officer Workflow Reference" -- numbered steps for importing
-  loot, refreshing/editing/committing attendance, setting season dates, and the full season
-  reset workflow. Point people here directly once they've seen the flow explained once, rather
-  than re-explaining it from scratch every time.
+- Renamed from "Help" (#354) to avoid confusion with the top nav's raider-facing Help link,
+  which points back at the public site. The dashboard's own built-in "Officer Workflow
+  Reference" -- numbered steps for importing loot, refreshing/editing/committing attendance,
+  setting season dates, and the full season reset workflow. Point people here directly once
+  they've seen the flow explained once, rather than re-explaining it from scratch every time.
 
 ---
 
