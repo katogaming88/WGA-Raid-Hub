@@ -4,6 +4,8 @@ var _pendingFilterRole = null;
 var _pendingSwapOnly = false;
 var _pendingSortKey = 'name';
 var _pendingSelected = {}; // signupId -> true, for checked entries in the selection-based push
+var _pendingTrialOverride = {}; // signupId -> true/false, user's manual Trial toggle (survives re-render)
+var _pendingSwapOverride = {}; // signupId -> selected archive player id, survives re-render
 var _pendingBatchMessage = ''; // last "N of M added, ..." summary from a batch push
 
 // Map of nameRealm.toLowerCase() -> current roster player, for diff/conflict checks.
@@ -264,6 +266,14 @@ function buildPendingSelectionBarHtml(visible) {
     messageHtml +
     '</div>'
   );
+}
+
+function setPendingTrialOverride(signupId, checked) {
+  _pendingTrialOverride[signupId] = !!checked;
+}
+
+function setPendingSwapOverride(signupId, playerId) {
+  _pendingSwapOverride[signupId] = playerId || null;
 }
 
 function togglePendingSelected(signupId) {
@@ -668,13 +678,24 @@ function buildAddToRosterControlHtml(e, isNew) {
   var roster = (window.DATA && DATA.roster) || [];
   var swapPicker = '';
   if (e.mainSwap) {
+    var savedSwapId = _pendingSwapOverride[e.signupId];
     var options = roster
       .map(function (p) {
-        return '<option value="' + p.id + '">' + escHtml(p.nameRealm) + '</option>';
+        return (
+          '<option value="' +
+          p.id +
+          '"' +
+          (savedSwapId != null && String(savedSwapId) === String(p.id) ? ' selected' : '') +
+          '>' +
+          escHtml(p.nameRealm) +
+          '</option>'
+        );
       })
       .join('');
     swapPicker =
-      '<select class="pending-swap-select" style="font-size:0.97rem;padding:0.2rem 0.4rem;' +
+      '<select class="pending-swap-select" onchange="setPendingSwapOverride(' +
+      e.signupId +
+      ',this.value)" style="font-size:0.97rem;padding:0.2rem 0.4rem;' +
       'background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);margin-right:0.5rem;">' +
       '<option value="">-- character to archive --</option>' +
       options +
@@ -684,13 +705,21 @@ function buildAddToRosterControlHtml(e, isNew) {
   // A main-swap signup is a returning raider under a new character name even
   // when the name itself is new to the roster, so it defaults off too.
   var defaultTrial = isNew && !e.mainSwap;
+  // Re-renders (e.g. from toggling the row's own selection checkbox) rebuild
+  // this control from scratch, so a manual uncheck/check must be remembered
+  // per signup rather than recomputed from defaultTrial every time (#502).
+  var trialChecked = Object.prototype.hasOwnProperty.call(_pendingTrialOverride, e.signupId)
+    ? _pendingTrialOverride[e.signupId]
+    : defaultTrial;
 
   return (
     '<div class="pending-add-roster" style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;' +
     'margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);">' +
     '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.97rem;color:var(--text-muted);cursor:pointer;">' +
-    '<input type="checkbox" class="pending-trial-checkbox"' +
-    (defaultTrial ? ' checked' : '') +
+    '<input type="checkbox" class="pending-trial-checkbox" onchange="setPendingTrialOverride(' +
+    e.signupId +
+    ',this.checked)"' +
+    (trialChecked ? ' checked' : '') +
     ' style="accent-color:var(--gold-light);">Trial' +
     '</label>' +
     swapPicker +
