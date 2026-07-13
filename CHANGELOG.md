@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.35] - 2026-07-13
+
+### Frontend
+
+- Fixed the "Look Up a Raider" dropdown on the public/index page (shown to officers) excluding bench players -- the adjacent Roster tab already listed them, so a bench player was invisible in the one place officers use to pull up any raider's profile.
+
 ## [3.33.34] - 2026-07-13
 
 ### Frontend
