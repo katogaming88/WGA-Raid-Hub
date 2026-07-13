@@ -51,7 +51,7 @@ function populateDropdown() {
   var groups = { Tank: [], Heal: [], Melee: [], Ranged: [] };
   for (var i = 0; i < DATA.roster.length; i++) {
     var p = DATA.roster[i];
-    if (!p.isBench && groups[p.role]) groups[p.role].push(p);
+    if (groups[p.role]) groups[p.role].push(p);
   }
   for (var r = 0; r < order.length; r++) {
     var role = order[r];
