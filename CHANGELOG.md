@@ -8,6 +8,17 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.32] - 2026-07-13
+
+### Frontend
+
+- **Priority order fairness warnings.** The Priority Edit modal now shows a non-blocking ⚠ next to whoever's in the #1 slot if they already hold a #1 priority on another item, or on another item from the same boss -- officers can still save either way. Importing loot now immediately refreshes a "saved Mythic #1 but the player already got the Heroic version" check and updates the Priority nav badge, without needing to reload the page or revisit the Priority tab. Also added a "Mythic #1 Possibly Stale" section to the existing Priority Order Health report.
+
+### Backend
+
+- Added `priority_order_live_first_prios`, `priority_order_first_prio_counts`, `priority_order_same_boss_conflicts`, and `priority_order_stale_after_heroic` views backing the above.
+- Folded approved `self_received_requests` into `priority_order_live_first_prios` and `priority_order_stale_after_heroic` alongside `rclc_loot` -- an officer-approved self-received item is just as real a receipt as an RCLootCouncil import, and previously only the latter cleared a player's live #1 / triggered the stale-after-heroic flag.
+
 ## [3.33.31] - 2026-07-12
 
 ### Frontend

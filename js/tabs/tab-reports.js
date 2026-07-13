@@ -10,6 +10,7 @@ var REPORTS_STATE = {
   bisDemandRows: [],
   staleRows: [],
   gapRows: [],
+  staleAfterHeroicRows: [],
   lootPaceRows: []
 };
 
@@ -244,15 +245,17 @@ function loadPriorityHealthReport() {
   gapsContainer.innerHTML = '';
   Promise.all([
     supabaseClient.from('priority_order_stale_entries').select('*').eq('team_id', _teamCfg.supabaseTeamId),
-    supabaseClient.from('priority_order_gaps').select('*').eq('team_id', _teamCfg.supabaseTeamId)
+    supabaseClient.from('priority_order_gaps').select('*').eq('team_id', _teamCfg.supabaseTeamId),
+    supabaseClient.from('priority_order_stale_after_heroic').select('*').eq('team_id', _teamCfg.supabaseTeamId)
   ]).then(function (results) {
-    if (results[0].error || results[1].error) {
+    if (results[0].error || results[1].error || results[2].error) {
       staleContainer.innerHTML =
-        '<p style="color:var(--tank);">' + (results[0].error || results[1].error).message + '</p>';
+        '<p style="color:var(--tank);">' + (results[0].error || results[1].error || results[2].error).message + '</p>';
       return;
     }
     REPORTS_STATE.staleRows = results[0].data || [];
     REPORTS_STATE.gapRows = results[1].data || [];
+    REPORTS_STATE.staleAfterHeroicRows = results[2].data || [];
     var select = document.getElementById('reportsPriorityHealthSeasonFilter');
     var seasons = reportsUniqueSorted(
       REPORTS_STATE.staleRows
@@ -261,6 +264,11 @@ function loadPriorityHealthReport() {
         })
         .concat(
           REPORTS_STATE.gapRows.map(function (r) {
+            return r.season;
+          })
+        )
+        .concat(
+          REPORTS_STATE.staleAfterHeroicRows.map(function (r) {
             return r.season;
           })
         )
@@ -317,6 +325,22 @@ function renderPriorityHealthTables() {
     });
     gapsHtml += '</tbody></table>';
     gapsContainer.innerHTML = gapsHtml;
+  }
+
+  var staleAfterHeroicContainer = document.getElementById('reportsPriorityStaleAfterHeroicContent');
+  var staleAfterHeroic = (REPORTS_STATE.staleAfterHeroicRows || []).filter(function (r) {
+    return r.season === season;
+  });
+  if (!staleAfterHeroic.length) {
+    staleAfterHeroicContainer.innerHTML = '<p style="color:var(--text-muted);">No flagged entries for this season.</p>';
+  } else {
+    var staleAfterHeroicHtml =
+      '<table class="roster-table"><thead><tr><th>Item</th><th>Player</th></tr></thead><tbody>';
+    staleAfterHeroic.forEach(function (r) {
+      staleAfterHeroicHtml += '<tr><td>' + r.item_name + '</td><td>' + r.name_realm + '</td></tr>';
+    });
+    staleAfterHeroicHtml += '</tbody></table>';
+    staleAfterHeroicContainer.innerHTML = staleAfterHeroicHtml;
   }
 }
 
