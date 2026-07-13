@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.33] - 2026-07-13
+
+### Frontend
+
+- Fixed the Pending Roster tab resetting a row's Trial checkbox and archive-player dropdown back to their defaults whenever any row's selection checkbox was toggled (the whole list re-renders on selection change, and those two controls weren't remembering their manually-set values).
+
 ## [3.33.32] - 2026-07-13
 
 ### Frontend
