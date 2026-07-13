@@ -120,6 +120,11 @@ function submitLootImport() {
       if (unresolved > 0) msg += ', ' + unresolved + ' with an unresolved item (check Item Lookup)';
       msg += '.';
       setLootImportStatus(msg, 'var(--heal)');
+      // Newly imported loot can make a saved Mythic #1 stale (player already
+      // has the Heroic version) -- refresh that check now so the Priority
+      // nav badge reflects it immediately, since an officer may not visit
+      // the Priority tab this session otherwise.
+      if (typeof refreshPriorityStaleBadge === 'function') refreshPriorityStaleBadge();
     })
     .catch(function (err) {
       setLootImportStatus('Import failed: ' + err.message, 'var(--melee)');

@@ -1353,6 +1353,32 @@ function mapSupabaseSelfReceived(rows) {
 // mapSupabasePriorityOrder() once DATA is populated. Resolves to the raw
 // rows, or null on any failure/empty so the caller falls back to the Apps
 // Script heavy chunk's priorityOrder.
+// Team-wide "may be stale" check: a saved Mythic #1 whose player has
+// already been awarded the Heroic version of that exact item (see
+// priority_order_stale_after_heroic in
+// 20260713150512_priority_order_fairness_warnings.sql). Not season-filtered
+// for the same reason fetchSupabasePriorityOrder() isn't -- resolves to raw
+// rows, or [] on any failure so the nav badge just shows nothing rather than
+// erroring.
+function fetchSupabasePriorityStaleAfterHeroic() {
+  if (!supabaseClient) return Promise.resolve([]);
+  return supabaseClient
+    .from('priority_order_stale_after_heroic')
+    .select('*')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Supabase priority_order_stale_after_heroic query failed.', result.error.message);
+        return [];
+      }
+      return result.data || [];
+    })
+    .catch(function (err) {
+      console.warn('Supabase priority_order_stale_after_heroic query failed.', err);
+      return [];
+    });
+}
+
 function fetchSupabasePriorityOrder() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
@@ -1832,6 +1858,8 @@ function loadData(onCoreReady, onHeavyReady) {
   var itemBossesPromise = fetchSupabaseItemBosses();
   // Fired alongside; the heavy callback waits for it before setting priorityOrder.
   var priorityOrderPromise = fetchSupabasePriorityOrder();
+  // Fired alongside; the heavy callback waits for it before setting priorityStaleAfterHeroic.
+  var priorityStaleAfterHeroicPromise = fetchSupabasePriorityStaleAfterHeroic();
   // Fired alongside; the heavy callback waits for it before setting selfReceived.
   var selfReceivedPromise = fetchSupabaseSelfReceived();
   // Fired alongside; the heavy callback waits for it before setting rawAttendanceData/attendanceDetails/recentAttendanceTrend.
@@ -1887,6 +1915,7 @@ function loadData(onCoreReady, onHeavyReady) {
       itemsPromise,
       itemBossesPromise,
       priorityOrderPromise,
+      priorityStaleAfterHeroicPromise,
       selfReceivedPromise,
       attendancePromise,
       streamersPromise,
@@ -1897,10 +1926,11 @@ function loadData(onCoreReady, onHeavyReady) {
       var itemRows = results[2];
       var itemBossRows = results[3];
       var priorityRows = results[4];
-      var selfReceivedRows = results[5];
-      var attendanceRows = results[6];
-      var streamerRows = results[7];
-      var raidProgressRows = results[8];
+      var priorityStaleAfterHeroicRows = results[5];
+      var selfReceivedRows = results[6];
+      var attendanceRows = results[7];
+      var streamerRows = results[8];
+      var raidProgressRows = results[9];
       var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
       DATA.lootCounts = mappedLoot || {};
       var mappedAttendance = attendanceRows !== null ? mapSupabaseAttendanceRaw(attendanceRows, DATA.roster) : null;
@@ -1913,6 +1943,7 @@ function loadData(onCoreReady, onHeavyReady) {
         ? mapSupabasePriorityOrder(priorityRows, seasonCodeForDisplay(DATA.seasonName || ''))
         : null;
       DATA.priorityOrder = mappedPriority || {};
+      DATA.priorityStaleAfterHeroic = priorityStaleAfterHeroicRows || [];
       var itemMaps = buildItemMaps(itemRows);
       DATA.itemSlots = itemMaps.itemSlots;
       DATA.itemArmorTypes = itemMaps.itemArmorTypes;

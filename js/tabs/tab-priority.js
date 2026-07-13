@@ -107,17 +107,32 @@ function populateBossFilters() {
 }
 
 function updateUnmanagedBadge() {
-  var count = getUnmanagedItems().length;
+  var unmanagedCount = getUnmanagedItems().length;
+  var staleCount = (DATA.priorityStaleAfterHeroic || []).length;
   var navBadge = document.getElementById('prioNavBadge');
   var subBadge = document.getElementById('prioSubBadge');
+  // Combined into one nav badge -- the sub-tab badge (Unmanaged Items) stays
+  // scoped to just that count so it still matches the tab it sits on.
   if (navBadge) {
-    navBadge.textContent = count;
-    navBadge.style.display = count > 0 ? '' : 'none';
+    var total = unmanagedCount + staleCount;
+    navBadge.textContent = total;
+    navBadge.style.display = total > 0 ? '' : 'none';
+    navBadge.title = staleCount > 0 ? staleCount + ' priority order entr' + (staleCount === 1 ? 'y' : 'ies') + ' may be stale (Heroic already awarded)' : '';
   }
   if (subBadge) {
-    subBadge.textContent = count;
-    subBadge.style.display = count > 0 ? '' : 'none';
+    subBadge.textContent = unmanagedCount;
+    subBadge.style.display = unmanagedCount > 0 ? '' : 'none';
   }
+}
+
+// Re-fetches just the stale-after-heroic check and refreshes the nav badge
+// immediately -- called right after a loot import so officers see the flag
+// without needing to revisit the Priority tab or reload the page.
+function refreshPriorityStaleBadge() {
+  fetchSupabasePriorityStaleAfterHeroic().then(function (rows) {
+    DATA.priorityStaleAfterHeroic = rows;
+    updateUnmanagedBadge();
+  });
 }
 
 function buildUnmanagedTab() {
@@ -452,7 +467,8 @@ var PRIO_EDIT = {
   ranked: [],
   showAllRoster: false,
   dragSrcIdx: -1,
-  scores: {}
+  scores: {},
+  fairnessWarnings: {}
 };
 
 function openPrioEditModal(item, slot, autoGenerate, difficulty) {
@@ -466,6 +482,7 @@ function openPrioEditModal(item, slot, autoGenerate, difficulty) {
   PRIO_EDIT.showAllRoster = false;
   PRIO_EDIT.dragSrcIdx = -1;
   PRIO_EDIT.scores = {};
+  PRIO_EDIT.fairnessWarnings = {};
 
   document.getElementById('prioEditTitle').textContent = item;
   var slotEl = document.getElementById('prioEditSlot');
@@ -481,6 +498,7 @@ function openPrioEditModal(item, slot, autoGenerate, difficulty) {
   prioEditRenderList();
   prioEditRenderPool();
   document.getElementById('prioEditModal').classList.add('active');
+  prioEditFetchFairnessWarnings();
 
   if (autoGenerate) prioEditGenerate();
 }
@@ -498,6 +516,7 @@ function prioEditSwitchDiff(diff) {
   var entry = (DATA.priorityOrder || {})[PRIO_EDIT.item] || {};
   PRIO_EDIT.ranked = (entry[diff] || []).slice();
   PRIO_EDIT.scores = {};
+  PRIO_EDIT.fairnessWarnings = {};
   PRIO_EDIT.showAllRoster = false;
   document.getElementById('prioEditShowAllBtn').textContent = 'Show all roster';
   document.getElementById('prioEditPoolLabel').textContent = 'BiS Players';
@@ -507,6 +526,7 @@ function prioEditSwitchDiff(diff) {
   prioEditSetDiffToggle(diff);
   prioEditRenderList();
   prioEditRenderPool();
+  prioEditFetchFairnessWarnings();
 }
 
 function closePrioEditModal() {
@@ -548,6 +568,49 @@ function prioEditUpdateVersionWarning() {
     }
   }
   el.style.display = warn ? '' : 'none';
+}
+
+// Fairness warnings for the current item/track -- non-blocking, surfaced
+// only on whoever currently sits in the #1 slot. Queries
+// priority_order_live_first_prios directly (rather than the aggregated
+// priority_order_first_prio_counts view) so it can name the other items and
+// tell same-boss conflicts apart from "just holds a #1 elsewhere". Excludes
+// the item being edited itself, since that reflects whatever's already
+// saved for this exact slot, not a competing claim. See
+// 20260713150512_priority_order_fairness_warnings.sql.
+function prioEditFetchFairnessWarnings() {
+  if (!supabaseClient) return;
+  var itemId = (DATA.itemIds || {})[PRIO_EDIT.item];
+  if (!itemId) return;
+  var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+  var track = PRIO_EDIT.difficulty === 'Mythic' ? 'Myth' : 'Hero';
+  var boss = (DATA.itemBosses || {})[PRIO_EDIT.item] || '';
+
+  supabaseClient
+    .from('priority_order_live_first_prios')
+    .select('player_id, item_id, item_name, track, boss')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('season', season)
+    .then(function (result) {
+      if (result.error || !result.data) return;
+      var rosterById = {};
+      (DATA.roster || []).forEach(function (p) {
+        rosterById[p.id] = p;
+      });
+
+      var byPlayer = {};
+      result.data.forEach(function (r) {
+        if (r.item_id === itemId) return;
+        var player = rosterById[r.player_id];
+        if (!player) return;
+        var entry = byPlayer[player.firstName] || { otherItems: {}, sameBossItems: {} };
+        entry.otherItems[r.item_name] = true;
+        if (boss && r.boss === boss && r.track === track) entry.sameBossItems[r.item_name] = true;
+        byPlayer[player.firstName] = entry;
+      });
+      PRIO_EDIT.fairnessWarnings = byPlayer;
+      prioEditRenderList();
+    });
 }
 
 function prioEditRenderList() {
@@ -615,6 +678,24 @@ function prioEditRenderList() {
           '<span style="font-size:0.89rem;color:var(--text-muted);font-style:italic;margin-left:2px;">(' +
           statusParts.join(', ') +
           ')</span>';
+      }
+    }
+    if (i === 0) {
+      var warn = PRIO_EDIT.fairnessWarnings && PRIO_EDIT.fairnessWarnings[firstName];
+      if (warn) {
+        var sameBossNames = Object.keys(warn.sameBossItems);
+        var otherNames = Object.keys(warn.otherItems);
+        if (sameBossNames.length || otherNames.length) {
+          var msgParts = [];
+          if (sameBossNames.length)
+            msgParts.push('Already #1 on ' + sameBossNames.join(', ') + ' from this boss');
+          if (otherNames.length)
+            msgParts.push('Holds ' + otherNames.length + ' other #1 priorit' + (otherNames.length === 1 ? 'y' : 'ies'));
+          html +=
+            '<span title="' +
+            msgParts.join('; ').replace(/"/g, '&quot;') +
+            '" style="margin-left:4px;color:var(--tank);font-weight:700;cursor:help;">&#9888;</span>';
+        }
       }
     }
     html += '<button class="prio-drag-remove" onclick="prioEditRemove(' + i + ')" title="Remove">&times;</button>';

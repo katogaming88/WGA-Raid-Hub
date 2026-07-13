@@ -471,7 +471,8 @@
               list, next to how many times each has actually been awarded in the selected season. High demand + low
               awards is what to prioritize.<br>
               <strong>Priority Order Health</strong> -- flags stale priority order entries for players no longer on
-              the active roster, and active non-bench players missing from priority order entirely for a season.<br>
+              the active roster, active non-bench players missing from priority order entirely for a season, and
+              saved Mythic #1s where the player already received the Heroic version of that same item.<br>
               <strong>Season Loot Pace</strong> -- items awarded per week of the season, compared to the same week
               last season. "Week 1" is measured from the first tracked loot award of the season, not the raid-lockout
               calendar, since Supabase doesn't store a season start date yet.
@@ -519,6 +520,12 @@
                 fill in.
               </p>
               <div id="reportsPriorityGapsContent"></div>
+              <div class="section-label" style="margin:1rem 0 0.1rem;">Mythic #1 Possibly Stale</div>
+              <p style="color:var(--text-muted);font-size:0.85rem;margin:0 0 0.5rem;">
+                Saved Mythic #1 priorities where the player already received the Heroic version of that exact item.
+                Not necessarily wrong -- they may still want the upgrade -- but worth a second look.
+              </p>
+              <div id="reportsPriorityStaleAfterHeroicContent"></div>
             </div>
 
             <div id="reports-sub-lootPace" style="display:none;">
