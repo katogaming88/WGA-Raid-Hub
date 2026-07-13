@@ -209,7 +209,8 @@ function updatePriorityBadges() {
     var total = unmanagedCount + conflicts.count;
     navBadge.textContent = total;
     navBadge.style.display = total > 0 ? '' : 'none';
-    navBadge.title = conflicts.count > 0 ? conflicts.count + ' Priority List conflict(s) -- see the Priority List tab' : '';
+    navBadge.title =
+      conflicts.count > 0 ? conflicts.count + ' Priority List conflict(s) -- see the Priority List tab' : '';
   }
   if (subBadge) {
     subBadge.textContent = unmanagedCount;
@@ -226,13 +227,13 @@ function updatePriorityBadges() {
 // badges immediately -- called right after a loot import so officers see the
 // flag without needing to revisit the Priority tab or reload the page.
 function refreshPriorityStaleBadge() {
-  Promise.all([fetchSupabasePriorityStaleAfterHeroic(), fetchSupabasePriorityLiveFirstPrios()]).then(function (
-    results
-  ) {
-    DATA.priorityStaleAfterHeroic = results[0];
-    DATA.priorityLiveFirstPrios = results[1];
-    updatePriorityBadges();
-  });
+  Promise.all([fetchSupabasePriorityStaleAfterHeroic(), fetchSupabasePriorityLiveFirstPrios()]).then(
+    function (results) {
+      DATA.priorityStaleAfterHeroic = results[0];
+      DATA.priorityLiveFirstPrios = results[1];
+      updatePriorityBadges();
+    }
+  );
 }
 
 function buildUnmanagedTab() {
