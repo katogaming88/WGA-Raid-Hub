@@ -328,7 +328,7 @@ function buildOfficerDashboard() {
   renderSignupToggle();
   renderBisToggle();
   renderMPlusToggle();
-  updateUnmanagedBadge();
+  updatePriorityBadges();
   updateNavBadges();
   populateSeasonSelector();
   if (DATA._loadedAt) {
@@ -491,7 +491,7 @@ checkMaintenanceMode().then(function (maint) {
       function () {
         buildStatsBar();
         buildRosterTable();
-        updateUnmanagedBadge();
+        updatePriorityBadges();
         reopenSelectedPlayer();
       }
     );

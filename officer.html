@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.33.33">
-  <link rel="stylesheet" href="css/officer.css?v=3.33.33">
+  <link rel="stylesheet" href="css/styles.css?v=3.33.34">
+  <link rel="stylesheet" href="css/officer.css?v=3.33.34">
 </head>
 
 <body>
@@ -201,7 +201,8 @@
             </div>
             <div class="filter-bar" style="margin-bottom:0.5rem;">
               <button class="filter-chip active" id="prio-subtab-btn-list"
-                onclick="switchPrioritySubTab('list', this)">Priority List</button>
+                onclick="switchPrioritySubTab('list', this)">Priority List <span class="nav-notif"
+                  id="prioListBadge" style="display:none;"></span></button>
               <button class="filter-chip" id="prio-subtab-btn-conflicts"
                 onclick="switchPrioritySubTab('conflicts', this)">Contested Items</button>
               <button class="filter-chip" id="prio-subtab-btn-unmanaged"
@@ -211,7 +212,7 @@
             </div>
             <div id="help-priority" class="help-tip" style="margin-bottom:0.75rem;">
               <strong>RCLootCouncil Export String</strong> -- click Generate to build an encoded string from the current priority order and roster. Copy it and paste it into RCLootCouncil in-game to sync loot priorities to your council.<br>
-              <strong>Priority List</strong> -- read-only view of every item's ranked priority order as set in the Priority Order sheet. Use the search box to jump to a specific item.<br>
+              <strong>Priority List</strong> -- read-only view of every item's ranked priority order as set in the Priority Order sheet. Use the search box to jump to a specific item. The badge count shows stale-after-Heroic #1s, same-boss #1 conflicts, and players holding 2+ #1s team-wide.<br>
               <strong>Unmanaged Items</strong> -- items that appear in players' BiS lists but have no priority order assigned yet in the sheet. The badge count shows how many need attention.<br>
               <strong>Contested Items</strong> -- items wanted by multiple players, showing current priority assignments and flagging any player holding 1st priority on more than one item.
             </div>
@@ -1027,26 +1028,26 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.33.33"></script>
-  <script src="js/discord.js?v=3.33.33"></script>
-  <script src="js/officer.js?v=3.33.33"></script>
-  <script src="js/tabs/tab-roster.js?v=3.33.33"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.33.33"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.33.33"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.33.33"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.33.33"></script>
-  <script src="js/tabs/tab-signups.js?v=3.33.33"></script>
-  <script src="js/tabs/tab-requests.js?v=3.33.33"></script>
-  <script src="js/tabs/tab-bis.js?v=3.33.33"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.33.33"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.33.33"></script>
-  <script src="js/tabs/tab-priority.js?v=3.33.33"></script>
-  <script src="js/tabs/tab-audit.js?v=3.33.33"></script>
-  <script src="js/tabs/tab-reports.js?v=3.33.33"></script>
-  <script src="js/tabs/tab-season.js?v=3.33.33"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.33.33"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.33.33"></script>
-  <script src="js/tabs/tab-admin.js?v=3.33.33"></script>
+  <script src="js/common.js?v=3.33.34"></script>
+  <script src="js/discord.js?v=3.33.34"></script>
+  <script src="js/officer.js?v=3.33.34"></script>
+  <script src="js/tabs/tab-roster.js?v=3.33.34"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.33.34"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.33.34"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.33.34"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.33.34"></script>
+  <script src="js/tabs/tab-signups.js?v=3.33.34"></script>
+  <script src="js/tabs/tab-requests.js?v=3.33.34"></script>
+  <script src="js/tabs/tab-bis.js?v=3.33.34"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.33.34"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.33.34"></script>
+  <script src="js/tabs/tab-priority.js?v=3.33.34"></script>
+  <script src="js/tabs/tab-audit.js?v=3.33.34"></script>
+  <script src="js/tabs/tab-reports.js?v=3.33.34"></script>
+  <script src="js/tabs/tab-season.js?v=3.33.34"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.33.34"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.33.34"></script>
+  <script src="js/tabs/tab-admin.js?v=3.33.34"></script>
   <script>
 document.getElementById('versionNum').textContent = VERSION;
 document.title = TEAM_NAME + ' -- Officer';
@@ -1156,7 +1157,7 @@ function _grantOfficerAccessViaDiscord(session) {
     function() {
       buildStatsBar();
       buildRosterTable();
-      updateUnmanagedBadge();
+      updatePriorityBadges();
       reopenSelectedPlayer();
     }
   );

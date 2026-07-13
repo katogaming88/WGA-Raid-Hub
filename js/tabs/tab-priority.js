@@ -106,15 +106,29 @@ function populateBossFilters() {
   if (el2) el2.innerHTML = opts;
 }
 
-function updateUnmanagedBadge() {
+// Every kind of fairness/health issue that lives on the Priority List --
+// stale-after-heroic #1s, same-boss #1 conflicts, and players holding 2+ #1s
+// team-wide. Was silently folded into the nav badge with nowhere of its own
+// to live, so a mismatch between the nav total and the Unmanaged Items count
+// looked like a bug rather than "there's 1 conflict on the Priority List".
+function getPriorityListConflictCount() {
+  var staleCount = (DATA.priorityStaleAfterHeroic || []).length;
+  var sameBossCount = (DATA.prioritySameBossConflicts || []).length;
+  var duplicateFirstPrioCount = (DATA.priorityFirstPrioCounts || []).filter(function (r) {
+    return r.first_prio_count > 1;
+  }).length;
+  return staleCount + sameBossCount + duplicateFirstPrioCount;
+}
+
+function updatePriorityBadges() {
   var unmanagedCount = getUnmanagedItems().length;
   var staleCount = (DATA.priorityStaleAfterHeroic || []).length;
+  var listConflictCount = getPriorityListConflictCount();
   var navBadge = document.getElementById('prioNavBadge');
   var subBadge = document.getElementById('prioSubBadge');
-  // Combined into one nav badge -- the sub-tab badge (Unmanaged Items) stays
-  // scoped to just that count so it still matches the tab it sits on.
+  var listBadge = document.getElementById('prioListBadge');
   if (navBadge) {
-    var total = unmanagedCount + staleCount;
+    var total = unmanagedCount + listConflictCount;
     navBadge.textContent = total;
     navBadge.style.display = total > 0 ? '' : 'none';
     navBadge.title =
@@ -129,15 +143,25 @@ function updateUnmanagedBadge() {
     subBadge.textContent = unmanagedCount;
     subBadge.style.display = unmanagedCount > 0 ? '' : 'none';
   }
+  if (listBadge) {
+    listBadge.textContent = listConflictCount;
+    listBadge.style.display = listConflictCount > 0 ? '' : 'none';
+  }
 }
 
-// Re-fetches just the stale-after-heroic check and refreshes the nav badge
-// immediately -- called right after a loot import so officers see the flag
-// without needing to revisit the Priority tab or reload the page.
+// Re-fetches the fairness/health checks and refreshes the nav + sub-tab
+// badges immediately -- called right after a loot import so officers see the
+// flag without needing to revisit the Priority tab or reload the page.
 function refreshPriorityStaleBadge() {
-  fetchSupabasePriorityStaleAfterHeroic().then(function (rows) {
-    DATA.priorityStaleAfterHeroic = rows;
-    updateUnmanagedBadge();
+  Promise.all([
+    fetchSupabasePriorityStaleAfterHeroic(),
+    fetchSupabasePrioritySameBossConflicts(),
+    fetchSupabasePriorityFirstPrioCounts()
+  ]).then(function (results) {
+    DATA.priorityStaleAfterHeroic = results[0];
+    DATA.prioritySameBossConflicts = results[1];
+    DATA.priorityFirstPrioCounts = results[2];
+    updatePriorityBadges();
   });
 }
 
@@ -1013,7 +1037,7 @@ function prioEditSave() {
       DATA.priorityOrder[PRIO_EDIT.item][PRIO_EDIT.difficulty.toLowerCase()] = PRIO_EDIT.ranked.slice();
       buildPriorityTab();
       buildUnmanagedTab();
-      updateUnmanagedBadge();
+      updatePriorityBadges();
       closePrioEditModal();
     })
     .catch(function (err) {
