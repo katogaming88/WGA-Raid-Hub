@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
       # Same pin as schema-docs.yml; bump both together (see the comment
       # there for why the CLI version is tied to the tbls docs).
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@v3
         with:
           version: 2.109.0
       # db reset applies roles.sql, every migration, and supabase/seed.sql,

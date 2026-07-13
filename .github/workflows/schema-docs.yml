@@ -44,7 +44,7 @@ jobs:
       # bundled Postgres image, so a newer CLI here can fail `tbls diff` on
       # enum changes unrelated to our migrations. Bump this pin and regenerate
       # docs together.
-      - uses: supabase/setup-cli@v2
+      - uses: supabase/setup-cli@v3
         with:
           version: 2.109.0
       - name: Start local database
