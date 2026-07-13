@@ -19,7 +19,7 @@ jobs:
   rls:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Same pin as schema-docs.yml; bump both together (see the comment
       # there for why the CLI version is tied to the tbls docs).
       - uses: supabase/setup-cli@v3
