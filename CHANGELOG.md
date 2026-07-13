@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.34] - 2026-07-13
+
+### Frontend
+
+- **Priority List conflict badge.** The Priority tab's nav badge total previously included a silent "stale-after-Heroic #1" count with no visible home of its own, so the total could be higher than the Unmanaged Items badge with no way to tell where the difference came from. Added a badge on the Priority List sub-tab covering all three fairness/health checks: stale-after-Heroic #1s, same-boss #1 conflicts, and players holding 2+ #1 priorities team-wide -- plus a banner naming the actual item(s)/player(s) behind each one, so a conflict is no longer just a bare number.
+
 ## [3.33.33] - 2026-07-13
 
 ### Frontend
