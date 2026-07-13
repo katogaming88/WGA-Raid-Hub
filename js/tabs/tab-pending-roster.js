@@ -708,7 +708,7 @@ function buildAddToRosterControlHtml(e, isNew) {
   // Re-renders (e.g. from toggling the row's own selection checkbox) rebuild
   // this control from scratch, so a manual uncheck/check must be remembered
   // per signup rather than recomputed from defaultTrial every time (#502).
-  var trialChecked = _pendingTrialOverride.hasOwnProperty(e.signupId)
+  var trialChecked = Object.prototype.hasOwnProperty.call(_pendingTrialOverride, e.signupId)
     ? _pendingTrialOverride[e.signupId]
     : defaultTrial;
 
