@@ -17,9 +17,11 @@ CREATE VIEW priority_order_stale_after_heroic AS (
    FROM ((priority_order po
      JOIN items i ON ((i.id = po.item_id)))
      JOIN players p ON ((p.id = po.player_id)))
-  WHERE ((po.track = 'Myth'::text) AND (po.rank = 1) AND (EXISTS ( SELECT 1
+  WHERE ((po.track = 'Myth'::text) AND (po.rank = 1) AND ((EXISTS ( SELECT 1
            FROM rclc_loot rl
-          WHERE ((rl.team_id = po.team_id) AND (rl.season = po.season) AND (rl.item_id = po.item_id) AND (rl.track = 'Hero'::text) AND (rl.player_id = po.player_id)))))
+          WHERE ((rl.team_id = po.team_id) AND (rl.season = po.season) AND (rl.item_id = po.item_id) AND (rl.track = 'Hero'::text) AND (rl.player_id = po.player_id)))) OR (EXISTS ( SELECT 1
+           FROM self_received_requests sr
+          WHERE ((sr.status = 'approved'::text) AND (sr.team_id = po.team_id) AND (sr.self_item_id = po.item_id) AND (sr.track = 'Hero'::text) AND (sr.player_id = po.player_id))))))
   ORDER BY po.team_id, po.season, i.name
 )
 ```
@@ -46,6 +48,7 @@ CREATE VIEW priority_order_stale_after_heroic AS (
 | [public.items](public.items.md) | 7 |  | BASE TABLE |
 | [public.players](public.players.md) | 16 |  | BASE TABLE |
 | [public.rclc_loot](public.rclc_loot.md) | 10 |  | BASE TABLE |
+| [public.self_received_requests](public.self_received_requests.md) | 10 |  | BASE TABLE |
 
 ## Relations
 

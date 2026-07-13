@@ -1448,12 +1448,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_priority_order_team_id_check",
-          "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
-        },
-        {
           "name": "trg_priority_order_updated_at",
           "def": "CREATE TRIGGER trg_priority_order_updated_at BEFORE UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_priority_order_team_id_check",
+          "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         }
       ]
     },
@@ -3180,13 +3180,14 @@
           "nullable": true
         }
       ],
-      "def": "CREATE VIEW priority_order_live_first_prios AS (\n SELECT po.id AS priority_order_id,\n    po.team_id,\n    po.season,\n    po.item_id,\n    i.name AS item_name,\n    po.track,\n    po.player_id,\n    p.name_realm,\n    ib.boss\n   FROM (((priority_order po\n     JOIN items i ON ((i.id = po.item_id)))\n     JOIN players p ON ((p.id = po.player_id)))\n     LEFT JOIN item_bosses ib ON ((ib.item_id = po.item_id)))\n  WHERE ((po.rank = 1) AND (NOT (EXISTS ( SELECT 1\n           FROM rclc_loot rl\n          WHERE ((rl.team_id = po.team_id) AND (rl.season = po.season) AND (rl.item_id = po.item_id) AND (rl.track = po.track) AND (rl.player_id = po.player_id))))))\n)",
+      "def": "CREATE VIEW priority_order_live_first_prios AS (\n SELECT po.id AS priority_order_id,\n    po.team_id,\n    po.season,\n    po.item_id,\n    i.name AS item_name,\n    po.track,\n    po.player_id,\n    p.name_realm,\n    ib.boss\n   FROM (((priority_order po\n     JOIN items i ON ((i.id = po.item_id)))\n     JOIN players p ON ((p.id = po.player_id)))\n     LEFT JOIN item_bosses ib ON ((ib.item_id = po.item_id)))\n  WHERE ((po.rank = 1) AND (NOT (EXISTS ( SELECT 1\n           FROM rclc_loot rl\n          WHERE ((rl.team_id = po.team_id) AND (rl.season = po.season) AND (rl.item_id = po.item_id) AND (rl.track = po.track) AND (rl.player_id = po.player_id))))) AND (NOT (EXISTS ( SELECT 1\n           FROM self_received_requests sr\n          WHERE ((sr.status = 'approved'::text) AND (sr.team_id = po.team_id) AND (sr.self_item_id = po.item_id) AND (sr.track = po.track) AND (sr.player_id = po.player_id))))))\n)",
       "referenced_tables": [
         "public.priority_order",
         "public.items",
         "public.players",
         "public.item_bosses",
-        "public.rclc_loot"
+        "public.rclc_loot",
+        "public.self_received_requests"
       ]
     },
     {
@@ -3324,12 +3325,13 @@
           "nullable": true
         }
       ],
-      "def": "CREATE VIEW priority_order_stale_after_heroic AS (\n SELECT po.id AS priority_order_id,\n    po.team_id,\n    po.season,\n    po.item_id,\n    i.name AS item_name,\n    po.player_id,\n    p.name_realm\n   FROM ((priority_order po\n     JOIN items i ON ((i.id = po.item_id)))\n     JOIN players p ON ((p.id = po.player_id)))\n  WHERE ((po.track = 'Myth'::text) AND (po.rank = 1) AND (EXISTS ( SELECT 1\n           FROM rclc_loot rl\n          WHERE ((rl.team_id = po.team_id) AND (rl.season = po.season) AND (rl.item_id = po.item_id) AND (rl.track = 'Hero'::text) AND (rl.player_id = po.player_id)))))\n  ORDER BY po.team_id, po.season, i.name\n)",
+      "def": "CREATE VIEW priority_order_stale_after_heroic AS (\n SELECT po.id AS priority_order_id,\n    po.team_id,\n    po.season,\n    po.item_id,\n    i.name AS item_name,\n    po.player_id,\n    p.name_realm\n   FROM ((priority_order po\n     JOIN items i ON ((i.id = po.item_id)))\n     JOIN players p ON ((p.id = po.player_id)))\n  WHERE ((po.track = 'Myth'::text) AND (po.rank = 1) AND ((EXISTS ( SELECT 1\n           FROM rclc_loot rl\n          WHERE ((rl.team_id = po.team_id) AND (rl.season = po.season) AND (rl.item_id = po.item_id) AND (rl.track = 'Hero'::text) AND (rl.player_id = po.player_id)))) OR (EXISTS ( SELECT 1\n           FROM self_received_requests sr\n          WHERE ((sr.status = 'approved'::text) AND (sr.team_id = po.team_id) AND (sr.self_item_id = po.item_id) AND (sr.track = 'Hero'::text) AND (sr.player_id = po.player_id))))))\n  ORDER BY po.team_id, po.season, i.name\n)",
       "referenced_tables": [
         "public.priority_order",
         "public.items",
         "public.players",
-        "public.rclc_loot"
+        "public.rclc_loot",
+        "public.self_received_requests"
       ]
     },
     {

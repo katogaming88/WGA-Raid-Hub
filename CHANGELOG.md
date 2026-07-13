@@ -17,6 +17,7 @@ with each release split into `### Frontend` (drives the version number) and
 ### Backend
 
 - Added `priority_order_live_first_prios`, `priority_order_first_prio_counts`, `priority_order_same_boss_conflicts`, and `priority_order_stale_after_heroic` views backing the above.
+- Folded approved `self_received_requests` into `priority_order_live_first_prios` and `priority_order_stale_after_heroic` alongside `rclc_loot` -- an officer-approved self-received item is just as real a receipt as an RCLootCouncil import, and previously only the latter cleared a player's live #1 / triggered the stale-after-heroic flag.
 
 ## [3.33.31] - 2026-07-12
 

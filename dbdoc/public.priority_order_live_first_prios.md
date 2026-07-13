@@ -22,7 +22,9 @@ CREATE VIEW priority_order_live_first_prios AS (
      LEFT JOIN item_bosses ib ON ((ib.item_id = po.item_id)))
   WHERE ((po.rank = 1) AND (NOT (EXISTS ( SELECT 1
            FROM rclc_loot rl
-          WHERE ((rl.team_id = po.team_id) AND (rl.season = po.season) AND (rl.item_id = po.item_id) AND (rl.track = po.track) AND (rl.player_id = po.player_id))))))
+          WHERE ((rl.team_id = po.team_id) AND (rl.season = po.season) AND (rl.item_id = po.item_id) AND (rl.track = po.track) AND (rl.player_id = po.player_id))))) AND (NOT (EXISTS ( SELECT 1
+           FROM self_received_requests sr
+          WHERE ((sr.status = 'approved'::text) AND (sr.team_id = po.team_id) AND (sr.self_item_id = po.item_id) AND (sr.track = po.track) AND (sr.player_id = po.player_id))))))
 )
 ```
 
@@ -51,6 +53,7 @@ CREATE VIEW priority_order_live_first_prios AS (
 | [public.players](public.players.md) | 16 |  | BASE TABLE |
 | [public.item_bosses](public.item_bosses.md) | 2 |  | BASE TABLE |
 | [public.rclc_loot](public.rclc_loot.md) | 10 |  | BASE TABLE |
+| [public.self_received_requests](public.self_received_requests.md) | 10 |  | BASE TABLE |
 
 ## Relations
 
