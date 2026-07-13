@@ -1448,12 +1448,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_priority_order_updated_at",
-          "def": "CREATE TRIGGER trg_priority_order_updated_at BEFORE UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
-        },
-        {
           "name": "trg_priority_order_team_id_check",
           "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        },
+        {
+          "name": "trg_priority_order_updated_at",
+          "def": "CREATE TRIGGER trg_priority_order_updated_at BEFORE UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
     },
@@ -3128,6 +3128,208 @@
           "name": "trg_team_raid_progress_updated_at",
           "def": "CREATE TRIGGER trg_team_raid_progress_updated_at BEFORE UPDATE ON public.team_raid_progress FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
+      ]
+    },
+    {
+      "name": "public.priority_order_live_first_prios",
+      "type": "VIEW",
+      "columns": [
+        {
+          "name": "priority_order_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "item_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "item_name",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "track",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "name_realm",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "boss",
+          "type": "text",
+          "nullable": true
+        }
+      ],
+      "def": "CREATE VIEW priority_order_live_first_prios AS (\n SELECT po.id AS priority_order_id,\n    po.team_id,\n    po.season,\n    po.item_id,\n    i.name AS item_name,\n    po.track,\n    po.player_id,\n    p.name_realm,\n    ib.boss\n   FROM (((priority_order po\n     JOIN items i ON ((i.id = po.item_id)))\n     JOIN players p ON ((p.id = po.player_id)))\n     LEFT JOIN item_bosses ib ON ((ib.item_id = po.item_id)))\n  WHERE ((po.rank = 1) AND (NOT (EXISTS ( SELECT 1\n           FROM rclc_loot rl\n          WHERE ((rl.team_id = po.team_id) AND (rl.season = po.season) AND (rl.item_id = po.item_id) AND (rl.track = po.track) AND (rl.player_id = po.player_id))))))\n)",
+      "referenced_tables": [
+        "public.priority_order",
+        "public.items",
+        "public.players",
+        "public.item_bosses",
+        "public.rclc_loot"
+      ]
+    },
+    {
+      "name": "public.priority_order_first_prio_counts",
+      "type": "VIEW",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "name_realm",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "first_prio_count",
+          "type": "bigint",
+          "nullable": true
+        }
+      ],
+      "def": "CREATE VIEW priority_order_first_prio_counts AS (\n SELECT team_id,\n    season,\n    player_id,\n    name_realm,\n    count(DISTINCT item_id) AS first_prio_count\n   FROM priority_order_live_first_prios\n  GROUP BY team_id, season, player_id, name_realm\n  ORDER BY team_id, season, (count(DISTINCT item_id)) DESC\n)",
+      "referenced_tables": [
+        "public.priority_order_live_first_prios"
+      ]
+    },
+    {
+      "name": "public.priority_order_same_boss_conflicts",
+      "type": "VIEW",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "track",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "boss",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "name_realm",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "item_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "item_name",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "other_item_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "other_item_name",
+          "type": "text",
+          "nullable": true
+        }
+      ],
+      "def": "CREATE VIEW priority_order_same_boss_conflicts AS (\n SELECT a.team_id,\n    a.season,\n    a.track,\n    a.boss,\n    a.player_id,\n    a.name_realm,\n    a.item_id,\n    a.item_name,\n    b.item_id AS other_item_id,\n    b.item_name AS other_item_name\n   FROM (priority_order_live_first_prios a\n     JOIN priority_order_live_first_prios b ON (((a.team_id = b.team_id) AND (a.season = b.season) AND (a.track = b.track) AND (a.boss = b.boss) AND (a.player_id = b.player_id) AND (a.item_id \u003c b.item_id))))\n  WHERE (a.boss IS NOT NULL)\n)",
+      "referenced_tables": [
+        "public.priority_order_live_first_prios"
+      ]
+    },
+    {
+      "name": "public.priority_order_stale_after_heroic",
+      "type": "VIEW",
+      "columns": [
+        {
+          "name": "priority_order_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "item_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "item_name",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "name_realm",
+          "type": "text",
+          "nullable": true
+        }
+      ],
+      "def": "CREATE VIEW priority_order_stale_after_heroic AS (\n SELECT po.id AS priority_order_id,\n    po.team_id,\n    po.season,\n    po.item_id,\n    i.name AS item_name,\n    po.player_id,\n    p.name_realm\n   FROM ((priority_order po\n     JOIN items i ON ((i.id = po.item_id)))\n     JOIN players p ON ((p.id = po.player_id)))\n  WHERE ((po.track = 'Myth'::text) AND (po.rank = 1) AND (EXISTS ( SELECT 1\n           FROM rclc_loot rl\n          WHERE ((rl.team_id = po.team_id) AND (rl.season = po.season) AND (rl.item_id = po.item_id) AND (rl.track = 'Hero'::text) AND (rl.player_id = po.player_id)))))\n  ORDER BY po.team_id, po.season, i.name\n)",
+      "referenced_tables": [
+        "public.priority_order",
+        "public.items",
+        "public.players",
+        "public.rclc_loot"
       ]
     },
     {

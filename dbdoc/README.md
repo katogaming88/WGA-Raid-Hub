@@ -34,6 +34,10 @@
 | [public.raid_zones](public.raid_zones.md) | 6 |  | BASE TABLE |
 | [public.raid_encounters](public.raid_encounters.md) | 5 |  | BASE TABLE |
 | [public.team_raid_progress](public.team_raid_progress.md) | 10 |  | BASE TABLE |
+| [public.priority_order_live_first_prios](public.priority_order_live_first_prios.md) | 9 |  | VIEW |
+| [public.priority_order_first_prio_counts](public.priority_order_first_prio_counts.md) | 5 |  | VIEW |
+| [public.priority_order_same_boss_conflicts](public.priority_order_same_boss_conflicts.md) | 10 |  | VIEW |
+| [public.priority_order_stale_after_heroic](public.priority_order_stale_after_heroic.md) | 7 |  | VIEW |
 | [public.site_settings](public.site_settings.md) | 4 |  | BASE TABLE |
 
 ## Stored procedures and functions
@@ -434,6 +438,45 @@ erDiagram
   text mythic_report_code
   integer mythic_fight_id
   timestamp_with_time_zone updated_at
+}
+"public.priority_order_live_first_prios" {
+  integer priority_order_id
+  integer team_id
+  text season
+  integer item_id
+  text item_name
+  text track
+  integer player_id
+  text name_realm
+  text boss
+}
+"public.priority_order_first_prio_counts" {
+  integer team_id
+  text season
+  integer player_id
+  text name_realm
+  bigint first_prio_count
+}
+"public.priority_order_same_boss_conflicts" {
+  integer team_id
+  text season
+  text track
+  text boss
+  integer player_id
+  text name_realm
+  integer item_id
+  text item_name
+  integer other_item_id
+  text other_item_name
+}
+"public.priority_order_stale_after_heroic" {
+  integer priority_order_id
+  integer team_id
+  text season
+  integer item_id
+  text item_name
+  integer player_id
+  text name_realm
 }
 "public.site_settings" {
   integer id

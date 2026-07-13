@@ -117,7 +117,13 @@ function updateUnmanagedBadge() {
     var total = unmanagedCount + staleCount;
     navBadge.textContent = total;
     navBadge.style.display = total > 0 ? '' : 'none';
-    navBadge.title = staleCount > 0 ? staleCount + ' priority order entr' + (staleCount === 1 ? 'y' : 'ies') + ' may be stale (Heroic already awarded)' : '';
+    navBadge.title =
+      staleCount > 0
+        ? staleCount +
+          ' priority order entr' +
+          (staleCount === 1 ? 'y' : 'ies') +
+          ' may be stale (Heroic already awarded)'
+        : '';
   }
   if (subBadge) {
     subBadge.textContent = unmanagedCount;
@@ -687,8 +693,7 @@ function prioEditRenderList() {
         var otherNames = Object.keys(warn.otherItems);
         if (sameBossNames.length || otherNames.length) {
           var msgParts = [];
-          if (sameBossNames.length)
-            msgParts.push('Already #1 on ' + sameBossNames.join(', ') + ' from this boss');
+          if (sameBossNames.length) msgParts.push('Already #1 on ' + sameBossNames.join(', ') + ' from this boss');
           if (otherNames.length)
             msgParts.push('Holds ' + otherNames.length + ' other #1 priorit' + (otherNames.length === 1 ? 'y' : 'ies'));
           html +=
