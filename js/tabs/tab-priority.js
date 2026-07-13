@@ -110,57 +110,127 @@ function populateBossFilters() {
 // stale-after-heroic #1s, same-boss #1 conflicts, and players holding 2+ #1s
 // team-wide. Was silently folded into the nav badge with nowhere of its own
 // to live, so a mismatch between the nav total and the Unmanaged Items count
-// looked like a bug rather than "there's 1 conflict on the Priority List".
-function getPriorityListConflictCount() {
-  var staleCount = (DATA.priorityStaleAfterHeroic || []).length;
-  var sameBossCount = (DATA.prioritySameBossConflicts || []).length;
-  var duplicateFirstPrioCount = (DATA.priorityFirstPrioCounts || []).filter(function (r) {
-    return r.first_prio_count > 1;
-  }).length;
-  return staleCount + sameBossCount + duplicateFirstPrioCount;
+// looked like a bug rather than "there's 1 conflict on the Priority List" --
+// and even the sub-tab badge was just a bare count, with no way to see which
+// item(s) it referred to. Same-boss and duplicate-#1 groups are derived
+// client-side from priority_order_live_first_prios (item_name/boss already
+// joined) rather than querying priority_order_same_boss_conflicts /
+// priority_order_first_prio_counts directly, so the banner below can name
+// the actual items instead of just a number.
+function getPriorityListConflicts() {
+  var staleEntries = DATA.priorityStaleAfterHeroic || [];
+  var byPlayer = {};
+  (DATA.priorityLiveFirstPrios || []).forEach(function (r) {
+    var entry = byPlayer[r.player_id] || { nameRealm: r.name_realm, items: [] };
+    entry.items.push({ itemName: r.item_name, track: r.track, boss: r.boss });
+    byPlayer[r.player_id] = entry;
+  });
+
+  var sameBossGroups = [];
+  var duplicateGroups = [];
+  Object.keys(byPlayer).forEach(function (playerId) {
+    var entry = byPlayer[playerId];
+    if (entry.items.length < 2) return;
+    duplicateGroups.push({
+      nameRealm: entry.nameRealm,
+      itemNames: entry.items.map(function (it) {
+        return it.itemName;
+      })
+    });
+    var byBossTrack = {};
+    entry.items.forEach(function (it) {
+      if (!it.boss) return;
+      var key = it.boss + '|' + it.track;
+      (byBossTrack[key] = byBossTrack[key] || { boss: it.boss, itemNames: [] }).itemNames.push(it.itemName);
+    });
+    Object.keys(byBossTrack).forEach(function (key) {
+      var group = byBossTrack[key];
+      if (group.itemNames.length > 1) {
+        sameBossGroups.push({ nameRealm: entry.nameRealm, boss: group.boss, itemNames: group.itemNames });
+      }
+    });
+  });
+
+  return {
+    count: staleEntries.length + sameBossGroups.length + duplicateGroups.length,
+    staleEntries: staleEntries,
+    sameBossGroups: sameBossGroups,
+    duplicateGroups: duplicateGroups
+  };
+}
+
+function buildPriorityConflictsBannerHtml(conflicts) {
+  if (!conflicts.count) return '';
+  var html = '<div class="prio-overalloc-banner">';
+  html += '<div class="prio-overalloc-title">Priority List Conflicts (' + conflicts.count + ')</div>';
+  html += '<div class="prio-overalloc-list">';
+
+  conflicts.staleEntries.forEach(function (e) {
+    html +=
+      '<div class="prio-overalloc-player"><span class="prio-overalloc-name">' +
+      escHtml(e.name_realm) +
+      '</span><span class="prio-overalloc-item">' +
+      escHtml(e.item_name) +
+      ' <span class="prio-overalloc-diff">may be stale -- already has Heroic</span></span></div>';
+  });
+  conflicts.sameBossGroups.forEach(function (g) {
+    html +=
+      '<div class="prio-overalloc-player"><span class="prio-overalloc-name">' +
+      escHtml(g.nameRealm) +
+      '</span><span class="prio-overalloc-item">' +
+      escHtml(g.itemNames.join(', ')) +
+      ' <span class="prio-overalloc-diff">same boss (' +
+      escHtml(g.boss) +
+      ')</span></span></div>';
+  });
+  conflicts.duplicateGroups.forEach(function (g) {
+    html +=
+      '<div class="prio-overalloc-player"><span class="prio-overalloc-name">' +
+      escHtml(g.nameRealm) +
+      '</span><span class="prio-overalloc-item">' +
+      escHtml(g.itemNames.join(', ')) +
+      ' <span class="prio-overalloc-diff">holds ' +
+      g.itemNames.length +
+      ' #1 priorities</span></span></div>';
+  });
+
+  html += '</div></div>';
+  return html;
 }
 
 function updatePriorityBadges() {
   var unmanagedCount = getUnmanagedItems().length;
-  var staleCount = (DATA.priorityStaleAfterHeroic || []).length;
-  var listConflictCount = getPriorityListConflictCount();
+  var conflicts = getPriorityListConflicts();
   var navBadge = document.getElementById('prioNavBadge');
   var subBadge = document.getElementById('prioSubBadge');
   var listBadge = document.getElementById('prioListBadge');
+  var conflictsBanner = document.getElementById('priorityConflictsBanner');
   if (navBadge) {
-    var total = unmanagedCount + listConflictCount;
+    var total = unmanagedCount + conflicts.count;
     navBadge.textContent = total;
     navBadge.style.display = total > 0 ? '' : 'none';
-    navBadge.title =
-      staleCount > 0
-        ? staleCount +
-          ' priority order entr' +
-          (staleCount === 1 ? 'y' : 'ies') +
-          ' may be stale (Heroic already awarded)'
-        : '';
+    navBadge.title = conflicts.count > 0 ? conflicts.count + ' Priority List conflict(s) -- see the Priority List tab' : '';
   }
   if (subBadge) {
     subBadge.textContent = unmanagedCount;
     subBadge.style.display = unmanagedCount > 0 ? '' : 'none';
   }
   if (listBadge) {
-    listBadge.textContent = listConflictCount;
-    listBadge.style.display = listConflictCount > 0 ? '' : 'none';
+    listBadge.textContent = conflicts.count;
+    listBadge.style.display = conflicts.count > 0 ? '' : 'none';
   }
+  if (conflictsBanner) conflictsBanner.innerHTML = buildPriorityConflictsBannerHtml(conflicts);
 }
 
 // Re-fetches the fairness/health checks and refreshes the nav + sub-tab
 // badges immediately -- called right after a loot import so officers see the
 // flag without needing to revisit the Priority tab or reload the page.
 function refreshPriorityStaleBadge() {
-  Promise.all([
-    fetchSupabasePriorityStaleAfterHeroic(),
-    fetchSupabasePrioritySameBossConflicts(),
-    fetchSupabasePriorityFirstPrioCounts()
-  ]).then(function (results) {
+  Promise.all([fetchSupabasePriorityStaleAfterHeroic(), fetchSupabasePriorityLiveFirstPrios()]).then(function (
+    results
+  ) {
     DATA.priorityStaleAfterHeroic = results[0];
-    DATA.prioritySameBossConflicts = results[1];
-    DATA.priorityFirstPrioCounts = results[2];
+    DATA.priorityLiveFirstPrios = results[1];
     updatePriorityBadges();
   });
 }

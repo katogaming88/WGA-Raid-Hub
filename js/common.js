@@ -1379,46 +1379,30 @@ function fetchSupabasePriorityStaleAfterHeroic() {
     });
 }
 
-// Team-wide "same boss, multiple #1s" and "holds 2+ #1s overall" checks (see
-// priority_order_same_boss_conflicts / priority_order_first_prio_counts in
-// 20260713150512_priority_order_fairness_warnings.sql). Not season-filtered
-// for the same reason fetchSupabasePriorityStaleAfterHeroic() isn't --
-// resolves to raw rows, or [] on any failure so the Priority List badge just
-// shows nothing rather than erroring.
-function fetchSupabasePrioritySameBossConflicts() {
+// Team-wide "who currently holds a live #1" rows -- the same source the
+// Priority Edit modal's fairness warning queries per-item (see
+// prioEditFetchFairnessWarnings and 20260713150512_priority_order_fairness_
+// warnings.sql). Fetched with item_name/boss already joined so the Priority
+// List conflict banner can name the actual items/players involved instead of
+// just a count from priority_order_same_boss_conflicts /
+// priority_order_first_prio_counts. Not season-filtered for the same reason
+// fetchSupabasePriorityStaleAfterHeroic() isn't -- resolves to raw rows, or
+// [] on any failure so the badge just shows nothing rather than erroring.
+function fetchSupabasePriorityLiveFirstPrios() {
   if (!supabaseClient) return Promise.resolve([]);
   return supabaseClient
-    .from('priority_order_same_boss_conflicts')
-    .select('*')
+    .from('priority_order_live_first_prios')
+    .select('player_id, name_realm, item_id, item_name, track, boss')
     .eq('team_id', _teamCfg.supabaseTeamId)
     .then(function (result) {
       if (result.error) {
-        console.warn('Supabase priority_order_same_boss_conflicts query failed.', result.error.message);
+        console.warn('Supabase priority_order_live_first_prios query failed.', result.error.message);
         return [];
       }
       return result.data || [];
     })
     .catch(function (err) {
-      console.warn('Supabase priority_order_same_boss_conflicts query failed.', err);
-      return [];
-    });
-}
-
-function fetchSupabasePriorityFirstPrioCounts() {
-  if (!supabaseClient) return Promise.resolve([]);
-  return supabaseClient
-    .from('priority_order_first_prio_counts')
-    .select('*')
-    .eq('team_id', _teamCfg.supabaseTeamId)
-    .then(function (result) {
-      if (result.error) {
-        console.warn('Supabase priority_order_first_prio_counts query failed.', result.error.message);
-        return [];
-      }
-      return result.data || [];
-    })
-    .catch(function (err) {
-      console.warn('Supabase priority_order_first_prio_counts query failed.', err);
+      console.warn('Supabase priority_order_live_first_prios query failed.', err);
       return [];
     });
 }
@@ -1904,10 +1888,8 @@ function loadData(onCoreReady, onHeavyReady) {
   var priorityOrderPromise = fetchSupabasePriorityOrder();
   // Fired alongside; the heavy callback waits for it before setting priorityStaleAfterHeroic.
   var priorityStaleAfterHeroicPromise = fetchSupabasePriorityStaleAfterHeroic();
-  // Fired alongside; the heavy callback waits for it before setting prioritySameBossConflicts.
-  var prioritySameBossConflictsPromise = fetchSupabasePrioritySameBossConflicts();
-  // Fired alongside; the heavy callback waits for it before setting priorityFirstPrioCounts.
-  var priorityFirstPrioCountsPromise = fetchSupabasePriorityFirstPrioCounts();
+  // Fired alongside; the heavy callback waits for it before setting priorityLiveFirstPrios.
+  var priorityLiveFirstPriosPromise = fetchSupabasePriorityLiveFirstPrios();
   // Fired alongside; the heavy callback waits for it before setting selfReceived.
   var selfReceivedPromise = fetchSupabaseSelfReceived();
   // Fired alongside; the heavy callback waits for it before setting rawAttendanceData/attendanceDetails/recentAttendanceTrend.
@@ -1964,8 +1946,7 @@ function loadData(onCoreReady, onHeavyReady) {
       itemBossesPromise,
       priorityOrderPromise,
       priorityStaleAfterHeroicPromise,
-      prioritySameBossConflictsPromise,
-      priorityFirstPrioCountsPromise,
+      priorityLiveFirstPriosPromise,
       selfReceivedPromise,
       attendancePromise,
       streamersPromise,
@@ -1977,12 +1958,11 @@ function loadData(onCoreReady, onHeavyReady) {
       var itemBossRows = results[3];
       var priorityRows = results[4];
       var priorityStaleAfterHeroicRows = results[5];
-      var prioritySameBossConflictsRows = results[6];
-      var priorityFirstPrioCountsRows = results[7];
-      var selfReceivedRows = results[8];
-      var attendanceRows = results[9];
-      var streamerRows = results[10];
-      var raidProgressRows = results[11];
+      var priorityLiveFirstPriosRows = results[6];
+      var selfReceivedRows = results[7];
+      var attendanceRows = results[8];
+      var streamerRows = results[9];
+      var raidProgressRows = results[10];
       var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
       DATA.lootCounts = mappedLoot || {};
       var mappedAttendance = attendanceRows !== null ? mapSupabaseAttendanceRaw(attendanceRows, DATA.roster) : null;
@@ -1996,8 +1976,7 @@ function loadData(onCoreReady, onHeavyReady) {
         : null;
       DATA.priorityOrder = mappedPriority || {};
       DATA.priorityStaleAfterHeroic = priorityStaleAfterHeroicRows || [];
-      DATA.prioritySameBossConflicts = prioritySameBossConflictsRows || [];
-      DATA.priorityFirstPrioCounts = priorityFirstPrioCountsRows || [];
+      DATA.priorityLiveFirstPrios = priorityLiveFirstPriosRows || [];
       var itemMaps = buildItemMaps(itemRows);
       DATA.itemSlots = itemMaps.itemSlots;
       DATA.itemArmorTypes = itemMaps.itemArmorTypes;
