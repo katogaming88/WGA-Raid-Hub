@@ -14,6 +14,10 @@ with each release split into `### Frontend` (drives the version number) and
 
 - Fixed the "Look Up a Raider" dropdown on the public/index page (shown to officers) excluding bench players -- the adjacent Roster tab already listed them, so a bench player was invisible in the one place officers use to pull up any raider's profile.
 
+### Backend
+
+- Replaced GitHub Actions' scheduled trigger for `twitch-live-check` and `wcl-progression-sync` with `pg_cron` + `pg_net` calling both Edge Functions directly from Postgres -- GitHub Actions' scheduled-workflow trigger never actually honored either cron expression in practice (real gaps of 1-3 hours), stale enough that a live raider could show as offline on the landing page for up to an hour. See `docs/database-decisions.md` (2026-07-13 entry) for the full writeup.
+
 ## [3.33.34] - 2026-07-13
 
 ### Frontend
