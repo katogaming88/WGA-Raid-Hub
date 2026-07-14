@@ -49,7 +49,7 @@ Public-facing and raider-visible features.
 - [x] Profile shortcut -- "My Profile" nav dropdown item navigates to claimed character profile; replaces auto-redirect (#173, supersedes #74)
 - [x] App role system -- explicit `officerDiscordIds` and `adminDiscordIds` GAS Script Properties control officer and admin access; recomputed live on every session validation (#44)
 - [x] Officer claim management -- Discord Claims subtab in Roster; admins can grant/revoke officer access per claimed user; Admin > Officers subtab for full officer management (#45)
-- [x] Replace officer password -- not implementing; password kept as fallback for localhost and non-Discord officers (#46, closed as won't-do)
+- [x] Replace officer password -- shared per-team password removed 2026-07-14; access is fully Discord OAuth + RLS-gated now that the Supabase migration is complete, reversing the earlier won't-do call on #46 (kept at the time as a fallback for localhost and non-Discord officers, before RLS covered every officer surface)
 - [x] Record which officer committed each attendance change -- wire Discord identity into the audit log (#112)
 - [x] Officer quick-actions bar on the index page -- small bar visible only to authenticated officers with fast access to high-frequency tasks (#99)
 

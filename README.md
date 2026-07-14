@@ -29,7 +29,7 @@ Supports multiple teams (Team Phoenix and Hellfire Rollers) from a single codeba
 Officers and raiders sign in with Discord through Supabase Auth (a full-page redirect). On first login, raiders claim their character from the roster; a "Claim your character" box on the home page also lets them claim any time they are logged in without one. Subsequent visits restore the session automatically.
 
 - **My Profile** -- nav dropdown shortcut to your claimed character's profile page
-- **Officers** -- Discord-authenticated officers bypass the password prompt
+- **Officers** -- Discord-authenticated officers go straight to the officer dashboard
 - **Admins** -- a separate admin Discord ID list controls access to the Admin tab
 
 ### Season signup (public)
@@ -38,7 +38,7 @@ Multi-step signup form accessible from the landing page. Officers can open or cl
 
 ### Officer dashboard (`officer.html`)
 
-Accessible via Discord OAuth (primary) or password fallback (session lasts 2 hours). The dashboard has a global season selector to filter loot, fairness, and attendance to a specific season.
+Accessible via Discord OAuth only (session lasts 2 hours). The dashboard has a global season selector to filter loot, fairness, and attendance to a specific season.
 
 | Tab | Sub-tabs | What it shows |
 |-----|----------|--------------|
@@ -52,7 +52,7 @@ Accessible via Discord OAuth (primary) or password fallback (session lasts 2 hou
 | **Received Item Requests** | -- | Approve or reject raider self-mark requests. Approving writes the item to their loot history. Officers can also mark items received directly from the Roster tab player card. |
 | **Season Settings** | -- | Season Start Date (attendance window start), Season Name (applied to imported loot), Season End Date (optional close date), Raid Progression (boss kill dates shown publicly), Archive Season (pushes season to history and resets settings), Season History (list of past seasons). |
 | **Audit Log** | -- | Append-only log of every officer action -- player changes, approvals, loot marks, status changes -- with timestamp, actor, action, target, and old/new values. Live search filter. |
-| **Admin** | Properties / Data Export / Officers / Danger Zone | Visible to site admins and team leaders (Discord login) or password login. Team leaders see Properties, Officers, and Clear Season History in the Danger Zone; Data Export and the sheet wipes are site-admin only. Officers sub-tab: grant or revoke officer dashboard access for claimed characters. |
+| **Admin** | Properties / Data Export / Officers / Danger Zone | Visible to site admins and team leaders. Team leaders see Properties, Officers, and Clear Season History in the Danger Zone; Data Export and the sheet wipes are site-admin only. Officers sub-tab: grant or revoke officer dashboard access for claimed characters. |
 | **Help** | -- | Officer workflow reference guide covering common tasks. |
 
 Officer controls on the Roster tab (player card):
@@ -101,7 +101,7 @@ Officer controls on the Roster tab (player card):
 2. The **Apps Script** (`wgaWebApp.gs`) reads those tabs and returns a JSON payload via JSONP when either page loads; Discord login and character claims now run through Supabase instead (Supabase Auth for login, the `claim_character` function for claims)
 3. `index.html` and `officer.html` fetch that payload on load and render all views dynamically -- no page reloads. The roster itself now reads from **Supabase** (Phase 2 of the migration), with the Apps Script copy as fallback if that query fails; attendance and M+ exclusion fields still come from the Apps Script payload
 4. Both pages are hosted on **GitHub Pages** at the repo root
-5. The **TEAMS object** in `js/common.js` maps each team slug to its own GAS deployment URL and officer password; append `?team=hellfire` to switch teams
+5. The **TEAMS object** in `js/common.js` maps each team slug to its own GAS deployment URL; append `?team=hellfire` to switch teams
 
 Data is split into two cached payloads: core (roster, settings -- 5 min cache) and heavy (BiS lists, item data, loot counts, attendance -- 15 min cache). Use **Clear Cache** in the officer dashboard toolbar to force a refresh after sheet changes.
 
@@ -233,7 +233,6 @@ Only needed when `wgaWebApp.gs` or any `.gs` file changes -- not for sheet data 
 
 ## Auth and sessions
 
-- **Discord OAuth** -- primary auth method for both raiders and officers. Sessions are stored in `localStorage` per team and validated against GAS on each page load. Sessions expire after 30 days.
-- **Officer password** -- fallback method. Set per team in the `TEAMS` object in `js/common.js`. Sessions last 2 hours.
+- **Discord OAuth** -- only auth method for both raiders and officers. Sessions are stored in `localStorage` per team and validated against GAS on each page load. Sessions expire after 30 days.
 - **Officer access** -- controlled by `officerDiscordIds` GAS Script Property (comma-separated Discord IDs). Takes effect immediately without requiring users to re-login.
-- **Admin access** -- controlled by `adminDiscordIds` GAS Script Property. Admins see the Admin tab; password login always shows Admin.
+- **Admin access** -- controlled by `adminDiscordIds` GAS Script Property. Admins see the Admin tab.

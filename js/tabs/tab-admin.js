@@ -3,8 +3,8 @@
 var ADMIN_SUBTABS = ['properties', 'export', 'officers', 'features', 'danger'];
 
 // Which sub-tabs each access level may see (#317, honoring the RLS split from
-// #294). true (site admins, and the legacy password login) sees everything;
-// 'team_leader' sees the surfaces backed by the team-leader-scoped tables
+// #294). true (site admins) sees everything; 'team_leader' sees the surfaces
+// backed by the team-leader-scoped tables
 // (team_settings, team_members) but not Data Export; any other value sees
 // nothing. showAdminTab (officer.html) applies this map to the sub-tab
 // buttons; buildAdminTab uses it to pick the landing sub-tab.
@@ -164,9 +164,8 @@ var DANGER_OPS = [
   }
 ];
 
-// Danger ops visible at a given access level: site admins (and the legacy
-// password login) see all of them, team leaders only the ops flagged
-// teamLeader (#317).
+// Danger ops visible at a given access level: site admins see all of them,
+// team leaders only the ops flagged teamLeader (#317).
 function visibleDangerOps(access) {
   if (access === true) return DANGER_OPS;
   return DANGER_OPS.filter(function (op) {

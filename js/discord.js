@@ -463,9 +463,7 @@ function submitCharacterClaim() {
 // (site admins), 'team_leader' grants the team-leader surfaces (#317: the
 // Properties and Officers sub-tabs plus Clear Season History in the Danger
 // Zone -- the sub-tab map lives in adminSubTabVisibility in tab-admin.js),
-// false hides the tab entirely. Callers with their own
-// no-session fallback (the legacy password login has no Discord session at
-// all) branch around this rather than folding that case in here.
+// false hides the tab entirely.
 function adminAccessLevel(session) {
   if (!session) return false;
   if (session.isAdmin) return true;
@@ -530,7 +528,7 @@ function discordLogout() {
   if (!supabaseClient) return;
   // Don't rely solely on the onAuthStateChange SIGNED_OUT branch -- it's only wired up
   // when initDiscordLogin() has run on this page load, which officer.js's reload path
-  // skips once a password-session flag is already valid. Clear state directly so logout
+  // skips once the officer session flag is already valid. Clear state directly so logout
   // works regardless of whether that listener is attached.
   supabaseClient.auth.signOut().then(function () {
     clearDiscordSession();

@@ -1,4 +1,9 @@
-var OFFICER_PASS = _teamCfg.officerPass;
+// Discord-derived officer session: _grantOfficerAccessViaDiscord
+// (officer.html) is the only thing that ever sets this flag now that the
+// shared officer password is gone. Kept as a sessionStorage flag rather than
+// checking getDiscordSession() directly everywhere, since the rest of this
+// file already gates on it and the 2-hour expiry is a deliberate re-auth nudge
+// independent of how long the underlying Discord session stays valid.
 var SESSION_DURATION_MS = 2 * 60 * 60 * 1000; // 2 hours
 var _SESSION_KEY = TEAM_SLUG + '_officer';
 var _SESSION_TS_KEY = TEAM_SLUG + '_officer_ts';
@@ -201,41 +206,22 @@ function switchLootSubTab(name, btnEl) {
   if (name === 'history') buildLootHistoryTab();
 }
 
+// Resets the modal to its default state (plain "Login with Discord", no
+// reauth hint, no error) before showing it. showDiscordReauthPrompt()
+// (officer.html) calls this first, then layers its own reauth-specific
+// overrides on top -- keeping the "reset to default" logic in one place
+// instead of duplicating it at every call site.
 function showOfficerPrompt() {
-  document.getElementById('officerPassword').value = '';
   document.getElementById('officerError').style.display = 'none';
+  var reauth = document.getElementById('officerDiscordReauth');
+  var loginBtn = document.getElementById('officerLoginBtn');
+  if (reauth) reauth.style.display = 'none';
+  if (loginBtn) loginBtn.style.display = '';
   document.getElementById('officerPrompt').classList.add('active');
-  setTimeout(function () {
-    document.getElementById('officerPassword').focus();
-  }, 50);
 }
 
 function hideOfficerPrompt() {
   document.getElementById('officerPrompt').classList.remove('active');
-}
-
-function submitOfficerPassword() {
-  if (document.getElementById('officerPassword').value === OFFICER_PASS) {
-    sessionStorage.setItem(_SESSION_KEY, '1');
-    sessionStorage.setItem(_SESSION_TS_KEY, String(Date.now()));
-    hideOfficerPrompt();
-    document.getElementById('loadingMsg').style.display = '';
-    loadData(
-      function () {
-        buildOfficerDashboard();
-        if (typeof showAdminTab === 'function') showAdminTab(true);
-        document.getElementById('officerViewWrap').classList.add('active');
-        document.getElementById('loadingMsg').style.display = 'none';
-      },
-      function () {
-        buildStatsBar();
-        buildRosterTable();
-        reopenSelectedPlayer();
-      }
-    );
-  } else {
-    document.getElementById('officerError').style.display = '';
-  }
 }
 
 function officerLogout() {
@@ -449,8 +435,7 @@ function rebuildSeasonFilteredViews() {
 }
 
 // -- Boot: maintenance mode gates everything below (#245) -- checked before
-//    the password session check, before the Discord session check, before
-//    any data loads. Check password session first; Discord session
+//    the officer session check, before any data loads. Discord session
 //    validation happens via onDiscordSessionRestored() in officer.html once
 //    discord.js calls initDiscordLogin().
 checkMaintenanceMode().then(function (maint) {
@@ -462,9 +447,9 @@ checkMaintenanceMode().then(function (maint) {
     sessionStorage.removeItem(_SESSION_KEY);
     sessionStorage.removeItem(_SESSION_TS_KEY);
     document.getElementById('loadingMsg').style.display = 'none';
-    // Check for a Discord session before showing the password prompt.
     // initDiscordLogin() (discord.js) calls onDiscordSessionRestored() which will call
-    // _grantOfficerAccessViaDiscord() if the session is valid and the user is an officer.
+    // _grantOfficerAccessViaDiscord() if the session is valid and the user is an officer,
+    // or onDiscordInitNoSession() (officer.html) to prompt a Discord login otherwise.
     // Defer by one tick so the inline script callbacks (onDiscordInitNoSession etc.)
     // defined at the bottom of officer.html are available before initDiscordLogin fires.
     setTimeout(function () {
@@ -486,8 +471,10 @@ checkMaintenanceMode().then(function (maint) {
         // Check Discord session for isAdmin
         if (typeof showAdminTab === 'function') {
           var ds = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
-          // No Discord session means password login -- show the full Admin tab.
-          showAdminTab(ds ? adminAccessLevel(ds) : true);
+          // An officer session with no Discord session backing it shouldn't
+          // happen anymore (Discord login is the only way to set it), but
+          // fail closed rather than granting Admin tab access if it does.
+          showAdminTab(ds ? adminAccessLevel(ds) : false);
         }
         document.getElementById('officerViewWrap').classList.add('active');
         document.getElementById('loadingMsg').style.display = 'none';

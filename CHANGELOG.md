@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.37] - 2026-07-14
+
+### Frontend
+
+- Fixed WCL performance scores leaking between teams -- the Scoring tab's cache key (`_WCL_SCORES_KEY`) wasn't scoped per team, unlike every other session/local storage key in this app, so refreshing scores on one team and then switching to another team in the same browser session would render the first team's cached scores on the second team's Scoring tab.
+- Removed the shared per-team officer password. Officer access is now Discord OAuth only -- RLS already gates every officer read/write on a genuine `auth.uid()`, so the password never granted real backend access, and it sat in plaintext in a public JS file besides. A brand-new team's first officer can still be bootstrapped before their first login by inserting a `team_members` row with their Discord ID and `role='officer'` directly (no dedicated Admin UI for this yet) -- `claim_character()` already looks up an existing row by `discord_id` on first login and links it, so the role carries over.
+
 ## [3.33.36] - 2026-07-14
 
 ### Frontend
