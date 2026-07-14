@@ -19,6 +19,10 @@
 }
 body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:18px; min-height:100vh; display:flex; flex-direction:column; }
 
+/* Dark theme only -- the browser's default calendar-picker icon renders
+   black and is nearly invisible against --bg-input (#490). */
+input[type="date"]::-webkit-calendar-picker-indicator { filter:invert(1); }
+
 /* Header */
 .header { position:relative; padding:2.5rem 2rem 2rem; text-align:center; border-bottom:1px solid var(--border); overflow:hidden; }
 .header::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse 60% 140% at 50% 0%, rgba(214,163,68,0.07) 0%, transparent 70%); pointer-events:none; }
@@ -194,8 +198,8 @@ select#playerSelect option { background:#1a1d27; }
 .btn { font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; padding:0.55rem 1.25rem; border-radius:3px; cursor:pointer; border:none; }
 .btn-gold { background:rgba(214,163,68,0.12); border:1px solid var(--gold-dim); color:var(--gold-light); }
 .btn-gold:hover { background:rgba(214,163,68,0.2); }
-.btn-muted { background:transparent; border:1px solid var(--border-mid); color:var(--text); }
-.btn-muted:hover { background:var(--bg-elevated); }
+.btn-muted { background:transparent; border:1px solid rgba(255,255,255,0.35); color:var(--text); }
+.btn-muted:hover { background:var(--bg-elevated); border-color:rgba(255,255,255,0.6); }
 .btn.site-nav-discord { background:rgba(88,101,242,0.15); border:1px solid rgba(88,101,242,0.4); color:#c9cdff; }
 .btn.site-nav-discord:hover { background:rgba(88,101,242,0.25); color:#c9cdff; }
 
@@ -302,9 +306,9 @@ select#playerSelect option { background:#1a1d27; }
 
 /* Roster filters */
 .filter-bar { display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap; align-items:center; }
-.filter-chip { font-family:'Rajdhani',sans-serif; font-size:0.95rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.3rem 0.8rem; border-radius:3px; cursor:pointer; border:1px solid var(--border); background:transparent; color:var(--text); transition:all 0.15s; }
+.filter-chip { font-family:'Rajdhani',sans-serif; font-size:0.95rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.3rem 0.8rem; border-radius:3px; cursor:pointer; border:1px solid rgba(255,255,255,0.35); background:transparent; color:var(--text); transition:all 0.15s; }
 .filter-chip.active { background:rgba(214,163,68,0.12); border-color:var(--gold-dim); color:var(--gold-light); }
-.filter-chip:hover { border-color:var(--border-mid); }
+.filter-chip:hover { border-color:rgba(255,255,255,0.6); }
 
 /* Roster search */
 .roster-search-row { display:flex; gap:0.5rem; margin-bottom:0.75rem; flex-wrap:wrap; align-items:flex-start; }

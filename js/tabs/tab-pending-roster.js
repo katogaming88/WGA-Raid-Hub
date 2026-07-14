@@ -546,11 +546,7 @@ function buildPendingBuffCoverageHtml(coverage) {
         ';font-weight:700;">' +
         indicator +
         '</span>' +
-        '<span style="color:' +
-        nameColor +
-        ';">' +
-        buff.name +
-        '</span>' +
+        buffNameLinkHtml(buff, 'color:' + nameColor) +
         (count > 0 ? '<span style="color:' + color + ';font-weight:600;font-size:0.93rem;">' + count + '</span>' : '') +
         '</span>';
     });

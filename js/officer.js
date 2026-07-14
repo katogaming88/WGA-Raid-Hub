@@ -3,6 +3,10 @@ var SESSION_DURATION_MS = 2 * 60 * 60 * 1000; // 2 hours
 var _SESSION_KEY = TEAM_SLUG + '_officer';
 var _SESSION_TS_KEY = TEAM_SLUG + '_officer_ts';
 var selectedOfficerPlayer = null;
+// Tracks which players' Player Settings sub-panel is expanded, keyed by
+// firstName, so it survives the buildRosterTable() rebuild triggered by
+// saves inside that panel (#489).
+var officerPlayerSettingsExpanded = {};
 var activeFilters = {};
 var activeSort = { key: null, dir: 1 };
 // ACTIVE_SEASON is declared in common.js; officer.js updates it via setActiveSeason()

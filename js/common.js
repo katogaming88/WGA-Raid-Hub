@@ -38,7 +38,7 @@ if (_teamParam && _teamParam in TEAMS) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.33.35';
+var VERSION = '3.33.36';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -711,36 +711,61 @@ var CLASS_COLORS = {
   Warrior: '#C69B3A'
 };
 
-// MN buff/debuff/utility map -- update here when class abilities change
+// MN buff/debuff/utility map -- update here when class abilities change.
+// spellId is the current-retail Wowhead spell id, used to link each name to
+// its tooltip (js/tabs/tab-roster.js buildRosterBuffCoverage() and
+// js/tabs/tab-pending-roster.js buildPendingBuffCoverageHtml(), #491). Where a
+// row covers multiple classes' versions of the same effect (e.g. "Heroism /
+// Bloodlust", "Combat Res"), spellId points at one representative spell, not
+// every variant.
 var RAID_BUFFS = [
-  { name: 'Mark of the Wild', classes: ['Druid'] },
-  { name: 'Arcane Intellect', classes: ['Mage'] },
-  { name: 'Battle Shout', classes: ['Warrior'] },
-  { name: 'Power Word: Fortitude', classes: ['Priest'] },
-  { name: "Hunter's Mark", classes: ['Hunter'] },
-  { name: 'Blessing of the Bronze', classes: ['Evoker'] },
-  { name: 'Skyfury', classes: ['Shaman'] },
-  { name: 'Devotion Aura', classes: ['Paladin'] }
+  { name: 'Mark of the Wild', classes: ['Druid'], spellId: 1126 },
+  { name: 'Arcane Intellect', classes: ['Mage'], spellId: 1459 },
+  { name: 'Battle Shout', classes: ['Warrior'], spellId: 6673 },
+  { name: 'Power Word: Fortitude', classes: ['Priest'], spellId: 21562 },
+  { name: 'Blessing of the Bronze', classes: ['Evoker'], spellId: 364342 },
+  { name: 'Skyfury', classes: ['Shaman'], spellId: 462854 },
+  { name: 'Devotion Aura', classes: ['Paladin'], spellId: 465 }
 ];
 
+// Hunter's Mark is applied to the boss, not the raid -- it belongs here, not
+// in RAID_BUFFS (#491 follow-up).
 var BOSS_DEBUFFS = [
-  { name: 'Mystic Touch', classes: ['Monk'] },
-  { name: 'Chaos Brand', classes: ['Demon Hunter'] },
-  { name: 'Atrophic Poison', classes: ['Rogue'] }
+  { name: "Hunter's Mark", classes: ['Hunter'], spellId: 257284 },
+  { name: 'Mystic Touch', classes: ['Monk'], spellId: 8647 },
+  { name: 'Chaos Brand', classes: ['Demon Hunter'], spellId: 255260 },
+  { name: 'Atrophic Poison', classes: ['Rogue'], spellId: 381637 }
 ];
 
 var RAID_UTILITY = [
-  { name: 'Heroism / Bloodlust', classes: ['Shaman', 'Mage', 'Hunter', 'Evoker'] },
-  { name: 'Combat Res', classes: ['Druid', 'Warlock', 'Paladin', 'Death Knight'] },
-  { name: 'Healthstone', classes: ['Warlock'] },
-  { name: 'Gateway', classes: ['Warlock'] },
-  { name: 'Death Grip', classes: ['Death Knight'] },
-  { name: 'Mass Grip', classes: ['Death Knight'], specs: ['Blood'] },
-  { name: 'Life Grip / Rescue', classes: ['Priest', 'Evoker'] },
-  { name: 'Blessing of Protection', classes: ['Paladin'] },
-  { name: 'Darkness', classes: ['Demon Hunter'] },
-  { name: 'Zephyr', classes: ['Evoker'] }
+  { name: 'Heroism / Bloodlust', classes: ['Shaman', 'Mage', 'Hunter', 'Evoker'], spellId: 2825 },
+  { name: 'Combat Res', classes: ['Druid', 'Warlock', 'Paladin', 'Death Knight'], spellId: 20484 },
+  { name: 'Healthstone', classes: ['Warlock'], spellId: 6201 },
+  { name: 'Gateway', classes: ['Warlock'], spellId: 111771 },
+  { name: 'Death Grip', classes: ['Death Knight'], spellId: 49576 },
+  { name: 'Mass Grip', classes: ['Death Knight'], specs: ['Blood'], spellId: 108199 },
+  { name: 'Life Grip / Rescue', classes: ['Priest', 'Evoker'], spellId: 73325 },
+  { name: 'Blessing of Protection', classes: ['Paladin'], spellId: 1022 },
+  { name: 'Darkness', classes: ['Demon Hunter'], spellId: 196718 },
+  { name: 'Zephyr', classes: ['Evoker'], spellId: 374229 }
 ];
+
+// Wraps a buff's display name in a Wowhead tooltip link (#491). Relies on
+// officer.html loading https://wow.zamimg.com/widgets/power.js, which
+// auto-attaches the hover tooltip to any <a class="wowhead"> whose href
+// points at a wowhead.com spell page -- no per-link init call needed.
+function buffNameLinkHtml(buff, colorStyle) {
+  if (!buff.spellId) return '<span style="' + colorStyle + '">' + buff.name + '</span>';
+  return (
+    '<a href="https://www.wowhead.com/spell=' +
+    buff.spellId +
+    '" class="wowhead" target="_blank" rel="noopener" style="' +
+    colorStyle +
+    ';text-decoration:none;">' +
+    buff.name +
+    '</a>'
+  );
+}
 
 // players: array of objects; classField/specField/nameField: key names on each object
 function computeBuffCoverage(players, classField, specField, nameField) {
@@ -3330,18 +3355,25 @@ function renderProfile(firstName, backTo, container) {
         WOW_REALMS[ri] +
         '</option>';
     }
+    var settingsExpanded = !!officerPlayerSettingsExpanded[fnSafe];
     officerActionsHTML =
       '<div class="profile-section">' +
       '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var d=document.getElementById(\'player-settings-' +
       fnSafe +
       "');var hint=document.getElementById('player-settings-hint-" +
       fnSafe +
-      "');var open=d.style.display!=='none';d.style.display=open?'none':'';hint.textContent=open?'click to expand':'click to collapse';\">Player Settings<span id=\"player-settings-hint-" +
+      "');var open=d.style.display!=='none';d.style.display=open?'none':'';hint.textContent=open?'click to expand':'click to collapse';officerPlayerSettingsExpanded['" +
       fnSafe +
-      '" style="font-size:1.07rem;color:var(--text-dim);">click to expand</span></div>' +
+      "']=!open;\">Player Settings<span id=\"player-settings-hint-" +
+      fnSafe +
+      '" style="font-size:1.07rem;color:var(--text-dim);">' +
+      (settingsExpanded ? 'click to collapse' : 'click to expand') +
+      '</span></div>' +
       '<div id="player-settings-' +
       fnSafe +
-      '" style="display:none;">' +
+      '" style="display:' +
+      (settingsExpanded ? '' : 'none') +
+      ';">' +
       '<div style="display:flex;flex-direction:column;gap:0.75rem;margin-top:0.5rem;">' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
       '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">Role</span>' +
@@ -3365,11 +3397,7 @@ function renderProfile(firstName, backTo, container) {
       '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">Spec</span>' +
       '<select id="specSelect-' +
       player.firstName +
-      '" class="self-received-source" style="font-size:1.04rem;padding:0.25rem 0.5rem;max-width:12rem;" onchange="officerSaveClassSpec(\'' +
-      nrSafe +
-      "','" +
-      fnSafe +
-      '\',this.value)">' +
+      '" class="self-received-source" style="font-size:1.04rem;padding:0.25rem 0.5rem;max-width:12rem;">' +
       specOptHtml +
       '</select>' +
       '</div>' +
@@ -3385,11 +3413,6 @@ function renderProfile(firstName, backTo, container) {
       '" class="self-received-source" style="font-size:1.04rem;padding:0.25rem 0.5rem;max-width:10rem;">' +
       realmOptHtml +
       '</select>' +
-      '<button class="btn btn-muted" style="font-size:1rem;padding:0.25rem 0.75rem;" onclick="officerRenamePlayer(\'' +
-      nrSafe +
-      "','" +
-      fnSafe +
-      '\')">Save</button>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
       '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">Trial</span>' +
@@ -3442,11 +3465,13 @@ function renderProfile(firstName, backTo, container) {
       '" value="' +
       (player.joinDate || '') +
       '" class="self-received-source" style="font-size:1.04rem;padding:0.25rem 0.5rem;max-width:12rem;">' +
-      '<button class="btn btn-muted" style="font-size:1rem;padding:0.25rem 0.75rem;" onclick="saveJoinDate(\'' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:0.75rem;">' +
+      '<button class="btn btn-gold" style="font-size:1rem;padding:0.35rem 1rem;" onclick="officerSavePlayerSettings(\'' +
       nrSafe +
       "','" +
       fnSafe +
-      '\')">Save</button>' +
+      '\')">Save Player Settings</button>' +
       '</div>' +
       '<div id="playerSettingsMsg-' +
       player.firstName +

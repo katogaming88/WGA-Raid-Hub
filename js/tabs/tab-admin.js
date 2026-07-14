@@ -417,6 +417,9 @@ function renderOfficerManagement() {
     // Team leaders are a distinct top tier managed outside this picker; only
     // plain officers are promotable/revocable here (matches the old flat
     // officerDiscordIds toggle this replaces).
+    var teamLeaderClaim = claims.filter(function (c) {
+      return c.role === 'team_leader';
+    })[0];
     var officerClaims = claims.filter(function (c) {
       return c.role === 'officer';
     });
@@ -473,7 +476,18 @@ function renderOfficerManagement() {
         '</div>'
       : '<p style="color:var(--text-muted);font-size:1.02rem;">No claimed characters left to promote.</p>';
 
+    // Read-only -- team_leader is a distinct top tier granted outside this
+    // picker (see the comment above), so this just makes that tier visible
+    // instead of leaving the table looking empty/broken when the only
+    // claimed character on a team is a team leader with no officers (#491).
+    var leaderLine = teamLeaderClaim
+      ? '<p style="font-size:1.02rem;color:var(--text);margin-bottom:0.75rem;">Team Leader: ' +
+        escHtml(teamLeaderClaim.nameRealm) +
+        '</p>'
+      : '';
+
     el.innerHTML =
+      leaderLine +
       table +
       '<p style="font-size:0.95rem;color:var(--text-muted);margin-bottom:0.5rem;">Promote a claimed character to officer:</p>' +
       promote;
