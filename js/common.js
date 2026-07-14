@@ -35,7 +35,7 @@ if (_teamParam && _teamParam in TEAMS) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.33.37';
+var VERSION = '3.33.38';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -3266,7 +3266,11 @@ function renderProfile(firstName, backTo, container) {
         (isOfficer ? markRecvBtn : '') +
         '</div>';
     } else {
-      rows += markRecvBtn;
+      // The officer's own direct "Mark received" shortcut doesn't go through
+      // the approval queue at all (submitDirectMarkReceived, not
+      // submit_self_received), so it's unaffected by the requests flag --
+      // only the raider-facing "Submit request" button is gated on it.
+      rows += isOfficer || featureEnabled('requests') ? markRecvBtn : '';
     }
     rows += '</div>';
     rows += '<div class="self-received-form" id="form-' + rowId + '" style="display:none;"></div>';

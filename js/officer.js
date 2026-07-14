@@ -352,12 +352,18 @@ function applyFeatureFlagVisibility() {
   var scoringOn = featureEnabled('scoring');
   var mplusOn = featureEnabled('mplus');
   var fairnessOn = featureEnabled('fairness');
+  var attendanceOn = featureEnabled('attendance');
+  var requestsOn = featureEnabled('requests');
 
   setVisible('navTab-priority', priorityOn);
   setVisible('navTab-bis', bisOn);
   setVisible('navTab-scoring', scoringOn);
   setVisible('navTab-mplus', mplusOn);
-  setVisible('navTab-requests', lootOn);
+  setVisible('navTab-attendance', attendanceOn);
+  // Own flag, not lootOn -- these are raider self-mark-received requests, a
+  // distinct workflow from loot import/tracking even though both deal with
+  // items.
+  setVisible('navTab-requests', requestsOn);
   setVisible('navTab-loot', lootOn || fairnessOn);
 
   setVisible('loot-subtab-btn-import', lootOn);
