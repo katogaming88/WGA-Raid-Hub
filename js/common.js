@@ -3364,7 +3364,7 @@ function renderProfile(firstName, backTo, container) {
       fnSafe +
       "');var open=d.style.display!=='none';d.style.display=open?'none':'';hint.textContent=open?'click to expand':'click to collapse';officerPlayerSettingsExpanded['" +
       fnSafe +
-      "']=!open;\">Player Settings<span id=\"player-settings-hint-" +
+      '\']=!open;">Player Settings<span id="player-settings-hint-' +
       fnSafe +
       '" style="font-size:1.07rem;color:var(--text-dim);">' +
       (settingsExpanded ? 'click to collapse' : 'click to expand') +
