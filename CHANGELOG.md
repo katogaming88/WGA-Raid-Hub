@@ -8,6 +8,20 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.36] - 2026-07-14
+
+### Frontend
+
+- Fixed the officer Roster tab's Player Settings panel collapsing itself the moment a Spec was picked -- the post-save `buildRosterTable()` rebuild reset every panel to its default collapsed state, making it look like the picker closed itself out from under the officer. Class, Spec, Name/Realm, and Joined Date now commit together via one "Save Player Settings" button instead of each field auto-saving or having its own Save button, and the panel's expanded/collapsed state now survives the rebuild (#489).
+- Fixed the `<input type="date">` calendar-picker icon rendering black and nearly invisible against this app's dark theme (Player Settings' Joined date, Raid AotC / boss-kill dates, season start/end, add-player Join Date) (#490).
+- Increased the border contrast on `.filter-chip` (Roster/Discord Claims sub-tabs, filter/role/sort chips) and `.btn-muted` (the default secondary-button style used site-wide: Cancel, Refresh, Log out, Paste Loot, and similar non-primary actions) -- both used a barely-visible white border (7-12% opacity) against the dark background, making unstyled-looking buttons hard to tell apart from a real CSS bug when actually just low contrast.
+- Admin > Officers now shows a read-only "Team Leader: <character>" line above the officers table -- previously a team leader (a distinct top tier that already grants full admin access without the `officer` role) was invisible on this panel, so a team with only a team leader claimed and no other officers showed a bare "No officers yet." that read as a bug (#491).
+- Buff Coverage (Roster tab and Pending Roster's pre-push preview) names now link to their Wowhead spell page with a hover tooltip -- officers previously had to recognize each ability by name alone. Also moved Hunter's Mark from Raid Buffs to Boss Debuffs: it's applied to the boss, not the raid, so it was miscategorized.
+
+### Backend
+
+- `build_rclc_export()` now excludes already-awarded recipients from the ranked `priority` object at export time, the same way `generate_priority_order()` already does at generation time -- a Mythic `rclc_loot` row drops a player from both tracks, a Heroic row drops them from the Heroic track only. Previously the export just re-shipped whatever `priority_order` last had saved, so the RCLootCouncil addon could show a stale rank instead of "Awarded" for an item an officer forgot to regenerate since it last dropped (#480).
+
 ## [3.33.35] - 2026-07-13
 
 ### Frontend

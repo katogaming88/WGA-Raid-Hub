@@ -50,6 +50,55 @@ async function seedPriority(q) {
   );
 }
 
+describe('build_rclc_export excludes already-awarded recipients (#480)', () => {
+  it('a Mythic recipient drops from both the Hero and Myth ranked lists for that item', async () => {
+    await withRole('authenticated', OFFICER_T1, async (q) => {
+      await seedPriority(q);
+      // player 1 (Seedraider-Illidan) already has Mythic loot for item 2.
+      await q(
+        `insert into public.rclc_loot (team_id, player_id, item_id, track, season) values
+           (1, 1, 2, 'Myth', 'export-test')`
+      );
+      const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
+      const priority = res.rows[0].payload.priority['100002'];
+
+      expect(priority.H).toEqual(['Seedplayertwo-Illidan']);
+      expect(priority.M).toBeUndefined();
+    });
+  });
+
+  it('a Hero recipient drops from the Hero list only, still eligible for Myth', async () => {
+    await withRole('authenticated', OFFICER_T1, async (q) => {
+      await seedPriority(q);
+      // player 2 (Seedplayertwo-Illidan) already has Heroic loot for item 2.
+      await q(
+        `insert into public.rclc_loot (team_id, player_id, item_id, track, season) values
+           (1, 2, 2, 'Hero', 'export-test')`
+      );
+      const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
+      const priority = res.rows[0].payload.priority['100002'];
+
+      expect(priority.H).toEqual(['Seedraider-Illidan']);
+      expect(priority.M).toEqual(['Seedraider-Illidan']);
+    });
+  });
+
+  it('rclc_loot for a different season does not exclude anyone', async () => {
+    await withRole('authenticated', OFFICER_T1, async (q) => {
+      await seedPriority(q);
+      await q(
+        `insert into public.rclc_loot (team_id, player_id, item_id, track, season) values
+           (1, 1, 2, 'Myth', 'some-other-season')`
+      );
+      const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
+      const priority = res.rows[0].payload.priority['100002'];
+
+      expect(priority.H).toEqual(['Seedplayertwo-Illidan', 'Seedraider-Illidan']);
+      expect(priority.M).toEqual(['Seedraider-Illidan']);
+    });
+  });
+});
+
 describe('build_rclc_export', () => {
   it('an officer gets players built from bis_items with slot-key precedence and placeholders excluded', async () => {
     await withItemsSeeded('authenticated', OFFICER_T1, async (q) => {

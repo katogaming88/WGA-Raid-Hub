@@ -14,7 +14,8 @@
 // from classes_specs.role, not stored), so unlike the old sheet, class and
 // spec can't be written independently -- see docs/database-decisions.md. The
 // Class dropdown only repopulates the Spec dropdown; the actual write fires
-// once a Spec is chosen (officerSaveClassSpec below).
+// from the single Player Settings Save button, along with Name/Realm and
+// Joined Date if changed (officerSavePlayerSettings, #489).
 
 function findRosterPlayer(nameRealm) {
   return (
@@ -79,7 +80,7 @@ function rosterFieldAuditDetail(field, value) {
 
 // Targeted update for the fields that map 1:1 onto a players column
 // (isTrial/isBench/joinDate/officerNote). class/spec go through
-// officerSaveClassSpec instead, since they resolve to one FK together.
+// updateClassSpecSupabase instead, since they resolve to one FK together.
 function updateRosterFieldSupabase(nameRealm, field, value) {
   var player = findRosterPlayer(nameRealm);
   var column = ROSTER_FIELD_COLUMN[field];
@@ -825,34 +826,6 @@ function savePlayerField(nameRealm, firstName, field, value) {
   });
 }
 
-// class/spec collapse into one class_spec_id FK, so a spec pick is the only
-// point a write actually fires; officerUpdateClass (below) only repopulates
-// this dropdown. Reads the class dropdown's current value directly since the
-// player object isn't mutated until this resolves.
-function officerSaveClassSpec(nameRealm, firstName, specValue) {
-  var classSel = document.getElementById('classSelect-' + firstName);
-  var classValue = classSel ? classSel.value : '';
-  var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
-  if (!classValue || !specValue) {
-    if (msgEl) msgEl.textContent = 'Select both a class and a spec.';
-    return;
-  }
-  if (msgEl) msgEl.textContent = 'Saving...';
-  runRosterWrite(updateClassSpecSupabase(nameRealm, classValue, specValue), msgEl).then(function (ok) {
-    if (ok) {
-      var player = findRosterPlayer(nameRealm);
-      if (player) {
-        player.class = classValue;
-        player.spec = specValue;
-        // player.role is set inside updateClassSpecSupabase from the
-        // classes_specs lookup, since it already has the resolved row there.
-      }
-      buildRosterTable();
-      reopenSelectedPlayer();
-    }
-  });
-}
-
 function updateClassSpecSupabase(nameRealm, classValue, specValue) {
   var player = findRosterPlayer(nameRealm);
   if (!player || !player.id) return Promise.reject(new Error('Player not found.'));
@@ -876,15 +849,10 @@ function updateClassSpecSupabase(nameRealm, classValue, specValue) {
     });
 }
 
-function saveJoinDate(nameRealm, firstName) {
-  var input = document.getElementById('joinDateInput-' + firstName);
-  if (!input) return;
-  savePlayerField(nameRealm, firstName, 'joinDate', input.value);
-}
-
 // UI-only: repopulates the Spec dropdown for the newly picked class. Doesn't
-// write anything -- class and spec resolve to one class_spec_id together, so
-// the write fires from officerSaveClassSpec once a spec is actually chosen.
+// write anything -- Class, Spec, Name, and Joined Date all commit together
+// from the single Player Settings Save button (officerSavePlayerSettings,
+// #489), not per-field.
 function officerUpdateClass(nameRealm, firstName, newClass) {
   var specSel = document.getElementById('specSelect-' + firstName);
   if (!specSel) return;
@@ -920,38 +888,89 @@ function renamePlayerSupabase(oldNameRealm, newNameRealm) {
     });
 }
 
-function officerRenamePlayer(nameRealm, firstName) {
+// Single Save action for the whole Player Settings panel (#489): commits
+// Class, Spec, Name, Realm, and Joined Date together instead of each having
+// its own auto-save or Save button. Class+Spec always write (they resolve to
+// one class_spec_id FK, so both must be valid every time); Name/Realm and
+// Joined Date only write if actually changed from the current player record.
+function officerSavePlayerSettings(nameRealm, firstName) {
+  var player = findRosterPlayer(nameRealm);
+  if (!player) return;
+  var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
+
+  var classSel = document.getElementById('classSelect-' + firstName);
+  var specSel = document.getElementById('specSelect-' + firstName);
+  var classValue = classSel ? classSel.value : '';
+  var specValue = specSel ? specSel.value : '';
+  if (!classValue || !specValue) {
+    if (msgEl) msgEl.textContent = 'Select both a class and a spec.';
+    return;
+  }
+
   var nameInput = document.getElementById('editNameInput-' + firstName);
   var realmSel = document.getElementById('editRealmSelect-' + firstName);
-  if (!nameInput || !realmSel) return;
-  var newName = nameInput.value.trim();
-  var newRealm = realmSel.value;
-  if (!newName || !newRealm) return;
+  var newName = nameInput ? nameInput.value.trim() : player.firstName;
+  var newRealm = realmSel ? realmSel.value : player.realm;
+  if (!newName || !newRealm) {
+    if (msgEl) msgEl.textContent = 'Name and realm are required.';
+    return;
+  }
   var newNameRealm = newName + '-' + newRealm;
-  if (newNameRealm.toLowerCase() === nameRealm.toLowerCase()) return;
-  var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
+  var renamed = newNameRealm.toLowerCase() !== nameRealm.toLowerCase();
+
+  var joinDateInput = document.getElementById('joinDateInput-' + firstName);
+  var newJoinDate = joinDateInput ? joinDateInput.value : player.joinDate || '';
+  var joinDateChanged = newJoinDate !== (player.joinDate || '');
+
   if (msgEl) msgEl.textContent = 'Saving...';
-  runRosterWrite(renamePlayerSupabase(nameRealm, newNameRealm), msgEl).then(function (ok) {
+
+  var chain = updateClassSpecSupabase(nameRealm, classValue, specValue);
+  if (joinDateChanged) {
+    chain = chain.then(function () {
+      return updateRosterFieldSupabase(nameRealm, 'joinDate', newJoinDate);
+    });
+  }
+  if (renamed) {
+    chain = chain.then(function () {
+      return renamePlayerSupabase(nameRealm, newNameRealm);
+    });
+  }
+
+  runRosterWrite(chain, msgEl).then(function (ok) {
     if (!ok) return;
-    selectedOfficerPlayer = null;
-    var inlineRow = document.getElementById('inlineProfileRow');
-    if (inlineRow) inlineRow.remove();
-    // Full reload rather than patching DATA.roster in place: lootCounts,
-    // bisList, and the jsonp-merged attendance field (js/common.js) are all
-    // keyed by the player's name, not id, so a rename leaves every one of
-    // those client-side maps pointing at the old name until they're
-    // refetched (#407 follow-up). buildRosterTable() alone only re-renders
-    // the roster row itself, which is why the name updated but the profile
-    // card's Items Received / BiS List went blank until a manual page reload.
-    loadData(
-      function () {
-        buildOfficerDashboard();
-      },
-      function () {
-        buildStatsBar();
-        buildRosterTable();
-      }
-    );
+    player.class = classValue;
+    player.spec = specValue;
+    // player.role is set inside updateClassSpecSupabase from the
+    // classes_specs lookup, since it already has the resolved row there.
+    if (joinDateChanged) {
+      player.joinDate = newJoinDate;
+      buildTrialPromoAlert();
+    }
+
+    if (renamed) {
+      selectedOfficerPlayer = null;
+      var inlineRow = document.getElementById('inlineProfileRow');
+      if (inlineRow) inlineRow.remove();
+      // Full reload rather than patching DATA.roster in place: lootCounts,
+      // bisList, and the jsonp-merged attendance field (js/common.js) are all
+      // keyed by the player's name, not id, so a rename leaves every one of
+      // those client-side maps pointing at the old name until they're
+      // refetched (#407 follow-up). buildRosterTable() alone only re-renders
+      // the roster row itself, which is why the name updated but the profile
+      // card's Items Received / BiS List went blank until a manual page reload.
+      loadData(
+        function () {
+          buildOfficerDashboard();
+        },
+        function () {
+          buildStatsBar();
+          buildRosterTable();
+        }
+      );
+    } else {
+      buildRosterTable();
+      reopenSelectedPlayer();
+    }
   });
 }
 
@@ -1237,11 +1256,7 @@ function buildRosterBuffCoverage() {
         ';font-weight:700;">' +
         indicator +
         '</span>' +
-        '<span style="color:' +
-        nameColor +
-        ';">' +
-        buff.name +
-        '</span>' +
+        buffNameLinkHtml(buff, 'color:' + nameColor) +
         '</span>';
     });
     html += '</div>';
