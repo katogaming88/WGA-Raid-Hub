@@ -2,32 +2,41 @@ name: WCL Progression Sync
 
 # #285: keeps team_raid_progress (current mythic boss pulls/best %, killed-
 # boss total pulls) current by calling the wcl-progression-sync Edge
-# Function on a schedule -- same reasoning as twitch-live-check.yml: no
-# cron/pg_net infrastructure exists inside Supabase for this project yet, so
-# GitHub Actions is the trigger instead.
+# Function. Originally scheduled here because no pg_cron/pg_net
+# infrastructure existed inside Supabase for this project -- switched to
+# pg_cron (supabase/migrations/20260713234553_pg_cron_edge_function_
+# scheduling.sql) after GitHub Actions' scheduled trigger proved unreliable
+# for twitch-live-check.yml's identical setup (#493): real gaps between
+# runs were 1-3 hours, not the schedule's actual cadence. Moved this one at
+# the same time on the assumption it has the same reliability gap, even
+# though (unlike twitch-live-check) no missed run was directly observed here
+# yet -- this workflow's only invocations so far have been manual
+# workflow_dispatch runs, so there's no scheduled-run history to check.
+#
+# schedule: intentionally removed -- pg_cron now owns the cadence below.
+# workflow_dispatch stays as a manual fallback/debug trigger.
 #
 # Requires one repo secret: WCL_PROGRESS_SYNC_SECRET, matching the same
 # value set as the Edge Function's WCL_PROGRESS_SYNC_SECRET env var (Project
 # Settings > Edge Functions > Secrets) -- an arbitrary shared secret, not a
 # WCL credential itself. Without it matching, the function returns 401.
 #
-# Cadence: every 30 minutes, only during raid hours -- Tue/Thu/Mon,
-# 9:30pm-midnight Eastern (the Monday slot is the team's standing makeup/
-# extra-day night; update the cron below if that day ever changes). Kat's
-# call: boss-pull progress only actually changes during raid nights, so
-# there's no reason to poll WCL the other 4.5 days a week.
+# Cadence (now enforced by the pg_cron job, unchanged from before): every 30
+# minutes, only during raid hours -- Tue/Thu/Mon, 9:30pm-midnight Eastern
+# (the Monday slot is the team's standing makeup/extra-day night; update the
+# migration's cron expression if that day ever changes). Kat's call:
+# boss-pull progress only actually changes during raid nights, so there's no
+# reason to poll WCL the other 4.5 days a week.
 #
-# GitHub Actions cron is UTC-only and does not adjust for US DST, so the
-# schedule below is intentionally padded by an hour on each side to cover
-# both offsets year-round without needing a manual twice-a-year edit:
+# pg_cron (like GitHub Actions cron) is UTC-only and does not adjust for US
+# DST, so the schedule is intentionally padded by an hour on each side to
+# cover both offsets year-round without needing a manual twice-a-year edit:
 #   EDT (Mar-Nov, UTC-4): 9:30pm-midnight ET = 01:30-04:00 UTC next day
 #   EST (Nov-Mar, UTC-5): 9:30pm-midnight ET = 02:30-05:00 UTC next day
 #   -> polls 01:00-05:30 UTC to cover both with buffer room either side.
 # A UTC weekday is one calendar day ahead of the Eastern evening it follows,
 # so Mon/Tue/Thu ET nights land on Tue/Wed/Fri UTC (cron dow 2,3,5).
 on:
-  schedule:
-    - cron: '0,30 1-5 * * 2,3,5'
   workflow_dispatch:
 
 concurrency:
