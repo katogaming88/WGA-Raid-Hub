@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.38] - 2026-07-14
+
+### Frontend
+
+- Added `attendance` and `requests` feature flags (Admin > Feature Flags, both the per-team self-serve version and the site-admin dashboard). Attendance previously had no flag at all; Received Item Requests previously shared the `loot` flag even though it's a distinct raider self-mark-received workflow, so toggling Loot off also hid Requests as a side effect. The raider-facing "Submit request" button (on their own profile) is now gated on `requests` too, so disabling the flag stops the workflow end-to-end instead of just hiding the officer's approval queue tab while raiders could still submit into it unseen. The officer's own direct "Mark received" shortcut is unaffected either way, since it doesn't go through the approval queue.
+
 ## [3.33.37] - 2026-07-14
 
 ### Frontend

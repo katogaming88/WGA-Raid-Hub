@@ -296,7 +296,9 @@ var FEATURE_FLAGS = [
   { key: 'scoring', label: 'Scoring' },
   { key: 'mplus', label: 'M+' },
   { key: 'fairness', label: 'Fairness' },
-  { key: 'bench', label: 'Bench' }
+  { key: 'bench', label: 'Bench' },
+  { key: 'attendance', label: 'Attendance' },
+  { key: 'requests', label: 'Requests' }
 ];
 
 var _adminTeamSettings = {}; // team_id -> config

@@ -555,7 +555,9 @@ var ADMIN_FEATURE_FLAGS = [
   { key: 'scoring', label: 'Scoring' },
   { key: 'mplus', label: 'M+ Exclusions' },
   { key: 'fairness', label: 'Fairness Charts' },
-  { key: 'bench', label: 'Bench Management' }
+  { key: 'bench', label: 'Bench Management' },
+  { key: 'attendance', label: 'Attendance' },
+  { key: 'requests', label: 'Received Item Requests' }
 ];
 
 function renderAdminFeatureFlags() {
