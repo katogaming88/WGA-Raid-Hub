@@ -1,22 +1,22 @@
 name: Twitch Live Check
 
 # #286: keeps streamers.is_live current by calling the twitch-live-check
-# Edge Function on a schedule -- no cron/pg_net infrastructure exists inside
-# Supabase for this project yet, so GitHub Actions is the trigger instead
-# (Kat's call: reuses infrastructure already in place, easy to see run
-# history/failures in the Actions tab, no new DB extensions).
+# Edge Function. Originally scheduled here because no pg_cron/pg_net
+# infrastructure existed inside Supabase for this project -- switched to
+# pg_cron (supabase/migrations/20260713234553_pg_cron_edge_function_
+# scheduling.sql) after GitHub Actions' scheduled trigger proved unreliable
+# in practice (#493): real gaps between runs were 1-3 hours, not the 5
+# minutes this was scheduled for, which is bad enough to actively show a
+# live raider as offline on the landing page for up to an hour.
+#
+# schedule: intentionally removed -- pg_cron now owns the 5-minute cadence.
+# workflow_dispatch stays as a manual fallback/debug trigger.
 #
 # Requires one repo secret: TWITCH_LIVE_CHECK_SECRET, matching the same
 # value set as the Edge Function's TWITCH_LIVE_CHECK_SECRET env var (Project
 # Settings > Edge Functions > Secrets) -- an arbitrary shared secret, not a
 # Twitch credential itself. Without it matching, the function returns 401.
 on:
-  schedule:
-    # Every 5 minutes -- GitHub Actions' documented minimum cron granularity,
-    # and not a hard guarantee even at that (runs can be delayed under
-    # platform load). Fine for "is this streamer live," not suited to
-    # anything needing second-level accuracy.
-    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 concurrency:

@@ -8,6 +8,19 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-07-13 -- twitch-live-check / wcl-progression-sync (#493): pg_cron + pg_net replaces GitHub Actions scheduling
+
+Both Edge Functions were originally put on a GitHub Actions cron schedule because this project had no `pg_cron`/`pg_net` infrastructure at the time (#285, #286 -- see the 2026-07-12 entry below). In practice, GitHub Actions' scheduled-workflow trigger never actually honored either workflow's cron expression: checking `twitch-live-check.yml`'s run history, real gaps between runs were 1-3 hours the entire time, not the 5 minutes it was scheduled for. That's a real correctness gap, not just cosmetic drift -- the landing-page "who's live" banner/widget trusts `streamers.is_live`, and a raider going live could show as offline there for up to an hour. Confirmed directly: a raider was live and playable on the Streams tab (which embeds Twitch directly, no `is_live` dependency) while `is_live` was still `false` from a check taken nearly an hour earlier.
+
+- **`pg_cron` + `pg_net` enabled, calling both Edge Functions directly from Postgres** (`supabase/migrations/20260713234553_pg_cron_edge_function_scheduling.sql`), rather than switching to a different external cron service or making the landing-page UI tolerate staleness instead. Removes GitHub Actions' unreliable scheduling from the loop entirely for both functions.
+- **Both workflows' `schedule:` trigger removed, `workflow_dispatch` kept** as a manual fallback/debug trigger -- pg_cron now owns the cadence for both.
+- **`wcl-progression-sync` moved to pg_cron in the same migration**, on the assumption it has the same reliability gap, even though no missed scheduled run was directly observed for it -- its only invocations so far have been manual `workflow_dispatch` runs, so there's no scheduled-run history to check against.
+- **Shared secrets stored in Supabase Vault** (`vault.create_secret`), not inlined in the migration -- the migration only schedules the cron jobs assuming `twitch_live_check_secret` / `wcl_progress_sync_secret` already exist in Vault, reusing the same values already set as GitHub Actions repo secrets and Edge Function secrets.
+
+[Full discussion -> #493](https://github.com/katogaming88/WGA-Raid-Hub/issues/493)
+
+---
+
 ## 2026-07-12 -- Mythic pull count/best % progression (#285): normalized WCL reference tables + a GitHub Actions cron, not a JSON blob or a manual-only refresh
 
 Landing-page ask: show live pull count/best % on the current work-in-progress mythic boss, and total pulls on already-killed bosses, matching WCL's own reports view. `team_settings.config.raidProgression` already holds an officer-curated raid/boss list (Season Settings' "Refresh from WCL" button), but that list only stores `{name, mythicDate}` per boss -- no WCL encounter ID -- and only updates when an officer manually clicks refresh.
