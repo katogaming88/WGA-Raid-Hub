@@ -1,4 +1,8 @@
-var _WCL_SCORES_KEY = 'wgaWclScores';
+// Team-scoped: this site serves multiple teams from one origin distinguished
+// only by a ?team= query param, which sessionStorage knows nothing about.
+// An unscoped key here leaked one team's cached WCL scores onto another
+// team's Scoring tab after switching teams in the same session.
+var _WCL_SCORES_KEY = 'wgaWclScores_' + TEAM_SLUG;
 
 function _saveScoresCache(scores, statusText) {
   try {

@@ -5,7 +5,7 @@ Reference notes for walking an officer through the dashboard -- not published to
 ## Logging in
 
 - Go to the officer page URL (not the public page)
-- They enter the officer password -- session lasts 2 hours, then it re-prompts
+- They log in with Discord -- session lasts 2 hours, then it re-prompts (the shared officer password was removed since access is fully Discord/RLS-gated now)
 - Point out the season selector dropdown in the toolbar -- it filters most views to a specific season
 - Top nav also has **Roster**, **Streams**, **Sign Up**, and **Help** links back to the public site (index.html) -- useful for checking how something looks from a raider's point of view without logging out
 
@@ -265,9 +265,8 @@ Three sub-tabs: **Settings**, **Raid Progression**, **History**.
 
 Restricted by role: site admins see the whole tab, team leaders see the Properties and
 Officers sub-tabs plus Clear Season History in the Danger Zone, and regular
-officers don't see the tab at all. Anyone logged in via the plain officer password (no
-Discord session) gets the full tab, since there's no role to check without one. In practice
-this is usually one or two people per team. Four sub-tabs:
+officers don't see the tab at all. In practice this is usually one or two people per
+team. Four sub-tabs:
 
 - **Properties** -- read-only live snapshot of this team's season settings: season name/dates,
   archived season count, raid progression count, whether Signups/BiS Submissions/M+ Exclusions

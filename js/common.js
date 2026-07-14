@@ -9,14 +9,12 @@ var TEAMS = {
     gasUrl:
       'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec',
     name: 'Phoenix',
-    officerPass: 'phoenix2',
     supabaseTeamId: 1
   },
   hellfire: {
     gasUrl:
       'https://script.google.com/macros/s/AKfycbwIpnJyZDwWr5MmWIv7iyaDZ0OajPTFePMTYfIy8WG7jhg7pakQTvTVSM3SLihrKxBb/exec',
     name: 'Hellfire Rollers',
-    officerPass: 'hellfire2',
     supabaseTeamId: 2
   },
   // Never had a GAS deployment -- Immolation was created directly in
@@ -24,7 +22,6 @@ var TEAMS = {
   immolation: {
     gasUrl: '',
     name: 'Immolation',
-    officerPass: 'immolation2026',
     supabaseTeamId: 3
   }
 };
@@ -38,7 +35,7 @@ if (_teamParam && _teamParam in TEAMS) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.33.36';
+var VERSION = '3.33.37';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {

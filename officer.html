@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.33.36">
-  <link rel="stylesheet" href="css/officer.css?v=3.33.36">
+  <link rel="stylesheet" href="css/styles.css?v=3.33.37">
+  <link rel="stylesheet" href="css/officer.css?v=3.33.37">
   <!-- Hover tooltips for Buff Coverage's spell links (#491). Auto-attaches to
        any <a class="wowhead"> pointing at a wowhead.com spell page. -->
   <script src="https://wow.zamimg.com/widgets/power.js" async></script>
@@ -1012,7 +1012,7 @@
     </div>
   </div>
 
-  <!-- Officer password prompt -->
+  <!-- Officer login prompt -->
   <div id="officerPrompt" class="officer-prompt">
     <div class="officer-prompt-box">
       <h2>Officer Access</h2>
@@ -1021,37 +1021,35 @@
         <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 0.5rem 0;">Continue as <strong id="reauthUsername" style="color:var(--text);"></strong></p>
         <button class="btn site-nav-discord" style="width:100%;padding:0.35rem 0.5rem;font-size:0.88rem;" onclick="loginWithDiscord()">Continue with Discord</button>
       </div>
-      <input id="officerPassword" type="password" placeholder="Password"
-        onkeydown="if(event.key==='Enter')submitOfficerPassword();" />
-      <p id="officerError" style="display:none;font-size:0.88rem;color:var(--melee);">Incorrect password</p>
+      <button id="officerLoginBtn" class="btn site-nav-discord" style="width:100%;" onclick="loginWithDiscord()">Login with Discord</button>
+      <p id="officerError" style="display:none;font-size:0.88rem;color:var(--melee);margin-top:0.5rem;"></p>
       <div class="prompt-buttons">
-        <button class="btn btn-gold" onclick="submitOfficerPassword()">Enter</button>
         <a href="index.html" class="btn btn-muted">Cancel</a>
       </div>
     </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.33.36"></script>
-  <script src="js/discord.js?v=3.33.36"></script>
-  <script src="js/officer.js?v=3.33.36"></script>
-  <script src="js/tabs/tab-roster.js?v=3.33.36"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.33.36"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.33.36"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.33.36"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.33.36"></script>
-  <script src="js/tabs/tab-signups.js?v=3.33.36"></script>
-  <script src="js/tabs/tab-requests.js?v=3.33.36"></script>
-  <script src="js/tabs/tab-bis.js?v=3.33.36"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.33.36"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.33.36"></script>
-  <script src="js/tabs/tab-priority.js?v=3.33.36"></script>
-  <script src="js/tabs/tab-audit.js?v=3.33.36"></script>
-  <script src="js/tabs/tab-reports.js?v=3.33.36"></script>
-  <script src="js/tabs/tab-season.js?v=3.33.36"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.33.36"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.33.36"></script>
-  <script src="js/tabs/tab-admin.js?v=3.33.36"></script>
+  <script src="js/common.js?v=3.33.37"></script>
+  <script src="js/discord.js?v=3.33.37"></script>
+  <script src="js/officer.js?v=3.33.37"></script>
+  <script src="js/tabs/tab-roster.js?v=3.33.37"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.33.37"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.33.37"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.33.37"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.33.37"></script>
+  <script src="js/tabs/tab-signups.js?v=3.33.37"></script>
+  <script src="js/tabs/tab-requests.js?v=3.33.37"></script>
+  <script src="js/tabs/tab-bis.js?v=3.33.37"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.33.37"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.33.37"></script>
+  <script src="js/tabs/tab-priority.js?v=3.33.37"></script>
+  <script src="js/tabs/tab-audit.js?v=3.33.37"></script>
+  <script src="js/tabs/tab-reports.js?v=3.33.37"></script>
+  <script src="js/tabs/tab-season.js?v=3.33.37"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.33.37"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.33.37"></script>
+  <script src="js/tabs/tab-admin.js?v=3.33.37"></script>
   <script>
 document.getElementById('versionNum').textContent = VERSION;
 document.title = TEAM_NAME + ' -- Officer';
@@ -1063,7 +1061,7 @@ if (TEAM_SLUG !== 'phoenix') {
 initTeamUI();
 
 // When switching teams while Discord-authenticated, store a hint so the new page
-// can show "Continue with Discord" instead of jumping straight to the password prompt.
+// can show "Continue with Discord" instead of the plain login prompt.
 (function() {
   var ts = document.getElementById('teamSwitcherSelect');
   if (ts) {
@@ -1080,12 +1078,14 @@ function onDiscordLoginComplete(session) {
   if (session.isOfficer || session.isAdmin) {
     _grantOfficerAccessViaDiscord(session);
   } else {
+    // showOfficerPrompt() resets (and hides) #officerError, so it must run
+    // before this error is set, not after -- otherwise the reset clobbers it.
+    showOfficerPrompt();
     var errEl = document.getElementById('officerError');
     if (errEl) {
       errEl.textContent = 'Your character (' + (session.nameRealm || session.username) + ') does not have officer access.';
       errEl.style.display = '';
     }
-    showOfficerPrompt();
   }
 }
 
@@ -1094,7 +1094,7 @@ function onDiscordSessionRestored(session) {
   if ((session.isOfficer || session.isAdmin) && !isOfficerSessionValid()) {
     _grantOfficerAccessViaDiscord(session);
   } else if (!isOfficerSessionValid()) {
-    // Discord auth succeeded but the character is not an officer -- fall back to password.
+    // Discord auth succeeded but the character is not an officer.
     showOfficerPrompt();
   }
 }
@@ -1111,13 +1111,18 @@ function onDiscordInitNoSession() {
 }
 
 function showDiscordReauthPrompt(username) {
+  // showOfficerPrompt() resets #officerDiscordReauth/#officerLoginBtn to
+  // their defaults (hidden/shown), so it must run before the overrides below,
+  // not after.
+  showOfficerPrompt();
   var hint = document.getElementById('officerDiscordReauth');
   var nameEl = document.getElementById('reauthUsername');
+  var loginBtn = document.getElementById('officerLoginBtn');
   if (hint && nameEl) {
     nameEl.textContent = username;
     hint.style.display = '';
   }
-  showOfficerPrompt();
+  if (loginBtn) loginBtn.style.display = 'none';
 }
 
 // Called by discord.js on logout.
@@ -1125,8 +1130,8 @@ function onDiscordLogout() {
   officerLogout();
 }
 
-// access: true for the full tab (site admins and password login),
-// 'team_leader' for the team-leader surfaces (#317), falsy to hide the tab.
+// access: true for the full tab (site admins), 'team_leader' for the
+// team-leader surfaces (#317), falsy to hide the tab.
 // The sub-tab map lives in adminSubTabVisibility (tab-admin.js), which
 // buildAdminTab() also reads (via window._adminAccessLevel) to pick the
 // default sub-tab on click.
@@ -1146,7 +1151,9 @@ function showAdminTab(access) {
 }
 
 function _grantOfficerAccessViaDiscord(session) {
-  // Establish the password-based session flag so the rest of officer.js works unchanged.
+  // Sets the same sessionStorage flag isOfficerSessionValid() checks
+  // throughout officer.js, so the rest of that file doesn't need to know
+  // this came from Discord specifically.
   sessionStorage.setItem(_SESSION_KEY, '1');
   sessionStorage.setItem(_SESSION_TS_KEY, String(Date.now()));
   hideOfficerPrompt();
