@@ -34,6 +34,17 @@ function makeSandbox({ saveTeamSettingImpl, rpcResult, els = {}, data = {} } = {
     populateSeasonSelector: () => {},
     renderRaidProgressionCards: () => {},
     renderSeasonHistory: () => {},
+    // archive_current_season() also resets bis_items/m_plus_excluded
+    // server-side, so executeArchiveSeason() reloads via loadData() rather
+    // than only patching season fields -- stubbed no-op here since that
+    // reload path isn't what this describe block is testing.
+    loadData: (onCoreReady, onHeavyReady) => {
+      if (onCoreReady) onCoreReady();
+      if (onHeavyReady) onHeavyReady();
+    },
+    buildOfficerDashboard: () => {},
+    buildStatsBar: () => {},
+    buildRosterTable: () => {},
     saveTeamSetting: function (updates) {
       saveTeamSettingCalls.push(updates);
       return (
@@ -279,5 +290,54 @@ describe('toggleSeasonSnapshot (#221 follow-up)', () => {
     sandbox.toggleSeasonSnapshot(0, makeEl());
 
     expect(panel.innerHTML).toContain('No roster data captured');
+  });
+});
+
+describe('toggleSeasonBisSnapshot (#498)', () => {
+  it('renders the BiS snapshot embedded on the history entry, placeholders included', () => {
+    const panel = makeEl({ style: { display: 'none' } });
+    const els = { 'bis-snapshot-0': panel };
+    const { sandbox, rpcCalls } = makeSandbox({
+      els,
+      data: {
+        seasonHistory: [
+          {
+            name: 'Old Season',
+            bis: [
+              {
+                nameRealm: 'Kato-Illidan',
+                item: 'Seed Test Staff',
+                slot: 'Weapon',
+                obtained: false,
+                isPlaceholder: false
+              },
+              { nameRealm: 'Kato-Illidan', item: 'M+', slot: 'ring1', obtained: true, isPlaceholder: true }
+            ]
+          }
+        ]
+      }
+    });
+    const btn = makeEl({ textContent: 'View BiS' });
+
+    sandbox.toggleSeasonBisSnapshot(0, btn);
+
+    expect(rpcCalls).toHaveLength(0);
+    expect(panel.innerHTML).toContain('Seed Test Staff');
+    expect(panel.innerHTML).toContain('M+');
+    expect(panel.style.display).toBe('');
+    expect(btn.textContent).toBe('Hide BiS');
+  });
+
+  it('shows a no-data message when the entry has no captured BiS', () => {
+    const panel = makeEl({ style: { display: 'none' } });
+    const els = { 'bis-snapshot-0': panel };
+    const { sandbox } = makeSandbox({
+      els,
+      data: { seasonHistory: [{ name: 'Old Season', bis: [] }] }
+    });
+
+    sandbox.toggleSeasonBisSnapshot(0, makeEl());
+
+    expect(panel.innerHTML).toContain('No BiS data captured');
   });
 });

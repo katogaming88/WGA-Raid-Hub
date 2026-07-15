@@ -73,6 +73,12 @@ function renderSeasonHistory() {
         i +
         ', this)">View Roster</button>';
     }
+    if (s.bis) {
+      html +=
+        '<button class="btn btn-muted" style="font-size:0.93rem;padding:2px 10px;white-space:nowrap;" onclick="toggleSeasonBisSnapshot(' +
+        i +
+        ', this)">View BiS</button>';
+    }
     html +=
       '<button class="btn btn-muted" style="font-size:0.93rem;padding:2px 10px;white-space:nowrap;" onclick="confirmUnarchiveSeason(' +
       i +
@@ -81,6 +87,9 @@ function renderSeasonHistory() {
     html += '</div>';
     if (s.roster) {
       html += '<div id="snapshot-' + i + '" style="display:none;margin-top:0.5rem;"></div>';
+    }
+    if (s.bis) {
+      html += '<div id="bis-snapshot-' + i + '" style="display:none;margin-top:0.5rem;"></div>';
     }
     // #264: WCL season performance fetch is only offered for the most
     // recently archived season -- once a new season has started, that's
@@ -310,6 +319,65 @@ function toggleSeasonSnapshot(index, btnEl) {
   panel.style.display = '';
 }
 
+// Same inline-snapshot pattern as toggleSeasonSnapshot above, for the BiS
+// list captured at archive time (history[index].bis, see
+// archive_current_season() in 20260714173649_archive_season_resets_bis_mplus.sql).
+// Placeholder entries (M+/Crafted/Catalyst) are included in the snapshot even
+// though their live bis_items rows survive the archive-time wipe -- this is a
+// point-in-time record of what officers saw then, not a reflection of what's
+// live now.
+function toggleSeasonBisSnapshot(index, btnEl) {
+  var panel = document.getElementById('bis-snapshot-' + index);
+  if (!panel) return;
+  if (panel.style.display !== 'none') {
+    panel.style.display = 'none';
+    btnEl.textContent = 'View BiS';
+    return;
+  }
+  if (panel.dataset.loaded) {
+    panel.style.display = '';
+    btnEl.textContent = 'Hide BiS';
+    return;
+  }
+  var history = (DATA && DATA.seasonHistory) || [];
+  var season = history[index];
+  var rows = (season && season.bis) || [];
+  panel.dataset.loaded = '1';
+  btnEl.textContent = 'Hide BiS';
+  if (!rows.length) {
+    panel.innerHTML = '<p style="font-size:1rem;color:var(--text-muted);">No BiS data captured for this season.</p>';
+    panel.style.display = '';
+    return;
+  }
+  rows = rows.slice().sort(function (a, b) {
+    if (a.nameRealm !== b.nameRealm) return a.nameRealm.localeCompare(b.nameRealm);
+    return (a.item || '').localeCompare(b.item || '');
+  });
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:0.97rem;margin-top:0.25rem;">';
+  html += '<thead><tr style="color:var(--text-muted);text-align:left;border-bottom:1px solid rgba(255,255,255,0.1);">';
+  html += '<th style="padding:0.2rem 0.5rem 0.2rem 0;">Player</th>';
+  html += '<th style="padding:0.2rem 0.5rem;">Item</th>';
+  html += '<th style="padding:0.2rem 0.5rem;">Slot</th>';
+  html += '<th style="padding:0.2rem 0;">Obtained</th>';
+  html += '</tr></thead><tbody>';
+  rows.forEach(function (r) {
+    html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">';
+    html += '<td style="padding:0.18rem 0.5rem 0.18rem 0;color:var(--text);">' + r.nameRealm + '</td>';
+    html += '<td style="padding:0.18rem 0.5rem;color:var(--text);">' + (r.item || '-') + '</td>';
+    html += '<td style="padding:0.18rem 0.5rem;color:var(--text-muted);">' + (r.slot || '-') + '</td>';
+    html +=
+      '<td style="padding:0.18rem 0;color:' +
+      (r.obtained ? 'var(--heal)' : 'var(--text-muted)') +
+      ';">' +
+      (r.obtained ? 'Yes' : 'No') +
+      '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  panel.innerHTML = html;
+  panel.style.display = '';
+}
+
 var _unarchiveIndex = -1;
 
 function confirmUnarchiveSeason(index) {
@@ -406,7 +474,7 @@ function confirmArchiveSeason() {
       msg.textContent =
         'Archive "' +
         name +
-        '"? The current season name, start date, and end date will be moved to history and cleared. Set a new Season Name and Start Date for the next season afterward.';
+        '"? The current season name, start date, and end date will be moved to history and cleared. Every player\'s BiS list (real items -- M+/Crafted/Catalyst entries are kept) will be snapshotted into history, then wiped, and M+ exclusion and Bench status will reset for the whole roster (Trial status is left alone). Set a new Season Name and Start Date for the next season afterward.';
       document.getElementById('seasonArchiveExecBtn').style.display = '';
     }
   }
@@ -469,6 +537,20 @@ function executeArchiveSeason() {
           if (status) status.textContent = '';
         }, 3000);
       }
+      // archive_current_season() also wipes real-item bis_items rows and
+      // resets m_plus_excluded server-side -- the in-memory DATA.bisList and
+      // roster still hold the pre-archive values until refetched, same
+      // staleness officerRenamePlayer works around with a full reload rather
+      // than patching state in place.
+      loadData(
+        function () {
+          buildOfficerDashboard();
+        },
+        function () {
+          buildStatsBar();
+          buildRosterTable();
+        }
+      );
     })
     .catch(function (err) {
       if (btn) btn.disabled = false;
