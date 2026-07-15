@@ -4111,6 +4111,12 @@
       "type": "FUNCTION"
     },
     {
+      "name": "public.submit_season_signup",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text, p_swap_from_name_realm text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
       "name": "public.admin_create_team",
       "return_type": "int4",
       "arguments": "p_name text, p_slug text",
@@ -4174,12 +4180,6 @@
       "name": "public.flag_bis_list_changed",
       "return_type": "int4",
       "arguments": "p_team_id integer, p_name_realm text, p_player_note text DEFAULT NULL::text",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.submit_season_signup",
-      "return_type": "int4",
-      "arguments": "p_team_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text, p_swap_from_name_realm text DEFAULT NULL::text",
       "type": "FUNCTION"
     }
   ],
