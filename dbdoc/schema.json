@@ -1448,12 +1448,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_priority_order_team_id_check",
-          "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
-        },
-        {
           "name": "trg_priority_order_updated_at",
           "def": "CREATE TRIGGER trg_priority_order_updated_at BEFORE UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_priority_order_team_id_check",
+          "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         }
       ]
     },
@@ -1661,6 +1661,11 @@
         {
           "name": "updated_at",
           "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "swap_from_name_realm",
+          "type": "text",
           "nullable": true
         }
       ],
@@ -2357,9 +2362,14 @@
           "name": "reviewed_by",
           "type": "integer",
           "nullable": true
+        },
+        {
+          "name": "swap_from_name_realm",
+          "type": "text",
+          "nullable": true
         }
       ],
-      "def": "CREATE VIEW pending_roster AS (\n SELECT s.id AS signup_id,\n    s.team_id,\n    s.season,\n    s.signup_name_realm,\n    COALESCE(s.swap_class_spec_id, s.class_spec_id) AS class_spec_id,\n    cs.class,\n    cs.spec,\n    cs.role,\n    s.off_specs,\n    s.main_swap,\n    s.player_note,\n    s.signup_officer_note,\n    s.reviewed_at,\n    s.reviewed_by\n   FROM (season_signups s\n     LEFT JOIN classes_specs cs ON ((cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id))))\n  WHERE ((s.status = 'approved'::text) AND (s.approved_player_id IS NULL))\n)",
+      "def": "CREATE VIEW pending_roster AS (\n SELECT s.id AS signup_id,\n    s.team_id,\n    s.season,\n    s.signup_name_realm,\n    COALESCE(s.swap_class_spec_id, s.class_spec_id) AS class_spec_id,\n    cs.class,\n    cs.spec,\n    cs.role,\n    s.off_specs,\n    s.main_swap,\n    s.player_note,\n    s.signup_officer_note,\n    s.reviewed_at,\n    s.reviewed_by,\n    s.swap_from_name_realm\n   FROM (season_signups s\n     LEFT JOIN classes_specs cs ON ((cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id))))\n  WHERE ((s.status = 'approved'::text) AND (s.approved_player_id IS NULL))\n)",
       "referenced_tables": [
         "public.season_signups",
         "public.classes_specs"
@@ -4083,12 +4093,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.submit_season_signup",
-      "return_type": "int4",
-      "arguments": "p_team_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.notify_player",
       "return_type": "int4",
       "arguments": "p_player_id integer, p_message text",
@@ -4170,6 +4174,12 @@
       "name": "public.flag_bis_list_changed",
       "return_type": "int4",
       "arguments": "p_team_id integer, p_name_realm text, p_player_note text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.submit_season_signup",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text, p_swap_from_name_realm text DEFAULT NULL::text",
       "type": "FUNCTION"
     }
   ],

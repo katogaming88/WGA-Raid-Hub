@@ -17,13 +17,13 @@
 | [public.players](public.players.md) | 16 |  | BASE TABLE |
 | [public.priority_order](public.priority_order.md) | 8 |  | BASE TABLE |
 | [public.scoring](public.scoring.md) | 10 |  | BASE TABLE |
-| [public.season_signups](public.season_signups.md) | 16 |  | BASE TABLE |
+| [public.season_signups](public.season_signups.md) | 17 |  | BASE TABLE |
 | [public.self_received_requests](public.self_received_requests.md) | 10 |  | BASE TABLE |
 | [public.site_admins](public.site_admins.md) | 3 |  | BASE TABLE |
 | [public.team_members](public.team_members.md) | 7 |  | BASE TABLE |
 | [public.team_settings](public.team_settings.md) | 3 |  | BASE TABLE |
 | [public.teams](public.teams.md) | 5 |  | BASE TABLE |
-| [public.pending_roster](public.pending_roster.md) | 14 |  | VIEW |
+| [public.pending_roster](public.pending_roster.md) | 15 |  | VIEW |
 | [public.rnlsi](public.rnlsi.md) | 6 |  | VIEW |
 | [public.bis_demand_vs_awards](public.bis_demand_vs_awards.md) | 7 |  | VIEW |
 | [public.priority_order_stale_entries](public.priority_order_stale_entries.md) | 10 |  | VIEW |
@@ -69,7 +69,6 @@
 | public.archive_current_season | jsonb | p_team_id integer, p_roster_snapshot jsonb | FUNCTION |
 | public.unarchive_season | jsonb | p_team_id integer, p_index integer | FUNCTION |
 | public.is_own_player | bool | p_player_id integer | FUNCTION |
-| public.submit_season_signup | int4 | p_team_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text | FUNCTION |
 | public.notify_player | int4 | p_player_id integer, p_message text | FUNCTION |
 | public.submit_bis_link | int4 | p_team_id integer, p_name_realm text, p_bis_link text, p_player_note text DEFAULT NULL::text | FUNCTION |
 | public.submit_mplus_exclusion | int4 | p_team_id integer, p_name_realm text, p_raiderio_url text DEFAULT NULL::text, p_reason text DEFAULT NULL::text | FUNCTION |
@@ -84,6 +83,7 @@
 | public.direct_mark_received | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_slot text DEFAULT NULL::text | FUNCTION |
 | public.sync_bis_obtained_from_self_received | trigger |  | FUNCTION |
 | public.flag_bis_list_changed | int4 | p_team_id integer, p_name_realm text, p_player_note text DEFAULT NULL::text | FUNCTION |
+| public.submit_season_signup | int4 | p_team_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text, p_swap_from_name_realm text DEFAULT NULL::text | FUNCTION |
 
 ## Enums
 
@@ -295,6 +295,7 @@ erDiagram
   text signup_officer_note
   integer approved_player_id FK
   timestamp_with_time_zone updated_at
+  text swap_from_name_realm
 }
 "public.self_received_requests" {
   integer id
@@ -349,6 +350,7 @@ erDiagram
   text signup_officer_note
   timestamp_with_time_zone reviewed_at
   integer reviewed_by
+  text swap_from_name_realm
 }
 "public.rnlsi" {
   integer player_id
