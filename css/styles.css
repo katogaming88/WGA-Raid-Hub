@@ -144,6 +144,10 @@ a.prog-boss-pulls:hover { color:var(--gold); text-decoration:underline; }
 
 /* Public recent loot */
 .pub-loot { width:100%; max-width:760px; }
+.roster-sub-nav { display:flex; gap:1.25rem; margin-bottom:1rem; border-bottom:1px solid var(--border); }
+.roster-sub-tab { font-family:'Rajdhani',sans-serif; font-size:0.95rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.5rem 0; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--text-muted); cursor:pointer; }
+.roster-sub-tab:hover { color:var(--text); }
+.roster-sub-tab.active { color:var(--gold-light); border-bottom-color:var(--gold); }
 .pub-loot-title { font-size:0.91rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-muted); font-weight:600; margin-bottom:0.5rem; padding-bottom:0.4rem; border-bottom:1px solid var(--border-mid); }
 .pub-loot-row { display:grid; grid-template-columns:90px 1fr auto auto; align-items:center; gap:0.6rem; padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:1.02rem; }
 .pub-loot-player { color:var(--gold); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
