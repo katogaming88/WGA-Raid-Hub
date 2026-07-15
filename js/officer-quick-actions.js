@@ -12,6 +12,19 @@ function _qaRender() {
   bar.style.display = _qaIsOfficer() ? '' : 'none';
 }
 
+// Officer Access nav link: visible to officers/team leaders (isOfficer
+// already folds in team_leader, see discord.js's session mapping) and site
+// admins (who may need officer.html's Admin tab for a team they aren't
+// directly staffed on). Hidden for a plain raider or no session at all --
+// defaults to display:none in the markup itself so there's no flash of it
+// before the first session check resolves.
+function _renderOfficerNavLink() {
+  var link = document.getElementById('navOfficer');
+  if (!link) return;
+  var s = typeof getDiscordSession === 'function' && getDiscordSession();
+  link.style.display = s && (s.isOfficer || s.isAdmin) ? '' : 'none';
+}
+
 // ── Player selector gating ────────────────────────────────────────────────────
 // No session / unclaimed  -> hide card entirely
 // Logged in, non-officer  -> "View My Profile" button only
@@ -133,12 +146,13 @@ function _renderClaimPromptLoading() {
   card.style.display = '';
 }
 
-// Officer bar + player selector + claim prompt all react to the Discord session;
-// refresh the three together on every transition.
+// Officer bar + player selector + claim prompt + officer nav link all react
+// to the Discord session; refresh them together on every transition.
 function _qaRefresh() {
   _qaRender();
   _renderPlayerSelector();
   _renderClaimPrompt();
+  _renderOfficerNavLink();
 }
 
 // Callbacks invoked by discord.js

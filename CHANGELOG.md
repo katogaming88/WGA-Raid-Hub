@@ -8,6 +8,18 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.33.39] - 2026-07-14
+
+### Frontend
+
+- Season History now has a "View BiS" button per archived season, showing each player's BiS list (item, slot, obtained) as it stood at archive time -- same read-only snapshot pattern as the existing "View Roster" button.
+- The Archive Season confirmation message now says what's actually about to happen to BiS items, M+ exclusion, and Bench status, not just the season name/dates.
+- The public site's "Officer Access" nav link is now hidden for plain raiders -- previously visible to everyone regardless of role, which no longer makes sense now that officer access is Discord-only (#495). Stays visible for officers, team leaders, and site admins.
+
+### Backend
+
+- `archive_current_season()` now also resets state that had no season concept in the schema at all, and so persisted forever across every archive: real-item `bis_items` rows are snapshotted into the season-history entry (placeholders included, for a complete record) and then wiped -- a new tier's loot table is almost always a different set of items, so last tier's real-item BiS rows were dead weight. Placeholder entries (M+/Crafted/Catalyst) survive the wipe untouched, since they aren't tied to specific gear. `players.m_plus_excluded` (and its `m_plus_note` reason) resets to false for the active roster, since that flag means "doesn't need gear right now" and a new tier means everyone needs gear again. `players.is_bench` also resets to false for the active roster -- `is_trial` is deliberately left alone, since trial status is still a specific Trial Promotions decision, not something a new tier changes on its own. `rclc_loot` (actual loot-award history) is unaffected either way -- it's an independent child of the shared item catalog, not of `bis_items`.
+
 ## [3.33.38] - 2026-07-14
 
 ### Frontend

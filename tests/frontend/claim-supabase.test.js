@@ -473,6 +473,43 @@ describe('_renderClaimPrompt', () => {
   });
 });
 
+describe('_renderOfficerNavLink', () => {
+  function setup() {
+    const els = { navOfficer: makeEl({ style: { display: 'none' } }) };
+    let current = null;
+    const sandbox = loadQuickActions({ els, getSession: () => current });
+    return { els, sandbox, setSession: (s) => (current = s) };
+  }
+
+  it('shows the link for an officer', () => {
+    const { els, sandbox, setSession } = setup();
+    setSession({ username: 'Kato', isOfficer: true, isAdmin: false });
+    sandbox._renderOfficerNavLink();
+    expect(els.navOfficer.style.display).toBe('');
+  });
+
+  it('shows the link for a site admin who is not an officer on this team', () => {
+    const { els, sandbox, setSession } = setup();
+    setSession({ username: 'Kato', isOfficer: false, isAdmin: true });
+    sandbox._renderOfficerNavLink();
+    expect(els.navOfficer.style.display).toBe('');
+  });
+
+  it('hides the link for a plain raider', () => {
+    const { els, sandbox, setSession } = setup();
+    setSession({ username: 'Kato', isOfficer: false, isAdmin: false });
+    sandbox._renderOfficerNavLink();
+    expect(els.navOfficer.style.display).toBe('none');
+  });
+
+  it('hides the link when logged out', () => {
+    const { els, sandbox, setSession } = setup();
+    setSession(null);
+    sandbox._renderOfficerNavLink();
+    expect(els.navOfficer.style.display).toBe('none');
+  });
+});
+
 // #371: shown the instant a real auth session exists but resolveDiscordSession()
 // hasn't resolved the mapped shape yet, so the card isn't just invisible for
 // however long that takes.
