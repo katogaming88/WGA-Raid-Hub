@@ -1,0 +1,14 @@
+-- Missing Signups incorrectly flags a raider's current main as missing when
+-- they've already submitted a mainswap signup under their new character's
+-- name -- fetchMissingSignups() (js/tabs/tab-pending-roster.js) only matches
+-- season_signups.signup_name_realm (the new name) against the current roster
+-- row's name_realm (the old character, still live until Add-to-Roster runs).
+--
+-- js/signup.js already computes the old, Discord-claim-verified character
+-- name at submit time (discordSession.nameRealm, when the typed name differs
+-- from the claim) but only ever sent a bare main_swap boolean to the RPC --
+-- the actual old name was discarded. This column gives it a home so the
+-- Missing Signups check can match on it too. Only populated for the
+-- verified-claim case; the free-typed "I'm switching mains" text box (no
+-- claim on file) stays unverified self-report and is intentionally left out.
+alter table public.season_signups add column swap_from_name_realm text;

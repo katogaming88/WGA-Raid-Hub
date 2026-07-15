@@ -30,7 +30,8 @@ function mapPendingRosterRow(row) {
     mainSwap: !!row.main_swap,
     notes: row.player_note || '',
     officerNote: row.signup_officer_note || '',
-    season: row.season || ''
+    season: row.season || '',
+    swapFromNameRealm: row.swap_from_name_realm || ''
   };
 }
 
@@ -85,7 +86,7 @@ function fetchMissingSignups(callback) {
   }
   supabaseClient
     .from('season_signups')
-    .select('signup_name_realm, status, season')
+    .select('signup_name_realm, swap_from_name_realm, status, season')
     .eq('team_id', _teamCfg.supabaseTeamId)
     .then(function (result) {
       if (result.error) {
@@ -98,6 +99,10 @@ function fetchMissingSignups(callback) {
         if (row.status === 'rejected') return;
         if (season && row.season !== season) return;
         if (row.signup_name_realm) submitted[row.signup_name_realm.toLowerCase()] = true;
+        // Verified-claim mainswap: the old character already has a pending
+        // signup in flight, so it shouldn't show as missing even though its
+        // own name_realm never appears as signup_name_realm.
+        if (row.swap_from_name_realm) submitted[row.swap_from_name_realm.toLowerCase()] = true;
       });
       var missing = roster
         .filter(function (p) {
@@ -675,6 +680,15 @@ function buildAddToRosterControlHtml(e, isNew) {
   var swapPicker = '';
   if (e.mainSwap) {
     var savedSwapId = _pendingSwapOverride[e.signupId];
+    // Verified-claim mainswap (swap_from_name_realm set at signup time,
+    // js/signup.js's claimDiffers branch): auto-select the old character
+    // instead of making the officer pick it manually, unless they've already
+    // overridden it this session. The free-typed swap case has no verified
+    // name to match on, so it still defaults to the blank option.
+    if (savedSwapId == null && e.swapFromNameRealm) {
+      var autoMatch = findRosterPlayerByNameRealm(e.swapFromNameRealm);
+      if (autoMatch) savedSwapId = autoMatch.id;
+    }
     var options = roster
       .map(function (p) {
         return (

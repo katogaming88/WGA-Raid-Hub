@@ -141,6 +141,7 @@ Lifecycle: `pending` -> `approved` -> `added` (or `rejected` at review). The "Pe
 | `signup_officer_note` | text        | Officer's internal note on the application                                       |
 | `approved_player_id`  | int4        | FK -> `players.id` ON DELETE SET NULL -- the player row created when the signup is added to the roster (status `added`) |
 | `updated_at`          | timestamptz | Auto-set on every UPDATE via trigger                                             |
+| `swap_from_name_realm` | text       | The old character's name-realm for a verified-claim mainswap (`js/signup.js`'s `discordSession.nameRealm` when the typed name differs from the applicant's Discord claim); null for the free-typed "I'm switching mains" case, which has no claim backing it |
 
 ---
 

@@ -88,6 +88,7 @@ erDiagram
   text signup_officer_note
   integer approved_player_id FK
   timestamp_with_time_zone updated_at
+  text swap_from_name_realm
 }
 "public.teams" {
   integer id

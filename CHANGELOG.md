@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.35.1] - 2026-07-15
+
+### Frontend
+
+- Fixed Missing Signups incorrectly flagging a raider's current main as missing when they'd already submitted a mainswap signup under their new character's name (Discord-claim-verified swaps only). The old character name is now recorded at signup time so the check can match on it.
+
+### Backend
+
+- Added `season_signups.swap_from_name_realm` and a matching `submit_season_signup` parameter to persist the verified-claim mainswap's old character name, previously computed client-side and discarded.
+
 ## [3.35.0] - 2026-07-15
 
 ### Frontend

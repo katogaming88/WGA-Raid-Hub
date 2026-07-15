@@ -20,7 +20,8 @@ CREATE VIEW pending_roster AS (
     s.player_note,
     s.signup_officer_note,
     s.reviewed_at,
-    s.reviewed_by
+    s.reviewed_by,
+    s.swap_from_name_realm
    FROM (season_signups s
      LEFT JOIN classes_specs cs ON ((cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id))))
   WHERE ((s.status = 'approved'::text) AND (s.approved_player_id IS NULL))
@@ -47,12 +48,13 @@ CREATE VIEW pending_roster AS (
 | signup_officer_note | text |  | true |  |  |  |
 | reviewed_at | timestamp with time zone |  | true |  |  |  |
 | reviewed_by | integer |  | true |  |  |  |
+| swap_from_name_realm | text |  | true |  |  |  |
 
 ## Referenced Tables
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
-| [public.season_signups](public.season_signups.md) | 16 |  | BASE TABLE |
+| [public.season_signups](public.season_signups.md) | 17 |  | BASE TABLE |
 | [public.classes_specs](public.classes_specs.md) | 4 |  | BASE TABLE |
 
 ## Relations
@@ -76,6 +78,7 @@ erDiagram
   text signup_officer_note
   timestamp_with_time_zone reviewed_at
   integer reviewed_by
+  text swap_from_name_realm
 }
 ```
 

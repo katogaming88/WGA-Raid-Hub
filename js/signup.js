@@ -487,7 +487,11 @@ function submitSignup() {
       p_spec: signupData.mainSpec,
       p_off_specs: (signupData.offSpecs || []).join(', '),
       p_main_swap: !!signupData.mainSwap,
-      p_player_note: signupData.notes
+      p_player_note: signupData.notes,
+      // Only the verified-claim case (claimDiffers, above) sets this to the
+      // Discord-claimed character; the free-typed manual swap box has no
+      // claim backing it and stays unlinked on purpose.
+      p_swap_from_name_realm: claimDiffers ? discordSession.nameRealm : null
     })
     .then(function (result) {
       if (result.error) {

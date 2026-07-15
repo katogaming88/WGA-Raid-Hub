@@ -20,6 +20,7 @@
 | signup_officer_note | text |  | true |  |  |  |
 | approved_player_id | integer |  | true |  | [public.players](public.players.md) |  |
 | updated_at | timestamp with time zone |  | true |  |  |  |
+| swap_from_name_realm | text |  | true |  |  |  |
 
 ## Constraints
 
@@ -74,6 +75,7 @@ erDiagram
   text signup_officer_note
   integer approved_player_id FK
   timestamp_with_time_zone updated_at
+  text swap_from_name_realm
 }
 "public.teams" {
   integer id
