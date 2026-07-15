@@ -11,13 +11,16 @@
 --   ...0003  raider on team 1
 --   ...0004  site admin (no team role)
 --   ...0005  officer on team 2
+--   ...0006  a season_signups.auth_user_id owner, no team_members/players row
+--            (get_own_signup()/update_own_signup() never touch those tables)
 
 insert into auth.users (id) values
   ('00000000-0000-0000-0000-000000000001'),
   ('00000000-0000-0000-0000-000000000002'),
   ('00000000-0000-0000-0000-000000000003'),
   ('00000000-0000-0000-0000-000000000004'),
-  ('00000000-0000-0000-0000-000000000005');
+  ('00000000-0000-0000-0000-000000000005'),
+  ('00000000-0000-0000-0000-000000000006');
 
 insert into public.teams (id, name, slug) values
   (1, 'Team Phoenix', 'phoenix'),

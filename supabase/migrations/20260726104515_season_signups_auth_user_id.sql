@@ -1,0 +1,22 @@
+-- Ownership link for season_signups (#500).
+--
+-- season_signups has never recorded who submitted a signup -- only the
+-- free-text signup_name_realm the submitter typed. That makes a submission
+-- typo, a realm transfer, or a claim-timing race permanently
+-- officer-hand-patch-only: nothing ties the row back to a person who could
+-- be allowed to fix it themselves.
+--
+-- Nullable and populated only inside submit_season_signup()'s body, from
+-- auth.uid() at submission time, only when the submitter is signed in then
+-- -- a raider can still sign up before claiming a character or before
+-- logging in at all (submit_season_signup stays anon-callable), so this
+-- column is not always populated. Accepted limitation, not a bug: a signup
+-- submitted while signed out still has no self-edit path and still needs an
+-- officer to hand-patch it, same as today.
+--
+-- No new read/write rule needed on season_signups itself: this column is
+-- only ever read or written inside the SECURITY DEFINER functions that
+-- follow (submit_season_signup's capture; get_own_signup/update_own_signup's
+-- use), matching site_admins_auth_user_id_fkey's FK shape.
+alter table public.season_signups
+  add column if not exists auth_user_id uuid references auth.users(id) on delete set null;

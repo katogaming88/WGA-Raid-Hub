@@ -21,6 +21,7 @@
 | approved_player_id | integer |  | true |  | [public.players](public.players.md) |  |
 | updated_at | timestamp with time zone |  | true |  |  |  |
 | swap_from_name_realm | text |  | true |  |  |  |
+| auth_user_id | uuid |  | true |  |  |  |
 
 ## Constraints
 
@@ -28,6 +29,7 @@
 | ---- | ---- | ---------- |
 | season_signups_player_only_when_added | CHECK | CHECK (((approved_player_id IS NULL) OR (status = 'added'::text))) |
 | season_signups_status_check | CHECK | CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text, 'added'::text]))) |
+| season_signups_auth_user_id_fkey | FOREIGN KEY | FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL |
 | season_signups_swap_class_spec_id_fkey | FOREIGN KEY | FOREIGN KEY (swap_class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE |
 | signups_class_spec_id_fkey | FOREIGN KEY | FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE |
 | season_signups_approved_player_id_fkey | FOREIGN KEY | FOREIGN KEY (approved_player_id) REFERENCES players(id) ON DELETE SET NULL |
@@ -76,6 +78,7 @@ erDiagram
   integer approved_player_id FK
   timestamp_with_time_zone updated_at
   text swap_from_name_realm
+  uuid auth_user_id FK
 }
 "public.teams" {
   integer id

@@ -89,6 +89,7 @@ erDiagram
   integer approved_player_id FK
   timestamp_with_time_zone updated_at
   text swap_from_name_realm
+  uuid auth_user_id FK
 }
 "public.teams" {
   integer id

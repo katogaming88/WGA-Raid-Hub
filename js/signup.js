@@ -1,10 +1,130 @@
 var signupStep = 1;
 var signupData = {};
+// Holds the row rendered by renderSignupSummary(), so its Edit button can
+// call startSignupEdit() with no args -- simpler and safer than round-
+// tripping the row through the DOM (e.g. a serialized <script> blob).
+var _ownSignupRow = null;
 
+// Local copy of tab-attendance.js's escHtml() -- that bundle isn't loaded on
+// the public page, and renderSignupSummary() interpolates raider-supplied
+// text (signup_name_realm, player_note, off_specs) the same way
+// tab-signups.js already does for player_note when officers view it.
+function signupEscHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// Checks for an existing signup before deciding what to render (#500) --
+// via get_own_signup(), not any client-cached id, since a signup submitted
+// on a different device/session (or a prior page load, since the create
+// RPC's returned id was never persisted) still needs to be found.
 function showSignupView() {
-  signupStep = 1;
-  signupData = {};
   showView('signup');
+  var container = document.getElementById('signupForm');
+  container.innerHTML = '<p class="signup-step-desc">Loading...</p>';
+
+  var session = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
+  if (!supabaseClient || !session) {
+    signupStep = 1;
+    signupData = {};
+    renderSignupStep();
+    return;
+  }
+
+  supabaseClient.rpc('get_own_signup', { p_team_id: _teamCfg.supabaseTeamId }).then(function (result) {
+    var row = result.error ? null : (result.data && result.data[0]) || null;
+    if (row) {
+      renderSignupSummary(row);
+    } else {
+      signupStep = 1;
+      signupData = {};
+      renderSignupStep();
+    }
+  });
+}
+
+// Raider-facing "Your Signup" summary (#500) -- shown instead of a blank
+// fresh form when get_own_signup() finds an existing row for the currently
+// active season. Never renders any officer-only field: the RPC's return
+// shape structurally excludes signup_officer_note/reviewed_by, so there's
+// nothing to accidentally bind to a template here.
+function renderSignupSummary(row) {
+  _ownSignupRow = row;
+  var container = document.getElementById('signupForm');
+  var statusLabels = { pending: 'Pending', approved: 'Approved', rejected: 'Denied', added: 'Rostered' };
+  var statusLabel = statusLabels[row.status] || row.status;
+  var statusClass =
+    row.status === 'pending' || row.status === 'approved' ? 'signup-status-open' : 'signup-status-closed';
+
+  var displayClass = row.main_swap ? row.swap_class : row.class;
+  var displaySpec = row.main_swap ? row.swap_spec : row.spec;
+  var swapNote =
+    row.main_swap && row.swap_from_name_realm
+      ? '<p class="signup-step-desc">Switching from <strong style="color:var(--text);">' +
+        signupEscHtml(row.swap_from_name_realm) +
+        '</strong>.</p>'
+      : '';
+
+  var actionsHtml;
+  if (row.status === 'pending' || row.status === 'approved') {
+    actionsHtml = '<button class="btn btn-gold" onclick="startSignupEdit()">Edit Signup</button>';
+  } else if (row.status === 'added') {
+    actionsHtml = '<p class="signup-step-desc">You\'re on the roster for this season -- signup details are locked.</p>';
+  } else {
+    actionsHtml =
+      '<p class="signup-step-desc">This signup was not approved. Contact an officer on Discord if you have questions.</p>';
+  }
+
+  container.innerHTML =
+    '<h2 class="signup-step-title">Your Signup</h2>' +
+    '<p class="signup-step-desc"><span class="signup-status-badge ' +
+    statusClass +
+    '">' +
+    statusLabel +
+    '</span></p>' +
+    '<p class="signup-step-desc"><strong style="color:var(--text);">' +
+    signupEscHtml(row.signup_name_realm) +
+    '</strong> -- ' +
+    (displaySpec
+      ? signupEscHtml(displaySpec) + ' ' + signupEscHtml(displayClass)
+      : signupEscHtml(displayClass) || '-') +
+    '</p>' +
+    swapNote +
+    (row.off_specs ? '<p class="signup-step-desc">Off-specs: ' + signupEscHtml(row.off_specs) + '</p>' : '') +
+    (row.player_note ? '<p class="signup-step-desc">Note: ' + signupEscHtml(row.player_note) + '</p>' : '') +
+    '<div class="signup-actions">' +
+    actionsHtml +
+    '<button class="btn btn-muted" onclick="showView(\'landing\')">Back to Roster</button>' +
+    '</div>';
+}
+
+// Re-enters the existing step 1-4 components pre-filled with the signup
+// being edited (#500). mainSwap/mainSwapChecked/matchesClaim/claimNameRealm
+// are intentionally left unset so step 4 redrives claim-matching against the
+// CURRENT claim state, same as a fresh signup -- the actual fix for the
+// claim-timing race that motivated this issue: the raider's claim may have
+// resolved/changed since the original submission.
+function startSignupEdit() {
+  var row = _ownSignupRow;
+  if (!row) return;
+  signupData = {
+    editingSignupId: row.id,
+    charName: (row.signup_name_realm || '').split('-')[0],
+    realm: (row.signup_name_realm || '').split('-').slice(1).join('-'),
+    className: row.main_swap ? row.swap_class : row.class,
+    mainSpec: row.main_swap ? row.swap_spec : row.spec,
+    offSpecs: (row.off_specs || '')
+      .split(',')
+      .map(function (s) {
+        return s.trim();
+      })
+      .filter(Boolean),
+    notes: row.player_note || ''
+  };
+  signupStep = 1;
   renderSignupStep();
 }
 
@@ -63,6 +183,7 @@ function renderSignupStep() {
       '<p id="signupError" class="signup-error"></p>' +
       '<div class="signup-actions">' +
       '<button class="btn btn-muted" onclick="signupBack()">Back</button>' +
+      '<button class="btn btn-gold" onclick="signupNext()">Next</button>' +
       '</div>';
   } else if (signupStep === 3) {
     var specData = CLASS_SPECS[signupData.className];
@@ -171,11 +292,18 @@ function renderSignupStep() {
       '<button class="btn btn-gold" id="signupSubmitBtn" onclick="submitSignup()">Submit</button>' +
       '</div>';
   } else if (signupStep === 5) {
+    var wasEdit = !!signupData.editingSignupId;
     html =
       '<div class="signup-confirm">' +
       '<div class="signup-confirm-check">&#10003;</div>' +
-      '<h2 class="signup-step-title">Signup Submitted</h2>' +
-      '<p class="signup-step-desc">Your signup has been submitted. Officers will review your application and be in touch. If you need to update anything, message Katorri or Rod on Discord -- do not resubmit without officer approval.</p>' +
+      '<h2 class="signup-step-title">' +
+      (wasEdit ? 'Signup Updated' : 'Signup Submitted') +
+      '</h2>' +
+      '<p class="signup-step-desc">' +
+      (wasEdit
+        ? 'Your signup has been updated. Officers will see the changes on their next review.'
+        : 'Your signup has been submitted. Officers will review your application and be in touch. If you need to update anything, message Katorri or Rod on Discord -- do not resubmit without officer approval.') +
+      '</p>' +
       '<button class="btn btn-gold" onclick="showView(\'landing\')" style="margin-top:1.5rem;">Back to Roster</button>' +
       '</div>';
   }
@@ -336,13 +464,21 @@ function buildClassMismatchWarningHtml() {
   );
 }
 
+// Selects a class on step 2 without advancing -- a separate Next button
+// (signupNext(), step 2 case) moves to step 3. Only clears spec/off-specs/
+// role when the class actually changes: #500's edit flow pre-fills
+// className/mainSpec/offSpecs from the existing signup, and re-clicking the
+// same already-selected class (nothing stops a raider from doing that)
+// shouldn't discard a pre-filled spec that's still valid for that class.
 function signupSelectClass(cls) {
+  var classChanged = cls !== signupData.className;
   signupData.className = cls;
-  signupData.mainSpec = '';
-  signupData.offSpecs = [];
-  signupData.role = '';
+  if (classChanged) {
+    signupData.mainSpec = '';
+    signupData.offSpecs = [];
+    signupData.role = '';
+  }
   signupData.classMismatchConfirmed = false;
-  signupStep = 3;
   renderSignupStep();
 }
 
@@ -383,6 +519,12 @@ function signupNext() {
     }
 
     signupStep = 2;
+  } else if (signupStep === 2) {
+    if (!signupData.className) {
+      document.getElementById('signupError').textContent = 'Please select a class.';
+      return;
+    }
+    signupStep = 3;
   } else if (signupStep === 3) {
     var mainSpecEl = document.querySelector('input[name="mainSpec"]:checked');
     var offSpecEls = document.querySelectorAll('input[name="offSpec"]:checked');
@@ -479,34 +621,53 @@ function submitSignup() {
     return;
   }
 
-  supabaseClient
-    .rpc('submit_season_signup', {
-      p_team_id: _teamCfg.supabaseTeamId,
-      p_name_realm: signupData.charName + '-' + signupData.realm,
-      p_class: signupData.className,
-      p_spec: signupData.mainSpec,
-      p_off_specs: (signupData.offSpecs || []).join(', '),
-      p_main_swap: !!signupData.mainSwap,
-      p_player_note: signupData.notes,
-      // Only the verified-claim case (claimDiffers, above) sets this to the
-      // Discord-claimed character; the free-typed manual swap box has no
-      // claim backing it and stays unlinked on purpose.
-      p_swap_from_name_realm: claimDiffers ? discordSession.nameRealm : null
-    })
-    .then(function (result) {
-      if (result.error) {
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = 'Submit';
-        }
-        var err = document.getElementById('signupError');
-        if (err) err.textContent = 'Submission failed. Please try again or contact an officer on Discord.';
-        return;
-      }
+  // #500: an edit calls update_own_signup instead of submit_season_signup.
+  // Both take the same field shape (class/spec/off-specs/main-swap/note/
+  // swap-from-name-realm) -- update_own_signup just identifies the row by
+  // p_signup_id instead of creating one under p_team_id.
+  var isEdit = !!signupData.editingSignupId;
+  var rpcName = isEdit ? 'update_own_signup' : 'submit_season_signup';
+  var rpcParams = {
+    p_name_realm: signupData.charName + '-' + signupData.realm,
+    p_class: signupData.className,
+    p_spec: signupData.mainSpec,
+    p_off_specs: (signupData.offSpecs || []).join(', '),
+    p_main_swap: !!signupData.mainSwap,
+    p_player_note: signupData.notes,
+    // Only the verified-claim case (claimDiffers, above) sets this to the
+    // Discord-claimed character; the free-typed manual swap box has no
+    // claim backing it and stays unlinked on purpose.
+    p_swap_from_name_realm: claimDiffers ? discordSession.nameRealm : null
+  };
+  if (isEdit) {
+    rpcParams.p_signup_id = signupData.editingSignupId;
+  } else {
+    rpcParams.p_team_id = _teamCfg.supabaseTeamId;
+  }
 
+  supabaseClient.rpc(rpcName, rpcParams).then(function (result) {
+    if (result.error) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Submit';
+      }
+      var err = document.getElementById('signupError');
+      if (err) {
+        // update_own_signup's exceptions (locked/not-found) are purpose-
+        // written to be shown to the raider verbatim; submit_season_signup's
+        // are not all raider-safe as-is, so that path keeps a generic message.
+        err.textContent = isEdit
+          ? result.error.message
+          : 'Submission failed. Please try again or contact an officer on Discord.';
+      }
+      return;
+    }
+
+    if (!isEdit) {
       // Best-effort Discord notification via the discord-bot-webhook Edge
-      // Function. Not gated on its result -- the Supabase insert above is
-      // the write of record.
+      // Function -- only for a fresh submission, not an edit; officers don't
+      // need a second "someone signed up" ping. Not gated on its result --
+      // the Supabase insert above is the write of record.
       supabaseClient.functions.invoke('discord-bot-webhook', {
         body: {
           action: 'signup',
@@ -523,8 +684,9 @@ function submitSignup() {
           }
         }
       });
+    }
 
-      signupStep = 5;
-      renderSignupStep();
-    });
+    signupStep = 5;
+    renderSignupStep();
+  });
 }
