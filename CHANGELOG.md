@@ -18,6 +18,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 - Added `season_signups.auth_user_id`, captured by `submit_season_signup()` from `auth.uid()` when the submitter is signed in at submission time.
 - Added `get_own_signup()` and `update_own_signup()` (both SECURITY DEFINER), the read/edit path backing the above -- the only way a raider can see or change their own signup; `season_signups` itself still has no read or write rule for a raider role. (#500)
+- One-time backfill: links `auth_user_id` on signups submitted before this shipped (never captured until now) to their submitter's claimed account, where an unambiguous claim already exists -- so the currently pending/approved signups already in the system get self-edit access too, not just new ones going forward. (#500)
 
 ## [3.35.1] - 2026-07-15
 
