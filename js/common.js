@@ -27,7 +27,13 @@ var TEAMS = {
 };
 
 var _teamParam = (location.search.match(/[?&]team=([^&]+)/) || [])[1];
-if (_teamParam && _teamParam in TEAMS) {
+var _hadExplicitTeam = !!(_teamParam && _teamParam in TEAMS);
+// A "cold landing" is a visit with no explicit ?team= and no prior team choice
+// this session -- index.html uses this to show a team picker / try a claim-based
+// auto-redirect instead of silently defaulting to Phoenix (raised by raiders on
+// other teams landing on the wrong roster).
+var IS_COLD_LANDING = !_hadExplicitTeam && !sessionStorage.getItem('wga_team');
+if (_hadExplicitTeam) {
   sessionStorage.setItem('wga_team', _teamParam);
 } else {
   _teamParam = sessionStorage.getItem('wga_team') || 'phoenix';
@@ -35,7 +41,7 @@ if (_teamParam && _teamParam in TEAMS) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.33.39';
+var VERSION = '3.34.0';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {

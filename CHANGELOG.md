@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.34.0] - 2026-07-15
+
+### Frontend
+
+- Visiting the site with no `?team=` and no team chosen yet this session no longer silently defaults to Phoenix's roster. A logged-in raider with a claimed character on another team is now redirected there automatically; everyone else sees a "Which team are you viewing?" picker instead.
+
 ## [3.33.39] - 2026-07-14
 
 ### Frontend
