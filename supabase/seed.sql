@@ -87,8 +87,8 @@ insert into public.player_wcl_season_perf (player_id, team_id, season) values
   (1, 1, 'seed-season');
 
 insert into public.team_settings (team_id, config) values
-  (1, '{}'),
-  (2, '{}');
+  (1, '{"activeSignupSeason":"seed-season"}'),
+  (2, '{"activeSignupSeason":"seed-season"}');
 
 insert into public.item_bosses (item_id, boss) values
   (1, 'Seed Test Boss');

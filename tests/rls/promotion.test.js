@@ -69,17 +69,27 @@ describe('promotion of an approved signup', () => {
     });
   });
 
-  it('removes the signup from pending_roster', async () => {
+  it('removes the signup from pending_roster and incoming_roster', async () => {
     await withTxn(async (q, asOfficer) => {
       const before = await asOfficer('select count(*)::int as n from public.pending_roster where signup_id = $1', [
         APPROVED_SIGNUP
       ]);
       expect(before.rows[0].n).toBe(1);
+      const beforeIncoming = await q('select count(*)::int as n from public.incoming_roster where signup_id = $1', [
+        APPROVED_SIGNUP
+      ]);
+      expect(beforeIncoming.rows[0].n).toBe(1);
+
       await promote(asOfficer, APPROVED_SIGNUP);
+
       const after = await asOfficer('select count(*)::int as n from public.pending_roster where signup_id = $1', [
         APPROVED_SIGNUP
       ]);
       expect(after.rows[0].n).toBe(0);
+      const afterIncoming = await q('select count(*)::int as n from public.incoming_roster where signup_id = $1', [
+        APPROVED_SIGNUP
+      ]);
+      expect(afterIncoming.rows[0].n).toBe(0);
     });
   });
 

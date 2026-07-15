@@ -41,7 +41,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.34.0';
+var VERSION = '3.35.0';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -883,6 +883,37 @@ function fetchSupabaseMPlusRejections() {
     });
 }
 
+// Incoming-roster reads come from Supabase (#499): a public view over
+// approved-but-unpromoted season_signups, scoped server-side to the team's
+// active signup season. Raider-facing only (name + class/spec), unlike
+// pending_roster which is officer-only and full-detail. Resolves to the
+// view's rows, or null on any failure so the caller renders nothing rather
+// than blocking the Roster tab.
+function fetchSupabaseIncomingRoster() {
+  if (!supabaseClient) return Promise.resolve(null);
+  var query = supabaseClient
+    .from('incoming_roster')
+    .select('signup_id, signup_name_realm, class, spec, role')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Supabase incoming_roster query failed.', result.error.message);
+        return null;
+      }
+      return result.data && result.data.length ? result.data : null;
+    })
+    .catch(function (err) {
+      console.warn('Supabase incoming_roster query failed.', err);
+      return null;
+    });
+  var timeout = new Promise(function (resolve) {
+    setTimeout(function () {
+      resolve(null);
+    }, 10000);
+  });
+  return Promise.race([query, timeout]);
+}
+
 /**
  * Maps Supabase players rows to the roster shape the Apps Script core payload
  * emits (see getRoster() in gs/wgaWebApp.gs), so no render code changes.
@@ -928,6 +959,35 @@ function mapSupabaseRoster(rows, jsonpRoster, mplusRejections) {
       mPlusRejected: mPlusRejected,
       mPlusRejectionNote: mPlusRejected ? mplusRejections[row.id] : '',
       officerNote: row.officer_notes || ''
+    });
+  });
+  return players;
+}
+
+/**
+ * Maps incoming_roster rows to the shape buildIncomingRosterSection()
+ * (js/roster.js) expects. nick is always '' -- a signup has no nickname
+ * field, that's a players-table concept set after promotion -- so display
+ * always falls back to firstName, matching how buildPublicRosterTab()
+ * already handles player.nick || player.firstName.
+ * @param {any[]} rows - incoming_roster rows
+ * @returns {any[]}
+ */
+function mapSupabaseIncomingRoster(rows) {
+  var players = [];
+  (rows || []).forEach(function (row) {
+    var nameRealm = String(row.signup_name_realm || '').trim();
+    if (!nameRealm) return;
+    if (!row.role) return;
+    var parts = nameRealm.split('-');
+    players.push({
+      signupId: row.signup_id,
+      firstName: parts[0].trim(),
+      realm: parts.slice(1).join('-').trim(),
+      nick: '',
+      class: row.class || '',
+      spec: row.spec || '',
+      role: row.role
     });
   });
   return players;
@@ -1930,6 +1990,8 @@ function loadData(onCoreReady, onHeavyReady) {
   var streamersPromise = fetchSupabaseStreamers();
   // Fired alongside; the heavy callback waits for it before setting raidProgress.
   var raidProgressPromise = fetchSupabaseRaidProgress();
+  // Fired alongside; the heavy callback waits for it before setting incomingRoster.
+  var incomingRosterPromise = fetchSupabaseIncomingRoster();
 
   // Builds DATA from the Supabase roster/settings/M+ rejections, then runs
   // onCoreReady. GAS is retired (#225) -- there is no core payload to overlay
@@ -1978,7 +2040,8 @@ function loadData(onCoreReady, onHeavyReady) {
       selfReceivedPromise,
       attendancePromise,
       streamersPromise,
-      raidProgressPromise
+      raidProgressPromise,
+      incomingRosterPromise
     ]).then(function (results) {
       var lootRows = results[0];
       var bisRows = results[1];
@@ -1991,6 +2054,7 @@ function loadData(onCoreReady, onHeavyReady) {
       var attendanceRows = results[8];
       var streamerRows = results[9];
       var raidProgressRows = results[10];
+      var incomingRosterRows = results[11];
       var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
       DATA.lootCounts = mappedLoot || {};
       var mappedAttendance = attendanceRows !== null ? mapSupabaseAttendanceRaw(attendanceRows, DATA.roster) : null;
@@ -2015,6 +2079,8 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.selfReceived = mappedSelfReceived || {};
       DATA.streamers = mapSupabaseStreamers(streamerRows);
       DATA.raidProgress = mapSupabaseRaidProgress(raidProgressRows);
+      var mappedIncomingRoster = incomingRosterRows ? mapSupabaseIncomingRoster(incomingRosterRows) : null;
+      DATA.incomingRoster = mappedIncomingRoster || [];
       if (typeof populateBossFilters === 'function') populateBossFilters();
       if (onHeavyReady) onHeavyReady();
     });

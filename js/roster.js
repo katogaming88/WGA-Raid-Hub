@@ -15,6 +15,8 @@ function showView(name) {
   if (name === 'roster') {
     document.getElementById('rosterViewWrap').classList.add('active');
     buildPublicRosterTab();
+    buildIncomingRosterSection();
+    showRosterSubTab('current');
   }
   if (name === 'streamers') {
     document.getElementById('streamersViewWrap').classList.add('active');
@@ -140,6 +142,106 @@ function buildPublicRosterTab() {
 
   html += '</tbody></table>';
   container.innerHTML = html;
+}
+
+// Raider-facing preview of approved-but-unpromoted signups for the current
+// signup season (#499) -- same grouped table as buildPublicRosterTab(), but
+// reading DATA.incomingRoster (from the incoming_roster view) instead of
+// DATA.roster. Visibility (and whether the Incoming sub-tab even exists) is
+// handled by showRosterSubTab(), not here -- this only builds the table markup.
+function buildIncomingRosterSection() {
+  var container = document.getElementById('incomingRosterSection');
+  if (!container) return;
+  var rows = (window.DATA && DATA.incomingRoster) || [];
+  if (!rows.length) {
+    container.innerHTML = '';
+    return;
+  }
+
+  var order = ['Tank', 'Heal', 'Melee', 'Ranged'];
+  var labels = { Tank: 'Tanks', Heal: 'Healers', Melee: 'Melee', Ranged: 'Ranged' };
+  var groups = { Tank: [], Heal: [], Melee: [], Ranged: [] };
+
+  for (var i = 0; i < rows.length; i++) {
+    var p = rows[i];
+    if (groups[p.role]) groups[p.role].push(p);
+  }
+
+  var html = '<table class="roster-table"><thead><tr><th>Player</th><th>Class / Spec</th></tr></thead><tbody>';
+
+  for (var r = 0; r < order.length; r++) {
+    var role = order[r];
+    var players = groups[role];
+    if (!players.length) continue;
+    players.sort(function (a, b) {
+      return a.firstName.localeCompare(b.firstName);
+    });
+    html += '<tr class="group-header"><td colspan="2">' + labels[role] + '</td></tr>';
+
+    for (var j = 0; j < players.length; j++) {
+      var player = players[j];
+      var roleColor =
+        player.role === 'Tank'
+          ? 'var(--tank)'
+          : player.role === 'Heal'
+            ? 'var(--heal)'
+            : player.role === 'Ranged'
+              ? 'var(--ranged)'
+              : 'var(--melee)';
+      html +=
+        '<tr>' +
+        '<td><div class="player-name-cell">' +
+        '<div class="mini-avatar" style="background:rgba(0,0,0,0.25);color:' +
+        roleColor +
+        ';border:2px solid ' +
+        roleColor +
+        ';">' +
+        player.firstName.slice(0, 2).toUpperCase() +
+        '</div>' +
+        '<span style="font-weight:600;color:var(--text);">' +
+        player.firstName +
+        '</span>' +
+        '</div></td>' +
+        '<td>' +
+        (player.class
+          ? '<span class="badge badge-class" style="' +
+            classBadgeStyle(player.class) +
+            ';">' +
+            (player.spec || player.class) +
+            '</span>'
+          : '<span style="color:var(--text-dim);">-</span>') +
+        '</td>' +
+        '</tr>';
+    }
+  }
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+// Which of the Roster tab's two sub-tabs is showing -- reset to 'current'
+// whenever a raider navigates into the Roster tab fresh (showView), but left
+// alone when heavy data re-renders while they're already looking at it, so a
+// late-arriving incoming-roster fetch doesn't yank them off what they're
+// reading (#499).
+var _rosterSubTab = 'current';
+
+function showRosterSubTab(tab) {
+  var hasIncoming = ((window.DATA && DATA.incomingRoster) || []).length > 0;
+  _rosterSubTab = hasIncoming && tab === 'incoming' ? 'incoming' : 'current';
+
+  var subNav = document.getElementById('rosterSubNav');
+  var tabCurrentBtn = document.getElementById('rosterSubTabCurrent');
+  var tabIncomingBtn = document.getElementById('rosterSubTabIncoming');
+  var rosterEl = document.getElementById('rosterView');
+  var incomingEl = document.getElementById('incomingRosterSection');
+
+  if (subNav) subNav.style.display = hasIncoming ? 'flex' : 'none';
+  if (tabIncomingBtn) tabIncomingBtn.style.display = hasIncoming ? '' : 'none';
+  if (tabCurrentBtn) tabCurrentBtn.classList.toggle('active', _rosterSubTab === 'current');
+  if (tabIncomingBtn) tabIncomingBtn.classList.toggle('active', _rosterSubTab === 'incoming');
+  if (rosterEl) rosterEl.style.display = _rosterSubTab === 'current' ? '' : 'none';
+  if (incomingEl) incomingEl.style.display = _rosterSubTab === 'incoming' ? '' : 'none';
 }
 
 function updateSignupNavItem() {
@@ -389,6 +491,11 @@ function bootRosterApp() {
         var profileWrap = document.getElementById('profileViewWrap');
         if (sel && sel.value && profileWrap && profileWrap.classList.contains('active')) {
           renderProfile(sel.value, 'landing');
+        }
+        var rosterWrap = document.getElementById('rosterViewWrap');
+        if (rosterWrap && rosterWrap.classList.contains('active')) {
+          buildIncomingRosterSection();
+          showRosterSubTab(_rosterSubTab);
         }
       }
     );

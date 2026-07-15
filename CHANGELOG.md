@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.35.0] - 2026-07-15
+
+### Frontend
+
+- The public Roster tab now has an "Incoming" sub-tab (next to "Current Roster") listing approved signups awaiting their roster add for the current season, grouped by role the same way as the main roster (name + class/spec badge only -- no attendance, items, BiS, or notes, unlike the officer-only Pending Roster worklist). Only appears when there's actually someone incoming. (#499)
+
+### Backend
+
+- Added `public.incoming_roster`, a narrow-columned public view over approved-unpromoted `season_signups` rows, scoped to each team's active signup season, powering the above.
+
 ## [3.34.0] - 2026-07-15
 
 ### Frontend

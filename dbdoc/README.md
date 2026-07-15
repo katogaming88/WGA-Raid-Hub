@@ -39,6 +39,7 @@
 | [public.priority_order_same_boss_conflicts](public.priority_order_same_boss_conflicts.md) | 10 |  | VIEW |
 | [public.priority_order_stale_after_heroic](public.priority_order_stale_after_heroic.md) | 7 |  | VIEW |
 | [public.site_settings](public.site_settings.md) | 4 |  | BASE TABLE |
+| [public.incoming_roster](public.incoming_roster.md) | 6 |  | VIEW |
 
 ## Stored procedures and functions
 
@@ -483,6 +484,14 @@ erDiagram
   boolean maintenance_mode
   text maintenance_message
   timestamp_with_time_zone updated_at
+}
+"public.incoming_roster" {
+  integer signup_id
+  integer team_id
+  text signup_name_realm
+  text class
+  text spec
+  text role
 }
 ```
 
