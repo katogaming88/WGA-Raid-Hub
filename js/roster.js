@@ -404,7 +404,7 @@ function showTeamPickerButtons() {
   var status = document.getElementById('teamPickerStatus');
   var list = document.getElementById('teamPickerList');
   if (spinner) spinner.style.display = 'none';
-  if (status) status.textContent = 'Which team are you viewing?';
+  if (status) status.style.display = 'none';
   if (!list) return;
   list.innerHTML = '';
   Object.keys(TEAMS).forEach(function (slug) {
