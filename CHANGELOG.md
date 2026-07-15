@@ -8,6 +8,17 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.36.0] - 2026-07-15
+
+### Frontend
+
+- Signing up now checks for an existing signup first: a raider who already submitted this season sees a summary of it (status, class/spec, their own note) with an Edit button, instead of a blank fresh form. A pending or approved-but-not-yet-rostered signup can be corrected (typo, realm transfer, mislabeled main swap) without officer involvement; an approved edit reverts to pending for re-review. A signup already added to the roster, or denied, is shown as locked. (#500)
+
+### Backend
+
+- Added `season_signups.auth_user_id`, captured by `submit_season_signup()` from `auth.uid()` when the submitter is signed in at submission time.
+- Added `get_own_signup()` and `update_own_signup()` (both SECURITY DEFINER), the read/edit path backing the above -- the only way a raider can see or change their own signup; `season_signups` itself still has no read or write rule for a raider role. (#500)
+
 ## [3.35.1] - 2026-07-15
 
 ### Frontend

@@ -37,7 +37,7 @@ CREATE VIEW incoming_roster AS (
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
-| [public.season_signups](public.season_signups.md) | 17 |  | BASE TABLE |
+| [public.season_signups](public.season_signups.md) | 18 |  | BASE TABLE |
 | [public.team_settings](public.team_settings.md) | 3 |  | BASE TABLE |
 | [public.classes_specs](public.classes_specs.md) | 4 |  | BASE TABLE |
 

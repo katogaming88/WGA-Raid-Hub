@@ -17,7 +17,7 @@
 | [public.players](public.players.md) | 16 |  | BASE TABLE |
 | [public.priority_order](public.priority_order.md) | 8 |  | BASE TABLE |
 | [public.scoring](public.scoring.md) | 10 |  | BASE TABLE |
-| [public.season_signups](public.season_signups.md) | 17 |  | BASE TABLE |
+| [public.season_signups](public.season_signups.md) | 18 |  | BASE TABLE |
 | [public.self_received_requests](public.self_received_requests.md) | 10 |  | BASE TABLE |
 | [public.site_admins](public.site_admins.md) | 3 |  | BASE TABLE |
 | [public.team_members](public.team_members.md) | 7 |  | BASE TABLE |
@@ -84,6 +84,8 @@
 | public.direct_mark_received | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_slot text DEFAULT NULL::text | FUNCTION |
 | public.sync_bis_obtained_from_self_received | trigger |  | FUNCTION |
 | public.flag_bis_list_changed | int4 | p_team_id integer, p_name_realm text, p_player_note text DEFAULT NULL::text | FUNCTION |
+| public.get_own_signup | record | p_team_id integer | FUNCTION |
+| public.update_own_signup | int4 | p_signup_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text, p_swap_from_name_realm text DEFAULT NULL::text | FUNCTION |
 
 ## Enums
 
@@ -296,6 +298,7 @@ erDiagram
   integer approved_player_id FK
   timestamp_with_time_zone updated_at
   text swap_from_name_realm
+  uuid auth_user_id FK
 }
 "public.self_received_requests" {
   integer id
