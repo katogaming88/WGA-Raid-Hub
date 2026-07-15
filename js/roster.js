@@ -356,39 +356,117 @@ function autoOpenClaimedProfile(nameRealm) {
 }
 
 // Boot -- maintenance mode gates loadData() entirely, before any data loads.
-checkMaintenanceMode().then(function (maint) {
-  if (maint.enabled) {
-    showMaintenanceBanner(maint.message);
+function bootRosterApp() {
+  checkMaintenanceMode().then(function (maint) {
+    if (maint.enabled) {
+      showMaintenanceBanner(maint.message);
+      return;
+    }
+    loadData(
+      function () {
+        populateDropdown();
+        buildPublicStats();
+        buildProgression();
+        buildStreamWidget();
+        // Deep-link support for officer.html's nav (#354) -- its Roster/Streams/Sign
+        // Up/Help links point back at index.html since those views only exist here.
+        var hashView = { roster: 'roster', streams: 'streamers', signup: 'signup', help: 'help' }[
+          (location.hash || '').replace('#', '')
+        ];
+        if (hashView === 'signup') showSignupView();
+        else if (hashView) showView(hashView);
+        else showView('landing');
+        // Init Discord session after core data is ready so the profile deep-link can
+        // find the claimed character in the now-populated player dropdown.
+        if (typeof initDiscordLogin === 'function') initDiscordLogin();
+      },
+      function () {
+        buildPublicStats();
+        buildProgression();
+        buildRecentLoot();
+        buildStreamWidget();
+        var sel = document.getElementById('playerSelect');
+        var profileWrap = document.getElementById('profileViewWrap');
+        if (sel && sel.value && profileWrap && profileWrap.classList.contains('active')) {
+          renderProfile(sel.value, 'landing');
+        }
+      }
+    );
+  });
+}
+
+// Cold-landing team picker (see IS_COLD_LANDING, js/common.js). Shown instead of
+// booting the app for whichever team happens to be the fallback default -- tries
+// a claim-based auto-redirect first, falling back to manual team buttons so a
+// raider on another team never silently lands on Phoenix's roster.
+function showTeamPickerButtons() {
+  var spinner = document.getElementById('teamPickerSpinner');
+  var status = document.getElementById('teamPickerStatus');
+  var list = document.getElementById('teamPickerList');
+  if (spinner) spinner.style.display = 'none';
+  if (status) status.style.display = 'none';
+  if (!list) return;
+  list.innerHTML = '';
+  Object.keys(TEAMS).forEach(function (slug) {
+    var btn = document.createElement('button');
+    btn.className = 'btn btn-gold team-picker-btn';
+    btn.textContent = TEAMS[slug].name;
+    btn.onclick = function () {
+      sessionStorage.setItem('wga_team', slug);
+      location.href = location.pathname + '?team=' + slug;
+    };
+    list.appendChild(btn);
+  });
+  list.style.display = 'flex';
+}
+
+function resolveColdLanding() {
+  var screen = document.getElementById('teamPickerScreen');
+  if (screen) screen.style.display = 'flex';
+  if (!supabaseClient) {
+    showTeamPickerButtons();
     return;
   }
-  loadData(
-    function () {
-      populateDropdown();
-      buildPublicStats();
-      buildProgression();
-      buildStreamWidget();
-      // Deep-link support for officer.html's nav (#354) -- its Roster/Streams/Sign
-      // Up/Help links point back at index.html since those views only exist here.
-      var hashView = { roster: 'roster', streams: 'streamers', signup: 'signup', help: 'help' }[
-        (location.hash || '').replace('#', '')
-      ];
-      if (hashView === 'signup') showSignupView();
-      else if (hashView) showView(hashView);
-      else showView('landing');
-      // Init Discord session after core data is ready so the profile deep-link can
-      // find the claimed character in the now-populated player dropdown.
-      if (typeof initDiscordLogin === 'function') initDiscordLogin();
-    },
-    function () {
-      buildPublicStats();
-      buildProgression();
-      buildRecentLoot();
-      buildStreamWidget();
-      var sel = document.getElementById('playerSelect');
-      var profileWrap = document.getElementById('profileViewWrap');
-      if (sel && sel.value && profileWrap && profileWrap.classList.contains('active')) {
-        renderProfile(sel.value, 'landing');
+  supabaseClient.auth
+    .getSession()
+    .then(function (result) {
+      var session = result && result.data && result.data.session;
+      if (!session) {
+        showTeamPickerButtons();
+        return;
       }
-    }
-  );
-});
+      // Same "auth_user_id only, no team_id filter" query as findClaimElsewhere
+      // (js/discord.js) -- the RLS policy allows a member to read all their own
+      // team_members rows, letting us find a claim on any team in one query.
+      return supabaseClient
+        .from('team_members')
+        .select('team_id, players!players_team_member_id_fkey(name_realm)')
+        .eq('auth_user_id', session.user.id)
+        .then(function (res) {
+          var rows = (res && res.data) || [];
+          var claimedSlug = null;
+          for (var i = 0; i < rows.length && !claimedSlug; i++) {
+            var players = rows[i].players || [];
+            if (!players.length || !players[0].name_realm) continue;
+            Object.keys(TEAMS).forEach(function (slug) {
+              if (!claimedSlug && TEAMS[slug].supabaseTeamId === rows[i].team_id) claimedSlug = slug;
+            });
+          }
+          if (claimedSlug) {
+            sessionStorage.setItem('wga_team', claimedSlug);
+            location.href = location.pathname + '?team=' + claimedSlug;
+          } else {
+            showTeamPickerButtons();
+          }
+        });
+    })
+    .catch(function () {
+      showTeamPickerButtons();
+    });
+}
+
+if (typeof IS_COLD_LANDING !== 'undefined' && IS_COLD_LANDING) {
+  resolveColdLanding();
+} else {
+  bootRosterApp();
+}

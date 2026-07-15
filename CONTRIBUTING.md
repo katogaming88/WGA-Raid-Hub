@@ -1,8 +1,8 @@
-# Contributing to Phoenix-Roster
+# Contributing to WGA Raid Hub
 
 ## Workflow
 
-1. Pick an issue from the [issue tracker](https://github.com/katogaming88/Phoenix-Roster/issues) or create one first
+1. Pick an issue from the [issue tracker](https://github.com/katogaming88/WGA-Raid-Hub/issues) or create one first
 2. Branch off `main`: `git checkout -b <type>/<short-description>`
    - Types: `feat`, `fix`, `refactor`, `style`, `chore`, `docs`
    - Example: `feat/filter-by-role`
@@ -26,12 +26,12 @@ This project follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PA
 
 | Bump | When to use | Examples |
 |------|-------------|---------|
-| **MAJOR** | Architectural overhaul, breaking change to URLs, GAS API shape, or sheet structure | Page split, new auth system |
-| **MINOR** | New officer capability, new tab, new GAS action, new raider-facing workflow | New dashboard tab, new approval queue |
+| **MAJOR** | Architectural overhaul, breaking change to URLs or database schema | Page split, new auth system |
+| **MINOR** | New officer capability, new tab, new raider-facing workflow | New dashboard tab, new approval queue |
 | **PATCH** | Bug fixes, visual polish, copy changes, layout tweaks, performance improvements | Layout fix, subtitle change, footer tweak |
 
 When merging a PR:
-- Frontend changes (under `js/`, `gs/`, or the root HTML pages): bump the
+- Frontend changes (under `js/` or the root HTML pages): bump the
   version in `js/common.js` (`var VERSION`) and add an entry under a
   `### Frontend` heading in the new version's `CHANGELOG.md` block
 - Backend changes (under `supabase/migrations/` or `scripts/import/`): add
@@ -53,7 +53,6 @@ or add the `chore` label.
 - Keep PRs focused on one issue or theme
 - Update `CHANGELOG.md` under `### Frontend` / `### Backend` per the
   versioning section above
-- If your change affects `PhoenixRosterWebApp.gs`, note whether a new deployment is needed
 - `js/common.js` is type-checked (`// @ts-check` plus JSDoc annotations, no
   build step). If you touch a checked file, run `npm run typecheck`; CI runs
   the same check on every `js/` change. Add `// @ts-check` to more `js/`
@@ -68,15 +67,22 @@ or add the `chore` label.
 |------|---------|
 | `index.html` | Public page -- landing, raider profiles, season signup |
 | `officer.html` | Officer dashboard -- all management tabs |
-| `js/common.js` | Shared globals, `WEB_APP_URL`, `VERSION`, data helpers, `renderProfile` |
-| `js/roster.js` | Public page boot, dropdown, stats row, recent loot |
+| `admin.html` | Site admin dashboard -- team management, site admin grant/revoke, feature flags, cross-team audit log, maintenance mode |
+| `js/common.js` | Shared globals, `TEAMS`, `TEAM_SLUG`/`IS_COLD_LANDING` resolution, `VERSION`, data helpers, `renderProfile` |
+| `js/discord.js` | Discord OAuth login/session mapping, character claim flow |
+| `js/roster.js` | Public page boot, cold-landing team picker/auto-redirect, dropdown, stats row, recent loot |
 | `js/signup.js` | Multi-step signup form logic |
-| `js/officer.js` | Officer boot, password gate, session expiry, tab dispatch |
-| `js/tabs/tab-*.js` | One file per officer tab (8 files) |
-| `css/styles.css` | All styles |
-| `css/officer.css` | Stub for officer-specific styles (future split) |
-| `PhoenixRosterWebApp.gs` | Google Apps Script (data layer) |
+| `js/officer.js` | Officer boot, session expiry, tab dispatch |
+| `js/officer-quick-actions.js` | Officer quick-actions bar (priority export, attendance refresh, loot paste) shown on the public page |
+| `js/streamers.js` | Live Twitch streamer widget |
+| `js/tabs/tab-*.js` | One file per officer tab (17 files) |
+| `js/admin.js` | Standalone boot/logic for `admin.html` -- not team-scoped, so it doesn't reuse common.js/discord.js |
+| `css/styles.css` | Shared styles across all pages |
+| `css/officer.css` | Officer-specific styles (partial split out of `styles.css`, still in progress) |
+| `css/admin.css` | Admin-page-specific styles |
+| `gs/*.gs` | Retired Google Apps Script source, kept only as historical record -- no code reads `gasUrl` or writes through GAS anymore; everything is Supabase-only |
 | `supabase/` | Supabase CLI project: local dev stack config and schema migrations |
+| `scripts/import/` | One-off/recurring data import tooling (loot, attendance, etc.) |
 | `dbdoc/` | Generated schema docs (tbls). Never edit by hand; regenerate with `npm run db:docs` |
 | `docs/RLS.md` | Hand-maintained RLS policy reference (tbls cannot generate this) |
 
@@ -99,10 +105,3 @@ PRs that change `supabase/migrations/` must also:
   test seed), then `npm run test:rls`. CI runs the same suite on every
   supabase/ or tests/ change. If a policy legitimately changed, update the
   matching assertions in `tests/rls/` and the matrix in docs/RLS.md together
-
-## Google Apps Script changes
-
-If you change `PhoenixRosterWebApp.gs`:
-1. Paste the updated script into the Apps Script editor
-2. Deploy as a new version (Deploy -> Manage Deployments -> edit -> New version)
-3. The URL stays the same -- no changes to `js/common.js` needed
