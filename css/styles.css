@@ -161,6 +161,18 @@ a.prog-boss-pulls:hover { color:var(--gold); text-decoration:underline; }
 .recap-season-name { font-family:'Cinzel',serif; font-size:1.07rem; font-weight:600; color:var(--gold-light); letter-spacing:0.02em; margin-bottom:0.25rem; }
 .recap-season-score { font-size:1rem; color:var(--text-muted); }
 
+/* Blaze Commander bios (#477, second slice) -- officer-authored bio cards. */
+.bio-wrap { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; width:100%; max-width:760px; }
+@media (max-width:560px) { .bio-wrap { grid-template-columns:1fr; } }
+.bio-card { background:var(--bg-card); border:1px solid var(--border-mid); border-top:2px solid rgba(214,163,68,0.4); border-radius:6px; padding:1.25rem 1.1rem; display:flex; flex-direction:column; align-items:center; text-align:center; gap:0.2rem; }
+.bio-photo { width:96px; height:96px; border-radius:8px; object-fit:cover; margin-bottom:0.6rem; }
+.bio-photo-fallback { display:flex; align-items:center; justify-content:center; background:rgba(214,163,68,0.12); color:var(--gold-light); border:1px solid rgba(214,163,68,0.3); font-family:'Cinzel',serif; font-size:1.8rem; font-weight:600; }
+.bio-name { font-family:'Cinzel',serif; font-size:1.15rem; font-weight:600; color:var(--text); letter-spacing:0.02em; }
+.bio-pronouns { font-family:'Rajdhani',sans-serif; font-size:0.93rem; font-weight:500; color:var(--text-dim); letter-spacing:0; }
+.bio-charname { font-size:0.95rem; color:var(--text-dim); }
+.bio-title { font-size:0.93rem; color:var(--text-muted); margin-top:0.15rem; }
+.bio-text { font-size:1rem; color:var(--text-muted); white-space:pre-wrap; margin-top:0.6rem; text-align:left; }
+
 /* Public recent loot */
 .pub-loot { width:100%; max-width:760px; }
 .roster-sub-nav { display:flex; gap:1.25rem; margin-bottom:1rem; border-bottom:1px solid var(--border); }

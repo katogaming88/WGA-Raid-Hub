@@ -8,6 +8,7 @@ function showView(name) {
     'rosterViewWrap',
     'streamersViewWrap',
     'historyViewWrap',
+    'bioViewWrap',
     'helpViewWrap'
   ].forEach(function (id) {
     document.getElementById(id).classList.remove('active');
@@ -16,6 +17,7 @@ function showView(name) {
     document.getElementById('landingView').classList.add('active');
     updateSignupNavItem();
     updateHistoryNavItem();
+    updateBiosNavItem();
   }
   if (name === 'profile') document.getElementById('profileViewWrap').classList.add('active');
   if (name === 'signup') document.getElementById('signupViewWrap').classList.add('active');
@@ -33,8 +35,12 @@ function showView(name) {
     document.getElementById('historyViewWrap').classList.add('active');
     buildSeasonRecap();
   }
+  if (name === 'bios') {
+    document.getElementById('bioViewWrap').classList.add('active');
+    buildBios();
+  }
   if (name === 'help') document.getElementById('helpViewWrap').classList.add('active');
-  ['navHome', 'navSignup', 'navRoster', 'navStreamers', 'navHistory', 'navHelp'].forEach(function (id) {
+  ['navHome', 'navSignup', 'navRoster', 'navStreamers', 'navHistory', 'navBios', 'navHelp'].forEach(function (id) {
     var el = document.getElementById(id);
     if (el) el.classList.remove('active');
   });
@@ -45,6 +51,7 @@ function showView(name) {
     roster: 'navRoster',
     streamers: 'navStreamers',
     history: 'navHistory',
+    bios: 'navBios',
     help: 'navHelp'
   }[name];
   if (activeNav) {
@@ -266,6 +273,13 @@ function updateSignupNavItem() {
 function updateHistoryNavItem() {
   var el = document.getElementById('navHistory');
   if (el) el.style.display = DATA && DATA.seasonHistory && DATA.seasonHistory.length ? '' : 'none';
+}
+
+// Hidden until this team has added at least one Blaze Commander bio (#477,
+// second slice) -- same "nothing to show yet" reasoning as the History tab.
+function updateBiosNavItem() {
+  var el = document.getElementById('navBios');
+  if (el) el.style.display = DATA && DATA.blazeCommanderBios && DATA.blazeCommanderBios.length ? '' : 'none';
 }
 
 document.getElementById('playerSelect').addEventListener('change', function (e) {
@@ -494,6 +508,63 @@ function buildSeasonRecap() {
   el.innerHTML = html;
 }
 
+// Public "Bios" tab (#477, second slice) -- Blaze Commander bio cards,
+// officer-authored via officer.html's Officer Bios tab (js/tabs/tab-bios.js)
+// and saved into team_settings.config.blazeCommanderBios. Display order is
+// array order (officers reorder with move up/down in the editor, not
+// alphabetical/sorted here). Fields are self-contained on each entry (not
+// looked up from DATA.roster) -- see tab-bios.js's header comment for why.
+function buildBios() {
+  var bios = (DATA && DATA.blazeCommanderBios) || [];
+  var el = document.getElementById('bioView');
+  if (!el || !bios.length) return;
+
+  var html = '<div class="bio-wrap">';
+  for (var i = 0; i < bios.length; i++) {
+    var entry = bios[i];
+    var displayName = entry.name || 'Unnamed';
+    html += '<div class="bio-card">';
+    if (entry.imagePath) {
+      html += '<img class="bio-photo" src="' + _escAttr(entry.imagePath) + '" alt="">';
+    } else {
+      html += '<div class="bio-photo bio-photo-fallback">' + _esc(displayName.slice(0, 2).toUpperCase()) + '</div>';
+    }
+    html +=
+      '<div class="bio-name">' +
+      _esc(displayName) +
+      (entry.pronouns ? ' <span class="bio-pronouns">(' + _esc(entry.pronouns) + ')</span>' : '') +
+      '</div>';
+    if (entry.characterName) {
+      html += '<div class="bio-charname">' + _esc(entry.characterName) + '</div>';
+    }
+    if (entry.title) {
+      html += '<div class="bio-title">' + _esc(entry.title) + '</div>';
+    }
+    if (entry.classKey) {
+      html +=
+        '<span class="badge badge-class" style="' +
+        classBadgeStyle(entry.classKey) +
+        '">' +
+        _esc(entry.spec || entry.classKey) +
+        '</span>';
+    }
+    if (entry.bio) {
+      html += '<div class="bio-text">' + _esc(entry.bio) + '</div>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// _escAttr mirrors js/tabs/tab-season.js's helper (not loaded on index.html)
+// -- HTML-attribute-safe escaping for the imagePath src.
+function _escAttr(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;');
+}
+
 // Boss objects in DATA.raidProgression never carry a WCL encounterID
 // (tab-season.js's fetchWclForRaid() discards it before saving), so the
 // join to DATA.raidProgress -- keyed by "<wclZoneId>|<normalised name>" in
@@ -593,6 +664,7 @@ function bootRosterApp() {
           streams: 'streamers',
           signup: 'signup',
           history: 'history',
+          bios: 'bios',
           help: 'help'
         }[(location.hash || '').replace('#', '')];
         if (hashView === 'signup') showSignupView();
