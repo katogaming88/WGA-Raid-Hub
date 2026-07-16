@@ -15,6 +15,7 @@ function showView(name) {
   if (name === 'landing') {
     document.getElementById('landingView').classList.add('active');
     updateSignupNavItem();
+    updateHistoryNavItem();
   }
   if (name === 'profile') document.getElementById('profileViewWrap').classList.add('active');
   if (name === 'signup') document.getElementById('signupViewWrap').classList.add('active');
@@ -258,6 +259,13 @@ function showRosterSubTab(tab) {
 function updateSignupNavItem() {
   var el = document.getElementById('navSignup');
   if (el) el.style.display = DATA && DATA.signupsOpen ? '' : 'none';
+}
+
+// Hidden until this team has actually archived a season (#477) -- a brand
+// new team, or one before its first rollover, has nothing to show here.
+function updateHistoryNavItem() {
+  var el = document.getElementById('navHistory');
+  if (el) el.style.display = DATA && DATA.seasonHistory && DATA.seasonHistory.length ? '' : 'none';
 }
 
 document.getElementById('playerSelect').addEventListener('change', function (e) {
