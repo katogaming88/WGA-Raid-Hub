@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.38.0] - 2026-07-16
+
+### Frontend
+
+- Added a small outbound-link icon box to the header (index.html and officer.html), separate from the internal site-nav row: Raider.IO and Armory link to the guild-wide pages (static, since neither site splits by team), and a WarcraftLogs icon links to this team's own WCL guild page (Phoenix and Hellfire log separately despite being one guild) once an officer sets it in Season Settings > Settings. Hidden until set, no live data pulled from any of the three. (#288)
+
 ## [3.37.0] - 2026-07-16
 
 ### Frontend

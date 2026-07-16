@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.37.0">
-  <link rel="stylesheet" href="css/officer.css?v=3.37.0">
+  <link rel="stylesheet" href="css/styles.css?v=3.38.0">
+  <link rel="stylesheet" href="css/officer.css?v=3.38.0">
   <!-- Hover tooltips for Buff Coverage's spell links (#491). Auto-attaches to
        any <a class="wowhead"> pointing at a wowhead.com spell page. -->
   <script src="https://wow.zamimg.com/widgets/power.js" async></script>
@@ -26,6 +26,18 @@
       <h1 id="headerTeamName">Phoenix</h1>
       <p class="header-sub">Raid Hub</p>
     </a>
+    <div class="header-links" id="headerLinks">
+      <span class="header-links-label">Links</span>
+      <a id="headerWclLink" class="header-link-icon" href="#" target="_blank" rel="noopener" title="WarcraftLogs" aria-label="WarcraftLogs" style="display:none">
+        <img src="https://www.google.com/s2/favicons?sz=64&domain=warcraftlogs.com" alt="" width="20" height="20" loading="lazy">
+      </a>
+      <a id="headerRioLink" class="header-link-icon" target="_blank" rel="noopener" title="Raider.IO" aria-label="Raider.IO">
+        <img src="https://www.google.com/s2/favicons?sz=64&domain=raider.io" alt="" width="20" height="20" loading="lazy">
+      </a>
+      <a id="headerArmoryLink" class="header-link-icon" target="_blank" rel="noopener" title="Armory" aria-label="Armory">
+        <img src="https://www.google.com/s2/favicons?sz=64&domain=worldofwarcraft.com" alt="" width="20" height="20" loading="lazy">
+      </a>
+    </div>
     <div class="header-divider"></div>
   </header>
 
@@ -678,6 +690,21 @@
                 </div>
               </div>
 
+              <!-- WarcraftLogs Guild URL -->
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">WarcraftLogs Guild URL<button class="help-btn" onclick="toggleHelp('help-wcl-url')" title="Show help">?</button></h4>
+                <div id="help-wcl-url" class="help-tip">
+                  This team's own WarcraftLogs guild page (Phoenix and Hellfire log separately even though both are part of the same WoW guild). Powers the WCL icon link in the header. Raider.IO and Armory are guild-wide and not set here.
+                </div>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Shown as the WCL icon in the header once set. Leave blank to hide it.</p>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <input type="text" id="wclUrlInput" class="add-player-input" placeholder="https://www.warcraftlogs.com/guild/id/..."
+                    style="max-width:340px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-gold" id="wclUrlSaveBtn" onclick="saveWclUrl()">Save</button>
+                  <span id="wclUrlStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+              </div>
+
             </div><!-- /season-sub-settings -->
 
             <div id="season-sub-progression" class="season-settings-wrap" style="display:none;">
@@ -1030,26 +1057,26 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.37.0"></script>
-  <script src="js/discord.js?v=3.37.0"></script>
-  <script src="js/officer.js?v=3.37.0"></script>
-  <script src="js/tabs/tab-roster.js?v=3.37.0"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.37.0"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.37.0"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.37.0"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.37.0"></script>
-  <script src="js/tabs/tab-signups.js?v=3.37.0"></script>
-  <script src="js/tabs/tab-requests.js?v=3.37.0"></script>
-  <script src="js/tabs/tab-bis.js?v=3.37.0"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.37.0"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.37.0"></script>
-  <script src="js/tabs/tab-priority.js?v=3.37.0"></script>
-  <script src="js/tabs/tab-audit.js?v=3.37.0"></script>
-  <script src="js/tabs/tab-reports.js?v=3.37.0"></script>
-  <script src="js/tabs/tab-season.js?v=3.37.0"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.37.0"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.37.0"></script>
-  <script src="js/tabs/tab-admin.js?v=3.37.0"></script>
+  <script src="js/common.js?v=3.38.0"></script>
+  <script src="js/discord.js?v=3.38.0"></script>
+  <script src="js/officer.js?v=3.38.0"></script>
+  <script src="js/tabs/tab-roster.js?v=3.38.0"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.38.0"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.38.0"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.38.0"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.38.0"></script>
+  <script src="js/tabs/tab-signups.js?v=3.38.0"></script>
+  <script src="js/tabs/tab-requests.js?v=3.38.0"></script>
+  <script src="js/tabs/tab-bis.js?v=3.38.0"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.38.0"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.38.0"></script>
+  <script src="js/tabs/tab-priority.js?v=3.38.0"></script>
+  <script src="js/tabs/tab-audit.js?v=3.38.0"></script>
+  <script src="js/tabs/tab-reports.js?v=3.38.0"></script>
+  <script src="js/tabs/tab-season.js?v=3.38.0"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.38.0"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.38.0"></script>
+  <script src="js/tabs/tab-admin.js?v=3.38.0"></script>
   <script>
 document.getElementById('versionNum').textContent = VERSION;
 document.title = TEAM_NAME + ' -- Officer';

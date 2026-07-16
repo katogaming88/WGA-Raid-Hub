@@ -474,6 +474,7 @@ checkMaintenanceMode().then(function (maint) {
     loadData(
       function () {
         buildOfficerDashboard();
+        renderExternalWclLink();
         // Check Discord session for isAdmin
         if (typeof showAdminTab === 'function') {
           var ds = typeof getDiscordSession === 'function' ? getDiscordSession() : null;

@@ -513,6 +513,7 @@ function bootRosterApp() {
         buildPublicStats();
         buildProgression();
         buildStreamWidget();
+        renderExternalWclLink();
         // Deep-link support for officer.html's nav (#354) -- its Roster/Streams/Sign
         // Up/Help links point back at index.html since those views only exist here.
         var hashView = { roster: 'roster', streams: 'streamers', signup: 'signup', help: 'help' }[

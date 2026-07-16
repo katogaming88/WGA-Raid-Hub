@@ -33,6 +33,17 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter:invert(1); }
 .header-link { display:inline-block; text-decoration:none; color:inherit; transition:opacity 0.15s; }
 .header-link:hover { opacity:0.8; }
 
+/* Outbound guild/team link box (#288) -- deliberately outside .site-nav so it
+   reads as "leaves the site" rather than another internal tab. */
+.header-links { position:absolute; top:1rem; right:1.5rem; display:flex; align-items:center; gap:0.5rem; padding:0.4rem 0.6rem; background:var(--bg-card); border:1px solid var(--border); border-radius:4px; }
+.header-links-label { font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-muted); font-weight:600; }
+.header-link-icon { display:inline-flex; align-items:center; justify-content:center; width:1.9rem; height:1.9rem; border-radius:3px; background:rgba(255,255,255,0.04); text-decoration:none; opacity:0.8; transition:opacity 0.15s, background 0.15s; }
+.header-link-icon:hover { opacity:1; background:rgba(214,163,68,0.14); }
+.header-link-icon img { width:20px; height:20px; border-radius:3px; display:block; }
+@media (max-width:640px) {
+  .header-links { position:static; margin:0.9rem auto 0; width:fit-content; }
+}
+
 /* Site nav */
 .site-nav { display:flex; align-items:stretch; background:var(--bg-card); border-bottom:1px solid var(--border); padding:0 1rem; }
 .site-nav-right { margin-left:auto; display:flex; align-items:stretch; }

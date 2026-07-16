@@ -26,6 +26,14 @@ var TEAMS = {
   }
 };
 
+// Guild-wide external links (#288) -- Raider.IO and Armory only ever track the
+// whole guild roster (no per-team split like WarcraftLogs below), and never
+// change, so these are static constants rather than officer-editable config.
+var GUILD_LINKS = {
+  raiderIoUrl: 'https://raider.io/guilds/us/tichondrius/We%20Go%20Again',
+  armoryUrl: 'https://worldofwarcraft.com/en-us/guild/us/tichondrius/we-go-again'
+};
+
 var _teamParam = (location.search.match(/[?&]team=([^&]+)/) || [])[1];
 var _hadExplicitTeam = !!(_teamParam && _teamParam in TEAMS);
 // A "cold landing" is a visit with no explicit ?team= and no prior team choice
@@ -41,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.37.0';
+var VERSION = '3.38.0';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -332,6 +340,25 @@ function initTeamUI() {
       switchTeam(this.value);
     };
   });
+  var rioEl = document.getElementById('headerRioLink');
+  if (rioEl) rioEl.href = GUILD_LINKS.raiderIoUrl;
+  var armoryEl = document.getElementById('headerArmoryLink');
+  if (armoryEl) armoryEl.href = GUILD_LINKS.armoryUrl;
+}
+
+// WarcraftLogs is per-team (#288), unlike the guild-wide links above -- set
+// from team_settings.config once DATA is available, hidden entirely when the
+// current team hasn't had one configured yet.
+function renderExternalWclLink() {
+  var el = document.getElementById('headerWclLink');
+  if (!el) return;
+  var url = DATA && DATA.externalLinks && DATA.externalLinks.warcraftLogsUrl;
+  if (url) {
+    el.href = url;
+    el.style.display = '';
+  } else {
+    el.style.display = 'none';
+  }
 }
 
 // Maintenance mode (#245). Checked at the earliest point each page's boot
@@ -1623,6 +1650,7 @@ function applyTeamSettingsToData(data, config) {
   });
   if (config.activeSignupSeason !== undefined) data.signupSeason = config.activeSignupSeason;
   data.features = config.features || {};
+  data.externalLinks = config.externalLinks || {};
 }
 
 // Per-team feature flags (#231). Missing key -- either DATA.features itself
