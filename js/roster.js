@@ -1,14 +1,21 @@
 // Public page: view switching, player dropdown, boot
 function showView(name) {
   document.getElementById('loadingMsg').style.display = 'none';
-  ['landingView', 'profileViewWrap', 'signupViewWrap', 'rosterViewWrap', 'streamersViewWrap', 'helpViewWrap'].forEach(
-    function (id) {
-      document.getElementById(id).classList.remove('active');
-    }
-  );
+  [
+    'landingView',
+    'profileViewWrap',
+    'signupViewWrap',
+    'rosterViewWrap',
+    'streamersViewWrap',
+    'historyViewWrap',
+    'helpViewWrap'
+  ].forEach(function (id) {
+    document.getElementById(id).classList.remove('active');
+  });
   if (name === 'landing') {
     document.getElementById('landingView').classList.add('active');
     updateSignupNavItem();
+    updateHistoryNavItem();
   }
   if (name === 'profile') document.getElementById('profileViewWrap').classList.add('active');
   if (name === 'signup') document.getElementById('signupViewWrap').classList.add('active');
@@ -22,8 +29,12 @@ function showView(name) {
     document.getElementById('streamersViewWrap').classList.add('active');
     buildStreamersTab();
   }
+  if (name === 'history') {
+    document.getElementById('historyViewWrap').classList.add('active');
+    buildSeasonRecap();
+  }
   if (name === 'help') document.getElementById('helpViewWrap').classList.add('active');
-  ['navHome', 'navSignup', 'navRoster', 'navStreamers', 'navHelp'].forEach(function (id) {
+  ['navHome', 'navSignup', 'navRoster', 'navStreamers', 'navHistory', 'navHelp'].forEach(function (id) {
     var el = document.getElementById(id);
     if (el) el.classList.remove('active');
   });
@@ -33,6 +44,7 @@ function showView(name) {
     signup: 'navSignup',
     roster: 'navRoster',
     streamers: 'navStreamers',
+    history: 'navHistory',
     help: 'navHelp'
   }[name];
   if (activeNav) {
@@ -249,6 +261,13 @@ function updateSignupNavItem() {
   if (el) el.style.display = DATA && DATA.signupsOpen ? '' : 'none';
 }
 
+// Hidden until this team has actually archived a season (#477) -- a brand
+// new team, or one before its first rollover, has nothing to show here.
+function updateHistoryNavItem() {
+  var el = document.getElementById('navHistory');
+  if (el) el.style.display = DATA && DATA.seasonHistory && DATA.seasonHistory.length ? '' : 'none';
+}
+
 document.getElementById('playerSelect').addEventListener('change', function (e) {
   if (e.target.value) {
     showView('profile');
@@ -422,6 +441,59 @@ function buildProgression() {
   el.innerHTML = html;
 }
 
+// MM/DD/YYYY -- the format requested for this list specifically (differs
+// from formatJoinDate()'s "Jul 12, 2026" style used elsewhere).
+function _formatMDY(iso) {
+  var parts = String(iso || '').split('-');
+  if (parts.length !== 3) return iso || '';
+  return parts[1] + '/' + parts[2] + '/' + parts[0];
+}
+
+// Plain-text progression history (#477), one line per archived season,
+// newest first -- aggregated across every raid in that season (a season can
+// have more than one raid tier) rather than broken out per raid. Every
+// field here already lives on DATA.seasonHistory (written by
+// archive_current_season()) -- no new table/column needed. Lives on its own
+// History tab (js/roster.js showView()), built lazily when that tab opens,
+// same as buildPublicRosterTab()/buildStreamersTab().
+//
+// Deliberately no "boss progress % at season end" line -- that would need
+// the in-progress boss's live pull count/best %, which archive_current_season()
+// never persists (DATA.raidProgress is a live-only WCL join, not archived).
+function buildSeasonRecap() {
+  var history = (DATA && DATA.seasonHistory) || [];
+  var el = document.getElementById('historyView');
+  if (!el || !history.length) return;
+
+  var html = '<div class="recap-title">Progression History</div><div class="recap-list">';
+  for (var i = history.length - 1; i >= 0; i--) {
+    var season = history[i];
+    var raids = season.raids || [];
+    var killed = 0;
+    var total = 0;
+    var lastKillDate = '';
+    for (var j = 0; j < raids.length; j++) {
+      var bosses = raids[j].bosses || [];
+      for (var k = 0; k < bosses.length; k++) {
+        total++;
+        if (bosses[k].mythicDate) {
+          killed++;
+          if (bosses[k].mythicDate > lastKillDate) lastKillDate = bosses[k].mythicDate;
+        }
+      }
+    }
+
+    html += '<div class="recap-season-block">';
+    html += '<div class="recap-season-name">' + _esc(season.name || 'Unnamed Season') + '</div>';
+    html += '<div class="recap-season-score">' + killed + '/' + total + ' Mythic';
+    if (lastKillDate) html += ' -- Last boss kill ' + _formatMDY(lastKillDate);
+    html += '</div>';
+    html += '</div>';
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
 // Boss objects in DATA.raidProgression never carry a WCL encounterID
 // (tab-season.js's fetchWclForRaid() discards it before saving), so the
 // join to DATA.raidProgress -- keyed by "<wclZoneId>|<normalised name>" in
@@ -516,9 +588,13 @@ function bootRosterApp() {
         renderExternalWclLink();
         // Deep-link support for officer.html's nav (#354) -- its Roster/Streams/Sign
         // Up/Help links point back at index.html since those views only exist here.
-        var hashView = { roster: 'roster', streams: 'streamers', signup: 'signup', help: 'help' }[
-          (location.hash || '').replace('#', '')
-        ];
+        var hashView = {
+          roster: 'roster',
+          streams: 'streamers',
+          signup: 'signup',
+          history: 'history',
+          help: 'help'
+        }[(location.hash || '').replace('#', '')];
         if (hashView === 'signup') showSignupView();
         else if (hashView) showView(hashView);
         else showView('landing');

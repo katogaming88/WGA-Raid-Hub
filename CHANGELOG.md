@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.39.0] - 2026-07-16
+
+### Frontend
+
+- Added a new "History" tab (public site nav) with a plain-text "Progression History" list: one line per archived season (newest first) with the season's aggregate Mythic kill count and the date of its last boss kill. Needs no new data -- everything is already stored on `DATA.seasonHistory` from the existing season archive flow. First slice of #477; officer/guild-wide bio cards are a separate follow-up. (#477)
+
 ## [3.38.0] - 2026-07-16
 
 ### Frontend
