@@ -28,6 +28,8 @@ function buildSeasonTab() {
   var displayPrefixInput = document.getElementById('seasonDisplayPrefixInput');
   if (codePrefixInput) codePrefixInput.value = (DATA && DATA.seasonCodePrefix) || 'MID';
   if (displayPrefixInput) displayPrefixInput.value = (DATA && DATA.seasonDisplayPrefix) || 'Midnight Season';
+  var wclUrlInput = document.getElementById('wclUrlInput');
+  if (wclUrlInput) wclUrlInput.value = (DATA && DATA.externalLinks && DATA.externalLinks.warcraftLogsUrl) || '';
   SEASON_RAIDS = JSON.parse(JSON.stringify((DATA && DATA.raidProgression) || []));
   // Reset to Settings subtab; Progression and History render lazily on switch
   var defaultBtn = document.getElementById('season-subtab-btn-settings');
@@ -669,6 +671,45 @@ function saveSeasonCodePrefixes() {
       writeAuditLog('Season Code Prefix Changed', null, null, codeVal + ' / ' + displayVal);
       if (status) {
         status.textContent = 'Saved!';
+        setTimeout(function () {
+          if (status) status.textContent = '';
+        }, 2000);
+      }
+    })
+    .catch(function (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      }
+      if (status) status.textContent = err.message || 'Error saving.';
+    });
+}
+
+// Per-team WCL guild link (#288). Saved as its own externalLinks key
+// (rather than folded into an existing settings key) so a future per-team
+// link can be added the same way without touching this one.
+function saveWclUrl() {
+  var input = document.getElementById('wclUrlInput');
+  var val = input ? input.value.trim() : '';
+  var btn = document.getElementById('wclUrlSaveBtn');
+  var status = document.getElementById('wclUrlStatus');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+  }
+
+  saveTeamSetting({ externalLinks: { warcraftLogsUrl: val } })
+    .then(function () {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      }
+      if (DATA) DATA.externalLinks = { warcraftLogsUrl: val };
+      if (input) input.value = val;
+      if (typeof renderExternalWclLink === 'function') renderExternalWclLink();
+      writeAuditLog('WarcraftLogs Guild URL Set', null, null, val);
+      if (status) {
+        status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {
           if (status) status.textContent = '';
         }, 2000);

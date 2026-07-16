@@ -26,6 +26,14 @@ var TEAMS = {
   }
 };
 
+// Guild-wide external links (#288) -- Raider.IO and Armory only ever track the
+// whole guild roster (no per-team split like WarcraftLogs below), and never
+// change, so these are static constants rather than officer-editable config.
+var GUILD_LINKS = {
+  raiderIoUrl: 'https://raider.io/guilds/us/tichondrius/We%20Go%20Again',
+  armoryUrl: 'https://worldofwarcraft.com/en-us/guild/us/tichondrius/we-go-again'
+};
+
 var _teamParam = (location.search.match(/[?&]team=([^&]+)/) || [])[1];
 var _hadExplicitTeam = !!(_teamParam && _teamParam in TEAMS);
 // A "cold landing" is a visit with no explicit ?team= and no prior team choice
@@ -41,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.37.0';
+var VERSION = '3.38.0';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -332,6 +340,56 @@ function initTeamUI() {
       switchTeam(this.value);
     };
   });
+  var rioEl = /** @type {HTMLAnchorElement} */ (document.getElementById('headerRioLink'));
+  if (rioEl) rioEl.href = GUILD_LINKS.raiderIoUrl;
+  var armoryEl = /** @type {HTMLAnchorElement} */ (document.getElementById('headerArmoryLink'));
+  if (armoryEl) armoryEl.href = GUILD_LINKS.armoryUrl;
+}
+
+// WarcraftLogs is per-team (#288), unlike the guild-wide links above -- set
+// from team_settings.config once DATA is available, hidden entirely when the
+// current team hasn't had one configured yet.
+function renderExternalWclLink() {
+  var el = /** @type {HTMLAnchorElement} */ (document.getElementById('headerWclLink'));
+  if (!el) return;
+  var url = DATA && DATA.externalLinks && DATA.externalLinks.warcraftLogsUrl;
+  if (url) {
+    el.href = url;
+    el.style.display = '';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// Blizzard/Raider.IO/WCL realm slugs: lowercase, apostrophes dropped, spaces
+// to hyphens (e.g. "Area 52" -> "area-52"). Already-hyphenated realms
+// (player.realm reconstructed via split('-').slice(1).join('-'), see
+// mapSupabaseRoster) pass through unchanged.
+function _wowRealmSlug(realm) {
+  return String(realm || '')
+    .toLowerCase()
+    .replace(/'/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
+}
+
+// Per-character Armory/Raider.IO/WCL profile links (#289), a follow-up to
+// #288's guild-wide links above. All three services use predictable
+// region+realm+name URLs -- no API call or raider submission needed, unlike
+// the M+ exclusion form's Raider.IO URL field this replaces. Region is
+// hardcoded 'us', matching GUILD_LINKS and every roster realm today.
+// @param {string} firstName
+// @param {string} realm
+// @returns {{raiderIo: string, armory: string, warcraftLogs: string}|null}
+function characterProfileLinks(firstName, realm) {
+  if (!firstName || !realm) return null;
+  var realmSlug = _wowRealmSlug(realm);
+  var nameEnc = encodeURIComponent(firstName);
+  return {
+    raiderIo: 'https://raider.io/characters/us/' + realmSlug + '/' + nameEnc,
+    armory: 'https://worldofwarcraft.com/en-us/character/us/' + realmSlug + '/' + nameEnc,
+    warcraftLogs: 'https://www.warcraftlogs.com/character/us/' + realmSlug + '/' + nameEnc
+  };
 }
 
 // Maintenance mode (#245). Checked at the earliest point each page's boot
@@ -1623,6 +1681,7 @@ function applyTeamSettingsToData(data, config) {
   });
   if (config.activeSignupSeason !== undefined) data.signupSeason = config.activeSignupSeason;
   data.features = config.features || {};
+  data.externalLinks = config.externalLinks || {};
 }
 
 // Per-team feature flags (#231). Missing key -- either DATA.features itself
@@ -2995,6 +3054,26 @@ function renderProfile(firstName, backTo, container) {
     ? '<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text);border:1px solid var(--border);">Bench</span>'
     : '';
 
+  // Per-character Armory/Raider.IO/WCL links (#289) -- constructed from
+  // name/realm, no submission or API call.
+  var charLinks = characterProfileLinks(player.firstName, player.realm);
+  var charLinksHTML = charLinks
+    ? '<div class="profile-links">' +
+      '<a class="profile-link-icon" href="' +
+      charLinks.warcraftLogs +
+      '" target="_blank" rel="noopener" title="WarcraftLogs" aria-label="WarcraftLogs">' +
+      '<img src="https://www.google.com/s2/favicons?sz=64&domain=warcraftlogs.com" alt="" width="24" height="24" loading="lazy"></a>' +
+      '<a class="profile-link-icon" href="' +
+      charLinks.raiderIo +
+      '" target="_blank" rel="noopener" title="Raider.IO" aria-label="Raider.IO">' +
+      '<img src="https://www.google.com/s2/favicons?sz=64&domain=raider.io" alt="" width="24" height="24" loading="lazy"></a>' +
+      '<a class="profile-link-icon" href="' +
+      charLinks.armory +
+      '" target="_blank" rel="noopener" title="Armory" aria-label="Armory">' +
+      '<img src="https://www.google.com/s2/favicons?sz=64&domain=worldofwarcraft.com" alt="" width="24" height="24" loading="lazy"></a>' +
+      '</div>'
+    : '';
+
   // Attendance
   var attendPct = getDisplayAttendancePct(player);
   var barWidth = attendPct;
@@ -3193,9 +3272,11 @@ function renderProfile(firstName, backTo, container) {
         '<div id="mplusForm-' +
         player.firstName +
         '" style="display:none;margin-top:0.75rem;">' +
-        '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.5rem;">Submit your Raider.io profile to request exclusion from dungeon loot priority.</div>' +
+        '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.5rem;">Requesting exclusion from dungeon loot priority. Your Raider.io profile is filled in below -- edit it if this isn\'t the character you play M+ on.</div>' +
         '<input type="url" id="mplusUrl-' +
         player.firstName +
+        '" value="' +
+        (charLinks ? charLinks.raiderIo : '') +
         '" placeholder="https://raider.io/characters/..." class="self-received-source" style="max-width:100%;font-size:1rem;">' +
         '<textarea id="mplusNotes-' +
         player.firstName +
@@ -3225,9 +3306,11 @@ function renderProfile(firstName, backTo, container) {
         '<div id="mplusForm-' +
         player.firstName +
         '" style="display:none;margin-top:0.75rem;">' +
-        '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.5rem;">Submit your Raider.io profile to request exclusion from dungeon loot priority.</div>' +
+        '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.5rem;">Requesting exclusion from dungeon loot priority. Your Raider.io profile is filled in below -- edit it if this isn\'t the character you play M+ on.</div>' +
         '<input type="url" id="mplusUrl-' +
         player.firstName +
+        '" value="' +
+        (charLinks ? charLinks.raiderIo : '') +
         '" placeholder="https://raider.io/characters/..." class="self-received-source" style="max-width:100%;font-size:1rem;">' +
         '<textarea id="mplusNotes-' +
         player.firstName +
@@ -3641,6 +3724,7 @@ function renderProfile(firstName, backTo, container) {
         '</div>'
       : '') +
     '</div>' +
+    charLinksHTML +
     '</div>' +
     '<div class="profile-section">' +
     '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;' +
@@ -3783,7 +3867,7 @@ function renderProfile(firstName, backTo, container) {
         (backTo !== 'officer'
           ? '<div id="help-mplus-' +
             player.firstName +
-            '" class="help-tip">Once you no longer have any gear upgrades to obtain through the Great Vault via M+ dungeons, you can request exclusion from running them. Submit your Raider.io profile; an officer reviews the request and, once approved, you\'re no longer required to run them weekly.</div>'
+            '" class="help-tip">Once you no longer have any gear upgrades to obtain through the Great Vault via M+ dungeons, you can request exclusion from running them. Your Raider.io profile is filled in automatically; an officer reviews the request and, once approved, you\'re no longer required to run them weekly.</div>'
           : '') +
         mplusHTML +
         '</div>'

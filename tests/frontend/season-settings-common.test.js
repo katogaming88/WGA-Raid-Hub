@@ -158,7 +158,8 @@ describe('applyTeamSettingsToData', () => {
       seasonName: 'From Supabase',
       seasonStart: '2026-01-01',
       signupsOpen: true,
-      features: {}
+      features: {},
+      externalLinks: {}
     });
   });
 });
