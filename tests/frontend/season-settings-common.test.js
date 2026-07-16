@@ -159,7 +159,8 @@ describe('applyTeamSettingsToData', () => {
       seasonStart: '2026-01-01',
       signupsOpen: true,
       features: {},
-      externalLinks: {}
+      externalLinks: {},
+      blazeCommanderBios: []
     });
   });
 });

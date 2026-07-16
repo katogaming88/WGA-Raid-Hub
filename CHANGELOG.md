@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.40.0] - 2026-07-16
+
+### Frontend
+
+- Added a "Bios" tab (public site nav) showing officer bio cards: photo (or initials fallback), name/pronouns/character name, title, class/spec badge, and a short bio, in officer-controlled display order. Hidden until a team adds at least one. New "Officer Bios" tab in officer.html to author them -- add/remove/reorder/save, same round-trip pattern as Raid Progression; adding one can start from an existing roster player (prefills name/character/class/spec, a one-time copy not a live link) or be filled in from scratch for someone not on the roster. No new table or migration -- saved as a new `team_settings.config.blazeCommanderBios` key through the existing settings RPC. Second slice of #477; a second, guild-wide bio tier is a separate follow-up (needs its own `site_settings` column/RPC). (#477)
+
 ## [3.39.0] - 2026-07-16
 
 ### Frontend
