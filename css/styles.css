@@ -37,9 +37,9 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter:invert(1); }
    reads as "leaves the site" rather than another internal tab. */
 .header-links { position:absolute; top:1rem; right:1.5rem; display:flex; align-items:center; gap:0.5rem; padding:0.4rem 0.6rem; background:var(--bg-card); border:1px solid var(--border); border-radius:4px; }
 .header-links-label { font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-muted); font-weight:600; }
-.header-link-icon { display:inline-flex; align-items:center; justify-content:center; width:1.9rem; height:1.9rem; border-radius:3px; background:rgba(255,255,255,0.04); text-decoration:none; opacity:0.8; transition:opacity 0.15s, background 0.15s; }
+.header-link-icon { display:inline-flex; align-items:center; justify-content:center; width:2.6rem; height:2.6rem; border-radius:4px; background:rgba(255,255,255,0.04); text-decoration:none; opacity:0.8; transition:opacity 0.15s, background 0.15s; }
 .header-link-icon:hover { opacity:1; background:rgba(214,163,68,0.14); }
-.header-link-icon img { width:20px; height:20px; border-radius:3px; display:block; }
+.header-link-icon img { width:30px; height:30px; border-radius:4px; display:block; }
 @media (max-width:640px) {
   .header-links { position:static; margin:0.9rem auto 0; width:fit-content; }
 }
@@ -232,7 +232,7 @@ select#playerSelect option { background:#1a1d27; }
 .role-bar-Heal   { background:var(--heal); }
 .role-bar-Ranged { background:var(--ranged); }
 .role-bar-Melee  { background:var(--melee); }
-.profile-header { display:flex; align-items:center; gap:1rem; padding:1.25rem 1.25rem 1rem; border-bottom:1px solid var(--border); }
+.profile-header { position:relative; display:flex; align-items:center; gap:1rem; padding:1.25rem 1.25rem 1rem; border-bottom:1px solid var(--border); }
 .profile-avatar { width:52px; height:52px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-size:1.15rem; font-weight:600; flex-shrink:0; }
 .avatar-Tank   { background:rgba(74,158,255,0.12);  color:var(--tank);   border:1px solid rgba(74,158,255,0.25); }
 .avatar-Heal   { background:rgba(61,220,132,0.12);  color:var(--heal);   border:1px solid rgba(61,220,132,0.25); }
@@ -242,6 +242,12 @@ select#playerSelect option { background:#1a1d27; }
 .profile-name { font-family:'Cinzel',serif; font-size:1.2rem; font-weight:700; color:var(--text); line-height:1.2; }
 .profile-realm { font-size:1rem; color:var(--text-dim); letter-spacing:0.04em; margin-top:2px; }
 .profile-badges { display:flex; gap:0.4rem; margin-top:0.5rem; flex-wrap:wrap; align-items:center; }
+/* Per-character Armory/Raider.IO/WCL profile links (#289) -- top-right of the
+   card, same corner as the guild-wide header links box (#288). */
+.profile-links { position:absolute; top:1.25rem; right:1.25rem; display:flex; gap:0.4rem; }
+.profile-link-icon { display:inline-flex; align-items:center; justify-content:center; width:2.2rem; height:2.2rem; border-radius:4px; background:rgba(255,255,255,0.04); text-decoration:none; opacity:0.8; transition:opacity 0.15s, background 0.15s; }
+.profile-link-icon:hover { opacity:1; background:rgba(214,163,68,0.14); }
+.profile-link-icon img { width:24px; height:24px; border-radius:4px; display:block; }
 .badge { font-size:1rem; font-weight:600; letter-spacing:0.09em; text-transform:uppercase; padding:2px 8px; border-radius:2px; }
 .badge-Tank   { background:rgba(74,158,255,0.12);  color:var(--tank);   border:1px solid rgba(74,158,255,0.2); }
 .badge-Heal   { background:rgba(61,220,132,0.12);  color:var(--heal);   border:1px solid rgba(61,220,132,0.2); }
