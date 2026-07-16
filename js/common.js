@@ -340,9 +340,9 @@ function initTeamUI() {
       switchTeam(this.value);
     };
   });
-  var rioEl = document.getElementById('headerRioLink');
+  var rioEl = /** @type {HTMLAnchorElement} */ (document.getElementById('headerRioLink'));
   if (rioEl) rioEl.href = GUILD_LINKS.raiderIoUrl;
-  var armoryEl = document.getElementById('headerArmoryLink');
+  var armoryEl = /** @type {HTMLAnchorElement} */ (document.getElementById('headerArmoryLink'));
   if (armoryEl) armoryEl.href = GUILD_LINKS.armoryUrl;
 }
 
@@ -350,7 +350,7 @@ function initTeamUI() {
 // from team_settings.config once DATA is available, hidden entirely when the
 // current team hasn't had one configured yet.
 function renderExternalWclLink() {
-  var el = document.getElementById('headerWclLink');
+  var el = /** @type {HTMLAnchorElement} */ (document.getElementById('headerWclLink'));
   if (!el) return;
   var url = DATA && DATA.externalLinks && DATA.externalLinks.warcraftLogsUrl;
   if (url) {
