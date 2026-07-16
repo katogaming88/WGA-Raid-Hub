@@ -273,9 +273,15 @@ function buildPublicStats() {
     '</span><span class="pub-stat-label">Items This Tier</span></div>';
 }
 
+// Flat, current-season loot log backing buildRecentLoot()/renderLootFeed() (#279).
+// Cached at build time so the search box can re-filter on every keystroke
+// without re-walking DATA.lootCounts.
+var _lootFeedAll = [];
+
 function buildRecentLoot() {
   var loot = DATA.lootCounts || {};
   var roster = DATA.roster || [];
+  var currentSeason = (DATA && DATA.seasonName) || '';
 
   var nameMap = {};
   for (var i = 0; i < roster.length; i++) {
@@ -289,6 +295,10 @@ function buildRecentLoot() {
     var items = loot[key].items || [];
     var display = nameMap[key] || key.charAt(0).toUpperCase() + key.slice(1);
     for (var j = 0; j < items.length; j++) {
+      // DATA.lootCounts on the public page carries every season (ACTIVE_SEASON
+      // is officer.js-only, see js/common.js) -- scope to the current tier
+      // ourselves, same as the rest of the app (#279).
+      if (currentSeason && items[j].season !== currentSeason) continue;
       all.push({
         player: display,
         item: items[j].name,
@@ -302,14 +312,47 @@ function buildRecentLoot() {
   all.sort(function (a, b) {
     return b._d - a._d;
   });
-  var recent = all.slice(0, 10);
+  _lootFeedAll = all;
 
   var el = document.getElementById('landingLoot');
-  if (!el || !recent.length) return;
+  if (!el || !all.length) return;
 
-  var html = '<div class="pub-loot-title">Recent Loot</div>';
-  for (var m = 0; m < recent.length; m++) {
-    var e = recent[m];
+  el.innerHTML =
+    '<div class="pub-loot-title">Recent Loot</div>' +
+    '<input type="text" id="lootSearchInput" class="roster-search-input pub-loot-search" ' +
+    'placeholder="Search item name..." oninput="renderLootFeed()">' +
+    '<div id="lootFeedRows"></div>';
+
+  renderLootFeed();
+}
+
+// Renders _lootFeedAll into #lootFeedRows, filtered by the item-name search box.
+// No player-name filter here on purpose -- see #279's proposed fix for why
+// (individual loot history isn't meant to be publicly browsable, #99).
+function renderLootFeed() {
+  var rowsEl = document.getElementById('lootFeedRows');
+  if (!rowsEl) return;
+
+  var input = document.getElementById('lootSearchInput');
+  var query = input ? normalise(input.value.trim()) : '';
+  var rows;
+  if (query) {
+    rows = _lootFeedAll.filter(function (e) {
+      return normalise(e.item).indexOf(query) !== -1;
+    });
+  } else {
+    // No search yet: same 10-item preview as before search existed.
+    rows = _lootFeedAll.slice(0, 10);
+  }
+
+  if (!rows.length) {
+    rowsEl.innerHTML = '<div class="pub-loot-empty">No matching items.</div>';
+    return;
+  }
+
+  var html = '';
+  for (var m = 0; m < rows.length; m++) {
+    var e = rows[m];
     var diffClass =
       e.difficulty === 'Mythic' ? 'diff-mythic' : e.difficulty === 'Heroic' ? 'diff-heroic' : 'diff-other';
     html +=
@@ -330,7 +373,7 @@ function buildRecentLoot() {
       '</span>' +
       '</div>';
   }
-  el.innerHTML = html;
+  rowsEl.innerHTML = html;
 }
 
 function buildProgression() {

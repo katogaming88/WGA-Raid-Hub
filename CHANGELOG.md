@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.37.0] - 2026-07-16
+
+### Frontend
+
+- The public landing page's Recent Loot feed now has an item-name search box. Searching shows every matching item for the current season (no 10-item cap); with the box empty it's still just the last 10, same as before. No player-name filter by design -- a raider's full item history stays un-browsable, matching the #99 login gate. (#279)
+
 ## [3.36.0] - 2026-07-15
 
 ### Frontend
