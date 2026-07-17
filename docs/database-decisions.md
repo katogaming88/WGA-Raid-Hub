@@ -8,6 +8,18 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-07-16 -- Season signups now require a Discord login (reverses #403's anon-callable decision)
+
+`submit_season_signup` was deliberately granted to `anon` in the 2026-07-10 entry below, for prospective recruits with no Discord session yet. That's reversed: every signup must now be tied to a real account, so an anonymous submitter has no way in.
+
+- **`submit_season_signup` raises `Not signed in` when `auth.uid()` is null**, instead of opportunistically capturing `auth_user_id` only when present. `anon` loses execute on the function entirely; only `authenticated` can call it now (`20260716210158_submit_season_signup_require_auth.sql`).
+- **Frontend gate matches the RPC gate**: `js/signup.js`'s `showSignupView()` renders a "You must sign in with Discord to do this" message with a login button in place of the step-1 form when there's no Discord session, rather than hiding the "Sign Up" nav item. The RPC check is the real guarantee; the frontend message just avoids a raider filling out four steps before hitting a wall.
+- **Logging in still doesn't require a claimed character.** A raider can sign in with Discord and sign up with no character claimed at all -- claiming only gates the main-swap option (a swap must be tied to a claimed character to auto-fill "switching from", same PR), not the ability to sign up.
+
+[Full discussion -> #513](https://github.com/katogaming88/WGA-Raid-Hub/issues/513)
+
+---
+
 ## 2026-07-13 -- twitch-live-check / wcl-progression-sync (#493): pg_cron + pg_net replaces GitHub Actions scheduling
 
 Both Edge Functions were originally put on a GitHub Actions cron schedule because this project had no `pg_cron`/`pg_net` infrastructure at the time (#285, #286 -- see the 2026-07-12 entry below). In practice, GitHub Actions' scheduled-workflow trigger never actually honored either workflow's cron expression: checking `twitch-live-check.yml`'s run history, real gaps between runs were 1-3 hours the entire time, not the 5 minutes it was scheduled for. That's a real correctness gap, not just cosmetic drift -- the landing-page "who's live" banner/widget trusts `streamers.is_live`, and a raider going live could show as offline there for up to an hour. Confirmed directly: a raider was live and playable on the Streams tab (which embeds Twitch directly, no `is_live` dependency) while `is_live` was still `false` from a check taken nearly an hour earlier.

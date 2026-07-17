@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.41.0] - 2026-07-16
+
+### Frontend
+
+- Season signups now require a Discord login -- no more anonymous entries. Visiting Sign Up while logged out shows "You must sign in with Discord to do this" with a login button in place of the form; the "Sign Up" nav item stays visible either way. The main-swap option (checkbox + free-typed "switching from" character) is also removed entirely for accounts with no claimed character -- it's now only ever offered/auto-filled from a verified claim, never free-typed. (#513)
+
+### Backend
+
+- `submit_season_signup` now rejects anonymous callers (`Not signed in`) instead of opportunistically recording `auth_user_id` when present; `anon` loses execute on the function entirely. Reverses the #403 decision that required it to stay anon-callable for un-logged-in prospective recruits.
+
 ## [3.40.0] - 2026-07-16
 
 ### Frontend

@@ -27,7 +27,11 @@ function showSignupView() {
   container.innerHTML = '<p class="signup-step-desc">Loading...</p>';
 
   var session = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
-  if (!supabaseClient || !session) {
+  if (!session) {
+    renderSignupLoginRequired();
+    return;
+  }
+  if (!supabaseClient) {
     signupStep = 1;
     signupData = {};
     renderSignupStep();
@@ -44,6 +48,20 @@ function showSignupView() {
       renderSignupStep();
     }
   });
+}
+
+// Signups now require a Discord session so a submission can be tied to a
+// real account -- no more anonymous entries. The "Sign Up" nav item stays
+// visible either way; this is what renders in its place when logged out.
+function renderSignupLoginRequired() {
+  var container = document.getElementById('signupForm');
+  container.innerHTML =
+    '<h2 class="signup-step-title">Sign Up for Next Season</h2>' +
+    '<p class="signup-step-desc">You must sign in with Discord to do this.</p>' +
+    '<div class="signup-actions">' +
+    '<button class="btn btn-gold" onclick="loginWithDiscord()">Login with Discord</button>' +
+    '<button class="btn btn-muted" onclick="showView(\'landing\')">Back to Roster</button>' +
+    '</div>';
 }
 
 // Raider-facing "Your Signup" summary (#500) -- shown instead of a blank
@@ -244,7 +262,6 @@ function renderSignupStep() {
   } else if (signupStep === 4) {
     var discordSession = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
     var hasClaim = !!(discordSession && discordSession.nameRealm);
-    var swapChecked = !!signupData.mainSwapChecked;
     var claimDiffers = hasClaim && signupData.matchesClaim === false;
 
     var mainSwapFieldHtml;
@@ -255,25 +272,11 @@ function renderSignupStep() {
         discordSession.nameRealm +
         '</strong>.</p>' +
         '</div>';
-    } else if (hasClaim) {
-      mainSwapFieldHtml = '';
     } else {
-      mainSwapFieldHtml =
-        '<div class="signup-field">' +
-        '<label style="display:flex;align-items:center;gap:0.55rem;font-size:1rem;color:var(--text);cursor:pointer;">' +
-        '<input type="checkbox" id="signupMainSwapToggle"' +
-        (swapChecked ? ' checked' : '') +
-        ' onchange="toggleMainSwapField()" style="width:1.15rem;height:1.15rem;accent-color:var(--gold-light);cursor:pointer;flex-shrink:0;">' +
-        '<span>I\'m switching mains this season <span class="signup-optional">(optional)</span></span>' +
-        '</label>' +
-        '<div id="signupMainSwapWrap" style="display:' +
-        (swapChecked ? 'block' : 'none') +
-        ';margin-top:0.5rem;">' +
-        '<input type="text" id="signupMainSwap" class="signup-input" placeholder="Katorri-Khaz Modan" value="' +
-        (signupData.mainSwap || '') +
-        '">' +
-        '</div>' +
-        '</div>';
+      // No claimed character on this Discord account -- main swap requires
+      // a claim so the swap can be tied to a real character, so no option
+      // is offered here.
+      mainSwapFieldHtml = '';
     }
 
     html =
@@ -354,12 +357,6 @@ function initRealmCombobox() {
       dropdown.style.display = 'none';
     }, 150);
   });
-}
-
-function toggleMainSwapField() {
-  var cb = document.getElementById('signupMainSwapToggle');
-  var wrap = document.getElementById('signupMainSwapWrap');
-  if (wrap) wrap.style.display = cb && cb.checked ? 'block' : 'none';
 }
 
 function pickRealm(realm) {
@@ -580,26 +577,9 @@ function submitSignup() {
   if (claimDiffers) {
     // Already confirmed at step 1 -- signupNext() won't advance past step 1 otherwise.
     signupData.mainSwap = discordSession.nameRealm;
-  } else if (hasClaim) {
-    signupData.mainSwap = '';
   } else {
-    var swapToggle = document.getElementById('signupMainSwapToggle');
-    var swapChecked = !!(swapToggle && swapToggle.checked);
-    signupData.mainSwapChecked = swapChecked;
-    if (!swapChecked) {
-      signupData.mainSwap = '';
-    } else {
-      var rawSwap = (
-        document.getElementById('signupMainSwap') ? document.getElementById('signupMainSwap').value : ''
-      ).trim();
-      var swapResult = validateMainSwap(rawSwap);
-      if (swapResult.error) {
-        var swapErr = document.getElementById('signupError');
-        if (swapErr) swapErr.textContent = swapResult.error;
-        return;
-      }
-      signupData.mainSwap = swapResult.value;
-    }
+    // No claim, or typed name matches the claimed character -- no swap.
+    signupData.mainSwap = '';
   }
 
   signupData.notes = (document.getElementById('signupNotes').value || '').trim();

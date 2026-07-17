@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.40.0';
+var VERSION = '3.41.0';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -676,28 +676,6 @@ function validateCharName(name) {
       '?'
     );
   return null;
-}
-
-// Returns { value: normalizedNameRealm } or { error } for a free-typed "Name-Realm" string.
-function validateMainSwap(nameRealm) {
-  if (!nameRealm) return { error: 'Please enter your current character as Name-Realm.' };
-  var normalized = nameRealm.trim().replace(/\s*-\s*/g, '-');
-  var idx = normalized.indexOf('-');
-  if (idx === -1) return { error: 'Enter your current character as Name-Realm (e.g. Katorri-Khaz Modan).' };
-
-  var name = normalized.slice(0, idx);
-  var realm = normalized.slice(idx + 1);
-
-  var nameErr = validateCharName(name);
-  if (nameErr) return { error: nameErr };
-
-  var matchedRealm = WOW_REALMS.filter(function (r) {
-    return r.toLowerCase() === realm.toLowerCase();
-  })[0];
-  if (!matchedRealm)
-    return { error: 'Realm "' + realm + '" not recognized. Please check spelling (e.g. Katorri-Khaz Modan).' };
-
-  return { value: name + '-' + matchedRealm };
 }
 
 // Maps each spec to its raid role. Used to resolve 'DPS' -> 'Melee'/'Ranged'.
