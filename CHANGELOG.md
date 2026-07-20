@@ -16,6 +16,10 @@ with each release split into `### Frontend` (drives the version number) and
 - Fixed the BiS List display (profile card, both the raider's own view and the officer's read view from the Roster tab) rendering rows in whatever order they happened to come back from the database instead of canonical gear-slot order -- rows now always sort Head > Neck > Shoulder > Back > Chest > Wrist > Hands > Waist > Legs > Feet > Finger 1 > Finger 2 > Trinket 1 > Trinket 2 > Weapon > Off Hand.
 - Fixed the officer's read view of a raider's profile (Roster tab) never showing that raider's own wishlist-tagged BiS items -- the read-time wishlist/`bis_items` merge only ever ran on the raider's own profile view. Both views now share the same merge logic.
 
+### Backend
+
+- Wishlist ranking integration (#515, final piece): `generate_priority_order()` now factors in a raider's own `item_preferences` tag for the item being ranked, alongside the officer's `bis_items` pick it already used. A raider who tagged the item themselves (and isn't in `bis_items` at all) is now a candidate too -- BiS keeps today's 1.0 multiplier, Good is 0.90, OK is 0.60, Catalyst Only is 0.75, and Pass excludes the raider from the suggested order entirely, even overriding an existing `bis_items` pick. An untagged raider who's only in `bis_items` is unaffected -- identical math to before this change. The Suggest Order modal's status text picks up a new "Wishlist: Good/OK/Catalyst Only" segment automatically (silent for BiS/untagged) since it already reads the RPC's `status_label` column.
+
 ## [3.44.0] - 2026-07-20
 
 ### Frontend
