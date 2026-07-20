@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.45.0] - 2026-07-20
+
+### Frontend
+
+- Wishlist completeness indicator (#515): a raider's own Wishlist tab now shows "N/16 slots tagged" (green once every required slot is covered, red with a list of what's missing otherwise) -- Off Hand only counts as required once a One-Hand item is tagged BiS for Weapon. A slot the officer's `bis_items` grid already has a pick for counts toward completeness too, even if the raider never touched their wishlist -- otherwise every raider who's fully handled by their officer would show as permanently incomplete. Officers get a compact "Incomplete Wishlists" name list above the Priority List (visible before generating priority order for the night), plus a per-raider "Wishlist incomplete (N)" badge on the BiS Manager > BiS Lists row, hover for exactly which slots -- kept off the Priority tab itself since a full per-raider breakdown there was a wall of near-identical text while adoption is still low.
+- Fixed the BiS List display (profile card, both the raider's own view and the officer's read view from the Roster tab) rendering rows in whatever order they happened to come back from the database instead of canonical gear-slot order -- rows now always sort Head > Neck > Shoulder > Back > Chest > Wrist > Hands > Waist > Legs > Feet > Finger 1 > Finger 2 > Trinket 1 > Trinket 2 > Weapon > Off Hand.
+- Fixed the officer's read view of a raider's profile (Roster tab) never showing that raider's own wishlist-tagged BiS items -- the read-time wishlist/`bis_items` merge only ever ran on the raider's own profile view. Both views now share the same merge logic.
+
 ## [3.44.0] - 2026-07-20
 
 ### Frontend
@@ -19,9 +27,6 @@ with each release split into `### Frontend` (drives the version number) and
 - Real raid-drop items now show the boss they drop from underneath the item name (from the existing `DATA.itemBosses` lookup), so a raider doesn't need to already know the loot table to tag a slot.
 - Opening a slot card now auto-collapses any other open card, so the page doesn't grow into another long scroll as more slots get tagged -- except Finger 1/Finger 2, Trinket 1/Trinket 2, and Weapon/Off Hand, which can stay open together since raiders often want to compare both rows at once, and Other Sources, which stays independent of the 16 gear cards.
 - Only one item can be BiS per slot at a time now. Tagging a new item BiS auto-demotes whatever was previously BiS for that slot to Good instead of leaving two items both claiming it.
-- Wishlist completeness indicator (#515): a raider's own Wishlist tab now shows "N/16 slots tagged" (green once every required slot is covered, red with a list of what's missing otherwise) -- Off Hand only counts as required once a One-Hand item is tagged BiS for Weapon. A slot the officer's `bis_items` grid already has a pick for counts toward completeness too, even if the raider never touched their wishlist -- otherwise every raider who's fully handled by their officer would show as permanently incomplete. Officers get a compact "Incomplete Wishlists" name list above the Priority List (visible before generating priority order for the night), plus a per-raider "Wishlist incomplete (N)" badge on the BiS Manager > BiS Lists row, hover for exactly which slots -- kept off the Priority tab itself since a full per-raider breakdown there was a wall of near-identical text while adoption is still low.
-- Fixed the BiS List display (profile card, both the raider's own view and the officer's read view from the Roster tab) rendering rows in whatever order they happened to come back from the database instead of canonical gear-slot order -- rows now always sort Head > Neck > Shoulder > Back > Chest > Wrist > Hands > Waist > Legs > Feet > Finger 1 > Finger 2 > Trinket 1 > Trinket 2 > Weapon > Off Hand.
-- Fixed the officer's read view of a raider's profile (Roster tab) never showing that raider's own wishlist-tagged BiS items -- the read-time wishlist/`bis_items` merge only ever ran on the raider's own profile view. Both views now share the same merge logic.
 
 ## [3.43.1] - 2026-07-20
 
