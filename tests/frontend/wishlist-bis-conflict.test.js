@@ -99,11 +99,9 @@ describe('wishlistSetStatus BiS-per-slot conflict resolution', () => {
   });
 
   it('does not touch a BiS item in a different slot', () => {
-    const { sandbox, requests } = makeSandbox(
-      { Helm: 'Head', Cloak: 'Back' },
-      { Helm: 1, Cloak: 2 },
-      [{ id: 1, item_id: 1, status: 'bis', note: null, slot: null }]
-    );
+    const { sandbox, requests } = makeSandbox({ Helm: 'Head', Cloak: 'Back' }, { Helm: 1, Cloak: 2 }, [
+      { id: 1, item_id: 1, status: 'bis', note: null, slot: null }
+    ]);
 
     sandbox.wishlistSetStatus(2, null, 'bis');
 
