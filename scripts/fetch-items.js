@@ -26,139 +26,125 @@ const TOKEN_SLOT_KEYWORDS = {
   relic: 'Legs',
   remnant: 'Shoulder'
 };
+
+// Wowhead zone id for the current raid, and whether it's still PTR-only
+// (unreleased raids live under /ptr/zone=... until the patch ships).
+// Find it from the raid's Wowhead URL, e.g. wowhead.com/zone=16915/the-venomous-abyss.
+const ZONE_ID = 16915;
+const ZONE_IS_PTR = true;
 // ---------------------------------------------------------------------------
 
 // Types to skip entirely. Junk is NOT here -- tier tokens have type Junk on Wowhead,
 // so Junk items are fetched and kept only if they have a raid boss source.
 const SKIP_TYPES = new Set(['Decor', 'Reagent', 'Cosmetic']);
 
-// [wow_item_id, wowhead_type] from Wowhead export
-const RAW_DATA = [
-  [268213, 'Two-Handed Axe'],
-  [270175, 'Trinket'],
-  [271093, 'Dagger'],
-  [268209, 'One-Handed Axe'],
-  [270162, 'Trinket'],
-  [268202, 'One-Handed Sword'],
-  [271092, 'Dagger'],
-  [270173, 'Trinket'],
-  [270171, 'Trinket'],
-  [271878, 'Plate Armor'],
-  [271876, 'Mail Armor'],
-  [270164, 'Trinket'],
-  [271875, 'Leather Armor'],
-  [268265, 'Amulet'],
-  [268207, 'Bow'],
-  [268215, 'Polearm'],
-  [270169, 'Trinket'],
-  [270174, 'Trinket'],
-  [270165, 'Trinket'],
-  [270163, 'Trinket'],
-  [270168, 'Trinket'],
-  [270161, 'Trinket'],
-  [271874, 'Cloth Armor'],
-  [270160, 'Trinket'],
-  [268249, 'Ring'],
-  [270166, 'Trinket'],
-  [268250, 'Amulet'],
-  [268252, 'Ring'],
-  [268251, 'Amulet'],
-  [270909, 'Reagent'],
-  [268198, 'Two-Handed Mace'],
-  [268211, 'One-Handed Sword'],
-  [268201, 'Warglaive'],
-  [279129, 'Decor'],
-  [268214, 'Two-Handed Sword'],
-  [268205, 'Staff'],
-  [268196, 'Shield'],
-  [268208, 'One-Handed Axe'],
-  [270170, 'Trinket'],
-  [270930, 'Fist Weapon'],
-  [268229, 'Plate Armor'],
-  [268203, 'Dagger'],
-  [270910, 'Junk'],
-  [268197, 'Off-hand Frill'],
-  [268219, 'Leather Armor'],
-  [268200, 'Gun'],
-  [268243, 'Cloth Armor'],
-  [268246, 'Leather Armor'],
-  [268254, 'Mail Armor'],
-  [268231, 'Mail Armor'],
-  [268248, 'Cloak'],
-  [268253, 'Cloak'],
-  [268257, 'Cloth Armor'],
-  [268206, 'One-Handed Mace'],
-  [268241, 'Cloth Armor'],
-  [268259, 'Plate Armor'],
-  [270911, 'Junk'],
-  [268204, 'Dagger'],
-  [268230, 'Mail Armor'],
-  [268237, 'Mail Armor'],
-  [268242, 'Cloth Armor'],
-  [268245, 'Plate Armor'],
-  [268264, 'Dagger'],
-  [268216, 'Mail Armor'],
-  [268224, 'Plate Armor'],
-  [270912, 'Junk'],
-  [268255, 'Cloth Armor'],
-  [268210, 'One-Handed Mace'],
-  [268235, 'Leather Armor'],
-  [268258, 'Mail Armor'],
-  [268222, 'Plate Armor'],
-  [270924, 'Junk'],
-  [270929, 'Junk'],
-  [270922, 'Junk'],
-  [268218, 'Cloth Armor'],
-  [268228, 'Cloth Armor'],
-  [268261, 'Leather Armor'],
-  [270917, 'Junk'],
-  [270927, 'Junk'],
-  [268240, 'Leather Armor'],
-  [268256, 'Leather Armor'],
-  [268260, 'Plate Armor'],
-  [270913, 'Junk'],
-  [270914, 'Junk'],
-  [268223, 'Mail Armor'],
-  [268227, 'Leather Armor'],
-  [268236, 'Cloth Armor'],
-  [268239, 'Plate Armor'],
-  [270918, 'Junk'],
-  [270925, 'Junk'],
-  [270928, 'Junk'],
-  [268233, 'Mail Armor'],
-  [268234, 'Leather Armor'],
-  [270916, 'Junk'],
-  [270921, 'Junk'],
-  [270926, 'Junk'],
-  [268220, 'Plate Armor'],
-  [270915, 'Junk'],
-  [270919, 'Junk'],
-  [270920, 'Junk'],
-  [270923, 'Junk']
-];
+// Wowhead's item classId/subclassId (embedded in the zone loot Listview) map
+// onto the same coarse categories the rest of this script keys off of.
+// classId 20 = Miscellaneous decor/cosmetic junk (always skip).
+// classId 15 = Miscellaneous "junk" -- subclass 1 is plain reagents (skip),
+//   everything else (tier-token idols, relic-shaped trinkets, etc.) is kept
+//   as 'Junk' so the existing token/boss-source logic below decides.
+// classId 4 = Armor -- subclass 1-4 are the real armor materials; other
+//   armor subclasses are accessories (rings, amulets, cloaks, shields, ...)
+//   that don't need an armor_type, and get their slot from the numeric
+//   inventory-slot code below rather than needing a further breakdown here.
+// classId 2 = Weapons -- same story, slot comes from the numeric code.
+const ARMOR_SUBCLASS_NAME = { 1: 'Cloth', 2: 'Leather', 3: 'Mail', 4: 'Plate' };
 
-// Slot is deterministic for these types -- no API call needed
-const SLOT_FROM_TYPE = {
-  Trinket: 'Trinket',
-  Amulet: 'Neck',
-  Ring: 'Finger',
-  Cloak: 'Back',
-  'Two-Handed Axe': 'Two-Hand',
-  'Two-Handed Sword': 'Two-Hand',
-  'Two-Handed Mace': 'Two-Hand',
-  Polearm: 'Two-Hand',
-  Staff: 'Two-Hand',
-  'One-Handed Axe': 'One-Hand',
-  'One-Handed Sword': 'One-Hand',
-  'One-Handed Mace': 'One-Hand',
-  Dagger: 'One-Hand',
-  Warglaive: 'One-Hand',
-  'Fist Weapon': 'One-Hand',
-  Bow: 'Ranged',
-  Gun: 'Ranged',
-  Shield: 'Off Hand',
-  'Off-hand Frill': 'Off Hand'
+function classifyWowheadType(item) {
+  if (item.classs === 20) return 'Decor';
+  if (item.classs === 15) return item.subclass === 1 ? 'Reagent' : 'Junk';
+  if (item.classs === 4) {
+    const armor = ARMOR_SUBCLASS_NAME[item.subclass];
+    return armor ? `${armor} Armor` : 'Accessory';
+  }
+  if (item.classs === 2) return 'Weapon';
+  console.log(
+    `[WARN] item ${item.id} (${item.name}) has unrecognized classs ${item.classs}/${item.subclass}, treating as Decor`
+  );
+  return 'Decor';
+}
+
+// Blizzard's InventoryType enum, as embedded in the zone loot Listview's
+// numeric `slot` field. Text matches the vocabulary Wowhead's own item XML
+// uses, since that's what's already stored in items.slot/bis_items.slot.
+// 0 means "no equip slot" -- tier tokens and class-set trade tokens -- which
+// resolves to null so the caller falls back to parseTokenFromName().
+const INVTYPE_SLOT_NAME = {
+  1: 'Head',
+  2: 'Neck',
+  3: 'Shoulder',
+  5: 'Chest',
+  6: 'Waist',
+  7: 'Legs',
+  8: 'Feet',
+  9: 'Wrist',
+  10: 'Hands',
+  11: 'Finger',
+  12: 'Trinket',
+  13: 'One-Hand',
+  14: 'Off Hand',
+  15: 'Ranged',
+  16: 'Back',
+  17: 'Two-Hand',
+  20: 'Chest',
+  21: 'One-Hand',
+  22: 'Off Hand',
+  23: 'Held In Off-hand',
+  26: 'Ranged'
 };
+
+function getSlotFromInvType(slotCode) {
+  return INVTYPE_SLOT_NAME[slotCode] ?? null;
+}
+
+// Wowhead embeds the raid's full loot table -- including name, equip slot,
+// and boss source -- as a Listview data array on the zone page (id: 'drops'),
+// so all of that can be read straight off one page fetch instead of hitting
+// Wowhead again per item.
+async function fetchZoneItems(zoneId, isPtr) {
+  const url = `https://www.wowhead.com/${isPtr ? 'ptr/' : ''}zone=${zoneId}`;
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; wga-item-seeder/1.0)' }
+  });
+  if (!res.ok) throw new Error(`Zone page HTTP ${res.status}`);
+  const html = await res.text();
+
+  const dropsIdx = html.indexOf("id: 'drops'");
+  if (dropsIdx === -1) throw new Error("Could not find 'drops' Listview on zone page");
+  const dataIdx = html.indexOf('data:', dropsIdx);
+  const arrStart = html.indexOf('[', dataIdx);
+  if (dataIdx === -1 || arrStart === -1) throw new Error("Could not find drops 'data:' array");
+
+  let depth = 0;
+  let arrEnd = -1;
+  for (let i = arrStart; i < html.length; i++) {
+    if (html[i] === '[') depth++;
+    else if (html[i] === ']') {
+      depth--;
+      if (depth === 0) {
+        arrEnd = i;
+        break;
+      }
+    }
+  }
+  if (arrEnd === -1) throw new Error('Could not find end of drops data array');
+
+  return JSON.parse(html.slice(arrStart, arrEnd + 1));
+}
+
+// The zone page's loot table doesn't carry the icon slug, so that's the one
+// thing still fetched per item -- from Wowhead's lightweight tooltip JSON
+// endpoint (what their own tooltip widget uses), not the full item page.
+async function fetchIcon(id) {
+  const res = await fetch(`https://nether.wowhead.com/tooltip/item/${id}?dataEnv=1&locale=0`, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; wga-item-seeder/1.0)' }
+  });
+  if (!res.ok) throw new Error(`Tooltip HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data.icon ?? null;
+}
 
 // Tier token name parsing -- slot from keyword, armor type from suffix
 const TOKEN_ARMOR_SUFFIXES = {
@@ -192,31 +178,6 @@ function getArmorType(wowheadType) {
   return wowheadType.endsWith(' Armor') ? wowheadType.slice(0, -6) : null;
 }
 
-function parseNameFromXml(xml) {
-  const match = xml.match(/<name><!\[CDATA\[([\s\S]*?)\]\]><\/name>/);
-  return match ? match[1].trim() : '';
-}
-
-// Wowhead's <inventorySlot> is the item's equip location straight from the game
-// data ("Feet", "Finger", "Trinket", "Two-Hand", "Held In Off-hand"), and is the
-// same vocabulary items.slot and bis_items.slot now store. id="0" means the item
-// has no equip slot at all -- tier tokens and the class-set trade tokens -- which
-// returns null so the caller falls back to parsing the slot out of the name.
-function parseSlotFromXml(xml) {
-  const match = xml.match(/<inventorySlot id="(\d+)">([^<]*)<\/inventorySlot>/);
-  if (!match || match[1] === '0') return null;
-  const slot = match[2].trim();
-  return slot === '' ? null : slot;
-}
-
-function parseBossFromPage(html) {
-  // Wowhead embeds dropped-by NPC data in a Listview call
-  const match = html.match(/id:\s*'dropped-by'[\s\S]*?data:\s*\[(\{[\s\S]*?\})\]/);
-  if (!match) return null;
-  const nameMatch = match[1].match(/"name":"([^"]+)"/);
-  return nameMatch ? nameMatch[1] : null;
-}
-
 function csvEscape(val) {
   if (val == null || val === '') return '""';
   return `"${String(val).replace(/"/g, '""')}"`;
@@ -227,71 +188,62 @@ async function sleep(ms) {
 }
 
 async function main() {
-  const filtered = RAW_DATA.filter(([, type]) => !SKIP_TYPES.has(type));
+  console.log(`Fetching loot table for zone ${ZONE_ID}...`);
+  const zoneItems = await fetchZoneItems(ZONE_ID, ZONE_IS_PTR);
+  console.log(`Found ${zoneItems.length} items on the zone page.\n`);
+
+  const filtered = zoneItems.filter((item) => !SKIP_TYPES.has(classifyWowheadType(item)));
   console.log(
-    `Processing ${filtered.length} items (skipped ${RAW_DATA.length - filtered.length} Decor/Junk/Reagent)...\n`
+    `Processing ${filtered.length} items (skipped ${zoneItems.length - filtered.length} Decor/Reagent)...\n`
   );
 
   const itemRows = [];
   const bossRows = [];
 
-  for (const [id, wowheadType] of filtered) {
+  for (const item of filtered) {
+    const { id, name } = item;
+    const wowheadType = classifyWowheadType(item);
+    const slot = getSlotFromInvType(item.slot);
+    const armor_type = getArmorType(wowheadType);
+    const boss = item.sourcemore?.[0]?.n ?? null;
+
+    let icon = null;
     try {
-      const xmlRes = await fetch(`https://www.wowhead.com/item=${id}&xml`, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; wga-item-seeder/1.0)' }
-      });
-      if (!xmlRes.ok) throw new Error(`XML HTTP ${xmlRes.status}`);
-      const xml = await xmlRes.text();
-
-      const name = parseNameFromXml(xml);
-      // Wowhead's own <inventorySlot> is authoritative and needs no per-tier
-      // mapping, so it wins over SLOT_FROM_TYPE. It's empty for tier tokens
-      // (they trade for a set piece rather than being equipped), which is
-      // exactly the case parseTokenFromName() below exists to cover.
-      const slot = parseSlotFromXml(xml) ?? SLOT_FROM_TYPE[wowheadType] ?? null;
-      const armor_type = getArmorType(wowheadType);
-
-      await sleep(200);
-
-      const pageRes = await fetch(`https://www.wowhead.com/item=${id}`, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; wga-item-seeder/1.0)' }
-      });
-      const pageHtml = await pageRes.text();
-      const boss = parseBossFromPage(pageHtml);
-
-      if (wowheadType === 'Junk') {
-        const token = parseTokenFromName(name);
-        if (token) {
-          itemRows.push({ wow_item_id: id, name, slot: token.slot, armor_type: token.armor_type });
-          if (boss) bossRows.push({ wow_item_id: id, boss });
-          console.log(
-            `[OK]   ${id}: ${name} | slot: ${token.slot} | armor: ${token.armor_type} | boss: ${boss ?? '(not found)'}`
-          );
-        } else if (boss) {
-          itemRows.push({ wow_item_id: id, name, slot: slot ?? '', armor_type });
-          bossRows.push({ wow_item_id: id, boss });
-          console.log(`[OK]   ${id}: ${name} | slot: ${slot ?? '??'} | boss: ${boss}`);
-        } else {
-          console.log(`[SKIP] ${id}: ${name} | Junk with no parseable token name or boss source, skipping`);
-        }
-      } else {
-        itemRows.push({ wow_item_id: id, name, slot: slot ?? '', armor_type });
-        if (boss) bossRows.push({ wow_item_id: id, boss });
-        console.log(`[OK]   ${id}: ${name} | slot: ${slot ?? '??'} | boss: ${boss ?? '(not found)'}`);
-      }
+      icon = await fetchIcon(id);
     } catch (err) {
-      console.error(`[FAIL] ${id}: ${err.message}`);
-      if (wowheadType !== 'Junk') {
-        itemRows.push({ wow_item_id: id, name: '', slot: '', armor_type: getArmorType(wowheadType) });
-      }
+      console.error(`[FAIL] ${id}: icon lookup failed (${err.message})`);
     }
 
-    await sleep(300);
+    if (wowheadType === 'Junk') {
+      const token = parseTokenFromName(name);
+      if (token) {
+        itemRows.push({ wow_item_id: id, name, slot: token.slot, armor_type: token.armor_type, icon });
+        if (boss) bossRows.push({ wow_item_id: id, boss });
+        console.log(
+          `[OK]   ${id}: ${name} | slot: ${token.slot} | armor: ${token.armor_type} | boss: ${boss ?? '(not found)'}`
+        );
+      } else if (boss) {
+        itemRows.push({ wow_item_id: id, name, slot: slot ?? '', armor_type, icon });
+        bossRows.push({ wow_item_id: id, boss });
+        console.log(`[OK]   ${id}: ${name} | slot: ${slot ?? '??'} | boss: ${boss}`);
+      } else {
+        console.log(`[SKIP] ${id}: ${name} | Junk with no parseable token name or boss source, skipping`);
+      }
+    } else {
+      itemRows.push({ wow_item_id: id, name, slot: slot ?? '', armor_type, icon });
+      if (boss) bossRows.push({ wow_item_id: id, boss });
+      console.log(`[OK]   ${id}: ${name} | slot: ${slot ?? '??'} | boss: ${boss ?? '(not found)'}`);
+    }
+
+    await sleep(150);
   }
 
   const itemsCsv = [
-    'wow_item_id,name,slot,armor_type,sort_id',
-    ...itemRows.map((r) => `${r.wow_item_id},${csvEscape(r.name)},${csvEscape(r.slot)},${csvEscape(r.armor_type)},`)
+    'wow_item_id,name,slot,armor_type,sort_id,icon',
+    ...itemRows.map(
+      (r) =>
+        `${r.wow_item_id},${csvEscape(r.name)},${csvEscape(r.slot)},${csvEscape(r.armor_type)},,${csvEscape(r.icon)}`
+    )
   ].join('\n');
   writeFileSync('items.csv', itemsCsv, 'utf8');
 

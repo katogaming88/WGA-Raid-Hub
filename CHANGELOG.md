@@ -8,6 +8,20 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.42.0] - 2026-07-20
+
+### Frontend
+
+- Added a raider-facing "My Wishlist" section on the raider's own profile page (same self-service pattern as the "Your Stream" section -- only renders, and is only writable, when the logged-in session's claimed character matches the profile being viewed; no separate nav tab, since a wishlist isn't something a visitor browsing the roster should stumble into on someone else's profile): tag any catalog item -- not just one BiS pick per slot -- as BiS/Good/OK/Catalyst Only/Pass, with an optional note per item. Scoped to the raider's own armor type (a Warlock never sees Plate/Mail/Leather rows). Each item shows its real Wowhead icon (from a new `items.icon` column, not dependent on the Wowhead tooltip widget's external script actually loading -- ad-blockers commonly block it) and links out to a Wowhead hover tooltip with rarity-accurate coloring when that script does load (`whTooltips = {colorLinks:true, iconizeLinks:true}` + `power.js`, now loaded on the public site too). Purely additive: doesn't touch the existing officer BiS grid, and has no effect yet on priority-order generation. First slice of #515; ranking integration, a completeness indicator, and officer-configurable tier labels are later phases of the same issue.
+- Split the raider's own profile view into 4 sub-tabs (Overview, BiS, Wishlist, Settings) instead of one long stacked scroll -- Attendance/Items Received under Overview, BiS Link/BiS List under BiS, the new Wishlist section gets its own tab instead of being buried at the bottom, M+ Exclusion/Your Stream under Settings. Reuses the Roster page's existing sub-tab CSS/pattern. Officer inline profile view is unaffected. Added clarifying copy on both the BiS and Wishlist tabs explaining the difference between the two (officer-curated single pick vs. raider-tagged multiple options), since having both was a likely source of confusion.
+- The BiS tab's BiS List now merges in the raider's own wishlist "BiS" tags -- read-time only, nothing written back to `bis_items`. Where a raider has tagged an item "BiS" in their Wishlist, it supersedes the officer's pick for that slot in this display (marked "(Wishlist)"); slots the raider hasn't tagged still show the officer's `bis_items` pick as before. Reduces duplicate officer data entry without creating duplicate storage -- `bis_items`, `getBisItems()`, and every other consumer of it (conflict detection, priority generation, the officer's own 16-slot grid) are untouched.
+
+### Backend
+
+- New `item_preferences` table backing the above: one row per player+item(+slot override for the shared M+/Crafted/Catalyst placeholder rows), RLS-gated to the owning raider for writes and to officer/team_leader for read (not public, unlike `bis_items` -- these tags are more personal/opinionated). `slot` override and its unique index mirror `bis_items`' own `20260710120000_bis_items_slot_override.sql` fix for the same reason.
+- New nullable `items.icon` column (Wowhead icon slug), captured by `scripts/fetch-items.js`; re-run it and import the refreshed `items.csv` through the SQL Editor as usual to backfill existing rows -- new tiers get it automatically going forward.
+- `scripts/fetch-items.js` no longer needs a hand-pasted item-ID list each tier -- it now reads the raid's full loot table (item id, name, equip slot, boss source) directly off the Wowhead zone page in one fetch, and only queries Wowhead per item for the icon, via its lightweight tooltip JSON endpoint rather than the full item page/XML. Cuts per-run Wowhead requests roughly in half and removes the two fetches that were most prone to getting rate-limited/blocked; per-tier setup is now just `ZONE_ID`/`ZONE_IS_PTR` plus `TOKEN_SLOT_KEYWORDS` (see `docs/updating-fetch-items-for-new-tier.md`).
+
 ## [3.41.0] - 2026-07-16
 
 ### Frontend

@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.41.0';
+var VERSION = '3.42.0';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -1703,7 +1703,7 @@ function fetchSupabaseItems() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('items')
-    .select('id, name, slot, armor_type, is_placeholder')
+    .select('id, wow_item_id, name, slot, armor_type, is_placeholder, icon')
     .then(function (result) {
       if (result.error) {
         console.warn('Supabase items query failed.', result.error.message);
@@ -1761,6 +1761,8 @@ function buildItemMaps(rows) {
   var itemArmorTypes = {};
   var itemPlaceholders = {};
   var itemIds = {};
+  var itemWowIds = {};
+  var itemIcons = {};
   (rows || []).forEach(function (row) {
     var name = String(row.name || '').trim();
     if (!name) return;
@@ -1768,8 +1770,17 @@ function buildItemMaps(rows) {
     if (row.armor_type) itemArmorTypes[name] = row.armor_type;
     if (row.is_placeholder) itemPlaceholders[name] = true;
     if (row.id != null) itemIds[name] = row.id;
+    if (row.wow_item_id != null) itemWowIds[name] = row.wow_item_id;
+    if (row.icon) itemIcons[name] = row.icon;
   });
-  return { itemSlots: itemSlots, itemArmorTypes: itemArmorTypes, itemPlaceholders: itemPlaceholders, itemIds: itemIds };
+  return {
+    itemSlots: itemSlots,
+    itemArmorTypes: itemArmorTypes,
+    itemPlaceholders: itemPlaceholders,
+    itemIds: itemIds,
+    itemWowIds: itemWowIds,
+    itemIcons: itemIcons
+  };
 }
 
 // Maps item_bosses rows (joined through items) to the DATA.itemBosses shape
@@ -2112,6 +2123,8 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.itemArmorTypes = itemMaps.itemArmorTypes;
       DATA.itemPlaceholders = itemMaps.itemPlaceholders;
       DATA.itemIds = itemMaps.itemIds;
+      DATA.itemWowIds = itemMaps.itemWowIds;
+      DATA.itemIcons = itemMaps.itemIcons;
       DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
       var mappedSelfReceived = selfReceivedRows ? mapSupabaseSelfReceived(selfReceivedRows) : null;
       DATA.selfReceived = mappedSelfReceived || {};
@@ -3008,6 +3021,25 @@ function submitDirectMarkReceived(firstName, nameRealm, item, slot, rowId, dbSlo
 // backTo: 'landing' = public page, 'officer' = officer page
 // container: optional DOM element to render into (officer inline panel);
 //            if omitted renders into #profileView (public page)
+// Sub-tab state for the raider's own profile view (backTo === 'landing' only
+// -- the officer inline view keeps its original single-flow layout). Mirrors
+// js/roster.js's _rosterSubTab/showRosterSubTab pattern and reuses the same
+// .roster-sub-nav/.roster-sub-tab CSS. Module-level so it survives the
+// re-renders renderProfile() itself triggers (wishlist saves, the wishlist
+// section's async load) without resetting back to Overview each time.
+var _profileSubTab = 'overview';
+var PROFILE_SUB_TABS = ['overview', 'bis', 'wishlist', 'stream'];
+
+function showProfileSubTab(tab) {
+  _profileSubTab = tab;
+  PROFILE_SUB_TABS.forEach(function (t) {
+    var el = document.getElementById('profileTab' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (el) el.style.display = t === tab ? '' : 'none';
+    var btn = document.getElementById('profileSubTab' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+}
+
 function renderProfile(firstName, backTo, container) {
   var norm = normalise(firstName);
   var player = null;
@@ -3330,8 +3362,22 @@ function renderProfile(firstName, backTo, container) {
     selfRecMap[normalise(selfRecItems[sr].item)] = selfRecItems[sr];
   }
 
+  // Computed here (rather than down where streamSectionHTML is) so
+  // _wishlistPrefs is already populated by the time the BiS List merge below
+  // reads it -- ownWishlistSectionHTML() is what triggers/caches that fetch.
+  var wishlistSectionHTML = typeof ownWishlistSectionHTML === 'function' ? ownWishlistSectionHTML(player, backTo) : '';
+
   // Priority list
   var bisItems = getBisItems(player.firstName);
+  // Read-time merge only -- bis_items itself is never written to. A raider's
+  // own wishlist "BiS" tag supersedes the officer's pick for that slot in
+  // this display; untouched everywhere else (tab-conflicts.js,
+  // tab-priority.js, the officer's own bis_items grid all still read
+  // getBisItems()/bis_items directly, unaffected by this local reassignment).
+  if (backTo === 'landing' && typeof wishlistBisMergeGroups === 'function') {
+    var bisMerge = wishlistBisMergeGroups(player, bisItems);
+    bisItems = bisMerge.fromWishlist.concat(bisMerge.officerSet);
+  }
   var rows = '';
   for (var bi = 0; bi < bisItems.length; bi++) {
     var entry = bisItems[bi];
@@ -3358,7 +3404,15 @@ function renderProfile(firstName, backTo, container) {
       ? '<span style="font-size:1rem;color:var(--text-dim);min-width:40px;text-align:center;">-</span>'
       : rankPillHTML(rank);
     rows += '<span class="priority-item-slot" style="color:' + getSlotColor(slot) + ';">' + slot + '</span>';
-    rows += '<span class="priority-item-name" style="text-align:right;" title="' + item + '">' + item + '</span>';
+    rows +=
+      '<span class="priority-item-name" style="text-align:right;" title="' +
+      item +
+      '">' +
+      item +
+      (entry.fromWishlist
+        ? ' <span style="color:var(--gold-light);font-size:0.85em;font-weight:600;">(Wishlist)</span>'
+        : '') +
+      '</span>';
     var defaultSrc = isGen ? item : '';
     var isOfficer = backTo === 'officer';
     var officerFlag = isOfficer ? 'true' : 'false';
@@ -3704,7 +3758,9 @@ function renderProfile(firstName, backTo, container) {
       : '') +
     '</div>' +
     charLinksHTML +
-    '</div>' +
+    '</div>';
+
+  var attendanceSectionHTML =
     '<div class="profile-section">' +
     '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;' +
     (backTo === 'officer' || hasPenalties ? 'cursor:pointer;"' : '"') +
@@ -3741,101 +3797,111 @@ function renderProfile(firstName, backTo, container) {
     (backTo === 'officer'
       ? '<div id="attend-history-' + player.firstName + '" style="display:none;margin-top:0.6rem;"></div>'
       : attendExtra) +
-    '</div>' +
-    (featureEnabled('loot')
-      ? '<div class="profile-section">' +
-        '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var l=document.getElementById(\'loot-list-' +
-        player.firstName +
-        "');l.style.display=l.style.display==='none'?'grid':'none';\">Items Received <span style=\"font-size:1.07rem;color:var(--text-dim);\">click to expand</span></div>" +
-        '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">' +
-        lootCount +
-        ' item' +
-        (lootCount !== 1 ? 's' : '') +
-        (ACTIVE_SEASON ? ' — ' + ACTIVE_SEASON : ' this tier') +
-        '</div>' +
-        (lastItems.length
-          ? (function () {
-              var lastDate = lastItems[0].date || '';
-              var itemLines = '';
-              for (var lx = 0; lx < lastItems.length; lx++) {
-                var lxi = lastItems[lx];
-                var lxColor =
-                  lxi.difficulty === 'Mythic' ? '#b085f0' : lxi.difficulty === 'Heroic' ? '#4dd9e0' : 'var(--gold)';
-                itemLines +=
-                  '<div' +
-                  (lx > 0 ? ' style="margin-top:0.3rem;padding-top:0.3rem;border-top:1px solid var(--border);"' : '') +
-                  '>' +
-                  '<div style="font-size:1rem;color:' +
-                  lxColor +
-                  ';font-weight:600;">' +
-                  lxi.name +
-                  '</div>' +
-                  (lxi.difficulty
-                    ? '<div style="font-size:1rem;color:var(--text-muted);margin-top:0.1rem;">' +
-                      lxi.difficulty +
-                      '</div>'
-                    : '') +
-                  '</div>';
-              }
-              return (
-                '<div style="margin-top:0.6rem;padding:0.5rem 0.75rem;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:space-between;">' +
-                '<div style="flex:1;min-width:0;">' +
-                '<div style="font-size:0.93rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Last received' +
-                (lastDate ? ' - ' + lastDate : '') +
+    '</div>';
+
+  var lootSectionHTML = featureEnabled('loot')
+    ? '<div class="profile-section">' +
+      '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var l=document.getElementById(\'loot-list-' +
+      player.firstName +
+      "');l.style.display=l.style.display==='none'?'grid':'none';\">Items Received <span style=\"font-size:1.07rem;color:var(--text-dim);\">click to expand</span></div>" +
+      '<div style="font-size:1.1rem;font-weight:600;color:var(--gold);">' +
+      lootCount +
+      ' item' +
+      (lootCount !== 1 ? 's' : '') +
+      (ACTIVE_SEASON ? ' — ' + ACTIVE_SEASON : ' this tier') +
+      '</div>' +
+      (lastItems.length
+        ? (function () {
+            var lastDate = lastItems[0].date || '';
+            var itemLines = '';
+            for (var lx = 0; lx < lastItems.length; lx++) {
+              var lxi = lastItems[lx];
+              var lxColor =
+                lxi.difficulty === 'Mythic' ? '#b085f0' : lxi.difficulty === 'Heroic' ? '#4dd9e0' : 'var(--gold)';
+              itemLines +=
+                '<div' +
+                (lx > 0 ? ' style="margin-top:0.3rem;padding-top:0.3rem;border-top:1px solid var(--border);"' : '') +
+                '>' +
+                '<div style="font-size:1rem;color:' +
+                lxColor +
+                ';font-weight:600;">' +
+                lxi.name +
                 '</div>' +
-                itemLines +
-                '</div>' +
-                '<span style="font-size:1.8rem;font-weight:700;color:var(--gold);line-height:1;margin-left:0.75rem;">&#8679;</span>' +
-                '</div>'
-              );
-            })()
-          : '') +
-        '<div id="loot-list-' +
-        player.firstName +
-        '" style="display:none;margin-top:0.75rem;grid-template-columns:1fr 1fr;gap:0 1rem;">' +
-        lootItemsHTML +
-        '</div>' +
-        '</div>'
-      : '') +
-    (featureEnabled('bis')
-      ? '<div class="profile-section"><div class="section-label">BiS Link' +
-        (backTo !== 'officer'
-          ? '<button class="help-btn" onclick="toggleHelp(\'help-bislink-' +
-            player.firstName +
-            '\')" title="Show help">?</button>'
-          : '') +
-        '</div>' +
-        (backTo !== 'officer'
-          ? '<div id="help-bislink-' +
-            player.firstName +
-            '" class="help-tip">Submit a link to your Best-in-Slot list (e.g. a wowhead or raidbots URL) so officers know what you\'re targeting. An officer reviews new submissions before they show here. If the link stays the same but the list behind it changes, use "My List Changed (Same Link)" to have it rechecked.</div>'
-          : '') +
-        bisHTML +
-        '</div>' +
-        '<div class="profile-section">' +
-        '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var l=document.getElementById(\'prio-list-' +
-        player.firstName +
-        "');l.style.display=l.style.display==='none'?'block':'none';\">BiS List" +
-        bisCompletionHTML +
-        (backTo !== 'officer'
-          ? '<button class="help-btn" onclick="event.stopPropagation();toggleHelp(\'help-bislist-' +
-            player.firstName +
-            '\')" title="Show help">?</button>'
-          : '') +
-        '<span style="font-size:1.07rem;color:var(--text-dim);">click to expand</span></div>' +
-        (backTo !== 'officer'
-          ? '<div id="help-bislist-' +
-            player.firstName +
-            '" class="help-tip">This is your tracked BiS items ranked by priority. When you receive one of these items in-game, click "Mark received" on its row and note how you got it -- an officer approves the request and it will count toward your BiS completion above.</div>'
-          : '') +
-        '<div id="prio-list-' +
-        player.firstName +
-        '" style="display:none;">' +
-        priorityHTML +
-        '</div>' +
-        '</div>'
-      : '') +
-    (mplusHTML && featureEnabled('mplus')
+                (lxi.difficulty
+                  ? '<div style="font-size:1rem;color:var(--text-muted);margin-top:0.1rem;">' +
+                    lxi.difficulty +
+                    '</div>'
+                  : '') +
+                '</div>';
+            }
+            return (
+              '<div style="margin-top:0.6rem;padding:0.5rem 0.75rem;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:space-between;">' +
+              '<div style="flex:1;min-width:0;">' +
+              '<div style="font-size:0.93rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Last received' +
+              (lastDate ? ' - ' + lastDate : '') +
+              '</div>' +
+              itemLines +
+              '</div>' +
+              '<span style="font-size:1.8rem;font-weight:700;color:var(--gold);line-height:1;margin-left:0.75rem;">&#8679;</span>' +
+              '</div>'
+            );
+          })()
+        : '') +
+      '<div id="loot-list-' +
+      player.firstName +
+      '" style="display:none;margin-top:0.75rem;grid-template-columns:1fr 1fr;gap:0 1rem;">' +
+      lootItemsHTML +
+      '</div>' +
+      '</div>'
+    : '';
+
+  var bisTabIntroHTML =
+    backTo !== 'officer'
+      ? '<p style="color:var(--text-muted);font-size:0.95rem;margin:0;padding:0.75rem 1.25rem 0;">This is your officer-curated Best-in-Slot list -- one target item per slot, set by officers from your submitted BiS link. For backups, sidegrades, or items you don\'t want, use the Wishlist tab instead.</p>'
+      : '';
+
+  var bisSectionHTML = featureEnabled('bis')
+    ? bisTabIntroHTML +
+      '<div class="profile-section"><div class="section-label">BiS Link' +
+      (backTo !== 'officer'
+        ? '<button class="help-btn" onclick="toggleHelp(\'help-bislink-' +
+          player.firstName +
+          '\')" title="Show help">?</button>'
+        : '') +
+      '</div>' +
+      (backTo !== 'officer'
+        ? '<div id="help-bislink-' +
+          player.firstName +
+          '" class="help-tip">Submit a link to your Best-in-Slot list (e.g. a wowhead or raidbots URL) so officers know what you\'re targeting. An officer reviews new submissions before they show here. If the link stays the same but the list behind it changes, use "My List Changed (Same Link)" to have it rechecked.</div>'
+        : '') +
+      bisHTML +
+      '</div>' +
+      '<div class="profile-section">' +
+      '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var l=document.getElementById(\'prio-list-' +
+      player.firstName +
+      "');l.style.display=l.style.display==='none'?'block':'none';\">BiS List" +
+      bisCompletionHTML +
+      (backTo !== 'officer'
+        ? '<button class="help-btn" onclick="event.stopPropagation();toggleHelp(\'help-bislist-' +
+          player.firstName +
+          '\')" title="Show help">?</button>'
+        : '') +
+      '<span style="font-size:1.07rem;color:var(--text-dim);">click to expand</span></div>' +
+      (backTo !== 'officer'
+        ? '<div id="help-bislist-' +
+          player.firstName +
+          '" class="help-tip">This is your tracked BiS items ranked by priority. When you receive one of these items in-game, click "Mark received" on its row and note how you got it -- an officer approves the request and it will count toward your BiS completion above.</div>'
+        : '') +
+      '<div id="prio-list-' +
+      player.firstName +
+      '" style="display:none;">' +
+      priorityHTML +
+      '</div>' +
+      '</div>'
+    : '';
+
+  var mplusSectionHTML =
+    mplusHTML && featureEnabled('mplus')
       ? '<div class="profile-section"><div class="section-label">M+ Exclusion' +
         (backTo !== 'officer'
           ? '<button class="help-btn" onclick="toggleHelp(\'help-mplus-' +
@@ -3850,10 +3916,67 @@ function renderProfile(firstName, backTo, container) {
           : '') +
         mplusHTML +
         '</div>'
-      : '') +
-    (typeof ownStreamerSectionHTML === 'function' ? ownStreamerSectionHTML(player, backTo) : '') +
-    officerActionsHTML +
-    '</div>';
+      : '';
+
+  var streamSectionHTML = typeof ownStreamerSectionHTML === 'function' ? ownStreamerSectionHTML(player, backTo) : '';
+
+  // Sub-tabs only for the raider's own profile view -- the officer inline
+  // view (backTo === 'officer') keeps its original single-flow layout, since
+  // it's a different editing context entirely and isn't part of this rework.
+  var profileTabsHTML;
+  if (backTo === 'landing') {
+    profileTabsHTML =
+      // .roster-sub-nav has no horizontal padding of its own -- on the Roster
+      // page it sits inside an already-padded container, but .profile-card
+      // has none (only .profile-header/.profile-section do, 1.25rem each),
+      // so it needs its own inline inset here to line up with them.
+      '<div class="roster-sub-nav" style="padding:0 1.25rem;">' +
+      '<button class="roster-sub-tab' +
+      (_profileSubTab === 'overview' ? ' active' : '') +
+      '" id="profileSubTabOverview" onclick="showProfileSubTab(\'overview\')">Overview</button>' +
+      '<button class="roster-sub-tab' +
+      (_profileSubTab === 'bis' ? ' active' : '') +
+      '" id="profileSubTabBis" onclick="showProfileSubTab(\'bis\')">BiS</button>' +
+      '<button class="roster-sub-tab' +
+      (_profileSubTab === 'wishlist' ? ' active' : '') +
+      '" id="profileSubTabWishlist" onclick="showProfileSubTab(\'wishlist\')">Wishlist</button>' +
+      '<button class="roster-sub-tab' +
+      (_profileSubTab === 'stream' ? ' active' : '') +
+      '" id="profileSubTabStream" onclick="showProfileSubTab(\'stream\')">Stream</button>' +
+      '</div>' +
+      '<div id="profileTabOverview" style="display:' +
+      (_profileSubTab === 'overview' ? '' : 'none') +
+      ';">' +
+      attendanceSectionHTML +
+      lootSectionHTML +
+      mplusSectionHTML +
+      '</div>' +
+      '<div id="profileTabBis" style="display:' +
+      (_profileSubTab === 'bis' ? '' : 'none') +
+      ';">' +
+      bisSectionHTML +
+      '</div>' +
+      '<div id="profileTabWishlist" style="display:' +
+      (_profileSubTab === 'wishlist' ? '' : 'none') +
+      ';">' +
+      wishlistSectionHTML +
+      '</div>' +
+      '<div id="profileTabStream" style="display:' +
+      (_profileSubTab === 'stream' ? '' : 'none') +
+      ';">' +
+      streamSectionHTML +
+      '</div>';
+  } else {
+    profileTabsHTML =
+      attendanceSectionHTML +
+      lootSectionHTML +
+      bisSectionHTML +
+      mplusSectionHTML +
+      streamSectionHTML +
+      wishlistSectionHTML;
+  }
+
+  html = html + profileTabsHTML + officerActionsHTML + '</div>';
 
   if (container) {
     container.innerHTML = html;
@@ -3861,6 +3984,11 @@ function renderProfile(firstName, backTo, container) {
     document.getElementById('profileView').innerHTML = html;
   }
   if (backTo === 'officer') updateBisAllowDiv(player.nameRealm, player.firstName);
+  // Defensive re-apply: the inline display:none above already gets this
+  // right on first paint, but ownWishlistSectionHTML()'s async reload and
+  // every wishlistUpsert() write call renderProfile() again, and this keeps
+  // whichever sub-tab was open instead of it silently resetting.
+  if (backTo === 'landing') showProfileSubTab(_profileSubTab);
 }
 
 // #241 follow-up: reads straight from Supabase's attendance table. The GAS
