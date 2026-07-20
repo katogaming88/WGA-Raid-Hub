@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.45.1] - 2026-07-20
+
+### Frontend
+
+- The Priority tab's boss filter dropdown (and the matching Unmanaged Items filter) now sorts by actual raid kill order instead of alphabetically, using the boss order already tracked in Season Settings' raid progression list. A boss with no match there (progression not set up yet, or a name mismatch) falls back to sorting alphabetically after every known boss.
+
 ## [3.45.0] - 2026-07-20
 
 ### Frontend
