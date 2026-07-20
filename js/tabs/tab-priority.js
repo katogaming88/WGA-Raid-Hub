@@ -90,7 +90,25 @@ function populateBossFilters() {
       bosses.push(b);
     }
   });
+  // Kill order, not alphabetical -- DATA.raidProgression (Season Settings'
+  // drag-reorderable boss list, team_settings.config.raidProgression) is the
+  // one place that order is tracked. Flattened across every raid tier in
+  // DATA.raidProgression's own order, so an older tier's bosses still sort
+  // before the current one's. Anything not found there (name mismatch, or
+  // raidProgression not set up yet) falls back to the end, alphabetically.
+  var killOrder = {};
+  var rank = 0;
+  (DATA.raidProgression || []).forEach(function (raid) {
+    (raid.bosses || []).forEach(function (b) {
+      if (b && b.name && !(b.name in killOrder)) killOrder[b.name] = rank++;
+    });
+  });
   bosses.sort(function (a, b) {
+    var ra = killOrder[a],
+      rb = killOrder[b];
+    if (ra !== undefined && rb !== undefined) return ra - rb;
+    if (ra !== undefined) return -1;
+    if (rb !== undefined) return 1;
     return a.localeCompare(b);
   });
   var opts =
