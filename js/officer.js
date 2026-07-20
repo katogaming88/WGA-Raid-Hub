@@ -318,6 +318,7 @@ function buildOfficerDashboard() {
   buildTrialPromoAlert();
   renderSignupToggle();
   renderBisToggle();
+  renderWishlistToggle();
   renderMPlusToggle();
   updatePriorityBadges();
   updateNavBadges();

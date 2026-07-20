@@ -8,6 +8,18 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.44.0] - 2026-07-20
+
+### Frontend
+
+- Officers can now open/close raider wishlist editing independently of the `bis` feature flag, same "pause editing without hiding it" shape as BiS Submissions and M+ Exclusions -- new "Wishlist Editing" toggle next to BiS Submissions on the officer BiS Manager tab. When closed, raiders still see their existing tags (colored, read-only) instead of the tab disappearing; status buttons and the note field are disabled, with a red "Wishlist editing is currently closed" notice. Useful for locking the list right before generating priority order for the night so it can't shift mid-decision. Stored as a new `team_settings.config.wishlistOpen` key, same `SEASON_CONFIG_KEYS` pattern as the other two toggles -- no migration.
+- Reworked the Wishlist tab's layout, which had become an endless undifferentiated scroll: each gear slot is now a collapsible card (collapsed by default, with a colored-dot count of tags already set, turning green once every item in that slot has a status) instead of a plain heading. The M+/Crafted placeholder rows -- previously repeated in *every one* of the 16 slot sections (32+ rows before counting any real items) -- move into a single "Other Sources -- Not From Raid" card instead: each source lists only the slots it's actually been tagged for, plus a "+ Add" control (which saves straight to BiS -- tagging a source for a slot at all already means it's the intended plan) to tag a new one; once a slot is tagged under one source it locks in permanently and drops out of the other source's dropdown, since only one can cover a given slot.
+- Catalyst is intentionally **not** one of the Other Sources options -- catalyzing keeps an item's own stats/cantrip rather than replacing them, so it was never a distinct "source" the way M+/Crafted are. Tag the real item you want directly and use the existing "Catalyst Only" status button on it instead. Added a reminder of this on the 5 tier-set slot cards (Head/Shoulder/Chest/Hands/Legs) specifically, where it's most likely to matter.
+- The Wishlist help text now leads with "this is your BiS list, expanded" (next to the header, not buried in the collapsed tip) and calls out that BiS choices tagged here also show up on the BiS List tab.
+- Real raid-drop items now show the boss they drop from underneath the item name (from the existing `DATA.itemBosses` lookup), so a raider doesn't need to already know the loot table to tag a slot.
+- Opening a slot card now auto-collapses any other open card, so the page doesn't grow into another long scroll as more slots get tagged -- except Finger 1/Finger 2, Trinket 1/Trinket 2, and Weapon/Off Hand, which can stay open together since raiders often want to compare both rows at once, and Other Sources, which stays independent of the 16 gear cards.
+- Only one item can be BiS per slot at a time now. Tagging a new item BiS auto-demotes whatever was previously BiS for that slot to Good instead of leaving two items both claiming it.
+
 ## [3.43.1] - 2026-07-20
 
 ### Frontend

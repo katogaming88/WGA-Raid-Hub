@@ -33,6 +33,45 @@ function setBisSubmissionsOpen(open) {
   );
 }
 
+// Distinct from the 'bis' feature flag (whole tab hidden vs. just editing
+// paused) and from bisSubmissionsOpen (that gates the BiS Link submit form,
+// this gates the wishlist's own status buttons/notes) -- same toggle shape
+// as both, just its own team_settings.config key.
+function renderWishlistToggle() {
+  var badge = document.getElementById('wishlistStatusBadge');
+  var btn = document.getElementById('wishlistToggleBtn');
+  if (!badge || !btn) return;
+  var open = wishlistOpen();
+  badge.textContent = open ? 'OPEN' : 'CLOSED';
+  badge.className = 'signup-status-badge ' + (open ? 'signup-status-open' : 'signup-status-closed');
+  btn.textContent = open ? 'Close Wishlist Editing' : 'Open Wishlist Editing';
+}
+
+function toggleWishlistOpen() {
+  setWishlistOpen(!wishlistOpen());
+}
+
+function setWishlistOpen(open) {
+  var btn = document.getElementById('wishlistToggleBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+  }
+
+  saveTeamSetting({ wishlistOpen: open }).then(
+    function () {
+      if (btn) btn.disabled = false;
+      if (DATA) DATA.wishlistOpen = open;
+      writeAuditLog(open ? 'Wishlist Editing Opened' : 'Wishlist Editing Closed', null, null, null);
+      renderWishlistToggle();
+    },
+    function () {
+      if (btn) btn.disabled = false;
+      renderWishlistToggle();
+    }
+  );
+}
+
 function buildBisTab() {
   var container = document.getElementById('bisContainer');
   if (!container) return;

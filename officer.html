@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.43.1">
-  <link rel="stylesheet" href="css/officer.css?v=3.43.1">
+  <link rel="stylesheet" href="css/styles.css?v=3.44.0">
+  <link rel="stylesheet" href="css/officer.css?v=3.44.0">
   <!-- Hover tooltips for Buff Coverage's spell links (#491). Auto-attaches to
        any <a class="wowhead"> pointing at a wowhead.com spell page. -->
   <script src="https://wow.zamimg.com/widgets/power.js" async></script>
@@ -291,6 +291,23 @@
                     Submissions</button>
                 </div>
                 <p class="signup-officer-note">Toggling submissions shows or hides the BiS list submit form for raiders.</p>
+              </div>
+              <div class="signup-officer-panel" style="margin-top:0.75rem;">
+                <div class="signup-status-row">
+                  <span class="signup-status-label">Wishlist Editing<button class="help-btn"
+                      onclick="toggleHelp('help-wishlist-toggle')" title="Show help">?</button></span>
+                  <span class="signup-status-badge signup-status-closed" id="wishlistStatusBadge">CLOSED</span>
+                </div>
+                <div id="help-wishlist-toggle" class="help-tip">
+                  Open to let raiders tag/edit their own wishlist. Close it (e.g. right before generating priority
+                  order for the night) so the list can't shift mid-decision -- raiders still see their existing tags,
+                  read-only, while closed.
+                </div>
+                <div style="margin-top:1rem;">
+                  <button class="btn btn-muted" id="wishlistToggleBtn" onclick="toggleWishlistOpen()">Open
+                    Wishlist Editing</button>
+                </div>
+                <p class="signup-officer-note">Separate from the BiS Lists feature flag -- this only pauses editing, it doesn't hide the tab.</p>
               </div>
               <div id="bisContainer"></div>
             </div>
@@ -1083,27 +1100,27 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.43.1"></script>
-  <script src="js/discord.js?v=3.43.1"></script>
-  <script src="js/officer.js?v=3.43.1"></script>
-  <script src="js/tabs/tab-roster.js?v=3.43.1"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.43.1"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.43.1"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.43.1"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.43.1"></script>
-  <script src="js/tabs/tab-signups.js?v=3.43.1"></script>
-  <script src="js/tabs/tab-requests.js?v=3.43.1"></script>
-  <script src="js/tabs/tab-bis.js?v=3.43.1"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.43.1"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.43.1"></script>
-  <script src="js/tabs/tab-priority.js?v=3.43.1"></script>
-  <script src="js/tabs/tab-audit.js?v=3.43.1"></script>
-  <script src="js/tabs/tab-reports.js?v=3.43.1"></script>
-  <script src="js/tabs/tab-season.js?v=3.43.1"></script>
-  <script src="js/tabs/tab-bios.js?v=3.43.1"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.43.1"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.43.1"></script>
-  <script src="js/tabs/tab-admin.js?v=3.43.1"></script>
+  <script src="js/common.js?v=3.44.0"></script>
+  <script src="js/discord.js?v=3.44.0"></script>
+  <script src="js/officer.js?v=3.44.0"></script>
+  <script src="js/tabs/tab-roster.js?v=3.44.0"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.44.0"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.44.0"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.44.0"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.44.0"></script>
+  <script src="js/tabs/tab-signups.js?v=3.44.0"></script>
+  <script src="js/tabs/tab-requests.js?v=3.44.0"></script>
+  <script src="js/tabs/tab-bis.js?v=3.44.0"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.44.0"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.44.0"></script>
+  <script src="js/tabs/tab-priority.js?v=3.44.0"></script>
+  <script src="js/tabs/tab-audit.js?v=3.44.0"></script>
+  <script src="js/tabs/tab-reports.js?v=3.44.0"></script>
+  <script src="js/tabs/tab-season.js?v=3.44.0"></script>
+  <script src="js/tabs/tab-bios.js?v=3.44.0"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.44.0"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.44.0"></script>
+  <script src="js/tabs/tab-admin.js?v=3.44.0"></script>
   <script>
 document.getElementById('versionNum').textContent = VERSION;
 document.title = TEAM_NAME + ' -- Officer';

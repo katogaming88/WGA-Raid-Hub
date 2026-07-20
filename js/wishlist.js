@@ -18,6 +18,7 @@ var _wishlistPlayerId = null;
 var _wishlistPlayerFirstName = null; // kept alongside _wishlistPlayerId so writes can re-render via renderProfile()
 var _wishlistPrefs = null; // array of {id, item_id, status, note, slot} once fetched, else null while loading
 var _wishlistSaving = {}; // 'itemId|slot' -> true while a write is in flight, to disable that row's buttons
+var _wishlistExpandedSlots = {}; // 'Head' -> true, or '__other__' for the M+/Crafted card -- survives re-renders
 
 var WISHLIST_STATUSES = [
   { value: 'bis', label: 'BiS' },
@@ -99,6 +100,14 @@ var WISHLIST_UNIVERSAL_ROWS = {
   Weapon: true,
   'Off Hand': true
 };
+
+// The 5 slots with a real tier-set catalog item (matches
+// scripts/fetch-items.js's TOKEN_SLOT_KEYWORDS). Catalyzed gear now keeps its
+// original secondary stats and any on-use/cantrip effect, so the tier-token
+// piece isn't automatically the best "BiS" pick anymore -- a non-tier item
+// with better stats can be catalyzed into the set later. wishlistSectionBodyHTML()
+// surfaces a reminder of that on these 5 slots' cards specifically.
+var WISHLIST_TIER_SET_SLOTS = ['Head', 'Shoulder', 'Chest', 'Hands', 'Legs'];
 
 // Same shape as fetchSupabaseBisItems (js/common.js) -- guard on client,
 // 10s race-timeout, warn+null on any failure. RLS already scopes this to the
@@ -288,10 +297,68 @@ function wishlistCurrentStatus(itemId, slot) {
   return pref ? pref.status : null;
 }
 
-function wishlistStatusButtonsHTML(itemId, slot) {
+// Rings/trinkets/weapons are the one case where comparing two related slots
+// side by side is actually useful (Finger 1 vs Finger 2, Weapon vs Off
+// Hand), so they're exempt from the accordion collapse within their own pair.
+var WISHLIST_SLOT_GROUPS = [
+  ['Finger 1', 'Finger 2'],
+  ['Trinket 1', 'Trinket 2'],
+  ['Weapon', 'Off Hand']
+];
+
+function wishlistGroupFor(key) {
+  for (var i = 0; i < WISHLIST_SLOT_GROUPS.length; i++) {
+    if (WISHLIST_SLOT_GROUPS[i].indexOf(key) !== -1) return WISHLIST_SLOT_GROUPS[i];
+  }
+  return [key];
+}
+
+// Accordion: opening a card collapses every other open card, except ones in
+// the same group (see above) and the Other Sources card ('__other__'), which
+// is independent of the gear-slot cards entirely.
+function toggleWishlistSlot(key) {
+  var opening = !_wishlistExpandedSlots[key];
+  _wishlistExpandedSlots[key] = opening;
+  if (opening && key !== '__other__') {
+    var group = wishlistGroupFor(key);
+    Object.keys(_wishlistExpandedSlots).forEach(function (k) {
+      if (k === key || k === '__other__' || group.indexOf(k) !== -1) return;
+      _wishlistExpandedSlots[k] = false;
+    });
+  }
+  if (typeof renderProfile === 'function' && _wishlistPlayerFirstName) {
+    renderProfile(_wishlistPlayerFirstName, 'landing');
+  }
+}
+
+// Small colored-dot summary for a card's collapsed header -- one dot per
+// tagged item, colored by its status, so there's useful info without
+// expanding. `items` is an array of {itemId, slot} pairs to check.
+function wishlistSlotSummaryDotsHTML(items) {
+  var dots = '';
+  items.forEach(function (it) {
+    var status = wishlistCurrentStatus(it.itemId, it.slot || null);
+    if (!status) return;
+    var color = WISHLIST_TIER_COLORS[status];
+    dots +=
+      '<span style="display:inline-block;width:0.5rem;height:0.5rem;border-radius:50%;background:' +
+      color.css +
+      ';margin-left:2px;" title="' +
+      status +
+      '"></span>';
+  });
+  return dots;
+}
+
+// lockOnceSet (Other Sources rows only, #515 follow-up): once a status is
+// set, every button on that row -- including the active one -- goes
+// permanently disabled. Regular gear-slot rows never pass this, and stay
+// freely re-taggable.
+function wishlistStatusButtonsHTML(itemId, slot, lockOnceSet) {
   var current = wishlistCurrentStatus(itemId, slot);
   var savingKey = itemId + '|' + (slot || '');
-  var disabled = _wishlistSaving[savingKey] ? ' disabled' : '';
+  var locked = !!(lockOnceSet && current);
+  var disabled = _wishlistSaving[savingKey] || !wishlistOpen() || locked ? ' disabled' : '';
   // Officer-overridable per team (#515 Phase 2), stored in
   // team_settings.config.wishlistStatusLabels via the officer admin panel --
   // WISHLIST_STATUSES's own .label stays the default text for teams that
@@ -338,6 +405,7 @@ function wishlistNoteHTML(itemId, slot) {
     '<input type="text" id="' +
     noteId +
     '" class="self-received-source" style="width:100%;box-sizing:border-box;font-size:0.92rem;margin-top:0.25rem;" ' +
+    (wishlistOpen() ? '' : 'readonly ') +
     'placeholder="Note (optional)" value="' +
     note.replace(/"/g, '&quot;') +
     '" onchange="wishlistSetNote(' +
@@ -361,31 +429,41 @@ function wishlistNoteHTML(itemId, slot) {
 function wishlistItemNameHtml(name) {
   var wowId = ((DATA && DATA.itemWowIds) || {})[name];
   var icon = ((DATA && DATA.itemIcons) || {})[name];
+  var boss = ((DATA && DATA.itemBosses) || {})[name];
   var iconImg = icon
     ? '<img src="https://wow.zamimg.com/images/wow/icons/small/' +
       icon +
       '.jpg" alt="" width="20" height="20" style="border-radius:3px;border:1px solid var(--border);flex-shrink:0;">'
     : '';
+  var bossLine = boss
+    ? '<span style="font-size:0.85em;color:var(--text-muted);margin-left:' +
+      (icon ? 'calc(20px + 0.4rem)' : '0') +
+      ';">' +
+      boss +
+      '</span>'
+    : '';
+
+  var nameRow = '<span style="display:flex;align-items:center;gap:0.4rem;">' + iconImg + name + '</span>';
 
   if (wowId == null) {
     return (
-      '<span style="display:flex;align-items:center;gap:0.4rem;color:var(--text);flex:1;min-width:10rem;">' +
-      iconImg +
-      name +
+      '<span style="display:flex;flex-direction:column;color:var(--text);flex:1;min-width:10rem;">' +
+      nameRow +
+      bossLine +
       '</span>'
     );
   }
   return (
     '<a href="https://www.wowhead.com/item=' +
     wowId +
-    '" class="wowhead" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:0.4rem;flex:1;min-width:10rem;color:var(--text);text-decoration:none;">' +
-    iconImg +
-    name +
+    '" class="wowhead" target="_blank" rel="noopener" style="display:flex;flex-direction:column;flex:1;min-width:10rem;color:var(--text);text-decoration:none;">' +
+    nameRow +
+    bossLine +
     '</a>'
   );
 }
 
-function wishlistRowHTML(name, itemId, slot, rowIndex) {
+function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet) {
   if (itemId == null) return '';
   var current = wishlistCurrentStatus(itemId, slot);
   var color = current && WISHLIST_TIER_COLORS[current];
@@ -400,7 +478,7 @@ function wishlistRowHTML(name, itemId, slot, rowIndex) {
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">' +
     wishlistItemNameHtml(name) +
     '<div style="display:flex;gap:0.3rem;flex-wrap:wrap;">' +
-    wishlistStatusButtonsHTML(itemId, slot) +
+    wishlistStatusButtonsHTML(itemId, slot, lockOnceSet) +
     '</div>' +
     '</div>' +
     wishlistNoteHTML(itemId, slot) +
@@ -408,44 +486,217 @@ function wishlistRowHTML(name, itemId, slot, rowIndex) {
   );
 }
 
+// Wraps a slot's (or the Other Sources card's) rows in a collapsible card --
+// header shows the label + a colored-dot summary of any tags already set, so
+// there's useful info without expanding. `key` is the _wishlistExpandedSlots
+// lookup key ('__other__' for the placeholder card, the slot name otherwise).
+function wishlistCollapsibleCardHTML(key, label, summaryItems, bodyHTML) {
+  var expanded = !!_wishlistExpandedSlots[key];
+  var dots = wishlistSlotSummaryDotsHTML(summaryItems);
+  var taggedCount = summaryItems.filter(function (it) {
+    return wishlistCurrentStatus(it.itemId, it.slot || null);
+  }).length;
+  var allTagged = summaryItems.length > 0 && taggedCount === summaryItems.length;
+  var countLabel =
+    '<span style="font-size:1.02rem;color:' +
+    (allTagged ? 'var(--heal)' : 'var(--text-dim)') +
+    ';margin-left:0.5rem;">' +
+    taggedCount +
+    ' tagged</span>';
+  return (
+    '<div style="border:1px solid var(--border);border-radius:4px;margin-bottom:0.5rem;overflow:hidden;">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.75rem;cursor:pointer;background:var(--bg-elevated);" ' +
+    'onclick="toggleWishlistSlot(\'' +
+    key +
+    '\')">' +
+    '<span style="color:var(--text);font-weight:600;">' +
+    label +
+    countLabel +
+    '</span>' +
+    '<span>' +
+    dots +
+    '<span style="font-size:1.02rem;color:var(--text-dim);margin-left:0.5rem;">' +
+    (expanded ? 'click to collapse' : 'click to expand') +
+    '</span></span>' +
+    '</div>' +
+    (expanded ? '<div style="padding:0.5rem 0.75rem;">' + bodyHTML + '</div>' : '') +
+    '</div>'
+  );
+}
+
+// Adding a slot saves it as BiS immediately rather than just revealing an
+// empty row -- the whole point of tagging an M+/Crafted/Catalyst source for
+// a slot is that it's the intended plan, so there's no reason to make the
+// raider click BiS separately right after. Still editable afterward like
+// any other row if they want a different tier.
+function wishlistRevealPlaceholderSlot(name, selectId) {
+  var select = document.getElementById(selectId);
+  var slot = select && select.value;
+  if (!slot) return;
+  var itemIds = (DATA && DATA.itemIds) || {};
+  var itemId = itemIds[name];
+  if (itemId == null) return;
+  _wishlistExpandedSlots.__other__ = true;
+  wishlistSetStatus(itemId, slot, 'bis');
+}
+
+// One M+/Crafted sub-block: rows for slots already tagged for that source,
+// plus a "+ Add" control to tag a new slot -- both offer every slot, since
+// each genuinely can drop/be crafted for anything. `globallyTaggedSlots` (a
+// slot -> true map across both sources) keeps a slot already tagged under
+// one source out of the other's "+ Add" dropdown -- only one source can
+// cover a given slot at a time.
+function wishlistOtherSourceHTML(name, globallyTaggedSlots) {
+  var itemIds = (DATA && DATA.itemIds) || {};
+  var itemId = itemIds[name];
+  if (itemId == null) return '';
+
+  var candidateSlots = WISHLIST_SLOTS;
+  var taggedSlots = [];
+  _wishlistPrefs.forEach(function (p) {
+    if (p.item_id === itemId && p.slot) taggedSlots.push(p.slot);
+  });
+  var shownSlots = candidateSlots.filter(function (s) {
+    return taggedSlots.indexOf(s) !== -1;
+  });
+
+  var html =
+    '<div style="margin-bottom:0.75rem;"><div style="font-weight:600;color:var(--text);margin-bottom:0.3rem;">' +
+    name +
+    '</div>';
+
+  if (!shownSlots.length) {
+    html +=
+      '<p style="font-size:0.95rem;color:var(--text-dim);font-style:italic;margin:0 0 0.3rem;">No slots tagged yet.</p>';
+  } else {
+    shownSlots.forEach(function (slot, i) {
+      // The slot is folded into the displayed name (not just passed as the
+      // slot param) because these rows no longer live under a per-slot
+      // heading now that all of a source's tags are grouped together --
+      // without it, several "Catalyst" rows in a row would be indistinguishable.
+      // lockOnceSet (true): once a slot's tagged here, it's permanent.
+      html += wishlistRowHTML(name + ' - ' + slot, itemId, slot, i, true);
+    });
+  }
+
+  var availableSlots = candidateSlots.filter(function (s) {
+    return shownSlots.indexOf(s) === -1 && !globallyTaggedSlots[s];
+  });
+  if (availableSlots.length && wishlistOpen()) {
+    var selectId = 'wishlistAddSlotSelect_' + name.replace(/[^a-zA-Z0-9]/g, '');
+    html +=
+      '<div style="display:flex;gap:0.4rem;align-items:center;margin-top:0.3rem;">' +
+      '<select id="' +
+      selectId +
+      '" class="self-received-source" style="font-size:0.9rem;padding:0.25rem 0.4rem;max-width:160px;">' +
+      availableSlots
+        .map(function (s) {
+          return '<option value="' + s + '">' + s + '</option>';
+        })
+        .join('') +
+      '</select>' +
+      '<button class="btn btn-muted" style="font-size:0.85rem;padding:2px 8px;" onclick="wishlistRevealPlaceholderSlot(\'' +
+      name.replace(/'/g, "\\'") +
+      "','" +
+      selectId +
+      '\')">+ Add</button>' +
+      '</div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+// Catalyst is deliberately left out here: catalyzing keeps an item's own
+// stats/cantrip (season-wide as of the upcoming tier, not just the 5 armor
+// slots -- see the tier-set-slot reminder above), so it's never a distinct
+// "source" the way M+/Crafted are -- the real item is what should get
+// tagged directly, using the "Catalyst Only" status button on it. Formerly
+// had its own sub-block here for Cloak/Bracer/Belt/Boots; removed since
+// nothing had adopted it yet and the mechanic makes it meaningless.
+function wishlistOtherSourcesSectionHTML() {
+  var placeholders = wishlistPlaceholderNames().filter(function (name) {
+    return name !== 'Catalyst';
+  });
+  if (!placeholders.length) return '';
+  var itemIds = (DATA && DATA.itemIds) || {};
+  var placeholderItemIds = {};
+  placeholders.forEach(function (name) {
+    placeholderItemIds[itemIds[name]] = true;
+  });
+  var summaryItems = _wishlistPrefs
+    .filter(function (p) {
+      return placeholderItemIds[p.item_id];
+    })
+    .map(function (p) {
+      return { itemId: p.item_id, slot: p.slot };
+    });
+
+  var globallyTaggedSlots = {};
+  summaryItems.forEach(function (it) {
+    if (it.slot) globallyTaggedSlots[it.slot] = true;
+  });
+
+  var intro =
+    '<p style="font-size:1.04rem;color:var(--text);margin:0 0 0.6rem;">Use this only when a slot\'s actual <strong>BiS</strong> comes from M+ or Crafted instead of a raid drop. Pick a slot and click + Add -- it saves and locks in as BiS immediately.</p>';
+  var body =
+    intro +
+    placeholders
+      .map(function (name) {
+        return wishlistOtherSourceHTML(name, globallyTaggedSlots);
+      })
+      .join('');
+  return wishlistCollapsibleCardHTML(
+    '__other__',
+    'Other Sources -- BiS Not From Raid (M+ / Crafted)',
+    summaryItems,
+    body
+  );
+}
+
 function wishlistSectionBodyHTML(player) {
   var playerArmorType = (CLASS_ARMOR_TYPE || {})[player && player.class] || null;
   var buckets = wishlistBucketRealItems(playerArmorType);
-  var placeholders = wishlistPlaceholderNames();
-  var itemIds = (DATA && DATA.itemIds) || {};
 
   var html =
-    '<div class="profile-section"><div class="section-label">My Wishlist' +
+    '<div class="profile-section"><div class="section-label">My Wishlist ' +
+    '<span style="font-weight:400;color:var(--text-muted);font-size:0.85em;">-- your BiS list, expanded</span>' +
     '<button class="help-btn" onclick="toggleHelp(\'help-wishlist-' +
     player.firstName +
     '\')" title="Show help">?</button>' +
     '</div>' +
     '<div id="help-wishlist-' +
     player.firstName +
-    '" class="help-tip">Unlike your BiS list (one officer-set pick per slot), tag as many items as you want here -- backups, sidegrades, catalyst-only options, or drops you\'d rather pass on. Officers see both when deciding loot priority.</div>';
+    '" class="help-tip">Tag every item you\'d want per slot, not just one pick: backups, sidegrades, or drops to pass on. BiS choices marked here save to your BiS List. Slots below are raid drops; use Other Sources for gear you\'ll get elsewhere.</div>' +
+    (wishlistOpen()
+      ? ''
+      : '<p style="font-size:1.04rem;color:var(--melee);margin:0.25rem 0 0.75rem;">Wishlist editing is currently closed -- your tags below are read-only. Contact an officer if something needs to change.</p>');
 
+  html += wishlistOtherSourcesSectionHTML();
+
+  var slotCards = '';
   for (var s = 0; s < WISHLIST_SLOTS.length; s++) {
     var slotName = WISHLIST_SLOTS[s];
     var items = buckets[slotName] || [];
-    if (!items.length && !placeholders.length) continue;
+    if (!items.length) continue;
 
-    html += '<h4 style="margin:0.75rem 0 0.35rem;color:var(--text);">' + slotName + '</h4>';
-    html += '<div style="display:flex;flex-direction:column;gap:0;">';
-
-    for (var i = 0; i < items.length; i++) {
-      html += wishlistRowHTML(items[i].name, items[i].itemId, null, i);
-    }
-
-    // Placeholders (M+/Crafted/Catalyst) apply to every slot -- each gets its
-    // own row here, tagged with this slot via item_preferences.slot so the
-    // same shared placeholder item can carry a different status per slot.
-    for (var p = 0; p < placeholders.length; p++) {
-      var phName = placeholders[p];
-      html += wishlistRowHTML(phName, itemIds[phName], slotName, items.length + p);
-    }
-
-    html += '</div>';
+    var tierNote =
+      WISHLIST_TIER_SET_SLOTS.indexOf(slotName) !== -1
+        ? '<p style="font-size:1.04rem;color:var(--text);margin:0 0 0.5rem;">Catalyzing keeps an item\'s stats/cantrip -- tag whichever piece you actually want as BiS, tier or not.</p>'
+        : '';
+    var body =
+      tierNote +
+      items
+        .map(function (item, i) {
+          return wishlistRowHTML(item.name, item.itemId, null, i);
+        })
+        .join('');
+    var summaryItems = items.map(function (item) {
+      return { itemId: item.itemId, slot: null };
+    });
+    slotCards += wishlistCollapsibleCardHTML(slotName, slotName, summaryItems, body);
   }
+  html += slotCards;
 
   html +=
     '<div id="wishlistSaveMsg-' +
@@ -461,7 +712,7 @@ function wishlistSectionBodyHTML(player) {
 // does a plain insert rather than upserting). Filters an update the same way
 // bisSlotFilter() does: .eq('slot', slot) when set, .is('slot', null) when not.
 function wishlistUpsert(itemId, slot, patch) {
-  if (!_wishlistPlayerId) return;
+  if (!_wishlistPlayerId || !wishlistOpen()) return;
   var savingKey = itemId + '|' + (slot || '');
   _wishlistSaving[savingKey] = true;
   var msgEl = document.getElementById('wishlistSaveMsg-' + _wishlistPlayerFirstName);
@@ -517,7 +768,44 @@ function wishlistUpsert(itemId, slot, patch) {
     });
 }
 
+// Slot row(s) a given item_preferences row occupies, for BiS-conflict
+// detection below. Placeholders (Other Sources) carry an explicit slot
+// override; real catalog items don't (slot is always null for them), so
+// their row(s) come from the item's own catalog slot via
+// WISHLIST_CATALOG_SLOT_TO_ROWS instead -- same fan-out wishlistBucketRealItems
+// uses, which is also why a Finger/Trinket item's rows are both numbered
+// rows at once (the DB has no way to say "this ring is my Finger 1 pick
+// specifically", so only one ring can be BiS at a time today).
+function wishlistItemRows(itemId, slot) {
+  if (slot) return [slot];
+  var itemSlots = (DATA && DATA.itemSlots) || {};
+  var itemIds = (DATA && DATA.itemIds) || {};
+  var name = null;
+  Object.keys(itemIds).forEach(function (n) {
+    if (itemIds[n] === itemId) name = n;
+  });
+  if (!name) return [];
+  return WISHLIST_CATALOG_SLOT_TO_ROWS[itemSlots[name] || ''] || [];
+}
+
+// Only one item can be BiS per slot at a time: tagging a new one
+// auto-demotes whatever was previously BiS in an overlapping row to Good,
+// so it stays tracked as a backup instead of two items both claiming BiS.
 function wishlistSetStatus(itemId, slot, status) {
+  if (status === 'bis') {
+    var rows = wishlistItemRows(itemId, slot || null);
+    if (rows.length) {
+      _wishlistPrefs.forEach(function (p) {
+        if (p.item_id === itemId && (p.slot || null) === (slot || null)) return;
+        if (p.status !== 'bis') return;
+        var otherRows = wishlistItemRows(p.item_id, p.slot || null);
+        var overlaps = otherRows.some(function (r) {
+          return rows.indexOf(r) !== -1;
+        });
+        if (overlaps) wishlistUpsert(p.item_id, p.slot || null, { status: 'good' });
+      });
+    }
+  }
   wishlistUpsert(itemId, slot || null, { status: status });
 }
 
