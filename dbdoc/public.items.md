@@ -4,13 +4,14 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('items_id_seq'::regclass) | false | [public.bis_items](public.bis_items.md) [public.item_bosses](public.item_bosses.md) [public.rclc_loot](public.rclc_loot.md) [public.priority_order](public.priority_order.md) [public.self_received_requests](public.self_received_requests.md) |  |  |
+| id | integer | nextval('items_id_seq'::regclass) | false | [public.bis_items](public.bis_items.md) [public.item_bosses](public.item_bosses.md) [public.rclc_loot](public.rclc_loot.md) [public.priority_order](public.priority_order.md) [public.self_received_requests](public.self_received_requests.md) [public.item_preferences](public.item_preferences.md) |  |  |
 | wow_item_id | integer |  | true |  |  |  |
 | name | text |  | false |  |  |  |
 | slot | text |  | false |  |  |  |
 | armor_type | text |  | true |  |  |  |
 | sort_id | integer |  | true |  |  |  |
 | is_placeholder | boolean | false | false |  |  |  |
+| icon | text |  | true |  |  |  |
 
 ## Constraints
 
@@ -37,6 +38,7 @@ erDiagram
 "public.rclc_loot" }o--o| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
 "public.priority_order" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id)"
 "public.self_received_requests" }o--|| "public.items" : "FOREIGN KEY (self_item_id) REFERENCES items(id) ON DELETE SET NULL"
+"public.item_preferences" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
 
 "public.items" {
   integer id
@@ -46,6 +48,7 @@ erDiagram
   text armor_type
   integer sort_id
   boolean is_placeholder
+  text icon
 }
 "public.bis_items" {
   integer id
@@ -92,6 +95,17 @@ erDiagram
   text source
   text note
   text slot
+}
+"public.item_preferences" {
+  integer id
+  integer team_id FK
+  integer player_id FK
+  integer item_id FK
+  text status
+  text note
+  text slot
+  timestamp_with_time_zone updated_at
+  timestamp_with_time_zone created_at
 }
 ```
 

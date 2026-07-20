@@ -10,7 +10,7 @@
 | [public.bis_requests](public.bis_requests.md) | 8 |  | BASE TABLE |
 | [public.classes_specs](public.classes_specs.md) | 4 |  | BASE TABLE |
 | [public.item_bosses](public.item_bosses.md) | 2 |  | BASE TABLE |
-| [public.items](public.items.md) | 7 |  | BASE TABLE |
+| [public.items](public.items.md) | 8 |  | BASE TABLE |
 | [public.rclc_loot](public.rclc_loot.md) | 10 |  | BASE TABLE |
 | [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) | 9 |  | BASE TABLE |
 | [public.player_wcl_season_perf](public.player_wcl_season_perf.md) | 7 |  | BASE TABLE |
@@ -38,6 +38,7 @@
 | [public.priority_order_first_prio_counts](public.priority_order_first_prio_counts.md) | 5 |  | VIEW |
 | [public.priority_order_same_boss_conflicts](public.priority_order_same_boss_conflicts.md) | 10 |  | VIEW |
 | [public.priority_order_stale_after_heroic](public.priority_order_stale_after_heroic.md) | 7 |  | VIEW |
+| [public.item_preferences](public.item_preferences.md) | 9 |  | BASE TABLE |
 | [public.site_settings](public.site_settings.md) | 4 |  | BASE TABLE |
 | [public.incoming_roster](public.incoming_roster.md) | 6 |  | VIEW |
 
@@ -149,6 +150,9 @@ erDiagram
 "public.raid_encounters" }o--|| "public.raid_zones" : "FOREIGN KEY (zone_id) REFERENCES raid_zones(id) ON DELETE CASCADE"
 "public.team_raid_progress" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_raid_progress" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
+"public.item_preferences" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
+"public.item_preferences" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.item_preferences" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -207,6 +211,7 @@ erDiagram
   text armor_type
   integer sort_id
   boolean is_placeholder
+  text icon
 }
 "public.rclc_loot" {
   integer id
@@ -483,6 +488,17 @@ erDiagram
   text item_name
   integer player_id
   text name_realm
+}
+"public.item_preferences" {
+  integer id
+  integer team_id FK
+  integer player_id FK
+  integer item_id FK
+  text status
+  text note
+  text slot
+  timestamp_with_time_zone updated_at
+  timestamp_with_time_zone created_at
 }
 "public.site_settings" {
   integer id

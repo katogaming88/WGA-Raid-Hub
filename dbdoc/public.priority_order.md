@@ -37,8 +37,8 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| trg_priority_order_team_id_check | CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player() |
 | trg_priority_order_updated_at | CREATE TRIGGER trg_priority_order_updated_at BEFORE UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
+| trg_priority_order_team_id_check | CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player() |
 
 ## Relations
 
@@ -74,6 +74,7 @@ erDiagram
   text armor_type
   integer sort_id
   boolean is_placeholder
+  text icon
 }
 "public.players" {
   integer id
