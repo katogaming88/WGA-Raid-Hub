@@ -509,6 +509,19 @@ function buildBisListsTab() {
   var labels = { Tank: 'Tanks', Heal: 'Healers', Melee: 'Melee', Ranged: 'Ranged', Bench: 'Bench' };
   var groups = { Tank: [], Heal: [], Melee: [], Ranged: [], Bench: [] };
 
+  // Wishlist completeness (#515) -- getIncompleteWishlists() is defined in
+  // tab-priority.js, loaded after this file, but that only matters for
+  // parse-time references; by the time this function actually runs (a tab
+  // switch, well after page load) it's available. A per-player missing-slot
+  // badge here replaces the standalone "big block of missing" banner that
+  // used to sit under the Wishlist Editing toggle.
+  var incompleteWishlists =
+    typeof getIncompleteWishlists === 'function' ? getIncompleteWishlists() : { count: 0, raiders: [] };
+  var missingByNameRealm = {};
+  incompleteWishlists.raiders.forEach(function (r) {
+    missingByNameRealm[r.nameRealm] = r.missingRows;
+  });
+
   for (var i = 0; i < roster.length; i++) {
     var rp = roster[i];
     if (rp.isBench) groups['Bench'].push(rp);
@@ -543,6 +556,7 @@ function buildBisListsTab() {
       var isEditing = _bisListEditor && _bisListEditor.firstName === p.firstName;
       var fnSafe = p.firstName.replace(/'/g, "\\'");
       var nrSafe = p.nameRealm.replace(/'/g, "\\'");
+      var missingRows = missingByNameRealm[p.nameRealm];
 
       html +=
         '<tr id="bis-player-row-' +
@@ -562,6 +576,13 @@ function buildBisListsTab() {
         '</span>' +
         (p.firstName !== dispName
           ? '<span style="font-size:1.02rem;color:var(--text-muted);">(' + p.firstName + ')</span>'
+          : '') +
+        (missingRows
+          ? '<span style="font-size:0.85em;color:var(--melee);cursor:default;" title="Wishlist missing: ' +
+            missingRows.join(', ').replace(/"/g, '&quot;') +
+            '">Wishlist incomplete (' +
+            missingRows.length +
+            ')</span>'
           : '') +
         '</div>' +
         '</div></td>' +
