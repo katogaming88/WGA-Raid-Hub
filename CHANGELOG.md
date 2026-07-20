@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.43.1] - 2026-07-20
+
+### Frontend
+
+- Fixed the raider wishlist failing to save any new tag (`400 Bad Request` on `item_preferences`) -- `wishlistUpsert()`'s insert path never set `team_id` (a NOT NULL column), so every first-time tag on an item failed silently in the console rather than actually saving. Caught live right after Phase 2 shipped; added a frontend test asserting the insert payload's shape so this can't regress unnoticed again.
+- Each wishlist status button now has its own color (matching the officer admin panel's tier-label dots: BiS gold, Good green, OK blue, Catalyst Only purple, Pass red), and selecting one tints the whole item row that color instead of just highlighting the button.
+
 ## [3.43.0] - 2026-07-20
 
 ### Frontend

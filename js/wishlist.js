@@ -27,6 +27,20 @@ var WISHLIST_STATUSES = [
   { value: 'pass', label: 'Pass' }
 ];
 
+// Same 5 colors as the officer admin panel's tier-label dots (js/tabs/tab-admin.js's
+// WISHLIST_LABEL_DEFAULTS -- own copy here for the same index.html/officer.html
+// script-bundle-boundary reason as WISHLIST_SLOTS). `rgb` is the same color's
+// plain r,g,b triplet (matching the existing --gold/--heal/--tank/--ranged/--melee
+// hex values), used for the low-opacity row tint rgba() can't build from a CSS
+// custom property alone.
+var WISHLIST_TIER_COLORS = {
+  bis: { css: 'var(--gold)', rgb: '214,163,68' },
+  good: { css: 'var(--heal)', rgb: '61,220,132' },
+  ok: { css: 'var(--tank)', rgb: '74,158,255' },
+  catalyst: { css: 'var(--ranged)', rgb: '191,140,255' },
+  pass: { css: 'var(--melee)', rgb: '255,124,92' }
+};
+
 // Mirrors js/tabs/tab-bis.js's BIS_SLOTS / BIS_CATALOG_SLOT_TO_ROWS. Kept as
 // a separate copy rather than a shared import -- officer.html and index.html
 // load entirely different script sets, so tab-bis.js isn't available here.
@@ -269,9 +283,13 @@ function wishlistPlaceholderNames() {
   return Object.keys(itemPlaceholders).sort();
 }
 
-function wishlistStatusButtonsHTML(itemId, slot) {
+function wishlistCurrentStatus(itemId, slot) {
   var pref = wishlistPrefFor(itemId, slot);
-  var current = pref ? pref.status : null;
+  return pref ? pref.status : null;
+}
+
+function wishlistStatusButtonsHTML(itemId, slot) {
+  var current = wishlistCurrentStatus(itemId, slot);
   var savingKey = itemId + '|' + (slot || '');
   var disabled = _wishlistSaving[savingKey] ? ' disabled' : '';
   // Officer-overridable per team (#515 Phase 2), stored in
@@ -282,10 +300,22 @@ function wishlistStatusButtonsHTML(itemId, slot) {
 
   return WISHLIST_STATUSES.map(function (s) {
     var active = current === s.value;
+    var color = WISHLIST_TIER_COLORS[s.value];
+    var style = active
+      ? 'font-size:0.9rem;padding:2px 8px;font-weight:700;color:' +
+        color.css +
+        ';background:rgba(' +
+        color.rgb +
+        ',0.18);border:1px solid ' +
+        color.css +
+        ';'
+      : 'font-size:0.9rem;padding:2px 8px;border:1px solid rgba(' + color.rgb + ',0.4);';
     return (
       '<button type="button" class="btn ' +
-      (active ? 'btn-gold' : 'btn-muted') +
-      '" style="font-size:0.9rem;padding:2px 8px;" ' +
+      (active ? '' : 'btn-muted') +
+      '" style="' +
+      style +
+      '" ' +
       disabled +
       ' onclick="wishlistSetStatus(' +
       itemId +
@@ -357,9 +387,15 @@ function wishlistItemNameHtml(name) {
 
 function wishlistRowHTML(name, itemId, slot, rowIndex) {
   if (itemId == null) return '';
+  var current = wishlistCurrentStatus(itemId, slot);
+  var color = current && WISHLIST_TIER_COLORS[current];
+  var rowBackground = color ? 'rgba(' + color.rgb + ',0.08)' : rowIndex % 2 ? 'var(--bg-elevated)' : 'var(--bg-card)';
+  var rowBorder = color ? color.css : 'var(--border)';
   return (
-    '<div style="padding:0.4rem 0.6rem;border-radius:4px;border:1px solid var(--border);background:' +
-    (rowIndex % 2 ? 'var(--bg-elevated)' : 'var(--bg-card)') +
+    '<div style="padding:0.4rem 0.6rem;border-radius:4px;border:1px solid ' +
+    rowBorder +
+    ';background:' +
+    rowBackground +
     ';margin-bottom:2px;">' +
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">' +
     wishlistItemNameHtml(name) +
@@ -444,6 +480,7 @@ function wishlistUpsert(itemId, slot, patch) {
     request = updateQuery.select('id, item_id, status, note, slot');
   } else {
     var row = {
+      team_id: _teamCfg.supabaseTeamId,
       player_id: _wishlistPlayerId,
       item_id: itemId,
       slot: slot || null,
