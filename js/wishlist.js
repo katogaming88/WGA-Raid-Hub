@@ -122,6 +122,9 @@ function fetchMyItemPreferences(playerId) {
 // use for their own local-state patches).
 function ownWishlistSectionHTML(player, backTo) {
   if (backTo !== 'landing') return '';
+  // Folded into the existing 'bis' flag rather than its own -- a team not
+  // using BiS lists isn't using the wishlist either.
+  if (typeof featureEnabled === 'function' && !featureEnabled('bis')) return '';
   var session = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
   if (!session || !session.nameRealm || normalise(session.nameRealm) !== normalise(player.nameRealm)) return '';
 
@@ -271,6 +274,11 @@ function wishlistStatusButtonsHTML(itemId, slot) {
   var current = pref ? pref.status : null;
   var savingKey = itemId + '|' + (slot || '');
   var disabled = _wishlistSaving[savingKey] ? ' disabled' : '';
+  // Officer-overridable per team (#515 Phase 2), stored in
+  // team_settings.config.wishlistStatusLabels via the officer admin panel --
+  // WISHLIST_STATUSES's own .label stays the default text for teams that
+  // haven't set (or have cleared) an override for that tier.
+  var labelOverrides = (DATA && DATA.wishlistStatusLabels) || {};
 
   return WISHLIST_STATUSES.map(function (s) {
     var active = current === s.value;
@@ -286,7 +294,7 @@ function wishlistStatusButtonsHTML(itemId, slot) {
       "','" +
       s.value +
       '\')">' +
-      s.label +
+      (labelOverrides[s.value] || s.label) +
       '</button>'
     );
   }).join('');

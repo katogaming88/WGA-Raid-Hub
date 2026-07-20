@@ -38,7 +38,10 @@ function switchAdminSubTab(name, btnEl) {
   });
   if (name === 'properties') loadAdminProperties();
   if (name === 'officers') renderOfficerManagement();
-  if (name === 'features') renderAdminFeatureFlags();
+  if (name === 'features') {
+    renderAdminFeatureFlags();
+    renderAdminWishlistLabels();
+  }
   if (name === 'danger') renderDangerZone();
 }
 
@@ -595,5 +598,83 @@ function toggleAdminFeatureFlag(key, enabled) {
     .catch(function (err) {
       alert(err.message);
       renderAdminFeatureFlags(); // revert the checkbox to last-known state
+    });
+}
+
+// ── Wishlist Tier Labels (#515 Phase 2) ──────────────────────────────────
+// Own copy of the 5 tier value/default-label pairs -- officer.html and
+// index.html are separate script bundles (js/wishlist.js, where the raider
+// wishlist itself renders, isn't loaded here), same reasoning already
+// documented for the BIS_SLOTS/WISHLIST_SLOTS duplication.
+var WISHLIST_LABEL_DEFAULTS = [
+  { value: 'bis', label: 'BiS', dotColor: 'var(--gold)' },
+  { value: 'good', label: 'Good', dotColor: 'var(--heal)' },
+  { value: 'ok', label: 'OK', dotColor: 'var(--tank)' },
+  { value: 'catalyst', label: 'Catalyst Only', dotColor: 'var(--ranged)' },
+  { value: 'pass', label: 'Pass', dotColor: 'var(--melee)' }
+];
+
+function renderAdminWishlistLabels() {
+  var el = document.getElementById('adminWishlistLabelsContent');
+  if (!el) return;
+  var overrides = (DATA && DATA.wishlistStatusLabels) || {};
+  el.innerHTML =
+    WISHLIST_LABEL_DEFAULTS.map(function (t) {
+      return (
+        '<div style="display:flex;align-items:center;gap:0.6rem;padding:0.4rem 0;">' +
+        '<span style="width:0.6rem;height:0.6rem;border-radius:50%;background:' +
+        t.dotColor +
+        ';flex-shrink:0;"></span>' +
+        '<input type="text" id="wishlistLabelInput-' +
+        t.value +
+        '" class="add-player-input" placeholder="' +
+        escHtml(t.label) +
+        '" value="' +
+        escHtml(overrides[t.value] || '') +
+        '" style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">' +
+        '</div>'
+      );
+    }).join('') +
+    '<div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.5rem;">' +
+    '<button class="btn btn-gold" id="wishlistLabelsSaveBtn" onclick="saveAdminWishlistLabels()">Save</button>' +
+    '<span id="wishlistLabelsStatus" style="font-size:0.92rem;color:var(--heal);"></span>' +
+    '</div>';
+}
+
+function saveAdminWishlistLabels() {
+  var overrides = {};
+  WISHLIST_LABEL_DEFAULTS.forEach(function (t) {
+    var input = document.getElementById('wishlistLabelInput-' + t.value);
+    var val = input ? input.value.trim() : '';
+    if (val && val !== t.label) overrides[t.value] = val;
+  });
+
+  var btn = document.getElementById('wishlistLabelsSaveBtn');
+  var statusEl = document.getElementById('wishlistLabelsStatus');
+  if (btn) btn.disabled = true;
+  if (statusEl) statusEl.textContent = 'Saving...';
+
+  saveTeamSetting({ wishlistStatusLabels: overrides })
+    .then(function (config) {
+      DATA.wishlistStatusLabels = config.wishlistStatusLabels || {};
+      var changed = Object.keys(overrides).length;
+      writeAuditLog(
+        'Wishlist Tier Labels Saved',
+        null,
+        null,
+        changed ? changed + ' tier(s) renamed' : 'reset to defaults'
+      );
+      if (btn) btn.disabled = false;
+      if (statusEl) statusEl.textContent = 'Saved';
+      setTimeout(function () {
+        if (statusEl) statusEl.textContent = '';
+      }, 2000);
+    })
+    .catch(function (err) {
+      if (btn) btn.disabled = false;
+      if (statusEl) {
+        statusEl.style.color = 'var(--melee)';
+        statusEl.textContent = 'Failed: ' + err.message;
+      }
     });
 }
