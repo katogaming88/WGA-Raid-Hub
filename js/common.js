@@ -4009,7 +4009,7 @@ function renderProfile(firstName, backTo, container) {
 
   var bisTabIntroHTML =
     backTo !== 'officer'
-      ? '<p style="color:var(--text-muted);font-size:0.95rem;margin:0;padding:0.75rem 1.25rem 0;">This is your officer-curated Best-in-Slot list -- one target item per slot, set by officers from your submitted BiS link. For backups, sidegrades, or items you don\'t want, use the Wishlist tab instead.</p>'
+      ? '<p style="color:var(--text-muted);font-size:0.95rem;margin:0;padding:0.75rem 1.25rem 0;">This is your Best-in-Slot list -- one target item per slot, either set by officers from your submitted BiS link or tagged as BiS on your Wishlist tab. For backups, sidegrades, or items you don\'t want, use the Wishlist tab instead.</p>'
       : '';
 
   var bisSectionHTML = featureEnabled('bis')
