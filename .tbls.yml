@@ -9,3 +9,11 @@ er:
   format: mermaid
 include:
   - public.*
+# Without this, a table's trigger/index/constraint listing order comes
+# straight off Postgres's catalog tables, which isn't guaranteed stable
+# across separate `supabase db reset` runs even with identical migrations
+# applied in the same order (#504) -- caused spurious `tbls diff` mismatches
+# (e.g. priority_order's two triggers swapping order) that a fresh reset
+# only reduced the odds of, never eliminated. Sorting makes both `db:docs`
+# and `db:docs:check` deterministic regardless of catalog ordering.
+sort: true
