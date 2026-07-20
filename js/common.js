@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.42.0';
+var VERSION = '3.43.0';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -1661,6 +1661,7 @@ function applyTeamSettingsToData(data, config) {
   data.features = config.features || {};
   data.externalLinks = config.externalLinks || {};
   data.blazeCommanderBios = config.blazeCommanderBios || [];
+  data.wishlistStatusLabels = config.wishlistStatusLabels || {};
 }
 
 // Per-team feature flags (#231). Missing key -- either DATA.features itself
@@ -3925,6 +3926,14 @@ function renderProfile(firstName, backTo, container) {
   // it's a different editing context entirely and isn't part of this rework.
   var profileTabsHTML;
   if (backTo === 'landing') {
+    // BiS and Wishlist share the 'bis' feature flag -- a team not using BiS
+    // lists isn't using the wishlist either (#515 Phase 2). Falls back off
+    // 'bis'/'wishlist' to Overview if the flag got turned off while that tab
+    // was the active one.
+    var bisFeatureOn = featureEnabled('bis');
+    if (!bisFeatureOn && (_profileSubTab === 'bis' || _profileSubTab === 'wishlist')) {
+      _profileSubTab = 'overview';
+    }
     profileTabsHTML =
       // .roster-sub-nav has no horizontal padding of its own -- on the Roster
       // page it sits inside an already-padded container, but .profile-card
@@ -3934,12 +3943,14 @@ function renderProfile(firstName, backTo, container) {
       '<button class="roster-sub-tab' +
       (_profileSubTab === 'overview' ? ' active' : '') +
       '" id="profileSubTabOverview" onclick="showProfileSubTab(\'overview\')">Overview</button>' +
-      '<button class="roster-sub-tab' +
-      (_profileSubTab === 'bis' ? ' active' : '') +
-      '" id="profileSubTabBis" onclick="showProfileSubTab(\'bis\')">BiS</button>' +
-      '<button class="roster-sub-tab' +
-      (_profileSubTab === 'wishlist' ? ' active' : '') +
-      '" id="profileSubTabWishlist" onclick="showProfileSubTab(\'wishlist\')">Wishlist</button>' +
+      (bisFeatureOn
+        ? '<button class="roster-sub-tab' +
+          (_profileSubTab === 'bis' ? ' active' : '') +
+          '" id="profileSubTabBis" onclick="showProfileSubTab(\'bis\')">BiS</button>' +
+          '<button class="roster-sub-tab' +
+          (_profileSubTab === 'wishlist' ? ' active' : '') +
+          '" id="profileSubTabWishlist" onclick="showProfileSubTab(\'wishlist\')">Wishlist</button>'
+        : '') +
       '<button class="roster-sub-tab' +
       (_profileSubTab === 'stream' ? ' active' : '') +
       '" id="profileSubTabStream" onclick="showProfileSubTab(\'stream\')">Stream</button>' +
@@ -3951,16 +3962,18 @@ function renderProfile(firstName, backTo, container) {
       lootSectionHTML +
       mplusSectionHTML +
       '</div>' +
-      '<div id="profileTabBis" style="display:' +
-      (_profileSubTab === 'bis' ? '' : 'none') +
-      ';">' +
-      bisSectionHTML +
-      '</div>' +
-      '<div id="profileTabWishlist" style="display:' +
-      (_profileSubTab === 'wishlist' ? '' : 'none') +
-      ';">' +
-      wishlistSectionHTML +
-      '</div>' +
+      (bisFeatureOn
+        ? '<div id="profileTabBis" style="display:' +
+          (_profileSubTab === 'bis' ? '' : 'none') +
+          ';">' +
+          bisSectionHTML +
+          '</div>' +
+          '<div id="profileTabWishlist" style="display:' +
+          (_profileSubTab === 'wishlist' ? '' : 'none') +
+          ';">' +
+          wishlistSectionHTML +
+          '</div>'
+        : '') +
       '<div id="profileTabStream" style="display:' +
       (_profileSubTab === 'stream' ? '' : 'none') +
       ';">' +

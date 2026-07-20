@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.43.0] - 2026-07-20
+
+### Frontend
+
+- Officers can now rename the raider wishlist's 5 status tiers (default BiS/Good/OK/Catalyst Only/Pass) per team -- new "Wishlist Tier Labels" panel under Admin > Feature Flags, 5 text inputs with a shared Save button. Leaving a field blank keeps that tier's default text; colors stay fixed per tier regardless. Phase 2 of #515 -- no schema change, stored as a new `team_settings.config.wishlistStatusLabels` key via the existing `set_team_setting` RPC, same no-migration pattern the Officer Bios feature already uses.
+- The wishlist (both the profile's Wishlist tab and the BiS tab's wishlist-merged rows) now shares the existing `bis` feature flag rather than always being on -- a team with BiS Lists turned off no longer sees either. Previously the wishlist had no feature-flag gate at all.
+
 ## [3.42.0] - 2026-07-20
 
 ### Frontend
