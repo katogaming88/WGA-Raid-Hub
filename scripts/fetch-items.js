@@ -193,9 +193,7 @@ async function main() {
   console.log(`Found ${zoneItems.length} items on the zone page.\n`);
 
   const filtered = zoneItems.filter((item) => !SKIP_TYPES.has(classifyWowheadType(item)));
-  console.log(
-    `Processing ${filtered.length} items (skipped ${zoneItems.length - filtered.length} Decor/Reagent)...\n`
-  );
+  console.log(`Processing ${filtered.length} items (skipped ${zoneItems.length - filtered.length} Decor/Reagent)...\n`);
 
   const itemRows = [];
   const bossRows = [];
