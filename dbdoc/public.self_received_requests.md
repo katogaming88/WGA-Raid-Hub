@@ -93,6 +93,7 @@ erDiagram
   text armor_type
   integer sort_id
   boolean is_placeholder
+  text icon
 }
 ```
 

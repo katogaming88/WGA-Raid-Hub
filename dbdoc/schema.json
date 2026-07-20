@@ -655,6 +655,11 @@
           "type": "boolean",
           "nullable": false,
           "default": "false"
+        },
+        {
+          "name": "icon",
+          "type": "text",
+          "nullable": true
         }
       ],
       "indexes": [
@@ -3363,6 +3368,150 @@
       ]
     },
     {
+      "name": "public.item_preferences",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('item_preferences_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "item_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "slot",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "item_preferences_pkey",
+          "def": "CREATE UNIQUE INDEX item_preferences_pkey ON public.item_preferences USING btree (id)",
+          "table": "public.item_preferences",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "item_preferences_no_dupe_item_key",
+          "def": "CREATE UNIQUE INDEX item_preferences_no_dupe_item_key ON public.item_preferences USING btree (player_id, item_id, COALESCE(slot, ''::text))",
+          "table": "public.item_preferences",
+          "columns": [
+            "player_id",
+            "item_id",
+            "coalesce"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "item_preferences_status_check",
+          "type": "CHECK",
+          "def": "CHECK ((status = ANY (ARRAY['bis'::text, 'good'::text, 'ok'::text, 'catalyst'::text, 'pass'::text])))",
+          "table": "public.item_preferences",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "item_preferences_item_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE",
+          "table": "public.item_preferences",
+          "referenced_table": "public.items",
+          "columns": [
+            "item_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "item_preferences_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.item_preferences",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "item_preferences_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.item_preferences",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "item_preferences_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.item_preferences",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_item_preferences_team_id_check",
+          "def": "CREATE TRIGGER trg_item_preferences_team_id_check BEFORE INSERT OR UPDATE ON public.item_preferences FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        },
+        {
+          "name": "trg_item_preferences_updated_at",
+          "def": "CREATE TRIGGER trg_item_preferences_updated_at BEFORE UPDATE ON public.item_preferences FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
       "name": "public.site_settings",
       "type": "BASE TABLE",
       "columns": [
@@ -3963,6 +4112,45 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.item_preferences",
+      "columns": [
+        "item_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.items",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.item_preferences",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.item_preferences",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [

@@ -1,6 +1,6 @@
 # Updating `fetch-items.js` for a new tier
 
-`scripts/fetch-items.js` generates `items.csv` and `item_bosses_raw.csv` for seeding the `items` and `item_bosses` Supabase tables at the start of a new raid tier. It reads a hand-curated list of item IDs, then queries Wowhead per item for the name, slot, and boss source. See [issue #132](https://github.com/katogaming88/WGA-Raid-Hub/issues/132) for the full manual SQL workflow and column reference this feeds into.
+`scripts/fetch-items.js` generates `items.csv` and `item_bosses_raw.csv` for seeding the `items` and `item_bosses` Supabase tables at the start of a new raid tier. It pulls the raid's full loot table -- item id, name, equip slot, and boss source -- in one fetch from the Wowhead zone page, then queries Wowhead once per item for just the icon (via Wowhead's lightweight tooltip JSON endpoint, not the full item page). See [issue #132](https://github.com/katogaming88/WGA-Raid-Hub/issues/132) for the full manual SQL workflow and column reference this feeds into.
 
 This is now the **sole** source for the web app's item catalog (name/slot/armor-type/boss) -- the GAS "Item Lookup" sheet was retired as a data source in [#391](https://github.com/katogaming88/WGA-Raid-Hub/issues/391). There's no second catalog to keep in sync each tier; whatever lands in `items`/`item_bosses` via this workflow is what the site shows.
 
@@ -26,22 +26,19 @@ Look up the new tier's token names on Wowhead (search the tier's tokens, e.g. "V
 
 `TOKEN_ARMOR_SUFFIXES` (cast/cured/forged/woven -> Mail/Leather/Plate/Cloth) has held steady across tiers so far -- only touch it if a new tier breaks that naming pattern.
 
-### 2. `RAW_DATA`
+### 2. `ZONE_ID` / `ZONE_IS_PTR`
 
-Replace the entire array with the new tier's items, pulled from Wowhead:
+The script pulls the item ID list and Wowhead type automatically from the raid zone page's embedded loot table (the `drops` Listview), so there's no more hand-pasting a `RAW_DATA` array.
 
-1. Go to the Wowhead zone page for the new raid (e.g. `wowhead.com/zone=<id>/<zone-slug>`) and open the **Items** tab. This is already scoped to just that raid's loot table.
-2. Use the table's column toggle (the columns/gear icon on the table, usually top-right) to make sure **ID** and **Type** are both enabled as visible columns -- Type often isn't shown by default.
-3. Copy the **ID** column: click into the column and select all rows (drag-select or click first row, shift+click last row), then copy. Do the same for the **Type** column. This is the same table/column-copy technique `item-bosses-sql.js` uses for the ID and Source columns -- see that script's header comment if the exact clicks below drift as Wowhead's UI changes.
-4. Zip the two copied lists together into `[id, 'Type'],` pairs and paste over the existing `RAW_DATA` array.
+1. Find the new raid's Wowhead zone page, e.g. `wowhead.com/zone=<id>/<zone-slug>` (or `wowhead.com/ptr/zone=<id>/<zone-slug>` while the tier is still on PTR).
+2. Set `ZONE_ID` to that numeric id, and `ZONE_IS_PTR` to `true`/`false` depending on whether the raid is live yet.
+3. Flip `ZONE_IS_PTR` to `false` once the tier ships and the zone page moves off `/ptr/`.
 
-Don't bother filtering out Decor/Reagent/Cosmetic by hand -- `SKIP_TYPES` does that automatically. Junk-typed rows (tier tokens) should stay in the list; the script special-cases them.
-
-Note: this only gets you name/slot/armor-type inputs. The boss/Source column is pulled separately -- see `item-bosses-sql.js`, which copies the ID and Source columns from this same Items tab table.
+The script classifies each item's Wowhead type from its `classs`/`subclass` fields on the loot table (see `classifyWowheadType` in the script) -- Decor/Reagent are skipped automatically via `SKIP_TYPES`, and tier tokens are classified as `Junk` so the existing token-keyword/boss-source logic handles them. Slot comes from the loot table's numeric equip-slot code via `INVTYPE_SLOT_NAME`, and boss comes from its `sourcemore` field. You don't need to filter, classify, or look anything up by hand.
 
 ### 3. Everything else is stable
 
-`SLOT_FROM_TYPE`, `ARMOR_SLOTS`, `SKIP_TYPES`, and the token-armor suffix map are all keyed off Wowhead's item *type* strings and general slot names, which don't change tier to tier. Leave them alone unless a new tier introduces an item type you haven't seen before (the script will log `slot: ??` for anything it can't resolve, which is your signal to add a mapping).
+`INVTYPE_SLOT_NAME`, `ARMOR_SUBCLASS_NAME`, `SKIP_TYPES`, and the token-armor suffix map are keyed off Wowhead's own numeric item-class codes and general slot names, which don't change tier to tier. Leave them alone unless a new tier introduces an item class/subclass or equip-slot code you haven't seen before (the script will log `slot: ??` for anything it can't resolve, or a `[WARN]` for an unrecognized `classs`/`subclass`, which is your signal to add a mapping).
 
 ## Running it
 
@@ -53,9 +50,9 @@ Requires Node 18+ (uses native `fetch`). No install step, no dependencies.
 
 ## After it runs
 
-- Check the console output for `[FAIL]` and `[SKIP]` lines -- these need manual follow-up (failed fetch, or a Junk item that didn't match a token keyword and had no boss source).
+- Check the console output for `[FAIL]` and `[SKIP]` lines -- these need manual follow-up. `[FAIL]` now only means the per-item icon lookup failed (the item still gets a row, just with a blank `icon`); `[SKIP]` means a Junk item that didn't match a token keyword and had no boss source.
 - Check the end-of-run warning about empty slots in `items.csv` -- fill those in by hand before importing.
-- **Treat the `boss` column in `item_bosses_raw.csv` as a rough first pass, not authoritative.** It's scraped from the item page's embedded "dropped-by" data, which is where Wowhead's accuracy has been unreliable in the past. Use `scripts/item-bosses-sql.js` (paste the zone page's Items-tab table directly, with encounter-name reconciliation via `ENCOUNTER_MAP`) as the more reliable source for the actual `item_bosses` insert -- don't just trust `item_bosses_raw.csv` as-is.
+- **Treat the `boss` column in `item_bosses_raw.csv` as a rough first pass, not authoritative.** It comes from the zone loot table's own boss attribution, which is generally reliable but has been wrong for a handful of items in the past (multi-boss trinkets, world drops, etc). Use `scripts/item-bosses-sql.js` (paste the zone page's Items-tab table directly, with encounter-name reconciliation via `ENCOUNTER_MAP`) as the more reliable source for the actual `item_bosses` insert -- don't just trust `item_bosses_raw.csv` as-is.
 
 ## Importing
 

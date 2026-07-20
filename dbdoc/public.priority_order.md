@@ -74,6 +74,7 @@ erDiagram
   text armor_type
   integer sort_id
   boolean is_placeholder
+  text icon
 }
 "public.players" {
   integer id
