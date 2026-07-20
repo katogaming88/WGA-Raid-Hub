@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.44.0] - 2026-07-20
+
+### Frontend
+
+- Officers can now open/close raider wishlist editing independently of the `bis` feature flag, same "pause editing without hiding it" shape as BiS Submissions and M+ Exclusions -- new "Wishlist Editing" toggle next to BiS Submissions on the officer BiS Manager tab. When closed, raiders still see their existing tags (colored, read-only) instead of the tab disappearing; status buttons and the note field are disabled, with a "Wishlist editing is currently closed" notice. Useful for locking the list right before generating priority order for the night so it can't shift mid-decision. Stored as a new `team_settings.config.wishlistOpen` key, same `SEASON_CONFIG_KEYS` pattern as the other two toggles -- no migration.
+
 ## [3.43.1] - 2026-07-20
 
 ### Frontend

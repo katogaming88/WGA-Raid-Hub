@@ -291,7 +291,7 @@ function wishlistCurrentStatus(itemId, slot) {
 function wishlistStatusButtonsHTML(itemId, slot) {
   var current = wishlistCurrentStatus(itemId, slot);
   var savingKey = itemId + '|' + (slot || '');
-  var disabled = _wishlistSaving[savingKey] ? ' disabled' : '';
+  var disabled = _wishlistSaving[savingKey] || !wishlistOpen() ? ' disabled' : '';
   // Officer-overridable per team (#515 Phase 2), stored in
   // team_settings.config.wishlistStatusLabels via the officer admin panel --
   // WISHLIST_STATUSES's own .label stays the default text for teams that
@@ -338,6 +338,7 @@ function wishlistNoteHTML(itemId, slot) {
     '<input type="text" id="' +
     noteId +
     '" class="self-received-source" style="width:100%;box-sizing:border-box;font-size:0.92rem;margin-top:0.25rem;" ' +
+    (wishlistOpen() ? '' : 'readonly ') +
     'placeholder="Note (optional)" value="' +
     note.replace(/"/g, '&quot;') +
     '" onchange="wishlistSetNote(' +
@@ -422,7 +423,10 @@ function wishlistSectionBodyHTML(player) {
     '</div>' +
     '<div id="help-wishlist-' +
     player.firstName +
-    '" class="help-tip">Unlike your BiS list (one officer-set pick per slot), tag as many items as you want here -- backups, sidegrades, catalyst-only options, or drops you\'d rather pass on. Officers see both when deciding loot priority.</div>';
+    '" class="help-tip">Unlike your BiS list (one officer-set pick per slot), tag as many items as you want here -- backups, sidegrades, catalyst-only options, or drops you\'d rather pass on. Officers see both when deciding loot priority.</div>' +
+    (wishlistOpen()
+      ? ''
+      : '<p style="font-size:1.04rem;color:var(--text-muted);margin:0.25rem 0 0.75rem;">Wishlist editing is currently closed -- your tags below are read-only. Contact an officer if something needs to change.</p>');
 
   for (var s = 0; s < WISHLIST_SLOTS.length; s++) {
     var slotName = WISHLIST_SLOTS[s];
@@ -461,7 +465,7 @@ function wishlistSectionBodyHTML(player) {
 // does a plain insert rather than upserting). Filters an update the same way
 // bisSlotFilter() does: .eq('slot', slot) when set, .is('slot', null) when not.
 function wishlistUpsert(itemId, slot, patch) {
-  if (!_wishlistPlayerId) return;
+  if (!_wishlistPlayerId || !wishlistOpen()) return;
   var savingKey = itemId + '|' + (slot || '');
   _wishlistSaving[savingKey] = true;
   var msgEl = document.getElementById('wishlistSaveMsg-' + _wishlistPlayerFirstName);

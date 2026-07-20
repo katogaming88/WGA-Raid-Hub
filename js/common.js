@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.43.1';
+var VERSION = '3.44.0';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -1636,6 +1636,7 @@ var SEASON_CONFIG_KEYS = [
   'signupsOpen',
   'bisSubmissionsOpen',
   'mPlusExclusionsOpen',
+  'wishlistOpen',
   // Season code <-> display-name translation prefixes (#341); consumed by
   // seasonDisplayName()/seasonCodeForDisplay() above, defaulting to
   // 'MID'/'Midnight Season' when unset so existing teams need no backfill.
@@ -2520,6 +2521,13 @@ function findRosterPlayerByNameRealm(nameRealm) {
 // -- BiS state helpers ------------------------------------------------------
 function bisSubmissionsOpen() {
   return !!(DATA && DATA.bisSubmissionsOpen);
+}
+
+// Same "editing gate, not visibility gate" shape as bisSubmissionsOpen() --
+// when closed, the raider's own tags stay visible/read-only rather than the
+// whole Wishlist tab disappearing (that's the 'bis' feature flag's job).
+function wishlistOpen() {
+  return !!(DATA && DATA.wishlistOpen);
 }
 
 // bis_allowed lives on players (#404) so the officer-write RLS rule already
