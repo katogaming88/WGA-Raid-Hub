@@ -1,0 +1,213 @@
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Officer-side wishlist completeness banner (#515). tab-priority.js reuses
+// tab-bis.js's BIS_SLOTS/BIS_CATALOG_SLOT_TO_ROWS rather than a third
+// duplicate copy of the slot vocabulary -- stubbed directly here rather than
+// loading the whole of tab-bis.js, same minimal-stub convention
+// priority-export.test.js already uses for this file.
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const PRIORITY_JS = readFileSync(path.join(HERE, '../../js/tabs/tab-priority.js'), 'utf8');
+
+const BIS_SLOTS = [
+  'Head',
+  'Neck',
+  'Shoulder',
+  'Back',
+  'Chest',
+  'Wrist',
+  'Hands',
+  'Waist',
+  'Legs',
+  'Feet',
+  'Finger 1',
+  'Finger 2',
+  'Trinket 1',
+  'Trinket 2',
+  'Weapon',
+  'Off Hand'
+];
+const BIS_CATALOG_SLOT_TO_ROWS = {
+  Head: ['Head'],
+  Neck: ['Neck'],
+  Shoulder: ['Shoulder'],
+  Back: ['Back'],
+  Chest: ['Chest'],
+  Wrist: ['Wrist'],
+  Hands: ['Hands'],
+  Waist: ['Waist'],
+  Legs: ['Legs'],
+  Feet: ['Feet'],
+  Finger: ['Finger 1', 'Finger 2'],
+  Trinket: ['Trinket 1', 'Trinket 2'],
+  'One-Hand': ['Weapon'],
+  'Two-Hand': ['Weapon'],
+  Ranged: ['Weapon'],
+  'Off Hand': ['Off Hand'],
+  'Held In Off-hand': ['Off Hand']
+};
+
+// Faithful-enough reimplementation of tab-bis.js's bisSlotBuckets() for this
+// standalone sandbox (same minimal-stub convention as BIS_SLOTS above) --
+// dbSlot first, then best-effort catalog-slot fallback for legacy rows.
+function bisSlotBuckets(items, itemSlots) {
+  var buckets = {};
+  var unassigned = [];
+  items.forEach(function (entry) {
+    var dbSlot = entry.dbSlot || entry.slot || '';
+    if (dbSlot && BIS_SLOTS.indexOf(dbSlot) !== -1 && !buckets[dbSlot]) {
+      buckets[dbSlot] = entry;
+    } else {
+      unassigned.push(entry);
+    }
+  });
+  unassigned.forEach(function (entry) {
+    var catalogSlot = itemSlots[entry.item] || '';
+    var candidates = BIS_CATALOG_SLOT_TO_ROWS[catalogSlot] || [];
+    for (var c = 0; c < candidates.length; c++) {
+      if (!buckets[candidates[c]]) {
+        buckets[candidates[c]] = entry;
+        return;
+      }
+    }
+  });
+  return { buckets: buckets };
+}
+
+function makeSandbox({
+  itemSlots = {},
+  itemIds = {},
+  roster = [],
+  prefsRows = [],
+  bisEnabled = true,
+  bisList = {}
+} = {}) {
+  const sandbox = {
+    console,
+    document: { getElementById: () => ({ innerHTML: '' }) },
+    DATA: { itemSlots, itemIds, roster },
+    _teamCfg: { supabaseTeamId: 1 },
+    featureEnabled: () => bisEnabled,
+    escHtml: (s) => String(s),
+    BIS_SLOTS,
+    BIS_CATALOG_SLOT_TO_ROWS,
+    getBisItems: (firstName) => bisList[firstName] || [],
+    bisSlotBuckets: (items) => bisSlotBuckets(items, itemSlots),
+    supabaseClient: {
+      from() {
+        return {
+          select() {
+            return this;
+          },
+          eq() {
+            return Promise.resolve({ data: prefsRows, error: null });
+          }
+        };
+      }
+    },
+    setTimeout,
+    clearTimeout,
+    Promise
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(PRIORITY_JS, sandbox, { filename: 'tab-priority.js' });
+  return sandbox;
+}
+
+describe('getIncompleteWishlists (#515)', () => {
+  it('returns empty when the bis feature flag is off', () => {
+    const sandbox = makeSandbox({ bisEnabled: false });
+    sandbox._teamItemPreferences = [];
+    expect(sandbox.getIncompleteWishlists()).toEqual({ count: 0, raiders: [] });
+  });
+
+  it("returns empty while item_preferences hasn't loaded yet", () => {
+    const sandbox = makeSandbox({});
+    expect(sandbox.getIncompleteWishlists()).toEqual({ count: 0, raiders: [] });
+  });
+
+  it('flags a raider with untagged slots and lists which ones', () => {
+    const itemSlots = { Helm: 'Head' };
+    const itemIds = { Helm: 1 };
+    const roster = [{ id: 11, nameRealm: 'Kat-Illidan' }];
+    const sandbox = makeSandbox({ itemSlots, itemIds, roster });
+    sandbox._teamItemPreferences = [{ player_id: 11, item_id: 1, status: 'good', slot: null }];
+
+    const result = sandbox.getIncompleteWishlists();
+    expect(result.count).toBe(1);
+    expect(result.raiders[0].nameRealm).toBe('Kat-Illidan');
+    expect(result.raiders[0].missingRows).toContain('Neck');
+    expect(result.raiders[0].missingRows).not.toContain('Head');
+  });
+
+  it('omits a raider whose wishlist is complete', () => {
+    const itemSlots = { Staff: 'Two-Hand' };
+    const itemIds = { Staff: 1 };
+    // Only Weapon is a real slot here; every other required row has no
+    // catalog item at all, so nothing can ever tag them -- to isolate the
+    // "complete raider is omitted" behavior, restrict BIS_SLOTS/rows via a
+    // roster with all other rows covered by placeholder (Other Sources) tags.
+    const roster = [{ id: 11, nameRealm: 'Kat-Illidan' }];
+    const otherRows = BIS_SLOTS.filter((r) => r !== 'Weapon' && r !== 'Off Hand');
+    const prefsRows = [{ player_id: 11, item_id: 1, status: 'bis', slot: null }].concat(
+      otherRows.map((row, i) => ({ player_id: 11, item_id: 100 + i, status: 'bis', slot: row }))
+    );
+    const sandbox = makeSandbox({ itemSlots, itemIds, roster, prefsRows });
+    sandbox._teamItemPreferences = prefsRows;
+
+    const result = sandbox.getIncompleteWishlists();
+    expect(result.count).toBe(0);
+  });
+
+  it('fetchTeamItemPreferences then re-render populates the banner via renderWishlistIncompleteBanner', async () => {
+    const itemSlots = {};
+    const itemIds = {};
+    const roster = [];
+    const el = { innerHTML: '' };
+    const sandbox = makeSandbox({ itemSlots, itemIds, roster, prefsRows: [] });
+    sandbox.document.getElementById = (id) => (id === 'wishlistIncompleteBanner' ? el : null);
+
+    sandbox.renderWishlistIncompleteBanner();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(sandbox._teamItemPreferences).toEqual([]);
+    expect(el.innerHTML).toBe('');
+  });
+
+  it('an officer bis_items pick covers a slot the raider never tagged themselves', () => {
+    const itemSlots = { Helm: 'Head', Necklace: 'Neck' };
+    const itemIds = { Helm: 1, Necklace: 2 };
+    const roster = [{ id: 11, firstName: 'Kat', nameRealm: 'Kat-Illidan' }];
+    const bisList = { Kat: [{ item: 'Helm', dbSlot: 'Head' }] };
+    const sandbox = makeSandbox({ itemSlots, itemIds, roster, bisList });
+    sandbox._teamItemPreferences = []; // raider never touched their wishlist
+
+    const result = sandbox.getIncompleteWishlists();
+    expect(result.count).toBe(1);
+    expect(result.raiders[0].missingRows).not.toContain('Head');
+    expect(result.raiders[0].missingRows).toContain('Neck');
+  });
+
+  it('renders a compact name-only banner on the Priority tab, no per-slot breakdown', async () => {
+    const itemSlots = { Helm: 'Head' };
+    const itemIds = { Helm: 1 };
+    const roster = [{ id: 11, nameRealm: 'Kat-Illidan' }];
+    const prefsRows = [{ player_id: 11, item_id: 1, status: 'good', slot: null }];
+    const compactEl = { innerHTML: '' };
+    const sandbox = makeSandbox({ itemSlots, itemIds, roster, prefsRows });
+    sandbox.document.getElementById = (id) => (id === 'wishlistIncompleteBanner' ? compactEl : null);
+
+    sandbox.renderWishlistIncompleteBanner();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(compactEl.innerHTML).toContain('Kat-Illidan');
+    expect(compactEl.innerHTML).not.toContain('Neck');
+    expect(compactEl.innerHTML).toContain('BiS Lists');
+  });
+});

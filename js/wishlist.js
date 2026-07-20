@@ -171,14 +171,11 @@ function ownWishlistSectionHTML(player, backTo) {
   return wishlistSectionBodyHTML(player);
 }
 
-// Read-time merge for the profile's BiS List display -- never writes to
-// bis_items. A raider's own wishlist "BiS" tag supersedes the officer's pick
-// for that same slot category; real items compare by catalog slot (Finger,
-// Trinket, ...), since the wishlist has no notion of "which numbered ring"
-// the way the officer's grid does -- any BiS-tagged ring supersedes both
-// Finger 1 and Finger 2. Placeholders (M+/Crafted/Catalyst) compare by their
-// exact tagged BIS_SLOTS row instead, since that's the only thing that
-// distinguishes them (they have no catalog slot of their own).
+// Read-time merge for the raider's own profile BiS List display -- delegates
+// to common.js's bisMergeWishlistPrefs() (shared with renderProfile()'s
+// officer-side merge, which sources prefs from tab-priority.js's
+// _teamItemPreferences instead since index.html's _wishlistPrefs isn't
+// available there).
 //
 // Requires _wishlistPrefs to already be loaded for this player -- called
 // from renderProfile() after ownWishlistSectionHTML() has had a chance to
@@ -189,51 +186,7 @@ function wishlistBisMergeGroups(player, officerBisItems) {
   if (_wishlistPlayerId !== player.id || _wishlistPrefs === null) {
     return { fromWishlist: [], officerSet: officerBisItems };
   }
-
-  var idToName = {};
-  Object.keys((DATA && DATA.itemIds) || {}).forEach(function (name) {
-    idToName[DATA.itemIds[name]] = name;
-  });
-  var itemSlots = (DATA && DATA.itemSlots) || {};
-  var itemPlaceholders = (DATA && DATA.itemPlaceholders) || {};
-
-  var coveredCatalogSlots = {};
-  var coveredPlaceholderRows = {};
-  var fromWishlist = [];
-
-  _wishlistPrefs.forEach(function (p) {
-    if (p.status !== 'bis') return;
-    var name = idToName[p.item_id];
-    if (!name) return;
-    var isPlaceholder = !!itemPlaceholders[name];
-    if (isPlaceholder) {
-      if (p.slot) coveredPlaceholderRows[p.slot] = true;
-    } else {
-      var catalogSlot = itemSlots[name] || '';
-      if (catalogSlot) coveredCatalogSlots[catalogSlot] = true;
-    }
-    fromWishlist.push({
-      item: name,
-      slot: isPlaceholder ? p.slot || '' : '',
-      dbSlot: '',
-      obtained: false,
-      playerId: player.id,
-      itemId: p.item_id,
-      fromWishlist: true
-    });
-  });
-
-  var officerSet = officerBisItems.filter(function (entry) {
-    var isPlaceholder = !!itemPlaceholders[entry.item];
-    if (isPlaceholder) {
-      var row = entry.dbSlot || entry.slot || '';
-      return !coveredPlaceholderRows[row];
-    }
-    var catalogSlot = itemSlots[entry.item] || '';
-    return !(catalogSlot && coveredCatalogSlots[catalogSlot]);
-  });
-
-  return { fromWishlist: fromWishlist, officerSet: officerSet };
+  return bisMergeWishlistPrefs(_wishlistPrefs, officerBisItems, player.id);
 }
 
 function wishlistPrefFor(itemId, slot) {
@@ -667,10 +620,26 @@ function wishlistSectionBodyHTML(player) {
     '</div>' +
     '<div id="help-wishlist-' +
     player.firstName +
-    '" class="help-tip">Tag every item you\'d want per slot, not just one pick: backups, sidegrades, or drops to pass on. BiS choices marked here save to your BiS List. Slots below are raid drops; use Other Sources for gear you\'ll get elsewhere.</div>' +
-    (wishlistOpen()
-      ? ''
-      : '<p style="font-size:1.04rem;color:var(--melee);margin:0.25rem 0 0.75rem;">Wishlist editing is currently closed -- your tags below are read-only. Contact an officer if something needs to change.</p>');
+    '" class="help-tip">Tag every item you\'d want per slot, not just one pick: backups, sidegrades, or drops to pass on. BiS choices marked here save to your BiS List. Slots below are raid drops; use Other Sources for gear you\'ll get elsewhere.</div>';
+
+  var completeness = wishlistCompleteness();
+  html += completeness.missingRows.length
+    ? '<p style="font-size:1.02rem;color:var(--melee);margin:0.25rem 0 0.75rem;">' +
+      completeness.taggedCount +
+      '/' +
+      completeness.totalRequired +
+      ' slots tagged -- missing: ' +
+      completeness.missingRows.join(', ') +
+      '</p>'
+    : '<p style="font-size:1.02rem;color:var(--heal);margin:0.25rem 0 0.75rem;">' +
+      completeness.taggedCount +
+      '/' +
+      completeness.totalRequired +
+      ' slots tagged.</p>';
+
+  html += wishlistOpen()
+    ? ''
+    : '<p style="font-size:1.04rem;color:var(--melee);margin:0.25rem 0 0.75rem;">Wishlist editing is currently closed -- your tags below are read-only. Contact an officer if something needs to change.</p>';
 
   html += wishlistOtherSourcesSectionHTML();
 
@@ -786,6 +755,86 @@ function wishlistItemRows(itemId, slot) {
   });
   if (!name) return [];
   return WISHLIST_CATALOG_SLOT_TO_ROWS[itemSlots[name] || ''] || [];
+}
+
+// Own copy of tab-bis.js's bisSlotBuckets() row-assignment algorithm (index.html
+// doesn't load tab-bis.js) -- used so a raider whose officer already filled
+// out their bis_items grid doesn't show as "wishlist incomplete" for slots
+// the officer already covers. New bis_items rows carry an explicit dbSlot;
+// legacy rows fall back to their item's catalog slot, same best-effort
+// placement tab-bis.js's own editor uses.
+function wishlistOfficerRowBuckets(officerBisItems) {
+  var itemSlots = (DATA && DATA.itemSlots) || {};
+  var buckets = {};
+  var unassigned = [];
+  officerBisItems.forEach(function (entry) {
+    var dbSlot = entry.dbSlot || entry.slot || '';
+    if (dbSlot && WISHLIST_SLOTS.indexOf(dbSlot) !== -1 && !buckets[dbSlot]) {
+      buckets[dbSlot] = entry;
+    } else {
+      unassigned.push(entry);
+    }
+  });
+  unassigned.forEach(function (entry) {
+    var catalogSlot = itemSlots[entry.item] || '';
+    var candidates = WISHLIST_CATALOG_SLOT_TO_ROWS[catalogSlot] || [];
+    for (var c = 0; c < candidates.length; c++) {
+      if (!buckets[candidates[c]]) {
+        buckets[candidates[c]] = entry;
+        return;
+      }
+    }
+  });
+  return buckets;
+}
+
+// Completeness (#515): a wishlist is "complete" once every required
+// WISHLIST_SLOTS row is covered -- either the raider tagged something there
+// themselves (any status), or the officer's bis_items grid already has a
+// pick for it. Off Hand is only required when the current BiS/officer
+// Weapon pick is a real One-Hand item; a Two-Hand/Ranged pick, an untagged
+// Weapon slot, or a placeholder (Other Sources) BiS pick for Weapon (no
+// catalog slot to check) all leave Off Hand optional.
+function wishlistCompleteness() {
+  var itemSlots = (DATA && DATA.itemSlots) || {};
+  var itemIds = (DATA && DATA.itemIds) || {};
+  var idToName = {};
+  Object.keys(itemIds).forEach(function (name) {
+    idToName[itemIds[name]] = name;
+  });
+
+  var taggedRows = {};
+  var offHandRequired = false;
+  _wishlistPrefs.forEach(function (p) {
+    wishlistItemRows(p.item_id, p.slot || null).forEach(function (row) {
+      taggedRows[row] = true;
+    });
+    if (p.status === 'bis' && !p.slot) {
+      var name = idToName[p.item_id];
+      if (name && itemSlots[name] === 'One-Hand') offHandRequired = true;
+    }
+  });
+
+  var officerBisItems =
+    typeof getBisItems === 'function' && _wishlistPlayerFirstName ? getBisItems(_wishlistPlayerFirstName) : [];
+  var officerBuckets = wishlistOfficerRowBuckets(officerBisItems);
+  if (!taggedRows.Weapon && officerBuckets.Weapon && itemSlots[officerBuckets.Weapon.item] === 'One-Hand') {
+    offHandRequired = true;
+  }
+
+  var requiredRows = WISHLIST_SLOTS.filter(function (row) {
+    return row !== 'Off Hand' || offHandRequired;
+  });
+  var missingRows = requiredRows.filter(function (row) {
+    return !taggedRows[row] && !officerBuckets[row];
+  });
+
+  return {
+    requiredRows: requiredRows,
+    missingRows: missingRows,
+    taggedCount: requiredRows.length - missingRows.length,
+    totalRequired: requiredRows.length
+  };
 }
 
 // Only one item can be BiS per slot at a time: tagging a new one

@@ -223,6 +223,158 @@ function updatePriorityBadges() {
   if (conflictsBanner) conflictsBanner.innerHTML = buildPriorityConflictsBannerHtml(conflicts);
 }
 
+// Wishlist completeness (#515): officers need to see which raiders haven't
+// finished tagging their wishlist before generating priority order.
+// item_preferences isn't part of the main DATA load (that'd add a query to
+// every page load for an officer-only feature) -- fetched on demand here,
+// same "cache + re-render once loaded" shape as js/wishlist.js's own
+// fetchMyItemPreferences(), just for the whole team instead of one player.
+var _teamItemPreferences = null;
+
+function fetchTeamItemPreferences() {
+  if (!supabaseClient) return Promise.resolve(null);
+  var query = supabaseClient
+    .from('item_preferences')
+    .select('player_id, item_id, status, slot')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Supabase item_preferences query failed.', result.error.message);
+        return null;
+      }
+      return result.data || [];
+    })
+    .catch(function (err) {
+      console.warn('Supabase item_preferences query failed.', err);
+      return null;
+    });
+  var timeout = new Promise(function (resolve) {
+    setTimeout(function () {
+      resolve(null);
+    }, 10000);
+  });
+  return Promise.race([query, timeout]);
+}
+
+// Own copy of js/wishlist.js's wishlistItemRows()/wishlistCompleteness()
+// logic -- officer.html doesn't load wishlist.js, but does already load
+// tab-bis.js's BIS_SLOTS/BIS_CATALOG_SLOT_TO_ROWS (identical vocabulary to
+// WISHLIST_SLOTS/WISHLIST_CATALOG_SLOT_TO_ROWS), reused here instead of a
+// third duplicate copy of the slot constants.
+function _priorityItemRows(itemId, slot, idToName, itemSlots) {
+  if (slot) return [slot];
+  var name = idToName[itemId];
+  if (!name) return [];
+  return BIS_CATALOG_SLOT_TO_ROWS[itemSlots[name] || ''] || [];
+}
+
+// officerBuckets (tab-bis.js's bisSlotBuckets().buckets for this player) --
+// a row already covered by the officer's bis_items grid doesn't need the
+// raider to have tagged it themselves too, same fallback js/wishlist.js's
+// own wishlistCompleteness() applies on the raider side.
+function _priorityWishlistMissingRows(prefs, idToName, itemSlots, officerBuckets) {
+  var taggedRows = {};
+  var offHandRequired = false;
+  prefs.forEach(function (p) {
+    _priorityItemRows(p.item_id, p.slot || null, idToName, itemSlots).forEach(function (row) {
+      taggedRows[row] = true;
+    });
+    if (p.status === 'bis' && !p.slot) {
+      var name = idToName[p.item_id];
+      if (name && itemSlots[name] === 'One-Hand') offHandRequired = true;
+    }
+  });
+  if (!taggedRows.Weapon && officerBuckets.Weapon && itemSlots[officerBuckets.Weapon.item] === 'One-Hand') {
+    offHandRequired = true;
+  }
+  var requiredRows = BIS_SLOTS.filter(function (row) {
+    return row !== 'Off Hand' || offHandRequired;
+  });
+  return requiredRows.filter(function (row) {
+    return !taggedRows[row] && !officerBuckets[row];
+  });
+}
+
+function getIncompleteWishlists() {
+  if ((typeof featureEnabled === 'function' && !featureEnabled('bis')) || _teamItemPreferences === null) {
+    return { count: 0, raiders: [] };
+  }
+  var itemSlots = DATA.itemSlots || {};
+  var itemIds = DATA.itemIds || {};
+  var idToName = {};
+  Object.keys(itemIds).forEach(function (name) {
+    idToName[itemIds[name]] = name;
+  });
+
+  var prefsByPlayer = {};
+  _teamItemPreferences.forEach(function (p) {
+    (prefsByPlayer[p.player_id] = prefsByPlayer[p.player_id] || []).push(p);
+  });
+
+  var roster = DATA.roster || [];
+  var raiders = [];
+  roster.forEach(function (player) {
+    var officerBuckets =
+      typeof getBisItems === 'function' && typeof bisSlotBuckets === 'function'
+        ? bisSlotBuckets(getBisItems(player.firstName)).buckets
+        : {};
+    var missingRows = _priorityWishlistMissingRows(prefsByPlayer[player.id] || [], idToName, itemSlots, officerBuckets);
+    if (missingRows.length) raiders.push({ nameRealm: player.nameRealm, missingRows: missingRows });
+  });
+  raiders.sort(function (a, b) {
+    return a.nameRealm.localeCompare(b.nameRealm);
+  });
+
+  return { count: raiders.length, raiders: raiders };
+}
+
+// Compact version for the Priority tab -- just who's incomplete, not the
+// full missing-slot breakdown (that's a wall of near-identical text once
+// most of the roster hasn't touched their wishlist yet, which swamped the
+// Priority List Conflicts banner it sits next to). Points to the BiS Lists
+// sub-tab, where each row shows its own missing slots instead.
+function buildWishlistIncompleteCompactHtml(data) {
+  if (!data.count) return '';
+  var names = data.raiders
+    .map(function (r) {
+      return escHtml(r.nameRealm);
+    })
+    .join(', ');
+  return (
+    '<div class="prio-overalloc-banner">' +
+    '<div class="prio-overalloc-title">Incomplete Wishlists (' +
+    data.count +
+    ')</div>' +
+    '<div class="prio-overalloc-list"><span class="prio-overalloc-item">' +
+    names +
+    ' -- see BiS Manager &gt; BiS Lists for details</span></div>' +
+    '</div>'
+  );
+}
+
+// Called once from buildOfficerDashboard() so the banner's ready by the
+// time an officer opens the Priority tab, not fetched lazily on tab click.
+// Also refreshes the BiS Lists sub-tab's per-row indicators (tab-bis.js's
+// buildBisListsTab()) if it's already been rendered, since that fetch is
+// the same data source. Kept independent of updatePriorityBadges()'s
+// nav-badge math -- that badge's count is specifically Priority List
+// conflicts/unmanaged items, and mixing in this unrelated count would make
+// it misleading.
+function renderWishlistIncompleteBanner() {
+  var compactEl = document.getElementById('wishlistIncompleteBanner');
+  if (_teamItemPreferences === null) {
+    fetchTeamItemPreferences().then(function (rows) {
+      _teamItemPreferences = rows || [];
+      renderWishlistIncompleteBanner();
+      if (typeof buildBisListsTab === 'function' && document.getElementById('bis-lists-container')) {
+        buildBisListsTab();
+      }
+    });
+    return;
+  }
+  if (compactEl) compactEl.innerHTML = buildWishlistIncompleteCompactHtml(getIncompleteWishlists());
+}
+
 // Re-fetches the fairness/health checks and refreshes the nav + sub-tab
 // badges immediately -- called right after a loot import so officers see the
 // flag without needing to revisit the Priority tab or reload the page.

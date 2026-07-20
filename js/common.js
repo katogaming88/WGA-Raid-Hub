@@ -2172,6 +2172,129 @@ function getBisItems(firstName) {
   });
 }
 
+// Read-time merge for the BiS List display -- never writes to bis_items. A
+// tagged wishlist "BiS" item supersedes the officer's pick for that same
+// slot category; real items compare by catalog slot (Finger, Trinket, ...),
+// since the wishlist has no notion of "which numbered ring" the way the
+// officer's grid does -- any BiS-tagged ring supersedes both Finger 1 and
+// Finger 2. Placeholders (M+/Crafted/Catalyst) compare by their exact
+// tagged BIS_SLOTS row instead, since that's the only thing that
+// distinguishes them. Shared core used by both wishlist.js's
+// wishlistBisMergeGroups() (raider's own profile, `prefs` from
+// _wishlistPrefs) and renderProfile() below directly (officer's read view
+// of any raider's profile, `prefs` filtered from tab-priority.js's
+// _teamItemPreferences) -- kept here rather than in wishlist.js since only
+// index.html loads that file, and this needs to run from both pages.
+function bisMergeWishlistPrefs(prefs, officerBisItems, playerId) {
+  var idToName = {};
+  Object.keys((DATA && DATA.itemIds) || {}).forEach(function (name) {
+    idToName[DATA.itemIds[name]] = name;
+  });
+  var itemSlots = (DATA && DATA.itemSlots) || {};
+  var itemPlaceholders = (DATA && DATA.itemPlaceholders) || {};
+
+  var coveredCatalogSlots = {};
+  var coveredPlaceholderRows = {};
+  var fromWishlist = [];
+
+  (prefs || []).forEach(function (p) {
+    if (p.status !== 'bis') return;
+    var name = idToName[p.item_id];
+    if (!name) return;
+    var isPlaceholder = !!itemPlaceholders[name];
+    if (isPlaceholder) {
+      if (p.slot) coveredPlaceholderRows[p.slot] = true;
+    } else {
+      var catalogSlot = itemSlots[name] || '';
+      if (catalogSlot) coveredCatalogSlots[catalogSlot] = true;
+    }
+    fromWishlist.push({
+      item: name,
+      slot: isPlaceholder ? p.slot || '' : '',
+      dbSlot: '',
+      obtained: false,
+      playerId: playerId,
+      itemId: p.item_id,
+      fromWishlist: true
+    });
+  });
+
+  var officerSet = officerBisItems.filter(function (entry) {
+    var isPlaceholder = !!itemPlaceholders[entry.item];
+    if (isPlaceholder) {
+      var row = entry.dbSlot || entry.slot || '';
+      return !coveredPlaceholderRows[row];
+    }
+    var catalogSlot = itemSlots[entry.item] || '';
+    return !(catalogSlot && coveredCatalogSlots[catalogSlot]);
+  });
+
+  return { fromWishlist: fromWishlist, officerSet: officerSet };
+}
+
+// Canonical row order for the BiS List display (renderProfile below) --
+// bis_items has no ordering of its own (rows come back in whatever order
+// they were added/fetched, and the wishlist merge appends its own entries
+// on top), so entries need an explicit sort before rendering. Own copy here
+// rather than reusing tab-bis.js's BIS_SLOTS/wishlist.js's WISHLIST_SLOTS --
+// this is common.js, loaded by both index.html and officer.html, neither of
+// which is guaranteed to have loaded either of those page-specific files
+// yet at this point.
+var BIS_DISPLAY_SLOT_ORDER = [
+  'Head',
+  'Neck',
+  'Shoulder',
+  'Back',
+  'Chest',
+  'Wrist',
+  'Hands',
+  'Waist',
+  'Legs',
+  'Feet',
+  'Finger 1',
+  'Finger 2',
+  'Trinket 1',
+  'Trinket 2',
+  'Weapon',
+  'Off Hand'
+];
+
+// A dual-row catalog slot (Finger/Trinket) or a weapon type (One-Hand/
+// Two-Hand/Ranged/Off Hand/Held In Off-hand) collapses to its first/only
+// matching row when an entry has no explicit dbSlot/slot to say which
+// numbered row it belongs to (e.g. a real item merged in from the raider's
+// wishlist, which has no per-row identity -- same data-model limitation
+// wishlist.js's own completeness check works around).
+var BIS_DISPLAY_CATALOG_TO_ROW = {
+  Head: 'Head',
+  Neck: 'Neck',
+  Shoulder: 'Shoulder',
+  Back: 'Back',
+  Chest: 'Chest',
+  Wrist: 'Wrist',
+  Hands: 'Hands',
+  Waist: 'Waist',
+  Legs: 'Legs',
+  Feet: 'Feet',
+  Finger: 'Finger 1',
+  Trinket: 'Trinket 1',
+  'One-Hand': 'Weapon',
+  'Two-Hand': 'Weapon',
+  Ranged: 'Weapon',
+  'Off Hand': 'Off Hand',
+  'Held In Off-hand': 'Off Hand'
+};
+
+function bisDisplaySortKey(entry, itemSlots) {
+  var row = entry.dbSlot || entry.slot || '';
+  var idx = BIS_DISPLAY_SLOT_ORDER.indexOf(row);
+  if (idx !== -1) return idx;
+  var catalogSlot = itemSlots[entry.item] || '';
+  var mapped = BIS_DISPLAY_CATALOG_TO_ROW[catalogSlot];
+  idx = mapped ? BIS_DISPLAY_SLOT_ORDER.indexOf(mapped) : -1;
+  return idx === -1 ? BIS_DISPLAY_SLOT_ORDER.length : idx;
+}
+
 function getSelfReceivedItems(firstName) {
   var map = DATA.selfReceived || {};
   var norm = normalise(firstName);
@@ -3386,7 +3509,27 @@ function renderProfile(firstName, backTo, container) {
   if (backTo === 'landing' && typeof wishlistBisMergeGroups === 'function') {
     var bisMerge = wishlistBisMergeGroups(player, bisItems);
     bisItems = bisMerge.fromWishlist.concat(bisMerge.officerSet);
+  } else if (
+    backTo === 'officer' &&
+    (typeof featureEnabled !== 'function' || featureEnabled('bis')) &&
+    typeof _teamItemPreferences !== 'undefined' &&
+    _teamItemPreferences !== null
+  ) {
+    // Officer's read view of a raider's profile (Roster tab) -- index.html's
+    // wishlistBisMergeGroups()/_wishlistPrefs aren't available here (only
+    // loaded on that page), so this reuses tab-priority.js's already-fetched
+    // _teamItemPreferences (populated once at officer dashboard load for the
+    // Incomplete Wishlists banner) instead of a second per-profile fetch.
+    var officerPrefs = _teamItemPreferences.filter(function (p) {
+      return p.player_id === player.id;
+    });
+    var bisMergeOfficer = bisMergeWishlistPrefs(officerPrefs, bisItems, player.id);
+    bisItems = bisMergeOfficer.fromWishlist.concat(bisMergeOfficer.officerSet);
   }
+  var itemSlotsForSort = DATA.itemSlots || {};
+  bisItems = bisItems.slice().sort(function (a, b) {
+    return bisDisplaySortKey(a, itemSlotsForSort) - bisDisplaySortKey(b, itemSlotsForSort);
+  });
   var rows = '';
   for (var bi = 0; bi < bisItems.length; bi++) {
     var entry = bisItems[bi];

@@ -321,6 +321,7 @@ function buildOfficerDashboard() {
   renderWishlistToggle();
   renderMPlusToggle();
   updatePriorityBadges();
+  renderWishlistIncompleteBanner();
   updateNavBadges();
   populateSeasonSelector();
   if (DATA._loadedAt) {
