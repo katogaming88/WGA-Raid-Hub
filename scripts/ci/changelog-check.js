@@ -1,7 +1,9 @@
 // changelog-check.js
 // Classifies a PR diff for the Changelog Check workflow (#353): which side
 // of the app changed (frontend/backend), whether the VERSION in js/common.js
-// was bumped, and which CHANGELOG.md sections gained entries.
+// was bumped, and which CHANGELOG.md sections gained entries. Also reports
+// whether news.json was touched, reused by the separate needs-news-entry
+// nudge workflow (#525) so it doesn't need its own diff classification.
 //
 // Frontend paths drive VERSION. The js/common.js VERSION line itself does
 // not count as a frontend change, so complying with "bump VERSION" cannot
@@ -118,7 +120,8 @@ export function classify(baseRef, cwd = process.cwd()) {
     backend,
     version_bump: versionBump,
     frontend_entry: sections.frontend,
-    backend_entry: sections.backend
+    backend_entry: sections.backend,
+    news_touched: files.includes('news.json')
   };
 }
 
