@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.46.3] - 2026-07-21
+
+### Frontend
+
+- Fixed the priority-rank pill next to each BiS item on a raider's own profile always showing "-", even when the item had a real priority order. `getRank()` treated `DATA.priorityOrder[itemName]` as a flat array, but it's actually `{heroic?: [...], mythic?: [...]}` -- so the lookup loop never ran and always returned no rank. The identical bug was fixed independently in the officer Contested Items view a while back, but this copy was never touched. Now searches both tracks (showing both, e.g. `#1H/#3M`, if ranked on each) and looks the player up by full character identity instead of first name, so two roster characters sharing a first name can't collide here either.
+
 ## [3.46.2] - 2026-07-21
 
 ### Frontend

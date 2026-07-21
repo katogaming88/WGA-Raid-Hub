@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.46.2';
+var VERSION = '3.46.3';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -2141,14 +2141,32 @@ function loadData(onCoreReady, onHeavyReady) {
 }
 
 // -- Data helpers -----------------------------------------------------------
-function getRank(firstName, itemName) {
-  var list = (DATA.priorityOrder || {})[itemName];
-  if (!list) return null;
-  var norm = normalise(firstName);
-  for (var i = 0; i < list.length; i++) {
-    if (normalise(list[i]) === norm) return i + 1;
+// Returns every track this player is ranked on for itemName, as
+// [{pos, diff}, ...] (diff: 'heroic'/'mythic'), or [] if unranked on both.
+// DATA.priorityOrder[itemName] is {heroic?: string[], mythic?: string[]}
+// (mapSupabasePriorityOrder(), js/common.js), not a flat array -- this used
+// to index it as one (`list.length`/`list[i]` on the {heroic,mythic} object
+// is always undefined, so the loop never ran and this always returned null,
+// same underlying bug the Contested Items view had and fixed independently,
+// see CHANGELOG "Rank labels now display in Contested Items"). Accepts
+// either identity (nameRealm, preferred) or a bare first name -- same
+// dual-mode shape as getLootEntry()/getBisItems() (#359/#529).
+function getRank(nameOrNameRealm, itemName) {
+  var entry = (DATA.priorityOrder || {})[itemName];
+  if (!entry) return [];
+  var norm = normalise(nameOrNameRealm);
+  var diffs = ['heroic', 'mythic'];
+  var ranks = [];
+  for (var d = 0; d < diffs.length; d++) {
+    var list = entry[diffs[d]] || [];
+    for (var i = 0; i < list.length; i++) {
+      if (normalise(list[i]) === norm) {
+        ranks.push({ pos: i + 1, diff: diffs[d] });
+        break;
+      }
+    }
   }
-  return null;
+  return ranks;
 }
 
 // Accepts either a full "Name-Realm" identity (preferred -- exact,
@@ -2386,10 +2404,16 @@ function getSeasonLootEntry(firstName) {
 }
 
 // -- Render helpers ---------------------------------------------------------
-function rankPillHTML(rank) {
-  if (rank === null)
+// ranks: getRank()'s return, [{pos, diff}, ...] -- empty/null renders "-".
+// Colored by the best (lowest) rank among tracks; label joins every track
+// the item's ranked on (e.g. "#1H/#3M"), same notation Contested Items uses.
+function rankPillHTML(ranks) {
+  if (!ranks || !ranks.length)
     return '<span style="font-size:1rem;color:var(--text-dim);min-width:40px;text-align:center;">-</span>';
-  var t = Math.min((rank - 1) / 14, 1);
+  var bestPos = ranks.reduce(function (min, r) {
+    return Math.min(min, r.pos);
+  }, Infinity);
+  var t = Math.min((bestPos - 1) / 14, 1);
   var rv = Math.round(214 + (100 - 214) * t),
     gv = Math.round(163 + (100 - 163) * t),
     bv = Math.round(68 + (100 - 68) * t);
@@ -2397,6 +2421,11 @@ function rankPillHTML(rank) {
   var c = 'rgb(' + rv + ',' + gv + ',' + bv + ')',
     bg = 'rgba(' + rv + ',' + gv + ',' + bv + ',' + a + ')',
     bd = 'rgba(' + rv + ',' + gv + ',' + bv + ',' + Math.max(0.2, 0.4 - t * 0.2) + ')';
+  var label = ranks
+    .map(function (r) {
+      return '#' + r.pos + (r.diff === 'mythic' ? 'M' : 'H');
+    })
+    .join('/');
   return (
     '<span class="rank-pill" style="background:' +
     bg +
@@ -2404,8 +2433,8 @@ function rankPillHTML(rank) {
     c +
     ';border:1px solid ' +
     bd +
-    ';">#' +
-    rank +
+    ';">' +
+    label +
     '</span>'
   );
 }
@@ -3553,7 +3582,7 @@ function renderProfile(firstName, backTo, container) {
     var entry = bisItems[bi];
     var item = entry.item,
       bisSlot = entry.slot;
-    var rank = getRank(player.firstName, item);
+    var rank = getRank(player.nameRealm, item);
     var slot = (DATA.itemSlots || {})[item] || bisSlot || '';
     // The raw bis_items.slot for this row, which "Mark received" sends so the
     // approval flips this exact row rather than every row sharing the item
