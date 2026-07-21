@@ -222,7 +222,8 @@ describe('classify against a git repo', () => {
       backend: 'true',
       version_bump: 'false',
       frontend_entry: 'false',
-      backend_entry: 'true'
+      backend_entry: 'true',
+      news_touched: 'false'
     });
   });
 
@@ -235,7 +236,8 @@ describe('classify against a git repo', () => {
       backend: 'false',
       version_bump: 'true',
       frontend_entry: 'false',
-      backend_entry: 'false'
+      backend_entry: 'false',
+      news_touched: 'false'
     });
   });
 
@@ -249,13 +251,36 @@ describe('classify against a git repo', () => {
           '## [3.16.1] - 2026-07-08\n\n### Frontend\n- New helper behavior\n\n---\n\n## [3.16.0] - 2026-07-07'
         )
       );
+      write('news.json', '[]\n');
     });
     expect(result).toEqual({
       frontend: 'true',
       backend: 'false',
       version_bump: 'true',
       frontend_entry: 'true',
-      backend_entry: 'false'
+      backend_entry: 'false',
+      news_touched: 'true'
+    });
+  });
+
+  it('a frontend PR with no news.json touch reports news_touched=false (#525)', () => {
+    const result = onBranch('frontend-no-news', () => {
+      write('js/common.js', "var VERSION = '3.16.1';\nvar WEB_APP_URL = 'x';\nfunction anotherHelper() {}\n");
+      write(
+        'CHANGELOG.md',
+        baseChangelog.replace(
+          '## [3.16.0] - 2026-07-07',
+          '## [3.16.1] - 2026-07-08\n\n### Frontend\n- Another behavior\n\n---\n\n## [3.16.0] - 2026-07-07'
+        )
+      );
+    });
+    expect(result).toEqual({
+      frontend: 'true',
+      backend: 'false',
+      version_bump: 'true',
+      frontend_entry: 'true',
+      backend_entry: 'false',
+      news_touched: 'false'
     });
   });
 
@@ -266,7 +291,8 @@ describe('classify against a git repo', () => {
       backend: true,
       version_bump: false,
       frontend_entry: false,
-      backend_entry: true
+      backend_entry: true,
+      news_touched: false
     });
   });
 });

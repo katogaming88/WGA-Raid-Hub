@@ -14,6 +14,12 @@ concurrency:
 jobs:
   changelog:
     runs-on: ubuntu-latest
+    # Elevated beyond the hard-gate steps' needs so the needs-news-entry nudge
+    # below can label/comment on the PR (#525).
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -77,3 +83,44 @@ jobs:
         run: |
           echo "::error::CHANGELOG.md gained no entry under '### Backend'. Changes under supabase/migrations/ or scripts/import/ get a Backend entry with no VERSION bump (see CONTRIBUTING.md); if this PR is mechanical, use a chore/* branch or the chore label."
           exit 1
+
+      # Non-blocking nudge (#525, follow-up to the #509 News tab): a PR that
+      # gained a Frontend changelog entry but never touched news.json might
+      # just have forgotten a news-worthy entry -- not every Frontend change
+      # is news-worthy, so this labels/comments rather than failing the job.
+      # Always runs (no chore/needsNudge gate on the step itself) so the label
+      # gets removed again once news.json is added or the chore exemption
+      # applies on a later push, not just added and left stale.
+      - name: Nudge for a missing news.json entry
+        uses: actions/github-script@v7
+        env:
+          NEEDS_NUDGE: >-
+            ${{
+              steps.changed.outputs.frontend_entry == 'true' &&
+              steps.changed.outputs.news_touched == 'false' &&
+              !startsWith(github.head_ref, 'chore/') &&
+              !contains(github.event.pull_request.labels.*.name, 'chore')
+            }}
+        with:
+          script: |
+            const label = 'needs-news-entry';
+            const needsNudge = process.env.NEEDS_NUDGE === 'true';
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const { data: labels } = await github.rest.issues.listLabelsOnIssue({ owner, repo, issue_number });
+            const hasLabel = labels.some((l) => l.name === label);
+
+            if (needsNudge && !hasLabel) {
+              await github.rest.issues.addLabels({ owner, repo, issue_number, labels: [label] });
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body:
+                  "This PR added a `### Frontend` CHANGELOG entry but didn't touch `news.json`. " +
+                  'If this change is raider-facing and news-worthy, consider adding an entry (see `news.json` for the format). ' +
+                  "Not every Frontend change needs one -- this is just a reminder, not a blocker."
+              });
+            } else if (!needsNudge && hasLabel) {
+              await github.rest.issues.removeLabel({ owner, repo, issue_number, name: label });
+            }
