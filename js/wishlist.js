@@ -418,12 +418,24 @@ function wishlistItemNameHtml(name) {
   );
 }
 
+// Rank pill mirrors the BiS List's own use of getRank()/rankPillHTML()
+// (js/common.js) -- priority_order is item-name-keyed, not BiS-specific, so
+// any catalog item officers have generated a priority order for shows here
+// too, not just BiS picks (#531). Skipped for Other Sources rows
+// (lockOnceSet, e.g. "M+ - Head") since those aren't real raid-drop items
+// with a priority order to look up -- same isGen treatment the BiS list
+// gives M+/Crafted/Catalyst rows.
 function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet) {
   if (itemId == null) return '';
   var current = wishlistCurrentStatus(itemId, slot);
   var color = current && WISHLIST_TIER_COLORS[current];
   var rowBackground = color ? 'rgba(' + color.rgb + ',0.08)' : rowIndex % 2 ? 'var(--bg-elevated)' : 'var(--bg-card)';
   var rowBorder = color ? color.css : 'var(--border)';
+  var rank =
+    !lockOnceSet && typeof getRank === 'function' && _wishlistPlayerNameRealm
+      ? getRank(_wishlistPlayerNameRealm, name)
+      : [];
+  var rankHTML = lockOnceSet ? '' : typeof rankPillHTML === 'function' ? rankPillHTML(rank) : '';
   return (
     '<div style="padding:0.4rem 0.6rem;border-radius:4px;border:1px solid ' +
     rowBorder +
@@ -432,8 +444,11 @@ function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet) {
     ';margin-bottom:2px;">' +
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">' +
     wishlistItemNameHtml(name) +
+    '<div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">' +
+    rankHTML +
     '<div style="display:flex;gap:0.3rem;flex-wrap:wrap;">' +
     wishlistStatusButtonsHTML(itemId, slot, lockOnceSet) +
+    '</div>' +
     '</div>' +
     '</div>' +
     wishlistNoteHTML(itemId, slot) +
@@ -445,19 +460,27 @@ function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet) {
 // header shows the label + a colored-dot summary of any tags already set, so
 // there's useful info without expanding. `key` is the _wishlistExpandedSlots
 // lookup key ('__other__' for the placeholder card, the slot name otherwise).
-function wishlistCollapsibleCardHTML(key, label, summaryItems, bodyHTML) {
+// `officerCovered` (slot cards only): true when the officer's bis_items grid
+// already has a pick for this row (wishlistCompleteness()'s officerBuckets).
+// The "N tagged" count and its green/grey styling always reflect the
+// raider's own wishlist tags only -- officerCovered just appends a note so a
+// slot that reads "0 tagged" here still shows it's actually settled via the
+// officer's pick, without the card claiming credit for a tag the raider
+// didn't make.
+function wishlistCollapsibleCardHTML(key, label, summaryItems, bodyHTML, officerCovered) {
   var expanded = !!_wishlistExpandedSlots[key];
   var dots = wishlistSlotSummaryDotsHTML(summaryItems);
   var taggedCount = summaryItems.filter(function (it) {
     return wishlistCurrentStatus(it.itemId, it.slot || null);
   }).length;
   var allTagged = summaryItems.length > 0 && taggedCount === summaryItems.length;
+  var countText = taggedCount + ' tagged' + (officerCovered ? ' -- officer BiS set' : '');
   var countLabel =
     '<span style="font-size:1.02rem;color:' +
     (allTagged ? 'var(--heal)' : 'var(--text-dim)') +
     ';margin-left:0.5rem;">' +
-    taggedCount +
-    ' tagged</span>';
+    countText +
+    '</span>';
   return (
     '<div style="border:1px solid var(--border);border-radius:4px;margin-bottom:0.5rem;overflow:hidden;">' +
     '<div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.75rem;cursor:pointer;background:var(--bg-elevated);" ' +
@@ -665,7 +688,8 @@ function wishlistSectionBodyHTML(player) {
     var summaryItems = items.map(function (item) {
       return { itemId: item.itemId, slot: null };
     });
-    slotCards += wishlistCollapsibleCardHTML(slotName, slotName, summaryItems, body);
+    var officerCovered = !!completeness.officerBuckets[slotName];
+    slotCards += wishlistCollapsibleCardHTML(slotName, slotName, summaryItems, body, officerCovered);
   }
   html += slotCards;
 
@@ -837,7 +861,8 @@ function wishlistCompleteness() {
     requiredRows: requiredRows,
     missingRows: missingRows,
     taggedCount: requiredRows.length - missingRows.length,
-    totalRequired: requiredRows.length
+    totalRequired: requiredRows.length,
+    officerBuckets: officerBuckets
   };
 }
 
