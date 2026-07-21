@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.46.1] - 2026-07-21
+
+### Frontend
+
+- Fixed the loot display (player profile card, Recent Loot feed on the landing page, Roster tab's Items column, and the Fairness chart) merging two rostered characters that share a first name into a single entry -- both showed the union of each other's loot, and Recent Loot mislabeled drops with whichever nickname happened to write the shared key last (#359). `DATA.lootCounts` is now keyed by full character identity (name + realm) instead of first name alone. The BiS list and Priority tab's pool lookup still key by first name and can still collide for now -- re-keying those is a larger, separately-scoped follow-up.
+
 ## [3.46.0] - 2026-07-20
 
 ### Frontend

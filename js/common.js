@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.46.0';
+var VERSION = '3.46.1';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -1156,9 +1156,13 @@ function fetchSupabaseLoot() {
 }
 
 /**
- * Rebuilds the Apps Script getLootCounts() shape from rclc_loot rows so no
- * render code changes: diacritic-stripped lowercase first-name keys, entries
- * carrying count/heroicCount/mythicCount and per-item difficulty labels
+ * Rebuilds the Apps Script getLootCounts() shape from rclc_loot rows so most
+ * render code needs no changes, keyed by diacritic-stripped lowercase
+ * character identity (normalise(name_realm), unique per team -- #359) rather
+ * than first name alone, so two characters sharing a first name (the Snarge
+ * case, or two Katorri characters on different realms) no longer merge into
+ * one entry.
+ * Entries carry count/heroicCount/mythicCount and per-item difficulty labels
  * ('Heroic'/'Mythic'/'Other' -- the UI vocabulary for the Hero/Myth/Champion
  * tracks), display dates formatted in the sheet's timezone, and seasons shown
  * under their display names. Rows without a linked player are skipped; the
@@ -1170,8 +1174,6 @@ function fetchSupabaseLoot() {
 function mapSupabaseLoot(rows) {
   /** @type {Object<string, {count: number, heroicCount: number, mythicCount: number, items: any[]}>} */
   var result = {};
-  /** @type {Object<string, string>} */
-  var keyOwners = {};
   var dateFormat = new Intl.DateTimeFormat('en-US', {
     // The Apps Script feed formatted award dates in the sheet's timezone;
     // browser-local formatting would shift dates across midnight elsewhere.
@@ -1183,18 +1185,8 @@ function mapSupabaseLoot(rows) {
   (rows || []).forEach(function (row) {
     var nameRealm = row.players && row.players.name_realm ? String(row.players.name_realm) : '';
     if (!nameRealm) return;
-    var key = normalise(nameRealm.split('-')[0]);
+    var key = normalise(nameRealm);
     if (!key) return;
-    if (keyOwners[key] && keyOwners[key] !== nameRealm) {
-      // Two characters sharing a first name merge under one key, exactly like
-      // the Apps Script feed did; the rows keep their true player links, so
-      // the durable fix is re-keying the display by identity, not data repair.
-      console.warn(
-        'Loot display key collision: ' + keyOwners[key] + ' and ' + nameRealm + ' both map to "' + key + '"'
-      );
-    } else {
-      keyOwners[key] = nameRealm;
-    }
     var difficulty = row.track === 'Hero' ? 'Heroic' : row.track === 'Myth' ? 'Mythic' : 'Other';
     var date = '';
     if (row.awarded_at) {
@@ -2305,7 +2297,7 @@ function getSelfReceivedItems(firstName) {
   return [];
 }
 
-function refreshBisCompletion(firstName) {
+function refreshBisCompletion(firstName, nameRealm) {
   var el = document.getElementById('bis-completion-' + firstName);
   if (!el) return;
   var bisItems = getBisItems(firstName);
@@ -2313,7 +2305,7 @@ function refreshBisCompletion(firstName) {
   var selfRecItems = getSelfReceivedItems(firstName);
   var selfRecMap = {};
   for (var i = 0; i < selfRecItems.length; i++) selfRecMap[normalise(selfRecItems[i].item)] = true;
-  var lootEntry = getLootEntry(firstName);
+  var lootEntry = getLootEntry(nameRealm || firstName);
   var receivedMap = {};
   if (lootEntry && lootEntry.items) {
     for (var j = 0; j < lootEntry.items.length; j++) {
@@ -2336,12 +2328,21 @@ function refreshBisCompletion(firstName) {
     ')</span>';
 }
 
-function getLootEntry(firstName) {
+// Accepts either a full "Name-Realm" identity (preferred -- exact, collision-
+// free, #359) or a bare first name (from callers whose upstream data, like
+// bisList and the priority pool, is still keyed by first name only). A bare
+// first name falls through to the old ambiguous match against every loot
+// key's own first-name segment -- unchanged behavior for those callers until
+// they're re-keyed by identity too.
+function getLootEntry(nameOrNameRealm) {
   var lootMap = DATA.lootCounts || {};
-  var norm = normalise(firstName);
+  var norm = normalise(nameOrNameRealm);
   var keys = Object.keys(lootMap);
   for (var i = 0; i < keys.length; i++) {
     if (normalise(keys[i]) === norm) return lootMap[keys[i]];
+  }
+  for (var j = 0; j < keys.length; j++) {
+    if (normalise(keys[j].split('-')[0]) === norm) return lootMap[keys[j]];
   }
   return null;
 }
@@ -3091,7 +3092,7 @@ function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId, dbSl
         document.querySelector('#bisrow-' + firstName + '-' + rowId.split('-').pop() + ' .mark-received-btn')
       );
       if (btn) btn.style.display = 'none';
-      if (autoApproved) refreshBisCompletion(firstName);
+      if (autoApproved) refreshBisCompletion(firstName, nameRealm);
     });
 }
 
@@ -3145,7 +3146,7 @@ function submitDirectMarkReceived(firstName, nameRealm, item, slot, rowId, dbSlo
       }
       var markedPlayer = findRosterPlayerByNameRealm(nameRealm);
       writeAuditLog('Loot Marked Received', 'players', markedPlayer ? markedPlayer.id : null, item);
-      refreshBisCompletion(firstName);
+      refreshBisCompletion(firstName, nameRealm);
     });
 }
 
@@ -3240,12 +3241,12 @@ function renderProfile(firstName, backTo, container) {
   }
 
   // Loot (season-filtered when ACTIVE_SEASON is set)
-  var lootEntry = getSeasonLootEntry(player.firstName);
-  var allLootEntry = getLootEntry(player.firstName); // unfiltered, for received map
+  var lootEntry = getSeasonLootEntry(player.nameRealm);
+  var allLootEntry = getLootEntry(player.nameRealm); // unfiltered, for received map
   var lootCount = lootEntry ? lootEntry.count : 0;
   var lootItemsHTML = '';
   var lastItems = [];
-  var seasonLootItems = getSeasonLootItems(player.firstName);
+  var seasonLootItems = getSeasonLootItems(player.nameRealm);
   if (seasonLootItems.length > 0) {
     var sortedLoot = seasonLootItems.slice().sort(function (a, b) {
       return new Date(b.date).getTime() - new Date(a.date).getTime();
