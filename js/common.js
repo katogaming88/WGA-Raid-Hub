@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.46.1';
+var VERSION = '3.46.2';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -1240,12 +1240,14 @@ function fetchSupabaseBisItems() {
 
 /**
  * Maps bis_items rows to the DATA.bisList shape the Apps Script heavy chunk
- * emits (firstName -> array of {item, slot} entries), so no render code
- * changes. Keys by the same raw firstName derivation mapSupabaseRoster()
- * uses, since tab-conflicts.js/tab-priority.js index DATA.bisList[firstName]
- * directly against the roster's firstName rather than going through
- * getBisItems()'s normalised lookup. Carries obtained/playerId/itemId so the
- * BiS Lists editor (tab-bis.js) can write back without a second lookup.
+ * emits (character identity -> array of {item, slot} entries), so most
+ * render code needs no changes. Keyed by the full name_realm identity (#529,
+ * companion to #359's loot re-keying) rather than first name alone, so two
+ * characters sharing a first name no longer merge under one key --
+ * tab-conflicts.js/tab-priority.js/tab-bis.js index DATA.bisList by identity
+ * (or fall back through getBisItems()'s normalised lookup for any remaining
+ * bare-first-name caller). Carries obtained/playerId/itemId so the BiS Lists
+ * editor (tab-bis.js) can write back without a second lookup.
  * @param {any[]} rows - bis_items rows with embedded items and players
  * @returns {Object<string, {item: string, slot: string, dbSlot: string|null, obtained: boolean, playerId: number, itemId: number}[]>}
  */
@@ -1256,11 +1258,10 @@ function mapSupabaseBisItems(rows) {
     var players = row.players || {};
     var nameRealm = String(players.name_realm || '').trim();
     if (!nameRealm) return;
-    var firstName = nameRealm.split('-')[0].trim();
     var itemRow = row.items || {};
     if (!itemRow.name) return;
-    if (!map[firstName]) map[firstName] = [];
-    map[firstName].push({
+    if (!map[nameRealm]) map[nameRealm] = [];
+    map[nameRealm].push({
       item: itemRow.name,
       // bis_items.slot is the canonical BIS_SLOTS row an officer assigned
       // this entry to (js/tabs/tab-bis.js, #393 follow-up) -- every row added
@@ -1551,8 +1552,12 @@ function fetchSupabasePriorityOrder() {
 /**
  * Maps priority_order rows (filtered to the current season) to the
  * DATA.priorityOrder shape the Apps Script heavy chunk emits:
- * {itemName: {heroic: [firstName...], mythic: [firstName...]}}, ordered by
- * rank -- so tab-priority.js's render functions need no changes.
+ * {itemName: {heroic: [identity...], mythic: [identity...]}}, ordered by
+ * rank. Each identity is the full name_realm (#529, companion to #359's loot
+ * re-keying) rather than first name alone -- the underlying
+ * generate_priority_order()/priority_order table are already player_id-keyed
+ * and collision-free; this is what makes the frontend's bridge to them
+ * (tab-priority.js's ranked list, pool, and save path) collision-free too.
  * @param {any[]} rows - priority_order rows with embedded items and players
  * @param {string} seasonCode - current season's shorthand code (e.g. 'MID1') to filter rows to --
  *   NOT DATA.seasonName directly, which is Apps Script's free-text display label; pass it through
@@ -1571,14 +1576,13 @@ function mapSupabasePriorityOrder(rows, seasonCode) {
     })
     .forEach(function (row) {
       var itemName = row.items && row.items.name ? String(row.items.name).trim() : '';
-      var nameRealm = row.players && row.players.name_realm ? String(row.players.name_realm) : '';
+      var nameRealm = row.players && row.players.name_realm ? String(row.players.name_realm).trim() : '';
       if (!itemName || !nameRealm) return;
       var diff = row.track === 'Myth' ? 'mythic' : row.track === 'Hero' ? 'heroic' : null;
       if (!diff) return;
-      var firstName = nameRealm.split('-')[0].trim();
       if (!result[itemName]) result[itemName] = {};
       if (!result[itemName][diff]) result[itemName][diff] = [];
-      result[itemName][diff].push(firstName);
+      result[itemName][diff].push(nameRealm);
     });
   return result;
 }
@@ -2147,15 +2151,28 @@ function getRank(firstName, itemName) {
   return null;
 }
 
-function getBisItems(firstName) {
+// Accepts either a full "Name-Realm" identity (preferred -- exact,
+// collision-free, #529) or a bare first name (from any remaining caller that
+// hasn't been updated to carry full identity through). A bare first name
+// falls through to the old ambiguous match against every key's own
+// first-name segment -- same fallback shape as getLootEntry() (#359).
+function getBisItems(nameOrNameRealm) {
   var bisMap = DATA.bisList || {};
-  var norm = normalise(firstName);
+  var norm = normalise(nameOrNameRealm);
   var key = null;
   var keys = Object.keys(bisMap);
   for (var i = 0; i < keys.length; i++) {
     if (normalise(keys[i]) === norm) {
       key = keys[i];
       break;
+    }
+  }
+  if (!key) {
+    for (var j = 0; j < keys.length; j++) {
+      if (normalise(keys[j].split('-')[0]) === norm) {
+        key = keys[j];
+        break;
+      }
     }
   }
   var entries = key ? bisMap[key] : [];
@@ -2300,7 +2317,7 @@ function getSelfReceivedItems(firstName) {
 function refreshBisCompletion(firstName, nameRealm) {
   var el = document.getElementById('bis-completion-' + firstName);
   if (!el) return;
-  var bisItems = getBisItems(firstName);
+  var bisItems = getBisItems(nameRealm || firstName);
   if (!bisItems.length) return;
   var selfRecItems = getSelfReceivedItems(firstName);
   var selfRecMap = {};
@@ -3501,7 +3518,7 @@ function renderProfile(firstName, backTo, container) {
   var wishlistSectionHTML = typeof ownWishlistSectionHTML === 'function' ? ownWishlistSectionHTML(player, backTo) : '';
 
   // Priority list
-  var bisItems = getBisItems(player.firstName);
+  var bisItems = getBisItems(player.nameRealm);
   // Read-time merge only -- bis_items itself is never written to. A raider's
   // own wishlist "BiS" tag supersedes the officer's pick for that slot in
   // this display; untouched everywhere else (tab-conflicts.js,

@@ -334,7 +334,7 @@ function getIncompleteWishlists() {
   roster.forEach(function (player) {
     var officerBuckets =
       typeof getBisItems === 'function' && typeof bisSlotBuckets === 'function'
-        ? bisSlotBuckets(getBisItems(player.firstName)).buckets
+        ? bisSlotBuckets(getBisItems(player.nameRealm)).buckets
         : {};
     var missingRows = _priorityWishlistMissingRows(prefsByPlayer[player.id] || [], idToName, itemSlots, officerBuckets);
     if (missingRows.length) raiders.push({ nameRealm: player.nameRealm, missingRows: missingRows });
@@ -560,7 +560,7 @@ function buildPriorityTab() {
 
   var rosterMap = {};
   for (var i = 0; i < roster.length; i++) {
-    rosterMap[normalise(roster[i].firstName)] = roster[i];
+    rosterMap[normalise(roster[i].nameRealm)] = roster[i];
   }
 
   var prioSearchTerm = normalise((document.getElementById('prioSearch') || {}).value || '');
@@ -644,9 +644,9 @@ function buildPriorityTab() {
         '\')">Edit</button>';
       out += '</div><div class="prio-ranked-list">';
       for (var j = 0; j < ranked.length; j++) {
-        var firstName = ranked[j];
-        var player = rosterMap[normalise(firstName)];
-        var display = player ? player.nick || player.firstName : firstName;
+        var nameRealm = ranked[j];
+        var player = rosterMap[normalise(nameRealm)];
+        var display = player ? player.nick || player.firstName : nameRealm;
         var role = player ? player.role : '';
         var roleColor =
           role === 'Tank'
@@ -804,15 +804,17 @@ function closePrioEditModal() {
   document.getElementById('prioEditModal').classList.remove('active');
 }
 
+// Returns the full name_realm identity of every player whose BiS list has
+// this item (#529: DATA.bisList is keyed by identity, not first name).
 function prioEditGetBisPlayers() {
   var bisList = DATA.bisList || {};
   var itemLower = PRIO_EDIT.item.toLowerCase();
   var result = [];
-  Object.keys(bisList).forEach(function (firstName) {
-    var items = bisList[firstName] || [];
+  Object.keys(bisList).forEach(function (nameRealm) {
+    var items = bisList[nameRealm] || [];
     for (var i = 0; i < items.length; i++) {
       if ((items[i].item || '').toLowerCase() === itemLower) {
-        result.push(firstName);
+        result.push(nameRealm);
         break;
       }
     }
@@ -874,10 +876,10 @@ function prioEditFetchFairnessWarnings() {
         if (r.item_id === itemId) return;
         var player = rosterById[r.player_id];
         if (!player) return;
-        var entry = byPlayer[player.firstName] || { otherItems: {}, sameBossItems: {} };
+        var entry = byPlayer[player.nameRealm] || { otherItems: {}, sameBossItems: {} };
         entry.otherItems[r.item_name] = true;
         if (boss && r.boss === boss && r.track === track) entry.sameBossItems[r.item_name] = true;
-        byPlayer[player.firstName] = entry;
+        byPlayer[player.nameRealm] = entry;
       });
       PRIO_EDIT.fairnessWarnings = byPlayer;
       prioEditRenderList();
@@ -890,7 +892,7 @@ function prioEditRenderList() {
   var roster = DATA.roster || [];
   var rosterMap = {};
   roster.forEach(function (p) {
-    rosterMap[normalise(p.firstName)] = p;
+    rosterMap[normalise(p.nameRealm)] = p;
   });
 
   document.getElementById('prioEditCount').textContent = ranked.length ? '(' + ranked.length + ')' : '';
@@ -902,9 +904,9 @@ function prioEditRenderList() {
 
   var html = '';
   for (var i = 0; i < ranked.length; i++) {
-    var firstName = ranked[i];
-    var player = rosterMap[normalise(firstName)];
-    var display = player ? player.nick || player.firstName : firstName;
+    var nameRealm = ranked[i];
+    var player = rosterMap[normalise(nameRealm)];
+    var display = player ? player.nick || player.firstName : nameRealm;
     var role = player ? player.role : '';
     var roleColor = getRoleColor(role);
     html +=
@@ -927,7 +929,7 @@ function prioEditRenderList() {
     html += '<span class="prio-drag-rank">' + (i + 1) + '</span>';
     html += '<span class="prio-drag-name" style="color:' + roleColor + ';">' + display + '</span>';
     if (role) html += '<span class="prio-role-badge prio-role-' + role + '">' + role.toUpperCase() + '</span>';
-    var scoreData = PRIO_EDIT.scores && PRIO_EDIT.scores[firstName];
+    var scoreData = PRIO_EDIT.scores && PRIO_EDIT.scores[nameRealm];
     if (scoreData) {
       if (scoreData.weightedTotal !== null && scoreData.weightedTotal !== undefined) {
         html +=
@@ -952,7 +954,7 @@ function prioEditRenderList() {
       }
     }
     if (i === 0) {
-      var warn = PRIO_EDIT.fairnessWarnings && PRIO_EDIT.fairnessWarnings[firstName];
+      var warn = PRIO_EDIT.fairnessWarnings && PRIO_EDIT.fairnessWarnings[nameRealm];
       if (warn) {
         var sameBossNames = Object.keys(warn.sameBossItems);
         var otherNames = Object.keys(warn.otherItems);
@@ -1020,7 +1022,7 @@ function prioEditRenderPool() {
   var roster = DATA.roster || [];
   var rosterMap = {};
   roster.forEach(function (p) {
-    rosterMap[normalise(p.firstName)] = p;
+    rosterMap[normalise(p.nameRealm)] = p;
   });
 
   var rankedSet = {};
@@ -1031,7 +1033,7 @@ function prioEditRenderPool() {
   var candidates;
   if (PRIO_EDIT.showAllRoster) {
     candidates = roster.map(function (p) {
-      return p.firstName;
+      return p.nameRealm;
     });
   } else {
     candidates = prioEditGetBisPlayers();
@@ -1056,12 +1058,12 @@ function prioEditRenderPool() {
 
   var html = '';
   for (var i = 0; i < available.length; i++) {
-    var firstName = available[i];
-    var player = rosterMap[normalise(firstName)];
-    var display = player ? player.nick || player.firstName : firstName;
+    var nameRealm = available[i];
+    var player = rosterMap[normalise(nameRealm)];
+    var display = player ? player.nick || player.firstName : nameRealm;
     var role = player ? player.role : '';
-    var nEnc = encodeURIComponent(firstName);
-    var flags = prioEditLootFlags(firstName);
+    var nEnc = encodeURIComponent(nameRealm);
+    var flags = prioEditLootFlags(nameRealm);
     // A mythic recipient can't go on either track's list -- they're done
     // with the item entirely (matches generate_priority_order()'s exclusion
     // rule). A heroic recipient is only blocked from heroic; still eligible,
@@ -1088,18 +1090,22 @@ function prioEditRenderPool() {
   pool.innerHTML = html;
 }
 
-function prioEditAdd(firstName) {
+function prioEditAdd(nameRealm) {
   if (PRIO_EDIT.ranked.length >= 10) {
     document.getElementById('prioEditStatus').textContent = 'Maximum 10 players per item.';
     return;
   }
-  if (prioEditIsBlocked(firstName)) {
+  if (prioEditIsBlocked(nameRealm)) {
+    var blockedPlayer = (DATA.roster || []).filter(function (p) {
+      return normalise(p.nameRealm) === normalise(nameRealm);
+    })[0];
+    var blockedName = blockedPlayer ? blockedPlayer.nick || blockedPlayer.firstName : nameRealm;
     document.getElementById('prioEditStatus').textContent =
-      firstName + ' already has this item at that difficulty and cannot be added.';
+      blockedName + ' already has this item at that difficulty and cannot be added.';
     return;
   }
-  if (PRIO_EDIT.ranked.indexOf(firstName) === -1) {
-    PRIO_EDIT.ranked.push(firstName);
+  if (PRIO_EDIT.ranked.indexOf(nameRealm) === -1) {
+    PRIO_EDIT.ranked.push(nameRealm);
     document.getElementById('prioEditStatus').textContent = '';
     prioEditRenderList();
     prioEditRenderPool();
@@ -1202,14 +1208,14 @@ function prioEditGenerate() {
       var ranked = [];
       rows.forEach(function (r) {
         var player = rosterById[r.player_id];
-        var firstName = player ? player.firstName : (r.name_realm || '').split('-')[0].trim();
-        scoreMap[firstName] = {
-          firstName: firstName,
+        var nameRealm = player ? player.nameRealm : (r.name_realm || '').trim();
+        scoreMap[nameRealm] = {
+          nameRealm: nameRealm,
           weightedTotal: r.weighted_total,
           role: r.role,
           statusLabel: r.status_label || ''
         };
-        ranked.push(firstName);
+        ranked.push(nameRealm);
       });
       PRIO_EDIT.scores = scoreMap;
       PRIO_EDIT.ranked = ranked;
@@ -1239,9 +1245,14 @@ function prioEditSave() {
     return;
   }
 
+  // Keyed by full identity (#529), not first name -- PRIO_EDIT.ranked now
+  // carries name_realm values, and this map used to be built by first name
+  // alone, so two roster characters sharing a first name would silently
+  // collide here (the second overwrites the first), letting a rank meant for
+  // one twin resolve to and save the other's player_id.
   var rosterMap = {};
   (DATA.roster || []).forEach(function (p) {
-    rosterMap[normalise(p.firstName)] = p;
+    rosterMap[normalise(p.nameRealm)] = p;
   });
   var playerIds = [];
   for (var i = 0; i < PRIO_EDIT.ranked.length; i++) {

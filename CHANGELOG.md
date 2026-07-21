@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.46.2] - 2026-07-21
+
+### Frontend
+
+- Fixed the BiS List editor, BiS list display, and Priority tab's ranked-list/pool (#529, companion to #359) merging two rostered characters that share a first name into one entry -- both editors could show/edit the union of each other's BiS items, and the Priority tab's "Suggest Order"/manual-rank Save flow could silently resolve a ranked character to the wrong twin's `player_id` when saving. `DATA.bisList` and `DATA.priorityOrder`'s ranked arrays are now keyed by full character identity (name + realm) instead of first name alone.
+
 ## [3.46.1] - 2026-07-21
 
 ### Frontend
