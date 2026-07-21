@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.46.3] - 2026-07-21
+
+### Frontend
+
+- Fixed the priority-rank pill next to each BiS item on a raider's own profile always showing "-", even when the item had a real priority order. `getRank()` treated `DATA.priorityOrder[itemName]` as a flat array, but it's actually `{heroic?: [...], mythic?: [...]}` -- so the lookup loop never ran and always returned no rank. The identical bug was fixed independently in the officer Contested Items view a while back, but this copy was never touched. Now searches both tracks and looks the player up by full character identity instead of first name, so two roster characters sharing a first name can't collide here either.
+- Reworked the BiS list's rank/received display for readability: a separate small pill per track ranked on (Heroic green, Mythic purple, e.g. "2 H"/"1 M" side by side) instead of one combined pill; the "received" indicator is now a colored letter pill (same Heroic/Mythic coloring) plus the date, and the whole row now highlights green when the Mythic version was received, gold when only Heroic was. Also fixed the BiS List's column header ("Prio / Slot / Item / Source") not lining up with its own rows -- every column but Item now has a fixed width instead of "auto" (each row is its own CSS grid, so an auto-sized column computed a different width per row depending on content, e.g. two rank pills or a received badge vs. a bare "Mark received" button, throwing off the shared Item column's centering) -- and widened the profile view (`680px` -> `820px`) to give the wider rows room.
+
 ## [3.46.2] - 2026-07-21
 
 ### Frontend
