@@ -322,6 +322,25 @@ select#playerSelect option { background:#1a1d27; }
 .nav-item.active { background:rgba(214,163,68,0.08); color:var(--gold-light); border-left-color:var(--gold); }
 .nav-notif { display:inline-flex; align-items:center; justify-content:center; background:#c0392b; color:#fff; font-size:0.82rem; font-weight:700; min-width:16px; height:16px; border-radius:8px; padding:0 4px; line-height:1; vertical-align:middle; margin-left:4px; }
 .nav-notif-abs { position:absolute; top:5px; right:6px; margin:0; }
+.nav-notif-dot { min-width:8px; width:8px; height:8px; padding:0; border-radius:50%; vertical-align:top; margin-left:3px; }
+
+/* News tab (#509) */
+.news-list { display:flex; flex-direction:column; gap:2px; margin-top:1rem; width:100%; max-width:760px; }
+.news-entry { border:1px solid var(--border-mid); border-radius:4px; overflow:hidden; }
+.news-entry-pinned { border-color:var(--gold); }
+.news-entry-pinned .news-entry-header { background:rgba(214,163,68,0.1); }
+.news-pin-icon { flex-shrink:0; font-size:0.9rem; }
+.news-entry-header { display:flex; align-items:center; gap:0.75rem; width:100%; text-align:left; background:var(--bg-elevated); border:none; padding:0.65rem 0.9rem; cursor:pointer; color:var(--text); font-family:'Rajdhani',sans-serif; }
+.news-entry-header:hover { background:rgba(255,255,255,0.06); }
+.news-entry-header:hover .news-entry-title { color:var(--gold-light); }
+.news-entry-date { font-size:0.92rem; color:var(--text-muted); flex-shrink:0; min-width:82px; }
+.news-entry-version { font-size:0.92rem; color:var(--text-dim); flex-shrink:0; }
+.news-entry-title { font-size:1.02rem; font-weight:600; flex:1; min-width:0; }
+.news-category-badge { flex-shrink:0; }
+.news-entry-chevron { flex-shrink:0; font-size:0.7rem; color:var(--text-dim); transition:transform 0.15s; }
+.news-entry-open .news-entry-chevron { transform:rotate(-180deg); }
+.news-entry-body { padding:0.75rem 0.9rem 0.9rem; font-size:0.98rem; color:var(--text-muted); line-height:1.5; border-top:1px solid var(--border-mid); }
+@media (max-width:600px) { .news-entry-header { flex-wrap:wrap; } .news-entry-title { flex-basis:100%; } }
 
 /* Tab panels */
 .tab-panel { display:none; }
