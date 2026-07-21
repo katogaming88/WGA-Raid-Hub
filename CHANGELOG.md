@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.46.4] - 2026-07-21
+
+### Frontend
+
+- Wishlist rows now show a priority-rank pill (same one used on the BiS List) for every item, not just BiS picks -- `getRank()` was already keyed by item name and worked for any item, but only the BiS List ever called it, so raiders had no way to check their priority on a non-BiS wishlist item. Other Sources rows (M+/Crafted) skip the pill since they aren't real raid drops with a priority order. Also: a wishlist slot card now notes when the officer's BiS grid already has a pick for that slot ("N tagged -- officer BiS set"), so a slot the raider never tagged themselves doesn't misleadingly read as unaddressed -- the tag count and its green/grey styling still reflect only the raider's own tags.
+
 ## [3.46.3] - 2026-07-21
 
 ### Frontend
