@@ -55,7 +55,11 @@ describe('mapSupabaseBisItems (#529)', () => {
     const sandbox = loadCommonJs();
     const rows = [
       bisRow(),
-      bisRow({ player_id: 2, players: { name_realm: 'Katorri-Illidan' }, items: { name: 'Bond of Light', slot: 'Back' } })
+      bisRow({
+        player_id: 2,
+        players: { name_realm: 'Katorri-Illidan' },
+        items: { name: 'Bond of Light', slot: 'Back' }
+      })
     ];
     const map = sandbox.mapSupabaseBisItems(rows);
     expect(Object.keys(map).sort()).toEqual(['Katorri-Illidan', 'Katorri-Stormrage']);
@@ -75,7 +79,11 @@ describe('getBisItems (#529 identity lookup, dual-mode)', () => {
     const sandbox = loadCommonJs();
     const rows = [
       bisRow(),
-      bisRow({ player_id: 2, players: { name_realm: 'Katorri-Illidan' }, items: { name: 'Bond of Light', slot: 'Back' } })
+      bisRow({
+        player_id: 2,
+        players: { name_realm: 'Katorri-Illidan' },
+        items: { name: 'Bond of Light', slot: 'Back' }
+      })
     ];
     sandbox.DATA = { bisList: sandbox.mapSupabaseBisItems(rows) };
     expect(sandbox.getBisItems('Katorri-Stormrage')[0].item).toBe('Signet of the Starved Beast');
@@ -109,10 +117,7 @@ describe('mapSupabasePriorityOrder (#529)', () => {
 
   it('keeps two characters sharing a first name as distinct ranked entries', () => {
     const sandbox = loadCommonJs();
-    const rows = [
-      prioRow({ rank: 0 }),
-      prioRow({ rank: 1, players: { name_realm: 'Katorri-Illidan' } })
-    ];
+    const rows = [prioRow({ rank: 0 }), prioRow({ rank: 1, players: { name_realm: 'Katorri-Illidan' } })];
     const result = sandbox.mapSupabasePriorityOrder(rows, 'MID1');
     expect(result['Signet of the Starved Beast'].heroic).toEqual(['Katorri-Stormrage', 'Katorri-Illidan']);
   });
