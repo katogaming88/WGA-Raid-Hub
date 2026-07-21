@@ -137,12 +137,12 @@ describe('mapSupabaseLoot', () => {
       lootRow({ track: 'Champion', items: { name: 'Bond of Light' } })
     ];
     const map = sandbox.mapSupabaseLoot(rows);
-    expect(Object.keys(map)).toEqual(['katorri']);
-    expect(map.katorri.count).toBe(3);
-    expect(map.katorri.heroicCount).toBe(1);
-    expect(map.katorri.mythicCount).toBe(1);
-    expect(map.katorri.items.map((i) => i.difficulty)).toEqual(['Heroic', 'Mythic', 'Other']);
-    expect(map.katorri.items[0]).toEqual({
+    expect(Object.keys(map)).toEqual(['katorri-stormrage']);
+    expect(map['katorri-stormrage'].count).toBe(3);
+    expect(map['katorri-stormrage'].heroicCount).toBe(1);
+    expect(map['katorri-stormrage'].mythicCount).toBe(1);
+    expect(map['katorri-stormrage'].items.map((i) => i.difficulty)).toEqual(['Heroic', 'Mythic', 'Other']);
+    expect(map['katorri-stormrage'].items[0]).toEqual({
       name: 'Signet of the Starved Beast',
       difficulty: 'Heroic',
       date: 'Mar 25, 2026',
@@ -152,41 +152,44 @@ describe('mapSupabaseLoot', () => {
 
   it('strips diacritics from the key exactly like the GAS normName', () => {
     const map = sandbox.mapSupabaseLoot([lootRow({ players: { name_realm: 'Katorrí-Stormrage' } })]);
-    expect(Object.keys(map)).toEqual(['katorri']);
+    expect(Object.keys(map)).toEqual(['katorri-stormrage']);
   });
 
   it('formats award dates in the sheet timezone, not the viewer timezone', () => {
     // 01:30 UTC on Mar 18 is still Mar 17 in America/New_York.
     const map = sandbox.mapSupabaseLoot([lootRow({ awarded_at: '2026-03-18T01:30:00+00:00' })]);
-    expect(map.katorri.items[0].date).toBe('Mar 17, 2026');
+    expect(map['katorri-stormrage'].items[0].date).toBe('Mar 17, 2026');
   });
 
   it('translates a season code that has never been hardcoded (#341 pattern match)', () => {
     const map = sandbox.mapSupabaseLoot([lootRow({ season: 'MID2' })]);
-    expect(map.katorri.items[0].season).toBe('Midnight Season 2');
+    expect(map['katorri-stormrage'].items[0].season).toBe('Midnight Season 2');
   });
 
   it('passes a season code matching neither an override nor the pattern through unchanged', () => {
     const map = sandbox.mapSupabaseLoot([lootRow({ season: 'DF3' })]);
-    expect(map.katorri.items[0].season).toBe('DF3');
+    expect(map['katorri-stormrage'].items[0].season).toBe('DF3');
   });
 
   it('skips rows without a linked player and defaults missing item names', () => {
     const rows = [lootRow({ players: null }), lootRow({ items: null })];
     const map = sandbox.mapSupabaseLoot(rows);
-    expect(map.katorri.count).toBe(1);
-    expect(map.katorri.items[0].name).toBe('Unknown Item');
+    expect(map['katorri-stormrage'].count).toBe(1);
+    expect(map['katorri-stormrage'].items[0].name).toBe('Unknown Item');
   });
 
-  it('warns when two characters collapse into one first-name key', () => {
+  // #359: two characters sharing a first name no longer collapse into one
+  // entry, since the key is the full name_realm identity, not first name
+  // alone -- the opposite of the old GAS-parity behavior this replaced.
+  it('keeps two characters sharing a first name as separate entries', () => {
     const warn = vi.fn();
     const warnSandbox = loadCommonJs(undefined, { ...console, warn });
     const rows = [lootRow(), lootRow({ players: { name_realm: 'Katorrí-Illidan' } })];
     const map = warnSandbox.mapSupabaseLoot(rows);
-    expect(map.katorri.count).toBe(2); // merged, same as the GAS feed
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn.mock.calls[0][0]).toContain('Katorri-Stormrage');
-    expect(warn.mock.calls[0][0]).toContain('Katorrí-Illidan');
+    expect(Object.keys(map).sort()).toEqual(['katorri-illidan', 'katorri-stormrage']);
+    expect(map['katorri-stormrage'].count).toBe(1);
+    expect(map['katorri-illidan'].count).toBe(1);
+    expect(warn).not.toHaveBeenCalled();
   });
 });
 
@@ -272,8 +275,8 @@ describe('loadData builds DATA from Supabase only', () => {
   it('replaces lootCounts with the mapped Supabase feed', async () => {
     const mock = mockSupabase({ lootPages: [{ data: [lootRow()], error: null }] });
     const sandbox = await runLoadData(mock);
-    expect(Object.keys(sandbox.DATA.lootCounts)).toEqual(['katorri']);
-    expect(sandbox.DATA.lootCounts.katorri.heroicCount).toBe(1);
+    expect(Object.keys(sandbox.DATA.lootCounts)).toEqual(['katorri-stormrage']);
+    expect(sandbox.DATA.lootCounts['katorri-stormrage'].heroicCount).toBe(1);
   });
 
   it('resolves to an empty loot feed when the query fails', async () => {

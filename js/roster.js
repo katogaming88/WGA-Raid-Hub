@@ -327,7 +327,7 @@ function buildRecentLoot() {
 
   var nameMap = {};
   for (var i = 0; i < roster.length; i++) {
-    nameMap[normalise(roster[i].firstName)] = roster[i].nick || roster[i].firstName;
+    nameMap[normalise(roster[i].nameRealm)] = roster[i].nick || roster[i].firstName;
   }
 
   var all = [];
@@ -335,7 +335,8 @@ function buildRecentLoot() {
   for (var k = 0; k < keys.length; k++) {
     var key = keys[k];
     var items = loot[key].items || [];
-    var display = nameMap[key] || key.charAt(0).toUpperCase() + key.slice(1);
+    var fallbackName = key.split('-')[0];
+    var display = nameMap[key] || fallbackName.charAt(0).toUpperCase() + fallbackName.slice(1);
     for (var j = 0; j < items.length; j++) {
       // DATA.lootCounts on the public page carries every season (ACTIVE_SEASON
       // is officer.js-only, see js/common.js) -- scope to the current tier

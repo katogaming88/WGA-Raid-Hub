@@ -246,8 +246,8 @@ function buildRosterTable() {
     };
   } else if (activeSort.key === 'items') {
     sortFn = function (a, b) {
-      var ac = (getSeasonLootEntry(a.firstName) || { count: 0 }).count;
-      var bc = (getSeasonLootEntry(b.firstName) || { count: 0 }).count;
+      var ac = (getSeasonLootEntry(a.nameRealm) || { count: 0 }).count;
+      var bc = (getSeasonLootEntry(b.nameRealm) || { count: 0 }).count;
       return activeSort.dir * (ac - bc);
     };
   } else {
@@ -274,7 +274,7 @@ function buildRosterTable() {
       var att = getDisplayAttendancePct(p);
       var pct = parseFloat(att) || 0;
       var color = attendColor(pct);
-      var lootEntry = getSeasonLootEntry(p.firstName);
+      var lootEntry = getSeasonLootEntry(p.nameRealm);
       var lootCount = lootEntry ? lootEntry.count : 0;
       var hasBis = !!p.bisLink;
       var roleColor =

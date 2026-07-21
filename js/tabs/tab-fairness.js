@@ -24,7 +24,7 @@ function buildFairness() {
   var allEntries = [];
   for (var i = 0; i < roster.length; i++) {
     var p = roster[i];
-    var entry = getSeasonLootEntry(p.firstName);
+    var entry = getSeasonLootEntry(p.nameRealm);
     var count = 0;
     if (entry) {
       if (activeDiffFilter === 'heroic') count = entry.heroicCount || 0;
