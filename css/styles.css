@@ -244,7 +244,7 @@ select#playerSelect option { background:#1a1d27; }
 .btn.site-nav-discord:hover { background:rgba(88,101,242,0.25); color:#c9cdff; }
 
 /* Profile view */
-#profileView { padding:0 2rem 3rem; max-width:680px; width:100%; margin:0 auto; }
+#profileView { padding:0 2rem 3rem; max-width:820px; width:100%; margin:0 auto; }
 .profile-card { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; overflow:hidden; animation:fadeUp 0.25s ease; }
 @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 .role-bar { height:3px; width:100%; }
@@ -288,6 +288,7 @@ select#playerSelect option { background:#1a1d27; }
 .priority-list { display:flex; flex-direction:column; gap:0.5rem; }
 .priority-row { display:grid; grid-template-columns:auto auto 1fr; align-items:center; gap:0.75rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; padding:0.6rem 0.8rem; }
 .priority-row.bis-received { background:rgba(61,220,132,0.05); border-color:rgba(61,220,132,0.2); }
+.priority-row.bis-received.bis-received-heroic { background:rgba(214,163,68,0.06); border-color:rgba(214,163,68,0.25); }
 .bis-received-badge { font-size:1.02rem; font-weight:600; letter-spacing:0.05em; padding:2px 7px; border-radius:2px; background:rgba(61,220,132,0.1); color:var(--heal); border:1px solid rgba(61,220,132,0.25); white-space:nowrap; }
 .priority-item-name { font-size:1.2rem; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .priority-item-slot { font-size:1rem; color:var(--text); text-transform:uppercase; letter-spacing:0.07em; white-space:nowrap; }

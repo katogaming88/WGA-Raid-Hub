@@ -93,18 +93,35 @@ describe('rankPillHTML', () => {
     expect(sandbox.rankPillHTML(null)).toContain('-');
   });
 
-  it('renders a single track label', () => {
+  it('renders a heroic pill in the heal color, labeled "<pos> H"', () => {
     const sandbox = loadCommonJs();
     const html = sandbox.rankPillHTML([{ pos: 1, diff: 'heroic' }]);
-    expect(html).toContain('#1H');
+    expect(html).toContain('1 H');
+    expect(html).toContain('var(--heal)');
+    expect(html).not.toContain('var(--ranged)');
   });
 
-  it('joins both tracks when ranked on heroic and mythic', () => {
+  it('renders a mythic pill in the ranged (purple) color, labeled "<pos> M"', () => {
+    const sandbox = loadCommonJs();
+    const html = sandbox.rankPillHTML([{ pos: 1, diff: 'mythic' }]);
+    expect(html).toContain('1 M');
+    expect(html).toContain('var(--ranged)');
+    expect(html).not.toContain('var(--heal)');
+  });
+
+  it('renders heroic and mythic as separate pills, each its own color, when ranked on both', () => {
     const sandbox = loadCommonJs();
     const html = sandbox.rankPillHTML([
       { pos: 1, diff: 'heroic' },
       { pos: 3, diff: 'mythic' }
     ]);
-    expect(html).toContain('#1H/#3M');
+    expect(html).toContain('1 H');
+    expect(html).toContain('3 M');
+    // Two distinct <span class="rank-pill" ...> boxes, not one pill with a
+    // combined label -- and each carries its own track color.
+    const pillMatches = html.match(/<span class="rank-pill"[^>]*>/g);
+    expect(pillMatches).toHaveLength(2);
+    expect(pillMatches[0]).toContain('var(--heal)');
+    expect(pillMatches[1]).toContain('var(--ranged)');
   });
 });

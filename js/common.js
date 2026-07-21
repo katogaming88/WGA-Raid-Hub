@@ -2404,37 +2404,54 @@ function getSeasonLootEntry(firstName) {
 }
 
 // -- Render helpers ---------------------------------------------------------
+// Fixed track widths, not "auto" -- each .priority-row is its own separate
+// CSS grid (not a shared one across the list), so an "auto" column sizes to
+// that row's own content only. A row ranked on both tracks (two rank pills
+// side by side) would size its own Prio column wider than every other row,
+// and a row's Source column (badge+date vs. a bare "Mark received" button
+// vs. the header's plain "Source" label) would each auto-size differently
+// too -- since the 1fr Item column absorbs whatever width the other columns
+// don't take, any row whose Source content is wider ends up with a
+// narrower, differently-centered Item column than the rest. Fixed pixel
+// widths on every column but Item make every row (and the header) size
+// identically regardless of content.
+var PRIORITY_ROW_GRID_COLUMNS = '100px 110px 1fr 150px';
+
+// Heroic/Mythic pill colors -- heroic reuses --heal (green), mythic reuses
+// --ranged (the existing purple in the role palette, css/styles.css) rather
+// than inventing a new color.
+var RANK_PILL_DIFF_COLORS = {
+  heroic: { c: 'var(--heal)', bg: 'rgba(72,187,120,0.18)', bd: 'rgba(72,187,120,0.4)' },
+  mythic: { c: 'var(--ranged)', bg: 'rgba(191,140,255,0.18)', bd: 'rgba(191,140,255,0.4)' }
+};
+
 // ranks: getRank()'s return, [{pos, diff}, ...] -- empty/null renders "-".
-// Colored by the best (lowest) rank among tracks; label joins every track
-// the item's ranked on (e.g. "#1H/#3M"), same notation Contested Items uses.
+// One pill per track (not one pill combining both, so heroic/mythic get
+// visually distinct colors instead of sharing a single box), labeled
+// "<pos> <letter>" (e.g. "2 H").
 function rankPillHTML(ranks) {
   if (!ranks || !ranks.length)
     return '<span style="font-size:1rem;color:var(--text-dim);min-width:40px;text-align:center;">-</span>';
-  var bestPos = ranks.reduce(function (min, r) {
-    return Math.min(min, r.pos);
-  }, Infinity);
-  var t = Math.min((bestPos - 1) / 14, 1);
-  var rv = Math.round(214 + (100 - 214) * t),
-    gv = Math.round(163 + (100 - 163) * t),
-    bv = Math.round(68 + (100 - 68) * t);
-  var a = Math.max(0.08, 0.18 - t * 0.1);
-  var c = 'rgb(' + rv + ',' + gv + ',' + bv + ')',
-    bg = 'rgba(' + rv + ',' + gv + ',' + bv + ',' + a + ')',
-    bd = 'rgba(' + rv + ',' + gv + ',' + bv + ',' + Math.max(0.2, 0.4 - t * 0.2) + ')';
-  var label = ranks
-    .map(function (r) {
-      return '#' + r.pos + (r.diff === 'mythic' ? 'M' : 'H');
-    })
-    .join('/');
   return (
-    '<span class="rank-pill" style="background:' +
-    bg +
-    ';color:' +
-    c +
-    ';border:1px solid ' +
-    bd +
-    ';">' +
-    label +
+    '<span style="display:flex;gap:4px;justify-content:center;">' +
+    ranks
+      .map(function (r) {
+        var colors = RANK_PILL_DIFF_COLORS[r.diff] || RANK_PILL_DIFF_COLORS.heroic;
+        return (
+          '<span class="rank-pill" style="font-size:0.85rem;background:' +
+          colors.bg +
+          ';color:' +
+          colors.c +
+          ';border:1px solid ' +
+          colors.bd +
+          ';">' +
+          r.pos +
+          ' ' +
+          (r.diff === 'mythic' ? 'M' : 'H') +
+          '</span>'
+        );
+      })
+      .join('') +
     '</span>'
   );
 }
@@ -3592,19 +3609,39 @@ function renderProfile(firstName, backTo, container) {
     var received = receivedMap[normalise(item)] || null;
     var selfRec = selfRecMap[normalise(item)] || null;
     var isReceived = received || selfRec;
+    // Mythic received outranks Heroic for the row's own highlight -- green
+    // for Mythic (or any non-Hero/Myth track, e.g. Champion), gold for a
+    // Heroic-only receive, so the row itself signals "how good" the receive
+    // was, not just that a receive happened.
+    var hasMythicReceived = !!(
+      received &&
+      received.some(function (r) {
+        return r.difficulty === 'Mythic';
+      })
+    );
+    var hasHeroicOnlyReceived =
+      !hasMythicReceived &&
+      !!(
+        received &&
+        received.some(function (r) {
+          return r.difficulty === 'Heroic';
+        })
+      );
     var rowId = 'bisrow-' + player.firstName + '-' + bi;
     rows +=
       '<div class="priority-row' +
-      (isReceived ? ' bis-received' : '') +
+      (isReceived ? ' bis-received' + (hasHeroicOnlyReceived ? ' bis-received-heroic' : '') : '') +
       '" id="' +
       rowId +
-      '" style="grid-template-columns:auto auto 1fr auto;">';
+      '" style="grid-template-columns:' +
+      PRIORITY_ROW_GRID_COLUMNS +
+      ';">';
     rows += isGen
       ? '<span style="font-size:1rem;color:var(--text-dim);min-width:40px;text-align:center;">-</span>'
       : rankPillHTML(rank);
     rows += '<span class="priority-item-slot" style="color:' + getSlotColor(slot) + ';">' + slot + '</span>';
     rows +=
-      '<span class="priority-item-name" style="text-align:right;" title="' +
+      '<span class="priority-item-name" style="text-align:center;" title="' +
       item +
       '">' +
       item +
@@ -3638,7 +3675,20 @@ function renderProfile(firstName, backTo, container) {
       for (var rv = 0; rv < received.length; rv++) {
         var rv_diff = received[rv].difficulty || '';
         var rv_date = received[rv].date || '';
-        badges += '<span class="bis-received-badge">' + (rv_diff ? rv_diff + ' - ' : '') + rv_date + '</span>';
+        var rv_colors = RANK_PILL_DIFF_COLORS[rv_diff === 'Mythic' ? 'mythic' : 'heroic'];
+        badges +=
+          '<span style="display:inline-flex;align-items:center;gap:5px;">' +
+          '<span class="bis-received-badge" style="background:' +
+          rv_colors.bg +
+          ';color:' +
+          rv_colors.c +
+          ';border-color:' +
+          rv_colors.bd +
+          ';">' +
+          (rv_diff === 'Mythic' ? 'M' : rv_diff === 'Heroic' ? 'H' : rv_diff || '?') +
+          '</span>' +
+          (rv_date ? '<span style="font-size:0.9em;color:var(--text-muted);">' + rv_date + '</span>' : '') +
+          '</span>';
       }
       rows +=
         '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;">' +
@@ -3686,10 +3736,13 @@ function renderProfile(firstName, backTo, container) {
 
   var priorityHTML = bisItems.length
     ? '<div class="priority-list">' +
-      '<div class="priority-row" style="grid-template-columns:auto auto 1fr;background:transparent;border:none;padding:0.2rem 0.8rem;">' +
+      '<div class="priority-row" style="grid-template-columns:' +
+      PRIORITY_ROW_GRID_COLUMNS +
+      ';background:transparent;border:none;padding:0.2rem 0.8rem;">' +
       '<span style="font-size:1.02rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);">Prio</span>' +
       '<span style="font-size:1.02rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);">Slot</span>' +
-      '<span style="font-size:1.02rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);text-align:right;">Item / Source</span>' +
+      '<span style="font-size:1.02rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);text-align:center;">Item</span>' +
+      '<span style="font-size:1.02rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);text-align:right;">Source</span>' +
       '</div>' +
       rows +
       '</div>'
