@@ -1,0 +1,66 @@
+[
+  {
+    "date": "2026-07-20",
+    "category": "Feature",
+    "version": "3.46.0",
+    "title": "This News tab",
+    "body": "You're looking at it -- a new News tab with a running feed of what's shipped, newest first. Click an entry to expand a short write-up. The red dot on the nav item clears once you visit.",
+    "pinned": true
+  },
+  {
+    "date": "2026-07-20",
+    "category": "Fix",
+    "version": "3.45.1",
+    "title": "BiS List now shows items in the right order",
+    "body": "Your BiS List (on your profile and the officer's Roster view) was sometimes showing gear in a random order instead of head-to-toe. It now always sorts Head, Neck, Shoulder, Back, Chest, Wrist, Hands, Waist, Legs, Feet, Finger 1, Finger 2, Trinket 1, Trinket 2, Weapon, Off Hand."
+  },
+  {
+    "date": "2026-07-20",
+    "category": "Feature",
+    "version": "3.45.0",
+    "title": "Wishlist completeness indicator",
+    "body": "Your Wishlist tab now shows \"N/16 slots tagged\" so you can see at a glance whether you've covered every gear slot -- it turns green once everything's covered and lists what's missing otherwise."
+  },
+  {
+    "date": "2026-07-20",
+    "category": "Change",
+    "version": "3.44.0",
+    "title": "Wishlist tab reorganized into collapsible slot cards",
+    "body": "The Wishlist tab used to be one long scroll. Each gear slot is now its own collapsible card with a colored dot showing how many items you've tagged there, and Other Sources (M+/Crafted) is now a single card instead of repeating on every slot."
+  },
+  {
+    "date": "2026-07-20",
+    "category": "Feature",
+    "version": "3.42.0",
+    "title": "My Wishlist: tag any item, not just your one BiS pick",
+    "body": "Your profile now has a Wishlist tab where you can tag any item in your armor type as BiS, Good, OK, Catalyst Only, or Pass, with an optional note -- separate from (and shown alongside) the officer's single BiS pick per slot."
+  },
+  {
+    "date": "2026-07-16",
+    "category": "Feature",
+    "version": "3.40.0",
+    "title": "Meet the officers: new Bios tab",
+    "body": "A new Bios tab introduces the team's raid officers -- photo, name, title, class/spec, and a short bio for each."
+  },
+  {
+    "date": "2026-07-16",
+    "category": "Feature",
+    "version": "3.39.0",
+    "title": "New History tab: past seasons at a glance",
+    "body": "A new History tab lists every archived season, newest first, with the season's total Mythic kill count and the date of its last boss kill."
+  },
+  {
+    "date": "2026-07-16",
+    "category": "Feature",
+    "version": "3.37.0",
+    "title": "Search Recent Loot by item name",
+    "body": "The landing page's Recent Loot feed now has a search box -- type an item name to see every match for the current season instead of just the last 10 drops."
+  },
+  {
+    "date": "2026-07-15",
+    "category": "Change",
+    "version": "3.36.0",
+    "title": "Sign Up now shows and lets you edit your existing submission",
+    "body": "Signing up when you've already submitted this season now shows your existing signup (status, class/spec, your note) with an Edit button instead of a blank form. Anything not yet added to the roster or denied can be corrected without asking an officer."
+  }
+]

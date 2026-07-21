@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.46.0] - 2026-07-20
+
+### Frontend
+
+- Added a "News" tab (#509): a lightweight reverse-chronological feed of what's shipped -- date, category tag (Feature/Fix/Change), version, and a one-line title, expanding on click to a short write-up. Deliberately not a full blog -- no screenshots, no multi-section posts, closer to a single CHANGELOG.md entry. Source of truth is a new hand-maintained `news.json` at the repo root (same authoring workflow as CHANGELOG.md), not generated from the changelog itself -- changelog bullets aren't categorized and mix raider-facing and officer-only changes in the same line, so a naive filter could leak officer-only tooling into this raider-facing feed. A red dot on the News nav item flags an unread entry, tracked via a `localStorage` "last seen" version cleared on visiting the tab -- keyed on version rather than date, since entries shipped the same day would otherwise never register as new after the first visit -- no new table needed. An entry can also be marked `"pinned": true` in `news.json` to always sort to the top regardless of date (for an announcement an officer wants every raider to see); the pinned entry and the single chronologically latest entry both auto-expand by default, everything else stays collapsed until clicked.
+
 ## [3.45.1] - 2026-07-20
 
 ### Frontend

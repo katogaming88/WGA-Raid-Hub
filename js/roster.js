@@ -9,6 +9,7 @@ function showView(name) {
     'streamersViewWrap',
     'historyViewWrap',
     'bioViewWrap',
+    'newsViewWrap',
     'helpViewWrap'
   ].forEach(function (id) {
     document.getElementById(id).classList.remove('active');
@@ -39,11 +40,18 @@ function showView(name) {
     document.getElementById('bioViewWrap').classList.add('active');
     buildBios();
   }
+  if (name === 'news') {
+    document.getElementById('newsViewWrap').classList.add('active');
+    buildNewsTab();
+    markNewsSeen();
+  }
   if (name === 'help') document.getElementById('helpViewWrap').classList.add('active');
-  ['navHome', 'navSignup', 'navRoster', 'navStreamers', 'navHistory', 'navBios', 'navHelp'].forEach(function (id) {
-    var el = document.getElementById(id);
-    if (el) el.classList.remove('active');
-  });
+  ['navHome', 'navSignup', 'navRoster', 'navStreamers', 'navHistory', 'navBios', 'navNews', 'navHelp'].forEach(
+    function (id) {
+      var el = document.getElementById(id);
+      if (el) el.classList.remove('active');
+    }
+  );
   var activeNav = {
     landing: 'navHome',
     profile: 'navHome',
@@ -52,6 +60,7 @@ function showView(name) {
     streamers: 'navStreamers',
     history: 'navHistory',
     bios: 'navBios',
+    news: 'navNews',
     help: 'navHelp'
   }[name];
   if (activeNav) {
@@ -644,7 +653,10 @@ function autoOpenClaimedProfile(nameRealm) {
 }
 
 // Boot -- maintenance mode gates loadData() entirely, before any data loads.
+// News is a plain static file fetch (news.json), unrelated to team data, so it
+// loads independently and isn't gated by maintenance mode.
 function bootRosterApp() {
+  if (typeof loadNews === 'function') loadNews();
   checkMaintenanceMode().then(function (maint) {
     if (maint.enabled) {
       showMaintenanceBanner(maint.message);
@@ -665,6 +677,7 @@ function bootRosterApp() {
           signup: 'signup',
           history: 'history',
           bios: 'bios',
+          news: 'news',
           help: 'help'
         }[(location.hash || '').replace('#', '')];
         if (hashView === 'signup') showSignupView();
