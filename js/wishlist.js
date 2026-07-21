@@ -16,6 +16,7 @@
 
 var _wishlistPlayerId = null;
 var _wishlistPlayerFirstName = null; // kept alongside _wishlistPlayerId so writes can re-render via renderProfile()
+var _wishlistPlayerNameRealm = null; // full identity, for the officer-bis-pick lookup (#529) -- firstName alone is ambiguous for two characters sharing a first name
 var _wishlistPrefs = null; // array of {id, item_id, status, note, slot} once fetched, else null while loading
 var _wishlistSaving = {}; // 'itemId|slot' -> true while a write is in flight, to disable that row's buttons
 var _wishlistExpandedSlots = {}; // 'Head' -> true, or '__other__' for the M+/Crafted card -- survives re-renders
@@ -154,6 +155,7 @@ function ownWishlistSectionHTML(player, backTo) {
   if (_wishlistPlayerId !== player.id) {
     _wishlistPlayerId = player.id;
     _wishlistPlayerFirstName = player.firstName;
+    _wishlistPlayerNameRealm = player.nameRealm;
     _wishlistPrefs = null;
   }
 
@@ -816,7 +818,9 @@ function wishlistCompleteness() {
   });
 
   var officerBisItems =
-    typeof getBisItems === 'function' && _wishlistPlayerFirstName ? getBisItems(_wishlistPlayerFirstName) : [];
+    typeof getBisItems === 'function' && _wishlistPlayerFirstName
+      ? getBisItems(_wishlistPlayerNameRealm || _wishlistPlayerFirstName)
+      : [];
   var officerBuckets = wishlistOfficerRowBuckets(officerBisItems);
   if (!taggedRows.Weapon && officerBuckets.Weapon && itemSlots[officerBuckets.Weapon.item] === 'One-Hand') {
     offHandRequired = true;

@@ -363,7 +363,7 @@ function checkEmptyBisSubmissions() {
 // Every add/remove/mark-obtained writes straight to bis_items and logs itself
 // via writeAuditLog() (#214) -- no staged "Save" step, since the backend
 // supports true per-row writes now (unlike the old GAS setBisItems, which
-// only rewrote a player's whole BiS column at once). getBisItems(firstName)
+// only rewrote a player's whole BiS column at once). getBisItems(nameRealm)
 // (js/common.js) is the live source of truth; DATA.bisList is patched in
 // place after each successful write instead of re-fetching. Audit entries use
 // target_type 'players' (not 'bis_items') so TARGET still resolves to the
@@ -459,15 +459,6 @@ var BIS_UNIVERSAL_ROWS = {
   'Off Hand': true
 };
 
-function bisFindRosterPlayer(firstName) {
-  var norm = normalise(firstName);
-  var roster = (DATA && DATA.roster) || [];
-  for (var i = 0; i < roster.length; i++) {
-    if (normalise(roster[i].firstName) === norm) return roster[i];
-  }
-  return null;
-}
-
 // bis_items keys on (player_id, item_id); items aren't looked up by id
 // anywhere on the client yet, so resolve by exact name match (items.name has
 // a unique index) the same way #216 resolved classes_specs.
@@ -488,16 +479,18 @@ function bisItemAuditDetail(itemName, slot) {
 }
 
 // DATA.bisList's key may not be an exact case match for the roster's
-// firstName (mirrors the same normalise-based lookup getBisItems() already
-// does); falls back to firstName itself for a player's first-ever BiS entry.
-function bisListKeyFor(firstName) {
+// nameRealm (mirrors the same normalise-based lookup getBisItems() already
+// does); falls back to nameRealm itself for a player's first-ever BiS entry.
+// Keyed by full identity (#529), not first name, so this can never resolve
+// to the wrong twin.
+function bisListKeyFor(nameRealm) {
   var bisMap = DATA.bisList || {};
-  var norm = normalise(firstName);
+  var norm = normalise(nameRealm);
   var keys = Object.keys(bisMap);
   for (var i = 0; i < keys.length; i++) {
     if (normalise(keys[i]) === norm) return keys[i];
   }
-  return firstName;
+  return nameRealm;
 }
 
 function buildBisListsTab() {
@@ -543,7 +536,7 @@ function buildBisListsTab() {
 
     for (var j = 0; j < players.length; j++) {
       var p = players[j];
-      var bisCount = getBisItems(p.firstName).length;
+      var bisCount = getBisItems(p.nameRealm).length;
       var roleColor =
         p.role === 'Tank'
           ? 'var(--tank)'
@@ -553,14 +546,14 @@ function buildBisListsTab() {
               ? 'var(--ranged)'
               : 'var(--melee)';
       var dispName = p.nick || p.firstName;
-      var isEditing = _bisListEditor && _bisListEditor.firstName === p.firstName;
+      var isEditing = _bisListEditor && _bisListEditor.nameRealm === p.nameRealm;
       var fnSafe = p.firstName.replace(/'/g, "\\'");
       var nrSafe = p.nameRealm.replace(/'/g, "\\'");
       var missingRows = missingByNameRealm[p.nameRealm];
 
       html +=
         '<tr id="bis-player-row-' +
-        p.firstName +
+        p.nameRealm +
         '">' +
         '<td><div class="player-name-cell">' +
         '<div class="mini-avatar" style="background:rgba(0,0,0,0.25);color:' +
@@ -612,13 +605,13 @@ function buildBisListsTab() {
         '</button></td>' +
         '</tr>' +
         '<tr id="bis-editor-row-' +
-        p.firstName +
+        p.nameRealm +
         '" style="display:' +
         (isEditing ? '' : 'none') +
         ';">' +
         '<td colspan="4" style="padding:0.75rem 1rem 0.75rem 1.25rem;background:rgba(0,0,0,0.12);border-top:none;">' +
         '<div id="bis-editor-panel-' +
-        p.firstName +
+        p.nameRealm +
         '">' +
         (isEditing ? bisEditorHTML() : '') +
         '</div>' +
@@ -648,7 +641,7 @@ function wireBisSlotSearchInput() {
 }
 
 function toggleBisListEditor(firstName, nameRealm) {
-  if (_bisListEditor && _bisListEditor.firstName === firstName) {
+  if (_bisListEditor && _bisListEditor.nameRealm === nameRealm) {
     _bisListEditor = null;
   } else {
     _bisListEditor = { firstName: firstName, nameRealm: nameRealm };
@@ -757,13 +750,13 @@ function bisSlotRowHTML(label, colorSlot, index, entry, isEmpty, isActive, rowPo
 
 function bisEditorHTML() {
   if (!_bisListEditor) return '';
-  var items = getBisItems(_bisListEditor.firstName);
+  var items = getBisItems(_bisListEditor.nameRealm);
   var grouped = bisSlotBuckets(items);
   var buckets = grouped.buckets;
   var leftover = grouped.leftover;
   var html = '<div style="margin-bottom:0.6rem;">';
 
-  var player = bisFindRosterPlayer(_bisListEditor.firstName);
+  var player = findRosterPlayerByNameRealm(_bisListEditor.nameRealm);
   var bisLink = player && player.bisLink;
   html +=
     '<div style="font-size:1rem;color:var(--text-muted);margin-bottom:0.5rem;">BiS Source: ' +
@@ -809,7 +802,7 @@ function bisEditorHTML() {
 
 function refreshBisEditorPanel() {
   if (!_bisListEditor) return;
-  var panel = document.getElementById('bis-editor-panel-' + _bisListEditor.firstName);
+  var panel = document.getElementById('bis-editor-panel-' + _bisListEditor.nameRealm);
   if (!panel) return;
   panel.innerHTML = bisEditorHTML();
   wireBisSlotSearchInput();
@@ -826,8 +819,8 @@ function bisSlotFilter(query, dbSlot) {
 
 function removeBisListItem(index) {
   if (!_bisListEditor) return;
-  var entry = getBisItems(_bisListEditor.firstName)[index];
-  var player = bisFindRosterPlayer(_bisListEditor.firstName);
+  var entry = getBisItems(_bisListEditor.nameRealm)[index];
+  var player = findRosterPlayerByNameRealm(_bisListEditor.nameRealm);
   if (!entry || !player || !player.id || entry.itemId == null) return;
   var msgEl = document.getElementById('bisListSaveMsg');
   if (msgEl) msgEl.textContent = 'Removing...';
@@ -840,7 +833,7 @@ function removeBisListItem(index) {
       return writeAuditLog('BiS Item Removed', 'players', player.id, bisItemAuditDetail(entry.item, entry.slot));
     })
     .then(function () {
-      var key = bisListKeyFor(_bisListEditor.firstName);
+      var key = bisListKeyFor(_bisListEditor.nameRealm);
       if (DATA.bisList && DATA.bisList[key]) {
         DATA.bisList[key] = DATA.bisList[key].filter(function (e) {
           return !(e.itemId === entry.itemId && (e.dbSlot || null) === (entry.dbSlot || null));
@@ -859,8 +852,8 @@ function removeBisListItem(index) {
 
 function toggleBisItemObtained(index, checked) {
   if (!_bisListEditor) return;
-  var entry = getBisItems(_bisListEditor.firstName)[index];
-  var player = bisFindRosterPlayer(_bisListEditor.firstName);
+  var entry = getBisItems(_bisListEditor.nameRealm)[index];
+  var player = findRosterPlayerByNameRealm(_bisListEditor.nameRealm);
   if (!entry || !player || !player.id || entry.itemId == null) return;
   var msgEl = document.getElementById('bisListSaveMsg');
   if (msgEl) msgEl.textContent = 'Saving...';
@@ -921,14 +914,14 @@ function bisSlotOnInput() {
   var existingRealItems = {};
   if (_bisListEditor) {
     var roster = DATA.roster || [];
-    var edNorm = normalise(_bisListEditor.firstName);
+    var edNorm = normalise(_bisListEditor.nameRealm);
     for (var pi = 0; pi < roster.length; pi++) {
-      if (normalise(roster[pi].firstName) === edNorm) {
+      if (normalise(roster[pi].nameRealm) === edNorm) {
         playerArmorType = (CLASS_ARMOR_TYPE || {})[roster[pi].class] || null;
         break;
       }
     }
-    var currentItems = getBisItems(_bisListEditor.firstName);
+    var currentItems = getBisItems(_bisListEditor.nameRealm);
     for (var e = 0; e < currentItems.length; e++) {
       if (!itemPlaceholders[currentItems[e].item]) existingRealItems[normalise(currentItems[e].item)] = true;
     }
@@ -987,9 +980,9 @@ function bisSlotOnInput() {
 function bisSlotPickItem(itemName) {
   if (!_bisActiveSlot || !_bisListEditor) return;
   var slotName = _bisActiveSlot;
-  var player = bisFindRosterPlayer(_bisListEditor.firstName);
+  var player = findRosterPlayerByNameRealm(_bisListEditor.nameRealm);
   if (!player || !player.id) return;
-  var firstName = _bisListEditor.firstName;
+  var nameRealm = _bisListEditor.nameRealm;
   _bisActiveSlot = null;
   _bisActiveSlotQuery = '';
   var msgEl = document.getElementById('bisListSaveMsg');
@@ -1009,7 +1002,7 @@ function bisSlotPickItem(itemName) {
         });
     })
     .then(function (itemId) {
-      var key = bisListKeyFor(firstName);
+      var key = bisListKeyFor(nameRealm);
       if (!DATA.bisList) DATA.bisList = {};
       if (!DATA.bisList[key]) DATA.bisList[key] = [];
       DATA.bisList[key].push({

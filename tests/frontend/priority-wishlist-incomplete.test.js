@@ -183,7 +183,7 @@ describe('getIncompleteWishlists (#515)', () => {
     const itemSlots = { Helm: 'Head', Necklace: 'Neck' };
     const itemIds = { Helm: 1, Necklace: 2 };
     const roster = [{ id: 11, firstName: 'Kat', nameRealm: 'Kat-Illidan' }];
-    const bisList = { Kat: [{ item: 'Helm', dbSlot: 'Head' }] };
+    const bisList = { 'Kat-Illidan': [{ item: 'Helm', dbSlot: 'Head' }] };
     const sandbox = makeSandbox({ itemSlots, itemIds, roster, bisList });
     sandbox._teamItemPreferences = []; // raider never touched their wishlist
 
