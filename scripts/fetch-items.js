@@ -32,6 +32,18 @@ const TOKEN_SLOT_KEYWORDS = {
 // Find it from the raid's Wowhead URL, e.g. wowhead.com/zone=16915/the-venomous-abyss.
 const ZONE_ID = 16915;
 const ZONE_IS_PTR = true;
+
+// Warcraft Logs zone id for the same raid (#535) -- NOT the same number as
+// ZONE_ID above. WCL uses its own small sequential zone numbering (Voidspire
+// is WCL zone 46, Sporefall is 50) completely unrelated to Wowhead's zone ids.
+// This must match whatever `raid_zones.wcl_zone_id` this tier gets tagged
+// with in Season Settings, since that's what the season filter (#535)
+// compares items.wcl_zone_id against. Confirm the live vs PTR id directly on
+// warcraftlogs.com -- WCL assigns a *different* zone id for a raid's PTR
+// period than its live release (Sporefall was 50 live / 51 PTR), so whatever
+// gets tagged here during PTR needs a full re-fetch/re-tag once the tier
+// ships live, not just a flag flip.
+const WCL_ZONE_ID = 53;
 // ---------------------------------------------------------------------------
 
 // Types to skip entirely. Junk is NOT here -- tier tokens have type Junk on Wowhead,
@@ -221,21 +233,21 @@ async function main() {
           slot: token.slot,
           armor_type: token.armor_type,
           icon,
-          wcl_zone_id: ZONE_ID
+          wcl_zone_id: WCL_ZONE_ID
         });
         if (boss) bossRows.push({ wow_item_id: id, boss });
         console.log(
           `[OK]   ${id}: ${name} | slot: ${token.slot} | armor: ${token.armor_type} | boss: ${boss ?? '(not found)'}`
         );
       } else if (boss) {
-        itemRows.push({ wow_item_id: id, name, slot: slot ?? '', armor_type, icon, wcl_zone_id: ZONE_ID });
+        itemRows.push({ wow_item_id: id, name, slot: slot ?? '', armor_type, icon, wcl_zone_id: WCL_ZONE_ID });
         bossRows.push({ wow_item_id: id, boss });
         console.log(`[OK]   ${id}: ${name} | slot: ${slot ?? '??'} | boss: ${boss}`);
       } else {
         console.log(`[SKIP] ${id}: ${name} | Junk with no parseable token name or boss source, skipping`);
       }
     } else {
-      itemRows.push({ wow_item_id: id, name, slot: slot ?? '', armor_type, icon, wcl_zone_id: ZONE_ID });
+      itemRows.push({ wow_item_id: id, name, slot: slot ?? '', armor_type, icon, wcl_zone_id: WCL_ZONE_ID });
       if (boss) bossRows.push({ wow_item_id: id, boss });
       console.log(`[OK]   ${id}: ${name} | slot: ${slot ?? '??'} | boss: ${boss ?? '(not found)'}`);
     }

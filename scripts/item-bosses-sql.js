@@ -36,7 +36,8 @@ const ENCOUNTER_MAP = {
   "Mor'zahi": 'The Lost Explorers',
   Vexhul: 'The Twin Fangs',
   "Breath of Ula'tek": 'Entombed Sentinels',
-  Vashnik: 'Vashnik the Malignant'
+  Vashnik: 'Vashnik the Malignant',
+  "Nek'zali": "Nek'zali the Soulcoiler"
 };
 
 const zoneName = process.argv[2];

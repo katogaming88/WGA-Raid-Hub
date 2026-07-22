@@ -20,6 +20,9 @@ with each release split into `### Frontend` (drives the version number) and
 
 - Added `items.wcl_zone_id` and backfilled every existing (Season 1) item to Voidspire's zone id (46), the zone all current `item_bosses` rows resolve to.
 - `scripts/fetch-items.js` now emits `wcl_zone_id` (from the existing `ZONE_ID` constant) into `items.csv` for each new tier's import.
+- Fixed `scripts/fetch-items.js` writing Wowhead's own zone id (`ZONE_ID`) into `items.wcl_zone_id` instead of the actual Warcraft Logs zone id -- the two are unrelated numbering schemes (e.g. Voidspire is Wowhead zone id in the 16000s but WCL zone 46), so every item imported through it would've been tagged with an id no `raid_zones` row could ever match, silently breaking the season filter (#535) for any tier seeded this way. Added a separate `WCL_ZONE_ID` constant for the correct value.
+- Added `scripts/items-csv-to-sql.js`, converting a finalized `items.csv` into a ready-to-paste `insert into items` statement (correct `null` handling and quote-escaping for ~90 hand-typed rows was too easy to get wrong manually).
+- Documented (`docs/updating-fetch-items-for-new-tier.md`) how to reconcile `item-bosses-sql.js`'s output against `items.csv` before importing -- Wowhead's Items-tab paste includes housing decor/companion items that aren't real catalog entries, and separately can miss real non-equippable items (e.g. a `Curio`-slot class-set token) that need adding by hand rather than dropping.
 
 ## [3.46.6] - 2026-07-22
 

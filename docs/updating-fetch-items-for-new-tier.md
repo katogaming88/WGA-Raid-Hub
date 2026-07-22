@@ -26,13 +26,14 @@ Look up the new tier's token names on Wowhead (search the tier's tokens, e.g. "V
 
 `TOKEN_ARMOR_SUFFIXES` (cast/cured/forged/woven -> Mail/Leather/Plate/Cloth) has held steady across tiers so far -- only touch it if a new tier breaks that naming pattern.
 
-### 2. `ZONE_ID` / `ZONE_IS_PTR`
+### 2. `ZONE_ID` / `ZONE_IS_PTR` / `WCL_ZONE_ID`
 
 The script pulls the item ID list and Wowhead type automatically from the raid zone page's embedded loot table (the `drops` Listview), so there's no more hand-pasting a `RAW_DATA` array.
 
 1. Find the new raid's Wowhead zone page, e.g. `wowhead.com/zone=<id>/<zone-slug>` (or `wowhead.com/ptr/zone=<id>/<zone-slug>` while the tier is still on PTR).
 2. Set `ZONE_ID` to that numeric id, and `ZONE_IS_PTR` to `true`/`false` depending on whether the raid is live yet.
 3. Flip `ZONE_IS_PTR` to `false` once the tier ships and the zone page moves off `/ptr/`.
+4. Set `WCL_ZONE_ID` to the raid's **Warcraft Logs** zone id -- a completely different number from `ZONE_ID` (WCL uses its own small sequential numbering, e.g. Voidspire is WCL zone 46, not its Wowhead id). Confirm it directly on warcraftlogs.com, not by reusing `ZONE_ID`. This must match whatever `raid_zones.wcl_zone_id` gets entered for this tier in Season Settings, since that's what the season filter (#535) compares `items.wcl_zone_id` against. WCL assigns a *separate* zone id for a raid's PTR period than its live release, so whatever you tag here during PTR needs a full re-fetch/re-tag once the tier ships live -- not just flipping `ZONE_IS_PTR`.
 
 The script classifies each item's Wowhead type from its `classs`/`subclass` fields on the loot table (see `classifyWowheadType` in the script) -- Decor/Reagent are skipped automatically via `SKIP_TYPES`, and tier tokens are classified as `Junk` so the existing token-keyword/boss-source logic handles them. Slot comes from the loot table's numeric equip-slot code via `INVTYPE_SLOT_NAME`, and boss comes from its `sourcemore` field. You don't need to filter, classify, or look anything up by hand.
 
@@ -54,6 +55,31 @@ Requires Node 18+ (uses native `fetch`). No install step, no dependencies.
 - Check the end-of-run warning about empty slots in `items.csv` -- fill those in by hand before importing.
 - **Treat the `boss` column in `item_bosses_raw.csv` as a rough first pass, not authoritative.** It comes from the zone loot table's own boss attribution, which is generally reliable but has been wrong for a handful of items in the past (multi-boss trinkets, world drops, etc). Use `scripts/item-bosses-sql.js` (paste the zone page's Items-tab table directly, with encounter-name reconciliation via `ENCOUNTER_MAP`) as the more reliable source for the actual `item_bosses` insert -- don't just trust `item_bosses_raw.csv` as-is.
 
+## Reconciling `item-bosses-sql.js` against `items.csv`
+
+`item-bosses-sql.js` works off whatever you paste from the Wowhead Items tab, with none of `fetch-items.js`'s own filtering (`SKIP_TYPES`, slot resolution) applied to it. That paste always includes rows `fetch-items.js` correctly left out of `items.csv` -- so its generated `INSERT` will reference `wow_item_id`s that don't exist in `items` yet, and the `(select id from items where wow_item_id = ...)` subquery for each of those resolves to `NULL`. Since `item_bosses.item_id` is `NOT NULL`, even one such row aborts the *entire* multi-row insert.
+
+Before running it, diff every `wow_item_id` the generated SQL references against `items.csv` (a one-liner: parse both, `Set` of ids, filter). Anything referenced by the SQL but missing from the CSV falls into one of two buckets -- **look each one up on Wowhead to tell which**:
+
+- **Actually not a catalog item** -- housing decor, companions/pets, and similar cosmetics show up in the Items tab paste alongside real gear. Delete that row from the `item_bosses` insert.
+- **A real, trackable non-equippable item that `fetch-items.js` missed** -- e.g. a `Curio`-slot class-set trade token (see `tab-bis.js`'s note on `Curio`: not equippable, but still a real priority-tracked catalog item, same category as the existing `Chiming Void Curio (Tier)` Season 1 row). These get missed because Wowhead's `sourcemore` field on the zone loot table was empty for them when `fetch-items.js` scraped it -- same root cause as the "Zone Drop" items below, not an exclusion. Add a row for it to `items.csv` by hand instead of dropping its boss row: `wow_item_id,"name","slot","armor_type",,"icon",WCL_ZONE_ID` (icon via `https://nether.wowhead.com/tooltip/item/<id>?dataEnv=1&locale=0`'s `icon` field, same endpoint `fetchIcon()` uses).
+
+Anything `item-bosses-sql.js` prints under "Manual lookup needed" ("Zone Drop") needs an actual in-game kill to resolve, not a Wowhead item-page lookup -- "Zone Drop" is Wowhead's own placeholder for "boss not attributed yet" (common while a tier's still on PTR and datamining is incomplete), so the item's own page won't have a better answer either. Cross-reference the unresolved `wow_item_id`s against `items.csv` to get each item's real name/slot to make them easy to find in-game (same diff as above gives you this for free).
+
+**Before running either `item_bosses` insert, verify parity**: the row count in `items.csv` should exactly equal the total rows across the "resolved" `item-bosses-sql.js` batch (minus whatever got excluded as non-catalog, plus any manually-added rows like the `Curio` case above) plus the manually-verified batch. Every item should have exactly one boss row, and no boss row should reference an item that isn't in `items.csv` -- if those two sets don't match 1:1, something upstream is still wrong.
+
+## Generating the import SQL
+
+Once `items.csv` is finalized (all `sort_id`s and manual rows filled in), run:
+
+```
+node scripts/items-csv-to-sql.js
+```
+
+This writes `items_insert.sql` -- a ready-to-paste `insert into items (...)` statement, with `items.csv`'s blank `armor_type`/`sort_id` cells converted to SQL `null` and names/icons properly quote-escaped. Paste that into the Supabase SQL Editor and run it first, since the `item_bosses` inserts' `(select id from items where wow_item_id = ...)` subqueries depend on those rows already existing.
+
 ## Importing
 
-`items.csv` columns match the `items` table (`wow_item_id, name, slot, armor_type, sort_id, icon, wcl_zone_id`) -- `sort_id` is left blank and needs manual fill-in per issue #132's guidance. `wcl_zone_id` is filled in automatically from the `ZONE_ID` constant (#535) -- it scopes the item to this tier so old-season loot stops showing up in the Priority tab, BiS grid, and Wishlist once a newer tier's items are imported. Import via the Supabase SQL Editor, not the CLI (per project convention, DB writes are manual). `item_bosses_raw.csv` uses `wow_item_id` as a placeholder key -- swap it for the DB-assigned `id` after `items.csv` is imported, same as noted in the script's header comment.
+`items.csv` columns match the `items` table (`wow_item_id, name, slot, armor_type, sort_id, icon, wcl_zone_id`) -- `sort_id` is left blank and needs manual fill-in per issue #132's guidance. `wcl_zone_id` is filled in automatically from the `WCL_ZONE_ID` constant (#535) -- not `ZONE_ID`, which is Wowhead's own zone numbering -- it scopes the item to this tier so old-season loot stops showing up in the Priority tab, BiS grid, and Wishlist once a newer tier's items are imported. Import via the Supabase SQL Editor, not the CLI (per project convention, DB writes are manual): first `items_insert.sql` (see above), then the `item_bosses` inserts. `item_bosses_raw.csv` uses `wow_item_id` as a placeholder key -- swap it for the DB-assigned `id` after `items.csv` is imported, same as noted in the script's header comment; once `items_insert.sql` has run, `item_bosses_raw.csv` itself can be discarded (it's not tracked in git, and it's fully superseded by `item-bosses-sql.js`'s output plus any manual in-game boss verification).
+
+Once you're ready to go live with the new tier, add its `WCL_ZONE_ID` to `raid_zones` and to the team's `raidProgression` in **Season Settings** -- that's what flips the season filter (#535) over to showing these items by default instead of requiring "Show all seasons".
