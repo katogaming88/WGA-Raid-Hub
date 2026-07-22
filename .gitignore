@@ -19,3 +19,9 @@ npm-debug.log*
 
 # One-time migration data (sheet CSV exports and generated SQL, see #320)
 data/
+
+# Per-tier item catalog scratch output (scripts/fetch-items.js,
+# scripts/items-csv-to-sql.js) -- regenerated every raid tier, never committed
+items.csv
+item_bosses_raw.csv
+items_insert.sql
