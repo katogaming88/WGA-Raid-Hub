@@ -1,5 +1,12 @@
 [
   {
+    "date": "2026-07-22",
+    "category": "Change",
+    "version": "3.47.0",
+    "title": "Season 2 loot is in the catalog",
+    "body": "The Venomous Abyss item list has been imported behind the scenes -- officers can already see it in the Priority tab and BiS picker. It'll show up in your Wishlist once Season Settings switches over to the new tier."
+  },
+  {
     "date": "2026-07-20",
     "category": "Feature",
     "version": "3.46.0",
