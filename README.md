@@ -231,6 +231,12 @@ Only needed when `wgaWebApp.gs` or any `.gs` file changes -- not for sheet data 
 
 ---
 
+## Backups & recovery
+
+Nightly database dumps ship off-provider to Cloudflare R2 -- see [`docs/backup-restore.md`](docs/backup-restore.md) for what's covered, what's regenerable without a backup, and where the restore runbook lives.
+
+---
+
 ## Auth and sessions
 
 - **Discord OAuth** -- only auth method for both raiders and officers. Sessions are stored in `localStorage` per team and validated against GAS on each page load. Sessions expire after 30 days.

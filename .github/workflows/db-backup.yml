@@ -1,0 +1,158 @@
+name: Nightly Supabase Backup
+
+# Backups & Recovery milestone (#541-547): the Supabase free tier has no
+# PITR/automated backups, and a repo audit found no dump scripts, no export
+# jobs, no recovery docs -- in-app-only data (season_signups, bis_requests,
+# self_received_requests, mplus_exclusion_requests, players.officer_notes,
+# team_settings incl. officer bios, site_settings, post-cutover audit_log,
+# notifications, streamers, team_members Discord claims/auth links) would be
+# gone for good after a bad delete or a lost project, made worse by the
+# Danger Zone's one-click clear RPCs. #541 (R2 bucket) and #542 (repo
+# secrets) are the prerequisites; this workflow is the actual nightly dump.
+# The restore runbook + drill are #544 -- not this file.
+#
+# Requires four repo secrets (#542): SUPABASE_DB_URL, R2_ACCOUNT_ID,
+# R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY. SUPABASE_DB_URL must be the
+# *session pooler* connection string (port 5432), not the direct connection
+# (IPv6-only -- GitHub runners are IPv4-only) and not the transaction pooler
+# (port 6543 -- does not support pg_dump).
+#
+# Two artifacts per run, uploaded to the wga-raid-hub-backups R2 bucket
+# (bucket name is plain env, not a secret -- it isn't sensitive):
+#   - pg/wga-<date>.dump: pg_dump -Fc of the public schema (schema + data),
+#     standalone restorable -- the one that matters for actual recovery.
+#   - pg/wga-auth-<date>.dump: pg_dump -Fc --data-only of the auth schema
+#     (auth.users + identities only) -- kept as a relink reference for
+#     team_members.auth_user_id. Auth's own DDL is Supabase-managed, not
+#     ours to back up structurally.
+#
+# Restore verification runs every night, not just once: a bare postgres:17
+# service container (not `supabase start`'s full stack -- that proves
+# migrations apply, which schema-docs.yml already checks; this proves last
+# night's actual dump *artifact* restores, which means restoring from the
+# binary dump file itself). The handful of roles the public schema's GRANT
+# statements reference are created first (anon/authenticated/service_role,
+# plus supabase/roles.sql's claude_readers), then pg_restore --no-owner, then
+# asserted against (players has rows, table count clears a floor) rather
+# than just trusting pg_restore's exit code -- a truncated/corrupt dump can
+# still exit 0. The auth dump only gets pg_restore --list (no live
+# auth.users table exists in the bare container to restore data into) --
+# that alone proves the archive isn't corrupt/truncated. Any failure here
+# fails the whole run.
+#
+# postgresql-client-17 is installed explicitly from the PGDG apt repo since
+# ubuntu-latest's preinstalled client is older than the server's major
+# version (17, per supabase/config.toml) -- pg_dump/pg_restore must be at or
+# above the server major.
+#
+# Missing-secret guard follows the wcl-progression-sync.yml/twitch-live-
+# check.yml style: fail loudly (exit 1), never skip silently, so a
+# not-yet-configured secret stays visible as a red X in the Actions tab.
+#
+# Cadence: daily ~10:00 UTC (after US raid nights end) plus workflow_dispatch
+# as a manual trigger. GitHub Actions cron on this repo has historically
+# fired 1-3 hours late (#493) -- harmless for a once-a-day job, and pg_cron
+# cannot produce an external dump/upload, so this stays on Actions unlike
+# wcl-progression-sync.yml/twitch-live-check.yml (both moved to pg_cron).
+on:
+  schedule:
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    services:
+      restore-check:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check required secrets are set
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          missing=""
+          [ -z "$DB_URL" ] && missing="$missing SUPABASE_DB_URL"
+          [ -z "$R2_ACCOUNT_ID" ] && missing="$missing R2_ACCOUNT_ID"
+          [ -z "$R2_ACCESS_KEY_ID" ] && missing="$missing R2_ACCESS_KEY_ID"
+          [ -z "$R2_SECRET_ACCESS_KEY" ] && missing="$missing R2_SECRET_ACCESS_KEY"
+          if [ -n "$missing" ]; then
+            echo "Missing required repo secret(s):$missing"
+            exit 1
+          fi
+
+      - name: Install postgresql-client-17
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          sudo sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Dump public schema (schema + data)
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: /usr/lib/postgresql/17/bin/pg_dump -Fc -n public --dbname "$DB_URL" -f public.dump
+
+      - name: Dump auth data (users + identities, data only)
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: /usr/lib/postgresql/17/bin/pg_dump -Fc --data-only -t auth.users -t auth.identities --dbname "$DB_URL" -f auth.dump
+
+      - name: Verify both dumps restore
+        env:
+          PGPASSWORD: postgres
+        run: |
+          RESTORE_URL="postgresql://postgres@localhost:5433/postgres"
+          psql "$RESTORE_URL" -c "create role anon nologin;"
+          psql "$RESTORE_URL" -c "create role authenticated nologin;"
+          psql "$RESTORE_URL" -c "create role service_role nologin;"
+          psql "$RESTORE_URL" -f supabase/roles.sql
+
+          /usr/lib/postgresql/17/bin/pg_restore --no-owner -d "$RESTORE_URL" public.dump
+
+          player_count=$(psql "$RESTORE_URL" -tAc "select count(*) from public.players")
+          table_count=$(psql "$RESTORE_URL" -tAc "select count(*) from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE'")
+          echo "Restored players: $player_count, restored public base tables: $table_count"
+
+          if [ "$player_count" -lt 1 ]; then
+            echo "Restored players table has no rows -- dump is likely broken."
+            exit 1
+          fi
+          # Floor of 20: real count at the time this workflow was written was
+          # 26 -- leaves headroom for normal schema growth while still
+          # catching a badly truncated/incomplete dump.
+          if [ "$table_count" -lt 20 ]; then
+            echo "Restored public schema has too few tables ($table_count) -- dump is likely incomplete."
+            exit 1
+          fi
+
+          /usr/lib/postgresql/17/bin/pg_restore --list auth.dump > /dev/null
+
+      - name: Upload dumps to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+        run: |
+          DATE=$(date -u +%Y-%m-%d)
+          ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          aws s3 cp public.dump "s3://wga-raid-hub-backups/pg/wga-${DATE}.dump" --endpoint-url "$ENDPOINT"
+          aws s3 cp auth.dump "s3://wga-raid-hub-backups/pg/wga-auth-${DATE}.dump" --endpoint-url "$ENDPOINT"
