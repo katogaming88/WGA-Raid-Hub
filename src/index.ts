@@ -591,6 +591,8 @@ interface SignupBody {
   offSpecs?: string;
   role?: string;
   discord?: string;
+  mainSwap?: boolean;
+  swapFromNameRealm?: string;
   notes?: string;
   submittedAt?: string;
 }
@@ -598,8 +600,19 @@ interface SignupBody {
 app.post('/signup', async (req: Request, res: Response): Promise<void> => {
   if (!checkSecret(req, res)) return;
 
-  const { charName, realm, className, mainSpec, offSpecs, role, discord, notes, submittedAt } =
-    req.body as SignupBody;
+  const {
+    charName,
+    realm,
+    className,
+    mainSpec,
+    offSpecs,
+    role,
+    discord,
+    mainSwap,
+    swapFromNameRealm,
+    notes,
+    submittedAt,
+  } = req.body as SignupBody;
 
   if (!charName || !className || !mainSpec) {
     res.status(400).json({ error: 'Missing required fields: charName, className, mainSpec' });
@@ -622,6 +635,11 @@ app.post('/signup', async (req: Request, res: Response): Promise<void> => {
       { name: 'Role', value: role ?? 'N/A', inline: true },
       { name: 'Off Specs', value: offSpecs || '*(none)*', inline: true },
       { name: 'Discord', value: discord || '*(not provided)*', inline: true },
+      {
+        name: 'Main Swap',
+        value: mainSwap ? `Yes, from ${swapFromNameRealm || 'unknown character'}` : 'No',
+        inline: true,
+      },
       { name: 'Submitted At', value: `<t:${unixTs}:f>` },
       { name: 'Notes', value: notes || '*(none)*' },
     )
