@@ -11,24 +11,34 @@ import { fileURLToPath } from 'node:url';
 // alphabetical for any boss that doesn't appear there.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
 const PRIORITY_JS = readFileSync(path.join(HERE, '../../js/tabs/tab-priority.js'), 'utf8');
 
 function makeEl() {
   return { innerHTML: '' };
 }
 
+// populateBossFilters() now calls isItemInSeasonScope() (#535, common.js) to
+// drop stale-season bosses from the dropdown, so common.js has to be loaded
+// into the same vm context first -- same pattern as get-rank-pill.test.js.
 function makeSandbox({ itemBosses, raidProgression }) {
   const els = { prioBossFilter: makeEl(), unmanagedBossFilter: makeEl() };
   const sandbox = {
+    window: {},
+    location: { search: '', pathname: '/' },
+    sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+    localStorage: { getItem: () => null, setItem: () => {} },
     console,
-    document: { getElementById: (id) => els[id] || null },
-    DATA: { itemBosses, raidProgression },
+    Intl,
+    document: { getElementById: (id) => els[id] || null, createElement: () => ({}), head: { appendChild: () => {} } },
     setTimeout,
     clearTimeout,
     Promise
   };
   vm.createContext(sandbox);
+  vm.runInContext(COMMON_JS, sandbox, { filename: 'common.js' });
   vm.runInContext(PRIORITY_JS, sandbox, { filename: 'tab-priority.js' });
+  sandbox.DATA = { itemBosses, raidProgression };
   return { sandbox, els };
 }
 

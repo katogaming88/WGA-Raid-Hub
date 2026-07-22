@@ -246,6 +246,9 @@
                 <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--text-muted);cursor:pointer;margin-left:4px;">
                   <input type="checkbox" id="prioHideEmpty" onchange="buildPriorityTab()"> Hide empty
                 </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--text-muted);cursor:pointer;margin-left:4px;">
+                  <input type="checkbox" id="prioShowAllSeasons" onchange="buildPriorityTab()"> Show all seasons
+                </label>
               </div>
               <input type="text" id="prioSearch" class="roster-search-input" placeholder="Search items..."
                 oninput="buildPriorityTab()" style="margin-bottom:1rem;">
@@ -257,6 +260,9 @@
                   onchange="buildUnmanagedTab()">
                   <option value="">All Bosses</option>
                 </select>
+                <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--text-muted);cursor:pointer;margin-left:4px;">
+                  <input type="checkbox" id="unmanagedShowAllSeasons" onchange="buildUnmanagedTab()"> Show all seasons
+                </label>
               </div>
               <input type="text" id="unmanagedSearch" class="roster-search-input" placeholder="Search items..."
                 oninput="buildUnmanagedTab()" style="margin-bottom:1rem;">

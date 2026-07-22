@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.46.6';
+var VERSION = '3.47.0';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -1709,7 +1709,7 @@ function fetchSupabaseItems() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('items')
-    .select('id, wow_item_id, name, slot, armor_type, is_placeholder, icon')
+    .select('id, wow_item_id, name, slot, armor_type, is_placeholder, icon, wcl_zone_id')
     .then(function (result) {
       if (result.error) {
         console.warn('Supabase items query failed.', result.error.message);
@@ -1769,6 +1769,7 @@ function buildItemMaps(rows) {
   var itemIds = {};
   var itemWowIds = {};
   var itemIcons = {};
+  var itemZones = {};
   (rows || []).forEach(function (row) {
     var name = String(row.name || '').trim();
     if (!name) return;
@@ -1778,6 +1779,7 @@ function buildItemMaps(rows) {
     if (row.id != null) itemIds[name] = row.id;
     if (row.wow_item_id != null) itemWowIds[name] = row.wow_item_id;
     if (row.icon) itemIcons[name] = row.icon;
+    if (row.wcl_zone_id != null) itemZones[name] = row.wcl_zone_id;
   });
   return {
     itemSlots: itemSlots,
@@ -1785,7 +1787,8 @@ function buildItemMaps(rows) {
     itemPlaceholders: itemPlaceholders,
     itemIds: itemIds,
     itemWowIds: itemWowIds,
-    itemIcons: itemIcons
+    itemIcons: itemIcons,
+    itemZones: itemZones
   };
 }
 
@@ -2131,6 +2134,7 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.itemIds = itemMaps.itemIds;
       DATA.itemWowIds = itemMaps.itemWowIds;
       DATA.itemIcons = itemMaps.itemIcons;
+      DATA.itemZones = itemMaps.itemZones;
       DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
       var mappedSelfReceived = selfReceivedRows ? mapSupabaseSelfReceived(selfReceivedRows) : null;
       DATA.selfReceived = mappedSelfReceived || {};
@@ -2149,6 +2153,36 @@ function loadData(onCoreReady, onHeavyReady) {
 }
 
 // -- Data helpers -----------------------------------------------------------
+// The set of raid zone IDs (#535) this team's current season covers, per
+// DATA.raidProgression (team_settings.config.raidProgression, Season
+// Settings' live tier list) -- not tied to a single "current raid", since a
+// season can list more than one raid tier at once (e.g. a mini-raid
+// alongside the main one).
+function currentZoneIds() {
+  var ids = {};
+  (DATA.raidProgression || []).forEach(function (raid) {
+    var id = parseInt(raid.wclZoneId, 10);
+    if (id) ids[id] = true;
+  });
+  return ids;
+}
+
+// Whether item `name` belongs to the team's current season, per items.wcl_zone_id
+// (#535) -- shared by the Priority tab, BiS grid editor, and Raider Wishlist so
+// the "current tier only" scoping rule lives in one place. Placeholder items
+// (M+/Crafted/Catalyst) aren't tied to a raid zone and are always in scope.
+// Unscoped items (no wcl_zone_id yet, or raidProgression not configured) fail
+// open rather than silently disappearing from every list.
+function isItemInSeasonScope(name, showAllSeasons) {
+  if (showAllSeasons) return true;
+  if ((DATA.itemPlaceholders || {})[name]) return true;
+  var zone = (DATA.itemZones || {})[name];
+  if (!zone) return true;
+  var ids = currentZoneIds();
+  if (!Object.keys(ids).length) return true;
+  return !!ids[zone];
+}
+
 // Returns every track this player is ranked on for itemName, as
 // [{pos, diff}, ...] (diff: 'heroic'/'mythic'), or [] if unranked on both.
 // DATA.priorityOrder[itemName] is {heroic?: string[], mythic?: string[]}
