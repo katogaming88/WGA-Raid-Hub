@@ -8,6 +8,19 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.47.0] - 2026-07-22
+
+### Frontend
+
+- Scoped the item catalog to the current raid tier (#535): the Priority tab (item list, boss filter, Unmanaged Items), the BiS 16-slot grid editor, and the Raider Wishlist now default to showing only items whose `wcl_zone_id` matches a zone in the team's current `raidProgression`, with a "Show all seasons" checkbox to see everything. Previously every item ever imported showed up in all three places forever, regardless of tier. Placeholder items (M+/Crafted/Catalyst) are always shown, and items with no zone tag or teams with no `raidProgression` configured fail open rather than disappearing.
+- Fixed Unmanaged Items listing M+/Crafted/Catalyst placeholders as items needing a rank -- they aren't raid drops and were never meant to be ranked, but nothing in `getUnmanagedItems()` excluded them.
+- Fixed most armor items landing in the Priority tab's "Other" bucket instead of their real slot section -- `ARMOR_SLOT_ORDER`/`getItemGroup()` still used the pre-normalization slot vocabulary (`SHOULDERS`, `GLOVES`, `CLOAK`, `BRACERS`, `BELT`, `BOOTS`) after the item-catalog slot normalization migration moved `items.slot`/`getSlotColor()`/the BiS grid to the canonical singular names (`SHOULDER`, `HANDS`, `BACK`, `WRIST`, `WAIST`, `FEET`).
+
+### Backend
+
+- Added `items.wcl_zone_id` and backfilled every existing (Season 1) item to Voidspire's zone id (46), the zone all current `item_bosses` rows resolve to.
+- `scripts/fetch-items.js` now emits `wcl_zone_id` (from the existing `ZONE_ID` constant) into `items.csv` for each new tier's import.
+
 ## [3.46.6] - 2026-07-22
 
 ### Frontend

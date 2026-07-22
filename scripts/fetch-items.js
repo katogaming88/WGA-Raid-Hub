@@ -215,20 +215,27 @@ async function main() {
     if (wowheadType === 'Junk') {
       const token = parseTokenFromName(name);
       if (token) {
-        itemRows.push({ wow_item_id: id, name, slot: token.slot, armor_type: token.armor_type, icon });
+        itemRows.push({
+          wow_item_id: id,
+          name,
+          slot: token.slot,
+          armor_type: token.armor_type,
+          icon,
+          wcl_zone_id: ZONE_ID
+        });
         if (boss) bossRows.push({ wow_item_id: id, boss });
         console.log(
           `[OK]   ${id}: ${name} | slot: ${token.slot} | armor: ${token.armor_type} | boss: ${boss ?? '(not found)'}`
         );
       } else if (boss) {
-        itemRows.push({ wow_item_id: id, name, slot: slot ?? '', armor_type, icon });
+        itemRows.push({ wow_item_id: id, name, slot: slot ?? '', armor_type, icon, wcl_zone_id: ZONE_ID });
         bossRows.push({ wow_item_id: id, boss });
         console.log(`[OK]   ${id}: ${name} | slot: ${slot ?? '??'} | boss: ${boss}`);
       } else {
         console.log(`[SKIP] ${id}: ${name} | Junk with no parseable token name or boss source, skipping`);
       }
     } else {
-      itemRows.push({ wow_item_id: id, name, slot: slot ?? '', armor_type, icon });
+      itemRows.push({ wow_item_id: id, name, slot: slot ?? '', armor_type, icon, wcl_zone_id: ZONE_ID });
       if (boss) bossRows.push({ wow_item_id: id, boss });
       console.log(`[OK]   ${id}: ${name} | slot: ${slot ?? '??'} | boss: ${boss ?? '(not found)'}`);
     }
@@ -237,10 +244,10 @@ async function main() {
   }
 
   const itemsCsv = [
-    'wow_item_id,name,slot,armor_type,sort_id,icon',
+    'wow_item_id,name,slot,armor_type,sort_id,icon,wcl_zone_id',
     ...itemRows.map(
       (r) =>
-        `${r.wow_item_id},${csvEscape(r.name)},${csvEscape(r.slot)},${csvEscape(r.armor_type)},,${csvEscape(r.icon)}`
+        `${r.wow_item_id},${csvEscape(r.name)},${csvEscape(r.slot)},${csvEscape(r.armor_type)},,${csvEscape(r.icon)},${r.wcl_zone_id}`
     )
   ].join('\n');
   writeFileSync('items.csv', itemsCsv, 'utf8');

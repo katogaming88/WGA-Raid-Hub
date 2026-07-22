@@ -1,4 +1,10 @@
-var ARMOR_SLOT_ORDER = ['HEAD', 'SHOULDERS', 'CHEST', 'GLOVES', 'LEGS', 'CLOAK', 'BRACERS', 'BELT', 'BOOTS'];
+// Canonical Wowhead/in-game slot names (items.slot), matching getSlotColor()'s
+// armor list in common.js -- this went stale after the slot vocabulary
+// normalization migration (item_catalog_slot_normalization) updated
+// items.slot/getSlotColor/BIS_CATALOG_SLOT_TO_ROWS to the new singular names
+// but missed this array, so every armor item fell through getItemGroup() to
+// "Other" instead of its real slot section.
+var ARMOR_SLOT_ORDER = ['HEAD', 'SHOULDER', 'CHEST', 'HANDS', 'LEGS', 'BACK', 'WRIST', 'WAIST', 'FEET'];
 
 // _utf8ToBase64() moved to js/common.js (#408) so index.html's Quick Actions
 // export button can share it too.
@@ -60,9 +66,11 @@ function _isFullyManaged(entry) {
 function getUnmanagedItems() {
   var prioOrder = DATA.priorityOrder || {};
   var itemSlots = DATA.itemSlots || {};
+  var itemPlaceholders = DATA.itemPlaceholders || {};
   var seen = {};
   var result = [];
   Object.keys(prioOrder).forEach(function (item) {
+    if (itemPlaceholders[item]) return;
     if ((itemSlots[item] || '').toLowerCase() === 'slot') return;
     if (!_isFullyManaged(prioOrder[item])) {
       seen[item] = true;
@@ -71,6 +79,7 @@ function getUnmanagedItems() {
   });
   Object.keys(itemSlots).forEach(function (item) {
     if (seen[item]) return;
+    if (itemPlaceholders[item]) return;
     if ((itemSlots[item] || '').toLowerCase() === 'slot') return;
     if (!_isFullyManaged(prioOrder[item])) result.push(item);
   });
@@ -84,6 +93,7 @@ function populateBossFilters() {
   var bosses = [];
   var seen = {};
   Object.keys(itemBosses).forEach(function (item) {
+    if (!isItemInSeasonScope(item, false)) return;
     var b = itemBosses[item];
     if (b && !seen[b]) {
       seen[b] = true;
@@ -411,9 +421,11 @@ function buildUnmanagedTab() {
   var itemBosses = DATA.itemBosses || {};
   var searchTerm = normalise((document.getElementById('unmanagedSearch') || {}).value || '');
   var bossFilter = ((document.getElementById('unmanagedBossFilter') || {}).value || '').toLowerCase();
+  var showAllSeasons = !!(document.getElementById('unmanagedShowAllSeasons') || {}).checked;
   var items = getUnmanagedItems().filter(function (item) {
     if (searchTerm && normalise(item).indexOf(searchTerm) === -1) return false;
     if (bossFilter && (itemBosses[item] || '').toLowerCase() !== bossFilter) return false;
+    if (!isItemInSeasonScope(item, showAllSeasons)) return false;
     return true;
   });
   var el = document.getElementById('unmanagedContent');
@@ -546,8 +558,9 @@ function togglePrioSection(id) {
 function getItemGroup(slot) {
   var s = (slot || '').toUpperCase();
   if (s === 'TRINKET' || s === 'TRINKET 1' || s === 'TRINKET 2') return 'Trinket';
-  if (s === '1H/2H' || s === 'OH') return 'Weapon';
-  if (s === 'NECK' || s === 'RING' || s === 'RING 1' || s === 'RING 2') return 'Jewelry';
+  if (['ONE-HAND', 'TWO-HAND', 'RANGED', 'OFF HAND', 'HELD IN OFF-HAND', '1H/2H', 'OH'].indexOf(s) >= 0)
+    return 'Weapon';
+  if (['NECK', 'FINGER', 'RING', 'RING 1', 'RING 2'].indexOf(s) >= 0) return 'Jewelry';
   if (ARMOR_SLOT_ORDER.indexOf(s) >= 0) return 'Armor';
   return 'Other';
 }
@@ -566,12 +579,14 @@ function buildPriorityTab() {
   var prioSearchTerm = normalise((document.getElementById('prioSearch') || {}).value || '');
   var bossFilter = ((document.getElementById('prioBossFilter') || {}).value || '').toLowerCase();
   var hideEmpty = !!(document.getElementById('prioHideEmpty') || {}).checked;
+  var showAllSeasons = !!(document.getElementById('prioShowAllSeasons') || {}).checked;
   var items = Object.keys(prioOrder)
     .filter(function (i) {
       if ((itemSlots[i] || '').toLowerCase() === 'slot') return false;
       if (!_hasAnyPriority(prioOrder[i])) return false;
       if (prioSearchTerm && normalise(i).indexOf(prioSearchTerm) === -1) return false;
       if (bossFilter && (itemBosses[i] || '').toLowerCase() !== bossFilter) return false;
+      if (!isItemInSeasonScope(i, showAllSeasons)) return false;
       return true;
     })
     .sort(function (a, b) {

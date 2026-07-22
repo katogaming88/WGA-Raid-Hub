@@ -733,6 +733,8 @@ function bisSlotRowHTML(label, colorSlot, index, entry, isEmpty, isActive, rowPo
       'background:var(--bg-card);border:1px solid var(--border);border-radius:4px;z-index:100;' +
       'max-height:200px;overflow-y:auto;"></div>' +
       '</div>' +
+      '<label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;color:var(--text-muted);cursor:pointer;white-space:nowrap;">' +
+      '<input type="checkbox" id="bisShowAllSeasons" onchange="bisSlotOnInput()"> Show all seasons</label>' +
       '<button class="btn btn-muted" style="font-size:0.91rem;padding:1px 7px;" ' +
       'onclick="bisSlotCancelAdd()">Cancel</button>';
   } else if (isEmpty) {
@@ -908,6 +910,7 @@ function bisSlotOnInput() {
   var itemSlots = DATA.itemSlots || {};
   var itemArmorTypes = DATA.itemArmorTypes || {};
   var itemPlaceholders = DATA.itemPlaceholders || {};
+  var showAllSeasons = !!(document.getElementById('bisShowAllSeasons') || {}).checked;
   var allItems = Object.keys(itemSlots);
 
   var playerArmorType = null;
@@ -941,6 +944,8 @@ function bisSlotOnInput() {
     // placed elsewhere on this player's list. Placeholders are exempt: the
     // same one can legitimately fill more than one row.
     if (!isPlaceholder && existingRealItems[normalise(name)]) continue;
+
+    if (!isItemInSeasonScope(name, showAllSeasons)) continue;
 
     var armorType = itemArmorTypes[name] || '';
     if (
