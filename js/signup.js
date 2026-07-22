@@ -682,7 +682,9 @@ function submitSignup() {
             mainSpec: signupData.mainSpec || '',
             offSpecs: (signupData.offSpecs || []).join(', '),
             role: signupData.role || '',
-            discord: signupData.discord || '',
+            discord: (discordSession && discordSession.username) || '',
+            mainSwap: !!signupData.mainSwap,
+            swapFromNameRealm: claimDiffers ? discordSession.nameRealm : '',
             notes: signupData.notes || ''
           }
         }
