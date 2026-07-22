@@ -13,6 +13,7 @@ with each release split into `### Frontend` (drives the version number) and
 ### Frontend
 
 - Renamed the public Roster tab's "Incoming" sub-tab to "{signup season} Roster (Tentative)" (e.g. "MN Season 2 Roster (Tentative)"), pulled from the officer-set `DATA.signupSeason` so it names next season directly and stays correct without a code change once a new season's signups open, rather than the vague "Incoming" label.
+- Fixed the progression panel silently dropping a boss's pull/kill data after its display name was edited in Season Settings (e.g. shortening "Belo'ren, Child of Al'ar" to "Belo'ren"). The join from `team_raid_progress` to a season's boss list matched purely on normalised boss name, and Season Settings' "Fetch from WCL" button was discarding the WCL encounter ID it fetched instead of saving it -- so a renamed boss no longer matched WarcraftLogs' own (unrenamed) encounter name and its progress just vanished with no error. Boss entries fetched from WCL now carry their `wclEncounterId`, and the progress join tries that first before falling back to the name match, so renaming a boss's display name can no longer break this. Existing boss lists need one more "Fetch from WCL" click in Season Settings to pick up the id and reconnect.
 
 ## [3.46.4] - 2026-07-21
 

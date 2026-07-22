@@ -1392,7 +1392,7 @@ function fetchSupabaseRaidProgress() {
     .from('team_raid_progress')
     .select(
       'mythic_pulls, mythic_best_pct, mythic_report_code, mythic_fight_id, ' +
-        'raid_encounters(name, raid_zones(wcl_zone_id))'
+        'raid_encounters(name, wcl_encounter_id, raid_zones(wcl_zone_id))'
     )
     .eq('team_id', _teamCfg.supabaseTeamId)
     .then(function (result) {
@@ -1414,24 +1414,32 @@ function fetchSupabaseRaidProgress() {
   return Promise.race([query, timeout]);
 }
 
-// Keyed by "<wclZoneId>|<normalised boss name>" so buildProgression() can
-// look a boss up by the same (raid.wclZoneId, boss.name) pair it already
-// renders from DATA.raidProgression, with no encounterID needed on the
-// config side (see wcl-progression-sync's header comment for why that
-// field can't be trusted there).
+// Keyed two ways so _raidProgressFor() (js/roster.js) can look a boss up by
+// whichever identity it has: "<wclZoneId>|id|<wclEncounterId>" when the
+// saved boss carries one (Season Settings' "Fetch from WCL" button), falling
+// back to "<wclZoneId>|<normalised boss name>" for
+// manually-added bosses and rows saved before that field existed. The
+// name-only key used to be the sole lookup, which meant renaming a boss's
+// display name in Season Settings (without also renaming it identically on
+// WCL) silently broke the join to team_raid_progress -- the id key doesn't
+// have that problem since it can't drift when only the label changes.
 function mapSupabaseRaidProgress(rows) {
   var map = {};
   (rows || []).forEach(function (row) {
     var encounter = row.raid_encounters || {};
     var zone = encounter.raid_zones || {};
     var name = normalise(encounter.name || '');
-    if (!zone.wcl_zone_id || !name) return;
-    map[zone.wcl_zone_id + '|' + name] = {
+    if (!zone.wcl_zone_id) return;
+    var progress = {
       pulls: row.mythic_pulls,
       bestPct: row.mythic_best_pct,
       reportCode: row.mythic_report_code,
       fightId: row.mythic_fight_id
     };
+    if (encounter.wcl_encounter_id != null) {
+      map[zone.wcl_zone_id + '|id|' + encounter.wcl_encounter_id] = progress;
+    }
+    if (name) map[zone.wcl_zone_id + '|' + name] = progress;
   });
   return map;
 }
