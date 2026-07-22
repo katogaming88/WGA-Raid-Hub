@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.46.5] - 2026-07-21
+
+### Frontend
+
+- Renamed the public Roster tab's "Incoming" sub-tab to "{signup season} Roster (Tentative)" (e.g. "MN Season 2 Roster (Tentative)"), pulled from the officer-set `DATA.signupSeason` so it names next season directly and stays correct without a code change once a new season's signups open, rather than the vague "Incoming" label.
+
 ## [3.46.4] - 2026-07-21
 
 ### Frontend

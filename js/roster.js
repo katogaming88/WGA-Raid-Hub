@@ -265,7 +265,18 @@ function showRosterSubTab(tab) {
   var incomingEl = document.getElementById('incomingRosterSection');
 
   if (subNav) subNav.style.display = hasIncoming ? 'flex' : 'none';
-  if (tabIncomingBtn) tabIncomingBtn.style.display = hasIncoming ? '' : 'none';
+  if (tabIncomingBtn) {
+    tabIncomingBtn.style.display = hasIncoming ? '' : 'none';
+    // Labeled from the officer-set signup season (DATA.signupSeason, e.g.
+    // "MN Season 2") rather than hardcoded, so the tab name stays correct
+    // without a code change once a new season's signups open (#499
+    // follow-up). Falls back to a season-agnostic label on the rare load
+    // where signupSeason hasn't been set yet.
+    var incomingSeason = (window.DATA && DATA.signupSeason) || '';
+    tabIncomingBtn.textContent = incomingSeason
+      ? incomingSeason + ' Roster (Tentative)'
+      : 'Next Season Roster (Tentative)';
+  }
   if (tabCurrentBtn) tabCurrentBtn.classList.toggle('active', _rosterSubTab === 'current');
   if (tabIncomingBtn) tabIncomingBtn.classList.toggle('active', _rosterSubTab === 'incoming');
   if (rosterEl) rosterEl.style.display = _rosterSubTab === 'current' ? '' : 'none';
