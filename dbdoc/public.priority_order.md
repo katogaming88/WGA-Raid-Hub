@@ -75,6 +75,7 @@ erDiagram
   integer sort_id
   boolean is_placeholder
   text icon
+  integer wcl_zone_id
 }
 "public.players" {
   integer id

@@ -660,6 +660,11 @@
           "name": "icon",
           "type": "text",
           "nullable": true
+        },
+        {
+          "name": "wcl_zone_id",
+          "type": "integer",
+          "nullable": true
         }
       ],
       "indexes": [
