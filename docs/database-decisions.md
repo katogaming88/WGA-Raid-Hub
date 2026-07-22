@@ -8,6 +8,20 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-07-22 -- Scoping `items` by raid tier (#535): a global `wcl_zone_id` column, not a per-team season label or a per-team override table
+
+`items`/`item_bosses` have no season/tier concept at all -- every item ever imported sits in the same flat catalog forever, and the Priority tab, BiS grid, and Wishlist all list the entire unfiltered catalog. Confirmed while scoping a re-import for Season 2: nothing today would stop Season 1 bosses/items from showing up right alongside Season 2's once imported.
+
+- **`items.wcl_zone_id`, not a free-text `items.season` column.** `items` has no `team_id` -- it's shared across all three teams (Phoenix, Hellfire, Immolation), while each team's own season name (`team_settings.config.seasonName`) is independently officer-typed and could label the same real raid tier differently between teams. A free-text season column on a *shared* table risks showing/hiding the wrong items for one team. `wcl_zone_id` mirrors `raid_zones.wcl_zone_id` (#285) -- a stable, team-agnostic identifier tied to the actual game content.
+- **No per-team override table.** A single global zone ID per item is enough, since the underlying game content is identical across teams -- only each team's *current* zone selection differs, and that already lives in their own `team_settings.config.raidProgression`. "Current season" for filtering purposes is just whichever zone ID(s) appear in a team's own `raidProgression` right now, with no new season concept to introduce or keep in sync.
+- **Filtered by default, with a "Show all seasons" toggle**, not fully hidden. Losing the ability to correct an old BiS entry or look something up during an audit was judged worse than the clutter this fixes.
+- **Placeholder items (`M+`/`Crafted`/`Catalyst`) stay exempt from the filter** -- they aren't tied to a raid zone at all.
+- **Rollout covers three places, not just the Priority tab that prompted this**: the Priority tab's item picker/boss filter/Unmanaged Items, the BiS 16-slot grid editor, and the raider Wishlist's per-slot item buckets. Officer loot import is unaffected either way since it matches pasted loot by item name, not a filtered list.
+
+[Full discussion -> #535](https://github.com/katogaming88/WGA-Raid-Hub/issues/535)
+
+---
+
 ## 2026-07-16 -- Season signups now require a Discord login (reverses #403's anon-callable decision)
 
 `submit_season_signup` was deliberately granted to `anon` in the 2026-07-10 entry below, for prospective recruits with no Discord session yet. That's reversed: every signup must now be tied to a real account, so an anonymous submitter has no way in.
