@@ -260,6 +260,11 @@ function renderSignupStep() {
       '<button class="btn btn-gold" onclick="signupNext()">Next</button>' +
       '</div>';
   } else if (signupStep === 4) {
+    // Refreshed on every render, not just trusted from step 1 -- see
+    // signupRefreshMatchesClaim()'s comment. Keeps this step's "will be
+    // recorded as switching..." message accurate if the claim resolves
+    // while the raider is sitting on this step.
+    signupRefreshMatchesClaim(signupData.charName, signupData.realm);
     var discordSession = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
     var hasClaim = !!(discordSession && discordSession.nameRealm);
     var claimDiffers = hasClaim && signupData.matchesClaim === false;
@@ -479,6 +484,25 @@ function signupSelectClass(cls) {
   renderSignupStep();
 }
 
+// Recomputes claimNameRealm/matchesClaim against whatever Discord claim is
+// currently resolved, rather than trusting a value cached from an earlier
+// step. getDiscordSession() (discord.js) returns a snapshot that fills in
+// asynchronously after a DB round trip, so the claim it reports at step 1 can
+// still be null/stale even though it resolves correctly moments later while
+// the raider is on steps 2-4 -- if nothing rechecks before submit, a raider
+// whose claim just hadn't loaded yet gets permanently recorded as swapping
+// from the exact character they're signing up as. Same race #500 fixed for
+// the edit-prefill path; this covers the fresh-signup path.
+function signupRefreshMatchesClaim(charName, realm) {
+  var discordSession = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
+  var claimNameRealm = discordSession && discordSession.nameRealm ? discordSession.nameRealm : null;
+  signupData.claimNameRealm = claimNameRealm;
+  signupData.matchesClaim = !!(
+    claimNameRealm && (charName + '-' + realm).toLowerCase() === claimNameRealm.toLowerCase()
+  );
+  return claimNameRealm;
+}
+
 function signupNext() {
   if (signupStep === 1) {
     var charName = (document.getElementById('signupCharName').value || '').trim();
@@ -497,13 +521,8 @@ function signupNext() {
     signupData.charName = charName;
     signupData.realm = realm;
 
-    var discordSession1 = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
-    var claimNameRealm = discordSession1 && discordSession1.nameRealm ? discordSession1.nameRealm : null;
     if (charName !== priorCharName || realm !== priorRealm) signupData.claimDiffersConfirmed = false;
-    signupData.claimNameRealm = claimNameRealm;
-    signupData.matchesClaim = !!(
-      claimNameRealm && (charName + '-' + realm).toLowerCase() === claimNameRealm.toLowerCase()
-    );
+    var claimNameRealm = signupRefreshMatchesClaim(charName, realm);
 
     if (claimNameRealm && !signupData.matchesClaim && !signupData.claimDiffersConfirmed) {
       var claimConfirmEl1 = document.getElementById('signupClaimDiffersConfirm');
@@ -570,6 +589,10 @@ function signupBack() {
 }
 
 function submitSignup() {
+  // Refreshed here, not just trusted from step 1 -- see
+  // signupRefreshMatchesClaim()'s comment for why a value computed earlier
+  // in the flow can go stale by the time the raider actually hits Submit.
+  signupRefreshMatchesClaim(signupData.charName, signupData.realm);
   var discordSession = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
   var hasClaim = !!(discordSession && discordSession.nameRealm);
   var claimDiffers = hasClaim && signupData.matchesClaim === false;

@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.46.6] - 2026-07-22
+
+### Frontend
+
+- Fixed a signup being permanently recorded as a main swap "from" the exact same character being signed up for, when the raider's Discord claim hadn't finished resolving yet by the time they reached step 1 of the signup form (a DB round trip, see `getDiscordSession()`). Whether the typed character matched their claim was only ever computed once, at step 1 -- if the claim resolved moments later while they were still on steps 2-4, the stale "differs" result was still used at Submit, so a raider whose claim just loaded late got flagged as swapping off their own character. Now rechecked against the current claim on every step-4 render and again right before Submit, matching the fix #500 already applied to the edit-signup path.
+
 ## [3.46.5] - 2026-07-21
 
 ### Frontend
