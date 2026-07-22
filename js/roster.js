@@ -265,7 +265,18 @@ function showRosterSubTab(tab) {
   var incomingEl = document.getElementById('incomingRosterSection');
 
   if (subNav) subNav.style.display = hasIncoming ? 'flex' : 'none';
-  if (tabIncomingBtn) tabIncomingBtn.style.display = hasIncoming ? '' : 'none';
+  if (tabIncomingBtn) {
+    tabIncomingBtn.style.display = hasIncoming ? '' : 'none';
+    // Labeled from the officer-set signup season (DATA.signupSeason, e.g.
+    // "MN Season 2") rather than hardcoded, so the tab name stays correct
+    // without a code change once a new season's signups open (#499
+    // follow-up). Falls back to a season-agnostic label on the rare load
+    // where signupSeason hasn't been set yet.
+    var incomingSeason = (window.DATA && DATA.signupSeason) || '';
+    tabIncomingBtn.textContent = incomingSeason
+      ? incomingSeason + ' Roster (Tentative)'
+      : 'Next Season Roster (Tentative)';
+  }
   if (tabCurrentBtn) tabCurrentBtn.classList.toggle('active', _rosterSubTab === 'current');
   if (tabIncomingBtn) tabIncomingBtn.classList.toggle('active', _rosterSubTab === 'incoming');
   if (rosterEl) rosterEl.style.display = _rosterSubTab === 'current' ? '' : 'none';
@@ -575,15 +586,20 @@ function _escAttr(str) {
     .replace(/"/g, '&quot;');
 }
 
-// Boss objects in DATA.raidProgression never carry a WCL encounterID
-// (tab-season.js's fetchWclForRaid() discards it before saving), so the
-// join to DATA.raidProgress -- keyed by "<wclZoneId>|<normalised name>" in
-// mapSupabaseRaidProgress() -- has to go through the same (zone, boss name)
-// pair used everywhere else in this card.
+// Prefers the id key when this boss carries a wclEncounterId (Season
+// Settings' "Fetch from WCL" button sets one) -- immune to
+// the boss's display name later being edited. Falls back to the
+// zone+normalised-name key for manually-added bosses and rows saved before
+// that field existed, same lookup this used exclusively before.
 function _raidProgressFor(raid, boss) {
   var map = (DATA && DATA.raidProgress) || {};
   var zoneId = raid.wclZoneId;
-  if (!zoneId || !boss || !boss.name) return null;
+  if (!zoneId || !boss) return null;
+  if (boss.wclEncounterId != null) {
+    var byId = map[zoneId + '|id|' + boss.wclEncounterId];
+    if (byId) return byId;
+  }
+  if (!boss.name) return null;
   return map[zoneId + '|' + normalise(boss.name)] || null;
 }
 

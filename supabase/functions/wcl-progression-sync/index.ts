@@ -25,12 +25,14 @@
 //
 // Source of the "which zone/bosses" question: a team's raidProgression entry
 // in team_settings.config (the same officer-curated list Season Settings'
-// "Refresh from WCL" button writes, see js/tabs/tab-season.js). That array's
-// bosses only carry {name, mythicDate} though -- tab-season.js's
-// fetchWclForRaid() discards the encounterID WCL returned when saving, so it
-// can't be trusted as the encounter-ID source here. Instead this re-queries
-// WCL's own zone(id).encounters for the canonical id list every run, same
-// query wcl-sync's getZoneEncounters action already uses.
+// "Refresh from WCL" button writes, see js/tabs/tab-season.js). Bosses fetched
+// via that button now carry a wclEncounterId -- a boss display name renamed
+// in Season Settings used to silently break the join to team_raid_progress,
+// since the site side matched purely by normalised name -- but
+// manually-added bosses and rows saved before that fix still won't have one.
+// Rather than depend on it, this re-queries WCL's own
+// zone(id).encounters for the canonical id list every run, same query
+// wcl-sync's getZoneEncounters action already uses.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const CORS_HEADERS = {

@@ -1130,7 +1130,7 @@ function fetchWclForRaid(idx) {
         return true;
       });
       SEASON_RAIDS[idx].bosses = filtered.map(function (b) {
-        return { name: b.name || '', mythicDate: b.mythicDate || '' };
+        return { name: b.name || '', mythicDate: b.mythicDate || '', wclEncounterId: b.encounterID };
       });
       var lastInRange = filtered[filtered.length - 1];
       if (!SEASON_RAIDS[idx].isMiniRaid && lastInRange && lastInRange.heroicDate) {
