@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.47.1] - 2026-07-22
+
+### Frontend
+
+- Fixed the Discord field on the New Raid Signup notification always showing "(not provided)" -- it was reading a free-text `discord` field that's been defunct since signups moved to Discord-authenticated sessions. It now sends the raider's actual logged-in Discord username. Also added a Main Swap field showing whether the signup is a swap and, if so, which character it's swapping from.
+
 ## [3.47.0] - 2026-07-22
 
 ### Frontend
