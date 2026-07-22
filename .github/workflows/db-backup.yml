@@ -114,7 +114,7 @@ jobs:
       - name: Dump auth data (users + identities, data only)
         env:
           DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: /usr/lib/postgresql/17/bin/pg_dump -Fc --data-only -n auth --dbname "$DB_URL" -f auth.dump
+        run: /usr/lib/postgresql/17/bin/pg_dump -Fc --data-only -t auth.users -t auth.identities --dbname "$DB_URL" -f auth.dump
 
       - name: Verify both dumps restore
         env:
