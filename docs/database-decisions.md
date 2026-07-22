@@ -22,6 +22,19 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-07-22 -- Season naming driven by a shared code constant, not free-typed per team (#537)
+
+`seasonName`/`signupSeason`/`seasonCodePrefix`/`seasonDisplayPrefix` are all officer-typed free text stored independently per team in `team_settings.config`. All three teams raid the same real-world tier at once, but nothing enforces their season-name strings actually match -- and every downstream `season` column (`rclc_loot`, `priority_order`/scoring, `season_signups`) is a plain string-equality check against whatever got typed.
+
+- **A single JS constant Kat updates once per real-world tier, not a DB reference table or a free-typed field.** Same manual-per-tier-edit workflow already used for `scripts/fetch-items.js`'s hardcoded zone ID -- every team's "New Season" button reads and applies the same value, so drift is structurally impossible rather than merely encouraged against. Deliberately not a DB table: avoids a new globally-shared table + RLS + admin UI for something that already has an equivalent manual-edit workflow elsewhere.
+- **Shared with #535's per-item `wcl_zone_id`.** The same constant carries `{code, displayName, wclZoneId}` -- one per-tier update drives both this issue's auto-naming and #535's items/bosses season filter, instead of two per-tier configs that could themselves drift apart.
+- **"New Season" combines archive + auto-name into one click**, replacing today's two-step "archive wipes the name -> officer retypes it" flow -- but still requires the same confirmation dialog as today's Archive button before it runs, since archiving stays a destructive, hard-to-reverse action regardless of how the new name gets filled in.
+- **The generated name must still match the format the existing free-text `season` columns already compare against** (`seasonCodeForDisplay()`/`seasonDisplayName()` in `js/common.js`) -- this changes *where the value comes from*, not the string format those columns already expect.
+
+[Full discussion -> #537](https://github.com/katogaming88/WGA-Raid-Hub/issues/537)
+
+---
+
 ## 2026-07-16 -- Season signups now require a Discord login (reverses #403's anon-callable decision)
 
 `submit_season_signup` was deliberately granted to `anon` in the 2026-07-10 entry below, for prospective recruits with no Discord session yet. That's reversed: every signup must now be tied to a real account, so an anonymous submitter has no way in.
