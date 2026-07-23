@@ -14,6 +14,10 @@ with each release split into `### Frontend` (drives the version number) and
 
 - Fixed the Discord field on the New Raid Signup notification always showing "(not provided)" -- it was reading a free-text `discord` field that's been defunct since signups moved to Discord-authenticated sessions. It now sends the raider's actual logged-in Discord username. Also added a Main Swap field showing whether the signup is a swap and, if so, which character it's swapping from.
 
+### Backend
+
+- Added the restore runbook to `docs/backup-restore.md` (#544): getting a dump out of R2, selective restore after a bad delete (trigger, FK-order, and sequence caveats), and full project rebuild -- including `supabase migration repair` (a restored project has no migration history, so an unrepaired one would replay every migration on the next `db push`) and recreating the four `auth.users` FKs that cannot restore against an empty auth store. Plus a drill procedure and drill log; restores get rehearsed, not just documented.
+
 ## [3.47.0] - 2026-07-22
 
 ### Frontend
