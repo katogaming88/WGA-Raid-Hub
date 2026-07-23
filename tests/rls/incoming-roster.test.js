@@ -1,8 +1,8 @@
 // Read-path and column-safety assertions for incoming_roster (#499): a
 // public view over season_signups' approved-unpromoted rows, narrowed to
-// safe columns and scoped to the team's active signup season. Lives
-// alongside promotion.test.js/read-matrix.test.js since it needs the live
-// local stack.
+// safe columns and scoped to the team's resolved season view (seasonView,
+// falling back to seasonName -- #549). Lives alongside
+// promotion.test.js/read-matrix.test.js since it needs the live local stack.
 import { describe, it, expect, afterAll } from 'vitest';
 import { pool, countAs, queryAs, RAIDER_T1 } from './helpers.js';
 
@@ -35,7 +35,7 @@ describe('incoming_roster excludes officer-only columns', () => {
 });
 
 describe('incoming_roster respects season scoping', () => {
-  it('a signup from a season other than activeSignupSeason is excluded', async () => {
+  it('a signup from a season other than the resolved season view is excluded', async () => {
     const client = await pool.connect();
     try {
       await client.query('begin');

@@ -18,8 +18,7 @@ function buildSeasonTab() {
   if (nameInput) nameInput.value = (DATA && DATA.seasonName) || '';
   var endInput = document.getElementById('seasonEndInput');
   if (endInput) endInput.value = (DATA && DATA.seasonEnd) || '';
-  var signupSeasonInput = document.getElementById('signupSeasonInput');
-  if (signupSeasonInput) signupSeasonInput.value = (DATA && DATA.signupSeason) || '';
+  populateSeasonViewOptions();
   var trialWeeksInput = document.getElementById('trialWeeksInput');
   var trialAttendInput = document.getElementById('trialAttendInput');
   if (trialWeeksInput) trialWeeksInput.value = DATA && DATA.trialWeeks != null ? DATA.trialWeeks : 4;
@@ -572,32 +571,52 @@ function executeArchiveSeason() {
     });
 }
 
-function saveSignupSeason() {
-  var input = document.getElementById('signupSeasonInput');
-  var val = input ? input.value.trim() : '';
-  var btn = document.getElementById('signupSeasonSaveBtn');
-  var status = document.getElementById('signupSeasonStatus');
-  if (!val) {
-    if (status) {
-      status.textContent = 'Season name cannot be blank.';
-      setTimeout(function () {
-        if (status) status.textContent = '';
-      }, 3000);
+// Options come from raid_zones.season (DATA.raidZones, #285/#549), not a
+// free-typed value -- making a season selectable here is just adding its
+// raid_zones row, a step already required for that tier eventually anyway.
+// Preserves the current DATA.seasonView selection (even if it's since fallen
+// out of DATA.raidZones) so the dropdown doesn't silently reset it.
+function populateSeasonViewOptions() {
+  var select = document.getElementById('seasonViewInput');
+  if (!select) return;
+  var seasons = [];
+  var seen = {};
+  ((DATA && DATA.raidZones) || []).forEach(function (rz) {
+    if (rz.season && !seen[rz.season]) {
+      seen[rz.season] = true;
+      seasons.push(rz.season);
     }
-    return;
-  }
+  });
+  var current = (DATA && DATA.seasonView) || '';
+  if (current && !seen[current]) seasons.push(current);
+  seasons.sort();
+  select.innerHTML =
+    '<option value="">Live season (current)</option>' +
+    seasons
+      .map(function (s) {
+        return '<option value="' + _esc(s) + '">' + _esc(s) + '</option>';
+      })
+      .join('');
+  select.value = current;
+}
+
+function saveSeasonView() {
+  var input = document.getElementById('seasonViewInput');
+  var val = input ? input.value : '';
+  var btn = document.getElementById('seasonViewSaveBtn');
+  var status = document.getElementById('seasonViewStatus');
   if (btn) {
     btn.disabled = true;
     btn.textContent = 'Saving...';
   }
 
-  saveTeamSetting({ activeSignupSeason: val })
+  saveTeamSetting({ seasonView: val || null })
     .then(function () {
       if (btn) {
         btn.disabled = false;
         btn.textContent = 'Save';
       }
-      if (DATA) DATA.signupSeason = val;
+      if (DATA) DATA.seasonView = val || null;
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {

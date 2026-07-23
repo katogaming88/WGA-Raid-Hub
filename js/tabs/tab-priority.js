@@ -113,11 +113,11 @@ function populateBossFilters() {
     });
   });
 
-  function bossOptionsHtml(showAllSeasons) {
+  function bossOptionsHtml() {
     var bosses = [];
     var seen = {};
     Object.keys(itemBosses).forEach(function (item) {
-      if (!isItemInSeasonScope(item, showAllSeasons)) return;
+      if (!isItemInSeasonScope(item)) return;
       var b = itemBosses[item];
       if (b && !seen[b]) {
         seen[b] = true;
@@ -142,12 +142,11 @@ function populateBossFilters() {
     );
   }
 
-  function refresh(selectId, showAllSeasonsId) {
+  function refresh(selectId) {
     var el = document.getElementById(selectId);
     if (!el) return;
-    var showAllSeasons = !!(document.getElementById(showAllSeasonsId) || {}).checked;
     var prevValue = el.value;
-    el.innerHTML = bossOptionsHtml(showAllSeasons);
+    el.innerHTML = bossOptionsHtml();
     if (
       el.options &&
       [].some.call(el.options, function (o) {
@@ -158,8 +157,8 @@ function populateBossFilters() {
     }
   }
 
-  refresh('prioBossFilter', 'prioShowAllSeasons');
-  refresh('unmanagedBossFilter', 'unmanagedShowAllSeasons');
+  refresh('prioBossFilter');
+  refresh('unmanagedBossFilter');
 }
 
 // Every kind of fairness/health issue that lives on the Priority List --
@@ -449,11 +448,10 @@ function buildUnmanagedTab() {
   var itemBosses = DATA.itemBosses || {};
   var searchTerm = normalise((document.getElementById('unmanagedSearch') || {}).value || '');
   var bossFilter = ((document.getElementById('unmanagedBossFilter') || {}).value || '').toLowerCase();
-  var showAllSeasons = !!(document.getElementById('unmanagedShowAllSeasons') || {}).checked;
   var items = getUnmanagedItems().filter(function (item) {
     if (searchTerm && normalise(item).indexOf(searchTerm) === -1) return false;
     if (bossFilter && (itemBosses[item] || '').toLowerCase() !== bossFilter) return false;
-    if (!isItemInSeasonScope(item, showAllSeasons)) return false;
+    if (!isItemInSeasonScope(item)) return false;
     return true;
   });
   var el = document.getElementById('unmanagedContent');
@@ -603,14 +601,13 @@ function buildPriorityTab() {
   var prioSearchTerm = normalise((document.getElementById('prioSearch') || {}).value || '');
   var bossFilter = ((document.getElementById('prioBossFilter') || {}).value || '').toLowerCase();
   var hideEmpty = !!(document.getElementById('prioHideEmpty') || {}).checked;
-  var showAllSeasons = !!(document.getElementById('prioShowAllSeasons') || {}).checked;
   var items = Object.keys(prioOrder)
     .filter(function (i) {
       if ((itemSlots[i] || '').toLowerCase() === 'slot') return false;
       if (!_hasAnyPriority(prioOrder[i])) return false;
       if (prioSearchTerm && normalise(i).indexOf(prioSearchTerm) === -1) return false;
       if (bossFilter && (itemBosses[i] || '').toLowerCase() !== bossFilter) return false;
-      if (!isItemInSeasonScope(i, showAllSeasons)) return false;
+      if (!isItemInSeasonScope(i)) return false;
       return true;
     })
     .sort(function (a, b) {

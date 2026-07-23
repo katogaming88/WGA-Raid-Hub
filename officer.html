@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.48.1">
-  <link rel="stylesheet" href="css/officer.css?v=3.48.1">
+  <link rel="stylesheet" href="css/styles.css?v=3.49.0">
+  <link rel="stylesheet" href="css/officer.css?v=3.49.0">
   <!-- Hover tooltips for Buff Coverage's spell links (#491). Auto-attaches to
        any <a class="wowhead"> pointing at a wowhead.com spell page. -->
   <script src="https://wow.zamimg.com/widgets/power.js" async></script>
@@ -246,9 +246,6 @@
                 <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--text-muted);cursor:pointer;margin-left:4px;">
                   <input type="checkbox" id="prioHideEmpty" onchange="buildPriorityTab()"> Hide empty
                 </label>
-                <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--text-muted);cursor:pointer;margin-left:4px;">
-                  <input type="checkbox" id="prioShowAllSeasons" onchange="populateBossFilters(); buildPriorityTab()"> Show all seasons
-                </label>
               </div>
               <input type="text" id="prioSearch" class="roster-search-input" placeholder="Search items..."
                 oninput="buildPriorityTab()" style="margin-bottom:1rem;">
@@ -260,9 +257,6 @@
                   onchange="buildUnmanagedTab()">
                   <option value="">All Bosses</option>
                 </select>
-                <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--text-muted);cursor:pointer;margin-left:4px;">
-                  <input type="checkbox" id="unmanagedShowAllSeasons" onchange="populateBossFilters(); buildUnmanagedTab()"> Show all seasons
-                </label>
               </div>
               <input type="text" id="unmanagedSearch" class="roster-search-input" placeholder="Search items..."
                 oninput="buildUnmanagedTab()" style="margin-bottom:1rem;">
@@ -636,18 +630,19 @@
                 </div>
               </div>
 
-              <!-- Signup Season -->
+              <!-- Season View -->
               <div class="help-ref-card">
-                <h4 class="help-ref-title">Signup Season<button class="help-btn" onclick="toggleHelp('help-signup-season')" title="Show help">?</button></h4>
-                <div id="help-signup-season" class="help-tip">
-                  The season label stamped on every signup submission. Set this before opening signups so all responses are tagged correctly. If left blank, signups will be recorded with no season and will not appear in the Missing Signups list once a season is set.
+                <h4 class="help-ref-title">Season View<button class="help-btn" onclick="toggleHelp('help-season-view')" title="Show help">?</button></h4>
+                <div id="help-season-view" class="help-tip">
+                  The season your team is planning. Leave on "Live season" and everything (Priority tab, BiS grid, Wishlist, Signups) reflects the current raiding season automatically. Pick a specific season here to prep its item catalog, wishlist, BiS, and signups ahead of time without touching the live raid -- useful once that season's raid zone has been added in Season Settings > Raid Progression for a future tier, or to audit an old season's data. A season with no items imported yet, or no signups tagged to it, will show up empty here -- that's expected until the import/setup for it is finished.
                 </div>
-                <p class="signup-officer-note" style="margin-top:0.25rem;">The season label applied to incoming signup submissions (e.g. MN Season 1).</p>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Also controls which season new signup submissions are tagged with.</p>
                 <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
-                  <input type="text" id="signupSeasonInput" class="add-player-input" placeholder="e.g. MN Season 1"
-                    style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
-                  <button class="btn btn-gold" id="signupSeasonSaveBtn" onclick="saveSignupSeason()">Save</button>
-                  <span id="signupSeasonStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                  <select id="seasonViewInput" class="add-player-input" style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                    <option value="">Live season (current)</option>
+                  </select>
+                  <button class="btn btn-gold" id="seasonViewSaveBtn" onclick="saveSeasonView()">Save</button>
+                  <span id="seasonViewStatus" style="font-size:0.92rem;color:var(--heal);"></span>
                 </div>
               </div>
 
@@ -1108,27 +1103,27 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.48.1"></script>
-  <script src="js/discord.js?v=3.48.1"></script>
-  <script src="js/officer.js?v=3.48.1"></script>
-  <script src="js/tabs/tab-roster.js?v=3.48.1"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.48.1"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.48.1"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.48.1"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.48.1"></script>
-  <script src="js/tabs/tab-signups.js?v=3.48.1"></script>
-  <script src="js/tabs/tab-requests.js?v=3.48.1"></script>
-  <script src="js/tabs/tab-bis.js?v=3.48.1"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.48.1"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.48.1"></script>
-  <script src="js/tabs/tab-priority.js?v=3.48.1"></script>
-  <script src="js/tabs/tab-audit.js?v=3.48.1"></script>
-  <script src="js/tabs/tab-reports.js?v=3.48.1"></script>
-  <script src="js/tabs/tab-season.js?v=3.48.1"></script>
-  <script src="js/tabs/tab-bios.js?v=3.48.1"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.48.1"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.48.1"></script>
-  <script src="js/tabs/tab-admin.js?v=3.48.1"></script>
+  <script src="js/common.js?v=3.49.0"></script>
+  <script src="js/discord.js?v=3.49.0"></script>
+  <script src="js/officer.js?v=3.49.0"></script>
+  <script src="js/tabs/tab-roster.js?v=3.49.0"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.49.0"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.49.0"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.49.0"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.49.0"></script>
+  <script src="js/tabs/tab-signups.js?v=3.49.0"></script>
+  <script src="js/tabs/tab-requests.js?v=3.49.0"></script>
+  <script src="js/tabs/tab-bis.js?v=3.49.0"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.49.0"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.49.0"></script>
+  <script src="js/tabs/tab-priority.js?v=3.49.0"></script>
+  <script src="js/tabs/tab-audit.js?v=3.49.0"></script>
+  <script src="js/tabs/tab-reports.js?v=3.49.0"></script>
+  <script src="js/tabs/tab-season.js?v=3.49.0"></script>
+  <script src="js/tabs/tab-bios.js?v=3.49.0"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.49.0"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.49.0"></script>
+  <script src="js/tabs/tab-admin.js?v=3.49.0"></script>
   <script>
 document.getElementById('versionNum').textContent = VERSION;
 document.title = TEAM_NAME + ' -- Officer';

@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.48.1';
+var VERSION = '3.49.0';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -1660,15 +1660,18 @@ var SEASON_CONFIG_KEYS = [
   // seasonDisplayName()/seasonCodeForDisplay() above, defaulting to
   // 'MID'/'Midnight Season' when unset so existing teams need no backfill.
   'seasonCodePrefix',
-  'seasonDisplayPrefix'
+  'seasonDisplayPrefix',
+  // The season an officer is actively planning/prepping (#549), separate
+  // from seasonName (the live raiding season) -- nullable, resolved via
+  // resolveSeasonView() below. Replaces activeSignupSeason (retired).
+  'seasonView'
 ];
 
 /**
  * Overlays team_settings.config onto DATA, key by key, so a config missing a
  * given key (not backfilled yet, or a brand-new team) keeps whatever the Apps
  * Script core payload already set for it instead of clobbering it with
- * undefined. activeSignupSeason maps to DATA.signupSeason, matching the Apps
- * Script field name tab-season.js already reads/writes.
+ * undefined.
  * @param {any} data - the DATA object being built from the core chunk
  * @param {Object|null} config - team_settings.config, or null if the query failed/found nothing
  */
@@ -1677,7 +1680,6 @@ function applyTeamSettingsToData(data, config) {
   SEASON_CONFIG_KEYS.forEach(function (key) {
     if (config[key] !== undefined) data[key] = config[key];
   });
-  if (config.activeSignupSeason !== undefined) data.signupSeason = config.activeSignupSeason;
   data.features = config.features || {};
   data.externalLinks = config.externalLinks || {};
   data.blazeCommanderBios = config.blazeCommanderBios || [];
@@ -1709,6 +1711,31 @@ function saveTeamSetting(updates) {
     .then(function (result) {
       if (result.error) throw new Error(result.error.message);
       return result.data;
+    });
+}
+
+// raid_zones.wcl_zone_id <-> season mapping (#285, #549) -- the same
+// team-agnostic table #285's WCL progress sync writes to, reused here as the
+// source of truth for isItemInSeasonScope()/currentZoneIdsForSeason() and
+// for the Season View dropdown's option list, instead of a team's own
+// (WCL-tracking-only) raidProgression. Resolves to [] on any failure/empty.
+function fetchSupabaseRaidZones() {
+  if (!supabaseClient) return Promise.resolve([]);
+  return supabaseClient
+    .from('raid_zones')
+    .select('wcl_zone_id, season')
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Supabase raid_zones query failed.', result.error.message);
+        return [];
+      }
+      return (result.data || []).map(function (row) {
+        return { wclZoneId: row.wcl_zone_id, season: row.season };
+      });
+    })
+    .catch(function (err) {
+      console.warn('Supabase raid_zones query failed.', err);
+      return [];
     });
 }
 
@@ -1869,6 +1896,7 @@ function itemNameBlockHtml(name, slot) {
   var icon = ((DATA && DATA.itemIcons) || {})[name];
   var boss = ((DATA && DATA.itemBosses) || {})[name];
   var stats = ((DATA && DATA.itemSecondaryStats) || {})[name];
+  var armorType = ((DATA && DATA.itemArmorTypes) || {})[name];
   var iconImg = icon
     ? '<img src="https://wow.zamimg.com/images/wow/icons/large/' + icon + '.jpg" alt="" class="item-icon-lg">'
     : '';
@@ -1879,6 +1907,11 @@ function itemNameBlockHtml(name, slot) {
   // just flowing onto a clean line of its own.
   var slotPillsParts = [];
   if (slot) slotPillsParts.push('<span style="color:' + getSlotColor(slot) + ';">' + slot + '</span>');
+  // Visual guide only, no filtering behavior -- weapons/trinkets/jewelry have
+  // no armor_type at all (items.armor_type is only set for armor pieces), so
+  // this only appears on rows where it's actually meaningful.
+  if (armorType)
+    slotPillsParts.push('<span style="color:' + getArmorTypeColor(armorType) + ';">' + armorType + '</span>');
   var pills = statPillListHtml(stats);
   if (pills) slotPillsParts.push(pills);
   var slotPillsLine = slotPillsParts.length
@@ -2175,6 +2208,8 @@ function loadData(onCoreReady, onHeavyReady) {
   var raidProgressPromise = fetchSupabaseRaidProgress();
   // Fired alongside; the heavy callback waits for it before setting incomingRoster.
   var incomingRosterPromise = fetchSupabaseIncomingRoster();
+  // Fired alongside; the heavy callback waits for it before setting raidZones.
+  var raidZonesPromise = fetchSupabaseRaidZones();
 
   // Builds DATA from the Supabase roster/settings/M+ rejections, then runs
   // onCoreReady. GAS is retired (#225) -- there is no core payload to overlay
@@ -2224,7 +2259,8 @@ function loadData(onCoreReady, onHeavyReady) {
       attendancePromise,
       streamersPromise,
       raidProgressPromise,
-      incomingRosterPromise
+      incomingRosterPromise,
+      raidZonesPromise
     ]).then(function (results) {
       var lootRows = results[0];
       var bisRows = results[1];
@@ -2238,6 +2274,8 @@ function loadData(onCoreReady, onHeavyReady) {
       var streamerRows = results[9];
       var raidProgressRows = results[10];
       var incomingRosterRows = results[11];
+      var raidZonesRows = results[12];
+      DATA.raidZones = raidZonesRows || [];
       var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
       DATA.lootCounts = mappedLoot || {};
       var mappedAttendance = attendanceRows !== null ? mapSupabaseAttendanceRaw(attendanceRows, DATA.roster) : null;
@@ -2280,33 +2318,52 @@ function loadData(onCoreReady, onHeavyReady) {
 }
 
 // -- Data helpers -----------------------------------------------------------
-// The set of raid zone IDs (#535) this team's current season covers, per
-// DATA.raidProgression (team_settings.config.raidProgression, Season
-// Settings' live tier list) -- not tied to a single "current raid", since a
-// season can list more than one raid tier at once (e.g. a mini-raid
-// alongside the main one).
-function currentZoneIds() {
+// The season an officer is actively viewing/planning (#549): DATA.seasonView
+// when explicitly set (prepping a future season's catalog/wishlist/BiS/
+// signups without touching the live raid), else DATA.seasonName (today's
+// live season -- the default). Everything season-scoped below reads this
+// instead of DATA.raidProgression, which is WCL progress-tracking config
+// (which raids to pull kill/attendance data for), not a season-view concept,
+// and gets wiped to [] by every archive_current_season() call (#537).
+function resolveSeasonView() {
+  return (DATA && (DATA.seasonView || DATA.seasonName)) || '';
+}
+
+// The set of raid zone IDs (#535, #549) the given season string covers, per
+// DATA.raidZones (raid_zones.wcl_zone_id/season, the same team-agnostic
+// mapping #285's WCL progress sync maintains) -- not DATA.raidProgression,
+// which only reflects the live season's WCL-tracking config.
+function currentZoneIdsForSeason(season) {
   var ids = {};
-  (DATA.raidProgression || []).forEach(function (raid) {
-    var id = parseInt(raid.wclZoneId, 10);
+  (DATA.raidZones || []).forEach(function (rz) {
+    if (rz.season !== season) return;
+    var id = parseInt(rz.wclZoneId, 10);
     if (id) ids[id] = true;
   });
   return ids;
 }
 
-// Whether item `name` belongs to the team's current season, per items.wcl_zone_id
-// (#535) -- shared by the Priority tab, BiS grid editor, and Raider Wishlist so
-// the "current tier only" scoping rule lives in one place. Placeholder items
-// (M+/Crafted/Catalyst) aren't tied to a raid zone and are always in scope.
-// Unscoped items (no wcl_zone_id yet, or raidProgression not configured) fail
-// open rather than silently disappearing from every list.
-function isItemInSeasonScope(name, showAllSeasons) {
-  if (showAllSeasons) return true;
+// Whether item `name` belongs to the team's viewed season (resolveSeasonView(),
+// #549), per items.wcl_zone_id (#535) -- shared by the Priority tab, BiS grid
+// editor, and Raider Wishlist so the "current tier only" scoping rule lives in
+// one place. Placeholder items (M+/Crafted/Catalyst) aren't tied to a raid
+// zone and are always in scope, as are items with no wcl_zone_id tag yet --
+// neither is part of the season concept this function scopes by.
+//
+// Fail-open only applies to the default (seasonView unset) case: no
+// raid_zones rows for the live season yet still shows everything, so an
+// incompletely-onboarded team isn't punished with an empty catalog. Once
+// seasonView is explicitly set, filtering is strict -- no raid_zones row for
+// that season means an empty view, the honest state, not a silent fallback
+// to "show everything" (this doubles as the way to verify a new tier's
+// import actually worked).
+function isItemInSeasonScope(name) {
   if ((DATA.itemPlaceholders || {})[name]) return true;
   var zone = (DATA.itemZones || {})[name];
   if (!zone) return true;
-  var ids = currentZoneIds();
-  if (!Object.keys(ids).length) return true;
+  var explicit = !!(DATA && DATA.seasonView);
+  var ids = currentZoneIdsForSeason(resolveSeasonView());
+  if (!Object.keys(ids).length) return !explicit;
   return !!ids[zone];
 }
 
@@ -2650,6 +2707,25 @@ function getSlotColor(slot) {
   if (['HEAD', 'SHOULDER', 'CHEST', 'HANDS', 'LEGS', 'BACK', 'WRIST', 'WAIST', 'FEET'].indexOf(s) >= 0)
     return 'var(--tank)';
   return 'var(--text)';
+}
+
+// Visual guide only (Priority tab/Wishlist, via itemNameBlockHtml) -- lets an
+// officer/raider spot at a glance whether an item fits their class's armor
+// type, reusing the same role-color palette everything else already draws
+// from rather than introducing new ones.
+function getArmorTypeColor(armorType) {
+  switch (armorType) {
+    case 'Plate':
+      return 'var(--tank)';
+    case 'Mail':
+      return 'var(--ranged)';
+    case 'Leather':
+      return 'var(--melee)';
+    case 'Cloth':
+      return 'var(--heal)';
+    default:
+      return 'var(--text)';
+  }
 }
 
 function attendColor(pct) {

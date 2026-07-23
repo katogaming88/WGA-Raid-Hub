@@ -125,7 +125,7 @@ describe('applyTeamSettingsToData', () => {
       signupsOpen: true,
       bisSubmissionsOpen: false,
       mPlusExclusionsOpen: true,
-      activeSignupSeason: 'S2'
+      seasonView: 'Midnight Season 2'
     });
     expect(data).toMatchObject({
       seasonName: 'New',
@@ -138,7 +138,7 @@ describe('applyTeamSettingsToData', () => {
       signupsOpen: true,
       bisSubmissionsOpen: false,
       mPlusExclusionsOpen: true,
-      signupSeason: 'S2',
+      seasonView: 'Midnight Season 2',
       extraField: 'untouched'
     });
   });
