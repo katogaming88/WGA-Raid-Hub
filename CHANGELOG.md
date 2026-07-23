@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.48.0] - 2026-07-23
+
+### Frontend
+
+- M+ exclusion request form now gates submission on two qualifying checks instead of accepting any Raider.io link + notes (#564): a checkbox confirming 6/6 Myth in every M+ obtainable slot, and a "gem sockets filled (Helm/Bracer/Belt)" select that must be 2 of 3 or better -- `submitMPlusExclusionForm()` blocks with an inline error until both are satisfied. Still self-attestation only (no schema change); officers review the Raider.io link and notes same as before. Also declared `color-scheme:dark` on `:root` so the new select's native dropdown popup renders dark instead of the browser's light default, and trimmed some stale/inaccurate copy on the form (it referenced "loot priority" instead of the actual weekly M+ requirement, and a leftover caveat about playing a different M+ character that didn't apply to this raid-roster form).
+
 ## [3.47.3] - 2026-07-23
 
 ### Frontend

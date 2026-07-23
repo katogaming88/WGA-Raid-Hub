@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.47.3';
+var VERSION = '3.48.0';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -2895,10 +2895,19 @@ function submitMPlusExclusionForm(nameRealm, firstName) {
   var urlEl = /** @type {HTMLInputElement} */ (document.getElementById('mplusUrl-' + firstName));
   var notesEl = /** @type {HTMLTextAreaElement} */ (document.getElementById('mplusNotes-' + firstName));
   var formEl = document.getElementById('mplusForm-' + firstName);
+  var mythCheckEl = /** @type {HTMLInputElement} */ (document.getElementById('mplusMythCheck-' + firstName));
+  var socketCountEl = /** @type {HTMLSelectElement} */ (document.getElementById('mplusSocketCount-' + firstName));
+  var checkErrorEl = document.getElementById('mplusCheckError-' + firstName);
   if (!urlEl || !urlEl.value.trim()) {
     if (urlEl) urlEl.style.borderColor = 'var(--melee)';
     return;
   }
+  var socketCount = socketCountEl && socketCountEl.value !== '' ? parseInt(socketCountEl.value, 10) : NaN;
+  if (!mythCheckEl || !mythCheckEl.checked || isNaN(socketCount) || socketCount < 2) {
+    if (checkErrorEl) checkErrorEl.style.display = '';
+    return;
+  }
+  if (checkErrorEl) checkErrorEl.style.display = 'none';
   if (formEl)
     formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
 
@@ -3633,7 +3642,21 @@ function renderProfile(firstName, backTo, container) {
         '<div id="mplusForm-' +
         player.firstName +
         '" style="display:none;margin-top:0.75rem;">' +
-        '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.5rem;">Requesting exclusion from dungeon loot priority. Your Raider.io profile is filled in below -- edit it if this isn\'t the character you play M+ on.</div>' +
+        '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.5rem;">Request exclusion from the weekly M+ requirement. Your Raider.io profile is filled in below.</div>' +
+        '<label style="display:flex;align-items:flex-start;gap:0.4rem;font-size:1.02rem;color:var(--text);margin-bottom:0.4rem;"><input type="checkbox" id="mplusMythCheck-' +
+        player.firstName +
+        '" style="margin-top:0.2rem;">I am 6/6 Myth in every M+ obtainable slot.</label>' +
+        '<div style="display:flex;align-items:center;gap:0.5rem;font-size:1.02rem;color:var(--text);margin-bottom:0.5rem;">Gem sockets filled (Helm/Bracer/Belt): ' +
+        '<select id="mplusSocketCount-' +
+        player.firstName +
+        '" class="self-received-source" style="width:auto;">' +
+        '<option value="">Select...</option>' +
+        '<option value="3">3 of 3</option>' +
+        '<option value="2">2 of 3</option>' +
+        '<option value="1">1 of 3</option>' +
+        '<option value="0">0 of 3</option>' +
+        '</select>' +
+        '</div>' +
         '<input type="url" id="mplusUrl-' +
         player.firstName +
         '" value="' +
@@ -3641,7 +3664,10 @@ function renderProfile(firstName, backTo, container) {
         '" placeholder="https://raider.io/characters/..." class="self-received-source" style="max-width:100%;font-size:1rem;">' +
         '<textarea id="mplusNotes-' +
         player.firstName +
-        '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
+        '" placeholder="Notes -- e.g. still on a Hero-track raid trinket with no Myth M+ equivalent" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
+        '<p id="mplusCheckError-' +
+        player.firstName +
+        '" style="display:none;color:var(--melee);font-size:1.02rem;margin:0.4rem 0 0;">Please confirm the Myth track checkbox and select at least 2 of 3 gem sockets before submitting.</p>' +
         '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
         '<button class="btn btn-gold" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="submitMPlusExclusionForm(\'' +
         nrMplusR +
@@ -3667,7 +3693,21 @@ function renderProfile(firstName, backTo, container) {
         '<div id="mplusForm-' +
         player.firstName +
         '" style="display:none;margin-top:0.75rem;">' +
-        '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.5rem;">Requesting exclusion from dungeon loot priority. Your Raider.io profile is filled in below -- edit it if this isn\'t the character you play M+ on.</div>' +
+        '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.5rem;">Request exclusion from the weekly M+ requirement. Your Raider.io profile is filled in below.</div>' +
+        '<label style="display:flex;align-items:flex-start;gap:0.4rem;font-size:1.02rem;color:var(--text);margin-bottom:0.4rem;"><input type="checkbox" id="mplusMythCheck-' +
+        player.firstName +
+        '" style="margin-top:0.2rem;">I am 6/6 Myth in every M+ obtainable slot.</label>' +
+        '<div style="display:flex;align-items:center;gap:0.5rem;font-size:1.02rem;color:var(--text);margin-bottom:0.5rem;">Gem sockets filled (Helm/Bracer/Belt): ' +
+        '<select id="mplusSocketCount-' +
+        player.firstName +
+        '" class="self-received-source" style="width:auto;">' +
+        '<option value="">Select...</option>' +
+        '<option value="3">3 of 3</option>' +
+        '<option value="2">2 of 3</option>' +
+        '<option value="1">1 of 3</option>' +
+        '<option value="0">0 of 3</option>' +
+        '</select>' +
+        '</div>' +
         '<input type="url" id="mplusUrl-' +
         player.firstName +
         '" value="' +
@@ -3675,7 +3715,10 @@ function renderProfile(firstName, backTo, container) {
         '" placeholder="https://raider.io/characters/..." class="self-received-source" style="max-width:100%;font-size:1rem;">' +
         '<textarea id="mplusNotes-' +
         player.firstName +
-        '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
+        '" placeholder="Notes -- e.g. still on a Hero-track raid trinket with no Myth M+ equivalent" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
+        '<p id="mplusCheckError-' +
+        player.firstName +
+        '" style="display:none;color:var(--melee);font-size:1.02rem;margin:0.4rem 0 0;">Please confirm the Myth track checkbox and select at least 2 of 3 gem sockets before submitting.</p>' +
         '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
         '<button class="btn btn-gold" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="submitMPlusExclusionForm(\'' +
         nrMplus +
