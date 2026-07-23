@@ -88,18 +88,17 @@ function getUnmanagedItems() {
   });
 }
 
+// Rebuilds both boss-filter dropdowns. Each honors its own tab's "Show all
+// seasons" checkbox independently (#535's season scoping) -- Priority List
+// and Unmanaged Items can have that checkbox in different states, so they no
+// longer share one combined options list the way this used to build a single
+// string for both <select>s. Re-run on data load and again whenever either
+// checkbox changes (its onchange in officer.html), since the dropdown
+// otherwise never picked up newly-in-scope bosses (e.g. Season 2's) after
+// toggling the checkbox on.
 function populateBossFilters() {
   var itemBosses = DATA.itemBosses || {};
-  var bosses = [];
-  var seen = {};
-  Object.keys(itemBosses).forEach(function (item) {
-    if (!isItemInSeasonScope(item, false)) return;
-    var b = itemBosses[item];
-    if (b && !seen[b]) {
-      seen[b] = true;
-      bosses.push(b);
-    }
-  });
+
   // Kill order, not alphabetical -- DATA.raidProgression (Season Settings'
   // drag-reorderable boss list, team_settings.config.raidProgression) is the
   // one place that order is tracked. Flattened across every raid tier in
@@ -113,25 +112,54 @@ function populateBossFilters() {
       if (b && b.name && !(b.name in killOrder)) killOrder[b.name] = rank++;
     });
   });
-  bosses.sort(function (a, b) {
-    var ra = killOrder[a],
-      rb = killOrder[b];
-    if (ra !== undefined && rb !== undefined) return ra - rb;
-    if (ra !== undefined) return -1;
-    if (rb !== undefined) return 1;
-    return a.localeCompare(b);
-  });
-  var opts =
-    '<option value="">All Bosses</option>' +
-    bosses
-      .map(function (b) {
-        return '<option value="' + b.replace(/"/g, '&quot;') + '">' + b + '</option>';
+
+  function bossOptionsHtml(showAllSeasons) {
+    var bosses = [];
+    var seen = {};
+    Object.keys(itemBosses).forEach(function (item) {
+      if (!isItemInSeasonScope(item, showAllSeasons)) return;
+      var b = itemBosses[item];
+      if (b && !seen[b]) {
+        seen[b] = true;
+        bosses.push(b);
+      }
+    });
+    bosses.sort(function (a, b) {
+      var ra = killOrder[a],
+        rb = killOrder[b];
+      if (ra !== undefined && rb !== undefined) return ra - rb;
+      if (ra !== undefined) return -1;
+      if (rb !== undefined) return 1;
+      return a.localeCompare(b);
+    });
+    return (
+      '<option value="">All Bosses</option>' +
+      bosses
+        .map(function (b) {
+          return '<option value="' + b.replace(/"/g, '&quot;') + '">' + b + '</option>';
+        })
+        .join('')
+    );
+  }
+
+  function refresh(selectId, showAllSeasonsId) {
+    var el = document.getElementById(selectId);
+    if (!el) return;
+    var showAllSeasons = !!(document.getElementById(showAllSeasonsId) || {}).checked;
+    var prevValue = el.value;
+    el.innerHTML = bossOptionsHtml(showAllSeasons);
+    if (
+      el.options &&
+      [].some.call(el.options, function (o) {
+        return o.value === prevValue;
       })
-      .join('');
-  var el1 = document.getElementById('prioBossFilter');
-  var el2 = document.getElementById('unmanagedBossFilter');
-  if (el1) el1.innerHTML = opts;
-  if (el2) el2.innerHTML = opts;
+    ) {
+      el.value = prevValue;
+    }
+  }
+
+  refresh('prioBossFilter', 'prioShowAllSeasons');
+  refresh('unmanagedBossFilter', 'unmanagedShowAllSeasons');
 }
 
 // Every kind of fairness/health issue that lives on the Priority List --
