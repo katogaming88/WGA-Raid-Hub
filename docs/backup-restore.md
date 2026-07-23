@@ -126,3 +126,4 @@ The drill then covers:
 ## Ops notes
 
 - GitHub disables `schedule` workflows after 60 days without repo activity; any push re-enables them. Not a realistic risk while the project is active, but worth knowing if it ever goes dormant.
+- **Capacity alerting** (#547): after each upload the workflow sums the bucket and warns in Discord (plus a run annotation) once usage reaches `ALERT_PCT` of `USAGE_LIMIT_BYTES`, both plain env at the top of the `Check bucket capacity` step. They start at 80% of R2's 10 GB free allotment. Crossing the line warns without failing the run, since R2 bills overage rather than cutting off; a check that cannot read the bucket fails the run instead, so it can't quietly stop watching. The allotment is account-wide while the check measures one bucket, which holds while backups are the only thing in the account.

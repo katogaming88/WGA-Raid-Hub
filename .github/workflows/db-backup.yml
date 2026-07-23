@@ -175,6 +175,93 @@ jobs:
           aws s3 cp public.dump "s3://wga-raid-hub-backups/pg/wga-${DATE}.dump" --endpoint-url "$ENDPOINT"
           aws s3 cp auth.dump "s3://wga-raid-hub-backups/pg/wga-auth-${DATE}.dump" --endpoint-url "$ENDPOINT"
 
+      # #547: R2 has no native "bucket is N% full" alert -- its event
+      # notifications fire on individual object changes, not aggregate size --
+      # so the check lives here, where the credentials and a nightly cadence
+      # already exist, and reports to Discord like everything else. Runs after
+      # the upload so the newest dump is counted, and only on success: if the
+      # backup itself failed, the failure ping below is the message that
+      # matters.
+      #
+      # Thresholds are plain env, not secrets: 10 GB is R2's free allotment,
+      # 80% is the point where it's worth acting rather than watching. R2
+      # bills overage instead of hard-stopping, so crossing the line is a
+      # heads-up, not an outage -- it warns and the run still passes. A
+      # genuinely broken check (listing fails, total won't parse) exits 1 on
+      # purpose: a capacity check that silently stops checking is worse than
+      # none, since it reads as "still fine" forever.
+      #
+      # Caveat: the free allotment is account-wide while this measures one
+      # bucket. That holds while backups are the only thing in the account.
+      # Once #546's lifecycle rule lands, usage plateaus at roughly
+      # retention-days x nightly size, and this becomes the backstop for the
+      # day the dumps outgrow that assumption.
+      - name: Check bucket capacity
+        id: capacity_check
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW: ${{ github.workflow }}
+          USAGE_LIMIT_BYTES: 10000000000
+          ALERT_PCT: 80
+        run: |
+          ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+          SUMMARY=$(aws s3 ls "s3://wga-raid-hub-backups" --recursive --summarize --endpoint-url "$ENDPOINT")
+          USED=$(printf '%s\n' "$SUMMARY" | awk '/Total Size:/ { print $3 }')
+
+          case "$USED" in
+            '' | *[!0-9]*)
+              echo "Could not read a numeric total size from the bucket listing -- failing rather than reporting a usage number that isn't real."
+              printf '%s\n' "$SUMMARY" | tail -5
+              exit 1
+              ;;
+          esac
+
+          # Decimal GB throughout, since that's the unit Cloudflare states the
+          # allotment in -- dividing by 2^30 would render the 10 GB limit as
+          # "9.31 GiB" and read like a mistake.
+          PCT=$(( USED * 100 / USAGE_LIMIT_BYTES ))
+          USED_GB=$(awk -v b="$USED" 'BEGIN { printf "%.2f", b / 1000000000 }')
+          LIMIT_GB=$(awk -v b="$USAGE_LIMIT_BYTES" 'BEGIN { printf "%.0f", b / 1000000000 }')
+          echo "Bucket usage: ${USED} bytes (${USED_GB} GB), ${PCT}% of the ${LIMIT_GB} GB allotment. Alerts at ${ALERT_PCT}%."
+
+          if [ "$PCT" -lt "$ALERT_PCT" ]; then
+            exit 0
+          fi
+
+          echo "::warning::Backup bucket is at ${PCT}% of its ${LIMIT_GB} GB allotment (${USED_GB} GB used). Time to set or tighten the retention rule (#546)."
+
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_WEBHOOK_URL is not set -- the warning above stands, nothing posted."
+            exit 0
+          fi
+
+          PAYLOAD=$(cat <<EOF
+          {
+            "embeds": [{
+              "title": "Backup bucket nearing its storage allotment",
+              "color": 15844367,
+              "fields": [
+                { "name": "Used", "value": "${USED_GB} GB (${PCT}%)", "inline": true },
+                { "name": "Allotment", "value": "${LIMIT_GB} GB", "inline": true },
+                { "name": "Workflow", "value": "${WORKFLOW}", "inline": true }
+              ],
+              "url": "${RUN_URL}"
+            }]
+          }
+          EOF
+          )
+
+          curl -s -o /dev/null -w "%{http_code}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK_URL"
+          echo
+
       # #545: scheduled-workflow failure emails only reach whoever last
       # touched this file -- Discord is where the team already watches
       # deploy status (discord-deploy.yml), so backup failures reuse the
@@ -197,6 +284,7 @@ jobs:
           S_DUMP_AUTH: ${{ steps.dump_auth.outcome }}
           S_VERIFY: ${{ steps.verify_restore.outcome }}
           S_UPLOAD: ${{ steps.upload_r2.outcome }}
+          S_CAPACITY: ${{ steps.capacity_check.outcome }}
         run: |
           if [ -z "$DISCORD_WEBHOOK_URL" ]; then
             echo "DISCORD_WEBHOOK_URL is not set -- cannot post, but the run above already failed loudly on its own."
@@ -210,6 +298,7 @@ jobs:
           [ "$S_DUMP_AUTH" = "failure" ] && FAILED_STEP="Dump auth data (users + identities, data only)"
           [ "$S_VERIFY" = "failure" ] && FAILED_STEP="Verify both dumps restore"
           [ "$S_UPLOAD" = "failure" ] && FAILED_STEP="Upload dumps to R2"
+          [ "$S_CAPACITY" = "failure" ] && FAILED_STEP="Check bucket capacity"
 
           PAYLOAD=$(cat <<EOF
           {
