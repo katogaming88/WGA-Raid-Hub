@@ -63,6 +63,10 @@ function _isFullyManaged(entry) {
   return 'heroic' in entry && 'mythic' in entry;
 }
 
+// Season-scoped (isItemInSeasonScope(), #549) so every consumer -- the
+// Unmanaged Items list itself and updatePriorityBadges()'s nav/tab counts --
+// agrees on the same set, rather than each applying (or forgetting to apply)
+// its own filter afterward.
 function getUnmanagedItems() {
   var prioOrder = DATA.priorityOrder || {};
   var itemSlots = DATA.itemSlots || {};
@@ -72,6 +76,7 @@ function getUnmanagedItems() {
   Object.keys(prioOrder).forEach(function (item) {
     if (itemPlaceholders[item]) return;
     if ((itemSlots[item] || '').toLowerCase() === 'slot') return;
+    if (!isItemInSeasonScope(item)) return;
     if (!_isFullyManaged(prioOrder[item])) {
       seen[item] = true;
       result.push(item);
@@ -81,6 +86,7 @@ function getUnmanagedItems() {
     if (seen[item]) return;
     if (itemPlaceholders[item]) return;
     if ((itemSlots[item] || '').toLowerCase() === 'slot') return;
+    if (!isItemInSeasonScope(item)) return;
     if (!_isFullyManaged(prioOrder[item])) result.push(item);
   });
   return result.sort(function (a, b) {
@@ -88,14 +94,11 @@ function getUnmanagedItems() {
   });
 }
 
-// Rebuilds both boss-filter dropdowns. Each honors its own tab's "Show all
-// seasons" checkbox independently (#535's season scoping) -- Priority List
-// and Unmanaged Items can have that checkbox in different states, so they no
-// longer share one combined options list the way this used to build a single
-// string for both <select>s. Re-run on data load and again whenever either
-// checkbox changes (its onchange in officer.html), since the dropdown
-// otherwise never picked up newly-in-scope bosses (e.g. Season 2's) after
-// toggling the checkbox on.
+// Rebuilds both boss-filter dropdowns, scoped by isItemInSeasonScope() (#549:
+// DATA.seasonView/raid_zones, not a per-tab checkbox anymore -- the "Show all
+// seasons" checkboxes this used to honor independently per tab were retired).
+// Re-run on data load, since the dropdown otherwise never picks up
+// newly-in-scope bosses (e.g. a new season's) after raid_zones changes.
 function populateBossFilters() {
   var itemBosses = DATA.itemBosses || {};
 
@@ -451,7 +454,6 @@ function buildUnmanagedTab() {
   var items = getUnmanagedItems().filter(function (item) {
     if (searchTerm && normalise(item).indexOf(searchTerm) === -1) return false;
     if (bossFilter && (itemBosses[item] || '').toLowerCase() !== bossFilter) return false;
-    if (!isItemInSeasonScope(item)) return false;
     return true;
   });
   var el = document.getElementById('unmanagedContent');
