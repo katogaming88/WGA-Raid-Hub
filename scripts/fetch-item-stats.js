@@ -16,19 +16,35 @@
 //
 // --- Output ---
 // item_stats_update.sql -- one `update items set secondary_stats = ...`
-// statement per item that Blizzard's API returned data for. secondary_stats
-// is `[]` (not null) when the API confirms the item rolls none of the four
-// tracked types -- null stays reserved for items this script hasn't
-// successfully fetched yet.
+// statement per item that returned data (Blizzard or the Wowhead fallback
+// below). secondary_stats is `[]` (not null) when the item is confirmed to
+// roll none of the four tracked types -- null stays reserved for items
+// this script hasn't successfully fetched from either source yet.
 //
-// Items that 404 (not yet in Blizzard's static item database -- seen live
-// for an entire still-PTR tier during #560's initial run) are printed
-// separately and left untouched. Re-run once the tier ships live.
+// Items that 404 against Blizzard (not yet in its static item database --
+// happens for an entire still-PTR tier, since Blizzard's static-us
+// namespace lags PTR the same way Wowhead's *default* tooltip data env
+// does) fall back to Wowhead's tooltip API with dataEnv=2 (its PTR/beta
+// data environment -- dataEnv=1, what fetch-items.js's icon lookup uses,
+// only has live-realm data). Confirmed live: dataEnv=2 returns full stats
+// for a current-tier PTR item that dataEnv=1 returns empty for -- found by
+// inspecting Viserio's (wowutils.com) own network requests, which use this
+// same param. Whatever still 404s/empties out against both is printed
+// separately and left untouched -- true here only for a wrong/retired
+// wow_item_id, not an expected PTR gap anymore.
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 const SECONDARY_STAT_TYPES = new Set(['CRIT_RATING', 'HASTE_RATING', 'MASTERY_RATING', 'VERSATILITY']);
+
+// Wowhead's tooltip HTML uses the plain display name, not the Blizzard enum.
+const WOWHEAD_STAT_TEXT = {
+  'Critical Strike': 'CRIT_RATING',
+  Haste: 'HASTE_RATING',
+  Mastery: 'MASTERY_RATING',
+  Versatility: 'VERSATILITY'
+};
 
 function loadEnv() {
   if (!existsSync('.env')) return;
@@ -52,7 +68,7 @@ async function getAccessToken(clientId, clientSecret) {
   return data.access_token;
 }
 
-async function fetchSecondaryStats(wowItemId, token) {
+async function fetchBlizzardSecondaryStats(wowItemId, token) {
   const res = await fetch(`https://us.api.blizzard.com/data/wow/item/${wowItemId}?namespace=static-us&locale=en_US`, {
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -62,6 +78,28 @@ async function fetchSecondaryStats(wowItemId, token) {
   const stats = (data.preview_item?.stats ?? [])
     .map((s) => s.type?.type)
     .filter((type) => SECONDARY_STAT_TYPES.has(type));
+  return { stats };
+}
+
+// Fallback for items still 404ing against Blizzard (current-tier PTR items).
+// dataEnv=2 is Wowhead's PTR/beta data environment -- confirmed live this
+// returns full stats where dataEnv=1 (fetch-items.js's icon lookup) is empty.
+async function fetchWowheadSecondaryStats(wowItemId) {
+  const res = await fetch(`https://nether.wowhead.com/tooltip/item/${wowItemId}?dataEnv=2&locale=0`, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; wga-item-seeder/1.0)' }
+  });
+  // Unknown ids come back as a 404 with a JSON {error} body, not a bare HTTP error.
+  if (!res.ok && res.status !== 404) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.error) return { notFound: true };
+
+  // Secondary/primary stats sit between the armor line and the trailing
+  // name/desc extras marker -- restrict the text search to that window so a
+  // stat name can't accidentally match inside a proc effect description.
+  const statBlock = data.tooltip?.match(/<!--rf-->([\s\S]*?)<!--nameDescStats-->/)?.[1] ?? '';
+  const stats = Object.entries(WOWHEAD_STAT_TEXT)
+    .filter(([text]) => statBlock.includes(text))
+    .map(([, type]) => type);
   return { stats };
 }
 
@@ -107,13 +145,23 @@ async function main() {
 
   for (const id of ids) {
     try {
-      const result = await fetchSecondaryStats(id, token);
-      if (result.notFound) {
-        notFound.push(id);
-        console.log(`[404]  ${id}: not in Blizzard's static item database yet`);
-      } else {
+      const result = await fetchBlizzardSecondaryStats(id, token);
+      if (!result.notFound) {
         updates.push({ id, stats: result.stats });
         console.log(`[OK]   ${id}: ${result.stats.length ? result.stats.join(', ') : '(none)'}`);
+        await sleep(100);
+        continue;
+      }
+
+      const fallback = await fetchWowheadSecondaryStats(id);
+      if (fallback.notFound) {
+        notFound.push(id);
+        console.log(`[404]  ${id}: not found on Blizzard or Wowhead`);
+      } else {
+        updates.push({ id, stats: fallback.stats });
+        console.log(
+          `[OK]   ${id}: ${fallback.stats.length ? fallback.stats.join(', ') : '(none)'} (via Wowhead fallback)`
+        );
       }
     } catch (err) {
       console.error(`[FAIL] ${id}: ${err.message}`);
@@ -129,7 +177,7 @@ async function main() {
   console.log(`\nDone.`);
   console.log(`  item_stats_update.sql -- ${updates.length} rows`);
   if (notFound.length) {
-    console.log(`  ${notFound.length} items not found (still PTR-only?): ${notFound.join(', ')}`);
+    console.log(`  ${notFound.length} items not found on either source: ${notFound.join(', ')}`);
   }
 }
 

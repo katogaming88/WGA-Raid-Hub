@@ -16,7 +16,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ### Backend
 
-- Added `items.secondary_stats` (which of Crit/Haste/Mastery/Vers an item rolls) and `scripts/fetch-item-stats.js`, which backfills it from Blizzard's Game Data API (#560). Confirmed live that a still-PTR tier's items 404 against Blizzard's static item database the same way Wowhead's tooltip stats are unreliable for it -- the script logs those separately and leaves them untouched until the tier ships live.
+- Added `items.secondary_stats` (which of Crit/Haste/Mastery/Vers an item rolls) and `scripts/fetch-item-stats.js`, which backfills it from Blizzard's Game Data API, falling back to Wowhead's `dataEnv=2` tooltip endpoint for anything still-PTR that Blizzard's static item database 404s on (#560). All 201 real items now have real data -- no waiting on a tier to ship live.
 - The nightly backup now checks how full the R2 bucket is after each upload and warns in Discord once it reaches 80% of the 10 GB free allotment (#547). R2 has no native percent-full alert, and nothing prunes old dumps yet, so without this the first sign of trouble would be an overage charge. Crossing the threshold warns without failing the run; a check that cannot read the bucket fails it, so the alert cannot quietly stop watching.
 - Executed the first restore drill (#544) against a real R2 dump and recorded it in the runbook's drill log: full restore clean (every ignored error matched the documented expected list), row counts matched prod exactly, per-table selective restore rehearsed. One finding folded back into the runbook: `season_signups`'s sequence is `signups_id_seq` (legacy name), so sequence resets must go through `pg_get_serial_sequence()` rather than guessed names.
 
