@@ -476,7 +476,9 @@ function confirmArchiveSeason() {
       msg.textContent =
         'Archive "' +
         name +
-        '"? The current season name, start date, and end date will be moved to history and cleared. Every player\'s BiS list (real items -- M+/Crafted/Catalyst entries are kept) will be snapshotted into history, then wiped, and M+ exclusion and Bench status will reset for the whole roster (Trial status is left alone). Set a new Season Name and Start Date for the next season afterward.';
+        '"? The current season name, start date, and end date will be moved to history and cleared. Every player\'s BiS list (real items -- M+/Crafted/Catalyst entries are kept) will be snapshotted into history, then wiped, and M+ exclusion and Bench status will reset for the whole roster (Trial status is left alone). The new season name will be applied automatically as "' +
+        CURRENT_SEASON.displayName +
+        '". Set a new Season Start Date for it afterward.';
       document.getElementById('seasonArchiveExecBtn').style.display = '';
     }
   }
@@ -519,7 +521,6 @@ function executeArchiveSeason() {
       p_roster_snapshot: buildSeasonArchiveRosterSnapshot()
     })
     .then(function (result) {
-      if (btn) btn.disabled = false;
       if (result.error) throw new Error(result.error.message);
       var config = result.data;
       DATA.seasonName = config.seasonName || '';
@@ -527,6 +528,17 @@ function executeArchiveSeason() {
       DATA.seasonEnd = config.seasonEnd || '';
       DATA.raidProgression = config.raidProgression || [];
       DATA.seasonHistory = config.seasonHistory || [];
+      // Combine archive + auto-name into one click (#537): fill the new
+      // season's name straight from CURRENT_SEASON instead of leaving it
+      // blank for an officer to retype. seasonView: null resets any
+      // forward-looking "planning" pointer (#549) back to "default to live"
+      // now that the planned season just became the live one.
+      return saveTeamSetting({ seasonName: CURRENT_SEASON.displayName, seasonView: null });
+    })
+    .then(function (config) {
+      if (btn) btn.disabled = false;
+      DATA.seasonName = config.seasonName || '';
+      DATA.seasonView = config.seasonView || null;
       SEASON_RAIDS = [];
       buildSeasonTab();
       populateSeasonSelector();

@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.48.1] - 2026-07-23
+
+### Frontend
+
+- "Start New Season" now archives and auto-fills the next season's name in one click (#537), instead of leaving Season Name blank for an officer to retype after archiving. The new name comes from a single code-level `CURRENT_SEASON` constant (`js/common.js`, Kat-updated once per tier, same manual-per-tier-edit pattern as `scripts/fetch-items.js`'s `ZONE_ID`), so every team's "Start New Season" click applies the same name instead of officers typing it independently and risking drift.
+
 ## [3.48.0] - 2026-07-23
 
 ### Frontend

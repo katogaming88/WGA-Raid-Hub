@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.48.0';
+var VERSION = '3.48.1';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -1062,6 +1062,21 @@ function mapSupabaseIncomingRoster(rows) {
 // #232; keep this as the override mechanism even after that lands.
 /** @type {Object<string, string>} */
 var SEASON_LABELS = {};
+
+// The single source of truth for "what's the next season," Kat-updated once
+// per real-world tier (#537) -- same manual-per-tier-edit workflow already
+// used for scripts/fetch-items.js's ZONE_ID/WCL_ZONE_ID. Drives the "Start
+// New Season" button (js/tabs/tab-season.js) so every team applies the same
+// name instead of each officer retyping their own. Deliberately no
+// wclZoneId field here -- #549 supersedes that part of #537's original
+// decision; item/boss season scoping reads DATA.seasonView/raid_zones
+// instead of a JS constant.
+var CURRENT_SEASON = { code: 'MID2', displayName: 'Midnight Season 2' };
+if (seasonCodeForDisplay(CURRENT_SEASON.displayName) !== CURRENT_SEASON.code) {
+  console.warn(
+    'CURRENT_SEASON.code does not match seasonCodeForDisplay(CURRENT_SEASON.displayName) -- check seasonCodePrefix/seasonDisplayPrefix against the new season name.'
+  );
+}
 
 function _seasonCodePrefix() {
   return (DATA && DATA.seasonCodePrefix) || 'MID';
