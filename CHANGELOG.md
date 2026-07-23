@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.2] - 2026-07-23
+
+### Frontend
+
+- Fixed Priority tab / Unmanaged Items nav and tab-pill counts not applying season scoping (`isItemInSeasonScope()`, #549) -- `getUnmanagedItems()` now filters by season directly, so `updatePriorityBadges()`'s counts (which read its `.length`) agree with the actual filtered list instead of counting every season's unmanaged items. Surfaced live: Hellfire's Unmanaged Items list correctly showed 99 Season-2-scoped items, but its badge and the Priority nav badge still showed 212 (every season).
+
 ## [3.49.1] - 2026-07-23
 
 ### Frontend
