@@ -540,17 +540,13 @@ function buildUnmanagedTab() {
 }
 
 function renderUnmanagedItem(item, slot) {
-  var boss = (DATA.itemBosses || {})[item] || '';
   var itemEnc = encodeURIComponent(item).replace(/'/g, '%27');
   var entry = (DATA.priorityOrder || {})[item] || {};
   var hasHeroic = 'heroic' in entry;
   var hasMythic = 'mythic' in entry;
   var out = '<div class="prio-item">';
   out += '<div class="prio-item-header">';
-  out += '<span class="prio-item-name">' + item + '</span>';
-  if (slot) out += '<span class="prio-item-slot" style="color:' + getSlotColor(slot) + ';">' + slot + '</span>';
-  if (boss)
-    out += '<span class="prio-item-slot" style="color:var(--text-muted);font-size:0.95rem;">' + boss + '</span>';
+  out += itemNameBlockHtml(item, slot);
   out +=
     '<span class="prio-item-count" style="color:#c0392b;">' +
     (!hasHeroic && !hasMythic ? 'No rankings' : 'Incomplete') +
@@ -645,7 +641,6 @@ function buildPriorityTab() {
     var entry = prioOrder[item];
     if (!entry) return '';
     var slot = itemSlots[item] || '';
-    var boss = itemBosses[item] || '';
     var itemEnc = encodeURIComponent(item).replace(/'/g, '%27');
     var out = '';
     var DIFFS = ['heroic', 'mythic'];
@@ -657,11 +652,8 @@ function buildPriorityTab() {
       var diffLabel = diff === 'heroic' ? 'Heroic' : 'Mythic';
       out += '<div class="prio-item">';
       out += '<div class="prio-item-header">';
-      out += '<span class="prio-item-name">' + item + '</span>';
+      out += itemNameBlockHtml(item, slot);
       out += '<span class="prio-diff-badge prio-diff-' + diff + '">' + diffLabel + '</span>';
-      if (slot) out += '<span class="prio-item-slot" style="color:' + getSlotColor(slot) + ';">' + slot + '</span>';
-      if (boss)
-        out += '<span class="prio-item-slot" style="color:var(--text-muted);font-size:0.95rem;">' + boss + '</span>';
       if (!ranked.length) {
         out +=
           '<span class="prio-item-count" style="color:var(--text-muted);font-style:italic;">Nobody assigned</span>';

@@ -14,6 +14,7 @@
 | icon | text |  | true |  |  |  |
 | secondary_stats | jsonb |  | true |  |  |  |
 | wcl_zone_id | integer |  | true |  |  |  |
+| is_ptr | boolean | false | false |  |  |  |
 
 ## Constraints
 
@@ -53,6 +54,7 @@ erDiagram
   text icon
   jsonb secondary_stats
   integer wcl_zone_id
+  boolean is_ptr
 }
 "public.bis_items" {
   integer id

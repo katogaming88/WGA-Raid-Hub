@@ -670,6 +670,12 @@
           "name": "wcl_zone_id",
           "type": "integer",
           "nullable": true
+        },
+        {
+          "name": "is_ptr",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
         }
       ],
       "indexes": [

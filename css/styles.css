@@ -474,8 +474,15 @@ select#playerSelect option { background:#1a1d27; }
 .prio-sub-header { font-size:1.02rem; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; padding:0.4rem 0 0.25rem; margin-top:0.5rem; margin-bottom:0.3rem; }
 .prio-item { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1rem 1.25rem; margin-bottom:0.5rem; }
 .prio-item-header { display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem; flex-wrap:wrap; }
-.prio-item-name { font-size:1.05rem; font-weight:600; color:var(--text); flex:1; }
 .prio-item-slot { font-size:1rem; text-transform:uppercase; letter-spacing:0.08em; }
+
+/* Shared item name/stat-pill styling (#561) -- itemNameBlockHtml()/statPillListHtml()
+   in js/common.js use these for both the Priority tab (officer.html) and the
+   raider Wishlist (index.html), so they live outside the Priority-tab-only block above. */
+.item-icon-lg { width:38px; height:38px; border-radius:4px; border:1px solid var(--border); flex-shrink:0; }
+.item-detail-line { font-size:0.9rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-top:0.15rem; }
+.item-detail-sep { margin:0 0.4rem; opacity:0.5; }
+.stat-pill { font-size:0.9rem; font-weight:600; letter-spacing:0.03em; text-transform:none; padding:2px 7px; line-height:1.2; display:inline-block; border-radius:2px; background:rgba(255,255,255,0.05); border:1px solid var(--border); margin-right:0.3rem; }
 .prio-item-count { font-size:1rem; font-weight:600; padding:2px 8px; border-radius:2px; background:rgba(255,255,255,0.05); color:var(--text-muted); border:1px solid var(--border); }
 .prio-ranked-list { display:flex; flex-direction:column; gap:0.2rem; }
 .prio-rank-row { display:flex; align-items:center; gap:0.6rem; padding:0.25rem 0; border-bottom:1px solid var(--border); }

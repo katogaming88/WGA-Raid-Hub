@@ -383,52 +383,9 @@ function wishlistNoteHTML(itemId, slot) {
   );
 }
 
-// The icon <img> is drawn from our own items.icon column (populated by
-// scripts/fetch-items.js from Wowhead's item XML) rather than depending on
-// the Wowhead tooltip widget rendering one -- that widget only works when its
-// external script actually loads, which ad-blockers commonly block for
-// wow.zamimg.com specifically (#515 follow-up, confirmed live: the widget
-// silently no-ops and item names rendered as bare unstyled links). The
-// wowhead-class link is kept around the icon+name anyway as a bonus hover
-// tooltip for whoever's browser does let it load; index.html sets
-// window.whTooltips = {colorLinks:true, iconizeLinks:true} before that
-// script, so real rarity coloring layers on top when it works.
-function wishlistItemNameHtml(name) {
-  var wowId = ((DATA && DATA.itemWowIds) || {})[name];
-  var icon = ((DATA && DATA.itemIcons) || {})[name];
-  var boss = ((DATA && DATA.itemBosses) || {})[name];
-  var iconImg = icon
-    ? '<img src="https://wow.zamimg.com/images/wow/icons/small/' +
-      icon +
-      '.jpg" alt="" width="20" height="20" style="border-radius:3px;border:1px solid var(--border);flex-shrink:0;">'
-    : '';
-  var bossLine = boss
-    ? '<span style="font-size:0.85em;color:var(--text-muted);margin-left:' +
-      (icon ? 'calc(20px + 0.4rem)' : '0') +
-      ';">' +
-      boss +
-      '</span>'
-    : '';
-
-  var nameRow = '<span style="display:flex;align-items:center;gap:0.4rem;">' + iconImg + name + '</span>';
-
-  if (wowId == null) {
-    return (
-      '<span style="display:flex;flex-direction:column;color:var(--text);flex:1;min-width:10rem;">' +
-      nameRow +
-      bossLine +
-      '</span>'
-    );
-  }
-  return (
-    '<a href="https://www.wowhead.com/item=' +
-    wowId +
-    '" class="wowhead" target="_blank" rel="noopener" style="display:flex;flex-direction:column;flex:1;min-width:10rem;color:var(--text);text-decoration:none;">' +
-    nameRow +
-    bossLine +
-    '</a>'
-  );
-}
+// Moved to itemNameBlockHtml() in js/common.js (#561) so the Priority tab's
+// restyle (icon, Epic-purple name, slot/stat-pills/boss) and this Wishlist
+// row share one implementation instead of drifting apart as two near-copies.
 
 // Rank pill mirrors the BiS List's own use of getRank()/rankPillHTML()
 // (js/common.js) -- priority_order is item-name-keyed, not BiS-specific, so
@@ -455,7 +412,7 @@ function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet) {
     rowBackground +
     ';margin-bottom:2px;">' +
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">' +
-    wishlistItemNameHtml(name) +
+    itemNameBlockHtml(name, slot) +
     '<div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">' +
     rankHTML +
     '<div style="display:flex;gap:0.3rem;flex-wrap:wrap;">' +
