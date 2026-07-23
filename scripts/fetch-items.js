@@ -17,8 +17,11 @@ import { pathToFileURL } from 'node:url';
 // The suffix pattern (cast/cured/forged/woven) is consistent across tiers.
 // The slot keywords and prefix change each tier -- update them here.
 //
-// Current tier: The Venomous Abyss (12.1)
-// Token prefix: Venom (e.g. Venomforged Effigy)
+// Current tier: The Tidebound Grotto (12.1) -- single-boss raid, like Sporefall.
+// No tier-token names confirmed yet; leave the previous tier's keywords in
+// place as a harmless default -- if this raid's loot has no tier tokens (as
+// expected for a single-boss instance), none of these will match and the
+// script's [WARN]/[SKIP] output on a run will confirm it either way.
 const TOKEN_SLOT_KEYWORDS = {
   effigy: 'Head',
   icon: 'Chest',
@@ -29,8 +32,8 @@ const TOKEN_SLOT_KEYWORDS = {
 
 // Wowhead zone id for the current raid, and whether it's still PTR-only
 // (unreleased raids live under /ptr/zone=... until the patch ships).
-// Find it from the raid's Wowhead URL, e.g. wowhead.com/zone=16915/the-venomous-abyss.
-const ZONE_ID = 16915;
+// Find it from the raid's Wowhead URL, e.g. wowhead.com/ptr/zone=16671/the-tidebound-grotto.
+const ZONE_ID = 16671;
 const ZONE_IS_PTR = true;
 
 // Warcraft Logs zone id for the same raid (#535) -- NOT the same number as
@@ -43,7 +46,7 @@ const ZONE_IS_PTR = true;
 // period than its live release (Sporefall was 50 live / 51 PTR), so whatever
 // gets tagged here during PTR needs a full re-fetch/re-tag once the tier
 // ships live, not just a flag flip.
-const WCL_ZONE_ID = 53;
+const WCL_ZONE_ID = 57;
 // ---------------------------------------------------------------------------
 
 // Types to skip entirely. Junk is NOT here -- tier tokens have type Junk on Wowhead,
