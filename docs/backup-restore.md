@@ -77,7 +77,7 @@ The account id is not written here (public repo); it's visible in the Cloudflare
 
    - **FK order**: restore parents before children. `truncate ... cascade` only when the child tables are also being restored from the dump.
    - **Triggers fire on data-only restores.** `pg_restore --disable-triggers` needs superuser, which Supabase's `postgres` role is not. For tables with side-effect triggers (anything that writes `notifications` or similar), wrap the restore: `alter table public.<t> disable trigger user;` before, `alter table public.<t> enable trigger user;` after.
-   - **Sequences are not restored by per-table data restores** (the dump's `SEQUENCE SET` entries are separate objects that `--table` skips). Reset each serial afterwards: `select setval(pg_get_serial_sequence('public.<t>', 'id'), (select max(id) from public.<t>));`
+   - **Sequences are not restored by per-table data restores** (the dump's `SEQUENCE SET` entries are separate objects that `--table` skips). Reset each serial afterwards: `select setval(pg_get_serial_sequence('public.<t>', 'id'), (select max(id) from public.<t>));` -- always resolve the sequence through `pg_get_serial_sequence()`, never by guessing `<table>_id_seq`: renamed tables keep their original sequence name (`season_signups`'s sequence is `signups_id_seq`, 2026-07-23 drill finding). When restoring in place into the live DB the sequence usually still holds the right value; the reset is cheap insurance, and required when restoring into a scratch database.
 4. **Row-level surgery** -- right when the table gained rows since the dump that must be kept: restore the dump into a scratch local Postgres (the drill container works), then carry just the lost rows over with `\copy` out/in or hand-written inserts.
 5. Verify counts and spot-check the restored rows, then turn maintenance mode off.
 
@@ -121,7 +121,7 @@ The drill then covers:
 
 | Date | Dump | Result |
 | ---- | ---- | ------ |
-| (none yet) | | |
+| 2026-07-23 | `wga-2026-07-22.dump` + auth | **Pass.** Pulled both objects from R2 with the read-only token. Full restore into `postgres:17`: 9 ignored errors, all matching the expected list above verbatim, nothing unexpected. Counts matched prod exactly (players 75, season_signups 46, audit_log 610; 26 base tables). Selective-restore rehearsal on `season_signups`: 46 rows deleted and restored per-table, no side-effect triggers fired (its only trigger is the `updated_at` stamper), `setval` fix-up exercised. Found: the table's sequence is `signups_id_seq` (legacy name from a rename), which is why the runbook resolves sequences via `pg_get_serial_sequence()`. Auth dump listed cleanly: 2 table-data entries (`auth.users`, `auth.identities`). |
 
 ## Ops notes
 

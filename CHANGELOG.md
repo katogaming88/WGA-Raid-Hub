@@ -14,6 +14,10 @@ with each release split into `### Frontend` (drives the version number) and
 
 - Fixed the Priority tab's boss filter dropdown not picking up newer-season bosses when "Show all seasons" was checked -- `populateBossFilters()` hardcoded the current-season-only scope and only ran once at data load, so toggling the checkbox never refreshed it. Now each dropdown (Priority List, Unmanaged Items) rebuilds independently against its own tab's checkbox state, re-running on toggle instead of just once.
 
+### Backend
+
+- Executed the first restore drill (#544) against a real R2 dump and recorded it in the runbook's drill log: full restore clean (every ignored error matched the documented expected list), row counts matched prod exactly, per-table selective restore rehearsed. One finding folded back into the runbook: `season_signups`'s sequence is `signups_id_seq` (legacy name), so sequence resets must go through `pg_get_serial_sequence()` rather than guessed names.
+
 ## [3.47.1] - 2026-07-22
 
 ### Frontend
