@@ -1137,6 +1137,14 @@ function _escAttr(str) {
 // Function instead, which forwards this session's own JWT so the function's
 // officer/team_leader/site_admin check runs as this user (see the function's
 // own header comment for why no service-role key is involved).
+// getZoneEncounters queries WCL's static zone/encounter data (worldData.zone),
+// not the guild's own reports -- unlike fetchWclForRaid()/fetchProgression
+// (guild-scoped, needs logged fights), this works before a single fight has
+// been logged. Renders each encounter as a checkbox (checked by default) so
+// "Add Selected" can push exact WCL names straight into SEASON_RAIDS[idx]
+// .bosses without an officer retyping/misspelling them by hand -- useful
+// specifically for setting up a season's boss list ahead of the raid going
+// live, when there's nothing yet for "Fetch from WCL" to pull kill dates from.
 function listWclEncounters(idx) {
   raidCollectFromDOM();
   var zoneId = SEASON_RAIDS[idx].wclZoneId ? parseInt(SEASON_RAIDS[idx].wclZoneId, 10) : 0;
@@ -1161,15 +1169,93 @@ function listWclEncounters(idx) {
           : 'Error: ' + ((result.data && result.data.error) || 'Unknown');
         return;
       }
-      var lines = (result.data.encounters || []).map(function (e) {
-        return e.id + ' -- ' + e.name;
-      });
+      var encounters = result.data.encounters || [];
+      if (!encounters.length) {
+        el.textContent = 'No encounters found for this zone.';
+        return;
+      }
+      var rows = encounters
+        .map(function (e) {
+          return (
+            '<label style="display:block;cursor:pointer;">' +
+            '<input type="checkbox" class="wcl-enc-check" data-enc-id="' +
+            e.id +
+            '" data-enc-name="' +
+            _escAttr(e.name) +
+            '" checked> ' +
+            e.id +
+            ' -- ' +
+            _esc(e.name) +
+            '</label>'
+          );
+        })
+        .join('');
       el.innerHTML =
         '<strong style="color:var(--text);">' +
-        (result.data.zoneName || 'Zone ' + zoneId) +
-        '</strong><br>' +
-        lines.join('<br>');
+        _esc(result.data.zoneName || 'Zone ' + zoneId) +
+        '</strong>' +
+        '<div style="margin:0.4rem 0;">' +
+        '<a href="#" onclick="wclEncSelectAll(' +
+        idx +
+        ',true);return false;" style="color:var(--gold);">Select All</a>' +
+        ' <span style="color:var(--text-muted);">|</span> ' +
+        '<a href="#" onclick="wclEncSelectAll(' +
+        idx +
+        ',false);return false;" style="color:var(--gold);">Select None</a>' +
+        '</div>' +
+        rows +
+        '<button class="btn btn-gold" style="margin-top:0.5rem;font-size:0.91rem;padding:3px 10px;" onclick="addWclEncounters(' +
+        idx +
+        ')">Add Selected as Bosses</button>';
     });
+}
+
+function wclEncSelectAll(idx, checked) {
+  var el = document.getElementById('wclEncList_' + idx);
+  if (!el) return;
+  el.querySelectorAll('.wcl-enc-check').forEach(function (cb) {
+    cb.checked = checked;
+  });
+}
+
+// Appends the checked encounters as bosses on SEASON_RAIDS[idx], skipping any
+// whose wclEncounterId already has a boss entry so re-clicking after adding
+// more bosses by hand (or running this twice) doesn't create duplicates.
+// mythicDate stays blank -- only fetchWclForRaid() (guild-scoped, needs
+// logged fights) knows kill dates. Reuses the raid card's own
+// wclFetchStatus_<idx> span (defined outside the encounter-list container
+// this function reads from) for the result message, since
+// renderRaidProgressionCards() rebuilds the whole card -- including that
+// list -- so a status element written inside it would already be gone by
+// the time anyone could read it.
+function addWclEncounters(idx) {
+  raidCollectFromDOM();
+  var el = document.getElementById('wclEncList_' + idx);
+  if (!el) return;
+  var existingIds = {};
+  (SEASON_RAIDS[idx].bosses || []).forEach(function (b) {
+    if (b.wclEncounterId != null) existingIds[b.wclEncounterId] = true;
+  });
+  var added = 0;
+  el.querySelectorAll('.wcl-enc-check:checked').forEach(function (cb) {
+    var encId = parseInt(cb.getAttribute('data-enc-id'), 10);
+    if (!encId || existingIds[encId]) return;
+    SEASON_RAIDS[idx].bosses.push({
+      name: cb.getAttribute('data-enc-name') || '',
+      mythicDate: '',
+      wclEncounterId: encId
+    });
+    existingIds[encId] = true;
+    added++;
+  });
+  renderRaidProgressionCards();
+  var status = document.getElementById('wclFetchStatus_' + idx);
+  if (status) {
+    status.textContent = added ? 'Added ' + added + ' boss(es).' : 'Nothing new to add.';
+    setTimeout(function () {
+      if (status) status.textContent = '';
+    }, 3000);
+  }
 }
 
 function fetchWclForRaid(idx) {

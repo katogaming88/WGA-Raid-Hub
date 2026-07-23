@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.1] - 2026-07-23
+
+### Frontend
+
+- Fixed `input[type="date"]` calendar-picker icons rendering black (invisible) against the dark background. Their `filter:invert(1)` predates `:root`'s `color-scheme: dark` (#568); the browser now renders the icon white natively on its own, so the leftover invert filter was flipping it back to black -- removed.
+- Raid Progression's "List" button (Season Settings, queries WCL's static zone data -- works before any fights are logged) now renders each encounter as a checkbox instead of inert text, with "Select All"/"Select None" and an "Add Selected as Bosses" button that appends them straight into the raid's boss list using WCL's exact names. Lets an officer set up a season's full boss list ahead of the raid going live without retyping (and risking misspelling) every boss name by hand; re-clicking skips encounters already added by `wclEncounterId`.
+
 ## [3.49.0] - 2026-07-23
 
 ### Frontend
