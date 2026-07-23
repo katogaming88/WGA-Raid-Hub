@@ -3641,7 +3641,7 @@ function renderProfile(firstName, backTo, container) {
         '<div id="mplusForm-' +
         player.firstName +
         '" style="display:none;margin-top:0.75rem;">' +
-        '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.5rem;">Requesting exclusion from dungeon loot priority. Your Raider.io profile is filled in below -- edit it if this isn\'t the character you play M+ on.</div>' +
+        '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.5rem;">Request exclusion from the weekly M+ requirement. Your Raider.io profile is filled in below -- edit it if this isn\'t the character you play M+ on.</div>' +
         '<label style="display:flex;align-items:flex-start;gap:0.4rem;font-size:1.02rem;color:var(--text);margin-bottom:0.4rem;"><input type="checkbox" id="mplusMythCheck-' +
         player.firstName +
         '" style="margin-top:0.2rem;">I am 6/6 Myth track in every M+-obtainable slot.</label>' +
@@ -3684,7 +3684,7 @@ function renderProfile(firstName, backTo, container) {
         '<div id="mplusForm-' +
         player.firstName +
         '" style="display:none;margin-top:0.75rem;">' +
-        '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.5rem;">Requesting exclusion from dungeon loot priority. Your Raider.io profile is filled in below -- edit it if this isn\'t the character you play M+ on.</div>' +
+        '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.5rem;">Request exclusion from the weekly M+ requirement. Your Raider.io profile is filled in below -- edit it if this isn\'t the character you play M+ on.</div>' +
         '<label style="display:flex;align-items:flex-start;gap:0.4rem;font-size:1.02rem;color:var(--text);margin-bottom:0.4rem;"><input type="checkbox" id="mplusMythCheck-' +
         player.firstName +
         '" style="margin-top:0.2rem;">I am 6/6 Myth track in every M+-obtainable slot.</label>' +
