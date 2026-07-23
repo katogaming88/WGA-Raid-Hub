@@ -65,6 +65,9 @@ function makeSandbox({ saveTeamSettingImpl, rpcResult, els = {}, data = {} } = {
       }
     },
     _teamCfg: { supabaseTeamId: 1 },
+    // Normally defined in js/common.js (#537); stubbed here since this
+    // sandbox loads only tab-season.js.
+    CURRENT_SEASON: { code: 'MID2', displayName: 'Midnight Season 2' },
     setTimeout,
     clearTimeout,
     Promise
@@ -149,7 +152,7 @@ describe('executeArchiveSeason (#221)', () => {
         { name: 'Archived', start: '2026-01-01', end: '', raids: [], roster: [{ nameRealm: 'Kato-Illidan' }] }
       ]
     };
-    const { sandbox, rpcCalls } = makeSandbox({
+    const { sandbox, rpcCalls, saveTeamSettingCalls } = makeSandbox({
       els,
       rpcResult: { data: newConfig, error: null },
       data: {
@@ -183,8 +186,14 @@ describe('executeArchiveSeason (#221)', () => {
         attendance: '90%'
       }
     ]);
-    expect(sandbox.DATA.seasonName).toBe('');
     expect(sandbox.DATA.seasonHistory).toEqual(newConfig.seasonHistory);
+    // #537: archiving now chains a second saveTeamSetting() call that
+    // immediately fills in the next season's name from CURRENT_SEASON and
+    // resets seasonView, instead of leaving seasonName blank.
+    expect(rpcCalls[0]).toBeTruthy();
+    expect(saveTeamSettingCalls).toEqual([{ seasonName: 'Midnight Season 2', seasonView: null }]);
+    expect(sandbox.DATA.seasonName).toBe('Midnight Season 2');
+    expect(sandbox.DATA.seasonView).toBe(null);
     expect(els.seasonArchiveStatus.textContent).toBe('Season archived.');
   });
 
