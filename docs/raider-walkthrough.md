@@ -13,7 +13,8 @@ Reference notes for walking a raider through the site -- not published to raider
 ## Finding their profile
 
 - Open the link (share this in Discord)
-- Top nav: **Home**, **Roster**, **Streams**, **Sign Up**, **Help**
+- Top nav: **Home**, **Roster**, **Streams**, **Sign Up**, **History**, **Bios**, **News**, **Help**
+- **History** only appears once the team has archived at least one season; **News** shows a notification dot when there's an unread entry
 - Click **Login with Discord** in the top nav and authorize
 - First time logging in, they'll be asked to claim their character from the roster
 - Once claimed, click **View My Profile** (or click their name in the nav) -- this opens their own profile
@@ -25,6 +26,7 @@ Reference notes for walking a raider through the site -- not published to raider
 
 - **They got an item outside of raid (M+, vault, crafted, catalyst)** -- mark it received from their profile (see "Mark an item as received" below)
 - **Their BiS plan changed** -- submit or update their BiS link from their profile
+- **They want to flag backups/sidegrades, not just their one BiS pick** -- tag items in the My Wishlist section of their profile (see "Fill out their Wishlist" below)
 - **Signups just opened, or they're switching mains this season** -- use the Sign Up button on the main page
 - **Their Great Vault can no longer offer them a Mythic+ upgrade** -- submit an M+ exclusion request from their profile
 - **They stream on Twitch and want to show up on the Streams tab** -- link their channel from their profile (see "Link their Twitch stream" below)
@@ -39,6 +41,7 @@ Reference notes for walking a raider through the site -- not published to raider
 - **Items Received** -- how many items they've gotten this tier; click to expand the full list with slot and difficulty
 - **BiS List** -- their submitted BiS link; they can submit or update it directly from here
 - **Loot Priority** -- every item on their BiS list with their current priority rank, which slot it is, and which boss drops it
+- **My Wishlist** -- only shown to the raider viewing their own profile; per-slot cards where they tag every item they'd want (BiS/Good/OK/Catalyst Only/Pass), not just their one BiS pick -- see "Fill out their Wishlist" below
 - **M+ Exclusion** -- shows Excluded/Rejected status if they've ever requested one, or the request button if exclusions are open
 - **Your Stream** -- only shown to the raider viewing their own profile; lets them link a Twitch channel
 - Every section above has a small **?** button next to its heading with a short explanation -- point raiders at those instead of re-explaining a section from scratch
@@ -68,8 +71,17 @@ Reference notes for walking a raider through the site -- not published to raider
 
 ### M+ exclusion request
 - Once their Great Vault can no longer offer them a Mythic+ gear upgrade, they can request to be excluded from the weekly M+ requirement for the rest of the season -- not a one-week skip
+- The form now gates on two self-attested checks before Submit is even clickable: a checkbox confirming 6/6 Myth in every M+ obtainable slot, and a "gem sockets filled (Helm/Bracer/Belt)" dropdown that must be 2 of 3 or better
 - Submit their Raider.io profile from the M+ Exclusion section of their profile
+- Notes field is a good place to flag known exceptions, e.g. a raid-only trinket stuck below Myth track with no M+ equivalent
 - Officers review and approve or reject it; a rejected request can be re-submitted
+
+### Fill out their Wishlist
+- **My Wishlist** on their own profile lets them tag a status (BiS, Good, OK, Catalyst Only, Pass) plus an optional note for every item in each gear slot, not just one BiS pick per slot -- collapsible cards per slot, dot summary shows tagged items without expanding
+- Tagging something BiS there also updates their BiS List; only one item per slot can be BiS at a time -- tagging a new one auto-demotes the previous BiS pick in that slot to Good
+- **Other Sources -- BiS Not From Raid (M+ / Crafted)** card covers slots whose real BiS comes from outside raid drops
+- A completeness counter shows how many required slots are tagged (or already covered by the officer's BiS pick); a **Show all seasons** checkbox lifts the current-tier-only item filter
+- Read-only whenever wishlist editing is closed
 
 ### Link their Twitch stream
 - From the **Your Stream** section on their own profile, enter their Twitch channel name and an optional schedule note, then Save
@@ -90,6 +102,7 @@ Reference notes for walking a raider through the site -- not published to raider
 
 - Public, no login needed -- shows who's currently on the roster, grouped by role
 - Just name, class, and spec -- no attendance, loot, or BiS info
+- A second sub-tab, named after the officer-set signup season (e.g. "MN Season 2 Roster (Tentative)"), appears once there's an incoming roster to show -- lists who's approved for next season, tentative until the officer rollover
 
 ---
 
@@ -97,6 +110,28 @@ Reference notes for walking a raider through the site -- not published to raider
 
 - Public, no login needed -- shows raiders currently live on Twitch, with a banner at the top of every page when someone's live
 - Pulls from whoever's linked their channel via the **Your Stream** section on their own profile
+
+---
+
+## The History tab
+
+- Public, no login needed -- only appears in the nav once the team has archived at least one season
+- Past seasons' raid progression and boss kill dates, read-only
+
+---
+
+## The Bios tab
+
+- Public, no login needed -- officer-curated cards introducing the team's raid officers (name, title, pronouns, class/spec, photo or initials, short bio)
+- Content is entirely set by officers from the **Officer Bios** tab on the dashboard; raiders can't edit or add anything here
+
+---
+
+## The News tab
+
+- Public, no login needed -- reverse-chronological "what shipped" feed, sourced from a hand-maintained news file (separate from CHANGELOG.md, filtered to raider-relevant entries only)
+- A notification dot on the nav item shows when there's an entry a raider hasn't seen yet; visiting the tab clears it
+- Pinned entries and the single newest entry are expanded by default; click any entry to expand/collapse it
 
 ---
 

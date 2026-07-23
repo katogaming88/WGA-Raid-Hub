@@ -100,11 +100,13 @@ to sync priorities to the council.
 
 Three sub-tabs:
 
-- **Contested Items** (default) -- items wanted by multiple players; flags any player holding
-  1st priority on more than one item so over-allocation gets caught before loot decisions
+- **Priority List** (default) -- read-only full ranked order per item; filter by boss, search by
+  name, or hide empty entries. Its badge counts stale-after-Heroic Mythic #1s, same-boss #1
+  conflicts, and players holding 2+ #1s team-wide; a banner also flags incomplete raider
+  Wishlists (see BiS Manager -> BiS Lists for who's missing what)
+- **Contested Items** -- items wanted by multiple players; flags any player holding 1st priority
+  on more than one item so over-allocation gets caught before loot decisions
 - **Unmanaged Items** -- BiS items with no priority order set yet; badge shows the count
-- **Priority List** -- read-only full ranked order per item; filter by boss, search by name,
-  or hide empty entries
 
 Clicking Edit (or Set Heroic/Set Mythic on an unmanaged item) opens the priority editor:
 - Heroic/Mythic toggle at the top
@@ -126,9 +128,11 @@ Two sub-tabs:
   Approving updates the player's BiS link on the Roster automatically; Rejecting discards the
   submission with no change. A single player can be allowed to submit even while the window is
   closed, via the "Allow BiS Submit" toggle on their Roster profile card.
-- **BiS Lists** -- every player grouped by role with their item count. Click Edit to open an
-  inline item editor -- search is filtered to their armor type automatically, their BiS source
-  link is shown at the top, and Save writes the list back.
+- **BiS Lists** -- every player grouped by role with their item count. A player with an
+  incomplete raider Wishlist shows a "Wishlist incomplete (N)" badge next to their name, hover
+  for which slots are missing. Click Edit to open an inline item editor -- search is filtered to
+  their armor type automatically, their BiS source link is shown at the top, and Save writes the
+  list back.
 
 ---
 
@@ -139,7 +143,7 @@ Three sub-tabs:
 - **Manage** -- the main grid.
   - **Refresh from WCL** -- pulls the latest raid nights; run this after each raid night.
   - Click any player's status cell to set it manually: Present, Bench, Medical Leave, Excused,
-    No Show, or Not on Roster. Saves immediately (checkmark confirms).
+    Extended Leave, No Show, or Not on Roster. Saves immediately (checkmark confirms).
   - **Exclude Report** toggle per raid night -- for alt runs or the wrong zone getting pulled
     in; excludes that whole night from scoring.
   - **Commit Attendance Scores** -- recalculates every player's attendance % and saves it to
@@ -172,10 +176,13 @@ Three sub-tabs: **Signups**, **Pending Roster**, **History**.
   Approving marks the application approved and moves it to Pending Roster; Denying marks it
   rejected. If someone re-submits, it overwrites their existing pending entry rather than
   creating a duplicate. The "x" button deletes a submission outright.
-- **Pending Roster** -- applications approved but not yet on the roster. Review the composition
-  and who's still missing, then **Push to Roster** applies *all* pending entries to the roster
-  at once (not one at a time) -- there's an option in the confirm step to also remove roster
-  members who never submitted a signup this cycle. **Remove** dismisses a single entry instead.
+- **Pending Roster** -- applications approved but not yet on the roster. Each card has its own
+  **Add to Roster** button (with a trial toggle and, for main-swap signups, a swap picker); a
+  selection checkbox per card plus **Select All** and **Add Selected to Roster** push a chosen
+  subset at once. A **Buff Coverage** panel checks the pending group the same way the Roster
+  tab's does. A collapsible **Missing Signups** panel lists roster members who haven't submitted
+  a signup this cycle -- read-only, no bulk-remove action from here. **Remove** dismisses a
+  single pending entry instead.
 - **History** -- read-only, grouped by Approved/Pending/Denied, filterable by season.
 
 ---
@@ -184,6 +191,12 @@ Three sub-tabs: **Signups**, **Pending Roster**, **History**.
 
 - Open/close toggle controls the raider-facing request form -- raiders submit their Raider.io
   profile and a reason.
+- The form gates Submit on two self-attested checks (6/6 Myth in every M+ obtainable slot; gem
+  sockets filled 2 of 3 or better on Helm/Bracer/Belt) before a raider can even reach the
+  Raider.io/reason fields. These are self-reported, not verified by the app -- still check the
+  Raider.io link and read the reason field yourself, especially for known exceptions like a
+  raid-only trinket stuck below Myth track with no M+ equivalent (raiders are prompted to
+  mention this in their notes).
 - Approving flags the player as M+ excluded on the roster view.
 - Exclusion can also be toggled per player directly from their Roster profile card, without a
   request.
@@ -243,11 +256,44 @@ Three sub-tabs: **Settings**, **Raid Progression**, **History**.
 
 ---
 
+## Officer Bios tab
+
+- Editor for the officer cards shown on the public **Bios** tab -- **+ Add Officer** can prefill
+  name/character/class/spec from an existing roster player (a one-time copy, not a live link;
+  editing or removing that player later never touches the bio), or start blank.
+- Per card: display name, character name, title, pronouns, class/spec, an image path (commit a
+  photo to `assets/officers/` in the repo first, then paste its relative path -- blank shows
+  initials instead), and a short bio text. Reorder with the up/down arrows, **Remove** deletes a
+  card, **Save Bios** writes the whole list back.
+
+---
+
 ## Audit Log tab
 
 - Every officer action is logged automatically -- approvals, edits, loot marks, status changes
 - Shows timestamp, actor, action, target, old value, new value
 - Search box to filter by officer, action, or player name
+
+---
+
+## Reports tab
+
+Reads directly from Supabase report views -- no Apps Script fallback. Four sub-tabs:
+
+- **Raid Nights Since Last Item** -- how many raid nights have passed since each active roster
+  player's last loot award, grouped/filterable by role, sortable by player/last award/nights
+  since.
+- **BiS Demand vs Awards** -- ranks items by how many active players want them on their BiS list
+  next to how many times each has actually been awarded in the selected season; high demand +
+  low awards is what to prioritize.
+- **Priority Order Health** -- three lists, filterable by season: **Stale Entries** (players
+  ranked in a season's priority order who are no longer on the active roster), **Missing From
+  Priority Order** (active non-bench players with no priority order entry at all that season),
+  and **Mythic #1 Possibly Stale** (a saved Mythic #1 where the player already received the
+  Heroic version of that same item -- not necessarily wrong, just worth a second look).
+- **Season Loot Pace** -- items awarded per week of the season vs. the same week last season,
+  filterable by track and slot. "Week 1" is measured from the season's first tracked loot award,
+  not the raid-lockout calendar, since Supabase doesn't store a season start date yet.
 
 ---
 
@@ -263,10 +309,9 @@ Three sub-tabs: **Settings**, **Raid Progression**, **History**.
 
 ## Admin tab (reference only -- not part of the normal weekly flow)
 
-Restricted by role: site admins see the whole tab, team leaders see the Properties and
-Officers sub-tabs plus Clear Season History in the Danger Zone, and regular
-officers don't see the tab at all. In practice this is usually one or two people per
-team. Four sub-tabs:
+Restricted by role: site admins see the whole tab, team leaders see every sub-tab except Data
+Export (plus only Clear Season History within the Danger Zone), and regular officers don't see
+the tab at all. In practice this is usually one or two people per team. Five sub-tabs:
 
 - **Properties** -- read-only live snapshot of this team's season settings: season name/dates,
   archived season count, raid progression count, whether Signups/BiS Submissions/M+ Exclusions
@@ -279,6 +324,11 @@ team. Four sub-tabs:
   `team_members.role` in Supabase). Making someone a *team leader* or *site admin* is **not**
   done here -- team leader is a direct `team_members.role` change and site admin is a row in
   the `site_admins` table, both currently database-side only.
+- **Feature Flags** -- per-team toggles to turn off features this team doesn't use (Loot Import
+  & Tracking, Priority Order, BiS Lists, Scoring, M+ Exclusions, Fairness Charts, Bench
+  Management, Attendance, Received Item Requests), effective immediately. Also has **Wishlist
+  Tier Labels** here -- rename the 5 raider Wishlist status tiers for this team; blank keeps the
+  default, colors don't change.
 - **Danger Zone** -- permanent, irreversible wipes. Team leaders see only Clear Season
   History; the sheet wipes below it are site-admin only:
   - Clear Season History -- deletes all archived seasons
