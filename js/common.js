@@ -3645,11 +3645,11 @@ function renderProfile(firstName, backTo, container) {
         '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.5rem;">Request exclusion from the weekly M+ requirement. Your Raider.io profile is filled in below -- edit it if this isn\'t the character you play M+ on.</div>' +
         '<label style="display:flex;align-items:flex-start;gap:0.4rem;font-size:1.02rem;color:var(--text);margin-bottom:0.4rem;"><input type="checkbox" id="mplusMythCheck-' +
         player.firstName +
-        '" style="margin-top:0.2rem;">I am 6/6 Myth track in every M+-obtainable slot.</label>' +
+        '" style="margin-top:0.2rem;">I am 6/6 Myth in every M+ obtainable slot.</label>' +
         '<div style="display:flex;align-items:center;gap:0.5rem;font-size:1.02rem;color:var(--text);margin-bottom:0.5rem;">Gem sockets filled (Helm/Bracer/Belt): ' +
         '<select id="mplusSocketCount-' +
         player.firstName +
-        '" style="background:var(--bg-alt);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:0.2rem 0.4rem;font-size:1rem;">' +
+        '" class="self-received-source" style="width:auto;">' +
         '<option value="">Select...</option>' +
         '<option value="3">3 of 3</option>' +
         '<option value="2">2 of 3</option>' +
@@ -3696,11 +3696,11 @@ function renderProfile(firstName, backTo, container) {
         '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.5rem;">Request exclusion from the weekly M+ requirement. Your Raider.io profile is filled in below -- edit it if this isn\'t the character you play M+ on.</div>' +
         '<label style="display:flex;align-items:flex-start;gap:0.4rem;font-size:1.02rem;color:var(--text);margin-bottom:0.4rem;"><input type="checkbox" id="mplusMythCheck-' +
         player.firstName +
-        '" style="margin-top:0.2rem;">I am 6/6 Myth track in every M+-obtainable slot.</label>' +
+        '" style="margin-top:0.2rem;">I am 6/6 Myth in every M+ obtainable slot.</label>' +
         '<div style="display:flex;align-items:center;gap:0.5rem;font-size:1.02rem;color:var(--text);margin-bottom:0.5rem;">Gem sockets filled (Helm/Bracer/Belt): ' +
         '<select id="mplusSocketCount-' +
         player.firstName +
-        '" style="background:var(--bg-alt);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:0.2rem 0.4rem;font-size:1rem;">' +
+        '" class="self-received-source" style="width:auto;">' +
         '<option value="">Select...</option>' +
         '<option value="3">3 of 3</option>' +
         '<option value="2">2 of 3</option>' +
