@@ -25,3 +25,7 @@ data/
 items.csv
 item_bosses_raw.csv
 items_insert.sql
+
+# scripts/fetch-item-stats.js scratch output (#560) -- regenerated per run
+item_ids.csv
+item_stats_update.sql

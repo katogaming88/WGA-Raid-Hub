@@ -12,6 +12,7 @@
 | sort_id | integer |  | true |  |  |  |
 | is_placeholder | boolean | false | false |  |  |  |
 | icon | text |  | true |  |  |  |
+| secondary_stats | jsonb |  | true |  |  |  |
 | wcl_zone_id | integer |  | true |  |  |  |
 
 ## Constraints
@@ -50,6 +51,7 @@ erDiagram
   integer sort_id
   boolean is_placeholder
   text icon
+  jsonb secondary_stats
   integer wcl_zone_id
 }
 "public.bis_items" {

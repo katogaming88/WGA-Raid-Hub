@@ -662,6 +662,11 @@
           "nullable": true
         },
         {
+          "name": "secondary_stats",
+          "type": "jsonb",
+          "nullable": true
+        },
+        {
           "name": "wcl_zone_id",
           "type": "integer",
           "nullable": true

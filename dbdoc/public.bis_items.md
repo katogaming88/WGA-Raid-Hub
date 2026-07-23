@@ -75,6 +75,7 @@ erDiagram
   integer sort_id
   boolean is_placeholder
   text icon
+  jsonb secondary_stats
   integer wcl_zone_id
 }
 ```
