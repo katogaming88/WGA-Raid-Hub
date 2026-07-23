@@ -2895,10 +2895,18 @@ function submitMPlusExclusionForm(nameRealm, firstName) {
   var urlEl = /** @type {HTMLInputElement} */ (document.getElementById('mplusUrl-' + firstName));
   var notesEl = /** @type {HTMLTextAreaElement} */ (document.getElementById('mplusNotes-' + firstName));
   var formEl = document.getElementById('mplusForm-' + firstName);
+  var mythCheckEl = /** @type {HTMLInputElement} */ (document.getElementById('mplusMythCheck-' + firstName));
+  var socketCheckEl = /** @type {HTMLInputElement} */ (document.getElementById('mplusSocketCheck-' + firstName));
+  var checkErrorEl = document.getElementById('mplusCheckError-' + firstName);
   if (!urlEl || !urlEl.value.trim()) {
     if (urlEl) urlEl.style.borderColor = 'var(--melee)';
     return;
   }
+  if (!mythCheckEl || !mythCheckEl.checked || !socketCheckEl || !socketCheckEl.checked) {
+    if (checkErrorEl) checkErrorEl.style.display = '';
+    return;
+  }
+  if (checkErrorEl) checkErrorEl.style.display = 'none';
   if (formEl)
     formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
 
@@ -3634,6 +3642,12 @@ function renderProfile(firstName, backTo, container) {
         player.firstName +
         '" style="display:none;margin-top:0.75rem;">' +
         '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.5rem;">Requesting exclusion from dungeon loot priority. Your Raider.io profile is filled in below -- edit it if this isn\'t the character you play M+ on.</div>' +
+        '<label style="display:flex;align-items:flex-start;gap:0.4rem;font-size:1.02rem;color:var(--text);margin-bottom:0.4rem;"><input type="checkbox" id="mplusMythCheck-' +
+        player.firstName +
+        '" style="margin-top:0.2rem;">I am 6/6 Myth track in every M+-obtainable slot.</label>' +
+        '<label style="display:flex;align-items:flex-start;gap:0.4rem;font-size:1.02rem;color:var(--text);margin-bottom:0.5rem;"><input type="checkbox" id="mplusSocketCheck-' +
+        player.firstName +
+        '" style="margin-top:0.2rem;">I have gem sockets filled in at least 2 of my 3 socketed slots (Helm/Bracer/Belt).</label>' +
         '<input type="url" id="mplusUrl-' +
         player.firstName +
         '" value="' +
@@ -3641,7 +3655,10 @@ function renderProfile(firstName, backTo, container) {
         '" placeholder="https://raider.io/characters/..." class="self-received-source" style="max-width:100%;font-size:1rem;">' +
         '<textarea id="mplusNotes-' +
         player.firstName +
-        '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
+        '" placeholder="Notes -- e.g. still on a Hero-track raid trinket with no Myth M+ equivalent" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
+        '<p id="mplusCheckError-' +
+        player.firstName +
+        '" style="display:none;color:var(--melee);font-size:1.02rem;margin:0.4rem 0 0;">Please confirm both checkboxes before submitting.</p>' +
         '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
         '<button class="btn btn-gold" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="submitMPlusExclusionForm(\'' +
         nrMplusR +
@@ -3668,6 +3685,12 @@ function renderProfile(firstName, backTo, container) {
         player.firstName +
         '" style="display:none;margin-top:0.75rem;">' +
         '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.5rem;">Requesting exclusion from dungeon loot priority. Your Raider.io profile is filled in below -- edit it if this isn\'t the character you play M+ on.</div>' +
+        '<label style="display:flex;align-items:flex-start;gap:0.4rem;font-size:1.02rem;color:var(--text);margin-bottom:0.4rem;"><input type="checkbox" id="mplusMythCheck-' +
+        player.firstName +
+        '" style="margin-top:0.2rem;">I am 6/6 Myth track in every M+-obtainable slot.</label>' +
+        '<label style="display:flex;align-items:flex-start;gap:0.4rem;font-size:1.02rem;color:var(--text);margin-bottom:0.5rem;"><input type="checkbox" id="mplusSocketCheck-' +
+        player.firstName +
+        '" style="margin-top:0.2rem;">I have gem sockets filled in at least 2 of my 3 socketed slots (Helm/Bracer/Belt).</label>' +
         '<input type="url" id="mplusUrl-' +
         player.firstName +
         '" value="' +
@@ -3675,7 +3698,10 @@ function renderProfile(firstName, backTo, container) {
         '" placeholder="https://raider.io/characters/..." class="self-received-source" style="max-width:100%;font-size:1rem;">' +
         '<textarea id="mplusNotes-' +
         player.firstName +
-        '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
+        '" placeholder="Notes -- e.g. still on a Hero-track raid trinket with no Myth M+ equivalent" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
+        '<p id="mplusCheckError-' +
+        player.firstName +
+        '" style="display:none;color:var(--melee);font-size:1.02rem;margin:0.4rem 0 0;">Please confirm both checkboxes before submitting.</p>' +
         '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
         '<button class="btn btn-gold" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="submitMPlusExclusionForm(\'' +
         nrMplus +
