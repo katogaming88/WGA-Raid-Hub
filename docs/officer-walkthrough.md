@@ -118,6 +118,34 @@ Clicking Edit (or Set Heroic/Set Mythic on an unmanaged item) opens the priority
   themselves marked "No Version" -- worth a manual review before saving
 - Save
 
+**How Priority Order works with Loot Import**
+
+The priority list for an item (who's next in line for it) is not automatically updated when loot
+is imported. Think of it as two separate steps:
+
+1. Generating the list -- When an officer clicks "generate" for an item, the system looks at
+   everyone who wants it (BiS list), checks who's already received it this season, and ranks the
+   rest by performance/attendance score (with adjustments for tanks/healers, bench, trials, etc.).
+   Anyone who already has the Mythic version -- or the Heroic version, if you're generating a
+   Heroic list -- gets automatically filtered out of that fresh list. So at the moment you
+   generate it, it's accurate.
+2. Saving it -- Once generated, the officer saves it, and it sits in the system as a fixed, saved
+   list until someone regenerates it again.
+
+The gap: After a raid night, when loot is imported (from RCLootCouncil logs), the system records
+who got what -- but it does not go back and edit any already-saved priority lists. So if someone
+was #1 on a saved list and then received the item that night, the saved list still shows them as
+#1 until an officer manually regenerates it.
+
+The safety net: The system has built-in reports that flag this kind of staleness -- e.g., "this
+person is still ranked #1 for Mythic but already has the Heroic version" -- so officers can spot
+outdated lists. But nothing fixes it automatically; someone has to notice the flag and re-run the
+generator.
+
+Bottom line: Priority lists are a snapshot, not a live feed. They're only as current as the last
+time someone hit "generate." Loot import updates the history the generator reads from -- it just
+doesn't rewrite lists that were already saved.
+
 ---
 
 ## BiS Manager tab
