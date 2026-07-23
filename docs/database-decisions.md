@@ -8,6 +8,18 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-07-23 -- Un-bundles signups from `seasonView` (#549 correction): `signupSeason` keeps its own independent setting
+
+Surfaced during implementation, before #549 shipped: bundling `signupSeason` into `seasonView` (the 2026-07-22 entry below) assumed the two concepts move on the same timeline. They don't. Signups for the next tier routinely open while the current tier is still being raided -- that overlap is the normal case, not an edge case -- but item/BiS/Wishlist scoping is about what raiders should see for tonight's raid. Pointing `seasonView` at the next season to open its signups would have also flipped every raider's Priority tab/BiS grid/Wishlist to that next season's (probably still-incomplete) item catalog mid-raid.
+
+- **`signupSeason` (`team_settings.config.activeSignupSeason`) is un-retired.** Signups keep their own independent free-typed setting, exactly as before #549 touched it -- separate Season Settings card, separate save path, separate RPC/view reads (`submit_season_signup`, `get_own_signup`, `incoming_roster`). None of the DB objects `activeSignupSeason` already touched needed changing; the migration proposed in the original #549 work was never applied to production and was reverted before merge.
+- **`seasonView` keeps its full original scope for item/BiS/Wishlist**: the `raid_zones`-sourced dropdown, `isItemInSeasonScope()`/`currentZoneIdsForSeason()` reading `DATA.raidZones` instead of `DATA.raidProgression`, and the four "Show all seasons" checkboxes' retirement all stand as decided in the entry below. Only the "signups read/write `seasonView` directly" clause is reversed.
+- **The two settings are allowed to diverge on purpose.** An officer can have `seasonView` unset (raiders see the live season's items) while `signupSeason` already points at the next tier (new recruits get tagged correctly) -- that's the actual intended workflow, not a state to guard against.
+
+[Full discussion -> #549](https://github.com/katogaming88/WGA-Raid-Hub/issues/549)
+
+---
+
 ## 2026-07-22 -- Unified `seasonView` setting (#549): replaces `raidProgression`-based item scoping, `signupSeason`, and "Show all seasons"
 
 Surfaced while importing Season 2 (The Venomous Abyss) items ahead of actually switching the team over to it: #535 shipped item-catalog season scoping reading `DATA.raidProgression`, but `raidProgression` is really WCL progress-tracking config (which raids to pull kill/attendance data for), not a good source for "which season's loot to show." There was no way to prep Season 2's item catalog/wishlist/signups while Season 1 was still the live, actively-tracked season without either editing the live `raidProgression` (reshaping what raiders see immediately) or relying on the "Show all seasons" checkbox (shows everything unfiltered, not a specific season). Separately, `signupSeason` (`team_settings.config.activeSignupSeason`) already solved a version of this same problem for signups alone -- a real precedent for "a season you're actively managing, separate from the live raiding season," just reinvented ad hoc and shared with nothing else.

@@ -20,7 +20,6 @@ var _wishlistPlayerNameRealm = null; // full identity, for the officer-bis-pick 
 var _wishlistPrefs = null; // array of {id, item_id, status, note, slot} once fetched, else null while loading
 var _wishlistSaving = {}; // 'itemId|slot' -> true while a write is in flight, to disable that row's buttons
 var _wishlistExpandedSlots = {}; // 'Head' -> true, or '__other__' for the M+/Crafted card -- survives re-renders
-var _wishlistShowAllSeasons = false; // "Show all seasons" toggle (#535) -- survives re-renders same as _wishlistExpandedSlots
 
 var WISHLIST_STATUSES = [
   { value: 'bis', label: 'BiS' },
@@ -219,7 +218,7 @@ function wishlistBucketRealItems(playerArmorType) {
 
   Object.keys(itemSlots).forEach(function (name) {
     if (itemPlaceholders[name]) return;
-    if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(name, _wishlistShowAllSeasons)) return;
+    if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(name)) return;
     var catalogSlot = itemSlots[name] || '';
     var rows = WISHLIST_CATALOG_SLOT_TO_ROWS[catalogSlot] || [];
     var armorType = itemArmorTypes[name] || '';
@@ -283,16 +282,6 @@ function toggleWishlistSlot(key) {
       _wishlistExpandedSlots[k] = false;
     });
   }
-  if (typeof renderProfile === 'function' && _wishlistPlayerFirstName) {
-    renderProfile(_wishlistPlayerFirstName, 'landing');
-  }
-}
-
-// "Show all seasons" toggle (#535) -- lifts the current-season-only item
-// filter in wishlistBucketRealItems() so a raider can tag/audit an
-// older-tier item, same rebuild-on-change shape as toggleWishlistSlot().
-function wishlistToggleShowAllSeasons(checked) {
-  _wishlistShowAllSeasons = !!checked;
   if (typeof renderProfile === 'function' && _wishlistPlayerFirstName) {
     renderProfile(_wishlistPlayerFirstName, 'landing');
   }
@@ -614,11 +603,7 @@ function wishlistSectionBodyHTML(player) {
     '</div>' +
     '<div id="help-wishlist-' +
     player.firstName +
-    '" class="help-tip">Tag every item you\'d want per slot, not just one pick: backups, sidegrades, or drops to pass on. BiS choices marked here save to your BiS List. Slots below are raid drops; use Other Sources for gear you\'ll get elsewhere.</div>' +
-    '<label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--text-muted);cursor:pointer;margin:0.25rem 0;">' +
-    '<input type="checkbox" id="wishlistShowAllSeasons"' +
-    (_wishlistShowAllSeasons ? ' checked' : '') +
-    ' onchange="wishlistToggleShowAllSeasons(this.checked)"> Show all seasons</label>';
+    '" class="help-tip">Tag every item you\'d want per slot, not just one pick: backups, sidegrades, or drops to pass on. BiS choices marked here save to your BiS List. Slots below are raid drops; use Other Sources for gear you\'ll get elsewhere.</div>';
 
   var completeness = wishlistCompleteness();
   html += completeness.missingRows.length

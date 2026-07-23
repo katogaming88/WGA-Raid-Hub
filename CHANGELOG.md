@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.0] - 2026-07-23
+
+### Frontend
+
+- New "Season View" setting (Season Settings tab, #549) replaces `raidProgression`-based item scoping and all four "Show all seasons" checkboxes (Priority tab, Unmanaged Items, BiS grid, Wishlist) with one nullable `team_settings.config.seasonView` picker sourced from `raid_zones.season`. Left unset, everything keeps reading the live raiding season exactly as before (fail-open when a team has no `raid_zones` rows configured yet). Set explicitly, an officer can prep a future season's item catalog/wishlist/BiS -- or audit a past one -- without touching the live `raidProgression`, and filtering becomes strict (no `raid_zones` row for that season means an empty view, not a silent fallback). Fixes a real gap surfaced by Hellfire's Season 1 -> 2 rollover: `raidProgression` gets wiped to `[]` by every "Start New Season" archive (#537), which used to make every item show up unfiltered (fail-open with nothing configured) until an officer manually repopulated Raid Progression. Deliberately does **not** touch signups -- see decision note below.
+- Priority tab and raider Wishlist item rows now show each armor piece's armor type (Cloth/Leather/Mail/Plate) as a colored label next to the slot, via the shared `itemNameBlockHtml()` -- a quick visual guide for whether an item fits a given class, no filtering behavior attached.
+
 ## [3.48.1] - 2026-07-23
 
 ### Frontend
