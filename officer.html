@@ -634,15 +634,30 @@
               <div class="help-ref-card">
                 <h4 class="help-ref-title">Season View<button class="help-btn" onclick="toggleHelp('help-season-view')" title="Show help">?</button></h4>
                 <div id="help-season-view" class="help-tip">
-                  The season your team is planning. Leave on "Live season" and everything (Priority tab, BiS grid, Wishlist, Signups) reflects the current raiding season automatically. Pick a specific season here to prep its item catalog, wishlist, BiS, and signups ahead of time without touching the live raid -- useful once that season's raid zone has been added in Season Settings > Raid Progression for a future tier, or to audit an old season's data. A season with no items imported yet, or no signups tagged to it, will show up empty here -- that's expected until the import/setup for it is finished.
+                  The season your team is planning items/BiS/Wishlist for. Leave on "Live season" and the Priority tab, BiS grid, and Wishlist reflect the current raiding season automatically. Pick a specific season here to prep its item catalog, wishlist, and BiS ahead of time without touching the live raid -- useful once that season's raid zone has been added in Season Settings > Raid Progression for a future tier, or to audit an old season's data. A season with no items imported yet will show up empty here -- that's expected until the import for it is finished. This does not affect signups; see Signup Season below for that.
                 </div>
-                <p class="signup-officer-note" style="margin-top:0.25rem;">Also controls which season new signup submissions are tagged with.</p>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Controls item/BiS/Wishlist scope only -- independent of the live raid and of Signup Season.</p>
                 <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
                   <select id="seasonViewInput" class="add-player-input" style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
                     <option value="">Live season (current)</option>
                   </select>
                   <button class="btn btn-gold" id="seasonViewSaveBtn" onclick="saveSeasonView()">Save</button>
                   <span id="seasonViewStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+              </div>
+
+              <!-- Signup Season -->
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Signup Season<button class="help-btn" onclick="toggleHelp('help-signup-season')" title="Show help">?</button></h4>
+                <div id="help-signup-season" class="help-tip">
+                  The season label stamped on every signup submission. Set this before opening signups so all responses are tagged correctly. If left blank, signups will be recorded with no season and will not appear in the Missing Signups list once a season is set. Independent of Season View above -- signups for the next tier routinely open while the current tier is still live, so this can point ahead of the live season without changing what raiders see on the Priority tab/BiS/Wishlist.
+                </div>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">The season label applied to incoming signup submissions (e.g. MN Season 1).</p>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <input type="text" id="signupSeasonInput" class="add-player-input" placeholder="e.g. MN Season 1"
+                    style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-gold" id="signupSeasonSaveBtn" onclick="saveSignupSeason()">Save</button>
+                  <span id="signupSeasonStatus" style="font-size:0.92rem;color:var(--heal);"></span>
                 </div>
               </div>
 

@@ -267,13 +267,12 @@ function showRosterSubTab(tab) {
   if (subNav) subNav.style.display = hasIncoming ? 'flex' : 'none';
   if (tabIncomingBtn) {
     tabIncomingBtn.style.display = hasIncoming ? '' : 'none';
-    // Labeled from the resolved season view (resolveSeasonView(), #549:
-    // DATA.seasonView when an officer is planning ahead, else the live
-    // DATA.seasonName) rather than hardcoded, so the tab name stays correct
+    // Labeled from the officer-set signup season (DATA.signupSeason, e.g.
+    // "MN Season 2") rather than hardcoded, so the tab name stays correct
     // without a code change once a new season's signups open (#499
     // follow-up). Falls back to a season-agnostic label on the rare load
-    // where neither is set yet.
-    var incomingSeason = (window.DATA && typeof resolveSeasonView === 'function' && resolveSeasonView()) || '';
+    // where signupSeason hasn't been set yet.
+    var incomingSeason = (window.DATA && DATA.signupSeason) || '';
     tabIncomingBtn.textContent = incomingSeason
       ? incomingSeason + ' Roster (Tentative)'
       : 'Next Season Roster (Tentative)';

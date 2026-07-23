@@ -93,7 +93,7 @@ function fetchMissingSignups(callback) {
         callback(result.error);
         return;
       }
-      var season = resolveSeasonView();
+      var season = DATA && DATA.signupSeason;
       var submitted = {};
       (result.data || []).forEach(function (row) {
         if (row.status === 'rejected') return;

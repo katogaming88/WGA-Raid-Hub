@@ -19,6 +19,8 @@ function buildSeasonTab() {
   var endInput = document.getElementById('seasonEndInput');
   if (endInput) endInput.value = (DATA && DATA.seasonEnd) || '';
   populateSeasonViewOptions();
+  var signupSeasonInput = document.getElementById('signupSeasonInput');
+  if (signupSeasonInput) signupSeasonInput.value = (DATA && DATA.signupSeason) || '';
   var trialWeeksInput = document.getElementById('trialWeeksInput');
   var trialAttendInput = document.getElementById('trialAttendInput');
   if (trialWeeksInput) trialWeeksInput.value = DATA && DATA.trialWeeks != null ? DATA.trialWeeks : 4;
@@ -617,6 +619,48 @@ function saveSeasonView() {
         btn.textContent = 'Save';
       }
       if (DATA) DATA.seasonView = val || null;
+      if (status) {
+        status.textContent = val ? 'Saved!' : 'Cleared.';
+        setTimeout(function () {
+          if (status) status.textContent = '';
+        }, 2000);
+      }
+    })
+    .catch(function (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      }
+      if (status) status.textContent = err.message || 'Error saving.';
+    });
+}
+
+function saveSignupSeason() {
+  var input = document.getElementById('signupSeasonInput');
+  var val = input ? input.value.trim() : '';
+  var btn = document.getElementById('signupSeasonSaveBtn');
+  var status = document.getElementById('signupSeasonStatus');
+  if (!val) {
+    if (status) {
+      status.textContent = 'Season name cannot be blank.';
+      setTimeout(function () {
+        if (status) status.textContent = '';
+      }, 3000);
+    }
+    return;
+  }
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+  }
+
+  saveTeamSetting({ activeSignupSeason: val })
+    .then(function () {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      }
+      if (DATA) DATA.signupSeason = val;
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {

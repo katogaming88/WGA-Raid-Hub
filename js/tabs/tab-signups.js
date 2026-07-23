@@ -220,7 +220,7 @@ function renderSignupHistory(signups) {
   var container = document.getElementById('signupHistoryContainer');
   if (!container) return;
 
-  var season = resolveSeasonView();
+  var season = DATA && DATA.signupSeason;
   var filtered = season
     ? signups.filter(function (s) {
         return s.season === season;

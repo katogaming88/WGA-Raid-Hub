@@ -1661,9 +1661,16 @@ var SEASON_CONFIG_KEYS = [
   // 'MID'/'Midnight Season' when unset so existing teams need no backfill.
   'seasonCodePrefix',
   'seasonDisplayPrefix',
-  // The season an officer is actively planning/prepping (#549), separate
-  // from seasonName (the live raiding season) -- nullable, resolved via
-  // resolveSeasonView() below. Replaces activeSignupSeason (retired).
+  // The season an officer is actively planning/prepping item catalog/BiS/
+  // wishlist scope for (#549), separate from seasonName (the live raiding
+  // season) and deliberately NOT shared with signups -- signup lead time and
+  // item-catalog-prep lead time don't move together in practice (signups for
+  // the next tier routinely open while the current tier is still being
+  // raided; #549 originally bundled the two under one setting, but that
+  // meant opening next-season signups also flipped every raider's Priority
+  // tab/BiS/Wishlist to next season's still-incomplete catalog mid-raid --
+  // corrected same day, see docs/database-decisions.md). Nullable, resolved
+  // via resolveSeasonView() below.
   'seasonView'
 ];
 
@@ -1671,7 +1678,8 @@ var SEASON_CONFIG_KEYS = [
  * Overlays team_settings.config onto DATA, key by key, so a config missing a
  * given key (not backfilled yet, or a brand-new team) keeps whatever the Apps
  * Script core payload already set for it instead of clobbering it with
- * undefined.
+ * undefined. activeSignupSeason maps to DATA.signupSeason, matching the Apps
+ * Script field name tab-season.js already reads/writes.
  * @param {any} data - the DATA object being built from the core chunk
  * @param {Object|null} config - team_settings.config, or null if the query failed/found nothing
  */
@@ -1680,6 +1688,7 @@ function applyTeamSettingsToData(data, config) {
   SEASON_CONFIG_KEYS.forEach(function (key) {
     if (config[key] !== undefined) data[key] = config[key];
   });
+  if (config.activeSignupSeason !== undefined) data.signupSeason = config.activeSignupSeason;
   data.features = config.features || {};
   data.externalLinks = config.externalLinks || {};
   data.blazeCommanderBios = config.blazeCommanderBios || [];

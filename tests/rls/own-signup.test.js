@@ -41,7 +41,7 @@ async function withTxn(fn) {
 }
 
 // Inserts a season_signups row as postgres (bypasses RLS), owned by
-// SIGNUP_OWNER_T1 unless overridden. team 1's seasonView is 'seed-season'
+// SIGNUP_OWNER_T1 unless overridden. team 1's active season is 'seed-season'
 // (supabase/seed.sql); classes_specs id 1 is the only seeded row (Mage/Frost).
 function insertSignup(q, overrides) {
   const row = {
