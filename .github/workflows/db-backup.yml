@@ -82,6 +82,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Check required secrets are set
+        id: check_secrets
         env:
           DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
@@ -99,6 +100,7 @@ jobs:
           fi
 
       - name: Install postgresql-client-17
+        id: install_client
         run: |
           sudo install -d /usr/share/postgresql-common/pgdg
           sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
@@ -107,16 +109,19 @@ jobs:
           sudo apt-get install -y postgresql-client-17
 
       - name: Dump public schema (schema + data)
+        id: dump_public
         env:
           DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: /usr/lib/postgresql/17/bin/pg_dump -Fc -n public --dbname "$DB_URL" -f public.dump
 
       - name: Dump auth data (users + identities, data only)
+        id: dump_auth
         env:
           DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: /usr/lib/postgresql/17/bin/pg_dump -Fc --data-only -t auth.users -t auth.identities --dbname "$DB_URL" -f auth.dump
 
       - name: Verify both dumps restore
+        id: verify_restore
         env:
           PGPASSWORD: postgres
         run: |
@@ -159,6 +164,7 @@ jobs:
           /usr/lib/postgresql/17/bin/pg_restore --list auth.dump > /dev/null
 
       - name: Upload dumps to R2
+        id: upload_r2
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -168,3 +174,59 @@ jobs:
           ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
           aws s3 cp public.dump "s3://wga-raid-hub-backups/pg/wga-${DATE}.dump" --endpoint-url "$ENDPOINT"
           aws s3 cp auth.dump "s3://wga-raid-hub-backups/pg/wga-auth-${DATE}.dump" --endpoint-url "$ENDPOINT"
+
+      # #545: scheduled-workflow failure emails only reach whoever last
+      # touched this file -- Discord is where the team already watches
+      # deploy status (discord-deploy.yml), so backup failures reuse the
+      # same DISCORD_WEBHOOK_URL secret and curl-posted-embed shape rather
+      # than a second notification channel. `if: failure()` runs regardless
+      # of which step above failed (including the missing-secret guard --
+      # intentionally noisy: an unprotected database should nag nightly
+      # until secrets are configured). Each earlier step has an `id` so this
+      # can report which one actually failed, since GitHub doesn't expose
+      # that directly.
+      - name: Notify Discord on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW: ${{ github.workflow }}
+          S_SECRETS: ${{ steps.check_secrets.outcome }}
+          S_INSTALL: ${{ steps.install_client.outcome }}
+          S_DUMP_PUBLIC: ${{ steps.dump_public.outcome }}
+          S_DUMP_AUTH: ${{ steps.dump_auth.outcome }}
+          S_VERIFY: ${{ steps.verify_restore.outcome }}
+          S_UPLOAD: ${{ steps.upload_r2.outcome }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_WEBHOOK_URL is not set -- cannot post, but the run above already failed loudly on its own."
+            exit 0
+          fi
+
+          FAILED_STEP="unknown step"
+          [ "$S_SECRETS" = "failure" ] && FAILED_STEP="Check required secrets are set"
+          [ "$S_INSTALL" = "failure" ] && FAILED_STEP="Install postgresql-client-17"
+          [ "$S_DUMP_PUBLIC" = "failure" ] && FAILED_STEP="Dump public schema (schema + data)"
+          [ "$S_DUMP_AUTH" = "failure" ] && FAILED_STEP="Dump auth data (users + identities, data only)"
+          [ "$S_VERIFY" = "failure" ] && FAILED_STEP="Verify both dumps restore"
+          [ "$S_UPLOAD" = "failure" ] && FAILED_STEP="Upload dumps to R2"
+
+          PAYLOAD=$(cat <<EOF
+          {
+            "embeds": [{
+              "title": "Nightly backup failed",
+              "color": 15158332,
+              "fields": [
+                { "name": "Workflow", "value": "${WORKFLOW}", "inline": true },
+                { "name": "Failed step", "value": "${FAILED_STEP}", "inline": true }
+              ],
+              "url": "${RUN_URL}"
+            }]
+          }
+          EOF
+          )
+
+          curl -s -o /dev/null -w "%{http_code}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK_URL"
