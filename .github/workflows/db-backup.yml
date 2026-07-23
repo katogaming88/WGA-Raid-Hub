@@ -206,7 +206,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           WORKFLOW: ${{ github.workflow }}
           USAGE_LIMIT_BYTES: 10000000000
-          ALERT_PCT: 80
+          ALERT_PCT: 0
         run: |
           ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
