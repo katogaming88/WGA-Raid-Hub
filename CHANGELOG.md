@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.47.2] - 2026-07-23
+
+### Frontend
+
+- Fixed the Priority tab's boss filter dropdown not picking up newer-season bosses when "Show all seasons" was checked -- `populateBossFilters()` hardcoded the current-season-only scope and only ran once at data load, so toggling the checkbox never refreshed it. Now each dropdown (Priority List, Unmanaged Items) rebuilds independently against its own tab's checkbox state, re-running on toggle instead of just once.
+
 ## [3.47.1] - 2026-07-22
 
 ### Frontend
