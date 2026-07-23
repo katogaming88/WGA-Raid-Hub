@@ -82,4 +82,14 @@ This writes `items_insert.sql` -- a ready-to-paste `insert into items (...)` sta
 
 `items.csv` columns match the `items` table (`wow_item_id, name, slot, armor_type, sort_id, icon, wcl_zone_id`) -- `sort_id` is left blank and needs manual fill-in per issue #132's guidance. `wcl_zone_id` is filled in automatically from the `WCL_ZONE_ID` constant (#535) -- not `ZONE_ID`, which is Wowhead's own zone numbering -- it scopes the item to this tier so old-season loot stops showing up in the Priority tab, BiS grid, and Wishlist once a newer tier's items are imported. Import via the Supabase SQL Editor, not the CLI (per project convention, DB writes are manual): first `items_insert.sql` (see above), then the `item_bosses` inserts. `item_bosses_raw.csv` uses `wow_item_id` as a placeholder key -- swap it for the DB-assigned `id` after `items.csv` is imported, same as noted in the script's header comment; once `items_insert.sql` has run, `item_bosses_raw.csv` itself can be discarded (it's not tracked in git, and it's fully superseded by `item-bosses-sql.js`'s output plus any manual in-game boss verification).
 
+## Fetching secondary stats (#560)
+
+Once the new tier's rows exist in `items`, run `scripts/fetch-item-stats.js` to backfill `secondary_stats` (which of Crit/Haste/Mastery/Vers the item rolls, used by the Priority tab):
+
+1. In the Supabase SQL Editor, run `select wow_item_id from items where wow_item_id is not null` and export the result as `item_ids.csv`.
+2. `node scripts/fetch-item-stats.js` -- requires `BLIZZARD_CLIENT_ID`/`BLIZZARD_CLIENT_SECRET` in `.env` (see #559).
+3. Paste the generated `item_stats_update.sql` into the Supabase SQL Editor.
+
+**A new tier's items 404 against Blizzard's API for as long as the tier is still PTR-only** -- confirmed live during #560's initial backfill, Blizzard's static item database lags PTR the same way Wowhead's tooltip stats do. The script logs these separately and leaves them untouched; re-run once the tier ships live to pick them up (existing rows are unaffected -- only items present in `item_ids.csv` this run get a new `update` statement).
+
 Once you're ready to go live with the new tier, add its `WCL_ZONE_ID` to `raid_zones` and to the team's `raidProgression` in **Season Settings** -- that's what flips the season filter (#535) over to showing these items by default instead of requiring "Show all seasons".
