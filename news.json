@@ -1,5 +1,12 @@
 [
   {
+    "date": "2026-07-23",
+    "category": "Change",
+    "version": "3.47.3",
+    "title": "Priority tab and Wishlist got a visual refresh",
+    "body": "Item rows in the Priority tab and your Wishlist now show a larger item icon next to the name, with stat pills (Crit/Haste/Mastery/Vers, whichever the item actually rolls) and the boss it drops from laid out more clearly."
+  },
+  {
     "date": "2026-07-22",
     "category": "Change",
     "version": "3.47.0",
