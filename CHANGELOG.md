@@ -17,6 +17,7 @@ with each release split into `### Frontend` (drives the version number) and
 ### Backend
 
 - Added the restore runbook to `docs/backup-restore.md` (#544): getting a dump out of R2, selective restore after a bad delete (trigger, FK-order, and sequence caveats), and full project rebuild -- including `supabase migration repair` (a restored project has no migration history, so an unrepaired one would replay every migration on the next `db push`) and recreating the four `auth.users` FKs that cannot restore against an empty auth store. Plus a drill procedure and drill log; restores get rehearsed, not just documented.
+- `.github/workflows/db-backup.yml` now posts a Discord embed (reusing the existing `DISCORD_WEBHOOK_URL` deploy-notification channel/secret) when a nightly backup run fails, naming which step failed and linking straight to the run (#545). Scheduled-workflow failure emails only reach whoever last touched the file; this puts it where the team already watches deploy status. Fires on any failure, including the missing-secret guard -- intentionally noisy, since an unprotected database should nag nightly until it's fixed.
 
 ## [3.47.0] - 2026-07-22
 
