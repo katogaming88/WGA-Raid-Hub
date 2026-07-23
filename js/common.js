@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.47.2';
+var VERSION = '3.47.3';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -1709,7 +1709,7 @@ function fetchSupabaseItems() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('items')
-    .select('id, wow_item_id, name, slot, armor_type, is_placeholder, icon, wcl_zone_id')
+    .select('id, wow_item_id, name, slot, armor_type, is_placeholder, icon, wcl_zone_id, secondary_stats, is_ptr')
     .then(function (result) {
       if (result.error) {
         console.warn('Supabase items query failed.', result.error.message);
@@ -1770,6 +1770,8 @@ function buildItemMaps(rows) {
   var itemWowIds = {};
   var itemIcons = {};
   var itemZones = {};
+  var itemSecondaryStats = {};
+  var itemIsPtr = {};
   (rows || []).forEach(function (row) {
     var name = String(row.name || '').trim();
     if (!name) return;
@@ -1780,6 +1782,8 @@ function buildItemMaps(rows) {
     if (row.wow_item_id != null) itemWowIds[name] = row.wow_item_id;
     if (row.icon) itemIcons[name] = row.icon;
     if (row.wcl_zone_id != null) itemZones[name] = row.wcl_zone_id;
+    if (row.secondary_stats) itemSecondaryStats[name] = row.secondary_stats;
+    if (row.is_ptr) itemIsPtr[name] = true;
   });
   return {
     itemSlots: itemSlots,
@@ -1788,8 +1792,114 @@ function buildItemMaps(rows) {
     itemIds: itemIds,
     itemWowIds: itemWowIds,
     itemIcons: itemIcons,
-    itemZones: itemZones
+    itemZones: itemZones,
+    itemSecondaryStats: itemSecondaryStats,
+    itemIsPtr: itemIsPtr
   };
+}
+
+// Short display labels for items.secondary_stats' Blizzard-enum values (#560),
+// matching a similar tool's (Viserio) pill wording -- "Crit"/"Haste" etc, not
+// the full "Crit Rating" -- since these are meant to read as compact badges,
+// not full stat names.
+var STAT_PILL_LABELS = {
+  CRIT_RATING: 'Crit',
+  HASTE_RATING: 'Haste',
+  MASTERY_RATING: 'Mastery',
+  VERSATILITY: 'Vers'
+};
+
+// Builds the small muted stat-pill badges (#561) from a
+// DATA.itemSecondaryStats[name] array. Empty/missing (still-null column, or
+// an item confirmed to roll none, e.g. most trinkets) renders no pills.
+function statPillListHtml(types) {
+  return (types || [])
+    .map(function (type) {
+      var label = STAT_PILL_LABELS[type];
+      return label ? '<span class="stat-pill">' + label + '</span>' : '';
+    })
+    .join('');
+}
+
+// Icon + Epic-purple name on one line, then slot/stat-pills/boss on a second
+// (#561) -- shared by the Priority tab (js/tabs/tab-priority.js) and the
+// raider Wishlist (js/wishlist.js, previously its own near-identical
+// wishlistItemNameHtml() before the Priority restyle needed the same
+// treatment plus stat pills) so both stay pixel-identical rather than
+// drifting apart as two copies. Epic purple is hardcoded, not data-driven:
+// raid drops are effectively always Epic quality, so there's no per-item
+// value worth fetching/storing just to reproduce the one color every item
+// already gets.
+//
+// The icon <img> is drawn from our own items.icon column (populated by
+// scripts/fetch-items.js from Wowhead's item XML) rather than depending on
+// the Wowhead tooltip widget rendering one -- that widget only works when its
+// external script actually loads, which ad-blockers commonly block for
+// wow.zamimg.com specifically (#515 follow-up, confirmed live: the widget
+// silently no-ops and item names rendered as bare unstyled links). The
+// wowhead-class link is kept around the icon+name anyway as a bonus hover
+// tooltip for whoever's browser does let it load; index.html/officer.html set
+// window.whTooltips = {colorLinks:true, iconizeLinks:true} before that
+// script, so real rarity coloring layers on top when it works.
+//
+// The link itself points at /ptr/item=<id> instead of the bare /item=<id>
+// for items.is_ptr items -- same root cause as #560's Blizzard/Wowhead
+// backend fetch gap, but on the client side this time: the Wowhead tooltip
+// widget resolves a bare wowhead.com/item=<id> link against live data only,
+// so a still-PTR item's hover tooltip would show empty/wrong stats even
+// though scripts/fetch-item-stats.js already has the real data server-side.
+function itemNameBlockHtml(name, slot) {
+  var wowId = ((DATA && DATA.itemWowIds) || {})[name];
+  var isPtr = ((DATA && DATA.itemIsPtr) || {})[name];
+  var icon = ((DATA && DATA.itemIcons) || {})[name];
+  var boss = ((DATA && DATA.itemBosses) || {})[name];
+  var stats = ((DATA && DATA.itemSecondaryStats) || {})[name];
+  var iconImg = icon
+    ? '<img src="https://wow.zamimg.com/images/wow/icons/large/' + icon + '.jpg" alt="" class="item-icon-lg">'
+    : '';
+
+  // Boss gets its own (third) line rather than sharing the slot/pills line --
+  // at this card's fixed width, a long encounter name (e.g. "The Lost
+  // Explorers") wrapped mid-line looked broken next to the pills instead of
+  // just flowing onto a clean line of its own.
+  var slotPillsParts = [];
+  if (slot) slotPillsParts.push('<span style="color:' + getSlotColor(slot) + ';">' + slot + '</span>');
+  var pills = statPillListHtml(stats);
+  if (pills) slotPillsParts.push(pills);
+  var slotPillsLine = slotPillsParts.length
+    ? '<span class="item-detail-line">' +
+      slotPillsParts.join('<span class="item-detail-sep">&middot;</span>') +
+      '</span>'
+    : '';
+  var bossLine = boss ? '<span class="item-detail-line">' + boss + '</span>' : '';
+
+  // Icon sits beside the whole text stack (name + detail lines), not just
+  // inline with the name, so it's sized to match their combined height
+  // rather than looking cramped next to just the first line.
+  var textStack =
+    '<span style="display:flex;flex-direction:column;min-width:0;">' +
+    '<span style="color:#a335ee;font-weight:600;">' +
+    name +
+    '</span>' +
+    slotPillsLine +
+    bossLine +
+    '</span>';
+  var rowStyle = 'display:flex;align-items:center;gap:0.5rem;flex:1;min-width:10rem;';
+  if (wowId == null) {
+    return '<span style="' + rowStyle + '">' + iconImg + textStack + '</span>';
+  }
+  return (
+    '<a href="https://www.wowhead.com/' +
+    (isPtr ? 'ptr/' : '') +
+    'item=' +
+    wowId +
+    '" class="wowhead" target="_blank" rel="noopener" style="' +
+    rowStyle +
+    'text-decoration:none;">' +
+    iconImg +
+    textStack +
+    '</a>'
+  );
 }
 
 // Maps item_bosses rows (joined through items) to the DATA.itemBosses shape
@@ -2135,6 +2245,8 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.itemWowIds = itemMaps.itemWowIds;
       DATA.itemIcons = itemMaps.itemIcons;
       DATA.itemZones = itemMaps.itemZones;
+      DATA.itemSecondaryStats = itemMaps.itemSecondaryStats;
+      DATA.itemIsPtr = itemMaps.itemIsPtr;
       DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
       var mappedSelfReceived = selfReceivedRows ? mapSupabaseSelfReceived(selfReceivedRows) : null;
       DATA.selfReceived = mappedSelfReceived || {};

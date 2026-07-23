@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.47.3] - 2026-07-23
+
+### Frontend
+
+- Restyled Priority tab item rows (Priority List and Unmanaged Items) and the raider Wishlist: a large item icon beside the name/detail-line stack, Epic-purple item name, then slot/stat-pills ("Crit"/"Haste"/"Mastery"/"Vers", whichever the item actually rolls, per `items.secondary_stats`) on one line and the boss on its own line below (#561). New shared `itemNameBlockHtml()`/`statPillListHtml()` helpers in `js/common.js` -- both tabs previously had separate near-identical implementations (`wishlistItemNameHtml()` in `js/wishlist.js` had no stat pills and only a boss line), now consolidated into one so they can't drift apart. Item level and quality/rarity color stay out of scope: the team evaluates items by max-upgrade track regardless of displayed ilvl, and raid drops are effectively always Epic, so both would be clutter or a hardcoded value not worth fetching. The Wowhead hover-tooltip widget link now points at `/ptr/item=<id>` instead of the live URL for items still on PTR (`items.is_ptr`), so the tooltip shows real stats instead of coming back empty against live-only data -- same root PTR-data-lag issue as #560's backend fetch, just on the client-side widget this time.
+
+### Backend
+
+- Added `items.is_ptr` (#561 follow-up) so `itemNameBlockHtml()` knows which items still need a `/ptr/`-prefixed Wowhead link. Backfilled true for the current tier (`wcl_zone_id = 53`); flip back to `false` once it ships live, same time as the existing `WCL_ZONE_ID`-into-`raid_zones` go-live step (`docs/updating-fetch-items-for-new-tier.md`).
+
 ## [3.47.2] - 2026-07-23
 
 ### Frontend

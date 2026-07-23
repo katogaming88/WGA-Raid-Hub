@@ -94,6 +94,7 @@ erDiagram
   text icon
   jsonb secondary_stats
   integer wcl_zone_id
+  boolean is_ptr
 }
 ```
 
