@@ -2896,13 +2896,14 @@ function submitMPlusExclusionForm(nameRealm, firstName) {
   var notesEl = /** @type {HTMLTextAreaElement} */ (document.getElementById('mplusNotes-' + firstName));
   var formEl = document.getElementById('mplusForm-' + firstName);
   var mythCheckEl = /** @type {HTMLInputElement} */ (document.getElementById('mplusMythCheck-' + firstName));
-  var socketCheckEl = /** @type {HTMLInputElement} */ (document.getElementById('mplusSocketCheck-' + firstName));
+  var socketCountEl = /** @type {HTMLSelectElement} */ (document.getElementById('mplusSocketCount-' + firstName));
   var checkErrorEl = document.getElementById('mplusCheckError-' + firstName);
   if (!urlEl || !urlEl.value.trim()) {
     if (urlEl) urlEl.style.borderColor = 'var(--melee)';
     return;
   }
-  if (!mythCheckEl || !mythCheckEl.checked || !socketCheckEl || !socketCheckEl.checked) {
+  var socketCount = socketCountEl && socketCountEl.value !== '' ? parseInt(socketCountEl.value, 10) : NaN;
+  if (!mythCheckEl || !mythCheckEl.checked || isNaN(socketCount) || socketCount < 2) {
     if (checkErrorEl) checkErrorEl.style.display = '';
     return;
   }
@@ -3645,9 +3646,17 @@ function renderProfile(firstName, backTo, container) {
         '<label style="display:flex;align-items:flex-start;gap:0.4rem;font-size:1.02rem;color:var(--text);margin-bottom:0.4rem;"><input type="checkbox" id="mplusMythCheck-' +
         player.firstName +
         '" style="margin-top:0.2rem;">I am 6/6 Myth track in every M+-obtainable slot.</label>' +
-        '<label style="display:flex;align-items:flex-start;gap:0.4rem;font-size:1.02rem;color:var(--text);margin-bottom:0.5rem;"><input type="checkbox" id="mplusSocketCheck-' +
+        '<div style="display:flex;align-items:center;gap:0.5rem;font-size:1.02rem;color:var(--text);margin-bottom:0.5rem;">Gem sockets filled (Helm/Bracer/Belt): ' +
+        '<select id="mplusSocketCount-' +
         player.firstName +
-        '" style="margin-top:0.2rem;">I have gem sockets filled in at least 2 of my 3 socketed slots (Helm/Bracer/Belt).</label>' +
+        '" style="background:var(--bg-alt);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:0.2rem 0.4rem;font-size:1rem;">' +
+        '<option value="">Select...</option>' +
+        '<option value="3">3 of 3</option>' +
+        '<option value="2">2 of 3</option>' +
+        '<option value="1">1 of 3</option>' +
+        '<option value="0">0 of 3</option>' +
+        '</select>' +
+        '</div>' +
         '<input type="url" id="mplusUrl-' +
         player.firstName +
         '" value="' +
@@ -3658,7 +3667,7 @@ function renderProfile(firstName, backTo, container) {
         '" placeholder="Notes -- e.g. still on a Hero-track raid trinket with no Myth M+ equivalent" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
         '<p id="mplusCheckError-' +
         player.firstName +
-        '" style="display:none;color:var(--melee);font-size:1.02rem;margin:0.4rem 0 0;">Please confirm both checkboxes before submitting.</p>' +
+        '" style="display:none;color:var(--melee);font-size:1.02rem;margin:0.4rem 0 0;">Please confirm the Myth track checkbox and select at least 2 of 3 gem sockets before submitting.</p>' +
         '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
         '<button class="btn btn-gold" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="submitMPlusExclusionForm(\'' +
         nrMplusR +
@@ -3688,9 +3697,17 @@ function renderProfile(firstName, backTo, container) {
         '<label style="display:flex;align-items:flex-start;gap:0.4rem;font-size:1.02rem;color:var(--text);margin-bottom:0.4rem;"><input type="checkbox" id="mplusMythCheck-' +
         player.firstName +
         '" style="margin-top:0.2rem;">I am 6/6 Myth track in every M+-obtainable slot.</label>' +
-        '<label style="display:flex;align-items:flex-start;gap:0.4rem;font-size:1.02rem;color:var(--text);margin-bottom:0.5rem;"><input type="checkbox" id="mplusSocketCheck-' +
+        '<div style="display:flex;align-items:center;gap:0.5rem;font-size:1.02rem;color:var(--text);margin-bottom:0.5rem;">Gem sockets filled (Helm/Bracer/Belt): ' +
+        '<select id="mplusSocketCount-' +
         player.firstName +
-        '" style="margin-top:0.2rem;">I have gem sockets filled in at least 2 of my 3 socketed slots (Helm/Bracer/Belt).</label>' +
+        '" style="background:var(--bg-alt);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:0.2rem 0.4rem;font-size:1rem;">' +
+        '<option value="">Select...</option>' +
+        '<option value="3">3 of 3</option>' +
+        '<option value="2">2 of 3</option>' +
+        '<option value="1">1 of 3</option>' +
+        '<option value="0">0 of 3</option>' +
+        '</select>' +
+        '</div>' +
         '<input type="url" id="mplusUrl-' +
         player.firstName +
         '" value="' +
@@ -3701,7 +3718,7 @@ function renderProfile(firstName, backTo, container) {
         '" placeholder="Notes -- e.g. still on a Hero-track raid trinket with no Myth M+ equivalent" rows="2" class="self-received-notes" style="max-width:100%;margin-top:0.4rem;"></textarea>' +
         '<p id="mplusCheckError-' +
         player.firstName +
-        '" style="display:none;color:var(--melee);font-size:1.02rem;margin:0.4rem 0 0;">Please confirm both checkboxes before submitting.</p>' +
+        '" style="display:none;color:var(--melee);font-size:1.02rem;margin:0.4rem 0 0;">Please confirm the Myth track checkbox and select at least 2 of 3 gem sockets before submitting.</p>' +
         '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
         '<button class="btn btn-gold" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="submitMPlusExclusionForm(\'' +
         nrMplus +
