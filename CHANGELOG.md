@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.1] - 2026-07-23
+
+### Frontend
+
+- Fixed `input[type="date"]` calendar-picker icons rendering black (invisible) against the dark background. Their `filter:invert(1)` predates `:root`'s `color-scheme: dark` (#568); the browser now renders the icon white natively on its own, so the leftover invert filter was flipping it back to black -- removed.
+
 ## [3.49.0] - 2026-07-23
 
 ### Frontend
