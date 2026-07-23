@@ -16,6 +16,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ### Backend
 
+- The nightly backup now checks how full the R2 bucket is after each upload and warns in Discord once it reaches 80% of the 10 GB free allotment (#547). R2 has no native percent-full alert, and nothing prunes old dumps yet, so without this the first sign of trouble would be an overage charge. Crossing the threshold warns without failing the run; a check that cannot read the bucket fails it, so the alert cannot quietly stop watching.
 - Executed the first restore drill (#544) against a real R2 dump and recorded it in the runbook's drill log: full restore clean (every ignored error matched the documented expected list), row counts matched prod exactly, per-table selective restore rehearsed. One finding folded back into the runbook: `season_signups`'s sequence is `signups_id_seq` (legacy name), so sequence resets must go through `pg_get_serial_sequence()` rather than guessed names.
 
 ## [3.47.1] - 2026-07-22
