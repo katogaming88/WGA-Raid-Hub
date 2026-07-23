@@ -84,7 +84,7 @@ jobs:
       - name: Check required secrets are set
         id: check_secrets
         env:
-          DB_URL: ${{ secrets.SUPABASE_DB_URL_TEST_TYPO_545 }}
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
