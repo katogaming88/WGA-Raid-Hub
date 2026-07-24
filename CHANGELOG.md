@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.3] - 2026-07-23
+
+### Frontend
+
+- Fixed item hover-tooltips (Priority tab, Wishlist) always rendering at the same horizontal position regardless of cursor location. Root cause, found by reading the Wowhead widget's own source directly: `itemNameBlockHtml()`'s `<a class="wowhead">` (the actual hover target) had `flex:1` applied to itself, stretching it to span the entire row width instead of just the visible icon+name. The widget anchors its tooltip off the hovered element's own bounding box, not raw cursor pixels -- since every row's anchor shared the same right edge (each `flex:1`-stretched to fill its row identically), every tooltip landed at the same X. `flex:1`/`min-width` now live on a non-interactive wrapper for layout; the `<a>` itself sizes to just its visible content so the widget anchors correctly. Confirmed cross-browser (Edge, Brave with Shields fully disabled), ruling out extensions/fingerprinting-protection as the cause.
+- `officer.html` now also sets `window.whTooltips` (`{colorLinks: true, iconizeLinks: true, iconSize: 'small'}`) before loading the Wowhead widget script, matching `index.html` -- this page was running the widget entirely unconfigured, missed when item-hover tooltips were added to the Priority tab (#567), which only wired the config into `index.html`. Not the root cause of the above, but a real gap worth closing regardless.
+
 ## [3.49.2] - 2026-07-23
 
 ### Frontend

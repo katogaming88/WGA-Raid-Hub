@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.2';
+var VERSION = '3.49.3';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -1945,17 +1945,31 @@ function itemNameBlockHtml(name, slot) {
   if (wowId == null) {
     return '<span style="' + rowStyle + '">' + iconImg + textStack + '</span>';
   }
+  // The wowhead widget's hover-tooltip positioning anchors off the hovered
+  // element's own bounding box, not raw cursor coordinates -- confirmed by
+  // reading power.js directly after a live report of every item's tooltip
+  // rendering at the same fixed horizontal position regardless of cursor,
+  // reproducible across browsers/machines (not a browser/extension quirk).
+  // flex:1 directly on the <a> (rowStyle, same as the no-wowId span above)
+  // stretched the actual hover target to span the whole row -- every row's
+  // element then shared the same right edge, so the widget's element-based
+  // anchor was identical row to row (only vertical position, which does
+  // still vary per row's own top, looked correct). flex:1/min-width stay on
+  // a non-interactive wrapper for layout; the <a> itself sizes to just its
+  // visible icon+text content so the widget anchors off the right place.
   return (
+    '<span style="' +
+    rowStyle +
+    '">' +
     '<a href="https://www.wowhead.com/' +
     (isPtr ? 'ptr/' : '') +
     'item=' +
     wowId +
-    '" class="wowhead" target="_blank" rel="noopener" style="' +
-    rowStyle +
-    'text-decoration:none;">' +
+    '" class="wowhead" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:0.5rem;min-width:0;text-decoration:none;">' +
     iconImg +
     textStack +
-    '</a>'
+    '</a>' +
+    '</span>'
   );
 }
 
