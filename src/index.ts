@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { Client, GatewayIntentBits, EmbedBuilder, TextChannel, REST, Routes, SlashCommandBuilder, MessageFlags, PermissionFlagsBits } from 'discord.js';
 import express, { Request, Response } from 'express';
-import { fetchNudgeCandidates, NudgeCategory } from './wishlistStatus';
+import { fetchNudgeCandidates, NudgeCategory, profileDeepLink } from './wishlistStatus';
 import { filterAndRecordNudges } from './nudgeLog';
 
 const rawToken = process.env.DISCORD_BOT_TOKEN;
@@ -215,7 +215,12 @@ const NUDGE_MESSAGES: Record<NudgeCategory, string> = {
   'incomplete-wishlist': 'Your wishlist is missing a real BiS pick for one or more slots.',
 };
 
-function buildNudgeEmbed(nameRealm: string, categories: NudgeCategory[], missingBisRows: string[]): EmbedBuilder {
+function buildNudgeEmbed(
+  nameRealm: string,
+  firstName: string,
+  categories: NudgeCategory[],
+  missingBisRows: string[]
+): EmbedBuilder {
   const lines = categories.map(cat => {
     if (cat === 'incomplete-wishlist' && missingBisRows.length) {
       return `- ${NUDGE_MESSAGES[cat]} Missing: **${missingBisRows.join(', ')}**`;
@@ -227,7 +232,8 @@ function buildNudgeEmbed(nameRealm: string, categories: NudgeCategory[], missing
     .setTitle(`${TEAM_NAME} -- Setup Reminder`)
     .setDescription(`Hey ${nameRealm}! A quick check found your loot setup is missing something:\n\n${lines.join('\n')}`)
     .setFooter({ text: 'This helps officers award loot correctly -- please take a moment to update it.' });
-  if (SITE_URL) embed.addFields({ name: 'Update it here', value: SITE_URL });
+  const link = SITE_URL ? profileDeepLink(SITE_URL, firstName, categories) : null;
+  if (link) embed.addFields({ name: 'Update it here', value: link });
   return embed;
 }
 
@@ -292,7 +298,7 @@ client.on('interactionCreate', async (interaction) => {
         }
         try {
           const user = await interaction.client.users.fetch(candidate.discordId);
-          await user.send({ embeds: [buildNudgeEmbed(candidate.nameRealm, due, candidate.missingBisRows)] });
+          await user.send({ embeds: [buildNudgeEmbed(candidate.nameRealm, candidate.firstName, due, candidate.missingBisRows)] });
           nudged.push(candidate.nameRealm);
         } catch {
           failed.push(candidate.nameRealm);
