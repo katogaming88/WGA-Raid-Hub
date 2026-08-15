@@ -21,3 +21,11 @@ services:
         sync: false
       - key: TEAM_NAME
         sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: TEAM_ID
+        sync: false
+      - key: SITE_URL
+        sync: false

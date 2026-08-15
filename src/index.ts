@@ -1,6 +1,8 @@
 import 'dotenv/config';
-import { Client, GatewayIntentBits, EmbedBuilder, TextChannel, REST, Routes, SlashCommandBuilder, MessageFlags } from 'discord.js';
+import { Client, GatewayIntentBits, EmbedBuilder, TextChannel, REST, Routes, SlashCommandBuilder, MessageFlags, PermissionFlagsBits } from 'discord.js';
 import express, { Request, Response } from 'express';
+import { fetchNudgeCandidates, NudgeCategory } from './wishlistStatus';
+import { filterAndRecordNudges } from './nudgeLog';
 
 const rawToken = process.env.DISCORD_BOT_TOKEN;
 const rawChannelId = process.env.DISCORD_CHANNEL_ID;
@@ -24,6 +26,11 @@ const ROSTER_SCRIPT_URL = process.env.ROSTER_SCRIPT_URL;
 const GUILD_ID = process.env.DISCORD_GUILD_ID;
 const TEAM_NAME = process.env.TEAM_NAME ?? 'Team';
 const PORT = process.env.PORT ?? '3000';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const TEAM_ID = process.env.TEAM_ID ? Number(process.env.TEAM_ID) : undefined;
+const SITE_URL = process.env.SITE_URL;
+const NUDGE_LOG_PATH = process.env.NUDGE_LOG_PATH ?? './data/nudge-log.json';
 
 const commands = [
   new SlashCommandBuilder()
@@ -73,6 +80,11 @@ const commands = [
   new SlashCommandBuilder()
     .setName('officers')
     .setDescription('List current officers and their claimed Discord usernames')
+    .toJSON(),
+  new SlashCommandBuilder()
+    .setName('nudge-missing')
+    .setDescription('DM raiders missing a wishlist, BiS source link, or a real BiS pick on their wishlist')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .toJSON(),
 ];
 
@@ -197,6 +209,28 @@ function truncateLines(lines: string[], limit = 3800): string {
   return out;
 }
 
+const NUDGE_MESSAGES: Record<NudgeCategory, string> = {
+  'no-wishlist': "You haven't submitted a wishlist yet.",
+  'no-bis-link': "You haven't submitted a BiS source link yet.",
+  'incomplete-wishlist': 'Your wishlist is missing a real BiS pick for one or more slots.',
+};
+
+function buildNudgeEmbed(nameRealm: string, categories: NudgeCategory[], missingBisRows: string[]): EmbedBuilder {
+  const lines = categories.map(cat => {
+    if (cat === 'incomplete-wishlist' && missingBisRows.length) {
+      return `- ${NUDGE_MESSAGES[cat]} Missing: **${missingBisRows.join(', ')}**`;
+    }
+    return `- ${NUDGE_MESSAGES[cat]}`;
+  });
+  const embed = new EmbedBuilder()
+    .setColor(0xe74c3c)
+    .setTitle(`${TEAM_NAME} -- Setup Reminder`)
+    .setDescription(`Hey ${nameRealm}! A quick check found your loot setup is missing something:\n\n${lines.join('\n')}`)
+    .setFooter({ text: 'This helps officers award loot correctly -- please take a moment to update it.' });
+  if (SITE_URL) embed.addFields({ name: 'Update it here', value: SITE_URL });
+  return embed;
+}
+
 // ── Slash command interaction handler ────────────────────────────────────────
 
 client.on('interactionCreate', async (interaction) => {
@@ -229,6 +263,54 @@ client.on('interactionCreate', async (interaction) => {
       }
     } catch {
       await interaction.editReply('Failed to contact Apps Script. Check the logs.').catch(() => null);
+    }
+    return;
+  }
+
+  // ── /nudge-missing ───────────────────────────────────────────────────────
+  if (cmd === 'nudge-missing') {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || TEAM_ID === undefined) {
+      await interaction.reply({ content: 'SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and TEAM_ID must all be configured.', flags: MessageFlags.Ephemeral }).catch(() => null);
+      return;
+    }
+    try {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    } catch {
+      return;
+    }
+    try {
+      const candidates = await fetchNudgeCandidates(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, TEAM_ID);
+      const nudged: string[] = [];
+      const skipped: string[] = [];
+      const failed: string[] = [];
+
+      for (const candidate of candidates) {
+        const due = filterAndRecordNudges(NUDGE_LOG_PATH, candidate.discordId, candidate.categories);
+        if (due.length === 0) {
+          skipped.push(candidate.nameRealm);
+          continue;
+        }
+        try {
+          const user = await interaction.client.users.fetch(candidate.discordId);
+          await user.send({ embeds: [buildNudgeEmbed(candidate.nameRealm, due, candidate.missingBisRows)] });
+          nudged.push(candidate.nameRealm);
+        } catch {
+          failed.push(candidate.nameRealm);
+        }
+      }
+
+      const embed = new EmbedBuilder()
+        .setColor(0xe74c3c)
+        .setTitle('Missing Setup Nudge')
+        .addFields(
+          { name: `Nudged (${nudged.length})`, value: truncateLines(nudged.length ? nudged : ['None']) },
+          { name: `Skipped -- nudged in last 24h (${skipped.length})`, value: truncateLines(skipped.length ? skipped : ['None']) },
+          ...(failed.length ? [{ name: `Couldn't DM -- DMs closed? (${failed.length})`, value: truncateLines(failed) }] : []),
+        );
+      await interaction.editReply({ embeds: [embed] });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      await interaction.editReply(`Error: ${msg}`).catch(() => null);
     }
     return;
   }
