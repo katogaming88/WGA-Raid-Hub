@@ -72,7 +72,7 @@ Each clone has its own `.env` file. Key differences between the two:
 - `PORT` -- team-phoenix omitted (defaults to 3000), team-hellfire-rollers: `3001`
 - `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` -- same WGA Raid Hub Supabase project for both servers (`https://kxgjqnpwfklbgrxdgmmv.supabase.co`); the service role key bypasses row security, so treat it like the bot token (used by `/nudge-missing`)
 - `TEAM_ID` -- WGA Raid Hub's own `teams.id`, **not** `DISCORD_GUILD_ID`: team-phoenix: `1`, team-hellfire-rollers: `2` (used by `/nudge-missing`)
-- `SITE_URL` -- optional, included in nudge DMs as where to go update setup data
+- `SITE_URL` -- optional, WGA Raid Hub's own base URL (e.g. `https://raid.example.com`, no trailing `#`/`/profile`). When set, nudge DMs include a deep link straight to the raider's own profile and the specific sub-tab their issue lives on (Wishlist or BiS) -- requires WGA-Raid-Hub#698 to be deployed.
 - `NUDGE_LOG_PATH` -- optional, where `/nudge-missing`'s 24h-per-raider cooldown is persisted (defaults to `./data/nudge-log.json`, relative to the process's working directory -- survives `pm2 restart` but not a fresh clone)
 
 ## Apps Script integration
