@@ -70,6 +70,10 @@ Each clone has its own `.env` file. Key differences between the two:
 - `APPS_SCRIPT_URL` -- different Apps Script deployment per server (M+ Exclusion Form script, used by /resend)
 - `ROSTER_SCRIPT_URL` -- URL of the deployed WGA Raid Hub Apps Script web app (used by roster slash commands)
 - `PORT` -- team-phoenix omitted (defaults to 3000), team-hellfire-rollers: `3001`
+- `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` -- same WGA Raid Hub Supabase project for both servers (`https://kxgjqnpwfklbgrxdgmmv.supabase.co`); the service role key bypasses row security, so treat it like the bot token (used by `/nudge-missing`)
+- `TEAM_ID` -- WGA Raid Hub's own `teams.id`, **not** `DISCORD_GUILD_ID`: team-phoenix: `1`, team-hellfire-rollers: `2` (used by `/nudge-missing`)
+- `SITE_URL` -- optional, included in nudge DMs as where to go update setup data
+- `NUDGE_LOG_PATH` -- optional, where `/nudge-missing`'s 24h-per-raider cooldown is persisted (defaults to `./data/nudge-log.json`, relative to the process's working directory -- survives `pm2 restart` but not a fresh clone)
 
 ## Apps Script integration
 
