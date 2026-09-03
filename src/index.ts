@@ -20,6 +20,11 @@ const BOT_TOKEN: string = rawToken;
 const CHANNEL_ID: string = rawChannelId;
 const MPLUS_PING_ROLE_ID = process.env.MPLUS_PING_ROLE_ID;
 const ROSTER_PING_ROLE_ID = process.env.ROSTER_PING_ROLE_ID;
+// Optional dedicated channel for raid-calendar RSVP notifications
+// (WGA-Raid-Hub#893); falls back to the main CHANNEL_ID so existing
+// deployments keep working without adding a new env var.
+const ATTENDANCE_CHANNEL_ID = process.env.ATTENDANCE_CHANNEL_ID || CHANNEL_ID;
+const RSVP_PING_ROLE_ID = process.env.RSVP_PING_ROLE_ID;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
 const ROSTER_SCRIPT_URL = process.env.ROSTER_SCRIPT_URL;
@@ -553,8 +558,8 @@ function checkSecret(req: Request, res: Response): boolean {
   return true;
 }
 
-async function fetchTextChannel(res: Response): Promise<TextChannel | null> {
-  const channel = await client.channels.fetch(CHANNEL_ID).catch(() => null);
+async function fetchTextChannel(res: Response, channelId: string = CHANNEL_ID): Promise<TextChannel | null> {
+  const channel = await client.channels.fetch(channelId).catch(() => null);
   if (!channel || !(channel instanceof TextChannel)) {
     res.status(500).json({ error: 'Channel not found or not a text channel' });
     return null;
@@ -847,6 +852,52 @@ app.post('/bis', async (req: Request, res: Response): Promise<void> => {
   if (ROSTER_PING_ROLE_ID) {
     await channel.send({
       content: `<@&${ROSTER_PING_ROLE_ID}> ${pingText}`,
+      embeds: [embed],
+    });
+  } else {
+    await channel.send({ embeds: [embed] });
+  }
+
+  res.json({ ok: true });
+});
+
+// --- Raid calendar RSVP notifications (WGA-Raid-Hub#893) ---
+
+interface RsvpBody {
+  charName?: string;
+  raidDate?: string;
+  status?: string;
+  note?: string;
+  submittedAt?: string;
+}
+
+app.post('/rsvp-status', async (req: Request, res: Response): Promise<void> => {
+  if (!checkSecret(req, res)) return;
+
+  const { charName, raidDate, status, note } = req.body as RsvpBody;
+
+  if (!charName || !raidDate || !status) {
+    res.status(400).json({ error: 'Missing required fields: charName, raidDate, status' });
+    return;
+  }
+
+  const channel = await fetchTextChannel(res, ATTENDANCE_CHANNEL_ID);
+  if (!channel) return;
+
+  const embed = new EmbedBuilder()
+    .setColor(0xe0c23d)
+    .setTitle('Raid RSVP Update')
+    .addFields(
+      { name: 'Player', value: charName },
+      { name: 'Raid Date', value: raidDate },
+      { name: 'Status', value: status },
+      { name: 'Note', value: note || '*(none)*' },
+    )
+    .setFooter({ text: 'Raid Calendar' });
+
+  if (RSVP_PING_ROLE_ID) {
+    await channel.send({
+      content: `<@&${RSVP_PING_ROLE_ID}> ${charName} marked themselves ${status} for ${raidDate}`,
       embeds: [embed],
     });
   } else {
