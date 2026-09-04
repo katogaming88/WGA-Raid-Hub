@@ -39,7 +39,14 @@ const TEAM_SLUGS: Record<number, string> = {
 
 const EMBED_COLOR = 0xe0c23d;
 
-const ROLE_SECTIONS = ['Tank', 'Melee', 'Ranged', 'Heal'] as const;
+// Discord embed fields wrap 3-per-row, and a row's height is set by its
+// tallest field -- Ranged is usually by far the largest group (13+ people
+// on a raid this size vs. 2-5 for the others), so keeping it in the same
+// row as Tank/Melee stretched that whole row to Ranged's height and pushed
+// Heal's row down below all of it. Tank/Melee/Heal are typically much
+// closer in size to each other, so they share row 1; Ranged gets isolated
+// on its own row where its height doesn't drag anything else down with it.
+const ROLE_SECTIONS = ['Tank', 'Melee', 'Heal', 'Ranged'] as const;
 type RoleSection = (typeof ROLE_SECTIONS)[number];
 
 interface PlayerRow {
@@ -177,28 +184,24 @@ async function buildEmbedAndComponents(
 
   const totalCount = roster.length;
 
-  // Discord timestamp markup (<t:unix:t>) renders in each viewer's own
-  // local time/timezone automatically, unlike a plain "HH:MM:SS TIMEZONE"
-  // string -- same format already used for "Submitted At" fields elsewhere
-  // in this bot (src/index.ts).
-  const description =
-    night.start_time && night.timezone
-      ? `<t:${Math.round(zonedTimeToUtc(raidDate, night.start_time, night.timezone).getTime() / 1000)}:t>${
-          night.is_optional ? ' — Optional Night' : ''
-        }`
-      : night.is_optional
-        ? 'Optional Night'
-        : '';
+  // Discord's <t:unix:F> timestamp markup renders the full weekday, date,
+  // AND time in each viewer's own local timezone on one line -- both
+  // halves adjust per viewer, unlike splitting a plain-JS-formatted date
+  // (title) from a separate time string (description), which only ever
+  // reflected the bot server's own locale for the date half. Same <t:...>
+  // format already used for "Submitted At" fields elsewhere in this bot
+  // (src/index.ts), just the :F variant instead of :f/:t.
+  const description = night.start_time
+    ? `<t:${Math.round(
+        zonedTimeToUtc(raidDate, night.start_time, night.timezone || 'America/New_York').getTime() / 1000
+      )}:F>${night.is_optional ? ' — Optional Night' : ''}`
+    : night.is_optional
+      ? 'Optional Night'
+      : '';
 
   const embed = new EmbedBuilder()
     .setColor(EMBED_COLOR)
-    .setTitle(
-      `${ctx.teamName} — Signup Sheet: ${new Date(raidDate + 'T00:00:00').toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-      })}`
-    )
+    .setTitle(`${ctx.teamName} — Signup Sheet`)
     .setDescription(description)
     .setFooter({ text: `${inCount}/${totalCount} available -- Use Refresh to update` });
 
