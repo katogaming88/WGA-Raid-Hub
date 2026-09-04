@@ -907,6 +907,57 @@ app.post('/rsvp-status', async (req: Request, res: Response): Promise<void> => {
   res.json({ ok: true });
 });
 
+// --- Optional raid night RSVP reminders (WGA-Raid-Hub#895) ---
+//
+// DM, not a channel ping (per Kat) -- unlike /rsvp-status above, this isn't
+// guild-wide news, it's a personal nudge that a specific player hasn't
+// responded yet. Called from the optional-rsvp-reminders Edge Function via
+// discord-bot-webhook's relay, one call per due player/checkpoint; the
+// dedup that stops repeat DMs lives on that side (raid_rsvp_reminders_sent),
+// not here -- this route has no memory of its own, same as every other
+// route in this file.
+
+interface OptionalReminderBody {
+  discordId?: string;
+  charName?: string;
+  checkpoint?: '24h' | '2h';
+  raidDate?: string;
+  startTime?: string;
+  timezone?: string;
+}
+
+app.post('/optional-reminder', async (req: Request, res: Response): Promise<void> => {
+  if (!checkSecret(req, res)) return;
+
+  const { discordId, checkpoint, raidDate, startTime, timezone } = req.body as OptionalReminderBody;
+
+  if (!discordId || !checkpoint || !raidDate) {
+    res.status(400).json({ error: 'Missing required fields: discordId, checkpoint, raidDate' });
+    return;
+  }
+
+  const user = await client.users.fetch(discordId).catch(() => null);
+  if (!user) {
+    res.status(500).json({ error: 'Could not resolve Discord user' });
+    return;
+  }
+
+  const when = checkpoint === '24h' ? '24 hours' : '2 hours';
+  const embed = new EmbedBuilder()
+    .setColor(0xe0c23d)
+    .setTitle('Raid RSVP Needed')
+    .setDescription(
+      `This is an optional raid night in ${when} (${raidDate}${startTime ? ', ' + startTime : ''}${timezone ? ' ' + timezone : ''}). You haven't set a status yet -- please RSVP on the calendar.`,
+    );
+
+  // DMs can fail silently (closed DMs, bot blocked, left the server) --
+  // still report ok so the caller marks the reminder sent rather than
+  // retrying forever against a player who can never receive it.
+  await user.send({ embeds: [embed] }).catch(() => null);
+
+  res.json({ ok: true });
+});
+
 app.listen(Number(PORT), () => {
   console.log(`Server listening on port ${PORT}`);
 });
