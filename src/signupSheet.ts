@@ -251,7 +251,22 @@ async function buildEmbedAndComponents(
   return { embed, components: row.components.length ? [row] : [] };
 }
 
-export async function syncSignupSheet(client: Client, ctx: SignupSheetContext, raidDate: string): Promise<void> {
+export interface SyncSignupSheetOptions {
+  // Only runSignupSheetSweep's proactive lead-time post should ever create
+  // a brand-new message -- an RSVP change or a Refresh click must only
+  // ever update a sheet that's already out there. Without this, a raider
+  // RSVPing well before the configured lead time would force the sheet to
+  // appear early, defeating the whole point of a configurable lead time.
+  allowCreate?: boolean;
+}
+
+export async function syncSignupSheet(
+  client: Client,
+  ctx: SignupSheetContext,
+  raidDate: string,
+  options: SyncSignupSheetOptions = {}
+): Promise<void> {
+  const allowCreate = options.allowCreate ?? true;
   const supabase = createClient(ctx.supabaseUrl, ctx.serviceRoleKey);
 
   const { data: nightRows, error: nightErr } = await supabase.rpc('raid_night_info', {
@@ -261,6 +276,20 @@ export async function syncSignupSheet(client: Client, ctx: SignupSheetContext, r
   if (nightErr) throw new Error(`raid_night_info failed: ${nightErr.message}`);
   const night = (nightRows as RaidNightInfoRow[] | null)?.[0];
   if (!night || !night.exists) return;
+
+  if (!allowCreate) {
+    // Read-only check, no claim_raid_signup_sheet call (that function has
+    // an insert side effect) -- if nothing has been posted yet, this call
+    // has no business creating it, and must leave zero trace so the sweep
+    // still sees "nothing exists yet" and creates it at the right time.
+    const { data: existingRow } = await supabase
+      .from('raid_signup_sheets')
+      .select('message_id')
+      .eq('team_id', ctx.teamId)
+      .eq('raid_date', raidDate)
+      .maybeSingle();
+    if (!existingRow || !existingRow.message_id) return;
+  }
 
   const { embed, components } = await buildEmbedAndComponents(supabase, ctx, raidDate, night);
 
