@@ -39,6 +39,10 @@ const TEAM_SLUGS: Record<number, string> = {
 
 const EMBED_COLOR = 0xe0c23d;
 
+// The full set of valid roster roles (classes_specs.role) -- purely for
+// grouping/validation. Column layout (which roles render together, and in
+// what order) is handled separately below by formatColumn(), not by this
+// array's order.
 const ROLE_SECTIONS = ['Tank', 'Melee', 'Ranged', 'Heal'] as const;
 type RoleSection = (typeof ROLE_SECTIONS)[number];
 
@@ -115,6 +119,30 @@ function formatField(name: string, names: string[]): { name: string; value: stri
   return { name: `${name} (${names.length})`, value: names.join('\n') || '*(none)*' };
 }
 
+// Discord's automatic 3-per-row field wrapping makes a field's vertical
+// position depend on every OTHER field sharing its row -- there is no way
+// to get one column's content to render directly below another's using
+// separate fields, regardless of field order (confirmed live: neither
+// Tank/Melee/Ranged/Heal nor Tank/Melee/Heal/Ranged put Heal under Tank
+// the way Wowaudit's own embed does). The only way to guarantee that is to
+// combine multiple sections into ONE field's value -- Wowaudit's Tank and
+// Heal are almost certainly one physical field, not two, which is why
+// Heal's position there is independent of Melee/Ranged's height. Builds
+// one inline field from an ordered list of (label, names) sections; the
+// first non-empty section becomes the field's real header (Discord-styled,
+// bold+larger), later sections get a markdown-bold sub-header inline in
+// the body text instead.
+function formatColumn(sections: Array<{ label: string; names: string[] }>): { name: string; value: string } | null {
+  const nonEmpty = sections.filter(s => s.names.length > 0);
+  if (nonEmpty.length === 0) return null;
+  const [first, ...rest] = nonEmpty;
+  const parts = [first.names.join('\n')];
+  for (const section of rest) {
+    parts.push(`\n**${section.label} (${section.names.length})**\n${section.names.join('\n')}`);
+  }
+  return { name: `${first.label} (${first.names.length})`, value: parts.join('\n') };
+}
+
 async function buildEmbedAndComponents(
   supabase: SupabaseClient,
   ctx: SignupSheetContext,
@@ -177,53 +205,51 @@ async function buildEmbedAndComponents(
 
   const totalCount = roster.length;
 
-  // Discord timestamp markup (<t:unix:t>) renders in each viewer's own
-  // local time/timezone automatically, unlike a plain "HH:MM:SS TIMEZONE"
-  // string -- same format already used for "Submitted At" fields elsewhere
-  // in this bot (src/index.ts).
-  const description =
-    night.start_time && night.timezone
-      ? `<t:${Math.round(zonedTimeToUtc(raidDate, night.start_time, night.timezone).getTime() / 1000)}:t>${
-          night.is_optional ? ' — Optional Night' : ''
-        }`
-      : night.is_optional
-        ? 'Optional Night'
-        : '';
+  // Discord's <t:unix:F> timestamp markup renders the full weekday, date,
+  // AND time in each viewer's own local timezone on one line -- both
+  // halves adjust per viewer, unlike splitting a plain-JS-formatted date
+  // (title) from a separate time string (description), which only ever
+  // reflected the bot server's own locale for the date half. Same <t:...>
+  // format already used for "Submitted At" fields elsewhere in this bot
+  // (src/index.ts), just the :F variant instead of :f/:t.
+  const description = night.start_time
+    ? `<t:${Math.round(
+        zonedTimeToUtc(raidDate, night.start_time, night.timezone || 'America/New_York').getTime() / 1000
+      )}:F>${night.is_optional ? ' — Optional Night' : ''}`
+    : night.is_optional
+      ? 'Optional Night'
+      : '';
 
   const embed = new EmbedBuilder()
     .setColor(EMBED_COLOR)
-    .setTitle(
-      `${ctx.teamName} — Signup Sheet: ${new Date(raidDate + 'T00:00:00').toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-      })}`
-    )
+    .setTitle(`${ctx.teamName} — Signup Sheet`)
     .setDescription(description)
     .setFooter({ text: `${inCount}/${totalCount} available -- Use Refresh to update` });
 
-  // Role columns render 3 inline fields per row -- with 4 sections
-  // (Tank/Melee/Ranged/Heal), the 4th always lands alone on a half-empty
-  // row that reads as squeezed directly against whatever follows. Padding
-  // that row out to 3 with invisible zero-width fields keeps every role
-  // row the same visual width, and a real blank separator field (its own
-  // full-width row) puts clear space before the status/Bench sections
-  // below it.
+  // Tank+Heal share one column (one field), matching Wowaudit's own
+  // layout -- see formatColumn's comment for why this has to be a single
+  // field rather than two separate ones. Melee and Ranged each get their
+  // own column/field.
+  const columns = [
+    formatColumn([
+      { label: 'Tank', names: roleGroups.Tank },
+      { label: 'Heal', names: roleGroups.Heal },
+    ]),
+    formatColumn([{ label: 'Melee', names: roleGroups.Melee }]),
+    formatColumn([{ label: 'Ranged', names: roleGroups.Ranged }]),
+  ];
   let roleFieldCount = 0;
-  for (const role of ROLE_SECTIONS) {
-    const field = formatField(role, roleGroups[role]);
-    if (field) {
-      embed.addFields({ ...field, inline: true });
+  for (const column of columns) {
+    if (column) {
+      embed.addFields({ ...column, inline: true });
       roleFieldCount++;
     }
   }
+  // A real blank field (its own full-width, non-inline row) puts clear
+  // vertical space between the role columns and the status/Bench sections
+  // below -- otherwise whichever column happens to be shortest reads as
+  // running directly into Bench with no visual break.
   if (roleFieldCount > 0) {
-    const remainder = roleFieldCount % 3;
-    if (remainder !== 0) {
-      for (let i = 0; i < 3 - remainder; i++) {
-        embed.addFields({ name: '​', value: '​', inline: true });
-      }
-    }
     embed.addFields({ name: '​', value: '​', inline: false });
   }
 
