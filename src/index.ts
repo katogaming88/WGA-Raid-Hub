@@ -1,4 +1,14 @@
 import 'dotenv/config';
+// @supabase/supabase-js's RealtimeClient constructs a WebSocket internally
+// even for callers (like this bot, and wishlistStatus.ts before it) that
+// never touch realtime -- it expects a native global WebSocket, which only
+// exists from Node 22+. This VM runs Node 20 (per DEPLOYMENT.md), so every
+// createClient() call throws "native WebSocket not found" without this
+// polyfill. `ws` is already a transitive dependency via discord.js; set as
+// a global here, once, before any Supabase client is constructed anywhere
+// in this process.
+import WebSocket from 'ws';
+(globalThis as unknown as { WebSocket: typeof WebSocket }).WebSocket = WebSocket;
 import { Client, GatewayIntentBits, EmbedBuilder, TextChannel, REST, Routes, SlashCommandBuilder, MessageFlags, PermissionFlagsBits } from 'discord.js';
 import express, { Request, Response } from 'express';
 import { fetchNudgeCandidates, NudgeCategory, profileDeepLink } from './wishlistStatus';
