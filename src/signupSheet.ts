@@ -39,14 +39,14 @@ const TEAM_SLUGS: Record<number, string> = {
 
 const EMBED_COLOR = 0xe0c23d;
 
-// Discord embed fields wrap 3-per-row, and a row's height is set by its
-// tallest field -- Ranged is usually by far the largest group (13+ people
-// on a raid this size vs. 2-5 for the others), so keeping it in the same
-// row as Tank/Melee stretched that whole row to Ranged's height and pushed
-// Heal's row down below all of it. Tank/Melee/Heal are typically much
-// closer in size to each other, so they share row 1; Ranged gets isolated
-// on its own row where its height doesn't drag anything else down with it.
-const ROLE_SECTIONS = ['Tank', 'Melee', 'Heal', 'Ranged'] as const;
+// Discord lays out inline embed fields into 3 fixed columns, not
+// uniform-height rows: field 1 -> column 1, field 2 -> column 2, field 3 ->
+// column 3, field 4 wraps back to column 1 and continues immediately below
+// field 1 -- independent of how tall column 3 (Ranged, usually by far the
+// largest group) gets. Tank/Melee/Ranged/Heal in that order puts Heal
+// directly under Tank, matching Wowaudit's own layout exactly (confirmed
+// against a live Wowaudit screenshot) -- no padding/reordering needed.
+const ROLE_SECTIONS = ['Tank', 'Melee', 'Ranged', 'Heal'] as const;
 type RoleSection = (typeof ROLE_SECTIONS)[number];
 
 interface PlayerRow {
@@ -205,13 +205,6 @@ async function buildEmbedAndComponents(
     .setDescription(description)
     .setFooter({ text: `${inCount}/${totalCount} available -- Use Refresh to update` });
 
-  // Role columns render 3 inline fields per row -- with 4 sections
-  // (Tank/Melee/Ranged/Heal), the 4th always lands alone on a half-empty
-  // row that reads as squeezed directly against whatever follows. Padding
-  // that row out to 3 with invisible zero-width fields keeps every role
-  // row the same visual width, and a real blank separator field (its own
-  // full-width row) puts clear space before the status/Bench sections
-  // below it.
   let roleFieldCount = 0;
   for (const role of ROLE_SECTIONS) {
     const field = formatField(role, roleGroups[role]);
@@ -220,13 +213,11 @@ async function buildEmbedAndComponents(
       roleFieldCount++;
     }
   }
+  // A real blank field (its own full-width, non-inline row) puts clear
+  // vertical space between the role columns and the status/Bench sections
+  // below -- otherwise whichever column happens to be shortest reads as
+  // running directly into Bench with no visual break.
   if (roleFieldCount > 0) {
-    const remainder = roleFieldCount % 3;
-    if (remainder !== 0) {
-      for (let i = 0; i < 3 - remainder; i++) {
-        embed.addFields({ name: '​', value: '​', inline: true });
-      }
-    }
     embed.addFields({ name: '​', value: '​', inline: false });
   }
 
