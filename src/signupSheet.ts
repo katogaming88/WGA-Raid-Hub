@@ -39,6 +39,23 @@ const TEAM_SLUGS: Record<number, string> = {
 
 const EMBED_COLOR = 0xe0c23d;
 
+// Discord only widens an embed beyond its normal narrow max-width when a
+// full `image` is set (not `thumbnail` -- confirmed live: a thumbnail made
+// no difference at all). The image's own content doesn't matter for this,
+// only that one is present and wide enough (~600px+ source width hits the
+// ceiling; 900/1200 gained nothing further in testing) -- so each team's
+// own site header (captured as a static PNG, WGA-Raid-Hub's
+// assets/banners/<slug>-header.png, 900px wide) doubles as both real
+// branding and the width trigger, rather than a purpose-built graphic or a
+// plain color block. Hosted via raw.githubusercontent.com pointed at
+// main (not the GitHub Pages URL used for calendar.html links elsewhere in
+// this file) -- available on any commit immediately, no Pages
+// publish-and-propagate lag.
+const TEAM_BANNER_URLS: Record<number, string> = {
+  1: 'https://raw.githubusercontent.com/katogaming88/WGA-Raid-Hub/main/assets/banners/phoenix-header.png',
+  2: 'https://raw.githubusercontent.com/katogaming88/WGA-Raid-Hub/main/assets/banners/hellfire-header.png',
+};
+
 // The full set of valid roster roles (classes_specs.role) -- purely for
 // grouping/validation. Column layout (which roles render together, and in
 // what order) is handled separately below by formatColumn(), not by this
@@ -225,6 +242,8 @@ async function buildEmbedAndComponents(
     .setTitle(`${ctx.teamName} — Signup Sheet`)
     .setDescription(description)
     .setFooter({ text: `${inCount}/${totalCount} available -- Use Refresh to update` });
+  const bannerUrl = TEAM_BANNER_URLS[ctx.teamId];
+  if (bannerUrl) embed.setImage(bannerUrl);
 
   // Tank+Heal share one column (one field), matching Wowaudit's own
   // layout -- see formatColumn's comment for why this has to be a single
