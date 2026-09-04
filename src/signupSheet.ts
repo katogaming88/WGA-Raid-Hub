@@ -1,0 +1,335 @@
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder, TextChannel } from 'discord.js';
+
+// Aggregated Discord signup sheet (WGA-Raid-Hub#900, part of #640) -- one
+// message per raid night showing the whole roster's RSVP status at a
+// glance, edited in place as people respond. Fully separate from the
+// existing per-status-change ping (/rsvp-status, WGA-Raid-Hub#893) -- that
+// stays untouched.
+//
+// All the logic lives here rather than split with a site-side Edge
+// Function: the Refresh button and the proactive lead-time sweep both need
+// to rebuild the exact same embed independently of any site-triggered
+// event, so the grouping/formatting logic has to exist here regardless.
+// Read-only display -- no Discord-side status-setting (that's a separate,
+// unscoped future issue). Uses the bot's own service-role Supabase client,
+// same precedent as wishlistStatus.ts's fetchNudgeCandidates() (already
+// used by /nudge-missing).
+
+export interface SignupSheetContext {
+  supabaseUrl: string;
+  serviceRoleKey: string;
+  teamId: number;
+  teamName: string;
+  siteUrl?: string;
+  fallbackChannelId: string;
+}
+
+// team_id here is WGA Raid Hub's own Supabase teams.id, unrelated to
+// DISCORD_GUILD_ID -- same mapping wishlistStatus.ts documents. Used only
+// for the "View on Site" link's ?team= param (calendar.html omits it for
+// the default team). No slug env var exists bot-side today; a small
+// literal map is the smallest addition rather than inventing one, since
+// this repo is still one-bot-per-team (WGA-Raid-Hub's own
+// discord-bot-webhook already resolves per-team URLs the same way).
+const TEAM_SLUGS: Record<number, string> = {
+  1: 'phoenix',
+  2: 'hellfire-rollers',
+};
+
+const EMBED_COLOR = 0xe0c23d;
+
+const ROLE_SECTIONS = ['Tank', 'Melee', 'Ranged', 'Heal'] as const;
+type RoleSection = (typeof ROLE_SECTIONS)[number];
+
+interface PlayerRow {
+  id: number;
+  name_realm: string;
+  is_bench: boolean;
+  classes_specs: { role: RoleSection | null } | null;
+}
+
+interface RsvpRow {
+  player_id: number;
+  status: string;
+}
+
+interface RaidNightInfoRow {
+  exists: boolean;
+  start_time: string | null;
+  timezone: string | null;
+  is_optional: boolean | null;
+}
+
+// Standard "format the guess, diff against the wall-clock target, correct
+// once" technique for turning a wall-clock date+time in a named zone into a
+// UTC instant without a datetime library -- same algorithm already used in
+// WGA-Raid-Hub's optional-rsvp-reminders Edge Function's zonedTimeToUtc(),
+// ported verbatim (Intl.DateTimeFormat + Date.UTC, runtime-agnostic).
+function zonedTimeToUtc(raidDate: string, time: string, timeZone: string): Date {
+  const [year, month, day] = raidDate.split('-').map(Number);
+  const [hour, minute, second] = time.split(':').map(Number);
+  const guessUtcMs = Date.UTC(year, month - 1, day, hour, minute, second || 0);
+
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+  const parts: Record<string, string> = {};
+  for (const part of dtf.formatToParts(new Date(guessUtcMs))) {
+    if (part.type !== 'literal') parts[part.type] = part.value;
+  }
+  const asIfUtcMs = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour) === 24 ? 0 : Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second)
+  );
+  const offsetMs = asIfUtcMs - guessUtcMs;
+  return new Date(guessUtcMs - offsetMs);
+}
+
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function formatField(name: string, names: string[]): { name: string; value: string; inline?: boolean } | null {
+  if (names.length === 0) return null;
+  return { name: `${name} (${names.length})`, value: names.join('\n') || '*(none)*' };
+}
+
+async function buildEmbedAndComponents(
+  supabase: SupabaseClient,
+  ctx: SignupSheetContext,
+  raidDate: string,
+  night: RaidNightInfoRow
+): Promise<{ embed: EmbedBuilder; components: ActionRowBuilder<ButtonBuilder>[] }> {
+  const [{ data: rosterData, error: rosterErr }, { data: rsvpData, error: rsvpErr }] = await Promise.all([
+    supabase
+      .from('players')
+      .select('id, name_realm, is_bench, classes_specs(role)')
+      .eq('team_id', ctx.teamId)
+      .is('archived_at', null),
+    supabase.from('raid_rsvps').select('player_id, status').eq('team_id', ctx.teamId).eq('raid_date', raidDate),
+  ]);
+  if (rosterErr) throw new Error(`players query failed: ${rosterErr.message}`);
+  if (rsvpErr) throw new Error(`raid_rsvps query failed: ${rsvpErr.message}`);
+
+  const roster = (rosterData ?? []) as unknown as PlayerRow[];
+  const rsvpByPlayer = new Map<number, string>();
+  for (const row of (rsvpData ?? []) as RsvpRow[]) rsvpByPlayer.set(row.player_id, row.status);
+
+  const roleGroups: Record<RoleSection, string[]> = { Tank: [], Melee: [], Ranged: [], Heal: [] };
+  const statusGroups: Record<string, string[]> = {
+    Unassigned: [],
+    Late: [],
+    'Leaving Early': [],
+    Tentative: [],
+    Absent: [],
+    'No Response': [],
+    Bench: [],
+  };
+  let inCount = 0;
+
+  for (const player of roster) {
+    const override = rsvpByPlayer.get(player.id);
+    const effectiveStatus = override ?? (night.is_optional ? 'No Response' : 'Present');
+
+    if (player.is_bench) {
+      statusGroups.Bench.push(player.name_realm);
+      continue;
+    }
+    if (effectiveStatus === 'Present' || effectiveStatus === 'Attending') {
+      const role = player.classes_specs?.role;
+      if (role && ROLE_SECTIONS.includes(role)) {
+        roleGroups[role].push(player.name_realm);
+      } else {
+        statusGroups.Unassigned.push(player.name_realm);
+      }
+      inCount++;
+      continue;
+    }
+    if (statusGroups[effectiveStatus]) {
+      statusGroups[effectiveStatus].push(player.name_realm);
+    } else {
+      statusGroups.Unassigned.push(player.name_realm);
+    }
+  }
+
+  const totalCount = roster.length;
+
+  const embed = new EmbedBuilder()
+    .setColor(EMBED_COLOR)
+    .setTitle(
+      `${ctx.teamName} — Signup Sheet: ${new Date(raidDate + 'T00:00:00').toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+      })}`
+    )
+    .setDescription(
+      `${night.start_time ?? ''} ${night.timezone ?? ''}${night.is_optional ? ' — Optional Night' : ''}`.trim()
+    )
+    .setFooter({ text: `${inCount}/${totalCount} available -- Use Refresh to update` });
+
+  for (const role of ROLE_SECTIONS) {
+    const field = formatField(role, roleGroups[role]);
+    if (field) embed.addFields({ ...field, inline: true });
+  }
+  for (const key of ['Unassigned', 'Late', 'Leaving Early', 'Tentative', 'Absent', 'No Response', 'Bench']) {
+    if (key === 'No Response' && !night.is_optional) continue;
+    const field = formatField(key, statusGroups[key]);
+    if (field) embed.addFields(field);
+  }
+
+  const row = new ActionRowBuilder<ButtonBuilder>();
+  if (ctx.siteUrl) {
+    const slug = TEAM_SLUGS[ctx.teamId];
+    const teamParam = slug && slug !== 'phoenix' ? `&team=${slug}` : '';
+    row.addComponents(
+      new ButtonBuilder()
+        .setStyle(ButtonStyle.Link)
+        .setLabel('View on Site')
+        .setURL(`${ctx.siteUrl.replace(/\/$/, '')}/calendar.html?date=${raidDate}${teamParam}`)
+    );
+  }
+  row.addComponents(
+    new ButtonBuilder().setStyle(ButtonStyle.Secondary).setLabel('Refresh').setCustomId(`signup-sheet-refresh:${raidDate}`)
+  );
+
+  return { embed, components: row.components.length ? [row] : [] };
+}
+
+export async function syncSignupSheet(client: Client, ctx: SignupSheetContext, raidDate: string): Promise<void> {
+  const supabase = createClient(ctx.supabaseUrl, ctx.serviceRoleKey);
+
+  const { data: nightRows, error: nightErr } = await supabase.rpc('raid_night_info', {
+    p_team_id: ctx.teamId,
+    p_raid_date: raidDate,
+  });
+  if (nightErr) throw new Error(`raid_night_info failed: ${nightErr.message}`);
+  const night = (nightRows as RaidNightInfoRow[] | null)?.[0];
+  if (!night || !night.exists) return;
+
+  const { embed, components } = await buildEmbedAndComponents(supabase, ctx, raidDate, night);
+
+  const { data: settingsRow } = await supabase
+    .from('team_settings')
+    .select('config')
+    .eq('team_id', ctx.teamId)
+    .maybeSingle();
+  const config = (settingsRow?.config ?? {}) as Record<string, unknown>;
+  const channelId = (config.discordSignupChannelId as string | null) || ctx.fallbackChannelId;
+
+  const { data: claimRows, error: claimErr } = await supabase.rpc('claim_raid_signup_sheet', {
+    p_team_id: ctx.teamId,
+    p_raid_date: raidDate,
+    p_channel_id: channelId,
+  });
+  if (claimErr) throw new Error(`claim_raid_signup_sheet failed: ${claimErr.message}`);
+  const existingMessageId = (claimRows as { message_id: string | null }[] | null)?.[0]?.message_id ?? null;
+
+  const fetchedChannel = await client.channels.fetch(channelId).catch(() => null);
+  if (!fetchedChannel || !(fetchedChannel instanceof TextChannel)) {
+    throw new Error(`Channel ${channelId} not found or not a text channel`);
+  }
+  const channel: TextChannel = fetchedChannel;
+
+  async function createFresh(): Promise<void> {
+    const sent = await channel.send({ embeds: [embed], components });
+    // Guarded on message_id still null -- avoids clobbering a value a
+    // genuinely concurrent second call might have set in the rare race
+    // window claim_raid_signup_sheet's own comment documents.
+    await supabase
+      .from('raid_signup_sheets')
+      .update({ message_id: sent.id, updated_at: new Date().toISOString() })
+      .eq('team_id', ctx.teamId)
+      .eq('raid_date', raidDate)
+      .is('message_id', null);
+  }
+
+  if (!existingMessageId) {
+    await createFresh();
+    return;
+  }
+
+  try {
+    const existing = await channel.messages.fetch(existingMessageId);
+    await existing.edit({ embeds: [embed], components });
+  } catch {
+    // Message was deleted out from under us (or otherwise unfetchable) --
+    // fall back to posting a fresh one, same as the create path.
+    await createFresh();
+  }
+}
+
+// Proactive lead-time sweep: sheets must exist a configurable number of
+// hours before the raid starts, not just after the first RSVP (per Kat --
+// default 48h, e.g. a Tuesday 9pm ET raid posts the preceding Sunday 9pm
+// ET). The "sync on RSVP change" trigger (POST /signup-sheet-sync) still
+// keeps a sheet current once it exists -- this only handles the initial
+// proactive post. Call on a ~15-minute interval (mirrors
+// optional-rsvp-reminders' checkpoint-window cadence: tight enough to hit
+// the threshold reliably, matching tolerance window avoids double-firing
+// or missing a tick).
+const SWEEP_TOLERANCE_MS = 15 * 60 * 1000;
+const DEFAULT_LEAD_HOURS = 48;
+const MAX_SWEEP_DAYS = 14;
+
+export async function runSignupSheetSweep(client: Client, ctx: SignupSheetContext): Promise<void> {
+  const supabase = createClient(ctx.supabaseUrl, ctx.serviceRoleKey);
+
+  const { data: settingsRow } = await supabase
+    .from('team_settings')
+    .select('config')
+    .eq('team_id', ctx.teamId)
+    .maybeSingle();
+  const config = (settingsRow?.config ?? {}) as Record<string, unknown>;
+  const leadHours = (config.signupSheetLeadHours as number | null) || DEFAULT_LEAD_HOURS;
+
+  const windowDays = Math.min(Math.ceil(leadHours / 24) + 1, MAX_SWEEP_DAYS);
+  const now = new Date();
+
+  for (let offset = 0; offset <= windowDays; offset++) {
+    const d = new Date(now);
+    d.setUTCDate(d.getUTCDate() + offset);
+    const raidDate = isoDate(d);
+
+    const { data: nightRows, error: nightErr } = await supabase.rpc('raid_night_info', {
+      p_team_id: ctx.teamId,
+      p_raid_date: raidDate,
+    });
+    if (nightErr) {
+      console.error('runSignupSheetSweep raid_night_info error:', nightErr);
+      continue;
+    }
+    const night = (nightRows as RaidNightInfoRow[] | null)?.[0];
+    if (!night || !night.exists || !night.start_time) continue;
+
+    const startsAt = zonedTimeToUtc(raidDate, night.start_time, night.timezone || 'America/New_York');
+    const thresholdMs = startsAt.getTime() - leadHours * 60 * 60 * 1000;
+    if (now.getTime() < thresholdMs || now.getTime() >= thresholdMs + SWEEP_TOLERANCE_MS) continue;
+
+    const { data: existingSheet } = await supabase
+      .from('raid_signup_sheets')
+      .select('id')
+      .eq('team_id', ctx.teamId)
+      .eq('raid_date', raidDate)
+      .maybeSingle();
+    if (existingSheet) continue;
+
+    try {
+      await syncSignupSheet(client, ctx, raidDate);
+    } catch (err) {
+      console.error('runSignupSheetSweep syncSignupSheet error:', err);
+    }
+  }
+}

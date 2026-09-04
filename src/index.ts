@@ -3,6 +3,7 @@ import { Client, GatewayIntentBits, EmbedBuilder, TextChannel, REST, Routes, Sla
 import express, { Request, Response } from 'express';
 import { fetchNudgeCandidates, NudgeCategory, profileDeepLink } from './wishlistStatus';
 import { filterAndRecordNudges } from './nudgeLog';
+import { runSignupSheetSweep, syncSignupSheet, SignupSheetContext } from './signupSheet';
 
 const rawToken = process.env.DISCORD_BOT_TOKEN;
 const rawChannelId = process.env.DISCORD_CHANNEL_ID;
@@ -245,6 +246,28 @@ function buildNudgeEmbed(
 // ── Slash command interaction handler ────────────────────────────────────────
 
 client.on('interactionCreate', async (interaction) => {
+  // Signup-sheet Refresh button (WGA-Raid-Hub#900) -- the only interactive
+  // component this bot handles today besides slash commands. Re-syncing
+  // just calls the same claim/edit path syncSignupSheet always uses, which
+  // naturally becomes "edit the message this button lives on" once a sheet
+  // already exists.
+  if (interaction.isButton() && interaction.customId.startsWith('signup-sheet-refresh:')) {
+    const raidDate = interaction.customId.split(':')[1];
+    try {
+      await interaction.deferUpdate();
+    } catch {
+      return;
+    }
+    const ctx = signupSheetContext();
+    if (!ctx) return;
+    try {
+      await syncSignupSheet(client, ctx, raidDate);
+    } catch (err) {
+      console.error('signup-sheet-refresh error:', err);
+    }
+    return;
+  }
+
   if (!interaction.isChatInputCommand()) return;
 
   const cmd = interaction.commandName;
@@ -956,6 +979,91 @@ app.post('/optional-reminder', async (req: Request, res: Response): Promise<void
   await user.send({ embeds: [embed] }).catch(() => null);
 
   res.json({ ok: true });
+});
+
+// --- Aggregated Discord signup sheet (WGA-Raid-Hub#900, part of #640) ---
+//
+// Read-only display, edited in place per raid night -- fully separate from
+// /rsvp-status above (WGA-Raid-Hub#893), which stays untouched. All the
+// actual logic (roster/RSVP queries, grouping, embed building, message-ID
+// bookkeeping) lives in signupSheet.ts using the bot's own service-role
+// Supabase client -- same precedent as wishlistStatus.ts's
+// fetchNudgeCandidates(), already used by /nudge-missing.
+
+function signupSheetContext(): SignupSheetContext | null {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || TEAM_ID === undefined) return null;
+  return {
+    supabaseUrl: SUPABASE_URL,
+    serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY,
+    teamId: TEAM_ID,
+    teamName: TEAM_NAME,
+    siteUrl: SITE_URL,
+    fallbackChannelId: ATTENDANCE_CHANNEL_ID,
+  };
+}
+
+interface SignupSheetSyncBody {
+  raidDate?: string;
+}
+
+app.post('/signup-sheet-sync', async (req: Request, res: Response): Promise<void> => {
+  if (!checkSecret(req, res)) return;
+
+  const { raidDate } = req.body as SignupSheetSyncBody;
+  if (!raidDate) {
+    res.status(400).json({ error: 'Missing required field: raidDate' });
+    return;
+  }
+
+  const ctx = signupSheetContext();
+  if (!ctx) {
+    res.status(500).json({ error: 'SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and TEAM_ID must all be configured.' });
+    return;
+  }
+
+  try {
+    await syncSignupSheet(client, ctx, raidDate);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('signup-sheet-sync error:', err);
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Unknown error' });
+  }
+});
+
+interface VerifyChannelBody {
+  channelId?: string;
+}
+
+app.post('/verify-channel', async (req: Request, res: Response): Promise<void> => {
+  if (!checkSecret(req, res)) return;
+
+  const { channelId } = req.body as VerifyChannelBody;
+  if (!channelId) {
+    res.status(400).json({ ok: false, error: 'Missing required field: channelId' });
+    return;
+  }
+
+  const channel = await client.channels.fetch(channelId).catch(() => null);
+  if (!channel || !(channel instanceof TextChannel)) {
+    res.json({ ok: false, error: 'Channel not found or not a text channel' });
+    return;
+  }
+
+  res.json({ ok: true, name: channel.name });
+});
+
+// Every ~15 minutes: proactively post any upcoming raid night's signup
+// sheet once its configured lead time (default 48h) has been reached.
+// Started once the client is ready (same 'clientReady' event the login flow
+// above uses, discord.js v14's renamed 'ready') -- signupSheetContext()
+// itself no-ops cleanly if env vars are missing.
+const SIGNUP_SHEET_SWEEP_INTERVAL_MS = 15 * 60 * 1000;
+client.once('clientReady', () => {
+  setInterval(() => {
+    const ctx = signupSheetContext();
+    if (!ctx) return;
+    runSignupSheetSweep(client, ctx).catch(err => console.error('signup sheet sweep error:', err));
+  }, SIGNUP_SHEET_SWEEP_INTERVAL_MS);
 });
 
 app.listen(Number(PORT), () => {
