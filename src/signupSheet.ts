@@ -39,13 +39,10 @@ const TEAM_SLUGS: Record<number, string> = {
 
 const EMBED_COLOR = 0xe0c23d;
 
-// Discord lays out inline embed fields into 3 fixed columns, not
-// uniform-height rows: field 1 -> column 1, field 2 -> column 2, field 3 ->
-// column 3, field 4 wraps back to column 1 and continues immediately below
-// field 1 -- independent of how tall column 3 (Ranged, usually by far the
-// largest group) gets. Tank/Melee/Ranged/Heal in that order puts Heal
-// directly under Tank, matching Wowaudit's own layout exactly (confirmed
-// against a live Wowaudit screenshot) -- no padding/reordering needed.
+// The full set of valid roster roles (classes_specs.role) -- purely for
+// grouping/validation. Column layout (which roles render together, and in
+// what order) is handled separately below by formatColumn(), not by this
+// array's order.
 const ROLE_SECTIONS = ['Tank', 'Melee', 'Ranged', 'Heal'] as const;
 type RoleSection = (typeof ROLE_SECTIONS)[number];
 
@@ -120,6 +117,30 @@ function isoDate(d: Date): string {
 function formatField(name: string, names: string[]): { name: string; value: string; inline?: boolean } | null {
   if (names.length === 0) return null;
   return { name: `${name} (${names.length})`, value: names.join('\n') || '*(none)*' };
+}
+
+// Discord's automatic 3-per-row field wrapping makes a field's vertical
+// position depend on every OTHER field sharing its row -- there is no way
+// to get one column's content to render directly below another's using
+// separate fields, regardless of field order (confirmed live: neither
+// Tank/Melee/Ranged/Heal nor Tank/Melee/Heal/Ranged put Heal under Tank
+// the way Wowaudit's own embed does). The only way to guarantee that is to
+// combine multiple sections into ONE field's value -- Wowaudit's Tank and
+// Heal are almost certainly one physical field, not two, which is why
+// Heal's position there is independent of Melee/Ranged's height. Builds
+// one inline field from an ordered list of (label, names) sections; the
+// first non-empty section becomes the field's real header (Discord-styled,
+// bold+larger), later sections get a markdown-bold sub-header inline in
+// the body text instead.
+function formatColumn(sections: Array<{ label: string; names: string[] }>): { name: string; value: string } | null {
+  const nonEmpty = sections.filter(s => s.names.length > 0);
+  if (nonEmpty.length === 0) return null;
+  const [first, ...rest] = nonEmpty;
+  const parts = [first.names.join('\n')];
+  for (const section of rest) {
+    parts.push(`\n**${section.label} (${section.names.length})**\n${section.names.join('\n')}`);
+  }
+  return { name: `${first.label} (${first.names.length})`, value: parts.join('\n') };
 }
 
 async function buildEmbedAndComponents(
@@ -205,11 +226,22 @@ async function buildEmbedAndComponents(
     .setDescription(description)
     .setFooter({ text: `${inCount}/${totalCount} available -- Use Refresh to update` });
 
+  // Tank+Heal share one column (one field), matching Wowaudit's own
+  // layout -- see formatColumn's comment for why this has to be a single
+  // field rather than two separate ones. Melee and Ranged each get their
+  // own column/field.
+  const columns = [
+    formatColumn([
+      { label: 'Tank', names: roleGroups.Tank },
+      { label: 'Heal', names: roleGroups.Heal },
+    ]),
+    formatColumn([{ label: 'Melee', names: roleGroups.Melee }]),
+    formatColumn([{ label: 'Ranged', names: roleGroups.Ranged }]),
+  ];
   let roleFieldCount = 0;
-  for (const role of ROLE_SECTIONS) {
-    const field = formatField(role, roleGroups[role]);
-    if (field) {
-      embed.addFields({ ...field, inline: true });
+  for (const column of columns) {
+    if (column) {
+      embed.addFields({ ...column, inline: true });
       roleFieldCount++;
     }
   }
