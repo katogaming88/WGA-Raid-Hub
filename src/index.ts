@@ -271,7 +271,8 @@ client.on('interactionCreate', async (interaction) => {
     const ctx = signupSheetContext();
     if (!ctx) return;
     try {
-      await syncSignupSheet(client, ctx, raidDate);
+      // Refresh only ever lives on a message that already exists.
+      await syncSignupSheet(client, ctx, raidDate, { allowCreate: false });
     } catch (err) {
       console.error('signup-sheet-refresh error:', err);
     }
@@ -1032,7 +1033,9 @@ app.post('/signup-sheet-sync', async (req: Request, res: Response): Promise<void
   }
 
   try {
-    await syncSignupSheet(client, ctx, raidDate);
+    // An RSVP change must never force the sheet to appear before its
+    // configured lead time -- only the proactive sweep creates it.
+    await syncSignupSheet(client, ctx, raidDate, { allowCreate: false });
     res.json({ ok: true });
   } catch (err) {
     console.error('signup-sheet-sync error:', err);
