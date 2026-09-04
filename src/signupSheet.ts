@@ -45,8 +45,17 @@ type RoleSection = (typeof ROLE_SECTIONS)[number];
 interface PlayerRow {
   id: number;
   name_realm: string;
+  nickname: string | null;
   is_bench: boolean;
   classes_specs: { role: RoleSection | null } | null;
+}
+
+// nickname if set, else the character's first name -- same fallback
+// WGA Raid Hub's own js/common.js already uses everywhere else
+// (display_name: player.nickname || firstName).
+function displayName(player: PlayerRow): string {
+  if (player.nickname) return player.nickname;
+  return player.name_realm.split('-')[0].trim();
 }
 
 interface RsvpRow {
@@ -115,7 +124,7 @@ async function buildEmbedAndComponents(
   const [{ data: rosterData, error: rosterErr }, { data: rsvpData, error: rsvpErr }] = await Promise.all([
     supabase
       .from('players')
-      .select('id, name_realm, is_bench, classes_specs(role)')
+      .select('id, name_realm, nickname, is_bench, classes_specs(role)')
       .eq('team_id', ctx.teamId)
       .is('archived_at', null),
     supabase.from('raid_rsvps').select('player_id, status').eq('team_id', ctx.teamId).eq('raid_date', raidDate),
@@ -143,28 +152,43 @@ async function buildEmbedAndComponents(
     const override = rsvpByPlayer.get(player.id);
     const effectiveStatus = override ?? (night.is_optional ? 'No Response' : 'Present');
 
+    const name = displayName(player);
+
     if (player.is_bench) {
-      statusGroups.Bench.push(player.name_realm);
+      statusGroups.Bench.push(name);
       continue;
     }
     if (effectiveStatus === 'Present' || effectiveStatus === 'Attending') {
       const role = player.classes_specs?.role;
       if (role && ROLE_SECTIONS.includes(role)) {
-        roleGroups[role].push(player.name_realm);
+        roleGroups[role].push(name);
       } else {
-        statusGroups.Unassigned.push(player.name_realm);
+        statusGroups.Unassigned.push(name);
       }
       inCount++;
       continue;
     }
     if (statusGroups[effectiveStatus]) {
-      statusGroups[effectiveStatus].push(player.name_realm);
+      statusGroups[effectiveStatus].push(name);
     } else {
-      statusGroups.Unassigned.push(player.name_realm);
+      statusGroups.Unassigned.push(name);
     }
   }
 
   const totalCount = roster.length;
+
+  // Discord timestamp markup (<t:unix:t>) renders in each viewer's own
+  // local time/timezone automatically, unlike a plain "HH:MM:SS TIMEZONE"
+  // string -- same format already used for "Submitted At" fields elsewhere
+  // in this bot (src/index.ts).
+  const description =
+    night.start_time && night.timezone
+      ? `<t:${Math.round(zonedTimeToUtc(raidDate, night.start_time, night.timezone).getTime() / 1000)}:t>${
+          night.is_optional ? ' — Optional Night' : ''
+        }`
+      : night.is_optional
+        ? 'Optional Night'
+        : '';
 
   const embed = new EmbedBuilder()
     .setColor(EMBED_COLOR)
@@ -175,15 +199,34 @@ async function buildEmbedAndComponents(
         day: 'numeric',
       })}`
     )
-    .setDescription(
-      `${night.start_time ?? ''} ${night.timezone ?? ''}${night.is_optional ? ' — Optional Night' : ''}`.trim()
-    )
+    .setDescription(description)
     .setFooter({ text: `${inCount}/${totalCount} available -- Use Refresh to update` });
 
+  // Role columns render 3 inline fields per row -- with 4 sections
+  // (Tank/Melee/Ranged/Heal), the 4th always lands alone on a half-empty
+  // row that reads as squeezed directly against whatever follows. Padding
+  // that row out to 3 with invisible zero-width fields keeps every role
+  // row the same visual width, and a real blank separator field (its own
+  // full-width row) puts clear space before the status/Bench sections
+  // below it.
+  let roleFieldCount = 0;
   for (const role of ROLE_SECTIONS) {
     const field = formatField(role, roleGroups[role]);
-    if (field) embed.addFields({ ...field, inline: true });
+    if (field) {
+      embed.addFields({ ...field, inline: true });
+      roleFieldCount++;
+    }
   }
+  if (roleFieldCount > 0) {
+    const remainder = roleFieldCount % 3;
+    if (remainder !== 0) {
+      for (let i = 0; i < 3 - remainder; i++) {
+        embed.addFields({ name: '​', value: '​', inline: true });
+      }
+    }
+    embed.addFields({ name: '​', value: '​', inline: false });
+  }
+
   for (const key of ['Unassigned', 'Late', 'Leaving Early', 'Tentative', 'Absent', 'No Response', 'Bench']) {
     if (key === 'No Response' && !night.is_optional) continue;
     const field = formatField(key, statusGroups[key]);
