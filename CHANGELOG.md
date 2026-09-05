@@ -28,6 +28,19 @@ with each release split into `### Frontend` (drives the version number) and
 - Removing a player goes through a new `archive_player()` function, so the archive timestamp on
   `players` and the reason on the new table are written together instead of as two separate calls
   that could half-fail.
+- Both BoE Discord posts read as a matching pair now
+  ([#926](https://github.com/katogaming88/WGA-Raid-Hub/issues/926)). Each one opens with a heading,
+  puts a bold label on every line and underlines the item name, in place of reading as the retired
+  relay bot's output with the brackets taken off. The found post moves off a Discord embed and onto
+  plain text so the two share one shape, and its track folds into the item line the way the sold
+  post already built it.
+- Dropping that embed took a safety net with it, so the found post gained its own. It is an open
+  unauthenticated endpoint, and a mention inside an embed never notified anyone while the same
+  mention in plain text would. Both posts now suppress every mention type explicitly, `@everyone`
+  and `@here` included, and the sold post's ping to the finder who is owed the gold is the single
+  exception either of them makes. A submitted note also has any line-leading heading and quote
+  markers stripped, and every other value on the post has its line breaks collapsed, so nothing
+  sent in can forge a line of the post's own structure.
 
 ## [3.91.2] - 2026-09-05
 
