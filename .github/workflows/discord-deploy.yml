@@ -7,7 +7,32 @@ jobs:
   notify:
     if: contains(fromJson('["success","failure","error"]'), github.event.deployment_status.state)
     runs-on: ubuntu-latest
+    # Only to read version.json at the deployed commit through the API. This
+    # job never checks anything out.
+    permissions:
+      contents: read
     steps:
+      # The embed carried a commit sha and no version, so the one notification
+      # that says something reached production could not say what (#968). Read
+      # at the deployed sha rather than at main, because those differ for the
+      # length of a deploy and the whole point is naming what went live.
+      #
+      # Empty is a normal answer, not a failure: version.json only exists from
+      # v3.92.0 onward, so a re-run against anything older has nothing to read
+      # and the embed falls back to its old wording.
+      - name: Read the deployed version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.event.deployment.sha }}
+        run: |
+          VERSION="$(gh api "repos/$REPO/contents/version.json?ref=$COMMIT_SHA" --jq '.content' 2>/dev/null \
+            | base64 -d 2>/dev/null \
+            | jq -r '.version // empty' 2>/dev/null || true)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Deployed version: ${VERSION:-unknown}"
+
       - name: Post to Discord
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -17,13 +42,20 @@ jobs:
           COMMIT_SHA:   ${{ github.event.deployment.sha }}
           ACTOR:        ${{ github.event.deployment.creator.login }}
           REPO:         ${{ github.repository }}
+          VERSION:      ${{ steps.version.outputs.version }}
         run: |
+          if [ -n "$VERSION" ]; then
+            LABEL=" v$VERSION"
+          else
+            LABEL=""
+          fi
+
           if [ "$STATE" = "success" ]; then
             COLOR=3066993
-            TITLE="Deployment succeeded"
+            TITLE="Deployed${LABEL}"
           else
             COLOR=15158332
-            TITLE="Deployment failed ($STATE)"
+            TITLE="Deployment failed ($STATE)${LABEL}"
           fi
 
           SHORT_SHA="${COMMIT_SHA:0:7}"
