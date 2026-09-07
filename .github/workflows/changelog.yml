@@ -2,9 +2,19 @@ name: Changelog Check
 
 on:
   pull_request:
-    # labeled/unlabeled so toggling the chore label re-evaluates the
+    # labeled/unlabeled so toggling the skip-changelog label re-evaluates the
     # exemption without needing a new push.
     types: [opened, synchronize, reopened, labeled, unlabeled]
+
+# The exemption below is the `skip-changelog` label only, not the `chore`
+# kind label or a chore/* branch name. Both of those are decided by the
+# branch a PR is on (labeler.yml, #953) before anyone has seen the diff, so
+# keying the changelog gate on either one let a branch named before any code
+# was written silently cover a diff that turned out to touch a shipped piece.
+# skip-changelog auto-applies only when the diff itself touches none of the
+# four shipped-piece paths (labeler.yml), and can otherwise be added by hand
+# for a genuinely mechanical change to a shipped path (formatting, comments) --
+# either way it reflects what the diff is, not what the branch is called.
 
 # A new push to the PR supersedes any still-running check on the old commit.
 concurrency:
@@ -44,18 +54,17 @@ jobs:
         id: changed
         run: node scripts/ci/changelog-check.js origin/${{ github.base_ref }}
 
-      # The three hard gates below share the chore exemption (chore/* branch
-      # or the chore label): the VERSION bump and the sectioned changelog both
-      # signal "something shipped", which a mechanical PR does not do. #353
-      # extends the exemption to the changelog-entry checks, superseding the
-      # no-bypass rule from be59777.
+      # The three hard gates below share the skip-changelog exemption: the
+      # VERSION bump and the sectioned changelog both signal "something
+      # shipped", which a mechanical PR does not do. #353 extends the
+      # exemption to the changelog-entry checks, superseding the no-bypass
+      # rule from be59777.
       - name: Fail if a shipped change lacks its changelog section
         if: >-
           steps.changed.outputs.missing_entry != '' &&
-          !startsWith(github.head_ref, 'chore/') &&
-          !contains(github.event.pull_request.labels.*.name, 'chore')
+          !contains(github.event.pull_request.labels.*.name, 'skip-changelog')
         run: |
-          echo "::error::CHANGELOG.md gained no entry for: ${{ steps.changed.outputs.missing_entry }}. Each shipped piece logs under its own heading (frontend -> '### Frontend', db -> '### Backend', functions -> '### Functions', bot -> '### Bot'). See CONTRIBUTING.md; if this PR is mechanical, use a chore/* branch or the chore label."
+          echo "::error::CHANGELOG.md gained no entry for: ${{ steps.changed.outputs.missing_entry }}. Each shipped piece logs under its own heading (frontend -> '### Frontend', db -> '### Backend', functions -> '### Functions', bot -> '### Bot'). See CONTRIBUTING.md; if this PR is mechanical, add the skip-changelog label."
           exit 1
 
       # #965 retired the old rule that only frontend paths drove VERSION. One
@@ -65,10 +74,9 @@ jobs:
         if: >-
           steps.changed.outputs.shipped == 'true' &&
           steps.changed.outputs.version_bump == 'false' &&
-          !startsWith(github.head_ref, 'chore/') &&
-          !contains(github.event.pull_request.labels.*.name, 'chore')
+          !contains(github.event.pull_request.labels.*.name, 'skip-changelog')
         run: |
-          echo "::error::The VERSION in js/common.js was not bumped, but a shipped piece changed. Every PR that changes the frontend, supabase/migrations/, scripts/import/, supabase/functions/ or bot/ stamps the product: run 'npm run stamp -- <x.y.z>' (see CONTRIBUTING.md). If this change is mechanical, use a chore/* branch or add the chore label."
+          echo "::error::The VERSION in js/common.js was not bumped, but a shipped piece changed. Every PR that changes the frontend, supabase/migrations/, scripts/import/, supabase/functions/ or bot/ stamps the product: run 'npm run stamp -- <x.y.z>' (see CONTRIBUTING.md). If this change is mechanical, add the skip-changelog label."
           exit 1
 
       # The reverse direction (#353): a bump with nothing shipped trains
@@ -77,13 +85,12 @@ jobs:
         if: >-
           steps.changed.outputs.shipped == 'false' &&
           steps.changed.outputs.version_bump == 'true' &&
-          !startsWith(github.head_ref, 'chore/') &&
-          !contains(github.event.pull_request.labels.*.name, 'chore')
+          !contains(github.event.pull_request.labels.*.name, 'skip-changelog')
         run: |
-          echo "::error::The VERSION in js/common.js was bumped, but no shipped piece changed. Docs, CI config, supabase/config.toml, seed.sql and roles.sql take no bump and no changelog section (see CONTRIBUTING.md); use a chore/* branch or the chore label."
+          echo "::error::The VERSION in js/common.js was bumped, but no shipped piece changed. Docs, CI config, supabase/config.toml, seed.sql and roles.sql take no bump and no changelog section (see CONTRIBUTING.md); add the skip-changelog label."
           exit 1
 
-      # Not chore-exempt: this fires only when a version heading was actually
+      # Not skip-changelog-exempt: this fires only when a version heading was actually
       # added, and a heading that repeats or goes backwards is wrong whoever
       # wrote it. Three numbers on main are already used twice (3.77.23,
       # 3.60.32, 3.60.6) because nothing checked this; they stay as they are,
@@ -99,8 +106,8 @@ jobs:
       # gained a Frontend changelog entry but never touched news.json might
       # just have forgotten a news-worthy entry -- not every Frontend change
       # is news-worthy, so this labels/comments rather than failing the job.
-      # Always runs (no chore/needsNudge gate on the step itself) so the label
-      # gets removed again once news.json is added or the chore exemption
+      # Always runs (no needsNudge gate on the step itself) so the label gets
+      # removed again once news.json is added or the skip-changelog exemption
       # applies on a later push, not just added and left stale.
       - name: Nudge for a missing news.json entry
         uses: actions/github-script@v9
@@ -109,8 +116,7 @@ jobs:
             ${{
               steps.changed.outputs.frontend_entry == 'true' &&
               steps.changed.outputs.news_touched == 'false' &&
-              !startsWith(github.head_ref, 'chore/') &&
-              !contains(github.event.pull_request.labels.*.name, 'chore')
+              !contains(github.event.pull_request.labels.*.name, 'skip-changelog')
             }}
         with:
           script: |

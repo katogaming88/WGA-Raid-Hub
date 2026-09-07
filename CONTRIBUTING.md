@@ -60,7 +60,7 @@ release is named by that number, and a change to any piece moves it:
 
 A PR touching more than one piece writes a section for each and takes one bump.
 A PR touching none of them (docs, CI config, `supabase/config.toml`, `seed.sql`,
-`roles.sql`) takes neither: use a `chore/*` branch or the `chore` label.
+`roles.sql`) takes neither: it gets the `skip-changelog` label automatically.
 
 **This replaced the old rule that a backend-only PR took no bump** (decided
 2026-09-06, #965). Under that rule the number tracked the frontend rather than
@@ -104,8 +104,13 @@ that piece's CHANGELOG section and the bump, a bump with no shipped change
 fails, and a new heading must be unique and above every heading already in the
 file. The `js/common.js` VERSION line itself does not count as a frontend
 change, so a bump alone never satisfies the checks. Mechanical PRs (formatting,
-lint, comment-only changes) are exempt from every check: use a `chore/*` branch
-or add the `chore` label.
+lint, comment-only changes) that still touch a shipped path are exempt from
+every check by adding the `skip-changelog` label -- deliberately, after
+looking at the diff. A PR that touches no shipped path gets that label
+automatically. `chore/*` as a branch name is still fine for the PR's own
+classification, but it no longer exempts anything on its own: a branch name is
+picked before the diff exists, and what it turns into is what decides whether
+a changelog entry is owed.
 
 ## Pull requests
 
