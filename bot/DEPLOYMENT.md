@@ -1,6 +1,15 @@
 # Deployment Guide
 
-Both **team-phoenix** and **team-hellfire-rollers** run on the same Oracle Cloud VM from separate clones of this repo.
+Both **team-phoenix** and **team-hellfire-rollers** run on the same Oracle Cloud VM from separate clones of
+[WGA-Raid-Hub](https://github.com/katogaming88/WGA-Raid-Hub), where the bot lives at `bot/` (#954). Everything
+below runs from that subdirectory: the build, the pm2 process, the `.env` file and the nudge log.
+
+This page describes a deployment that is being retired. #997 decided that the bot's runtime stands down
+rather than moving: its commands, buttons and sweeps become Edge Functions, and #960 stops both pm2
+processes at the end of that work, after which this VM hosts nothing from this project and this file goes
+with it. Two other things here are already out of date and stay that way on purpose, since #993 owns them:
+#992 moved each team's Discord ids out of these `.env` files into `team_discord_config`, and the two
+per-team processes below are what runs today rather than the one process that code was written for.
 
 ## Server
 
@@ -48,21 +57,26 @@ Bots are managed by pm2 and auto-start on reboot.
 
 ## Repo locations on server
 
-- team-phoenix: `~/team-phoenix/`
-- team-hellfire-rollers: `~/team-hellfire-rollers/`
+- team-phoenix: `~/team-phoenix/`, with the bot at `~/team-phoenix/bot/`
+- team-hellfire-rollers: `~/team-hellfire-rollers/`, with the bot at `~/team-hellfire-rollers/bot/`
 
 ## Deploying an update
 
 ```bash
 cd ~/team-phoenix   # or ~/team-hellfire-rollers
 git pull
+cd bot
+npm ci        # only when package-lock.json moved
 npm run build
 pm2 restart team-phoenix   # or team-hellfire-rollers
 ```
 
+The pull is at the clone root, the build is in `bot/`. Start the pm2 process from inside `bot/` as well, so
+`dotenv` finds `.env` and the default nudge-log path resolves under it.
+
 ## Environment variables
 
-Each clone has its own `.env` file. Key differences between the two:
+Each clone has its own `.env` file, at `bot/.env`. Key differences between the two:
 
 - `DISCORD_BOT_TOKEN` -- different bot token per server
 - `DISCORD_CHANNEL_ID` -- different channel per server
