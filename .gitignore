@@ -18,6 +18,10 @@ Thumbs.db
 node_modules/
 npm-debug.log*
 
+# The bot's TypeScript build output (#953). node_modules/, .env and data/ above
+# are already matched at any depth, so bot/ needs nothing else.
+bot/dist/
+
 # One-time migration data (sheet CSV exports and generated SQL, see #320)
 data/
 
