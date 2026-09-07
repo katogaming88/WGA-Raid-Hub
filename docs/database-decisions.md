@@ -8,6 +8,42 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-06 -- the bot moves into this repo, and every poster follows one rule (#953)
+
+Two decisions from the same spike, recorded together because the second is why the first was needed.
+
+### One repo
+
+`katogaming88/wga-raid-bot` becomes `bot/` here and is archived, the way `boe-found-bot` was. Both maintainers agreed.
+
+The bot had already become a first-class part of the app: three site PRs in the week of 2026-09-01 (#914, #915, #920) each shipped with a bot PR on the other side. But milestones are per repo, so a change spanning the relay and a bot route was two PRs with a handshake nobody wrote down, and it happened three times that week. The two repos also sat at very different quality bars. This one carries sixteen workflows, thirty-seven labels, a changelog gate, a version stamp, a migration ledger check and 146 test files. The bot repo had no CI, no labels beyond GitHub's defaults, no README and no changelog, and Russell could not push to it at all.
+
+The reason that outweighs the rest: one repo is the only shape under which "one project" is true by construction rather than by discipline. A milestone can hold bot work, a relay-and-route change is one PR, the site's gates cover the bot from day one, and both maintainers can build anywhere.
+
+Nothing about the bot's runtime changes. It stays a discord.js gateway process on kat's Oracle VM under two pm2 processes behind Caddy, because that design needs a host that never exits: it holds a websocket to Discord's gateway, an inbound express port, a 15-minute timer and a local file for the nudge cooldown. None of those survive a request-scoped runtime. Deploying gains one `cd`.
+
+The cost, accepted: GitHub Pages serves this repo from `main` at `/`, so `bot/src/*.ts` becomes fetchable. Untidy rather than unsafe, since the repo is public, `dist/` and `node_modules/` are ignored and no secret is committed. `.nojekyll` is not the answer and is ruled out separately, because #967 takes its build SHA from Jekyll.
+
+The alternative was two repos under one umbrella: kat grants write access, the bot repo imports the labels, a template, a small CI and a changelog, and a project board spans both. It settles access and vocabulary and nothing else. Milestones stay per repo, every cross-repo change stays two PRs forever, two CI configs drift apart, and every item is re-audited twice. That cost is permanent and paid on exactly the work that is now most active.
+
+### One posting rule
+
+Every poster this project has, webhook or bot, whoever wrote it:
+
+- A post says what the database holds, not what its caller sent it.
+- Every send names its `allowed_mentions` explicitly.
+- No post from this project notifies `@everyone` or `@here`.
+- No route is reachable without a credential appropriate to its caller class.
+- Where a post lands is declared in one place.
+
+The Discord facts underneath, which are why this needs both a code half and a server half: with no `allowed_mentions` a webhook parses user mentions only, while a bot's regular message parses users, roles and `@everyone`; `parse` is exclusive with the `users` and `roles` lists; and a role mention notifies only if the role is `mentionable` or the sender holds `MENTION_EVERYONE`. So the code half is #959 and the server half is #963, and neither alone is the rule.
+
+What prompted it: #926 moved the BoE found post off an embed onto plain content, and a mention inside an embed never notifies, so the guard that had been holding was an accident of the format rather than a decision. The audit that followed found the relay deployed with no JWT check and no auth gate of its own, which leaves all nine bot routes open to anyone with the URL, including DMs to arbitrary Discord ids.
+
+Shipped: no migration. Convention and repo shape only; the move is #954 and the gate is #959.
+
+---
+
 ## 2026-09-06 -- one product version line, and each piece carries the release that last touched it (#965)
 
 The version was a frontend number wearing a product's name. `js/common.js` held `var VERSION` at 3.91.3 after 396 headings in 83 days, while `package.json` said `1.0.0` and was not a source, and there were no git tags and no GitHub Releases. Everything else the project ships moved without the number ever saying so: 162 migrations in two months, ten Edge Functions with no version constant anywhere in them, and a bot whose `package.json` had never been bumped. A `### Backend` entry had no number of its own and rode whichever version block it happened to land beside, which is also how three numbers (3.77.23, 3.60.32 and 3.60.6) each ended up used twice by a backend-only PR opening a second heading a day later.

@@ -176,6 +176,7 @@ or add the `chore` label.
 | `css/guild.css` | Guild-page-specific styles, plus the keyboard/motion baselines scoped to that page until #435 generalises them |
 | `supabase/` | Supabase CLI project: local dev stack config and schema migrations |
 | `supabase/functions/` | Edge Functions (Deno). Webhook relays (`boe-webhook`, `boe-sold-webhook`, `discord-bot-webhook`, `contact-webhook`), scheduled sync jobs (`wcl-sync`, `wcl-progression-sync`, `twitch-live-check`), and `upload-bio-photo`, which authenticates the caller and is the only writer to Storage -- see "Storage" below |
+| `bot/` | The Discord bot (#954): a discord.js gateway process running on kat's VM under pm2. Twelve slash commands, an express endpoint the `discord-bot-webhook` relay posts to, and a 15-minute sweep for the signup sheet. Keeps its own `package.json`, `tsconfig.json` and prettier config, and its own workflow (`.github/workflows/bot.yml`); it is not covered by the root lint, typecheck or format scripts |
 | `scripts/import/` | One-off/recurring data import tooling (loot, attendance, etc.) |
 | `scripts/ci/` | CI checks that need more than a workflow step (changelog classification, the team-wide read guard), plus the version stamper (`npm run stamp`), which owns the page registry the asset-version check reads |
 | `dbdoc/` | Generated schema docs (tbls). Never edit by hand; regenerate with `npm run db:docs` |

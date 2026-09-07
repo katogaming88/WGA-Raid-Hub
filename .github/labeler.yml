@@ -99,16 +99,58 @@ database:
       - supabase/**
       - dbdoc/**
 
-documentation:
+bot:
   - changed-files:
     - any-glob-to-any-file:
-      - docs/**
-      - dbdoc/**
-      - '*.md'
+      - bot/**
 
+# ---------------------------------------------------------------------------
+# The kind axis. Two axes live in this file and they are decided differently:
+# a subsystem label is decided by the files a PR touches, a kind label by the
+# branch it is on. That is the rule to apply when adding anything below.
+#
+# Keyed on the branch prefixes CONTRIBUTING already defines, so one label
+# predicts the branch name and exactly one kind label lands per PR (#953).
+# Only the four prefixes with an exact label are mapped; refactor/ and style/
+# have no label of their own and are still labelled by hand.
+#
+# documentation moved onto this axis in #953. It used to be keyed on docs/**,
+# dbdoc/** and *.md, which was the only kind label the bot applied, so nothing
+# collided. Once feat/, fix/ and chore/ are mapped it would: almost every PR
+# touches a .md, and a feat/ PR with a CHANGELOG line would arrive as both
+# enhancement and documentation. A PR is documentation because that is what it
+# is, not because it happens to edit a file ending in .md.
+# ---------------------------------------------------------------------------
+enhancement:
+  - head-branch: ['^feat/']
+
+bug:
+  - head-branch: ['^fix/']
+
+chore:
+  - head-branch: ['^chore/']
+
+documentation:
+  - head-branch: ['^docs/']
+
+# Informational only. Measured 2026-09-06: nothing reads this label. The
+# changelog gate keys on the `chore` label and the chore/* branch prefix, and
+# the only other mention in the repo is dependabot.yml applying it. The label
+# description overstates it by saying it exempts a PR; that is #953's finding,
+# not something this config can fix.
+#
+# It is still kept honest, because a marker that says "no changelog needed" on
+# a PR that needs one is worse than no marker. Every shipped piece (#965) is
+# excluded: it used to name only js/, gs/ and the root pages, so a CSS-only, a
+# migrations-only or a functions-only PR got it, and every bot PR would have.
+# gs/ goes with the directory kat deleted on 2026-09-04.
 skip-changelog:
   - changed-files:
     - all-globs-to-all-files:
       - '!js/**'
-      - '!gs/**'
+      - '!css/**'
       - '!*.html'
+      - '!supabase/migrations/**'
+      - '!scripts/import/**'
+      - '!supabase/functions/**'
+      - '!bot/**'
