@@ -25,3 +25,19 @@ updates:
       # on deliberately, not as a weekly update.
       - dependency-name: eslint
         update-types: ['version-update:semver-major']
+
+  # The Discord bot (#954) keeps its own package.json and lockfile, so it
+  # needs its own entry. Runtime dependencies are left ungrouped on purpose:
+  # a discord.js or supabase-js bump changes what the bot does at runtime and
+  # should arrive on its own to be read, unlike the dev-tool bumps above.
+  - package-ecosystem: npm
+    directory: /bot
+    schedule:
+      interval: weekly
+    labels:
+      - skip-changelog
+    groups:
+      bot-dev-dependencies:
+        dependency-type: development
+        patterns:
+          - '*'
