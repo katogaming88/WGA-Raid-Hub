@@ -11,6 +11,17 @@ contracts each section answers to.
 
 ---
 
+## [3.93.1] - 2026-09-07
+
+### Functions
+
+- The Discord post announcing a BoE sale names the two halves of the split **Guild Bank** and
+  **Finder's Cut**, in place of Guild Cut and Finder's Fee
+  ([#984](https://github.com/katogaming88/WGA-Raid-Hub/issues/984)). The guild's line now says
+  where the gold went, and the finder's says it is their cut of the loot rather than a fee owed.
+  A finder who gave their cut away is thanked for giving it, in the same words. The four numbers,
+  the ping to the finder and everything else about the message are unchanged.
+
 ## [3.93.0] - 2026-09-07
 
 ### Frontend
