@@ -14,8 +14,8 @@
 //   **Item:** Hero - __Voidglass Cloak__ 2/6
 //   **Sale Price:** 52,800g
 //   **Auction House Fee:** 2,640g
-//   **Guild Cut:** 30,160g
-//   **Finder's Fee:** 20,000g
+//   **Guild Bank:** 30,160g
+//   **Finder's Cut:** 20,000g
 //
 //   Please get in touch with your raid leaders or <@manager> in the 15
 //   minutes before raid starts to receive your gold.
@@ -232,8 +232,8 @@ Deno.serve(async (req) => {
       itemLine,
       '**Sale Price:** ' + gold(row.sale_price),
       '**Auction House Fee:** ' + gold(row.ah_fee),
-      '**Guild Cut:** ' + gold(row.guild_cut),
-      "**Finder's Fee:** " + gold(row.finder_payout)
+      '**Guild Bank:** ' + gold(row.guild_cut),
+      "**Finder's Cut:** " + gold(row.finder_payout)
     ];
 
     // A finder who ticked the donate box (#862) has nothing to collect, so
@@ -241,7 +241,7 @@ Deno.serve(async (req) => {
     // The money lines still stand: what their cut would have been is the size
     // of what they gave.
     const closing = row.payout_donated
-      ? "Thanks for donating your finder's fee to the guild bank."
+      ? 'Thanks for giving your cut to the guild bank.'
       : 'Please get in touch with your raid leaders or ' + managerText + ' ' + PAYOUT_WINDOW + ' to receive your gold.';
 
     const content = '## BoE Sold\n' + finderText + '\n\n' + moneyLines.join('\n') + '\n\n' + closing;
