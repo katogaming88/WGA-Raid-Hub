@@ -11,6 +11,30 @@ contracts each section answers to.
 
 ---
 
+## [3.95.0] - 2026-09-07
+
+### Backend
+
+- New `players.is_rotator` roster status, parallel to `is_bench`
+  ([#924](https://github.com/katogaming88/WGA-Raid-Hub/issues/924), part of
+  [#640](https://github.com/katogaming88/WGA-Raid-Hub/issues/640)): a rotator is not automatically
+  Present/Attending on a raid night, but unlike Bench, is not self-RSVP -- an officer marks a
+  rotator "in" for a whole raid week at once via the new `officer_set_rotator_week()` RPC, which
+  fans that single action out into one `Rotator-In` `raid_rsvps` row per raid night that week (the
+  table stays per-date/per-player; there is no separate week-grain table). A rotator can still
+  self-RSVP the normal Late/Leaving Early/Tentative/Absent overrides through `set_own_rsvp()` to
+  flag unavailability. `generate_priority_order()` now sorts a rotator below a full-status raider
+  but above Bench, a new tier inserted between the existing Trial and Bench ones.
+
+### Frontend
+
+- Roster tab (`js/tabs/tab-roster.js`) gets a Rotator toggle next to Bench, a "Rotator Only" filter
+  chip, and its own roster group, all mirroring Bench's existing UI
+  ([#924](https://github.com/katogaming88/WGA-Raid-Hub/issues/924)).
+- Calendar (`js/calendar.js`) gives a rotator the same "no default Present" treatment Bench already
+  has on a normal raid night, shown as a `Rotator` status, and an officer gets a "Set in for
+  week"/"Remove from week" action on a rotator's row in the day view roster breakdown.
+
 ## [3.94.0] - 2026-09-07
 
 ### Backend

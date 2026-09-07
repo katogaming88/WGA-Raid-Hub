@@ -25,6 +25,7 @@
 | tier_pieces_equipped | integer |  | true |  |  |  |
 | tier_pieces_synced_at | timestamp with time zone |  | true |  |  |  |
 | bonus_roll_encounter_id | integer |  | true |  | [public.raid_encounters](public.raid_encounters.md) |  |
+| is_rotator | boolean | false | false |  |  | Rotator roster status (#924): not automatically Present/Attending on a raid night like Bench, but officer-assigned per raid week (officer_set_rotator_week()) rather than self-RSVP. |
 
 ## Constraints
 
@@ -104,6 +105,7 @@ erDiagram
   integer tier_pieces_equipped
   timestamp_with_time_zone tier_pieces_synced_at
   integer bonus_roll_encounter_id FK
+  boolean is_rotator
 }
 "public.attendance" {
   integer id

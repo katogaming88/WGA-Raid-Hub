@@ -938,6 +938,7 @@ export type Database = {
           is_backup_healer: boolean
           is_backup_tank: boolean
           is_bench: boolean
+          is_rotator: boolean
           is_trial: boolean
           join_date: string | null
           m_plus_excluded: boolean
@@ -961,6 +962,7 @@ export type Database = {
           is_backup_healer?: boolean
           is_backup_tank?: boolean
           is_bench?: boolean
+          is_rotator?: boolean
           is_trial?: boolean
           join_date?: string | null
           m_plus_excluded?: boolean
@@ -984,6 +986,7 @@ export type Database = {
           is_backup_healer?: boolean
           is_backup_tank?: boolean
           is_bench?: boolean
+          is_rotator?: boolean
           is_trial?: boolean
           join_date?: string | null
           m_plus_excluded?: boolean

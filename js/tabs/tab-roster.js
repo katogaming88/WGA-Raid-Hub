@@ -61,6 +61,7 @@ function runRosterWrite(promise, msgEl) {
 var ROSTER_FIELD_COLUMN = {
   isTrial: 'is_trial',
   isBench: 'is_bench',
+  isRotator: 'is_rotator',
   isBackupTank: 'is_backup_tank',
   isBackupHealer: 'is_backup_healer',
   joinDate: 'join_date',
@@ -71,6 +72,7 @@ var ROSTER_FIELD_COLUMN = {
 var ROSTER_FIELD_AUDIT_LABEL = {
   isTrial: 'Trial Status Changed',
   isBench: 'Bench Status Changed',
+  isRotator: 'Rotator Status Changed',
   isBackupTank: 'Backup Tank Status Changed',
   isBackupHealer: 'Backup Healer Status Changed',
   joinDate: 'Join Date Changed',
@@ -84,6 +86,7 @@ var ROSTER_FIELD_RAW_VALUE = { joinDate: true, officerNote: true, nick: true };
 function rosterFieldAuditDetail(field, value) {
   if (field === 'isTrial') return value ? 'Trial added' : 'Trial removed';
   if (field === 'isBench') return value ? 'Moved to bench' : 'Removed from bench';
+  if (field === 'isRotator') return value ? 'Marked as rotator' : 'Rotator status removed';
   if (field === 'isBackupTank') return value ? 'Marked as backup tank' : 'Backup tank removed';
   if (field === 'isBackupHealer') return value ? 'Marked as backup healer' : 'Backup healer removed';
   if (field === 'joinDate') return 'Changed to ' + value;
@@ -394,9 +397,9 @@ function onboardingWishlistNotStarted(playerId) {
 
 function buildRosterTable() {
   _fetchTeamScoringIfNeeded();
-  var order = ['Tank', 'Heal', 'Melee', 'Ranged', 'Bench'];
-  var labels = { Tank: 'Tanks', Heal: 'Healers', Melee: 'Melee', Ranged: 'Ranged', Bench: 'Bench' };
-  var groups = { Tank: [], Heal: [], Melee: [], Ranged: [], Bench: [] };
+  var order = ['Tank', 'Heal', 'Melee', 'Ranged', 'Rotator', 'Bench'];
+  var labels = { Tank: 'Tanks', Heal: 'Healers', Melee: 'Melee', Ranged: 'Ranged', Rotator: 'Rotator', Bench: 'Bench' };
+  var groups = { Tank: [], Heal: [], Melee: [], Ranged: [], Rotator: [], Bench: [] };
 
   var searchTerm = normalise((document.getElementById('rosterSearch') || {}).value || '');
   var bisItemTerm = normalise((document.getElementById('bisItemSearch') || {}).value || '');
@@ -413,6 +416,7 @@ function buildRosterTable() {
     if (activeFilters.noBis && p.bisLink) continue;
     if (activeFilters.trial && !p.isTrial) continue;
     if (activeFilters.bench && !p.isBench) continue;
+    if (activeFilters.rotator && !p.isRotator) continue;
     if (activeFilters.role && p.role !== activeFilters.role) continue;
     if (
       searchTerm &&
@@ -435,6 +439,7 @@ function buildRosterTable() {
       if (!hasBisMatch) continue;
     }
     if (p.isBench) groups['Bench'].push(p);
+    else if (p.isRotator) groups['Rotator'].push(p);
     else if (groups[p.role]) groups[p.role].push(p);
   }
 
@@ -498,6 +503,7 @@ function buildRosterTable() {
       var statusTags = '';
       if (p.isTrial) statusTags += '<span class="tag tag-trial">Trial</span> ';
       if (p.isBench) statusTags += '<span class="tag tag-bench">Bench</span> ';
+      if (p.isRotator) statusTags += '<span class="tag tag-rotator">Rotator</span> ';
       if (p.isBackupTank) statusTags += '<span class="tag tag-backup-tank">Backup Tank</span> ';
       if (p.isBackupHealer) statusTags += '<span class="tag tag-backup-healer">Backup Healer</span>';
       // Informational only (not fed into priority order, see
@@ -854,6 +860,7 @@ function submitAddPlayer() {
           role: role,
           isTrial: isTrial,
           isBench: false,
+          isRotator: false,
           bisLink: '',
           joinDate: joinDateVal
         });
@@ -1352,6 +1359,26 @@ function togglePlayerBench(nameRealm, firstName) {
       btn.disabled = false;
       btn.className = 'btn ' + (newVal ? 'btn-gold' : 'btn-muted');
       btn.textContent = newVal ? 'Remove from Bench' : 'Move to Bench';
+    }
+  });
+}
+
+function togglePlayerRotator(nameRealm, firstName) {
+  var player = findRosterPlayer(nameRealm);
+  if (!player) return;
+  var newVal = !player.isRotator;
+  var btn = document.getElementById('rotatorToggle-' + firstName);
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+  }
+  var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
+  runRosterWrite(updateRosterFieldSupabase(nameRealm, 'isRotator', newVal), msgEl).then(function (ok) {
+    if (ok) player.isRotator = newVal;
+    if (btn) {
+      btn.disabled = false;
+      btn.className = 'btn ' + (newVal ? 'btn-gold' : 'btn-muted');
+      btn.textContent = newVal ? 'Remove from Rotator' : 'Mark as Rotator';
     }
   });
 }

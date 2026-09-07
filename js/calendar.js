@@ -273,13 +273,13 @@ function _calNightsByDate(nights) {
 }
 
 // css class + aria label for an override status -- Absent gets its own
-// color (red-ish, --melee), Attending (#895, optional nights only) reads
-// as the same green/present style as the computed default, and the
-// remaining three share the existing amber "tentative" treatment (still
-// attending, just flagged).
+// color (red-ish, --melee), Attending (#895, optional nights only) and
+// Rotator-In (#924, officer-assigned) both read as the same green/present
+// style as the computed default, and the remaining three share the existing
+// amber "tentative" treatment (still attending, just flagged).
 function _calOverrideClass(status) {
   if (status === 'Absent') return 'absent';
-  if (status === 'Attending') return 'present';
+  if (status === 'Attending' || status === 'Rotator-In') return 'present';
   return 'tentative';
 }
 
@@ -307,7 +307,7 @@ function _renderCalGrid(containerEl, year, month, nights, opts) {
     (window.DATA &&
       DATA.roster &&
       DATA.roster.filter(function (p) {
-        return p.isBench;
+        return p.isBench || p.isRotator;
       }).length) ||
     0;
   var attending = Math.max(0, rosterCount - benchCount);
@@ -531,11 +531,16 @@ function _renderDayView(el, dateStr) {
 // exists, else the same computed default the month grid uses (a bench
 // player has none on a normal night -- shown as 'Bench' and excluded from
 // the aggregate counts, same carve-out as the grid's benchCount legend).
+// A rotator (#924) gets the same "not automatically Present" treatment,
+// shown as 'Rotator' -- unless officer_set_rotator_week() already wrote a
+// 'Rotator-In' override for this date, which the override check above
+// picks up before this default ever applies.
 function _calDayStatus(player, night, rsvpsByPlayer) {
   var override = rsvpsByPlayer[player.id];
   if (override) return { status: override.status, note: override.note || '', isOverride: true };
   if (!night) return { status: null, note: '', isOverride: false };
   if (player.isBench && !night.isOptional) return { status: 'Bench', note: '', isOverride: false };
+  if (player.isRotator && !night.isOptional) return { status: 'Rotator', note: '', isOverride: false };
   return {
     status: night.isOptional ? _CAL_STATUS_LABELS.pending : _CAL_STATUS_LABELS.present,
     note: '',
@@ -544,7 +549,7 @@ function _calDayStatus(player, night, rsvpsByPlayer) {
 }
 
 function _calStatusClass(status) {
-  if (status === 'Bench' || status === _CAL_STATUS_LABELS.pending) return 'tentative';
+  if (status === 'Bench' || status === 'Rotator' || status === _CAL_STATUS_LABELS.pending) return 'tentative';
   if (status === _CAL_STATUS_LABELS.present) return 'present';
   return _calOverrideClass(status);
 }
@@ -621,14 +626,17 @@ function _calRenderMyStatusSection(dateStr, night, rsvpsByPlayer, myPlayer) {
   _calMyStatus = existing ? existing.status : null;
   _calMyIsOptional = !!night.isOptional;
   // No override yet -- show the same computed default the grid/roster
-  // breakdown use (Present, or No Response on an optional night) so "no
-  // button picked" doesn't read as "no status," which set_own_rsvp() would
-  // otherwise leave ambiguous at a glance.
+  // breakdown use (Present, Rotator on a normal night for a rotator (#924),
+  // or No Response on an optional night) so "no button picked" doesn't read
+  // as "no status," which set_own_rsvp() would otherwise leave ambiguous at
+  // a glance.
   var currentLabel = existing
     ? existing.status
-    : night.isOptional
-      ? _CAL_STATUS_LABELS.pending
-      : _CAL_STATUS_LABELS.present;
+    : myPlayer.isRotator && !night.isOptional
+      ? 'Rotator'
+      : night.isOptional
+        ? _CAL_STATUS_LABELS.pending
+        : _CAL_STATUS_LABELS.present;
   return (
     '<div class="day-view-my-status">' +
     '<div class="day-view-my-status-header">' +
@@ -785,6 +793,17 @@ function _calRenderRosterBreakdown(dateStr, roster, night, rsvpsByPlayer, isOffi
               dateStr +
               '\')">Edit</button>'
             : '') +
+          (isOfficer && p.isRotator
+            ? '<button type="button" class="day-roster-edit-btn" onclick="_toggleRotatorWeek(' +
+              p.id +
+              ",'" +
+              dateStr +
+              "'," +
+              (s.status === 'Rotator-In' ? 'false' : 'true') +
+              ')">' +
+              (s.status === 'Rotator-In' ? 'Remove from week' : 'Set in for week') +
+              '</button>'
+            : '') +
           '</td></tr>';
       });
   });
@@ -925,6 +944,36 @@ function _clearOfficerRsvpStatus() {
       _syncSignupSheet(_calOfficerEditDate);
       _calInvalidateDateMonth(_calOfficerEditDate);
       _closeOfficerRsvpEdit();
+      buildCalendarWidget('full');
+    });
+}
+
+// Officer week-level Rotator assignment (#924): fans out into one
+// Rotator-In raid_rsvps row per raid night via officer_set_rotator_week()
+// (or clears them all with p_in=false). The week is always the Sunday-
+// through-Saturday range containing dateStr, computed client-side the same
+// way the day view's own date math works elsewhere in this file.
+function _calWeekStartSunday(dateStr) {
+  var d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() - d.getDay());
+  return _calIsoDate(d);
+}
+
+function _toggleRotatorWeek(playerId, dateStr, isIn) {
+  supabaseClient
+    .rpc('officer_set_rotator_week', {
+      p_team_id: _teamCfg.supabaseTeamId,
+      p_player_id: playerId,
+      p_week_start: _calWeekStartSunday(dateStr),
+      p_in: isIn
+    })
+    .then(function (result) {
+      if (result.error) {
+        console.warn('officer_set_rotator_week failed.', result.error.message);
+        return;
+      }
+      _syncSignupSheet(dateStr);
+      _calInvalidateDateMonth(dateStr);
       buildCalendarWidget('full');
     });
 }
