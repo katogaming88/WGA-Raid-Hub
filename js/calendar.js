@@ -9,46 +9,49 @@
 // as per-instance rows -- see the migration's header comment and
 // docs/database-decisions.md for why.
 //
-// #893 (Phase 2) adds the signed-in raider's own override: clicking a raid
-// day on the full page (calendar.html only, not the Home widget) opens a
-// status picker calling set_own_rsvp(), and the grid shows that override
-// in place of the computed default (Present, or No Response on an optional
-// night -- #895/Phase 4) once one exists. Bench raiders get no picker on a
-// normal night (Bench is never raider-editable there, enforced server-side
-// too) -- but DO get one on an optional night (#895), since an optional
-// night has no default for anyone and bench is exactly who might get
-// pulled in for it. See dayCanPick below and set_own_rsvp()'s relaxed
-// bench guard.
+// #893 (Phase 2) adds the signed-in raider's own override, and #903 (Phase 5)
+// grows that into a full per-day detail view with its own URL
+// (calendar.html?date=YYYY-MM-DD) instead of a modal: every raid day on both
+// the full calendar and the Home widget is a real link to that URL (see
+// _calDayViewHref/_renderCalGrid), the destination shows the own-status
+// control at the top (still calling set_own_rsvp()) plus a full roster
+// breakdown grouped by role, and an officer can correct another raider's
+// status inline via the new officer_set_rsvp() RPC. The grid shows the
+// caller's own override in place of the computed default (Present, or No
+// Response on an optional night -- #895/Phase 4) once one exists. Bench
+// raiders get no self-service override on a normal night (Bench is never
+// raider-editable there, enforced server-side too) -- but DO get one on an
+// optional night (#895), since an optional night has no default for anyone
+// and bench is exactly who might get pulled in for it. See
+// set_own_rsvp()'s relaxed bench guard; officer_set_rsvp() has no such gate
+// at all, since a correction should be able to fix any player's row.
 
 var _CAL_WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 var _CAL_STATUS_LABELS = { present: 'Present', pending: 'No Response' };
 // The four raider-facing override statuses offered on every raid night
 // (#893). 'Attending' (#895) is also a valid raid_rsvps.status value, but
 // only offered -- and accepted by set_own_rsvp() -- on an optional night;
-// see _renderRsvpStatusOptions().
+// see _renderMyRsvpStatusOptions().
 var _CAL_RSVP_STATUSES = ['Late', 'Leaving Early', 'Tentative', 'Absent'];
 
 var _calDataCache = {};
 var _calViewYear = null;
 var _calViewMonth = null;
-var _calModalDate = null;
-var _calModalStatus = null;
-var _calModalIsOptional = false;
 
-// '?date=YYYY-MM-DD' deep link (#900) -- the signup-sheet embed's "View on
-// Site" button lands here. Read once at load time; calendar.html jumps the
-// initial month view to it before the first buildCalendarWidget('full')
-// call, and _resolveDeepLinkDate() (below) opens the RSVP modal for it once
-// Discord login state is known (_openRsvpModal needs _calResolveMyPlayer(),
-// which isn't reliable until then -- same reasoning as #517's
-// #profile/<name> deep link in js/roster.js's _resolveHashProfile()).
-var _pendingDeepLinkDate = new URLSearchParams(location.search).get('date');
+// Own-status control state (day view, #903) -- mirrors the old RSVP modal's
+// state, just rendered inline instead of in an overlay.
+var _calMyStatus = null;
+var _calMyIsOptional = false;
 
-function _resolveDeepLinkDate() {
-  if (!_pendingDeepLinkDate) return;
-  var target = _pendingDeepLinkDate;
-  _pendingDeepLinkDate = null;
-  _openRsvpModal(target);
+// Officer correction popup state (#903) -- a separate small state block
+// since it targets a different player than _calMyStatus.
+var _calOfficerEditPlayerId = null;
+var _calOfficerEditDate = null;
+var _calOfficerEditStatus = null;
+var _calOfficerEditIsOptional = false;
+
+function _calDateParam() {
+  return new URLSearchParams(location.search).get('date');
 }
 
 // Callbacks invoked by discord.js once login state is known. calendar.html
@@ -57,14 +60,31 @@ function _resolveDeepLinkDate() {
 // file loads after it, so a same-named declaration here wins/shadows it
 // (#371), same collision js/roster.js's own onDiscordSessionRestored already
 // documents. Call _qaRefresh() ourselves in both so officer-quick-actions.js's
-// UI still reacts on this page.
+// UI still reacts on this page. Re-render here (rather than a one-shot deep
+// link resolver) because the day view's own-status control and officer edit
+// affordances both depend on login state that isn't known on first paint.
 function onDiscordSessionRestored(session) {
   if (typeof _qaRefresh === 'function') _qaRefresh();
-  _resolveDeepLinkDate();
+  buildCalendarWidget('full');
 }
 function onDiscordInitNoSession() {
   if (typeof _qaRefresh === 'function') _qaRefresh();
-  _resolveDeepLinkDate();
+  buildCalendarWidget('full');
+}
+
+// Every raid day (full calendar + Home widget) and the day view's prev/next
+// arrows link here (#903) -- a plain navigation/reload, matching this site's
+// multi-page-static-site convention (no client-side router, no history API).
+function _calDayViewHref(dateStr) {
+  var qs = 'date=' + dateStr;
+  if (TEAM_SLUG !== 'phoenix') qs += '&team=' + TEAM_SLUG;
+  return 'calendar.html?' + qs;
+}
+
+function _calAddDays(dateStr, delta) {
+  var d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + delta);
+  return _calIsoDate(d);
 }
 
 function _calIsoDate(d) {
@@ -266,11 +286,13 @@ function _calOverrideClass(status) {
 /**
  * Renders one month grid into containerEl. opts.compact suppresses the
  * "(mock ...)" style extras that don't fit a Home-page glance -- currently
- * just controls whether the "View full calendar" link is appended, and
- * whether raid days are clickable (RSVP picking only happens on the full
- * page, calendar.html). opts.myOverridesByDate is {dateStr: {status, note}}
- * for the signed-in raider's own raid_rsvps rows; opts.myPlayer is their
- * DATA.roster entry (or null if signed out / unclaimed).
+ * just controls whether the "View full calendar" link is appended. Every
+ * raid day, compact or full, links out to its day-detail view (#903, see
+ * _calDayViewHref) -- self-service RSVP editing and officer corrections both
+ * live there now, not in this grid. opts.myOverridesByDate is
+ * {dateStr: {status, note}} for the signed-in raider's own raid_rsvps rows
+ * (already filtered to their player_id by the caller) -- it still drives
+ * this grid's own-status coloring.
  */
 function _renderCalGrid(containerEl, year, month, nights, opts) {
   opts = opts || {};
@@ -309,15 +331,11 @@ function _renderCalGrid(containerEl, year, month, nights, opts) {
     var isToday = _calIsoDate(today) === dateStr;
     var statusHtml = '';
     var countHtml = '';
-    var dayCanPick = false;
     if (isRaidDay) {
       var myOverride = myOverridesByDate[dateStr];
       var anyOptional = dayNights.some(function (n) {
         return n.isOptional;
       });
-      // Bench raiders can only pick on an optional night -- see the file
-      // header comment and set_own_rsvp()'s matching server-side gate.
-      dayCanPick = !opts.compact && opts.myPlayer && (!opts.myPlayer.isBench || anyOptional);
       var statusClass, statusLabel;
       if (myOverride) {
         statusClass = _calOverrideClass(myOverride.status);
@@ -339,17 +357,26 @@ function _renderCalGrid(containerEl, year, month, nights, opts) {
         countHtml = '<span class="mini-cal-daycount">' + attending + '/' + rosterCount + '</span>';
       }
     }
+    // Every raid day is a real link to its day-detail view (#903) -- both
+    // the full calendar and the Home widget -- so a raid date is never a
+    // dead cell. The destination view (not this grid) is what gates who can
+    // edit what; opts.myPlayer/opts.compact no longer affect clickability.
+    var dayTag = isRaidDay ? 'a' : 'div';
     cellsHtml +=
-      '<div class="mini-cal-day' +
-      (isRaidDay ? ' mini-cal-day-raid' : '') +
+      '<' +
+      dayTag +
+      (isRaidDay ? ' href="' + _calDayViewHref(dateStr) + '"' : '') +
+      ' class="mini-cal-day' +
+      (isRaidDay ? ' mini-cal-day-raid mini-cal-day-clickable' : '') +
       (isToday ? ' mini-cal-day-today' : '') +
-      (isRaidDay && dayCanPick ? ' mini-cal-day-clickable" onclick="_openRsvpModal(\'' + dateStr + "')" : '') +
       '"><span class="mini-cal-daynum">' +
       day +
       '</span>' +
       countHtml +
       statusHtml +
-      '</div>';
+      '</' +
+      dayTag +
+      '>';
   }
 
   var legendHtml = Object.keys(usedStatuses)
@@ -405,12 +432,23 @@ function _renderCalGrid(containerEl, year, month, nights, opts) {
 
 /**
  * mode: 'compact' (Home widget, #landingCalendar) or 'full' (calendar.html,
- * #fullCalendar, with month prev/next via _calNavMonth()).
+ * #fullCalendar, with month prev/next via _calNavMonth()). 'full' mode
+ * additionally renders the #903 day-detail view instead of the month grid
+ * whenever the URL carries a '?date=' -- every raid day link on both modes
+ * points there (see _calDayViewHref).
  */
 function buildCalendarWidget(mode) {
   var containerId = mode === 'full' ? 'fullCalendar' : 'landingCalendar';
   var el = document.getElementById(containerId);
   if (!el) return;
+
+  if (mode === 'full') {
+    var dateParam = _calDateParam();
+    if (dateParam) {
+      _renderDayView(el, dateParam);
+      return;
+    }
+  }
 
   var today = new Date();
   if (_calViewYear === null) {
@@ -433,7 +471,6 @@ function buildCalendarWidget(mode) {
     }
     _renderCalGrid(el, year, month, nights, {
       compact: mode !== 'full',
-      myPlayer: myPlayer,
       myOverridesByDate: myOverridesByDate
     });
   });
@@ -451,75 +488,185 @@ function _calNavMonth(delta) {
   buildCalendarWidget('full');
 }
 
-// --- RSVP modal (#893) -- calendar.html only; the Home widget deep-links
-// here instead of duplicating the picker. Static markup lives in
-// calendar.html (#rsvpModal, .officer-prompt/.active convention, same as
-// officer.html's existing prompts) rather than being built as an HTML
-// string, matching every other modal in this codebase.
+// --- Raid day detail view (#903) -- calendar.html only; the Home widget
+// deep-links here instead of duplicating any of this (see _calDayViewHref).
+// Replaces the old #893 RSVP modal: the own-status control now lives inline
+// at the top of this view instead of an overlay, still backed by
+// set_own_rsvp(); the roster breakdown below it is new, and its per-row
+// officer "Edit" affordance is backed by the new officer_set_rsvp() RPC.
+//
+// _calDayViewRsvpsByPlayer/_calDayViewNight cache the last render's data so
+// the officer-edit popup (built once per render, shown/hidden via
+// .officer-prompt/.active like every other modal in this codebase) can look
+// up a target player's current status/note by id without round-tripping
+// free-text note content through an onclick="" attribute string.
+var _calDayViewRsvpsByPlayer = {};
+var _calDayViewNight = null;
 
-function _openRsvpModal(dateStr) {
+function _renderDayView(el, dateStr) {
+  var monthDate = new Date(dateStr + 'T00:00:00');
+  var rangeStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  var rangeEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
   var myPlayer = _calResolveMyPlayer();
-  if (!myPlayer) return;
-  _calModalDate = dateStr;
-  _calModalStatus = null;
-  _calModalIsOptional = false;
-  var titleEl = document.getElementById('rsvpModalTitle');
-  if (titleEl) {
-    var d = new Date(dateStr + 'T00:00:00');
-    titleEl.textContent =
-      'Your status for ' + d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  }
-  var noteEl = document.getElementById('rsvpNote');
-  if (noteEl) noteEl.value = '';
-  var errEl = document.getElementById('rsvpError');
-  if (errEl) errEl.style.display = 'none';
-  var monthKey = new Date(dateStr + 'T00:00:00');
-  var rangeStart = new Date(monthKey.getFullYear(), monthKey.getMonth(), 1);
-  var rangeEnd = new Date(monthKey.getFullYear(), monthKey.getMonth() + 1, 0);
+  var session = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
+  var isOfficer = !!(session && (session.isOfficer || session.isAdmin));
+
   _loadCalendarScheduleData(rangeStart, rangeEnd).then(function (data) {
     var nights = computeRaidNights(data.scheduleRows, data.exceptionRows, rangeStart, rangeEnd);
-    var night = nights.find(function (n) {
-      return n.date === dateStr;
+    var night =
+      nights.find(function (n) {
+        return n.date === dateStr;
+      }) || null;
+    var rsvpsByPlayer = {};
+    (data.rsvpRows || []).forEach(function (row) {
+      if (row.raid_date === dateStr) rsvpsByPlayer[row.player_id] = row;
     });
-    _calModalIsOptional = !!(night && night.isOptional);
-    // Defense in depth -- the grid only makes a bench player's cell
-    // clickable on an optional night (see dayCanPick in _renderCalGrid),
-    // but don't trust that alone; set_own_rsvp() enforces this too.
-    if (myPlayer.isBench && !_calModalIsOptional) {
-      _closeRsvpModal();
-      return;
-    }
-    var existing = (data.rsvpRows || []).find(function (row) {
-      return row.player_id === myPlayer.id && row.raid_date === dateStr;
-    });
-    if (existing) {
-      _calModalStatus = existing.status;
-      if (noteEl) noteEl.value = existing.note || '';
-    }
-    _renderRsvpStatusOptions();
+    _calDayViewRsvpsByPlayer = rsvpsByPlayer;
+    _calDayViewNight = night;
+    _calRenderDayView(el, dateStr, night, rsvpsByPlayer, myPlayer, isOfficer);
   });
-  var modal = document.getElementById('rsvpModal');
-  if (modal) modal.classList.add('active');
 }
 
-function _closeRsvpModal() {
-  var modal = document.getElementById('rsvpModal');
-  if (modal) modal.classList.remove('active');
-  _calModalDate = null;
-  _calModalStatus = null;
-  _calModalIsOptional = false;
+// A player's effective status for a night: their own override if one
+// exists, else the same computed default the month grid uses (a bench
+// player has none on a normal night -- shown as 'Bench' and excluded from
+// the aggregate counts, same carve-out as the grid's benchCount legend).
+function _calDayStatus(player, night, rsvpsByPlayer) {
+  var override = rsvpsByPlayer[player.id];
+  if (override) return { status: override.status, note: override.note || '', isOverride: true };
+  if (!night) return { status: null, note: '', isOverride: false };
+  if (player.isBench && !night.isOptional) return { status: 'Bench', note: '', isOverride: false };
+  return {
+    status: night.isOptional ? _CAL_STATUS_LABELS.pending : _CAL_STATUS_LABELS.present,
+    note: '',
+    isOverride: false
+  };
 }
 
-function _renderRsvpStatusOptions() {
-  var el = document.getElementById('rsvpStatusOptions');
+function _calStatusClass(status) {
+  if (status === 'Bench' || status === _CAL_STATUS_LABELS.pending) return 'tentative';
+  if (status === _CAL_STATUS_LABELS.present) return 'present';
+  return _calOverrideClass(status);
+}
+
+function _calRenderDayView(el, dateStr, night, rsvpsByPlayer, myPlayer, isOfficer) {
+  var d = new Date(dateStr + 'T00:00:00');
+  var dateLabel = d.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
+  var backHref = 'calendar.html' + (TEAM_SLUG !== 'phoenix' ? '?team=' + TEAM_SLUG : '');
+
+  var html =
+    '<a class="footer-link day-view-back" href="' +
+    backHref +
+    '">&#8249; Back to calendar</a>' +
+    '<div class="day-view-header">' +
+    '<a class="btn btn-muted mini-cal-nav-btn" href="' +
+    _calDayViewHref(_calAddDays(dateStr, -1)) +
+    '" aria-label="Previous day">&#8592;</a>' +
+    '<span class="day-view-date">' +
+    dateLabel +
+    '</span>' +
+    '<a class="btn btn-muted mini-cal-nav-btn" href="' +
+    _calDayViewHref(_calAddDays(dateStr, 1)) +
+    '" aria-label="Next day">&#8594;</a>' +
+    '</div>';
+
+  if (!night) {
+    html += '<p style="color:var(--text-muted);">No raid scheduled for this date.</p>';
+    el.innerHTML = html;
+    return;
+  }
+
+  var roster = (window.DATA && DATA.roster) || [];
+  var counts = { inCount: 0, outCount: 0, noResponse: 0 };
+  roster.forEach(function (p) {
+    var s = _calDayStatus(p, night, rsvpsByPlayer);
+    if (s.status === 'Bench') return;
+    if (s.status === 'Absent') counts.outCount++;
+    else if (s.status === _CAL_STATUS_LABELS.pending) counts.noResponse++;
+    else counts.inCount++;
+  });
+  html +=
+    '<div class="day-view-counts">' +
+    '<span><strong>' +
+    counts.inCount +
+    '</strong> in</span>' +
+    '<span><strong>' +
+    counts.outCount +
+    '</strong> out</span>' +
+    '<span><strong>' +
+    counts.noResponse +
+    "</strong> haven't answered</span>" +
+    '</div>';
+
+  html += _calRenderMyStatusSection(dateStr, night, rsvpsByPlayer, myPlayer);
+  html += _calRenderRosterBreakdown(dateStr, roster, night, rsvpsByPlayer, isOfficer);
+  html += _calOfficerEditPopupHtml();
+
+  el.innerHTML = html;
+  _renderMyRsvpStatusOptions();
+}
+
+function _calRenderMyStatusSection(dateStr, night, rsvpsByPlayer, myPlayer) {
+  if (!myPlayer) return '';
+  // Defense in depth, same as the old modal's guard -- a bench player has
+  // no self-service override on a normal night; set_own_rsvp() enforces
+  // this too.
+  if (myPlayer.isBench && !night.isOptional) return '';
+  var existing = rsvpsByPlayer[myPlayer.id];
+  _calMyStatus = existing ? existing.status : null;
+  _calMyIsOptional = !!night.isOptional;
+  // No override yet -- show the same computed default the grid/roster
+  // breakdown use (Present, or No Response on an optional night) so "no
+  // button picked" doesn't read as "no status," which set_own_rsvp() would
+  // otherwise leave ambiguous at a glance.
+  var currentLabel = existing
+    ? existing.status
+    : night.isOptional
+      ? _CAL_STATUS_LABELS.pending
+      : _CAL_STATUS_LABELS.present;
+  return (
+    '<div class="day-view-my-status">' +
+    '<div class="day-view-my-status-header">' +
+    '<div class="pub-loot-title" style="margin:0;">Your status</div>' +
+    '<span class="day-roster-status-label">' +
+    '<span class="calendar-status calendar-status-' +
+    _calStatusClass(currentLabel) +
+    '"></span>' +
+    currentLabel +
+    '</span>' +
+    '</div>' +
+    '<div id="dayViewMyStatusOptions" class="rsvp-status-options"></div>' +
+    '<textarea id="dayViewMyNote" class="rsvp-note" placeholder="Note (required, visible to officers)" rows="2">' +
+    _esc(existing && existing.note) +
+    '</textarea>' +
+    '<p id="dayViewMyError" style="display:none;font-size:0.88rem;color:var(--melee);"></p>' +
+    '<div class="prompt-buttons rsvp-prompt-buttons">' +
+    '<button type="button" class="btn btn-muted" onclick="_clearMyRsvpStatus(\'' +
+    dateStr +
+    '\')">Clear (back to default)</button>' +
+    '<button type="button" class="btn btn-gold" id="dayViewMySaveBtn" onclick="_saveMyRsvpStatus(\'' +
+    dateStr +
+    '\')">Save</button>' +
+    '</div>' +
+    '</div>'
+  );
+}
+
+function _renderMyRsvpStatusOptions() {
+  var el = document.getElementById('dayViewMyStatusOptions');
   if (!el) return;
-  var statuses = _calModalIsOptional ? ['Attending'].concat(_CAL_RSVP_STATUSES) : _CAL_RSVP_STATUSES;
+  var statuses = _calMyIsOptional ? ['Attending'].concat(_CAL_RSVP_STATUSES) : _CAL_RSVP_STATUSES;
   el.innerHTML = statuses
     .map(function (status) {
       return (
         '<button type="button" class="filter-chip' +
-        (status === _calModalStatus ? ' active' : '') +
-        '" onclick="_selectRsvpStatus(\'' +
+        (status === _calMyStatus ? ' active' : '') +
+        '" onclick="_selectMyRsvpStatus(\'' +
         status +
         '\')">' +
         status +
@@ -529,18 +676,18 @@ function _renderRsvpStatusOptions() {
     .join('');
 }
 
-function _selectRsvpStatus(status) {
-  _calModalStatus = status;
-  _renderRsvpStatusOptions();
+function _selectMyRsvpStatus(status) {
+  _calMyStatus = status;
+  _renderMyRsvpStatusOptions();
 }
 
-function _saveRsvpStatus() {
-  if (!_calModalDate || !_calModalStatus) return;
-  var noteEl = document.getElementById('rsvpNote');
-  var errEl = document.getElementById('rsvpError');
-  var saveBtn = document.getElementById('rsvpSaveBtn');
+function _saveMyRsvpStatus(dateStr) {
+  if (!_calMyStatus) return;
+  var noteEl = document.getElementById('dayViewMyNote');
+  var errEl = document.getElementById('dayViewMyError');
+  var saveBtn = document.getElementById('dayViewMySaveBtn');
   var note = (noteEl && noteEl.value.trim()) || '';
-  if (_calModalStatus !== 'Attending' && !note) {
+  if (_calMyStatus !== 'Attending' && !note) {
     if (errEl) {
       errEl.textContent = 'A note is required so officers know why.';
       errEl.style.display = '';
@@ -551,8 +698,8 @@ function _saveRsvpStatus() {
   supabaseClient
     .rpc('set_own_rsvp', {
       p_team_id: _teamCfg.supabaseTeamId,
-      p_raid_date: _calModalDate,
-      p_status: _calModalStatus,
+      p_raid_date: dateStr,
+      p_status: _calMyStatus,
       p_note: note
     })
     .then(function (result) {
@@ -564,40 +711,220 @@ function _saveRsvpStatus() {
         }
         return;
       }
-      _notifyRsvpBot(_calModalDate, _calModalStatus, note);
-      _syncSignupSheet(_calModalDate);
-      var monthDate = new Date(_calModalDate + 'T00:00:00');
-      _calInvalidateMonthCache(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
-      _closeRsvpModal();
+      _notifyRsvpBot(dateStr, _calMyStatus, note);
+      _syncSignupSheet(dateStr);
+      _calInvalidateDateMonth(dateStr);
       buildCalendarWidget('full');
     });
 }
 
-function _clearRsvpStatus() {
-  if (!_calModalDate) return;
-  var saveBtn = document.getElementById('rsvpSaveBtn');
+function _clearMyRsvpStatus(dateStr) {
+  var saveBtn = document.getElementById('dayViewMySaveBtn');
   if (saveBtn) saveBtn.disabled = true;
   supabaseClient
     .rpc('set_own_rsvp', {
       p_team_id: _teamCfg.supabaseTeamId,
-      p_raid_date: _calModalDate,
+      p_raid_date: dateStr,
       p_status: null,
       p_note: null
     })
     .then(function (result) {
       if (saveBtn) saveBtn.disabled = false;
       if (result.error) {
-        var errEl = document.getElementById('rsvpError');
+        var errEl = document.getElementById('dayViewMyError');
         if (errEl) {
           errEl.textContent = result.error.message;
           errEl.style.display = '';
         }
         return;
       }
-      _syncSignupSheet(_calModalDate);
-      var monthDate = new Date(_calModalDate + 'T00:00:00');
-      _calInvalidateMonthCache(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
-      _closeRsvpModal();
+      _syncSignupSheet(dateStr);
+      _calInvalidateDateMonth(dateStr);
+      buildCalendarWidget('full');
+    });
+}
+
+function _calInvalidateDateMonth(dateStr) {
+  var monthDate = new Date(dateStr + 'T00:00:00');
+  _calInvalidateMonthCache(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
+}
+
+function _calRenderRosterBreakdown(dateStr, roster, night, rsvpsByPlayer, isOfficer) {
+  var grouped = groupRosterByRole(roster);
+  var html = '<div class="pub-loot-title">Roster</div><table class="roster-table"><tbody>';
+  grouped.order.forEach(function (role) {
+    var players = grouped.groups[role];
+    if (!players.length) return;
+    html += '<tr class="group-header"><td colspan="2">' + grouped.labels[role] + '</td></tr>';
+    players
+      .slice()
+      .sort(function (a, b) {
+        return (a.nick || a.firstName).localeCompare(b.nick || b.firstName);
+      })
+      .forEach(function (p) {
+        var s = _calDayStatus(p, night, rsvpsByPlayer);
+        var dispName = p.nick || p.firstName;
+        var classColor = CLASS_COLORS[p.class];
+        html +=
+          '<tr><td>' +
+          (classColor ? '<span style="color:' + classColor + ';">' + dispName + '</span>' : dispName) +
+          '</td><td class="day-roster-status">' +
+          '<span class="day-roster-status-label">' +
+          '<span class="calendar-status calendar-status-' +
+          _calStatusClass(s.status) +
+          '"></span>' +
+          s.status +
+          '</span>' +
+          '<span class="day-roster-note">' +
+          (s.note ? _esc(s.note) : '') +
+          '</span>' +
+          (isOfficer
+            ? '<button type="button" class="day-roster-edit-btn" onclick="_openOfficerRsvpEdit(' +
+              p.id +
+              ",'" +
+              dateStr +
+              '\')">Edit</button>'
+            : '') +
+          '</td></tr>';
+      });
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+// --- Officer RSVP correction popup (#903) -- same .officer-prompt overlay
+// convention as every other modal in this codebase, but built as an HTML
+// string (rather than static markup in calendar.html) since it's entirely
+// part of the day view's dynamic render, gone as soon as the view re-renders.
+
+function _calOfficerEditPopupHtml() {
+  return (
+    '<div id="officerRsvpEditModal" class="officer-prompt">' +
+    '<div class="officer-prompt-box">' +
+    '<h2>Correct status</h2>' +
+    '<div id="officerRsvpEditOptions" class="rsvp-status-options"></div>' +
+    '<textarea id="officerRsvpEditNote" class="rsvp-note" placeholder="Note (required, visible to the raider)" rows="2"></textarea>' +
+    '<p id="officerRsvpEditError" style="display:none;font-size:0.88rem;color:var(--melee);"></p>' +
+    '<div class="prompt-buttons rsvp-prompt-buttons">' +
+    '<button type="button" class="btn btn-muted" onclick="_closeOfficerRsvpEdit()">Cancel</button>' +
+    '<button type="button" class="btn btn-muted" onclick="_clearOfficerRsvpStatus()">Clear (back to default)</button>' +
+    '<button type="button" class="btn btn-gold" id="officerRsvpEditSaveBtn" onclick="_saveOfficerRsvpStatus()">Save</button>' +
+    '</div></div></div>'
+  );
+}
+
+function _openOfficerRsvpEdit(playerId, dateStr) {
+  var existing = _calDayViewRsvpsByPlayer[playerId];
+  _calOfficerEditPlayerId = playerId;
+  _calOfficerEditDate = dateStr;
+  _calOfficerEditStatus = existing ? existing.status : null;
+  _calOfficerEditIsOptional = !!(_calDayViewNight && _calDayViewNight.isOptional);
+  var noteEl = document.getElementById('officerRsvpEditNote');
+  if (noteEl) noteEl.value = (existing && existing.note) || '';
+  var errEl = document.getElementById('officerRsvpEditError');
+  if (errEl) errEl.style.display = 'none';
+  _renderOfficerRsvpOptions();
+  var modal = document.getElementById('officerRsvpEditModal');
+  if (modal) modal.classList.add('active');
+}
+
+function _closeOfficerRsvpEdit() {
+  var modal = document.getElementById('officerRsvpEditModal');
+  if (modal) modal.classList.remove('active');
+  _calOfficerEditPlayerId = null;
+  _calOfficerEditDate = null;
+  _calOfficerEditStatus = null;
+}
+
+function _renderOfficerRsvpOptions() {
+  var el = document.getElementById('officerRsvpEditOptions');
+  if (!el) return;
+  var statuses = _calOfficerEditIsOptional ? ['Attending'].concat(_CAL_RSVP_STATUSES) : _CAL_RSVP_STATUSES;
+  el.innerHTML = statuses
+    .map(function (status) {
+      return (
+        '<button type="button" class="filter-chip' +
+        (status === _calOfficerEditStatus ? ' active' : '') +
+        '" onclick="_selectOfficerRsvpStatus(\'' +
+        status +
+        '\')">' +
+        status +
+        '</button>'
+      );
+    })
+    .join('');
+}
+
+function _selectOfficerRsvpStatus(status) {
+  _calOfficerEditStatus = status;
+  _renderOfficerRsvpOptions();
+}
+
+function _saveOfficerRsvpStatus() {
+  if (!_calOfficerEditPlayerId || !_calOfficerEditDate || !_calOfficerEditStatus) return;
+  var noteEl = document.getElementById('officerRsvpEditNote');
+  var errEl = document.getElementById('officerRsvpEditError');
+  var saveBtn = document.getElementById('officerRsvpEditSaveBtn');
+  var note = (noteEl && noteEl.value.trim()) || '';
+  if (!note) {
+    if (errEl) {
+      errEl.textContent = 'A note is required so the raider knows why.';
+      errEl.style.display = '';
+    }
+    return;
+  }
+  if (saveBtn) saveBtn.disabled = true;
+  supabaseClient
+    .rpc('officer_set_rsvp', {
+      p_team_id: _teamCfg.supabaseTeamId,
+      p_player_id: _calOfficerEditPlayerId,
+      p_raid_date: _calOfficerEditDate,
+      p_status: _calOfficerEditStatus,
+      p_note: note
+    })
+    .then(function (result) {
+      if (saveBtn) saveBtn.disabled = false;
+      if (result.error) {
+        if (errEl) {
+          errEl.textContent = result.error.message;
+          errEl.style.display = '';
+        }
+        return;
+      }
+      _syncSignupSheet(_calOfficerEditDate);
+      _calInvalidateDateMonth(_calOfficerEditDate);
+      _closeOfficerRsvpEdit();
+      buildCalendarWidget('full');
+    });
+}
+
+function _clearOfficerRsvpStatus() {
+  if (!_calOfficerEditPlayerId || !_calOfficerEditDate) return;
+  var noteEl = document.getElementById('officerRsvpEditNote');
+  var errEl = document.getElementById('officerRsvpEditError');
+  var saveBtn = document.getElementById('officerRsvpEditSaveBtn');
+  var note = (noteEl && noteEl.value.trim()) || null;
+  if (saveBtn) saveBtn.disabled = true;
+  supabaseClient
+    .rpc('officer_set_rsvp', {
+      p_team_id: _teamCfg.supabaseTeamId,
+      p_player_id: _calOfficerEditPlayerId,
+      p_raid_date: _calOfficerEditDate,
+      p_status: null,
+      p_note: note
+    })
+    .then(function (result) {
+      if (saveBtn) saveBtn.disabled = false;
+      if (result.error) {
+        if (errEl) {
+          errEl.textContent = result.error.message;
+          errEl.style.display = '';
+        }
+        return;
+      }
+      _syncSignupSheet(_calOfficerEditDate);
+      _calInvalidateDateMonth(_calOfficerEditDate);
+      _closeOfficerRsvpEdit();
       buildCalendarWidget('full');
     });
 }

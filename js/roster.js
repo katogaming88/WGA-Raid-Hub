@@ -87,13 +87,10 @@ function showView(name) {
 
 function populateDropdown() {
   var sel = document.getElementById('playerSelect');
-  var order = ['Tank', 'Heal', 'Melee', 'Ranged'];
-  var labels = { Tank: 'Tanks', Heal: 'Healers', Melee: 'Melee', Ranged: 'Ranged' };
-  var groups = { Tank: [], Heal: [], Melee: [], Ranged: [] };
-  for (var i = 0; i < DATA.roster.length; i++) {
-    var p = DATA.roster[i];
-    if (groups[p.role]) groups[p.role].push(p);
-  }
+  var grouped = groupRosterByRole(DATA.roster);
+  var order = grouped.order,
+    labels = grouped.labels,
+    groups = grouped.groups;
   for (var r = 0; r < order.length; r++) {
     var role = order[r];
     var players = groups[role];
@@ -118,14 +115,10 @@ function buildPublicRosterTab() {
   var container = document.getElementById('rosterView');
   if (!container || !window.DATA || !DATA.roster) return;
 
-  var order = ['Tank', 'Heal', 'Melee', 'Ranged'];
-  var labels = { Tank: 'Tanks', Heal: 'Healers', Melee: 'Melee', Ranged: 'Ranged' };
-  var groups = { Tank: [], Heal: [], Melee: [], Ranged: [] };
-
-  for (var i = 0; i < DATA.roster.length; i++) {
-    var p = DATA.roster[i];
-    if (groups[p.role]) groups[p.role].push(p);
-  }
+  var grouped = groupRosterByRole(DATA.roster);
+  var order = grouped.order,
+    labels = grouped.labels,
+    groups = grouped.groups;
 
   var html = '<table class="roster-table"><thead><tr><th>Player</th><th>Class / Spec</th></tr></thead><tbody>';
 
@@ -197,14 +190,10 @@ function buildIncomingRosterSection() {
     return;
   }
 
-  var order = ['Tank', 'Heal', 'Melee', 'Ranged'];
-  var labels = { Tank: 'Tanks', Heal: 'Healers', Melee: 'Melee', Ranged: 'Ranged' };
-  var groups = { Tank: [], Heal: [], Melee: [], Ranged: [] };
-
-  for (var i = 0; i < rows.length; i++) {
-    var p = rows[i];
-    if (groups[p.role]) groups[p.role].push(p);
-  }
+  var grouped = groupRosterByRole(rows);
+  var order = grouped.order,
+    labels = grouped.labels,
+    groups = grouped.groups;
 
   var html =
     '<div class="pub-loot-title">' + rows.length + ' Pending Raider' + (rows.length === 1 ? '' : 's') + '</div>';

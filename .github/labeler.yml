@@ -93,6 +93,14 @@ guild-page:
       - js/guild.js
       - css/guild.css
 
+# calendar.html is deliberately absent, same reason admin.html/guild.html are
+# above -- every version stamp retags it too, so listing it here would label
+# every release PR.
+calendar:
+  - changed-files:
+    - any-glob-to-any-file:
+      - js/calendar.js
+
 database:
   - changed-files:
     - any-glob-to-any-file:

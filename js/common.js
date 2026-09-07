@@ -45,6 +45,21 @@ var TEAMS = {
   }
 };
 
+// Buckets a roster array by player.role ('Tank'/'Heal'/'Melee'/'Ranged') in
+// display order, for every "roster grouped by role" table/list in the app
+// (js/roster.js's public roster tab, incoming roster, and player dropdown;
+// js/calendar.js's raid-day detail view RSVP breakdown, #903). Lives here
+// rather than js/roster.js since calendar.html doesn't load that file.
+function groupRosterByRole(roster) {
+  var order = ['Tank', 'Heal', 'Melee', 'Ranged'];
+  var labels = { Tank: 'Tanks', Heal: 'Healers', Melee: 'Melee', Ranged: 'Ranged' };
+  var groups = { Tank: [], Heal: [], Melee: [], Ranged: [] };
+  (roster || []).forEach(function (p) {
+    if (groups[p.role]) groups[p.role].push(p);
+  });
+  return { order: order, labels: labels, groups: groups };
+}
+
 // The pickers' team list. Everything else (id-to-slug lookups, ?team=
 // resolution, the BoE reporting dropdown) reads TEAMS directly, because a
 // hidden team is unlisted rather than nonexistent.
@@ -94,14 +109,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.92.0';
+var VERSION = '3.93.0';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20260905154234';
+var REQUIRED_SCHEMA = '20260907111543';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a

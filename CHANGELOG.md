@@ -11,6 +11,30 @@ contracts each section answers to.
 
 ---
 
+## [3.93.0] - 2026-09-07
+
+### Frontend
+
+- Clicking a raid day, on the full calendar or the Home widget, now opens a day view with its own
+  URL (`calendar.html?date=...`) instead of a status-picker modal
+  ([#903](https://github.com/katogaming88/WGA-Raid-Hub/issues/903)). It carries the raider's own
+  status control at the top, same as the old modal, plus a full roster breakdown grouped by role
+  showing everyone's status and note, aggregate in/out/no-response counts, and prev/next arrows
+  that move to the adjacent day. An officer can now correct another raider's status inline from
+  that roster list.
+- The public roster tab, the incoming-roster preview, and the player dropdown all built their
+  Tank/Healer/Melee/Ranged grouping the same way in three separate places. That logic now lives in
+  one shared helper, reused by the new day view's roster breakdown as a fourth caller instead of a
+  fourth copy.
+
+### Backend
+
+- New `officer_set_rsvp()` RPC lets an officer set or clear another raider's RSVP status, always
+  with a required note so the raider can see why it changed
+  ([#903](https://github.com/katogaming88/WGA-Raid-Hub/issues/903)). `raid_rsvps` keeps its
+  SELECT-only RLS -- this is the officer-scoped write path the 2026-09-03 decision on that table
+  said any future correction should take, not a blanket write grant.
+
 ## [3.92.0] - 2026-09-07
 
 ### Frontend

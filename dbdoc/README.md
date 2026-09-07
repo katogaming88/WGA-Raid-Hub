@@ -141,6 +141,7 @@
 | public.raid_night_info | record | p_team_id integer, p_raid_date date | FUNCTION |
 | public.resolve_boe_finder_discord_id | text | p_boe_id integer | FUNCTION |
 | public.archive_player | timestamptz | p_player_id integer, p_reason text, p_detail text | FUNCTION |
+| public.officer_set_rsvp | void | p_team_id integer, p_player_id integer, p_raid_date date, p_status text, p_note text | FUNCTION |
 
 ## Enums
 
