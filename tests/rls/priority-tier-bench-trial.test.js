@@ -50,14 +50,17 @@ function generate(asUser, track = 'Hero') {
   ]);
 }
 
-async function seedPlayer(q, { id, role, isBench = false, isTrial = false, performance, attendance }) {
+async function seedPlayer(
+  q,
+  { id, role, isBench = false, isTrial = false, isRotator = false, performance, attendance }
+) {
   const specId = await q("insert into public.classes_specs (class, spec, role) values ('Seed', $1, $2) returning id", [
     `Spec${id}`,
     role
   ]);
   await q(
-    'insert into public.players (id, team_id, name_realm, class_spec_id, is_bench, is_trial) values ($1, 1, $2, $3, $4, $5)',
-    [id, `Seedplayer${id}-Illidan`, specId.rows[0].id, isBench, isTrial]
+    'insert into public.players (id, team_id, name_realm, class_spec_id, is_bench, is_trial, is_rotator) values ($1, 1, $2, $3, $4, $5, $6)',
+    [id, `Seedplayer${id}-Illidan`, specId.rows[0].id, isBench, isTrial, isRotator]
   );
   await q('insert into public.bis_items (player_id, item_id, obtained) values ($1, $2, false)', [id, ITEM_ID]);
   await q(
@@ -119,6 +122,25 @@ describe('generate_priority_order bench/trial tiering', () => {
       const idx = (id) => res.rows.findIndex((r) => r.player_id === id);
       expect(idx(121)).toBeLessThan(idx(122));
       expect(idx(122)).toBeLessThan(idx(123));
+    });
+  });
+});
+
+// #924: Rotator sorts below full status but above Bench, inserted between
+// the existing Trial and Bench tiers.
+describe('generate_priority_order rotator tiering (#924)', () => {
+  it('a rotator outranks a bench raider but not a trial or full-status one', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await seedPlayer(q, { id: 131, role: 'Ranged', performance: 0, attendance: 0 });
+      await seedPlayer(q, { id: 132, role: 'Ranged', isTrial: true, performance: 0, attendance: 0 });
+      await seedPlayer(q, { id: 133, role: 'Ranged', isRotator: true, performance: 100, attendance: 100 });
+      await seedPlayer(q, { id: 134, role: 'Ranged', isBench: true, performance: 100, attendance: 100 });
+
+      const res = await generate(asUser);
+      const idx = (id) => res.rows.findIndex((r) => r.player_id === id);
+      expect(idx(131)).toBeLessThan(idx(132));
+      expect(idx(132)).toBeLessThan(idx(133));
+      expect(idx(133)).toBeLessThan(idx(134));
     });
   });
 });

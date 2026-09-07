@@ -1308,3 +1308,19 @@ Two deliberate differences from `set_own_rsvp()`:
 - A note is always required, even though the officer -- not the raider -- initiated the change, so the raider can see why their status was changed on their behalf.
 
 [Full discussion -> #903](https://github.com/katogaming88/WGA-Raid-Hub/issues/903), part of #640.
+
+---
+
+## #924 -- players.is_rotator: a third roster status, officer-assigned per raid week rather than self-RSVP
+
+Phoenix needed a roster status for a pool of players who rotate through a shared raid slot rather than each having a guaranteed spot: not automatically Present/Attending like a full roster member (same as Bench), but unlike Bench, individual rotators don't self-RSVP their own "in" status -- officers pick who's in for the week.
+
+**New `players.is_rotator` boolean**, parallel to `is_bench`, set from the same roster-editing UI (`js/tabs/tab-roster.js`).
+
+**Granularity: per raid week, not per raid night.** An officer thinks in terms of "who's rotating in this week," not clicking through each individual raid date -- picking a fixed number of slots or a day-level grain would have made the common case (assign someone for the whole week) require N separate actions. `raid_rsvps` stays per-date/per-player though (no new week-grain table): `officer_set_rotator_week(p_team_id, p_player_id, p_week_start, p_in)` recomputes the raid nights inside the Sunday-Saturday week containing `p_week_start` the same way `js/calendar.js`'s `computeRaidNights()` does client-side (an active `raid_schedule` weekday rule, minus a `cancelled` exception, plus an `added` one), and fans the single week-level call out into one `Rotator-In` `raid_rsvps` row per night (or deletes them all, for `p_in = false`). A `Rotator-In` row is picked up by the same per-date override lookup every other RSVP status already goes through, so the calendar UI needed no new read path -- only a new write one.
+
+**Rotators can still self-RSVP.** `set_own_rsvp()` already only gates on `is_bench`, not `is_trial`/`is_rotator`, so a rotator can self-flag Late/Leaving Early/Tentative/Absent without any change to that function -- letting a rotator say "I can't make it" even on a night they weren't assigned. There is no rotator-facing way to self-mark "in"; that stays exclusively `officer_set_rotator_week()`.
+
+**Loot priority:** `generate_priority_order()`'s `status_tier` sort (2026-07-31 decision, above) gains a fourth tier -- Rotator sorts below a full-status raider but above Bench, inserted between the existing Trial (1) and Bench (now 3) tiers, at 2. No score discount, same as the existing tiers -- purely a sort-order change.
+
+[Full discussion -> #924](https://github.com/katogaming88/WGA-Raid-Hub/issues/924), part of #640.

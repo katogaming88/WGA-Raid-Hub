@@ -1266,6 +1266,13 @@
           "name": "bonus_roll_encounter_id",
           "type": "integer",
           "nullable": true
+        },
+        {
+          "name": "is_rotator",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "Rotator roster status (#924): not automatically Present/Attending on a raid night like Bench, but officer-assigned per raid week (officer_set_rotator_week()) rather than self-RSVP."
         }
       ],
       "indexes": [
@@ -5386,7 +5393,7 @@
     {
       "name": "public.raid_rsvps",
       "type": "BASE TABLE",
-      "comment": "A raider's self-declared override for one raid night (#893, part of #640) -- absence of a row means the computed default (Present, or Bench via players.is_bench) applies. Forward-looking intent only, never synced into public.attendance. Written only through set_own_rsvp() (SECURITY DEFINER); no direct INSERT/UPDATE/DELETE policy for anyone.",
+      "comment": "A raider's self-declared override for one raid night (#893, part of #640) -- absence of a row means the computed default (Present, or Bench/Rotator via players.is_bench/is_rotator) applies. Forward-looking intent only, never synced into public.attendance. Written only through set_own_rsvp() or officer_set_rsvp() (SECURITY DEFINER); the Rotator-In status is written only through officer_set_rotator_week(). No direct INSERT/UPDATE/DELETE grant for anyone.",
       "columns": [
         {
           "name": "id",
@@ -5456,7 +5463,7 @@
         {
           "name": "raid_rsvps_status_check",
           "type": "CHECK",
-          "def": "CHECK ((status = ANY (ARRAY['Attending'::text, 'Late'::text, 'Leaving Early'::text, 'Tentative'::text, 'Absent'::text])))",
+          "def": "CHECK ((status = ANY (ARRAY['Attending'::text, 'Late'::text, 'Leaving Early'::text, 'Tentative'::text, 'Absent'::text, 'Rotator-In'::text])))",
           "table": "public.raid_rsvps",
           "referenced_table": "",
           "columns": [
@@ -7377,6 +7384,12 @@
       "name": "public.officer_set_rsvp",
       "return_type": "void",
       "arguments": "p_team_id integer, p_player_id integer, p_raid_date date, p_status text, p_note text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.officer_set_rotator_week",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_player_id integer, p_week_start date, p_in boolean",
       "type": "FUNCTION"
     }
   ],

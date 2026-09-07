@@ -2,7 +2,7 @@
 
 ## Description
 
-A raider's self-declared override for one raid night (#893, part of #640) -- absence of a row means the computed default (Present, or Bench via players.is_bench) applies. Forward-looking intent only, never synced into public.attendance. Written only through set_own_rsvp() (SECURITY DEFINER); no direct INSERT/UPDATE/DELETE policy for anyone.
+A raider's self-declared override for one raid night (#893, part of #640) -- absence of a row means the computed default (Present, or Bench/Rotator via players.is_bench/is_rotator) applies. Forward-looking intent only, never synced into public.attendance. Written only through set_own_rsvp() or officer_set_rsvp() (SECURITY DEFINER); the Rotator-In status is written only through officer_set_rotator_week(). No direct INSERT/UPDATE/DELETE grant for anyone.
 
 ## Columns
 
@@ -21,7 +21,7 @@ A raider's self-declared override for one raid night (#893, part of #640) -- abs
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| raid_rsvps_status_check | CHECK | CHECK ((status = ANY (ARRAY['Attending'::text, 'Late'::text, 'Leaving Early'::text, 'Tentative'::text, 'Absent'::text]))) |
+| raid_rsvps_status_check | CHECK | CHECK ((status = ANY (ARRAY['Attending'::text, 'Late'::text, 'Leaving Early'::text, 'Tentative'::text, 'Absent'::text, 'Rotator-In'::text]))) |
 | raid_rsvps_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
 | raid_rsvps_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | raid_rsvps_pkey | PRIMARY KEY | PRIMARY KEY (id) |
@@ -87,6 +87,7 @@ erDiagram
   integer tier_pieces_equipped
   timestamp_with_time_zone tier_pieces_synced_at
   integer bonus_roll_encounter_id FK
+  boolean is_rotator
 }
 ```
 

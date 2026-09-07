@@ -109,14 +109,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.94.0';
+var VERSION = '3.95.0';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20260907143121';
+var REQUIRED_SCHEMA = '20260907191632';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -1675,7 +1675,7 @@ function fetchSupabaseRoster() {
   var query = supabaseClient
     .from('players')
     .select(
-      'id, name_realm, nickname, is_trial, is_bench, is_backup_tank, is_backup_healer, bis_link, bis_allowed, wishlist_allowed, m_plus_excluded, m_plus_note, join_date, tier_pieces_equipped, tier_pieces_synced_at, bonus_roll_encounter_id, raid_encounters(name), classes_specs(class, spec, role)'
+      'id, name_realm, nickname, is_trial, is_bench, is_rotator, is_backup_tank, is_backup_healer, bis_link, bis_allowed, wishlist_allowed, m_plus_excluded, m_plus_note, join_date, tier_pieces_equipped, tier_pieces_synced_at, bonus_roll_encounter_id, raid_encounters(name), classes_specs(class, spec, role)'
     )
     .eq('team_id', _teamCfg.supabaseTeamId)
     .is('archived_at', null)
@@ -1884,6 +1884,7 @@ function mapSupabaseRoster(rows, mplusRejections, officerNotes) {
       realm: parts.slice(1).join('-').trim(),
       isTrial: !!row.is_trial,
       isBench: !!row.is_bench,
+      isRotator: !!row.is_rotator,
       isBackupTank: !!row.is_backup_tank,
       isBackupHealer: !!row.is_backup_healer,
       nick: row.nickname || '',
@@ -6022,6 +6023,9 @@ function renderProfile(firstName, backTo, container) {
   var benchBadge = player.isBench
     ? '<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text);border:1px solid var(--border);">Bench</span>'
     : '';
+  var rotatorBadge = player.isRotator
+    ? '<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text);border:1px solid var(--border);">Rotator</span>'
+    : '';
   var backupTankBadge = player.isBackupTank ? '<span class="badge badge-backup-tank">Backup Tank</span>' : '';
   var backupHealerBadge = player.isBackupHealer ? '<span class="badge badge-backup-healer">Backup Healer</span>' : '';
 
@@ -6818,6 +6822,20 @@ function renderProfile(firstName, backTo, container) {
           '</div>'
         : '') +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
+      '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">Rotator</span>' +
+      '<button id="rotatorToggle-' +
+      player.firstName +
+      '" class="btn ' +
+      (player.isRotator ? 'btn-gold' : 'btn-muted') +
+      '" style="font-size:1rem;padding:0.25rem 0.75rem;" onclick="togglePlayerRotator(\'' +
+      nrSafe +
+      "','" +
+      fnSafe +
+      '\')">' +
+      (player.isRotator ? 'Remove from Rotator' : 'Mark as Rotator') +
+      '</button>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:0.75rem;">' +
       '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">Backup Tank</span>' +
       '<button id="backupTankToggle-' +
       player.firstName +
@@ -6974,6 +6992,7 @@ function renderProfile(firstName, backTo, container) {
     '</span>' +
     trialBadge +
     benchBadge +
+    rotatorBadge +
     backupTankBadge +
     backupHealerBadge +
     classLine +
