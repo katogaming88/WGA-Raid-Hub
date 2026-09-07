@@ -286,8 +286,11 @@ async function buildEmbedAndComponents(
         .setURL(`${ctx.siteUrl.replace(/\/$/, '')}/calendar.html?date=${raidDate}${teamParam}`)
     );
   }
+  // Carries the team id directly (#991) rather than leaving the refresh
+  // handler to infer it from the interaction's guild/channel -- WGA's three
+  // teams share one Discord server, so neither would disambiguate them.
   row.addComponents(
-    new ButtonBuilder().setStyle(ButtonStyle.Secondary).setLabel('Refresh').setCustomId(`signup-sheet-refresh:${raidDate}`)
+    new ButtonBuilder().setStyle(ButtonStyle.Secondary).setLabel('Refresh').setCustomId(`signup-sheet-refresh:${ctx.teamId}:${raidDate}`)
   );
 
   return { embed, components: row.components.length ? [row] : [] };

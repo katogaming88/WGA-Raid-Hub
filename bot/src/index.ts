@@ -15,7 +15,7 @@ import express, { Request, Response } from 'express';
 import { fetchNudgeCandidates, NudgeCategory, profileDeepLink } from './wishlistStatus';
 import { filterAndRecordNudges } from './nudgeLog';
 import { runSignupSheetSweep, syncSignupSheet, SignupSheetContext } from './signupSheet';
-import { TeamConfig, TeamConfigCache, attendanceChannelId, signupChannelId, startTeamConfigRefresh } from './teamConfig';
+import { TeamConfig, TeamConfigCache, attendanceChannelId, signupChannelId, TEAM_CONFIG_REFRESH_INTERVAL_MS } from './teamConfig';
 
 // #991: one bot process now serves every team, reading each team's guild
 // id/channel ids/ping role ids/script URLs from team_discord_config at
@@ -29,6 +29,16 @@ import { TeamConfig, TeamConfigCache, attendanceChannelId, signupChannelId, star
 // cooldown log lives (already safe to share across teams unmodified --
 // filterAndRecordNudges keys on Discord user id, which is globally unique
 // on its own, not per-guild).
+//
+// WGA's three teams all share ONE Discord server (confirmed after an
+// earlier draft of this file wrongly assumed one guild per team) -- so a
+// Discord guild id, and in general the channel an interaction fires in,
+// cannot tell two teams apart. Every slash command instead takes a required
+// `team` choice (see buildCommands()/teamOption()), and every relay route
+// resolves `team` from the request body (see resolveTeam()). The one place
+// a guild id is still used for its own sake is slash-command *registration*
+// (register once per distinct guild, not per team row) -- see
+// registerCommands().
 
 const rawToken = process.env.DISCORD_BOT_TOKEN;
 const rawSupabaseUrl = process.env.SUPABASE_URL;
@@ -54,79 +64,116 @@ const NUDGE_LOG_PATH = process.env.NUDGE_LOG_PATH ?? './data/nudge-log.json';
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 const teamConfigs = new TeamConfigCache(supabase);
 
-const commands = [
-  new SlashCommandBuilder()
-    .setName('resend')
-    .setDescription('Re-send the last N M+ exclusion submissions from the Google Form')
-    .addIntegerOption(opt =>
-      opt.setName('count')
-        .setDescription('Number of submissions to resend (1-20)')
-        .setRequired(true)
-        .setMinValue(1)
-        .setMaxValue(20)
-    )
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('pending-roster')
-    .setDescription('List all current pending signup applicants')
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('trials')
-    .setDescription('List all players currently on trial with how long they have been on the roster')
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('bench')
-    .setDescription('List all benched players')
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('attendance')
-    .setDescription('Show attendance percentage for a specific player')
-    .addStringOption(opt =>
-      opt.setName('player')
-        .setDescription('Player first name (e.g. Katorri)')
-        .setRequired(true)
-    )
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('absences')
-    .setDescription('List players currently below the attendance threshold')
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('mplus-excluded')
-    .setDescription('List all players approved for M+ exclusion')
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('fairness')
-    .setDescription('Quick loot distribution summary -- who has received the most vs least items this tier')
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('officers')
-    .setDescription('List current officers and their claimed Discord usernames')
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('nudge-missing')
-    .setDescription('DM raiders missing a wishlist, BiS source link, or a real BiS pick on their wishlist')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .toJSON(),
-];
+// WGA's three teams all live in the same Discord server -- confirmed after
+// initially assuming one guild per team, which #991's first draft got wrong.
+// So neither the guild nor (in general) the channel an interaction fires in
+// disambiguates which team a command is for; every command below takes a
+// required `team` choice instead. Built as a function, not a module-level
+// constant, since the choice list depends on teamConfigs -- rebuilt (and
+// re-registered) whenever the cache refreshes, so a newly-added team shows
+// up as a choice without a bot restart.
+function teamOption(opt: import('discord.js').SlashCommandStringOption): import('discord.js').SlashCommandStringOption {
+  const choices = teamConfigs.all().map(cfg => ({ name: cfg.name, value: cfg.slug }));
+  return opt.setName('team').setDescription('Which team').setRequired(true).addChoices(...choices);
+}
+
+function buildCommands() {
+  return [
+    new SlashCommandBuilder()
+      .setName('resend')
+      .setDescription('Re-send the last N M+ exclusion submissions from the Google Form')
+      .addStringOption(teamOption)
+      .addIntegerOption(opt =>
+        opt.setName('count')
+          .setDescription('Number of submissions to resend (1-20)')
+          .setRequired(true)
+          .setMinValue(1)
+          .setMaxValue(20)
+      )
+      .toJSON(),
+    new SlashCommandBuilder()
+      .setName('pending-roster')
+      .setDescription('List all current pending signup applicants')
+      .addStringOption(teamOption)
+      .toJSON(),
+    new SlashCommandBuilder()
+      .setName('trials')
+      .setDescription('List all players currently on trial with how long they have been on the roster')
+      .addStringOption(teamOption)
+      .toJSON(),
+    new SlashCommandBuilder()
+      .setName('bench')
+      .setDescription('List all benched players')
+      .addStringOption(teamOption)
+      .toJSON(),
+    new SlashCommandBuilder()
+      .setName('attendance')
+      .setDescription('Show attendance percentage for a specific player')
+      .addStringOption(teamOption)
+      .addStringOption(opt =>
+        opt.setName('player')
+          .setDescription('Player first name (e.g. Katorri)')
+          .setRequired(true)
+      )
+      .toJSON(),
+    new SlashCommandBuilder()
+      .setName('absences')
+      .setDescription('List players currently below the attendance threshold')
+      .addStringOption(teamOption)
+      .toJSON(),
+    new SlashCommandBuilder()
+      .setName('mplus-excluded')
+      .setDescription('List all players approved for M+ exclusion')
+      .addStringOption(teamOption)
+      .toJSON(),
+    new SlashCommandBuilder()
+      .setName('fairness')
+      .setDescription('Quick loot distribution summary -- who has received the most vs least items this tier')
+      .addStringOption(teamOption)
+      .toJSON(),
+    new SlashCommandBuilder()
+      .setName('officers')
+      .setDescription('List current officers and their claimed Discord usernames')
+      .addStringOption(teamOption)
+      .toJSON(),
+    new SlashCommandBuilder()
+      .setName('nudge-missing')
+      .setDescription('DM raiders missing a wishlist, BiS source link, or a real BiS pick on their wishlist')
+      .addStringOption(teamOption)
+      .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+      .toJSON(),
+  ];
+}
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-client.once('clientReady', async () => {
-  console.log(`Bot ready: ${client.user?.tag}`);
+async function registerCommands(): Promise<void> {
+  await teamConfigs.refresh();
+  const commands = buildCommands();
   const rest = new REST().setToken(BOT_TOKEN);
-  // One registration call per configured guild, not one process per guild
-  // (#991) -- a failure in one guild (e.g. the bot was removed from that
-  // server but its row wasn't cleaned up yet) shouldn't stop the rest from
-  // registering.
-  for (const cfg of teamConfigs.all()) {
+  // One registration call per distinct guild, not per team -- multiple teams
+  // can (and, for WGA, do) share one guild, so registering once per team row
+  // would just repeat the same call for the same guild.
+  const guildIds = new Set(teamConfigs.all().map(cfg => cfg.guildId));
+  for (const guildId of guildIds) {
     try {
-      await rest.put(Routes.applicationGuildCommands(client.user!.id, cfg.guildId), { body: commands });
-      console.log(`Slash commands registered for ${cfg.slug} (guild ${cfg.guildId}).`);
+      await rest.put(Routes.applicationGuildCommands(client.user!.id, guildId), { body: commands });
+      console.log(`Slash commands registered for guild ${guildId}.`);
     } catch (err) {
-      console.error(`Slash command registration failed for ${cfg.slug} (guild ${cfg.guildId}):`, err);
+      console.error(`Slash command registration failed for guild ${guildId}:`, err);
     }
   }
+}
+
+client.once('clientReady', async () => {
+  console.log(`Bot ready: ${client.user?.tag}`);
+  await registerCommands();
+  // Re-registering also refreshes the config cache first (see
+  // registerCommands' teamConfigs.refresh() call) so a team added later
+  // shows up both in lookups and as a `team` choice, without a restart.
+  setInterval(() => {
+    registerCommands().catch(err => console.error('Periodic command re-registration failed:', err));
+  }, TEAM_CONFIG_REFRESH_INTERVAL_MS);
 });
 
 client.on('error', (error) => {
@@ -286,17 +333,18 @@ client.on('interactionCreate', async (interaction) => {
   // component this bot handles today besides slash commands. Re-syncing
   // just calls the same claim/edit path syncSignupSheet always uses, which
   // naturally becomes "edit the message this button lives on" once a sheet
-  // already exists. The button's customId only carries the raid date, not a
-  // team -- resolved from the guild the interaction fired in, same as every
-  // slash command below.
+  // already exists. The button's customId carries the team id directly
+  // (`signup-sheet-refresh:{teamId}:{raidDate}`, see signupSheet.ts) rather
+  // than inferring it from the interaction's guild -- WGA's three teams
+  // share one Discord server, so the guild alone never disambiguates them.
   if (interaction.isButton() && interaction.customId.startsWith('signup-sheet-refresh:')) {
-    const raidDate = interaction.customId.split(':')[1];
+    const [, teamIdStr, raidDate] = interaction.customId.split(':');
     try {
       await interaction.deferUpdate();
     } catch {
       return;
     }
-    const cfg = teamConfigs.getByGuildId(interaction.guildId);
+    const cfg = teamConfigs.getByTeamId(Number(teamIdStr));
     if (!cfg) return;
     try {
       // Refresh only ever lives on a message that already exists.
@@ -311,9 +359,13 @@ client.on('interactionCreate', async (interaction) => {
 
   const cmd = interaction.commandName;
 
-  const cfg = teamConfigs.getByGuildId(interaction.guildId);
+  // Every command has a required `team` choice (see buildCommands()) --
+  // WGA's three teams share one Discord server, so neither the guild nor
+  // (in general) the channel an interaction fires in can stand in for it.
+  const teamSlug = interaction.options.getString('team', true);
+  const cfg = teamConfigs.getBySlug(teamSlug);
   if (!cfg) {
-    await interaction.reply({ content: "This server isn't configured for this bot yet.", flags: MessageFlags.Ephemeral }).catch(() => null);
+    await interaction.reply({ content: `Unknown team: ${teamSlug}`, flags: MessageFlags.Ephemeral }).catch(() => null);
     return;
   }
 
@@ -1124,11 +1176,12 @@ client.once('clientReady', () => {
 });
 
 async function main(): Promise<void> {
-  // Load every team's config before logging in or accepting traffic --
-  // slash-command registration on 'clientReady' and the first relay call
-  // both need it immediately, not eventually.
+  // Load every team's config before logging in or accepting traffic -- the
+  // first relay call needs it immediately, not eventually. clientReady's own
+  // registerCommands() call refreshes again (and keeps refreshing on its
+  // periodic re-registration), so this is just to cover the brief window
+  // before that fires.
   await teamConfigs.refresh();
-  startTeamConfigRefresh(teamConfigs);
 
   await client.login(BOT_TOKEN);
 

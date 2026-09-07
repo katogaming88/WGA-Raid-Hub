@@ -5916,6 +5916,30 @@
           "columns": [
             "team_id"
           ]
+        },
+        {
+          "name": "team_discord_config_officer_channel_id_key",
+          "def": "CREATE UNIQUE INDEX team_discord_config_officer_channel_id_key ON public.team_discord_config USING btree (officer_channel_id)",
+          "table": "public.team_discord_config",
+          "columns": [
+            "officer_channel_id"
+          ]
+        },
+        {
+          "name": "team_discord_config_attendance_channel_id_key",
+          "def": "CREATE UNIQUE INDEX team_discord_config_attendance_channel_id_key ON public.team_discord_config USING btree (attendance_channel_id)",
+          "table": "public.team_discord_config",
+          "columns": [
+            "attendance_channel_id"
+          ]
+        },
+        {
+          "name": "team_discord_config_signup_channel_id_key",
+          "def": "CREATE UNIQUE INDEX team_discord_config_signup_channel_id_key ON public.team_discord_config USING btree (signup_channel_id)",
+          "table": "public.team_discord_config",
+          "columns": [
+            "signup_channel_id"
+          ]
         }
       ],
       "constraints": [
@@ -5940,6 +5964,36 @@
           "referenced_table": "",
           "columns": [
             "team_id"
+          ]
+        },
+        {
+          "name": "team_discord_config_officer_channel_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (officer_channel_id)",
+          "table": "public.team_discord_config",
+          "referenced_table": "",
+          "columns": [
+            "officer_channel_id"
+          ]
+        },
+        {
+          "name": "team_discord_config_attendance_channel_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (attendance_channel_id)",
+          "table": "public.team_discord_config",
+          "referenced_table": "",
+          "columns": [
+            "attendance_channel_id"
+          ]
+        },
+        {
+          "name": "team_discord_config_signup_channel_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (signup_channel_id)",
+          "table": "public.team_discord_config",
+          "referenced_table": "",
+          "columns": [
+            "signup_channel_id"
           ]
         }
       ]

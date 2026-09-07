@@ -27,12 +27,18 @@ Per-team Discord infra config for the consolidated multi-tenant bot (#991): guil
 | ---- | ---- | ---------- |
 | team_discord_config_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | team_discord_config_pkey | PRIMARY KEY | PRIMARY KEY (team_id) |
+| team_discord_config_officer_channel_id_key | UNIQUE | UNIQUE (officer_channel_id) |
+| team_discord_config_attendance_channel_id_key | UNIQUE | UNIQUE (attendance_channel_id) |
+| team_discord_config_signup_channel_id_key | UNIQUE | UNIQUE (signup_channel_id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | team_discord_config_pkey | CREATE UNIQUE INDEX team_discord_config_pkey ON public.team_discord_config USING btree (team_id) |
+| team_discord_config_officer_channel_id_key | CREATE UNIQUE INDEX team_discord_config_officer_channel_id_key ON public.team_discord_config USING btree (officer_channel_id) |
+| team_discord_config_attendance_channel_id_key | CREATE UNIQUE INDEX team_discord_config_attendance_channel_id_key ON public.team_discord_config USING btree (attendance_channel_id) |
+| team_discord_config_signup_channel_id_key | CREATE UNIQUE INDEX team_discord_config_signup_channel_id_key ON public.team_discord_config USING btree (signup_channel_id) |
 
 ## Relations
 

@@ -80,7 +80,6 @@ async function loadTeamConfigs(supabase: SupabaseClient): Promise<TeamConfig[]> 
 
 export class TeamConfigCache {
   private byTeamId = new Map<number, TeamConfig>();
-  private byGuildId = new Map<string, TeamConfig>();
   private bySlug = new Map<string, TeamConfig>();
 
   constructor(private readonly supabase: SupabaseClient) {}
@@ -88,17 +87,14 @@ export class TeamConfigCache {
   async refresh(): Promise<void> {
     const configs = await loadTeamConfigs(this.supabase);
     const byTeamId = new Map<number, TeamConfig>();
-    const byGuildId = new Map<string, TeamConfig>();
     const bySlug = new Map<string, TeamConfig>();
     for (const cfg of configs) {
       byTeamId.set(cfg.teamId, cfg);
-      byGuildId.set(cfg.guildId, cfg);
       bySlug.set(cfg.slug, cfg);
     }
-    // Swap all three maps together so a concurrent lookup never sees one
-    // rebuilt and the other two still stale mid-refresh.
+    // Swap both maps together so a concurrent lookup never sees one rebuilt
+    // and the other still stale mid-refresh.
     this.byTeamId = byTeamId;
-    this.byGuildId = byGuildId;
     this.bySlug = bySlug;
   }
 
@@ -106,10 +102,11 @@ export class TeamConfigCache {
     return [...this.byTeamId.values()];
   }
 
-  getByGuildId(guildId: string | null | undefined): TeamConfig | null {
-    if (!guildId) return null;
-    return this.byGuildId.get(guildId) ?? null;
-  }
+  // Deliberately no getByGuildId(): WGA's three teams share one Discord
+  // server, so a guild id alone can map to more than one team and would
+  // silently collide in a byGuildId map. Every command/route resolves the
+  // team explicitly instead -- a required `team` slash-command option, or
+  // the relay's `team` field -- see index.ts.
 
   // The relay's `team` field is always a teams.slug string (before #991,
   // discord-bot-webhook used the same value, upper-cased, to pick which
@@ -127,14 +124,9 @@ export class TeamConfigCache {
   }
 }
 
-// Started once at boot (see index.ts) and left running for the life of the
-// process -- a periodic pull is enough here (no push-based invalidation
-// needed); 5 minutes balances "new team shows up without a restart" against
-// not hammering the table.
+// index.ts refreshes on this interval and re-registers slash commands in
+// the same tick (a newly-added team needs to appear both in the cache and
+// in every command's `team` choice list) -- a periodic pull is enough here,
+// no push-based invalidation needed; 5 minutes balances "shows up without a
+// restart" against not hammering the table.
 export const TEAM_CONFIG_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
-
-export function startTeamConfigRefresh(cache: TeamConfigCache, intervalMs = TEAM_CONFIG_REFRESH_INTERVAL_MS): void {
-  setInterval(() => {
-    cache.refresh().catch(err => console.error('Team config refresh failed:', err));
-  }, intervalMs);
-}

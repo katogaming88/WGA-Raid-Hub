@@ -39,12 +39,21 @@
 -- already live in the VM's current .env files) is not part of this
 -- migration -- same precedent as wcl_guild_id (20260722100000): set directly
 -- via the SQL Editor once gathered, no write path exists yet.
+--
+-- All three channel columns are unique: WGA's three teams share one Discord
+-- server (not one per team, as this migration originally assumed), so a
+-- copy-paste mistake while bootstrapping rows by hand could otherwise point
+-- two teams at the same channel with nothing catching it -- exactly the
+-- "wrong team's signup posted to the wrong channel" failure this exists to
+-- prevent. Nullable columns still allow any number of teams to leave one
+-- unset (NULL is never considered equal to another NULL for uniqueness), so
+-- this only ever rejects two teams actually sharing a real channel id.
 create table "public"."team_discord_config" (
     "team_id" integer primary key references "public"."teams"("id") on delete cascade,
     "guild_id" text not null,
-    "officer_channel_id" text not null,
-    "attendance_channel_id" text,
-    "signup_channel_id" text,
+    "officer_channel_id" text not null unique,
+    "attendance_channel_id" text unique,
+    "signup_channel_id" text unique,
     "mplus_ping_role_id" text,
     "roster_ping_role_id" text,
     "rsvp_ping_role_id" text,
