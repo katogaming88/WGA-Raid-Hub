@@ -25,63 +25,74 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Classifies the diff (#353): frontend = js/, gs/, and root-page paths,
-      # with js/common.js counting only when its diff goes beyond the VERSION
-      # line, so complying with "bump VERSION" cannot itself mark a PR
-      # functional. backend = supabase/migrations/ and scripts/import/.
-      # frontend_entry / backend_entry = CHANGELOG.md gained content under
-      # the matching ### heading. The script has no dependencies, so no
-      # npm ci here.
+      # Classifies the diff (#353, extended by #966). Four shipped classes:
+      # frontend = js/, css/ and root-page paths, with js/common.js counting
+      # only when its diff goes beyond the VERSION line, so complying with
+      # "bump VERSION" cannot itself mark a PR functional. backend = the db
+      # class, supabase/migrations/ and scripts/import/. functions =
+      # supabase/functions/. bot = bot/. Everything else (supabase/config.toml,
+      # seed.sql, roles.sql, docs, tests, scripts/ci) is chore territory.
+      #
+      # shipped = any of the four changed, which is exactly when the product
+      # version has to move (#965). missing_entry lists the classes that
+      # changed without gaining their CHANGELOG section. heading_error is set
+      # when the PR adds a version heading that repeats one on the base branch
+      # or sorts at or below the newest one there.
+      #
+      # The script has no dependencies, so no npm ci here.
       - name: Classify the diff
         id: changed
         run: node scripts/ci/changelog-check.js origin/${{ github.base_ref }}
 
-      # All four checks below share the chore exemption (chore/* branch or
-      # the chore label): the VERSION bump and the sectioned changelog both
-      # signal "behavior changed", which a mechanical PR does not do. #353
+      # The three hard gates below share the chore exemption (chore/* branch
+      # or the chore label): the VERSION bump and the sectioned changelog both
+      # signal "something shipped", which a mechanical PR does not do. #353
       # extends the exemption to the changelog-entry checks, superseding the
       # no-bypass rule from be59777.
-      - name: Fail if frontend changes lack a Frontend changelog entry
+      - name: Fail if a shipped change lacks its changelog section
         if: >-
-          steps.changed.outputs.frontend == 'true' &&
-          steps.changed.outputs.frontend_entry == 'false' &&
+          steps.changed.outputs.missing_entry != '' &&
           !startsWith(github.head_ref, 'chore/') &&
           !contains(github.event.pull_request.labels.*.name, 'chore')
         run: |
-          echo "::error::CHANGELOG.md gained no entry under '### Frontend'. Changes to js/, gs/, or the root pages get a Frontend entry plus a VERSION bump (see CONTRIBUTING.md); if this PR is mechanical, use a chore/* branch or the chore label."
+          echo "::error::CHANGELOG.md gained no entry for: ${{ steps.changed.outputs.missing_entry }}. Each shipped piece logs under its own heading (frontend -> '### Frontend', db -> '### Backend', functions -> '### Functions', bot -> '### Bot'). See CONTRIBUTING.md; if this PR is mechanical, use a chore/* branch or the chore label."
           exit 1
 
-      - name: Fail if frontend changes lack a VERSION bump
+      # #965 retired the old rule that only frontend paths drove VERSION. One
+      # version line covers the whole project, so a migration, an Edge Function
+      # or a bot change moves it too.
+      - name: Fail if a shipped change lacks a VERSION bump
         if: >-
-          steps.changed.outputs.frontend == 'true' &&
+          steps.changed.outputs.shipped == 'true' &&
           steps.changed.outputs.version_bump == 'false' &&
           !startsWith(github.head_ref, 'chore/') &&
           !contains(github.event.pull_request.labels.*.name, 'chore')
         run: |
-          echo "::error::The VERSION in js/common.js was not bumped. Frontend PRs bump it per CONTRIBUTING.md; if this change is mechanical (formatting, lint, comments), use a chore/* branch or add the chore label."
+          echo "::error::The VERSION in js/common.js was not bumped, but a shipped piece changed. Every PR that changes the frontend, supabase/migrations/, scripts/import/, supabase/functions/ or bot/ stamps the product: run 'npm run stamp -- <x.y.z>' (see CONTRIBUTING.md). If this change is mechanical, use a chore/* branch or add the chore label."
           exit 1
 
-      # The reverse direction (#353): a bump with no frontend change trains
-      # reflexive bumping and erodes VERSION as the "user-visible behavior
-      # changed" signal.
-      - name: Fail if VERSION bumps without a frontend change
+      # The reverse direction (#353): a bump with nothing shipped trains
+      # reflexive bumping and erodes VERSION as the "something shipped" signal.
+      - name: Fail if VERSION bumps with nothing shipped
         if: >-
-          steps.changed.outputs.frontend == 'false' &&
+          steps.changed.outputs.shipped == 'false' &&
           steps.changed.outputs.version_bump == 'true' &&
           !startsWith(github.head_ref, 'chore/') &&
           !contains(github.event.pull_request.labels.*.name, 'chore')
         run: |
-          echo "::error::The VERSION in js/common.js was bumped, but no frontend file changed. Backend/DB-only PRs take no bump and log under '### Backend' in CHANGELOG.md instead (see CONTRIBUTING.md)."
+          echo "::error::The VERSION in js/common.js was bumped, but no shipped piece changed. Docs, CI config, supabase/config.toml, seed.sql and roles.sql take no bump and no changelog section (see CONTRIBUTING.md); use a chore/* branch or the chore label."
           exit 1
 
-      - name: Fail if backend changes lack a Backend changelog entry
-        if: >-
-          steps.changed.outputs.backend == 'true' &&
-          steps.changed.outputs.backend_entry == 'false' &&
-          !startsWith(github.head_ref, 'chore/') &&
-          !contains(github.event.pull_request.labels.*.name, 'chore')
+      # Not chore-exempt: this fires only when a version heading was actually
+      # added, and a heading that repeats or goes backwards is wrong whoever
+      # wrote it. Three numbers on main are already used twice (3.77.23,
+      # 3.60.32, 3.60.6) because nothing checked this; they stay as they are,
+      # annotated in place, because a released number is never reissued (#965).
+      # The check reads only what the PR adds, so that history is legal.
+      - name: Fail if the new version heading repeats or goes backwards
+        if: steps.changed.outputs.heading_error != ''
         run: |
-          echo "::error::CHANGELOG.md gained no entry under '### Backend'. Changes under supabase/migrations/ or scripts/import/ get a Backend entry with no VERSION bump (see CONTRIBUTING.md); if this PR is mechanical, use a chore/* branch or the chore label."
+          echo "::error::CHANGELOG.md heading problem: ${{ steps.changed.outputs.heading_error }}. Pick the next free number above the newest heading; never reissue a released one and never edit a released block."
           exit 1
 
       # Non-blocking nudge (#525, follow-up to the #509 News tab): a PR that

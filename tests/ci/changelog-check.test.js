@@ -447,10 +447,7 @@ describe('classify against a git repo', () => {
       write('bot/src/index.ts', '// bot v3\n');
       write('js/roster.js', '// roster v2\n');
       write('js/common.js', "var VERSION = '3.16.1';\nvar WEB_APP_URL = 'x';\n");
-      write(
-        'CHANGELOG.md',
-        bumpedChangelog('3.16.1', { Frontend: '- Roster tweak', Bot: '- Bot tweak' })
-      );
+      write('CHANGELOG.md', bumpedChangelog('3.16.1', { Frontend: '- Roster tweak', Bot: '- Bot tweak' }));
     });
     expect(result).toEqual({
       ...clean,
