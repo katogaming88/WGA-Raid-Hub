@@ -17,7 +17,7 @@ This file documents the RLS policies on every public table. The generated schema
 
 ### How to read this matrix
 
-RLS is deny-by-default: with RLS enabled (it is, on all 42 tables), nobody can touch any row unless a policy explicitly grants it. Policies are additive; if any one policy matches an actor and operation, the action is allowed. Each row below summarizes which grants exist for that table.
+RLS is deny-by-default: with RLS enabled (it is, on all 43 tables), nobody can touch any row unless a policy explicitly grants it. Policies are additive; if any one policy matches an actor and operation, the action is allowed. Each row below summarizes which grants exist for that table.
 
 - **Public SELECT**: "yes" means a `FOR SELECT USING (true)` policy exists, so anyone (including anonymous visitors) can read every row. This is how the public site serves roster, loot, and standings without login. "no" means there is no public read path.
 - **Officer**: what a team officer can do, scoped to their own team's rows via `my_team_role(team_id)`. "all ops" covers SELECT, INSERT, UPDATE, and DELETE. "SELECT, UPDATE" means they can see and modify existing rows but cannot insert or delete. Team leaders pass every officer check too, since these policies accept both roles.
@@ -25,7 +25,7 @@ RLS is deny-by-default: with RLS enabled (it is, on all 42 tables), nobody can t
 - **Notes**: exceptions and known gaps.
 - **A blank cell** means no policy grants that actor anything, so deny-by-default applies. A table with only Public SELECT (like `classes_specs` or `teams`) is a read-only lookup: everyone can read it and only the service role can write it. A table blank in every column except Notes (`site_admins`) is invisible to everyone but the actor named there.
 
-One thing the matrix hides on purpose: every table also carries a `claude_readers` SELECT policy (uniform across all 42 tables, so it is stated here instead of as a column).
+One thing the matrix hides on purpose: every table also carries a `claude_readers` SELECT policy (uniform across all 43 tables, so it is stated here instead of as a column).
 
 | Table | Public SELECT | Officer | Team leader | Notes |
 | --- | --- | --- | --- | --- |
@@ -66,6 +66,7 @@ One thing the matrix hides on purpose: every table also carries a `claude_reader
 | site_admins | no | | | Site admins only: SELECT and all ops via `is_site_admin()` |
 | site_settings | yes | | | Singleton row (id=1); no write policy, `admin_set_maintenance_mode()` (SECURITY DEFINER) is the only write path ([#245](https://github.com/katogaming88/WGA-Raid-Hub/issues/245)) |
 | streamers | yes | all ops +site | (via officer) | First self-service write policy in the schema ([#286](https://github.com/katogaming88/WGA-Raid-Hub/issues/286)): a raider can also INSERT/UPDATE/DELETE their own row via `is_own_player(player_id)`, independent of the officer/team-leader grant |
+| team_discord_config | no | | | Locked to `claude_readers` and the service role only (#991) -- per-team Discord infra (guild/channel/role ids, script URLs) for the consolidated multi-tenant bot, written and read only by the bot's own service-role Supabase client. Same no-officer-read shape as `raid_signup_sheets`/`raid_rsvp_reminders_sent` -- no end-user read use case, and no admin UI writes it yet |
 | team_members | no | SELECT +site | all ops +site | +guild ([#607](https://github.com/katogaming88/WGA-Raid-Hub/issues/607)) on SELECT only, not the separate team-leader write policy. Members also read their own row (`auth_user_id = auth.uid()`) |
 | team_raid_progress | yes | all ops +site | (via officer) | Written mainly by the `wcl-progression-sync` Edge Function's service-role cron ([#285](https://github.com/katogaming88/WGA-Raid-Hub/issues/285)); the officer/team-leader policy exists so a bad sync row can be corrected by hand |
 | team_settings | yes | | all ops +site | |

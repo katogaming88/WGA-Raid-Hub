@@ -117,6 +117,7 @@ streamers,Claude readers read streamers,claude_readers,SELECT,PERMISSIVE,true,
 streamers,Officers write streamers,public,ALL,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())"
 streamers,Public read streamers,public,SELECT,PERMISSIVE,true,
 streamers,Raiders manage own streamer,public,ALL,PERMISSIVE,is_own_player(player_id),is_own_player(player_id)
+team_discord_config,Claude readers read team_discord_config,claude_readers,SELECT,PERMISSIVE,true,
 team_members,Claude readers read team_members,claude_readers,SELECT,PERMISSIVE,true,
 team_members,Members read own team_members,public,SELECT,PERMISSIVE,(auth_user_id = auth.uid()),
 team_members,Officers read own team_members,public,SELECT,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin() OR is_guild_officer())",

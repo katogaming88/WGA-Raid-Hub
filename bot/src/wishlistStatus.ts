@@ -42,7 +42,9 @@ export function profileDeepLink(siteUrl: string, firstName: string, categories: 
 
 // team_id here is WGA Raid Hub's own Supabase teams.id (Phoenix=1, Hellfire=2,
 // Immolation=3) -- unrelated to DISCORD_GUILD_ID, which identifies the Discord
-// server. Each bot deployment is scoped to one team via TEAM_ID.
+// server. The caller resolves which team's id to pass in from the Discord
+// guild/relay payload the request came from (see teamConfig.ts, #991) --
+// this function itself stays team-agnostic, just given one to query.
 export async function fetchNudgeCandidates(
   supabaseUrl: string,
   serviceRoleKey: string,
