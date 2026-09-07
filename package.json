@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
-    "@supabase/supabase-js": "^2.112.4",
+    "@supabase/supabase-js": "^2.115.0",
     "acorn": "^8.18.0",
     "csv-parse": "^7.0.2",
     "eslint": "^8.57.0",
@@ -29,6 +29,6 @@
     "playwright": "^1.62.1",
     "prettier": "^3.9.6",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.0"
   }
 }
