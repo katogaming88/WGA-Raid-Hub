@@ -72,7 +72,17 @@ version numbers ended up used twice.
 Each piece carries the version of the last release that touched it, recorded in
 `version.json` beside its own platform identity: the migration ledger head for
 the database, the deploy counter and bundle hash for each function, the commit
-for anything built. The version says which release something belongs to; the
+for anything built.
+
+Two files at the root carry that, and they are separate on purpose:
+
+| File | Written by | Holds |
+|------|-----------|-------|
+| `version.json` | `npm run stamp` | The product version and a `pieces` map, computed from the paths the branch changed. Pure JSON, because the stamp and the CI invariant both parse it |
+| `build.json` | GitHub Pages, at deploy | The deployed commit and the build time. It carries Jekyll front matter, which is what makes Jekyll render the Liquid tags inside it, and front matter is exactly what would make `version.json` unparseable |
+
+An absent entry in `pieces` means that piece has never been stamped, never that
+it has drifted. A chore PR moves no piece, so it leaves the manifest alone. The version says which release something belongs to; the
 platform identity says which artifact is actually live. Both are needed, because
 only the second one can show that a piece was merged and never deployed.
 

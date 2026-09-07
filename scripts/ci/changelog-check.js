@@ -239,7 +239,9 @@ export function classify(baseRef, cwd = process.cwd()) {
   };
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+// process.argv[1] is undefined under `node -e`, and this module is imported by
+// scripts/ci/stamp-version.js, so the guard has to tolerate having no script path.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const baseRef = process.argv[2];
   if (!baseRef) {
     console.error('Usage: node scripts/ci/changelog-check.js <base-ref>');

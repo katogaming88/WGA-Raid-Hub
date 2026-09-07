@@ -11,6 +11,20 @@ contracts each section answers to.
 
 ---
 
+## [3.92.0] - 2026-09-07
+
+### Frontend
+
+- The site now publishes what version it is, and what version each of its parts is, at
+  `version.json` ([#967](https://github.com/katogaming88/WGA-Raid-Hub/issues/967)). One number covers
+  the whole project and each part carries the number of the last release that changed it, so a
+  question like "which release did the database last move in" has an answer that is written down
+  instead of guessed. A second file, `build.json`, records which commit is actually deployed and
+  when it was built, filled in by GitHub Pages at deploy time.
+- `admin.html` shows the version in its footer like every other page. It was the only one that
+  never did, because it does not load the shared script the others read the number from.
+- Nothing visible changes anywhere else.
+
 ## [3.91.3] - 2026-09-05
 
 ### Frontend
