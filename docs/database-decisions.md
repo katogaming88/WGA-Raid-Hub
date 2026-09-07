@@ -1293,3 +1293,18 @@ Umbrella issue. Original scope, later split into #262 (nullability/duplicate gua
 - Existing pairs backfilled by `created_at` ordering within each same-item Finger/Trinket pair (earlier row = explicit, later = synced) in the same migration, since every current dual-BiS pair in the live data matched exactly that shape.
 
 [Full discussion -> #722](https://github.com/katogaming88/WGA-Raid-Hub/issues/722)
+
+---
+
+## #903 -- officer_set_rsvp(): the officer-correction path raid_rsvps was left without
+
+The 2026-09-03 "raid_rsvps has no public or officer write policy at all" decision (above) deliberately left every write to `set_own_rsvp()`, but named the exact shape a future correction path should take if one ever became needed: "its own explicitly-named function/action later, not a blanket write grant." #903's per-day calendar view asked for exactly that -- officers correcting another raider's RSVP inline.
+
+`officer_set_rsvp(p_team_id, p_player_id, p_raid_date, p_status, p_note)` is that function, SECURITY DEFINER, gated the same way as `set_team_officer_bios()` (officer/team_leader via `my_team_role()`, or `is_guild_officer()`, or `is_site_admin()`). `raid_rsvps`'s RLS is untouched -- still SELECT-only, no INSERT/UPDATE/DELETE policy for anyone; this RPC remains the only officer write path, same shape as `set_own_rsvp()` for raiders.
+
+Two deliberate differences from `set_own_rsvp()`:
+- Takes `p_player_id` as a parameter rather than resolving from `auth.uid()` -- an officer is acting on someone else's row, not asserting their own status, so there's no "own row" TOCTOU concern to design around here.
+- No bench-on-a-normal-night gate on the target player. `set_own_rsvp()` blocks a bench raider from setting any status on a normal night because there's nothing for them to override there; an officer correction has no such restriction, since fixing a bench player's row (including on an optional night) is exactly the use case.
+- A note is always required, even though the officer -- not the raider -- initiated the change, so the raider can see why their status was changed on their behalf.
+
+[Full discussion -> #903](https://github.com/katogaming88/WGA-Raid-Hub/issues/903), part of #640.

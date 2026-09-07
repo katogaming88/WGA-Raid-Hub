@@ -7201,6 +7201,12 @@
       "return_type": "timestamptz",
       "arguments": "p_player_id integer, p_reason text, p_detail text",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.officer_set_rsvp",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_player_id integer, p_raid_date date, p_status text, p_note text",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

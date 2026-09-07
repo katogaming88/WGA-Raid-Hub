@@ -1,7 +1,8 @@
 {
-  "version": "3.92.0",
+  "version": "3.93.0",
   "pieces": {
-    "frontend": "3.92.0",
+    "frontend": "3.93.0",
+    "db": "3.93.0",
     "functions": {}
   }
 }
