@@ -12,7 +12,14 @@ on:
       - 'admin.html'
       - 'guild.html'
       - 'boe.html'
+      - 'calendar.html'
       - 'js/common.js'
+      # The manifest invariants (#967) read version.json and the migration
+      # directory, so both have to be able to trigger this job: REQUIRED_SCHEMA
+      # is asserted against the newest migration in the tree, and a
+      # migrations-only PR never touched a page.
+      - 'version.json'
+      - 'supabase/migrations/**'
       - 'tests/ci/asset-version-check.test.js'
       # The check reads its page registry and asset pattern from the stamper
       # (#776), so a change there can invalidate every page without touching one.

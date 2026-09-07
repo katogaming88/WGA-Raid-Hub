@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
   PAGES,
@@ -13,6 +14,7 @@ import {
   stampFooterVersion,
   computePieces,
   buildJsonContent,
+  changedPaths,
   stampAll
 } from '../../scripts/ci/stamp-version.js';
 
@@ -442,5 +444,82 @@ describe('readNewestMigration', () => {
   it('reads the highest stamp in the live repo', () => {
     const stamp = readNewestMigration(join(import.meta.dirname, '..', '..'));
     expect(stamp).toMatch(/^\d{14}$/);
+  });
+});
+
+// changedPaths feeds computePieces, so anything it reports as changed is a
+// piece the manifest marks as having shipped. A second stamp on the same
+// branch (a rebase, or a corrected number) rewrites the same six pages again,
+// and those rewrites are against the merge base by then -- which is how a
+// database-only release ends up claiming the frontend moved. The pages come
+// out only when their whole diff is the stamp.
+describe('changedPaths', () => {
+  let repo;
+
+  function git(...args) {
+    return execFileSync('git', args, { cwd: repo, encoding: 'utf8' });
+  }
+
+  function write(rel, text) {
+    const full = join(repo, rel);
+    mkdirSync(dirname(full), { recursive: true });
+    writeFileSync(full, text);
+  }
+
+  function page(version) {
+    return [
+      '<html><head>',
+      `<link rel="stylesheet" href="css/styles.css?v=${version}">`,
+      '</head><body>',
+      '<h1>Roster</h1>',
+      `<footer>v<span id="versionNum">${version}</span></footer>`,
+      '</body></html>',
+      ''
+    ].join('\n');
+  }
+
+  beforeEach(() => {
+    repo = mkdtempSync(join(tmpdir(), 'wga-changed-'));
+    git('init', '-b', 'main');
+    git('config', 'user.email', 'test@example.com');
+    git('config', 'user.name', 'Test');
+    write('index.html', page('3.16.0'));
+    write('js/common.js', "var VERSION = '3.16.0';\n");
+    write('supabase/migrations/20260101000000_base.sql', 'select 1;\n');
+    git('add', '.');
+    git('commit', '-m', 'base');
+    git('checkout', '-b', 'work');
+  });
+
+  afterEach(() => {
+    rmSync(repo, { recursive: true, force: true });
+  });
+
+  it('leaves out a page whose whole diff is the stamp', () => {
+    write('supabase/migrations/20260907120000_add_column.sql', 'alter table players add column x int;\n');
+    write('index.html', page('3.17.0'));
+    write('js/common.js', "var VERSION = '3.17.0';\n");
+    const { files } = changedPaths('main', repo);
+    expect(files).toContain('supabase/migrations/20260907120000_add_column.sql');
+    expect(files).not.toContain('index.html');
+  });
+
+  it('keeps a page that changed beyond the stamp', () => {
+    write('index.html', page('3.17.0').replace('<h1>Roster</h1>', '<h1>The Roster</h1>'));
+    write('js/common.js', "var VERSION = '3.17.0';\n");
+    const { files } = changedPaths('main', repo);
+    expect(files).toContain('index.html');
+  });
+
+  it('keeps a page that is new, because there is no stamp to take back out', () => {
+    write('extra.html', page('3.17.0'));
+    const { files } = changedPaths('main', repo);
+    expect(files).toContain('extra.html');
+  });
+
+  it('reports the merge base it diffed against', () => {
+    write('docs/notes.md', 'notes\n');
+    const { base } = changedPaths('main', repo);
+    expect(base).toMatch(/^[0-9a-f]{40}$/);
   });
 });
