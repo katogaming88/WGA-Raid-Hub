@@ -5839,6 +5839,110 @@
           "def": "CREATE TRIGGER trg_player_officer_notes_updated_at BEFORE UPDATE ON public.player_officer_notes FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
+    },
+    {
+      "name": "public.team_discord_config",
+      "type": "BASE TABLE",
+      "comment": "Per-team Discord infra config for the consolidated multi-tenant bot (#991): guild/channel/role ids and script URLs the bot needs to route a relayed action to the right place. Written and read only by the bot's service-role client; no read use case for an officer or end user. Mirrors raid_signup_sheets' locked-down shape (#900).",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "guild_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "officer_channel_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "attendance_channel_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "signup_channel_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "mplus_ping_role_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "roster_ping_role_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "rsvp_ping_role_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "apps_script_url",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "roster_script_url",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_discord_config_pkey",
+          "def": "CREATE UNIQUE INDEX team_discord_config_pkey ON public.team_discord_config USING btree (team_id)",
+          "table": "public.team_discord_config",
+          "columns": [
+            "team_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_discord_config_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.team_discord_config",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_discord_config_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (team_id)",
+          "table": "public.team_discord_config",
+          "referenced_table": "",
+          "columns": [
+            "team_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -6719,6 +6823,19 @@
         "team_id"
       ],
       "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_discord_config",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_one",
       "parent_table": "public.teams",
       "parent_columns": [
         "id"

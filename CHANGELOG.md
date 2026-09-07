@@ -11,6 +11,35 @@ contracts each section answers to.
 
 ---
 
+## [3.94.0] - 2026-09-07
+
+### Backend
+
+- New `team_discord_config` table holds each team's Discord guild id, channel ids, ping role ids,
+  and Apps Script/roster script URLs ([#991](https://github.com/katogaming88/WGA-Raid-Hub/issues/991)).
+  Locked to the service role only, same shape as `raid_signup_sheets` -- no read use case for an
+  officer or end user, and no admin UI writes it yet. Supersedes `team_settings.config`'s
+  `discordSignupChannelId`, which had no write path and was never actually set for either team.
+
+### Functions
+
+- `discord-bot-webhook` now relays every action to one shared `BOT_WEBHOOK_URL`/`BOT_WEBHOOK_SECRET`
+  instead of resolving `BOT_WEBHOOK_URL_<TEAM>`/`BOT_WEBHOOK_SECRET_<TEAM>` per team
+  ([#991](https://github.com/katogaming88/WGA-Raid-Hub/issues/991)), and now forwards `team` inside
+  the relayed body so the one bot on the other end can tell which team's config to use. A missing
+  shared secret pair is now a real misconfiguration error instead of a silent no-op, since it can no
+  longer mean "this team just has no bot yet."
+
+### Bot
+
+- One bot process now serves every team instead of one full deployment per team
+  ([#991](https://github.com/katogaming88/WGA-Raid-Hub/issues/991)). Every slash command and relay
+  route resolves its team from the Discord guild the interaction came from (or from the relay's
+  `team` field) and looks up that team's config from the database at runtime, instead of a single
+  team's guild/channel/role ids and script URLs being baked in as env vars for the whole process.
+  Slash commands register in every configured guild instead of just one. Nothing changes for a
+  raider or officer using any existing command or feature.
+
 ## [3.93.1] - 2026-09-07
 
 ### Functions

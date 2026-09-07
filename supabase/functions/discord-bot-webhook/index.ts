@@ -1,9 +1,15 @@
 // discord-bot-webhook (#224): ports gs/wgaWebApp.gs's sendToBot() out of Apps
-// Script. Phoenix and Hellfire each run their own bot behind its own HTTPS
-// URL/secret (BOT_WEBHOOK_URL_<TEAM>/BOT_WEBHOOK_SECRET_<TEAM>, per
-// docs/supabase-setup-guide.md); Immolation has no bot deployed yet, so a
-// missing secret pair is treated as a silent no-op rather than an error,
-// same as GAS's catch-and-log failure mode.
+// Script. Originally Phoenix and Hellfire each ran their own bot behind its
+// own HTTPS URL/secret (BOT_WEBHOOK_URL_<TEAM>/BOT_WEBHOOK_SECRET_<TEAM>).
+// #991 consolidated every team onto one bot process, so this relays to one
+// shared BOT_WEBHOOK_URL/BOT_WEBHOOK_SECRET now regardless of which team's
+// payload it's carrying -- there is exactly one trusted destination either
+// way. `team` is still required and now gets forwarded IN the body (it
+// never needed to be before -- the per-team URL used to encode which team a
+// call was for; the one shared URL doesn't, so the bot needs it to resolve
+// its own per-team config). A missing shared secret/URL pair is a real
+// misconfiguration now (not a to-be-expected missing team), so it errors
+// instead of the old silent no-op.
 //
 // No auth gate: all four notification paths (signup, self-received,
 // BiS link, M+ exclusion) are submitted by unauthenticated public-roster
@@ -47,17 +53,17 @@ Deno.serve(async (req) => {
     if (!path) return jsonResponse({ success: false, error: 'Unknown action: ' + action });
     if (!team) return jsonResponse({ success: false, error: 'Missing team' });
 
-    const teamKey = String(team).toUpperCase();
-    const botUrl = Deno.env.get(`BOT_WEBHOOK_URL_${teamKey}`);
-    const botSecret = Deno.env.get(`BOT_WEBHOOK_SECRET_${teamKey}`);
+    const botUrl = Deno.env.get('BOT_WEBHOOK_URL');
+    const botSecret = Deno.env.get('BOT_WEBHOOK_SECRET');
     if (!botUrl || !botSecret) {
-      return jsonResponse({ success: true, skipped: true });
+      console.error('discord-bot-webhook misconfigured: BOT_WEBHOOK_URL/BOT_WEBHOOK_SECRET not set');
+      return jsonResponse({ success: false, error: 'Bot relay is not configured' });
     }
 
     const response = await fetch(botUrl + path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-webhook-secret': botSecret },
-      body: JSON.stringify({ ...(payload || {}), submittedAt: new Date().toISOString() })
+      body: JSON.stringify({ ...(payload || {}), team, submittedAt: new Date().toISOString() })
     });
 
     if (!response.ok) {

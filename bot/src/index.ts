@@ -9,44 +9,50 @@ import 'dotenv/config';
 // in this process.
 import WebSocket from 'ws';
 (globalThis as unknown as { WebSocket: typeof WebSocket }).WebSocket = WebSocket;
+import { createClient } from '@supabase/supabase-js';
 import { Client, GatewayIntentBits, EmbedBuilder, TextChannel, REST, Routes, SlashCommandBuilder, MessageFlags, PermissionFlagsBits } from 'discord.js';
 import express, { Request, Response } from 'express';
 import { fetchNudgeCandidates, NudgeCategory, profileDeepLink } from './wishlistStatus';
 import { filterAndRecordNudges } from './nudgeLog';
 import { runSignupSheetSweep, syncSignupSheet, SignupSheetContext } from './signupSheet';
+import { TeamConfig, TeamConfigCache, attendanceChannelId, signupChannelId, startTeamConfigRefresh } from './teamConfig';
+
+// #991: one bot process now serves every team, reading each team's guild
+// id/channel ids/ping role ids/script URLs from team_discord_config at
+// runtime (see teamConfig.ts) instead of one process per team with all of
+// that baked in as env vars. What's left as an env var below is genuinely
+// process-wide: the one Discord Application's token, the one shared
+// webhook secret validating the relay (see checkSecret -- there is exactly
+// one trusted caller regardless of which team's payload it carries, so
+// per-team secrets added isolation with no real security benefit here),
+// Supabase credentials, the one deployed site's URL, and where the nudge
+// cooldown log lives (already safe to share across teams unmodified --
+// filterAndRecordNudges keys on Discord user id, which is globally unique
+// on its own, not per-guild).
 
 const rawToken = process.env.DISCORD_BOT_TOKEN;
-const rawChannelId = process.env.DISCORD_CHANNEL_ID;
+const rawSupabaseUrl = process.env.SUPABASE_URL;
+const rawServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!rawToken) {
   console.error('Missing required env var: DISCORD_BOT_TOKEN');
   process.exit(1);
 }
-if (!rawChannelId) {
-  console.error('Missing required env var: DISCORD_CHANNEL_ID');
+if (!rawSupabaseUrl || !rawServiceRoleKey) {
+  console.error('Missing required env vars: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY');
   process.exit(1);
 }
 
 const BOT_TOKEN: string = rawToken;
-const CHANNEL_ID: string = rawChannelId;
-const MPLUS_PING_ROLE_ID = process.env.MPLUS_PING_ROLE_ID;
-const ROSTER_PING_ROLE_ID = process.env.ROSTER_PING_ROLE_ID;
-// Optional dedicated channel for raid-calendar RSVP notifications
-// (WGA-Raid-Hub#893); falls back to the main CHANNEL_ID so existing
-// deployments keep working without adding a new env var.
-const ATTENDANCE_CHANNEL_ID = process.env.ATTENDANCE_CHANNEL_ID || CHANNEL_ID;
-const RSVP_PING_ROLE_ID = process.env.RSVP_PING_ROLE_ID;
+const SUPABASE_URL: string = rawSupabaseUrl;
+const SUPABASE_SERVICE_ROLE_KEY: string = rawServiceRoleKey;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
-const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
-const ROSTER_SCRIPT_URL = process.env.ROSTER_SCRIPT_URL;
-const GUILD_ID = process.env.DISCORD_GUILD_ID;
-const TEAM_NAME = process.env.TEAM_NAME ?? 'Team';
 const PORT = process.env.PORT ?? '3000';
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const TEAM_ID = process.env.TEAM_ID ? Number(process.env.TEAM_ID) : undefined;
 const SITE_URL = process.env.SITE_URL;
 const NUDGE_LOG_PATH = process.env.NUDGE_LOG_PATH ?? './data/nudge-log.json';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const teamConfigs = new TeamConfigCache(supabase);
 
 const commands = [
   new SlashCommandBuilder()
@@ -108,10 +114,18 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 client.once('clientReady', async () => {
   console.log(`Bot ready: ${client.user?.tag}`);
-  if (GUILD_ID) {
-    const rest = new REST().setToken(BOT_TOKEN);
-    await rest.put(Routes.applicationGuildCommands(client.user!.id, GUILD_ID), { body: commands });
-    console.log('Slash commands registered.');
+  const rest = new REST().setToken(BOT_TOKEN);
+  // One registration call per configured guild, not one process per guild
+  // (#991) -- a failure in one guild (e.g. the bot was removed from that
+  // server but its row wasn't cleaned up yet) shouldn't stop the rest from
+  // registering.
+  for (const cfg of teamConfigs.all()) {
+    try {
+      await rest.put(Routes.applicationGuildCommands(client.user!.id, cfg.guildId), { body: commands });
+      console.log(`Slash commands registered for ${cfg.slug} (guild ${cfg.guildId}).`);
+    } catch (err) {
+      console.error(`Slash command registration failed for ${cfg.slug} (guild ${cfg.guildId}):`, err);
+    }
   }
 });
 
@@ -175,25 +189,24 @@ interface PendingEntry {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function fetchRosterScript(params: Record<string, string>): Promise<any> {
-  if (!ROSTER_SCRIPT_URL) throw new Error('ROSTER_SCRIPT_URL is not configured.');
-  const url = new URL(ROSTER_SCRIPT_URL);
+async function fetchRosterScript(rosterScriptUrl: string, params: Record<string, string>): Promise<any> {
+  const url = new URL(rosterScriptUrl);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error(`Roster script returned ${res.status}`);
   return res.json();
 }
 
-async function fetchCorePayload(): Promise<CorePayload> {
-  return fetchRosterScript({ chunk: 'core' });
+async function fetchCorePayload(rosterScriptUrl: string): Promise<CorePayload> {
+  return fetchRosterScript(rosterScriptUrl, { chunk: 'core' });
 }
 
-async function fetchHeavyPayload(): Promise<HeavyPayload> {
-  return fetchRosterScript({ chunk: 'heavy' });
+async function fetchHeavyPayload(rosterScriptUrl: string): Promise<HeavyPayload> {
+  return fetchRosterScript(rosterScriptUrl, { chunk: 'heavy' });
 }
 
-async function fetchPendingRoster(): Promise<PendingRosterPayload> {
-  return fetchRosterScript({ action: 'getPendingRoster' });
+async function fetchPendingRoster(rosterScriptUrl: string): Promise<PendingRosterPayload> {
+  return fetchRosterScript(rosterScriptUrl, { action: 'getPendingRoster' });
 }
 
 // Returns how long ago a YYYY-MM-DD date was in a readable form
@@ -232,6 +245,7 @@ const NUDGE_MESSAGES: Record<NudgeCategory, string> = {
 };
 
 function buildNudgeEmbed(
+  teamName: string,
   nameRealm: string,
   firstName: string,
   categories: NudgeCategory[],
@@ -245,12 +259,24 @@ function buildNudgeEmbed(
   });
   const embed = new EmbedBuilder()
     .setColor(0xe74c3c)
-    .setTitle(`${TEAM_NAME} -- Setup Reminder`)
+    .setTitle(`${teamName} -- Setup Reminder`)
     .setDescription(`Hey ${nameRealm}! A quick check found your loot setup is missing something:\n\n${lines.join('\n')}`)
     .setFooter({ text: 'This helps officers award loot correctly -- please take a moment to update it.' });
   const link = SITE_URL ? profileDeepLink(SITE_URL, firstName, categories) : null;
   if (link) embed.addFields({ name: 'Update it here', value: link });
   return embed;
+}
+
+function signupSheetContext(cfg: TeamConfig): SignupSheetContext {
+  return {
+    supabaseUrl: SUPABASE_URL,
+    serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY,
+    teamId: cfg.teamId,
+    teamName: cfg.name,
+    teamSlug: cfg.slug,
+    siteUrl: SITE_URL,
+    channelId: signupChannelId(cfg),
+  };
 }
 
 // ── Slash command interaction handler ────────────────────────────────────────
@@ -260,7 +286,9 @@ client.on('interactionCreate', async (interaction) => {
   // component this bot handles today besides slash commands. Re-syncing
   // just calls the same claim/edit path syncSignupSheet always uses, which
   // naturally becomes "edit the message this button lives on" once a sheet
-  // already exists.
+  // already exists. The button's customId only carries the raid date, not a
+  // team -- resolved from the guild the interaction fired in, same as every
+  // slash command below.
   if (interaction.isButton() && interaction.customId.startsWith('signup-sheet-refresh:')) {
     const raidDate = interaction.customId.split(':')[1];
     try {
@@ -268,11 +296,11 @@ client.on('interactionCreate', async (interaction) => {
     } catch {
       return;
     }
-    const ctx = signupSheetContext();
-    if (!ctx) return;
+    const cfg = teamConfigs.getByGuildId(interaction.guildId);
+    if (!cfg) return;
     try {
       // Refresh only ever lives on a message that already exists.
-      await syncSignupSheet(client, ctx, raidDate, { allowCreate: false });
+      await syncSignupSheet(client, signupSheetContext(cfg), raidDate, { allowCreate: false });
     } catch (err) {
       console.error('signup-sheet-refresh error:', err);
     }
@@ -283,10 +311,16 @@ client.on('interactionCreate', async (interaction) => {
 
   const cmd = interaction.commandName;
 
+  const cfg = teamConfigs.getByGuildId(interaction.guildId);
+  if (!cfg) {
+    await interaction.reply({ content: "This server isn't configured for this bot yet.", flags: MessageFlags.Ephemeral }).catch(() => null);
+    return;
+  }
+
   // ── /resend ──────────────────────────────────────────────────────────────
   if (cmd === 'resend') {
-    if (!APPS_SCRIPT_URL) {
-      await interaction.reply({ content: 'APPS_SCRIPT_URL is not configured.', flags: MessageFlags.Ephemeral }).catch(() => null);
+    if (!cfg.appsScriptUrl) {
+      await interaction.reply({ content: 'This team has no Apps Script URL configured.', flags: MessageFlags.Ephemeral }).catch(() => null);
       return;
     }
     const count = interaction.options.getInteger('count', true);
@@ -296,7 +330,7 @@ client.on('interactionCreate', async (interaction) => {
       return;
     }
     try {
-      const url = new URL(APPS_SCRIPT_URL);
+      const url = new URL(cfg.appsScriptUrl);
       url.searchParams.set('secret', WEBHOOK_SECRET ?? '');
       url.searchParams.set('n', String(count));
       const response = await fetch(url.toString());
@@ -314,17 +348,13 @@ client.on('interactionCreate', async (interaction) => {
 
   // ── /nudge-missing ───────────────────────────────────────────────────────
   if (cmd === 'nudge-missing') {
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || TEAM_ID === undefined) {
-      await interaction.reply({ content: 'SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and TEAM_ID must all be configured.', flags: MessageFlags.Ephemeral }).catch(() => null);
-      return;
-    }
     try {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     } catch {
       return;
     }
     try {
-      const candidates = await fetchNudgeCandidates(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, TEAM_ID);
+      const candidates = await fetchNudgeCandidates(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, cfg.teamId);
       const nudged: string[] = [];
       const skipped: string[] = [];
       const failed: string[] = [];
@@ -337,7 +367,7 @@ client.on('interactionCreate', async (interaction) => {
         }
         try {
           const user = await interaction.client.users.fetch(candidate.discordId);
-          await user.send({ embeds: [buildNudgeEmbed(candidate.nameRealm, candidate.firstName, due, candidate.missingBisRows)] });
+          await user.send({ embeds: [buildNudgeEmbed(cfg.name, candidate.nameRealm, candidate.firstName, due, candidate.missingBisRows)] });
           nudged.push(candidate.nameRealm);
         } catch {
           failed.push(candidate.nameRealm);
@@ -361,10 +391,11 @@ client.on('interactionCreate', async (interaction) => {
   }
 
   // All remaining commands are ephemeral officer queries
-  if (!ROSTER_SCRIPT_URL) {
-    await interaction.reply({ content: 'ROSTER_SCRIPT_URL is not configured.', flags: MessageFlags.Ephemeral }).catch(() => null);
+  if (!cfg.rosterScriptUrl) {
+    await interaction.reply({ content: 'This team has no roster script URL configured.', flags: MessageFlags.Ephemeral }).catch(() => null);
     return;
   }
+  const rosterScriptUrl = cfg.rosterScriptUrl;
 
   try {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -375,7 +406,7 @@ client.on('interactionCreate', async (interaction) => {
   try {
     // ── /pending-roster ───────────────────────────────────────────────────
     if (cmd === 'pending-roster') {
-      const data = await fetchPendingRoster();
+      const data = await fetchPendingRoster(rosterScriptUrl);
       const entries = data.entries ?? [];
       if (!entries.length) {
         await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x95a5a6).setTitle('Pending Roster').setDescription('No pending applicants.')] });
@@ -398,7 +429,7 @@ client.on('interactionCreate', async (interaction) => {
 
     // ── /trials ───────────────────────────────────────────────────────────
     if (cmd === 'trials') {
-      const core = await fetchCorePayload();
+      const core = await fetchCorePayload(rosterScriptUrl);
       const trials = (core.roster ?? []).filter(p => p.isTrial);
       if (!trials.length) {
         await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x95a5a6).setTitle('Trials').setDescription('No players currently on trial.')] });
@@ -420,7 +451,7 @@ client.on('interactionCreate', async (interaction) => {
 
     // ── /bench ────────────────────────────────────────────────────────────
     if (cmd === 'bench') {
-      const core = await fetchCorePayload();
+      const core = await fetchCorePayload(rosterScriptUrl);
       const benched = (core.roster ?? []).filter(p => p.isBench);
       if (!benched.length) {
         await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x95a5a6).setTitle('Bench').setDescription('No players currently benched.')] });
@@ -442,7 +473,7 @@ client.on('interactionCreate', async (interaction) => {
     // ── /attendance <player> ──────────────────────────────────────────────
     if (cmd === 'attendance') {
       const query = (interaction.options.getString('player', true) || '').trim().toLowerCase();
-      const core  = await fetchCorePayload();
+      const core  = await fetchCorePayload(rosterScriptUrl);
       const match = (core.roster ?? []).find(p =>
         (p.firstName || p.nameRealm.split('-')[0]).toLowerCase() === query
       );
@@ -472,7 +503,7 @@ client.on('interactionCreate', async (interaction) => {
 
     // ── /absences ─────────────────────────────────────────────────────────
     if (cmd === 'absences') {
-      const core      = await fetchCorePayload();
+      const core      = await fetchCorePayload(rosterScriptUrl);
       const threshold = core.trialAttend ?? 75;
       const below = (core.roster ?? [])
         .filter(p => {
@@ -499,7 +530,7 @@ client.on('interactionCreate', async (interaction) => {
 
     // ── /mplus-excluded ───────────────────────────────────────────────────
     if (cmd === 'mplus-excluded') {
-      const core     = await fetchCorePayload();
+      const core     = await fetchCorePayload(rosterScriptUrl);
       const excluded = (core.roster ?? []).filter(p => p.mPlusExcluded);
       if (!excluded.length) {
         await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x95a5a6).setTitle('M+ Exclusions').setDescription('No players approved for M+ exclusion.')] });
@@ -519,7 +550,7 @@ client.on('interactionCreate', async (interaction) => {
 
     // ── /fairness ─────────────────────────────────────────────────────────
     if (cmd === 'fairness') {
-      const heavy  = await fetchHeavyPayload();
+      const heavy  = await fetchHeavyPayload(rosterScriptUrl);
       const counts = heavy.lootCounts ?? {};
       const entries = Object.entries(counts)
         .map(([name, lc]) => ({ name, count: lc.count, heroicCount: lc.heroicCount, mythicCount: lc.mythicCount }))
@@ -546,7 +577,7 @@ client.on('interactionCreate', async (interaction) => {
 
     // ── /officers ─────────────────────────────────────────────────────────
     if (cmd === 'officers') {
-      const core       = await fetchCorePayload();
+      const core       = await fetchCorePayload(rosterScriptUrl);
       const officerIds = core.officerDiscordIds ?? [];
       const claims     = core.discordClaims ?? [];
       if (!officerIds.length) {
@@ -574,13 +605,12 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-client.login(BOT_TOKEN);
-
 const app = express();
 app.use(express.json());
 
 app.get('/', (_req: Request, res: Response) => {
-  res.send(`${TEAM_NAME} bot is running.`);
+  const slugs = teamConfigs.all().map(c => c.slug).join(', ') || 'none configured';
+  res.send(`Bot is running. Teams: ${slugs}.`);
 });
 
 function checkSecret(req: Request, res: Response): boolean {
@@ -592,7 +622,22 @@ function checkSecret(req: Request, res: Response): boolean {
   return true;
 }
 
-async function fetchTextChannel(res: Response, channelId: string = CHANNEL_ID): Promise<TextChannel | null> {
+// Every relay route below carries `team` (a teams.slug string) in its body
+// -- the site's discord-bot-webhook Edge Function always sends it, even
+// before #991, since it used to pick which BOT_WEBHOOK_URL_<TEAM> to call.
+// Resolving it here is what replaces that per-team URL indirection now that
+// every team's payload arrives at the same one bot.
+function resolveTeam(req: Request, res: Response): TeamConfig | null {
+  const team = (req.body as { team?: string }).team;
+  const cfg = teamConfigs.getBySlug(team);
+  if (!cfg) {
+    res.status(400).json({ error: `Unknown or unconfigured team: ${team ?? '(missing)'}` });
+    return null;
+  }
+  return cfg;
+}
+
+async function fetchTextChannel(res: Response, channelId: string): Promise<TextChannel | null> {
   const channel = await client.channels.fetch(channelId).catch(() => null);
   if (!channel || !(channel instanceof TextChannel)) {
     res.status(500).json({ error: 'Channel not found or not a text channel' });
@@ -615,6 +660,8 @@ interface MplusBody {
 
 app.post('/mplus', async (req: Request, res: Response): Promise<void> => {
   if (!checkSecret(req, res)) return;
+  const cfg = resolveTeam(req, res);
+  if (!cfg) return;
 
   const { characterName, nameRealm, mplusLink, raiderioUrl, raidLink, notes, submittedAt } =
     req.body as MplusBody;
@@ -627,7 +674,7 @@ app.post('/mplus', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const channel = await fetchTextChannel(res);
+  const channel = await fetchTextChannel(res, cfg.officerChannelId);
   if (!channel) return;
 
   const unixTs = submittedAt
@@ -646,9 +693,9 @@ app.post('/mplus', async (req: Request, res: Response): Promise<void> => {
     )
     .setFooter({ text: 'M+ Exclusion Request System' });
 
-  if (MPLUS_PING_ROLE_ID) {
+  if (cfg.mplusPingRoleId) {
     await channel.send({
-      content: `<@&${MPLUS_PING_ROLE_ID}> New M+ exclusion request received!`,
+      content: `<@&${cfg.mplusPingRoleId}> New M+ exclusion request received!`,
       embeds: [embed],
     });
   } else {
@@ -669,6 +716,8 @@ interface RosterBody {
 
 app.post('/roster', async (req: Request, res: Response): Promise<void> => {
   if (!checkSecret(req, res)) return;
+  const cfg = resolveTeam(req, res);
+  if (!cfg) return;
 
   const { characterName, classSpec, notes, submittedAt } =
     req.body as RosterBody;
@@ -678,7 +727,7 @@ app.post('/roster', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const channel = await fetchTextChannel(res);
+  const channel = await fetchTextChannel(res, cfg.officerChannelId);
   if (!channel) return;
 
   const unixTs = submittedAt
@@ -696,9 +745,9 @@ app.post('/roster', async (req: Request, res: Response): Promise<void> => {
     )
     .setFooter({ text: 'Roster Application System' });
 
-  if (ROSTER_PING_ROLE_ID) {
+  if (cfg.rosterPingRoleId) {
     await channel.send({
-      content: `<@&${ROSTER_PING_ROLE_ID}> New roster application received!`,
+      content: `<@&${cfg.rosterPingRoleId}> New roster application received!`,
       embeds: [embed],
     });
   } else {
@@ -726,6 +775,8 @@ interface SignupBody {
 
 app.post('/signup', async (req: Request, res: Response): Promise<void> => {
   if (!checkSecret(req, res)) return;
+  const cfg = resolveTeam(req, res);
+  if (!cfg) return;
 
   const {
     charName,
@@ -746,7 +797,7 @@ app.post('/signup', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const channel = await fetchTextChannel(res);
+  const channel = await fetchTextChannel(res, cfg.officerChannelId);
   if (!channel) return;
 
   const unixTs = submittedAt
@@ -772,9 +823,9 @@ app.post('/signup', async (req: Request, res: Response): Promise<void> => {
     )
     .setFooter({ text: 'Raid Signup System' });
 
-  if (ROSTER_PING_ROLE_ID) {
+  if (cfg.rosterPingRoleId) {
     await channel.send({
-      content: `<@&${ROSTER_PING_ROLE_ID}> New raid signup received!`,
+      content: `<@&${cfg.rosterPingRoleId}> New raid signup received!`,
       embeds: [embed],
     });
   } else {
@@ -797,6 +848,8 @@ interface SelfReceivedBody {
 
 app.post('/selfreceived', async (req: Request, res: Response): Promise<void> => {
   if (!checkSecret(req, res)) return;
+  const cfg = resolveTeam(req, res);
+  if (!cfg) return;
 
   const { player, item, slot, source, notes, submittedAt } =
     req.body as SelfReceivedBody;
@@ -806,7 +859,7 @@ app.post('/selfreceived', async (req: Request, res: Response): Promise<void> => 
     return;
   }
 
-  const channel = await fetchTextChannel(res);
+  const channel = await fetchTextChannel(res, cfg.officerChannelId);
   if (!channel) return;
 
   const unixTs = submittedAt
@@ -826,9 +879,9 @@ app.post('/selfreceived', async (req: Request, res: Response): Promise<void> => 
     )
     .setFooter({ text: 'Self-Received Request System' });
 
-  if (ROSTER_PING_ROLE_ID) {
+  if (cfg.rosterPingRoleId) {
     await channel.send({
-      content: `<@&${ROSTER_PING_ROLE_ID}> New self-received request received!`,
+      content: `<@&${cfg.rosterPingRoleId}> New self-received request received!`,
       embeds: [embed],
     });
   } else {
@@ -852,6 +905,8 @@ interface BiSBody {
 
 app.post('/bis', async (req: Request, res: Response): Promise<void> => {
   if (!checkSecret(req, res)) return;
+  const cfg = resolveTeam(req, res);
+  if (!cfg) return;
 
   const { nameRealm, bisLink, notes, submittedAt, sameLink } =
     req.body as BiSBody;
@@ -861,7 +916,7 @@ app.post('/bis', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const channel = await fetchTextChannel(res);
+  const channel = await fetchTextChannel(res, cfg.officerChannelId);
   if (!channel) return;
 
   const unixTs = submittedAt
@@ -883,9 +938,9 @@ app.post('/bis', async (req: Request, res: Response): Promise<void> => {
     ? 'BiS Source items changed (same link) -- please recheck!'
     : 'New BiS Source submission received!';
 
-  if (ROSTER_PING_ROLE_ID) {
+  if (cfg.rosterPingRoleId) {
     await channel.send({
-      content: `<@&${ROSTER_PING_ROLE_ID}> ${pingText}`,
+      content: `<@&${cfg.rosterPingRoleId}> ${pingText}`,
       embeds: [embed],
     });
   } else {
@@ -907,6 +962,8 @@ interface RsvpBody {
 
 app.post('/rsvp-status', async (req: Request, res: Response): Promise<void> => {
   if (!checkSecret(req, res)) return;
+  const cfg = resolveTeam(req, res);
+  if (!cfg) return;
 
   const { charName, raidDate, status, note } = req.body as RsvpBody;
 
@@ -915,7 +972,7 @@ app.post('/rsvp-status', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const channel = await fetchTextChannel(res, ATTENDANCE_CHANNEL_ID);
+  const channel = await fetchTextChannel(res, attendanceChannelId(cfg));
   if (!channel) return;
 
   const embed = new EmbedBuilder()
@@ -929,9 +986,9 @@ app.post('/rsvp-status', async (req: Request, res: Response): Promise<void> => {
     )
     .setFooter({ text: 'Raid Calendar' });
 
-  if (RSVP_PING_ROLE_ID) {
+  if (cfg.rsvpPingRoleId) {
     await channel.send({
-      content: `<@&${RSVP_PING_ROLE_ID}> ${charName} marked themselves ${status} for ${raidDate}`,
+      content: `<@&${cfg.rsvpPingRoleId}> ${charName} marked themselves ${status} for ${raidDate}`,
       embeds: [embed],
     });
   } else {
@@ -949,7 +1006,8 @@ app.post('/rsvp-status', async (req: Request, res: Response): Promise<void> => {
 // discord-bot-webhook's relay, one call per due player/checkpoint; the
 // dedup that stops repeat DMs lives on that side (raid_rsvp_reminders_sent),
 // not here -- this route has no memory of its own, same as every other
-// route in this file.
+// route in this file. No team resolution needed -- a DM by discord user id
+// doesn't depend on which team's config anything comes from.
 
 interface OptionalReminderBody {
   discordId?: string;
@@ -1001,24 +1059,14 @@ app.post('/optional-reminder', async (req: Request, res: Response): Promise<void
 // Supabase client -- same precedent as wishlistStatus.ts's
 // fetchNudgeCandidates(), already used by /nudge-missing.
 
-function signupSheetContext(): SignupSheetContext | null {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || TEAM_ID === undefined) return null;
-  return {
-    supabaseUrl: SUPABASE_URL,
-    serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY,
-    teamId: TEAM_ID,
-    teamName: TEAM_NAME,
-    siteUrl: SITE_URL,
-    fallbackChannelId: ATTENDANCE_CHANNEL_ID,
-  };
-}
-
 interface SignupSheetSyncBody {
   raidDate?: string;
 }
 
 app.post('/signup-sheet-sync', async (req: Request, res: Response): Promise<void> => {
   if (!checkSecret(req, res)) return;
+  const cfg = resolveTeam(req, res);
+  if (!cfg) return;
 
   const { raidDate } = req.body as SignupSheetSyncBody;
   if (!raidDate) {
@@ -1026,16 +1074,10 @@ app.post('/signup-sheet-sync', async (req: Request, res: Response): Promise<void
     return;
   }
 
-  const ctx = signupSheetContext();
-  if (!ctx) {
-    res.status(500).json({ error: 'SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and TEAM_ID must all be configured.' });
-    return;
-  }
-
   try {
     // An RSVP change must never force the sheet to appear before its
     // configured lead time -- only the proactive sweep creates it.
-    await syncSignupSheet(client, ctx, raidDate, { allowCreate: false });
+    await syncSignupSheet(client, signupSheetContext(cfg), raidDate, { allowCreate: false });
     res.json({ ok: true });
   } catch (err) {
     console.error('signup-sheet-sync error:', err);
@@ -1066,19 +1108,36 @@ app.post('/verify-channel', async (req: Request, res: Response): Promise<void> =
 });
 
 // Every ~15 minutes: proactively post any upcoming raid night's signup
-// sheet once its configured lead time (default 48h) has been reached.
-// Started once the client is ready (same 'clientReady' event the login flow
-// above uses, discord.js v14's renamed 'ready') -- signupSheetContext()
-// itself no-ops cleanly if env vars are missing.
+// sheet, for every configured team, once its configured lead time (default
+// 48h) has been reached. Started once the client is ready (same
+// 'clientReady' event the login flow above uses, discord.js v14's renamed
+// 'ready').
 const SIGNUP_SHEET_SWEEP_INTERVAL_MS = 15 * 60 * 1000;
 client.once('clientReady', () => {
   setInterval(() => {
-    const ctx = signupSheetContext();
-    if (!ctx) return;
-    runSignupSheetSweep(client, ctx).catch(err => console.error('signup sheet sweep error:', err));
+    for (const cfg of teamConfigs.all()) {
+      runSignupSheetSweep(client, signupSheetContext(cfg)).catch(err =>
+        console.error(`signup sheet sweep error (${cfg.slug}):`, err)
+      );
+    }
   }, SIGNUP_SHEET_SWEEP_INTERVAL_MS);
 });
 
-app.listen(Number(PORT), () => {
-  console.log(`Server listening on port ${PORT}`);
+async function main(): Promise<void> {
+  // Load every team's config before logging in or accepting traffic --
+  // slash-command registration on 'clientReady' and the first relay call
+  // both need it immediately, not eventually.
+  await teamConfigs.refresh();
+  startTeamConfigRefresh(teamConfigs);
+
+  await client.login(BOT_TOKEN);
+
+  app.listen(Number(PORT), () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
+}
+
+main().catch(err => {
+  console.error('Fatal startup error:', err);
+  process.exit(1);
 });

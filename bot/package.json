@@ -1,6 +1,6 @@
 {
   "name": "guild-team-bot",
-  "version": "1.0.0",
+  "version": "3.94.0",
   "description": "Discord bot for WoW guild teams (M+ exclusions, roster apps, resend)",
   "main": "dist/index.js",
   "scripts": {

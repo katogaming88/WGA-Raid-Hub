@@ -21,21 +21,19 @@ export interface SignupSheetContext {
   serviceRoleKey: string;
   teamId: number;
   teamName: string;
+  // teams.slug, for the "View on Site" link's ?team= param (calendar.html
+  // omits it for the default team). Comes straight from team_discord_config's
+  // join to teams (#991) -- before that, this file carried its own
+  // hardcoded id->slug map, since no other slug source existed bot-side.
+  teamSlug: string;
   siteUrl?: string;
-  fallbackChannelId: string;
+  // Already resolved by the caller (index.ts's signupChannelId() helper) --
+  // the team's configured signup channel, falling back to its officer
+  // channel. Supersedes a team_settings.config.discordSignupChannelId read
+  // that used to live in this file (#991) -- never actually set for either
+  // team, and now redundant with team_discord_config.
+  channelId: string;
 }
-
-// team_id here is WGA Raid Hub's own Supabase teams.id, unrelated to
-// DISCORD_GUILD_ID -- same mapping wishlistStatus.ts documents. Used only
-// for the "View on Site" link's ?team= param (calendar.html omits it for
-// the default team). No slug env var exists bot-side today; a small
-// literal map is the smallest addition rather than inventing one, since
-// this repo is still one-bot-per-team (WGA-Raid-Hub's own
-// discord-bot-webhook already resolves per-team URLs the same way).
-const TEAM_SLUGS: Record<number, string> = {
-  1: 'phoenix',
-  2: 'hellfire-rollers',
-};
 
 const EMBED_COLOR = 0xe0c23d;
 
@@ -280,8 +278,7 @@ async function buildEmbedAndComponents(
 
   const row = new ActionRowBuilder<ButtonBuilder>();
   if (ctx.siteUrl) {
-    const slug = TEAM_SLUGS[ctx.teamId];
-    const teamParam = slug && slug !== 'phoenix' ? `&team=${slug}` : '';
+    const teamParam = ctx.teamSlug && ctx.teamSlug !== 'phoenix' ? `&team=${ctx.teamSlug}` : '';
     row.addComponents(
       new ButtonBuilder()
         .setStyle(ButtonStyle.Link)
@@ -338,13 +335,7 @@ export async function syncSignupSheet(
 
   const { embed, components } = await buildEmbedAndComponents(supabase, ctx, raidDate, night);
 
-  const { data: settingsRow } = await supabase
-    .from('team_settings')
-    .select('config')
-    .eq('team_id', ctx.teamId)
-    .maybeSingle();
-  const config = (settingsRow?.config ?? {}) as Record<string, unknown>;
-  const channelId = (config.discordSignupChannelId as string | null) || ctx.fallbackChannelId;
+  const channelId = ctx.channelId;
 
   const { data: claimRows, error: claimErr } = await supabase.rpc('claim_raid_signup_sheet', {
     p_team_id: ctx.teamId,
