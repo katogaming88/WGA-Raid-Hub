@@ -22,41 +22,79 @@
 
 ## Versioning
 
-This project follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`):
+This project follows [Semantic Versioning](https://semver.org/)
+(`MAJOR.MINOR.PATCH`), with one version line covering the whole project.
 
-| Bump | When to use | Examples |
-|------|-------------|---------|
-| **MAJOR** | A previously-valid URL now 404s, points at different data, or requires re-authenticating; a schema change that isn't additive (a column/table/RPC removed or repurposed, not just added) | Retiring a page entirely, splitting one page into several, replacing the auth/session model |
-| **MINOR** | New capability, tab, or workflow reachable from existing URLs; a page's *default* content or landing target changes but old links and bookmarks still resolve to a working page | New dashboard tab, new approval queue, changing what a bare root URL shows, adding a new page nothing depended on yet |
-| **PATCH** | Bug fixes, visual polish, copy changes, layout tweaks, performance improvements | Layout fix, subtitle change, footer tweak |
+### What the version is a promise about
 
-The MAJOR bar is about **breaking an existing contract**, not about how much surface area changed. A large, multi-PR feature (a new page, a new admin tab, a new tracker) is still MINOR as long as everything that worked before the change still works the same way after it. Ask "does an old bookmark, saved link, or existing session still do what it used to?" -- if yes, it's MINOR regardless of how big the diff is.
+Semantic Versioning only means something against a declared public API: without
+one, the three numbers have no referent. This project has four contracts, and a
+break in any one of them breaks the product, so a MAJOR in any row is a MAJOR
+for the whole release.
 
-When merging a PR:
-- Frontend changes (under `js/` or the root HTML pages): bump the
-  version in `js/common.js` (`var VERSION`) and add an entry under a
-  `### Frontend` heading in the new version's `CHANGELOG.md` block
-- Backend changes (under `supabase/migrations/` or `scripts/import/`): add
-  an entry under a `### Backend` heading, with no version bump. Backend
-  entries join the version block of the release they land next to
-- A PR touching both sides updates both sections; a PR touching neither
-  needs neither
+| Contract | Who consumes it | MAJOR | MINOR | PATCH |
+|----------|-----------------|-------|-------|-------|
+| URLs, bookmarks, sessions | visitors | an old link 404s, points at different data, or requires re-authenticating | a new page, tab or workflow reachable from existing URLs; a bare URL's default target changes but old links still resolve | fixes, copy, layout, performance |
+| Schema and RPC surface | the frontend, the bot, the Edge Functions | a table, column, RPC or policy removed or repurposed; a signature changed | a new table, column, RPC, or a new optional parameter | data fixes, indexes, performance |
+| Edge Function HTTP contracts | the frontend, `pg_cron`, the bot relay | request or response shape changed incompatibly; a caller class newly refused | a new action or a new optional field | internal changes |
+| Site-to-bot relay contract | the bot | an action removed, or its payload changed incompatibly | a new action | internal changes |
 
-Bumping the version means more than one file: every local `css/`/`js/`
-tag on every page carries a `?v=<VERSION>` cache-bust query string
-(#431), 49 of them across the five pages. `npm run stamp -- 3.67.0`
-rewrites the `VERSION` constant and every one of those tags in a single
-pass, and
-prints a per-page count so a page that matched nothing is visible rather
-than reported as a silent success. It refuses a version that is not
-`x.y.z`, and it writes nothing at all if any page would fail.
+The MAJOR bar is about **breaking an existing contract**, not about how much
+surface area changed. A large, multi-PR feature (a new page, a new admin tab, a
+new tracker) is still MINOR as long as everything that worked before the change
+still works the same way after it. Ask "does an old bookmark, saved link, or
+existing session still do what it used to?" -- if yes, it's MINOR regardless of
+how big the diff is.
 
-CI enforces this in both directions (#353): frontend paths require a
-Frontend entry and a bump, backend paths require a Backend entry, and a
-bump without a frontend change fails. The `js/common.js` VERSION line
-itself does not count as a frontend change, so a bump alone never
-satisfies the frontend checks. Mechanical PRs (formatting, lint,
-comment-only changes) are exempt from every check: use a `chore/*` branch
+### Every PR that changes a shipped piece stamps the product
+
+There are four shipped pieces, and one version line covers all of them. A
+release is named by that number, and a change to any piece moves it:
+
+| Piece | Paths | CHANGELOG section |
+|-------|-------|-------------------|
+| Frontend | `js/`, `css/`, the root HTML pages | `### Frontend` |
+| Database | `supabase/migrations/`, `scripts/import/` | `### Backend` |
+| Edge Functions | `supabase/functions/` | `### Functions` |
+| Bot | `bot/` | `### Bot` |
+
+A PR touching more than one piece writes a section for each and takes one bump.
+A PR touching none of them (docs, CI config, `supabase/config.toml`, `seed.sql`,
+`roles.sql`) takes neither: use a `chore/*` branch or the `chore` label.
+
+**This replaced the old rule that a backend-only PR took no bump** (decided
+2026-09-06, #965). Under that rule the number tracked the frontend rather than
+the release, so 162 migrations, ten Edge Functions and the entire bot moved
+without the version ever saying so, and a `### Backend` entry had to ride
+whichever version block it happened to land beside. That is also how three
+version numbers ended up used twice.
+
+Each piece carries the version of the last release that touched it, recorded in
+`version.json` beside its own platform identity: the migration ledger head for
+the database, the deploy counter and bundle hash for each function, the commit
+for anything built. The version says which release something belongs to; the
+platform identity says which artifact is actually live. Both are needed, because
+only the second one can show that a piece was merged and never deployed.
+
+Bumping the version means more than one file: every local `css/`/`js/` tag on
+every page carries a `?v=<VERSION>` cache-bust query string (#431), 56 of them
+across the six pages. `npm run stamp -- 3.92.0` rewrites the `VERSION` constant
+and every one of those tags in a single pass, and prints a per-page count so a
+page that matched nothing is visible rather than reported as a silent success.
+It refuses a version that is not `x.y.z`, and it writes nothing at all if any
+page would fail.
+
+A released version number is never reissued and a released block is never
+rewritten. A wrong number is corrected by the next release, not by editing the
+last one. Three numbers in this changelog are used twice (3.77.23, 3.60.32 and
+3.60.6); each carries a note saying so, and they stay as they are.
+
+CI enforces this (#353, extended by #966): a path in any shipped piece requires
+that piece's CHANGELOG section and the bump, a bump with no shipped change
+fails, and a new heading must be unique and above every heading already in the
+file. The `js/common.js` VERSION line itself does not count as a frontend
+change, so a bump alone never satisfies the checks. Mechanical PRs (formatting,
+lint, comment-only changes) are exempt from every check: use a `chore/*` branch
 or add the `chore` label.
 
 ## Pull requests

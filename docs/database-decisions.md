@@ -8,6 +8,30 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-06 -- one product version line, and each piece carries the release that last touched it (#965)
+
+The version was a frontend number wearing a product's name. `js/common.js` held `var VERSION` at 3.91.3 after 396 headings in 83 days, while `package.json` said `1.0.0` and was not a source, and there were no git tags and no GitHub Releases. Everything else the project ships moved without the number ever saying so: 162 migrations in two months, ten Edge Functions with no version constant anywhere in them, and a bot whose `package.json` had never been bumped. A `### Backend` entry had no number of its own and rode whichever version block it happened to land beside, which is also how three numbers (3.77.23, 3.60.32 and 3.60.6) each ended up used twice by a backend-only PR opening a second heading a day later.
+
+Semantic Versioning's first rule requires a declared public API, so the question was never whether to keep semver but what the number is a promise about. `CONTRIBUTING.md` already declared one contract, for URLs, bookmarks, sessions and additive-only schema. Three more were being kept in people's heads: the schema and RPC surface the frontend and the bot both read, the HTTP shape of each Edge Function, and the relay's action map. Those three are why the schema, the functions and the bot had no number that could have meant anything.
+
+Three shapes were available and the choice is between the second and the third:
+
+- **Independent semver per piece** was rejected. Every one of these pieces has exactly one consumer and that consumer is inside this project, so rule 1 has no referent: a separate `1.4.2` for `boe-webhook` would inform nobody, while costing a version line, a changelog and a compatibility matrix per piece.
+- **Calendar versioning** was rejected. Its criteria half fit, but 393 distinct versions, CI keyed on `x.y.z`, a news feed keyed on the version and a declared contract table all read the current format, and switching would be churn with no reader who benefits.
+- **One product line, changed pieces taking the new number**, was chosen. This is the lockstep mechanism (one series, unchanged pieces keep the number of the last release that touched them), and it answers both "what version is the product" and "what version is this piece" without minting a second ledger. The documented cost is real and accepted: a breaking change in any one contract majors the whole product, which is correct here, because a broken contract breaks the product regardless of which piece holds it.
+
+The pieces already had honest identities from their own platforms, and those stay: the migration ledger head for the schema, each function's deploy counter and bundle hash, the commit for anything built. The product version says which release something belongs to; the platform identity says which artifact is live. Recording both is what makes it possible to detect a function that was merged and never deployed, which nothing in this repo could do before.
+
+Nothing is renumbered. A released number is never reissued and a released block is never rewritten, so the three collisions stay and carry a note; #966 adds the forward check that refuses the next one.
+
+Rejected for now, with the condition that would revive each: PostgREST's schema-per-version with `Accept-Profile` (the docs frame it as multi-tenancy, and it becomes the right tool the day a breaking RPC change has to coexist with the old one for a caller nobody controls; until then the additive rule plus a temporary `fn_v2` beside `fn` is less machinery), and release automation driven by Conventional Commits (the hand stamp works and is not the bottleneck, and it would impose a commit convention on both maintainers).
+
+The repo-neutral reasoning, with its sources graded, is the `versioning-whole-and-parts` knowledge-base entry in claude-config. This entry is the application to this database and this repo.
+
+Shipped: no migration. Convention only; `app_version()` is #969.
+
+---
+
 ## 2026-09-05 -- players' officer-only columns move to a side table rather than a revoke or a view (#925)
 
 `players` carries a `Public read players` policy with `qual = true`, `anon` and `authenticated` both hold table-level SELECT, and no column ACL narrows either. Three officer-written columns rode along with the public roster read: `officer_notes`, `archived_reason` and `archived_reason_detail`. Measured against prod on 2026-09-05, an anon read with the publishable key alone returned officer notes on three players and removal reasons on two. That policy's `polroles` is PUBLIC rather than a role list, so every signed-in raider read them too, which is the wider half of the exposure and was not in the issue as filed.

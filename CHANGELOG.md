@@ -3,8 +3,11 @@
 All notable changes to WGA Raid Hub will be documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-with each release split into `### Frontend` (drives the version number) and
-`### Backend` (migrations and import tooling, no version bump) sections.
+with each release split into `### Frontend`, `### Backend` (migrations and
+import tooling), `### Functions` (Edge Functions) and `### Bot` sections. One
+version covers the whole release, and a change to any of the four moves it: the
+number names the release, not the frontend. See CONTRIBUTING.md for the
+contracts each section answers to.
 
 ---
 
@@ -536,6 +539,8 @@ with each release split into `### Frontend` (drives the version number) and
 ---
 
 ## [3.77.23] - 2026-09-02
+
+_Duplicate version number: this block is PR #857, which opened a second 3.77.23 heading instead of joining the existing one below. A released number is never reissued, so it stands as it is; #966 adds the CI check that refuses the next one._
 
 ### Backend
 
@@ -1218,6 +1223,8 @@ with each release split into `### Frontend` (drives the version number) and
 
 ## [3.60.32] - 2026-08-25
 
+_Duplicate version number: this block is PR #740, which opened a second 3.60.32 heading instead of joining the existing one below. A released number is never reissued, so it stands as it is; #966 adds the CI check that refuses the next one._
+
 ### Backend
 
 - A raider marking a self-received item (e.g. a crafted piece) never saw it take effect on their own BiS list, even though the request had already been auto-approved -- `self_received_requests` only had SELECT policies for officers/team_leaders/site_admins, so a raider's own browser query for their own approved rows was silently blocked by RLS and came back empty, while an officer looking at the same player's profile saw it fine. Added a `is_own_player(player_id)` SELECT policy so a raider can read their own rows (`20260824233302_own_self_received_requests_read.sql`). See `docs/RLS.md`.
@@ -1446,6 +1453,8 @@ with each release split into `### Frontend` (drives the version number) and
 - Added a notification badge for raiders missing a BiS pick somewhere: a count badge on the logged-in nav button (sitewide) and another on the profile's Wishlist sub-tab, both reflecting the same missing-slot count above.
 
 ## [3.60.6] - 2026-08-12
+
+_Duplicate version number: this block is PR #688, which opened a second 3.60.6 heading instead of joining the existing one below. A released number is never reissued, so it stands as it is; #966 adds the CI check that refuses the next one._
 
 ### Backend
 
