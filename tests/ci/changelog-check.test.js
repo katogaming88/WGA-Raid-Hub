@@ -111,6 +111,27 @@ describe('js/common.js diff classification', () => {
     expect(hasVersionBump(versionOnly)).toBe(true);
     expect(hasVersionBump('+function newHelper() {}')).toBe(false);
   });
+
+  // REQUIRED_SCHEMA is the stamper's output too: it fills it from the newest
+  // migration in the tree, so every release that adds one rewrites this line.
+  // Counting it as a frontend change puts a migrations-only release back where
+  // the ?v= tags had it, demanding a Frontend entry for a line no person wrote.
+  const schemaOnly = ["-var REQUIRED_SCHEMA = '20260905154234';", "+var REQUIRED_SCHEMA = '20260907150000';"].join(
+    '\n'
+  );
+
+  it('a REQUIRED_SCHEMA-only diff is not functional', () => {
+    expect(commonJsIsFunctional(schemaOnly)).toBe(false);
+    expect(commonJsIsFunctional([versionOnly, schemaOnly].join('\n'))).toBe(false);
+  });
+
+  it('still reports a real edit that arrives alongside both stamped lines', () => {
+    expect(commonJsIsFunctional([versionOnly, schemaOnly, '+function newHelper() {}'].join('\n'))).toBe(true);
+  });
+
+  it('does not mistake the bump for a schema stamp', () => {
+    expect(hasVersionBump(schemaOnly)).toBe(false);
+  });
 });
 
 describe('compareVersions', () => {

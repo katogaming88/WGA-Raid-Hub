@@ -42,7 +42,14 @@ export const SHIPPED_CLASSES = [
   { name: 'bot', section: 'Bot', pattern: /^bot\// }
 ];
 
-const VERSION_LINE = /^[+-]var VERSION\b/;
+// The lines in js/common.js the stamper writes rather than a person: VERSION,
+// and REQUIRED_SCHEMA, which it fills from the newest migration in the tree.
+// Neither marks the frontend as changed. VERSION for the reason #353 gives
+// (complying with "bump VERSION" must not itself make a PR look functional),
+// and REQUIRED_SCHEMA because it moves as a consequence of a migration: a
+// database-only release would otherwise still demand a Frontend entry, which
+// is the same hole the ?v= asset tags opened.
+const STAMPED_COMMON_LINES = [/^[+-]var VERSION\b/, /^[+-]var REQUIRED_SCHEMA\b/];
 const VERSION_HEADING = /^## \[(\d+\.\d+\.\d+)\]/;
 
 // Which shipped class a path belongs to, or null for chore territory.
@@ -64,12 +71,12 @@ export function isBackendPath(path) {
   return classifyPath(path) === 'db';
 }
 
-// True when js/common.js changed beyond its VERSION line.
+// True when js/common.js changed beyond the lines the stamper writes.
 export function commonJsIsFunctional(diff) {
   return diff
     .split('\n')
     .filter((line) => /^[+-]/.test(line) && !/^(\+\+\+|---)/.test(line))
-    .some((line) => !VERSION_LINE.test(line));
+    .some((line) => !STAMPED_COMMON_LINES.some((pattern) => pattern.test(line)));
 }
 
 export function hasVersionBump(diff) {
