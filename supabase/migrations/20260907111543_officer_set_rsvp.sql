@@ -1,7 +1,7 @@
 -- #903 (part of #640): officers need a correction path for a raider's RSVP
 -- (e.g. fixing a status the raider forgot to update themselves). The
--- 2026-09-03 "raid_rsvps has no public or officer write policy at all"
--- decision (docs/database-decisions.md) deliberately left every write to
+-- 2026-09-03 decision on raid_rsvps having no officer write access at the
+-- table level (docs/database-decisions.md) deliberately left every write to
 -- set_own_rsvp() -- an RSVP is a first-person statement, not something an
 -- officer should silently rewrite via a blanket write grant -- but named
 -- exactly this as the shape a future correction path should take: "its own
