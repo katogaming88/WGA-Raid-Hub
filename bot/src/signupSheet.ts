@@ -51,7 +51,7 @@ const EMBED_COLOR = 0xe0c23d;
 // publish-and-propagate lag.
 const TEAM_BANNER_URLS: Record<number, string> = {
   1: 'https://raw.githubusercontent.com/katogaming88/WGA-Raid-Hub/main/assets/banners/phoenix-header.png',
-  2: 'https://raw.githubusercontent.com/katogaming88/WGA-Raid-Hub/main/assets/banners/hellfire-header.png',
+  2: 'https://raw.githubusercontent.com/katogaming88/WGA-Raid-Hub/main/assets/banners/hellfire-header.png'
 };
 
 // The full set of valid roster roles (classes_specs.role) -- purely for
@@ -107,7 +107,7 @@ function zonedTimeToUtc(raidDate: string, time: string, timeZone: string): Date 
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
+    second: '2-digit'
   });
   const parts: Record<string, string> = {};
   for (const part of dtf.formatToParts(new Date(guessUtcMs))) {
@@ -148,7 +148,7 @@ function formatField(name: string, names: string[]): { name: string; value: stri
 // bold+larger), later sections get a markdown-bold sub-header inline in
 // the body text instead.
 function formatColumn(sections: Array<{ label: string; names: string[] }>): { name: string; value: string } | null {
-  const nonEmpty = sections.filter(s => s.names.length > 0);
+  const nonEmpty = sections.filter((s) => s.names.length > 0);
   if (nonEmpty.length === 0) return null;
   const [first, ...rest] = nonEmpty;
   const parts = [first.names.join('\n')];
@@ -170,7 +170,7 @@ async function buildEmbedAndComponents(
       .select('id, name_realm, nickname, is_bench, classes_specs(role)')
       .eq('team_id', ctx.teamId)
       .is('archived_at', null),
-    supabase.from('raid_rsvps').select('player_id, status').eq('team_id', ctx.teamId).eq('raid_date', raidDate),
+    supabase.from('raid_rsvps').select('player_id, status').eq('team_id', ctx.teamId).eq('raid_date', raidDate)
   ]);
   if (rosterErr) throw new Error(`players query failed: ${rosterErr.message}`);
   if (rsvpErr) throw new Error(`raid_rsvps query failed: ${rsvpErr.message}`);
@@ -187,7 +187,7 @@ async function buildEmbedAndComponents(
     Tentative: [],
     Absent: [],
     'No Response': [],
-    Bench: [],
+    Bench: []
   };
   let inCount = 0;
 
@@ -250,10 +250,10 @@ async function buildEmbedAndComponents(
   const columns = [
     formatColumn([
       { label: 'Tank', names: roleGroups.Tank },
-      { label: 'Heal', names: roleGroups.Heal },
+      { label: 'Heal', names: roleGroups.Heal }
     ]),
     formatColumn([{ label: 'Melee', names: roleGroups.Melee }]),
-    formatColumn([{ label: 'Ranged', names: roleGroups.Ranged }]),
+    formatColumn([{ label: 'Ranged', names: roleGroups.Ranged }])
   ];
   let roleFieldCount = 0;
   for (const column of columns) {
@@ -290,7 +290,10 @@ async function buildEmbedAndComponents(
   // handler to infer it from the interaction's guild/channel -- WGA's three
   // teams share one Discord server, so neither would disambiguate them.
   row.addComponents(
-    new ButtonBuilder().setStyle(ButtonStyle.Secondary).setLabel('Refresh').setCustomId(`signup-sheet-refresh:${ctx.teamId}:${raidDate}`)
+    new ButtonBuilder()
+      .setStyle(ButtonStyle.Secondary)
+      .setLabel('Refresh')
+      .setCustomId(`signup-sheet-refresh:${ctx.teamId}:${raidDate}`)
   );
 
   return { embed, components: row.components.length ? [row] : [] };
@@ -316,7 +319,7 @@ export async function syncSignupSheet(
 
   const { data: nightRows, error: nightErr } = await supabase.rpc('raid_night_info', {
     p_team_id: ctx.teamId,
-    p_raid_date: raidDate,
+    p_raid_date: raidDate
   });
   if (nightErr) throw new Error(`raid_night_info failed: ${nightErr.message}`);
   const night = (nightRows as RaidNightInfoRow[] | null)?.[0];
@@ -343,7 +346,7 @@ export async function syncSignupSheet(
   const { data: claimRows, error: claimErr } = await supabase.rpc('claim_raid_signup_sheet', {
     p_team_id: ctx.teamId,
     p_raid_date: raidDate,
-    p_channel_id: channelId,
+    p_channel_id: channelId
   });
   if (claimErr) throw new Error(`claim_raid_signup_sheet failed: ${claimErr.message}`);
   const existingMessageId = (claimRows as { message_id: string | null }[] | null)?.[0]?.message_id ?? null;
@@ -416,7 +419,7 @@ export async function runSignupSheetSweep(client: Client, ctx: SignupSheetContex
 
     const { data: nightRows, error: nightErr } = await supabase.rpc('raid_night_info', {
       p_team_id: ctx.teamId,
-      p_raid_date: raidDate,
+      p_raid_date: raidDate
     });
     if (nightErr) {
       console.error('runSignupSheetSweep raid_night_info error:', nightErr);

@@ -27,7 +27,7 @@ export interface NudgeCandidate {
 const CATEGORY_SUBTAB: Record<NudgeCategory, string> = {
   'no-wishlist': 'wishlist',
   'incomplete-wishlist': 'wishlist',
-  'no-bis-link': 'bis',
+  'no-bis-link': 'bis'
 };
 
 // A raider can have multiple categories at once; only one link fits in the DM,
@@ -73,8 +73,8 @@ export async function fetchNudgeCandidates(
         firstName: row.name_realm.split('-')[0].trim(),
         discordId: row.discord_id,
         categories,
-        missingBisRows: row.missing_bis_rows,
+        missingBisRows: row.missing_bis_rows
       };
     })
-    .filter(c => c.categories.length > 0);
+    .filter((c) => c.categories.length > 0);
 }
