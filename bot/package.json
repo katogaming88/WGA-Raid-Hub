@@ -13,7 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.112.3",
+    "@supabase/supabase-js": "^2.115.0",
     "discord.js": "^14.15.3",
     "dotenv": "^17.4.2",
     "express": "^4.19.2",
