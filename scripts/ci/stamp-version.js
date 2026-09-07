@@ -316,6 +316,19 @@ export function stampAll({ root = ROOT, version, pages = PAGES, changed } = {}) 
     const pkg = JSON.parse(readFileSync(botManifest, 'utf8'));
     pkg.version = pieces.bot;
     writes.push({ path: botManifest, text: JSON.stringify(pkg, null, 2) + '\n' });
+
+    // npm records the root version twice, in the lockfile's own `version` and
+    // again under packages[""]. Left behind, the next `npm install` under bot/
+    // rewrites both from package.json inside whatever PR happens to run it.
+    const botLock = join(root, 'bot', 'package-lock.json');
+    if (existsSync(botLock)) {
+      const lock = JSON.parse(readFileSync(botLock, 'utf8'));
+      lock.version = pieces.bot;
+      if (lock.packages && lock.packages['']) {
+        lock.packages[''].version = pieces.bot;
+      }
+      writes.push({ path: botLock, text: JSON.stringify(lock, null, 2) + '\n' });
+    }
   }
 
   for (const { path, text } of writes) {

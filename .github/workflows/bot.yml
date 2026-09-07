@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'bot/**'
+      # Without its own path here, a change to this file alone never runs it.
+      - '.github/workflows/bot.yml'
 
 # A new push to the PR supersedes any still-running check on the old commit.
 concurrency:
@@ -20,15 +22,22 @@ jobs:
       - uses: actions/checkout@v7
       # Same Node major as the bot's actual runtime (the Oracle VM's pm2
       # processes run Node 20, see DEPLOYMENT.md), so a type error CI misses
-      # doesn't surprise the deployed process either.
+      # doesn't surprise the deployed process either. This is also why the
+      # bot pins vitest 4: vitest 5 requires Node 22.12 or newer.
       - uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: bot/package-lock.json
       - run: npm ci
-      # No lint/test script exists yet (#954: the bot repo had no CI at all)
-      # -- a clean `tsc` build is the first real gate, catching what would
-      # otherwise only surface after a VM deploy.
+      # Prettier reads the repo's root config by upward search; the bot has no
+      # config of its own, deliberately (#987).
+      - name: Format
+        run: npm run format:check
+      - name: Test
+        run: npm test
+      # This is the command the VM runs, so it gates the deploy path itself.
+      # `tsc` emitting is a superset of the `typecheck` script, which stays in
+      # package.json for local use rather than being run twice here.
       - name: Build
         run: npm run build

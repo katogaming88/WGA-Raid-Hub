@@ -34,11 +34,11 @@ export function filterAndRecordNudges(
 ): NudgeCategory[] {
   const log = readLog(logPath);
   const now = Date.now();
-  const due = categories.filter(cat => {
+  const due = categories.filter((cat) => {
     const last = log[logKey(discordId, cat)];
     return !last || now - last >= COOLDOWN_MS;
   });
-  due.forEach(cat => {
+  due.forEach((cat) => {
     log[logKey(discordId, cat)] = now;
   });
   if (due.length > 0) writeLog(logPath, log);

@@ -128,6 +128,7 @@ npm run format:check   # prettier check
 npm run typecheck      # tsc --noEmit (js/common.js is @ts-check'd)
 npm run test:frontend  # vitest -- frontend logic, no browser needed
 npm run test:rls       # vitest -- RLS policy behavior against a local reset
+npm --prefix bot test  # vitest -- the Discord bot, which keeps its own deps and gates
 npm run db:docs        # regenerate dbdoc/ after a migration change
 npm run db:rls         # regenerate docs/rls_policies.csv
 npm run migration:new -- <slug>   # new migration, stamped from the Eastern clock

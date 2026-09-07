@@ -10,12 +10,28 @@ import 'dotenv/config';
 import WebSocket from 'ws';
 (globalThis as unknown as { WebSocket: typeof WebSocket }).WebSocket = WebSocket;
 import { createClient } from '@supabase/supabase-js';
-import { Client, GatewayIntentBits, EmbedBuilder, TextChannel, REST, Routes, SlashCommandBuilder, MessageFlags, PermissionFlagsBits } from 'discord.js';
+import {
+  Client,
+  GatewayIntentBits,
+  EmbedBuilder,
+  TextChannel,
+  REST,
+  Routes,
+  SlashCommandBuilder,
+  MessageFlags,
+  PermissionFlagsBits
+} from 'discord.js';
 import express, { Request, Response } from 'express';
 import { fetchNudgeCandidates, NudgeCategory, profileDeepLink } from './wishlistStatus';
 import { filterAndRecordNudges } from './nudgeLog';
 import { runSignupSheetSweep, syncSignupSheet, SignupSheetContext } from './signupSheet';
-import { TeamConfig, TeamConfigCache, attendanceChannelId, signupChannelId, TEAM_CONFIG_REFRESH_INTERVAL_MS } from './teamConfig';
+import {
+  TeamConfig,
+  TeamConfigCache,
+  attendanceChannelId,
+  signupChannelId,
+  TEAM_CONFIG_REFRESH_INTERVAL_MS
+} from './teamConfig';
 
 // #991: one bot process now serves every team, reading each team's guild
 // id/channel ids/ping role ids/script URLs from team_discord_config at
@@ -73,8 +89,12 @@ const teamConfigs = new TeamConfigCache(supabase);
 // re-registered) whenever the cache refreshes, so a newly-added team shows
 // up as a choice without a bot restart.
 function teamOption(opt: import('discord.js').SlashCommandStringOption): import('discord.js').SlashCommandStringOption {
-  const choices = teamConfigs.all().map(cfg => ({ name: cfg.name, value: cfg.slug }));
-  return opt.setName('team').setDescription('Which team').setRequired(true).addChoices(...choices);
+  const choices = teamConfigs.all().map((cfg) => ({ name: cfg.name, value: cfg.slug }));
+  return opt
+    .setName('team')
+    .setDescription('Which team')
+    .setRequired(true)
+    .addChoices(...choices);
 }
 
 function buildCommands() {
@@ -83,8 +103,9 @@ function buildCommands() {
       .setName('resend')
       .setDescription('Re-send the last N M+ exclusion submissions from the Google Form')
       .addStringOption(teamOption)
-      .addIntegerOption(opt =>
-        opt.setName('count')
+      .addIntegerOption((opt) =>
+        opt
+          .setName('count')
           .setDescription('Number of submissions to resend (1-20)')
           .setRequired(true)
           .setMinValue(1)
@@ -110,10 +131,8 @@ function buildCommands() {
       .setName('attendance')
       .setDescription('Show attendance percentage for a specific player')
       .addStringOption(teamOption)
-      .addStringOption(opt =>
-        opt.setName('player')
-          .setDescription('Player first name (e.g. Katorri)')
-          .setRequired(true)
+      .addStringOption((opt) =>
+        opt.setName('player').setDescription('Player first name (e.g. Katorri)').setRequired(true)
       )
       .toJSON(),
     new SlashCommandBuilder()
@@ -141,7 +160,7 @@ function buildCommands() {
       .setDescription('DM raiders missing a wishlist, BiS source link, or a real BiS pick on their wishlist')
       .addStringOption(teamOption)
       .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-      .toJSON(),
+      .toJSON()
   ];
 }
 
@@ -154,7 +173,7 @@ async function registerCommands(): Promise<void> {
   // One registration call per distinct guild, not per team -- multiple teams
   // can (and, for WGA, do) share one guild, so registering once per team row
   // would just repeat the same call for the same guild.
-  const guildIds = new Set(teamConfigs.all().map(cfg => cfg.guildId));
+  const guildIds = new Set(teamConfigs.all().map((cfg) => cfg.guildId));
   for (const guildId of guildIds) {
     try {
       await rest.put(Routes.applicationGuildCommands(client.user!.id, guildId), { body: commands });
@@ -172,7 +191,7 @@ client.once('clientReady', async () => {
   // registerCommands' teamConfigs.refresh() call) so a team added later
   // shows up both in lookups and as a `team` choice, without a restart.
   setInterval(() => {
-    registerCommands().catch(err => console.error('Periodic command re-registration failed:', err));
+    registerCommands().catch((err) => console.error('Periodic command re-registration failed:', err));
   }, TEAM_CONFIG_REFRESH_INTERVAL_MS);
 });
 
@@ -288,7 +307,7 @@ function truncateLines(lines: string[], limit = 3800): string {
 const NUDGE_MESSAGES: Record<NudgeCategory, string> = {
   'no-wishlist': "You haven't submitted a wishlist yet.",
   'no-bis-link': "You haven't submitted a BiS source link yet.",
-  'incomplete-wishlist': 'Your wishlist is missing a real BiS pick for one or more slots.',
+  'incomplete-wishlist': 'Your wishlist is missing a real BiS pick for one or more slots.'
 };
 
 function buildNudgeEmbed(
@@ -298,7 +317,7 @@ function buildNudgeEmbed(
   categories: NudgeCategory[],
   missingBisRows: string[]
 ): EmbedBuilder {
-  const lines = categories.map(cat => {
+  const lines = categories.map((cat) => {
     if (cat === 'incomplete-wishlist' && missingBisRows.length) {
       return `- ${NUDGE_MESSAGES[cat]} Missing: **${missingBisRows.join(', ')}**`;
     }
@@ -307,7 +326,9 @@ function buildNudgeEmbed(
   const embed = new EmbedBuilder()
     .setColor(0xe74c3c)
     .setTitle(`${teamName} -- Setup Reminder`)
-    .setDescription(`Hey ${nameRealm}! A quick check found your loot setup is missing something:\n\n${lines.join('\n')}`)
+    .setDescription(
+      `Hey ${nameRealm}! A quick check found your loot setup is missing something:\n\n${lines.join('\n')}`
+    )
     .setFooter({ text: 'This helps officers award loot correctly -- please take a moment to update it.' });
   const link = SITE_URL ? profileDeepLink(SITE_URL, firstName, categories) : null;
   if (link) embed.addFields({ name: 'Update it here', value: link });
@@ -322,7 +343,7 @@ function signupSheetContext(cfg: TeamConfig): SignupSheetContext {
     teamName: cfg.name,
     teamSlug: cfg.slug,
     siteUrl: SITE_URL,
-    channelId: signupChannelId(cfg),
+    channelId: signupChannelId(cfg)
   };
 }
 
@@ -372,7 +393,9 @@ client.on('interactionCreate', async (interaction) => {
   // ── /resend ──────────────────────────────────────────────────────────────
   if (cmd === 'resend') {
     if (!cfg.appsScriptUrl) {
-      await interaction.reply({ content: 'This team has no Apps Script URL configured.', flags: MessageFlags.Ephemeral }).catch(() => null);
+      await interaction
+        .reply({ content: 'This team has no Apps Script URL configured.', flags: MessageFlags.Ephemeral })
+        .catch(() => null);
       return;
     }
     const count = interaction.options.getInteger('count', true);
@@ -386,7 +409,7 @@ client.on('interactionCreate', async (interaction) => {
       url.searchParams.set('secret', WEBHOOK_SECRET ?? '');
       url.searchParams.set('n', String(count));
       const response = await fetch(url.toString());
-      const data = await response.json() as { ok?: boolean; error?: string; sent?: number };
+      const data = (await response.json()) as { ok?: boolean; error?: string; sent?: number };
       if (data.ok) {
         await interaction.editReply(`Resending the last **${data.sent}** M+ submission(s).`);
       } else {
@@ -419,7 +442,9 @@ client.on('interactionCreate', async (interaction) => {
         }
         try {
           const user = await interaction.client.users.fetch(candidate.discordId);
-          await user.send({ embeds: [buildNudgeEmbed(cfg.name, candidate.nameRealm, candidate.firstName, due, candidate.missingBisRows)] });
+          await user.send({
+            embeds: [buildNudgeEmbed(cfg.name, candidate.nameRealm, candidate.firstName, due, candidate.missingBisRows)]
+          });
           nudged.push(candidate.nameRealm);
         } catch {
           failed.push(candidate.nameRealm);
@@ -431,8 +456,13 @@ client.on('interactionCreate', async (interaction) => {
         .setTitle('Missing Setup Nudge')
         .addFields(
           { name: `Nudged (${nudged.length})`, value: truncateLines(nudged.length ? nudged : ['None']) },
-          { name: `Skipped -- nudged in last 24h (${skipped.length})`, value: truncateLines(skipped.length ? skipped : ['None']) },
-          ...(failed.length ? [{ name: `Couldn't DM -- DMs closed? (${failed.length})`, value: truncateLines(failed) }] : []),
+          {
+            name: `Skipped -- nudged in last 24h (${skipped.length})`,
+            value: truncateLines(skipped.length ? skipped : ['None'])
+          },
+          ...(failed.length
+            ? [{ name: `Couldn't DM -- DMs closed? (${failed.length})`, value: truncateLines(failed) }]
+            : [])
         );
       await interaction.editReply({ embeds: [embed] });
     } catch (err) {
@@ -444,7 +474,9 @@ client.on('interactionCreate', async (interaction) => {
 
   // All remaining commands are ephemeral officer queries
   if (!cfg.rosterScriptUrl) {
-    await interaction.reply({ content: 'This team has no roster script URL configured.', flags: MessageFlags.Ephemeral }).catch(() => null);
+    await interaction
+      .reply({ content: 'This team has no roster script URL configured.', flags: MessageFlags.Ephemeral })
+      .catch(() => null);
     return;
   }
   const rosterScriptUrl = cfg.rosterScriptUrl;
@@ -461,12 +493,16 @@ client.on('interactionCreate', async (interaction) => {
       const data = await fetchPendingRoster(rosterScriptUrl);
       const entries = data.entries ?? [];
       if (!entries.length) {
-        await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x95a5a6).setTitle('Pending Roster').setDescription('No pending applicants.')] });
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder().setColor(0x95a5a6).setTitle('Pending Roster').setDescription('No pending applicants.')
+          ]
+        });
         return;
       }
-      const lines = entries.map(e => {
+      const lines = entries.map((e) => {
         const name = e.nameRealm || '?';
-        const cls  = [e.className, e.mainSpec].filter(Boolean).join(' ');
+        const cls = [e.className, e.mainSpec].filter(Boolean).join(' ');
         const role = e.role || '';
         const disc = e.discord ? ` | ${e.discord}` : '';
         return `**${name}** — ${cls} (${role})${disc}`;
@@ -482,15 +518,19 @@ client.on('interactionCreate', async (interaction) => {
     // ── /trials ───────────────────────────────────────────────────────────
     if (cmd === 'trials') {
       const core = await fetchCorePayload(rosterScriptUrl);
-      const trials = (core.roster ?? []).filter(p => p.isTrial);
+      const trials = (core.roster ?? []).filter((p) => p.isTrial);
       if (!trials.length) {
-        await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x95a5a6).setTitle('Trials').setDescription('No players currently on trial.')] });
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder().setColor(0x95a5a6).setTitle('Trials').setDescription('No players currently on trial.')
+          ]
+        });
         return;
       }
-      const lines = trials.map(p => {
-        const cls  = [p.class, p.spec].filter(Boolean).join(' ');
-        const dur  = daysAgo(p.joinDate);
-        const att  = p.attendance || 'N/A';
+      const lines = trials.map((p) => {
+        const cls = [p.class, p.spec].filter(Boolean).join(' ');
+        const dur = daysAgo(p.joinDate);
+        const att = p.attendance || 'N/A';
         return `**${p.nameRealm}** — ${cls} (${p.role}) | joined ${dur} ago | ${att}`;
       });
       const embed = new EmbedBuilder()
@@ -504,12 +544,16 @@ client.on('interactionCreate', async (interaction) => {
     // ── /bench ────────────────────────────────────────────────────────────
     if (cmd === 'bench') {
       const core = await fetchCorePayload(rosterScriptUrl);
-      const benched = (core.roster ?? []).filter(p => p.isBench);
+      const benched = (core.roster ?? []).filter((p) => p.isBench);
       if (!benched.length) {
-        await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x95a5a6).setTitle('Bench').setDescription('No players currently benched.')] });
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder().setColor(0x95a5a6).setTitle('Bench').setDescription('No players currently benched.')
+          ]
+        });
         return;
       }
-      const lines = benched.map(p => {
+      const lines = benched.map((p) => {
         const cls = [p.class, p.spec].filter(Boolean).join(' ');
         const att = p.attendance || 'N/A';
         return `**${p.nameRealm}** — ${cls} (${p.role}) | ${att}`;
@@ -525,20 +569,22 @@ client.on('interactionCreate', async (interaction) => {
     // ── /attendance <player> ──────────────────────────────────────────────
     if (cmd === 'attendance') {
       const query = (interaction.options.getString('player', true) || '').trim().toLowerCase();
-      const core  = await fetchCorePayload(rosterScriptUrl);
-      const match = (core.roster ?? []).find(p =>
-        (p.firstName || p.nameRealm.split('-')[0]).toLowerCase() === query
-      );
+      const core = await fetchCorePayload(rosterScriptUrl);
+      const match = (core.roster ?? []).find((p) => (p.firstName || p.nameRealm.split('-')[0]).toLowerCase() === query);
       if (!match) {
-        await interaction.editReply({ content: `No roster player found matching **${interaction.options.getString('player', true)}**.` });
+        await interaction.editReply({
+          content: `No roster player found matching **${interaction.options.getString('player', true)}**.`
+        });
         return;
       }
-      const cls   = [match.class, match.spec].filter(Boolean).join(' ');
+      const cls = [match.class, match.spec].filter(Boolean).join(' ');
       const flags = [
         match.isTrial ? 'Trial' : '',
         match.isBench ? 'Bench' : '',
-        match.mPlusExcluded ? 'M+ Excluded' : '',
-      ].filter(Boolean).join(', ');
+        match.mPlusExcluded ? 'M+ Excluded' : ''
+      ]
+        .filter(Boolean)
+        .join(', ');
       const embed = new EmbedBuilder()
         .setColor(0x1abc9c)
         .setTitle(match.nameRealm)
@@ -546,8 +592,12 @@ client.on('interactionCreate', async (interaction) => {
           { name: 'Class / Spec', value: cls || 'N/A', inline: true },
           { name: 'Role', value: match.role || 'N/A', inline: true },
           { name: 'Attendance', value: match.attendance || 'N/A', inline: true },
-          { name: 'Joined', value: match.joinDate ? `${match.joinDate} (${daysAgo(match.joinDate)} ago)` : 'N/A', inline: true },
-          ...(flags ? [{ name: 'Status', value: flags, inline: true }] : []),
+          {
+            name: 'Joined',
+            value: match.joinDate ? `${match.joinDate} (${daysAgo(match.joinDate)} ago)` : 'N/A',
+            inline: true
+          },
+          ...(flags ? [{ name: 'Status', value: flags, inline: true }] : [])
         );
       await interaction.editReply({ embeds: [embed] });
       return;
@@ -555,20 +605,27 @@ client.on('interactionCreate', async (interaction) => {
 
     // ── /absences ─────────────────────────────────────────────────────────
     if (cmd === 'absences') {
-      const core      = await fetchCorePayload(rosterScriptUrl);
+      const core = await fetchCorePayload(rosterScriptUrl);
       const threshold = core.trialAttend ?? 75;
       const below = (core.roster ?? [])
-        .filter(p => {
+        .filter((p) => {
           if (!p.attendance) return false;
           const pct = parseFloat(p.attendance);
           return !isNaN(pct) && pct < threshold;
         })
         .sort((a, b) => parseFloat(a.attendance) - parseFloat(b.attendance));
       if (!below.length) {
-        await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x2ecc71).setTitle('Absences').setDescription(`No players below ${threshold}% attendance.`)] });
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0x2ecc71)
+              .setTitle('Absences')
+              .setDescription(`No players below ${threshold}% attendance.`)
+          ]
+        });
         return;
       }
-      const lines = below.map(p => {
+      const lines = below.map((p) => {
         const flags = [p.isTrial ? 'Trial' : '', p.isBench ? 'Bench' : ''].filter(Boolean).join(', ');
         return `**${p.nameRealm}** — ${p.attendance}${flags ? ` (${flags})` : ''}`;
       });
@@ -582,13 +639,20 @@ client.on('interactionCreate', async (interaction) => {
 
     // ── /mplus-excluded ───────────────────────────────────────────────────
     if (cmd === 'mplus-excluded') {
-      const core     = await fetchCorePayload(rosterScriptUrl);
-      const excluded = (core.roster ?? []).filter(p => p.mPlusExcluded);
+      const core = await fetchCorePayload(rosterScriptUrl);
+      const excluded = (core.roster ?? []).filter((p) => p.mPlusExcluded);
       if (!excluded.length) {
-        await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x95a5a6).setTitle('M+ Exclusions').setDescription('No players approved for M+ exclusion.')] });
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0x95a5a6)
+              .setTitle('M+ Exclusions')
+              .setDescription('No players approved for M+ exclusion.')
+          ]
+        });
         return;
       }
-      const lines = excluded.map(p => {
+      const lines = excluded.map((p) => {
         const note = p.mPlusNote ? ` — *${p.mPlusNote}*` : '';
         return `**${p.nameRealm}** (${p.class} ${p.spec})${note}`;
       });
@@ -602,26 +666,39 @@ client.on('interactionCreate', async (interaction) => {
 
     // ── /fairness ─────────────────────────────────────────────────────────
     if (cmd === 'fairness') {
-      const heavy  = await fetchHeavyPayload(rosterScriptUrl);
+      const heavy = await fetchHeavyPayload(rosterScriptUrl);
       const counts = heavy.lootCounts ?? {};
       const entries = Object.entries(counts)
         .map(([name, lc]) => ({ name, count: lc.count, heroicCount: lc.heroicCount, mythicCount: lc.mythicCount }))
         .sort((a, b) => b.count - a.count);
       if (!entries.length) {
-        await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x95a5a6).setTitle('Loot Fairness').setDescription('No loot data available.')] });
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder().setColor(0x95a5a6).setTitle('Loot Fairness').setDescription('No loot data available.')
+          ]
+        });
         return;
       }
       const total = entries.reduce((s, e) => s + e.count, 0);
-      const avg   = (total / entries.length).toFixed(1);
-      const top5  = entries.slice(0, 5).map((e, i) => `${i + 1}. **${e.name}** — ${e.count} (H:${e.heroicCount} M:${e.mythicCount})`);
-      const bot5  = entries.slice(-5).reverse().map((e, i) => `${i + 1}. **${e.name}** — ${e.count} (H:${e.heroicCount} M:${e.mythicCount})`);
+      const avg = (total / entries.length).toFixed(1);
+      const top5 = entries
+        .slice(0, 5)
+        .map((e, i) => `${i + 1}. **${e.name}** — ${e.count} (H:${e.heroicCount} M:${e.mythicCount})`);
+      const bot5 = entries
+        .slice(-5)
+        .reverse()
+        .map((e, i) => `${i + 1}. **${e.name}** — ${e.count} (H:${e.heroicCount} M:${e.mythicCount})`);
       const embed = new EmbedBuilder()
         .setColor(0xf39c12)
         .setTitle('Loot Fairness')
         .addFields(
           { name: `Most loot (top 5 of ${entries.length})`, value: top5.join('\n') || 'N/A' },
           { name: 'Least loot (bottom 5)', value: bot5.join('\n') || 'N/A' },
-          { name: 'Stats', value: `${entries.length} players tracked | ${total} total items | avg ${avg}/player`, inline: false },
+          {
+            name: 'Stats',
+            value: `${entries.length} players tracked | ${total} total items | avg ${avg}/player`,
+            inline: false
+          }
         );
       await interaction.editReply({ embeds: [embed] });
       return;
@@ -629,17 +706,19 @@ client.on('interactionCreate', async (interaction) => {
 
     // ── /officers ─────────────────────────────────────────────────────────
     if (cmd === 'officers') {
-      const core       = await fetchCorePayload(rosterScriptUrl);
+      const core = await fetchCorePayload(rosterScriptUrl);
       const officerIds = core.officerDiscordIds ?? [];
-      const claims     = core.discordClaims ?? [];
+      const claims = core.discordClaims ?? [];
       if (!officerIds.length) {
-        await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x95a5a6).setTitle('Officers').setDescription('No officers configured.')] });
+        await interaction.editReply({
+          embeds: [new EmbedBuilder().setColor(0x95a5a6).setTitle('Officers').setDescription('No officers configured.')]
+        });
         return;
       }
-      const claimById = new Map(claims.map(c => [c.discordId, c]));
-      const lines = officerIds.map(id => {
+      const claimById = new Map(claims.map((c) => [c.discordId, c]));
+      const lines = officerIds.map((id) => {
         const claim = claimById.get(id);
-        const username  = claim?.username  ? `@${claim.username}` : `<@${id}>`;
+        const username = claim?.username ? `@${claim.username}` : `<@${id}>`;
         const character = claim?.nameRealm ? ` — ${claim.nameRealm}` : '';
         return `${username}${character}`;
       });
@@ -650,7 +729,6 @@ client.on('interactionCreate', async (interaction) => {
       await interaction.editReply({ embeds: [embed] });
       return;
     }
-
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
     await interaction.editReply(`Error: ${msg}`).catch(() => null);
@@ -661,7 +739,11 @@ const app = express();
 app.use(express.json());
 
 app.get('/', (_req: Request, res: Response) => {
-  const slugs = teamConfigs.all().map(c => c.slug).join(', ') || 'none configured';
+  const slugs =
+    teamConfigs
+      .all()
+      .map((c) => c.slug)
+      .join(', ') || 'none configured';
   res.send(`Bot is running. Teams: ${slugs}.`);
 });
 
@@ -715,8 +797,7 @@ app.post('/mplus', async (req: Request, res: Response): Promise<void> => {
   const cfg = resolveTeam(req, res);
   if (!cfg) return;
 
-  const { characterName, nameRealm, mplusLink, raiderioUrl, raidLink, notes, submittedAt } =
-    req.body as MplusBody;
+  const { characterName, nameRealm, mplusLink, raiderioUrl, raidLink, notes, submittedAt } = req.body as MplusBody;
 
   const playerName = nameRealm || characterName;
   const profileUrl = raiderioUrl || mplusLink;
@@ -729,9 +810,7 @@ app.post('/mplus', async (req: Request, res: Response): Promise<void> => {
   const channel = await fetchTextChannel(res, cfg.officerChannelId);
   if (!channel) return;
 
-  const unixTs = submittedAt
-    ? Math.floor(new Date(submittedAt).getTime() / 1000)
-    : Math.floor(Date.now() / 1000);
+  const unixTs = submittedAt ? Math.floor(new Date(submittedAt).getTime() / 1000) : Math.floor(Date.now() / 1000);
 
   const embed = new EmbedBuilder()
     .setColor(0x9b59b6)
@@ -741,14 +820,14 @@ app.post('/mplus', async (req: Request, res: Response): Promise<void> => {
       { name: 'Submitted At', value: `<t:${unixTs}:f>` },
       { name: 'Raider.io / Profile', value: profileUrl },
       ...(raidLink ? [{ name: 'Raid Droptimizer', value: raidLink }] : []),
-      { name: 'Notes', value: notes ?? '*(none)*' },
+      { name: 'Notes', value: notes ?? '*(none)*' }
     )
     .setFooter({ text: 'M+ Exclusion Request System' });
 
   if (cfg.mplusPingRoleId) {
     await channel.send({
       content: `<@&${cfg.mplusPingRoleId}> New M+ exclusion request received!`,
-      embeds: [embed],
+      embeds: [embed]
     });
   } else {
     await channel.send({ embeds: [embed] });
@@ -771,8 +850,7 @@ app.post('/roster', async (req: Request, res: Response): Promise<void> => {
   const cfg = resolveTeam(req, res);
   if (!cfg) return;
 
-  const { characterName, classSpec, notes, submittedAt } =
-    req.body as RosterBody;
+  const { characterName, classSpec, notes, submittedAt } = req.body as RosterBody;
 
   if (!characterName || !classSpec) {
     res.status(400).json({ error: 'Missing required fields: characterName, classSpec' });
@@ -782,9 +860,7 @@ app.post('/roster', async (req: Request, res: Response): Promise<void> => {
   const channel = await fetchTextChannel(res, cfg.officerChannelId);
   if (!channel) return;
 
-  const unixTs = submittedAt
-    ? Math.floor(new Date(submittedAt).getTime() / 1000)
-    : Math.floor(Date.now() / 1000);
+  const unixTs = submittedAt ? Math.floor(new Date(submittedAt).getTime() / 1000) : Math.floor(Date.now() / 1000);
 
   const embed = new EmbedBuilder()
     .setColor(0x2ecc71)
@@ -793,14 +869,14 @@ app.post('/roster', async (req: Request, res: Response): Promise<void> => {
       { name: 'Character Name', value: characterName },
       { name: 'Class / Spec', value: classSpec },
       { name: 'Submitted At', value: `<t:${unixTs}:f>` },
-      { name: 'Notes', value: notes ?? '*(none)*' },
+      { name: 'Notes', value: notes ?? '*(none)*' }
     )
     .setFooter({ text: 'Roster Application System' });
 
   if (cfg.rosterPingRoleId) {
     await channel.send({
       content: `<@&${cfg.rosterPingRoleId}> New roster application received!`,
-      embeds: [embed],
+      embeds: [embed]
     });
   } else {
     await channel.send({ embeds: [embed] });
@@ -841,7 +917,7 @@ app.post('/signup', async (req: Request, res: Response): Promise<void> => {
     mainSwap,
     swapFromNameRealm,
     notes,
-    submittedAt,
+    submittedAt
   } = req.body as SignupBody;
 
   if (!charName || !className || !mainSpec) {
@@ -852,9 +928,7 @@ app.post('/signup', async (req: Request, res: Response): Promise<void> => {
   const channel = await fetchTextChannel(res, cfg.officerChannelId);
   if (!channel) return;
 
-  const unixTs = submittedAt
-    ? Math.floor(new Date(submittedAt).getTime() / 1000)
-    : Math.floor(Date.now() / 1000);
+  const unixTs = submittedAt ? Math.floor(new Date(submittedAt).getTime() / 1000) : Math.floor(Date.now() / 1000);
 
   const embed = new EmbedBuilder()
     .setColor(0x3498db)
@@ -868,17 +942,17 @@ app.post('/signup', async (req: Request, res: Response): Promise<void> => {
       {
         name: 'Main Swap',
         value: mainSwap ? `Yes, from ${swapFromNameRealm || 'unknown character'}` : 'No',
-        inline: true,
+        inline: true
       },
       { name: 'Submitted At', value: `<t:${unixTs}:f>` },
-      { name: 'Notes', value: notes || '*(none)*' },
+      { name: 'Notes', value: notes || '*(none)*' }
     )
     .setFooter({ text: 'Raid Signup System' });
 
   if (cfg.rosterPingRoleId) {
     await channel.send({
       content: `<@&${cfg.rosterPingRoleId}> New raid signup received!`,
-      embeds: [embed],
+      embeds: [embed]
     });
   } else {
     await channel.send({ embeds: [embed] });
@@ -903,8 +977,7 @@ app.post('/selfreceived', async (req: Request, res: Response): Promise<void> => 
   const cfg = resolveTeam(req, res);
   if (!cfg) return;
 
-  const { player, item, slot, source, notes, submittedAt } =
-    req.body as SelfReceivedBody;
+  const { player, item, slot, source, notes, submittedAt } = req.body as SelfReceivedBody;
 
   if (!player || !item) {
     res.status(400).json({ error: 'Missing required fields: player, item' });
@@ -914,9 +987,7 @@ app.post('/selfreceived', async (req: Request, res: Response): Promise<void> => 
   const channel = await fetchTextChannel(res, cfg.officerChannelId);
   if (!channel) return;
 
-  const unixTs = submittedAt
-    ? Math.floor(new Date(submittedAt).getTime() / 1000)
-    : Math.floor(Date.now() / 1000);
+  const unixTs = submittedAt ? Math.floor(new Date(submittedAt).getTime() / 1000) : Math.floor(Date.now() / 1000);
 
   const embed = new EmbedBuilder()
     .setColor(0xe67e22)
@@ -927,14 +998,14 @@ app.post('/selfreceived', async (req: Request, res: Response): Promise<void> => 
       { name: 'Slot', value: slot || 'N/A', inline: true },
       { name: 'Source', value: source || 'N/A', inline: true },
       { name: 'Submitted At', value: `<t:${unixTs}:f>` },
-      { name: 'Notes', value: notes || '*(none)*' },
+      { name: 'Notes', value: notes || '*(none)*' }
     )
     .setFooter({ text: 'Self-Received Request System' });
 
   if (cfg.rosterPingRoleId) {
     await channel.send({
       content: `<@&${cfg.rosterPingRoleId}> New self-received request received!`,
-      embeds: [embed],
+      embeds: [embed]
     });
   } else {
     await channel.send({ embeds: [embed] });
@@ -960,8 +1031,7 @@ app.post('/bis', async (req: Request, res: Response): Promise<void> => {
   const cfg = resolveTeam(req, res);
   if (!cfg) return;
 
-  const { nameRealm, bisLink, notes, submittedAt, sameLink } =
-    req.body as BiSBody;
+  const { nameRealm, bisLink, notes, submittedAt, sameLink } = req.body as BiSBody;
 
   if (!nameRealm || !bisLink) {
     res.status(400).json({ error: 'Missing required fields: nameRealm, bisLink' });
@@ -971,9 +1041,7 @@ app.post('/bis', async (req: Request, res: Response): Promise<void> => {
   const channel = await fetchTextChannel(res, cfg.officerChannelId);
   if (!channel) return;
 
-  const unixTs = submittedAt
-    ? Math.floor(new Date(submittedAt).getTime() / 1000)
-    : Math.floor(Date.now() / 1000);
+  const unixTs = submittedAt ? Math.floor(new Date(submittedAt).getTime() / 1000) : Math.floor(Date.now() / 1000);
 
   const embed = new EmbedBuilder()
     .setColor(0x1abc9c)
@@ -982,7 +1050,7 @@ app.post('/bis', async (req: Request, res: Response): Promise<void> => {
       { name: 'Player', value: nameRealm },
       { name: 'Submitted At', value: `<t:${unixTs}:f>` },
       { name: 'BiS Source', value: bisLink },
-      { name: 'Notes', value: notes || '*(none)*' },
+      { name: 'Notes', value: notes || '*(none)*' }
     )
     .setFooter({ text: 'BiS Source System' });
 
@@ -993,7 +1061,7 @@ app.post('/bis', async (req: Request, res: Response): Promise<void> => {
   if (cfg.rosterPingRoleId) {
     await channel.send({
       content: `<@&${cfg.rosterPingRoleId}> ${pingText}`,
-      embeds: [embed],
+      embeds: [embed]
     });
   } else {
     await channel.send({ embeds: [embed] });
@@ -1034,14 +1102,14 @@ app.post('/rsvp-status', async (req: Request, res: Response): Promise<void> => {
       { name: 'Player', value: charName },
       { name: 'Raid Date', value: raidDate },
       { name: 'Status', value: status },
-      { name: 'Note', value: note || '*(none)*' },
+      { name: 'Note', value: note || '*(none)*' }
     )
     .setFooter({ text: 'Raid Calendar' });
 
   if (cfg.rsvpPingRoleId) {
     await channel.send({
       content: `<@&${cfg.rsvpPingRoleId}> ${charName} marked themselves ${status} for ${raidDate}`,
-      embeds: [embed],
+      embeds: [embed]
     });
   } else {
     await channel.send({ embeds: [embed] });
@@ -1091,7 +1159,7 @@ app.post('/optional-reminder', async (req: Request, res: Response): Promise<void
     .setColor(0xe0c23d)
     .setTitle('Raid RSVP Needed')
     .setDescription(
-      `This is an optional raid night in ${when} (${raidDate}${startTime ? ', ' + startTime : ''}${timezone ? ' ' + timezone : ''}). You haven't set a status yet -- please RSVP on the calendar.`,
+      `This is an optional raid night in ${when} (${raidDate}${startTime ? ', ' + startTime : ''}${timezone ? ' ' + timezone : ''}). You haven't set a status yet -- please RSVP on the calendar.`
     );
 
   // DMs can fail silently (closed DMs, bot blocked, left the server) --
@@ -1168,7 +1236,7 @@ const SIGNUP_SHEET_SWEEP_INTERVAL_MS = 15 * 60 * 1000;
 client.once('clientReady', () => {
   setInterval(() => {
     for (const cfg of teamConfigs.all()) {
-      runSignupSheetSweep(client, signupSheetContext(cfg)).catch(err =>
+      runSignupSheetSweep(client, signupSheetContext(cfg)).catch((err) =>
         console.error(`signup sheet sweep error (${cfg.slug}):`, err)
       );
     }
@@ -1190,7 +1258,7 @@ async function main(): Promise<void> {
   });
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Fatal startup error:', err);
   process.exit(1);
 });

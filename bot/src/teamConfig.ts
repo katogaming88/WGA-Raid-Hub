@@ -73,7 +73,7 @@ async function loadTeamConfigs(supabase: SupabaseClient): Promise<TeamConfig[]> 
       rosterPingRoleId: row.roster_ping_role_id,
       rsvpPingRoleId: row.rsvp_ping_role_id,
       appsScriptUrl: row.apps_script_url,
-      rosterScriptUrl: row.roster_script_url,
+      rosterScriptUrl: row.roster_script_url
     };
   });
 }

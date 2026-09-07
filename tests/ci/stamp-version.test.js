@@ -424,6 +424,29 @@ describe('stampAll writes the manifest and the piece stamps', () => {
     expect(JSON.parse(read('bot/package.json')).version).toBe('2.2.0');
   });
 
+  it('rewrites bot/package-lock.json alongside the manifest', () => {
+    const pkg = { name: 'b', version: '1.0.0' };
+    const lock = { name: 'b', version: '1.0.0', lockfileVersion: 3, packages: { '': { name: 'b', version: '1.0.0' } } };
+    writeFileSync(join(dir, 'bot', 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
+    writeFileSync(join(dir, 'bot', 'package-lock.json'), JSON.stringify(lock, null, 2) + '\n');
+
+    stamp(['js/roster.js']);
+    const untouched = JSON.parse(read('bot/package-lock.json'));
+    expect(untouched.version).toBe('1.0.0');
+    expect(untouched.packages[''].version).toBe('1.0.0');
+
+    stamp(['bot/src/index.ts'], '2.2.0');
+    const stamped = JSON.parse(read('bot/package-lock.json'));
+    expect(stamped.version).toBe('2.2.0');
+    expect(stamped.packages[''].version).toBe('2.2.0');
+  });
+
+  it('stamps bot/package.json when no lockfile is present', () => {
+    writeFileSync(join(dir, 'bot', 'package.json'), JSON.stringify({ name: 'b', version: '1.0.0' }, null, 2) + '\n');
+    expect(() => stamp(['bot/src/index.ts'], '2.2.0')).not.toThrow();
+    expect(JSON.parse(read('bot/package.json')).version).toBe('2.2.0');
+  });
+
   it('reports what it wrote beyond the pages', () => {
     const result = stamp(['js/roster.js']);
     expect(result.pieces.frontend).toBe('2.1.3');
