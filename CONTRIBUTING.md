@@ -102,15 +102,42 @@ last one. Three numbers in this changelog are used twice (3.77.23, 3.60.32 and
 CI enforces this (#353, extended by #966): a path in any shipped piece requires
 that piece's CHANGELOG section and the bump, a bump with no shipped change
 fails, and a new heading must be unique and above every heading already in the
-file. The `js/common.js` VERSION line itself does not count as a frontend
-change, so a bump alone never satisfies the checks. Mechanical PRs (formatting,
-lint, comment-only changes) that still touch a shipped path are exempt from
-every check by adding the `skip-changelog` label -- deliberately, after
-looking at the diff. A PR that touches no shipped path gets that label
-automatically. `chore/*` as a branch name is still fine for the PR's own
-classification, but it no longer exempts anything on its own: a branch name is
-picked before the diff exists, and what it turns into is what decides whether
-a changelog entry is owed.
+file. Nothing the stamp itself writes counts as a frontend change, so stamping
+never satisfies the checks it has to pass (#978): not the `VERSION` line, not
+`REQUIRED_SCHEMA`, and not the `?v=` tags and footer span it rewrites in all six
+pages. Without that, a release shipping only a migration would arrive looking
+like a frontend change and be asked for a `### Frontend` entry it has nothing to
+put in. A page is judged on what is left after the stamp is taken back out, so
+any real edit riding along with one still counts.
+
+Mechanical PRs (formatting, lint, comment-only changes) that still touch a
+shipped path are exempt from every check by adding the `skip-changelog` label,
+deliberately, after looking at the diff. A PR that touches no shipped path gets
+that label automatically. `chore/*` as a branch name is still fine for the PR's
+own classification, but it no longer exempts anything on its own (#979): a
+branch name is picked before the diff exists, and what it turns into is what
+decides whether a changelog entry is owed.
+
+Two checks are never exempt either way, because they are wrong whoever wrote
+them: the heading rule, and the manifest re-derivation that recomputes `pieces`
+from the paths the PR changed.
+
+### Every release is tagged and published
+
+Merging a stamped PR tags the merge commit `v<VERSION>` and publishes a GitHub
+Release whose body is that version's CHANGELOG block (#968). Nothing to do by
+hand: `.github/workflows/release.yml` runs on `main` whenever `version.json` or
+`CHANGELOG.md` moves.
+
+It skips quietly when the tag already exists, because a push can touch
+`CHANGELOG.md` without stamping. It fails when the version's heading appears
+twice, because a tag names one commit and a release cannot pick between two
+blocks. `npm run stamp` cannot see that case: nothing requires a branch to be up
+to date before merge, so two PRs can stamp the same number and both land. The
+fix is a follow-up stamp PR to the next free number, never a retag.
+
+The Releases page is the public changelog, and the Discord deploy notification
+names the version it deployed.
 
 ## Pull requests
 

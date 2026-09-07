@@ -90,9 +90,7 @@ describe('releaseBlock', () => {
   });
 
   it('reads the last block in the file, which no heading follows', () => {
-    expect(releaseBlock(changelog, '3.91.2')).toBe(
-      ['### Frontend', '', '- The report form sits centred.'].join('\n')
-    );
+    expect(releaseBlock(changelog, '3.91.2')).toBe(['### Frontend', '', '- The report form sits centred.'].join('\n'));
   });
 
   it('returns null for a version with no block', () => {
