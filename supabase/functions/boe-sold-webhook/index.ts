@@ -5,19 +5,27 @@
 // record, this is a best-effort notification, the same stance as the found
 // post in js/boe.js.
 //
-// The message keeps the retired relay bot's shape, which is what the channel
-// has read for two seasons:
+// The message kept the retired relay bot's shape until #926, which is what
+// the channel had read for two seasons. It reads like this now:
 //
-//   <@finder> -- BOE Sold!
+//   ## BoE Sold
+//   <@finder>
 //
-//   Item: Hero - Voidglass Cloak 2/6
-//   Sale Price: 52,800g
-//   Auction House Fee: 2,640g
-//   Guild Cut: 30,160g
-//   Finder's Fee: 20,000g
+//   **Item:** Hero - __Voidglass Cloak__ 2/6
+//   **Sale Price:** 52,800g
+//   **Auction House Fee:** 2,640g
+//   **Guild Cut:** 30,160g
+//   **Finder's Fee:** 20,000g
 //
 //   Please get in touch with your raid leaders or <@manager> in the 15
 //   minutes before raid starts to receive your gold.
+//
+// The heading names the event and the mention sits beneath it, so the ping is
+// still the first thing a finder sees without the event reading as part of
+// their name. The labels are bold and the item name underlined, which is what
+// stops the five lines reading as the old bot's output with the brackets
+// taken off (#926). The underline sits on the name alone, because that line
+// already carries a track in front of it and an upgrade rank behind.
 //
 // Four decisions worth stating, all settled with Russell on 2026-09-03:
 //
@@ -77,6 +85,17 @@ function joinNames(names: string[]) {
 function gold(n: unknown) {
   const v = Math.round(Number(n) || 0);
   return v.toLocaleString('en-US') + 'g';
+}
+
+// Every value below sits on a line that opens with its own bold label, so a
+// newline inside one would end that line and start a second one nobody wrote
+// deliberately. finder_name arrives from the public report card and is raider
+// text; the item catalog and the track are ours. All of it collapses the same
+// way, because the post cannot tell them apart once they are strings.
+function oneLine(s: unknown) {
+  return String(s ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 Deno.serve(async (req) => {
@@ -194,21 +213,27 @@ Deno.serve(async (req) => {
     // to sit in an escaped angle bracket, which reproduced the retired relay
     // bot's output byte for byte and stopped being a reason once the bot was
     // retired (#918).
-    const trackChunk = row.track ? String(row.track) + ' - ' : '';
-    const rankChunk = row.upgrade_rank ? ' ' + String(row.upgrade_rank) : '';
-    const itemLine = 'Item: ' + trackChunk + String(row.item_name || 'Unknown item') + rankChunk;
+    const trackText = oneLine(row.track);
+    const rankText = oneLine(row.upgrade_rank);
+    const itemLine =
+      '**Item:** ' +
+      (trackText ? trackText + ' - ' : '') +
+      '__' +
+      (oneLine(row.item_name) || 'Unknown item') +
+      '__' +
+      (rankText ? ' ' + rankText : '');
 
-    const finderText = finderId ? '<@' + finderId + '>' : '**' + String(row.finder_name || 'Unknown finder') + '**';
+    const finderText = finderId ? '<@' + finderId + '>' : '**' + (oneLine(row.finder_name) || 'Unknown finder') + '**';
 
     // Four money lines that add up. The fee is the game's cut off the top
     // (#861) and the guild cut below it is already net of it, so leaving the
     // fee out would read as the guild taking the difference.
     const moneyLines = [
       itemLine,
-      'Sale Price: ' + gold(row.sale_price),
-      'Auction House Fee: ' + gold(row.ah_fee),
-      'Guild Cut: ' + gold(row.guild_cut),
-      "Finder's Fee: " + gold(row.finder_payout)
+      '**Sale Price:** ' + gold(row.sale_price),
+      '**Auction House Fee:** ' + gold(row.ah_fee),
+      '**Guild Cut:** ' + gold(row.guild_cut),
+      "**Finder's Fee:** " + gold(row.finder_payout)
     ];
 
     // A finder who ticked the donate box (#862) has nothing to collect, so
@@ -219,12 +244,19 @@ Deno.serve(async (req) => {
       ? "Thanks for donating your finder's fee to the guild bank."
       : 'Please get in touch with your raid leaders or ' + managerText + ' ' + PAYOUT_WINDOW + ' to receive your gold.';
 
-    const content = finderText + ' -- BOE Sold!\n\n' + moneyLines.join('\n') + '\n\n' + closing;
+    const content = '## BoE Sold\n' + finderText + '\n\n' + moneyLines.join('\n') + '\n\n' + closing;
 
-    // Only the finder is notified. The manager mention renders as a
-    // clickable name but sends no notification, because allowed_mentions
-    // lists the finder alone: with one manager today, listing them would mean
-    // a ping on every sale for the rest of the season.
+    // Only the finder is notified, and only ever the finder. parse is empty,
+    // so @everyone, @here and every role are suppressed whatever ends up in
+    // the content, and the users allowlist is the sole thing that can ping:
+    // one finder, or nobody. The manager mention renders as a clickable name
+    // and notifies no one, because it is not on that list; with one manager
+    // today, listing them would mean a ping on every sale for a season.
+    //
+    // parse is written out rather than left off the resolved branch. An
+    // absent parse is treated as empty, but this posts to a guild-wide
+    // channel, so the guard against pinging everyone in it should be a line
+    // somebody can read instead of a default somebody has to know.
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -234,7 +266,7 @@ Deno.serve(async (req) => {
         // settings, which a rename there would silently change.
         username: 'BoE Sales',
         content: content.length > 2000 ? content.slice(0, 1997) + '...' : content,
-        allowed_mentions: finderId ? { users: [finderId] } : { parse: [] }
+        allowed_mentions: { parse: [], users: finderId ? [finderId] : [] }
       })
     });
 
