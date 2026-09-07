@@ -185,7 +185,9 @@ describe('stampAll', () => {
   it('leaves every file untouched when one page would fail', () => {
     writeFileSync(join(dir, 'officer.html'), '<html><body>no assets</body></html>', 'utf8');
 
-    expect(() => stampAll({ root: dir, version: '2.1.3', pages: ['index.html', 'officer.html'], changed: [] })).toThrow(/no local/i);
+    expect(() => stampAll({ root: dir, version: '2.1.3', pages: ['index.html', 'officer.html'], changed: [] })).toThrow(
+      /no local/i
+    );
 
     expect(readFileSync(join(dir, 'js', 'common.js'), 'utf8')).toBe(FIXTURE_COMMON);
     expect(readFileSync(join(dir, 'index.html'), 'utf8')).toBe(FIXTURE_HTML);

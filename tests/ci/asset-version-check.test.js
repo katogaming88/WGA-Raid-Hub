@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PAGES, localAssets, readVersion } from '../../scripts/ci/stamp-version.js';
+import { PAGES, localAssets, readVersion, readNewestMigration, MANIFEST_FILE } from '../../scripts/ci/stamp-version.js';
 
 // GitHub Pages serves every static asset with Cache-Control: max-age=600, so
 // for up to 10 minutes after a deploy a browser can run fresh HTML/JS against a
@@ -34,3 +34,56 @@ describe('asset cache-busting version tags (#431)', () => {
     });
   }
 });
+
+// The manifest is the served answer to "what version is each piece" (#967), so
+// it has to agree with the tree it was written from. These are the invariants a
+// stamp cannot violate without the mistake reaching the site: a manifest naming
+// a version the code is not at, a piece stamped ahead of the product, or a
+// REQUIRED_SCHEMA that does not match the migrations actually in the repo.
+describe('version manifest (#967)', () => {
+  const version = readVersion(ROOT);
+  const manifest = JSON.parse(readFileSync(join(ROOT, MANIFEST_FILE), 'utf8'));
+
+  it('is pure JSON, with no front matter for Jekyll to render', () => {
+    const raw = readFileSync(join(ROOT, MANIFEST_FILE), 'utf8');
+    expect(raw.trimStart().startsWith('{')).toBe(true);
+  });
+
+  it('names the version js/common.js is at', () => {
+    expect(manifest.version).toBe(version);
+  });
+
+  it('carries no piece at a version above the product', () => {
+    const pieceVersions = [
+      manifest.pieces.frontend,
+      manifest.pieces.db,
+      manifest.pieces.bot,
+      ...Object.values(manifest.pieces.functions ?? {})
+    ].filter(Boolean);
+    // Every piece carries the version of the release that last touched it, so
+    // it is at or behind the product number and never ahead of it.
+    for (const piece of pieceVersions) {
+      expect(compare(piece, version)).toBeLessThanOrEqual(0);
+    }
+  });
+
+  it('has a frontend entry, because the frontend has shipped', () => {
+    expect(manifest.pieces.frontend).toBeTruthy();
+  });
+
+  it('REQUIRED_SCHEMA matches the newest migration in the tree', () => {
+    const common = readFileSync(join(ROOT, 'js', 'common.js'), 'utf8');
+    const match = common.match(/var REQUIRED_SCHEMA = '([^']*)';/);
+    expect(match).not.toBeNull();
+    expect(match[1]).toBe(readNewestMigration(ROOT));
+  });
+});
+
+function compare(a, b) {
+  const left = a.split('.').map(Number);
+  const right = b.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if (left[i] !== right[i]) return left[i] - right[i];
+  }
+  return 0;
+}
