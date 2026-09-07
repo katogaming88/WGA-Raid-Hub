@@ -3,8 +3,8 @@
     "date": "2026-09-07",
     "category": "Feature",
     "version": "3.93.0",
-    "title": "Raid days now open a full day view instead of a status popup",
-    "body": "Click any raid day on the calendar, full page or the Home widget, and you'll land on that day's own page instead of a small status popup. Your own status control is still right at the top, same as before, but now you'll also see everyone's status for that night grouped by role, plus in/out/haven't-answered counts. Arrows at the top move you to the day before or after, and the link is shareable, so you can send someone straight to a specific raid night. Officers can now correct another raider's status from that list too, always with a note so the raider can see why it changed."
+    "title": "Raid Calendar: a day view for every raid night",
+    "body": "There's a Calendar now, reachable from the nav and previewed on your Home page -- it lays out your team's raid nights for the month, color-coded by status, and each date responds to your own RSVP overrides. Click any raid day, on the full page or the Home widget, to open that night's own page: your own status control sits at the top (Late, Leaving Early, Tentative, or Absent, with a note), below that is everyone's status for the night grouped by role, and in/out/haven't-answered counts up top. Arrows move you to the day before or after, and the page has its own link, so you can send someone straight to a specific raid night. Officers can now correct another raider's status from that list too, always with a note so the raider can see why it changed."
   },
   {
     "date": "2026-09-03",
