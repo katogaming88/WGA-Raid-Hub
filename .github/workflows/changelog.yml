@@ -95,6 +95,18 @@ jobs:
           echo "::error::CHANGELOG.md heading problem: ${{ steps.changed.outputs.heading_error }}. Pick the next free number above the newest heading; never reissue a released one and never edit a released block."
           exit 1
 
+      # Re-derives version.json's pieces map from the paths this PR changed,
+      # against its real merge base, and fails when the committed manifest
+      # disagrees. The stamper computes that map on the author's machine from
+      # their own origin/main; a stale base widens the diff and marks a piece
+      # the release never touched, which nothing could see before.
+      #
+      # Not chore-exempt, and it needs no exemption: a PR whose version.json
+      # is unchanged passes without any further question, which is every chore
+      # and docs PR by definition.
+      - name: Check the version manifest against the changed paths
+        run: node scripts/ci/manifest-check.js origin/${{ github.base_ref }}
+
       # Non-blocking nudge (#525, follow-up to the #509 News tab): a PR that
       # gained a Frontend changelog entry but never touched news.json might
       # just have forgotten a news-worthy entry -- not every Frontend change

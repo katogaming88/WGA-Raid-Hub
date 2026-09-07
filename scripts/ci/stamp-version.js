@@ -21,7 +21,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { classifyPath } from './changelog-check.js';
+import { classifyPath, isRootPage, pageIsStampOnly } from './changelog-check.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -143,11 +143,18 @@ export function stampRequiredSchema(source, stamp) {
 }
 
 /**
- * Writes the version into the footer span in the markup. Only admin.html needs
- * this: the other five pages fill the same span at runtime from VERSION, but
- * js/admin.js is standalone and never loads js/common.js, so the number is not
- * in scope there. Same reason the ?v= tags are hardcoded rather than injected.
- * A page without the span is returned exactly as it came in.
+ * Writes the version into the footer span in the markup.
+ *
+ * admin.html is the page that needs it: js/admin.js is standalone and never
+ * loads js/common.js, so VERSION is not in scope there to fill the span at
+ * runtime. Same reason the ?v= tags are hardcoded rather than injected.
+ *
+ * It runs over every page, so index.html, officer.html and calendar.html get
+ * the number written into their markup as well, and then overwrite it from
+ * VERSION on boot. That is harmless and it also means the footer reads right
+ * before the scripts run. guild.html and boe.html name their spans
+ * guildVersion and boeVersion and are left alone. A page without the span is
+ * returned exactly as it came in.
  */
 export function stampFooterVersion(html, version) {
   return html.replace(FOOTER_VERSION_PATTERN, (whole, open, _old, close) => `${open}${version}${close}`);
@@ -216,8 +223,33 @@ export function changedPaths(baseRef = 'origin/main', cwd = ROOT) {
     // invariant re-checks the manifest against the PR's real base anyway.
   }
   const base = run(['merge-base', baseRef, 'HEAD']);
-  const files = run(['diff', '--name-only', base]).split('\n').filter(Boolean);
-  return { base, files };
+  // Untracked files are listed separately because git diff cannot see them,
+  // and the commonest db release is a migration file that exists and has not
+  // been committed yet. Without this the stamp reads that release as touching
+  // nothing and the manifest comes out with no db entry.
+  const tracked = run(['diff', '--name-only', base]).split('\n');
+  const untracked = run(['ls-files', '--others', '--exclude-standard']).split('\n');
+  const files = [...new Set([...tracked, ...untracked])].filter(Boolean);
+  // A second stamp on the same branch (a rebase, or a corrected number) sees
+  // the first stamp's own page rewrites in this diff, and marking the frontend
+  // from those would claim a release touched it when nothing did. Dropped
+  // here rather than inside computePieces so the printed denominator and the
+  // manifest agree about what changed.
+  return { base, files: files.filter((path) => !isStampOnlyAgainst(path, base, cwd)) };
+}
+
+/** True when a root page differs from `base` only by a previous run of this stamper. */
+function isStampOnlyAgainst(path, base, cwd) {
+  if (!isRootPage(path)) return false;
+  const full = join(cwd, path);
+  if (!existsSync(full)) return false; // deleted, so a real change
+  let baseSource;
+  try {
+    baseSource = execFileSync('git', ['show', `${base}:${path}`], { cwd, encoding: 'utf8' });
+  } catch {
+    return false; // new page, nothing to take the stamp back out of
+  }
+  return pageIsStampOnly(baseSource, readFileSync(full, 'utf8'));
 }
 
 /**

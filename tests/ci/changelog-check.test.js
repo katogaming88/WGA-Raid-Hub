@@ -604,10 +604,7 @@ describe('classify against a git repo', () => {
       write('supabase/migrations/20260907130000_add_index.sql', 'create index on players (id);\n');
       write('js/common.js', "var VERSION = '3.16.2';\nvar WEB_APP_URL = 'x';\n");
       write('index.html', stampedPage('3.16.2').replace('<h1>Roster</h1>', '<h1>The Roster</h1>'));
-      write(
-        'CHANGELOG.md',
-        bumpedChangelog('3.16.2', { Frontend: '- Renamed the heading', Backend: '- A new index' })
-      );
+      write('CHANGELOG.md', bumpedChangelog('3.16.2', { Frontend: '- Renamed the heading', Backend: '- A new index' }));
     });
     expect(result).toEqual({
       ...clean,
@@ -719,5 +716,12 @@ describe('pageIsStampOnly', () => {
   it('is false when the page is new or was deleted', () => {
     expect(pageIsStampOnly('', page('3.92.0'))).toBe(false);
     expect(pageIsStampOnly(page('3.92.0'), '')).toBe(false);
+  });
+
+  // The stamper compares a git blob (LF) against the working tree, which is
+  // CRLF on a Windows checkout. Both maintainers would otherwise get a
+  // different answer from the same branch.
+  it('is true across a line-ending difference, which is what one caller always sees', () => {
+    expect(pageIsStampOnly(page('3.91.3').replace(/\n/g, '\r\n'), page('3.92.0'))).toBe(true);
   });
 });

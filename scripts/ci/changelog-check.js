@@ -76,6 +76,56 @@ export function hasVersionBump(diff) {
   return diff.split('\n').some((line) => /^\+var VERSION\b/.test(line));
 }
 
+// The stamp (scripts/ci/stamp-version.js) rewrites the ?v= cache-bust token on
+// every local css/ and js/ asset in all six pages, plus the versionNum footer
+// span, on every release. So a release that ships nothing but a migration still
+// arrives with six changed root pages, and classifyPath calls each of them
+// frontend. #966 and #967 shipped that hole together and neither could show it,
+// because every PR since really did change the frontend.
+//
+// These two patterns are exactly what stampAll writes into a page and nothing
+// else. The asset one is anchored to the same local css/ and js/ paths
+// localAssetPattern() matches, so a ?v= that belongs to somebody else (a
+// YouTube link, a pinned CDN url) is left alone. The span one names versionNum
+// only: guild.html and boe.html fill guildVersion and boeVersion at runtime and
+// the stamper never writes them, so an edit there is a real edit.
+const STAMP_PATTERNS = [
+  [/((?:href|src)="(?:css|js)\/[^"?]*)\?v=[^"]*"/g, '$1?v="'],
+  [/(<span id="versionNum">)[^<]*(<\/span>)/g, '$1$2']
+];
+
+/**
+ * A page's text with the stamp taken back out, so two releases of it compare
+ * equal. Line endings are normalised because one caller (the stamper's own
+ * changedPaths) compares a git blob, always LF, against the working tree,
+ * which is CRLF on a Windows checkout with autocrlf on. Without this the
+ * filter would silently never fire on one of the two machines that use it.
+ */
+export function withoutStamp(source) {
+  return STAMP_PATTERNS.reduce(
+    (text, [pattern, replacement]) => text.replace(pattern, replacement),
+    source.replace(/\r\n/g, '\n')
+  );
+}
+
+// Whole-file comparison rather than a diff heuristic. A multiset of changed
+// diff lines would call two swapped script tags a stamp, and load order is the
+// thing that matters most in these files. An empty side means the page was
+// added or deleted, which is a real change with no stamp to take out.
+export function pageIsStampOnly(baseSource, headSource) {
+  if (baseSource === '' || headSource === '') return false;
+  return withoutStamp(baseSource) === withoutStamp(headSource);
+}
+
+// Root pages are the only files the stamper rewrites beyond js/common.js.
+// Deliberately wider than stamp-version.js's PAGES list, which cannot be
+// imported here without a cycle: a root page outside that list is never
+// stamped, so its diff is never stamp-only and the comparison decides it
+// correctly anyway.
+export function isRootPage(path) {
+  return /^[^/]+\.html$/.test(path);
+}
+
 // Numeric field-by-field, because string order puts 3.10.0 below 3.9.0 and
 // this file is deep enough into 3.x for that to matter every day.
 export function compareVersions(a, b) {
@@ -193,6 +243,19 @@ function outputKey(name) {
   return name === 'db' ? 'backend' : name;
 }
 
+// The commit the diff range is actually measured from. Falls back to the ref
+// itself where there is no common ancestor to find (a shallow clone), which
+// only widens what counts as changed and never narrows it.
+export function mergeBaseOf(baseRef, cwd) {
+  try {
+    // Trimmed: git() hands back raw stdout, and a sha with its newline still
+    // attached turns every later `git show <base>:<path>` into a silent miss.
+    return git(['merge-base', baseRef, 'HEAD'], cwd).trim();
+  } catch {
+    return baseRef;
+  }
+}
+
 export function classify(baseRef, cwd = process.cwd()) {
   const range = `${baseRef}...HEAD`;
   const files = git(['diff', '--name-only', range], cwd).split('\n').filter(Boolean);
@@ -201,9 +264,23 @@ export function classify(baseRef, cwd = process.cwd()) {
   const commonIsFunctional = commonDiff !== '' && commonJsIsFunctional(commonDiff);
   const versionBump = commonDiff !== '' && hasVersionBump(commonDiff);
 
+  // Pages carrying nothing but the stamp are not a frontend change, the same
+  // way js/common.js's VERSION line is not: complying with "stamp the product"
+  // must not itself be the shipped change that justifies the stamp. Compared
+  // against the merge base rather than the base tip, so the two sides match
+  // the diff that produced `files`.
+  const mergeBase = mergeBaseOf(baseRef, cwd);
+  const stampOnly = new Set(
+    files
+      .filter(isRootPage)
+      .filter((f) =>
+        pageIsStampOnly(gitOrEmpty(['show', `${mergeBase}:${f}`], cwd), gitOrEmpty(['show', `HEAD:${f}`], cwd))
+      )
+  );
+
   const changed = {};
   for (const c of SHIPPED_CLASSES) {
-    changed[c.name] = files.some((f) => classifyPath(f) === c.name);
+    changed[c.name] = files.some((f) => !stampOnly.has(f) && classifyPath(f) === c.name);
   }
   changed.frontend = changed.frontend || commonIsFunctional;
 
