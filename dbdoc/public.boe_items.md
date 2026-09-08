@@ -29,6 +29,7 @@
 | upgrade_rank | text |  | true |  |  | Upgrade rank as the tooltip shows it ("2/6"); with the track it is the identity of the item in the queue (#865). Null on rows imported from the sheets. |
 | ah_fee | bigint |  | true |  |  | The auction house fee the game kept on the sale, whole gold: round(sale_price * 5 / 100), half away from zero (#861). Present iff sold/paid; finder_payout + guild_cut + ah_fee = sale_price by constraint. |
 | finder_discord_id | text |  | true |  |  | Discord id of the signed-in account that submitted the find, stamped by submit_boe_found() and never client-supplied (#889); null for a signed-out submit. Backfilled from the player chain for rows whose player reached a member. |
+| found_posted_at | timestamp with time zone |  | true |  |  | When the BoE Found Discord post for this row was sent (#956). Claimed by boe-webhook through the service role and cleared again if Discord refuses the post; null means the row has never been announced. |
 
 ## Constraints
 
@@ -105,6 +106,7 @@ erDiagram
   text upgrade_rank
   bigint ah_fee
   text finder_discord_id
+  timestamp_with_time_zone found_posted_at
 }
 "public.boe_listings" {
   integer id

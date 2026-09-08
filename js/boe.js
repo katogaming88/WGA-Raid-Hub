@@ -404,18 +404,14 @@ function submitBoeFound() {
       }
       // Best-effort Discord notification via the boe-webhook Edge Function.
       // Not gated on its result -- the RPC insert above is the write of
-      // record, same stance as js/signup.js's signup notification.
-      supabaseClient.functions.invoke('boe-webhook', {
-        body: {
-          team: teamCfg.name,
-          finder: charName,
-          item: itemName,
-          track: track,
-          note: note,
-          donate: donate,
-          upgradeRank: rank
-        }
-      });
+      // record, same stance as js/signup.js's signup notification. It takes
+      // the id and nothing else (#956): the function reads the row and posts
+      // what the database holds, not what this client thinks it holds.
+      if (supabaseClient.functions && typeof supabaseClient.functions.invoke === 'function') {
+        Promise.resolve(supabaseClient.functions.invoke('boe-webhook', { body: { id: result.data } })).catch(
+          function () {}
+        );
+      }
       // The team stays: a raider reporting two finds from one night is
       // reporting them for the same team.
       if (itemEl) itemEl.value = '';

@@ -44,7 +44,7 @@
 | [public.guild_officers](public.guild_officers.md) | 3 |  | BASE TABLE |
 | [public.tier_token_map](public.tier_token_map.md) | 5 |  | BASE TABLE |
 | [public.no_character_dismissals](public.no_character_dismissals.md) | 3 |  | BASE TABLE |
-| [public.boe_items](public.boe_items.md) | 25 |  | BASE TABLE |
+| [public.boe_items](public.boe_items.md) | 26 |  | BASE TABLE |
 | [public.boe_listings](public.boe_listings.md) | 8 |  | BASE TABLE |
 | [public.boe_managers](public.boe_managers.md) | 4 |  | BASE TABLE |
 | [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) | 8 | Officer-acknowledged Priority List same-boss conflicts (a player holding #1 on 2+ items behind one boss+track kill), so buildPriorityConflictsBannerHtml() (js/tabs/tab-priority.js) stops re-flagging a reviewed one. | BASE TABLE |
@@ -665,6 +665,7 @@ erDiagram
   text upgrade_rank
   bigint ah_fee
   text finder_discord_id
+  timestamp_with_time_zone found_posted_at
 }
 "public.boe_listings" {
   integer id

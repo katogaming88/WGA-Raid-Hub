@@ -1324,3 +1324,17 @@ Phoenix needed a roster status for a pool of players who rotate through a shared
 **Loot priority:** `generate_priority_order()`'s `status_tier` sort (2026-07-31 decision, above) gains a fourth tier -- Rotator sorts below a full-status raider but above Bench, inserted between the existing Trial (1) and Bench (now 3) tiers, at 2. No score discount, same as the existing tiers -- purely a sort-order change.
 
 [Full discussion -> #924](https://github.com/katogaming88/WGA-Raid-Hub/issues/924), part of #640.
+
+## #956 -- boe_items.found_posted_at: a claim column rather than a dedup table
+
+`boe-webhook` posted whatever its caller sent it, and that caller is the public report card, so the guild channel printed whatever reached the endpoint. The function takes a row id now and posts what the row holds, which needs one guarantee from the database: a find is announced once.
+
+**A nullable column on the row, not a table of sent messages.** `update ... where id = $1 and found_posted_at is null returning id` is the whole mechanism: the winner of a race gets the row back, the loser gets nothing, and a refused post sets it back to null so a Discord outage does not cost a find its message. A separate table would carry a foreign key, a policy and a cleanup story for one boolean fact per row. `raid_signup_sheets.message_id` is the same shape one table over.
+
+**No new policy and no new guard.** `check_boe_status_transition()` compares old and new with the metadata columns subtracted, so any column outside that list is already refused to `authenticated`, and the UPDATE policy already admits neither anon nor a plain raider. The service role bypasses both, which is what the Edge Function connects as. That is the argument #889 made for `finder_discord_id`, reused rather than re-litigated.
+
+**No audit_log row.** `write_audit_log` needs `auth.uid()` and the service role has none. The column is the record.
+
+**The first `*_at` here with no status coupling.** The other four are lifecycle facts carrying an `iff` CHECK against `status`; this one says a message was sent, which is true of a row in any state. The migration backfills existing rows from `created_at`, because rows left null would each be claimable once by anyone who guesses an id at an endpoint that takes no credentials.
+
+[Full discussion -> #956](https://github.com/katogaming88/WGA-Raid-Hub/issues/956).
