@@ -11,6 +11,25 @@ contracts each section answers to.
 
 ---
 
+## [3.97.2] - 2026-09-08
+
+### Frontend
+
+- Three of the four independent full-table `attendance` reads (main page load, the officer
+  Attendance tab's grid, and the per-player "add raid night" control) now share one cached read
+  instead of each paging the whole table on its own ([#837](https://github.com/katogaming88/WGA-Raid-Hub/issues/837)).
+  The add-night control in particular ran this fetch once per roster profile opened, so it was
+  paying the same growing cost over and over in a single session. The cache is busted by "Refresh
+  from WCL," the one action expected to add nights it doesn't know about yet. Commit Attendance
+  Scores keeps its own independent read on purpose, since it drives a write and a stale cache
+  there could commit scores off data an officer can no longer see on screen.
+- The public roster page's Recent Loot widget and "Items This Tier" stat no longer wait on the
+  rest of the page's heavy data to render ([#837](https://github.com/katogaming88/WGA-Raid-Hub/issues/837)).
+  Loot itself is a small, fast read, but it used to render in lockstep with whichever of the ~19
+  other heavy fetches (attendance, priority order, audit log, etc.) happened to be slowest that
+  page load. `loadData()` now has an optional third callback that fires as soon as loot resolves,
+  independent of the rest of that batch, which stays otherwise unchanged.
+
 ## [3.97.1] - 2026-09-08
 
 ### Frontend

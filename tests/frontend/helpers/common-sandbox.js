@@ -58,3 +58,18 @@ export function realFetchAllPaged() {
   }
   return sandbox.fetchAllPaged;
 }
+
+// The shipped fetchAttendanceRowsCached (#837), for suites whose subject
+// (e.g. tab-attendance.js's loadAttendanceGrid) shares it as a global instead
+// of paging the `attendance` table itself. Needs its own supabaseClient/
+// _teamCfg set on this sandbox -- unlike fetchAllPaged, it reads those closed
+// over from js/common.js's own scope rather than taking them as arguments.
+export function realFetchAttendanceRowsCached(client, teamId) {
+  const sandbox = loadCommonJs(quietConsole);
+  sandbox.supabaseClient = client;
+  sandbox._teamCfg = { supabaseTeamId: teamId };
+  if (typeof sandbox.fetchAttendanceRowsCached !== 'function') {
+    throw new Error('js/common.js does not define fetchAttendanceRowsCached');
+  }
+  return sandbox.fetchAttendanceRowsCached;
+}

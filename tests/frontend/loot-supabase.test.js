@@ -359,3 +359,80 @@ describe('loadData builds DATA from Supabase only', () => {
     expect(sandbox.DATA.selfReceived).toEqual({});
   });
 });
+
+// #837 part 2: loot is small and fast on its own, but its render used to wait
+// behind whichever of the ~19 other heavy fetches (attendance, priority_order,
+// item_preferences, etc.) happened to be slowest that page load. loadData()'s
+// optional third callback (onLootReady) fires as soon as loot itself resolves,
+// independent of the rest -- these tests use a generic client whose non-loot
+// tables are slow on purpose, to prove onLootReady doesn't wait on them.
+describe('loadData onLootReady (#837 part 2)', () => {
+  // A Proxy-based builder: every chain method (select/eq/order/gt/limit/is/
+  // maybeSingle) returns itself, and only `then` resolves -- after `delay` ms,
+  // with `result`. Simpler than enumerating every real query-builder method,
+  // and every non-players/non-rclc_loot table here resolves to an empty page
+  // (fetchAllPaged stops on an empty first page, so no pagination loop risk).
+  function makeSlowClient({ slowTables = [], slowDelay = 40 } = {}) {
+    function builder(table) {
+      const proxy = new Proxy(
+        {},
+        {
+          get(target, prop) {
+            if (prop === 'then') {
+              return (onFulfilled, onRejected) => {
+                const delay = slowTables.includes(table) ? slowDelay : 0;
+                const result =
+                  table === 'players'
+                    ? { data: [], error: null }
+                    : table === 'rclc_loot'
+                      ? { data: [lootRow()], error: null }
+                      : { data: [], error: null };
+                return new Promise((resolve) => setTimeout(resolve, delay))
+                  .then(() => result)
+                  .then(onFulfilled, onRejected);
+              };
+            }
+            return () => proxy;
+          }
+        }
+      );
+      return proxy;
+    }
+    return { createClient: () => ({ from: (table) => builder(table) }) };
+  }
+
+  it('fires before onHeavyReady, with lootCounts already populated, while other heavy tables are still slow', async () => {
+    const supabase = makeSlowClient({ slowTables: ['bis_items', 'attendance', 'item_preferences'] });
+    const sandbox = loadCommonJs(supabase);
+
+    const order = [];
+    await new Promise((resolve) => {
+      sandbox.loadData(
+        () => {},
+        () => {
+          order.push('heavy');
+          resolve();
+        },
+        () => order.push('loot')
+      );
+    });
+
+    expect(order[0]).toBe('loot');
+    expect(order).toContain('heavy');
+    expect(Object.keys(sandbox.DATA.lootCounts)).toEqual(['katorri-stormrage']);
+  });
+
+  it('is optional -- loadData still works with only the two original callbacks', async () => {
+    const supabase = makeSlowClient({ slowTables: ['bis_items'] });
+    const sandbox = loadCommonJs(supabase);
+
+    await new Promise((resolve) => {
+      sandbox.loadData(
+        () => {},
+        () => resolve()
+      );
+    });
+
+    expect(Object.keys(sandbox.DATA.lootCounts)).toEqual(['katorri-stormrage']);
+  });
+});

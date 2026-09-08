@@ -1006,10 +1006,8 @@ function bootRosterApp() {
         if (typeof initDiscordLogin === 'function') initDiscordLogin();
       },
       function () {
-        buildPublicStats();
         buildProgression();
         buildCalendarWidget('compact');
-        buildRecentLoot();
         buildStreamWidget();
         var sel = document.getElementById('playerSelect');
         var profileWrap = document.getElementById('profileViewWrap');
@@ -1030,6 +1028,16 @@ function bootRosterApp() {
           buildGuildBios();
           showAboutSubTab(_aboutSubTab);
         }
+      },
+      // #837 part 2: loot is small and fast on its own, but used to wait
+      // behind whichever of the ~19 other heavy fetches (attendance,
+      // priority_order, etc.) happened to be slowest that page load. This
+      // fires as soon as loot itself resolves, independent of the rest, so
+      // the Recent Loot widget and "Items This Tier" stat stop being gated
+      // by unrelated data they don't need.
+      function () {
+        buildPublicStats();
+        buildRecentLoot();
       }
     );
   });
