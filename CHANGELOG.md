@@ -27,10 +27,12 @@ contracts each section answers to.
 - A local development database no longer hands out permissions production withholds. The Postgres
   image grants every new function to all three site roles; production grants none of them, so a
   missing permission line in a migration could only ever be discovered in production. The set is now
-  the same in both places, which surfaced one such gap immediately: season signups became callable
-  by a signed-out visitor again in July, when a later migration restated the permissions from a
-  comment written before the decision to require an account. Production never took the change, and
-  the repository now matches it.
+  the same in both places, which surfaced one such gap immediately: a database rebuilt from the
+  repository let a signed-out visitor submit season signups. Two migrations from July are stored in
+  the opposite order to the one they were written in, so a rebuild ends on the older of the two.
+  Production applied them as they were written and never had the gap. The permission is corrected
+  here, and the rest of that difference is
+  [#1020](https://github.com/katogaming88/WGA-Raid-Hub/issues/1020).
 
 ## [3.97.2] - 2026-09-08
 
