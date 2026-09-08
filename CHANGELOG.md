@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.97.6] - 2026-09-08
+
+### Backend
+
+- A database rebuilt from the repository now gets the same season signup function production runs
+  ([#1020](https://github.com/katogaming88/WGA-Raid-Hub/issues/1020)). It refuses a submission from
+  a visitor with no signed-in session, where the version a rebuild used to end on recorded the
+  submitter only when one happened to be present. This is the rest of the difference
+  [#1010](https://github.com/katogaming88/WGA-Raid-Hub/issues/1010) found, and like that one it
+  changes nothing on production, which has run the correct version since July. What it changes is
+  every other copy of the database: a developer's machine, a fresh checkout and the test runs that
+  gate every pull request. The function also has its first tests.
+
 ## [3.97.5] - 2026-09-08
 
 ### Backend
