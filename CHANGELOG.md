@@ -11,6 +11,38 @@ contracts each section answers to.
 
 ---
 
+## [3.96.0] - 2026-09-07
+
+### Backend
+
+- New `boe_items.found_posted_at`, the one-post-per-row claim behind the BoE found
+  Discord post ([#956](https://github.com/katogaming88/WGA-Raid-Hub/issues/956)). Written only by
+  the service role, which needed no new policy: `check_boe_status_transition()` is an allow-list by
+  subtraction, so a column outside its metadata list is refused to `authenticated` the day it
+  exists, and the UPDATE policy already admits neither anon nor a plain raider. Existing rows are
+  backfilled from `created_at`, because a row left null would be claimable once by anyone who
+  guesses an id at an endpoint that takes no credentials.
+
+### Functions
+
+- `boe-webhook` takes a row id and reads the row instead of posting its request body
+  ([#956](https://github.com/katogaming88/WGA-Raid-Hub/issues/956)). The report card is a public
+  unauthenticated form, so what reached the endpoint used to be what the guild channel printed.
+  The post now says what the database holds, a replay or a race announces a find once, and a
+  refused post releases the claim so the find can still be announced later. The Team line reads the
+  `teams` table rather than the site's own list.
+- Smoke mode on that function ([#1007](https://github.com/katogaming88/WGA-Raid-Hub/issues/1007)):
+  `smoke: true` with the `x-cron-secret` header posts to the bot test channel, takes no claim and
+  marks the message, so a live check never reaches a channel a team operates in. Without the header
+  it refuses, and with no test channel configured it refuses rather than falling back to the live
+  one.
+
+### Frontend
+
+- The BoE report form sends the id the submit RPC returns and nothing else
+  ([#956](https://github.com/katogaming88/WGA-Raid-Hub/issues/956)). The Discord notification stays
+  best-effort, and a failed call can no longer surface as an unhandled rejection.
+
 ## [3.95.0] - 2026-09-07
 
 ### Backend
