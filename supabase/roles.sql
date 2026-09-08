@@ -16,3 +16,18 @@ begin
   end if;
 end
 $$;
+
+-- #1010: match production's function grants. The local Postgres image grants
+-- EXECUTE on every new public function to the three API roles (its own
+-- 00000000000000-initial-schema.sql:41); production's default privileges read
+-- {postgres=X/postgres}, granting none of them.
+--
+-- This belongs here rather than in a migration because the CLI applies this
+-- file before any migration runs, so the default is in place before the first
+-- function exists. A migration would run last and align nothing.
+--
+-- Postgres's built-in PUBLIC default is deliberately left alone: a per-schema
+-- default is added on top of it and cannot remove it, so function migrations
+-- keep revoking `public` explicitly the way they already do.
+alter default privileges for role postgres in schema public
+  revoke execute on functions from anon, authenticated, service_role;

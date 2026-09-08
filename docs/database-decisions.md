@@ -8,6 +8,24 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-08 -- SQL injection posture: static SQL, pinned search paths, and grants that match production (#1009, #1010)
+
+Shipped: `20260908155617_pin_search_path_on_invoker_functions.sql`, `20260908155859_revoke_anon_on_submit_season_signup.sql`
+
+A read-only spike (#1009) asked what stops SQL injection here and what enforces it. The answer to the first was structural and already sound: everything above the database reaches it through PostgREST, which binds filter values and RPC arguments, and below that every function body is static SQL with row-level security bounding anything that got past a filter. No path was found by which text from a raider, an officer, a Discord payload or an external API reaches SQL as SQL.
+
+The answer to the second was nothing. The stance was held by review, so this entry records the four things that now hold it, all in `tests/rls/function-invariants.test.js`: no dynamic SQL in any body (with `rls_auto_enable` allowlisted, whose `format()` argument is DDL object identity), every function pinning its search path, set equality on which SECURITY DEFINER functions `anon` may execute, and `rls_auto_enable` being the only event-trigger function.
+
+Two of those started red. Twelve SECURITY INVOKER functions had no pinned search path while all 59 definers had pinned theirs since July; three of the twelve resolve relations unqualified, which is why the pin was worth taking rather than tidy. It was never reachable: neither API role holds CREATE on the database or the schema, so neither can put a relation ahead of `public` on the path.
+
+The grants half is the more interesting one, and it is why the revoke went into `supabase/roles.sql` rather than a migration. The local Postgres image grants EXECUTE on every new public function to `anon`, `authenticated` and `service_role`; production grants none of them. `roles.sql` is applied before any migration runs, so a default set there lands before the first function exists, where a migration would run last and align nothing. Postgres's built-in PUBLIC default is deliberately left alone, because a per-schema default is added on top of it and cannot remove it, so migrations keep their explicit `revoke ... from public`. That built-in default is the live one on production: the only thing keeping a new function off `anon` there is the author writing that revoke by hand, which 61 migrations do, and the set-equality test is what catches the first one that does not.
+
+It caught one immediately, and the cause was not the one it looked like. `20260726104516_submit_season_signup_auth_user_id.sql` grants `anon` execute and was added 2026-07-15 in #505, one of five migrations in that PR stamped eleven days ahead of the commit that added them. `20260716210158_submit_season_signup_require_auth.sql` revokes `anon` and was added 2026-07-16 in #514, closing #513. So the file written first sorts second, and a replay ends on it. Neither header is wrong: the July 15 one says the function must stay callable by `anon` for recruits with no Discord session, which was true when it was written and was reversed the next day.
+
+Production applied each migration when its PR merged, so it took them in the order they were written and still carries the July 16 definition. The divergence exists only where the schema is rebuilt from files, which is a `db reset`, a shadow database, a new contributor's machine and CI.
+
+Every migration was checked for the same shape: 168 files, 39 database objects defined more than once, and this is the only one whose file order disagrees with the order its definitions were authored in. The class is closed going forward by the rule #927 added to the ledger check, which fails a file stamped ahead of the Eastern wall clock at the commit that added it. The second migration above closes the grant half; the body half, where a replay also loses the null `auth.uid()` raise, is #1020.
+
 ## 2026-09-06 -- the bot moves into this repo, and every poster follows one rule (#953)
 
 Two decisions from the same spike, recorded together because the second is why the first was needed.

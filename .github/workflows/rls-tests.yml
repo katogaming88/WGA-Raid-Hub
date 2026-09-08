@@ -34,6 +34,18 @@ jobs:
         run: |
           supabase db start
           supabase db reset
+      # Log only, no assertion: the T3 set-equality test in
+      # tests/rls/function-invariants.test.js is the gate. This prints what
+      # environment CI actually built (#1010). The local stack and CI can pull
+      # different Postgres image builds, and the image's own init script is
+      # what grants EXECUTE on new public functions to the three API roles
+      # until roles.sql revokes it, so the image tag belongs beside the row.
+      - name: Measure function grant defaults
+        run: |
+          docker ps --filter name=supabase_db --format '{{.Image}}'
+          docker exec supabase_db_WGA-Raid-Hub psql -U postgres -At \
+            -c "select coalesce(array_to_string(defaclacl, ','), '(none)') from pg_default_acl where defaclnamespace = 'public'::regnamespace and defaclobjtype = 'f' and defaclrole = 'postgres'::regrole;" \
+            -c "select count(*) filter (where has_function_privilege('anon', oid, 'execute')) as anon, count(*) filter (where has_function_privilege('authenticated', oid, 'execute')) as authenticated, count(*) filter (where has_function_privilege('service_role', oid, 'execute')) as service_role from pg_proc where pronamespace = 'public'::regnamespace;"
       - uses: actions/setup-node@v7
         with:
           node-version: '20'
