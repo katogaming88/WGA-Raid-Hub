@@ -6,10 +6,10 @@
 // to see it actually sent, so it follows tab-bios.js's saveBios() status-
 // message pattern instead.
 //
-// No email field -- if the submitter is logged in with Discord, their
-// snowflake ID (getDiscordSession().discordId) rides along instead, so the
-// Edge Function can render it as a <@id> mention in the Discord embed:
-// clickable/right-clickable straight to a DM, no email round trip needed.
+// No email field, and since #957 no identity in the body either: the function
+// reads the submitter from the JWT supabase-js already sends, so the admin
+// channel prints who the caller is rather than what this page claimed. It
+// renders as a <@id> mention there, clickable straight to a DM.
 function submitContactForm() {
   var nameEl = document.getElementById('contactName');
   var messageEl = document.getElementById('contactMessage');
@@ -28,15 +28,11 @@ function submitContactForm() {
   }
   if (status) status.textContent = '';
 
-  var discordSession = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
-
   supabaseClient.functions
     .invoke('contact-webhook', {
       body: {
         team: TEAM_SLUG,
         name: nameEl ? nameEl.value.trim() : '',
-        discordUsername: (discordSession && discordSession.username) || '',
-        discordId: (discordSession && discordSession.discordId) || '',
         message: message
       }
     })

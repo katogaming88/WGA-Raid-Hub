@@ -11,6 +11,28 @@ contracts each section answers to.
 
 ---
 
+## [3.97.0] - 2026-09-07
+
+### Functions
+
+- `contact-webhook` takes the submitter's identity from the JWT instead of from the request
+  body ([#957](https://github.com/katogaming88/WGA-Raid-Hub/issues/957)). The contact form is
+  public, so the Discord line on a report was whatever the caller sent, and a report could name
+  somebody who never wrote it. It now reads the caller's own account off the token the site
+  already sends, and a signed-out report says so rather than naming anyone. The team and the
+  typed name still come from the body: one is which site the form was on, the other is a name
+  somebody typed, and neither is a claim about who they are.
+- Smoke mode on that function ([#1007](https://github.com/katogaming88/WGA-Raid-Hub/issues/1007)):
+  `smoke: true` with the `x-cron-secret` header posts to the bot test channel and marks the
+  message, so a live check never reaches the admin channel. Without the header it refuses, and
+  with no test webhook configured it refuses rather than falling back to the live one.
+
+### Frontend
+
+- The contact form sends the team, the typed name and the message, and no identity fields
+  ([#957](https://github.com/katogaming88/WGA-Raid-Hub/issues/957)). A field the page never
+  sends is one nobody can forge.
+
 ## [3.96.0] - 2026-09-07
 
 ### Backend
