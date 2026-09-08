@@ -3769,7 +3769,16 @@ function formatAttendancePct(pct) {
 
 // onCoreReady fires once the fast core chunk is loaded and the page can render.
 // onHeavyReady (optional) fires once loot/attendance/BiS/priority data arrives.
-function loadData(onCoreReady, onHeavyReady) {
+// onLootReady (optional, #837 part 2) fires as soon as loot resolves and
+// DATA exists, independent of the other ~19 heavy fetches this batch pulls
+// in (attendance, item_preferences, priority_order, audit_log, etc.) -- loot
+// itself is small and fast (see fetchSupabaseLoot()'s comment), but its own
+// render used to wait in lockstep behind whichever of those was slowest that
+// page load. Only loot gets this early path today; the rest of the heavy
+// batch is unchanged, still one Promise.all gating onHeavyReady, since
+// decoupling every field would mean auditing every consumer's tolerance for
+// partial DATA the way this one narrow field already was.
+function loadData(onCoreReady, onHeavyReady, onLootReady) {
   var loadingEl = document.getElementById('loadingMsg');
   function showError(msg) {
     if (loadingEl) {
@@ -3981,9 +3990,25 @@ function loadData(onCoreReady, onHeavyReady) {
     });
   }
 
-  applyCoreData().then(function (ok) {
+  var coreDataPromise = applyCoreData();
+  coreDataPromise.then(function (ok) {
     if (ok) applyHeavyData();
   });
+
+  // Independent of applyHeavyData()'s batch -- see loadData()'s own comment
+  // above. Waits on coreDataPromise too (not just lootPromise) since DATA
+  // itself doesn't exist until applyCoreData() resolves it, and a failed
+  // core load means there's no DATA to attach lootCounts to at all.
+  if (onLootReady) {
+    Promise.all([coreDataPromise, lootPromise]).then(function (results) {
+      var ok = results[0];
+      var lootRows = results[1];
+      if (!ok) return;
+      var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
+      DATA.lootCounts = mappedLoot || {};
+      onLootReady();
+    });
+  }
 }
 
 // -- Data helpers -----------------------------------------------------------

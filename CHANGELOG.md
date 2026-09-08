@@ -23,6 +23,12 @@ contracts each section answers to.
   from WCL," the one action expected to add nights it doesn't know about yet. Commit Attendance
   Scores keeps its own independent read on purpose, since it drives a write and a stale cache
   there could commit scores off data an officer can no longer see on screen.
+- The public roster page's Recent Loot widget and "Items This Tier" stat no longer wait on the
+  rest of the page's heavy data to render ([#837](https://github.com/katogaming88/WGA-Raid-Hub/issues/837)).
+  Loot itself is a small, fast read, but it used to render in lockstep with whichever of the ~19
+  other heavy fetches (attendance, priority order, audit log, etc.) happened to be slowest that
+  page load. `loadData()` now has an optional third callback that fires as soon as loot resolves,
+  independent of the rest of that batch, which stays otherwise unchanged.
 
 ## [3.97.1] - 2026-09-08
 
