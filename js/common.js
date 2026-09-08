@@ -109,7 +109,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.97.1';
+var VERSION = '3.97.2';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
@@ -3514,20 +3514,53 @@ function mapSupabaseItemBosses(rows) {
 // isn't even guaranteed stable -- silently truncating produced different,
 // wrong attendance percentages on different page loads instead of an
 // obvious failure.
-function fetchSupabaseAttendanceRaw() {
+// Shared cache for the full, unscoped `attendance` read above -- #837
+// found four independent call sites (this one, the Attendance tab's grid,
+// the per-player "add raid night" control, and Commit Attendance Scores)
+// each paying the same growing multi-page fetch on its own. The first three
+// want the same rows (this select is the union of columns any of them
+// need), so they share one in-flight/resolved promise instead of each
+// paging the table themselves. Commit Attendance Scores deliberately keeps
+// its own independent fetch (js/tabs/tab-attendance.js's executeCommitScores)
+// since it drives a write and a stale cache there would commit scores off
+// data an officer can no longer see on screen.
+var _attendanceRowsCachePromise = null;
+
+function fetchAttendanceRowsCached() {
+  if (_attendanceRowsCachePromise) return _attendanceRowsCachePromise;
   if (!supabaseClient) return Promise.resolve(null);
-  return fetchAllPaged(
+  _attendanceRowsCachePromise = fetchAllPaged(
     function (afterId, limit) {
       var q = supabaseClient
         .from('attendance')
-        .select('id, player_id, raid_date, status, report_excluded', afterId === null ? { count: 'exact' } : undefined)
+        .select(
+          'id, player_id, raid_date, status, report_excluded, report_title, source',
+          afterId === null ? { count: 'exact' } : undefined
+        )
         .eq('team_id', _teamCfg.supabaseTeamId)
         .order('id', { ascending: true })
         .limit(limit);
       return afterId === null ? q : q.gt('id', afterId);
     },
     { label: 'attendance query' }
-  );
+  ).then(function (rows) {
+    // A failed read shouldn't poison the cache -- the next caller should get
+    // a fresh attempt, not a permanently-null result for the rest of the page.
+    if (rows === null) _attendanceRowsCachePromise = null;
+    return rows;
+  });
+  return _attendanceRowsCachePromise;
+}
+
+// "Refresh from WCL" is the one action expected to add raid nights the
+// cached read doesn't know about yet -- mirrors that action already
+// resetting tab-attendance.js's own _attendanceGrid cache.
+function invalidateAttendanceRowsCache() {
+  _attendanceRowsCachePromise = null;
+}
+
+function fetchSupabaseAttendanceRaw() {
+  return fetchAttendanceRowsCached();
 }
 
 // Builds the {raidDates, players, joinDates} shape GAS's getRawAttendanceData
@@ -7539,19 +7572,12 @@ function renderAddAttendanceNightControl(firstName, history) {
 
   // Every raid night the team has, so it is over the 1000-row cap on an
   // active team already (#707); an unpaged read here silently drops the
-  // oldest nights from the list an officer can pick from.
-  fetchAllPaged(
-    function (afterId, limit) {
-      var q = supabaseClient
-        .from('attendance')
-        .select('id, raid_date', afterId === null ? { count: 'exact' } : undefined)
-        .eq('team_id', _teamCfg.supabaseTeamId)
-        .order('id', { ascending: true })
-        .limit(limit);
-      return afterId === null ? q : q.gt('id', afterId);
-    },
-    { label: 'attendance raid dates' }
-  ).then(function (rows) {
+  // oldest nights from the list an officer can pick from. Shares the same
+  // cached read every other full-table attendance consumer uses (#837)
+  // instead of paging the table again itself -- this card can render many
+  // times per page view (once per roster profile opened), and the previous
+  // per-call fetch paid the full multi-page cost every single time.
+  fetchAttendanceRowsCached().then(function (rows) {
     if (rows === null) return;
     var seen = {};
     var dates = [];

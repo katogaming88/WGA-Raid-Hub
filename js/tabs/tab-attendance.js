@@ -149,21 +149,12 @@ function loadAttendanceGrid() {
   // dropdown with nothing reporting a problem. Paging is keyed on id (the only
   // column guaranteed unique and stable here), so the newest-first display
   // order is restored below rather than being asked of the query.
-  fetchAllPaged(
-    function (afterId, limit) {
-      var q = supabaseClient
-        .from('attendance')
-        .select(
-          'id, raid_date, report_title, report_excluded, player_id, status, source',
-          afterId === null ? { count: 'exact' } : undefined
-        )
-        .eq('team_id', _teamCfg.supabaseTeamId)
-        .order('id', { ascending: true })
-        .limit(limit);
-      return afterId === null ? q : q.gt('id', afterId);
-    },
-    { label: 'attendance grid' }
-  ).then(function (rows) {
+  //
+  // Shares js/common.js's fetchAttendanceRowsCached() (#837) instead of
+  // paging the table again itself -- its select is the union of every
+  // column this grid needs (report_title/source included), so the two reads
+  // were already fetching the same rows independently.
+  fetchAttendanceRowsCached().then(function (rows) {
     if (rows === null) {
       // null, not [], is the failure signal: an empty grid renders as "no
       // raid nights recorded yet", which is a different claim entirely.
@@ -523,6 +514,10 @@ function refreshAttendanceWCL() {
           status.style.color = 'var(--heal)';
         }
         _attendanceGrid = null;
+        // The shared full-table cache (#837, js/common.js) is stale the
+        // moment new nights land -- without this, loadAttendanceGrid() below
+        // would re-render from the same pre-refresh rows the cache already had.
+        invalidateAttendanceRowsCache();
         loadAttendanceGrid();
       } else {
         if (status) {
