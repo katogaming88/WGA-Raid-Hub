@@ -161,6 +161,7 @@ erDiagram
   text upgrade_rank
   bigint ah_fee
   text finder_discord_id
+  timestamp_with_time_zone found_posted_at
 }
 "public.priority_order_confirmed_empty" {
   integer team_id FK

@@ -58,7 +58,8 @@ async function withTxn(fn) {
 // The claim exactly as the function issues it: an id, and the column still
 // null. Two callers racing on one id both run this, and Postgres serialises
 // them, so the second sees a non-null column and matches nothing.
-const CLAIM = 'update public.boe_items set found_posted_at = now() where id = $1 and found_posted_at is null returning id';
+const CLAIM =
+  'update public.boe_items set found_posted_at = now() where id = $1 and found_posted_at is null returning id';
 
 afterAll(() => pool.end());
 
@@ -117,9 +118,7 @@ describe('the claim is takeable once (#956)', () => {
     // chance at a message.
     await withTxn(async ({ asService }) => {
       await asService(CLAIM, [1]);
-      const released = await asService(
-        'update public.boe_items set found_posted_at = null where id = 1 returning id'
-      );
+      const released = await asService('update public.boe_items set found_posted_at = null where id = 1 returning id');
       expect(released.rowCount).toBe(1);
       const again = await asService(CLAIM, [1]);
       expect(again.rowCount).toBe(1);

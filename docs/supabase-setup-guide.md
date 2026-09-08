@@ -984,6 +984,8 @@ In Supabase: **Project Settings** -> **Edge Functions** -> **Secrets**. Add each
 | `SERVICE_ROLE_KEY`             | Supabase -> Project Settings -> API -> service_role      |
 | `BOE_WEBHOOK_URL`              | Discord channel settings -> Integrations -> Webhooks (#746) |
 | `BOE_SOLD_WEBHOOK_URL`         | Optional (#873). Same place, for a separate sold channel   |
+| `DISCORD_TEST_WEBHOOK_URL`     | Same place, on the bot test channel (#1007)                |
+| `OPTIONAL_RSVP_REMINDERS_SECRET` | The cron secret in vault (#895); smoke mode checks it too |
 
 Note: the BoE webhook secret exists on prod under the name `BOE-Found-Webhook`
 (created that way in the dashboard, 2026-08-26). The boe-webhook function reads
@@ -994,10 +996,29 @@ falls back to the found pair, so with nothing added the sold message lands in th
 found channel and moving it later is one dashboard entry rather than a code change.
 With none of the three set the function no-ops with `{ skipped: true }`.
 
-Deploy the sold function by hand after adding (or deciding against) that secret:
+Note: `DISCORD_TEST_WEBHOOK_URL` is where a smoke test posts (#1007), so nothing
+under test reaches a channel a team operates in. A smoke request carries
+`smoke: true` in the body and the `x-cron-secret` header, which is
+`OPTIONAL_RSVP_REMINDERS_SECRET`; without the header the function answers 401,
+and with no test webhook set it refuses rather than posting to the live
+channel. `boe-webhook` honours it since #956.
+
+Deploy either function by hand after adding (or deciding against) those
+secrets. Neither takes `--no-verify-jwt`: the report card and the manage page
+both send the anon key.
 
 ```bash
+supabase functions deploy boe-webhook
 supabase functions deploy boe-sold-webhook
+```
+
+Smoke the found post into the test channel (the id is any `boe_items` row):
+
+```bash
+curl -X POST "$SUPABASE_URL/functions/v1/boe-webhook" \
+  -H "Authorization: Bearer $ANON_KEY" -H "apikey: $ANON_KEY" \
+  -H "x-cron-secret: $CRON_SECRET" -H 'Content-Type: application/json' \
+  -d '{"id":1,"smoke":true}'
 ```
 
 Note: Supabase does not allow secrets prefixed with `SUPABASE_`, so the service role

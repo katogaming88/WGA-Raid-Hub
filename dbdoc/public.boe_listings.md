@@ -87,6 +87,7 @@ erDiagram
   text upgrade_rank
   bigint ah_fee
   text finder_discord_id
+  timestamp_with_time_zone found_posted_at
 }
 ```
 

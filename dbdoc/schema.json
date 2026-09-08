@@ -4175,6 +4175,12 @@
           "type": "text",
           "nullable": true,
           "comment": "Discord id of the signed-in account that submitted the find, stamped by submit_boe_found() and never client-supplied (#889); null for a signed-out submit. Backfilled from the player chain for rows whose player reached a member."
+        },
+        {
+          "name": "found_posted_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "comment": "When the BoE Found Discord post for this row was sent (#956). Claimed by boe-webhook through the service role and cleared again if Discord refuses the post; null means the row has never been announced."
         }
       ],
       "indexes": [

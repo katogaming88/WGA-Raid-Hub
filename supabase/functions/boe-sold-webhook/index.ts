@@ -46,11 +46,13 @@
 //     collect gold they chose to give away is the one thing the old message
 //     could not have got wrong, because the option did not exist.
 //
-// Unlike boe-webhook this one is gated: it takes a row id and posts what the
-// database says about it, so an open endpoint would let anyone announce any
-// row, including a false one. The gate is the same pair boe_record_sale
-// itself requires, so it admits exactly the people who could have caused this
-// message legitimately.
+// Both functions take a row id and post what the database says about it
+// (boe-webhook since #956). This one is gated on top of that: a sale is news
+// an open endpoint would let anyone announce, so the gate is the same pair
+// boe_record_sale itself requires, admitting exactly the people who could
+// have caused this message legitimately. The found post stays open because
+// its caller is the public report card, and its own replay guard is the
+// found_posted_at claim rather than a credential.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const CORS_HEADERS = {

@@ -249,6 +249,7 @@ export type Database = {
           finder_name: string | null
           finder_payout: number | null
           found_at: string
+          found_posted_at: string | null
           guild_cut: number | null
           id: number
           item_id: number | null
@@ -276,6 +277,7 @@ export type Database = {
           finder_name?: string | null
           finder_payout?: number | null
           found_at?: string
+          found_posted_at?: string | null
           guild_cut?: number | null
           id?: number
           item_id?: number | null
@@ -303,6 +305,7 @@ export type Database = {
           finder_name?: string | null
           finder_payout?: number | null
           found_at?: string
+          found_posted_at?: string | null
           guild_cut?: number | null
           id?: number
           item_id?: number | null
