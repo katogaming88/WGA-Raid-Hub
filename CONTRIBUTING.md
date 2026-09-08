@@ -273,6 +273,41 @@ hatch for a `makeQuery` callback declared as a named function somewhere else,
 which the check cannot follow. Run it locally with
 `node scripts/ci/team-wide-read-check.js`.
 
+## Database functions
+
+The rules below are what `tests/rls/function-invariants.test.js` enforces, added
+for #1010 after the spike in #1009 found the conventions held by review alone.
+
+- **Static SQL only.** No function body builds a statement at runtime: no
+  `execute`, no `format(`, no `quote_ident`/`quote_literal`/`quote_nullable`.
+  This is the whole defence against SQL injection in this project, since
+  everything above the database reaches it through PostgREST, which binds
+  filter values and RPC arguments rather than pasting them into SQL. The one
+  exception is `rls_auto_enable`, whose `format()` argument is the object
+  identity Postgres supplies on DDL. Adding a name to `KNOWN_DYNAMIC` needs the
+  same reasoning written into the migration that introduces it.
+- **Every function pins its search path**, `set search_path = public`. Trigger
+  and other SECURITY INVOKER functions included, not just definers: three of
+  them resolve relations unqualified, so the pin is what stops the resolution
+  depending on the caller.
+- **SECURITY DEFINER functions take identity from `auth.uid()`**, never from a
+  parameter, and revoke `public` and `anon` explicitly. Both revokes matter and
+  for different reasons. Postgres grants EXECUTE to PUBLIC by default, which is
+  live on production, so a migration that forgets `revoke ... from public`
+  leaves the function callable by anyone. The local Postgres image additionally
+  grants the three API roles, which `supabase/roles.sql` undoes so a developer's
+  stack matches production rather than being quietly more permissive.
+- **No table or column names as parameters.** The five `danger_clear_*`
+  functions exist as five functions rather than one taking a table name for
+  exactly this reason; see the 2026-07-11 entry in `docs/database-decisions.md`.
+- **Clients never build filter strings**, and the offline SQL generators under
+  `scripts/` route every value through `scripts/import/lib/sql.js`.
+
+A new definer function that is meant to be anon-callable is added to
+`ANON_DEFINER_ALLOWLIST` in that test file, in the same PR as its migration. The
+test asserts set equality, so an accidental grant and an accidental revoke both
+fail. `npm run test:rls` runs it.
+
 ## Storage
 
 `bio-photos` (added for #625) is the first Supabase Storage bucket in this

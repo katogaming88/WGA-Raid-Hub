@@ -116,6 +116,14 @@ that the RLS policies in the baseline migration reference. Local and shadow
 databases need that role created before the migrations run or the policy
 statements fail with `role "claude_readers" does not exist`.
 
+Since #1010 it carries a second statement, revoking the default EXECUTE on new
+public functions from `anon`, `authenticated` and `service_role`. The Postgres
+image's own init script grants all three, and production grants none of them, so
+without this line a local stack hands out execute rights production does not and
+a forgotten `revoke` in a migration only ever shows up on production. It lives
+here rather than in a migration because this file is applied before any
+migration runs, so the default is in place before the first function exists.
+
 ## 4. Link to the cloud project (one-time)
 
 Linking tells the CLI which cloud project this repo belongs to, which later enables
