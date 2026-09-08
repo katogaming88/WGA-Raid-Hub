@@ -11,6 +11,27 @@ contracts each section answers to.
 
 ---
 
+## [3.97.3] - 2026-09-08
+
+### Backend
+
+- Four invariants over public database functions now run in the RLS suite
+  ([#1010](https://github.com/katogaming88/WGA-Raid-Hub/issues/1010), from the read-only spike in
+  [#1009](https://github.com/katogaming88/WGA-Raid-Hub/issues/1009)): no function body builds SQL at
+  runtime, every function pins its search path, exactly the intended set of functions is callable by
+  a signed-out visitor, and one event trigger. The protections were already in place and held by
+  review alone, so these check what was true rather than change it.
+- The twelve functions with no pinned search path now pin it. Three of them looked up tables in a
+  way that depended on the caller's settings, which nothing could reach because no site role may
+  create database objects, and which is now closed regardless.
+- A local development database no longer hands out permissions production withholds. The Postgres
+  image grants every new function to all three site roles; production grants none of them, so a
+  missing permission line in a migration could only ever be discovered in production. The set is now
+  the same in both places, which surfaced one such gap immediately: season signups became callable
+  by a signed-out visitor again in July, when a later migration restated the permissions from a
+  comment written before the decision to require an account. Production never took the change, and
+  the repository now matches it.
+
 ## [3.97.2] - 2026-09-08
 
 ### Frontend
@@ -41,27 +62,6 @@ contracts each section answers to.
   self-receive for the same item. The row now badges whichever track is actually higher, and a
   self-received entry with a recognized track renders the same colored H/M/N badge as an
   in-raid receive instead of a plain text label.
-
-## [3.98.0] - 2026-09-08
-
-### Backend
-
-- Four invariants over public database functions now run in the RLS suite
-  ([#1010](https://github.com/katogaming88/WGA-Raid-Hub/issues/1010), from the read-only spike in
-  [#1009](https://github.com/katogaming88/WGA-Raid-Hub/issues/1009)): no function body builds SQL at
-  runtime, every function pins its search path, exactly the intended set of functions is callable by
-  a signed-out visitor, and one event trigger. The protections were already in place and held by
-  review alone, so these check what was true rather than change it.
-- The twelve functions with no pinned search path now pin it. Three of them looked up tables in a
-  way that depended on the caller's settings, which nothing could reach because no site role may
-  create database objects, and which is now closed regardless.
-- A local development database no longer hands out permissions production withholds. The Postgres
-  image grants every new function to all three site roles; production grants none of them, so a
-  missing permission line in a migration could only ever be discovered in production. The set is now
-  the same in both places, which surfaced one such gap immediately: season signups became callable
-  by a signed-out visitor again in July, when a later migration restated the permissions from a
-  comment written before the decision to require an account. Production never took the change, and
-  the repository now matches it.
 
 ## [3.97.0] - 2026-09-07
 
