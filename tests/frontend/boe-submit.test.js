@@ -198,8 +198,12 @@ describe('submitBoeFound RPC payload', () => {
   });
 });
 
+// The webhook takes the row id and nothing else since #956: the function
+// reads the row and posts what the database holds, so a caller cannot put
+// text of its own in the guild channel. The id is what submit_boe_found
+// returns, which this file's recorder client hands back as rpcResult.data.
 describe('boe-webhook invoke', () => {
-  it('fires after a green RPC with the team name and the find', async () => {
+  it('fires after a green RPC with the id the RPC returned, and nothing else', async () => {
     const { sandbox, el } = makeSandbox();
     const { calls, client } = recorderClient();
     sandbox.supabaseClient = client;
@@ -209,15 +213,33 @@ describe('boe-webhook invoke', () => {
     expect(kinds).toEqual(['rpc', 'invoke']);
     const invoke = calls.find((c) => c.kind === 'invoke');
     expect(invoke.name).toBe('boe-webhook');
-    expect(invoke.body).toEqual({
-      team: 'Hellfire Rollers',
-      finder: 'Kae-Tichondrius',
-      item: 'Voidglass Cloak',
-      track: 'Hero',
-      note: 'from trash before boss 2',
-      donate: false,
-      upgradeRank: '2/6'
-    });
+    expect(invoke.body).toEqual({ id: 1 });
+  });
+
+  it('sends the id from this submit, not a fixed one', async () => {
+    const { sandbox, el } = makeSandbox();
+    const { calls, client } = recorderClient({ rpcResult: { data: 42, error: null } });
+    sandbox.supabaseClient = client;
+    fillCard(el);
+    await sandbox.submitBoeFound();
+    expect(calls.find((c) => c.kind === 'invoke').body).toEqual({ id: 42 });
+  });
+
+  it('still reports success to the raider when the webhook call rejects', async () => {
+    // The RPC insert is the write of record, so a Discord outage must not
+    // make a recorded find look like it failed -- and the rejection must not
+    // surface as an unhandled rejection either, which is what the .catch on
+    // the invoke is for.
+    const { sandbox, el } = makeSandbox();
+    sandbox.supabaseClient = {
+      rpc: () => Promise.resolve({ data: 7, error: null }),
+      from: () => ({ select: () => builder([]) }),
+      auth: { getSession: () => Promise.resolve({ data: { session: null } }) },
+      functions: { invoke: () => Promise.reject(new Error('offline')) }
+    };
+    fillCard(el);
+    await sandbox.submitBoeFound();
+    expect(el('boeStatus').textContent).toBe('Submitted! Officers will take it from here.');
   });
 
   it('never fires when the RPC returned an error', async () => {
@@ -584,7 +606,7 @@ describe('item picker (#875, #891)', () => {
     expect(el('boeItemName').innerHTML).toBe('<option value="">Select item</option>');
   });
 
-  it('submits the exact catalog spelling chosen in the select, to the RPC and the webhook', async () => {
+  it('submits the exact catalog spelling chosen in the select to the RPC, and the id to the webhook', async () => {
     const { sandbox, el } = makeSandbox();
     const { calls, client } = withCatalog();
     sandbox.supabaseClient = client;
@@ -594,14 +616,17 @@ describe('item picker (#875, #891)', () => {
     const acts = calls.filter((c) => c.kind === 'rpc' || c.kind === 'invoke');
     expect(acts.map((c) => c.kind)).toEqual(['rpc', 'invoke']);
     expect(acts[0].params.p_item_name).toBe('Crushing Coiler Coif');
-    expect(acts[1].body.item).toBe('Crushing Coiler Coif');
+    // The item reaches the post from the row now (#956), so what the webhook
+    // carries is the id; the catalog spelling is pinned on the RPC above.
+    expect(acts[1].body).toEqual({ id: 1 });
   });
 });
 
 // The donate checkbox (#862): intent, not settlement. It reaches the RPC as
-// p_donate and the webhook as donate, and clears with the other fields.
+// p_donate and clears with the other fields. The Discord post carries it too,
+// but reads it off the row since #956 rather than off this client's body.
 describe('donate intent (#862)', () => {
-  it('a checked box sends p_donate true to the RPC and donate true to the webhook, then clears', async () => {
+  it('a checked box sends p_donate true to the RPC, then clears', async () => {
     const { sandbox, el } = makeSandbox();
     const { calls, client } = recorderClient();
     sandbox.supabaseClient = client;
@@ -610,7 +635,7 @@ describe('donate intent (#862)', () => {
     await sandbox.submitBoeFound();
     const acts = calls.filter((c) => c.kind === 'rpc' || c.kind === 'invoke');
     expect(acts[0].params.p_donate).toBe(true);
-    expect(acts[1].body.donate).toBe(true);
+    expect(acts[1].body).toEqual({ id: 1 });
     expect(el('boeDonate').checked).toBe(false);
   });
 
