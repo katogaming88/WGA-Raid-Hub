@@ -10,12 +10,12 @@ Closes #
 
 ## Checklist
 
-- [ ] `npm run stamp -- <x.y.z>` run, if this PR changes a shipped piece
-      (frontend, `supabase/migrations/`, `supabase/functions/`, `bot/`).
-      Mechanical PRs use the `skip-changelog` label instead
+- [ ] `npm run stamp -- <x.y.z>` run. Every PR stamps the product; a PR that
+      changes none of the four shipped pieces (frontend,
+      `supabase/migrations/`, `supabase/functions/`, `bot/`) takes a patch
 - [ ] CHANGELOG.md entry under this PR's version block, in the section for
       each piece it touches: `### Frontend`, `### Backend`, `### Functions`,
-      `### Bot`
+      `### Bot`, or `### Project` when it touches none of them
 - [ ] `news.json` entry if raiders would want to hear about this
 - [ ] Tested in browser (raider view and officer dashboard if affected)
 - [ ] Any new migration was created with `npm run migration:new -- <slug>` and

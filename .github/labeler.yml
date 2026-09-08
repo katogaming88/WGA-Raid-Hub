@@ -141,26 +141,9 @@ chore:
 documentation:
   - head-branch: ['^docs/']
 
-# changelog.yml keys its exemption on this label, not on `chore` or on a
-# chore/* branch name (#953's kind axis is decided by branch; this one is
-# decided by the diff, via changed-files below, which is what an exemption
-# from a diff-driven check should key on). dependabot.yml also applies it
-# directly. A human can still add it by hand for a genuinely mechanical
-# change that does touch a shipped path (formatting, comment-only edits),
-# same as `chore` used to work -- the difference is this label is never
-# implied by a branch name alone.
-#
-# Every shipped piece (#965) is excluded: it used to name only js/, gs/ and
-# the root pages, so a CSS-only, a migrations-only or a functions-only PR got
-# it, and every bot PR would have. gs/ goes with the directory kat deleted on
-# 2026-09-04.
-skip-changelog:
-  - changed-files:
-    - all-globs-to-all-files:
-      - '!js/**'
-      - '!css/**'
-      - '!*.html'
-      - '!supabase/migrations/**'
-      - '!scripts/import/**'
-      - '!supabase/functions/**'
-      - '!bot/**'
+# The skip-changelog rule that used to sit here is gone (#1019). It applied
+# the label to any diff touching no shipped path, and that label turned all
+# three changelog gates off, so tests, CI, docs and news.json reached main
+# with no version and no entry. Every PR a person opens now bumps and logs;
+# what a PR that ships none of the four owes is a `### Project` line, which
+# is a rule about the changelog rather than about labels.

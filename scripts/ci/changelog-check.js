@@ -11,6 +11,12 @@
 // release, not the frontend. Before #966 only frontend paths drove VERSION,
 // so migrations, Edge Functions and the bot all moved without it.
 //
+// Since #1019 a PR that ships to none of the four owes the bump and an entry
+// too, under a fifth ### Project heading. Before it, the skip-changelog label
+// exempted that whole class, so every test, CI, docs and news.json change
+// reached main with no version and no line, and the release history read as
+// though those days had no releases.
+//
 // The js/common.js VERSION line itself does not count as a frontend change,
 // so complying with "bump VERSION" cannot itself mark a PR functional (the
 // circularity #353 describes).
@@ -26,9 +32,11 @@ import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 // The shipped pieces, in the order their sections appear in CHANGELOG.md.
-// A path outside all four is chore territory: supabase/config.toml, seed.sql
-// and roles.sql change how a piece deploys or seeds rather than what it does,
-// and docs, tests and scripts/ci are not shipped at all.
+// A path outside all four ships to no product piece: supabase/config.toml,
+// seed.sql and roles.sql change how a piece deploys or seeds rather than what
+// it does, and docs, tests and scripts/ci are not shipped at all. Those are
+// the project class below, which owes a version and an entry like everything
+// else and only differs in which heading it writes under.
 //
 // css/ counts as frontend -- missed in the original #353 rules, caught by
 // #361 tripping the reverse (bump without a frontend change) check on a
@@ -41,6 +49,19 @@ export const SHIPPED_CLASSES = [
   { name: 'functions', section: 'Functions', pattern: /^supabase\/functions\// },
   { name: 'bot', section: 'Bot', pattern: /^bot\// }
 ];
+
+// The fifth section (#1019), and deliberately not a shipped class: `shipped`
+// still means "one of the four product pieces moved", which is what the
+// manifest, the piece versions and the deploy checks are all built on.
+//
+// It needs no path rule of its own. A PR that ships to none of the four is
+// exactly the PR whose changes belong here, so "no shipped class changed" is
+// the condition, and the only thing the classifier has to learn is the
+// heading. Trying to name project paths by pattern was the first design and
+// it collapsed: every stamped PR rewrites version.json and six root pages, so
+// the pattern immediately needed the same exclusion list the shipped classes
+// already carry, to answer a question nothing asks.
+export const PROJECT_CLASS = { name: 'project', section: 'Project' };
 
 // The lines in js/common.js the stamper writes rather than a person: VERSION,
 // and REQUIRED_SCHEMA, which it fills from the newest migration in the tree.
@@ -214,8 +235,9 @@ export function changelogSections(diff, newContent) {
     newLine++; // context line
   }
 
-  const byHeading = new Map(SHIPPED_CLASSES.map((c) => [`### ${c.section}`, c.name]));
-  const result = Object.fromEntries(SHIPPED_CLASSES.map((c) => [c.name === 'db' ? 'backend' : c.name, false]));
+  const walked = [...SHIPPED_CLASSES, PROJECT_CLASS];
+  const byHeading = new Map(walked.map((c) => [`### ${c.section}`, c.name]));
+  const result = Object.fromEntries(walked.map((c) => [c.name === 'db' ? 'backend' : c.name, false]));
   for (const lineNo of addedLineNos) {
     const text = (fileLines[lineNo - 1] ?? '').trim();
     if (text === '' || text === '---' || text.startsWith('#')) continue;
@@ -291,20 +313,29 @@ export function classify(baseRef, cwd = process.cwd()) {
   }
   changed.frontend = changed.frontend || commonIsFunctional;
 
-  let sections = Object.fromEntries(SHIPPED_CLASSES.map((c) => [outputKey(c.name), false]));
+  let sections = Object.fromEntries([...SHIPPED_CLASSES, PROJECT_CLASS].map((c) => [outputKey(c.name), false]));
   let headingError = '';
+  let newHeading = false;
   if (files.includes('CHANGELOG.md')) {
     const diff = git(['diff', range, '--', 'CHANGELOG.md'], cwd);
     const newContent = git(['show', 'HEAD:CHANGELOG.md'], cwd);
     const baseContent = gitOrEmpty(['show', `${baseRef}:CHANGELOG.md`], cwd);
     sections = changelogSections(diff, newContent);
     headingError = headingProblems(baseContent, newContent).join('; ');
+    newHeading = addedHeadings(baseContent, newContent).length > 0;
   }
 
   // Every shipped class that changed without gaining its own section. One
   // comma-joined list rather than four booleans the workflow would have to
   // test separately, so the error message can name all of them at once.
   const missing = SHIPPED_CLASSES.filter((c) => changed[c.name] && !sections[outputKey(c.name)]).map((c) => c.name);
+
+  // A PR that ships to none of the four still names a release, and its line
+  // goes under ### Project (#1019). Only when nothing shipped: a feature PR
+  // that also edits CONTRIBUTING owes its Frontend entry and nothing more,
+  // and asking for both would make the second one noise nobody reads.
+  const anyShipped = SHIPPED_CLASSES.some((c) => changed[c.name]);
+  if (!anyShipped && !sections.project) missing.push(PROJECT_CLASS.name);
 
   return {
     frontend: changed.frontend,
@@ -317,6 +348,11 @@ export function classify(baseRef, cwd = process.cwd()) {
     backend_entry: sections.backend,
     functions_entry: sections.functions,
     bot_entry: sections.bot,
+    project_entry: sections.project,
+    // Whether this PR opened a version block. Once every PR bumps, a bump
+    // with no heading is what an accidental stamp looks like, and it is the
+    // only shape left that nothing else would catch.
+    new_heading: newHeading,
     missing_entry: missing.join(','),
     heading_error: headingError,
     news_touched: files.includes('news.json')

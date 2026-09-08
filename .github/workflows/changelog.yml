@@ -2,19 +2,21 @@ name: Changelog Check
 
 on:
   pull_request:
-    # labeled/unlabeled so toggling the skip-changelog label re-evaluates the
-    # exemption without needing a new push.
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, synchronize, reopened]
 
-# The exemption below is the `skip-changelog` label only, not the `chore`
-# kind label or a chore/* branch name. Both of those are decided by the
-# branch a PR is on (labeler.yml, #953) before anyone has seen the diff, so
-# keying the changelog gate on either one let a branch named before any code
-# was written silently cover a diff that turned out to touch a shipped piece.
-# skip-changelog auto-applies only when the diff itself touches none of the
-# four shipped-piece paths (labeler.yml), and can otherwise be added by hand
-# for a genuinely mechanical change to a shipped path (formatting, comments) --
-# either way it reflects what the diff is, not what the branch is called.
+# No label exempts anything here (#1019). Every PR a person opens takes a
+# version and a CHANGELOG entry: a change that ships to none of the four
+# product pieces logs under `### Project`, which is what the classifier's
+# missing_entry names when nothing shipped. The `skip-changelog` label used to
+# turn all three gates off and auto-applied to any diff touching no shipped
+# path, so tests, CI, docs and news.json reached main with no version and no
+# line at all.
+#
+# Dependabot is the one carve-out, by the standing rule that a bot-opened
+# dependency bump is not a product change the version should track. It keys on
+# the PR's author and not on github.actor, because this workflow also runs on
+# `synchronize`, where the actor is whoever pushed: a human pushing a
+# conformance fix onto a bot branch would otherwise fail the bot's PR.
 
 # A new push to the PR supersedes any still-running check on the old commit.
 concurrency:
@@ -41,53 +43,56 @@ jobs:
       # "bump VERSION" cannot itself mark a PR functional. backend = the db
       # class, supabase/migrations/ and scripts/import/. functions =
       # supabase/functions/. bot = bot/. Everything else (supabase/config.toml,
-      # seed.sql, roles.sql, docs, tests, scripts/ci) is chore territory.
+      # seed.sql, roles.sql, docs, tests, scripts/ci, news.json) ships to no
+      # product piece and is the project class (#1019).
       #
-      # shipped = any of the four changed, which is exactly when the product
-      # version has to move (#965). missing_entry lists the classes that
-      # changed without gaining their CHANGELOG section. heading_error is set
-      # when the PR adds a version heading that repeats one on the base branch
-      # or sorts at or below the newest one there.
+      # shipped = any of the four changed. missing_entry lists the classes
+      # that changed without gaining their CHANGELOG section, and names
+      # `project` when nothing shipped and no `### Project` entry was added.
+      # new_heading says whether the PR opened a version block. heading_error
+      # is set when the PR adds a version heading that repeats one on the base
+      # branch or sorts at or below the newest one there.
       #
       # The script has no dependencies, so no npm ci here.
       - name: Classify the diff
         id: changed
         run: node scripts/ci/changelog-check.js origin/${{ github.base_ref }}
 
-      # The three hard gates below share the skip-changelog exemption: the
-      # VERSION bump and the sectioned changelog both signal "something
-      # shipped", which a mechanical PR does not do. #353 extends the
-      # exemption to the changelog-entry checks, superseding the no-bypass
-      # rule from be59777.
-      - name: Fail if a shipped change lacks its changelog section
+      # The three hard gates below run on every PR a person opens. Only
+      # Dependabot is exempt, and the condition is repeated per gate rather
+      # than lifted to the job, so each one still reads as its own rule.
+      - name: Fail if a change lacks its changelog section
         if: >-
           steps.changed.outputs.missing_entry != '' &&
-          !contains(github.event.pull_request.labels.*.name, 'skip-changelog')
+          github.event.pull_request.user.login != 'dependabot[bot]'
         run: |
-          echo "::error::CHANGELOG.md gained no entry for: ${{ steps.changed.outputs.missing_entry }}. Each shipped piece logs under its own heading (frontend -> '### Frontend', db -> '### Backend', functions -> '### Functions', bot -> '### Bot'). See CONTRIBUTING.md; if this PR is mechanical, add the skip-changelog label."
+          echo "::error::CHANGELOG.md gained no entry for: ${{ steps.changed.outputs.missing_entry }}. Each shipped piece logs under its own heading (frontend -> '### Frontend', db -> '### Backend', functions -> '### Functions', bot -> '### Bot'), and a PR that ships none of them logs under '### Project' (docs, tests, CI, config, news.json). See CONTRIBUTING.md."
           exit 1
 
-      # #965 retired the old rule that only frontend paths drove VERSION. One
-      # version line covers the whole project, so a migration, an Edge Function
-      # or a bot change moves it too.
-      - name: Fail if a shipped change lacks a VERSION bump
+      # #965 retired the old rule that only frontend paths drove VERSION, and
+      # #1019 retired the rest of it: one version line covers the whole
+      # project and every release names itself, whether what moved was a
+      # migration, an Edge Function, the bot, or the test suite.
+      - name: Fail if the PR lacks a VERSION bump
         if: >-
-          steps.changed.outputs.shipped == 'true' &&
           steps.changed.outputs.version_bump == 'false' &&
-          !contains(github.event.pull_request.labels.*.name, 'skip-changelog')
+          github.event.pull_request.user.login != 'dependabot[bot]'
         run: |
-          echo "::error::The VERSION in js/common.js was not bumped, but a shipped piece changed. Every PR that changes the frontend, supabase/migrations/, scripts/import/, supabase/functions/ or bot/ stamps the product: run 'npm run stamp -- <x.y.z>' (see CONTRIBUTING.md). If this change is mechanical, add the skip-changelog label."
+          echo "::error::The VERSION in js/common.js was not bumped. Every PR stamps the product: run 'npm run stamp -- <x.y.z>' and add the matching CHANGELOG entry. A PR that ships none of the four pieces takes a patch and a '### Project' line (see CONTRIBUTING.md)."
           exit 1
 
-      # The reverse direction (#353): a bump with nothing shipped trains
-      # reflexive bumping and erodes VERSION as the "something shipped" signal.
-      - name: Fail if VERSION bumps with nothing shipped
+      # What replaces the old reverse gate (#353's "bump with nothing
+      # shipped"), which stopped meaning anything once every PR bumps. The
+      # shape left is a stamp that moved VERSION without opening a block for
+      # it, and nothing else would catch that: headingProblems only judges a
+      # heading that exists.
+      - name: Fail if VERSION bumps with no new version heading
         if: >-
-          steps.changed.outputs.shipped == 'false' &&
           steps.changed.outputs.version_bump == 'true' &&
-          !contains(github.event.pull_request.labels.*.name, 'skip-changelog')
+          steps.changed.outputs.new_heading == 'false' &&
+          github.event.pull_request.user.login != 'dependabot[bot]'
         run: |
-          echo "::error::The VERSION in js/common.js was bumped, but no shipped piece changed. Docs, CI config, supabase/config.toml, seed.sql and roles.sql take no bump and no changelog section (see CONTRIBUTING.md); add the skip-changelog label."
+          echo "::error::The VERSION in js/common.js was bumped, but CHANGELOG.md gained no '## [x.y.z]' heading for it. Open a block for this release at the top of the file, above the newest heading, and put this PR's entries under it."
           exit 1
 
       # Not skip-changelog-exempt: this fires only when a version heading was actually
@@ -119,8 +124,8 @@ jobs:
       # just have forgotten a news-worthy entry -- not every Frontend change
       # is news-worthy, so this labels/comments rather than failing the job.
       # Always runs (no needsNudge gate on the step itself) so the label gets
-      # removed again once news.json is added or the skip-changelog exemption
-      # applies on a later push, not just added and left stale.
+      # removed again once news.json is added on a later push, not just added
+      # and left stale.
       - name: Nudge for a missing news.json entry
         uses: actions/github-script@v9
         env:
@@ -128,7 +133,7 @@ jobs:
             ${{
               steps.changed.outputs.frontend_entry == 'true' &&
               steps.changed.outputs.news_touched == 'false' &&
-              !contains(github.event.pull_request.labels.*.name, 'skip-changelog')
+              github.event.pull_request.user.login != 'dependabot[bot]'
             }}
         with:
           script: |
