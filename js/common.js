@@ -6474,29 +6474,28 @@ function renderProfile(firstName, backTo, container) {
     var selfRecDiffMatch = selfRec ? /^([A-Za-z]+):\s/.exec(selfRec.source || '') : null;
     var selfRecDiff = selfRecDiffMatch ? selfRecDiffMatch[1] : '';
     var selfRecRank = RECEIVED_DIFF_RANK[selfRecDiff] || 0;
-    // Mythic received outranks Heroic for the row's own highlight -- green
-    // for Mythic (or any non-Hero/Myth track, e.g. Champion), gold for a
-    // Heroic-only receive, so the row itself signals "how good" the receive
-    // was, not just that a receive happened.
-    var hasMythicReceived = !!(
-      received &&
-      received.some(function (r) {
-        return r.difficulty === 'Mythic';
-      })
-    );
-    var hasHeroicOnlyReceived =
-      !hasMythicReceived &&
-      !!(
-        received &&
-        received.some(function (r) {
-          return r.difficulty === 'Heroic';
-        })
-      );
+    // Only show the highest track received -- once a Mythic/Heroic copy is
+    // on file, an earlier lower-track receive of the same item is no longer
+    // worth a badge of its own.
+    var receivedMaxRank = 0;
+    if (received) {
+      for (var rr = 0; rr < received.length; rr++) {
+        var rr_rank = RECEIVED_DIFF_RANK[received[rr].difficulty] || 0;
+        if (rr_rank > receivedMaxRank) receivedMaxRank = rr_rank;
+      }
+    }
+    // The row's own highlight is the best track across BOTH sources (in-raid
+    // loot-import receives and approved self-received requests), not just
+    // the loot-import one -- green for Mythic (or any non-Hero/Myth track,
+    // e.g. Champion), gold for a Heroic-only receive, so the row itself
+    // signals "how good" the receive was, not just that a receive happened.
+    var bestReceivedRank = Math.max(receivedMaxRank, selfRecRank);
+    var hasMythicReceived = bestReceivedRank >= RECEIVED_DIFF_RANK.Mythic;
+    var hasHeroicOnlyReceived = bestReceivedRank === RECEIVED_DIFF_RANK.Heroic;
     // A Heroic-only receive (in-raid or self-reported) shouldn't hide the
     // button for going after the Mythic version of the same item -- only a
     // Mythic receive should retire the row.
-    var hasMythicSelfReceived = selfRecDiff === 'Mythic';
-    var mythicAlreadyReceived = hasMythicReceived || hasMythicSelfReceived;
+    var mythicAlreadyReceived = hasMythicReceived;
     var rowId = 'bisrow-' + player.firstName + '-' + bi;
     rows +=
       '<div class="priority-row' +
@@ -6546,16 +6545,6 @@ function renderProfile(firstName, backTo, container) {
     // the raider-facing "Submit request" button is gated on it. Either way, a
     // Mythic receive already on file retires the row for good.
     var showMarkBtn = !mythicAlreadyReceived && (isOfficer || featureEnabled('requests'));
-    // Only show the highest track received -- once a Mythic/Heroic copy is
-    // on file, an earlier lower-track receive of the same item is no longer
-    // worth a badge of its own.
-    var receivedMaxRank = 0;
-    if (received) {
-      for (var rr = 0; rr < received.length; rr++) {
-        var rr_rank = RECEIVED_DIFF_RANK[received[rr].difficulty] || 0;
-        if (rr_rank > receivedMaxRank) receivedMaxRank = rr_rank;
-      }
-    }
     // received (real loot-import history) and selfRec (an approved
     // self-received request, e.g. a Great Vault pick) are two independent
     // sources for the same slot -- a raider can pick up a Heroic copy in
