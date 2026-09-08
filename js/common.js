@@ -109,7 +109,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.97.0';
+var VERSION = '3.97.1';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
@@ -6468,6 +6468,12 @@ function renderProfile(firstName, backTo, container) {
     var received = receivedMap[normalise(item)] || null;
     var selfRec = selfReceivedEntryForRow(selfRecItems, item, dbSlot);
     var isReceived = received || selfRec;
+    // selfRec.source is built (mapSupabaseSelfReceived()) as "<Track>: <source>",
+    // e.g. "Mythic: Great Vault" -- pull the track back out so a self-received
+    // copy can be ranked against an in-raid receive of the same item below.
+    var selfRecDiffMatch = selfRec ? /^([A-Za-z]+):\s/.exec(selfRec.source || '') : null;
+    var selfRecDiff = selfRecDiffMatch ? selfRecDiffMatch[1] : '';
+    var selfRecRank = RECEIVED_DIFF_RANK[selfRecDiff] || 0;
     // Mythic received outranks Heroic for the row's own highlight -- green
     // for Mythic (or any non-Hero/Myth track, e.g. Champion), gold for a
     // Heroic-only receive, so the row itself signals "how good" the receive
@@ -6489,7 +6495,7 @@ function renderProfile(firstName, backTo, container) {
     // A Heroic-only receive (in-raid or self-reported) shouldn't hide the
     // button for going after the Mythic version of the same item -- only a
     // Mythic receive should retire the row.
-    var hasMythicSelfReceived = !!(selfRec && /^Mythic:/.test(selfRec.source || ''));
+    var hasMythicSelfReceived = selfRecDiff === 'Mythic';
     var mythicAlreadyReceived = hasMythicReceived || hasMythicSelfReceived;
     var rowId = 'bisrow-' + player.firstName + '-' + bi;
     rows +=
@@ -6540,15 +6546,24 @@ function renderProfile(firstName, backTo, container) {
     // the raider-facing "Submit request" button is gated on it. Either way, a
     // Mythic receive already on file retires the row for good.
     var showMarkBtn = !mythicAlreadyReceived && (isOfficer || featureEnabled('requests'));
+    // Only show the highest track received -- once a Mythic/Heroic copy is
+    // on file, an earlier lower-track receive of the same item is no longer
+    // worth a badge of its own.
+    var receivedMaxRank = 0;
     if (received) {
-      // Only show the highest track received -- once a Mythic/Heroic copy is
-      // on file, an earlier lower-track receive of the same item is no
-      // longer worth a badge of its own.
-      var receivedMaxRank = 0;
       for (var rr = 0; rr < received.length; rr++) {
         var rr_rank = RECEIVED_DIFF_RANK[received[rr].difficulty] || 0;
         if (rr_rank > receivedMaxRank) receivedMaxRank = rr_rank;
       }
+    }
+    // received (real loot-import history) and selfRec (an approved
+    // self-received request, e.g. a Great Vault pick) are two independent
+    // sources for the same slot -- a raider can pick up a Heroic copy in
+    // raid and later vault a higher-track Mythic copy. Badge whichever one
+    // is actually the better track, not whichever source happens to have
+    // any entry at all (#previously: an old Heroic loot-import receive
+    // always won, so a newer Mythic self-received never showed).
+    if (received && receivedMaxRank >= selfRecRank) {
       var receivedForBadges = received.filter(function (r) {
         return (RECEIVED_DIFF_RANK[r.difficulty] || 0) === receivedMaxRank;
       });
@@ -6577,12 +6592,48 @@ function renderProfile(firstName, backTo, container) {
         (showMarkBtn ? markRecvBtn : '') +
         '</div>';
     } else if (selfRec) {
-      rows +=
-        '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;"><span class="bis-self-received-badge">' +
-        (selfRec.source || 'Self-reported') +
-        '</span>' +
-        (showMarkBtn ? markRecvBtn : '') +
-        '</div>';
+      // selfRecDiff is the parsed-out track (e.g. 'Mythic' from a "Mythic:
+      // Great Vault" source) -- badge it the same way as an in-raid receive
+      // when there's a recognizable track; otherwise fall back to the plain
+      // source-label badge (e.g. an M+/Crafted/Catalyst placeholder request,
+      // which carries no track).
+      if (selfRecRank > 0) {
+        var sr_colors = RANK_PILL_DIFF_COLORS[selfRecDiff === 'Mythic' ? 'mythic' : 'heroic'];
+        var sr_letter =
+          selfRecDiff === 'Mythic'
+            ? 'M'
+            : selfRecDiff === 'Heroic'
+              ? 'H'
+              : selfRecDiff === 'Normal'
+                ? 'N'
+                : selfRecDiff;
+        var sr_label = selfRec.source ? selfRec.source.replace(/^[A-Za-z]+:\s*/, '') : '';
+        rows +=
+          '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;">' +
+          '<span style="display:inline-flex;align-items:center;gap:5px;">' +
+          '<span class="bis-received-badge" style="background:' +
+          sr_colors.bg +
+          ';color:' +
+          sr_colors.c +
+          ';border-color:' +
+          sr_colors.bd +
+          ';" title="' +
+          (selfRec.source || '') +
+          '">' +
+          sr_letter +
+          '</span>' +
+          (sr_label ? '<span style="font-size:0.9em;color:var(--text-muted);">' + sr_label + '</span>' : '') +
+          '</span>' +
+          (showMarkBtn ? markRecvBtn : '') +
+          '</div>';
+      } else {
+        rows +=
+          '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;"><span class="bis-self-received-badge">' +
+          (selfRec.source || 'Self-reported') +
+          '</span>' +
+          (showMarkBtn ? markRecvBtn : '') +
+          '</div>';
+      }
     } else {
       rows += showMarkBtn ? markRecvBtn : '';
     }
