@@ -984,6 +984,7 @@ In Supabase: **Project Settings** -> **Edge Functions** -> **Secrets**. Add each
 | `SERVICE_ROLE_KEY`             | Supabase -> Project Settings -> API -> service_role      |
 | `BOE_WEBHOOK_URL`              | Discord channel settings -> Integrations -> Webhooks (#746) |
 | `BOE_SOLD_WEBHOOK_URL`         | Optional (#873). Same place, for a separate sold channel   |
+| `CONTACT_WEBHOOK_URL`          | Same place, on the admin channel the contact form reports to (#577) |
 | `DISCORD_TEST_WEBHOOK_URL`     | Same place, on the bot test channel (#1007)                |
 | `OPTIONAL_RSVP_REMINDERS_SECRET` | The cron secret in vault (#895); smoke mode checks it too |
 
@@ -1001,15 +1002,16 @@ under test reaches a channel a team operates in. A smoke request carries
 `smoke: true` in the body and the `x-cron-secret` header, which is
 `OPTIONAL_RSVP_REMINDERS_SECRET`; without the header the function answers 401,
 and with no test webhook set it refuses rather than posting to the live
-channel. `boe-webhook` honours it since #956.
+channel. `boe-webhook` honours it since #956 and `contact-webhook` since #957.
 
-Deploy either function by hand after adding (or deciding against) those
-secrets. Neither takes `--no-verify-jwt`: the report card and the manage page
-both send the anon key.
+Deploy these functions by hand after adding (or deciding against) those
+secrets. None takes `--no-verify-jwt`: the report card, the manage page and the
+contact form all send the anon key.
 
 ```bash
 supabase functions deploy boe-webhook
 supabase functions deploy boe-sold-webhook
+supabase functions deploy contact-webhook
 ```
 
 Smoke the found post into the test channel (the id is any `boe_items` row):
@@ -1020,6 +1022,22 @@ curl -X POST "$SUPABASE_URL/functions/v1/boe-webhook" \
   -H "x-cron-secret: $CRON_SECRET" -H 'Content-Type: application/json' \
   -d '{"id":1,"smoke":true}'
 ```
+
+Smoke the contact post the same way. Called with the anon key like this it
+reports as not logged in, which is what a signed-out visitor's report looks
+like; the signed-in path takes a real session and is checked from the browser:
+
+```bash
+curl -X POST "$SUPABASE_URL/functions/v1/contact-webhook" \
+  -H "Authorization: Bearer $ANON_KEY" -H "apikey: $ANON_KEY" \
+  -H "x-cron-secret: $CRON_SECRET" -H 'Content-Type: application/json' \
+  -d '{"team":"phoenix","name":"Smoke","message":"smoke test","smoke":true}'
+```
+
+Note: `contact-webhook` takes the submitter's identity from the JWT since #957.
+The Discord line on the post is the caller's own account, so a report can no
+longer name somebody who did not send it, and the body carries only the team,
+a typed name and the message.
 
 Note: Supabase does not allow secrets prefixed with `SUPABASE_`, so the service role
 key is stored as `SERVICE_ROLE_KEY`.
