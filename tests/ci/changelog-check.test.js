@@ -223,7 +223,7 @@ describe('changelogSections', () => {
     '\n'
   );
 
-  const none = { frontend: false, backend: false, functions: false, bot: false };
+  const none = { frontend: false, backend: false, functions: false, bot: false, project: false };
 
   it('sees a new version block with both sections', () => {
     const next = [
@@ -301,6 +301,58 @@ describe('changelogSections', () => {
     const next = withBackend.replace('- Old entry\n', '- Old entry\n\n---\n');
     const sections = changelogSections(makeDiff(dir, withBackend, next), next);
     expect(sections).toEqual(none);
+  });
+
+  // The fifth section (#1019). It is not a shipped class, so it never sets
+  // `shipped`, but the walk has to recognise the heading or an entry under it
+  // is silently ignored the way any foreign ### heading is.
+  it('sees a new Project section', () => {
+    const next = [
+      '# Changelog',
+      '',
+      '---',
+      '',
+      '## [3.16.0] - 2026-07-07',
+      '',
+      '### Project',
+      '- The RLS suite shares one transaction harness',
+      '',
+      '---',
+      '',
+      '## [3.15.0] - 2026-07-01',
+      '',
+      '### Changed',
+      '- Old entry',
+      ''
+    ].join('\n');
+    const sections = changelogSections(makeDiff(dir, base, next), next);
+    expect(sections).toEqual({ ...none, project: true });
+  });
+
+  it('sees a Project entry beside a shipped one', () => {
+    const next = [
+      '# Changelog',
+      '',
+      '---',
+      '',
+      '## [3.16.0] - 2026-07-07',
+      '',
+      '### Frontend',
+      '- New page behavior',
+      '',
+      '### Project',
+      '- CONTRIBUTING describes the new rule',
+      '',
+      '---',
+      '',
+      '## [3.15.0] - 2026-07-01',
+      '',
+      '### Changed',
+      '- Old entry',
+      ''
+    ].join('\n');
+    const sections = changelogSections(makeDiff(dir, base, next), next);
+    expect(sections).toEqual({ ...none, frontend: true, project: true });
   });
 });
 
@@ -410,6 +462,8 @@ describe('classify against a git repo', () => {
     backend_entry: 'false',
     functions_entry: 'false',
     bot_entry: 'false',
+    project_entry: 'false',
+    new_heading: 'false',
     missing_entry: '',
     heading_error: '',
     news_touched: 'false'
@@ -426,7 +480,8 @@ describe('classify against a git repo', () => {
       backend: 'true',
       shipped: 'true',
       version_bump: 'true',
-      backend_entry: 'true'
+      backend_entry: 'true',
+      new_heading: 'true'
     });
   });
 
@@ -466,7 +521,8 @@ describe('classify against a git repo', () => {
       functions: 'true',
       shipped: 'true',
       version_bump: 'true',
-      functions_entry: 'true'
+      functions_entry: 'true',
+      new_heading: 'true'
     });
   });
 
@@ -495,7 +551,8 @@ describe('classify against a git repo', () => {
       shipped: 'true',
       version_bump: 'true',
       frontend_entry: 'true',
-      bot_entry: 'true'
+      bot_entry: 'true',
+      new_heading: 'true'
     });
   });
 
@@ -509,25 +566,28 @@ describe('classify against a git repo', () => {
     expect(result.missing_entry).toBe('functions,bot');
   });
 
-  it('a docs-only PR is no shipped class at all', () => {
+  // Still no shipped class, and since #1019 that is exactly the condition
+  // that owes a Project entry. Before it, this PR owed nothing at all and
+  // reached main with no version and no line in the changelog.
+  it('a docs-only PR ships nothing and owes a Project entry', () => {
     const result = onBranch('docs-only', () => {
       write('docs/RLS.md', '# policies v2\n');
     });
-    expect(result).toEqual(clean);
+    expect(result).toEqual({ ...clean, missing_entry: 'project' });
   });
 
-  it('supabase/config.toml alone is chore territory, not a shipped change', () => {
+  it('supabase/config.toml alone ships nothing and owes a Project entry', () => {
     const result = onBranch('config-only', () => {
       write('supabase/config.toml', '[api]\n[functions.boe-webhook]\nverify_jwt = false\n');
     });
-    expect(result).toEqual(clean);
+    expect(result).toEqual({ ...clean, missing_entry: 'project' });
   });
 
   it('a VERSION-only bump is not a frontend change (the #353 circularity)', () => {
     const result = onBranch('bump-only', () => {
       write('js/common.js', "var VERSION = '3.16.1';\nvar WEB_APP_URL = 'x';\n");
     });
-    expect(result).toEqual({ ...clean, version_bump: 'true' });
+    expect(result).toEqual({ ...clean, version_bump: 'true', missing_entry: 'project' });
   });
 
   it('a frontend PR done right passes every axis', () => {
@@ -542,6 +602,7 @@ describe('classify against a git repo', () => {
       shipped: 'true',
       version_bump: 'true',
       frontend_entry: 'true',
+      new_heading: 'true',
       news_touched: 'true'
     });
   });
@@ -592,6 +653,8 @@ describe('classify against a git repo', () => {
       backend_entry: true,
       functions_entry: false,
       bot_entry: false,
+      project_entry: false,
+      new_heading: true,
       missing_entry: '',
       heading_error: '',
       news_touched: false
@@ -616,7 +679,8 @@ describe('classify against a git repo', () => {
       backend: 'true',
       shipped: 'true',
       version_bump: 'true',
-      backend_entry: 'true'
+      backend_entry: 'true',
+      new_heading: 'true'
     });
   });
 
@@ -634,7 +698,8 @@ describe('classify against a git repo', () => {
       shipped: 'true',
       version_bump: 'true',
       frontend_entry: 'true',
-      backend_entry: 'true'
+      backend_entry: 'true',
+      new_heading: 'true'
     });
   });
 
@@ -649,6 +714,94 @@ describe('classify against a git repo', () => {
     });
     expect(result.shipped).toBe('false');
     expect(result.version_bump).toBe('true');
+    // A Frontend entry claims a frontend change this PR did not make, so the
+    // section it actually owes is still missing.
+    expect(result.missing_entry).toBe('project');
+  });
+
+  // #1019. Everything below is the fifth section: what a person changes that
+  // ships to none of the four still names a release and still gets a line.
+  it('a docs-only PR with a Project entry and a bump passes every axis', () => {
+    const result = onBranch('docs-project-full', () => {
+      write('docs/RLS.md', '# policies v3\n');
+      write('js/common.js', "var VERSION = '3.16.4';\nvar WEB_APP_URL = 'x';\n");
+      write('CHANGELOG.md', bumpedChangelog('3.16.4', { Project: '- The policy doc names the new table' }));
+    });
+    expect(result).toEqual({
+      ...clean,
+      version_bump: 'true',
+      project_entry: 'true',
+      new_heading: 'true'
+    });
+  });
+
+  it('a Project entry never makes a PR shipped', () => {
+    const result = onBranch('project-not-shipped', () => {
+      write('scripts/ci/some-check.js', '// a check\n');
+      write('js/common.js', "var VERSION = '3.16.5';\nvar WEB_APP_URL = 'x';\n");
+      write('CHANGELOG.md', bumpedChangelog('3.16.5', { Project: '- A new CI check' }));
+    });
+    expect(result.shipped).toBe('false');
+    expect(result.project_entry).toBe('true');
+    expect(result.missing_entry).toBe('');
+  });
+
+  it('a PR that ships something owes its shipped sections and no Project entry', () => {
+    const result = onBranch('frontend-and-docs', () => {
+      write('js/roster.js', '// roster v5\n');
+      write('docs/RLS.md', '# policies v4\n');
+      write('js/common.js', "var VERSION = '3.16.6';\nvar WEB_APP_URL = 'x';\n");
+      write('CHANGELOG.md', bumpedChangelog('3.16.6', { Frontend: '- Roster tweak' }));
+    });
+    expect(result).toEqual({
+      ...clean,
+      frontend: 'true',
+      shipped: 'true',
+      version_bump: 'true',
+      frontend_entry: 'true',
+      new_heading: 'true'
+    });
+  });
+
+  it('a news.json change on its own owes a Project entry', () => {
+    const result = onBranch('news-only', () => {
+      write('news.json', '[{"title":"BoE tracker"}]\n');
+    });
+    expect(result.shipped).toBe('false');
+    expect(result.news_touched).toBe('true');
+    expect(result.missing_entry).toBe('project');
+  });
+
+  it('a CHANGELOG typo fix on its own owes a Project entry', () => {
+    const result = onBranch('changelog-typo', () => {
+      write('CHANGELOG.md', baseChangelog.replace('- Roster reads from Supabase', '- The roster reads from Supabase'));
+    });
+    expect(result.shipped).toBe('false');
+    expect(result.missing_entry).toBe('project');
+  });
+
+  // The gate that replaces "bump with nothing shipped": once every PR bumps,
+  // the accidental stamp is the one that moved VERSION without opening a
+  // block for it, and nothing else would catch it.
+  it('reports no new heading when a bump lands under an existing block', () => {
+    const result = onBranch('bump-no-heading', () => {
+      write('js/common.js', "var VERSION = '3.16.7';\nvar WEB_APP_URL = 'x';\n");
+      write(
+        'CHANGELOG.md',
+        baseChangelog.replace('- Roster reads from Supabase', '- Roster reads from Supabase\n- And caches it')
+      );
+    });
+    expect(result.version_bump).toBe('true');
+    expect(result.new_heading).toBe('false');
+  });
+
+  it('reports a new heading when the PR opens a version block', () => {
+    const result = onBranch('bump-with-heading', () => {
+      write('docs/RLS.md', '# policies v5\n');
+      write('js/common.js', "var VERSION = '3.16.8';\nvar WEB_APP_URL = 'x';\n");
+      write('CHANGELOG.md', bumpedChangelog('3.16.8', { Project: '- Policy doc refresh' }));
+    });
+    expect(result.new_heading).toBe('true');
   });
 });
 

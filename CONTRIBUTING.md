@@ -46,7 +46,7 @@ still works the same way after it. Ask "does an old bookmark, saved link, or
 existing session still do what it used to?" -- if yes, it's MINOR regardless of
 how big the diff is.
 
-### Every PR that changes a shipped piece stamps the product
+### Every PR stamps the product
 
 There are four shipped pieces, and one version line covers all of them. A
 release is named by that number, and a change to any piece moves it:
@@ -57,10 +57,30 @@ release is named by that number, and a change to any piece moves it:
 | Database | `supabase/migrations/`, `scripts/import/` | `### Backend` |
 | Edge Functions | `supabase/functions/` | `### Functions` |
 | Bot | `bot/` | `### Bot` |
+| Project | everything else | `### Project` |
 
 A PR touching more than one piece writes a section for each and takes one bump.
-A PR touching none of them (docs, CI config, `supabase/config.toml`, `seed.sql`,
-`roles.sql`) takes neither: it gets the `skip-changelog` label automatically.
+A PR touching none of them still takes a bump and still writes a line, under
+`### Project`: docs, tests, CI, workflows, `supabase/config.toml`, `seed.sql`,
+`roles.sql`, `news.json`, this file. That is a patch by default, because none
+of the four product contracts moved. `### Project` is required only when no
+shipped piece changed, and allowed at any time; a feature PR that also edits
+this file owes its `### Frontend` entry and nothing more.
+
+**This replaced the `skip-changelog` exemption** (decided 2026-09-08, #1019).
+That label turned all three checks off and was applied automatically to any
+diff touching no shipped path, so every test, CI, docs and `news.json` change
+reached `main` with no version and no entry, and the release history read as
+though those days had no releases. It also made the gate something a label
+could switch off on a PR that genuinely shipped. The label is retired rather
+than repurposed.
+
+Dependabot is the one exemption left. A bot-opened dependency bump takes no
+stamp and no entry, because the bumped dependency is not a product change the
+version should track. `changelog.yml` keys that on the PR's author rather than
+on `github.actor`, since the workflow also runs on `synchronize`, where the
+actor is whoever pushed: a human pushing a conformance fix onto a bot branch
+would otherwise fail the bot's own PR.
 
 **This replaced the old rule that a backend-only PR took no bump** (decided
 2026-09-06, #965). Under that rule the number tracked the frontend rather than
@@ -99,10 +119,12 @@ rewritten. A wrong number is corrected by the next release, not by editing the
 last one. Three numbers in this changelog are used twice (3.77.23, 3.60.32 and
 3.60.6); each carries a note saying so, and they stay as they are.
 
-CI enforces this (#353, extended by #966): a path in any shipped piece requires
-that piece's CHANGELOG section and the bump, a bump with no shipped change
-fails, and a new heading must be unique and above every heading already in the
-file. Nothing the stamp itself writes counts as a frontend change, so stamping
+CI enforces this (#353, extended by #966 and #1019): a path in any shipped
+piece requires that piece's CHANGELOG section, a PR that ships none of them
+requires a `### Project` section, every PR requires the bump, a bump with no
+new version heading fails, and a new heading must be unique and above every
+heading already in the file. Nothing the stamp itself writes counts as a
+frontend change, so stamping
 never satisfies the checks it has to pass (#978): not the `VERSION` line, not
 `REQUIRED_SCHEMA`, and not the `?v=` tags and footer span it rewrites in all six
 pages. Without that, a release shipping only a migration would arrive looking
@@ -110,17 +132,17 @@ like a frontend change and be asked for a `### Frontend` entry it has nothing to
 put in. A page is judged on what is left after the stamp is taken back out, so
 any real edit riding along with one still counts.
 
-Mechanical PRs (formatting, lint, comment-only changes) that still touch a
-shipped path are exempt from every check by adding the `skip-changelog` label,
-deliberately, after looking at the diff. A PR that touches no shipped path gets
-that label automatically. `chore/*` as a branch name is still fine for the PR's
-own classification, but it no longer exempts anything on its own (#979): a
-branch name is picked before the diff exists, and what it turns into is what
-decides whether a changelog entry is owed.
+A mechanical change to a shipped path (formatting, lint, comment-only edits)
+is still that piece's change and logs under that piece's section. Say in the
+entry that nothing behaves differently; that is more use to whoever reads the
+release than an exemption nobody can see afterwards. `chore/*` as a branch name
+is fine for the PR's own classification and exempts nothing on its own (#979),
+the same as every other branch prefix now.
 
-Two checks are never exempt either way, because they are wrong whoever wrote
-them: the heading rule, and the manifest re-derivation that recomputes `pieces`
-from the paths the PR changed.
+No check here is exempt for anyone but Dependabot, and two would not be exempt
+even for it, because they are wrong whoever wrote them: the heading rule, and
+the manifest re-derivation that recomputes `pieces` from the paths the PR
+changed.
 
 ### Every release is tagged and published
 

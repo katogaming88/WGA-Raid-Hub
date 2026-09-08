@@ -1,4 +1,11 @@
 version: 2
+# A non-empty `labels` list is the documented way to override the labels
+# Dependabot applies by default, which is why every ecosystem carries one.
+# It reads `chore` since #1019: the label these PRs used to carry,
+# skip-changelog, was the changelog gate's exemption switch and no longer
+# exists. Bot bumps are still exempt from the bump and the entry, but by PR
+# author inside changelog.yml, where a label cannot be applied by habit to
+# something a person wrote.
 updates:
   # Workflow action refs only. Steps that pin a tool version through an
   # input (supabase/setup-cli's `version: 2.109.0`) are not touched by
@@ -8,14 +15,14 @@ updates:
     schedule:
       interval: weekly
     labels:
-      - skip-changelog
+      - chore
 
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
     labels:
-      - skip-changelog
+      - chore
     groups:
       dev-dependencies:
         patterns:
@@ -35,7 +42,7 @@ updates:
     schedule:
       interval: weekly
     labels:
-      - skip-changelog
+      - chore
     groups:
       bot-dev-dependencies:
         dependency-type: development

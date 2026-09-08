@@ -4,10 +4,28 @@ All notable changes to WGA Raid Hub will be documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 with each release split into `### Frontend`, `### Backend` (migrations and
-import tooling), `### Functions` (Edge Functions) and `### Bot` sections. One
-version covers the whole release, and a change to any of the four moves it: the
-number names the release, not the frontend. See CONTRIBUTING.md for the
-contracts each section answers to.
+import tooling), `### Functions` (Edge Functions), `### Bot` and `### Project`
+(everything else: docs, tests, CI, config) sections. One version covers the
+whole release, and a change to any of them moves it: the number names the
+release, not the frontend. See CONTRIBUTING.md for the contracts each section
+answers to.
+
+---
+
+## [3.97.4] - 2026-09-08
+
+### Project
+
+- Every pull request a person opens now names a release and writes a changelog
+  line, including the ones that change no part of the site itself
+  ([#1019](https://github.com/katogaming88/WGA-Raid-Hub/issues/1019)). Work on
+  tests, CI, documentation, configuration and the news file logs under a new
+  `### Project` heading. Until now a label exempted all of that from every
+  check and was applied automatically, so those changes reached the site with
+  no version attached and the release history read as though nothing happened
+  on the days they landed. Dependency updates opened by the bot stay exempt.
+  The old label is left in place on the pull requests that carried it and is
+  read by nothing.
 
 ---
 
