@@ -11,6 +11,18 @@ contracts each section answers to.
 
 ---
 
+## [3.97.1] - 2026-09-08
+
+### Frontend
+
+- A BiS row's received badge now compares tracks across both receive sources instead of
+  picking whichever source has any entry at all. A raider's own in-raid loot history and their
+  approved self-received requests (e.g. a Great Vault pick) are tracked separately, so an earlier
+  Heroic drop from the loot import was always shown even after a later, higher-track Mythic
+  self-receive for the same item. The row now badges whichever track is actually higher, and a
+  self-received entry with a recognized track renders the same colored H/M/N badge as an
+  in-raid receive instead of a plain text label.
+
 ## [3.97.0] - 2026-09-07
 
 ### Functions
