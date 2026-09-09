@@ -868,10 +868,82 @@ insert into team_members (team_id, discord_id, role) values
   -- add all current officers for both teams
 ```
 
-Do not insert `auth_user_id` in either table -- it starts as null and is filled in
-automatically when each person logs in for the first time via the auth trigger.
+Do not insert `auth_user_id` by hand. For `team_members` use `admin_grant_team_role()` (below),
+which resolves it at grant time. The auth trigger only fills a row that already exists when the
+account is created, so it cannot be relied on for a row added later.
 
-Team IDs: Phoenix = 1, Hellfire = 2.
+Team IDs: Phoenix = 1, Hellfire = 2, Immolation = 3, Wrathless = 4.
+
+**Officers on a team without a page.** Immolation and Wrathless raid with the guild and do not
+otherwise use the site. A `team_members` row with `role = 'officer'` or `'team_leader'` lets that
+person settle their own team's BoE payouts on the BoE page (`can_settle_boe()`, #888) and nothing
+else. Grant the role when an officer asks for it, not ahead of time: a row assigns them the work.
+
+**Use the RPC, not an INSERT** (#910). `admin_grant_team_role(team_id, discord_id, role)` resolves
+`auth_user_id` in the same statement, audit-logs the grant, and returns the resolved id so an inert
+grant is obvious straight away. It works for any team id, hidden teams included, and it is the only
+step.
+
+A hand-written INSERT is the trap it replaces. `on_auth_user_created` runs `after insert on
+auth.users`, so it links a row only for someone who has **never** signed in. For anyone who has, a
+hand-inserted row keeps `auth_user_id = null` and every role check reads it as nothing:
+`my_team_role()` returns null, so `can_settle_boe()` is false and the BoE page shows them no settle
+buttons, while the row looks perfectly correct in the table. The only other filler is
+`claim_character()`, which needs a character on that team to claim, and an officer on a team where
+they do not raid has none. Production carries one row in exactly this state today (Immolation,
+`discord_id` set, no `auth_user_id`, no player row).
+
+**A psql session has no signed-in identity, so the call needs one.** `is_site_admin()` reads
+`auth.uid()`, and `write_audit_log()` raises `Not signed in` outright when it is null, so calling
+the RPC on a bare connection is refused twice. Set the claim first, in the same transaction, the
+way the RLS test harness does:
+
+```sql
+begin;
+select set_config('request.jwt.claims', '{"sub":"YOUR_AUTH_USER_ID","role":"authenticated"}', true);
+set local role authenticated;
+
+-- Returns the resolved auth_user_id: null means that Discord account has no
+-- site account yet, and the grant will activate on their first sign-in.
+select admin_grant_team_role(4, 'DISCORD_ID_HERE', 'officer');  -- Wrathless officer
+
+commit;
+```
+
+Your own `auth_user_id` is the `sub`: `select auth_user_id from site_admins`.
+
+Re-running the same grant on a row that was never linked is the repair path, and is the only case
+where a repeat call writes anything. The grant refuses to *change* a role that is already set, so a
+promotion or demotion goes through the officer dashboard, not this call.
+
+To remove a role, `admin_revoke_team_role(team_id, discord_id)`. It demotes to `raider` when that
+person has claimed a character on the team and deletes the row only when nothing points at it,
+because the foreign key from `players` is `ON DELETE SET NULL` and a plain delete would silently
+unclaim their character.
+
+Direct SQL remains the fallback if the RPC is ever unavailable. Resolve the id in the same
+statement, never as a bare insert:
+
+```sql
+-- The subselect is null for someone with no account yet, which is the case the trigger covers.
+insert into team_members (team_id, discord_id, auth_user_id, role)
+values (
+  4,
+  'DISCORD_ID_HERE',
+  (select id from auth.users where raw_user_meta_data ->> 'provider_id' = 'DISCORD_ID_HERE'),
+  'officer'
+);  -- Wrathless officer
+```
+
+To repair a row that is already in place:
+
+```sql
+update team_members tm
+set auth_user_id = u.id
+from auth.users u
+where u.raw_user_meta_data ->> 'provider_id' = tm.discord_id
+  and tm.auth_user_id is null;
+```
 
 ---
 
@@ -911,10 +983,61 @@ In Supabase: **Project Settings** -> **Edge Functions** -> **Secrets**. Add each
 | `BOT_WEBHOOK_URL_HELLFIRE`     | `https://wga-hellfire.duckdns.org` (already live)        |
 | `SERVICE_ROLE_KEY`             | Supabase -> Project Settings -> API -> service_role      |
 | `BOE_WEBHOOK_URL`              | Discord channel settings -> Integrations -> Webhooks (#746) |
+| `BOE_SOLD_WEBHOOK_URL`         | Optional (#873). Same place, for a separate sold channel   |
+| `CONTACT_WEBHOOK_URL`          | Same place, on the admin channel the contact form reports to (#577) |
+| `DISCORD_TEST_WEBHOOK_URL`     | Same place, on the bot test channel (#1007)                |
+| `OPTIONAL_RSVP_REMINDERS_SECRET` | The cron secret in vault (#895); smoke mode checks it too |
 
 Note: the BoE webhook secret exists on prod under the name `BOE-Found-Webhook`
 (created that way in the dashboard, 2026-08-26). The boe-webhook function reads
 `BOE_WEBHOOK_URL` first and falls back to that name, so either works.
+
+Note: `BOE_SOLD_WEBHOOK_URL` is optional. `boe-sold-webhook` reads it first and
+falls back to the found pair, so with nothing added the sold message lands in the
+found channel and moving it later is one dashboard entry rather than a code change.
+With none of the three set the function no-ops with `{ skipped: true }`.
+
+Note: `DISCORD_TEST_WEBHOOK_URL` is where a smoke test posts (#1007), so nothing
+under test reaches a channel a team operates in. A smoke request carries
+`smoke: true` in the body and the `x-cron-secret` header, which is
+`OPTIONAL_RSVP_REMINDERS_SECRET`; without the header the function answers 401,
+and with no test webhook set it refuses rather than posting to the live
+channel. `boe-webhook` honours it since #956 and `contact-webhook` since #957.
+
+Deploy these functions by hand after adding (or deciding against) those
+secrets. None takes `--no-verify-jwt`: the report card, the manage page and the
+contact form all send the anon key.
+
+```bash
+supabase functions deploy boe-webhook
+supabase functions deploy boe-sold-webhook
+supabase functions deploy contact-webhook
+```
+
+Smoke the found post into the test channel (the id is any `boe_items` row):
+
+```bash
+curl -X POST "$SUPABASE_URL/functions/v1/boe-webhook" \
+  -H "Authorization: Bearer $ANON_KEY" -H "apikey: $ANON_KEY" \
+  -H "x-cron-secret: $CRON_SECRET" -H 'Content-Type: application/json' \
+  -d '{"id":1,"smoke":true}'
+```
+
+Smoke the contact post the same way. Called with the anon key like this it
+reports as not logged in, which is what a signed-out visitor's report looks
+like; the signed-in path takes a real session and is checked from the browser:
+
+```bash
+curl -X POST "$SUPABASE_URL/functions/v1/contact-webhook" \
+  -H "Authorization: Bearer $ANON_KEY" -H "apikey: $ANON_KEY" \
+  -H "x-cron-secret: $CRON_SECRET" -H 'Content-Type: application/json' \
+  -d '{"team":"phoenix","name":"Smoke","message":"smoke test","smoke":true}'
+```
+
+Note: `contact-webhook` takes the submitter's identity from the JWT since #957.
+The Discord line on the post is the caller's own account, so a report can no
+longer name somebody who did not send it, and the body carries only the team,
+a typed name and the message.
 
 Note: Supabase does not allow secrets prefixed with `SUPABASE_`, so the service role
 key is stored as `SERVICE_ROLE_KEY`.

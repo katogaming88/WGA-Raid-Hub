@@ -3,6 +3,12 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadCommonJs, quietConsole } from './helpers/common-sandbox.js';
+
+// The tab renders timestamps through formatDateTime() and the zone note
+// through localTimeZoneNote(), both js/common.js globals (#905); the real
+// ones, so the suite cannot pin a shape the shipped helpers need not have.
+const realCommon = loadCommonJs(quietConsole);
 
 // #515: the BiS Lists sub-tab shows a per-row "Wishlist incomplete" badge
 // (hover for which slots) instead of a standalone banner elsewhere on the
@@ -22,7 +28,12 @@ function makeSandbox({ roster, incompleteWishlists }) {
     location: { search: '', pathname: '/' },
     sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
     localStorage: { getItem: () => null, setItem: () => {} },
-    document: { getElementById: () => null, createElement: () => ({}), head: { appendChild: () => {} } },
+    document: {
+      getElementById: () => null,
+      createElement: () => ({}),
+      head: { appendChild: () => {} },
+      addEventListener: () => {}
+    },
     console,
     Intl,
     setTimeout: (fn, ms) => {
@@ -32,6 +43,8 @@ function makeSandbox({ roster, incompleteWishlists }) {
     },
     clearTimeout
   };
+  sandbox.formatDateTime = realCommon.formatDateTime;
+  sandbox.localTimeZoneNote = realCommon.localTimeZoneNote;
   vm.createContext(sandbox);
   vm.runInContext(COMMON_JS, sandbox, { filename: 'common.js' });
   vm.runInContext(BIS_JS, sandbox, { filename: 'tab-bis.js' });

@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('team_members_id_seq'::regclass) | false | [public.players](public.players.md) [public.season_signups](public.season_signups.md) |  |  |
+| id | integer | nextval('team_members_id_seq'::regclass) | false | [public.players](public.players.md) [public.season_signups](public.season_signups.md) [public.raid_schedule_exceptions](public.raid_schedule_exceptions.md) |  |  |
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
 | discord_id | text |  | false |  |  |  |
 | auth_user_id | uuid |  | true |  |  |  |
@@ -42,6 +42,7 @@ erDiagram
 
 "public.players" }o--o| "public.team_members" : "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE SET NULL"
 "public.season_signups" }o--o| "public.team_members" : "FOREIGN KEY (reviewed_by) REFERENCES team_members(id) ON DELETE SET NULL"
+"public.raid_schedule_exceptions" }o--o| "public.team_members" : "FOREIGN KEY (created_by) REFERENCES team_members(id) ON DELETE SET NULL"
 "public.team_members" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.team_members" {
@@ -69,15 +70,13 @@ erDiagram
   timestamp_with_time_zone archived_at
   timestamp_with_time_zone updated_at
   boolean bis_allowed
-  text officer_notes
   boolean is_backup_tank
   boolean is_backup_healer
   boolean wishlist_allowed
   integer tier_pieces_equipped
   timestamp_with_time_zone tier_pieces_synced_at
   integer bonus_roll_encounter_id FK
-  text archived_reason
-  text archived_reason_detail
+  boolean is_rotator
 }
 "public.season_signups" {
   integer id
@@ -98,6 +97,18 @@ erDiagram
   timestamp_with_time_zone updated_at
   text swap_from_name_realm
   uuid auth_user_id FK
+}
+"public.raid_schedule_exceptions" {
+  integer id
+  integer team_id FK
+  date raid_date
+  text exception_type
+  time_without_time_zone start_time
+  integer duration_minutes
+  boolean is_optional
+  text note
+  integer created_by FK
+  timestamp_with_time_zone created_at
 }
 "public.teams" {
   integer id

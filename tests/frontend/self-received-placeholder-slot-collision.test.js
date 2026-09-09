@@ -30,7 +30,8 @@ function loadSandbox() {
       querySelector: () => null,
       querySelectorAll: () => [],
       createElement: () => ({}),
-      head: { appendChild: () => {} }
+      head: { appendChild: () => {} },
+      addEventListener: () => {}
     },
     console,
     Intl,
@@ -123,7 +124,8 @@ describe('optimistic DATA.selfReceived pushes store dbSlot, not the display slot
         querySelector: () => null,
         querySelectorAll: () => [],
         createElement: () => ({}),
-        head: { appendChild: () => {} }
+        head: { appendChild: () => {} },
+        addEventListener: () => {}
       },
       console,
       Intl,
@@ -185,7 +187,8 @@ describe('submit failures surface an error instead of hanging silently', () => {
         querySelector: () => null,
         querySelectorAll: () => [],
         createElement: () => ({}),
-        head: { appendChild: () => {} }
+        head: { appendChild: () => {} },
+        addEventListener: () => {}
       },
       console,
       Intl,

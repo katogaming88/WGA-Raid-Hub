@@ -25,7 +25,12 @@ function loadCommonJs() {
     location: { search: '', pathname: '/' },
     sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
     localStorage: { getItem: () => null, setItem: () => {} },
-    document: { getElementById: () => null, createElement: () => ({}), head: { appendChild: () => {} } },
+    document: {
+      getElementById: () => null,
+      createElement: () => ({}),
+      head: { appendChild: () => {} },
+      addEventListener: () => {}
+    },
     console,
     Intl,
     setTimeout,

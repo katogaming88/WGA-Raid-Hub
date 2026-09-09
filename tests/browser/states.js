@@ -1,7 +1,7 @@
 // The page states the browser suite checks (#810, Phase A).
 //
-// Phase A is the two pages a signed-out visitor can reach: index.html's nine
-// views and guild.html. officer.html and admin.html need a seeded session and
+// Phase A is the pages a signed-out visitor can reach: index.html's nine
+// views, guild.html, and boe.html's signed-out state. officer.html and admin.html need a seeded session and
 // come in Phase B.
 //
 // index.html with no ?team= is deliberately absent. It is not a state: a cold
@@ -47,11 +47,6 @@ export const STATES = [
     sentinel: '#signupForm .signup-step-title'
   },
   {
-    label: 'index-boe',
-    path: '/index.html?team=phoenix#boe',
-    sentinel: '#boeViewWrap h2'
-  },
-  {
     label: 'index-history',
     path: '/index.html?team=phoenix#history',
     sentinel: '#historyView .recap-season-block'
@@ -75,5 +70,15 @@ export const STATES = [
     label: 'guild',
     path: '/guild.html',
     sentinel: '#guildStreams .stream-card'
+  },
+  {
+    // The BoE Sales page (#864) signed out, carrying the report form since
+    // #891. The sign-in prompt for the records is written only after the
+    // session read settles, so it is the sentinel; the form above it builds
+    // from its own reads and needs no session at all. The signed-in render
+    // needs a seeded session and is Phase B with officer and admin.
+    label: 'boe',
+    path: '/boe.html',
+    sentinel: '#boeAccessNote p'
   }
 ];

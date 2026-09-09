@@ -110,7 +110,8 @@ function loadSandbox({ supabaseClient, els = {}, roster = [] } = {}) {
         createdScripts.push(el);
         return el;
       },
-      head: { appendChild: () => {} }
+      head: { appendChild: () => {} },
+      addEventListener: () => {}
     },
     console,
     setTimeout: (fn, ms) => {

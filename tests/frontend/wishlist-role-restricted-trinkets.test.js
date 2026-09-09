@@ -22,7 +22,12 @@ function makeSandbox() {
     location: { search: '', pathname: '/' },
     sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
     localStorage: { getItem: () => null, setItem: () => {} },
-    document: { getElementById: () => null, createElement: () => ({}), head: { appendChild: () => {} } },
+    document: {
+      getElementById: () => null,
+      createElement: () => ({}),
+      head: { appendChild: () => {} },
+      addEventListener: () => {}
+    },
     console,
     Intl,
     setTimeout,
@@ -114,7 +119,12 @@ describe('HEALER_ONLY_TRINKETS / TANK_ONLY_TRINKETS -- real registry contents', 
       location: { search: '', pathname: '/' },
       sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
       localStorage: { getItem: () => null, setItem: () => {} },
-      document: { getElementById: () => null, createElement: () => ({}), head: { appendChild: () => {} } },
+      document: {
+        getElementById: () => null,
+        createElement: () => ({}),
+        head: { appendChild: () => {} },
+        addEventListener: () => {}
+      },
       console,
       Intl,
       setTimeout,

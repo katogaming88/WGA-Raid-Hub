@@ -41,7 +41,8 @@ function makeSandbox(opts) {
     document: {
       getElementById: (id) => els[id] || null,
       createElement: () => ({}),
-      head: { appendChild: () => {} }
+      head: { appendChild: () => {} },
+      addEventListener: () => {}
     },
     setTimeout,
     clearTimeout

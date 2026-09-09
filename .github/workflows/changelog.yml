@@ -2,9 +2,21 @@ name: Changelog Check
 
 on:
   pull_request:
-    # labeled/unlabeled so toggling the chore label re-evaluates the
-    # exemption without needing a new push.
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, synchronize, reopened]
+
+# No label exempts anything here (#1019). Every PR a person opens takes a
+# version and a CHANGELOG entry: a change that ships to none of the four
+# product pieces logs under `### Project`, which is what the classifier's
+# missing_entry names when nothing shipped. The `skip-changelog` label used to
+# turn all three gates off and auto-applied to any diff touching no shipped
+# path, so tests, CI, docs and news.json reached main with no version and no
+# line at all.
+#
+# Dependabot is the one carve-out, by the standing rule that a bot-opened
+# dependency bump is not a product change the version should track. It keys on
+# the PR's author and not on github.actor, because this workflow also runs on
+# `synchronize`, where the actor is whoever pushed: a human pushing a
+# conformance fix onto a bot branch would otherwise fail the bot's PR.
 
 # A new push to the PR supersedes any still-running check on the old commit.
 concurrency:
@@ -25,72 +37,95 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Classifies the diff (#353): frontend = js/, gs/, and root-page paths,
-      # with js/common.js counting only when its diff goes beyond the VERSION
-      # line, so complying with "bump VERSION" cannot itself mark a PR
-      # functional. backend = supabase/migrations/ and scripts/import/.
-      # frontend_entry / backend_entry = CHANGELOG.md gained content under
-      # the matching ### heading. The script has no dependencies, so no
-      # npm ci here.
+      # Classifies the diff (#353, extended by #966). Four shipped classes:
+      # frontend = js/, css/ and root-page paths, with js/common.js counting
+      # only when its diff goes beyond the VERSION line, so complying with
+      # "bump VERSION" cannot itself mark a PR functional. backend = the db
+      # class, supabase/migrations/ and scripts/import/. functions =
+      # supabase/functions/. bot = bot/. Everything else (supabase/config.toml,
+      # seed.sql, roles.sql, docs, tests, scripts/ci, news.json) ships to no
+      # product piece and is the project class (#1019).
+      #
+      # shipped = any of the four changed. missing_entry lists the classes
+      # that changed without gaining their CHANGELOG section, and names
+      # `project` when nothing shipped and no `### Project` entry was added.
+      # new_heading says whether the PR opened a version block. heading_error
+      # is set when the PR adds a version heading that repeats one on the base
+      # branch or sorts at or below the newest one there.
+      #
+      # The script has no dependencies, so no npm ci here.
       - name: Classify the diff
         id: changed
         run: node scripts/ci/changelog-check.js origin/${{ github.base_ref }}
 
-      # All four checks below share the chore exemption (chore/* branch or
-      # the chore label): the VERSION bump and the sectioned changelog both
-      # signal "behavior changed", which a mechanical PR does not do. #353
-      # extends the exemption to the changelog-entry checks, superseding the
-      # no-bypass rule from be59777.
-      - name: Fail if frontend changes lack a Frontend changelog entry
+      # The three hard gates below run on every PR a person opens. Only
+      # Dependabot is exempt, and the condition is repeated per gate rather
+      # than lifted to the job, so each one still reads as its own rule.
+      - name: Fail if a change lacks its changelog section
         if: >-
-          steps.changed.outputs.frontend == 'true' &&
-          steps.changed.outputs.frontend_entry == 'false' &&
-          !startsWith(github.head_ref, 'chore/') &&
-          !contains(github.event.pull_request.labels.*.name, 'chore')
+          steps.changed.outputs.missing_entry != '' &&
+          github.event.pull_request.user.login != 'dependabot[bot]'
         run: |
-          echo "::error::CHANGELOG.md gained no entry under '### Frontend'. Changes to js/, gs/, or the root pages get a Frontend entry plus a VERSION bump (see CONTRIBUTING.md); if this PR is mechanical, use a chore/* branch or the chore label."
+          echo "::error::CHANGELOG.md gained no entry for: ${{ steps.changed.outputs.missing_entry }}. Each shipped piece logs under its own heading (frontend -> '### Frontend', db -> '### Backend', functions -> '### Functions', bot -> '### Bot'), and a PR that ships none of them logs under '### Project' (docs, tests, CI, config, news.json). See CONTRIBUTING.md."
           exit 1
 
-      - name: Fail if frontend changes lack a VERSION bump
+      # #965 retired the old rule that only frontend paths drove VERSION, and
+      # #1019 retired the rest of it: one version line covers the whole
+      # project and every release names itself, whether what moved was a
+      # migration, an Edge Function, the bot, or the test suite.
+      - name: Fail if the PR lacks a VERSION bump
         if: >-
-          steps.changed.outputs.frontend == 'true' &&
           steps.changed.outputs.version_bump == 'false' &&
-          !startsWith(github.head_ref, 'chore/') &&
-          !contains(github.event.pull_request.labels.*.name, 'chore')
+          github.event.pull_request.user.login != 'dependabot[bot]'
         run: |
-          echo "::error::The VERSION in js/common.js was not bumped. Frontend PRs bump it per CONTRIBUTING.md; if this change is mechanical (formatting, lint, comments), use a chore/* branch or add the chore label."
+          echo "::error::The VERSION in js/common.js was not bumped. Every PR stamps the product: run 'npm run stamp -- <x.y.z>' and add the matching CHANGELOG entry. A PR that ships none of the four pieces takes a patch and a '### Project' line (see CONTRIBUTING.md)."
           exit 1
 
-      # The reverse direction (#353): a bump with no frontend change trains
-      # reflexive bumping and erodes VERSION as the "user-visible behavior
-      # changed" signal.
-      - name: Fail if VERSION bumps without a frontend change
+      # What replaces the old reverse gate (#353's "bump with nothing
+      # shipped"), which stopped meaning anything once every PR bumps. The
+      # shape left is a stamp that moved VERSION without opening a block for
+      # it, and nothing else would catch that: headingProblems only judges a
+      # heading that exists.
+      - name: Fail if VERSION bumps with no new version heading
         if: >-
-          steps.changed.outputs.frontend == 'false' &&
           steps.changed.outputs.version_bump == 'true' &&
-          !startsWith(github.head_ref, 'chore/') &&
-          !contains(github.event.pull_request.labels.*.name, 'chore')
+          steps.changed.outputs.new_heading == 'false' &&
+          github.event.pull_request.user.login != 'dependabot[bot]'
         run: |
-          echo "::error::The VERSION in js/common.js was bumped, but no frontend file changed. Backend/DB-only PRs take no bump and log under '### Backend' in CHANGELOG.md instead (see CONTRIBUTING.md)."
+          echo "::error::The VERSION in js/common.js was bumped, but CHANGELOG.md gained no '## [x.y.z]' heading for it. Open a block for this release at the top of the file, above the newest heading, and put this PR's entries under it."
           exit 1
 
-      - name: Fail if backend changes lack a Backend changelog entry
-        if: >-
-          steps.changed.outputs.backend == 'true' &&
-          steps.changed.outputs.backend_entry == 'false' &&
-          !startsWith(github.head_ref, 'chore/') &&
-          !contains(github.event.pull_request.labels.*.name, 'chore')
+      # Not skip-changelog-exempt: this fires only when a version heading was actually
+      # added, and a heading that repeats or goes backwards is wrong whoever
+      # wrote it. Three numbers on main are already used twice (3.77.23,
+      # 3.60.32, 3.60.6) because nothing checked this; they stay as they are,
+      # annotated in place, because a released number is never reissued (#965).
+      # The check reads only what the PR adds, so that history is legal.
+      - name: Fail if the new version heading repeats or goes backwards
+        if: steps.changed.outputs.heading_error != ''
         run: |
-          echo "::error::CHANGELOG.md gained no entry under '### Backend'. Changes under supabase/migrations/ or scripts/import/ get a Backend entry with no VERSION bump (see CONTRIBUTING.md); if this PR is mechanical, use a chore/* branch or the chore label."
+          echo "::error::CHANGELOG.md heading problem: ${{ steps.changed.outputs.heading_error }}. Pick the next free number above the newest heading; never reissue a released one and never edit a released block."
           exit 1
+
+      # Re-derives version.json's pieces map from the paths this PR changed,
+      # against its real merge base, and fails when the committed manifest
+      # disagrees. The stamper computes that map on the author's machine from
+      # their own origin/main; a stale base widens the diff and marks a piece
+      # the release never touched, which nothing could see before.
+      #
+      # Not chore-exempt, and it needs no exemption: a PR whose version.json
+      # is unchanged passes without any further question, which is every chore
+      # and docs PR by definition.
+      - name: Check the version manifest against the changed paths
+        run: node scripts/ci/manifest-check.js origin/${{ github.base_ref }}
 
       # Non-blocking nudge (#525, follow-up to the #509 News tab): a PR that
       # gained a Frontend changelog entry but never touched news.json might
       # just have forgotten a news-worthy entry -- not every Frontend change
       # is news-worthy, so this labels/comments rather than failing the job.
-      # Always runs (no chore/needsNudge gate on the step itself) so the label
-      # gets removed again once news.json is added or the chore exemption
-      # applies on a later push, not just added and left stale.
+      # Always runs (no needsNudge gate on the step itself) so the label gets
+      # removed again once news.json is added on a later push, not just added
+      # and left stale.
       - name: Nudge for a missing news.json entry
         uses: actions/github-script@v9
         env:
@@ -98,8 +133,7 @@ jobs:
             ${{
               steps.changed.outputs.frontend_entry == 'true' &&
               steps.changed.outputs.news_touched == 'false' &&
-              !startsWith(github.head_ref, 'chore/') &&
-              !contains(github.event.pull_request.labels.*.name, 'chore')
+              github.event.pull_request.user.login != 'dependabot[bot]'
             }}
         with:
           script: |

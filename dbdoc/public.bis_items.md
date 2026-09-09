@@ -31,8 +31,8 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| trg_bis_items_restrict_update | CREATE TRIGGER trg_bis_items_restrict_update BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION restrict_bis_items_update_to_obtained() |
 | trg_bis_items_updated_at | CREATE TRIGGER trg_bis_items_updated_at BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
+| trg_bis_items_restrict_update | CREATE TRIGGER trg_bis_items_restrict_update BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION restrict_bis_items_update_to_obtained() |
 
 ## Relations
 
@@ -67,15 +67,13 @@ erDiagram
   timestamp_with_time_zone archived_at
   timestamp_with_time_zone updated_at
   boolean bis_allowed
-  text officer_notes
   boolean is_backup_tank
   boolean is_backup_healer
   boolean wishlist_allowed
   integer tier_pieces_equipped
   timestamp_with_time_zone tier_pieces_synced_at
   integer bonus_roll_encounter_id FK
-  text archived_reason
-  text archived_reason_detail
+  boolean is_rotator
 }
 "public.items" {
   integer id
@@ -91,6 +89,7 @@ erDiagram
   boolean is_ptr
   jsonb main_stats
   text weapon_subtype
+  boolean is_boe
 }
 ```
 

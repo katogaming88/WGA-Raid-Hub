@@ -496,6 +496,9 @@ function adminFormatGold(n) {
 // exactly when sale > pivot (S * floor/pivot > floor <=> S > pivot, whatever
 // the values). Neither restates the round/greatest/least logic itself, so
 // there is no second copy of the money formula here to drift against the SQL.
+// The closing clause names the #861 cap: the finder never gets more than the
+// sale minus the auction house fee, which is the game's fixed 5% and a
+// constant in boe_record_sale rather than a setting, so nothing reads it here.
 //
 // It exists because the raw numbers hide what they mean: nobody reading
 // "pivot: 100000" can see that it is the sale price where the split switches
@@ -512,7 +515,7 @@ function boePayoutSummary(floorValue, pivotValue) {
     adminFormatGold(pivot) +
     'g, or a flat ' +
     adminFormatGold(floor) +
-    'g below that, never more than the sale itself.'
+    "g below that, never more than the sale minus the game's 5% auction house fee. The guild keeps the rest."
   );
 }
 
@@ -861,7 +864,9 @@ function renderAuditRows() {
       })
     : _adminAuditEntries;
 
-  countEl.textContent = entries.length + ' entr' + (entries.length !== 1 ? 'ies' : 'y') + ' (most recent 300)';
+  countEl.innerHTML =
+    escapeHtml(entries.length + ' entr' + (entries.length !== 1 ? 'ies' : 'y') + ' (most recent 300)') +
+    (entries.length ? localTimeZoneNote() : '');
 
   if (!entries.length) {
     tbody.innerHTML =
@@ -897,6 +902,24 @@ function renderAuditRows() {
       );
     })
     .join('');
+}
+
+// The zone note every surface showing a time carries (#905). A copy of the
+// js/common.js helper, since admin.html does not load that bundle.
+function localTimeZoneNote() {
+  var iana = '';
+  var short = '';
+  try {
+    iana = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    var parts = new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' }).formatToParts(new Date());
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i].type === 'timeZoneName') short = parts[i].value;
+    }
+  } catch (e) {
+    // An engine without Intl zone support: the note still says the times are local.
+  }
+  var zone = short && iana ? short + ' (' + iana + ')' : short || iana;
+  return '<p class="tz-note">Times are shown in your time zone' + (zone ? ', ' + escapeHtml(zone) : '') + '.</p>';
 }
 
 // created_at arrives as an ISO timestamptz string; same 'yyyy-MM-dd HH:mm'

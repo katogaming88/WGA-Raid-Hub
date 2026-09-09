@@ -39,10 +39,6 @@ DATA = { streamers: [], roster: [] };
 // so a link with no ?team= is an infinite bounce rather than a cosmetic slip.
 var _guildTeamSlug = null;
 
-// The signed-in Supabase session, captured once by bootGuildPage() so the BoE
-// access check (#774) does not have to ask auth for it a third time.
-var _guildSession = null;
-var _guildBoeAccess = { visible: false, canManage: false };
 var _guildTeamSource = 'default';
 
 // js/discord.js owns the shared withTimeout() but is deliberately not loaded
@@ -466,103 +462,28 @@ function boeEnabledTeamSlugs() {
   });
 }
 
+/**
+ * Shows the BoE nav item, on one question: does the guild run BoE at all.
+ *
+ * This was a Found a BoE card (#781) whose whole job was picking a team and
+ * handing off to index.html's form, plus a second, access-gated BoE Sales
+ * item pointing at boe.html (#774, #864). #891 put the form on that same
+ * page, where it picks its own team, and #890 opened the page to anyone
+ * signed in, so both of those steps became a click for nothing. One link is
+ * left, and nothing about the visitor decides it.
+ *
+ * The feature check is guild-wide rather than per-team: there is no "this
+ * team" here, and the page it points at spans every team.
+ *
+ * The markup ships display:none so the item cannot flash before the team
+ * settings land, which is also what hides it on the CDN-failure path where
+ * bootGuildPage() returns before this runs.
+ */
 function renderGuildBoe() {
-  var section = document.getElementById('boe');
   var navItem = document.getElementById('guildNavBoe');
-  var sel = document.getElementById('guildBoeTeam');
-  var slugs = boeEnabledTeamSlugs();
-  // One boolean drives both, so the nav cannot end up pointing at a section
-  // that is not there. applyGuildHash() already refuses to scroll to a hidden
-  // section, which left the nav item as the one way to land on nothing.
-  if (section) section.style.display = slugs.length ? '' : 'none';
-  if (navItem) navItem.style.display = slugs.length ? '' : 'none';
-  if (!sel || !slugs.length) return;
-
-  sel.innerHTML = slugs
-    .map(function (slug) {
-      return '<option value="' + _esc(slug) + '">' + _esc(TEAMS[slug].name) + '</option>';
-    })
-    .join('');
-  // The resolved team when it can take a find, else the first that can.
-  var resolved = guildTeamSlug();
-  sel.value = slugs.indexOf(resolved) !== -1 ? resolved : slugs[0];
-}
-
-function goToBoeForm() {
-  var sel = document.getElementById('guildBoeTeam');
-  var slug = (sel && sel.value) || guildTeamSlug();
-  window.location.href = guildTeamHref(slug, 'boe');
-}
-
-/**
- * Who may see the BoE lifecycle section (#774), and who may act in it.
- *
- * The three RPCs are the same functions boe_items' own read policy evaluates
- * (my_team_role in officer/team_leader, or is_boe_manager(), or
- * is_site_admin()), asked here only to decide whether to render at all. The
- * server decides what the read returns and what every mutation is allowed to
- * do, so getting this wrong shows an empty section, never data.
- *
- * is_boe_manager() is grant-only and does not fold in site admins, matching
- * the RLS gate, which is why admin is asked separately rather than assumed.
- *
- * Signed out short-circuits: all three resolve false for anon, so asking is
- * three round-trips to learn nothing on the page's most common visit.
- */
-function fetchGuildBoeAccess() {
-  _guildBoeAccess = { visible: false, canManage: false };
-  if (!supabaseClient || !_guildSession) return Promise.resolve(_guildBoeAccess);
-
-  function ask(fn) {
-    return Promise.resolve(supabaseClient.rpc(fn)).then(
-      function (result) {
-        return !!(result && !result.error && result.data === true);
-      },
-      function () {
-        return false;
-      }
-    );
-  }
-
-  return _guildWithTimeout(
-    Promise.all([ask('is_boe_manager'), ask('is_site_admin'), ask('is_any_team_officer')]),
-    10000
-  )
-    .then(function (r) {
-      var canManage = r[0] || r[1];
-      _guildBoeAccess = { visible: canManage || r[2], canManage: canManage };
-      return _guildBoeAccess;
-    })
-    .catch(function () {
-      return _guildBoeAccess;
-    });
-}
-
-/**
- * Renders the lifecycle section, or leaves it hidden. Hidden covers three
- * different people and says nothing to any of them: a signed-out visitor, a
- * raider, and an officer on a guild that has BoE turned off everywhere.
- *
- * The feature check is guild-wide rather than per-team, unlike the officer tab
- * this replaced. There is no "this team" here, and a manager's read spans every
- * team, so the question is whether any team runs BoE at all -- the same
- * question the finder card above already asks.
- *
- * The nav item is driven by this same boolean rather than deciding for itself,
- * so the two cannot disagree. That matters more here than for the finder card:
- * this page is public, so an item naming a surface the visitor cannot open
- * would advertise it to exactly the people the section hides itself from. It
- * is also the only route to the section, which sits below the finder card with
- * nothing else pointing at it.
- */
-function renderGuildBoeManage() {
-  var section = document.getElementById('boe-manage');
-  var navItem = document.getElementById('guildNavBoeManage');
-  var show = _guildBoeAccess.visible && boeEnabledTeamSlugs().length > 0;
-  if (section) section.style.display = show ? '' : 'none';
-  if (navItem) navItem.style.display = show ? '' : 'none';
-  if (!show) return;
-  buildBoeManage(_guildBoeAccess.canManage);
+  if (!navItem) return;
+  navItem.href = 'boe.html';
+  navItem.style.display = boeEnabledTeamSlugs().length > 0 ? '' : 'none';
 }
 
 /**
@@ -641,6 +562,13 @@ function fetchGuildBios() {
 function applyGuildHash() {
   var id = (window.location.hash || '').replace('#', '');
   if (!id) return;
+  // guild.html#boe is the link #750 hands out, and it named a section here
+  // until #891 moved the form to boe.html. Send it there rather than leaving
+  // it at the top of a page that no longer mentions BoEs.
+  if (id === 'boe') {
+    window.location.replace('boe.html');
+    return;
+  }
   var el = document.getElementById(id);
   if (!el || el.style.display === 'none' || !el.scrollIntoView) return;
   el.scrollIntoView();
@@ -686,7 +614,6 @@ function renderGuildSections() {
   renderGuildStreams();
   renderGuildNews();
   renderGuildBoe();
-  renderGuildBoeManage();
   renderGuildBios();
   applyGuildHash();
 }
@@ -728,18 +655,11 @@ function bootGuildPage() {
           }
         )
         .then(function (session) {
-          _guildSession = session;
           renderGuildAuth(session);
           return resolveGuildTeam();
         })
         .then(function () {
-          return Promise.all([
-            fetchGuildTeamSettings(),
-            fetchGuildStreamers(),
-            fetchGuildNews(),
-            fetchGuildBios(),
-            fetchGuildBoeAccess()
-          ]);
+          return Promise.all([fetchGuildTeamSettings(), fetchGuildStreamers(), fetchGuildNews(), fetchGuildBios()]);
         })
         .then(function () {
           renderGuildSections();

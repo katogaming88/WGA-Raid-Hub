@@ -350,12 +350,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_bis_items_restrict_update",
-          "def": "CREATE TRIGGER trg_bis_items_restrict_update BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION restrict_bis_items_update_to_obtained()"
-        },
-        {
           "name": "trg_bis_items_updated_at",
           "def": "CREATE TRIGGER trg_bis_items_updated_at BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_bis_items_restrict_update",
+          "def": "CREATE TRIGGER trg_bis_items_restrict_update BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION restrict_bis_items_update_to_obtained()"
         }
       ]
     },
@@ -695,6 +695,12 @@
           "name": "weapon_subtype",
           "type": "text",
           "nullable": true
+        },
+        {
+          "name": "is_boe",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
         }
       ],
       "indexes": [
@@ -1229,11 +1235,6 @@
           "default": "false"
         },
         {
-          "name": "officer_notes",
-          "type": "text",
-          "nullable": true
-        },
-        {
           "name": "is_backup_tank",
           "type": "boolean",
           "nullable": false,
@@ -1267,14 +1268,11 @@
           "nullable": true
         },
         {
-          "name": "archived_reason",
-          "type": "text",
-          "nullable": true
-        },
-        {
-          "name": "archived_reason_detail",
-          "type": "text",
-          "nullable": true
+          "name": "is_rotator",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "Rotator roster status (#924): not automatically Present/Attending on a raid night like Bench, but officer-assigned per raid week (officer_set_rotator_week()) rather than self-RSVP."
         }
       ],
       "indexes": [
@@ -1297,16 +1295,6 @@
         }
       ],
       "constraints": [
-        {
-          "name": "players_archived_reason_check",
-          "type": "CHECK",
-          "def": "CHECK (((archived_reason IS NULL) OR (archived_reason = ANY (ARRAY['schedule_conflict'::text, 'performance'::text, 'drama'::text, 'moved_guilds'::text, 'switching_mains'::text, 'other'::text]))))",
-          "table": "public.players",
-          "referenced_table": "",
-          "columns": [
-            "archived_reason"
-          ]
-        },
         {
           "name": "players_tier_pieces_equipped_range",
           "type": "CHECK",
@@ -1393,12 +1381,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_players_restrict_self_update",
-          "def": "CREATE TRIGGER trg_players_restrict_self_update BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION restrict_players_self_update_to_bonus_roll()"
-        },
-        {
           "name": "trg_players_updated_at",
           "def": "CREATE TRIGGER trg_players_updated_at BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_players_restrict_self_update",
+          "def": "CREATE TRIGGER trg_players_restrict_self_update BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION restrict_players_self_update_to_bonus_roll()"
         }
       ]
     },
@@ -1573,12 +1561,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_priority_order_team_id_check",
-          "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
-        },
-        {
           "name": "trg_priority_order_updated_at",
           "def": "CREATE TRIGGER trg_priority_order_updated_at BEFORE UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_priority_order_team_id_check",
+          "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         }
       ]
     },
@@ -3653,16 +3641,16 @@
       ],
       "triggers": [
         {
-          "name": "trg_item_preferences_restrict_officer_update",
-          "def": "CREATE TRIGGER trg_item_preferences_restrict_officer_update BEFORE UPDATE ON public.item_preferences FOR EACH ROW EXECUTE FUNCTION restrict_item_preferences_officer_update_to_note_clear()"
-        },
-        {
           "name": "trg_item_preferences_team_id_check",
           "def": "CREATE TRIGGER trg_item_preferences_team_id_check BEFORE INSERT OR UPDATE ON public.item_preferences FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         },
         {
           "name": "trg_item_preferences_updated_at",
           "def": "CREATE TRIGGER trg_item_preferences_updated_at BEFORE UPDATE ON public.item_preferences FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_item_preferences_restrict_officer_update",
+          "def": "CREATE TRIGGER trg_item_preferences_restrict_officer_update BEFORE UPDATE ON public.item_preferences FOR EACH ROW EXECUTE FUNCTION restrict_item_preferences_officer_update_to_note_clear()"
         }
       ]
     },
@@ -4163,6 +4151,36 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "payout_donated",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "upgrade_rank",
+          "type": "text",
+          "nullable": true,
+          "comment": "Upgrade rank as the tooltip shows it (\"2/6\"); with the track it is the identity of the item in the queue (#865). Null on rows imported from the sheets."
+        },
+        {
+          "name": "ah_fee",
+          "type": "bigint",
+          "nullable": true,
+          "comment": "The auction house fee the game kept on the sale, whole gold: round(sale_price * 5 / 100), half away from zero (#861). Present iff sold/paid; finder_payout + guild_cut + ah_fee = sale_price by constraint."
+        },
+        {
+          "name": "finder_discord_id",
+          "type": "text",
+          "nullable": true,
+          "comment": "Discord id of the signed-in account that submitted the find, stamped by submit_boe_found() and never client-supplied (#889); null for a signed-out submit. Backfilled from the player chain for rows whose player reached a member."
+        },
+        {
+          "name": "found_posted_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "comment": "When the BoE Found Discord post for this row was sent (#956). Claimed by boe-webhook through the service role and cleared again if Discord refuses the post; null means the row has never been announced."
         }
       ],
       "indexes": [
@@ -4176,6 +4194,16 @@
         }
       ],
       "constraints": [
+        {
+          "name": "boe_items_ah_fee_nonneg",
+          "type": "CHECK",
+          "def": "CHECK ((ah_fee \u003e= 0))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "ah_fee"
+          ]
+        },
         {
           "name": "boe_items_finder_payout_nonneg",
           "type": "CHECK",
@@ -4209,7 +4237,7 @@
         {
           "name": "boe_items_money_complete_when_sold",
           "type": "CHECK",
-          "def": "CHECK (((status \u003c\u003e ALL (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NOT NULL) AND (finder_payout IS NOT NULL) AND (guild_cut IS NOT NULL) AND (payout_floor IS NOT NULL) AND (payout_pivot IS NOT NULL))))",
+          "def": "CHECK (((status \u003c\u003e ALL (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NOT NULL) AND (finder_payout IS NOT NULL) AND (guild_cut IS NOT NULL) AND (ah_fee IS NOT NULL) AND (payout_floor IS NOT NULL) AND (payout_pivot IS NOT NULL))))",
           "table": "public.boe_items",
           "referenced_table": "",
           "columns": [
@@ -4217,6 +4245,7 @@
             "sale_price",
             "finder_payout",
             "guild_cut",
+            "ah_fee",
             "payout_floor",
             "payout_pivot"
           ]
@@ -4224,7 +4253,7 @@
         {
           "name": "boe_items_money_only_when_sold",
           "type": "CHECK",
-          "def": "CHECK (((status = ANY (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NULL) AND (finder_payout IS NULL) AND (guild_cut IS NULL) AND (payout_floor IS NULL) AND (payout_pivot IS NULL))))",
+          "def": "CHECK (((status = ANY (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NULL) AND (finder_payout IS NULL) AND (guild_cut IS NULL) AND (ah_fee IS NULL) AND (payout_floor IS NULL) AND (payout_pivot IS NULL))))",
           "table": "public.boe_items",
           "referenced_table": "",
           "columns": [
@@ -4232,8 +4261,23 @@
             "sale_price",
             "finder_payout",
             "guild_cut",
+            "ah_fee",
             "payout_floor",
             "payout_pivot"
+          ]
+        },
+        {
+          "name": "boe_items_money_sums",
+          "type": "CHECK",
+          "def": "CHECK (((status \u003c\u003e ALL (ARRAY['sold'::text, 'paid'::text])) OR (((finder_payout + guild_cut) + ah_fee) = sale_price)))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "status",
+            "finder_payout",
+            "guild_cut",
+            "ah_fee",
+            "sale_price"
           ]
         },
         {
@@ -4321,6 +4365,16 @@
           ]
         },
         {
+          "name": "boe_items_upgrade_rank_shape",
+          "type": "CHECK",
+          "def": "CHECK ((upgrade_rank ~ '^[0-9]{1,2}/[0-9]{1,2}$'::text))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "upgrade_rank"
+          ]
+        },
+        {
           "name": "boe_items_item_id_fkey",
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL",
@@ -4372,16 +4426,16 @@
       ],
       "triggers": [
         {
-          "name": "trg_boe_items_status_transition",
-          "def": "CREATE TRIGGER trg_boe_items_status_transition BEFORE UPDATE ON public.boe_items FOR EACH ROW EXECUTE FUNCTION check_boe_status_transition()"
-        },
-        {
           "name": "trg_boe_items_team_id_check",
           "def": "CREATE TRIGGER trg_boe_items_team_id_check BEFORE INSERT OR UPDATE ON public.boe_items FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         },
         {
           "name": "trg_boe_items_updated_at",
           "def": "CREATE TRIGGER trg_boe_items_updated_at BEFORE UPDATE ON public.boe_items FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_boe_items_status_transition",
+          "def": "CREATE TRIGGER trg_boe_items_status_transition BEFORE UPDATE ON public.boe_items FOR EACH ROW EXECUTE FUNCTION check_boe_status_transition()"
         }
       ]
     },
@@ -5074,6 +5128,886 @@
         {
           "name": "trg_priority_stale_dismissals_team_id_check",
           "def": "CREATE TRIGGER trg_priority_stale_dismissals_team_id_check BEFORE INSERT OR UPDATE ON public.priority_stale_dismissals FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        }
+      ]
+    },
+    {
+      "name": "public.raid_schedule",
+      "type": "BASE TABLE",
+      "comment": "The raid calendar's officer-owned recurring weekly rule (#892, part of #640): one row per weekday/time this team normally raids. is_optional flags a night with no automatic default-Present (#895) -- every non-bench roster player must explicitly RSVP. Raid nights are computed on the fly from this table plus raid_schedule_exceptions (js/calendar.js, computeRaidNights()), not materialized as rows.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('raid_schedule_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "weekday",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "start_time",
+          "type": "time without time zone",
+          "nullable": false
+        },
+        {
+          "name": "timezone",
+          "type": "text",
+          "nullable": false,
+          "default": "'America/New_York'::text"
+        },
+        {
+          "name": "duration_minutes",
+          "type": "integer",
+          "nullable": false,
+          "default": "180"
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "nullable": false,
+          "default": "true"
+        },
+        {
+          "name": "is_optional",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "raid_schedule_pkey",
+          "def": "CREATE UNIQUE INDEX raid_schedule_pkey ON public.raid_schedule USING btree (id)",
+          "table": "public.raid_schedule",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_schedule_team_id_weekday_start_time_key",
+          "def": "CREATE UNIQUE INDEX raid_schedule_team_id_weekday_start_time_key ON public.raid_schedule USING btree (team_id, weekday, start_time)",
+          "table": "public.raid_schedule",
+          "columns": [
+            "team_id",
+            "weekday",
+            "start_time"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "raid_schedule_weekday_check",
+          "type": "CHECK",
+          "def": "CHECK (((weekday \u003e= 0) AND (weekday \u003c= 6)))",
+          "table": "public.raid_schedule",
+          "referenced_table": "",
+          "columns": [
+            "weekday"
+          ]
+        },
+        {
+          "name": "raid_schedule_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.raid_schedule",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_schedule_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.raid_schedule",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_schedule_team_id_weekday_start_time_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, weekday, start_time)",
+          "table": "public.raid_schedule",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "weekday",
+            "start_time"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.raid_schedule_exceptions",
+      "type": "BASE TABLE",
+      "comment": "One-off cancellation or addition on top of raid_schedule's recurring rule (#892) -- exception_type distinguishes skipping a normally-scheduled night from adding an extra one. is_optional only applies to an 'added' row.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('raid_schedule_exceptions_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "raid_date",
+          "type": "date",
+          "nullable": false
+        },
+        {
+          "name": "exception_type",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "start_time",
+          "type": "time without time zone",
+          "nullable": true
+        },
+        {
+          "name": "duration_minutes",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "is_optional",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "created_by",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "raid_schedule_exceptions_pkey",
+          "def": "CREATE UNIQUE INDEX raid_schedule_exceptions_pkey ON public.raid_schedule_exceptions USING btree (id)",
+          "table": "public.raid_schedule_exceptions",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_schedule_exceptions_team_id_raid_date_exception_type_key",
+          "def": "CREATE UNIQUE INDEX raid_schedule_exceptions_team_id_raid_date_exception_type_key ON public.raid_schedule_exceptions USING btree (team_id, raid_date, exception_type)",
+          "table": "public.raid_schedule_exceptions",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "exception_type"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "raid_schedule_exceptions_type_check",
+          "type": "CHECK",
+          "def": "CHECK ((exception_type = ANY (ARRAY['cancelled'::text, 'added'::text])))",
+          "table": "public.raid_schedule_exceptions",
+          "referenced_table": "",
+          "columns": [
+            "exception_type"
+          ]
+        },
+        {
+          "name": "raid_schedule_exceptions_created_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (created_by) REFERENCES team_members(id) ON DELETE SET NULL",
+          "table": "public.raid_schedule_exceptions",
+          "referenced_table": "public.team_members",
+          "columns": [
+            "created_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_schedule_exceptions_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.raid_schedule_exceptions",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_schedule_exceptions_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.raid_schedule_exceptions",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_schedule_exceptions_team_id_raid_date_exception_type_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, raid_date, exception_type)",
+          "table": "public.raid_schedule_exceptions",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "exception_type"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.raid_rsvps",
+      "type": "BASE TABLE",
+      "comment": "A raider's self-declared override for one raid night (#893, part of #640) -- absence of a row means the computed default (Present, or Bench/Rotator via players.is_bench/is_rotator) applies. Forward-looking intent only, never synced into public.attendance. Written only through set_own_rsvp() or officer_set_rsvp() (SECURITY DEFINER); the Rotator-In status is written only through officer_set_rotator_week(). No direct INSERT/UPDATE/DELETE grant for anyone.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('raid_rsvps_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "raid_date",
+          "type": "date",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "raid_rsvps_pkey",
+          "def": "CREATE UNIQUE INDEX raid_rsvps_pkey ON public.raid_rsvps USING btree (id)",
+          "table": "public.raid_rsvps",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_rsvps_team_id_player_id_raid_date_key",
+          "def": "CREATE UNIQUE INDEX raid_rsvps_team_id_player_id_raid_date_key ON public.raid_rsvps USING btree (team_id, player_id, raid_date)",
+          "table": "public.raid_rsvps",
+          "columns": [
+            "team_id",
+            "player_id",
+            "raid_date"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "raid_rsvps_status_check",
+          "type": "CHECK",
+          "def": "CHECK ((status = ANY (ARRAY['Attending'::text, 'Late'::text, 'Leaving Early'::text, 'Tentative'::text, 'Absent'::text, 'Rotator-In'::text])))",
+          "table": "public.raid_rsvps",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "raid_rsvps_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.raid_rsvps",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_rsvps_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.raid_rsvps",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_rsvps_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.raid_rsvps",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_rsvps_team_id_player_id_raid_date_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, player_id, raid_date)",
+          "table": "public.raid_rsvps",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "player_id",
+            "raid_date"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_raid_rsvps_updated_at",
+          "def": "CREATE TRIGGER trg_raid_rsvps_updated_at BEFORE UPDATE ON public.raid_rsvps FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.raid_rsvp_reminders_sent",
+      "type": "BASE TABLE",
+      "comment": "Dedup log for the optional-night DM reminder sweep (#895, part of #640) -- records that a 24h/2h reminder was already sent for a player/raid_date/checkpoint so the cron sweep does not re-DM on every tick. Insert-only, written solely by the optional-rsvp-reminders Edge Function via the service role. Not the source of truth for whether a player has responded -- that is raid_rsvps.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('raid_rsvp_reminders_sent_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "raid_date",
+          "type": "date",
+          "nullable": false
+        },
+        {
+          "name": "checkpoint",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "sent_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "raid_rsvp_reminders_sent_pkey",
+          "def": "CREATE UNIQUE INDEX raid_rsvp_reminders_sent_pkey ON public.raid_rsvp_reminders_sent USING btree (id)",
+          "table": "public.raid_rsvp_reminders_sent",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_rsvp_reminders_sent_team_id_player_id_raid_date_checkp_key",
+          "def": "CREATE UNIQUE INDEX raid_rsvp_reminders_sent_team_id_player_id_raid_date_checkp_key ON public.raid_rsvp_reminders_sent USING btree (team_id, player_id, raid_date, checkpoint)",
+          "table": "public.raid_rsvp_reminders_sent",
+          "columns": [
+            "team_id",
+            "player_id",
+            "raid_date",
+            "checkpoint"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "raid_rsvp_reminders_sent_checkpoint_check",
+          "type": "CHECK",
+          "def": "CHECK ((checkpoint = ANY (ARRAY['24h'::text, '2h'::text])))",
+          "table": "public.raid_rsvp_reminders_sent",
+          "referenced_table": "",
+          "columns": [
+            "checkpoint"
+          ]
+        },
+        {
+          "name": "raid_rsvp_reminders_sent_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.raid_rsvp_reminders_sent",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_rsvp_reminders_sent_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.raid_rsvp_reminders_sent",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_rsvp_reminders_sent_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.raid_rsvp_reminders_sent",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_rsvp_reminders_sent_team_id_player_id_raid_date_checkp_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, player_id, raid_date, checkpoint)",
+          "table": "public.raid_rsvp_reminders_sent",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "player_id",
+            "raid_date",
+            "checkpoint"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.raid_signup_sheets",
+      "type": "BASE TABLE",
+      "comment": "Bookkeeping for the bot-owned aggregated signup-sheet Discord message (#900, part of #640): tracks which channel/message holds the one edited-in-place embed per team/raid_date. Written and read only by the bot's service-role client via claim_raid_signup_sheet(); no read use case for an officer or end user. Mirrors raid_rsvp_reminders_sent's locked-down shape (#895).",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('raid_signup_sheets_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "raid_date",
+          "type": "date",
+          "nullable": false
+        },
+        {
+          "name": "channel_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "message_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "raid_signup_sheets_pkey",
+          "def": "CREATE UNIQUE INDEX raid_signup_sheets_pkey ON public.raid_signup_sheets USING btree (id)",
+          "table": "public.raid_signup_sheets",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_signup_sheets_team_id_raid_date_key",
+          "def": "CREATE UNIQUE INDEX raid_signup_sheets_team_id_raid_date_key ON public.raid_signup_sheets USING btree (team_id, raid_date)",
+          "table": "public.raid_signup_sheets",
+          "columns": [
+            "team_id",
+            "raid_date"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "raid_signup_sheets_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.raid_signup_sheets",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_signup_sheets_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.raid_signup_sheets",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_signup_sheets_team_id_raid_date_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, raid_date)",
+          "table": "public.raid_signup_sheets",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "raid_date"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.player_officer_notes",
+      "type": "BASE TABLE",
+      "comment": "Officer-only annotations on a roster slot (#925): the private officer note, and why a player was removed plus the freeform specifics (#476). One row per players row, created on first write. These lived on players until #925, where the table's public read policy and its table-level anon grant made them readable with the publishable key and by every signed-in raider. m_plus_note stayed on players because the public profile renders it. archived_reason keeps the fixed vocabulary its old CHECK constraint carried.",
+      "columns": [
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "officer_notes",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "archived_reason",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "archived_reason_detail",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "player_officer_notes_pkey",
+          "def": "CREATE UNIQUE INDEX player_officer_notes_pkey ON public.player_officer_notes USING btree (player_id)",
+          "table": "public.player_officer_notes",
+          "columns": [
+            "player_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "player_officer_notes_archived_reason_check",
+          "type": "CHECK",
+          "def": "CHECK (((archived_reason IS NULL) OR (archived_reason = ANY (ARRAY['schedule_conflict'::text, 'performance'::text, 'drama'::text, 'moved_guilds'::text, 'switching_mains'::text, 'other'::text]))))",
+          "table": "public.player_officer_notes",
+          "referenced_table": "",
+          "columns": [
+            "archived_reason"
+          ]
+        },
+        {
+          "name": "player_officer_notes_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.player_officer_notes",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "player_officer_notes_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.player_officer_notes",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "player_officer_notes_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (player_id)",
+          "table": "public.player_officer_notes",
+          "referenced_table": "",
+          "columns": [
+            "player_id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_player_officer_notes_team_id_check",
+          "def": "CREATE TRIGGER trg_player_officer_notes_team_id_check BEFORE INSERT OR UPDATE ON public.player_officer_notes FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        },
+        {
+          "name": "trg_player_officer_notes_updated_at",
+          "def": "CREATE TRIGGER trg_player_officer_notes_updated_at BEFORE UPDATE ON public.player_officer_notes FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.team_discord_config",
+      "type": "BASE TABLE",
+      "comment": "Per-team Discord infra config for the consolidated multi-tenant bot (#991): guild/channel/role ids and script URLs the bot needs to route a relayed action to the right place. Written and read only by the bot's service-role client; no read use case for an officer or end user. Mirrors raid_signup_sheets' locked-down shape (#900).",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "guild_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "officer_channel_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "attendance_channel_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "signup_channel_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "mplus_ping_role_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "roster_ping_role_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "rsvp_ping_role_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "apps_script_url",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "roster_script_url",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_discord_config_pkey",
+          "def": "CREATE UNIQUE INDEX team_discord_config_pkey ON public.team_discord_config USING btree (team_id)",
+          "table": "public.team_discord_config",
+          "columns": [
+            "team_id"
+          ]
+        },
+        {
+          "name": "team_discord_config_officer_channel_id_key",
+          "def": "CREATE UNIQUE INDEX team_discord_config_officer_channel_id_key ON public.team_discord_config USING btree (officer_channel_id)",
+          "table": "public.team_discord_config",
+          "columns": [
+            "officer_channel_id"
+          ]
+        },
+        {
+          "name": "team_discord_config_attendance_channel_id_key",
+          "def": "CREATE UNIQUE INDEX team_discord_config_attendance_channel_id_key ON public.team_discord_config USING btree (attendance_channel_id)",
+          "table": "public.team_discord_config",
+          "columns": [
+            "attendance_channel_id"
+          ]
+        },
+        {
+          "name": "team_discord_config_signup_channel_id_key",
+          "def": "CREATE UNIQUE INDEX team_discord_config_signup_channel_id_key ON public.team_discord_config USING btree (signup_channel_id)",
+          "table": "public.team_discord_config",
+          "columns": [
+            "signup_channel_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_discord_config_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.team_discord_config",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_discord_config_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (team_id)",
+          "table": "public.team_discord_config",
+          "referenced_table": "",
+          "columns": [
+            "team_id"
+          ]
+        },
+        {
+          "name": "team_discord_config_officer_channel_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (officer_channel_id)",
+          "table": "public.team_discord_config",
+          "referenced_table": "",
+          "columns": [
+            "officer_channel_id"
+          ]
+        },
+        {
+          "name": "team_discord_config_attendance_channel_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (attendance_channel_id)",
+          "table": "public.team_discord_config",
+          "referenced_table": "",
+          "columns": [
+            "attendance_channel_id"
+          ]
+        },
+        {
+          "name": "team_discord_config_signup_channel_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (signup_channel_id)",
+          "table": "public.team_discord_config",
+          "referenced_table": "",
+          "columns": [
+            "signup_channel_id"
+          ]
         }
       ]
     }
@@ -5832,6 +6766,149 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_schedule",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_schedule_exceptions",
+      "columns": [
+        "created_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.team_members",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (created_by) REFERENCES team_members(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.raid_schedule_exceptions",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_rsvps",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_rsvps",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_rsvp_reminders_sent",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_rsvp_reminders_sent",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_signup_sheets",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.player_officer_notes",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.player_officer_notes",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_discord_config",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -6148,27 +7225,9 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.submit_boe_found",
-      "return_type": "int4",
-      "arguments": "p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_note text DEFAULT NULL::text",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.boe_record_listing",
       "return_type": "void",
       "arguments": "p_id integer, p_price bigint, p_listed_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_note text DEFAULT NULL::text",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.boe_record_sale",
-      "return_type": "record",
-      "arguments": "p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.boe_mark_paid",
-      "return_type": "void",
-      "arguments": "p_id integer, p_paid_at timestamp with time zone DEFAULT NULL::timestamp with time zone",
       "type": "FUNCTION"
     },
     {
@@ -6247,6 +7306,96 @@
       "name": "public.build_rclc_export",
       "return_type": "jsonb",
       "arguments": "p_team_id integer, p_season text, p_track text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.boe_mark_paid",
+      "return_type": "void",
+      "arguments": "p_id integer, p_paid_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_donated boolean DEFAULT false",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.submit_boe_found",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_donate boolean DEFAULT false, p_upgrade_rank text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_own_rsvp",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_raid_date date, p_status text, p_note text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.boe_record_sale",
+      "return_type": "record",
+      "arguments": "p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.can_settle_boe",
+      "return_type": "bool",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.current_discord_id",
+      "return_type": "text",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_grant_team_role",
+      "return_type": "uuid",
+      "arguments": "p_team_id integer, p_discord_id text, p_role text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_revoke_team_role",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_discord_id text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.is_optional_raid_night",
+      "return_type": "bool",
+      "arguments": "p_team_id integer, p_raid_date date",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.claim_raid_signup_sheet",
+      "return_type": "text",
+      "arguments": "p_team_id integer, p_raid_date date, p_channel_id text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.raid_night_info",
+      "return_type": "record",
+      "arguments": "p_team_id integer, p_raid_date date",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.resolve_boe_finder_discord_id",
+      "return_type": "text",
+      "arguments": "p_boe_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.archive_player",
+      "return_type": "timestamptz",
+      "arguments": "p_player_id integer, p_reason text, p_detail text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.officer_set_rsvp",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_player_id integer, p_raid_date date, p_status text, p_note text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.officer_set_rotator_week",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_player_id integer, p_week_start date, p_in boolean",
       "type": "FUNCTION"
     }
   ],

@@ -24,7 +24,8 @@ function makeSandbox(itemSlots, itemIds, existingPrefs, itemPlaceholders) {
       getElementById: () => null,
       querySelectorAll: () => [],
       createElement: () => ({}),
-      head: { appendChild: () => {} }
+      head: { appendChild: () => {} },
+      addEventListener: () => {}
     },
     console,
     Intl,

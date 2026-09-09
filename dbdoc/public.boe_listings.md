@@ -83,6 +83,11 @@ erDiagram
   bigint payout_pivot
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
+  boolean payout_donated
+  text upgrade_rank
+  bigint ah_fee
+  text finder_discord_id
+  timestamp_with_time_zone found_posted_at
 }
 ```
 

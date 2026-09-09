@@ -1,4 +1,11 @@
 version: 2
+# A non-empty `labels` list is the documented way to override the labels
+# Dependabot applies by default, which is why every ecosystem carries one.
+# It reads `chore` since #1019: the label these PRs used to carry,
+# skip-changelog, was the changelog gate's exemption switch and no longer
+# exists. Bot bumps are still exempt from the bump and the entry, but by PR
+# author inside changelog.yml, where a label cannot be applied by habit to
+# something a person wrote.
 updates:
   # Workflow action refs only. Steps that pin a tool version through an
   # input (supabase/setup-cli's `version: 2.109.0`) are not touched by
@@ -8,14 +15,14 @@ updates:
     schedule:
       interval: weekly
     labels:
-      - skip-changelog
+      - chore
 
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
     labels:
-      - skip-changelog
+      - chore
     groups:
       dev-dependencies:
         patterns:
@@ -25,3 +32,19 @@ updates:
       # on deliberately, not as a weekly update.
       - dependency-name: eslint
         update-types: ['version-update:semver-major']
+
+  # The Discord bot (#954) keeps its own package.json and lockfile, so it
+  # needs its own entry. Runtime dependencies are left ungrouped on purpose:
+  # a discord.js or supabase-js bump changes what the bot does at runtime and
+  # should arrive on its own to be read, unlike the dev-tool bumps above.
+  - package-ecosystem: npm
+    directory: /bot
+    schedule:
+      interval: weekly
+    labels:
+      - chore
+    groups:
+      bot-dev-dependencies:
+        dependency-type: development
+        patterns:
+          - '*'

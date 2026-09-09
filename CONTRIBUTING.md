@@ -22,42 +22,144 @@
 
 ## Versioning
 
-This project follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`):
+This project follows [Semantic Versioning](https://semver.org/)
+(`MAJOR.MINOR.PATCH`), with one version line covering the whole project.
 
-| Bump | When to use | Examples |
-|------|-------------|---------|
-| **MAJOR** | A previously-valid URL now 404s, points at different data, or requires re-authenticating; a schema change that isn't additive (a column/table/RPC removed or repurposed, not just added) | Retiring a page entirely, splitting one page into several, replacing the auth/session model |
-| **MINOR** | New capability, tab, or workflow reachable from existing URLs; a page's *default* content or landing target changes but old links and bookmarks still resolve to a working page | New dashboard tab, new approval queue, changing what a bare root URL shows, adding a new page nothing depended on yet |
-| **PATCH** | Bug fixes, visual polish, copy changes, layout tweaks, performance improvements | Layout fix, subtitle change, footer tweak |
+### What the version is a promise about
 
-The MAJOR bar is about **breaking an existing contract**, not about how much surface area changed. A large, multi-PR feature (a new page, a new admin tab, a new tracker) is still MINOR as long as everything that worked before the change still works the same way after it. Ask "does an old bookmark, saved link, or existing session still do what it used to?" -- if yes, it's MINOR regardless of how big the diff is.
+Semantic Versioning only means something against a declared public API: without
+one, the three numbers have no referent. This project has four contracts, and a
+break in any one of them breaks the product, so a MAJOR in any row is a MAJOR
+for the whole release.
 
-When merging a PR:
-- Frontend changes (under `js/` or the root HTML pages): bump the
-  version in `js/common.js` (`var VERSION`) and add an entry under a
-  `### Frontend` heading in the new version's `CHANGELOG.md` block
-- Backend changes (under `supabase/migrations/` or `scripts/import/`): add
-  an entry under a `### Backend` heading, with no version bump. Backend
-  entries join the version block of the release they land next to
-- A PR touching both sides updates both sections; a PR touching neither
-  needs neither
+| Contract | Who consumes it | MAJOR | MINOR | PATCH |
+|----------|-----------------|-------|-------|-------|
+| URLs, bookmarks, sessions | visitors | an old link 404s, points at different data, or requires re-authenticating | a new page, tab or workflow reachable from existing URLs; a bare URL's default target changes but old links still resolve | fixes, copy, layout, performance |
+| Schema and RPC surface | the frontend, the bot, the Edge Functions | a table, column, RPC or policy removed or repurposed; a signature changed | a new table, column, RPC, or a new optional parameter | data fixes, indexes, performance |
+| Edge Function HTTP contracts | the frontend, `pg_cron`, the bot relay | request or response shape changed incompatibly; a caller class newly refused | a new action or a new optional field | internal changes |
+| Site-to-bot relay contract | the bot | an action removed, or its payload changed incompatibly | a new action | internal changes |
 
-Bumping the version means more than one file: every local `css/`/`js/`
-tag on every page carries a `?v=<VERSION>` cache-bust query string
-(#431), 45 of them across the four pages. `npm run stamp -- 3.67.0`
-rewrites the `VERSION` constant and every one of those tags in a single
-pass, and
-prints a per-page count so a page that matched nothing is visible rather
-than reported as a silent success. It refuses a version that is not
-`x.y.z`, and it writes nothing at all if any page would fail.
+The MAJOR bar is about **breaking an existing contract**, not about how much
+surface area changed. A large, multi-PR feature (a new page, a new admin tab, a
+new tracker) is still MINOR as long as everything that worked before the change
+still works the same way after it. Ask "does an old bookmark, saved link, or
+existing session still do what it used to?" -- if yes, it's MINOR regardless of
+how big the diff is.
 
-CI enforces this in both directions (#353): frontend paths require a
-Frontend entry and a bump, backend paths require a Backend entry, and a
-bump without a frontend change fails. The `js/common.js` VERSION line
-itself does not count as a frontend change, so a bump alone never
-satisfies the frontend checks. Mechanical PRs (formatting, lint,
-comment-only changes) are exempt from every check: use a `chore/*` branch
-or add the `chore` label.
+### Every PR stamps the product
+
+There are four shipped pieces, and one version line covers all of them. A
+release is named by that number, and a change to any piece moves it:
+
+| Piece | Paths | CHANGELOG section |
+|-------|-------|-------------------|
+| Frontend | `js/`, `css/`, the root HTML pages | `### Frontend` |
+| Database | `supabase/migrations/`, `scripts/import/` | `### Backend` |
+| Edge Functions | `supabase/functions/` | `### Functions` |
+| Bot | `bot/` | `### Bot` |
+| Project | everything else | `### Project` |
+
+A PR touching more than one piece writes a section for each and takes one bump.
+A PR touching none of them still takes a bump and still writes a line, under
+`### Project`: docs, tests, CI, workflows, `supabase/config.toml`, `seed.sql`,
+`roles.sql`, `news.json`, this file. That is a patch by default, because none
+of the four product contracts moved. `### Project` is required only when no
+shipped piece changed, and allowed at any time; a feature PR that also edits
+this file owes its `### Frontend` entry and nothing more.
+
+**This replaced the `skip-changelog` exemption** (decided 2026-09-08, #1019).
+That label turned all three checks off and was applied automatically to any
+diff touching no shipped path, so every test, CI, docs and `news.json` change
+reached `main` with no version and no entry, and the release history read as
+though those days had no releases. It also made the gate something a label
+could switch off on a PR that genuinely shipped. The label is retired rather
+than repurposed.
+
+Dependabot is the one exemption left. A bot-opened dependency bump takes no
+stamp and no entry, because the bumped dependency is not a product change the
+version should track. `changelog.yml` keys that on the PR's author rather than
+on `github.actor`, since the workflow also runs on `synchronize`, where the
+actor is whoever pushed: a human pushing a conformance fix onto a bot branch
+would otherwise fail the bot's own PR.
+
+**This replaced the old rule that a backend-only PR took no bump** (decided
+2026-09-06, #965). Under that rule the number tracked the frontend rather than
+the release, so 162 migrations, ten Edge Functions and the entire bot moved
+without the version ever saying so, and a `### Backend` entry had to ride
+whichever version block it happened to land beside. That is also how three
+version numbers ended up used twice.
+
+Each piece carries the version of the last release that touched it, recorded in
+`version.json` beside its own platform identity: the migration ledger head for
+the database, the deploy counter and bundle hash for each function, the commit
+for anything built.
+
+Two files at the root carry that, and they are separate on purpose:
+
+| File | Written by | Holds |
+|------|-----------|-------|
+| `version.json` | `npm run stamp` | The product version and a `pieces` map, computed from the paths the branch changed. Pure JSON, because the stamp and the CI invariant both parse it |
+| `build.json` | GitHub Pages, at deploy | The deployed commit and the build time. It carries Jekyll front matter, which is what makes Jekyll render the Liquid tags inside it, and front matter is exactly what would make `version.json` unparseable |
+
+An absent entry in `pieces` means that piece has never been stamped, never that
+it has drifted. A chore PR moves no piece, so it leaves the manifest alone. The version says which release something belongs to; the
+platform identity says which artifact is actually live. Both are needed, because
+only the second one can show that a piece was merged and never deployed.
+
+Bumping the version means more than one file: every local `css/`/`js/` tag on
+every page carries a `?v=<VERSION>` cache-bust query string (#431), 56 of them
+across the six pages. `npm run stamp -- 3.92.0` rewrites the `VERSION` constant
+and every one of those tags in a single pass, and prints a per-page count so a
+page that matched nothing is visible rather than reported as a silent success.
+It refuses a version that is not `x.y.z`, and it writes nothing at all if any
+page would fail.
+
+A released version number is never reissued and a released block is never
+rewritten. A wrong number is corrected by the next release, not by editing the
+last one. Three numbers in this changelog are used twice (3.77.23, 3.60.32 and
+3.60.6); each carries a note saying so, and they stay as they are.
+
+CI enforces this (#353, extended by #966 and #1019): a path in any shipped
+piece requires that piece's CHANGELOG section, a PR that ships none of them
+requires a `### Project` section, every PR requires the bump, a bump with no
+new version heading fails, and a new heading must be unique and above every
+heading already in the file. Nothing the stamp itself writes counts as a
+frontend change, so stamping
+never satisfies the checks it has to pass (#978): not the `VERSION` line, not
+`REQUIRED_SCHEMA`, and not the `?v=` tags and footer span it rewrites in all six
+pages. Without that, a release shipping only a migration would arrive looking
+like a frontend change and be asked for a `### Frontend` entry it has nothing to
+put in. A page is judged on what is left after the stamp is taken back out, so
+any real edit riding along with one still counts.
+
+A mechanical change to a shipped path (formatting, lint, comment-only edits)
+is still that piece's change and logs under that piece's section. Say in the
+entry that nothing behaves differently; that is more use to whoever reads the
+release than an exemption nobody can see afterwards. `chore/*` as a branch name
+is fine for the PR's own classification and exempts nothing on its own (#979),
+the same as every other branch prefix now.
+
+No check here is exempt for anyone but Dependabot, and two would not be exempt
+even for it, because they are wrong whoever wrote them: the heading rule, and
+the manifest re-derivation that recomputes `pieces` from the paths the PR
+changed.
+
+### Every release is tagged and published
+
+Merging a stamped PR tags the merge commit `v<VERSION>` and publishes a GitHub
+Release whose body is that version's CHANGELOG block (#968). Nothing to do by
+hand: `.github/workflows/release.yml` runs on `main` whenever `version.json` or
+`CHANGELOG.md` moves.
+
+It skips quietly when the tag already exists, because a push can touch
+`CHANGELOG.md` without stamping. It fails when the version's heading appears
+twice, because a tag names one commit and a release cannot pick between two
+blocks. `npm run stamp` cannot see that case: nothing requires a branch to be up
+to date before merge, so two PRs can stamp the same number and both land. The
+fix is a follow-up stamp PR to the next free number, never a retag.
+
+The Releases page is the public changelog, and the Discord deploy notification
+names the version it deployed.
 
 ## Pull requests
 
@@ -73,20 +175,35 @@ or add the `chore` label.
   `npm run test:frontend`; CI runs the suite on every `js/` change. That job
   pins `TZ=America/New_York`, the project's canonical zone: date logic reads
   the viewer's local calendar date, so a UTC runner cannot catch a
-  local-vs-UTC regression (#703)
+  local-vs-UTC regression (#703). Two rules follow from that zone (#905):
+  date logic and calendar facts (raid nights, award dates, join dates)
+  reason in Eastern, and an instant shown to a person (a `timestamptz`) is
+  rendered in the viewer's own zone with its clock through
+  `formatDateTime()` in `js/common.js`, beside a `localTimeZoneNote()` line
+  saying so; `tests/ci/date-format-check.test.js` enforces both
 - Structural checks over the HTML and the CI tooling live in `tests/ci/`
   (`npm run test:ci`): landmarks, heading order, resolvable anchors, the
-  `?v=` asset tags, and the changelog classifier. These read the pages as
-  text, so they judge markup and never behaviour
+  `?v=` asset tags, the changelog classifier, the RLS autocommit guard and the
+  security advisor allowlist. These read the pages and the source as text, so
+  they judge markup and never behaviour
 - Accessibility runs in a real browser under `tests/browser/`
   (`npm run test:a11y`), which needs a one-time
   `npx playwright install chromium`. It serves the site locally and answers
   every third-party and Supabase request from `tests/browser/fixtures/`, so
-  it is offline and does not touch production. Ten public page states are
+  it is offline and does not touch production. Eleven public page states are
   loaded, checked against axe at WCAG 2.1 AA, and measured for reflow at
   480px. Each state waits on a sentinel selector that only exists once its
   async reads have rendered, so a page that silently truncated fails rather
   than passing empty
+- Two files in that suite measure what axe has no automated rule for, and both
+  assert a pair rather than a single reading. `reduced-motion.test.js` reads
+  animation and transition durations under `prefers-reduced-motion` and under
+  the default, because "the spinner does not animate" is equally true of a
+  working media query and of a stylesheet with no animation at all.
+  `keyboard.test.js` focuses every focusable element on every state in
+  `states.js` and reads its outline back, then checks the modality contract:
+  Tab shows a ring, a click on a button or a link does not, and a click into
+  a text box or a select does
 - `tests/browser/a11y-baseline.json` records every violation the site has
   today, compared for exact equality. A PR that fixes one has to delete its
   entries, and a PR that adds one fails. Refresh it with
@@ -103,7 +220,8 @@ or add the `chore` label.
 | `index.html` | Public page -- landing, raider profiles, season signup |
 | `officer.html` | Officer dashboard -- all management tabs |
 | `admin.html` | Site admin dashboard -- team management, site admin grant/revoke, feature flags, cross-team audit log, maintenance mode |
-| `guild.html` | Guild-wide page -- team selection, streams, news, BoE entry point, About the Guild. The only page not scoped to a team |
+| `guild.html` | Guild-wide page -- team selection, streams, news, a BoE Sales link, About the Guild. Not scoped to a team |
+| `boe.html` | BoE -- the report form (#891) above the found-BoE auction lifecycle, open to anyone signed in and scoped by the read policies (#890). Reporting needs no login at all. Guild-wide like `guild.html`, reached from the BoE Sales link in every page's nav, and carrying that nav itself since #930 |
 | `js/common.js` | Shared globals, `TEAMS`, `TEAM_SLUG`/`IS_COLD_LANDING` resolution, `VERSION`, data helpers, `renderProfile` |
 | `js/discord.js` | Discord OAuth login/session mapping, character claim flow |
 | `js/roster.js` | Public page boot, cold-landing team picker/auto-redirect, dropdown, stats row, recent loot |
@@ -114,15 +232,18 @@ or add the `chore` label.
 | `js/tabs/tab-*.js` | One file per officer tab (19 files) |
 | `js/admin.js` | Standalone boot/logic for `admin.html` -- not team-scoped, so it doesn't reuse common.js/discord.js |
 | `js/guild.js` | Boot/logic for `guild.html`. Also not team-scoped, but it does load common.js for `TEAMS` and the guild-wide helpers, then nulls the team globals so a team-dependent call throws rather than rendering Phoenix's data. Skips discord.js, whose session read is hard-scoped to one team |
+| `js/boe-page.js` | Boot for `boe.html`: session, the access answer (`fetchBoeAccess()` in common.js: the manage grant plus the teams the caller may settle), then `js/boe-manage.js` renders for anyone signed in. Same team-free shape as `js/guild.js` |
+| `js/boe-manage.js` | The BoE lifecycle renderer and its RPC calls; takes the access answer as a parameter and resolves no identity itself |
+| `js/boe.js` | The raider-facing report form on `boe.html` (#891): the reporting-team picker with its placeholder, the item picker from its own `items`/`raid_zones` reads, the `submit_boe_found` call and the webhook ping. Loaded before `js/boe-page.js`, which nulls the team globals it reads at parse time |
 | `css/styles.css` | Shared styles across all pages |
 | `css/officer.css` | Officer-specific styles (partial split out of `styles.css`, still in progress) |
 | `css/admin.css` | Admin-page-specific styles |
 | `css/guild.css` | Guild-page-specific styles, plus the keyboard/motion baselines scoped to that page until #435 generalises them |
-| `gs/*.gs` | Retired Google Apps Script source, kept only as historical record -- no code reads `gasUrl` or writes through GAS anymore; everything is Supabase-only |
 | `supabase/` | Supabase CLI project: local dev stack config and schema migrations |
-| `supabase/functions/` | Edge Functions (Deno). Webhook relays (`boe-webhook`, `discord-bot-webhook`, `contact-webhook`), scheduled sync jobs (`wcl-sync`, `wcl-progression-sync`, `twitch-live-check`), and `upload-bio-photo`, which authenticates the caller and is the only writer to Storage -- see "Storage" below |
+| `supabase/functions/` | Edge Functions (Deno). Webhook relays (`boe-webhook`, `boe-sold-webhook`, `discord-bot-webhook`, `contact-webhook`), scheduled sync jobs (`wcl-sync`, `wcl-progression-sync`, `twitch-live-check`), and `upload-bio-photo`, which authenticates the caller and is the only writer to Storage -- see "Storage" below |
+| `bot/` | The Discord bot (#954): a discord.js gateway process running on kat's VM under pm2. Ten slash commands, an express endpoint the `discord-bot-webhook` relay posts to, and a 15-minute sweep for the signup sheet. Keeps its own `package.json`, `tsconfig.json` and lockfile, and its own workflow (`.github/workflows/bot.yml`), which runs the format check, its tests and the build on Node 20 to match the VM. It formats with the root prettier config rather than one of its own, and is outside every root script: lint, typecheck, format and the test suites all read `js/`, `scripts/` and `tests/` only |
 | `scripts/import/` | One-off/recurring data import tooling (loot, attendance, etc.) |
-| `scripts/ci/` | CI checks that need more than a workflow step (changelog classification, the team-wide read guard), plus the version stamper (`npm run stamp`), which owns the page registry the asset-version check reads |
+| `scripts/ci/` | CI checks that need more than a workflow step (changelog classification, the team-wide read guard, the RLS autocommit guard, the security advisor allowlist), plus the version stamper (`npm run stamp`), which owns the page registry the asset-version check reads |
 | `dbdoc/` | Generated schema docs (tbls). Never edit by hand; regenerate with `npm run db:docs` |
 | `docs/RLS.md` | Hand-maintained RLS policy reference (tbls cannot generate this) |
 
@@ -175,6 +296,68 @@ hatch for a `makeQuery` callback declared as a named function somewhere else,
 which the check cannot follow. Run it locally with
 `node scripts/ci/team-wide-read-check.js`.
 
+## Database functions
+
+The rules below are what `tests/rls/function-invariants.test.js` enforces, added
+for #1010 after the spike in #1009 found the conventions held by review alone.
+
+- **Static SQL only.** No function body builds a statement at runtime: no
+  `execute`, no `format(`, no `quote_ident`/`quote_literal`/`quote_nullable`.
+  This is the whole defence against SQL injection in this project, since
+  everything above the database reaches it through PostgREST, which binds
+  filter values and RPC arguments rather than pasting them into SQL. The one
+  exception is `rls_auto_enable`, whose `format()` argument is the object
+  identity Postgres supplies on DDL. Adding a name to `KNOWN_DYNAMIC` needs the
+  same reasoning written into the migration that introduces it.
+- **Every function pins its search path**, `set search_path = public`. Trigger
+  and other SECURITY INVOKER functions included, not just definers: three of
+  them resolve relations unqualified, so the pin is what stops the resolution
+  depending on the caller.
+- **SECURITY DEFINER functions take identity from `auth.uid()`**, never from a
+  parameter, and revoke `public` and `anon` explicitly. Both revokes matter and
+  for different reasons. Postgres grants EXECUTE to PUBLIC by default, which is
+  live on production, so a migration that forgets `revoke ... from public`
+  leaves the function callable by anyone. The local Postgres image additionally
+  grants the three API roles, which `supabase/roles.sql` undoes so a developer's
+  stack matches production rather than being quietly more permissive.
+- **No table or column names as parameters.** The five `danger_clear_*`
+  functions exist as five functions rather than one taking a table name for
+  exactly this reason; see the 2026-07-11 entry in `docs/database-decisions.md`.
+- **Clients never build filter strings**, and the offline SQL generators under
+  `scripts/` route every value through `scripts/import/lib/sql.js`.
+
+A new definer function that is meant to be anon-callable is added to
+`ANON_DEFINER_ALLOWLIST` in that test file, in the same PR as its migration. The
+test asserts set equality, so an accidental grant and an accidental revoke both
+fail. `npm run test:rls` runs it.
+
+### Security advisors
+
+Supabase's own security linter runs on every migration PR (#1011), in the schema
+docs workflow, against the stack that job has just built from the migration
+files. `scripts/ci/advisor-check.js` reads the report and fails anything at WARN
+or above that is not in its allowlist, printing the lint, the object and the
+remediation URL. Run it locally the way CI does:
+
+```bash
+supabase db advisors --local --type security --level warn --fail-on none --output-format json > advisors.json
+node scripts/ci/advisor-check.js advisors.json
+```
+
+Each allowlist entry carries its reason in the file, and the issue that retires
+it where one exists. An entry keyed on a `cacheKey` accepts one object and
+**fails the run once it matches nothing**, so a finding that gets fixed takes its
+entry out with it, and a report that came back empty cannot pass as a clean
+schema. An entry keyed on a lint `name` accepts that whole lint and passes when
+it matches nothing.
+
+The local run and `--linked` do not read the same linter, which decides what a
+green run means. `--local` and `--db-url` run the CLI's embedded SQL query, 23
+lints, inside a transaction it rolls back. `--linked` reads the Management API,
+and the definer-function-executable findings and the leaked-password toggle come
+only from there, so no CI run can produce them. `.github/workflows/security-advisors.yml`
+sweeps production weekly through `--db-url` and inherits the same limit.
+
 ## Storage
 
 `bio-photos` (added for #625) is the first Supabase Storage bucket in this
@@ -209,11 +392,28 @@ step by step in [docs/supabase-local-dev-setup.md](docs/supabase-local-dev-setup
 
 PRs that change `supabase/migrations/` must also:
 
-- Name the migration file with the **real current local timestamp** (`YYYYMMDDHHMMSS`),
-  not UTC and not hand-picked. Supabase orders and applies migrations by this
-  prefix, so a wrong one can silently apply out of order relative to
-  concurrent work from other contributors. Check the actual system clock
-  rather than guessing or copying an adjacent file's timestamp.
+- Create the file with `npm run migration:new -- <slug>`, which stamps it with
+  the **real current Eastern wall clock** (`YYYYMMDDHHMMSS`). Supabase orders
+  and applies migrations by that prefix, so it is a sort key shared between
+  everyone's machines and has to come from one clock. Do **not** use
+  `supabase migration new`: it stamps UTC, four hours ahead of Eastern in
+  summer and five in winter, and has twice sorted a later migration ahead of
+  an earlier one (2026-08-26 and 2026-09-03, both push refusals). Do not type
+  the number by hand either. The vendored Supabase skill at
+  `.agents/skills/supabase/SKILL.md` says to use the CLI command; it is pinned
+  upstream and cannot be edited here, so this rule overrides it and CI enforces
+  the override.
+- Before `supabase db push`, the new file must sort **after** every migration
+  already applied on prod. If someone else's file landed first and yours now
+  sorts below it, re-stamp yours with
+  `npm run migration:new -- --rename supabase/migrations/<file>`. Never reach
+  for `--include-all` to get around it.
+- Open the file with a header: `-- #NNN: <what it does>.`, then a bare `--`,
+  then why it is needed. Cite a prior migration by filename when this one
+  patches it.
+- Name the slug after the object changed, `<table>_<column>` or
+  `<function>_<what changed>`, lowercase with underscores. No dates in the
+  slug; the prefix already carries one.
 - Regenerate the schema docs: `supabase db reset`, then `npm run db:docs`, and
   commit the `dbdoc/` changes (CI fails stale docs)
 - Update [docs/RLS.md](docs/RLS.md) if the migration adds, alters, or drops an
@@ -224,3 +424,45 @@ PRs that change `supabase/migrations/` must also:
   test seed), then `npm run test:rls`. CI runs the same suite on every
   supabase/ or tests/ change. If a policy legitimately changed, update the
   matching assertions in `tests/rls/` and the matrix in docs/RLS.md together
+
+### Writing RLS tests
+
+Every file in `tests/rls/` runs as its own worker against one database, so a
+fixture that commits is visible to every other file until something deletes it.
+That is not a small window to accept: two files writing the same row made a
+third fail on a different case each run, and because the cleanup closed the
+window, the table was clean by the time anyone queried it and the failure read
+as a bug in the file that failed (#1021).
+
+**Fixtures go inside `withTxn` from `tests/rls/helpers.js`**, which opens one
+connection, runs everything in one transaction and always rolls back. It hands
+the test a postgres-role `q` for fixtures and assertions, and `asRole`,
+`asUser` and `asAnon` for calls made as a PostgREST role on that same
+connection. Same connection is the point: a role-scoped read can then see the
+rows the test just wrote without any of them being committed.
+
+```js
+await withTxn(async ({ q, asRole }) => {
+  await q("insert into public.raid_schedule (team_id, weekday, start_time) values (1, 4, '20:00')");
+  const res = await asRole('authenticated', RAIDER_T1)('select count(*)::int as n from public.raid_schedule');
+  expect(res.rows[0].n).toBe(0);
+});
+```
+
+`countAs` and `queryAs` open a connection of their own, so they cannot see an
+uncommitted fixture. Use them against seeded data, never against a row the test
+wrote. Reaching for `pool.query` to work around that is what created the
+problem above.
+
+`scripts/ci/rls-no-autocommit-check.js` enforces this and runs in the Lint
+workflow. It parses each file rather than grepping it. A call that writes
+nothing declares so on or just above itself, which is how the pg_proc catalog
+read in `function-invariants.test.js` passes:
+
+```js
+// rls-pool-read-only: reads the pg_proc catalog, writes nothing.
+```
+
+Run it locally with `node scripts/ci/rls-no-autocommit-check.js`. It cannot see
+a hand-rolled `pool.connect()` that commits instead of rolling back, so a new
+harness of your own is on you rather than on the check.

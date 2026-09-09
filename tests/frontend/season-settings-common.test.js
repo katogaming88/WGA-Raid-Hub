@@ -24,7 +24,8 @@ function loadCommonJs(supabase) {
     document: {
       getElementById: () => null,
       createElement: () => ({}),
-      head: { appendChild: () => {} }
+      head: { appendChild: () => {} },
+      addEventListener: () => {}
     },
     console,
     setTimeout: (fn, ms) => {
@@ -162,6 +163,8 @@ describe('applyTeamSettingsToData', () => {
       signupsOpen: true,
       features: {},
       externalLinks: {},
+      discordSignupChannelId: null,
+      signupSheetLeadHours: null,
       teamOfficerBios: [],
       wishlistStatusLabels: {}
     });

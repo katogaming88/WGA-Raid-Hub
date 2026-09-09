@@ -30,7 +30,8 @@ function makeSandbox({ itemSlots = {}, itemIds = {}, itemPlaceholders = {}, pref
       getElementById: () => null,
       querySelectorAll: () => [],
       createElement: () => ({}),
-      head: { appendChild: () => {} }
+      head: { appendChild: () => {} },
+      addEventListener: () => {}
     },
     console,
     Intl,

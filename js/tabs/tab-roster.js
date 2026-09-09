@@ -5,8 +5,11 @@
 // Roster reads still merge attendance/M+ fields from the Apps Script core
 // payload (js/common.js fetchSupabaseRoster()), but every write below goes
 // straight to Supabase: RLS already permits an officer's plain
-// insert/update against `players` (no RPC needed for the write itself), and
-// each write logs itself via writeAuditLog() (#214). GAS keeps its
+// insert/update against `players`, and each write logs itself via
+// writeAuditLog() (#214). Two writes are exceptions since #925, both because
+// their data moved to player_officer_notes: the officer note upserts there
+// instead, and removing a player goes through archive_player() so the
+// archived_at on `players` and the reason on that table land together. GAS keeps its
 // addPlayer/removePlayer/updatePlayerField handlers until this path is
 // verified side by side (#216); nothing here calls them anymore.
 //
@@ -52,9 +55,13 @@ function runRosterWrite(promise, msgEl) {
     });
 }
 
+// Which roster fields a targeted write supports, and the column each one
+// lands in. officerNote's column is on player_officer_notes since #925, not
+// on players; updateRosterFieldSupabase() branches on the field for that.
 var ROSTER_FIELD_COLUMN = {
   isTrial: 'is_trial',
   isBench: 'is_bench',
+  isRotator: 'is_rotator',
   isBackupTank: 'is_backup_tank',
   isBackupHealer: 'is_backup_healer',
   joinDate: 'join_date',
@@ -65,6 +72,7 @@ var ROSTER_FIELD_COLUMN = {
 var ROSTER_FIELD_AUDIT_LABEL = {
   isTrial: 'Trial Status Changed',
   isBench: 'Bench Status Changed',
+  isRotator: 'Rotator Status Changed',
   isBackupTank: 'Backup Tank Status Changed',
   isBackupHealer: 'Backup Healer Status Changed',
   joinDate: 'Join Date Changed',
@@ -78,6 +86,7 @@ var ROSTER_FIELD_RAW_VALUE = { joinDate: true, officerNote: true, nick: true };
 function rosterFieldAuditDetail(field, value) {
   if (field === 'isTrial') return value ? 'Trial added' : 'Trial removed';
   if (field === 'isBench') return value ? 'Moved to bench' : 'Removed from bench';
+  if (field === 'isRotator') return value ? 'Marked as rotator' : 'Rotator status removed';
   if (field === 'isBackupTank') return value ? 'Marked as backup tank' : 'Backup tank removed';
   if (field === 'isBackupHealer') return value ? 'Marked as backup healer' : 'Backup healer removed';
   if (field === 'joinDate') return 'Changed to ' + value;
@@ -87,23 +96,58 @@ function rosterFieldAuditDetail(field, value) {
   return null;
 }
 
-// Targeted update for the fields that map 1:1 onto a players column
+// Targeted update for the fields that map 1:1 onto a column
 // (isTrial/isBench/joinDate/officerNote). class/spec go through
 // updateClassSpecSupabase instead, since they resolve to one FK together.
+//
+// officerNote is the one field that does not live on players: it moved to
+// player_officer_notes in #925, so it upserts a row there rather than
+// updating one that already exists. The audit entry still targets players,
+// which is what an officer is looking at and what every other roster write
+// records. Both paths are officer-gated by their table's own policy.
 function updateRosterFieldSupabase(nameRealm, field, value) {
   var player = findRosterPlayer(nameRealm);
   var column = ROSTER_FIELD_COLUMN[field];
   if (!player || !player.id || !column) return Promise.reject(new Error('Unknown player or field.'));
-  var payload = {};
-  payload[column] = ROSTER_FIELD_RAW_VALUE[field] ? value || null : !!value;
+  var write;
+  if (field === 'officerNote') {
+    write = supabaseClient.from('player_officer_notes').upsert(
+      { player_id: player.id, team_id: _teamCfg.supabaseTeamId, officer_notes: value || null },
+      {
+        onConflict: 'player_id'
+      }
+    );
+  } else {
+    var payload = {};
+    payload[column] = ROSTER_FIELD_RAW_VALUE[field] ? value || null : !!value;
+    write = supabaseClient.from('players').update(payload).eq('id', player.id);
+  }
+  return write.then(function (result) {
+    if (result.error) throw new Error(result.error.message);
+    return writeAuditLog(ROSTER_FIELD_AUDIT_LABEL[field], 'players', player.id, rosterFieldAuditDetail(field, value));
+  });
+}
+
+// Re-adding an archived player clears why they left (#476). That reason moved
+// to player_officer_notes in #925, so it is a second write rather than two
+// more nulls on the players update above. Updates in place rather than
+// upserting, so a returning player who never had a row does not gain an empty
+// one. Best-effort and self-warning: they are back on the roster either way,
+// and a stale reason is not worth failing the add over. Always resolves, so
+// the caller's error handling stays about the add itself.
+function clearArchiveReason(playerId) {
   return supabaseClient
-    .from('players')
-    .update(payload)
-    .eq('id', player.id)
-    .then(function (result) {
-      if (result.error) throw new Error(result.error.message);
-      return writeAuditLog(ROSTER_FIELD_AUDIT_LABEL[field], 'players', player.id, rosterFieldAuditDetail(field, value));
-    });
+    .from('player_officer_notes')
+    .update({ archived_reason: null, archived_reason_detail: null })
+    .eq('player_id', playerId)
+    .then(
+      function (result) {
+        if (result.error) console.warn('Could not clear the archive reason.', result.error.message);
+      },
+      function (err) {
+        console.warn('Could not clear the archive reason.', err);
+      }
+    );
 }
 
 var statItemsDiff = 'all';
@@ -353,9 +397,9 @@ function onboardingWishlistNotStarted(playerId) {
 
 function buildRosterTable() {
   _fetchTeamScoringIfNeeded();
-  var order = ['Tank', 'Heal', 'Melee', 'Ranged', 'Bench'];
-  var labels = { Tank: 'Tanks', Heal: 'Healers', Melee: 'Melee', Ranged: 'Ranged', Bench: 'Bench' };
-  var groups = { Tank: [], Heal: [], Melee: [], Ranged: [], Bench: [] };
+  var order = ['Tank', 'Heal', 'Melee', 'Ranged', 'Rotator', 'Bench'];
+  var labels = { Tank: 'Tanks', Heal: 'Healers', Melee: 'Melee', Ranged: 'Ranged', Rotator: 'Rotator', Bench: 'Bench' };
+  var groups = { Tank: [], Heal: [], Melee: [], Ranged: [], Rotator: [], Bench: [] };
 
   var searchTerm = normalise((document.getElementById('rosterSearch') || {}).value || '');
   var bisItemTerm = normalise((document.getElementById('bisItemSearch') || {}).value || '');
@@ -372,6 +416,7 @@ function buildRosterTable() {
     if (activeFilters.noBis && p.bisLink) continue;
     if (activeFilters.trial && !p.isTrial) continue;
     if (activeFilters.bench && !p.isBench) continue;
+    if (activeFilters.rotator && !p.isRotator) continue;
     if (activeFilters.role && p.role !== activeFilters.role) continue;
     if (
       searchTerm &&
@@ -394,6 +439,7 @@ function buildRosterTable() {
       if (!hasBisMatch) continue;
     }
     if (p.isBench) groups['Bench'].push(p);
+    else if (p.isRotator) groups['Rotator'].push(p);
     else if (groups[p.role]) groups[p.role].push(p);
   }
 
@@ -457,6 +503,7 @@ function buildRosterTable() {
       var statusTags = '';
       if (p.isTrial) statusTags += '<span class="tag tag-trial">Trial</span> ';
       if (p.isBench) statusTags += '<span class="tag tag-bench">Bench</span> ';
+      if (p.isRotator) statusTags += '<span class="tag tag-rotator">Rotator</span> ';
       if (p.isBackupTank) statusTags += '<span class="tag tag-backup-tank">Backup Tank</span> ';
       if (p.isBackupHealer) statusTags += '<span class="tag tag-backup-healer">Backup Healer</span>';
       // Informational only (not fed into priority order, see
@@ -813,6 +860,7 @@ function submitAddPlayer() {
           role: role,
           isTrial: isTrial,
           isBench: false,
+          isRotator: false,
           bisLink: '',
           joinDate: joinDateVal
         });
@@ -870,9 +918,7 @@ function addPlayerToRosterSupabase(payload) {
             is_trial: !!payload.isTrial,
             is_bench: false,
             join_date: payload.joinDate || null,
-            archived_at: null,
-            archived_reason: null,
-            archived_reason_detail: null
+            archived_at: null
           };
           return row
             ? supabaseClient.from('players').update(fields).eq('id', row.id).select('id').single()
@@ -883,7 +929,10 @@ function addPlayerToRosterSupabase(payload) {
       if (writeResult.error) throw new Error(writeResult.error.message);
       var playerId = writeResult.data.id;
       var detail = [payload.class, payload.spec, payload.role].filter(Boolean).join(' ');
-      return writeAuditLog('Player Added', 'players', playerId, detail)
+      return clearArchiveReason(playerId)
+        .then(function () {
+          return writeAuditLog('Player Added', 'players', playerId, detail);
+        })
         .then(function () {
           return backfillNotOnRosterForPlayer(teamId, playerId, payload.joinDate);
         })
@@ -1036,14 +1085,18 @@ function executeRemovePlayer(nameRealm, firstName) {
   // (docs/database-decisions.md). archived_reason (#476) captures why, for
   // spotting retention patterns across seasons; archived_reason_detail is
   // the required freeform specifics behind that category.
+  //
+  // One RPC rather than two writes: the reason moved to player_officer_notes
+  // in #925 while archived_at stayed on players, and two client calls would
+  // leave a window where someone is archived with no reason recorded. The
+  // function also stamps archived_at from the database clock and refuses a
+  // second archive, so a double click cannot overwrite the first reason.
   supabaseClient
-    .from('players')
-    .update({
-      archived_at: new Date().toISOString(),
-      archived_reason: reason,
-      archived_reason_detail: detail
+    .rpc('archive_player', {
+      p_player_id: player.id,
+      p_reason: reason,
+      p_detail: detail
     })
-    .eq('id', player.id)
     .then(function (result) {
       if (result.error) throw new Error(result.error.message);
       return writeAuditLog('Player Removed', 'players', player.id, reason + ': ' + detail);
@@ -1063,7 +1116,10 @@ function executeRemovePlayer(nameRealm, firstName) {
           p_season: resolveSeasonViewCode(),
           p_player_id: player.id
         })
-        .catch(function () {});
+        .then(
+          function () {},
+          function () {}
+        );
     })
     .then(function () {
       if (DATA && DATA.roster) {
@@ -1303,6 +1359,26 @@ function togglePlayerBench(nameRealm, firstName) {
       btn.disabled = false;
       btn.className = 'btn ' + (newVal ? 'btn-gold' : 'btn-muted');
       btn.textContent = newVal ? 'Remove from Bench' : 'Move to Bench';
+    }
+  });
+}
+
+function togglePlayerRotator(nameRealm, firstName) {
+  var player = findRosterPlayer(nameRealm);
+  if (!player) return;
+  var newVal = !player.isRotator;
+  var btn = document.getElementById('rotatorToggle-' + firstName);
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+  }
+  var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
+  runRosterWrite(updateRosterFieldSupabase(nameRealm, 'isRotator', newVal), msgEl).then(function (ok) {
+    if (ok) player.isRotator = newVal;
+    if (btn) {
+      btn.disabled = false;
+      btn.className = 'btn ' + (newVal ? 'btn-gold' : 'btn-muted');
+      btn.textContent = newVal ? 'Remove from Rotator' : 'Mark as Rotator';
     }
   });
 }

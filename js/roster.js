@@ -10,8 +10,7 @@ function showView(name) {
     'historyViewWrap',
     'aboutViewWrap',
     'newsViewWrap',
-    'helpViewWrap',
-    'boeViewWrap'
+    'helpViewWrap'
   ].forEach(function (id) {
     document.getElementById(id).classList.remove('active');
   });
@@ -49,21 +48,12 @@ function showView(name) {
     markNewsSeen();
   }
   if (name === 'help') document.getElementById('helpViewWrap').classList.add('active');
-  if (name === 'boe') document.getElementById('boeViewWrap').classList.add('active');
-  [
-    'navHome',
-    'navSignup',
-    'navRoster',
-    'navStreamers',
-    'navHistory',
-    'navAbout',
-    'navNews',
-    'navHelp',
-    'navBoE'
-  ].forEach(function (id) {
-    var el = document.getElementById(id);
-    if (el) el.classList.remove('active');
-  });
+  ['navHome', 'navSignup', 'navRoster', 'navStreamers', 'navHistory', 'navAbout', 'navNews', 'navHelp'].forEach(
+    function (id) {
+      var el = document.getElementById(id);
+      if (el) el.classList.remove('active');
+    }
+  );
   var activeNav = {
     landing: 'navHome',
     profile: 'navHome',
@@ -73,8 +63,7 @@ function showView(name) {
     history: 'navHistory',
     about: 'navAbout',
     news: 'navNews',
-    help: 'navHelp',
-    boe: 'navBoE'
+    help: 'navHelp'
   }[name];
   if (activeNav) {
     var el = document.getElementById(activeNav);
@@ -87,7 +76,7 @@ function showView(name) {
   if (widget) widget.classList.toggle('stream-widget-hidden', name === 'streamers' || name === 'signup');
 
   // Reflect into the URL hash so a reload can restore the view (#517). Only
-  // these three are in scope -- 'profile' sets its own hash (with the player)
+  // these four are in scope -- 'profile' sets its own hash (with the player)
   // from renderProfile() instead, right after this runs. Every other view
   // (signup, history, about, news, help) is out of scope for now; clear the
   // hash for them so a stale '#roster'/'#profile/...' from before doesn't win
@@ -98,13 +87,10 @@ function showView(name) {
 
 function populateDropdown() {
   var sel = document.getElementById('playerSelect');
-  var order = ['Tank', 'Heal', 'Melee', 'Ranged'];
-  var labels = { Tank: 'Tanks', Heal: 'Healers', Melee: 'Melee', Ranged: 'Ranged' };
-  var groups = { Tank: [], Heal: [], Melee: [], Ranged: [] };
-  for (var i = 0; i < DATA.roster.length; i++) {
-    var p = DATA.roster[i];
-    if (groups[p.role]) groups[p.role].push(p);
-  }
+  var grouped = groupRosterByRole(DATA.roster);
+  var order = grouped.order,
+    labels = grouped.labels,
+    groups = grouped.groups;
   for (var r = 0; r < order.length; r++) {
     var role = order[r];
     var players = groups[role];
@@ -189,11 +175,10 @@ function buildPublicRosterTab(targetId, summaryId) {
   var container = document.getElementById(targetId || 'rosterView');
   if (!container || !window.DATA || !DATA.roster) return;
 
-  var groups = { Tank: [], Heal: [], Melee: [], Ranged: [] };
-  for (var i = 0; i < DATA.roster.length; i++) {
-    var p = DATA.roster[i];
-    if (groups[p.role]) groups[p.role].push(p);
-  }
+  var grouped = groupRosterByRole(DATA.roster);
+  var order = grouped.order,
+    labels = grouped.labels,
+    groups = grouped.groups;
 
   var html =
     '<table class="roster-table"><thead><tr><th>Player</th><th>Class / Spec</th><th>Item Level</th></tr></thead><tbody>';
@@ -361,14 +346,10 @@ function buildIncomingRosterSection() {
     return;
   }
 
-  var order = ['Tank', 'Heal', 'Melee', 'Ranged'];
-  var labels = { Tank: 'Tanks', Heal: 'Healers', Melee: 'Melee', Ranged: 'Ranged' };
-  var groups = { Tank: [], Heal: [], Melee: [], Ranged: [] };
-
-  for (var i = 0; i < rows.length; i++) {
-    var p = rows[i];
-    if (groups[p.role]) groups[p.role].push(p);
-  }
+  var grouped = groupRosterByRole(rows);
+  var order = grouped.order,
+    labels = grouped.labels,
+    groups = grouped.groups;
 
   var html =
     '<div class="pub-loot-title">' + rows.length + ' Pending Raider' + (rows.length === 1 ? '' : 's') + '</div>';
@@ -1255,10 +1236,6 @@ function _esc(str) {
 // silently never react to a restored session.
 function onDiscordSessionRestored(session) {
   if (typeof _qaRefresh === 'function') _qaRefresh();
-  // The BoE card is built before initDiscordLogin() runs, so it only ever saw
-  // the localStorage cache; re-resolve now that the session is real (#767).
-  // Called from here, not js/boe.js, for the same shadowing reason as above.
-  if (typeof refreshBoeIdentity === 'function') refreshBoeIdentity();
   if (session && session.nameRealm && sessionStorage.getItem('wga_open_profile')) {
     sessionStorage.removeItem('wga_open_profile');
     autoOpenClaimedProfile(session.nameRealm);
@@ -1342,6 +1319,15 @@ function autoOpenClaimedProfile(nameRealm) {
 // News is a plain static file fetch (news.json), unrelated to team data, so it
 // loads independently and isn't gated by maintenance mode.
 function bootRosterApp() {
+  // The report form moved to boe.html (#891). index.html?team=<slug>#boe is
+  // the pinned per-team Discord link every Immolation raider uses, so it has
+  // to keep landing on the form; the team goes with it, because that is the
+  // whole point of a per-team link. First thing in the boot, before any read,
+  // so the redirect does not wait on a page it is leaving.
+  if ((location.hash || '') === '#boe') {
+    location.replace('boe.html' + (TEAM_SLUG ? '?team=' + TEAM_SLUG : ''));
+    return;
+  }
   if (typeof loadNews === 'function') loadNews();
   checkMaintenanceMode().then(function (maint) {
     if (maint.enabled) {
@@ -1362,11 +1348,14 @@ function bootRosterApp() {
         buildPublicStats();
         buildCalendarPreview();
         buildProgression();
+        buildCalendarWidget('compact');
         buildStreamWidget();
         renderExternalWclLink();
-        // Before the hash routing below, so a #boe deep link on a team with
-        // the flag off finds the card (and its nav button) already hidden.
-        initBoeCard();
+        // The BoE nav item is a link to boe.html since #891, but it is still
+        // this team's raider-facing switch: a team that has turned BoE off
+        // has nothing here to report.
+        var boeNav = document.getElementById('navBoE');
+        if (boeNav) boeNav.style.display = featureEnabled('boe') ? '' : 'none';
         // Deep-link support for officer.html's nav (#354) -- its Roster/Streams/Sign
         // Up/Help links point back at index.html since those views only exist here.
         // '#profile/<name>' (#517) is handled separately below since it can't be
@@ -1386,11 +1375,9 @@ function bootRosterApp() {
             history: 'history',
             about: 'about',
             news: 'news',
-            help: 'help',
-            boe: 'boe'
+            help: 'help'
           }[hashKey];
           if (hashView === 'signup') showSignupView();
-          else if (hashView === 'boe') showBoeView();
           else if (hashView) showView(hashView);
           else showView('landing');
         }
@@ -1399,9 +1386,8 @@ function bootRosterApp() {
         if (typeof initDiscordLogin === 'function') initDiscordLogin();
       },
       function () {
-        buildPublicStats();
         buildProgression();
-        buildRecentLoot();
+        buildCalendarWidget('compact');
         buildStreamWidget();
         var sel = document.getElementById('playerSelect');
         var profileWrap = document.getElementById('profileViewWrap');
@@ -1428,6 +1414,16 @@ function bootRosterApp() {
           buildGuildBios();
           showAboutSubTab(_aboutSubTab);
         }
+      },
+      // #837 part 2: loot is small and fast on its own, but used to wait
+      // behind whichever of the ~19 other heavy fetches (attendance,
+      // priority_order, etc.) happened to be slowest that page load. This
+      // fires as soon as loot itself resolves, independent of the rest, so
+      // the Recent Loot widget and "Items This Tier" stat stop being gated
+      // by unrelated data they don't need.
+      function () {
+        buildPublicStats();
+        buildRecentLoot();
       }
     );
   });

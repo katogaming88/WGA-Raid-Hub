@@ -27,7 +27,8 @@ function makeSandbox() {
       getElementById: (id) => elements[id] || null,
       querySelectorAll: () => [],
       createElement: () => ({}),
-      head: { appendChild: () => {} }
+      head: { appendChild: () => {} },
+      addEventListener: () => {}
     },
     console,
     Intl,

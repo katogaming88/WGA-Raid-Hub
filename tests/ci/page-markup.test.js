@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -19,7 +19,20 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-const PAGES = ['index.html', 'officer.html', 'admin.html', 'guild.html'];
+const PAGES = ['index.html', 'officer.html', 'admin.html', 'guild.html', 'boe.html'];
+
+// The pages born under the #777 bar, where every control carries a label.
+// Widening this to PAGES is #436's job, once index.html, officer.html and
+// admin.html get an accessible name for every control.
+const LABELLED_PAGES = ['guild.html', 'boe.html'];
+
+// Pages with no team of their own, and the scripts that boot them. A cold
+// landing on index.html redirects to guild.html (#779), so a link from either
+// page to a bare index.html is an infinite bounce rather than a cosmetic slip.
+const TEAM_FREE = [
+  { page: 'guild.html', script: 'js/guild.js' },
+  { page: 'boe.html', script: 'js/boe-page.js' }
+];
 
 function read(page) {
   return readFileSync(join(ROOT, page), 'utf8');
@@ -29,6 +42,7 @@ const ids = (html) => [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
 const labelTargets = (html) => [...html.matchAll(/<label[^>]*\sfor="([^"]+)"/g)].map((m) => m[1]);
 const controls = (html) => [...html.matchAll(/<(?:input|select|textarea)[^>]*\sid="([^"]+)"/g)].map((m) => m[1]);
 const labelledBy = (html) => [...html.matchAll(/\saria-labelledby="([^"]+)"/g)].map((m) => m[1]);
+const describedBy = (html) => [...html.matchAll(/\saria-describedby="([^"]+)"/g)].map((m) => m[1]);
 // A bare href="#" is a no-op link paired with an onclick, not a navigation
 // target. It is its own accessibility problem and #440 owns it; here it would
 // only ever read as an anchor pointing at nothing.
@@ -43,12 +57,21 @@ describe('the extractors can actually see markup', () => {
   // which is a claim about extraction and not about that page being compliant.
   const index = read('index.html');
   const guild = read('guild.html');
+  const boe = read('boe.html');
 
-  it('finds ids, labels, controls and aria-labelledby on index.html', () => {
+  it('finds ids, controls, aria-labelledby and aria-describedby on index.html', () => {
     expect(ids(index).length).toBeGreaterThan(20);
-    expect(labelTargets(index).length).toBeGreaterThan(0);
     expect(controls(index).length).toBeGreaterThan(0);
     expect(labelledBy(index).length).toBeGreaterThan(0);
+    expect(describedBy(index).length).toBeGreaterThan(0);
+  });
+
+  // index.html carried the only <label for> on the page in its BoE form, and
+  // that form moved to boe.html in #891. Proving the extractor against the
+  // page that has labels keeps this a claim about extraction; index.html
+  // having none of its own is the a11y debt #436 owns.
+  it('finds labels on boe.html', () => {
+    expect(labelTargets(boe).length).toBeGreaterThan(0);
   });
 
   it('finds headings and in-page anchors on guild.html', () => {
@@ -118,6 +141,10 @@ describe.each(PAGES)('%s references resolve (#437)', (page) => {
     expect(labelledBy(html).filter((r) => !r.split(/\s+/).every((id) => present.has(id)))).toEqual([]);
   });
 
+  it('every aria-describedby points at an id that exists', () => {
+    expect(describedBy(html).filter((r) => !r.split(/\s+/).every((id) => present.has(id)))).toEqual([]);
+  });
+
   it('every in-page anchor points at an id that exists', () => {
     expect(hashLinks(html).filter((t) => !present.has(t))).toEqual([]);
   });
@@ -127,38 +154,150 @@ describe.each(PAGES)('%s references resolve (#437)', (page) => {
   });
 });
 
-describe('guild.html specifics (#777)', () => {
-  const html = read('guild.html');
+describe.each(LABELLED_PAGES)('%s controls (#777)', (page) => {
+  const html = read(page);
 
-  // Scoped to guild.html until #436 gives the other three pages an accessible
-  // name for every control. Widen this to PAGES in that issue's PR.
   it('every form control has a label', () => {
     const labelled = new Set(labelTargets(html));
     expect(controls(html).filter((id) => !labelled.has(id))).toEqual([]);
   });
+});
 
-  // js/guild.js reveals this item only for someone who may open the section it
-  // points at, but the markup default is what covers the gap before the three
-  // RPCs resolve -- and it is the only thing covering the CDN-failure path,
-  // where bootGuildPage() returns before either render function runs. The
-  // vm-sandbox suite cannot see this: its elements are stubbed as `style: {}`,
-  // so they start with no display at all whatever the page says.
-  it('ships the officer-gated nav item hidden', () => {
-    const item = html.match(/<a[^>]*\sid="guildNavBoeManage"[^>]*>/);
+describe.each(TEAM_FREE)('$page never links to a bare index.html (#779)', ({ page, script }) => {
+  it('in its markup', () => {
+    expect(indexLinks(read(page)).filter((href) => !href.includes('team='))).toEqual([]);
+  });
+
+  it('and neither does its script', () => {
+    // js/guild.js builds team links and must carry the param on every one;
+    // js/boe-page.js links nowhere, and zero literals is the right answer for
+    // it, so only the bare form is asserted against.
+    const js = readFileSync(join(ROOT, script), 'utf8');
+    const literals = [...js.matchAll(/'(index\.html[^']*)'/g)].map((m) => m[1]);
+    expect(literals.filter((s) => !s.includes('team='))).toEqual([]);
+  });
+});
+
+describe('guild.html specifics (#777)', () => {
+  const html = read('guild.html');
+
+  // One BoE item since #891, pointing at the page that both reports a find
+  // and tracks it. The markup default covers the gap before the team settings
+  // say whether the guild runs BoE at all, and it is the only thing covering
+  // the CDN-failure path, where bootGuildPage() returns before js/guild.js
+  // gets to it. The vm-sandbox suite cannot see this: its elements are stubbed
+  // as `style: {}`, so they start with no display at all whatever the page says.
+  it('has one BoE nav item, shipped hidden and pointing at boe.html (#891)', () => {
+    const item = html.match(/<a[^>]*\sid="guildNavBoe"[^>]*>/);
     expect(item).not.toBeNull();
     expect(item[0]).toMatch(/style="display:\s*none;?"/);
+    expect(item[0]).toMatch(/href="boe\.html"/);
+    expect(html).not.toContain('guildNavBoeManage');
   });
 
-  it('never links to a bare index.html', () => {
-    // A cold landing on index.html redirects here (#779), so an index.html
-    // link with no ?team= is an infinite bounce between the two pages.
-    expect(indexLinks(html).filter((href) => !href.includes('team='))).toEqual([]);
+  // The page it opens calls itself BoE Sales in its title, header, heading and
+  // its own nav; this item and the shared SITE_NAV_ITEMS entry were the two
+  // places still saying "BoE" (#930).
+  it('labels that item BoE Sales', () => {
+    expect(html).toMatch(/<a[^>]*\sid="guildNavBoe"[^>]*>BoE Sales<\/a>/);
   });
 
-  it('and neither does js/guild.js', () => {
+  it('carries no Found a BoE section any more (#891)', () => {
+    expect(new Set(ids(html)).has('guildBoeTeam')).toBe(false);
+    expect(html).not.toContain('Found a BoE?');
+  });
+
+  it('js/guild.js links to index.html only with a team', () => {
     const js = readFileSync(join(ROOT, 'js', 'guild.js'), 'utf8');
     const literals = [...js.matchAll(/'(index\.html[^']*)'/g)].map((m) => m[1]);
     expect(literals.length).toBeGreaterThan(0);
-    expect(literals.filter((s) => !s.includes('team='))).toEqual([]);
+  });
+});
+
+describe('boe.html specifics (#864)', () => {
+  const html = read('boe.html');
+
+  it('carries the four lifecycle containers js/boe-manage.js writes into', () => {
+    const present = new Set(ids(html));
+    ['guildBoeSummary', 'guildBoeOpen', 'guildBoeAwaiting', 'guildBoeHistory', 'boeAccessNote'].forEach((id) =>
+      expect(present.has(id), id).toBe(true)
+    );
+  });
+
+  it('marks its own nav item as the current page', () => {
+    expect(html).toMatch(/<a[^>]*href="boe\.html"[^>]*aria-current="page"/);
+  });
+
+  it('links back to the guild page', () => {
+    expect(html).toMatch(/href="guild\.html"/);
+  });
+
+  // This page hardcoded Guild and BoE Sales, so the four sections guild.html
+  // carries vanished on arrival (#930). They come back as deep links rather
+  // than as in-page anchors, because the sections live on the other page.
+  // applyGuildHash() re-applies the fragment once those sections have content.
+  it('carries the guild page sections as deep links, each resolving there', () => {
+    const targets = [...html.matchAll(/\shref="guild\.html#([^"]+)"/g)].map((m) => m[1]);
+    expect(targets).toEqual(expect.arrayContaining(['teams', 'streams', 'news', 'about']));
+    const guildIds = new Set(ids(read('guild.html')));
+    expect(targets.filter((t) => !guildIds.has(t))).toEqual([]);
+  });
+});
+
+describe('index.html specifics', () => {
+  const html = read('index.html');
+
+  // The report form moved to boe.html (#891), beside the rows it creates.
+  it('carries no BoE form any more', () => {
+    const present = new Set(ids(html));
+    ['boeViewWrap', 'boeTeamSelect', 'boeCharName', 'boeDonate', 'boeSubmitBtn'].forEach((id) =>
+      expect(present.has(id), id).toBe(false)
+    );
+    expect(html).not.toMatch(/src="js\/boe\.js/);
+  });
+});
+
+// The form left index.html for the page that tracks what it reports (#891).
+// A stale reference to the view it lived in would throw on both pages.
+describe('the BoE form moved (#891)', () => {
+  const html = read('boe.html');
+  const jsDir = join(ROOT, 'js');
+
+  it('loads js/boe.js before js/boe-page.js, which nulls the team globals', () => {
+    // The script tags, not the first mention: the section comment above them
+    // names js/boe-page.js too.
+    const form = html.indexOf('src="js/boe.js');
+    const page = html.indexOf('src="js/boe-page.js');
+    expect(form).toBeGreaterThan(-1);
+    expect(page).toBeGreaterThan(-1);
+    expect(form).toBeLessThan(page);
+  });
+
+  it('carries the form controls, each with a label', () => {
+    const present = new Set(ids(html));
+    ['boeTeamSelect', 'boeCharName', 'boeItemName', 'boeTrack', 'boeUpgradeRank', 'boeNote', 'boeDonate'].forEach(
+      (id) => expect(present.has(id), id).toBe(true)
+    );
+  });
+
+  // The donate checkbox (#862) briefly carried an explainer paragraph above it
+  // (3.81.3). It was cut the same day: the label already says what the box
+  // does, so the checkbox stands alone with its label and points at nothing.
+  it('shows the donate option as a checkbox with its label and no explainer', () => {
+    expect(new Set(ids(html)).has('boeDonateHelp')).toBe(false);
+    const box = html.match(/<label for="boeDonate"[^>]*>\s*(<input[^>]*\sid="boeDonate"[^>]*>)\s*([^<]*)<\/label>/);
+    expect(box).not.toBeNull();
+    expect(box[1]).not.toMatch(/aria-describedby/);
+    expect(box[2].trim()).toBe("I'd like to donate my finder's fee to the guild");
+  });
+
+  it('leaves no js/ file reaching for the view the form lived in', () => {
+    const stale = readdirSync(jsDir)
+      .filter((f) => f.endsWith('.js'))
+      .filter((f) => {
+        const src = readFileSync(join(jsDir, f), 'utf8');
+        return src.includes('boeViewWrap') || src.includes('showBoeView');
+      });
+    expect(stale).toEqual([]);
   });
 });

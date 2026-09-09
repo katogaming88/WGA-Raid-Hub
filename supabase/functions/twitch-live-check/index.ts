@@ -12,8 +12,8 @@
 // automatically, nothing to configure for that part.
 //
 // What does need configuring (Project Settings > Edge Functions > Secrets,
-// same as WCL_CLIENT_ID/WCL_CLIENT_SECRET and BOT_WEBHOOK_URL_<TEAM>/
-// BOT_WEBHOOK_SECRET_<TEAM>):
+// same as WCL_CLIENT_ID/WCL_CLIENT_SECRET and BOT_WEBHOOK_URL/
+// BOT_WEBHOOK_SECRET):
 //   TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET -- a Twitch Developer app
 //     (https://dev.twitch.tv/console/apps), client-credentials grant only,
 //     no user-facing OAuth flow needed since this only reads public stream

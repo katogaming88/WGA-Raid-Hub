@@ -9,6 +9,7 @@ on:
       - 'dbdoc/**'
       - '.tbls.yml'
       - 'docs/rls_policies.*'
+      - 'scripts/ci/advisor-check.js'
       - '.github/workflows/schema-docs.yml'
 
 # A new push to the PR supersedes any still-running check on the old commit,
@@ -81,11 +82,30 @@ jobs:
       # warning fails the build.
       - name: Lint database functions
         run: supabase db lint --local --schema public --level warning --fail-on warning
+      # Supabase's security linter over the schema the migrations just built
+      # (#1011). db lint above reads function bodies; this reads the shape
+      # around them: definer views, tables with RLS off or no policy, unpinned
+      # search paths, auth.users reachable through a view.
+      #
+      # Two commands rather than a pipeline, for migration-ledger-check.yml's
+      # reason: a pipe exits with the last command's status, so a failed
+      # advisor run would hand an empty document to a green check. --fail-on
+      # none because the allowlist decides what fails, not the CLI.
+      #
+      # What this cannot see: --local runs the CLI's embedded SQL query, while
+      # --linked reads the Management API, and the definer-function-executable
+      # findings and the leaked-password toggle come only from the API. The
+      # weekly security-advisors.yml run has the same limit; it reads
+      # production rather than a rebuilt schema.
+      - name: Check security advisors
+        run: |
+          supabase db advisors --local --type security --level warn --fail-on none --output-format json > advisors.json
+          node scripts/ci/advisor-check.js advisors.json
+      # Installs the latest tbls release. Trigger order has been creation order
+      # on every platform since tbls 1.96.0, so a diff that is only a trigger
+      # swap means the docs were regenerated with an older tbls: match the local
+      # exe to the latest release and regenerate (see the comment in .tbls.yml).
       - uses: k1LoW/setup-tbls@v1
-      # If this fails with ONLY a trigger-order swap on a table your PR
-      # didn't touch (e.g. priority_order's two triggers), it's a known
-      # upstream tbls flake, not real doc staleness -- see the `sort: true`
-      # comment in .tbls.yml for the root cause and tracking issue. Rerun.
       - name: Fail if dbdoc/ is stale
         run: tbls diff
       # Raw policy export; regenerated here and compared against the committed

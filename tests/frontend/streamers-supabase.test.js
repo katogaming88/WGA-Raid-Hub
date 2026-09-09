@@ -89,7 +89,8 @@ function loadSandbox({ supabaseClient, streamers, roster = [], els = {}, search 
       },
       createElement: () => ({}),
       head: { appendChild: () => {} },
-      querySelectorAll: () => []
+      querySelectorAll: () => [],
+      addEventListener: () => {}
     },
     console,
     Intl,

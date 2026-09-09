@@ -383,6 +383,7 @@ function renderLootHistoryPanel(actorNames) {
     ' import' +
     (imports.length !== 1 ? 's' : '') +
     '</div>';
+  html += localTimeZoneNote();
   html +=
     '<div style="overflow-x:auto;"><table class="roster-table" style="width:100%;"><thead><tr><th></th><th>Time</th><th>Imported By</th><th># of Items</th></tr></thead><tbody>';
   imports.forEach(function (imp, idx) {
@@ -501,4 +502,235 @@ function toggleLootHistoryDetail(idx) {
 // Legacy alias — called by old code paths that still reference buildLootImportTab
 function buildLootImportTab() {
   buildLootImportForm();
+}
+
+// ── Reassign sub-tab (#1029) ─────────────────────────────────────────────────
+//
+// Corrects which player a raid-awarded rclc_loot row is attributed to, for
+// the case where loot council awarded it to one raider and it was then
+// traded in-game per a prior agreement. rclc_loot already has a full officer
+// RLS write policy (USING/WITH CHECK on my_team_role in officer/team_leader,
+// or is_site_admin -- no is_guild_officer() clause), so this is a plain
+// client UPDATE plus an audit log entry, same as toggleReportExcluded()
+// (js/tabs/tab-attendance.js) -- no new RPC or migration needed. The
+// "received" badges elsewhere (getLootEntry()/DATA.lootCounts) are computed
+// live from rclc_loot at render time, not a separately-synced flag, so the
+// correction is visible everywhere else the next time that data loads.
+var _lootReassignRows = [];
+var _lootReassignPlayerId = null;
+
+function buildLootReassignTab() {
+  var el = document.getElementById('loot-sub-reassign');
+  if (!el) return;
+
+  // Same restriction as buildLootImportForm() -- rclc_loot's officer write
+  // policy has no is_guild_officer() clause, so a guild-officer-only visitor
+  // (not an officer of this specific team) would fail the write silently at
+  // the RLS layer; this says so up front instead of a confusing DB error.
+  if (window._guildOfficerAccessLevel === 'guild') {
+    el.innerHTML =
+      '<p class="signup-officer-note">Loot reassignment is not available for guild officer access on a team you are not an officer of.</p>';
+    return;
+  }
+
+  var roster = (window.DATA && DATA.roster) || [];
+  var sorted = roster.slice().sort(function (a, b) {
+    return (a.nick || a.firstName).localeCompare(b.nick || b.firstName);
+  });
+
+  var html = '<div class="signup-officer-panel" style="max-width:none;">';
+  html +=
+    '<div class="signup-status-row"><span class="signup-status-label">Reassign Loot<button class="help-btn" onclick="toggleHelp(\'help-loot-reassign\')" title="Show help">?</button></span></div>';
+  html += '<div id="help-loot-reassign" class="help-tip">';
+  html +=
+    "For when loot council awarded an item to one raider and it was then traded in-game to someone else. Pick who the item is currently attributed to, find the item, and reassign it. This changes history -- everywhere that raider's received items are shown (Priority List, BiS, this list) reflects the correction immediately.";
+  html += '</div>';
+  html += '<div style="margin:0.5rem 0;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">';
+  html += '<label for="lootReassignPlayerSelect" style="font-size:1.02rem;">Currently credited to:</label>';
+  html += '<select id="lootReassignPlayerSelect" onchange="loadLootForReassign(this.value)">';
+  html += '<option value="">-- Select a player --</option>';
+  for (var i = 0; i < sorted.length; i++) {
+    var p = sorted[i];
+    html +=
+      '<option value="' + p.id + '">' + escHtml(p.nick ? p.nick + ' (' + p.firstName + ')' : p.firstName) + '</option>';
+  }
+  html += '</select>';
+  html += '</div>';
+  html += '<div id="lootReassignContent"></div>';
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// Every raid-awarded item for one player, not season-filtered -- a trade an
+// officer needs to correct could be from an earlier season, and the list is
+// one player's history at a time so it never grows large enough to need it.
+function loadLootForReassign(playerId) {
+  var content = document.getElementById('lootReassignContent');
+  if (!content) return;
+  _lootReassignPlayerId = playerId || null;
+  if (!playerId) {
+    content.innerHTML = '';
+    return;
+  }
+  content.innerHTML = '<p style="font-size:1.02rem;color:var(--text-muted);padding:0.5rem 0;">Loading...</p>';
+
+  fetchAllPaged(
+    function (afterId, limit) {
+      var q = supabaseClient
+        .from('rclc_loot')
+        .select(
+          'id, item_id, track, season, awarded_at, items(name)',
+          afterId === null ? { count: 'exact' } : undefined
+        )
+        .eq('team_id', _teamCfg.supabaseTeamId)
+        .eq('player_id', playerId)
+        .order('id', { ascending: true })
+        .limit(limit);
+      return afterId === null ? q : q.gt('id', afterId);
+    },
+    { label: 'loot for reassign' }
+  ).then(function (rows) {
+    if (_lootReassignPlayerId !== playerId) return; // player changed while this was in flight
+    if (rows === null) {
+      content.innerHTML =
+        '<p style="font-size:1.02rem;color:var(--melee);padding:0.5rem 0;">Could not load this player\'s loot.</p>';
+      return;
+    }
+    _lootReassignRows = rows.slice().sort(function (a, b) {
+      return a.awarded_at < b.awarded_at ? 1 : a.awarded_at > b.awarded_at ? -1 : 0;
+    });
+    renderLootReassignRows();
+  });
+}
+
+function renderLootReassignRows() {
+  var content = document.getElementById('lootReassignContent');
+  if (!content) return;
+  if (!_lootReassignRows.length) {
+    content.innerHTML =
+      '<p class="signup-officer-note" style="margin-top:0.5rem;">No raid-awarded loot on file for this player.</p>';
+    return;
+  }
+  var html =
+    '<div style="overflow-x:auto;margin-top:0.5rem;"><table class="roster-table" style="width:100%;"><thead><tr><th>Item</th><th>Track</th><th>Season</th><th>Date</th><th></th></tr></thead><tbody>';
+  for (var i = 0; i < _lootReassignRows.length; i++) {
+    var row = _lootReassignRows[i];
+    var itemName = row.items && row.items.name ? row.items.name : 'Unknown Item';
+    var trackLabel = row.track === 'Myth' ? 'Mythic' : row.track === 'Hero' ? 'Heroic' : row.track || '';
+    var dateLabel = row.awarded_at ? auditFormatTs(row.awarded_at) : '';
+    html +=
+      '<tr id="loot-reassign-row-' +
+      row.id +
+      '"><td style="text-align:left;">' +
+      escHtml(itemName) +
+      '</td><td>' +
+      escHtml(trackLabel) +
+      '</td><td>' +
+      escHtml(seasonDisplayName(row.season) || row.season || '') +
+      '</td><td style="white-space:nowrap;">' +
+      escHtml(dateLabel) +
+      '</td><td><button class="btn btn-muted" style="font-size:0.91rem;padding:2px 7px;" onclick="showLootReassignForm(' +
+      row.id +
+      ')">Reassign</button></td></tr>';
+    html += '<tr id="loot-reassign-form-' + row.id + '" style="display:none;"><td colspan="5"></td></tr>';
+  }
+  html += '</tbody></table></div>';
+  content.innerHTML = html;
+}
+
+function showLootReassignForm(rowId) {
+  var formRow = document.getElementById('loot-reassign-form-' + rowId);
+  if (!formRow) return;
+  var cell = formRow.querySelector('td');
+  if (formRow.style.display !== 'none') {
+    formRow.style.display = 'none';
+    return;
+  }
+
+  var roster = (window.DATA && DATA.roster) || [];
+  var options = roster
+    .filter(function (p) {
+      return String(p.id) !== String(_lootReassignPlayerId);
+    })
+    .sort(function (a, b) {
+      return (a.nick || a.firstName).localeCompare(b.nick || b.firstName);
+    });
+
+  var html = '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;justify-content:center;">';
+  html += '<span style="font-size:1.02rem;">Reassign to:</span>';
+  html += '<select id="loot-reassign-target-' + rowId + '">';
+  html += '<option value="">-- Select a player --</option>';
+  for (var i = 0; i < options.length; i++) {
+    var p = options[i];
+    html +=
+      '<option value="' + p.id + '">' + escHtml(p.nick ? p.nick + ' (' + p.firstName + ')' : p.firstName) + '</option>';
+  }
+  html += '</select>';
+  html +=
+    '<button class="btn btn-gold" style="font-size:0.97rem;padding:0.2rem 0.6rem;" onclick="submitLootReassign(' +
+    rowId +
+    ')">Confirm</button>';
+  html +=
+    '<button class="btn btn-muted" style="font-size:0.97rem;padding:0.2rem 0.6rem;" onclick="document.getElementById(\'loot-reassign-form-' +
+    rowId +
+    "').style.display='none'\">Cancel</button>";
+  html += '<span id="loot-reassign-ind-' + rowId + '" style="font-size:0.97rem;"></span>';
+  html += '</div>';
+  cell.innerHTML = html;
+  formRow.style.display = '';
+}
+
+function submitLootReassign(rowId) {
+  var targetSel = /** @type {HTMLSelectElement} */ (document.getElementById('loot-reassign-target-' + rowId));
+  var ind = document.getElementById('loot-reassign-ind-' + rowId);
+  var newPlayerId = targetSel ? targetSel.value : '';
+  if (!newPlayerId) {
+    if (targetSel) targetSel.style.borderColor = 'var(--melee)';
+    return;
+  }
+
+  var row = _lootReassignRows.filter(function (r) {
+    return String(r.id) === String(rowId);
+  })[0];
+  var itemName = row && row.items && row.items.name ? row.items.name : 'Unknown Item';
+
+  var roster = (window.DATA && DATA.roster) || [];
+  var oldPlayer = roster.filter(function (p) {
+    return String(p.id) === String(_lootReassignPlayerId);
+  })[0];
+  var newPlayer = roster.filter(function (p) {
+    return String(p.id) === String(newPlayerId);
+  })[0];
+  var oldName = oldPlayer ? oldPlayer.nick || oldPlayer.firstName : 'Unknown';
+  var newName = newPlayer ? newPlayer.nick || newPlayer.firstName : 'Unknown';
+
+  if (targetSel) targetSel.disabled = true;
+  if (ind) {
+    ind.textContent = 'Saving...';
+    ind.style.color = 'var(--text-muted)';
+  }
+
+  supabaseClient
+    .from('rclc_loot')
+    .update({ player_id: newPlayerId })
+    .eq('id', rowId)
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      return writeAuditLog('Loot Reassigned', 'players', newPlayerId, itemName + ': ' + oldName + ' -> ' + newName);
+    })
+    .then(function () {
+      // Drop the row from this player's list -- it belongs to newPlayerId now.
+      _lootReassignRows = _lootReassignRows.filter(function (r) {
+        return String(r.id) !== String(rowId);
+      });
+      renderLootReassignRows();
+    })
+    .catch(function (err) {
+      if (targetSel) targetSel.disabled = false;
+      console.warn('Failed to reassign loot.', err);
+      if (ind) {
+        ind.textContent = 'Error: ' + err.message;
+        ind.style.color = 'var(--melee)';
+      }
+    });
 }

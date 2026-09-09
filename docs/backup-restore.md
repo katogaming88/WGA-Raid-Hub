@@ -49,7 +49,8 @@ Note the dependency, because it decides restore order: `priority_order` and `sco
 
 **In-app-only -- a lost/corrupted row here has no other source, and is only recoverable from a backup:**
 
-- `players` (the whole row, not just `officer_notes`: `nickname`, `join_date`, `is_trial`, `is_bench`, `bis_allowed`, `wishlist_allowed`, `is_backup_tank`, `is_backup_healer`, `m_plus_note` and the rest are all hand-entered)
+- `players` (the whole row: `nickname`, `join_date`, `is_trial`, `is_bench`, `bis_allowed`, `wishlist_allowed`, `is_backup_tank`, `is_backup_healer`, `m_plus_note` and the rest are all hand-entered)
+- `player_officer_notes` (the officer note and the removal reason behind each archived player, hand-entered; they lived on `players` until [#925](https://github.com/katogaming88/WGA-Raid-Hub/issues/925)). Deliberately **not** an `EMPTY_CHECK` floor: a team with nothing written down has no rows here, so an empty table is a legitimate state rather than the silent loss that check exists to catch.
 - `teams` (also the FK root of nearly every other table)
 - `site_admins` and `guild_officers` (empty means nobody can administer the site)
 - `item_preferences` (raider wishlists)
@@ -129,7 +130,7 @@ The order matters; each step exists because a later one depends on it.
 6. **Redeploy Edge Functions** (`supabase functions deploy`) and re-enter their secrets (Project Settings > Edge Functions).
 7. **Repoint the frontend**: new project ref and anon key in the js config; re-register the Discord OAuth redirect for the new auth callback URL.
 8. **Update the `SUPABASE_DB_URL` repo secret** to the new project's session pooler string so the nightly backup resumes against the new project.
-9. **Auth relink.** The new project's `auth.users` starts empty, so every login is a first login; `link_auth_user_to_member()` re-links members by `discord_id` and overwrites the stale `auth_user_id`. Recreate the nine FKs from step 3 as `not valid` (their definitions are in the migrations) so historical `audit_log.actor_id` values survive, then `validate constraint` once relinks settle or stale ids are nulled. `wga-auth-<date>.dump` is the reference copy of the old ids and Discord identities if anything needs untangling by hand.
+9. **Auth relink.** The new project's `auth.users` starts empty, so every login is a first login; `link_auth_user_to_member()` re-links by `discord_id` on first login across all four grant tables (`team_members`, `site_admins`, `boe_managers` and, since #910, `guild_officers`). **It does not overwrite a stale id**: every branch ends `and auth_user_id is null`, so a restored row that still carries an id from the dead project is never relinked and the person silently keeps no access. Null those ids before the relinks land (`update <table> set auth_user_id = null`), or nothing in this step does anything. Recreate the nine FKs from step 3 as `not valid` (their definitions are in the migrations) so historical `audit_log.actor_id` values survive, then `validate constraint` once relinks settle or stale ids are nulled. `wga-auth-<date>.dump` is the reference copy of the old ids and Discord identities if anything needs untangling by hand.
 
 ## Restore drill
 

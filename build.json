@@ -1,0 +1,6 @@
+---
+---
+{
+  "sha": "{{ site.github.build_revision }}",
+  "built": "{{ site.time | date_to_xmlschema }}"
+}

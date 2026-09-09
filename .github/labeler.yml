@@ -78,7 +78,11 @@ boe:
     - any-glob-to-any-file:
       - js/boe.js
       - js/boe-manage.js
+      - js/boe-page.js
       - supabase/functions/boe-webhook/**
+      - supabase/functions/boe-sold-webhook/**
+      - scripts/fetch-boe-items.js
+      - scripts/boe-names/**
 
 # The guild-wide landing page. guild.html is deliberately absent for the same
 # reason admin.html is above: every version stamp retags all four HTML files,
@@ -89,22 +93,57 @@ guild-page:
       - js/guild.js
       - css/guild.css
 
+# calendar.html is deliberately absent, same reason admin.html/guild.html are
+# above -- every version stamp retags it too, so listing it here would label
+# every release PR.
+calendar:
+  - changed-files:
+    - any-glob-to-any-file:
+      - js/calendar.js
+
 database:
   - changed-files:
     - any-glob-to-any-file:
       - supabase/**
       - dbdoc/**
 
-documentation:
+bot:
   - changed-files:
     - any-glob-to-any-file:
-      - docs/**
-      - dbdoc/**
-      - '*.md'
+      - bot/**
 
-skip-changelog:
-  - changed-files:
-    - all-globs-to-all-files:
-      - '!js/**'
-      - '!gs/**'
-      - '!*.html'
+# ---------------------------------------------------------------------------
+# The kind axis. Two axes live in this file and they are decided differently:
+# a subsystem label is decided by the files a PR touches, a kind label by the
+# branch it is on. That is the rule to apply when adding anything below.
+#
+# Keyed on the branch prefixes CONTRIBUTING already defines, so one label
+# predicts the branch name and exactly one kind label lands per PR (#953).
+# Only the four prefixes with an exact label are mapped; refactor/ and style/
+# have no label of their own and are still labelled by hand.
+#
+# documentation moved onto this axis in #953. It used to be keyed on docs/**,
+# dbdoc/** and *.md, which was the only kind label the bot applied, so nothing
+# collided. Once feat/, fix/ and chore/ are mapped it would: almost every PR
+# touches a .md, and a feat/ PR with a CHANGELOG line would arrive as both
+# enhancement and documentation. A PR is documentation because that is what it
+# is, not because it happens to edit a file ending in .md.
+# ---------------------------------------------------------------------------
+enhancement:
+  - head-branch: ['^feat/']
+
+bug:
+  - head-branch: ['^fix/']
+
+chore:
+  - head-branch: ['^chore/']
+
+documentation:
+  - head-branch: ['^docs/']
+
+# The skip-changelog rule that used to sit here is gone (#1019). It applied
+# the label to any diff touching no shipped path, and that label turned all
+# three changelog gates off, so tests, CI, docs and news.json reached main
+# with no version and no entry. Every PR a person opens now bumps and logs;
+# what a PR that ships none of the four owes is a `### Project` line, which
+# is a rule about the changelog rather than about labels.

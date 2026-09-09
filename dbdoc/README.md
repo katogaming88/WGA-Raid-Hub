@@ -10,11 +10,11 @@
 | [public.bis_requests](public.bis_requests.md) | 8 |  | BASE TABLE |
 | [public.classes_specs](public.classes_specs.md) | 4 |  | BASE TABLE |
 | [public.item_bosses](public.item_bosses.md) | 2 |  | BASE TABLE |
-| [public.items](public.items.md) | 13 |  | BASE TABLE |
+| [public.items](public.items.md) | 14 |  | BASE TABLE |
 | [public.rclc_loot](public.rclc_loot.md) | 11 |  | BASE TABLE |
 | [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) | 9 |  | BASE TABLE |
 | [public.player_wcl_season_perf](public.player_wcl_season_perf.md) | 7 |  | BASE TABLE |
-| [public.players](public.players.md) | 24 |  | BASE TABLE |
+| [public.players](public.players.md) | 22 |  | BASE TABLE |
 | [public.priority_order](public.priority_order.md) | 8 |  | BASE TABLE |
 | [public.scoring](public.scoring.md) | 10 |  | BASE TABLE |
 | [public.season_signups](public.season_signups.md) | 18 |  | BASE TABLE |
@@ -44,13 +44,20 @@
 | [public.guild_officers](public.guild_officers.md) | 3 |  | BASE TABLE |
 | [public.tier_token_map](public.tier_token_map.md) | 5 |  | BASE TABLE |
 | [public.no_character_dismissals](public.no_character_dismissals.md) | 3 |  | BASE TABLE |
-| [public.boe_items](public.boe_items.md) | 21 |  | BASE TABLE |
+| [public.boe_items](public.boe_items.md) | 26 |  | BASE TABLE |
 | [public.boe_listings](public.boe_listings.md) | 8 |  | BASE TABLE |
 | [public.boe_managers](public.boe_managers.md) | 4 |  | BASE TABLE |
 | [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) | 8 | Officer-acknowledged Priority List same-boss conflicts (a player holding #1 on 2+ items behind one boss+track kill), so buildPriorityConflictsBannerHtml() (js/tabs/tab-priority.js) stops re-flagging a reviewed one. | BASE TABLE |
 | [public.player_equipped_gear](public.player_equipped_gear.md) | 7 | One row per player per physical gear slot (Blizzard API slot keys: HEAD, FINGER_1, FINGER_2, ...), synced from the Blizzard Character Equipment Summary endpoint. Feeds generate_priority_order()'s equipped-item-level fairness factor. | BASE TABLE |
 | [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) | 5 | Marks a team/season/item/track priority list as deliberately saved empty (no one wants the item) -- keeps it out of the Unmanaged Items list without a placeholder priority_order row. Cleared automatically the next time that item/track is saved with a non-empty roster. | BASE TABLE |
 | [public.priority_stale_dismissals](public.priority_stale_dismissals.md) | 7 | Officer-acknowledged "stale-after-Heroic" Priority List conflicts (a Mythic #1 who already has the Heroic version of the same item), so buildPriorityConflictsBannerHtml() (js/tabs/tab-priority.js) stops re-flagging a reviewed one. Sibling to priority_conflict_dismissals, kept separate since this is keyed by player+item rather than player+boss+track. | BASE TABLE |
+| [public.raid_schedule](public.raid_schedule.md) | 9 | The raid calendar's officer-owned recurring weekly rule (#892, part of #640): one row per weekday/time this team normally raids. is_optional flags a night with no automatic default-Present (#895) -- every non-bench roster player must explicitly RSVP. Raid nights are computed on the fly from this table plus raid_schedule_exceptions (js/calendar.js, computeRaidNights()), not materialized as rows. | BASE TABLE |
+| [public.raid_schedule_exceptions](public.raid_schedule_exceptions.md) | 10 | One-off cancellation or addition on top of raid_schedule's recurring rule (#892) -- exception_type distinguishes skipping a normally-scheduled night from adding an extra one. is_optional only applies to an 'added' row. | BASE TABLE |
+| [public.raid_rsvps](public.raid_rsvps.md) | 8 | A raider's self-declared override for one raid night (#893, part of #640) -- absence of a row means the computed default (Present, or Bench/Rotator via players.is_bench/is_rotator) applies. Forward-looking intent only, never synced into public.attendance. Written only through set_own_rsvp() or officer_set_rsvp() (SECURITY DEFINER); the Rotator-In status is written only through officer_set_rotator_week(). No direct INSERT/UPDATE/DELETE grant for anyone. | BASE TABLE |
+| [public.raid_rsvp_reminders_sent](public.raid_rsvp_reminders_sent.md) | 6 | Dedup log for the optional-night DM reminder sweep (#895, part of #640) -- records that a 24h/2h reminder was already sent for a player/raid_date/checkpoint so the cron sweep does not re-DM on every tick. Insert-only, written solely by the optional-rsvp-reminders Edge Function via the service role. Not the source of truth for whether a player has responded -- that is raid_rsvps. | BASE TABLE |
+| [public.raid_signup_sheets](public.raid_signup_sheets.md) | 6 | Bookkeeping for the bot-owned aggregated signup-sheet Discord message (#900, part of #640): tracks which channel/message holds the one edited-in-place embed per team/raid_date. Written and read only by the bot's service-role client via claim_raid_signup_sheet(); no read use case for an officer or end user. Mirrors raid_rsvp_reminders_sent's locked-down shape (#895). | BASE TABLE |
+| [public.player_officer_notes](public.player_officer_notes.md) | 6 | Officer-only annotations on a roster slot (#925): the private officer note, and why a player was removed plus the freeform specifics (#476). One row per players row, created on first write. These lived on players until #925, where the table's public read policy and its table-level anon grant made them readable with the publishable key and by every signed-in raider. m_plus_note stayed on players because the public profile renders it. archived_reason keeps the fixed vocabulary its old CHECK constraint carried. | BASE TABLE |
+| [public.team_discord_config](public.team_discord_config.md) | 12 | Per-team Discord infra config for the consolidated multi-tenant bot (#991): guild/channel/role ids and script URLs the bot needs to route a relayed action to the right place. Written and read only by the bot's service-role client; no read use case for an officer or end user. Mirrors raid_signup_sheets' locked-down shape (#900). | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -108,10 +115,7 @@
 | public.wishlist_setup_status | record | p_team_id integer | FUNCTION |
 | public.check_team_id_matches_boe_item | trigger |  | FUNCTION |
 | public.check_boe_status_transition | trigger |  | FUNCTION |
-| public.submit_boe_found | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_note text DEFAULT NULL::text | FUNCTION |
 | public.boe_record_listing | void | p_id integer, p_price bigint, p_listed_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_note text DEFAULT NULL::text | FUNCTION |
-| public.boe_record_sale | record | p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone | FUNCTION |
-| public.boe_mark_paid | void | p_id integer, p_paid_at timestamp with time zone DEFAULT NULL::timestamp with time zone | FUNCTION |
 | public.boe_retire | void | p_id integer, p_note text DEFAULT NULL::text | FUNCTION |
 | public.boe_revert | text | p_id integer | FUNCTION |
 | public.set_boe_payout_settings | void | p_floor bigint, p_pivot bigint | FUNCTION |
@@ -125,6 +129,21 @@
 | public.remove_player_priority_order | int4 | p_team_id integer, p_season text, p_player_id integer | FUNCTION |
 | public.set_team_officer_bios | jsonb | p_team_id integer, p_bios jsonb | FUNCTION |
 | public.build_rclc_export | jsonb | p_team_id integer, p_season text, p_track text | FUNCTION |
+| public.boe_mark_paid | void | p_id integer, p_paid_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_donated boolean DEFAULT false | FUNCTION |
+| public.submit_boe_found | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_donate boolean DEFAULT false, p_upgrade_rank text DEFAULT NULL::text | FUNCTION |
+| public.set_own_rsvp | void | p_team_id integer, p_raid_date date, p_status text, p_note text DEFAULT NULL::text | FUNCTION |
+| public.boe_record_sale | record | p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone | FUNCTION |
+| public.can_settle_boe | bool | p_team_id integer | FUNCTION |
+| public.current_discord_id | text |  | FUNCTION |
+| public.admin_grant_team_role | uuid | p_team_id integer, p_discord_id text, p_role text | FUNCTION |
+| public.admin_revoke_team_role | void | p_team_id integer, p_discord_id text | FUNCTION |
+| public.is_optional_raid_night | bool | p_team_id integer, p_raid_date date | FUNCTION |
+| public.claim_raid_signup_sheet | text | p_team_id integer, p_raid_date date, p_channel_id text | FUNCTION |
+| public.raid_night_info | record | p_team_id integer, p_raid_date date | FUNCTION |
+| public.resolve_boe_finder_discord_id | text | p_boe_id integer | FUNCTION |
+| public.archive_player | timestamptz | p_player_id integer, p_reason text, p_detail text | FUNCTION |
+| public.officer_set_rsvp | void | p_team_id integer, p_player_id integer, p_raid_date date, p_status text, p_note text | FUNCTION |
+| public.officer_set_rotator_week | void | p_team_id integer, p_player_id integer, p_week_start date, p_in boolean | FUNCTION |
 
 ## Enums
 
@@ -207,6 +226,17 @@ erDiagram
 "public.priority_stale_dismissals" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.priority_stale_dismissals" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.priority_stale_dismissals" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.raid_schedule" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.raid_schedule_exceptions" }o--o| "public.team_members" : "FOREIGN KEY (created_by) REFERENCES team_members(id) ON DELETE SET NULL"
+"public.raid_schedule_exceptions" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.raid_rsvps" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.raid_rsvps" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.raid_rsvp_reminders_sent" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.raid_rsvp_reminders_sent" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.raid_signup_sheets" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.player_officer_notes" |o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.player_officer_notes" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_discord_config" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -272,6 +302,7 @@ erDiagram
   boolean is_ptr
   jsonb main_stats
   text weapon_subtype
+  boolean is_boe
 }
 "public.rclc_loot" {
   integer id
@@ -322,15 +353,13 @@ erDiagram
   timestamp_with_time_zone archived_at
   timestamp_with_time_zone updated_at
   boolean bis_allowed
-  text officer_notes
   boolean is_backup_tank
   boolean is_backup_healer
   boolean wishlist_allowed
   integer tier_pieces_equipped
   timestamp_with_time_zone tier_pieces_synced_at
   integer bonus_roll_encounter_id FK
-  text archived_reason
-  text archived_reason_detail
+  boolean is_rotator
 }
 "public.priority_order" {
   integer id
@@ -632,6 +661,11 @@ erDiagram
   bigint payout_pivot
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
+  boolean payout_donated
+  text upgrade_rank
+  bigint ah_fee
+  text finder_discord_id
+  timestamp_with_time_zone found_posted_at
 }
 "public.boe_listings" {
   integer id
@@ -683,6 +717,77 @@ erDiagram
   integer item_id FK
   uuid dismissed_by FK
   timestamp_with_time_zone dismissed_at
+}
+"public.raid_schedule" {
+  integer id
+  integer team_id FK
+  integer weekday
+  time_without_time_zone start_time
+  text timezone
+  integer duration_minutes
+  boolean active
+  boolean is_optional
+  timestamp_with_time_zone created_at
+}
+"public.raid_schedule_exceptions" {
+  integer id
+  integer team_id FK
+  date raid_date
+  text exception_type
+  time_without_time_zone start_time
+  integer duration_minutes
+  boolean is_optional
+  text note
+  integer created_by FK
+  timestamp_with_time_zone created_at
+}
+"public.raid_rsvps" {
+  integer id
+  integer team_id FK
+  integer player_id FK
+  date raid_date
+  text status
+  text note
+  timestamp_with_time_zone created_at
+  timestamp_with_time_zone updated_at
+}
+"public.raid_rsvp_reminders_sent" {
+  integer id
+  integer team_id FK
+  integer player_id FK
+  date raid_date
+  text checkpoint
+  timestamp_with_time_zone sent_at
+}
+"public.raid_signup_sheets" {
+  integer id
+  integer team_id FK
+  date raid_date
+  text channel_id
+  text message_id
+  timestamp_with_time_zone updated_at
+}
+"public.player_officer_notes" {
+  integer player_id FK
+  integer team_id FK
+  text officer_notes
+  text archived_reason
+  text archived_reason_detail
+  timestamp_with_time_zone updated_at
+}
+"public.team_discord_config" {
+  integer team_id FK
+  text guild_id
+  text officer_channel_id
+  text attendance_channel_id
+  text signup_channel_id
+  text mplus_ping_role_id
+  text roster_ping_role_id
+  text rsvp_ping_role_id
+  text apps_script_url
+  text roster_script_url
+  timestamp_with_time_zone created_at
+  timestamp_with_time_zone updated_at
 }
 ```
 

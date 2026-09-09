@@ -486,48 +486,101 @@ the tab at all. In practice this is usually one or two people per team. Five sub
 
 ---
 
-## BoE Sales (on the guild page, not this dashboard)
+## BoE Sales (its own page, `boe.html`)
 
-Reached from the **Guild** link in the top nav, then **BoE Sales** in the guild page's own
-nav. That item appears only for someone who can open the section, so if it isn't there, the
-access rules below are the reason. It lived
-on this dashboard as a tab until #774 moved it: BoEs are guild property and the read spans
-every team, so a per-team page was the wrong home, and a BoE manager who runs the guild
-bank without staffing a raid team could not open this dashboard at all. An old
-`?tab=boe` bookmark redirects there.
+Reached from the **BoE Sales** link in this dashboard's site nav, or from the same link in
+the guild page's nav. Both are plain links since [#890](https://github.com/katogaming88/WGA-Raid-Hub/issues/890): the page is open to anyone
+signed in and scopes itself, so there is nothing left to gate them on and no access check to
+wait for. The guild page hides its link only when no team runs BoE at all. It lived on this dashboard as a tab
+until #774 moved it to the guild page: BoEs are guild property and the read spans every
+team, so a per-team page was the wrong home, and a BoE manager who runs the guild bank
+without staffing a raid team could not open this dashboard at all. #864 then gave it a page
+of its own, because it was by far the longest thing on the guild page once history loaded,
+it is officer-facing where everything around it there is raider-facing, and it had to hide
+itself until three access checks answered. An old `?tab=boe` bookmark redirects to the
+page. Signed out, the page offers Discord sign-in and comes back to itself afterwards.
 
 Runs the auction lifecycle for BoEs the guild sells -- **found -> listed -> sold -> paid**, plus
-**retire** for anything that never moves. Raiders report a find from the public **BoE** tab
-(#746) or the guild page card; everything after the report happens here.
+**retire** for anything that never moves. Raiders report a find from the form at the top of this
+same page (#746, moved here from index.html's BoE tab in [#891](https://github.com/katogaming88/WGA-Raid-Hub/issues/891)); everything after the
+report happens below it. Reporting still needs no login.
 
-- **The tab is guild-wide, not per-team** (#765). It shows every find you're allowed to see
+A BoE that went into the guild bank before it was reported can't be reported by its finder: the
+bank shows a deposited BoE at a base item level with no track or upgrade rank, and the form
+requires both ([#885](https://github.com/katogaming88/WGA-Raid-Hub/pull/885)). The strict rule stands on purpose: no "not sure" rank and no manager-side create form. The
+recovery is the form itself, which needs no login: withdraw the item, read the track and rank off
+its tooltip, and submit the report with the raider's character as the finder.
+
+- **The page is guild-wide, not per-team** (#765). It shows every find you're allowed to see
   rather than only the team whose page you're on, because BoEs are guild property. A BoE manager
   or site admin sees all four teams, Wrathless included; a plain officer sees the teams they
-  staff. Every row names the finding team, History included -- that's credit, not a
-  disambiguator.
-- **Actions need the BoE manager grant** (#766), assigned by a site admin on the site admin
-  dashboard. Without it it is read-only: totals and rows, no buttons. Officers on any team
-  see it read-only; everyone else does not see the section at all. The grant is
+  staff; a raider sees the finds reported under their own character, plus anything they reported
+  while signed in ([#889](https://github.com/katogaming88/WGA-Raid-Hub/issues/889), [#890](https://github.com/katogaming88/WGA-Raid-Hub/issues/890)). Every row names the finding team, History included --
+  that's credit, not a disambiguator.
+- **Who may do what** ([#890](https://github.com/katogaming88/WGA-Raid-Hub/issues/890)). Listing, sale, retire, un-retire, undo sale and edit need the
+  **BoE manager grant** (#766), assigned by a site admin on the site admin dashboard; the grant is
   guild-wide, so a manager is authorized on every team's finds rather than one team's.
+  **Mark Paid**, **Donate to Guild** and **Undo Payout** are open to an officer or team leader on
+  that row's own team as well ([#888](https://github.com/katogaming88/WGA-Raid-Hub/issues/888)), because they're the ones handing out the gold. The
+  buttons follow the row, not the page: an officer of one team gets no settle buttons on another
+  team's row, and the Actions column drops out of a section where nothing is theirs. A raider gets
+  rows and no buttons, plus a line saying who handles the rest.
 
 A summary strip and three sections:
 
-- **Summary** -- **Guild income to date** (the guild's cut across sold and paid rows) and
-  **Outstanding payouts** (what's still owed on sold-but-unpaid rows). Per-team find counts and
-  gold raised sit underneath, shown only once more than one team has found something.
-- **Open** -- found and listed items, oldest first. **Record Listing** logs a price and an
+- **Summary** -- **Guild income to date** (the guild's cut across sold and paid rows, net of the
+  auction house fee, plus any finder's cut kept by the guild) and **Outstanding payouts** (what's still owed on
+  sold-but-unpaid rows, a donating row included until it is settled). **Donated by finders**
+  appears once there is one. Per-team find counts and
+  gold raised sit underneath, shown only once more than one team has found something. A raider
+  doesn't get **Guild income to date**: summed over their own handful of finds it would be a wrong
+  number rather than a partial one ([#890](https://github.com/katogaming88/WGA-Raid-Hub/issues/890)).
+- **Open** -- found and listed items, oldest first. The Item cell carries the track and the
+  upgrade rank in one badge ("Champion 2/6", [#865](https://github.com/katogaming88/WGA-Raid-Hub/issues/865)); that pair is
+  what tells two finds of the same item apart. **Record Listing** logs a price and an
   optional note; an item can be listed more than once, so relists accumulate rather than replace
-  each other. **Record Sale** takes the sale price and computes the split. **Retire** closes out
-  anything that isn't going to sell.
+  each other. **Record Sale** takes the sale price, computes the split, and posts the finder's ping to
+  Discord ([#873](https://github.com/katogaming88/WGA-Raid-Hub/issues/873)): the item, the four
+  money lines, and to see their raid leaders or the BoE manager in the 15 minutes before raid for
+  the gold. Raid leaders are named as a role; the manager is a live mention of whoever holds the
+  grant, read when the message is posted, so it follows a grant change with no edit here. Only the
+  finder is notified: the manager mention is a clickable name and not a ping, or the grant holder
+  would hear about every sale all season. A finder who ticked the donate box gets a thank-you
+  line instead of a contact line.
+  **Undo Sale does not retract the post** -- delete it in Discord by hand if a sale was recorded
+  in error. If an older find of the
+  same item on the same track and rank is still open anywhere in the guild, it asks first and
+  names that finder and date: identical items at the same rank are one queue and the first
+  reported sells first. It is a warning, not a block, since you may know exactly which one sold.
+  A different rank never asks. **Retire** closes out anything that isn't going to sell.
 - **Awaiting Payout** -- sold items, oldest first, with the split already computed.
-  **Mark Paid** once the finder has their gold; the row moves to History.
-- **History** -- paid and retired items, newest first.
+  **Mark Paid** once the finder has their gold; the row moves to History. **Donate to Guild**
+  records the same settlement with the finder's cut kept by the guild
+  ([#862](https://github.com/katogaming88/WGA-Raid-Hub/issues/862)): History reads Donated
+  instead of Paid with Finder payout 0g and the sale net of the fee as guild cut, and guild income
+  counts it. The split stored on the row stays what policy said, which is what Undo Payout puts back. A row whose finder ticked the donate box shows a Donating marker in its Status cell so
+  you know which button to reach for; Mark Paid on it clears the marker, because the button
+  decides. An undone payout keeps the marker. **Undo Sale** puts a sale recorded by mistake
+  back in Open.
+- **History** -- paid and retired items, newest first, twenty to a page. Previous and Next
+  sit under the table and a line beneath them says which rows are showing; the page you are
+  on survives a Mark Paid or an undo. **Undo Payout** and **Un-retire** put a row back where it
+  was, in Awaiting Payout or Open.
+- **Edit** -- on every row in all three sections. It opens the item name, the track, the
+  upgrade rank and the note under the row, prefilled; Save writes them together and puts the
+  corrected name in place, Cancel puts the fields back. Rows imported from the sheets have no rank,
+  which is what the blank option on that select is for. A blank name is refused on the row, unchanged values write
+  nothing, and the audit entry (BoE Find Edited) keeps the old and new values, so a raider's
+  original words survive a rewrite. Money and status are not editable here.
 
 **The split** is guild policy and guild-wide rather than per-team, set on the site admin
-dashboard: the finder gets a percentage of the gross sale, or a flat floor below a pivot sale
-price, whichever is larger, and never more than the sale itself. The guild keeps the rest and
-absorbs the AH cut. Both constants are snapshotted onto each sold row, so editing the policy
-later never rewrites what an earlier sale paid out.
+dashboard: the game keeps its 5% auction house fee off the top
+([#861](https://github.com/katogaming88/WGA-Raid-Hub/issues/861)), the finder gets a percentage
+of the gross sale, or a flat floor below a pivot sale price, whichever is larger, and never more
+than the sale minus the fee, and the guild keeps the rest. The fee is the game's fixed rate, not
+a setting. Both constants and the fee are snapshotted onto each sold row, so editing the policy
+later never rewrites what an earlier sale paid out. Awaiting Payout and History show the fee in
+its own column, and **Guild cut (net)** is what the bank actually receives.
 
 Price fields take the formats people actually paste -- `250,000`, `250000g`, `1 000 000`.
 Anything else is refused with a message on the row rather than read as zero.

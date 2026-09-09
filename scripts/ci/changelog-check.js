@@ -1,13 +1,25 @@
 // changelog-check.js
-// Classifies a PR diff for the Changelog Check workflow (#353): which side
-// of the app changed (frontend/backend), whether the VERSION in js/common.js
-// was bumped, and which CHANGELOG.md sections gained entries. Also reports
-// whether news.json was touched, reused by the separate needs-news-entry
-// nudge workflow (#525) so it doesn't need its own diff classification.
+// Classifies a PR diff for the Changelog Check workflow (#353, extended by
+// #966): which shipped pieces changed, whether the VERSION in js/common.js
+// was bumped, which CHANGELOG.md sections gained entries, and whether the
+// version heading a PR adds is legal. Also reports whether news.json was
+// touched, reused by the needs-news-entry nudge in the same workflow (#525)
+// so it doesn't need its own diff classification.
 //
-// Frontend paths drive VERSION. The js/common.js VERSION line itself does
-// not count as a frontend change, so complying with "bump VERSION" cannot
-// itself mark a PR functional (the circularity #353 describes).
+// Four shipped pieces, one version line. A change to any of them requires
+// that piece's CHANGELOG section AND the bump (#965): the number names the
+// release, not the frontend. Before #966 only frontend paths drove VERSION,
+// so migrations, Edge Functions and the bot all moved without it.
+//
+// Since #1019 a PR that ships to none of the four owes the bump and an entry
+// too, under a fifth ### Project heading. Before it, the skip-changelog label
+// exempted that whole class, so every test, CI, docs and news.json change
+// reached main with no version and no line, and the release history read as
+// though those days had no releases.
+//
+// The js/common.js VERSION line itself does not count as a frontend change,
+// so complying with "bump VERSION" cannot itself mark a PR functional (the
+// circularity #353 describes).
 //
 // No external dependencies, so the workflow can run it without npm ci.
 //
@@ -19,32 +31,180 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
-// Same path rules the workflow used inline before #353, minus js/common.js
-// (handled separately via its diff content). css/ counts as frontend too --
-// missed in the original #353 rules, caught by #361 tripping the reverse
-// (bump without a frontend change) check on a CSS-only fix.
-const FRONTEND_PATH = /^(js|gs)\/.+\.(js|html)$|^css\/.+\.css$|^[^/]+\.html$/;
-const BACKEND_PATH = /^(supabase\/migrations|scripts\/import)\//;
-const VERSION_LINE = /^[+-]var VERSION\b/;
+// The shipped pieces, in the order their sections appear in CHANGELOG.md.
+// A path outside all four ships to no product piece: supabase/config.toml,
+// seed.sql and roles.sql change how a piece deploys or seeds rather than what
+// it does, and docs, tests and scripts/ci are not shipped at all. Those are
+// the project class below, which owes a version and an entry like everything
+// else and only differs in which heading it writes under.
+//
+// css/ counts as frontend -- missed in the original #353 rules, caught by
+// #361 tripping the reverse (bump without a frontend change) check on a
+// CSS-only fix. gs/ was dropped in #966: kat deleted that directory on
+// 2026-09-04 (#912, #913), so the rule only stood to misclassify anything
+// later recreated at the path.
+export const SHIPPED_CLASSES = [
+  { name: 'frontend', section: 'Frontend', pattern: /^js\/.+\.(js|html)$|^css\/.+\.css$|^[^/]+\.html$/ },
+  { name: 'db', section: 'Backend', pattern: /^(supabase\/migrations|scripts\/import)\// },
+  { name: 'functions', section: 'Functions', pattern: /^supabase\/functions\// },
+  { name: 'bot', section: 'Bot', pattern: /^bot\// }
+];
+
+// The fifth section (#1019), and deliberately not a shipped class: `shipped`
+// still means "one of the four product pieces moved", which is what the
+// manifest, the piece versions and the deploy checks are all built on.
+//
+// It needs no path rule of its own. A PR that ships to none of the four is
+// exactly the PR whose changes belong here, so "no shipped class changed" is
+// the condition, and the only thing the classifier has to learn is the
+// heading. Trying to name project paths by pattern was the first design and
+// it collapsed: every stamped PR rewrites version.json and six root pages, so
+// the pattern immediately needed the same exclusion list the shipped classes
+// already carry, to answer a question nothing asks.
+export const PROJECT_CLASS = { name: 'project', section: 'Project' };
+
+// The lines in js/common.js the stamper writes rather than a person: VERSION,
+// and REQUIRED_SCHEMA, which it fills from the newest migration in the tree.
+// Neither marks the frontend as changed. VERSION for the reason #353 gives
+// (complying with "bump VERSION" must not itself make a PR look functional),
+// and REQUIRED_SCHEMA because it moves as a consequence of a migration: a
+// database-only release would otherwise still demand a Frontend entry, which
+// is the same hole the ?v= asset tags opened.
+const STAMPED_COMMON_LINES = [/^[+-]var VERSION\b/, /^[+-]var REQUIRED_SCHEMA\b/];
+const VERSION_HEADING = /^## \[(\d+\.\d+\.\d+)\]/;
+
+// Which shipped class a path belongs to, or null for chore territory.
+// js/common.js is excluded here and decided by its diff content instead.
+export function classifyPath(path) {
+  if (path === 'js/common.js') return null;
+  const hit = SHIPPED_CLASSES.find((c) => c.pattern.test(path));
+  return hit ? hit.name : null;
+}
 
 export function isFrontendPath(path) {
-  return path !== 'js/common.js' && FRONTEND_PATH.test(path);
+  return classifyPath(path) === 'frontend';
 }
 
+// Kept under its #353 name: "backend" is what the CHANGELOG section and the
+// workflow output have always been called, and renaming the output would
+// break the nudge and every existing reader.
 export function isBackendPath(path) {
-  return BACKEND_PATH.test(path);
+  return classifyPath(path) === 'db';
 }
 
-// True when js/common.js changed beyond its VERSION line.
+// True when js/common.js changed beyond the lines the stamper writes.
 export function commonJsIsFunctional(diff) {
   return diff
     .split('\n')
     .filter((line) => /^[+-]/.test(line) && !/^(\+\+\+|---)/.test(line))
-    .some((line) => !VERSION_LINE.test(line));
+    .some((line) => !STAMPED_COMMON_LINES.some((pattern) => pattern.test(line)));
 }
 
 export function hasVersionBump(diff) {
   return diff.split('\n').some((line) => /^\+var VERSION\b/.test(line));
+}
+
+// The stamp (scripts/ci/stamp-version.js) rewrites the ?v= cache-bust token on
+// every local css/ and js/ asset in all six pages, plus the versionNum footer
+// span, on every release. So a release that ships nothing but a migration still
+// arrives with six changed root pages, and classifyPath calls each of them
+// frontend. #966 and #967 shipped that hole together and neither could show it,
+// because every PR since really did change the frontend.
+//
+// These two patterns are exactly what stampAll writes into a page and nothing
+// else. The asset one is anchored to the same local css/ and js/ paths
+// localAssetPattern() matches, so a ?v= that belongs to somebody else (a
+// YouTube link, a pinned CDN url) is left alone. The span one names versionNum
+// only: guild.html and boe.html fill guildVersion and boeVersion at runtime and
+// the stamper never writes them, so an edit there is a real edit.
+const STAMP_PATTERNS = [
+  [/((?:href|src)="(?:css|js)\/[^"?]*)\?v=[^"]*"/g, '$1?v="'],
+  [/(<span id="versionNum">)[^<]*(<\/span>)/g, '$1$2']
+];
+
+/**
+ * A page's text with the stamp taken back out, so two releases of it compare
+ * equal. Line endings are normalised because one caller (the stamper's own
+ * changedPaths) compares a git blob, always LF, against the working tree,
+ * which is CRLF on a Windows checkout with autocrlf on. Without this the
+ * filter would silently never fire on one of the two machines that use it.
+ */
+export function withoutStamp(source) {
+  return STAMP_PATTERNS.reduce(
+    (text, [pattern, replacement]) => text.replace(pattern, replacement),
+    source.replace(/\r\n/g, '\n')
+  );
+}
+
+// Whole-file comparison rather than a diff heuristic. A multiset of changed
+// diff lines would call two swapped script tags a stamp, and load order is the
+// thing that matters most in these files. An empty side means the page was
+// added or deleted, which is a real change with no stamp to take out.
+export function pageIsStampOnly(baseSource, headSource) {
+  if (baseSource === '' || headSource === '') return false;
+  return withoutStamp(baseSource) === withoutStamp(headSource);
+}
+
+// Root pages are the only files the stamper rewrites beyond js/common.js.
+// Deliberately wider than stamp-version.js's PAGES list, which cannot be
+// imported here without a cycle: a root page outside that list is never
+// stamped, so its diff is never stamp-only and the comparison decides it
+// correctly anyway.
+export function isRootPage(path) {
+  return /^[^/]+\.html$/.test(path);
+}
+
+// Numeric field-by-field, because string order puts 3.10.0 below 3.9.0 and
+// this file is deep enough into 3.x for that to matter every day.
+export function compareVersions(a, b) {
+  const left = a.split('.').map(Number);
+  const right = b.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if (left[i] !== right[i]) return left[i] - right[i];
+  }
+  return 0;
+}
+
+function versionHeadings(content) {
+  return content
+    .split('\n')
+    .map((line) => line.match(VERSION_HEADING))
+    .filter(Boolean)
+    .map((m) => m[1]);
+}
+
+// Versions whose heading count went up. A multiset difference rather than a
+// set one, so a PR that adds a second block for a number already present is
+// seen as adding it, which is exactly the collision being caught.
+export function addedHeadings(baseContent, newContent) {
+  const before = new Map();
+  for (const v of versionHeadings(baseContent)) before.set(v, (before.get(v) ?? 0) + 1);
+  const added = [];
+  const seen = new Map();
+  for (const v of versionHeadings(newContent)) {
+    seen.set(v, (seen.get(v) ?? 0) + 1);
+    if (seen.get(v) > (before.get(v) ?? 0)) added.push(v);
+  }
+  return added;
+}
+
+// Reads only what the PR adds, so the three collisions already on main
+// (3.77.23, 3.60.32 and 3.60.6) stay legal and nothing has to be renumbered:
+// a released number is never reissued (#965).
+export function headingProblems(baseContent, newContent) {
+  const existing = versionHeadings(baseContent);
+  const highest = existing.length ? existing.reduce((a, b) => (compareVersions(a, b) > 0 ? a : b)) : null;
+  const problems = [];
+  for (const version of addedHeadings(baseContent, newContent)) {
+    if (existing.includes(version)) {
+      problems.push(`${version} already has a heading in CHANGELOG.md on the base branch`);
+      continue;
+    }
+    if (highest && compareVersions(version, highest) <= 0) {
+      problems.push(`${version} does not sort above ${highest}, the newest heading on the base branch`);
+    }
+  }
+  return problems;
 }
 
 // Reports which CHANGELOG.md sections gained content. Each added line counts
@@ -75,18 +235,17 @@ export function changelogSections(diff, newContent) {
     newLine++; // context line
   }
 
-  const result = { frontend: false, backend: false };
+  const walked = [...SHIPPED_CLASSES, PROJECT_CLASS];
+  const byHeading = new Map(walked.map((c) => [`### ${c.section}`, c.name]));
+  const result = Object.fromEntries(walked.map((c) => [c.name === 'db' ? 'backend' : c.name, false]));
   for (const lineNo of addedLineNos) {
     const text = (fileLines[lineNo - 1] ?? '').trim();
     if (text === '' || text === '---' || text.startsWith('#')) continue;
     for (let i = lineNo - 2; i >= 0; i--) {
       const heading = fileLines[i].trim();
-      if (heading === '### Frontend') {
-        result.frontend = true;
-        break;
-      }
-      if (heading === '### Backend') {
-        result.backend = true;
+      const cls = byHeading.get(heading);
+      if (cls) {
+        result[cls === 'db' ? 'backend' : cls] = true;
         break;
       }
       if (/^##[#]? /.test(heading)) break; // version block or foreign section
@@ -99,33 +258,110 @@ function git(args, cwd) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' });
 }
 
+function gitOrEmpty(args, cwd) {
+  try {
+    return git(args, cwd);
+  } catch {
+    return ''; // the file does not exist on that side of the range
+  }
+}
+
+// The output key a class reports under. "db" answers to "backend" for the
+// same reason isBackendPath does: the name is load bearing in the workflow.
+function outputKey(name) {
+  return name === 'db' ? 'backend' : name;
+}
+
+// The commit the diff range is actually measured from. Falls back to the ref
+// itself where there is no common ancestor to find (a shallow clone), which
+// only widens what counts as changed and never narrows it.
+export function mergeBaseOf(baseRef, cwd) {
+  try {
+    // Trimmed: git() hands back raw stdout, and a sha with its newline still
+    // attached turns every later `git show <base>:<path>` into a silent miss.
+    return git(['merge-base', baseRef, 'HEAD'], cwd).trim();
+  } catch {
+    return baseRef;
+  }
+}
+
 export function classify(baseRef, cwd = process.cwd()) {
   const range = `${baseRef}...HEAD`;
   const files = git(['diff', '--name-only', range], cwd).split('\n').filter(Boolean);
 
   const commonDiff = files.includes('js/common.js') ? git(['diff', range, '--', 'js/common.js'], cwd) : '';
-  const frontend = files.some(isFrontendPath) || (commonDiff !== '' && commonJsIsFunctional(commonDiff));
-  const backend = files.some(isBackendPath);
+  const commonIsFunctional = commonDiff !== '' && commonJsIsFunctional(commonDiff);
   const versionBump = commonDiff !== '' && hasVersionBump(commonDiff);
 
-  let sections = { frontend: false, backend: false };
+  // Pages carrying nothing but the stamp are not a frontend change, the same
+  // way js/common.js's VERSION line is not: complying with "stamp the product"
+  // must not itself be the shipped change that justifies the stamp. Compared
+  // against the merge base rather than the base tip, so the two sides match
+  // the diff that produced `files`.
+  const mergeBase = mergeBaseOf(baseRef, cwd);
+  const stampOnly = new Set(
+    files
+      .filter(isRootPage)
+      .filter((f) =>
+        pageIsStampOnly(gitOrEmpty(['show', `${mergeBase}:${f}`], cwd), gitOrEmpty(['show', `HEAD:${f}`], cwd))
+      )
+  );
+
+  const changed = {};
+  for (const c of SHIPPED_CLASSES) {
+    changed[c.name] = files.some((f) => !stampOnly.has(f) && classifyPath(f) === c.name);
+  }
+  changed.frontend = changed.frontend || commonIsFunctional;
+
+  let sections = Object.fromEntries([...SHIPPED_CLASSES, PROJECT_CLASS].map((c) => [outputKey(c.name), false]));
+  let headingError = '';
+  let newHeading = false;
   if (files.includes('CHANGELOG.md')) {
     const diff = git(['diff', range, '--', 'CHANGELOG.md'], cwd);
     const newContent = git(['show', 'HEAD:CHANGELOG.md'], cwd);
+    const baseContent = gitOrEmpty(['show', `${baseRef}:CHANGELOG.md`], cwd);
     sections = changelogSections(diff, newContent);
+    headingError = headingProblems(baseContent, newContent).join('; ');
+    newHeading = addedHeadings(baseContent, newContent).length > 0;
   }
 
+  // Every shipped class that changed without gaining its own section. One
+  // comma-joined list rather than four booleans the workflow would have to
+  // test separately, so the error message can name all of them at once.
+  const missing = SHIPPED_CLASSES.filter((c) => changed[c.name] && !sections[outputKey(c.name)]).map((c) => c.name);
+
+  // A PR that ships to none of the four still names a release, and its line
+  // goes under ### Project (#1019). Only when nothing shipped: a feature PR
+  // that also edits CONTRIBUTING owes its Frontend entry and nothing more,
+  // and asking for both would make the second one noise nobody reads.
+  const anyShipped = SHIPPED_CLASSES.some((c) => changed[c.name]);
+  if (!anyShipped && !sections.project) missing.push(PROJECT_CLASS.name);
+
   return {
-    frontend,
-    backend,
+    frontend: changed.frontend,
+    backend: changed.db,
+    functions: changed.functions,
+    bot: changed.bot,
+    shipped: SHIPPED_CLASSES.some((c) => changed[c.name]),
     version_bump: versionBump,
     frontend_entry: sections.frontend,
     backend_entry: sections.backend,
+    functions_entry: sections.functions,
+    bot_entry: sections.bot,
+    project_entry: sections.project,
+    // Whether this PR opened a version block. Once every PR bumps, a bump
+    // with no heading is what an accidental stamp looks like, and it is the
+    // only shape left that nothing else would catch.
+    new_heading: newHeading,
+    missing_entry: missing.join(','),
+    heading_error: headingError,
     news_touched: files.includes('news.json')
   };
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+// process.argv[1] is undefined under `node -e`, and this module is imported by
+// scripts/ci/stamp-version.js, so the guard has to tolerate having no script path.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const baseRef = process.argv[2];
   if (!baseRef) {
     console.error('Usage: node scripts/ci/changelog-check.js <base-ref>');

@@ -116,6 +116,14 @@ that the RLS policies in the baseline migration reference. Local and shadow
 databases need that role created before the migrations run or the policy
 statements fail with `role "claude_readers" does not exist`.
 
+Since #1010 it carries a second statement, revoking the default EXECUTE on new
+public functions from `anon`, `authenticated` and `service_role`. The Postgres
+image's own init script grants all three, and production grants none of them, so
+without this line a local stack hands out execute rights production does not and
+a forgotten `revoke` in a migration only ever shows up on production. It lives
+here rather than in a migration because this file is applied before any
+migration runs, so the default is in place before the first function exists.
+
 ## 4. Link to the cloud project (one-time)
 
 Linking tells the CLI which cloud project this repo belongs to, which later enables
@@ -166,7 +174,9 @@ supabase db reset   # make the local DB match the migration files
 npm run db:docs     # regenerate dbdoc/
 ```
 
-Commit the `dbdoc/` changes together with the migration. `npm run db:docs:check`
+Use the latest tbls release: the schema-docs workflow installs latest, and since tbls 1.96.0
+trigger listings are in creation order on every platform, so an older local tbls can produce a
+trigger-order diff in CI that is not real staleness. Commit the `dbdoc/` changes together with the migration. `npm run db:docs:check`
 runs `tbls diff` locally, the same check CI runs. If your PR adds, alters, or
 drops an RLS policy, also update [RLS.md](RLS.md) and regenerate the raw policy
 export with `npm run db:rls` (commit `docs/rls_policies.csv`) in the same PR;
@@ -202,8 +212,12 @@ Known limits:
   check. Catching that needs `supabase db diff` against a shadow database,
   which is not wired up.
 - Two open PRs can carry migrations whose timestamps interleave; the CLI
-  refuses out-of-order pushes. Renaming the not-yet-pushed file to a later
-  timestamp is the usual fix.
+  refuses out-of-order pushes. Since #927 the check catches that before the
+  push does: it fails a pending file that sorts below the newest version
+  applied on prod, and separately fails a file stamped ahead of the Eastern
+  wall clock at the commit that added it, which is what a UTC stamp looks
+  like. Both name the same fix,
+  `npm run migration:new -- --rename supabase/migrations/<file>`.
 
 ## Known quirk: vector container restart loop (Windows)
 

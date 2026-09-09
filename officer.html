@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.77.25">
-  <link rel="stylesheet" href="css/officer.css?v=3.77.25">
+  <link rel="stylesheet" href="css/styles.css?v=3.98.0">
+  <link rel="stylesheet" href="css/officer.css?v=3.98.0">
   <!-- Hover tooltips for Buff Coverage's spell links (#491) and item links
        (Priority tab/BiS grid, itemNameBlockHtml(), #567). Auto-attaches to
        any <a class="wowhead">. whTooltips must be set before power.js loads
@@ -123,6 +123,7 @@
           <button class="nav-item" id="navTab-requests" onclick="switchTab('requests')">Received Item Requests<span
               class="nav-notif nav-notif-abs" id="requestsNavBadge" style="display:none;"></span></button>
           <div class="nav-admin-divider"></div>
+          <button class="nav-item" id="navTab-schedule" onclick="switchTab('schedule')">Raid Schedule</button>
           <button class="nav-item" id="navTab-season" onclick="switchTab('season')">Season Settings</button>
           <button class="nav-item" onclick="switchTab('bios')">Officer Bios</button>
           <button class="nav-item" onclick="switchTab('audit')">Audit Log</button>
@@ -168,6 +169,7 @@
                 <button class="filter-chip" onclick="toggleFilter('noBis')" id="chip-noBis">No BiS Source</button>
                 <button class="filter-chip" onclick="toggleFilter('trial')" id="chip-trial">Trials Only</button>
                 <button class="filter-chip" onclick="toggleFilter('bench')" id="chip-bench">Bench Only</button>
+                <button class="filter-chip" onclick="toggleFilter('rotator')" id="chip-rotator">Rotator Only</button>
               </div>
               <div class="filter-bar">
                 <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Role:</span>
@@ -196,7 +198,7 @@
             </div>
           </div>
 
-          <!-- Loot tab (Import + Import History + Loot Fairness sub-tabs) -->
+          <!-- Loot tab (Import + Import History + Loot Fairness + Reassign sub-tabs) -->
           <div id="tab-loot" class="tab-panel">
             <p class="signup-officer-note" style="margin-bottom:0.75rem;">Running the Priority Order system requires the <a href="https://www.curseforge.com/wow/addons/wga-priority-loot" target="_blank" rel="noopener">WGA Priority Loot addon</a> in-game -- raiders can optionally install it too, to see their Priority rank on items as they drop.</p>
             <div class="filter-bar" style="margin-bottom:1rem;">
@@ -206,6 +208,8 @@
                 onclick="switchLootSubTab('history', this)">Import History</button>
               <button class="filter-chip" id="loot-subtab-btn-fairness"
                 onclick="switchLootSubTab('fairness', this)">Loot Fairness</button>
+              <button class="filter-chip" id="loot-subtab-btn-reassign"
+                onclick="switchLootSubTab('reassign', this)">Reassign</button>
             </div>
             <div id="loot-sub-fairness" style="display:none;">
               <div class="filter-bar" style="margin-bottom:1rem;">
@@ -218,6 +222,7 @@
             </div>
             <div id="loot-sub-import"></div>
             <div id="loot-sub-history" style="display:none;"></div>
+            <div id="loot-sub-reassign" style="display:none;"></div>
           </div>
 
           <!-- Priority tab -->
@@ -822,6 +827,27 @@
                 </div>
               </div>
 
+              <!-- Discord Signup Sheet (#900) -->
+              <div class="help-ref-card">
+                <h3 class="help-ref-title">Discord Signup Sheet<button class="help-btn" onclick="toggleHelp('help-discord-signup-sheet')" title="Show help">?</button></h3>
+                <div id="help-discord-signup-sheet" class="help-tip">
+                  The bot posts one message per raid night showing the whole roster's RSVP status, and edits it in place as people respond. Channel ID: leave blank to use the bot's default attendance channel. Lead Time: how many hours before the raid the sheet gets posted (default 48 -- e.g. a Tuesday 9pm ET raid posts the preceding Sunday at 9pm ET). Use Verify to confirm a channel ID resolves to the channel you expect -- many of our channels are named nearly identically across teams (e.g. phoenix-raid-attendance vs hellfire-raid-attendance).
+                </div>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <input type="text" id="discordSignupChannelInput" class="add-player-input" placeholder="Discord channel ID"
+                    style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-muted" id="discordSignupChannelVerifyBtn" onclick="verifyDiscordSignupChannel()">Verify</button>
+                  <span id="discordSignupChannelVerifyStatus" style="font-size:0.92rem;"></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.6rem;">
+                  <label for="discordSignupLeadHoursInput" style="font-size:0.92rem;">Lead time (hours)</label>
+                  <input type="number" id="discordSignupLeadHoursInput" class="add-player-input" min="1" max="336" placeholder="48"
+                    style="max-width:90px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-gold" id="discordSignupSheetSaveBtn" onclick="saveDiscordSignupSheetSettings()">Save</button>
+                  <span id="discordSignupSheetStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+              </div>
+
             </div><!-- /season-sub-settings -->
 
             <div id="season-sub-progression" class="season-settings-wrap" style="display:none;">
@@ -1005,12 +1031,12 @@
               <div class="help-ref-card">
                 <h4 class="help-ref-title">Track a found BoE through sale and payout</h4>
                 <ol class="help-ref-steps">
-                  <li>A raider reports the drop through the public BoE form; it appears under <strong>BoE Sales &gt; Open</strong>.</li>
+                  <li>A raider reports the drop through the form at the top of the BoE page; it appears under <strong>BoE Sales &gt; Open</strong> on the same page.</li>
                   <li>When it goes to the auction house, click <strong>Record Listing</strong> and enter the listing price. Relists just get another Record Listing -- the history stays on the item.</li>
                   <li>When it sells, click <strong>Record Sale</strong> and enter the sale price. The finder's payout and the guild cut are computed from the guild-wide split policy and shown under <strong>Awaiting Payout</strong>.</li>
                   <li>After mailing the finder their gold, click <strong>Mark Paid</strong>. The item moves to History.</li>
                   <li><strong>Retire</strong> closes out an item that never sold or was reported by mistake.</li>
-                  <li>These actions need the BoE manager grant (assigned by a site admin); without it the tab is read-only.</li>
+                  <li>Listing, sale, retire and edit need the BoE manager grant (assigned by a site admin). <strong>Mark Paid</strong>, <strong>Donate to Guild</strong> and <strong>Undo Payout</strong> are open to officers and team leaders on their own team's finds, since they're the ones handing out the gold.</li>
                 </ol>
               </div>
 
@@ -1125,6 +1151,50 @@
             <div id="mplusContainer"></div>
           </div>
 
+          <!-- Raid Schedule tab (#894, part of #640, Phase 3) -->
+          <div id="tab-schedule" class="tab-panel">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+              <span class="section-label" style="margin-bottom:0;">Weekly Raid Nights<button class="help-btn" onclick="toggleHelp('help-schedule')" title="Show help">?</button></span>
+              <button class="btn btn-gold" id="scheduleRuleAddBtn" onclick="addScheduleRule()">+ Add Weekly Night</button>
+            </div>
+            <div id="help-schedule" class="help-tip" style="margin-top:0;margin-bottom:0.75rem;">
+              These recurring nights drive the raid calendar raiders see (Home widget and the Calendar page) -- add one row per weekly raid night, edit and click <strong>Save</strong> per row. Raiders are auto-marked Present unless benched; an <strong>Optional</strong> night has no automatic Present and everyone must respond instead (#895).<br>
+              Use <strong>One-Off Changes</strong> below to cancel a single occurrence of a weekly night, or add an extra night that isn't part of the regular schedule.<br>
+              Cancelling or removing a night does not touch any RSVPs raiders already submitted for it -- those rows are left in place but become harmless.
+            </div>
+            <div id="scheduleRulesWrap"></div>
+            <div id="scheduleRuleStatus" style="font-size:0.93rem;color:var(--melee);margin-top:0.5rem;"></div>
+
+            <div style="margin-top:1.75rem;">
+              <span class="section-label">One-Off Changes</span>
+              <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end;margin:0.5rem 0 0.85rem;">
+                <div>
+                  <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:2px;">Date</div>
+                  <input type="date" id="schedExcDateInput" class="add-player-input" style="font-size:0.97rem;padding:0.3rem 0.5rem;">
+                </div>
+                <div>
+                  <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:2px;">Start Time (added only)</div>
+                  <input type="time" id="schedExcStartInput" class="add-player-input" style="font-size:0.97rem;padding:0.3rem 0.5rem;">
+                </div>
+                <div>
+                  <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:2px;">Duration (added only)</div>
+                  <input type="number" min="15" step="15" id="schedExcDurationInput" class="add-player-input" style="width:80px;font-size:0.97rem;padding:0.3rem 0.5rem;">
+                </div>
+                <label style="display:flex;align-items:center;gap:5px;font-size:0.93rem;color:var(--text-muted);cursor:pointer;padding-bottom:0.4rem;">
+                  <input type="checkbox" id="schedExcOptionalInput"> Optional (added only)
+                </label>
+                <div style="flex:1;min-width:160px;">
+                  <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:2px;">Note</div>
+                  <input type="text" id="schedExcNoteInput" class="add-player-input" placeholder="Optional note" style="width:100%;font-size:0.97rem;padding:0.3rem 0.5rem;">
+                </div>
+                <button class="btn btn-danger" onclick="addScheduleException('cancelled')">Cancel a Night</button>
+                <button class="btn btn-gold" onclick="addScheduleException('added')">Add an Extra Night</button>
+              </div>
+              <div id="scheduleExceptionStatus" style="font-size:0.93rem;color:var(--melee);margin-bottom:0.5rem;"></div>
+              <div id="scheduleExceptionsWrap"></div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -1132,7 +1202,7 @@
 
   </main>
 
-  <footer class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNum"></span> &middot; <a
+  <footer class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNum">3.98.0</span> &middot; <a
       class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank"
       rel="noopener">Changelog</a></footer>
 
@@ -1251,27 +1321,28 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.77.25"></script>
-  <script src="js/discord.js?v=3.77.25"></script>
-  <script src="js/officer.js?v=3.77.25"></script>
-  <script src="js/tabs/tab-roster.js?v=3.77.25"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.77.25"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.77.25"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.77.25"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.77.25"></script>
-  <script src="js/tabs/tab-signups.js?v=3.77.25"></script>
-  <script src="js/tabs/tab-requests.js?v=3.77.25"></script>
-  <script src="js/tabs/tab-bis.js?v=3.77.25"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.77.25"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.77.25"></script>
-  <script src="js/tabs/tab-priority.js?v=3.77.25"></script>
-  <script src="js/tabs/tab-audit.js?v=3.77.25"></script>
-  <script src="js/tabs/tab-reports.js?v=3.77.25"></script>
-  <script src="js/tabs/tab-season.js?v=3.77.25"></script>
-  <script src="js/tabs/tab-bios.js?v=3.77.25"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.77.25"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.77.25"></script>
-  <script src="js/tabs/tab-admin.js?v=3.77.25"></script>
+  <script src="js/common.js?v=3.98.0"></script>
+  <script src="js/discord.js?v=3.98.0"></script>
+  <script src="js/officer.js?v=3.98.0"></script>
+  <script src="js/tabs/tab-roster.js?v=3.98.0"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.98.0"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.98.0"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.98.0"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.98.0"></script>
+  <script src="js/tabs/tab-signups.js?v=3.98.0"></script>
+  <script src="js/tabs/tab-requests.js?v=3.98.0"></script>
+  <script src="js/tabs/tab-bis.js?v=3.98.0"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.98.0"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.98.0"></script>
+  <script src="js/tabs/tab-priority.js?v=3.98.0"></script>
+  <script src="js/tabs/tab-audit.js?v=3.98.0"></script>
+  <script src="js/tabs/tab-reports.js?v=3.98.0"></script>
+  <script src="js/tabs/tab-season.js?v=3.98.0"></script>
+  <script src="js/tabs/tab-schedule.js?v=3.98.0"></script>
+  <script src="js/tabs/tab-bios.js?v=3.98.0"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.98.0"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.98.0"></script>
+  <script src="js/tabs/tab-admin.js?v=3.98.0"></script>
   <script>
 renderSiteNav('officer');
 document.getElementById('versionNum').textContent = VERSION;
@@ -1280,6 +1351,7 @@ document.getElementById('headerTeamName').textContent = TEAM_NAME;
 document.querySelectorAll('.team-name').forEach(function(el){el.textContent=TEAM_NAME;});
 if (TEAM_SLUG !== 'phoenix') {
   document.querySelectorAll('a[href="index.html"]').forEach(function(a){a.href='index.html?team='+TEAM_SLUG;});
+  document.querySelectorAll('a[href="calendar.html"]').forEach(function(a){a.href='calendar.html?team='+TEAM_SLUG;});
 }
 initTeamUI();
 

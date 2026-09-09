@@ -66,6 +66,7 @@ function switchTab(name) {
     buildReportsTab();
   }
   if (name === 'season') buildSeasonTab();
+  if (name === 'schedule') buildScheduleTab();
   if (name === 'bios') {
     resetBiosSubTab();
   }
@@ -249,12 +250,15 @@ function switchLootSubTab(name, btnEl) {
   var subFairness = document.getElementById('loot-sub-fairness');
   var subImport = document.getElementById('loot-sub-import');
   var subHistory = document.getElementById('loot-sub-history');
+  var subReassign = document.getElementById('loot-sub-reassign');
   if (subFairness) subFairness.style.display = name === 'fairness' ? '' : 'none';
   if (subImport) subImport.style.display = name === 'import' ? '' : 'none';
   if (subHistory) subHistory.style.display = name === 'history' ? '' : 'none';
+  if (subReassign) subReassign.style.display = name === 'reassign' ? '' : 'none';
   if (name === 'fairness') buildFairness();
   if (name === 'import') buildLootImportForm();
   if (name === 'history') buildLootHistoryTab();
+  if (name === 'reassign') buildLootReassignTab();
 }
 
 // Resets the modal to its default state (plain "Login with Discord", no
@@ -391,13 +395,14 @@ function buildOfficerDashboard() {
   // already showing, or every such refresh would redundantly re-click and
   // rebuild the tab the officer is already sitting on.
   var tabParam = (location.search.match(/[?&]tab=([^&]+)/) || [])[1];
-  // The BoE tab moved to the guild page in #774. openTab() would find no
-  // button and silently no-op, leaving an old bookmark on Roster with no
-  // explanation, so send it where the surface actually lives. Only a real
-  // deep link can carry this now: switchTab() can no longer sync '?tab=boe'
-  // back into the URL, because there is no BoE button to make active.
+  // The BoE tab moved to the guild page in #774 and to its own page in #864.
+  // openTab() would find no button and silently no-op, leaving an old
+  // bookmark on Roster with no explanation, so send it where the surface
+  // actually lives. Only a real deep link can carry this now: switchTab() can
+  // no longer sync '?tab=boe' back into the URL, because there is no BoE
+  // button to make active.
   if (tabParam === 'boe') {
-    window.location.href = 'guild.html#boe-manage';
+    window.location.href = 'boe.html';
     return;
   }
   if (tabParam) {
@@ -428,7 +433,6 @@ function applyFeatureFlagVisibility() {
   var fairnessOn = featureEnabled('fairness');
   var attendanceOn = featureEnabled('attendance');
   var requestsOn = featureEnabled('requests');
-  var boeOn = featureEnabled('boe');
 
   setVisible('navTab-priority', priorityOn);
   setVisible('navTab-bis', bisOn);
@@ -440,15 +444,17 @@ function applyFeatureFlagVisibility() {
   // items.
   setVisible('navTab-requests', requestsOn);
   setVisible('navTab-loot', lootOn || fairnessOn);
-  // The site nav's BoE link points back at index.html's submit card (#746);
-  // hide it alongside the card when the team's boe flag is off. The officer
-  // BoE Sales tab (#747) rides the same flag.
-  setVisible('navBoE', boeOn);
-  setVisible('navTab-boe', boeOn);
+  // No BoE line here since #891: the one nav item left points at boe.html,
+  // which is guild-wide (every team's finds, whoever can read them) and so is
+  // not this team's flag to hide. index.html still hides its own copy, where
+  // the item is raider-facing and a team with BoE off has nothing to report.
 
   setVisible('loot-subtab-btn-import', lootOn);
   setVisible('loot-subtab-btn-history', lootOn);
   setVisible('loot-subtab-btn-fairness', fairnessOn);
+  // Corrects rclc_loot rows the same import feature writes, so it rides the
+  // same flag rather than fairness's (#1029).
+  setVisible('loot-subtab-btn-reassign', lootOn);
   setVisible('attend-subtab-btn-bench', fairnessOn);
   // #651: tier-piece tracking rides on the 'bis' flag, same as the rest of
   // the tier-substitution feature surface (wishlist/BiS grid) -- a team not

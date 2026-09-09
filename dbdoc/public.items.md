@@ -17,6 +17,7 @@
 | is_ptr | boolean | false | false |  |  |  |
 | main_stats | jsonb |  | true |  |  |  |
 | weapon_subtype | text |  | true |  |  |  |
+| is_boe | boolean | false | false |  |  |  |
 
 ## Constraints
 
@@ -64,6 +65,7 @@ erDiagram
   boolean is_ptr
   jsonb main_stats
   text weapon_subtype
+  boolean is_boe
 }
 "public.bis_items" {
   integer id
@@ -155,6 +157,11 @@ erDiagram
   bigint payout_pivot
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
+  boolean payout_donated
+  text upgrade_rank
+  bigint ah_fee
+  text finder_discord_id
+  timestamp_with_time_zone found_posted_at
 }
 "public.priority_order_confirmed_empty" {
   integer team_id FK

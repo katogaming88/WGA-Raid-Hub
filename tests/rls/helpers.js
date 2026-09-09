@@ -43,6 +43,46 @@ export function queryAs(role, uid, text, params) {
   return withRole(role, uid, (q) => q(text, params));
 }
 
+// Runs fn inside one transaction that is always rolled back, and hands it a
+// postgres-role `q` for fixtures and assertions plus impersonating callers on
+// that same client. Same-client is the point: a fixture written here is never
+// committed, so no other worker in the suite can see it, and only a caller on
+// this connection can read it back (#1021). countAs and queryAs above open
+// their own connection and cannot, which is why they suit a seeded table and
+// not a fixture the test just wrote.
+//
+// Each impersonated call rides its own savepoint. A call that raises aborts
+// the transaction, so the `reset role` that follows would raise its own error
+// and replace the one the test is asserting on (2026-07-06).
+export async function withTxn(fn) {
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    const q = (text, params) => client.query(text, params);
+    const asRole = (role, uid) => async (text, params) => {
+      await q('savepoint impersonated_call');
+      await q("select set_config('request.jwt.claims', $1, true)", [
+        JSON.stringify(uid ? { sub: uid, role } : { role })
+      ]);
+      await q(`set local role ${role}`);
+      try {
+        const res = await q(text, params);
+        await q('reset role');
+        return res;
+      } catch (err) {
+        await q('rollback to savepoint impersonated_call');
+        throw err;
+      }
+    };
+    const asUser = (uid, text, params) => asRole('authenticated', uid)(text, params);
+    const asAnon = (text, params) => asRole('anon', null)(text, params);
+    return await fn({ q, asRole, asUser, asAnon });
+  } finally {
+    await client.query('rollback');
+    client.release();
+  }
+}
+
 // Visible row count under a role.
 export async function countAs(role, uid, table, where = 'true') {
   const res = await queryAs(role, uid, `select count(*)::int as n from public.${table} where ${where}`);

@@ -8,7 +8,12 @@ import { realFetchAllPaged, loadCommonJs, quietConsole } from './helpers/common-
 // The real _esc from js/common.js, which guild.html loads. A stand-in here
 // could escape differently from the shipped one and the suite would not
 // notice, which is the same reason realFetchAllPaged() exists.
-const realEsc = loadCommonJs(quietConsole)._esc;
+const realCommon = loadCommonJs(quietConsole);
+const realEsc = realCommon._esc;
+// The date formatter and the zone note (#905) are common.js helpers too;
+// a stand-in would pin a shape the shipped one need not have.
+const realFormatDateTime = realCommon.formatDateTime;
+const realLocalTimeZoneNote = realCommon.localTimeZoneNote;
 
 // js/boe-manage.js is a plain browser script (no exports), so these tests
 // load it into a vm sandbox with the browser globals stubbed -- the
@@ -36,15 +41,24 @@ function makeEl(extra) {
 // nothing would fail here instead of passing against a truncating server. A
 // table source given as a function overrides the keyset semantics entirely
 // (for error pages).
-function makeBoeClient({ items = [], listings = [], rpc = {} } = {}) {
-  const captured = { byTable: {}, gts: [], rpcCalls: [] };
-  const tableRows = { boe_items: items, boe_listings: listings };
+function makeBoeClient({ items = [], listings = [], rpc = {}, updates = {}, catalog = [] } = {}) {
+  const captured = { byTable: {}, gts: [], rpcCalls: [], updates: [], invokes: [] };
+  // items is the BoE catalog read (#875): the rows flagged is_boe, id and name.
+  const tableRows = { boe_items: items, boe_listings: listings, items: catalog };
   function builder(table) {
-    const calls = { select: null, countRequested: false, eq: [], order: [], gt: null, limit: null };
+    const calls = { select: null, countRequested: false, eq: [], order: [], gt: null, limit: null, update: null };
     const b = {
       select(c, opts) {
         calls.select = c;
         calls.countRequested = !!(opts && opts.count);
+        return b;
+      },
+      // An update chain (#874): .update(values).eq('id', n).select('id'). The
+      // result echoes the matching rows with the values merged, or whatever
+      // updates[table] returns: zero rows for a lost grant, an error for the
+      // trigger's raise.
+      update(values) {
+        calls.update = values;
         return b;
       },
       eq(c, v) {
@@ -68,6 +82,13 @@ function makeBoeClient({ items = [], listings = [], rpc = {} } = {}) {
         return Promise.resolve()
           .then(() => {
             const src = tableRows[table];
+            if (calls.update) {
+              captured.updates.push({ table, values: calls.update, eq: calls.eq });
+              if (updates[table]) return updates[table](calls);
+              const rows = Array.isArray(src) ? src : [];
+              const hit = rows.filter((r) => calls.eq.every(([c, v]) => r[c] === v));
+              return { data: hit.map((r) => Object.assign({}, r, calls.update)), error: null };
+            }
             if (typeof src === 'function') return src(calls);
             const after = calls.gt ? calls.gt[1] : null;
             const limit = calls.limit || 1000;
@@ -88,6 +109,14 @@ function makeBoeClient({ items = [], listings = [], rpc = {} } = {}) {
       captured.rpcCalls.push({ name, args });
       const fn = rpc[name];
       return Promise.resolve(fn ? fn(args) : { data: null, error: null });
+    },
+    // The sold ping (#873) is an Edge Function invoke, fire and forget after
+    // the sale RPC lands, the same shape as the found post in js/boe.js.
+    functions: {
+      invoke(name, opts) {
+        captured.invokes.push({ name, body: opts && opts.body });
+        return Promise.resolve({ data: null, error: null });
+      }
     }
   };
   return { client, captured };
@@ -96,7 +125,7 @@ function makeBoeClient({ items = [], listings = [], rpc = {} } = {}) {
 const managerRpc = (extra) => Object.assign({ is_boe_manager: () => ({ data: true, error: null }) }, extra);
 
 function loadSandbox({ client, els = {}, confirmResult = true } = {}) {
-  const spies = { audit: [], confirms: [] };
+  const spies = { audit: [], confirms: [], datalists: [] };
   CONTAINERS.forEach((id) => {
     if (!els[id]) els[id] = makeEl();
   });
@@ -107,6 +136,8 @@ function loadSandbox({ client, els = {}, confirmResult = true } = {}) {
     document: { getElementById: (id) => els[id] || null },
     window: {},
     _esc: realEsc,
+    formatDateTime: realFormatDateTime,
+    localTimeZoneNote: realLocalTimeZoneNote,
     // js/common.js owns this, same as fetchAllPaged below; guild.html loads
     // that bundle, so calling it is legitimate and only the harness needs the
     // stand-in. Its real behaviour is pinned separately, further down, against
@@ -122,6 +153,10 @@ function loadSandbox({ client, els = {}, confirmResult = true } = {}) {
     writeAuditLog: (action, targetType, targetId, detail, teamId) => {
       spies.audit.push({ action, targetType, targetId, detail, teamId });
     },
+    // js/common.js owns the datalist writer (#875); both pages load it.
+    renderBoeItemDatalist: (names) => {
+      spies.datalists.push(names);
+    },
     setTimeout,
     clearTimeout,
     Promise,
@@ -135,14 +170,38 @@ function loadSandbox({ client, els = {}, confirmResult = true } = {}) {
   return { sandbox, els, spies };
 }
 
-// canManage is what js/guild.js resolves and hands in (is_boe_manager() or
-// is_site_admin()). It arrives as a parameter rather than being worked out
-// here, so this module has no opinion on identity at all.
+// The access answer is what js/boe-page.js resolves and hands in
+// (fetchBoeAccess() in js/common.js): `manage` for the lifecycle actions,
+// `settleTeamIds` for the payout buttons (#890). It arrives as a parameter
+// rather than being worked out here, so this module has no opinion on
+// identity at all. canManage: false with no settle teams is the raider view.
+function accessFor(opts) {
+  return {
+    signedIn: true,
+    manage: opts && 'canManage' in opts ? !!opts.canManage : true,
+    settleTeamIds: (opts && opts.settleTeamIds) || []
+  };
+}
+
 async function build(opts) {
   const loaded = loadSandbox(opts);
-  loaded.sandbox.buildBoeManage(opts && 'canManage' in opts ? opts.canManage : true);
+  loaded.sandbox.buildBoeManage(accessFor(opts));
   for (let i = 0; i < 12; i++) await flush();
   return loaded;
+}
+
+// Every row in a section with an Actions column needs a cell in it, or the
+// table goes ragged for exactly the audience the column was added for.
+function cellCounts(html) {
+  const headers = (html.match(/<th[\s>]/g) || []).length;
+  const body = html.split('<tbody>')[1] || '';
+  return {
+    headers,
+    rows: body
+      .split('</tr>')
+      .filter((r) => r.includes('<td'))
+      .map((r) => (r.match(/<td[\s>]/g) || []).length)
+  };
 }
 
 function boeRow(over) {
@@ -152,6 +211,7 @@ function boeRow(over) {
       team_id: 1,
       player_id: null,
       finder_name: 'Kae-Tichondrius',
+      item_id: null,
       item_name: 'Voidglass Cloak',
       track: 'Hero',
       note: null,
@@ -162,7 +222,10 @@ function boeRow(over) {
       retired_at: null,
       sale_price: null,
       finder_payout: null,
-      guild_cut: null
+      guild_cut: null,
+      ah_fee: null,
+      payout_donated: false,
+      upgrade_rank: null
     },
     over
   );
@@ -186,7 +249,8 @@ const SOLD = () =>
     sold_at: '2026-08-21T02:00:00Z',
     sale_price: 250000,
     finder_payout: 50000,
-    guild_cut: 200000
+    guild_cut: 187500,
+    ah_fee: 12500
   });
 const PAID = () =>
   boeRow({
@@ -197,13 +261,40 @@ const PAID = () =>
     payout_paid_at: '2026-08-22T02:00:00Z',
     sale_price: 100000,
     finder_payout: 20000,
-    guild_cut: 80000
+    guild_cut: 75000,
+    ah_fee: 5000
   });
 const RETIRED = () =>
   boeRow({ id: 5, item_name: 'Drape of Embers', status: 'retired', retired_at: '2026-08-23T02:00:00Z' });
 const ALL_ROWS = () => [FOUND(), LISTED(), SOLD(), PAID(), RETIRED()];
 const LISTING_ROW = () => ({ id: 11, boe_item_id: 2, listed_at: '2026-08-19T12:00:00Z', price: 300000, note: null });
 const LISTED_OTHER_TEAM = () => boeRow({ id: 2, team_id: 4, item_name: 'Wrathless Find', status: 'listed' });
+// The same two settleable states on a team the officer below does not staff.
+const SOLD_T2 = () =>
+  boeRow({
+    id: 6,
+    team_id: 2,
+    item_name: 'Hellfire Sale',
+    status: 'sold',
+    sold_at: '2026-08-21T03:00:00Z',
+    sale_price: 100000,
+    finder_payout: 20000,
+    guild_cut: 75000,
+    ah_fee: 5000
+  });
+const PAID_T2 = () =>
+  boeRow({
+    id: 7,
+    team_id: 2,
+    item_name: 'Hellfire Payout',
+    status: 'paid',
+    sold_at: '2026-08-18T03:00:00Z',
+    payout_paid_at: '2026-08-22T03:00:00Z',
+    sale_price: 100000,
+    finder_payout: 20000,
+    guild_cut: 75000,
+    ah_fee: 5000
+  });
 
 describe('buildBoeManage sections', () => {
   it('partitions rows into Open, Awaiting Payout, and History by status', async () => {
@@ -283,12 +374,21 @@ describe('manager gating (#774)', () => {
     expect(els.guildBoeAwaiting.innerHTML).toContain('Mark Paid');
   });
 
-  it('a read-only officer sees the grant note and no buttons', async () => {
+  it('a raider sees their own rows and no buttons at all', async () => {
     const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [] });
     const { els } = await build({ client, canManage: false });
-    expect(els.guildBoeSummary.innerHTML).toContain('assigned by a site admin');
+    expect(els.guildBoeOpen.innerHTML).toContain('Voidglass Cloak');
     expect(els.guildBoeOpen.innerHTML).not.toContain('<button');
     expect(els.guildBoeAwaiting.innerHTML).not.toContain('<button');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('<button');
+  });
+
+  it('gives a raider no Actions column to leave empty', async () => {
+    const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [] });
+    const { els } = await build({ client, canManage: false });
+    expect(els.guildBoeAwaiting.innerHTML).not.toContain('Actions');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('Actions');
+    expect(els.guildBoeOpen.innerHTML).not.toContain('Actions');
   });
 
   // Who the caller is belongs to js/guild.js now. This module asks nothing
@@ -321,6 +421,92 @@ describe('manager gating (#774)', () => {
   });
 });
 
+// A team officer settles payouts on their own team's rows and nothing else
+// (#888 server-side, #890 in the interface). The button follows the row, not
+// the page, because one officer's list can hold rows from teams they do not
+// staff: a raider's own find on another team never reaches them, but a
+// manager's does, and Wrathless has no officers at all.
+describe('per-row settle for a team officer (#890)', () => {
+  const MIXED = () => [SOLD(), SOLD_T2(), PAID(), PAID_T2(), RETIRED(), FOUND()];
+  const officer = (client) => build({ client, canManage: false, settleTeamIds: [1] });
+
+  it('offers Mark Paid and Donate to Guild on their own team sold row', async () => {
+    const { client } = makeBoeClient({ items: MIXED(), listings: [] });
+    const { els } = await officer(client);
+    const row = els.guildBoeAwaiting.innerHTML.split('</tr>').find((r) => r.includes('Bindings of Depth'));
+    expect(row).toContain('Mark Paid');
+    expect(row).toContain('Donate to Guild');
+  });
+
+  it('offers neither on a sold row from a team they do not staff', async () => {
+    const { client } = makeBoeClient({ items: MIXED(), listings: [] });
+    const { els } = await officer(client);
+    const row = els.guildBoeAwaiting.innerHTML.split('</tr>').find((r) => r.includes('Hellfire Sale'));
+    expect(row).not.toContain('Mark Paid');
+    expect(row).not.toContain('Donate to Guild');
+  });
+
+  it('offers Undo Payout on their own paid row and not on another team paid row', async () => {
+    const { client } = makeBoeClient({ items: MIXED(), listings: [] });
+    const { els } = await officer(client);
+    const rows = els.guildBoeHistory.innerHTML.split('</tr>');
+    expect(rows.find((r) => r.includes('Girdle of Night'))).toContain('Undo Payout');
+    expect(rows.find((r) => r.includes('Hellfire Payout'))).not.toContain('Undo Payout');
+  });
+
+  it('withholds every manager action, on their own team as much as any other', async () => {
+    // Listing, sale, retire, un-retire, undo sale and edit stay with the BoE
+    // manager grant (#766). Settling is the one thing #888 opened up, because
+    // the officers who hand out the gold are the ones who know it went out.
+    const { client } = makeBoeClient({ items: MIXED(), listings: [] });
+    const { els } = await officer(client);
+    const all = els.guildBoeOpen.innerHTML + els.guildBoeAwaiting.innerHTML + els.guildBoeHistory.innerHTML;
+    ['Record Listing', 'Record Sale', 'Retire</button>', 'Un-retire', 'Undo Sale', '>Edit<'].forEach((label) => {
+      expect(all).not.toContain(label);
+    });
+  });
+
+  it('keeps the Open section actionless for them', async () => {
+    const { client } = makeBoeClient({ items: MIXED(), listings: [] });
+    const { els } = await officer(client);
+    expect(els.guildBoeOpen.innerHTML).not.toContain('Actions');
+    expect(els.guildBoeOpen.innerHTML).not.toContain('<button');
+  });
+
+  it('gives every row in a section with an Actions column a cell of its own', async () => {
+    const { client } = makeBoeClient({ items: MIXED(), listings: [] });
+    const { els } = await officer(client);
+    [els.guildBoeAwaiting.innerHTML, els.guildBoeHistory.innerHTML].forEach((html) => {
+      const shape = cellCounts(html);
+      expect(shape.headers).toBeGreaterThan(0);
+      shape.rows.forEach((n) => expect(n).toBe(shape.headers));
+    });
+  });
+
+  it('drops the Actions column when nothing in the section is theirs', async () => {
+    const { client } = makeBoeClient({ items: [SOLD_T2(), PAID_T2()], listings: [] });
+    const { els } = await officer(client);
+    expect(els.guildBoeAwaiting.innerHTML).not.toContain('Actions');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('Actions');
+  });
+
+  it('settles every team for a manager, whose grant is guild-wide', async () => {
+    const { client } = makeBoeClient({ items: MIXED(), listings: [] });
+    const { els } = await build({ client, canManage: true });
+    const rows = els.guildBoeAwaiting.innerHTML.split('</tr>');
+    expect(rows.find((r) => r.includes('Hellfire Sale'))).toContain('Mark Paid');
+    expect(rows.find((r) => r.includes('Bindings of Depth'))).toContain('Mark Paid');
+  });
+
+  it('gives a settling officer somewhere to report a failure', async () => {
+    // markBoePaid() writes the server's refusal into boe-status-<id>; without
+    // the span the officer clicks and sees nothing happen.
+    const { client } = makeBoeClient({ items: MIXED(), listings: [] });
+    const { els } = await officer(client);
+    expect(els.guildBoeAwaiting.innerHTML).toContain('id="boe-status-3"');
+  });
+});
+
 // The page has no team, so writeAuditLog() cannot take one from _teamCfg
 // (js/guild.js nulls it). It takes the BoE row's own team instead, which is
 // also the right attribution for a read that spans every team since #765.
@@ -332,7 +518,7 @@ describe('audit entries name the BoE team, not the page (#774)', () => {
       listings: [],
       rpc: {
         boe_record_sale: () => ({
-          data: [{ sale_price: 250000, finder_payout: 50000, guild_cut: 200000 }],
+          data: [{ sale_price: 250000, finder_payout: 50000, guild_cut: 187500, ah_fee: 12500 }],
           error: null
         })
       }
@@ -365,7 +551,7 @@ describe('price parsing and recording a sale', () => {
       listings: [],
       rpc: managerRpc({
         boe_record_sale: () => ({
-          data: [{ sale_price: 250000, finder_payout: 50000, guild_cut: 200000 }],
+          data: [{ sale_price: 250000, finder_payout: 50000, guild_cut: 187500, ah_fee: 12500 }],
           error: null
         })
       })
@@ -378,7 +564,8 @@ describe('price parsing and recording a sale', () => {
     expect(sale.args).toEqual({ p_id: 1, p_sale_price: 250000 });
     expect(els.guildBoeAwaiting.innerHTML).toContain('Voidglass Cloak');
     expect(els.guildBoeAwaiting.innerHTML).toContain('50,000');
-    expect(els.guildBoeAwaiting.innerHTML).toContain('200,000');
+    expect(els.guildBoeAwaiting.innerHTML).toContain('12,500');
+    expect(els.guildBoeAwaiting.innerHTML).toContain('187,500');
     // The split came from the RPC's return row: still exactly one boe_items read.
     expect(captured.byTable.boe_items).toHaveLength(1);
   });
@@ -436,7 +623,7 @@ describe('lifecycle actions', () => {
     const loaded = await build({ client, els });
     loaded.sandbox.markBoePaid(3, makeEl({ textContent: 'Mark Paid' }));
     await flush();
-    expect(captured.rpcCalls.find((c) => c.name === 'boe_mark_paid').args).toEqual({ p_id: 3 });
+    expect(captured.rpcCalls.find((c) => c.name === 'boe_mark_paid').args).toEqual({ p_id: 3, p_donated: false });
     expect(loaded.spies.audit[0].action).toBe('BoE Payout Paid');
     expect(loaded.spies.audit[0].detail).toContain('50,000');
     expect(loaded.spies.audit[0].detail).toContain('Ashveil-Tichondrius');
@@ -467,7 +654,7 @@ describe('lifecycle actions', () => {
   });
 });
 
-describe('history paging', () => {
+describe('reading History by keyset', () => {
   it('pages the read by keyset when the team has more than one page of rows', async () => {
     const items = [];
     for (let i = 1; i <= 1150; i++) {
@@ -485,9 +672,13 @@ describe('history paging', () => {
       );
     }
     const { client, captured } = makeBoeClient({ items, listings: [], rpc: managerRpc() });
-    const { els } = await build({ client });
+    const { sandbox, els } = await build({ client });
     expect(captured.gts).toContainEqual(['boe_items', 'id', 1000]);
-    expect(els.guildBoeHistory.innerHTML).toContain('Item 1150');
+    // The last row's name in History used to prove it arrived. History renders
+    // twenty rows at a time since #863, so the proof is the model and the
+    // summary strip, which count every row: 1150 x 800 guild cut.
+    expect(sandbox._boeItems.length).toBe(1150);
+    expect(els.guildBoeSummary.innerHTML).toContain('920,000');
   });
 });
 
@@ -495,9 +686,114 @@ describe('summary strip', () => {
   it('totals guild income over sold and paid, and outstanding payouts over sold', async () => {
     const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: managerRpc() });
     const { els } = await build({ client });
-    // guild_cut: 200,000 (sold) + 80,000 (paid); finder_payout outstanding: 50,000 (sold only)
-    expect(els.guildBoeSummary.innerHTML).toContain('280,000');
+    // guild_cut, net of the fee since #861: 187,500 (sold) + 75,000 (paid); finder_payout outstanding: 50,000 (sold only)
+    expect(els.guildBoeSummary.innerHTML).toContain('262,500');
     expect(els.guildBoeSummary.innerHTML).toContain('50,000');
+  });
+});
+
+// The auction house fee (#861): the game keeps 5% of every sale, so the row
+// carries it and the guild cut is what the bank actually receives. Both money
+// sections show the fee between the sale and the finder cut and name the
+// guild cut as net; a row sold before the fee existed (null) renders an
+// empty cell rather than a zero, since nothing was recorded.
+// The finder hears their BoE sold from Discord rather than from a manager
+// remembering to tell them (#873). Recording the sale is the only action that
+// posts: a listing is not news to the finder, and a payout or a retirement is
+// news they get in person or not at all.
+describe('the sold ping (#873)', () => {
+  const saleRpc = () => ({
+    boe_record_sale: () => ({
+      data: [{ sale_price: 250000, finder_payout: 50000, guild_cut: 187500, ah_fee: 12500 }],
+      error: null
+    })
+  });
+
+  async function recordSale(over) {
+    const els = { 'boe-sale-price-1': makeEl({ value: '250,000' }), 'boe-status-1': makeEl() };
+    const { client, captured } = makeBoeClient(Object.assign({ items: [FOUND()], listings: [] }, over));
+    const loaded = await build({ client, els });
+    loaded.sandbox.confirmBoeSale(1, makeEl());
+    for (let i = 0; i < 6; i++) await flush();
+    return { captured, loaded, els };
+  }
+
+  it('invokes boe-sold-webhook once with the row id, after the RPC lands', async () => {
+    const { captured } = await recordSale({ rpc: saleRpc() });
+    expect(captured.invokes).toEqual([{ name: 'boe-sold-webhook', body: { id: 1 } }]);
+  });
+
+  it('sends nothing when the sale RPC refused', async () => {
+    // The row is not sold, so a ping would tell the finder something untrue.
+    const { captured } = await recordSale({
+      rpc: { boe_record_sale: () => ({ data: null, error: { message: 'Not authorized' } }) }
+    });
+    expect(captured.invokes).toEqual([]);
+  });
+
+  it('does not gate the sale on the post', async () => {
+    // Fire and forget, the found post's stance: the row update is the write
+    // of record and a Discord outage must not undo it.
+    const els = { 'boe-sale-price-1': makeEl({ value: '250,000' }), 'boe-status-1': makeEl() };
+    const { client } = makeBoeClient({ items: [FOUND()], listings: [], rpc: saleRpc() });
+    client.functions.invoke = () => Promise.reject(new Error('function down'));
+    const loaded = await build({ client, els });
+    loaded.sandbox.confirmBoeSale(1, makeEl());
+    for (let i = 0; i < 6; i++) await flush();
+    expect(loaded.sandbox.findBoeItem(1).status).toBe('sold');
+    expect(els['boe-status-1'].textContent).toBe('');
+  });
+
+  it('posts nothing for a listing, a payout, a retirement or an undo', async () => {
+    const els = {
+      'boe-listing-price-2': makeEl({ value: '300,000' }),
+      'boe-status-2': makeEl(),
+      'boe-status-3': makeEl(),
+      'boe-status-4': makeEl(),
+      'boe-status-1': makeEl()
+    };
+    const { client, captured } = makeBoeClient({
+      items: [FOUND(), LISTED(), SOLD(), PAID()],
+      listings: [],
+      rpc: {
+        boe_record_listing: () => ({ data: null, error: null }),
+        boe_mark_paid: () => ({ data: null, error: null }),
+        boe_revert: () => ({ data: 'found', error: null })
+      }
+    });
+    const loaded = await build({ client, els });
+    loaded.sandbox.confirmBoeListing(2, makeEl());
+    loaded.sandbox.markBoePaid(3, makeEl());
+    loaded.sandbox.retireBoe(1, makeEl());
+    loaded.sandbox.revertBoe(3, makeEl());
+    for (let i = 0; i < 8; i++) await flush();
+    expect(captured.invokes).toEqual([]);
+  });
+});
+
+describe('the auction house fee column (#861)', () => {
+  it('reads ah_fee with the row and shows it in Awaiting Payout and History under a net guild cut header', async () => {
+    const { client, captured } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    expect(captured.byTable.boe_items[0].select).toContain('ah_fee');
+    const headers =
+      '<th scope="col">Sale</th><th scope="col">AH fee</th><th scope="col">Finder payout</th><th scope="col">Guild cut (net)</th>';
+    expect(els.guildBoeAwaiting.innerHTML).toContain(headers);
+    expect(els.guildBoeHistory.innerHTML).toContain(headers);
+    expect(els.guildBoeAwaiting.innerHTML).toContain(
+      '<td>250,000g</td><td>12,500g</td><td>50,000g</td><td>187,500g</td>'
+    );
+    expect(els.guildBoeHistory.innerHTML).toContain('<td>100,000g</td><td>5,000g</td><td>20,000g</td><td>75,000g</td>');
+  });
+
+  it('renders an empty fee cell on a row sold before the fee existed', async () => {
+    const { client } = makeBoeClient({
+      items: [Object.assign(SOLD(), { ah_fee: null })],
+      listings: [],
+      rpc: managerRpc()
+    });
+    const { els } = await build({ client });
+    expect(els.guildBoeAwaiting.innerHTML).toContain('<td>250,000g</td><td></td><td>50,000g</td><td>187,500g</td>');
   });
 });
 
@@ -659,11 +955,35 @@ describe('per-team credit line (#765)', () => {
   });
 });
 
-describe('summary scope note (#765)', () => {
-  it('tells a read-only officer the totals cover their own teams', async () => {
+describe('the scope note, per audience (#765, #890)', () => {
+  it('tells a settling officer what they may do and what the totals cover', async () => {
+    const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [] });
+    const { els } = await build({ client, canManage: false, settleTeamIds: [1] });
+    expect(els.guildBoeSummary.innerHTML).toContain('settle payouts');
+    expect(els.guildBoeSummary.innerHTML).toContain('your own teams');
+  });
+
+  it('tells a raider these are the finds reported under their character', async () => {
     const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [] });
     const { els } = await build({ client, canManage: false });
-    expect(els.guildBoeSummary.innerHTML).toContain('your own teams');
+    expect(els.guildBoeSummary.innerHTML).toContain('reported under your character');
+    expect(els.guildBoeSummary.innerHTML).not.toContain('your own teams');
+  });
+
+  it('hides guild income from a raider, whose rows are their own finds', async () => {
+    // The figure is the guild's, computed over whatever the policies returned.
+    // For a raider that is their own two or three rows, so a "Guild income to
+    // date" built from them would be a wrong number, not a partial one.
+    const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [] });
+    const { els } = await build({ client, canManage: false });
+    expect(els.guildBoeSummary.innerHTML).not.toContain('Guild income');
+    expect(els.guildBoeSummary.innerHTML).toContain('Outstanding payouts');
+  });
+
+  it('keeps guild income for an officer, whose totals are their teams', async () => {
+    const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [] });
+    const { els } = await build({ client, canManage: false, settleTeamIds: [1] });
+    expect(els.guildBoeSummary.innerHTML).toContain('Guild income');
   });
 
   it('says nothing about scope to a manager, whose totals really are guild-wide', async () => {
@@ -723,12 +1043,22 @@ describe('undoing a lifecycle step (#802)', () => {
     expect(els.guildBoeHistory.innerHTML).toContain('Un-retire');
   });
 
-  it('offers none of them to a read-only officer', async () => {
+  it('offers none of them to a raider', async () => {
     const { client } = makeBoeClient({ items: [SOLD(), PAID(), RETIRED()], listings: [] });
     const { els } = await build({ client, canManage: false });
     expect(els.guildBoeAwaiting.innerHTML).not.toContain('Undo');
     expect(els.guildBoeHistory.innerHTML).not.toContain('Undo');
     expect(els.guildBoeHistory.innerHTML).not.toContain('Un-retire');
+  });
+
+  it('offers a settling officer the payout undo and neither of the others', async () => {
+    // Undo Payout is the settle step going backwards, which #888 gave them
+    // with Mark Paid. Undo Sale and Un-retire are manager steps.
+    const { client } = makeBoeClient({ items: [SOLD(), PAID(), RETIRED()], listings: [] });
+    const { els } = await build({ client, canManage: false, settleTeamIds: [1] });
+    expect(els.guildBoeHistory.innerHTML).toContain('Undo Payout');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('Un-retire');
+    expect(els.guildBoeAwaiting.innerHTML).not.toContain('Undo Sale');
   });
 
   it('moves a paid row back to Awaiting Payout and clears the paid date', async () => {
@@ -753,6 +1083,7 @@ describe('undoing a lifecycle step (#802)', () => {
     expect(item.sale_price).toBeNull();
     expect(item.finder_payout).toBeNull();
     expect(item.guild_cut).toBeNull();
+    expect(item.ah_fee).toBeNull();
     expect(item.sold_at).toBeNull();
     expect(loaded.els.guildBoeOpen.innerHTML).toContain('Bindings of Depth');
     expect(loaded.els.guildBoeAwaiting.innerHTML).not.toContain('Bindings of Depth');
@@ -844,5 +1175,902 @@ describe('undoing a lifecycle step (#802)', () => {
     expect(loaded.spies.audit[0].teamId).toBe(4);
     expect(loaded.spies.audit[0].action).toBe('BoE Reverted');
     expect(loaded.spies.audit[0].detail).toContain('found');
+  });
+});
+
+// History renders one page at a time (#863). Open and Awaiting Payout are
+// working lists and stay whole; History grows with every settled sale and
+// already held the whole legacy import, so it pushed everything below it out
+// of reach.
+describe('History paging (#863)', () => {
+  const paidRows = (n) =>
+    Array.from({ length: n }, (_, i) =>
+      boeRow({
+        id: 100 + i,
+        item_name: 'Paid Item ' + (i + 1),
+        // No track: boeRow()'s default 'Hero' badge follows the name in the
+        // cell, which hides the 'Paid Item N<' anchors that tell Paid Item 1
+        // from Paid Item 10 to 19 below.
+        track: null,
+        status: 'paid',
+        sold_at: '2026-08-01T02:00:00Z',
+        // Newest first, so Paid Item 1 is the most recent and lands on page 1.
+        payout_paid_at: new Date(Date.UTC(2026, 7, 30, 0, 0, n - i)).toISOString(),
+        sale_price: 100000,
+        finder_payout: 20000,
+        guild_cut: 80000
+      })
+    );
+
+  // The count line is a static element on boe.html, not part of the History
+  // render: a live region recreated by innerHTML is not announced. The two
+  // buttons are rendered, so they are stubbed here only to observe focus.
+  const pagerEls = () => ({
+    guildBoeHistoryCount: makeEl(),
+    boeHistoryPrev: makeEl({
+      focused: 0,
+      focus() {
+        this.focused++;
+      }
+    }),
+    boeHistoryNext: makeEl({
+      focused: 0,
+      focus() {
+        this.focused++;
+      }
+    })
+  });
+
+  // Body rows only: _boeTable puts the header row in a <tr> too, so counting
+  // every <tr> read one high and three of these tests could never pass.
+  const rowsIn = (html) => ((html.split('<tbody>')[1] || '').match(/<tr>/g) || []).length;
+  const gold = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + 'g';
+
+  it('renders the first 20 of 21 rows, newest first, and says so', async () => {
+    const { client } = makeBoeClient({ items: paidRows(21), listings: [] });
+    const { els } = await build({ client, els: pagerEls() });
+    expect(rowsIn(els.guildBoeHistory.innerHTML)).toBe(20);
+    expect(els.guildBoeHistory.innerHTML).toContain('Paid Item 1<');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('Paid Item 21<');
+    expect(els.guildBoeHistoryCount.textContent).toBe('Showing 1 to 20 of 21');
+  });
+
+  it('disables Previous on the first page and Next on the last', async () => {
+    const { client } = makeBoeClient({ items: paidRows(21), listings: [] });
+    const { sandbox, els } = await build({ client, els: pagerEls() });
+    expect(els.guildBoeHistory.innerHTML).toMatch(/id="boeHistoryPrev"[^>]*disabled/);
+    expect(els.guildBoeHistory.innerHTML).not.toMatch(/id="boeHistoryNext"[^>]*disabled/);
+    sandbox.boeHistoryPage(1);
+    expect(els.guildBoeHistory.innerHTML).not.toMatch(/id="boeHistoryPrev"[^>]*disabled/);
+    expect(els.guildBoeHistory.innerHTML).toMatch(/id="boeHistoryNext"[^>]*disabled/);
+  });
+
+  it('Next shows the 21st row alone and the count follows', async () => {
+    const { client } = makeBoeClient({ items: paidRows(21), listings: [] });
+    const { sandbox, els } = await build({ client, els: pagerEls() });
+    sandbox.boeHistoryPage(1);
+    expect(rowsIn(els.guildBoeHistory.innerHTML)).toBe(1);
+    expect(els.guildBoeHistory.innerHTML).toContain('Paid Item 21<');
+    expect(els.guildBoeHistoryCount.textContent).toBe('Showing 21 to 21 of 21');
+    sandbox.boeHistoryPage(-1);
+    expect(rowsIn(els.guildBoeHistory.innerHTML)).toBe(20);
+    expect(els.guildBoeHistoryCount.textContent).toBe('Showing 1 to 20 of 21');
+  });
+
+  it('never pages past either end', async () => {
+    const { client } = makeBoeClient({ items: paidRows(21), listings: [] });
+    const { sandbox, els } = await build({ client, els: pagerEls() });
+    sandbox.boeHistoryPage(-1);
+    expect(els.guildBoeHistoryCount.textContent).toBe('Showing 1 to 20 of 21');
+    sandbox.boeHistoryPage(1);
+    sandbox.boeHistoryPage(1);
+    sandbox.boeHistoryPage(1);
+    expect(els.guildBoeHistoryCount.textContent).toBe('Showing 21 to 21 of 21');
+  });
+
+  it('shows no controls and an empty count when everything fits on one page', async () => {
+    const { client } = makeBoeClient({ items: paidRows(20), listings: [] });
+    const { els } = await build({ client, els: pagerEls() });
+    expect(rowsIn(els.guildBoeHistory.innerHTML)).toBe(20);
+    expect(els.guildBoeHistory.innerHTML).not.toContain('boeHistoryNext');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('boeHistoryPrev');
+    expect(els.guildBoeHistoryCount.textContent).toBe('');
+  });
+
+  it('renders without the count element, as the guild page sandbox never had one', async () => {
+    const { client } = makeBoeClient({ items: paidRows(21), listings: [] });
+    const { els } = await build({ client });
+    expect(rowsIn(els.guildBoeHistory.innerHTML)).toBe(20);
+  });
+
+  it('clamps the page when an undo empties the last page', async () => {
+    const { client } = makeBoeClient({
+      items: paidRows(21),
+      listings: [],
+      rpc: managerRpc({ boe_revert: () => ({ data: 'sold', error: null }) })
+    });
+    const { sandbox, els } = await build({ client, els: pagerEls() });
+    sandbox.boeHistoryPage(1);
+    expect(els.guildBoeHistoryCount.textContent).toBe('Showing 21 to 21 of 21');
+    // The 21st row is the oldest, the one alone on page 2.
+    sandbox.revertBoe(120, makeEl());
+    await flush();
+    expect(rowsIn(els.guildBoeHistory.innerHTML)).toBe(20);
+    expect(els.guildBoeHistoryCount.textContent).toBe('');
+    expect(els.guildBoeAwaiting.innerHTML).toContain('Paid Item 21<');
+  });
+
+  it('keeps the page across a re-render caused by an action elsewhere', async () => {
+    const { client } = makeBoeClient({
+      items: paidRows(41).concat([SOLD()]),
+      listings: [],
+      rpc: managerRpc({ boe_mark_paid: () => ({ data: null, error: null }) })
+    });
+    const { sandbox, els } = await build({ client, els: pagerEls() });
+    sandbox.boeHistoryPage(1);
+    expect(els.guildBoeHistoryCount.textContent).toBe('Showing 21 to 40 of 41');
+    sandbox.markBoePaid(3, makeEl());
+    await flush();
+    // One more row in History, newest first, so page 2 still starts at 21.
+    expect(els.guildBoeHistoryCount.textContent).toBe('Showing 21 to 40 of 42');
+  });
+
+  it('moves focus to the other button when the pressed one becomes disabled', async () => {
+    const { client } = makeBoeClient({ items: paidRows(21), listings: [] });
+    const { sandbox, els } = await build({ client, els: pagerEls() });
+    sandbox.boeHistoryPage(1);
+    // Next is now disabled, so focus lands on Previous rather than on body.
+    expect(els.boeHistoryPrev.focused).toBe(1);
+    expect(els.boeHistoryNext.focused).toBe(0);
+    sandbox.boeHistoryPage(-1);
+    expect(els.boeHistoryNext.focused).toBe(1);
+  });
+
+  it('keeps focus on the pressed button while it stays enabled', async () => {
+    const { client } = makeBoeClient({ items: paidRows(41), listings: [] });
+    const { sandbox, els } = await build({ client, els: pagerEls() });
+    sandbox.boeHistoryPage(1);
+    expect(els.boeHistoryNext.focused).toBe(1);
+    expect(els.boeHistoryPrev.focused).toBe(0);
+  });
+
+  it('totals every row, not the visible page', async () => {
+    const { client } = makeBoeClient({ items: paidRows(21), listings: [] });
+    const { els } = await build({ client, els: pagerEls() });
+    expect(els.guildBoeSummary.innerHTML).toContain(gold(21 * 80000));
+  });
+
+  it('leaves the Open and Awaiting lists whole', async () => {
+    const found = Array.from({ length: 25 }, (_, i) =>
+      boeRow({ id: 300 + i, item_name: 'Open Item ' + (i + 1), found_at: '2026-08-2' + (i % 10) + 'T01:00:00Z' })
+    );
+    const { client } = makeBoeClient({ items: found, listings: [] });
+    const { els } = await build({ client, els: pagerEls() });
+    expect(rowsIn(els.guildBoeOpen.innerHTML)).toBe(25);
+  });
+
+  // #863 asked the browser harness to check the two buttons carry accessible
+  // names, but History renders only signed in and the harness runs signed out
+  // (Phase A), so the check lives here: the visible text is the name.
+  it('names both buttons by their visible text', async () => {
+    const { client } = makeBoeClient({ items: paidRows(21), listings: [] });
+    const { els } = await build({ client, els: pagerEls() });
+    expect(els.guildBoeHistory.innerHTML).toMatch(/<button[^>]*id="boeHistoryPrev"[^>]*>Previous<\/button>/);
+    expect(els.guildBoeHistory.innerHTML).toMatch(/<button[^>]*id="boeHistoryNext"[^>]*>Next<\/button>/);
+  });
+});
+
+// A manager can correct the item name, track and note from the page (#874).
+// The trigger already admits exactly those columns on a plain UPDATE and the
+// update policy is the manager grant, so this is wiring: what the form
+// prefills, what one Save sends, what is refused before any write, and what
+// the two silent failure shapes (zero rows, a server error) look like on the
+// row. Elements the form reads are stubbed by id, like the price fields.
+describe('manager edit (#874)', () => {
+  const focusable = () =>
+    makeEl({
+      focused: 0,
+      focus() {
+        this.focused++;
+      }
+    });
+  // The form span starts hidden, as the markup renders it: the stub default
+  // style {} would read as open and the first toggle would close it.
+  const editEls = (id) => ({
+    ['boe-edit-form-' + id]: makeEl({ style: { display: 'none' } }),
+    ['boe-edit-btn-' + id]: focusable(),
+    ['boe-edit-name-' + id]: focusable(),
+    ['boe-edit-track-' + id]: makeEl(),
+    ['boe-edit-note-' + id]: makeEl(),
+    ['boe-edit-rank-' + id]: makeEl(),
+    ['boe-status-' + id]: makeEl()
+  });
+  const typeInto = (els, id, { name, track, note }) => {
+    els['boe-edit-name-' + id].value = name;
+    els['boe-edit-track-' + id].value = track;
+    els['boe-edit-note-' + id].value = note;
+  };
+  const ZERO_ROWS = 'Nothing was saved. Your BoE manager grant may have been revoked; reload the page.';
+
+  it('renders Edit in all three sections for a manager, after the lifecycle buttons and before the forms', async () => {
+    const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    for (const id of ['guildBoeOpen', 'guildBoeAwaiting', 'guildBoeHistory']) {
+      expect(els[id].innerHTML).toContain('>Edit</button>');
+      expect(els[id].innerHTML).toContain('id="boe-edit-form-');
+    }
+    const open = els.guildBoeOpen.innerHTML;
+    expect(open.indexOf('>Retire</button>')).toBeLessThan(open.indexOf('id="boe-edit-btn-1"'));
+    expect(open.indexOf('id="boe-edit-btn-1"')).toBeLessThan(open.indexOf('id="boe-listing-form-1"'));
+    expect(open.indexOf('id="boe-edit-form-1"')).toBeLessThan(open.indexOf('id="boe-status-1"'));
+  });
+
+  it('prefills the name, the stored track and the note, escaped', async () => {
+    const rows = [
+      boeRow({ id: 1, item_name: 'Girdle "of" <Night>', track: 'Hero', note: 'from trash before boss 2' }),
+      boeRow({ id: 2, item_name: 'Sash of the Fallen Star', track: null, note: null })
+    ];
+    const { client } = makeBoeClient({ items: rows, listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const open = els.guildBoeOpen.innerHTML;
+    expect(open).toContain('value="' + realEsc('Girdle "of" <Night>') + '"');
+    expect(open).not.toContain('<Night>');
+    expect(open).toContain('<option value="Hero" selected>Hero</option>');
+    expect(open).toContain('>from trash before boss 2</textarea>');
+    expect(open).toContain('<option value="" selected>');
+    expect(open).toContain('id="boe-edit-note-2" aria-label="Note"');
+  });
+
+  it('Save sends one update of the three columns for that id, re-renders the new name and returns focus to Edit', async () => {
+    const els = editEls(1);
+    const { client, captured } = makeBoeClient({ items: [FOUND()], listings: [], rpc: managerRpc() });
+    const loaded = await build({ client, els });
+    typeInto(els, 1, { name: '  Slippers of the Hissing Cult ', track: 'Myth', note: 'Donate' });
+    loaded.sandbox.saveBoeEdit(1, makeEl({ textContent: 'Save' }));
+    await flush();
+    await flush();
+    expect(captured.updates).toEqual([
+      {
+        table: 'boe_items',
+        values: {
+          item_name: 'Slippers of the Hissing Cult',
+          track: 'Myth',
+          note: 'Donate',
+          item_id: null,
+          upgrade_rank: null
+        },
+        eq: [['id', 1]]
+      }
+    ]);
+    expect(els.guildBoeOpen.innerHTML).toContain('Slippers of the Hissing Cult');
+    expect(els.guildBoeOpen.innerHTML).not.toContain('Voidglass Cloak');
+    expect(els.guildBoeOpen.innerHTML).toContain('Myth');
+    // Still exactly one boe_items read: the row was patched in memory.
+    expect(captured.byTable.boe_items.filter((c) => !c.update)).toHaveLength(1);
+    expect(els['boe-edit-btn-1'].focused).toBe(1);
+  });
+
+  it('refuses an empty name on the row with no write and no audit entry', async () => {
+    const els = editEls(1);
+    const { client, captured } = makeBoeClient({ items: [FOUND()], listings: [], rpc: managerRpc() });
+    const loaded = await build({ client, els });
+    typeInto(els, 1, { name: '   ', track: 'Hero', note: '' });
+    loaded.sandbox.saveBoeEdit(1, makeEl());
+    await flush();
+    expect(els['boe-status-1'].textContent).toBe('Enter the item name.');
+    expect(captured.updates).toEqual([]);
+    expect(loaded.spies.audit).toEqual([]);
+  });
+
+  it('unchanged values write nothing, close the form and return focus to Edit', async () => {
+    const els = editEls(1);
+    els['boe-edit-form-1'].style.display = '';
+    const { client, captured } = makeBoeClient({ items: [FOUND()], listings: [], rpc: managerRpc() });
+    const loaded = await build({ client, els });
+    typeInto(els, 1, { name: 'Voidglass Cloak ', track: 'Hero', note: '  ' });
+    loaded.sandbox.saveBoeEdit(1, makeEl());
+    await flush();
+    expect(captured.updates).toEqual([]);
+    expect(loaded.spies.audit).toEqual([]);
+    expect(els['boe-edit-form-1'].style.display).toBe('none');
+    expect(els['boe-edit-btn-1'].focused).toBe(1);
+  });
+
+  it('the audit entry names the row team and keeps the old and new values', async () => {
+    const els = editEls(2);
+    const { client } = makeBoeClient({ items: [LISTED_OTHER_TEAM()], listings: [], rpc: managerRpc() });
+    const loaded = await build({ client, els });
+    typeInto(els, 2, { name: 'Slippers of the Hissing Cult', track: '', note: 'Donate' });
+    loaded.sandbox.saveBoeEdit(2, makeEl());
+    await flush();
+    await flush();
+    expect(loaded.spies.audit).toHaveLength(1);
+    expect(loaded.spies.audit[0]).toMatchObject({
+      action: 'BoE Find Edited',
+      targetType: 'boe_items',
+      targetId: 2,
+      teamId: 4
+    });
+    const detail = loaded.spies.audit[0].detail;
+    expect(detail).toContain('item renamed from "Wrathless Find" to "Slippers of the Hissing Cult"');
+    expect(detail).toContain('track was "Hero", now (none)');
+    expect(detail).toContain('note was (none), now "Donate"');
+  });
+
+  it('a zero-row result surfaces on the row, leaves the row alone and writes no audit entry', async () => {
+    const els = editEls(1);
+    const { client } = makeBoeClient({
+      items: [FOUND()],
+      listings: [],
+      rpc: managerRpc(),
+      updates: { boe_items: () => ({ data: [], error: null }) }
+    });
+    const loaded = await build({ client, els });
+    typeInto(els, 1, { name: 'Slippers of the Hissing Cult', track: 'Hero', note: '' });
+    loaded.sandbox.saveBoeEdit(1, makeEl());
+    await flush();
+    await flush();
+    expect(els['boe-status-1'].textContent).toBe(ZERO_ROWS);
+    expect(loaded.spies.audit).toEqual([]);
+    expect(els.guildBoeOpen.innerHTML).toContain('Voidglass Cloak');
+    expect(els.guildBoeOpen.innerHTML).not.toContain('Slippers of the Hissing Cult');
+  });
+
+  it('a server error surfaces verbatim, restores the button and writes no audit entry', async () => {
+    const message =
+      'Direct updates may only edit note, finder, item, track, or season; lifecycle changes go through the BoE RPCs';
+    const els = editEls(1);
+    const { client } = makeBoeClient({
+      items: [FOUND()],
+      listings: [],
+      rpc: managerRpc(),
+      updates: { boe_items: () => ({ data: null, error: { message } }) }
+    });
+    const loaded = await build({ client, els });
+    typeInto(els, 1, { name: 'Slippers of the Hissing Cult', track: 'Hero', note: '' });
+    const btn = makeEl({ textContent: 'Save' });
+    loaded.sandbox.saveBoeEdit(1, btn);
+    await flush();
+    await flush();
+    expect(els['boe-status-1'].textContent).toBe(message);
+    expect(loaded.spies.audit).toEqual([]);
+    expect(btn.disabled).toBe(false);
+    expect(btn.textContent).toBe('Save');
+  });
+
+  it('opening the form closes the other forms and moves focus into the name field', async () => {
+    const els = Object.assign(editEls(1), { 'boe-sale-form-1': makeEl({ style: { display: '' } }) });
+    const { client } = makeBoeClient({ items: [FOUND()], listings: [], rpc: managerRpc() });
+    const { sandbox } = await build({ client, els });
+    sandbox.toggleBoeForm(1, 'edit');
+    expect(els['boe-edit-form-1'].style.display).toBe('');
+    expect(els['boe-sale-form-1'].style.display).toBe('none');
+    expect(els['boe-edit-name-1'].focused).toBe(1);
+    sandbox.toggleBoeForm(1, 'edit');
+    expect(els['boe-edit-form-1'].style.display).toBe('none');
+    expect(els['boe-edit-name-1'].focused).toBe(1);
+    // And the edit form closes when a lifecycle form opens.
+    sandbox.toggleBoeForm(1, 'edit');
+    sandbox.toggleBoeForm(1, 'sale');
+    expect(els['boe-edit-form-1'].style.display).toBe('none');
+    expect(els['boe-sale-form-1'].style.display).toBe('');
+  });
+
+  it('Cancel restores the fields from the row and returns focus to Edit without a re-render', async () => {
+    const els = editEls(1);
+    els['boe-edit-form-1'].style.display = '';
+    const { client } = makeBoeClient({ items: [FOUND()], listings: [], rpc: managerRpc() });
+    const { sandbox } = await build({ client, els });
+    typeInto(els, 1, { name: 'typo', track: 'Myth', note: 'scratch' });
+    els.guildBoeOpen.innerHTML = 'untouched';
+    sandbox.cancelBoeEdit(1);
+    expect(els['boe-edit-name-1'].value).toBe('Voidglass Cloak');
+    expect(els['boe-edit-track-1'].value).toBe('Hero');
+    expect(els['boe-edit-note-1'].value).toBe('');
+    expect(els['boe-edit-form-1'].style.display).toBe('none');
+    expect(els['boe-edit-btn-1'].focused).toBe(1);
+    expect(els.guildBoeOpen.innerHTML).toBe('untouched');
+  });
+});
+
+// The catalog picker on the edit form (#875): boe.html reads the rows flagged
+// is_boe, feeds the shared datalist, and Save resolves the typed name against
+// that list so the stored spelling and item_id can never disagree.
+describe('catalog picker on the edit form (#875)', () => {
+  const CATALOG = () => [
+    { id: 7, name: 'Crushing Coiler Coif' },
+    { id: 8, name: 'Slitherscale Girdle' }
+  ];
+  const focusable = () =>
+    makeEl({
+      focused: 0,
+      focus() {
+        this.focused++;
+      }
+    });
+  const editEls = (id) => ({
+    ['boe-edit-form-' + id]: makeEl({ style: { display: 'none' } }),
+    ['boe-edit-btn-' + id]: focusable(),
+    ['boe-edit-name-' + id]: focusable(),
+    ['boe-edit-track-' + id]: makeEl(),
+    ['boe-edit-note-' + id]: makeEl(),
+    ['boe-edit-rank-' + id]: makeEl(),
+    ['boe-status-' + id]: makeEl()
+  });
+  const typeInto = (els, id, { name, track, note }) => {
+    els['boe-edit-name-' + id].value = name;
+    els['boe-edit-track-' + id].value = track;
+    els['boe-edit-note-' + id].value = note;
+  };
+
+  it('reads the catalog once, fills the datalist with its names, and points the name field at it', async () => {
+    const { client, captured } = makeBoeClient({
+      items: [FOUND()],
+      listings: [],
+      rpc: managerRpc(),
+      catalog: CATALOG()
+    });
+    const loaded = await build({ client });
+    expect(captured.byTable.items).toHaveLength(1);
+    expect(captured.byTable.items[0].select).toBe('id, name');
+    expect(captured.byTable.items[0].eq).toEqual([['is_boe', true]]);
+    expect(loaded.spies.datalists).toEqual([['Crushing Coiler Coif', 'Slitherscale Girdle']]);
+    expect(loaded.els.guildBoeOpen.innerHTML).toContain('id="boe-edit-name-1" list="boeItemOptions"');
+  });
+
+  it('Save resolves a typed name against the catalog: the catalog spelling and item_id go in the payload and the audit', async () => {
+    const els = editEls(1);
+    const { client, captured } = makeBoeClient({
+      items: [FOUND()],
+      listings: [],
+      rpc: managerRpc(),
+      catalog: CATALOG()
+    });
+    const loaded = await build({ client, els });
+    typeInto(els, 1, { name: ' crushing coiler coif ', track: 'Hero', note: '' });
+    loaded.sandbox.saveBoeEdit(1, makeEl());
+    await flush();
+    await flush();
+    expect(captured.updates).toEqual([
+      {
+        table: 'boe_items',
+        values: { item_name: 'Crushing Coiler Coif', track: 'Hero', note: null, item_id: 7, upgrade_rank: null },
+        eq: [['id', 1]]
+      }
+    ]);
+    expect(loaded.spies.audit[0].detail).toContain('item renamed from "Voidglass Cloak" to "Crushing Coiler Coif"');
+    expect(loaded.spies.audit[0].detail).toContain('catalog link was (none), now 7');
+    expect(els.guildBoeOpen.innerHTML).toContain('Crushing Coiler Coif');
+  });
+
+  it('a name outside the catalog writes item_id null and the text as typed', async () => {
+    const els = editEls(1);
+    const { client, captured } = makeBoeClient({
+      items: [boeRow({ id: 1, item_name: 'Crushing Coiler Coif', item_id: 7 })],
+      listings: [],
+      rpc: managerRpc(),
+      catalog: CATALOG()
+    });
+    const loaded = await build({ client, els });
+    typeInto(els, 1, { name: 'Feet - Heroic', track: 'Hero', note: '' });
+    loaded.sandbox.saveBoeEdit(1, makeEl());
+    await flush();
+    await flush();
+    expect(captured.updates[0].values).toEqual({
+      item_name: 'Feet - Heroic',
+      track: 'Hero',
+      note: null,
+      item_id: null,
+      upgrade_rank: null
+    });
+    expect(loaded.spies.audit[0].detail).toContain('catalog link was 7, now (none)');
+  });
+
+  it('a Save whose only effect is the link still writes', async () => {
+    const els = editEls(1);
+    const { client, captured } = makeBoeClient({
+      items: [boeRow({ id: 1, item_name: 'Crushing Coiler Coif', item_id: null })],
+      listings: [],
+      rpc: managerRpc(),
+      catalog: CATALOG()
+    });
+    const loaded = await build({ client, els });
+    typeInto(els, 1, { name: 'Crushing Coiler Coif', track: 'Hero', note: '' });
+    loaded.sandbox.saveBoeEdit(1, makeEl());
+    await flush();
+    await flush();
+    expect(captured.updates).toHaveLength(1);
+    expect(captured.updates[0].values.item_id).toBe(7);
+    expect(loaded.spies.audit[0].detail).toBe('catalog link was (none), now 7');
+  });
+
+  it('a failed catalog read costs the picker and nothing else', async () => {
+    const { client } = makeBoeClient({
+      items: [FOUND()],
+      listings: [],
+      rpc: managerRpc(),
+      catalog: () => ({ data: null, error: { message: 'boom' } })
+    });
+    const loaded = await build({ client });
+    expect(loaded.spies.datalists).toEqual([[]]);
+    expect(loaded.els.guildBoeOpen.innerHTML).toContain('Voidglass Cloak');
+    expect(loaded.els.guildBoeSummary.innerHTML).not.toContain('Could not load');
+  });
+});
+
+// Donate to Guild (#862): a second settle button, a Donating marker for the
+// intent a raider recorded, a Donated badge in History, and guild income that
+// counts a donated cut. The money columns never change; the flag is the whole
+// recognition, and a plain Mark Paid clears it.
+describe('Donate to Guild (#862)', () => {
+  const DONATING_SOLD = () => SOLD();
+  const flagged = (row) => Object.assign(row, { payout_donated: true });
+  const text = (html) => html.replace(/<[^>]*>/g, '').replace(/&middot;/g, '.');
+
+  it('Awaiting rows offer Mark Paid, then Donate to Guild, then Undo Sale', async () => {
+    const { client } = makeBoeClient({ items: [SOLD()], listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const html = els.guildBoeAwaiting.innerHTML;
+    expect(html).toContain('>Donate to Guild</button>');
+    expect(html.indexOf('>Mark Paid</button>')).toBeLessThan(html.indexOf('>Donate to Guild</button>'));
+    expect(html.indexOf('>Donate to Guild</button>')).toBeLessThan(html.indexOf('>Undo Sale</button>'));
+  });
+
+  it('Donate to Guild settles through boe_mark_paid with p_donated true, audits it, and History reads Donated', async () => {
+    const els = { 'boe-status-3': makeEl() };
+    const { client, captured } = makeBoeClient({ items: [DONATING_SOLD()], listings: [], rpc: managerRpc() });
+    const loaded = await build({ client, els });
+    loaded.sandbox.donateBoePayout(3, makeEl({ textContent: 'Donate to Guild' }));
+    await flush();
+    expect(captured.rpcCalls.find((c) => c.name === 'boe_mark_paid').args).toEqual({ p_id: 3, p_donated: true });
+    expect(loaded.spies.audit[0]).toMatchObject({ action: 'BoE Payout Donated', targetId: 3, teamId: 1 });
+    expect(loaded.spies.audit[0].detail).toContain('50,000');
+    expect(loaded.spies.audit[0].detail).toContain('Ashveil-Tichondrius');
+    expect(els.guildBoeHistory.innerHTML).toContain('>Donated</span>');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('>Paid</span>');
+    expect(els.guildBoeAwaiting.innerHTML).toContain('Nothing awaiting payout');
+  });
+
+  it('Mark Paid on a flagged row clears the intent and says so in the audit', async () => {
+    const els = { 'boe-status-3': makeEl() };
+    const { client, captured } = makeBoeClient({ items: [flagged(SOLD())], listings: [], rpc: managerRpc() });
+    const loaded = await build({ client, els });
+    loaded.sandbox.markBoePaid(3, makeEl({ textContent: 'Mark Paid' }));
+    await flush();
+    expect(captured.rpcCalls.find((c) => c.name === 'boe_mark_paid').args).toEqual({ p_id: 3, p_donated: false });
+    expect(loaded.spies.audit[0].action).toBe('BoE Payout Paid');
+    expect(loaded.spies.audit[0].detail).toContain('donate intent cleared');
+    expect(loaded.sandbox.findBoeItem(3).payout_donated).toBe(false);
+    expect(els.guildBoeHistory.innerHTML).toContain('>Paid</span>');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('Donating');
+  });
+
+  it('a Donating marker shows on found, listed and sold rows carrying the intent, and on no other row', async () => {
+    const items = [
+      flagged(boeRow({ id: 1, status: 'found' })),
+      boeRow({ id: 2, item_name: 'Plain Find', status: 'found' }),
+      flagged(boeRow({ id: 3, status: 'listed', item_name: 'Flagged Listing' })),
+      flagged(SOLD()),
+      flagged(PAID())
+    ];
+    const { client } = makeBoeClient({ items, listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const open = els.guildBoeOpen.innerHTML;
+    expect((open.match(/>Donating</g) || []).length).toBe(2);
+    expect(open.indexOf('Plain Find')).toBeGreaterThan(-1);
+    expect(els.guildBoeAwaiting.innerHTML).toContain('>Donating<');
+    expect(els.guildBoeHistory.innerHTML).toContain('>Donated</span>');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('>Donating<');
+  });
+
+  it('guild income counts a donated cut, the strip shows the donated total, and the per-team line still sums to the headline', async () => {
+    const items = [
+      flagged(
+        boeRow({
+          id: 3,
+          team_id: 1,
+          status: 'paid',
+          sold_at: '2026-08-18T00:00:00Z',
+          payout_paid_at: '2026-08-19T00:00:00Z',
+          sale_price: 100000,
+          finder_payout: 20000,
+          guild_cut: 80000
+        })
+      ),
+      boeRow({
+        id: 5,
+        team_id: 4,
+        status: 'sold',
+        sold_at: '2026-08-20T00:00:00Z',
+        sale_price: 250000,
+        finder_payout: 50000,
+        guild_cut: 200000
+      })
+    ];
+    const { client } = makeBoeClient({ items, listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const html = text(els.guildBoeSummary.innerHTML);
+    expect(html).toContain('Guild income to date: 300,000g');
+    expect(html).toContain('Donated by finders: 20,000g');
+    expect(html).toContain('Outstanding payouts: 50,000g');
+    expect(html).toMatch(/Phoenix Reborn 1 \(100,000g\)/);
+    expect(html).toMatch(/Wrathless 1 \(200,000g\)/);
+  });
+
+  it('a sold row that is donating still counts as outstanding until a manager settles it, and the strip has no donated line without one', async () => {
+    const { client } = makeBoeClient({ items: [flagged(SOLD())], listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const html = text(els.guildBoeSummary.innerHTML);
+    expect(html).toContain('Outstanding payouts: 50,000g');
+    expect(html).toContain('Guild income to date: 187,500g');
+    expect(html).not.toContain('Donated by finders');
+  });
+
+  it('Undo Payout leaves the intent, so the marker comes back in Awaiting', async () => {
+    const { client } = makeBoeClient({
+      items: [flagged(PAID())],
+      listings: [],
+      rpc: { boe_revert: () => ({ data: 'sold', error: null }) }
+    });
+    const loaded = await build({ client });
+    loaded.sandbox.revertBoe(4, makeEl());
+    await flush();
+    expect(loaded.sandbox.findBoeItem(4).payout_donated).toBe(true);
+    expect(loaded.els.guildBoeAwaiting.innerHTML).toContain('>Donating<');
+    expect(loaded.els.guildBoeAwaiting.innerHTML).toContain('>Donate to Guild</button>');
+  });
+});
+
+// A donated payout pays the finder nothing and the guild everything, and
+// History has to read that way, not show the policy cut beside a Donated
+// badge (Russell, 2026-09-02, on the first cut of #862). The stored split
+// stays the policy record, which is what Undo Payout puts back, so this is a
+// display rule shared by the row, the summary and the per-team line.
+describe('donated rows in History read finder 0, guild whole (#862 follow-up)', () => {
+  const flagged = (row) => Object.assign(row, { payout_donated: true });
+
+  it('a donated paid row shows Finder payout 0g and the sale net of the fee as guild cut', async () => {
+    const { client } = makeBoeClient({ items: [flagged(PAID())], listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const html = els.guildBoeHistory.innerHTML;
+    expect(html).toContain('<td>0g</td>');
+    // 100,000 sale less the 5,000 fee (#861): the guild keeps 95,000, never the fee.
+    expect(html).toContain('<td>95,000g</td>');
+    expect(html).not.toContain('<td>20,000g</td>');
+    expect(html).not.toContain('<td>75,000g</td>');
+    expect(html).toContain('>Donated</span>');
+  });
+
+  it('a paid row without the flag keeps its split', async () => {
+    const { client } = makeBoeClient({ items: [PAID()], listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const html = els.guildBoeHistory.innerHTML;
+    expect(html).toContain('<td>20,000g</td>');
+    expect(html).toContain('<td>75,000g</td>');
+    expect(html).not.toContain('<td>0g</td>');
+  });
+
+  it('a donating sold row in Awaiting keeps the policy split until a manager settles it', async () => {
+    const { client } = makeBoeClient({ items: [flagged(SOLD())], listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const html = els.guildBoeAwaiting.innerHTML;
+    expect(html).toContain('<td>50,000g</td>');
+    expect(html).toContain('<td>187,500g</td>');
+    expect(html).not.toContain('<td>0g</td>');
+  });
+
+  it('Donate to Guild lands the row in History reading 0g and the sale net of the fee as guild cut', async () => {
+    const els = { 'boe-status-3': makeEl() };
+    const { client } = makeBoeClient({ items: [SOLD()], listings: [], rpc: managerRpc() });
+    const loaded = await build({ client, els });
+    loaded.sandbox.donateBoePayout(3, makeEl());
+    await flush();
+    const html = els.guildBoeHistory.innerHTML;
+    expect(html).toContain('<td>0g</td>');
+    // 187,500 guild cut plus the 50,000 the finder gave up; the 12,500 fee stays with the game.
+    expect(html).toContain('<td>237,500g</td>');
+    expect(html).not.toContain('<td>50,000g</td>');
+  });
+
+  it('Undo Payout puts the policy split back on the Awaiting row', async () => {
+    const { client } = makeBoeClient({
+      items: [flagged(PAID())],
+      listings: [],
+      rpc: { boe_revert: () => ({ data: 'sold', error: null }) }
+    });
+    const loaded = await build({ client });
+    loaded.sandbox.revertBoe(4, makeEl());
+    await flush();
+    const html = loaded.els.guildBoeAwaiting.innerHTML;
+    expect(html).toContain('<td>20,000g</td>');
+    expect(html).toContain('<td>75,000g</td>');
+  });
+});
+
+// The upgrade rank (#865): a required six-option select on the raider form,
+// shown inside the Item cell's track badge, editable from the same six-option
+// select on the edit form, and the key the Record Sale guard reads.
+describe('upgrade rank (#865)', () => {
+  it('shows the rank inside the track badge, alone without a track, and nothing after a bare name', async () => {
+    const rows = [
+      boeRow({ id: 1, item_name: 'Slitherscale Girdle', track: 'Champion', upgrade_rank: '2/6' }),
+      boeRow({ id: 2, item_name: 'Rankless Find', track: null, upgrade_rank: '3/6', found_at: '2026-08-19T01:00:00Z' }),
+      boeRow({ id: 3, item_name: 'Plain Find', track: null, upgrade_rank: null, found_at: '2026-08-18T01:00:00Z' })
+    ];
+    const { client } = makeBoeClient({ items: rows, listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const open = els.guildBoeOpen.innerHTML;
+    expect(open).toContain('Slitherscale Girdle <span class="badge" style="margin-left:0.35rem;">Champion 2/6</span>');
+    expect(open).toContain('Rankless Find <span class="badge" style="margin-left:0.35rem;">3/6</span>');
+    expect(open).toContain('Plain Find<');
+  });
+
+  it('the edit form offers the six ranks with the stored one selected, and a blank option for a row without one', async () => {
+    const rows = [
+      boeRow({ id: 1, upgrade_rank: '2/6' }),
+      boeRow({ id: 2, upgrade_rank: null, found_at: '2026-08-22T01:00:00Z' })
+    ];
+    const { client } = makeBoeClient({ items: rows, listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const open = els.guildBoeOpen.innerHTML;
+    const first = open.slice(open.indexOf('id="boe-edit-rank-1"'), open.indexOf('id="boe-edit-rank-2"'));
+    expect(first).toContain('aria-label="Upgrade rank"');
+    expect(first).toContain('<option value="">No rank</option>');
+    expect(first).toContain('<option value="1/6">1/6</option>');
+    expect(first).toContain('<option value="2/6" selected>2/6</option>');
+    expect(first).toContain('<option value="6/6">6/6</option>');
+    const second = open.slice(open.indexOf('id="boe-edit-rank-2"'));
+    expect(second).toContain('<option value="" selected>No rank</option>');
+    expect(second).not.toContain('selected>2/6');
+  });
+
+  it('Save sends the selected rank with the other editable columns and audits the change', async () => {
+    const els = {
+      'boe-edit-form-1': makeEl({ style: { display: 'none' } }),
+      'boe-edit-btn-1': makeEl({ focus() {} }),
+      'boe-edit-name-1': makeEl({ focus() {} }),
+      'boe-edit-track-1': makeEl(),
+      'boe-edit-note-1': makeEl(),
+      'boe-edit-rank-1': makeEl(),
+      'boe-status-1': makeEl()
+    };
+    const { client, captured } = makeBoeClient({ items: [FOUND()], listings: [], rpc: managerRpc() });
+    const loaded = await build({ client, els });
+    els['boe-edit-name-1'].value = 'Voidglass Cloak';
+    els['boe-edit-track-1'].value = 'Hero';
+    els['boe-edit-note-1'].value = '';
+    els['boe-edit-rank-1'].value = '4/6';
+    loaded.sandbox.saveBoeEdit(1, makeEl({ textContent: 'Save' }));
+    await flush();
+    await flush();
+    expect(captured.updates).toEqual([
+      {
+        table: 'boe_items',
+        values: { item_name: 'Voidglass Cloak', track: 'Hero', note: null, item_id: null, upgrade_rank: '4/6' },
+        eq: [['id', 1]]
+      }
+    ]);
+    expect(loaded.spies.audit[0].detail).toContain('rank was (none), now "4/6"');
+  });
+});
+
+// Two finds of the same item on the same track at the same rank are one queue,
+// oldest first (#865). Record Sale on the newer one asks before recording; a
+// different rank, track or item, a sold older row, or selling the older row
+// itself never prompts. A row with no rank (the legacy import) counts as the
+// same item.
+describe('first come, first served at Record Sale (#865)', () => {
+  const OLDER = (over) =>
+    boeRow(
+      Object.assign(
+        {
+          id: 1,
+          team_id: 4,
+          finder_name: 'Firstfinder-Dalaran',
+          item_name: 'Slitherscale Girdle',
+          track: 'Champion',
+          upgrade_rank: '2/6',
+          found_at: '2026-08-20T01:00:00Z'
+        },
+        over
+      )
+    );
+  const NEWER = () =>
+    boeRow({
+      id: 2,
+      team_id: 1,
+      finder_name: 'Second-Illidan',
+      item_name: 'slitherscale girdle',
+      track: 'Champion',
+      upgrade_rank: '2/6',
+      found_at: '2026-08-21T01:00:00Z'
+    });
+  const SPLIT = {
+    boe_record_sale: () => ({
+      data: [{ sale_price: 100000, finder_payout: 20000, guild_cut: 75000, ah_fee: 5000 }],
+      error: null
+    })
+  };
+  async function sell(rows, id, opts = {}) {
+    const els = { ['boe-sale-price-' + id]: makeEl({ value: '100,000' }), ['boe-status-' + id]: makeEl() };
+    const { client, captured } = makeBoeClient({ items: rows, listings: [], rpc: managerRpc(SPLIT) });
+    const loaded = await build(Object.assign({ client, els }, opts));
+    loaded.sandbox.confirmBoeSale(id, makeEl({ textContent: 'Confirm' }));
+    await flush();
+    await flush();
+    return { confirms: loaded.spies.confirms, sold: captured.rpcCalls.filter((c) => c.name === 'boe_record_sale') };
+  }
+
+  it('names the older open finder at the same name, track and rank, then records on confirm', async () => {
+    const { confirms, sold } = await sell([OLDER(), NEWER()], 2);
+    expect(confirms).toHaveLength(1);
+    expect(confirms[0]).toContain('Firstfinder-Dalaran');
+    expect(confirms[0]).toContain('Slitherscale Girdle');
+    expect(confirms[0]).toContain('Champion');
+    expect(sold).toHaveLength(1);
+  });
+
+  it('records nothing when the manager cancels', async () => {
+    const { confirms, sold } = await sell([OLDER(), NEWER()], 2, { confirmResult: false });
+    expect(confirms).toHaveLength(1);
+    expect(sold).toEqual([]);
+  });
+
+  it('treats an older row with no rank as the same item', async () => {
+    const { confirms } = await sell([OLDER({ upgrade_rank: null }), NEWER()], 2);
+    expect(confirms).toHaveLength(1);
+  });
+
+  it.each([
+    ['a different rank', { upgrade_rank: '3/6' }],
+    ['a different track', { track: 'Hero' }],
+    ['a different item', { item_name: 'Voidglass Cloak' }],
+    [
+      'an older row that is already sold',
+      { status: 'sold', sold_at: '2026-08-21T02:00:00Z', sale_price: 100000, finder_payout: 20000, guild_cut: 80000 }
+    ]
+  ])('stays quiet for %s', async (_label, over) => {
+    const { confirms, sold } = await sell([OLDER(over), NEWER()], 2);
+    expect(confirms).toEqual([]);
+    expect(sold).toHaveLength(1);
+  });
+
+  it('stays quiet when the row being sold is the older one', async () => {
+    const { confirms, sold } = await sell([OLDER(), NEWER()], 1);
+    expect(confirms).toEqual([]);
+    expect(sold).toHaveLength(1);
+  });
+});
+
+// Every instant on the page is the viewer's local date and time, and the page
+// says which zone (#905). The fixtures sit just past midnight UTC, so a
+// date-only render in a zone ahead of Eastern would show the next day; the
+// assertions read the process's own zone (the frontend job pins
+// TZ=America/New_York) and never a locale.
+describe('local date and time with the zone note (#905)', () => {
+  const FOUND_AT = '2026-09-04T03:30:00Z';
+  const PAID_AT = '2026-09-05T02:15:00Z';
+  // A cell holding the local day and a clock, and nothing else in it.
+  const cellWith = (iso) => {
+    const day = new Date(iso).getDate();
+    return new RegExp('<td>[^<]*\\b' + day + '\\b[^<]*\\d{1,2}:\\d{2}[^<]*</td>');
+  };
+
+  it('renders found and paid instants with their clock, not a date alone', async () => {
+    const rows = [boeRow({ id: 1, found_at: FOUND_AT }), Object.assign(PAID(), { payout_paid_at: PAID_AT })];
+    const { client } = makeBoeClient({ items: rows, rpc: managerRpc() });
+    const { els } = await build({ client });
+    expect(els.guildBoeOpen.innerHTML).not.toContain(new Date(FOUND_AT).toLocaleDateString());
+    expect(els.guildBoeOpen.innerHTML).toMatch(cellWith(FOUND_AT));
+    expect(els.guildBoeHistory.innerHTML).not.toContain(new Date(PAID_AT).toLocaleDateString());
+    expect(els.guildBoeHistory.innerHTML).toMatch(cellWith(PAID_AT));
+  });
+
+  it('places the zone note with the tables', async () => {
+    const { client } = makeBoeClient({ items: ALL_ROWS(), rpc: managerRpc() });
+    const { els } = await build({ client });
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    expect(els.guildBoeSummary.innerHTML).toContain('class="tz-note"');
+    expect(els.guildBoeSummary.innerHTML).toContain(zone);
   });
 });

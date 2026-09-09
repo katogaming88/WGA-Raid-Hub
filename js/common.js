@@ -45,6 +45,21 @@ var TEAMS = {
   }
 };
 
+// Buckets a roster array by player.role ('Tank'/'Heal'/'Melee'/'Ranged') in
+// display order, for every "roster grouped by role" table/list in the app
+// (js/roster.js's public roster tab, incoming roster, and player dropdown;
+// js/calendar.js's raid-day detail view RSVP breakdown, #903). Lives here
+// rather than js/roster.js since calendar.html doesn't load that file.
+function groupRosterByRole(roster) {
+  var order = ['Tank', 'Heal', 'Melee', 'Ranged'];
+  var labels = { Tank: 'Tanks', Heal: 'Healers', Melee: 'Melee', Ranged: 'Ranged' };
+  var groups = { Tank: [], Heal: [], Melee: [], Ranged: [] };
+  (roster || []).forEach(function (p) {
+    if (groups[p.role]) groups[p.role].push(p);
+  });
+  return { order: order, labels: labels, groups: groups };
+}
+
 // The pickers' team list. Everything else (id-to-slug lookups, ?team=
 // resolution, the BoE reporting dropdown) reads TEAMS directly, because a
 // hidden team is unlisted rather than nonexistent.
@@ -94,7 +109,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.77.25';
+var VERSION = '3.98.0';
+
+// The newest migration stamp in the repo at stamp time, written by
+// `npm run stamp` (#967). It is what the deployed code expects the database to
+// have applied, and #970 compares it against app_version() at boot: Pages
+// deploys the moment a PR merges while `supabase db push` is a separate step,
+// so there is a window where the site is ahead of the schema.
+var REQUIRED_SCHEMA = '20260908200838';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -118,6 +140,12 @@ var SITE_NAV_ITEMS = [
   { id: 'navHome', label: 'Home', tooltip: 'Back to the roster overview', view: 'landing', hash: null },
   { id: 'navRoster', label: 'Roster', tooltip: "See who's currently on the roster", view: 'roster', hash: 'roster' },
   {
+    id: 'navCalendar',
+    label: 'Calendar',
+    tooltip: 'Upcoming raid nights',
+    href: 'calendar.html'
+  },
+  {
     id: 'navStreamers',
     label: 'Streams',
     tooltip: 'Watch raiders streaming live on Twitch',
@@ -132,13 +160,17 @@ var SITE_NAV_ITEMS = [
     hash: 'signup',
     onclick: 'showSignupView()'
   },
+  // One BoE item since #891, where the report form moved onto boe.html beside
+  // the rows it creates. It was a view of index.html with an officer-only
+  // "BoE Sales" link beside it; both surfaces are that one page now.
+  // carryTeam passes this page's team along, so the nav and a pinned
+  // per-team link report for the same team.
   {
     id: 'navBoE',
-    label: 'BoE',
-    tooltip: 'Report a BoE drop you found while raiding',
-    view: 'boe',
-    hash: 'boe',
-    onclick: 'showBoeView()'
+    label: 'BoE Sales',
+    tooltip: 'Report a BoE drop, and follow what happens to it',
+    href: 'boe.html',
+    carryTeam: true
   },
   {
     id: 'navHistory',
@@ -184,12 +216,17 @@ function renderSiteNav(mode) {
     })[0] || {}
   ).id;
   SITE_NAV_ITEMS.forEach(function (item) {
+    if (item.officerOnly && mode !== 'officer') return;
     if (item.href) {
-      // Same markup in both modes: a link to another page needs no team param
-      // (guild.html has no team) and no showView() (that view is not here).
+      // Same markup in both modes: no showView(), since that view is not here.
+      // Most cross-page links need no team either (guild.html and calendar.html
+      // resolve their own), but boe.html's form reports for one, so an item
+      // may ask for the page's team to be carried across (#891). Nothing ships
+      // hidden since #890, so there is no reveal branch here any more.
       html +=
         '<a href="' +
         item.href +
+        (item.carryTeam && TEAM_SLUG ? '?team=' + TEAM_SLUG : '') +
         '" class="site-nav-item" id="' +
         item.id +
         '" data-tooltip="' +
@@ -247,9 +284,11 @@ function toggleSidebar(force) {
 document.addEventListener('click', function (e) {
   var sb = document.getElementById('sidebar');
   if (!sb || !sb.classList.contains('open')) return;
+  var target = e.target instanceof Element ? e.target : null;
   if (
+    target &&
     window.matchMedia('(max-width:900px)').matches &&
-    (e.target.closest('.sidebar-nav') || e.target.closest('.sidebar-footer'))
+    (target.closest('.sidebar-nav') || target.closest('.sidebar-footer'))
   ) {
     toggleSidebar(false);
   }
@@ -279,6 +318,114 @@ function toggleHelp(id) {
 var SUPABASE_URL = 'https://kxgjqnpwfklbgrxdgmmv.supabase.co';
 var SUPABASE_ANON_KEY = 'sb_publishable_OdTUOR0Do1ThdKUPBh5inA_OWq78POC';
 var supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+/**
+ * Races a promise against a timer. Resolves or rejects with the promise when
+ * it settles first, rejects with a 'Timed out' error otherwise.
+ *
+ * js/discord.js has withTimeout() and js/guild.js a private copy of it; neither
+ * is loaded on every page that needs one, and this file is. Existing inline
+ * Promise.race sites above are left as they are.
+ *
+ * @template T
+ * @param {Promise<T>} promise
+ * @param {number} ms
+ * @returns {Promise<T>}
+ */
+function withTimeoutMs(promise, ms) {
+  return new Promise(function (resolve, reject) {
+    var timer = setTimeout(function () {
+      reject(new Error('Timed out'));
+    }, ms);
+    promise.then(
+      function (value) {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      function (err) {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
+/**
+ * What the caller may DO on the BoE Sales surface (boe.html, #864).
+ *
+ * It used to answer whether they could open the page at all. Since #890 that
+ * question is gone: anyone signed in may, and the read policies decide what
+ * comes back -- a BoE manager or site admin every find, an officer the teams
+ * they staff, a raider the finds under their own character or reported while
+ * signed in (#889). Getting this wrong now costs buttons, never rows.
+ *
+ * `manage` is the lifecycle grant (listing, sale, retire, edit, undo), the
+ * same is_boe_manager() or is_site_admin() pair every money RPC gates on.
+ * is_boe_manager() is grant-only and does not fold in site admins, matching
+ * the RLS gate, which is why admin is asked separately rather than assumed.
+ *
+ * `settleTeamIds` is what can_settle_boe() grants an officer or team leader
+ * on their own team (#888): Mark Paid, Donate to Guild, Undo Payout. It comes
+ * from the caller's own team_members rows, which the self-read policy
+ * ("Members read own team_members") returns, rather than from a yes/no RPC,
+ * because the buttons are decided per row and need the ids themselves.
+ * is_any_team_officer() is no longer asked here; it stays for the
+ * boe_managers read policy, which has no team to scope by.
+ *
+ * Signed out short-circuits: every answer is empty for anon, so asking is
+ * round-trips to learn nothing on the most common visit. `session` is what
+ * the caller holds as proof of being signed in; the reads use the client's
+ * own auth, and only the user id is taken from it.
+ *
+ * @param {any} session
+ * @returns {Promise<{ signedIn: boolean, manage: boolean, settleTeamIds: number[] }>}
+ */
+function fetchBoeAccess(session) {
+  if (!session) return Promise.resolve({ signedIn: false, manage: false, settleTeamIds: [] });
+  var nothing = { signedIn: true, manage: false, settleTeamIds: [] };
+  if (!supabaseClient) return Promise.resolve(nothing);
+
+  /** @param {'is_boe_manager' | 'is_site_admin'} fn */
+  function ask(fn) {
+    return Promise.resolve(supabaseClient.rpc(fn)).then(
+      function (result) {
+        return !!(result && !result.error && result.data === true);
+      },
+      function () {
+        return false;
+      }
+    );
+  }
+
+  function settleTeams() {
+    var uid = (session.user && session.user.id) || null;
+    if (!uid) return Promise.resolve([]);
+    // team-read-guard: the caller's own membership rows, at most one per team.
+    return Promise.resolve(supabaseClient.from('team_members').select('team_id, role').eq('auth_user_id', uid)).then(
+      function (result) {
+        if (!result || result.error || !result.data) return [];
+        return result.data
+          .filter(function (row) {
+            return row.role === 'officer' || row.role === 'team_leader';
+          })
+          .map(function (row) {
+            return row.team_id;
+          });
+      },
+      function () {
+        return [];
+      }
+    );
+  }
+
+  return withTimeoutMs(Promise.all([ask('is_boe_manager'), ask('is_site_admin'), settleTeams()]), 10000)
+    .then(function (r) {
+      return { signedIn: true, manage: r[0] || r[1], settleTeamIds: r[2] };
+    })
+    .catch(function () {
+      return nothing;
+    });
+}
 
 // Two-statement pattern for officer writes: the caller performs its own
 // insert/update against a table RLS already permits, then calls this to log
@@ -490,9 +637,11 @@ function renderNotifDropdown() {
   var hasRead = rows.some(function (n) {
     return n.read;
   });
-  var html = hasRead
-    ? '<div class="notif-header"><button class="notif-clear-btn" onclick="clearReadNotifications(event)">Clear read</button></div>'
-    : '';
+  var html =
+    localTimeZoneNote() +
+    (hasRead
+      ? '<div class="notif-header"><button class="notif-clear-btn" onclick="clearReadNotifications(event)">Clear read</button></div>'
+      : '');
   rows.forEach(function (n) {
     html +=
       '<div class="notif-row' +
@@ -500,7 +649,7 @@ function renderNotifDropdown() {
       '"><div class="notif-message">' +
       _esc(n.message) +
       '</div><div class="notif-time">' +
-      new Date(n.created_at).toLocaleString() +
+      formatDateTime(n.created_at) +
       '</div></div>';
   });
   dd.innerHTML = html;
@@ -1564,7 +1713,7 @@ function fetchSupabaseRoster() {
   var query = supabaseClient
     .from('players')
     .select(
-      'id, name_realm, nickname, is_trial, is_bench, is_backup_tank, is_backup_healer, bis_link, bis_allowed, wishlist_allowed, m_plus_excluded, m_plus_note, join_date, officer_notes, tier_pieces_equipped, tier_pieces_synced_at, bonus_roll_encounter_id, raid_encounters(name), classes_specs(class, spec, role)'
+      'id, name_realm, nickname, is_trial, is_bench, is_rotator, is_backup_tank, is_backup_healer, bis_link, bis_allowed, wishlist_allowed, m_plus_excluded, m_plus_note, join_date, tier_pieces_equipped, tier_pieces_synced_at, bonus_roll_encounter_id, raid_encounters(name), classes_specs(class, spec, role)'
     )
     .eq('team_id', _teamCfg.supabaseTeamId)
     .is('archived_at', null)
@@ -1615,6 +1764,36 @@ function fetchSupabaseMPlusRejections() {
           if (row.player_id != null && !(row.player_id in byPlayer)) {
             byPlayer[row.player_id] = row.officer_notes || '';
           }
+        });
+        return byPlayer;
+      },
+      function () {
+        return {};
+      }
+    );
+}
+
+// Officer notes per player (#925). They used to ride along with the roster
+// select above, which made them readable with the publishable key and by
+// every signed-in raider, so they live on player_officer_notes now behind
+// officer-only policies. This read runs on every page load like the roster
+// one does: RLS answers a raider or a signed-out visitor with zero rows
+// rather than an error, so there is nothing to gate on the client. Resolves
+// to a plain object keyed by player_id, or {} on any failure, so a missing
+// note renders as no note rather than blocking the roster load.
+function fetchSupabaseOfficerNotes() {
+  if (!supabaseClient) return Promise.resolve({});
+  // team-read-guard: one row per roster member that has a note, 80 on the largest team.
+  return supabaseClient
+    .from('player_officer_notes')
+    .select('player_id, officer_notes')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(
+      function (result) {
+        if (result.error) return {};
+        var byPlayer = {};
+        (result.data || []).forEach(function (row) {
+          if (row.player_id != null) byPlayer[row.player_id] = row.officer_notes || '';
         });
         return byPlayer;
       },
@@ -1720,10 +1899,12 @@ function saveTeamOfficerBios(bios) {
  *
  * @param {any[]} rows - players rows with embedded classes_specs
  * @param {Object} [mplusRejections] - player_id -> rejection note, from fetchSupabaseMPlusRejections()
+ * @param {Object} [officerNotes] - player_id -> officer note, from fetchSupabaseOfficerNotes()
  * @returns {any[]}
  */
-function mapSupabaseRoster(rows, mplusRejections) {
+function mapSupabaseRoster(rows, mplusRejections, officerNotes) {
   mplusRejections = mplusRejections || {};
+  officerNotes = officerNotes || {};
   var players = [];
   (rows || []).forEach(function (row) {
     var nameRealm = String(row.name_realm || '').trim();
@@ -1741,6 +1922,7 @@ function mapSupabaseRoster(rows, mplusRejections) {
       realm: parts.slice(1).join('-').trim(),
       isTrial: !!row.is_trial,
       isBench: !!row.is_bench,
+      isRotator: !!row.is_rotator,
       isBackupTank: !!row.is_backup_tank,
       isBackupHealer: !!row.is_backup_healer,
       nick: row.nickname || '',
@@ -1755,7 +1937,7 @@ function mapSupabaseRoster(rows, mplusRejections) {
       mPlusNote: row.m_plus_note || '',
       mPlusRejected: mPlusRejected,
       mPlusRejectionNote: mPlusRejected ? mplusRejections[row.id] : '',
-      officerNote: row.officer_notes || '',
+      officerNote: officerNotes[row.id] || '',
       tierPiecesEquipped: row.tier_pieces_equipped,
       tierPiecesSyncedAt: row.tier_pieces_synced_at || '',
       bonusRollEncounterId: row.bonus_roll_encounter_id || null,
@@ -2811,6 +2993,8 @@ function applyTeamSettingsToData(data, config) {
   if (config.activeSignupSeason !== undefined) data.signupSeason = config.activeSignupSeason;
   data.features = config.features || {};
   data.externalLinks = config.externalLinks || {};
+  data.discordSignupChannelId = config.discordSignupChannelId || null;
+  data.signupSheetLeadHours = config.signupSheetLeadHours || null;
   data.teamOfficerBios = config.teamOfficerBios || [];
   // guildOfficerBios is guild-wide (site_settings, heavy-loaded in loadData()),
   // not sourced from any one team's config -- see fetchSupabaseGuildOfficerBios().
@@ -2976,7 +3160,7 @@ function fetchSupabaseItems() {
   var query = supabaseClient
     .from('items')
     .select(
-      'id, wow_item_id, name, slot, armor_type, is_placeholder, icon, wcl_zone_id, secondary_stats, main_stats, weapon_subtype, is_ptr'
+      'id, wow_item_id, name, slot, armor_type, is_placeholder, icon, wcl_zone_id, secondary_stats, main_stats, weapon_subtype, is_ptr, is_boe'
     )
     .then(
       function (result) {
@@ -3112,9 +3296,25 @@ function buildItemMaps(rows) {
   var itemMainStats = {};
   var itemWeaponSubtypes = {};
   var itemIsPtr = {};
+  var boeItems = [];
   (rows || []).forEach(function (row) {
     var name = String(row.name || '').trim();
     if (!name) return;
+    // A BoE (#875) is catalog for the found form's picker and for nothing
+    // else: the BiS grid, the wishlist, the Priority tab, the boss filters
+    // and the equipped-gear lookup never see one, which is the point of the
+    // flag. Collected here, sorted below, handed out as DATA.boeItems.
+    if (row.is_boe) {
+      boeItems.push({
+        id: row.id,
+        name: name,
+        slot: row.slot || '',
+        armorType: row.armor_type || null,
+        icon: row.icon || null,
+        wclZoneId: row.wcl_zone_id == null ? null : row.wcl_zone_id
+      });
+      return;
+    }
     itemSlots[name] = row.is_placeholder ? '' : row.slot || '';
     if (row.armor_type) itemArmorTypes[name] = row.armor_type;
     if (row.is_placeholder) itemPlaceholders[name] = true;
@@ -3137,7 +3337,11 @@ function buildItemMaps(rows) {
     if (row.weapon_subtype) itemWeaponSubtypes[name] = row.weapon_subtype;
     if (row.is_ptr) itemIsPtr[name] = true;
   });
+  boeItems.sort(function (a, b) {
+    return a.name.localeCompare(b.name);
+  });
   return {
+    boeItems: boeItems,
     itemSlots: itemSlots,
     itemArmorTypes: itemArmorTypes,
     itemPlaceholders: itemPlaceholders,
@@ -3151,6 +3355,21 @@ function buildItemMaps(rows) {
     itemWeaponSubtypes: itemWeaponSubtypes,
     itemIsPtr: itemIsPtr
   };
+}
+
+// Writes the BoE catalog names into the <datalist> the manager's edit form on
+// boe.html points at (#875). The report form on that same page (#891) uses a
+// select of its own rather than this list. innerHTML by design: the test
+// sandboxes stub createElement without appendChild, and the list is a handful
+// of names.
+function renderBoeItemDatalist(names) {
+  var list = document.getElementById('boeItemOptions');
+  if (!list) return;
+  list.innerHTML = (names || [])
+    .map(function (n) {
+      return '<option value="' + _esc(n) + '">';
+    })
+    .join('');
 }
 
 // Short display labels for items.secondary_stats' Blizzard-enum values (#560),
@@ -3333,20 +3552,53 @@ function mapSupabaseItemBosses(rows) {
 // isn't even guaranteed stable -- silently truncating produced different,
 // wrong attendance percentages on different page loads instead of an
 // obvious failure.
-function fetchSupabaseAttendanceRaw() {
+// Shared cache for the full, unscoped `attendance` read above -- #837
+// found four independent call sites (this one, the Attendance tab's grid,
+// the per-player "add raid night" control, and Commit Attendance Scores)
+// each paying the same growing multi-page fetch on its own. The first three
+// want the same rows (this select is the union of columns any of them
+// need), so they share one in-flight/resolved promise instead of each
+// paging the table themselves. Commit Attendance Scores deliberately keeps
+// its own independent fetch (js/tabs/tab-attendance.js's executeCommitScores)
+// since it drives a write and a stale cache there would commit scores off
+// data an officer can no longer see on screen.
+var _attendanceRowsCachePromise = null;
+
+function fetchAttendanceRowsCached() {
+  if (_attendanceRowsCachePromise) return _attendanceRowsCachePromise;
   if (!supabaseClient) return Promise.resolve(null);
-  return fetchAllPaged(
+  _attendanceRowsCachePromise = fetchAllPaged(
     function (afterId, limit) {
       var q = supabaseClient
         .from('attendance')
-        .select('id, player_id, raid_date, status, report_excluded', afterId === null ? { count: 'exact' } : undefined)
+        .select(
+          'id, player_id, raid_date, status, report_excluded, report_title, source',
+          afterId === null ? { count: 'exact' } : undefined
+        )
         .eq('team_id', _teamCfg.supabaseTeamId)
         .order('id', { ascending: true })
         .limit(limit);
       return afterId === null ? q : q.gt('id', afterId);
     },
     { label: 'attendance query' }
-  );
+  ).then(function (rows) {
+    // A failed read shouldn't poison the cache -- the next caller should get
+    // a fresh attempt, not a permanently-null result for the rest of the page.
+    if (rows === null) _attendanceRowsCachePromise = null;
+    return rows;
+  });
+  return _attendanceRowsCachePromise;
+}
+
+// "Refresh from WCL" is the one action expected to add raid nights the
+// cached read doesn't know about yet -- mirrors that action already
+// resetting tab-attendance.js's own _attendanceGrid cache.
+function invalidateAttendanceRowsCache() {
+  _attendanceRowsCachePromise = null;
+}
+
+function fetchSupabaseAttendanceRaw() {
+  return fetchAttendanceRowsCached();
 }
 
 // Builds the {raidDates, players, joinDates} shape GAS's getRawAttendanceData
@@ -3555,7 +3807,16 @@ function formatAttendancePct(pct) {
 
 // onCoreReady fires once the fast core chunk is loaded and the page can render.
 // onHeavyReady (optional) fires once loot/attendance/BiS/priority data arrives.
-function loadData(onCoreReady, onHeavyReady) {
+// onLootReady (optional, #837 part 2) fires as soon as loot resolves and
+// DATA exists, independent of the other ~19 heavy fetches this batch pulls
+// in (attendance, item_preferences, priority_order, audit_log, etc.) -- loot
+// itself is small and fast (see fetchSupabaseLoot()'s comment), but its own
+// render used to wait in lockstep behind whichever of those was slowest that
+// page load. Only loot gets this early path today; the rest of the heavy
+// batch is unchanged, still one Promise.all gating onHeavyReady, since
+// decoupling every field would mean auditing every consumer's tolerance for
+// partial DATA the way this one narrow field already was.
+function loadData(onCoreReady, onHeavyReady, onLootReady) {
   var loadingEl = document.getElementById('loadingMsg');
   function showError(msg) {
     if (loadingEl) {
@@ -3570,6 +3831,8 @@ function loadData(onCoreReady, onHeavyReady) {
   var settingsPromise = fetchSupabaseSettings();
   // Fired alongside; the core callback waits for it before mapping the roster's M+ rejection badges.
   var mplusRejectionsPromise = fetchSupabaseMPlusRejections();
+  // Fired alongside; the core callback waits for it before mapping officer notes (#925).
+  var officerNotesPromise = fetchSupabaseOfficerNotes();
   // Fired alongside; the heavy callback waits for it before setting lootCounts.
   var lootPromise = fetchSupabaseLoot();
   // Fired alongside; the heavy callback waits for it before setting bisList.
@@ -3623,24 +3886,27 @@ function loadData(onCoreReady, onHeavyReady) {
   // and onSuccess wired the GAS heavy-chunk callback in the same tick.
   // Neither is needed once GAS calls nothing at all.
   function applyCoreData() {
-    return Promise.all([rosterPromise, settingsPromise, mplusRejectionsPromise]).then(function (results) {
-      var rows = results[0];
-      var settingsConfig = results[1];
-      var mplusRejections = results[2];
-      var data = { roster: [] };
-      var mapped = rows ? mapSupabaseRoster(rows, mplusRejections) : null;
-      if (mapped && mapped.length) data.roster = mapped;
-      applyTeamSettingsToData(data, settingsConfig);
-      DATA = data;
-      DATA._loadedAt = new Date();
-      try {
-        onCoreReady();
-      } catch (e) {
-        showError('Could not load roster data. ' + e.message);
-        return false;
+    return Promise.all([rosterPromise, settingsPromise, mplusRejectionsPromise, officerNotesPromise]).then(
+      function (results) {
+        var rows = results[0];
+        var settingsConfig = results[1];
+        var mplusRejections = results[2];
+        var officerNotes = results[3];
+        var data = { roster: [] };
+        var mapped = rows ? mapSupabaseRoster(rows, mplusRejections, officerNotes) : null;
+        if (mapped && mapped.length) data.roster = mapped;
+        applyTeamSettingsToData(data, settingsConfig);
+        DATA = data;
+        DATA._loadedAt = new Date();
+        try {
+          onCoreReady();
+        } catch (e) {
+          showError('Could not load roster data. ' + e.message);
+          return false;
+        }
+        return true;
       }
-      return true;
-    });
+    );
   }
 
   // Merges the heavy Supabase reads into DATA. Every field defaults to an
@@ -3731,6 +3997,7 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.itemMainStats = itemMaps.itemMainStats;
       DATA.itemWeaponSubtypes = itemMaps.itemWeaponSubtypes;
       DATA.itemIsPtr = itemMaps.itemIsPtr;
+      DATA.boeItems = itemMaps.boeItems;
       DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
       var tierTokenMapResult = mapSupabaseTierTokenMap(tierTokenMapRows);
       DATA.tierTokenMap = tierTokenMapResult.map;
@@ -3761,9 +4028,25 @@ function loadData(onCoreReady, onHeavyReady) {
     });
   }
 
-  applyCoreData().then(function (ok) {
+  var coreDataPromise = applyCoreData();
+  coreDataPromise.then(function (ok) {
     if (ok) applyHeavyData();
   });
+
+  // Independent of applyHeavyData()'s batch -- see loadData()'s own comment
+  // above. Waits on coreDataPromise too (not just lootPromise) since DATA
+  // itself doesn't exist until applyCoreData() resolves it, and a failed
+  // core load means there's no DATA to attach lootCounts to at all.
+  if (onLootReady) {
+    Promise.all([coreDataPromise, lootPromise]).then(function (results) {
+      var ok = results[0];
+      var lootRows = results[1];
+      if (!ok) return;
+      var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
+      DATA.lootCounts = mappedLoot || {};
+      onLootReady();
+    });
+  }
 }
 
 // -- Data helpers -----------------------------------------------------------
@@ -4970,6 +5253,40 @@ function renderAttendTrend(firstName) {
   return '<div style="overflow-x:auto;overflow-y:hidden;margin-top:0.75rem;">' + svg + '</div>';
 }
 
+// Every instant a page shows a person (a timestamptz: found, sold, paid,
+// submitted, synced) is rendered as the viewer's local date and time, with
+// the clock, so the day never shifts silently across zones (#905). Eastern
+// stays the canonical zone for date logic and calendar facts (raid nights,
+// award dates, join dates), which are formatted with an explicit zone or
+// from a date string elsewhere. The locale is left undefined on purpose:
+// the viewer's own, with dateStyle/timeStyle fixing the shape.
+function formatDateTime(iso) {
+  if (!iso) return '';
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+// The line every surface that shows a time carries (#905): the viewer's
+// zone by its short name and its IANA name, both read from the browser, so
+// a reader anywhere knows the times on the page are theirs. Visible text,
+// never a tooltip, so it reaches touch and screen-reader users too.
+function localTimeZoneNote() {
+  var iana = '';
+  var short = '';
+  try {
+    iana = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    var parts = new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' }).formatToParts(new Date());
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i].type === 'timeZoneName') short = parts[i].value;
+    }
+  } catch (e) {
+    // An engine without Intl zone support: the note still says the times are local.
+  }
+  var zone = short && iana ? short + ' (' + iana + ')' : short || iana;
+  return '<p class="tz-note">Times are shown in your time zone' + (zone ? ', ' + _esc(zone) : '') + '.</p>';
+}
+
 function formatJoinDate(dateStr) {
   if (!dateStr) return '';
   var parts = dateStr.split('-');
@@ -5802,6 +6119,9 @@ function renderProfile(firstName, backTo, container) {
   var benchBadge = player.isBench
     ? '<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text);border:1px solid var(--border);">Bench</span>'
     : '';
+  var rotatorBadge = player.isRotator
+    ? '<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text);border:1px solid var(--border);">Rotator</span>'
+    : '';
   var backupTankBadge = player.isBackupTank ? '<span class="badge badge-backup-tank">Backup Tank</span>' : '';
   var backupHealerBadge = player.isBackupHealer ? '<span class="badge badge-backup-healer">Backup Healer</span>' : '';
 
@@ -6244,29 +6564,34 @@ function renderProfile(firstName, backTo, container) {
     var received = receivedMap[normalise(item)] || null;
     var selfRec = selfReceivedEntryForRow(selfRecItems, item, dbSlot);
     var isReceived = received || selfRec;
-    // Mythic received outranks Heroic for the row's own highlight -- green
-    // for Mythic (or any non-Hero/Myth track, e.g. Champion), gold for a
-    // Heroic-only receive, so the row itself signals "how good" the receive
-    // was, not just that a receive happened.
-    var hasMythicReceived = !!(
-      received &&
-      received.some(function (r) {
-        return r.difficulty === 'Mythic';
-      })
-    );
-    var hasHeroicOnlyReceived =
-      !hasMythicReceived &&
-      !!(
-        received &&
-        received.some(function (r) {
-          return r.difficulty === 'Heroic';
-        })
-      );
+    // selfRec.source is built (mapSupabaseSelfReceived()) as "<Track>: <source>",
+    // e.g. "Mythic: Great Vault" -- pull the track back out so a self-received
+    // copy can be ranked against an in-raid receive of the same item below.
+    var selfRecDiffMatch = selfRec ? /^([A-Za-z]+):\s/.exec(selfRec.source || '') : null;
+    var selfRecDiff = selfRecDiffMatch ? selfRecDiffMatch[1] : '';
+    var selfRecRank = RECEIVED_DIFF_RANK[selfRecDiff] || 0;
+    // Only show the highest track received -- once a Mythic/Heroic copy is
+    // on file, an earlier lower-track receive of the same item is no longer
+    // worth a badge of its own.
+    var receivedMaxRank = 0;
+    if (received) {
+      for (var rr = 0; rr < received.length; rr++) {
+        var rr_rank = RECEIVED_DIFF_RANK[received[rr].difficulty] || 0;
+        if (rr_rank > receivedMaxRank) receivedMaxRank = rr_rank;
+      }
+    }
+    // The row's own highlight is the best track across BOTH sources (in-raid
+    // loot-import receives and approved self-received requests), not just
+    // the loot-import one -- green for Mythic (or any non-Hero/Myth track,
+    // e.g. Champion), gold for a Heroic-only receive, so the row itself
+    // signals "how good" the receive was, not just that a receive happened.
+    var bestReceivedRank = Math.max(receivedMaxRank, selfRecRank);
+    var hasMythicReceived = bestReceivedRank >= RECEIVED_DIFF_RANK.Mythic;
+    var hasHeroicOnlyReceived = bestReceivedRank === RECEIVED_DIFF_RANK.Heroic;
     // A Heroic-only receive (in-raid or self-reported) shouldn't hide the
     // button for going after the Mythic version of the same item -- only a
     // Mythic receive should retire the row.
-    var hasMythicSelfReceived = !!(selfRec && /^Mythic:/.test(selfRec.source || ''));
-    var mythicAlreadyReceived = hasMythicReceived || hasMythicSelfReceived;
+    var mythicAlreadyReceived = hasMythicReceived;
     var rowId = 'bisrow-' + player.firstName + '-' + bi;
     rows +=
       '<div class="priority-row' +
@@ -6316,15 +6641,14 @@ function renderProfile(firstName, backTo, container) {
     // the raider-facing "Submit request" button is gated on it. Either way, a
     // Mythic receive already on file retires the row for good.
     var showMarkBtn = !mythicAlreadyReceived && (isOfficer || featureEnabled('requests'));
-    if (received) {
-      // Only show the highest track received -- once a Mythic/Heroic copy is
-      // on file, an earlier lower-track receive of the same item is no
-      // longer worth a badge of its own.
-      var receivedMaxRank = 0;
-      for (var rr = 0; rr < received.length; rr++) {
-        var rr_rank = RECEIVED_DIFF_RANK[received[rr].difficulty] || 0;
-        if (rr_rank > receivedMaxRank) receivedMaxRank = rr_rank;
-      }
+    // received (real loot-import history) and selfRec (an approved
+    // self-received request, e.g. a Great Vault pick) are two independent
+    // sources for the same slot -- a raider can pick up a Heroic copy in
+    // raid and later vault a higher-track Mythic copy. Badge whichever one
+    // is actually the better track, not whichever source happens to have
+    // any entry at all (#previously: an old Heroic loot-import receive
+    // always won, so a newer Mythic self-received never showed).
+    if (received && receivedMaxRank >= selfRecRank) {
       var receivedForBadges = received.filter(function (r) {
         return (RECEIVED_DIFF_RANK[r.difficulty] || 0) === receivedMaxRank;
       });
@@ -6353,12 +6677,48 @@ function renderProfile(firstName, backTo, container) {
         (showMarkBtn ? markRecvBtn : '') +
         '</div>';
     } else if (selfRec) {
-      rows +=
-        '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;"><span class="bis-self-received-badge">' +
-        (selfRec.source || 'Self-reported') +
-        '</span>' +
-        (showMarkBtn ? markRecvBtn : '') +
-        '</div>';
+      // selfRecDiff is the parsed-out track (e.g. 'Mythic' from a "Mythic:
+      // Great Vault" source) -- badge it the same way as an in-raid receive
+      // when there's a recognizable track; otherwise fall back to the plain
+      // source-label badge (e.g. an M+/Crafted/Catalyst placeholder request,
+      // which carries no track).
+      if (selfRecRank > 0) {
+        var sr_colors = RANK_PILL_DIFF_COLORS[selfRecDiff === 'Mythic' ? 'mythic' : 'heroic'];
+        var sr_letter =
+          selfRecDiff === 'Mythic'
+            ? 'M'
+            : selfRecDiff === 'Heroic'
+              ? 'H'
+              : selfRecDiff === 'Normal'
+                ? 'N'
+                : selfRecDiff;
+        var sr_label = selfRec.source ? selfRec.source.replace(/^[A-Za-z]+:\s*/, '') : '';
+        rows +=
+          '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;">' +
+          '<span style="display:inline-flex;align-items:center;gap:5px;">' +
+          '<span class="bis-received-badge" style="background:' +
+          sr_colors.bg +
+          ';color:' +
+          sr_colors.c +
+          ';border-color:' +
+          sr_colors.bd +
+          ';" title="' +
+          (selfRec.source || '') +
+          '">' +
+          sr_letter +
+          '</span>' +
+          (sr_label ? '<span style="font-size:0.9em;color:var(--text-muted);">' + sr_label + '</span>' : '') +
+          '</span>' +
+          (showMarkBtn ? markRecvBtn : '') +
+          '</div>';
+      } else {
+        rows +=
+          '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;"><span class="bis-self-received-badge">' +
+          (selfRec.source || 'Self-reported') +
+          '</span>' +
+          (showMarkBtn ? markRecvBtn : '') +
+          '</div>';
+      }
     } else {
       rows += showMarkBtn ? markRecvBtn : '';
     }
@@ -6598,6 +6958,20 @@ function renderProfile(firstName, backTo, container) {
           '</div>'
         : '') +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
+      '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">Rotator</span>' +
+      '<button id="rotatorToggle-' +
+      player.firstName +
+      '" class="btn ' +
+      (player.isRotator ? 'btn-gold' : 'btn-muted') +
+      '" style="font-size:1rem;padding:0.25rem 0.75rem;" onclick="togglePlayerRotator(\'' +
+      nrSafe +
+      "','" +
+      fnSafe +
+      '\')">' +
+      (player.isRotator ? 'Remove from Rotator' : 'Mark as Rotator') +
+      '</button>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:0.75rem;">' +
       '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">Backup Tank</span>' +
       '<button id="backupTankToggle-' +
       player.firstName +
@@ -6754,6 +7128,7 @@ function renderProfile(firstName, backTo, container) {
     '</span>' +
     trialBadge +
     benchBadge +
+    rotatorBadge +
     backupTankBadge +
     backupHealerBadge +
     classLine +
@@ -7260,19 +7635,12 @@ function renderAddAttendanceNightControl(firstName, history) {
 
   // Every raid night the team has, so it is over the 1000-row cap on an
   // active team already (#707); an unpaged read here silently drops the
-  // oldest nights from the list an officer can pick from.
-  fetchAllPaged(
-    function (afterId, limit) {
-      var q = supabaseClient
-        .from('attendance')
-        .select('id, raid_date', afterId === null ? { count: 'exact' } : undefined)
-        .eq('team_id', _teamCfg.supabaseTeamId)
-        .order('id', { ascending: true })
-        .limit(limit);
-      return afterId === null ? q : q.gt('id', afterId);
-    },
-    { label: 'attendance raid dates' }
-  ).then(function (rows) {
+  // oldest nights from the list an officer can pick from. Shares the same
+  // cached read every other full-table attendance consumer uses (#837)
+  // instead of paging the table again itself -- this card can render many
+  // times per page view (once per roster profile opened), and the previous
+  // per-call fetch paid the full multi-page cost every single time.
+  fetchAttendanceRowsCached().then(function (rows) {
     if (rows === null) return;
     var seen = {};
     var dates = [];

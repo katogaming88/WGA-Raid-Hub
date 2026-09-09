@@ -22,7 +22,12 @@ function makeSandbox() {
     sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
     localStorage: { getItem: () => null, setItem: () => {} },
     console,
-    document: { getElementById: () => null, createElement: () => ({}), head: { appendChild: () => {} } },
+    document: {
+      getElementById: () => null,
+      createElement: () => ({}),
+      head: { appendChild: () => {} },
+      addEventListener: () => {}
+    },
     setTimeout,
     clearTimeout
   };

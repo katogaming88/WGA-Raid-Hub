@@ -1,0 +1,32 @@
+{
+  "name": "guild-team-bot",
+  "version": "3.94.0",
+  "description": "Discord bot for WoW guild teams (M+ exclusions, roster apps, resend)",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.115.0",
+    "discord.js": "^14.27.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "@types/dotenv": "^8.2.3",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.4.1",
+    "@types/ws": "^8.5.10",
+    "prettier": "^3.9.6",
+    "ts-node": "^10.9.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

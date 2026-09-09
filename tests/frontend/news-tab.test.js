@@ -28,7 +28,8 @@ function loadSandbox({ els = {}, fetchImpl, localStorageBacking } = {}) {
       getElementById: (id) => {
         if (!allEls[id]) allEls[id] = makeEl();
         return allEls[id];
-      }
+      },
+      addEventListener: () => {}
     },
     localStorage: {
       getItem: (k) => (Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null),

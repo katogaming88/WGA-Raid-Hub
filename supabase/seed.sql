@@ -46,9 +46,13 @@ insert into public.guild_officers (id, discord_id, auth_user_id) values
 insert into public.classes_specs (id, class, spec, role) values
   (1, 'Mage', 'Frost', 'Ranged');
 
-insert into public.items (id, wow_item_id, name, slot, armor_type) values
-  (1, 100001, 'Seed Test Staff', 'Two-Hand', null),
-  (2, 100002, 'Seed Test Robe', 'Chest', 'Cloth');
+-- Item 3 is the seed's one BoE (#875): submit_boe_found links a find to a
+-- flagged row only, and the picker suites want one to offer. Unscoped (no
+-- wcl_zone_id), like the other two, so it shows for every season.
+insert into public.items (id, wow_item_id, name, slot, armor_type, is_boe) values
+  (1, 100001, 'Seed Test Staff', 'Two-Hand', null, false),
+  (2, 100002, 'Seed Test Robe', 'Chest', 'Cloth', false),
+  (3, 100003, 'Seed Test BoE Belt', 'Waist', 'Leather', true);
 
 insert into public.players (id, team_id, name_realm, class_spec_id) values
   (1, 1, 'Seedraider-Illidan', 1),
@@ -66,6 +70,12 @@ insert into public.bis_requests (id, team_id, player_id, bis_link, status) value
 
 insert into public.mplus_exclusion_requests (id, team_id, player_id, reason, status) values
   (1, 1, 1, 'seed test reason', 'pending');
+
+-- #925: player 1 carries the note so the gated-table matrix has a row to
+-- prove invisible to anon and raiders. Player 2 is left without one, so the
+-- write assertions have a free primary key to insert against.
+insert into public.player_officer_notes (player_id, team_id, officer_notes) values
+  (1, 1, 'seed officer note');
 
 -- Signup 1 exercises the gated-table matrix; 2 and 3 are approved so the
 -- pending_roster view and add_signup_to_roster() have rows to work with.
@@ -92,8 +102,9 @@ insert into public.self_received_requests (id, team_id, player_id, self_item_id,
 
 -- BoE tracker (#745): item 1 is found and owned by (unlinked) player 1 so
 -- own-row read tests can link and see it; item 2 is sold with an unresolved
--- finder and a split satisfying the policy formula (150000 -> 30000/120000
--- at floor 20000 / pivot 100000); listing 1 hangs off the sold item. The
+-- finder and a split satisfying the policy formula (150000 -> 30000 / 112500
+-- with a 7500 auction house fee at floor 20000 / pivot 100000, #861);
+-- listing 1 hangs off the sold item. The
 -- manager grant goes to the team-1 officer's Discord id; the team-1 leader
 -- stays ungranted to prove grant-only writes. The grant is guild-wide (#766),
 -- so it authorizes that person on every team, not just team 1.
@@ -101,9 +112,9 @@ insert into public.boe_items (id, team_id, player_id, finder_name, item_id, item
   (1, 1, 1, 'Seedraider-Illidan', 1, 'Seed Test Staff', 'Hero', 'seed-season', 'found', '2026-01-02T00:00:00Z');
 
 insert into public.boe_items (id, team_id, player_id, finder_name, item_id, item_name, track, season, status,
-    found_at, sold_at, sale_price, finder_payout, guild_cut, payout_floor, payout_pivot) values
+    found_at, sold_at, sale_price, finder_payout, guild_cut, ah_fee, payout_floor, payout_pivot) values
   (2, 1, null, 'Oldfinder-Illidan', null, 'Seed Sold Sash', 'Myth', 'seed-season', 'sold',
-    '2026-01-01T00:00:00Z', '2026-01-03T00:00:00Z', 150000, 30000, 120000, 20000, 100000);
+    '2026-01-01T00:00:00Z', '2026-01-03T00:00:00Z', 150000, 30000, 112500, 7500, 20000, 100000);
 
 insert into public.boe_listings (id, team_id, boe_item_id, price, listed_at) values
   (1, 1, 2, 160000, '2026-01-02T12:00:00Z');

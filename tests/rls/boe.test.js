@@ -3,9 +3,12 @@
 // read; an ungranted officer reads their own team; a raider reads their own
 // rows via is_own_player(); a boe_managers grantee reads and mutates every
 // team, because BoEs are guild property. Every lifecycle mutation is gated on
-// that grant (or site admin), never on plain officer role. The split formula
+// that grant (or site admin), never on plain officer role, except the settle
+// pair (#888): boe_mark_paid and the paid-to-sold edge of boe_revert admit a
+// team officer or leader for the row's own team via can_settle_boe(). The split formula
 // tests encode the guild policy pinned in the #745 comment (floor 20000,
-// pivot 100000, gross sale, capped at the sale). Same withTxn harness as
+// pivot 100000, gross sale) as amended by #861: the game's 5% auction house
+// fee comes off the top and the finder is capped at the net. Same withTxn harness as
 // tests/rls/item-preferences.test.js (unique savepoint name), since these
 // tests mix privileged setup with impersonated RPC calls and expected raises.
 import { describe, it, expect, afterAll } from 'vitest';
@@ -55,7 +58,7 @@ const linkPlayer1ToRaider = (q) => q('update public.players set team_member_id =
 
 // Seeded BoE fixtures (supabase/seed.sql): boe_items 1 = found, player 1,
 // team 1; boe_items 2 = sold, unresolved finder, team 1, split 150000 ->
-// 30000 / 120000; boe_listings 1 hangs off item 2; boe_managers grants
+// 30000 / 112500 with a 7500 fee (#861); boe_listings 1 hangs off item 2; boe_managers grants
 // discord-officer-1 (OFFICER_T1). The team-1 leader stays ungranted on
 // purpose. No team-2 BoE rows are seeded: the cross-team fixtures below are
 // created inside the test transaction so no other suite's counts move.
@@ -170,9 +173,13 @@ describe('direct INSERT has no path on the data tables', () => {
 describe('submit_boe_found', () => {
   const submit = (args) => `select public.submit_boe_found(${args}) as id`;
 
-  it('anon submit with a rostered name resolves the player and catalog item', async () => {
+  // Since #875 only a catalog BoE links; the seed staff is a boss drop, so its
+  // resolution is null even on an exact name. The belt test below is the link.
+  it('anon submit with a rostered name resolves the player, and a boss drop stays unlinked', async () => {
     await withTxn(async ({ q, asAnon }) => {
-      const res = await asAnon(submit("1, 'Seedraider-Illidan', 'Seed Test Staff', 'Hero', 'from trash'"));
+      const res = await asAnon(
+        submit("1, 'Seedraider-Illidan', 'Seed Test Staff', 'Hero', 'from trash', false, '2/6'")
+      );
       const id = res.rows[0].id;
       const row = (
         await q(
@@ -184,7 +191,7 @@ describe('submit_boe_found', () => {
         team_id: 1,
         player_id: 1,
         finder_name: 'Seedraider-Illidan',
-        item_id: 1,
+        item_id: null,
         item_name: 'Seed Test Staff',
         track: 'Hero',
         note: 'from trash',
@@ -193,9 +200,17 @@ describe('submit_boe_found', () => {
     });
   });
 
+  it('a catalog BoE links case-insensitively and is stored with the catalog spelling', async () => {
+    await withTxn(async ({ q, asAnon }) => {
+      const res = await asAnon(submit("1, 'Seedraider-Illidan', '  seed test boe belt ', 'Hero', null, false, '3/6'"));
+      const row = (await q('select item_id, item_name from public.boe_items where id = $1', [res.rows[0].id])).rows[0];
+      expect(row).toEqual({ item_id: 3, item_name: 'Seed Test BoE Belt' });
+    });
+  });
+
   it('an unrostered name keeps the raw finder_name with a null player_id', async () => {
     await withTxn(async ({ q, asAnon }) => {
-      const res = await asAnon(submit("1, 'Stranger-Proudmoore', 'Unknown Green Blade', null, null"));
+      const res = await asAnon(submit("1, 'Stranger-Proudmoore', 'Unknown Green Blade', 'Hero', null, false, '2/6'"));
       const row = (
         await q('select player_id, finder_name, item_id, status from public.boe_items where id = $1', [res.rows[0].id])
       ).rows[0];
@@ -210,7 +225,10 @@ describe('submit_boe_found', () => {
 
   it('a logged-in raider can submit too', async () => {
     await withTxn(async ({ asUser }) => {
-      const res = await asUser(RAIDER_T1, submit("1, 'Seedraider-Illidan', 'Some BoE Cloak', 'Champion', null"));
+      const res = await asUser(
+        RAIDER_T1,
+        submit("1, 'Seedraider-Illidan', 'Some BoE Cloak', 'Champion', null, false, '1/6'")
+      );
       expect(res.rows[0].id).toBeGreaterThan(0);
     });
   });
@@ -240,25 +258,66 @@ describe('submit_boe_found', () => {
   it('the submit snapshots the seasonName in force', async () => {
     await withTxn(async ({ q, asAnon }) => {
       await q(`update public.team_settings set config = config || '{"seasonName": "Test Season 3"}' where team_id = 1`);
-      const res = await asAnon(submit("1, 'Seedraider-Illidan', 'Season Snapshot Blade', null, null"));
+      const res = await asAnon(submit("1, 'Seedraider-Illidan', 'Season Snapshot Blade', 'Myth', null, false, '6/6'"));
       const row = (await q('select season from public.boe_items where id = $1', [res.rows[0].id])).rows[0];
       expect(row.season).toBe('Test Season 3');
     });
   });
+
+  // The upgrade rank (#865): required with the track, six values, spaces
+  // stripped. The form checks all of this first; the RPC catches a stale client.
+  it('stores the upgrade rank with its spaces stripped', async () => {
+    await withTxn(async ({ q, asAnon }) => {
+      const res = await asAnon(submit("1, 'Seedraider-Illidan', 'Some BoE Cloak', 'Hero', null, false, ' 2 / 6 '"));
+      const row = (await q('select upgrade_rank from public.boe_items where id = $1', [res.rows[0].id])).rows[0];
+      expect(row.upgrade_rank).toBe('2/6');
+    });
+  });
+
+  it('a missing track is rejected', async () => {
+    await withTxn(async ({ asAnon }) => {
+      await expect(
+        asAnon(submit("1, 'Seedraider-Illidan', 'Some BoE Cloak', null, null, false, '2/6'"))
+      ).rejects.toThrow(/Track is required/);
+    });
+  });
+
+  it('a missing rank is rejected, whether null or left off', async () => {
+    await withTxn(async ({ asAnon }) => {
+      await expect(
+        asAnon(submit("1, 'Seedraider-Illidan', 'Some BoE Cloak', 'Hero', null, false, null"))
+      ).rejects.toThrow(/Upgrade rank is required/);
+      await expect(asAnon(submit("1, 'Seedraider-Illidan', 'Some BoE Cloak', 'Hero', null"))).rejects.toThrow(
+        /Upgrade rank is required/
+      );
+    });
+  });
+
+  it('a rank outside 1/6 to 6/6 is rejected', async () => {
+    await withTxn(async ({ asAnon }) => {
+      for (const bad of ["'7/6'", "'abc'", "'2/'"]) {
+        await expect(
+          asAnon(submit("1, 'Seedraider-Illidan', 'Some BoE Cloak', 'Hero', null, false, " + bad))
+        ).rejects.toThrow(new RegExp('one of 1/6 to 6/6'));
+      }
+    });
+  });
 });
 
-describe('the manager gate on every lifecycle RPC', () => {
-  const LIFECYCLE_CALLS = [
+// #888 carves the settle pair out of this gate for a team's own officers (the
+// block after this one); everything else stays manager-or-admin, so the
+// ungranted leader is still refused listing, sale, retire and a sold-row revert.
+describe('the manager gate on the lifecycle RPCs', () => {
+  const MANAGER_ONLY_CALLS = [
     'select public.boe_record_listing(1, 100000)',
     'select public.boe_record_sale(1, 100000)',
-    'select public.boe_mark_paid(2)',
     'select public.boe_retire(1)',
     'select public.boe_revert(2)'
   ];
 
-  it('the ungranted team leader is denied on all five', async () => {
+  it('the ungranted team leader is denied on listing, sale, retire and a sold-row revert', async () => {
     await withTxn(async ({ asUser }) => {
-      for (const sql of LIFECYCLE_CALLS) {
+      for (const sql of MANAGER_ONLY_CALLS) {
         await expect(asUser(TEAM_LEADER_T1, sql)).rejects.toThrow(/Not authorized/);
       }
     });
@@ -375,6 +434,190 @@ describe('the manager gate on every lifecycle RPC', () => {
   });
 });
 
+// Team officers settle payouts for their own team (#888): the officers who hand
+// out the gold mark it paid or donated, and can undo that one step. Listing,
+// sale, retire, edit and delete stay with managers and site admins. The seed
+// gives team 1 a leader (TEAM_LEADER_T1) and team 2 an officer (OFFICER_T2),
+// neither granted; seed row 2 is team 1's sold row.
+describe('team officers settle payouts for their own team (#888)', () => {
+  // A sold row on team 2, inserted as postgres with a complete receipt so the
+  // money constraints (#861) accept it; the transition trigger fires only for
+  // authenticated.
+  const addTeam2SoldItem = (q) =>
+    q(
+      `insert into public.boe_items
+         (team_id, item_name, finder_name, status, sold_at, sale_price, finder_payout, guild_cut, ah_fee,
+          payout_floor, payout_pivot)
+       values (2, 'Hellfire Sold Find', 'Nobody-Illidan', 'sold', now(), 100000, 20000, 75000, 5000, 20000, 100000)
+       returning id`
+    ).then((res) => res.rows[0].id);
+
+  it('the ungranted team leader marks a sold row of their own team paid', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await asUser(TEAM_LEADER_T1, 'select public.boe_mark_paid(2)');
+      const row = (await q('select status, payout_paid_at, payout_donated from public.boe_items where id = 2')).rows[0];
+      expect(row.status).toBe('paid');
+      expect(row.payout_paid_at).not.toBeNull();
+      expect(row.payout_donated).toBe(false);
+    });
+  });
+
+  it('the same leader donates one', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await asUser(TEAM_LEADER_T1, 'select public.boe_mark_paid(2, null, true)');
+      const row = (await q('select status, payout_donated from public.boe_items where id = 2')).rows[0];
+      expect(row).toEqual({ status: 'paid', payout_donated: true });
+    });
+  });
+
+  it('the same leader reverts the payout they settled, and nothing further', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await asUser(TEAM_LEADER_T1, 'select public.boe_mark_paid(2)');
+      const res = await asUser(TEAM_LEADER_T1, 'select public.boe_revert(2) as status');
+      expect(res.rows[0].status).toBe('sold');
+      const row = (await q('select status, payout_paid_at, sale_price::int as sp from public.boe_items where id = 2'))
+        .rows[0];
+      expect(row).toMatchObject({ status: 'sold', payout_paid_at: null, sp: 150000 });
+      await expect(asUser(TEAM_LEADER_T1, 'select public.boe_revert(2)')).rejects.toThrow(/Not authorized/);
+    });
+  });
+
+  it('an officer of another team is refused the row, and settles their own team', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await expect(asUser(OFFICER_T2, 'select public.boe_mark_paid(2)')).rejects.toThrow(/Not authorized/);
+      const id = await addTeam2SoldItem(q);
+      await asUser(OFFICER_T2, `select public.boe_mark_paid(${id})`);
+      expect((await q('select status from public.boe_items where id = $1', [id])).rows[0].status).toBe('paid');
+      await expect(asUser(TEAM_LEADER_T1, `select public.boe_revert(${id})`)).rejects.toThrow(/Not authorized/);
+      const res = await asUser(OFFICER_T2, `select public.boe_revert(${id}) as status`);
+      expect(res.rows[0].status).toBe('sold');
+    });
+  });
+
+  it('a raider with no grant is refused every call, own team included', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const id = await addTeam2SoldItem(q);
+      const calls = [
+        'select public.boe_mark_paid(2)',
+        'select public.boe_mark_paid(2, null, true)',
+        'select public.boe_revert(2)',
+        `select public.boe_mark_paid(${id})`,
+        'select public.boe_record_listing(1, 100000)',
+        'select public.boe_record_sale(1, 100000)',
+        'select public.boe_retire(1)'
+      ];
+      for (const sql of calls) {
+        await expect(asUser(RAIDER_T1, sql)).rejects.toThrow(/Not authorized/);
+      }
+    });
+  });
+
+  // The client logs every settle through write_audit_log(team_id, ...), whose
+  // gate already admits a team officer for that team; pinned here because the
+  // page's buttons (#890) will rely on it for people with no grant.
+  it('the leader logs the settle on their own team through write_audit_log', async () => {
+    await withTxn(async ({ asUser }) => {
+      await asUser(TEAM_LEADER_T1, 'select public.boe_mark_paid(2)');
+      const res = await asUser(
+        TEAM_LEADER_T1,
+        "select public.write_audit_log(1, 'BoE Paid', 'boe_items', 2, null) as id"
+      );
+      expect(res.rows[0].id).toBeGreaterThan(0);
+    });
+  });
+
+  it('the manager and the site admin still settle any team', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const id = await addTeam2SoldItem(q);
+      await asUser(OFFICER_T1, `select public.boe_mark_paid(${id})`);
+      const res = await asUser(SITE_ADMIN, `select public.boe_revert(${id}) as status`);
+      expect(res.rows[0].status).toBe('sold');
+    });
+  });
+});
+
+// The finder's Discord id (#889): submit_boe_found stamps the signed-in
+// caller's Discord id on the row (null for anon), a raider reads the rows they
+// submitted signed in whatever character name they typed, and the listings of
+// those rows come with them. Never client-supplied: the trigger keeps the
+// column off the plain-UPDATE list. The seed's auth users carry no provider_id
+// (supabase/seed.sql), so a synthetic finder is inserted here; its Discord id
+// matches no team_members, site_admins or boe_managers row, so
+// link_auth_user_to_member() links nothing.
+describe("the finder's Discord id (#889)", () => {
+  const FINDER = '00000000-0000-0000-0000-0000000000a9';
+  const FINDER_DISCORD = 'discord-finder-9';
+  const addFinder = (q) =>
+    q("insert into auth.users (id, raw_user_meta_data) values ($1, jsonb_build_object('provider_id', $2::text))", [
+      FINDER,
+      FINDER_DISCORD
+    ]);
+  // Team 4 (Wrathless) has no players, so the typed name never resolves and
+  // the Discord id is the only link the row carries.
+  const submit = (args) => `select public.submit_boe_found(${args}) as id`;
+  const FIND = "4, 'Wanderer-Illidan', 'Some BoE Cloak', 'Hero', null, false, '2/6'";
+
+  it('a signed-in submit stores the caller Discord id; an anon submit stores null', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      await addFinder(q);
+      const mine = (await asUser(FINDER, submit(FIND))).rows[0].id;
+      const theirs = (await asAnon(submit(FIND))).rows[0].id;
+      const rows = (
+        await q('select id, player_id, finder_discord_id from public.boe_items where id in ($1, $2) order by id', [
+          mine,
+          theirs
+        ])
+      ).rows;
+      expect(rows).toEqual([
+        { id: mine, player_id: null, finder_discord_id: FINDER_DISCORD },
+        { id: theirs, player_id: null, finder_discord_id: null }
+      ]);
+    });
+  });
+
+  it('the finder reads their own row and its listings, and nothing else', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await addFinder(q);
+      const id = (await asUser(FINDER, submit(FIND))).rows[0].id;
+      expect((await asUser(FINDER, 'select id from public.boe_items')).rows.map((r) => r.id)).toEqual([id]);
+      await asUser(OFFICER_T1, 'select public.boe_record_listing($1, 100000)', [id]);
+      const listings = await asUser(FINDER, 'select boe_item_id from public.boe_listings');
+      expect(listings.rows.map((r) => r.boe_item_id)).toEqual([id]);
+    });
+  });
+
+  // Green before and after the migration: the seeded raider has no
+  // provider_id, so current_discord_id() is null for them, and a null must
+  // never match the null on a row submitted signed out.
+  it('a user with no Discord id sees neither a signed-in find nor a signed-out one', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      await addFinder(q);
+      await asUser(FINDER, submit(FIND));
+      const id = (await asAnon(submit(FIND))).rows[0].id;
+      await asUser(OFFICER_T1, 'select public.boe_record_listing($1, 100000)', [id]);
+      expect((await asUser(RAIDER_T1, 'select id from public.boe_items')).rows.length).toBe(0);
+      expect((await asUser(RAIDER_T1, 'select id from public.boe_listings')).rows.length).toBe(0);
+    });
+  });
+
+  it('current_discord_id() is null for anon and for a user without a provider id', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      await addFinder(q);
+      expect((await asAnon('select public.current_discord_id() as d')).rows[0].d).toBeNull();
+      expect((await asUser(RAIDER_T1, 'select public.current_discord_id() as d')).rows[0].d).toBeNull();
+      expect((await asUser(FINDER, 'select public.current_discord_id() as d')).rows[0].d).toBe(FINDER_DISCORD);
+    });
+  });
+
+  it('a manager cannot set the column by a direct UPDATE', async () => {
+    await withTxn(async ({ asUser }) => {
+      await expect(
+        asUser(OFFICER_T1, "update public.boe_items set finder_discord_id = 'discord-forged' where id = 1")
+      ).rejects.toThrow(/go through the BoE RPCs/);
+    });
+  });
+});
+
 describe('the boe_manager admin trio is site-admin only (#766)', () => {
   it('a site admin can grant, list, and revoke', async () => {
     await withTxn(async ({ asUser }) => {
@@ -448,9 +691,10 @@ describe('lifecycle transitions', () => {
   it('a direct sale from found is legal', async () => {
     await withTxn(async ({ q, asUser }) => {
       await asUser(OFFICER_T1, 'select public.boe_record_sale(1, 100000)');
-      const row = (await q('select status, sold_at from public.boe_items where id = 1')).rows[0];
+      const row = (await q('select status, sold_at, ah_fee::int as af from public.boe_items where id = 1')).rows[0];
       expect(row.status).toBe('sold');
       expect(row.sold_at).not.toBeNull();
+      expect(row.af).toBe(5000);
     });
   });
 
@@ -503,22 +747,29 @@ describe('lifecycle transitions', () => {
   });
 });
 
-describe('the split formula (policy pinned on #745)', () => {
-  // [sale, finder, guild] -- the first five transcribed from last season's
-  // sheet (both rounding directions included); the last two exercise the
-  // cap branch the sheet never reached (its minimum sale was 27,500).
+describe('the split formula (policy pinned on #745, the auction house fee per #861)', () => {
+  // [sale, finder, guild, fee] -- the first five transcribed from last
+  // season's sheet with the game's 5% auction house fee taken off the top
+  // (both rounding directions included); the next two exercise the cap
+  // branch the sheet never reached (its minimum sale was 27,500), where the
+  // finder is capped at the net and the guild takes zero; the last two are
+  // real mails the fee was read off (#861 comment: prod rows 24 and 27, the
+  // second one settling that silver and copper are ignored and the fee
+  // rounds half away from zero).
   const SPLITS = [
-    [617518, 123504, 494014],
-    [95000, 20000, 75000],
-    [285026, 57005, 228021],
-    [27500, 20000, 7500],
-    [1187535, 237507, 950028],
-    [15000, 15000, 0],
-    [20000, 20000, 0]
+    [617518, 123504, 463138, 30876],
+    [95000, 20000, 70250, 4750],
+    [285026, 57005, 213770, 14251],
+    [27500, 20000, 6125, 1375],
+    [1187535, 237507, 890651, 59377],
+    [15000, 14250, 0, 750],
+    [20000, 19000, 0, 1000],
+    [125000, 25000, 93750, 6250],
+    [47999, 20000, 25599, 2400]
   ];
 
-  for (const [sale, finder, guild] of SPLITS) {
-    it(`splits a ${sale.toLocaleString('en-US')}g sale into ${finder.toLocaleString('en-US')} / ${guild.toLocaleString('en-US')}`, async () => {
+  for (const [sale, finder, guild, fee] of SPLITS) {
+    it(`splits a ${sale.toLocaleString('en-US')}g sale into ${finder.toLocaleString('en-US')} / ${guild.toLocaleString('en-US')} / ${fee.toLocaleString('en-US')}`, async () => {
       await withTxn(async ({ q, asUser }) => {
         const inserted = await q(
           "insert into public.boe_items (team_id, item_name) values (1, 'Split Test Blade') returning id"
@@ -526,19 +777,53 @@ describe('the split formula (policy pinned on #745)', () => {
         const id = inserted.rows[0].id;
         const res = await asUser(
           OFFICER_T1,
-          `select sale_price::int as sale_price, finder_payout::int as finder_payout, guild_cut::int as guild_cut from public.boe_record_sale(${id}, ${sale})`
+          `select sale_price::int as sale_price, finder_payout::int as finder_payout, guild_cut::int as guild_cut, ah_fee::int as ah_fee from public.boe_record_sale(${id}, ${sale})`
         );
-        expect(res.rows[0]).toEqual({ sale_price: sale, finder_payout: finder, guild_cut: guild });
+        expect(res.rows[0]).toEqual({ sale_price: sale, finder_payout: finder, guild_cut: guild, ah_fee: fee });
         const stored = (
           await q(
-            'select finder_payout::int as f, guild_cut::int as g, payout_floor::int as pf, payout_pivot::int as pp from public.boe_items where id = $1',
+            'select finder_payout::int as f, guild_cut::int as g, ah_fee::int as af, payout_floor::int as pf, payout_pivot::int as pp from public.boe_items where id = $1',
             [id]
           )
         ).rows[0];
-        expect(stored).toEqual({ f: finder, g: guild, pf: 20000, pp: 100000 });
+        expect(stored).toEqual({ f: finder, g: guild, af: fee, pf: 20000, pp: 100000 });
       });
     });
   }
+
+  it('the three cuts sum to the sale on every sold or paid row, by constraint', async () => {
+    await withTxn(async ({ q }) => {
+      const cols =
+        '(team_id, item_name, status, sold_at, sale_price, finder_payout, guild_cut, ah_fee, payout_floor, payout_pivot)';
+      // A refused insert aborts the transaction, so each one rides its own savepoint.
+      const refused = async (values, re) => {
+        await q('savepoint boe_sums');
+        await expect(q(`insert into public.boe_items ${cols} values ${values}`)).rejects.toThrow(re);
+        await q('rollback to savepoint boe_sums');
+      };
+      await refused(
+        "(1, 'Bad Sums', 'sold', now(), 100000, 20000, 80000, 5000, 20000, 100000)",
+        /boe_items_money_sums/
+      );
+      await refused(
+        "(1, 'No Fee', 'sold', now(), 100000, 20000, 80000, null, 20000, 100000)",
+        /boe_items_money_complete_when_sold/
+      );
+      const ok = await q(
+        `insert into public.boe_items ${cols} values (1, 'Good Sums', 'sold', now(), 100000, 20000, 75000, 5000, 20000, 100000) returning id`
+      );
+      expect(ok.rowCount).toBe(1);
+    });
+  });
+
+  it('a manager cannot set the fee by a direct UPDATE', async () => {
+    await withTxn(async ({ asUser }) => {
+      // The sums still hold, so it is the trigger that refuses, not the constraint.
+      await expect(
+        asUser(OFFICER_T1, 'update public.boe_items set ah_fee = 8500, guild_cut = 111500 where id = 2')
+      ).rejects.toThrow(/go through the BoE RPCs/);
+    });
+  });
 
   it('a changed floor and pivot apply to the next sale and are snapshotted', async () => {
     await withTxn(async ({ q, asUser }) => {
@@ -549,9 +834,9 @@ describe('the split formula (policy pinned on #745)', () => {
       const id = inserted.rows[0].id;
       const res = await asUser(
         OFFICER_T1,
-        `select finder_payout::int as finder_payout, guild_cut::int as guild_cut from public.boe_record_sale(${id}, 95000)`
+        `select finder_payout::int as finder_payout, guild_cut::int as guild_cut, ah_fee::int as ah_fee from public.boe_record_sale(${id}, 95000)`
       );
-      expect(res.rows[0]).toEqual({ finder_payout: 30000, guild_cut: 65000 });
+      expect(res.rows[0]).toEqual({ finder_payout: 30000, guild_cut: 60250, ah_fee: 4750 });
       const stored = (
         await q('select payout_floor::int as pf, payout_pivot::int as pp from public.boe_items where id = $1', [id])
       ).rows[0];
@@ -580,9 +865,12 @@ describe('revert walks the correction edges', () => {
       await asUser(OFFICER_T1, 'select public.boe_mark_paid(2)');
       const res = await asUser(OFFICER_T1, 'select public.boe_revert(2) as status');
       expect(res.rows[0].status).toBe('sold');
-      const row = (await q('select status, payout_paid_at, sale_price::int as sp from public.boe_items where id = 2'))
-        .rows[0];
-      expect(row).toMatchObject({ status: 'sold', payout_paid_at: null, sp: 150000 });
+      const row = (
+        await q(
+          'select status, payout_paid_at, sale_price::int as sp, ah_fee::int as af from public.boe_items where id = 2'
+        )
+      ).rows[0];
+      expect(row).toMatchObject({ status: 'sold', payout_paid_at: null, sp: 150000, af: 7500 });
     });
   });
 
@@ -592,7 +880,7 @@ describe('revert walks the correction edges', () => {
       expect(res.rows[0].status).toBe('listed');
       const row = (
         await q(
-          'select status, sold_at, sale_price, finder_payout, guild_cut, payout_floor, payout_pivot from public.boe_items where id = 2'
+          'select status, sold_at, sale_price, finder_payout, guild_cut, ah_fee, payout_floor, payout_pivot from public.boe_items where id = 2'
         )
       ).rows[0];
       expect(row).toEqual({
@@ -601,6 +889,7 @@ describe('revert walks the correction edges', () => {
         sale_price: null,
         finder_payout: null,
         guild_cut: null,
+        ah_fee: null,
         payout_floor: null,
         payout_pivot: null
       });
@@ -628,8 +917,9 @@ describe('revert walks the correction edges', () => {
       await asUser(OFFICER_T1, `select public.boe_record_sale(${id}, 100000)`);
       const res = await asUser(OFFICER_T1, `select public.boe_revert(${id}) as status`);
       expect(res.rows[0].status).toBe('found');
-      const row = (await q('select sale_price, finder_payout from public.boe_items where id = $1', [id])).rows[0];
-      expect(row).toEqual({ sale_price: null, finder_payout: null });
+      const row = (await q('select sale_price, finder_payout, ah_fee from public.boe_items where id = $1', [id]))
+        .rows[0];
+      expect(row).toEqual({ sale_price: null, finder_payout: null, ah_fee: null });
     });
   });
 
@@ -644,15 +934,87 @@ describe('revert walks the correction edges', () => {
   });
 });
 
+// Donated payouts (#862): a flag on the settle step, never a status. The raider
+// form records the intent, the manager's button decides, and a plain Mark Paid
+// clears the intent, so the flag is written only by the two RPCs.
+describe('donated payouts (#862)', () => {
+  const submit = (args) => `select public.submit_boe_found(${args}) as id`;
+
+  it('submit_boe_found stores the raider intent, false by default', async () => {
+    await withTxn(async ({ q, asAnon }) => {
+      const yes = await asAnon(submit("1, 'Seedraider-Illidan', 'Seed Test BoE Belt', 'Hero', null, true, '2/6'"));
+      const no = await asAnon(submit("1, 'Seedraider-Illidan', 'Seed Test BoE Belt', 'Hero', null, false, '2/6'"));
+      const rows = (
+        await q('select id, payout_donated from public.boe_items where id in ($1, $2) order by id', [
+          yes.rows[0].id,
+          no.rows[0].id
+        ])
+      ).rows;
+      expect(rows.map((r) => r.payout_donated)).toEqual([true, false]);
+    });
+  });
+
+  it('boe_mark_paid settles as donated on request, and a plain Mark Paid clears the intent', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await asUser(OFFICER_T1, 'select public.boe_mark_paid(2, null, true)');
+      let row = (await q('select status, payout_donated from public.boe_items where id = 2')).rows[0];
+      expect(row).toEqual({ status: 'paid', payout_donated: true });
+      await asUser(OFFICER_T1, 'select public.boe_revert(2)');
+      await asUser(OFFICER_T1, 'select public.boe_mark_paid(2)');
+      row = (await q('select status, payout_donated from public.boe_items where id = 2')).rows[0];
+      expect(row).toEqual({ status: 'paid', payout_donated: false });
+    });
+  });
+
+  it('boe_revert paid back to sold leaves the flag alone', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await asUser(OFFICER_T1, 'select public.boe_mark_paid(2, null, true)');
+      const res = await asUser(OFFICER_T1, 'select public.boe_revert(2) as status');
+      expect(res.rows[0].status).toBe('sold');
+      const row = (await q('select payout_donated from public.boe_items where id = 2')).rows[0];
+      expect(row.payout_donated).toBe(true);
+    });
+  });
+
+  it('a manager cannot set the flag by a direct UPDATE', async () => {
+    await withTxn(async ({ asUser }) => {
+      await expect(
+        asUser(OFFICER_T1, 'update public.boe_items set payout_donated = true where id = 1')
+      ).rejects.toThrow(/go through the BoE RPCs/);
+    });
+  });
+});
+
 describe('plain UPDATE is metadata-only and DELETE is manager-gated', () => {
-  it('a manager can edit the note and re-link the finder, but not move status', async () => {
+  it('a manager can edit the note, the finder, the item name and the track, but not move status', async () => {
     await withTxn(async ({ q, asUser }) => {
       await asUser(OFFICER_T1, "update public.boe_items set note = 'checked with the bank' where id = 1");
       await asUser(OFFICER_T1, 'update public.boe_items set player_id = 2 where id = 1');
-      const row = (await q('select note, player_id from public.boe_items where id = 1')).rows[0];
-      expect(row).toMatchObject({ note: 'checked with the bank', player_id: 2 });
+      // The #874 edit form's payload shape: name and track in one statement.
+      const edit = await asUser(
+        OFFICER_T1,
+        "update public.boe_items set item_name = 'Corrected Staff', track = 'Myth', upgrade_rank = '2/6' where id = 1"
+      );
+      expect(edit.rowCount).toBe(1);
+      const row = (await q('select note, player_id, item_name, track, upgrade_rank from public.boe_items where id = 1'))
+        .rows[0];
+      expect(row).toMatchObject({
+        note: 'checked with the bank',
+        player_id: 2,
+        item_name: 'Corrected Staff',
+        track: 'Myth',
+        upgrade_rank: '2/6'
+      });
       await expect(asUser(OFFICER_T1, "update public.boe_items set status = 'paid' where id = 1")).rejects.toThrow(
         /go through the BoE RPCs/
+      );
+    });
+  });
+
+  it('a rank that is not N/N is refused by the column check, not only by the RPC (#865)', async () => {
+    await withTxn(async ({ asUser }) => {
+      await expect(asUser(OFFICER_T1, "update public.boe_items set upgrade_rank = 'abc' where id = 1")).rejects.toThrow(
+        /boe_items_upgrade_rank_shape/
       );
     });
   });

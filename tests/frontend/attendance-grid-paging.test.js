@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { realFetchAllPaged } from './helpers/common-sandbox.js';
+import { realFetchAllPaged, realFetchAttendanceRowsCached } from './helpers/common-sandbox.js';
 import { keysetClient } from './helpers/supabase-mock.js';
 
 // loadAttendanceGrid (#694): the officer Attendance grid read the whole team's
@@ -66,6 +66,14 @@ function attachFetchAllPaged(sandbox) {
   sandbox.fetchAllPaged = realFetchAllPaged();
 }
 
+// loadAttendanceGrid shares js/common.js's fetchAttendanceRowsCached (#837)
+// instead of paging the attendance table itself -- same real-function-not-a-
+// copy reasoning as attachFetchAllPaged above, pointed at the same client/team
+// this suite already set up on the tab-attendance sandbox.
+function attachFetchAttendanceRowsCached(sandbox, client) {
+  sandbox.fetchAttendanceRowsCached = realFetchAttendanceRowsCached(client, sandbox._teamCfg.supabaseTeamId);
+}
+
 function makeRows(nights, playersPerNight) {
   const rows = [];
   let id = 1;
@@ -97,6 +105,7 @@ describe('loadAttendanceGrid paging (#694)', () => {
     const { client } = keysetClient(makeRows(580, 2));
     const { sandbox } = loadSandbox(client, roster);
     attachFetchAllPaged(sandbox);
+    attachFetchAttendanceRowsCached(sandbox, client);
 
     sandbox.loadAttendanceGrid();
     await flush();
@@ -114,6 +123,7 @@ describe('loadAttendanceGrid paging (#694)', () => {
     const { client } = keysetClient(makeRows(580, 2));
     const { sandbox } = loadSandbox(client, roster);
     attachFetchAllPaged(sandbox);
+    attachFetchAttendanceRowsCached(sandbox, client);
 
     sandbox.loadAttendanceGrid();
     await flush();
@@ -133,6 +143,7 @@ describe('loadAttendanceGrid paging (#694)', () => {
     const { client, calls } = keysetClient(makeRows(580, 2));
     const { sandbox } = loadSandbox(client, roster);
     attachFetchAllPaged(sandbox);
+    attachFetchAttendanceRowsCached(sandbox, client);
 
     sandbox.loadAttendanceGrid();
     await flush();
@@ -163,6 +174,7 @@ describe('loadAttendanceGrid paging (#694)', () => {
     };
     const { sandbox, elements } = loadSandbox(client, roster);
     attachFetchAllPaged(sandbox);
+    attachFetchAttendanceRowsCached(sandbox, client);
 
     sandbox.loadAttendanceGrid();
     await flush();

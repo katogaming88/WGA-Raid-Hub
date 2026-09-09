@@ -7,8 +7,14 @@ import { fileURLToPath } from 'node:url';
 import {
   isFrontendPath,
   isBackendPath,
+  classifyPath,
   commonJsIsFunctional,
+  withoutStamp,
+  pageIsStampOnly,
   hasVersionBump,
+  compareVersions,
+  addedHeadings,
+  headingProblems,
   changelogSections,
   classify
 } from '../../scripts/ci/changelog-check.js';
@@ -30,33 +36,61 @@ function makeDiff(dir, oldText, newText) {
 }
 
 describe('path classification', () => {
-  it('counts js/, gs/, css/, and root pages as frontend', () => {
+  it('counts js/, css/, and root pages as frontend', () => {
     expect(isFrontendPath('js/index.js')).toBe(true);
-    expect(isFrontendPath('gs/include.html')).toBe(true);
     expect(isFrontendPath('css/styles.css')).toBe(true);
     expect(isFrontendPath('index.html')).toBe(true);
     expect(isFrontendPath('officer.html')).toBe(true);
+  });
+
+  // gs/ was the Apps Script era. kat deleted the directory in #912/#913 on
+  // 2026-09-04, so the rule that reached into it is dead weight that would
+  // silently re-classify anything recreated at that path (#966).
+  it('no longer counts the retired gs/ directory as frontend', () => {
+    expect(isFrontendPath('gs/include.html')).toBe(false);
+    expect(classifyPath('gs/include.html')).toBe(null);
   });
 
   it('excludes js/common.js from the path rule (its diff decides instead)', () => {
     expect(isFrontendPath('js/common.js')).toBe(false);
   });
 
-  it('does not count docs, tests, or nested html outside js/gs', () => {
+  it('does not count docs, tests, or nested html outside js/', () => {
     expect(isFrontendPath('docs/RLS.md')).toBe(false);
     expect(isFrontendPath('tests/frontend/roster.test.js')).toBe(false);
     expect(isFrontendPath('dbdoc/players.html')).toBe(false);
   });
 
-  it('counts migrations and import tooling as backend', () => {
+  it('counts migrations and import tooling as the db class', () => {
     expect(isBackendPath('supabase/migrations/20260707221243_track_vocabulary.sql')).toBe(true);
     expect(isBackendPath('scripts/import/tables/players.js')).toBe(true);
+    expect(classifyPath('supabase/migrations/20260707221243_track_vocabulary.sql')).toBe('db');
+    expect(classifyPath('scripts/import/tables/players.js')).toBe('db');
   });
 
-  it('does not count other scripts or supabase config as backend', () => {
-    expect(isBackendPath('scripts/ci/changelog-check.js')).toBe(false);
-    expect(isBackendPath('scripts/fetch-items.js')).toBe(false);
+  it('counts supabase/functions/ as the functions class', () => {
+    expect(classifyPath('supabase/functions/boe-webhook/index.ts')).toBe('functions');
+    expect(classifyPath('supabase/functions/_shared/cors.ts')).toBe('functions');
+  });
+
+  it('counts bot/ as the bot class', () => {
+    expect(classifyPath('bot/src/index.ts')).toBe('bot');
+    expect(classifyPath('bot/package.json')).toBe('bot');
+  });
+
+  // Config and seed data are chore territory: they change how a piece is
+  // deployed or seeded, not what it does for anyone (#966).
+  it('leaves supabase config, seed and roles outside every shipped class', () => {
+    expect(classifyPath('supabase/config.toml')).toBe(null);
+    expect(classifyPath('supabase/seed.sql')).toBe(null);
+    expect(classifyPath('supabase/roles.sql')).toBe(null);
     expect(isBackendPath('supabase/config.toml')).toBe(false);
+  });
+
+  it('does not count other scripts as any shipped class', () => {
+    expect(classifyPath('scripts/ci/changelog-check.js')).toBe(null);
+    expect(classifyPath('scripts/fetch-items.js')).toBe(null);
+    expect(classifyPath('docs/RLS.md')).toBe(null);
   });
 });
 
@@ -77,6 +111,103 @@ describe('js/common.js diff classification', () => {
     expect(hasVersionBump(versionOnly)).toBe(true);
     expect(hasVersionBump('+function newHelper() {}')).toBe(false);
   });
+
+  // REQUIRED_SCHEMA is the stamper's output too: it fills it from the newest
+  // migration in the tree, so every release that adds one rewrites this line.
+  // Counting it as a frontend change puts a migrations-only release back where
+  // the ?v= tags had it, demanding a Frontend entry for a line no person wrote.
+  const schemaOnly = ["-var REQUIRED_SCHEMA = '20260905154234';", "+var REQUIRED_SCHEMA = '20260907150000';"].join(
+    '\n'
+  );
+
+  it('a REQUIRED_SCHEMA-only diff is not functional', () => {
+    expect(commonJsIsFunctional(schemaOnly)).toBe(false);
+    expect(commonJsIsFunctional([versionOnly, schemaOnly].join('\n'))).toBe(false);
+  });
+
+  it('still reports a real edit that arrives alongside both stamped lines', () => {
+    expect(commonJsIsFunctional([versionOnly, schemaOnly, '+function newHelper() {}'].join('\n'))).toBe(true);
+  });
+
+  it('does not mistake the bump for a schema stamp', () => {
+    expect(hasVersionBump(schemaOnly)).toBe(false);
+  });
+});
+
+describe('compareVersions', () => {
+  it('orders by each field numerically, not as strings', () => {
+    expect(compareVersions('3.9.0', '3.10.0')).toBeLessThan(0);
+    expect(compareVersions('3.91.3', '3.91.10')).toBeLessThan(0);
+    expect(compareVersions('4.0.0', '3.99.99')).toBeGreaterThan(0);
+  });
+
+  it('reports equality', () => {
+    expect(compareVersions('3.91.3', '3.91.3')).toBe(0);
+  });
+});
+
+describe('heading checks', () => {
+  const base = [
+    '# Changelog',
+    '',
+    '## [3.16.0] - 2026-07-07',
+    '',
+    '### Frontend',
+    '- One',
+    '',
+    '## [3.15.0] - 2026-07-01',
+    '',
+    '### Frontend',
+    '- Zero',
+    ''
+  ].join('\n');
+
+  function withHeading(heading) {
+    return base.replace('## [3.16.0] - 2026-07-07', `${heading}\n\n### Frontend\n- New\n\n## [3.16.0] - 2026-07-07`);
+  }
+
+  it('finds the heading a PR added', () => {
+    expect(addedHeadings(base, withHeading('## [3.17.0] - 2026-07-08'))).toEqual(['3.17.0']);
+  });
+
+  it('finds nothing when the changelog gained no heading', () => {
+    expect(addedHeadings(base, base.replace('- One', '- One\n- One and a half'))).toEqual([]);
+    expect(headingProblems(base, base.replace('- One', '- One\n- One and a half'))).toEqual([]);
+  });
+
+  it('passes a heading above everything already there', () => {
+    expect(headingProblems(base, withHeading('## [3.17.0] - 2026-07-08'))).toEqual([]);
+  });
+
+  it('refuses a heading that already exists', () => {
+    const problems = headingProblems(base, withHeading('## [3.16.0] - 2026-07-08'));
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('3.16.0');
+    expect(problems[0]).toMatch(/already/i);
+  });
+
+  it('refuses a heading at or below the newest one', () => {
+    const problems = headingProblems(base, withHeading('## [3.15.5] - 2026-07-08'));
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('3.15.5');
+    expect(problems[0]).toContain('3.16.0');
+  });
+
+  // The three collisions already on main (3.77.23, 3.60.32, 3.60.6) predate
+  // this check. It looks only at what a PR adds, so history stays legal and
+  // nothing has to be renumbered (#965).
+  it('tolerates duplicates that were already in the base', () => {
+    const dupBase = base.replace(
+      '## [3.15.0] - 2026-07-01',
+      '## [3.16.0] - 2026-07-02\n\n### Backend\n- Dup\n\n## [3.15.0] - 2026-07-01'
+    );
+    expect(headingProblems(dupBase, dupBase)).toEqual([]);
+    const next = dupBase.replace(
+      '## [3.16.0] - 2026-07-07',
+      '## [3.17.0] - 2026-07-08\n\n### Frontend\n- New\n\n## [3.16.0] - 2026-07-07'
+    );
+    expect(headingProblems(dupBase, next)).toEqual([]);
+  });
 });
 
 describe('changelogSections', () => {
@@ -91,6 +222,8 @@ describe('changelogSections', () => {
   const base = ['# Changelog', '', '---', '', '## [3.15.0] - 2026-07-01', '', '### Changed', '- Old entry', ''].join(
     '\n'
   );
+
+  const none = { frontend: false, backend: false, functions: false, bot: false, project: false };
 
   it('sees a new version block with both sections', () => {
     const next = [
@@ -115,33 +248,111 @@ describe('changelogSections', () => {
       ''
     ].join('\n');
     const sections = changelogSections(makeDiff(dir, base, next), next);
-    expect(sections).toEqual({ frontend: true, backend: true });
+    expect(sections).toEqual({ ...none, frontend: true, backend: true });
+  });
+
+  it('sees the new Functions and Bot sections', () => {
+    const next = [
+      '# Changelog',
+      '',
+      '---',
+      '',
+      '## [3.16.0] - 2026-07-07',
+      '',
+      '### Functions',
+      '- The found post reads the row',
+      '',
+      '### Bot',
+      '- Every send names its mentions',
+      '',
+      '---',
+      '',
+      '## [3.15.0] - 2026-07-01',
+      '',
+      '### Changed',
+      '- Old entry',
+      ''
+    ].join('\n');
+    const sections = changelogSections(makeDiff(dir, base, next), next);
+    expect(sections).toEqual({ ...none, functions: true, bot: true });
   });
 
   it('sees a bullet appended to an existing Backend section', () => {
     const withBackend = base.replace('### Changed', '### Backend');
     const next = withBackend.replace('- Old entry', '- Old entry\n- Second backend entry');
     const sections = changelogSections(makeDiff(dir, withBackend, next), next);
-    expect(sections).toEqual({ frontend: false, backend: true });
+    expect(sections).toEqual({ ...none, backend: true });
   });
 
   it('ignores entries under the pre-#353 headings', () => {
     const next = base.replace('- Old entry', '- Old entry\n- Another entry under Changed');
     const sections = changelogSections(makeDiff(dir, base, next), next);
-    expect(sections).toEqual({ frontend: false, backend: false });
+    expect(sections).toEqual(none);
   });
 
   it('a bare heading with no content does not count', () => {
     const next = base.replace('### Changed', '### Frontend\n\n### Changed');
     const sections = changelogSections(makeDiff(dir, base, next), next);
-    expect(sections).toEqual({ frontend: false, backend: false });
+    expect(sections).toEqual(none);
   });
 
   it('separators and blank lines do not count as content', () => {
     const withBackend = base.replace('### Changed', '### Backend');
     const next = withBackend.replace('- Old entry\n', '- Old entry\n\n---\n');
     const sections = changelogSections(makeDiff(dir, withBackend, next), next);
-    expect(sections).toEqual({ frontend: false, backend: false });
+    expect(sections).toEqual(none);
+  });
+
+  // The fifth section (#1019). It is not a shipped class, so it never sets
+  // `shipped`, but the walk has to recognise the heading or an entry under it
+  // is silently ignored the way any foreign ### heading is.
+  it('sees a new Project section', () => {
+    const next = [
+      '# Changelog',
+      '',
+      '---',
+      '',
+      '## [3.16.0] - 2026-07-07',
+      '',
+      '### Project',
+      '- The RLS suite shares one transaction harness',
+      '',
+      '---',
+      '',
+      '## [3.15.0] - 2026-07-01',
+      '',
+      '### Changed',
+      '- Old entry',
+      ''
+    ].join('\n');
+    const sections = changelogSections(makeDiff(dir, base, next), next);
+    expect(sections).toEqual({ ...none, project: true });
+  });
+
+  it('sees a Project entry beside a shipped one', () => {
+    const next = [
+      '# Changelog',
+      '',
+      '---',
+      '',
+      '## [3.16.0] - 2026-07-07',
+      '',
+      '### Frontend',
+      '- New page behavior',
+      '',
+      '### Project',
+      '- CONTRIBUTING describes the new rule',
+      '',
+      '---',
+      '',
+      '## [3.15.0] - 2026-07-01',
+      '',
+      '### Changed',
+      '- Old entry',
+      ''
+    ].join('\n');
+    const sections = changelogSections(makeDiff(dir, base, next), next);
+    expect(sections).toEqual({ ...none, frontend: true, project: true });
   });
 });
 
@@ -175,6 +386,34 @@ describe('classify against a git repo', () => {
     ''
   ].join('\n');
 
+  // A root page as the stamper leaves it: every local asset tagged with the
+  // product version and the footer span filled in. Restamping it is what a
+  // release does to all six pages whether or not the frontend changed.
+  function stampedPage(version) {
+    return [
+      '<html><head>',
+      `<link rel="stylesheet" href="css/styles.css?v=${version}">`,
+      '</head><body>',
+      '<h1>Roster</h1>',
+      `<footer>v<span id="versionNum">${version}</span></footer>`,
+      `<script src="js/common.js?v=${version}"></script>`,
+      '</body></html>',
+      ''
+    ].join('\n');
+  }
+
+  // A new version block above the existing one, carrying whatever sections
+  // the case under test needs.
+  function bumpedChangelog(version, sections) {
+    const body = Object.entries(sections)
+      .map(([heading, entry]) => `### ${heading}\n${entry}\n`)
+      .join('\n');
+    return baseChangelog.replace(
+      '## [3.16.0] - 2026-07-07',
+      `## [${version}] - 2026-07-08\n\n${body}\n---\n\n## [3.16.0] - 2026-07-07`
+    );
+  }
+
   beforeAll(() => {
     repo = mkdtempSync(join(tmpdir(), 'changelog-repo-'));
     git('init', '-b', 'main');
@@ -183,7 +422,10 @@ describe('classify against a git repo', () => {
     write('js/common.js', "var VERSION = '3.16.0';\nvar WEB_APP_URL = 'x';\n");
     write('CHANGELOG.md', baseChangelog);
     write('scripts/import/generate.js', '// generator\n');
-    write('index.html', '<html></html>\n');
+    write('supabase/functions/boe-webhook/index.ts', '// found post\n');
+    write('supabase/config.toml', '[api]\n');
+    write('bot/src/index.ts', '// bot\n');
+    write('index.html', stampedPage('3.16.0'));
     git('add', '.');
     git('commit', '-m', 'base');
   });
@@ -202,63 +444,165 @@ describe('classify against a git repo', () => {
       out
         .trim()
         .split('\n')
-        .map((line) => line.split('='))
+        .map((line) => {
+          const at = line.indexOf('=');
+          return [line.slice(0, at), line.slice(at + 1)];
+        })
     );
   }
 
-  it('backend-only PR with a Backend entry', () => {
-    const result = onBranch('backend-only', () => {
+  const clean = {
+    frontend: 'false',
+    backend: 'false',
+    functions: 'false',
+    bot: 'false',
+    shipped: 'false',
+    version_bump: 'false',
+    frontend_entry: 'false',
+    backend_entry: 'false',
+    functions_entry: 'false',
+    bot_entry: 'false',
+    project_entry: 'false',
+    new_heading: 'false',
+    missing_entry: '',
+    heading_error: '',
+    news_touched: 'false'
+  };
+
+  it('a db-only PR with an entry and a bump passes every axis', () => {
+    const result = onBranch('db-full', () => {
       write('scripts/import/generate.js', '// generator v2\n');
-      write(
-        'CHANGELOG.md',
-        baseChangelog.replace(
-          '- Roster re-imports reconcile',
-          '- Roster re-imports reconcile\n- Importer handles renames'
-        )
-      );
+      write('js/common.js', "var VERSION = '3.16.1';\nvar WEB_APP_URL = 'x';\n");
+      write('CHANGELOG.md', bumpedChangelog('3.16.1', { Backend: '- Importer handles renames' }));
     });
     expect(result).toEqual({
-      frontend: 'false',
+      ...clean,
       backend: 'true',
-      version_bump: 'false',
-      frontend_entry: 'false',
+      shipped: 'true',
+      version_bump: 'true',
       backend_entry: 'true',
-      news_touched: 'false'
+      new_heading: 'true'
     });
+  });
+
+  it('a db-only PR with no bump reports the shipped change (the workflow fails it)', () => {
+    const result = onBranch('db-no-bump', () => {
+      write('scripts/import/generate.js', '// generator v3\n');
+      write(
+        'CHANGELOG.md',
+        baseChangelog.replace('- Roster re-imports reconcile', '- Roster re-imports reconcile\n- Handles renames')
+      );
+    });
+    expect(result.shipped).toBe('true');
+    expect(result.version_bump).toBe('false');
+    expect(result.backend_entry).toBe('true');
+  });
+
+  it('a functions-only PR with no Functions entry reports it missing', () => {
+    const result = onBranch('functions-no-entry', () => {
+      write('supabase/functions/boe-webhook/index.ts', '// found post v2\n');
+      write('js/common.js', "var VERSION = '3.16.1';\nvar WEB_APP_URL = 'x';\n");
+      write('CHANGELOG.md', bumpedChangelog('3.16.1', { Backend: '- Wrong section' }));
+    });
+    expect(result.functions).toBe('true');
+    expect(result.shipped).toBe('true');
+    expect(result.functions_entry).toBe('false');
+    expect(result.missing_entry).toBe('functions');
+  });
+
+  it('a functions-only PR done right passes', () => {
+    const result = onBranch('functions-full', () => {
+      write('supabase/functions/boe-webhook/index.ts', '// found post v3\n');
+      write('js/common.js', "var VERSION = '3.16.1';\nvar WEB_APP_URL = 'x';\n");
+      write('CHANGELOG.md', bumpedChangelog('3.16.1', { Functions: '- The found post reads the row' }));
+    });
+    expect(result).toEqual({
+      ...clean,
+      functions: 'true',
+      shipped: 'true',
+      version_bump: 'true',
+      functions_entry: 'true',
+      new_heading: 'true'
+    });
+  });
+
+  it('a bot-only PR with no Bot entry reports it missing', () => {
+    const result = onBranch('bot-no-entry', () => {
+      write('bot/src/index.ts', '// bot v2\n');
+      write('js/common.js', "var VERSION = '3.16.1';\nvar WEB_APP_URL = 'x';\n");
+      write('CHANGELOG.md', bumpedChangelog('3.16.1', { Frontend: '- Wrong section' }));
+    });
+    expect(result.bot).toBe('true');
+    expect(result.bot_entry).toBe('false');
+    expect(result.missing_entry).toBe('bot');
+  });
+
+  it('a PR touching bot/ and js/ needs both sections and one bump', () => {
+    const result = onBranch('bot-and-frontend', () => {
+      write('bot/src/index.ts', '// bot v3\n');
+      write('js/roster.js', '// roster v2\n');
+      write('js/common.js', "var VERSION = '3.16.1';\nvar WEB_APP_URL = 'x';\n");
+      write('CHANGELOG.md', bumpedChangelog('3.16.1', { Frontend: '- Roster tweak', Bot: '- Bot tweak' }));
+    });
+    expect(result).toEqual({
+      ...clean,
+      frontend: 'true',
+      bot: 'true',
+      shipped: 'true',
+      version_bump: 'true',
+      frontend_entry: 'true',
+      bot_entry: 'true',
+      new_heading: 'true'
+    });
+  });
+
+  it('reports every missing section, not just the first', () => {
+    const result = onBranch('two-missing', () => {
+      write('bot/src/index.ts', '// bot v4\n');
+      write('supabase/functions/boe-webhook/index.ts', '// found post v4\n');
+      write('js/common.js', "var VERSION = '3.16.1';\nvar WEB_APP_URL = 'x';\n");
+      write('CHANGELOG.md', bumpedChangelog('3.16.1', { Frontend: '- Nothing to do with either' }));
+    });
+    expect(result.missing_entry).toBe('functions,bot');
+  });
+
+  // Still no shipped class, and since #1019 that is exactly the condition
+  // that owes a Project entry. Before it, this PR owed nothing at all and
+  // reached main with no version and no line in the changelog.
+  it('a docs-only PR ships nothing and owes a Project entry', () => {
+    const result = onBranch('docs-only', () => {
+      write('docs/RLS.md', '# policies v2\n');
+    });
+    expect(result).toEqual({ ...clean, missing_entry: 'project' });
+  });
+
+  it('supabase/config.toml alone ships nothing and owes a Project entry', () => {
+    const result = onBranch('config-only', () => {
+      write('supabase/config.toml', '[api]\n[functions.boe-webhook]\nverify_jwt = false\n');
+    });
+    expect(result).toEqual({ ...clean, missing_entry: 'project' });
   });
 
   it('a VERSION-only bump is not a frontend change (the #353 circularity)', () => {
     const result = onBranch('bump-only', () => {
       write('js/common.js', "var VERSION = '3.16.1';\nvar WEB_APP_URL = 'x';\n");
     });
-    expect(result).toEqual({
-      frontend: 'false',
-      backend: 'false',
-      version_bump: 'true',
-      frontend_entry: 'false',
-      backend_entry: 'false',
-      news_touched: 'false'
-    });
+    expect(result).toEqual({ ...clean, version_bump: 'true', missing_entry: 'project' });
   });
 
   it('a frontend PR done right passes every axis', () => {
     const result = onBranch('frontend-full', () => {
       write('js/common.js', "var VERSION = '3.16.1';\nvar WEB_APP_URL = 'x';\nfunction newHelper() {}\n");
-      write(
-        'CHANGELOG.md',
-        baseChangelog.replace(
-          '## [3.16.0] - 2026-07-07',
-          '## [3.16.1] - 2026-07-08\n\n### Frontend\n- New helper behavior\n\n---\n\n## [3.16.0] - 2026-07-07'
-        )
-      );
+      write('CHANGELOG.md', bumpedChangelog('3.16.1', { Frontend: '- New helper behavior' }));
       write('news.json', '[]\n');
     });
     expect(result).toEqual({
+      ...clean,
       frontend: 'true',
-      backend: 'false',
+      shipped: 'true',
       version_bump: 'true',
       frontend_entry: 'true',
-      backend_entry: 'false',
+      new_heading: 'true',
       news_touched: 'true'
     });
   });
@@ -266,33 +610,292 @@ describe('classify against a git repo', () => {
   it('a frontend PR with no news.json touch reports news_touched=false (#525)', () => {
     const result = onBranch('frontend-no-news', () => {
       write('js/common.js', "var VERSION = '3.16.1';\nvar WEB_APP_URL = 'x';\nfunction anotherHelper() {}\n");
+      write('CHANGELOG.md', bumpedChangelog('3.16.1', { Frontend: '- Another behavior' }));
+    });
+    expect(result.frontend_entry).toBe('true');
+    expect(result.news_touched).toBe('false');
+  });
+
+  it('refuses a heading that repeats one already on the base branch', () => {
+    const result = onBranch('heading-duplicate', () => {
+      write('js/roster.js', '// roster v3\n');
+      write('js/common.js', "var VERSION = '3.16.0';\nvar WEB_APP_URL = 'x';\n");
       write(
         'CHANGELOG.md',
         baseChangelog.replace(
           '## [3.16.0] - 2026-07-07',
-          '## [3.16.1] - 2026-07-08\n\n### Frontend\n- Another behavior\n\n---\n\n## [3.16.0] - 2026-07-07'
+          '## [3.16.0] - 2026-07-08\n\n### Frontend\n- Second block, same number\n\n---\n\n## [3.16.0] - 2026-07-07'
         )
       );
     });
-    expect(result).toEqual({
-      frontend: 'true',
-      backend: 'false',
-      version_bump: 'true',
-      frontend_entry: 'true',
-      backend_entry: 'false',
-      news_touched: 'false'
+    expect(result.heading_error).toContain('3.16.0');
+  });
+
+  it('refuses a heading that sorts below the newest on the base branch', () => {
+    const result = onBranch('heading-backwards', () => {
+      write('js/roster.js', '// roster v4\n');
+      write('js/common.js', "var VERSION = '3.15.9';\nvar WEB_APP_URL = 'x';\n");
+      write('CHANGELOG.md', bumpedChangelog('3.15.9', { Frontend: '- Going backwards' }));
     });
+    expect(result.heading_error).toContain('3.15.9');
   });
 
   it('classify() is callable directly with a cwd', () => {
-    git('checkout', 'backend-only');
+    git('checkout', 'db-full');
     expect(classify('main', repo)).toEqual({
       frontend: false,
       backend: true,
-      version_bump: false,
+      functions: false,
+      bot: false,
+      shipped: true,
+      version_bump: true,
       frontend_entry: false,
       backend_entry: true,
+      functions_entry: false,
+      bot_entry: false,
+      project_entry: false,
+      new_heading: true,
+      missing_entry: '',
+      heading_error: '',
       news_touched: false
     });
+  });
+
+  // The stamp rewrites every ?v= tag in all six pages plus the versionNum
+  // footer span, so a release that ships only a migration still arrives with
+  // six changed root pages. Before this rule those pages made the PR look
+  // frontend and the gate demanded a "### Frontend" entry it had no honest
+  // content for. Same shape as the js/common.js rule: complying with "stamp
+  // the product" must not itself mark a PR functional.
+  it('a db-only release whose stamp rewrote the pages is not a frontend change', () => {
+    const result = onBranch('db-release-stamped', () => {
+      write('supabase/migrations/20260907120000_add_column.sql', 'alter table players add column x int;\n');
+      write('js/common.js', "var VERSION = '3.16.1';\nvar WEB_APP_URL = 'x';\n");
+      write('index.html', stampedPage('3.16.1'));
+      write('CHANGELOG.md', bumpedChangelog('3.16.1', { Backend: '- A new column' }));
+    });
+    expect(result).toEqual({
+      ...clean,
+      backend: 'true',
+      shipped: 'true',
+      version_bump: 'true',
+      backend_entry: 'true',
+      new_heading: 'true'
+    });
+  });
+
+  it('a page edited beyond the stamp is still a frontend change', () => {
+    const result = onBranch('page-edited-with-stamp', () => {
+      write('supabase/migrations/20260907130000_add_index.sql', 'create index on players (id);\n');
+      write('js/common.js', "var VERSION = '3.16.2';\nvar WEB_APP_URL = 'x';\n");
+      write('index.html', stampedPage('3.16.2').replace('<h1>Roster</h1>', '<h1>The Roster</h1>'));
+      write('CHANGELOG.md', bumpedChangelog('3.16.2', { Frontend: '- Renamed the heading', Backend: '- A new index' }));
+    });
+    expect(result).toEqual({
+      ...clean,
+      frontend: 'true',
+      backend: 'true',
+      shipped: 'true',
+      version_bump: 'true',
+      frontend_entry: 'true',
+      backend_entry: 'true',
+      new_heading: 'true'
+    });
+  });
+
+  // The reverse gate still has to fire: a stamp with nothing shipped is a
+  // bump for its own sake, and the stamped pages must not stand in as the
+  // shipped change that justifies it.
+  it('a bump that only restamped the pages still counts as nothing shipped', () => {
+    const result = onBranch('stamp-only-bump', () => {
+      write('js/common.js', "var VERSION = '3.16.3';\nvar WEB_APP_URL = 'x';\n");
+      write('index.html', stampedPage('3.16.3'));
+      write('CHANGELOG.md', bumpedChangelog('3.16.3', { Frontend: '- Nothing really' }));
+    });
+    expect(result.shipped).toBe('false');
+    expect(result.version_bump).toBe('true');
+    // A Frontend entry claims a frontend change this PR did not make, so the
+    // section it actually owes is still missing.
+    expect(result.missing_entry).toBe('project');
+  });
+
+  // #1019. Everything below is the fifth section: what a person changes that
+  // ships to none of the four still names a release and still gets a line.
+  it('a docs-only PR with a Project entry and a bump passes every axis', () => {
+    const result = onBranch('docs-project-full', () => {
+      write('docs/RLS.md', '# policies v3\n');
+      write('js/common.js', "var VERSION = '3.16.4';\nvar WEB_APP_URL = 'x';\n");
+      write('CHANGELOG.md', bumpedChangelog('3.16.4', { Project: '- The policy doc names the new table' }));
+    });
+    expect(result).toEqual({
+      ...clean,
+      version_bump: 'true',
+      project_entry: 'true',
+      new_heading: 'true'
+    });
+  });
+
+  it('a Project entry never makes a PR shipped', () => {
+    const result = onBranch('project-not-shipped', () => {
+      write('scripts/ci/some-check.js', '// a check\n');
+      write('js/common.js', "var VERSION = '3.16.5';\nvar WEB_APP_URL = 'x';\n");
+      write('CHANGELOG.md', bumpedChangelog('3.16.5', { Project: '- A new CI check' }));
+    });
+    expect(result.shipped).toBe('false');
+    expect(result.project_entry).toBe('true');
+    expect(result.missing_entry).toBe('');
+  });
+
+  it('a PR that ships something owes its shipped sections and no Project entry', () => {
+    const result = onBranch('frontend-and-docs', () => {
+      write('js/roster.js', '// roster v5\n');
+      write('docs/RLS.md', '# policies v4\n');
+      write('js/common.js', "var VERSION = '3.16.6';\nvar WEB_APP_URL = 'x';\n");
+      write('CHANGELOG.md', bumpedChangelog('3.16.6', { Frontend: '- Roster tweak' }));
+    });
+    expect(result).toEqual({
+      ...clean,
+      frontend: 'true',
+      shipped: 'true',
+      version_bump: 'true',
+      frontend_entry: 'true',
+      new_heading: 'true'
+    });
+  });
+
+  it('a news.json change on its own owes a Project entry', () => {
+    const result = onBranch('news-only', () => {
+      write('news.json', '[{"title":"BoE tracker"}]\n');
+    });
+    expect(result.shipped).toBe('false');
+    expect(result.news_touched).toBe('true');
+    expect(result.missing_entry).toBe('project');
+  });
+
+  it('a CHANGELOG typo fix on its own owes a Project entry', () => {
+    const result = onBranch('changelog-typo', () => {
+      write('CHANGELOG.md', baseChangelog.replace('- Roster reads from Supabase', '- The roster reads from Supabase'));
+    });
+    expect(result.shipped).toBe('false');
+    expect(result.missing_entry).toBe('project');
+  });
+
+  // The gate that replaces "bump with nothing shipped": once every PR bumps,
+  // the accidental stamp is the one that moved VERSION without opening a
+  // block for it, and nothing else would catch it.
+  it('reports no new heading when a bump lands under an existing block', () => {
+    const result = onBranch('bump-no-heading', () => {
+      write('js/common.js', "var VERSION = '3.16.7';\nvar WEB_APP_URL = 'x';\n");
+      write(
+        'CHANGELOG.md',
+        baseChangelog.replace('- Roster reads from Supabase', '- Roster reads from Supabase\n- And caches it')
+      );
+    });
+    expect(result.version_bump).toBe('true');
+    expect(result.new_heading).toBe('false');
+  });
+
+  it('reports a new heading when the PR opens a version block', () => {
+    const result = onBranch('bump-with-heading', () => {
+      write('docs/RLS.md', '# policies v5\n');
+      write('js/common.js', "var VERSION = '3.16.8';\nvar WEB_APP_URL = 'x';\n");
+      write('CHANGELOG.md', bumpedChangelog('3.16.8', { Project: '- Policy doc refresh' }));
+    });
+    expect(result.new_heading).toBe('true');
+  });
+});
+
+// A root page carries the stamp whether or not it carries a change, because
+// npm run stamp rewrites every local ?v= tag and the versionNum footer span in
+// all six pages on every release (#967). Deciding "did this page change" from
+// the stamped text is what made a migrations-only release look frontend, so
+// the comparison happens on the text with the stamp taken back out.
+describe('stamp normalisation', () => {
+  it('blanks the version out of a local css or js asset tag', () => {
+    expect(withoutStamp('<link rel="stylesheet" href="css/styles.css?v=3.91.3">')).toBe(
+      '<link rel="stylesheet" href="css/styles.css?v=">'
+    );
+    expect(withoutStamp('<script src="js/roster.js?v=3.91.3"></script>')).toBe(
+      '<script src="js/roster.js?v="></script>'
+    );
+  });
+
+  // The pattern is anchored to the same local css/ and js/ paths the stamper
+  // rewrites, so a ?v= that means something else to somebody else survives.
+  it('leaves a ?v= that is not a local asset tag alone', () => {
+    const external = '<a href="https://www.youtube.com/watch?v=abc123">clip</a>';
+    expect(withoutStamp(external)).toBe(external);
+    const cdn = '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2?v=9"></script>';
+    expect(withoutStamp(cdn)).toBe(cdn);
+  });
+
+  it('blanks the version out of the footer span the stamper writes', () => {
+    expect(withoutStamp('v<span id="versionNum">3.91.3</span>')).toBe('v<span id="versionNum"></span>');
+  });
+
+  // guild.html and boe.html name their spans differently and the stamper never
+  // writes them, so a change there is a real edit and has to stay visible.
+  it('leaves the runtime-filled spans on guild.html and boe.html alone', () => {
+    const guild = 'v<span id="guildVersion">3.91.3</span>';
+    expect(withoutStamp(guild)).toBe(guild);
+  });
+});
+
+describe('pageIsStampOnly', () => {
+  const page = (version, extra = '') =>
+    [
+      '<html><head>',
+      `<link rel="stylesheet" href="css/styles.css?v=${version}">`,
+      '</head><body>',
+      `<footer>v<span id="versionNum">${version}</span></footer>`,
+      `<script src="js/common.js?v=${version}"></script>`,
+      `<script src="js/roster.js?v=${version}"></script>`,
+      extra,
+      '</body></html>'
+    ].join('\n');
+
+  it('is true when only the asset tags and the footer span moved', () => {
+    expect(pageIsStampOnly(page('3.91.3'), page('3.92.0'))).toBe(true);
+  });
+
+  it('is true when the page did not change at all', () => {
+    expect(pageIsStampOnly(page('3.92.0'), page('3.92.0'))).toBe(true);
+  });
+
+  it('is false when the stamp carried a real edit with it', () => {
+    expect(pageIsStampOnly(page('3.91.3'), page('3.92.0', '<p>New section</p>'))).toBe(false);
+  });
+
+  it('is false when an asset tag was added', () => {
+    const before = page('3.91.3');
+    const after = page('3.92.0').replace(
+      '<script src="js/roster.js?v=3.92.0"></script>',
+      '<script src="js/roster.js?v=3.92.0"></script>\n<script src="js/news.js?v=3.92.0"></script>'
+    );
+    expect(pageIsStampOnly(before, after)).toBe(false);
+  });
+
+  // Whole-file comparison rather than a multiset of diff lines, exactly so
+  // this case cannot pass: two script tags swapped normalise to the same set
+  // of lines while the load order, which is the thing that matters, changed.
+  it('is false when two script tags swapped places', () => {
+    const before = page('3.91.3');
+    const after = page('3.92.0')
+      .replace('<script src="js/common.js?v=3.92.0"></script>', '@@FIRST@@')
+      .replace('<script src="js/roster.js?v=3.92.0"></script>', '<script src="js/common.js?v=3.92.0"></script>')
+      .replace('@@FIRST@@', '<script src="js/roster.js?v=3.92.0"></script>');
+    expect(pageIsStampOnly(before, after)).toBe(false);
+  });
+
+  it('is false when the page is new or was deleted', () => {
+    expect(pageIsStampOnly('', page('3.92.0'))).toBe(false);
+    expect(pageIsStampOnly(page('3.92.0'), '')).toBe(false);
+  });
+
+  // The stamper compares a git blob (LF) against the working tree, which is
+  // CRLF on a Windows checkout. Both maintainers would otherwise get a
+  // different answer from the same branch.
+  it('is true across a line-ending difference, which is what one caller always sees', () => {
+    expect(pageIsStampOnly(page('3.91.3').replace(/\n/g, '\r\n'), page('3.92.0'))).toBe(true);
   });
 });

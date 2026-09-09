@@ -243,15 +243,20 @@ export type Database = {
       }
       boe_items: {
         Row: {
+          ah_fee: number | null
           created_at: string
+          finder_discord_id: string | null
           finder_name: string | null
           finder_payout: number | null
           found_at: string
+          found_posted_at: string | null
           guild_cut: number | null
           id: number
           item_id: number | null
           item_name: string
           note: string | null
+          payout_donated: boolean
+          upgrade_rank: string | null
           payout_floor: number | null
           payout_paid_at: string | null
           payout_pivot: number | null
@@ -266,15 +271,20 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          ah_fee?: number | null
           created_at?: string
+          finder_discord_id?: string | null
           finder_name?: string | null
           finder_payout?: number | null
           found_at?: string
+          found_posted_at?: string | null
           guild_cut?: number | null
           id?: number
           item_id?: number | null
           item_name: string
           note?: string | null
+          payout_donated?: boolean
+          upgrade_rank?: string | null
           payout_floor?: number | null
           payout_paid_at?: string | null
           payout_pivot?: number | null
@@ -289,15 +299,20 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          ah_fee?: number | null
           created_at?: string
+          finder_discord_id?: string | null
           finder_name?: string | null
           finder_payout?: number | null
           found_at?: string
+          found_posted_at?: string | null
           guild_cut?: number | null
           id?: number
           item_id?: number | null
           item_name?: string
           note?: string | null
+          payout_donated?: boolean
+          upgrade_rank?: string | null
           payout_floor?: number | null
           payout_paid_at?: string | null
           payout_pivot?: number | null
@@ -563,6 +578,7 @@ export type Database = {
           armor_type: string | null
           icon: string | null
           id: number
+          is_boe: boolean
           is_placeholder: boolean
           is_ptr: boolean
           main_stats: Json | null
@@ -578,6 +594,7 @@ export type Database = {
           armor_type?: string | null
           icon?: string | null
           id?: number
+          is_boe?: boolean
           is_placeholder?: boolean
           is_ptr?: boolean
           main_stats?: Json | null
@@ -593,6 +610,7 @@ export type Database = {
           armor_type?: string | null
           icon?: string | null
           id?: number
+          is_boe?: boolean
           is_placeholder?: boolean
           is_ptr?: boolean
           main_stats?: Json | null
@@ -797,6 +815,62 @@ export type Database = {
           },
         ]
       }
+      player_officer_notes: {
+        Row: {
+          archived_reason: string | null
+          archived_reason_detail: string | null
+          officer_notes: string | null
+          player_id: number
+          team_id: number
+          updated_at: string
+        }
+        Insert: {
+          archived_reason?: string | null
+          archived_reason_detail?: string | null
+          officer_notes?: string | null
+          player_id: number
+          team_id: number
+          updated_at?: string
+        }
+        Update: {
+          archived_reason?: string | null
+          archived_reason_detail?: string | null
+          officer_notes?: string | null
+          player_id?: number
+          team_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_officer_notes_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: true
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_officer_notes_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: true
+            referencedRelation: "priority_order_gaps"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "player_officer_notes_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: true
+            referencedRelation: "rnlsi"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "player_officer_notes_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       player_wcl_season_perf: {
         Row: {
           best_perf_avg: number | null
@@ -859,8 +933,6 @@ export type Database = {
       players: {
         Row: {
           archived_at: string | null
-          archived_reason: string | null
-          archived_reason_detail: string | null
           bis_allowed: boolean
           bis_link: string | null
           bonus_roll_encounter_id: number | null
@@ -869,13 +941,13 @@ export type Database = {
           is_backup_healer: boolean
           is_backup_tank: boolean
           is_bench: boolean
+          is_rotator: boolean
           is_trial: boolean
           join_date: string | null
           m_plus_excluded: boolean
           m_plus_note: string | null
           name_realm: string
           nickname: string | null
-          officer_notes: string | null
           team_id: number
           team_member_id: number | null
           tier_pieces_equipped: number | null
@@ -885,8 +957,6 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
-          archived_reason?: string | null
-          archived_reason_detail?: string | null
           bis_allowed?: boolean
           bis_link?: string | null
           bonus_roll_encounter_id?: number | null
@@ -895,13 +965,13 @@ export type Database = {
           is_backup_healer?: boolean
           is_backup_tank?: boolean
           is_bench?: boolean
+          is_rotator?: boolean
           is_trial?: boolean
           join_date?: string | null
           m_plus_excluded?: boolean
           m_plus_note?: string | null
           name_realm: string
           nickname?: string | null
-          officer_notes?: string | null
           team_id: number
           team_member_id?: number | null
           tier_pieces_equipped?: number | null
@@ -911,8 +981,6 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
-          archived_reason?: string | null
-          archived_reason_detail?: string | null
           bis_allowed?: boolean
           bis_link?: string | null
           bonus_roll_encounter_id?: number | null
@@ -921,13 +989,13 @@ export type Database = {
           is_backup_healer?: boolean
           is_backup_tank?: boolean
           is_bench?: boolean
+          is_rotator?: boolean
           is_trial?: boolean
           join_date?: string | null
           m_plus_excluded?: boolean
           m_plus_note?: string | null
           name_realm?: string
           nickname?: string | null
-          officer_notes?: string | null
           team_id?: number
           team_member_id?: number | null
           tier_pieces_equipped?: number | null
@@ -2310,6 +2378,10 @@ export type Database = {
         Args: { p_discord_id: string }
         Returns: number
       }
+      admin_grant_team_role: {
+        Args: { p_discord_id: string; p_role: string; p_team_id: number }
+        Returns: string
+      }
       admin_list_boe_managers: {
         Args: never
         Returns: {
@@ -2349,6 +2421,10 @@ export type Database = {
         Args: { p_discord_id: string }
         Returns: undefined
       }
+      admin_revoke_team_role: {
+        Args: { p_discord_id: string; p_team_id: number }
+        Returns: undefined
+      }
       admin_set_maintenance_mode: {
         Args: { p_enabled: boolean; p_message?: string }
         Returns: undefined
@@ -2365,8 +2441,12 @@ export type Database = {
         Args: { p_roster_snapshot: Json; p_team_id: number }
         Returns: Json
       }
+      archive_player: {
+        Args: { p_detail: string; p_player_id: number; p_reason: string }
+        Returns: string
+      }
       boe_mark_paid: {
-        Args: { p_id: number; p_paid_at?: string }
+        Args: { p_donated?: boolean; p_id: number; p_paid_at?: string }
         Returns: undefined
       }
       boe_record_listing: {
@@ -2381,6 +2461,7 @@ export type Database = {
       boe_record_sale: {
         Args: { p_id: number; p_sale_price: number; p_sold_at?: string }
         Returns: {
+          ah_fee: number
           finder_payout: number
           guild_cut: number
           sale_price: number
@@ -2395,6 +2476,7 @@ export type Database = {
         Args: { p_season: string; p_team_id: number; p_track: string }
         Returns: Json
       }
+      can_settle_boe: { Args: { p_team_id: number }; Returns: boolean }
       check_priority_order_drift: {
         Args: { p_season: string; p_team_id: number }
         Returns: {
@@ -2412,6 +2494,7 @@ export type Database = {
           role: string
         }[]
       }
+      current_discord_id: { Args: never; Returns: string }
       danger_clear_bis_requests: {
         Args: { p_team_id: number }
         Returns: number
@@ -2513,6 +2596,10 @@ export type Database = {
         Args: { p_actor_id: string; p_team_id: number }
         Returns: string
       }
+      resolve_boe_finder_discord_id: {
+        Args: { p_boe_id: number }
+        Returns: string
+      }
       resolve_discord_display_name: {
         Args: { p_actor_id: string; p_team_id: number }
         Returns: string
@@ -2551,11 +2638,13 @@ export type Database = {
       }
       submit_boe_found: {
         Args: {
+          p_donate?: boolean
           p_item_name: string
           p_name_realm: string
           p_note?: string
           p_team_id: number
           p_track?: string
+          p_upgrade_rank?: string
         }
         Returns: number
       }

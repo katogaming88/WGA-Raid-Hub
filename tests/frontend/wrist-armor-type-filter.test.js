@@ -3,6 +3,12 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadCommonJs, quietConsole } from './helpers/common-sandbox.js';
+
+// The tab renders timestamps through formatDateTime() and the zone note
+// through localTimeZoneNote(), both js/common.js globals (#905); the real
+// ones, so the suite cannot pin a shape the shipped helpers need not have.
+const realCommon = loadCommonJs(quietConsole);
 
 // Regression: Wrist was wrongly listed in WISHLIST_UNIVERSAL_ROWS /
 // BIS_UNIVERSAL_ROWS as if bracers were armor-agnostic jewelry (like Neck/
@@ -24,12 +30,19 @@ function loadSandbox(sources) {
     location: { search: '', pathname: '/' },
     sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
     localStorage: { getItem: () => null, setItem: () => {} },
-    document: { getElementById: () => null, createElement: () => ({}), head: { appendChild: () => {} } },
+    document: {
+      getElementById: () => null,
+      createElement: () => ({}),
+      head: { appendChild: () => {} },
+      addEventListener: () => {}
+    },
     console,
     Intl,
     setTimeout,
     clearTimeout
   };
+  sandbox.formatDateTime = realCommon.formatDateTime;
+  sandbox.localTimeZoneNote = realCommon.localTimeZoneNote;
   vm.createContext(sandbox);
   sources.forEach((src, i) => vm.runInContext(src, sandbox, { filename: `src${i}.js` }));
   return sandbox;

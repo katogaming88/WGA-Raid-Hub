@@ -3,10 +3,825 @@
 All notable changes to WGA Raid Hub will be documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-with each release split into `### Frontend` (drives the version number) and
-`### Backend` (migrations and import tooling, no version bump) sections.
+with each release split into `### Frontend`, `### Backend` (migrations and
+import tooling), `### Functions` (Edge Functions), `### Bot` and `### Project`
+(everything else: docs, tests, CI, config) sections. One version covers the
+whole release, and a change to any of them moves it: the number names the
+release, not the frontend. See CONTRIBUTING.md for the contracts each section
+answers to.
 
 ---
+
+## [3.98.0] - 2026-09-09
+
+### Frontend
+
+- New officer-only **Reassign** sub-tab on the Loot tab ([#1029](https://github.com/katogaming88/WGA-Raid-Hub/issues/1029)):
+  pick a player, see their raid-awarded loot, and reassign a specific item to a different roster
+  player -- for when loot council awarded it to one raider and it was then traded in-game to
+  someone else. No new RPC or migration: `rclc_loot` already has a full officer RLS write policy,
+  so this is a plain client update plus an audit log entry, the same pattern already used for
+  correcting an attendance report's exclusion flag. Received badges elsewhere are computed live
+  from `rclc_loot`, so the correction shows up everywhere else the next time that data loads.
+
+## [3.97.8] - 2026-09-08
+
+### Project
+
+- Supabase's own security linter now runs on every pull request that changes the database
+  ([#1011](https://github.com/katogaming88/WGA-Raid-Hub/issues/1011)), against the schema those
+  changes build rather than against anyone's local copy. It looks for the shapes that quietly widen
+  access: a table published without its access rules, a view that reads with its owner's permissions
+  instead of the viewer's, a function that stops pinning where it looks names up. Anything it finds
+  fails the build unless the project has already reviewed and accepted it, and the four accepted
+  findings are listed in one file with the reason for each. The entry covering a specific object
+  fails the build once that object is gone, so a fix takes its own exception with it and a run that
+  came back empty cannot be mistaken for a clean result. A weekly job runs the same check against
+  the live database and posts to Discord if it finds something, which catches a change made outside
+  the usual route.
+
+## [3.97.7] - 2026-09-08
+
+### Project
+
+- The database test suite no longer fails at random
+  ([#1021](https://github.com/katogaming88/WGA-Raid-Hub/issues/1021)). Two test files set their
+  fixtures up in a way that made them briefly visible to every other test running at the same time,
+  so a test about the raid rotator failed on a different case each run and passed whenever it ran on
+  its own. The rows were cleaned up immediately, which is why the tables looked innocent afterwards
+  and the failure looked like a bug in the test that failed. Both files now write inside a
+  transaction that is rolled back, a check in CI refuses the pattern from coming back, and the
+  denial tests they contain got stronger on the way through: each one now proves its fixture landed
+  before proving the row is hidden, so a setup that quietly failed can no longer pass as a
+  successful denial.
+
+## [3.97.6] - 2026-09-08
+
+### Backend
+
+- A database rebuilt from the repository now gets the same season signup function production runs
+  ([#1020](https://github.com/katogaming88/WGA-Raid-Hub/issues/1020)). It refuses a submission from
+  a visitor with no signed-in session, where the version a rebuild used to end on recorded the
+  submitter only when one happened to be present. This is the rest of the difference
+  [#1010](https://github.com/katogaming88/WGA-Raid-Hub/issues/1010) found, and like that one it
+  changes nothing on production, which has run the correct version since July. What it changes is
+  every other copy of the database: a developer's machine, a fresh checkout and the test runs that
+  gate every pull request. The function also has its first tests.
+
+## [3.97.5] - 2026-09-08
+
+### Backend
+
+- `submit_self_received()` now sends a request to officer review instead of rejecting it outright
+  whenever the note mentions "raid" ([#1025](https://github.com/katogaming88/WGA-Raid-Hub/issues/1025)).
+  It previously rejected the whole submission the moment the note mentioned "raid" as its own
+  word, regardless of source, so a raider honestly describing a real non-raid pickup ("pugged
+  this in a heroic raid, got it from my vault") had no way to get the report through short of
+  rewording it. It's still never auto-approved on a "raid" mention -- an officer decides whether
+  it's really an undeclared team raid drop (in which case the officer's own loot import already
+  covers it) or a legitimate report that happens to say "raid."
+
+## [3.97.4] - 2026-09-08
+
+### Project
+
+- Every pull request a person opens now names a release and writes a changelog
+  line, including the ones that change no part of the site itself
+  ([#1019](https://github.com/katogaming88/WGA-Raid-Hub/issues/1019)). Work on
+  tests, CI, documentation, configuration and the news file logs under a new
+  `### Project` heading. Until now a label exempted all of that from every
+  check and was applied automatically, so those changes reached the site with
+  no version attached and the release history read as though nothing happened
+  on the days they landed. Dependency updates opened by the bot stay exempt.
+  The old label is left in place on the pull requests that carried it and is
+  read by nothing.
+
+---
+
+## [3.97.3] - 2026-09-08
+
+### Backend
+
+- Four invariants over public database functions now run in the RLS suite
+  ([#1010](https://github.com/katogaming88/WGA-Raid-Hub/issues/1010), from the read-only spike in
+  [#1009](https://github.com/katogaming88/WGA-Raid-Hub/issues/1009)): no function body builds SQL at
+  runtime, every function pins its search path, exactly the intended set of functions is callable by
+  a signed-out visitor, and one event trigger. The protections were already in place and held by
+  review alone, so these check what was true rather than change it.
+- The twelve functions with no pinned search path now pin it. Three of them looked up tables in a
+  way that depended on the caller's settings, which nothing could reach because no site role may
+  create database objects, and which is now closed regardless.
+- A local development database no longer hands out permissions production withholds. The Postgres
+  image grants every new function to all three site roles; production grants none of them, so a
+  missing permission line in a migration could only ever be discovered in production. The set is now
+  the same in both places, which surfaced one such gap immediately: a database rebuilt from the
+  repository let a signed-out visitor submit season signups. Two migrations from July are stored in
+  the opposite order to the one they were written in, so a rebuild ends on the older of the two.
+  Production applied them as they were written and never had the gap. The permission is corrected
+  here, and the rest of that difference is
+  [#1020](https://github.com/katogaming88/WGA-Raid-Hub/issues/1020).
+
+## [3.97.2] - 2026-09-08
+
+### Frontend
+
+- Three of the four independent full-table `attendance` reads (main page load, the officer
+  Attendance tab's grid, and the per-player "add raid night" control) now share one cached read
+  instead of each paging the whole table on its own ([#837](https://github.com/katogaming88/WGA-Raid-Hub/issues/837)).
+  The add-night control in particular ran this fetch once per roster profile opened, so it was
+  paying the same growing cost over and over in a single session. The cache is busted by "Refresh
+  from WCL," the one action expected to add nights it doesn't know about yet. Commit Attendance
+  Scores keeps its own independent read on purpose, since it drives a write and a stale cache
+  there could commit scores off data an officer can no longer see on screen.
+- The public roster page's Recent Loot widget and "Items This Tier" stat no longer wait on the
+  rest of the page's heavy data to render ([#837](https://github.com/katogaming88/WGA-Raid-Hub/issues/837)).
+  Loot itself is a small, fast read, but it used to render in lockstep with whichever of the ~19
+  other heavy fetches (attendance, priority order, audit log, etc.) happened to be slowest that
+  page load. `loadData()` now has an optional third callback that fires as soon as loot resolves,
+  independent of the rest of that batch, which stays otherwise unchanged.
+
+## [3.97.1] - 2026-09-08
+
+### Frontend
+
+- A BiS row's received badge now compares tracks across both receive sources instead of
+  picking whichever source has any entry at all. A raider's own in-raid loot history and their
+  approved self-received requests (e.g. a Great Vault pick) are tracked separately, so an earlier
+  Heroic drop from the loot import was always shown even after a later, higher-track Mythic
+  self-receive for the same item. The row now badges whichever track is actually higher, and a
+  self-received entry with a recognized track renders the same colored H/M/N badge as an
+  in-raid receive instead of a plain text label.
+
+## [3.97.0] - 2026-09-07
+
+### Functions
+
+- `contact-webhook` takes the submitter's identity from the JWT instead of from the request
+  body ([#957](https://github.com/katogaming88/WGA-Raid-Hub/issues/957)). The contact form is
+  public, so the Discord line on a report was whatever the caller sent, and a report could name
+  somebody who never wrote it. It now reads the caller's own account off the token the site
+  already sends, and a signed-out report says so rather than naming anyone. The team and the
+  typed name still come from the body: one is which site the form was on, the other is a name
+  somebody typed, and neither is a claim about who they are.
+- Smoke mode on that function ([#1007](https://github.com/katogaming88/WGA-Raid-Hub/issues/1007)):
+  `smoke: true` with the `x-cron-secret` header posts to the bot test channel and marks the
+  message, so a live check never reaches the admin channel. Without the header it refuses, and
+  with no test webhook configured it refuses rather than falling back to the live one.
+
+### Frontend
+
+- The contact form sends the team, the typed name and the message, and no identity fields
+  ([#957](https://github.com/katogaming88/WGA-Raid-Hub/issues/957)). A field the page never
+  sends is one nobody can forge.
+
+## [3.96.0] - 2026-09-07
+
+### Backend
+
+- New `boe_items.found_posted_at`, the one-post-per-row claim behind the BoE found
+  Discord post ([#956](https://github.com/katogaming88/WGA-Raid-Hub/issues/956)). Written only by
+  the service role, which needed no new policy: `check_boe_status_transition()` is an allow-list by
+  subtraction, so a column outside its metadata list is refused to `authenticated` the day it
+  exists, and the UPDATE policy already admits neither anon nor a plain raider. Existing rows are
+  backfilled from `created_at`, because a row left null would be claimable once by anyone who
+  guesses an id at an endpoint that takes no credentials.
+
+### Functions
+
+- `boe-webhook` takes a row id and reads the row instead of posting its request body
+  ([#956](https://github.com/katogaming88/WGA-Raid-Hub/issues/956)). The report card is a public
+  unauthenticated form, so what reached the endpoint used to be what the guild channel printed.
+  The post now says what the database holds, a replay or a race announces a find once, and a
+  refused post releases the claim so the find can still be announced later. The Team line reads the
+  `teams` table rather than the site's own list.
+- Smoke mode on that function ([#1007](https://github.com/katogaming88/WGA-Raid-Hub/issues/1007)):
+  `smoke: true` with the `x-cron-secret` header posts to the bot test channel, takes no claim and
+  marks the message, so a live check never reaches a channel a team operates in. Without the header
+  it refuses, and with no test channel configured it refuses rather than falling back to the live
+  one.
+
+### Frontend
+
+- The BoE report form sends the id the submit RPC returns and nothing else
+  ([#956](https://github.com/katogaming88/WGA-Raid-Hub/issues/956)). The Discord notification stays
+  best-effort, and a failed call can no longer surface as an unhandled rejection.
+
+## [3.95.0] - 2026-09-07
+
+### Backend
+
+- New `players.is_rotator` roster status, parallel to `is_bench`
+  ([#924](https://github.com/katogaming88/WGA-Raid-Hub/issues/924), part of
+  [#640](https://github.com/katogaming88/WGA-Raid-Hub/issues/640)): a rotator is not automatically
+  Present/Attending on a raid night, but unlike Bench, is not self-RSVP -- an officer marks a
+  rotator "in" for a whole raid week at once via the new `officer_set_rotator_week()` RPC, which
+  fans that single action out into one `Rotator-In` `raid_rsvps` row per raid night that week (the
+  table stays per-date/per-player; there is no separate week-grain table). A rotator can still
+  self-RSVP the normal Late/Leaving Early/Tentative/Absent overrides through `set_own_rsvp()` to
+  flag unavailability. `generate_priority_order()` now sorts a rotator below a full-status raider
+  but above Bench, a new tier inserted between the existing Trial and Bench ones.
+
+### Frontend
+
+- Roster tab (`js/tabs/tab-roster.js`) gets a Rotator toggle next to Bench, a "Rotator Only" filter
+  chip, and its own roster group, all mirroring Bench's existing UI
+  ([#924](https://github.com/katogaming88/WGA-Raid-Hub/issues/924)).
+- Calendar (`js/calendar.js`) gives a rotator the same "no default Present" treatment Bench already
+  has on a normal raid night, shown as a `Rotator` status, and an officer gets a "Set in for
+  week"/"Remove from week" action on a rotator's row in the day view roster breakdown.
+
+## [3.94.0] - 2026-09-07
+
+### Backend
+
+- New `team_discord_config` table holds each team's Discord guild id, channel ids, ping role ids,
+  and Apps Script/roster script URLs ([#991](https://github.com/katogaming88/WGA-Raid-Hub/issues/991)).
+  Locked to the service role only, same shape as `raid_signup_sheets` -- no read use case for an
+  officer or end user, and no admin UI writes it yet. Supersedes `team_settings.config`'s
+  `discordSignupChannelId`, which had no write path and was never actually set for either team.
+
+### Functions
+
+- `discord-bot-webhook` now relays every action to one shared `BOT_WEBHOOK_URL`/`BOT_WEBHOOK_SECRET`
+  instead of resolving `BOT_WEBHOOK_URL_<TEAM>`/`BOT_WEBHOOK_SECRET_<TEAM>` per team
+  ([#991](https://github.com/katogaming88/WGA-Raid-Hub/issues/991)), and now forwards `team` inside
+  the relayed body so the one bot on the other end can tell which team's config to use. A missing
+  shared secret pair is now a real misconfiguration error instead of a silent no-op, since it can no
+  longer mean "this team just has no bot yet."
+
+### Bot
+
+- One bot process now serves every team instead of one full deployment per team
+  ([#991](https://github.com/katogaming88/WGA-Raid-Hub/issues/991)). Every slash command and relay
+  route resolves its team from the Discord guild the interaction came from (or from the relay's
+  `team` field) and looks up that team's config from the database at runtime, instead of a single
+  team's guild/channel/role ids and script URLs being baked in as env vars for the whole process.
+  Slash commands register in every configured guild instead of just one. Nothing changes for a
+  raider or officer using any existing command or feature.
+
+## [3.93.1] - 2026-09-07
+
+### Functions
+
+- The Discord post announcing a BoE sale names the two halves of the split **Guild Bank** and
+  **Finder's Cut**, in place of Guild Cut and Finder's Fee
+  ([#984](https://github.com/katogaming88/WGA-Raid-Hub/issues/984)). The guild's line now says
+  where the gold went, and the finder's says it is their cut of the loot rather than a fee owed.
+  A finder who gave their cut away is thanked for giving it, in the same words. The four numbers,
+  the ping to the finder and everything else about the message are unchanged.
+
+## [3.93.0] - 2026-09-07
+
+### Frontend
+
+- Clicking a raid day, on the full calendar or the Home widget, now opens a day view with its own
+  URL (`calendar.html?date=...`) instead of a status-picker modal
+  ([#903](https://github.com/katogaming88/WGA-Raid-Hub/issues/903)). It carries the raider's own
+  status control at the top, same as the old modal, plus a full roster breakdown grouped by role
+  showing everyone's status and note, aggregate in/out/no-response counts, and prev/next arrows
+  that move to the adjacent day. An officer can now correct another raider's status inline from
+  that roster list.
+- The public roster tab, the incoming-roster preview, and the player dropdown all built their
+  Tank/Healer/Melee/Ranged grouping the same way in three separate places. That logic now lives in
+  one shared helper, reused by the new day view's roster breakdown as a fourth caller instead of a
+  fourth copy.
+
+### Backend
+
+- New `officer_set_rsvp()` RPC lets an officer set or clear another raider's RSVP status, always
+  with a required note so the raider can see why it changed
+  ([#903](https://github.com/katogaming88/WGA-Raid-Hub/issues/903)). `raid_rsvps` keeps its
+  SELECT-only RLS -- this is the officer-scoped write path the 2026-09-03 decision on that table
+  said any future correction should take, not a blanket write grant.
+
+## [3.92.0] - 2026-09-07
+
+### Frontend
+
+- The site now publishes what version it is, and what version each of its parts is, at
+  `version.json` ([#967](https://github.com/katogaming88/WGA-Raid-Hub/issues/967)). One number covers
+  the whole project and each part carries the number of the last release that changed it, so a
+  question like "which release did the database last move in" has an answer that is written down
+  instead of guessed. A second file, `build.json`, records which commit is actually deployed and
+  when it was built, filled in by GitHub Pages at deploy time.
+- `admin.html` shows the version in its footer like every other page. It was the only one that
+  never did, because it does not load the shared script the others read the number from.
+- Nothing visible changes anywhere else.
+
+## [3.91.3] - 2026-09-05
+
+### Frontend
+
+- Officer notes and removal reasons are no longer readable by people who should not see them
+  ([#925](https://github.com/katogaming88/WGA-Raid-Hub/issues/925)). The roster read that every page
+  makes carried them to anyone, so the private note an officer leaves on a raider, and the reason
+  behind each removal, came back to signed-out visitors and to every signed-in raider alike. They
+  now load through a separate officer-only read. Nothing on the public page changes, and the officer
+  dashboard shows and saves them exactly as before.
+
+### Backend
+
+- The three columns move to a new `player_officer_notes` table with officer-scoped policies, and
+  drop off `players`. A column-level revoke could not fix this: the public and officer pages share
+  one roster query, and officers and raiders share one database role, so the split had to be per row
+  rather than per column. `m_plus_note` stays where it is, because the public profile renders it.
+- Removing a player goes through a new `archive_player()` function, so the archive timestamp on
+  `players` and the reason on the new table are written together instead of as two separate calls
+  that could half-fail.
+- Both BoE Discord posts read as a matching pair now
+  ([#926](https://github.com/katogaming88/WGA-Raid-Hub/issues/926)). Each one opens with a heading,
+  puts a bold label on every line and underlines the item name, in place of reading as the retired
+  relay bot's output with the brackets taken off. The found post moves off a Discord embed and onto
+  plain text so the two share one shape, and its track folds into the item line the way the sold
+  post already built it.
+- Dropping that embed took a safety net with it, so the found post gained its own. It is an open
+  unauthenticated endpoint, and a mention inside an embed never notified anyone while the same
+  mention in plain text would. Both posts now suppress every mention type explicitly, `@everyone`
+  and `@here` included, and the sold post's ping to the finder who is owed the gold is the single
+  exception either of them makes. A submitted note also has any line-leading heading and quote
+  markers stripped, and every other value on the post has its line breaks collapsed, so nothing
+  sent in can forge a line of the post's own structure.
+
+## [3.91.2] - 2026-09-05
+
+### Frontend
+
+- The BoE Sales page now carries the guild page's full nav instead of two items
+  ([#930](https://github.com/katogaming88/WGA-Raid-Hub/issues/930)). Arriving there dropped Teams,
+  Streams, News and About, so the only way back to any of them was the browser's back button. They
+  return as deep links into `guild.html`, which lands on the section rather than the top of the page.
+- The report form on that page sits centred under its own heading. It was pinned to the left edge of
+  a full-width section, with the lifecycle list squared off underneath it, which read as a layout
+  bug. The fields keep their left edge inside the block.
+- The nav item that opens the page is called **BoE Sales** everywhere. It said "BoE" on the guild
+  page and on every team page, while the page itself used the longer name in its title, header and
+  heading.
+
+### Backend
+
+- New migrations are created with `npm run migration:new -- <slug>`, which stamps the filename from
+  the real Eastern wall clock
+  ([#927](https://github.com/katogaming88/WGA-Raid-Hub/issues/927)). Supabase applies migrations in
+  order of that 14-digit prefix, so it is a sort key shared between machines, and it was coming from
+  two clocks: `supabase migration new` stamps UTC, four hours ahead of Eastern in summer. 30 of the
+  161 files sort below a migration that was added before them, and two of those refused a
+  `supabase db push` outright. `--rename` re-stamps a file when the order moves while a PR is open.
+- The migration ledger check enforces both halves of that. It fails a pending file that sorts below
+  the newest version applied on prod, and a file stamped ahead of the Eastern clock at the commit
+  that added it, each naming the rename command.
+
+---
+
+## [3.91.1] - 2026-09-05
+
+### Frontend
+
+- Fixed removing a player from a team roster failing with
+  `Failed: supabaseClient.rpc(...).catch is not a function`. The cleanup step that drops a removed
+  player from the season's standing priority order called `.catch()` directly on a Supabase RPC call,
+  which returns a thenable query builder rather than a real `Promise` and has no `.catch()` method --
+  the call threw immediately and aborted the whole removal before the roster list updated.
+
+---
+
+## [3.91.0] - 2026-09-04
+
+### Backend
+
+- The Discord post for a sold BoE now reaches finders it used to miss ([#918](https://github.com/katogaming88/WGA-Raid-Hub/issues/918)). It resolved a
+  finder two ways, the Discord account they submitted from and the character claimed on the finding
+  team, and a raider who reports a find while raiding with another team has neither: the first live
+  sale to fire the ping went to a name in bold instead of to the person who found it. A new
+  `resolve_boe_finder_discord_id()` adds a third step, matching the finder's name across every team
+  and including characters that have since left a roster, and refusing to guess when one name reaches
+  two different people. That reaches the sale this came from. Six older finds still cannot be resolved
+  and keep the plain name: four were reported by people with no character on any roster, and two match
+  a character that was removed and never linked to a Discord account. Both posts also read cleaner:
+  the item's track is plain text now (`Champion - Pauldrons of the Forgotten Sacrifice`) instead of
+  sitting in escaped angle brackets copied from the retired relay bot, and both posts name themselves
+  "BoE Sales" rather than inheriting whatever the webhook is called in the channel settings.
+
+### Frontend
+
+- The raid calendar can now open straight to a given date
+  ([#900](https://github.com/katogaming88/WGA-Raid-Hub/issues/900), part of the aggregated Discord
+  signup sheet). `calendar.html?date=YYYY-MM-DD` jumps to that date's month and opens the RSVP modal
+  for it once your Discord login state resolves -- this is what the signup sheet's Discord embed
+  links to.
+- New "Discord Signup Sheet" settings card on the officer dashboard's Season tab (team leaders and
+  site admins only): a channel ID, a Verify button that shows back the actual resolved channel name
+  (many of our channels are named nearly identically across teams), and a configurable lead time
+  before a raid night's sheet gets posted (default 48 hours before the raid's actual start time).
+
+### Backend
+
+- A new aggregated, always-current Discord message per raid night
+  ([#900](https://github.com/katogaming88/WGA-Raid-Hub/issues/900), part of #640) -- shows the whole
+  roster's RSVP status at a glance, grouped by role, with Late/Tentative/Absent/Bench each pulled
+  into their own section, and edits in place as people respond instead of reposting. Fully separate
+  from the existing per-status-change ping ([#893](https://github.com/katogaming88/WGA-Raid-Hub/issues/893)),
+  which is untouched. Posted proactively ahead of each raid night (configurable lead time, default
+  48h before start) and re-synced on every RSVP change; a Refresh button on the message itself
+  manually re-syncs it too. All the logic lives in the Discord bot (wga-raid-bot), using its own
+  service-role Supabase client -- the site's role is just the new `raid_signup_sheets` bookkeeping
+  table, `claim_raid_signup_sheet()`/`raid_night_info()`, and relaying the trigger through
+  `discord-bot-webhook`, which now also forwards the bot's response body so the channel-Verify
+  step can work.
+
+---
+
+## [3.90.0] - 2026-09-04
+
+### Frontend
+
+- Optional raid nights now support a real RSVP
+  ([#895](https://github.com/katogaming88/WGA-Raid-Hub/issues/895), Phase 4 of the raid calendar).
+  Clicking into an optional night's cell on the calendar now offers an `Attending` status alongside
+  the existing four, and a raider who confirms attendance renders with the same green dot as a
+  normal Present night instead of the amber "flagged" color. Bench raiders, who normally have no
+  RSVP picker at all, can now click into an optional night specifically -- there's no default
+  status for anyone on one of these nights, bench included, since it's exactly the kind of night a
+  bench player might get pulled in for.
+
+### Backend
+
+- A 24h/2h DM reminder sweep for optional raid nights
+  ([#895](https://github.com/katogaming88/WGA-Raid-Hub/issues/895)). A new `optional-rsvp-reminders`
+  Edge Function runs on a 15-minute pg_cron schedule, finds every optional night in the next couple
+  days, and DMs (through the existing Discord bot, via a new `/optional-reminder` bot route) anyone
+  -- bench included -- who hasn't set an RSVP status yet, 24 hours out and again at 2 hours out. A
+  new `raid_rsvp_reminders_sent` table is a pure dedup log so nobody gets double-DMed on the next
+  tick; it carries no read policy for anyone but the service role. `set_own_rsvp()` now accepts
+  `Attending`, gated to optional nights only, and its bench guard relaxes for that same case. A new
+  shared `is_optional_raid_night()` SQL function keeps the recurring-rule/exception precedence in
+  one place instead of duplicating it between the RPC and the Edge Function.
+
+---
+
+## [3.89.0] - 2026-09-03
+
+### Frontend
+
+- Recording a sale now pings the finder in Discord
+  ([#873](https://github.com/katogaming88/WGA-Raid-Hub/issues/873)). They used to find out when a
+  manager remembered to tell them. The message names the item with its track and rank, lists the
+  sale price, the auction house fee, the guild's cut and the finder's own so the four add up, and
+  says to see your raid leaders or the BoE manager in the 15 minutes before raid starts for the
+  gold, with the manager linked so you can click straight through to whoever holds the grant. Only
+  the finder is notified. A
+  finder who chose to donate their cut gets a thank-you instead of a contact line. Undo Sale does
+  not retract the post; delete it in Discord by hand.
+
+### Backend
+
+- New `boe-sold-webhook` Edge Function behind the same manager or site admin gate as recording a
+  sale. It reads the row itself and posts nothing unless that row is still sold, so a replay after
+  an undo announces nothing. `BOE_SOLD_WEBHOOK_URL` sends it to its own channel; without it the
+  message lands in the found channel, and with no webhook configured at all the function no-ops.
+
+- A team with no roster can be given an officer for the first time
+  ([#910](https://github.com/katogaming88/WGA-Raid-Hub/issues/910)). Per-team roles were the only
+  grant tier with no RPC: a `team_members` row could only come from claiming a character on that
+  team, so a team with no players had no way to get anyone who could settle its BoE payouts. New
+  `admin_grant_team_role()` and `admin_revoke_team_role()` resolve the Discord account at grant
+  time and return it, so a grant that has not activated yet is visible straight away. The grant
+  refuses to change a role that is already set, and revoke demotes to raider rather than removing
+  anyone whose character is claimed against the row. Signing in for the first time now also links
+  a waiting guild officer grant, which it had never done.
+
+---
+
+## [3.88.0] - 2026-09-03
+
+### Frontend
+
+- Reporting a BoE and following what happened to it are one page now
+  ([#891](https://github.com/katogaming88/WGA-Raid-Hub/issues/891)). The report form moved off
+  index.html's BoE tab to the top of the BoE page, above the finds it creates. Reporting still
+  needs no login. The form picks its own reporting team, so it starts on the team a pinned link
+  named, or a lone claimed character's team, and otherwise asks rather than guessing; the item
+  list follows whichever team is chosen.
+- One **BoE** link in every nav, in place of the BoE tab and the separate BoE Sales link. Every old
+  link still works: `index.html?team=<slug>#boe` and `guild.html#boe` both land on the page, and
+  the per-team one carries its team into the form.
+- The guild page's **Found a BoE?** card is gone. It only ever picked a team and sent you to the
+  form, which now picks its own.
+
+---
+
+## [3.87.0] - 2026-09-03
+
+### Frontend
+
+- The BoE Sales page is open to anyone signed in ([#890](https://github.com/katogaming88/WGA-Raid-Hub/issues/890)).
+  It used to turn away everyone who was not an officer or a BoE manager, while the read policies
+  were already scoping it: a raider now sees the finds reported under their own character, a team
+  officer sees the teams they staff and settles those payouts (Mark Paid, Donate to Guild, Undo
+  Payout, [#888](https://github.com/katogaming88/WGA-Raid-Hub/issues/888)), and a BoE manager or
+  site admin still sees every find with every action. The buttons follow the row rather than the
+  page, so an officer gets none on another team's find, and the Actions column drops out of a
+  section where nothing is theirs. Guild income is left off a raider's summary, since it would be
+  summed over their own handful of finds.
+- The BoE Sales links in the guild page's nav and the officer dashboard's site nav are plain links
+  now. They shipped hidden and waited on three access checks before appearing; there is nothing
+  left to gate them on.
+
+---
+
+## [3.86.2] - 2026-09-03
+
+### Frontend
+
+- Every timestamp on the site now shows its date and time in your own time zone, and each place
+  that shows one says so ([#905](https://github.com/katogaming88/WGA-Raid-Hub/issues/905)). The BoE
+  page and the Reports tab showed a date only, so a find or sale late on a raid night read as the
+  next day to anyone east of Eastern; the notifications panel and the BiS, M+, requests and signups
+  tabs each used the browser default with seconds. Raid nights, award dates and join dates are
+  calendar facts and stay as they were.
+
+---
+
+## [3.86.1] - 2026-09-03
+
+### Frontend
+
+- Fixed the RSVP status picker's Save button clipping past the modal's edge -- the Cancel/Clear/Save
+  row now wraps instead of overflowing ([#893](https://github.com/katogaming88/WGA-Raid-Hub/issues/893)).
+- The RSVP note is now required, not optional, so officers always know why a raider changed their
+  status.
+
+### Backend
+
+- A find submitted while signed in now records the finder's Discord account on the row, and a
+  raider who signs in sees every BoE they reported that way, on any team, with its listings
+  ([#889](https://github.com/katogaming88/WGA-Raid-Hub/issues/889)). The typed character name still links the
+  roster row as before; the 16 existing rows whose character reached a signed-in member were
+  backfilled, and a find reported signed out stays visible to officers and BoE managers only.
+
+---
+
+## [3.86.0] - 2026-09-03
+
+### Frontend
+
+- Officers get a new **Raid Schedule** tab to manage the weekly raid nights raiders see on the
+  calendar: add/edit/remove recurring weekly nights, and cancel a single occurrence or add a
+  one-off extra night ([#894](https://github.com/katogaming88/WGA-Raid-Hub/issues/894), part of
+  [#640](https://github.com/katogaming88/WGA-Raid-Hub/issues/640)). Direct writes under existing
+  RLS, no new migration needed -- Phase 1 already shipped officer-write policies on
+  `raid_schedule`/`raid_schedule_exceptions`.
+
+---
+
+## [3.85.0] - 2026-09-03
+
+### Frontend
+
+- Raiders can now click a raid night on `calendar.html` to mark themselves Late, Leaving Early,
+  Tentative, or Absent, with an optional note
+  ([#893](https://github.com/katogaming88/WGA-Raid-Hub/issues/893), part of
+  [#640](https://github.com/katogaming88/WGA-Raid-Hub/issues/640)). Bench raiders get no picker.
+  The Discord bot posts a notification embed for every change.
+
+### Backend
+
+- `raid_rsvps` stores a raider's self-declared override for one raid night, written only through
+  the new `set_own_rsvp()` RPC (no direct write policy for anyone, officers included)
+  ([#893](https://github.com/katogaming88/WGA-Raid-Hub/issues/893)). Forward-looking intent only --
+  never synced into `attendance`, which stays the sole source for loot-fairness scoring.
+- The `discord-bot-webhook` Edge Function relays a new `rsvp` action to the bot's `/rsvp-status`
+  route.
+
+---
+
+## [3.84.0] - 2026-09-03
+
+### Frontend
+
+- Adds a real Raid Calendar: a Home-page widget and a new `calendar.html` page (reachable from a
+  new Calendar nav item on both the raider and officer sidebars) showing this month's raid nights,
+  replacing the visual-only mock that lived on the redesign branch
+  ([#892](https://github.com/katogaming88/WGA-Raid-Hub/issues/892), part of
+  [#640](https://github.com/katogaming88/WGA-Raid-Hub/issues/640)). Raiders are shown as Present by
+  default unless benched; self-mark RSVP and Discord notifications land in a later PR.
+
+### Backend
+
+- `raid_schedule`/`raid_schedule_exceptions` store each team's recurring weekly raid rule plus
+  one-off cancellations/additions ([#892](https://github.com/katogaming88/WGA-Raid-Hub/issues/892)).
+  Raid nights are computed on the fly from these two tables rather than stored as per-instance rows.
+- Team officers settle BoE payouts for their own team
+  ([#888](https://github.com/katogaming88/WGA-Raid-Hub/issues/888)): `boe_mark_paid` and the paid-to-sold
+  edge of `boe_revert` now admit an officer or team leader of the row's team through a new
+  `can_settle_boe(team_id)` helper, beside the BoE manager grant and site admin. Listing, sale,
+  retire, edit and delete are unchanged, and nothing is visible until the BoE page opens to every
+  signed-in raider (#890). No officer rows were added for Immolation or Wrathless; the setup guide
+  carries the hand-insert recipe for the day one asks.
+
+---
+
+## [3.83.0] - 2026-09-03
+
+### Frontend
+
+- BoE Sales shows the auction house fee on every sold row, between the sale and the finder's
+  payout, and the Guild cut column is now the net figure, what the bank actually receives
+  ([#861](https://github.com/katogaming88/WGA-Raid-Hub/issues/861)). A donated payout reads as
+  the sale net of the fee. The site admin dashboard's payout read-back names the cap: a finder
+  never gets more than the sale minus the game's 5% fee.
+
+### Backend
+
+- `boe_items.ah_fee` records the game's fixed 5% auction house fee on each sale
+  ([#861](https://github.com/katogaming88/WGA-Raid-Hub/issues/861)). `boe_record_sale` takes it off
+  the top and returns it with the split; the finder is capped at the net, so the guild is never
+  out of pocket on a sub-floor sale; `finder_payout + guild_cut + ah_fee = sale_price` is now a
+  constraint on every sold or paid row. Every row sold before this, the sheet imports included,
+  is backfilled: finder payouts are unchanged except on two sub-floor sales, and the fee comes
+  out of the guild cut.
+
+## [3.82.3] - 2026-09-03
+
+### Frontend
+
+- The BoE tab now keeps its `#boe` hash, so a refresh (or the pinned per-team Discord link)
+  lands back on it instead of the home view. Opening the tab was clearing the hash right back
+  out the moment it set it, since it was missing from the write side of the hash-reflection map
+  even though the read side already knew `#boe`.
+
+### Backend
+
+- The BoE catalog script drops its alias route (`scripts/boe-names/aliases.txt`, `parseAliasesFile`
+  and the alias block in the generated SQL) now that the Google Form is closed (#750): the picker
+  sends the catalog spelling, so a misspelled row is a manager's Edit. The generated catalog file
+  links rows by name only.
+- `npm run db:docs` no longer re-sorts the trigger listings in `dbdoc/`. tbls 1.96.0 (released
+  2026-09-03) orders triggers by creation on every platform and `tbls diff` compares in that same
+  order, so the name order `scripts/ci/dbdoc-sort.js` imposed failed the schema-docs check on
+  every multi-trigger table. The five table docs and `schema.json` are regenerated in tbls' own
+  order and the sort script and its test are gone. Nothing in the schema changed.
+
+## [3.82.2] - 2026-09-03
+
+### Frontend
+
+- A tip on the found form warns to report before depositing a BoE in the guild bank: once it's
+  banked, it shows the depositor a base item level with no track or upgrade rank, so they can no
+  longer read either off themselves.
+
+## [3.82.1] - 2026-09-03
+
+### Frontend
+
+- The found form's donate option is the checkbox and its label alone; the explanation that sat
+  above it since 3.81.3 is gone.
+
+## [3.82.0] - 2026-09-03
+
+### Frontend
+
+- The found form asks for the item's upgrade rank (1/6 to 6/6, as the tooltip shows it) and
+  will not submit without it or the track (#865): together they say which item was found, since
+  two finds of the same item on the same track are only the same item at the same rank.
+- The BoE Sales page shows the rank in the Item cell's badge ("Champion 2/6"), the Edit form
+  offers the same six ranks (with a blank for rows imported from the sheets), and Record Sale
+  asks first when an older find of the same item, track and rank is still open anywhere in the
+  guild, naming that finder and date. A warning, not a block.
+- The Discord found post carries the rank on its Item line.
+
+### Backend
+
+- `boe_items.upgrade_rank` (#865) under a shape check; `submit_boe_found` gains the argument
+  and now requires a track and a rank; the metadata trigger admits the column on a direct
+  UPDATE. A backfill sets the rank on the five imported rows whose Form submission carried one
+  (moving the two rank-only notes into the column) and keeps the one "(Mythic 279)" level in
+  its row's note. No item level column: within a season a track at a rank is one level.
+- The BoE importer keeps the "N/N" rank it used to strip, treats a note that is only a rank as
+  the rank, keeps a bracketed item level in the note, and no longer flags two finds a minute
+  apart at different ranks as a suspected duplicate.
+
+## [3.81.3] - 2026-09-03
+
+### Frontend
+
+- The found form now says what the donate checkbox is for (#862 follow-up): a short note above it
+  explains that some finders donate their cut, that there is no obligation to, and that the box is
+  how to say so. Raiders had been typing "donate" into the note because nothing on the form said
+  the box was there. The checkbox reads "I'd like to donate my finder's fee to the guild".
+
+### Backend
+
+- `npm run db:docs` now sorts every trigger listing in `dbdoc/` after tbls writes it
+  (`scripts/ci/dbdoc-sort.js`): on Windows `tbls doc` ignores the config's sort setting and
+  writes catalog order, which failed the schema-docs check on untouched tables twice. A CI test
+  now fails on any committed doc whose triggers are out of order.
+
+## [3.81.2] - 2026-09-03
+
+### Frontend
+
+- The BoE Sales page's lifecycle buttons (Record Listing, Retire, Edit, Mark Paid, and the rest)
+  had no color class, so they rendered as the browser's default gray button instead of the
+  site's gold/muted/danger styling; fixed, and the action cells now wrap in a flex group instead
+  of one button per line. Undo Sale, Undo Payout, and Un-retire are red (`btn-danger`) to read
+  as reversals.
+- The found form's Item field is a `<select>` now instead of a free-text input with a datalist
+  (#875 follow-up): it can no longer be typed into, only chosen from the season's BoE catalog,
+  which also gives it the same native arrow and dark-skinned option list as the Team and Track
+  pickers beside it.
+
+## [3.81.1] - 2026-09-02
+
+### Frontend
+
+- A donated payout now reads the way it happened (#862): the History row shows Finder payout 0g
+  and the whole amount as guild cut, instead of the policy split beside a Donated badge. The
+  totals already counted it that way; the row did not. Undo Payout still restores the policy split.
+
+## [3.81.0] - 2026-09-02
+
+### Frontend
+
+- A finder can give their cut to the guild (#862). The found form has a checkbox, "Donate my
+  finder's cut to the guild", off by default; it records the intent, shows as a Donating marker
+  on the BoE Sales page, and rides the Discord post as its own field. On the BoE Sales page a
+  sold row now offers **Donate to Guild** beside Mark Paid: it settles the row with the cut kept
+  by the guild, History reads Donated instead of Paid, guild income counts that cut, and the
+  summary shows the donated total on its own line. Mark Paid on a flagged row clears the marker,
+  and an undone payout keeps it.
+
+### Backend
+
+- `boe_items.payout_donated` marks a finder's cut kept by the guild (#862). `boe_mark_paid`
+  takes a third argument, `p_donated`, and `submit_boe_found` a sixth, `p_donate`; the flag
+  is written only through those two. The nine prod rows whose note already said the cut was
+  donated are flagged by the migration.
+
+## [3.80.0] - 2026-09-02
+
+### Frontend
+
+- The found-BoE form's item field offers the season's BoEs as you type (#875). Pick one, or
+  type its name in any capitalisation, and the find is recorded under the catalog's spelling
+  and linked to the item; anything else is still accepted as typed, so a find can be reported
+  before the list knows the item. The BoE Sales page's Edit form offers the same list, and a
+  Save that matches it writes the link with the name.
+
+### Backend
+
+- `items.is_boe` marks the season BoE catalog (#875). `submit_boe_found` links a find to a
+  flagged row only, case-insensitively, and stores the catalog spelling; a same-named boss drop
+  no longer links. The catalog rows come from the new `scripts/fetch-boe-items.js`, which
+  resolves the names in `scripts/boe-names/` through Wowhead and writes a data file that also
+  links the existing rows by name and by known misspelling (17 items across the two Midnight
+  raids today).
+
+## [3.79.0] - 2026-09-02
+
+### Frontend
+
+- BoE managers can correct a find from the BoE Sales page (#874). Every row in Open, Awaiting
+  Payout and History has an **Edit** button beside its other actions; it opens the item name,
+  the track and the note under the row, prefilled. Save writes the three together and puts the
+  corrected name in place without a reload; Cancel puts the fields back. A blank name is refused
+  on the row, unchanged values write nothing, and the audit log entry (BoE Find Edited) keeps the
+  old and new values, so a raider's original words survive a rewrite. Money and lifecycle stay
+  with the lifecycle buttons.
+
+## [3.78.2] - 2026-09-02
+
+### Frontend
+
+- Anything you can reach with Tab now shows a gold focus ring (#435). Ten
+  controls used to switch their outline off and signal focus with a 1px
+  border colour change instead, which is close to invisible: the player
+  picker, the officer password box, the roster search and trial-promotion
+  inputs, the attendance slider and its two selects, the signup text fields
+  and the add-player box. The guild page has had the ring since 3.67.0 (and
+  the BoE Sales page shares its styling), and the other three pages have it
+  now too. The ring answers the keyboard rather than the mouse, so clicking
+  a button or a link does not leave one behind, while clicking into a text
+  box or a select does show one.
+- Nav tooltips appear when you tab onto a nav item instead of only on hover,
+  so they are reachable without a mouse. Clicking a nav item still does not
+  pop its tooltip over the view it just opened.
+- The signup form can be filled in by keyboard. Its main-spec and role
+  radios and its off-spec checkboxes were hidden outright, which took them
+  out of the tab order and out of screen readers and left the form
+  mouse-only. Arrow keys move between specs now, Space toggles an off spec,
+  and the chip you are on shows a ring.
+
+## [3.78.1] - 2026-09-02
+
+### Frontend
+
+- History on the BoE Sales page shows twenty rows at a time. Previous and Next sit under the table, disabled at the ends rather than disappearing, and a line beneath them reads "Showing 1 to 20 of 47". The Open and Awaiting Payout lists stay whole, the totals still count every row, and the page you are on survives a Mark Paid or an undo (#863).
+
+## [3.78.0] - 2026-09-02
+
+### Frontend
+
+- BoE Sales is its own page, `boe.html`, instead of a section at the bottom of the guild page. It was the longest thing on that page once history loaded and officer-facing where everything around it was for raiders. The **BoE Sales** link in the guild page's nav now opens the page, and the officer dashboard's site nav gained the same link; both show only for officers, BoE managers and site admins, whose access the page checks again for itself. Signed out, the page offers Discord sign-in and returns to itself afterwards; signed in without access, it says whom it is for. An old `officer.html?tab=boe` bookmark redirects to the new page. Nobody's permissions changed (#864).
 
 ## [3.77.25] - 2026-09-02
 
@@ -21,6 +836,8 @@ with each release split into `### Frontend` (drives the version number) and
 ---
 
 ## [3.77.23] - 2026-09-02
+
+_Duplicate version number: this block is PR #857, which opened a second 3.77.23 heading instead of joining the existing one below. A released number is never reissued, so it stands as it is; #966 adds the CI check that refuses the next one._
 
 ### Backend
 
@@ -148,7 +965,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 - Priority Edit's "Suggest Order" re-click nudge no longer treats Heroic and
   Mythic #1 priorities as the same pool. It used to avoid stacking a #1 on
-  someone who already held rank 1 on *either* difficulty for another item,
+  someone who already held rank 1 on _either_ difficulty for another item,
   so a player's Heroic #1 could bump them out of a Mythic #1 slot (or vice
   versa) even though Heroic and Mythic are separate priority lists. Now only
   counts #1s on the difficulty currently being edited.
@@ -217,7 +1034,7 @@ with each release split into `### Frontend` (drives the version number) and
   (`item_preferences` rows tagged `bis`) instead of the officer-curated BiS
   Manager grid (`bis_items`), which almost nobody keeps up to date. Reports
   > BiS Demand vs Awards was showing "No BiS demand recorded" for every team
-  as a result.
+  > as a result.
 - `bis_demand_vs_awards` also excludes placeholder items from demand now --
   they're catalog stand-ins (e.g. "any trinket"), not real drops that could
   ever show an awarded count.
@@ -276,7 +1093,7 @@ with each release split into `### Frontend` (drives the version number) and
   could render before that batch resolved (e.g. a `?tab=bios` deep link at
   boot). The guild sub-tab now re-renders once the real data arrives.
 - Fixed Remove Photo on a Team or Guild Officer Bios card silently
-  deleting the photo out from under any *other* bio card that happened to
+  deleting the photo out from under any _other_ bio card that happened to
   reference the same uploaded file (e.g. one person's photo copy-pasted
   into both their Team and Guild cards). Removing a photo now only clears
   it from that one card; it no longer deletes the underlying file.
@@ -396,7 +1213,7 @@ with each release split into `### Frontend` (drives the version number) and
   fix the raid-progression sync already needed for the same reason.
 - A raid night was still missing from Attendance after the pagination fix
   above -- its report title was `"Phoenix Heroic 8/27 - The Coiled Altar
-  (...)"`, and the alt-run exclusion check matched "Alt" as a plain substring,
+(...)"`, and the alt-run exclusion check matched "Alt" as a plain substring,
   so the boss name **Altar** false-flagged a real raid night as an alt run.
   Now matches "Alt" as its own word only.
 
@@ -643,8 +1460,8 @@ with each release split into `### Frontend` (drives the version number) and
 
 ### Frontend
 
-- Fixed a raider's "Mark received" row going permanently back to unreceived after a duplicate submission. `selfReceivedEntryForRow()` only trusted a slot-less match when it was the *only* candidate for that item name -- a real (non-placeholder) item never carries a slot of its own, so two duplicate submissions for the same item (e.g. the first confirmation wasn't seen, so the raider tried again) left two slot-less rows that the check then refused to match either of, even though both were approved. A row with no slot of its own now matches any slot-less duplicate, since there's no numbered-slot ambiguity to guess across for a real item in the first place.
-- `submitSelfReceivedRequest()`/`submitDirectMarkReceived()` (Mark Received / Submit Request) now show a "Failed to submit. Try again." error if the request promise itself rejects (network drop, etc.) instead of leaving the form frozen on "Submitting..."/"Saving..." with no feedback -- previously only a `result.error` from a *successful* round trip was handled, so a raider with no visible confirmation had no way to tell whether their click actually went through.
+- Fixed a raider's "Mark received" row going permanently back to unreceived after a duplicate submission. `selfReceivedEntryForRow()` only trusted a slot-less match when it was the _only_ candidate for that item name -- a real (non-placeholder) item never carries a slot of its own, so two duplicate submissions for the same item (e.g. the first confirmation wasn't seen, so the raider tried again) left two slot-less rows that the check then refused to match either of, even though both were approved. A row with no slot of its own now matches any slot-less duplicate, since there's no numbered-slot ambiguity to guess across for a real item in the first place.
+- `submitSelfReceivedRequest()`/`submitDirectMarkReceived()` (Mark Received / Submit Request) now show a "Failed to submit. Try again." error if the request promise itself rejects (network drop, etc.) instead of leaving the form frozen on "Submitting..."/"Saving..." with no feedback -- previously only a `result.error` from a _successful_ round trip was handled, so a raider with no visible confirmation had no way to tell whether their click actually went through.
 
 ### Backend
 
@@ -703,6 +1520,8 @@ with each release split into `### Frontend` (drives the version number) and
 
 ## [3.60.32] - 2026-08-25
 
+_Duplicate version number: this block is PR #740, which opened a second 3.60.32 heading instead of joining the existing one below. A released number is never reissued, so it stands as it is; #966 adds the CI check that refuses the next one._
+
 ### Backend
 
 - A raider marking a self-received item (e.g. a crafted piece) never saw it take effect on their own BiS list, even though the request had already been auto-approved -- `self_received_requests` only had SELECT policies for officers/team_leaders/site_admins, so a raider's own browser query for their own approved rows was silently blocked by RLS and came back empty, while an officer looking at the same player's profile saw it fine. Added a `is_own_player(player_id)` SELECT policy so a raider can read their own rows (`20260824233302_own_self_received_requests_read.sql`). See `docs/RLS.md`.
@@ -729,7 +1548,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ### Frontend
 
-- The Loot Import tab's "Recent RCLC Imports" history used to show a flat list of every individual item ever imported, capped at the last 100 rows -- confirming "did my paste go through" meant scrolling through a long item list with no sense of when an import ran or who ran it. Rebuilt into one row per *import event* (Time, Imported By, # of Items), grouped from `audit_log` by the fact that every item from one `import_rclc_loot()` call shares the exact same `created_at` (Postgres freezes `now()` for the whole transaction). Click a row to expand a per-player breakdown (name and item count only, not the items themselves). The list is season-scoped via a dropdown, defaulting to the currently active season.
+- The Loot Import tab's "Recent RCLC Imports" history used to show a flat list of every individual item ever imported, capped at the last 100 rows -- confirming "did my paste go through" meant scrolling through a long item list with no sense of when an import ran or who ran it. Rebuilt into one row per _import event_ (Time, Imported By, # of Items), grouped from `audit_log` by the fact that every item from one `import_rclc_loot()` call shares the exact same `created_at` (Postgres freezes `now()` for the whole transaction). Click a row to expand a per-player breakdown (name and item count only, not the items themselves). The list is season-scoped via a dropdown, defaulting to the currently active season.
 
 ### Backend
 
@@ -838,7 +1657,6 @@ with each release split into `### Frontend` (drives the version number) and
 - Fixed the same truncation in the "Not on Roster" backfill that runs when a player is added mid-season. That path reads every raid night the team has before the player's join date and then writes a row for each one, so a capped read did not just display less: it wrote an incomplete attendance history that afterwards looked like real data. It also read without any ordering, which meant which nights got filled in could vary between runs.
 - Both reads, and the player's own attendance read alongside them, now page through a shared helper. Paging is keyed on row id with an exact count taken on the first page, so a result that is an exact multiple of the page size does not cost a wasted request, a short page part-way through does not end the read early, and each page gets its own timeout rather than sharing one budget across the whole read. A failed or timed-out read now returns nothing at all rather than the rows it had managed to collect, so a partial result can never be mistaken for a complete one.
 
-
 ## [3.60.18] - 2026-08-19
 
 ### Frontend
@@ -870,7 +1688,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ### Backend
 
-- `generate_priority_order()` now factors in how much priority a candidate already holds across the *rest* of the priority order, not just whether they hold a #1 elsewhere. A new `avg_existing_rank` sort tier (each candidate's average rank across every other item/track they're placed on this season, excluding the exact item/track being generated) sits after tier-piece catch-up and before raw score: someone already well-prioritized elsewhere gets deprioritized against further stacking, and someone who's been sitting at rank 10+ everywhere (or nowhere at all) gets a real boost -- not just avoiding a #1-vs-#1 collision, the whole ranked list now spreads priority more fairly. Never overrides an actual BiS/tier need. See `docs/database-decisions.md` (2026-08-17).
+- `generate_priority_order()` now factors in how much priority a candidate already holds across the _rest_ of the priority order, not just whether they hold a #1 elsewhere. A new `avg_existing_rank` sort tier (each candidate's average rank across every other item/track they're placed on this season, excluding the exact item/track being generated) sits after tier-piece catch-up and before raw score: someone already well-prioritized elsewhere gets deprioritized against further stacking, and someone who's been sitting at rank 10+ everywhere (or nowhere at all) gets a real boost -- not just avoiding a #1-vs-#1 collision, the whole ranked list now spreads priority more fairly. Never overrides an actual BiS/tier need. See `docs/database-decisions.md` (2026-08-17).
 
 ## [3.60.14] - 2026-08-16
 
@@ -932,6 +1750,8 @@ with each release split into `### Frontend` (drives the version number) and
 - Added a notification badge for raiders missing a BiS pick somewhere: a count badge on the logged-in nav button (sitewide) and another on the profile's Wishlist sub-tab, both reflecting the same missing-slot count above.
 
 ## [3.60.6] - 2026-08-12
+
+_Duplicate version number: this block is PR #688, which opened a second 3.60.6 heading instead of joining the existing one below. A released number is never reissued, so it stands as it is; #966 adds the CI check that refuses the next one._
 
 ### Backend
 
@@ -1005,7 +1825,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ### Backend
 
-- Fixed a real regression in `generate_priority_order()`: it had matched wishlist tags by `item_id` *and* `slot = null` since Wishlist ranking first shipped, which silently stopped working once Finger/Trinket disambiguation (#623) and the Weapon/Off Hand dual-wield fix (#673) started writing an explicit slot on real items. Any status tagged on one of those rows since -- including `Pass` -- was invisible to priority-order generation. Now matches by `item_id` alone and takes the most-favorable status across a player's rows for that item. See `docs/database-decisions.md` for the full writeup.
+- Fixed a real regression in `generate_priority_order()`: it had matched wishlist tags by `item_id` _and_ `slot = null` since Wishlist ranking first shipped, which silently stopped working once Finger/Trinket disambiguation (#623) and the Weapon/Off Hand dual-wield fix (#673) started writing an explicit slot on real items. Any status tagged on one of those rows since -- including `Pass` -- was invisible to priority-order generation. Now matches by `item_id` alone and takes the most-favorable status across a player's rows for that item. See `docs/database-decisions.md` for the full writeup.
 - Added a narrow officer UPDATE policy + restrict trigger on `item_preferences` so an officer can null out a raider's `note` column (and only that, and only to `NULL`) -- backs the new Clear Note button above.
 
 ## [3.59.0] - 2026-08-09

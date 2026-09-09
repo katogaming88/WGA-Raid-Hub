@@ -30,7 +30,12 @@ function makeSandbox({ itemBosses, raidProgression }) {
     localStorage: { getItem: () => null, setItem: () => {} },
     console,
     Intl,
-    document: { getElementById: (id) => els[id] || null, createElement: () => ({}), head: { appendChild: () => {} } },
+    document: {
+      getElementById: (id) => els[id] || null,
+      createElement: () => ({}),
+      head: { appendChild: () => {} },
+      addEventListener: () => {}
+    },
     setTimeout,
     clearTimeout,
     Promise

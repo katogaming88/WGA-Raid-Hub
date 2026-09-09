@@ -35,3 +35,9 @@ jobs:
       # tsconfig.json); plain .js ships as-is, there is no build step.
       - name: Type check
         run: npm run typecheck
+      # Fails a fixture in the RLS suite that commits where the other workers
+      # can read it (#1021). Lives here rather than in rls-tests.yml because it
+      # reads the files as text and needs no database, and this job already
+      # triggers on tests/** with node installed.
+      - name: Check RLS fixtures roll back
+        run: node scripts/ci/rls-no-autocommit-check.js

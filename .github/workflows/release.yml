@@ -1,0 +1,102 @@
+name: Release
+
+# One version line covers the whole project (#965), so every release gets a tag
+# and a published Release whose body is that version's CHANGELOG block (#968).
+# After 397 version headings this repo had zero of both, so there was no way to
+# ask what shipped in a release except by reading the changelog by hand.
+#
+# Runs on main after the merge, not at PR time: the tag names the merge commit,
+# which does not exist until then.
+#
+# The paths are the two files a stamp always writes. js/common.js is
+# deliberately not one of them, because a chore push can touch it without a
+# bump and this job would then run for nothing.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'version.json'
+      - 'CHANGELOG.md'
+  # Manual path for the two cases the trigger above cannot serve: repeating a
+  # run that failed on permissions, and backfilling a release that predates
+  # this workflow. History is append-only, so an old version's block is still
+  # in CHANGELOG.md and can be read from the current checkout.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release. Defaults to whatever version.json says.'
+        required: false
+      sha:
+        description: 'Commit to tag. Defaults to the checked-out commit.'
+        required: false
+
+# Serialised rather than cancelled: two merges close together each need their
+# own tag, and dropping the earlier run would silently skip a release.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    # The first workflow here that writes. If this 403s, the repository's
+    # default workflow permission is read-only and that setting has to be
+    # changed; it cannot be read from here, because the actions permissions
+    # API answers 403 without admin.
+    permissions:
+      contents: write
+    steps:
+      # Full history and tags: the tag-exists check below reads them, and the
+      # release notes come from CHANGELOG.md at this commit.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Work out what to release
+        id: what
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_SHA: ${{ inputs.sha }}
+        run: |
+          VERSION="${INPUT_VERSION:-$(jq -r .version version.json)}"
+          SHA="${INPUT_SHA:-$GITHUB_SHA}"
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            echo "::error::Could not read a version out of version.json."
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Releasing v$VERSION at $SHA"
+
+      # Skipped, not failed. A push can touch CHANGELOG.md without stamping (a
+      # typo fix, a note added under an old heading), and going red on main for
+      # that would teach everyone to ignore this job.
+      - name: Skip if the tag already exists
+        id: tag
+        env:
+          VERSION: ${{ steps.what.outputs.version }}
+        run: |
+          if git rev-parse "refs/tags/v$VERSION" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "v$VERSION is already tagged. Nothing to do."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # release-notes.js fails on a version whose heading appears twice, which
+      # is the collision #966 cannot catch at PR time: nothing requires a branch
+      # to be up to date before merge, so two PRs can stamp the same number and
+      # both land. A tag names one commit, so this has to stop here.
+      - name: Tag the commit and publish the release
+        if: steps.tag.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.what.outputs.version }}
+          SHA: ${{ steps.what.outputs.sha }}
+        run: |
+          node scripts/ci/release-notes.js "$VERSION" > "$RUNNER_TEMP/notes.md"
+          gh release create "v$VERSION" \
+            --target "$SHA" \
+            --title "v$VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.md"
+          echo "Tagged v$VERSION at $SHA and published its release."

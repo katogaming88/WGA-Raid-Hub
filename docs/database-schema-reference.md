@@ -24,6 +24,7 @@ Includes notes on redundancies and why they exist.
 - [season_signups](#season_signups)
 - [attendance](#attendance)
 - [players](#players)
+- [player_officer_notes](#player_officer_notes)
 - [team_members](#team_members)
 - [teams](#teams)
 - [team_settings](#team_settings)
@@ -56,6 +57,13 @@ Master item catalog. Every loot piece the system knows about.
 | `armor_type`     | text | Plate/Mail/Leather/Cloth -- used to filter BiS lists by class             |
 | `sort_id`        | int4 | Controls display order within a slot                                      |
 | `is_placeholder` | bool | Marks synthetic items added before real loot data exists (e.g. early PTR) |
+| `icon`           | text | Wowhead icon name, for the item image                                     |
+| `secondary_stats` | jsonb | Secondary stats from Wowhead (#560), shown as pills                       |
+| `main_stats`     | jsonb | Main stats from Wowhead (#609)                                            |
+| `weapon_subtype` | text | Weapon subtype (Staff, Dagger, ...) for weapons (#609)                    |
+| `wcl_zone_id`    | int4 | The raid the item drops in, matching `raid_zones.wcl_zone_id`; scopes the item to a season (#535) |
+| `is_ptr`         | bool | Fetched from a PTR zone page and not yet live (#561)                      |
+| `is_boe`         | bool | A season BoE (#875): offered by the found form's picker and linked by `submit_boe_found`; kept out of every other view |
 
 ---
 
@@ -187,6 +195,27 @@ The active raid roster. One row per character on a team.
 
 ---
 
+## `player_officer_notes`
+
+Officer-only annotations on a roster slot (#925). One row per `players` row, created on first write.
+
+These were columns on `players` until #925. That table carries a `FOR SELECT USING (true)` policy whose roles are PUBLIC, plus a table-level SELECT grant to both `anon` and `authenticated`, so the notes were readable with the publishable key from the JS bundle and by every signed-in raider. Officers and raiders share the `authenticated` role, so no column privilege could separate them, and a policy cannot hide a column, so the columns moved to a table with its own officer-scoped policy instead.
+
+`m_plus_note` stayed on `players`: the public profile renders it beside the Excluded badge, so it is officer-written but not officer-only.
+
+| Column                   | Type        | Purpose                                                                 |
+| ------------------------ | ----------- | ----------------------------------------------------------------------- |
+| `player_id`              | int4        | PK, FK -> `players.id` ON DELETE CASCADE                                 |
+| `team_id`                | int4        | FK -> `teams.id`, guarded against `players.team_id` by trigger           |
+| `officer_notes`          | text        | Private officer note, shown only on the officer dashboard                |
+| `archived_reason`        | text        | Why the player was removed (#476), fixed vocabulary of six values        |
+| `archived_reason_detail` | text        | Required freeform specifics behind that category                         |
+| `updated_at`             | timestamptz | Auto-set on every UPDATE via trigger                                     |
+
+Written two ways: the officer note upserts directly from the Roster tab, and `archive_player()` writes the two archive columns alongside `players.archived_at` so a removal cannot record one without the other.
+
+---
+
 ## `team_members`
 
 Links Discord/auth users to a team. The account-level membership layer, separate from the character roster.
@@ -197,7 +226,7 @@ Links Discord/auth users to a team. The account-level membership layer, separate
 | `team_id`      | int4 | FK -> `teams.id`                                                              |
 | `discord_id`   | text | Discord user snowflake -- used for auth and notifications                     |
 | `auth_user_id` | uuid | FK -> `auth.users.id` (Supabase auth)                                         |
-| `role`         | text | Team role: officer/member/viewer                                              |
+| `role`         | text | Team role: `raider`/`officer`/`team_leader` (CHECK constraint; since #294)     |
 | `name_realm`   | text | The character this member considers their main (see note on redundancy below) |
 | `updated_at`   | timestamptz | Auto-set on every UPDATE via trigger                                   |
 
@@ -368,9 +397,11 @@ One row per found Bind-on-Equip, carrying the lifecycle (found -> listed -> sold
 | `team_id`        | int4        | FK -> `teams.id`                                                        |
 | `player_id`      | int4        | FK -> `players.id`, null when the finder is not resolved                |
 | `finder_name`    | text        | Raw name-realm as submitted; kept even when `player_id` resolves        |
+| `finder_discord_id` | text     | Discord id of the signed-in account that submitted the find, stamped by `submit_boe_found()`; null for a signed-out submit, never client-supplied; backfilled from the player chain for the rows whose player reached a member (#889) |
 | `item_id`        | int4        | FK -> `items.id`, opportunistic exact-name match (BoEs are mostly absent from the loot catalog) |
 | `item_name`      | text        | The identity, since `item_id` is usually null                          |
 | `track`          | text        | CHECK Champion/Hero/Myth, or null                                       |
+| `upgrade_rank`   | text        | The tooltip's "2/6", CHECK N/N shape; with the track it is the identity of the item in the payout queue (#865). Null on rows imported from the sheets |
 | `season`         | text        | `team_settings.config->>'seasonName'` snapshot at submit                |
 | `note`           | text        | Free-text note                                                          |
 | `status`         | text        | CHECK found/listed/sold/paid/retired                                    |
@@ -379,10 +410,12 @@ One row per found Bind-on-Equip, carrying the lifecycle (found -> listed -> sold
 | `payout_paid_at` | timestamptz | Set when the finder is paid                                            |
 | `retired_at`     | timestamptz | Set on retire                                                          |
 | `sale_price`     | int8        | Gross sale in gold, present iff sold/paid                              |
-| `finder_payout`  | int8        | The finder's cut, present iff sold/paid                               |
-| `guild_cut`      | int8        | `sale_price - finder_payout`, present iff sold/paid                    |
+| `finder_payout`  | int8        | The finder's cut, present iff sold/paid; never more than the sale net of the fee (#861) |
+| `guild_cut`      | int8        | `sale_price - ah_fee - finder_payout`, what the bank receives, present iff sold/paid (#861) |
+| `ah_fee`         | int8        | The game's fixed 5% auction house fee on the sale, whole gold, present iff sold/paid; `finder_payout + guild_cut + ah_fee = sale_price` by constraint (#861) |
 | `payout_floor`   | int8        | Snapshot of the payout floor in force at sale                         |
 | `payout_pivot`   | int8        | Snapshot of the payout pivot in force at sale                         |
+| `payout_donated` | bool        | The finder's cut was, or is to be, kept by the guild (#862): the raider's intent at submit, the manager's decision at settle |
 | `updated_at`     | timestamptz | Auto-set on every UPDATE via trigger                                  |
 | `created_at`     | timestamptz | Row creation                                                          |
 
@@ -459,6 +492,8 @@ Both exist for deduplication on re-import but handle different failure modes. `r
 ### 4. `players.name_realm` vs `team_members.name_realm`
 
 These look like the same field but represent different layers. `players.name_realm` is the roster character (the actual raider). `team_members.name_realm` is the character a Discord account has linked to themselves for identity purposes. A team member's linked character might not match any roster player (e.g. an officer managing from the bench, or a prospective applicant). They will often be the same string but are conceptually distinct.
+
+`team_members.name_realm` is legacy in practice. It came from the #338 import bridge, is read only by `resolve_actor_name()`, and has drifted: two of the nine officer rows in production name a character other than the one the account has claimed. `admin_grant_team_role()` (#910) leaves it null, because setting it buys a nav label and costs a dead "View My Profile" button for any name that is not on the roster. Retiring it or backfilling it is open work.
 
 ### 5. `site_admins` vs `team_members` sharing `discord_id` and `auth_user_id`
 
