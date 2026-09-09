@@ -38,10 +38,20 @@ var _calDataCache = {};
 var _calViewYear = null;
 var _calViewMonth = null;
 
+// Everything below through _calOfficerEditIsOptional is UNUSED as of the
+// React-swap spike -- state now lives as useState in web/calendar/
+// DayView.jsx. Kept only because the dead render functions further down
+// still reference these names; delete both together.
+//
 // Own-status control state (day view, #903) -- mirrors the old RSVP modal's
 // state, just rendered inline instead of in an overlay.
 var _calMyStatus = null;
 var _calMyIsOptional = false;
+
+// Cache of the last day-view render's data (dead code below reads these by
+// name) -- see _renderDayView's live version for the React equivalent.
+var _calDayViewRsvpsByPlayer = {};
+var _calDayViewNight = null;
 
 // Officer correction popup state (#903) -- a separate small state block
 // since it targets a different player than _calMyStatus.
@@ -284,6 +294,11 @@ function _calOverrideClass(status) {
 }
 
 /**
+ * UNUSED as of the React-swap spike -- buildCalendarWidget() below now calls
+ * window.mountCalendarGridReact() (web/calendar/CalendarGrid.jsx) instead.
+ * Kept here, uncalled, as the "before" side of that comparison; delete once
+ * the spike's outcome is decided one way or the other.
+ *
  * Renders one month grid into containerEl. opts.compact suppresses the
  * "(mock ...)" style extras that don't fit a Home-page glance -- currently
  * just controls whether the "View full calendar" link is appended. Every
@@ -469,9 +484,27 @@ function buildCalendarWidget(mode) {
         if (row.player_id === myPlayer.id) myOverridesByDate[row.raid_date] = row;
       });
     }
-    _renderCalGrid(el, year, month, nights, {
+    // React-swap spike (dist/calendar-widget/, built from web/calendar/):
+    // this grid's view layer moved to CalendarGrid.jsx. Everything above --
+    // fetching, computeRaidNights, resolving the signed-in player -- stays
+    // exactly as it was; only the innerHTML-building _renderCalGrid() got
+    // replaced with a call across the bridge in web/calendar/mount.jsx.
+    var roster = (window.DATA && DATA.roster) || [];
+    var benchCount = roster.filter(function (p) {
+      return p.isBench || p.isRotator;
+    }).length;
+    window.mountCalendarGridReact(el, {
+      year: year,
+      month: month,
+      nights: nights,
+      myOverridesByDate: myOverridesByDate,
       compact: mode !== 'full',
-      myOverridesByDate: myOverridesByDate
+      teamName: TEAM_NAME,
+      teamSlug: TEAM_SLUG,
+      rosterCount: roster.length,
+      benchCount: benchCount,
+      dayViewHref: _calDayViewHref,
+      onNavMonth: _calNavMonth
     });
   });
 }
@@ -495,14 +528,14 @@ function _calNavMonth(delta) {
 // set_own_rsvp(); the roster breakdown below it is new, and its per-row
 // officer "Edit" affordance is backed by the new officer_set_rsvp() RPC.
 //
-// _calDayViewRsvpsByPlayer/_calDayViewNight cache the last render's data so
-// the officer-edit popup (built once per render, shown/hidden via
-// .officer-prompt/.active like every other modal in this codebase) can look
-// up a target player's current status/note by id without round-tripping
-// free-text note content through an onclick="" attribute string.
-var _calDayViewRsvpsByPlayer = {};
-var _calDayViewNight = null;
-
+// React-swap spike: the view layer (rendering + all interaction state --
+// which status chip is picked, note text, the officer-edit modal's
+// open/closed state) moved to web/calendar/DayView.jsx, mounted via
+// window.mountDayViewReact(). Everything below this point that's still
+// vanilla is either pure data-fetching/computation (unchanged) or a
+// Supabase-write function refactored to take plain arguments and return its
+// result, instead of reading form values off the DOM and pushing button-
+// disabled/error-text state back into it by hand -- React owns that now.
 function _renderDayView(el, dateStr) {
   var monthDate = new Date(dateStr + 'T00:00:00');
   var rangeStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
@@ -521,12 +554,39 @@ function _renderDayView(el, dateStr) {
     (data.rsvpRows || []).forEach(function (row) {
       if (row.raid_date === dateStr) rsvpsByPlayer[row.player_id] = row;
     });
-    _calDayViewRsvpsByPlayer = rsvpsByPlayer;
-    _calDayViewNight = night;
-    _calRenderDayView(el, dateStr, night, rsvpsByPlayer, myPlayer, isOfficer);
+    window.mountDayViewReact(el, {
+      dateStr: dateStr,
+      night: night,
+      rsvpsByPlayer: rsvpsByPlayer,
+      myPlayer: myPlayer,
+      isOfficer: isOfficer,
+      roster: (window.DATA && DATA.roster) || [],
+      teamSlug: TEAM_SLUG,
+      groupRosterByRole: groupRosterByRole,
+      classColors: CLASS_COLORS,
+      dayViewHref: _calDayViewHref,
+      addDays: _calAddDays,
+      onSaveMyStatus: _saveMyRsvpStatus,
+      onClearMyStatus: _clearMyRsvpStatus,
+      onSaveOfficerStatus: _saveOfficerRsvpStatus,
+      onClearOfficerStatus: _clearOfficerRsvpStatus,
+      onToggleRotator: _toggleRotatorWeek
+    });
   });
 }
 
+// UNUSED as of the React-swap spike -- DayView.jsx's local dayStatus()/
+// statusClass() reimplement this and _calStatusClass below. The Vite bundle
+// is a separate module graph from these plain <script> files, so it can't
+// just call a global function defined here the way the rest of this
+// codebase calls across files -- crossing that boundary means either
+// passing a window.* reference in as a prop (done for _calDayViewHref,
+// _calAddDays, groupRosterByRole below) or duplicating small pure logic on
+// the React side, which is what happened here. That duplication is a real
+// cost of a partial migration: this logic now needs to change in two
+// places if it ever changes at all. Kept here, uncalled, as the "before"
+// side of that comparison.
+//
 // A player's effective status for a night: their own override if one
 // exists, else the same computed default the month grid uses (a bench
 // player has none on a normal night -- shown as 'Bench' and excluded from
@@ -554,6 +614,11 @@ function _calStatusClass(status) {
   return _calOverrideClass(status);
 }
 
+// UNUSED as of the React-swap spike, along with every render/interaction
+// function down to (not including) _saveMyRsvpStatus below --
+// web/calendar/DayView.jsx replaces all of it. Kept, uncalled, as the
+// "before" side of that comparison; delete this whole run once the spike's
+// outcome is decided.
 function _calRenderDayView(el, dateStr, night, rsvpsByPlayer, myPlayer, isOfficer) {
   var d = new Date(dateStr + 'T00:00:00');
   var dateLabel = d.toLocaleDateString('en-US', {
@@ -689,66 +754,45 @@ function _selectMyRsvpStatus(status) {
   _renderMyRsvpStatusOptions();
 }
 
-function _saveMyRsvpStatus(dateStr) {
-  if (!_calMyStatus) return;
-  var noteEl = document.getElementById('dayViewMyNote');
-  var errEl = document.getElementById('dayViewMyError');
-  var saveBtn = document.getElementById('dayViewMySaveBtn');
-  var note = (noteEl && noteEl.value.trim()) || '';
-  if (_calMyStatus !== 'Attending' && !note) {
-    if (errEl) {
-      errEl.textContent = 'A note is required so officers know why.';
-      errEl.style.display = '';
-    }
-    return;
-  }
-  if (saveBtn) saveBtn.disabled = true;
-  supabaseClient
+// Refactored for the React-swap spike: takes status/note as plain arguments
+// (DayView.jsx's MyStatusSection owns the chip-selection/note-text state
+// that used to live in module-level _calMyStatus and a raw textarea read)
+// and returns the Supabase result instead of pushing an error string and a
+// disabled-button flag into the DOM itself -- React owns both of those
+// through its own component state now. Still the same write, same side
+// effects on success.
+function _saveMyRsvpStatus(dateStr, status, note) {
+  return supabaseClient
     .rpc('set_own_rsvp', {
       p_team_id: _teamCfg.supabaseTeamId,
       p_raid_date: dateStr,
-      p_status: _calMyStatus,
+      p_status: status,
       p_note: note
     })
     .then(function (result) {
-      if (saveBtn) saveBtn.disabled = false;
-      if (result.error) {
-        if (errEl) {
-          errEl.textContent = result.error.message;
-          errEl.style.display = '';
-        }
-        return;
-      }
-      _notifyRsvpBot(dateStr, _calMyStatus, note);
+      if (result.error) return result;
+      _notifyRsvpBot(dateStr, status, note);
       _syncSignupSheet(dateStr);
       _calInvalidateDateMonth(dateStr);
       buildCalendarWidget('full');
+      return result;
     });
 }
 
-function _clearMyRsvpStatus(dateStr) {
-  var saveBtn = document.getElementById('dayViewMySaveBtn');
-  if (saveBtn) saveBtn.disabled = true;
-  supabaseClient
+function _clearMyRsvpStatus(dateStr, note) {
+  return supabaseClient
     .rpc('set_own_rsvp', {
       p_team_id: _teamCfg.supabaseTeamId,
       p_raid_date: dateStr,
       p_status: null,
-      p_note: null
+      p_note: note
     })
     .then(function (result) {
-      if (saveBtn) saveBtn.disabled = false;
-      if (result.error) {
-        var errEl = document.getElementById('dayViewMyError');
-        if (errEl) {
-          errEl.textContent = result.error.message;
-          errEl.style.display = '';
-        }
-        return;
-      }
+      if (result.error) return result;
       _syncSignupSheet(dateStr);
       _calInvalidateDateMonth(dateStr);
       buildCalendarWidget('full');
+      return result;
     });
 }
 
@@ -757,6 +801,9 @@ function _calInvalidateDateMonth(dateStr) {
   _calInvalidateMonthCache(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
 }
 
+// UNUSED as of the React-swap spike, down to (not including)
+// _saveOfficerRsvpStatus below -- same "before" comparison as the block
+// above _saveMyRsvpStatus.
 function _calRenderRosterBreakdown(dateStr, roster, night, rsvpsByPlayer, isOfficer) {
   var grouped = groupRosterByRole(roster);
   var html = '<div class="pub-loot-title">Roster</div><table class="roster-table"><tbody>';
@@ -879,72 +926,45 @@ function _selectOfficerRsvpStatus(status) {
   _renderOfficerRsvpOptions();
 }
 
-function _saveOfficerRsvpStatus() {
-  if (!_calOfficerEditPlayerId || !_calOfficerEditDate || !_calOfficerEditStatus) return;
-  var noteEl = document.getElementById('officerRsvpEditNote');
-  var errEl = document.getElementById('officerRsvpEditError');
-  var saveBtn = document.getElementById('officerRsvpEditSaveBtn');
-  var note = (noteEl && noteEl.value.trim()) || '';
-  if (!note) {
-    if (errEl) {
-      errEl.textContent = 'A note is required so the raider knows why.';
-      errEl.style.display = '';
-    }
-    return;
-  }
-  if (saveBtn) saveBtn.disabled = true;
-  supabaseClient
+// Refactored for the React-swap spike, same shape as _saveMyRsvpStatus
+// above: plain arguments instead of module-level _calOfficerEdit* vars and
+// a DOM read, returns the result instead of writing an error string and a
+// disabled flag into the DOM. The success-path modal close moved into
+// DayView.jsx's OfficerEditModal (it calls onClose() itself once this
+// resolves with no error), so it's not this function's job anymore.
+function _saveOfficerRsvpStatus(playerId, dateStr, status, note) {
+  return supabaseClient
     .rpc('officer_set_rsvp', {
       p_team_id: _teamCfg.supabaseTeamId,
-      p_player_id: _calOfficerEditPlayerId,
-      p_raid_date: _calOfficerEditDate,
-      p_status: _calOfficerEditStatus,
+      p_player_id: playerId,
+      p_raid_date: dateStr,
+      p_status: status,
       p_note: note
     })
     .then(function (result) {
-      if (saveBtn) saveBtn.disabled = false;
-      if (result.error) {
-        if (errEl) {
-          errEl.textContent = result.error.message;
-          errEl.style.display = '';
-        }
-        return;
-      }
-      _syncSignupSheet(_calOfficerEditDate);
-      _calInvalidateDateMonth(_calOfficerEditDate);
-      _closeOfficerRsvpEdit();
+      if (result.error) return result;
+      _syncSignupSheet(dateStr);
+      _calInvalidateDateMonth(dateStr);
       buildCalendarWidget('full');
+      return result;
     });
 }
 
-function _clearOfficerRsvpStatus() {
-  if (!_calOfficerEditPlayerId || !_calOfficerEditDate) return;
-  var noteEl = document.getElementById('officerRsvpEditNote');
-  var errEl = document.getElementById('officerRsvpEditError');
-  var saveBtn = document.getElementById('officerRsvpEditSaveBtn');
-  var note = (noteEl && noteEl.value.trim()) || null;
-  if (saveBtn) saveBtn.disabled = true;
-  supabaseClient
+function _clearOfficerRsvpStatus(playerId, dateStr, note) {
+  return supabaseClient
     .rpc('officer_set_rsvp', {
       p_team_id: _teamCfg.supabaseTeamId,
-      p_player_id: _calOfficerEditPlayerId,
-      p_raid_date: _calOfficerEditDate,
+      p_player_id: playerId,
+      p_raid_date: dateStr,
       p_status: null,
       p_note: note
     })
     .then(function (result) {
-      if (saveBtn) saveBtn.disabled = false;
-      if (result.error) {
-        if (errEl) {
-          errEl.textContent = result.error.message;
-          errEl.style.display = '';
-        }
-        return;
-      }
-      _syncSignupSheet(_calOfficerEditDate);
-      _calInvalidateDateMonth(_calOfficerEditDate);
-      _closeOfficerRsvpEdit();
+      if (result.error) return result;
+      _syncSignupSheet(dateStr);
+      _calInvalidateDateMonth(dateStr);
       buildCalendarWidget('full');
+      return result;
     });
 }
 

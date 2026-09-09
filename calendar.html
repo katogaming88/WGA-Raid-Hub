@@ -60,6 +60,11 @@
 <script src="js/common.js?v=3.98.0"></script>
 <script src="js/discord.js?v=3.98.0"></script>
 <script src="js/officer-quick-actions.js?v=3.98.0"></script>
+<!-- React-swap spike (web/calendar/, built via `npx vite build`) -- provides
+     window.mountCalendarGridReact(), which js/calendar.js calls instead of
+     its own _renderCalGrid(). Delete this line and dist/calendar-widget/
+     together if the spike doesn't pan out. -->
+<script src="dist/calendar-widget/calendar-widget.js"></script>
 <script src="js/calendar.js?v=3.98.0"></script>
 <script>
 // Non-href SITE_NAV_ITEMS (Home, Roster, ...) don't have a view on this
