@@ -129,8 +129,8 @@
   align-self: flex-start;
   padding: 0.15rem 0.55rem;
   font-size: 0.78rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--gold-light);
   background: rgba(214, 163, 68, 0.12);
   border: 1px solid var(--gold-dim);

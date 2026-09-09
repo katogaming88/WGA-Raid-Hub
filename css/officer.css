@@ -6,8 +6,8 @@
   font-family: 'Rajdhani', sans-serif;
   font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: normal;
+  text-transform: none;
   padding: 0.14rem 0.5rem;
   border-radius: 6px;
   border: 1px solid var(--border-mid);
