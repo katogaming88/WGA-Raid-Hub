@@ -6,47 +6,62 @@
 // caller sees zero rows, same shape as write-policies.test.js's denial
 // checks but for SELECT (RLS makes a non-matching SELECT return empty
 // rather than error, since base table grants already exist per #284).
-import { describe, it, expect, afterEach } from 'vitest';
-import { pool, countAs, RAIDER_T1, OFFICER_T1, SITE_ADMIN, GUILD_OFFICER } from './helpers.js';
+//
+// Everything runs inside the shared withTxn and is rolled back (#1021). This
+// file wrote with autocommit pool.query and cleaned up in afterEach, the
+// shape that made another file's tests fail at random. Nothing else reads
+// this table, so it had no victim of its own.
+import { describe, it, expect, afterAll } from 'vitest';
+import { pool, withTxn, RAIDER_T1, OFFICER_T1, SITE_ADMIN, GUILD_OFFICER } from './helpers.js';
 
-async function seedReminderRow() {
-  await pool.query(
-    "insert into public.raid_rsvp_reminders_sent (team_id, player_id, raid_date, checkpoint) values (1, 1, '2026-09-10', '24h') on conflict do nothing"
+const REMINDER_COUNT = 'select count(*)::int as n from public.raid_rsvp_reminders_sent where team_id = 1';
+
+function seedReminderRow(q) {
+  return q(
+    "insert into public.raid_rsvp_reminders_sent (team_id, player_id, raid_date, checkpoint) values (1, 1, '2026-09-10', '24h')"
   );
 }
 
-afterEach(async () => {
-  await pool.query("delete from public.raid_rsvp_reminders_sent where team_id = 1 and raid_date = '2026-09-10'");
-});
+// Seeds as postgres, asserts the row is really there, then answers with what
+// the impersonated role can see on that same connection. The first assertion
+// is the control: without it a seed that silently failed would read as a
+// successful denial.
+async function visibleTo(q, asRole, role, uid) {
+  await seedReminderRow(q);
+  expect((await q(REMINDER_COUNT)).rows[0].n).toBe(1);
+  return (await asRole(role, uid)(REMINDER_COUNT)).rows[0].n;
+}
 
 describe('raid_rsvp_reminders_sent RLS', () => {
   it('a raider sees zero rows', async () => {
-    await seedReminderRow();
-    const n = await countAs('authenticated', RAIDER_T1, 'raid_rsvp_reminders_sent', 'team_id = 1');
-    expect(n).toBe(0);
+    await withTxn(async ({ q, asRole }) => {
+      expect(await visibleTo(q, asRole, 'authenticated', RAIDER_T1)).toBe(0);
+    });
   });
 
   it('an officer on the same team sees zero rows', async () => {
-    await seedReminderRow();
-    const n = await countAs('authenticated', OFFICER_T1, 'raid_rsvp_reminders_sent', 'team_id = 1');
-    expect(n).toBe(0);
+    await withTxn(async ({ q, asRole }) => {
+      expect(await visibleTo(q, asRole, 'authenticated', OFFICER_T1)).toBe(0);
+    });
   });
 
   it('a site admin sees zero rows', async () => {
-    await seedReminderRow();
-    const n = await countAs('authenticated', SITE_ADMIN, 'raid_rsvp_reminders_sent', 'team_id = 1');
-    expect(n).toBe(0);
+    await withTxn(async ({ q, asRole }) => {
+      expect(await visibleTo(q, asRole, 'authenticated', SITE_ADMIN)).toBe(0);
+    });
   });
 
   it('a guild officer sees zero rows', async () => {
-    await seedReminderRow();
-    const n = await countAs('authenticated', GUILD_OFFICER, 'raid_rsvp_reminders_sent', 'team_id = 1');
-    expect(n).toBe(0);
+    await withTxn(async ({ q, asRole }) => {
+      expect(await visibleTo(q, asRole, 'authenticated', GUILD_OFFICER)).toBe(0);
+    });
   });
 
   it('an anonymous caller sees zero rows', async () => {
-    await seedReminderRow();
-    const n = await countAs('anon', null, 'raid_rsvp_reminders_sent', 'team_id = 1');
-    expect(n).toBe(0);
+    await withTxn(async ({ q, asRole }) => {
+      expect(await visibleTo(q, asRole, 'anon', null)).toBe(0);
+    });
   });
 });
+
+afterAll(() => pool.end());
