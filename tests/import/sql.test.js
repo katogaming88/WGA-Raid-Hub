@@ -44,6 +44,18 @@ describe('sqlJsonb', () => {
     expect(lit).toContain("Kael''thas");
     expect(lit).not.toContain('from');
   });
+  // An array is a value in its own right, not a bag of keys to compact: the
+  // stat columns are read as arrays and an empty one means "rolls none of the
+  // tracked types", which is a different fact from the column being null.
+  it('emits a JSON array for an array, so the stat columns keep their shape', () => {
+    expect(sqlJsonb(['CRIT_RATING', 'HASTE_RATING'])).toBe('\'["CRIT_RATING","HASTE_RATING"]\'::jsonb');
+  });
+  it('keeps an empty array as [], the value that means the item rolls none of them', () => {
+    expect(sqlJsonb([])).toBe("'[]'::jsonb");
+  });
+  it('doubles an apostrophe inside an array element', () => {
+    expect(sqlJsonb(["Kael'thas"])).toContain("Kael''thas");
+  });
 });
 
 describe('insertStatement', () => {

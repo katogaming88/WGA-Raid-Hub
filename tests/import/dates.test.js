@@ -32,6 +32,12 @@ describe('sqlTimestampAtZone', () => {
       "('2026-01-03 19:00:00'::timestamp at time zone 'America/New_York')"
     );
   });
+  it('doubles an apostrophe in the zone name', () => {
+    expect(sqlTimestampAtZone('2026-01-03 19:00', "O'Zone")).toContain("'O''Zone'");
+  });
+  it('throws on a blank zone rather than emitting at time zone null', () => {
+    expect(() => sqlTimestampAtZone('2026-01-03 19:00', '')).toThrow(/tz/);
+  });
 });
 
 describe('seasonForDate', () => {

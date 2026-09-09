@@ -14,6 +14,9 @@
 // --- Output ---
 // Ready-to-paste INSERT SQL is printed for the Supabase SQL Editor.
 
+import { pathToFileURL } from 'node:url';
+import { sqlString } from './import/lib/sql.js';
+
 // Mirrored from js/common.js CLASS_SPECS.
 // `role` (singular) is a fixed role for every spec in the class. `roles`
 // (plural, or null) means the class's role varies by spec -- resolved per
@@ -78,20 +81,34 @@ const SPEC_ROLE = {
   Preservation: 'Heal'
 };
 
-const rows = [];
+// Nothing reaches this from outside, so the quoting was never a defect. It goes
+// through the shared builder because this was one of the places the repo built
+// SQL by hand, and CONTRIBUTING says none do (#1012).
+export function classesSpecsRows(classSpecs, specRole) {
+  const rows = [];
 
-for (const [className, data] of Object.entries(CLASS_SPECS)) {
-  for (const spec of data.specs) {
-    const role = data.role || SPEC_ROLE[spec];
-    if (!role) {
-      throw new Error(`No role resolved for ${className} / ${spec} -- add it to SPEC_ROLE.`);
+  for (const [className, data] of Object.entries(classSpecs)) {
+    for (const spec of data.specs) {
+      const role = data.role || specRole[spec];
+      if (!role) {
+        throw new Error(`No role resolved for ${className} / ${spec} -- add it to SPEC_ROLE.`);
+      }
+      rows.push(`  (${[sqlString(className), sqlString(spec), sqlString(role)].join(', ')})`);
     }
-    rows.push(`  ('${className}', '${spec}', '${role}')`);
   }
+
+  return rows;
 }
 
-console.log('-- Paste into Supabase SQL Editor (or apply with psql -f):');
-console.log('insert into classes_specs (class, spec, role)');
-console.log('values');
-console.log(rows.join(',\n'));
-console.log('on conflict (class, spec) do nothing;');
+function main() {
+  const rows = classesSpecsRows(CLASS_SPECS, SPEC_ROLE);
+  console.log('-- Paste into Supabase SQL Editor (or apply with psql -f):');
+  console.log('insert into classes_specs (class, spec, role)');
+  console.log('values');
+  console.log(rows.join(',\n'));
+  console.log('on conflict (class, spec) do nothing;');
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

@@ -12,6 +12,31 @@ answers to.
 
 ---
 
+## [3.98.1] - 2026-09-09
+
+### Backend
+
+- The import library's JSON helper takes a list as a list now
+  ([#1012](https://github.com/katogaming88/WGA-Raid-Hub/issues/1012)). It used to turn one into a
+  numbered object, so routing an item's stat columns through it would have stored
+  `{"0": "Critical Strike"}` where every page reads a plain list, and an item confirmed to roll
+  none of the tracked stats would have been stored as an empty object rather than an empty list.
+  The same library also refuses a blank spreadsheet timezone instead of quoting it as nothing,
+  which would have left every imported timestamp empty instead of failing where someone would see
+  it.
+
+### Project
+
+- The offline SQL generators build their statements through one shared set of quoting rules
+  ([#1012](https://github.com/katogaming88/WGA-Raid-Hub/issues/1012)). These are the scripts that
+  turn a spreadsheet export, a hand-edited item list or a copied Wowhead table into a file an
+  officer pastes into the database each raid tier. Three of them carried their own private copy of
+  the rule for quoting text, and four dropped item ids straight in, so a stray character in a
+  pasted column could reach the generated file and a typo in a hand-filled column could be applied
+  as though it were data. An id that is not a number now stops the run and names itself before
+  anything is written, and each generator has its first tests. On clean input the generated files
+  are unchanged.
+
 ## [3.98.0] - 2026-09-09
 
 ### Frontend
