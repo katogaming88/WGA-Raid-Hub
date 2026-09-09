@@ -2437,6 +2437,7 @@ export type Database = {
         Args: { p_name: string; p_slug: string; p_team_id: number }
         Returns: undefined
       }
+      app_version: { Args: never; Returns: Json }
       archive_current_season: {
         Args: { p_roster_snapshot: Json; p_team_id: number }
         Returns: Json

@@ -1358,3 +1358,17 @@ Phoenix needed a roster status for a pool of players who rotate through a shared
 **The first `*_at` here with no status coupling.** The other four are lifecycle facts carrying an `iff` CHECK against `status`; this one says a message was sent, which is true of a row in any state. The migration backfills existing rows from `created_at`, because rows left null would each be claimable once by anyone who guesses an id at an endpoint that takes no credentials.
 
 [Full discussion -> #956](https://github.com/katogaming88/WGA-Raid-Hub/issues/956).
+
+## #969 -- app_version(): the migration ledger head as a public fact
+
+Shipped: 20260909170340_app_version_ledger_head.sql
+
+The schema had no version anyone could ask for. The ledger holds one, `supabase_migrations.schema_migrations`, but it sits outside `public`, is owned by `postgres`, and grants nothing to any API role, so no client could read it and no page could tell whether the database behind it was the one its code expected.
+
+**A function rather than a grant.** Opening the ledger to `anon` would answer the same question and hand over the applied statements alongside it, since that table stores each migration's SQL in a `statements` column. The definer function returns two scalars derived from it. The distinction is asserted rather than asserted-to: the test calls the function and selects from the table in the same transaction as the same role, and expects the second to be refused.
+
+**`{head, count}` and nothing more.** The table has three columns and no timestamp, so an applied-at is not available to return, and the count is worth the extra field because it separates "behind by one" from "restored from a backup" at a glance. Anything richer would be describing migrations to a raider's browser.
+
+**No `service_role` grant.** Nothing server-side asks this. The Edge Functions connect with a key that bypasses RLS and could read the ledger directly if one ever needed to.
+
+[Full discussion -> #969](https://github.com/katogaming88/WGA-Raid-Hub/issues/969).

@@ -144,6 +144,7 @@
 | public.archive_player | timestamptz | p_player_id integer, p_reason text, p_detail text | FUNCTION |
 | public.officer_set_rsvp | void | p_team_id integer, p_player_id integer, p_raid_date date, p_status text, p_note text | FUNCTION |
 | public.officer_set_rotator_week | void | p_team_id integer, p_player_id integer, p_week_start date, p_in boolean | FUNCTION |
+| public.app_version | jsonb |  | FUNCTION |
 
 ## Enums
 

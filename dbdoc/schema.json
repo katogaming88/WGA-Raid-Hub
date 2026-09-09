@@ -7415,6 +7415,12 @@
       "return_type": "void",
       "arguments": "p_team_id integer, p_player_id integer, p_week_start date, p_in boolean",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.app_version",
+      "return_type": "jsonb",
+      "arguments": "",
+      "type": "FUNCTION"
     }
   ],
   "enums": [
