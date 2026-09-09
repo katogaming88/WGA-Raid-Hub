@@ -12,6 +12,25 @@ answers to.
 
 ---
 
+## [3.99.1] - 2026-09-09
+
+### Project
+
+- The five Edge Functions that run without Supabase's sign-in check now record that in
+  `supabase/config.toml` ([#958](https://github.com/katogaming88/WGA-Raid-Hub/issues/958)). They
+  have no signed-in caller to check: two are run on a schedule by GitHub, two by the database
+  itself, and one relays notifications from the public forms. Each does its own check instead.
+  Until now that setting lived only in a comment in four of their files, so deploying the
+  functions without naming one would have switched the check on for all five and left every one
+  of them refusing the callers it exists for. Deploying by name was the workaround; it is no
+  longer needed.
+- The roadmap page now points at the milestones, at the issue holding the build order across
+  them, and at this changelog. It still described the Google Apps Script backend retired in July,
+  and all six of its open items were closed issues.
+- Two docs corrected in passing: the setup guide credited two bot secrets to Apps Script, and the
+  contributor guide's file map was missing two Edge Functions and had a third filed as scheduled
+  when an officer triggers it.
+
 ## [3.99.0] - 2026-09-09
 
 ### Frontend

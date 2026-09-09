@@ -385,6 +385,29 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# The JWT gate is off for the five functions that have no signed-in caller (#958):
+# two are called by a bare curl from a GitHub Actions cron, two by pg_cron, and the
+# relay by the public forms whose notifications it carries. Each does its own check
+# instead, against a cron secret, the bot's webhook secret, or a forwarded JWT. The
+# CLI reads verify_jwt from here at deploy, so a bare `supabase functions deploy`
+# keeps them as they are; with no block it resets all five to the default of true.
+# The other five take the anon key or a real session and stay at that default.
+
+[functions.discord-bot-webhook]
+verify_jwt = false
+
+[functions.twitch-live-check]
+verify_jwt = false
+
+[functions.wcl-progression-sync]
+verify_jwt = false
+
+[functions.blizzard-gear-sync]
+verify_jwt = false
+
+[functions.optional-rsvp-reminders]
+verify_jwt = false
+
 [analytics]
 # Disabled: the log-shipping vector container restart-loops on Docker Desktop for
 # Windows and the local Logs page is not needed for this project's workflow.

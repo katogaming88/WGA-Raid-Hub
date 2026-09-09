@@ -977,8 +977,8 @@ In Supabase: **Project Settings** -> **Edge Functions** -> **Secrets**. Add each
 |--------------------------------|----------------------------------------------------------|
 | `WCL_CLIENT_ID`                | WarcraftLogs OAuth app                                   |
 | `WCL_CLIENT_SECRET`            | WarcraftLogs OAuth app                                   |
-| `BOT_WEBHOOK_SECRET_PHOENIX`   | Apps Script Script Properties for the Phoenix bot        |
-| `BOT_WEBHOOK_SECRET_HELLFIRE`  | Apps Script Script Properties for the Hellfire bot       |
+| `BOT_WEBHOOK_SECRET_PHOENIX`   | The Phoenix bot's own `WEBHOOK_SECRET`, set where it runs |
+| `BOT_WEBHOOK_SECRET_HELLFIRE`  | The Hellfire bot's own `WEBHOOK_SECRET`, same            |
 | `BOT_WEBHOOK_URL_PHOENIX`      | `https://wga-phoenix.duckdns.org` (already live)         |
 | `BOT_WEBHOOK_URL_HELLFIRE`     | `https://wga-hellfire.duckdns.org` (already live)        |
 | `SERVICE_ROLE_KEY`             | Supabase -> Project Settings -> API -> service_role      |
@@ -1004,9 +1004,18 @@ under test reaches a channel a team operates in. A smoke request carries
 and with no test webhook set it refuses rather than posting to the live
 channel. `boe-webhook` honours it since #956 and `contact-webhook` since #957.
 
+Note: the four `BOT_WEBHOOK_*` entries above predate #991, which put every team
+on one bot process. The relay on `main` reads a single shared `BOT_WEBHOOK_URL`
+and `BOT_WEBHOOK_SECRET` pair instead, and neither is set on the project, so
+deploying `discord-bot-webhook` before #959 lands would break every relay call.
+#959 is where that pair and the routing settle.
+
 Deploy these functions by hand after adding (or deciding against) those
 secrets. None takes `--no-verify-jwt`: the report card, the manage page and the
-contact form all send the anon key.
+contact form all send the anon key. The five functions that do skip the JWT gate
+carry `verify_jwt = false` in `supabase/config.toml` since #958, so no deploy
+needs that flag on the command line, and a deploy naming no function no longer
+resets them.
 
 ```bash
 supabase functions deploy boe-webhook
