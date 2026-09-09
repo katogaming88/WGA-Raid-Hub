@@ -8,9 +8,9 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
-## 2026-09-08 -- SQL injection posture: static SQL, pinned search paths, and grants that match production (#1009, #1010)
+## 2026-09-08 -- SQL injection posture: static SQL, pinned search paths, and grants that match production (#1009, #1010, #1020)
 
-Shipped: `20260908155617_pin_search_path_on_invoker_functions.sql`, `20260908155859_revoke_anon_on_submit_season_signup.sql`
+Shipped: `20260908155617_pin_search_path_on_invoker_functions.sql`, `20260908155859_revoke_anon_on_submit_season_signup.sql`, `20260908200838_submit_season_signup_restore_require_auth.sql`
 
 A read-only spike (#1009) asked what stops SQL injection here and what enforces it. The answer to the first was structural and already sound: everything above the database reaches it through PostgREST, which binds filter values and RPC arguments, and below that every function body is static SQL with row-level security bounding anything that got past a filter. No path was found by which text from a raider, an officer, a Discord payload or an external API reaches SQL as SQL.
 
@@ -24,7 +24,7 @@ It caught one immediately, and the cause was not the one it looked like. `202607
 
 Production applied each migration when its PR merged, so it took them in the order they were written and still carries the July 16 definition. The divergence exists only where the schema is rebuilt from files, which is a `db reset`, a shadow database, a new contributor's machine and CI.
 
-Every migration was checked for the same shape: 168 files, 39 database objects defined more than once, and this is the only one whose file order disagrees with the order its definitions were authored in. The class is closed going forward by the rule #927 added to the ledger check, which fails a file stamped ahead of the Eastern wall clock at the commit that added it. The second migration above closes the grant half; the body half, where a replay also loses the null `auth.uid()` raise, is #1020.
+Every migration was checked for the same shape: 168 files, 39 database objects defined more than once, and this is the only one whose file order disagrees with the order its definitions were authored in. The class is closed going forward by the rule #927 added to the ledger check, which fails a file stamped ahead of the Eastern wall clock at the commit that added it. The second migration above closes the grant half, and the third closes the body half (#1020), reissuing the July 16 definition so a replay ends on the raise rather than on the opportunistic branch. Restoring the body was taken over renaming the July 15 file, which would sort correctly and is the worse fix: that timestamp is in production's applied ledger, so renaming it makes `supabase migration list` report a version production does not have, which is the state the 2026-08-31 repair existed to get out of. `tests/rls/submit-season-signup.test.js` is the function's first coverage and pins the refusal.
 
 ## 2026-09-06 -- the bot moves into this repo, and every poster follows one rule (#953)
 
