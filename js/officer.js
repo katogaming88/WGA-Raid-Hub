@@ -250,12 +250,15 @@ function switchLootSubTab(name, btnEl) {
   var subFairness = document.getElementById('loot-sub-fairness');
   var subImport = document.getElementById('loot-sub-import');
   var subHistory = document.getElementById('loot-sub-history');
+  var subReassign = document.getElementById('loot-sub-reassign');
   if (subFairness) subFairness.style.display = name === 'fairness' ? '' : 'none';
   if (subImport) subImport.style.display = name === 'import' ? '' : 'none';
   if (subHistory) subHistory.style.display = name === 'history' ? '' : 'none';
+  if (subReassign) subReassign.style.display = name === 'reassign' ? '' : 'none';
   if (name === 'fairness') buildFairness();
   if (name === 'import') buildLootImportForm();
   if (name === 'history') buildLootHistoryTab();
+  if (name === 'reassign') buildLootReassignTab();
 }
 
 // Resets the modal to its default state (plain "Login with Discord", no
@@ -449,6 +452,9 @@ function applyFeatureFlagVisibility() {
   setVisible('loot-subtab-btn-import', lootOn);
   setVisible('loot-subtab-btn-history', lootOn);
   setVisible('loot-subtab-btn-fairness', fairnessOn);
+  // Corrects rclc_loot rows the same import feature writes, so it rides the
+  // same flag rather than fairness's (#1029).
+  setVisible('loot-subtab-btn-reassign', lootOn);
   setVisible('attend-subtab-btn-bench', fairnessOn);
   // #651: tier-piece tracking rides on the 'bis' flag, same as the rest of
   // the tier-substitution feature surface (wishlist/BiS grid) -- a team not

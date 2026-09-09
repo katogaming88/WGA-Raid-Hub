@@ -188,7 +188,7 @@
             </div>
           </div>
 
-          <!-- Loot tab (Import + Import History + Loot Fairness sub-tabs) -->
+          <!-- Loot tab (Import + Import History + Loot Fairness + Reassign sub-tabs) -->
           <div id="tab-loot" class="tab-panel">
             <p class="signup-officer-note" style="margin-bottom:0.75rem;">Running the Priority Order system requires the <a href="https://www.curseforge.com/wow/addons/wga-priority-loot" target="_blank" rel="noopener">WGA Priority Loot addon</a> in-game -- raiders can optionally install it too, to see their Priority rank on items as they drop.</p>
             <div class="filter-bar" style="margin-bottom:1rem;">
@@ -198,6 +198,8 @@
                 onclick="switchLootSubTab('history', this)">Import History</button>
               <button class="filter-chip" id="loot-subtab-btn-fairness"
                 onclick="switchLootSubTab('fairness', this)">Loot Fairness</button>
+              <button class="filter-chip" id="loot-subtab-btn-reassign"
+                onclick="switchLootSubTab('reassign', this)">Reassign</button>
             </div>
             <div id="loot-sub-fairness" style="display:none;">
               <div class="filter-bar" style="margin-bottom:1rem;">
@@ -210,6 +212,7 @@
             </div>
             <div id="loot-sub-import"></div>
             <div id="loot-sub-history" style="display:none;"></div>
+            <div id="loot-sub-reassign" style="display:none;"></div>
           </div>
 
           <!-- Priority tab -->
