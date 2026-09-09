@@ -23,6 +23,7 @@ const KNOWN_DYNAMIC = ['rls_auto_enable'];
 // helper and is_own_player. Set equality, so an accidental grant fails and so
 // does an accidental revoke.
 const ANON_DEFINER_ALLOWLIST = [
+  'app_version',
   'can_settle_boe',
   'current_discord_id',
   'flag_bis_list_changed',
