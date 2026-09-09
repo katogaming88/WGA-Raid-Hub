@@ -12,6 +12,21 @@ answers to.
 
 ---
 
+## [3.100.0] - 2026-09-09
+
+### Backend
+
+- The database can say which version of itself it is
+  ([#969](https://github.com/katogaming88/WGA-Raid-Hub/issues/969)). A new `app_version()` call
+  returns the newest applied migration and how many have been applied, readable by anyone the
+  site serves, signed in or not. The site deploys the moment a change merges, while the matching
+  database update is a separate step someone runs by hand, so until now a page could not tell
+  whether the database behind it had caught up: the gap showed as scattered errors on whichever
+  features happened to need the new part. This is the fact the boot check in
+  [#970](https://github.com/katogaming88/WGA-Raid-Hub/issues/970) will compare against. The
+  underlying record stays private, and a test asserts that in the same breath as the call: the
+  new call answers one question, it does not open the table behind it.
+
 ## [3.99.1] - 2026-09-09
 
 ### Project
