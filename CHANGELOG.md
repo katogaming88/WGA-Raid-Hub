@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.97.8] - 2026-09-08
+
+### Project
+
+- Supabase's own security linter now runs on every pull request that changes the database
+  ([#1011](https://github.com/katogaming88/WGA-Raid-Hub/issues/1011)), against the schema those
+  changes build rather than against anyone's local copy. It looks for the shapes that quietly widen
+  access: a table published without its access rules, a view that reads with its owner's permissions
+  instead of the viewer's, a function that stops pinning where it looks names up. Anything it finds
+  fails the build unless the project has already reviewed and accepted it, and the four accepted
+  findings are listed in one file with the reason for each. The entry covering a specific object
+  fails the build once that object is gone, so a fix takes its own exception with it and a run that
+  came back empty cannot be mistaken for a clean result. A weekly job runs the same check against
+  the live database and posts to Discord if it finds something, which catches a change made outside
+  the usual route.
+
 ## [3.97.7] - 2026-09-08
 
 ### Project
