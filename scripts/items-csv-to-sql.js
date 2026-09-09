@@ -15,6 +15,10 @@
 // 3. Paste the generated items_insert.sql into the Supabase SQL Editor.
 
 import { readFileSync, writeFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
+import { sqlBool, sqlNumber, sqlString } from './import/lib/sql.js';
+
+const HEADER = 'wow_item_id,name,slot,armor_type,sort_id,icon,wcl_zone_id';
 
 function parseCsvLine(line) {
   const re = /(?:^|,)("(?:[^"]|"")*"|[^,]*)/g;
@@ -30,31 +34,52 @@ function parseCsvLine(line) {
   return out;
 }
 
-function sqlStr(v) {
-  return v === '' || v == null ? 'null' : `'${v.replace(/'/g, "''")}'`;
+// The three ids go through sqlNumber, so a hand-edit that leaves text in one
+// stops the run rather than reaching the file a maintainer pastes (#1012).
+export function itemsInsertSql(csvText) {
+  const lines = csvText.trim().split('\n');
+  if (lines[0] !== HEADER) {
+    throw new Error(`Unexpected items.csv header: ${lines[0]}`);
+  }
+
+  const rows = lines.slice(1).map((line) => {
+    const [wowId, name, slot, armorType, sortId, icon, wclZoneId] = parseCsvLine(line);
+    const values = [
+      sqlNumber(wowId),
+      sqlString(name),
+      sqlString(slot),
+      sqlString(armorType),
+      sqlNumber(sortId),
+      sqlString(icon),
+      sqlNumber(wclZoneId),
+      sqlBool(false)
+    ];
+    return `  (${values.join(', ')})`;
+  });
+
+  return (
+    'insert into items (wow_item_id, name, slot, armor_type, sort_id, icon, wcl_zone_id, is_placeholder)\nvalues\n' +
+    rows.join(',\n') +
+    ';\n'
+  );
 }
 
-function sqlNum(v) {
-  return v === '' || v == null ? 'null' : v;
+function main() {
+  let sql;
+  let rowCount = 0;
+  try {
+    const csvText = readFileSync('items.csv', 'utf8');
+    sql = itemsInsertSql(csvText);
+    rowCount = csvText.trim().split('\n').length - 1;
+  } catch (err) {
+    console.error(err.message);
+    process.exit(1);
+  }
+
+  writeFileSync('items_insert.sql', sql, 'utf8');
+  console.log(`items_insert.sql written -- ${rowCount} rows`);
 }
 
-const lines = readFileSync('items.csv', 'utf8').trim().split('\n');
-const header = lines[0];
-if (header !== 'wow_item_id,name,slot,armor_type,sort_id,icon,wcl_zone_id') {
-  console.error(`Unexpected items.csv header: ${header}`);
-  process.exit(1);
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
 }
-const dataLines = lines.slice(1);
-
-const rows = dataLines.map((line) => {
-  const [wowId, name, slot, armorType, sortId, icon, wclZoneId] = parseCsvLine(line);
-  return `  (${[wowId, sqlStr(name), sqlStr(slot), sqlStr(armorType), sqlNum(sortId), sqlStr(icon), sqlNum(wclZoneId), 'false'].join(', ')})`;
-});
-
-const sql =
-  'insert into items (wow_item_id, name, slot, armor_type, sort_id, icon, wcl_zone_id, is_placeholder)\nvalues\n' +
-  rows.join(',\n') +
-  ';\n';
-
-writeFileSync('items_insert.sql', sql, 'utf8');
-console.log(`items_insert.sql written -- ${rows.length} rows`);
