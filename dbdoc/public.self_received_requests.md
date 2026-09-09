@@ -14,6 +14,7 @@
 | source | text |  | true |  |  |  |
 | note | text |  | true |  |  |  |
 | slot | text |  | true |  |  | BiS slot the request was raised against, mirroring bis_items.slot. Lets an approval target one row when the same item -- notably an is_placeholder source like M+ -- sits in several slots. Null on rows predating #386. |
+| updated_at | timestamp with time zone |  | true |  |  |  |
 
 ## Constraints
 
@@ -38,6 +39,7 @@
 | ---- | ---------- |
 | trg_self_received_requests_team_id_check | CREATE TRIGGER trg_self_received_requests_team_id_check BEFORE INSERT OR UPDATE ON public.self_received_requests FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player() |
 | trg_self_received_sync_bis_obtained | CREATE TRIGGER trg_self_received_sync_bis_obtained AFTER INSERT OR UPDATE OF status ON public.self_received_requests FOR EACH ROW WHEN ((new.status = 'approved'::text)) EXECUTE FUNCTION sync_bis_obtained_from_self_received() |
+| trg_self_received_requests_updated_at | CREATE TRIGGER trg_self_received_requests_updated_at BEFORE UPDATE ON public.self_received_requests FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
 
 ## Relations
 
@@ -59,6 +61,7 @@ erDiagram
   text source
   text note
   text slot
+  timestamp_with_time_zone updated_at
 }
 "public.teams" {
   integer id
@@ -90,6 +93,7 @@ erDiagram
   timestamp_with_time_zone tier_pieces_synced_at
   integer bonus_roll_encounter_id FK
   boolean is_rotator
+  timestamp_with_time_zone bis_link_updated_at
 }
 "public.items" {
   integer id

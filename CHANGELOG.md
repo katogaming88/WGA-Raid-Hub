@@ -12,6 +12,27 @@ answers to.
 
 ---
 
+## [3.99.0] - 2026-09-09
+
+### Frontend
+
+- The profile card's **BiS Source** and **BiS List** section headers show an "updated X ago" label
+  ([#290](https://github.com/katogaming88/WGA-Raid-Hub/issues/290)), so an officer can see at a
+  glance whether a raider is keeping that specific section current instead of one blended
+  last-updated figure that could hide which thing actually went stale. BiS List reflects only
+  self-received-marking activity -- wishlist completeness already has its own signal on the
+  officer dashboard's Incomplete Wishlists banner, so it isn't folded in here. BiS Source reads its
+  own dedicated column so an unrelated officer edit elsewhere on the player row can't make the link
+  look fresher than it is.
+
+### Backend
+
+- `self_received_requests` gets an `updated_at` column and trigger, matching every other request
+  table ([#290](https://github.com/katogaming88/WGA-Raid-Hub/issues/290)). `players` gets a
+  dedicated `bis_link_updated_at`, separate from the generic `players.updated_at` that already
+  bumps on unrelated officer edits (bench/trial toggles, etc.) and would have made a BiS-source
+  staleness signal meaningless.
+
 ## [3.98.1] - 2026-09-09
 
 ### Backend

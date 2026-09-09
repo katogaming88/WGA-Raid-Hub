@@ -114,6 +114,7 @@ erDiagram
   text source
   text note
   text slot
+  timestamp_with_time_zone updated_at
 }
 "public.item_preferences" {
   integer id
