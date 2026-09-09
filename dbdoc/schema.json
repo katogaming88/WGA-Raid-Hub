@@ -1273,6 +1273,11 @@
           "nullable": false,
           "default": "false",
           "comment": "Rotator roster status (#924): not automatically Present/Attending on a raid night like Bench, but officer-assigned per raid week (officer_set_rotator_week()) rather than self-RSVP."
+        },
+        {
+          "name": "bis_link_updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
         }
       ],
       "indexes": [
@@ -1387,6 +1392,10 @@
         {
           "name": "trg_players_restrict_self_update",
           "def": "CREATE TRIGGER trg_players_restrict_self_update BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION restrict_players_self_update_to_bonus_roll()"
+        },
+        {
+          "name": "trg_players_bis_link_updated_at",
+          "def": "CREATE TRIGGER trg_players_bis_link_updated_at BEFORE UPDATE OF bis_link ON public.players FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
     },
@@ -1972,6 +1981,11 @@
           "type": "text",
           "nullable": true,
           "comment": "BiS slot the request was raised against, mirroring bis_items.slot. Lets an approval target one row when the same item -- notably an is_placeholder source like M+ -- sits in several slots. Null on rows predating #386."
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
         }
       ],
       "indexes": [
@@ -2063,6 +2077,10 @@
         {
           "name": "trg_self_received_sync_bis_obtained",
           "def": "CREATE TRIGGER trg_self_received_sync_bis_obtained AFTER INSERT OR UPDATE OF status ON public.self_received_requests FOR EACH ROW WHEN ((new.status = 'approved'::text)) EXECUTE FUNCTION sync_bis_obtained_from_self_received()"
+        },
+        {
+          "name": "trg_self_received_requests_updated_at",
+          "def": "CREATE TRIGGER trg_self_received_requests_updated_at BEFORE INSERT OR UPDATE ON public.self_received_requests FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
     },

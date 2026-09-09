@@ -154,6 +154,7 @@ erDiagram
   timestamp_with_time_zone tier_pieces_synced_at
   integer bonus_roll_encounter_id FK
   boolean is_rotator
+  timestamp_with_time_zone bis_link_updated_at
 }
 "public.priority_order" {
   integer id
@@ -196,6 +197,7 @@ erDiagram
   text source
   text note
   text slot
+  timestamp_with_time_zone updated_at
 }
 "public.team_members" {
   integer id

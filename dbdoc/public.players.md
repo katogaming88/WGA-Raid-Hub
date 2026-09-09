@@ -26,6 +26,7 @@
 | tier_pieces_synced_at | timestamp with time zone |  | true |  |  |  |
 | bonus_roll_encounter_id | integer |  | true |  | [public.raid_encounters](public.raid_encounters.md) |  |
 | is_rotator | boolean | false | false |  |  | Rotator roster status (#924): not automatically Present/Attending on a raid night like Bench, but officer-assigned per raid week (officer_set_rotator_week()) rather than self-RSVP. |
+| bis_link_updated_at | timestamp with time zone |  | true |  |  |  |
 
 ## Constraints
 
@@ -52,6 +53,7 @@
 | ---- | ---------- |
 | trg_players_updated_at | CREATE TRIGGER trg_players_updated_at BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
 | trg_players_restrict_self_update | CREATE TRIGGER trg_players_restrict_self_update BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION restrict_players_self_update_to_bonus_roll() |
+| trg_players_bis_link_updated_at | CREATE TRIGGER trg_players_bis_link_updated_at BEFORE UPDATE OF bis_link ON public.players FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
 
 ## Relations
 
@@ -106,6 +108,7 @@ erDiagram
   timestamp_with_time_zone tier_pieces_synced_at
   integer bonus_roll_encounter_id FK
   boolean is_rotator
+  timestamp_with_time_zone bis_link_updated_at
 }
 "public.attendance" {
   integer id
@@ -223,6 +226,7 @@ erDiagram
   text source
   text note
   text slot
+  timestamp_with_time_zone updated_at
 }
 "public.streamers" {
   integer id

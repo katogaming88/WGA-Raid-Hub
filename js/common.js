@@ -109,14 +109,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.98.1';
+var VERSION = '3.99.0';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20260908200838';
+var REQUIRED_SCHEMA = '20260909134816';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -1675,7 +1675,7 @@ function fetchSupabaseRoster() {
   var query = supabaseClient
     .from('players')
     .select(
-      'id, name_realm, nickname, is_trial, is_bench, is_rotator, is_backup_tank, is_backup_healer, bis_link, bis_allowed, wishlist_allowed, m_plus_excluded, m_plus_note, join_date, tier_pieces_equipped, tier_pieces_synced_at, bonus_roll_encounter_id, raid_encounters(name), classes_specs(class, spec, role)'
+      'id, name_realm, nickname, is_trial, is_bench, is_rotator, is_backup_tank, is_backup_healer, bis_link, bis_link_updated_at, bis_allowed, wishlist_allowed, m_plus_excluded, m_plus_note, join_date, tier_pieces_equipped, tier_pieces_synced_at, bonus_roll_encounter_id, raid_encounters(name), classes_specs(class, spec, role)'
     )
     .eq('team_id', _teamCfg.supabaseTeamId)
     .is('archived_at', null)
@@ -1892,6 +1892,7 @@ function mapSupabaseRoster(rows, mplusRejections, officerNotes) {
       spec: cs.spec || '',
       role: cs.role,
       bisLink: row.bis_link || '',
+      bisLinkUpdatedAt: row.bis_link_updated_at || '',
       bisAllowed: !!row.bis_allowed,
       wishlistAllowed: !!row.wishlist_allowed,
       joinDate: row.join_date || '',
@@ -2015,6 +2016,36 @@ function _esc(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+// Relative-age text ("3d ago", "just now") for a profile-card signal column
+// (#290: self_received_requests.updated_at, players.bis_link_updated_at).
+// Callers prefix their own wording (e.g. "Updated "). null/'' means the
+// column has never been touched -- distinct from "just now" -- so callers
+// get no label at all rather than a misleading one.
+function timeAgoLabel(iso) {
+  if (!iso) return '';
+  var then = new Date(iso).getTime();
+  if (isNaN(then)) return '';
+  var seconds = Math.floor((Date.now() - then) / 1000);
+  if (seconds < 60) return 'just now';
+  var minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return minutes + 'm ago';
+  var hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours + 'h ago';
+  var days = Math.floor(hours / 24);
+  if (days < 30) return days + 'd ago';
+  var months = Math.floor(days / 30);
+  if (months < 12) return months + 'mo ago';
+  var years = Math.floor(days / 365);
+  return years + 'y ago';
+}
+
+// Latest of two nullable ISO timestamp strings, or null if both are absent.
+function _latestIso(a, b) {
+  if (!a) return b || null;
+  if (!b) return a;
+  return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
 }
 
 function seasonDisplayName(code) {
@@ -2402,7 +2433,7 @@ function fetchSupabaseSelfReceived() {
   // team-read-guard: approved requests only, one row per item a player self-reported.
   var query = supabaseClient
     .from('self_received_requests')
-    .select('track, source, slot, players(name_realm), items(name, slot)')
+    .select('track, source, slot, updated_at, players(name_realm), items(name, slot)')
     .eq('team_id', _teamCfg.supabaseTeamId)
     .eq('status', 'approved')
     .then(
@@ -2572,6 +2603,25 @@ function mapSupabaseRaidProgress(rows) {
 // combined string submitSelfReceivedRequest/submitDirectMarkReceived used to
 // send GAS as one field, since getSelfReceivedItems()'s callers display it
 // as a single badge.
+// Second return value: firstName -> latest updated_at across that player's
+// approved self-received rows, for the BiS List section's "updated X ago"
+// signal (#290) -- kept alongside mapSupabaseSelfReceived's existing shape
+// rather than folding into it, since every current caller destructures a
+// bare map and a new field would be silently ignored, not an error.
+function mapSupabaseSelfReceivedUpdatedAt(rows) {
+  var map = {};
+  (rows || []).forEach(function (row) {
+    var players = row.players || {};
+    var nameRealm = String(players.name_realm || '').trim();
+    if (!nameRealm) return;
+    var firstName = nameRealm.split('-')[0].trim();
+    var itemRow = row.items || {};
+    if (!itemRow.name || !row.updated_at) return;
+    map[firstName] = _latestIso(map[firstName], row.updated_at);
+  });
+  return map;
+}
+
 function mapSupabaseSelfReceived(rows) {
   var map = {};
   (rows || []).forEach(function (row) {
@@ -3980,6 +4030,7 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
       });
       var mappedSelfReceived = selfReceivedRows ? mapSupabaseSelfReceived(selfReceivedRows) : null;
       DATA.selfReceived = mappedSelfReceived || {};
+      DATA.selfReceivedUpdatedAt = selfReceivedRows ? mapSupabaseSelfReceivedUpdatedAt(selfReceivedRows) : {};
       DATA.streamers = mapSupabaseStreamers(streamerRows);
       DATA.raidProgress = mapSupabaseRaidProgress(raidProgressRows);
       var mappedIncomingRoster = incomingRosterRows ? mapSupabaseIncomingRoster(incomingRosterRows) : null;
@@ -6483,6 +6534,11 @@ function renderProfile(firstName, backTo, container) {
     var bisMergeOfficer = bisMergeWishlistPrefs(officerPrefs, bisItems, player.id);
     bisItems = bisMergeOfficer.fromWishlist.concat(bisMergeOfficer.officerSet);
   }
+  // BiS List section's "updated X ago" signal (#290) -- self-received-marking
+  // activity only. Wishlist completeness is already surfaced separately on
+  // the officer dashboard (Incomplete Wishlists banner), so it isn't folded
+  // into this per-player staleness signal.
+  var bisListUpdatedAt = (DATA.selfReceivedUpdatedAt || {})[player.firstName] || null;
   var itemSlotsForSort = DATA.itemSlots || {};
   bisItems = bisItems.slice().sort(function (a, b) {
     return bisDisplaySortKey(a, itemSlotsForSort) - bisDisplaySortKey(b, itemSlotsForSort);
@@ -7215,6 +7271,11 @@ function renderProfile(firstName, backTo, container) {
           '\')" title="Show help">?</button>'
         : '') +
       '</div>' +
+      (player.bisLinkUpdatedAt
+        ? '<div style="margin:-0.5rem 0 0.75rem;font-size:1.05rem;font-weight:600;color:var(--gold);">Updated ' +
+          timeAgoLabel(player.bisLinkUpdatedAt) +
+          '</div>'
+        : '') +
       (backTo !== 'officer'
         ? '<div id="help-bislink-' +
           player.firstName +
@@ -7259,6 +7320,11 @@ function renderProfile(firstName, backTo, container) {
       '<span style="font-size:1.07rem;color:var(--text-dim);">' +
       (backTo === 'landing' ? 'click to collapse' : 'click to expand') +
       '</span></div>' +
+      (bisListUpdatedAt
+        ? '<div style="margin:-0.5rem 0 0.75rem;font-size:1.05rem;font-weight:600;color:var(--gold);">Updated ' +
+          timeAgoLabel(bisListUpdatedAt) +
+          '</div>'
+        : '') +
       (backTo !== 'officer'
         ? '<div id="help-bislist-' +
           player.firstName +
