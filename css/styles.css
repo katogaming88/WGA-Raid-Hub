@@ -133,10 +133,6 @@ body.flat-look .calendar-legend-item {
   text-transform: none;
   letter-spacing: normal;
 }
-body.flat-look .header-emblem,
-body.flat-look .sidebar-emblem { filter: none; }
-body.flat-look .header h1,
-body.flat-look .sidebar-team-name { text-shadow: none; }
 body.flat-look .header::before { display: none; }
 body.flat-look .theme-switcher-dev,
 body.flat-look .discord-nav-dropdown,
@@ -281,8 +277,8 @@ body.flat-look #landingLoot.pub-loot { max-width: none; }
 /* Header */
 .header { position:relative; padding:2.5rem 2rem 2rem; text-align:center; border-bottom:1px solid var(--border); overflow:hidden; }
 .header::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse 60% 140% at 50% 0%, rgba(var(--gold-rgb),0.07) 0%, transparent 70%); pointer-events:none; }
-.header-emblem { font-size:2rem; display:block; margin-bottom:0.4rem; filter:drop-shadow(0 0 10px rgba(var(--gold-rgb),0.35)); }
-.header h1 { font-family:var(--font-heading); font-size:1.7rem; font-weight:700; letter-spacing:0.12em; color:var(--gold-light); text-shadow:0 0 24px rgba(var(--gold-rgb),0.25); }
+.header-emblem { font-size:2rem; display:block; margin-bottom:0.4rem; }
+.header h1 { font-family:var(--font-heading); font-size:1.7rem; font-weight:700; letter-spacing:0.12em; color:var(--gold-light); }
 .header-sub { font-size:1rem; color:var(--text); letter-spacing:0.18em; text-transform:uppercase; margin-top:0.3rem; }
 .header-divider { width:100px; height:1px; background:linear-gradient(90deg,transparent,var(--gold-dim),transparent); margin:1rem auto 0; }
 .header-link { display:inline-block; text-decoration:none; color:inherit; transition:opacity 0.15s; }
@@ -336,7 +332,7 @@ body.flat-look #landingLoot.pub-loot { max-width: none; }
 .team-switcher { font-family:var(--font-body); font-size:0.95rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.4rem 0.6rem; background:var(--bg-elevated); border:1px solid var(--border-mid); border-radius:3px; color:var(--gold-light); cursor:pointer; align-self:center; margin-right:0.5rem; }
 /* Discord claiming modal */
 .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:200; display:flex; align-items:center; justify-content:center; }
-.modal-box { background:var(--bg-card); border:1px solid var(--border-mid); border-radius:6px; padding:2rem; width:100%; max-width:400px; display:flex; flex-direction:column; gap:1rem; }
+.modal-box { background:var(--bg-card); border:1px solid var(--border-mid); border-radius:8px; padding:2rem; width:100%; max-width:400px; display:flex; flex-direction:column; gap:1rem; }
 .modal-title { font-family:var(--font-heading); font-size:1rem; color:var(--gold-light); letter-spacing:0.1em; margin:0; }
 .modal-body { font-size:1.07rem; color:var(--text-muted); margin:0; }
 .modal-actions { display:flex; gap:0.5rem; }
@@ -379,9 +375,9 @@ body.flat-look #landingLoot.pub-loot { max-width: none; }
 .sidebar { width:240px; flex-shrink:0; background:var(--bg-card); border-right:1px solid var(--border); display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow-y:hidden; overflow-x:hidden; z-index:220; }
 .sidebar-brand { display:flex; align-items:center; gap:0.7rem; padding:1.5rem 1.25rem 1.1rem; text-decoration:none; color:inherit; border-bottom:1px solid var(--border); transition:opacity 0.15s; }
 .sidebar-brand:hover { opacity:0.82; }
-.sidebar-emblem { font-size:1.7rem; line-height:1; filter:drop-shadow(0 0 10px rgba(var(--gold-rgb),0.35)); }
+.sidebar-emblem { font-size:1.7rem; line-height:1; }
 .sidebar-brand-text { display:flex; flex-direction:column; min-width:0; }
-.sidebar-team-name { font-family:var(--font-heading); font-weight:700; font-size:1.05rem; letter-spacing:0.08em; color:var(--gold-light); text-shadow:0 0 18px rgba(var(--gold-rgb),0.2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sidebar-team-name { font-family:var(--font-heading); font-weight:700; font-size:1.05rem; letter-spacing:0.08em; color:var(--gold-light); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sidebar-sub { font-size:0.7rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-dim); margin-top:0.15rem; }
 .sidebar-switch-row { padding:0.85rem 1.1rem; border-bottom:1px solid var(--border); }
 .sidebar-switch-row .team-switcher { width:100%; margin:0; text-align:center; }
@@ -437,7 +433,7 @@ main.app-main { flex:1; display:flex; flex-direction:column; }
 
 /* Landing */
 .landing-body { flex:1; display:flex; flex-direction:column; align-items:center; padding:3rem 2rem 2rem; gap:2rem; }
-.landing-card { background:var(--bg-card); border:1px solid var(--border-mid); border-top:2px solid rgba(var(--gold-rgb),0.4); border-radius:6px; padding:2.5rem 2rem; width:100%; max-width:500px; display:flex; flex-direction:column; align-items:center; gap:0.75rem; }
+.landing-card { background:var(--bg-card); border:1px solid var(--border-mid); border-radius:8px; padding:2.5rem 2rem; width:100%; max-width:500px; display:flex; flex-direction:column; align-items:center; gap:0.75rem; }
 .claim-prompt h2 { font-family:var(--font-heading); font-size:1rem; color:var(--gold-light); letter-spacing:0.1em; }
 .claim-prompt p { color:var(--text-muted); font-size:1.07rem; text-align:center; line-height:1.5; }
 
@@ -451,7 +447,7 @@ main.app-main { flex:1; display:flex; flex-direction:column; }
 
 /* Public stats */
 .pub-stats { display:flex; gap:0.75rem; width:100%; max-width:500px; }
-.pub-stat { flex:1; background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:0.75rem 1rem; text-align:center; }
+.pub-stat { flex:1; background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:0.75rem 1rem; text-align:center; }
 .pub-stat-num { display:block; font-size:1.6rem; font-weight:700; color:var(--gold); font-family:var(--font-heading); }
 .pub-stat-label { display:block; font-size:0.87rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-muted); margin-top:0.2rem; }
 
@@ -463,7 +459,7 @@ main.app-main { flex:1; display:flex; flex-direction:column; }
    .prog-bosses-grid) exist to keep that still-readable at half width. */
 .prog-wrap { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; width:100%; max-width:1040px; }
 @media (max-width:560px) { .prog-wrap { grid-template-columns:1fr; } .prog-bosses-grid { grid-template-columns:1fr; } }
-.prog-card { background:var(--bg-card); border:1px solid var(--border-mid); border-top:2px solid rgba(var(--mythic-rgb),0.45); border-radius:6px; padding:1rem 1.1rem; }
+.prog-card { background:var(--bg-card); border:1px solid var(--border-mid); border-radius:8px; padding:1rem 1.1rem; }
 .prog-header { display:flex; flex-direction:column; align-items:center; gap:0.15rem; margin-bottom:0.6rem; text-align:center; }
 .prog-raid-name { font-family:var(--font-heading); font-size:1.07rem; font-weight:600; color:var(--text); letter-spacing:0.02em; }
 .prog-score { font-size:0.97rem; font-weight:700; color:var(--mythic); letter-spacing:0.06em; white-space:nowrap; }
@@ -517,7 +513,7 @@ a.prog-boss-heroic-pulls:hover { color:var(--gold); text-decoration:underline; }
 /* Team officer bios (#477, second slice) -- officer-authored bio cards. */
 .bio-wrap { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; width:100%; max-width:760px; }
 @media (max-width:560px) { .bio-wrap { grid-template-columns:1fr; } }
-.bio-card { background:var(--bg-card); border:1px solid var(--border-mid); border-top:2px solid rgba(var(--gold-rgb),0.4); border-radius:6px; padding:1.25rem 1.1rem; display:flex; flex-direction:column; align-items:center; text-align:center; gap:0.2rem; }
+.bio-card { background:var(--bg-card); border:1px solid var(--border-mid); border-radius:8px; padding:1.25rem 1.1rem; display:flex; flex-direction:column; align-items:center; text-align:center; gap:0.2rem; }
 .bio-photo { width:96px; height:96px; border-radius:8px; object-fit:cover; margin-bottom:0.6rem; }
 .bio-photo-fallback { display:flex; align-items:center; justify-content:center; background:rgba(var(--gold-rgb),0.12); color:var(--gold-light); border:1px solid rgba(var(--gold-rgb),0.3); font-family:var(--font-heading); font-size:1.8rem; font-weight:600; }
 .bio-name { font-family:var(--font-heading); font-size:1.15rem; font-weight:600; color:var(--text); letter-spacing:0.02em; }
@@ -618,7 +614,7 @@ a.prog-boss-heroic-pulls:hover { color:var(--gold); text-decoration:underline; }
 .selector-label { font-size:1.07rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--text-muted); font-weight:600; }
 .selector-outer { position:relative; width:100%; max-width:460px; }
 .selector-outer::after { content:'▾'; position:absolute; right:14px; top:50%; transform:translateY(-50%); color:var(--gold-dim); pointer-events:none; font-size:1.02rem; }
-select#playerSelect { width:100%; appearance:none; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:var(--font-body); font-size:1rem; font-weight:500; padding:0.65rem 2.2rem 0.65rem 1rem; border-radius:3px; cursor:pointer; transition:border-color 0.15s; }
+select#playerSelect { width:100%; appearance:none; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:var(--font-body); font-size:1rem; font-weight:500; padding:0.65rem 2.2rem 0.65rem 1rem; border-radius:6px; cursor:pointer; transition:border-color 0.15s; }
 select#playerSelect:hover { border-color:var(--gold-dim); }
 select#playerSelect:focus { border-color:var(--gold); box-shadow:0 0 0 2px rgba(var(--gold-rgb),0.12); }
 select#playerSelect option { background:#1a1d27; }
@@ -631,7 +627,7 @@ select#playerSelect option { background:#1a1d27; }
 .officer-prompt-box input { width:100%; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:var(--font-body); font-size:1rem; padding:0.6rem 1rem; border-radius:3px; }
 .officer-prompt-box input:focus { border-color:var(--gold); }
 .prompt-buttons { display:flex; gap:0.5rem; }
-.btn { font-family:var(--font-body); font-size:1rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; padding:0.55rem 1.25rem; border-radius:3px; cursor:pointer; border:none; text-decoration:none; display:inline-block; }
+.btn { font-family:var(--font-body); font-size:1rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; padding:0.55rem 1.25rem; border-radius:6px; cursor:pointer; border:none; text-decoration:none; display:inline-block; }
 .btn-gold { background:rgba(var(--gold-rgb),0.12); border:1px solid var(--gold-dim); color:var(--gold-light); }
 .btn-gold:hover { background:rgba(var(--gold-rgb),0.2); }
 .btn-muted { background:transparent; border:1px solid rgba(255,255,255,0.35); color:var(--text); }
