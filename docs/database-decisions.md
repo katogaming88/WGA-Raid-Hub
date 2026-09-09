@@ -10,7 +10,7 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ## 2026-09-08 -- SQL injection posture: static SQL, pinned search paths, and grants that match production (#1009, #1010, #1020)
 
-Shipped: `20260908155617_pin_search_path_on_invoker_functions.sql`, `20260908155859_revoke_anon_on_submit_season_signup.sql`, `20260908194628_submit_season_signup_restore_require_auth.sql`
+Shipped: `20260908155617_pin_search_path_on_invoker_functions.sql`, `20260908155859_revoke_anon_on_submit_season_signup.sql`, `20260908200838_submit_season_signup_restore_require_auth.sql`
 
 A read-only spike (#1009) asked what stops SQL injection here and what enforces it. The answer to the first was structural and already sound: everything above the database reaches it through PostgREST, which binds filter values and RPC arguments, and below that every function body is static SQL with row-level security bounding anything that got past a filter. No path was found by which text from a raider, an officer, a Discord payload or an external API reaches SQL as SQL.
 
