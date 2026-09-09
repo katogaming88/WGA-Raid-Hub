@@ -39,7 +39,7 @@
 | ---- | ---------- |
 | trg_self_received_requests_team_id_check | CREATE TRIGGER trg_self_received_requests_team_id_check BEFORE INSERT OR UPDATE ON public.self_received_requests FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player() |
 | trg_self_received_sync_bis_obtained | CREATE TRIGGER trg_self_received_sync_bis_obtained AFTER INSERT OR UPDATE OF status ON public.self_received_requests FOR EACH ROW WHEN ((new.status = 'approved'::text)) EXECUTE FUNCTION sync_bis_obtained_from_self_received() |
-| trg_self_received_requests_updated_at | CREATE TRIGGER trg_self_received_requests_updated_at BEFORE UPDATE ON public.self_received_requests FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
+| trg_self_received_requests_updated_at | CREATE TRIGGER trg_self_received_requests_updated_at BEFORE INSERT OR UPDATE ON public.self_received_requests FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
 
 ## Relations
 
