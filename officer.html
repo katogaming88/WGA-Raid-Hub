@@ -7,9 +7,17 @@
   <title>Phoenix -- Officer</title>
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <!-- Theme playground (#864) -- applies a saved data-theme/data-font before
+       first paint so a reload doesn't flash the default first. Delete
+       alongside #themeSwitcher/#fontSwitcher and the matching CSS once a
+       direction is picked. -->
+  <script>(function(){try{var t=localStorage.getItem('wga_theme_playground');if(t)document.documentElement.setAttribute('data-theme',t);var f=localStorage.getItem('wga_font_playground');if(f)document.documentElement.setAttribute('data-font',f);}catch(e){}})();</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <!-- Inter/Roboto/Open+Sans/Merriweather/Source+Sans+3 are only for the
+       #fontSwitcher playground (#864) -- drop them from this query string
+       along with the switcher once a direction is picked. -->
   <link
-    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Merriweather:wght@600;700&family=Source+Sans+3:wght@400;500;600&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css?v=3.98.0">
   <link rel="stylesheet" href="css/officer.css?v=3.98.0">
@@ -1497,6 +1505,55 @@ function _grantOfficerAccessViaDiscord(session) {
     }
   );
 }
+
+// Theme/font playground (#864) -- see the head's early-apply script and
+// css/styles.css's :root[data-theme="..."]/:root[data-font="..."] blocks.
+// Two independent attributes (and localStorage keys) so any color palette
+// can be tried with any font pairing. Delete alongside those and
+// #themeSwitcher/#fontSwitcher once a direction is picked.
+function setThemePlayground(value) {
+  if (value) document.documentElement.setAttribute('data-theme', value);
+  else document.documentElement.removeAttribute('data-theme');
+  try {
+    localStorage.setItem('wga_theme_playground', value);
+  } catch (e) {}
+}
+function setFontPlayground(value) {
+  if (value) document.documentElement.setAttribute('data-font', value);
+  else document.documentElement.removeAttribute('data-font');
+  try {
+    localStorage.setItem('wga_font_playground', value);
+  } catch (e) {}
+}
+</script>
+
+<!-- Theme playground (#864) -- temporary, for comparing palettes/fonts live.
+     Persists per-browser via localStorage while testing; delete this along
+     with the matching CSS/font-link additions once a direction is picked. -->
+<div class="theme-switcher-dev">
+  <div class="theme-switcher-dev-row">
+    <label for="themeSwitcher">Theme</label>
+    <select id="themeSwitcher" onchange="setThemePlayground(this.value)">
+      <option value="">Default (Ember)</option>
+      <option value="mono">Mono</option>
+      <option value="gruvbox">Gruvbox Dark</option>
+    </select>
+  </div>
+  <div class="theme-switcher-dev-row">
+    <label for="fontSwitcher">Font</label>
+    <select id="fontSwitcher" onchange="setFontPlayground(this.value)">
+      <option value="">Default (Cinzel/Rajdhani)</option>
+      <option value="inter">Inter</option>
+      <option value="roboto">Roboto</option>
+      <option value="opensans">Open Sans</option>
+      <option value="merriweather">Merriweather/Source Sans</option>
+      <option value="system">System UI</option>
+    </select>
+  </div>
+</div>
+<script>
+document.getElementById('themeSwitcher').value = document.documentElement.getAttribute('data-theme') || '';
+document.getElementById('fontSwitcher').value = document.documentElement.getAttribute('data-font') || '';
 </script>
 </body>
 
