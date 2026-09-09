@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.97.5] - 2026-09-08
+
+### Backend
+
+- `submit_self_received()` now sends a request to officer review instead of rejecting it outright
+  whenever the note mentions "raid" ([#1025](https://github.com/katogaming88/WGA-Raid-Hub/issues/1025)).
+  It previously rejected the whole submission the moment the note mentioned "raid" as its own
+  word, regardless of source, so a raider honestly describing a real non-raid pickup ("pugged
+  this in a heroic raid, got it from my vault") had no way to get the report through short of
+  rewording it. It's still never auto-approved on a "raid" mention -- an officer decides whether
+  it's really an undeclared team raid drop (in which case the officer's own loot import already
+  covers it) or a legitimate report that happens to say "raid."
+
 ## [3.97.4] - 2026-09-08
 
 ### Project
