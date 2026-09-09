@@ -40,6 +40,7 @@
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { sqlJsonb, sqlNumber, sqlString } from './import/lib/sql.js';
 
 const SECONDARY_STAT_TYPES = new Set(['CRIT_RATING', 'HASTE_RATING', 'MASTERY_RATING', 'VERSATILITY']);
 const MAIN_STAT_TYPES = new Set(['STRENGTH', 'AGILITY', 'INTELLECT']);
@@ -224,6 +225,19 @@ async function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+// One UPDATE per item, every value through the shared builder (#1012). Both
+// stat columns are arrays, and sqlJsonb keeps an empty one as [], which is the
+// value meaning the item was checked and rolls none of the tracked types.
+export function statsUpdateSql(updates) {
+  return updates
+    .map(
+      (u) =>
+        `update items set secondary_stats = ${sqlJsonb(u.stats)}, main_stats = ${sqlJsonb(u.mainStats)}, ` +
+        `weapon_subtype = ${sqlString(u.weaponSubtype)} where wow_item_id = ${sqlNumber(u.id)};`
+    )
+    .join('\n');
+}
+
 async function main() {
   loadEnv();
   const { BLIZZARD_CLIENT_ID, BLIZZARD_CLIENT_SECRET } = process.env;
@@ -281,12 +295,7 @@ async function main() {
     await sleep(100);
   }
 
-  const sql = updates
-    .map((u) => {
-      const weaponSubtypeSql = u.weaponSubtype ? `'${u.weaponSubtype.replace(/'/g, "''")}'` : 'NULL';
-      return `update items set secondary_stats = '${JSON.stringify(u.stats)}'::jsonb, main_stats = '${JSON.stringify(u.mainStats)}'::jsonb, weapon_subtype = ${weaponSubtypeSql} where wow_item_id = ${u.id};`;
-    })
-    .join('\n');
+  const sql = statsUpdateSql(updates);
   writeFileSync('item_stats_update.sql', sql + '\n', 'utf8');
 
   console.log(`\nDone.`);
