@@ -35,10 +35,14 @@ export function sqlDate(value) {
   throw new Error(`Unrecognized date: ${JSON.stringify(value)}`);
 }
 
-// jsonb literal from a plain object; keys with empty values are dropped.
-export function sqlJsonb(obj) {
+// jsonb literal from a plain object or an array. Object keys with empty values
+// are dropped; an array is serialised as it stands, because an empty one is a
+// fact about the row (items.secondary_stats: rolls none of the tracked types)
+// rather than a value nobody filled in.
+export function sqlJsonb(value) {
+  if (Array.isArray(value)) return sqlString(JSON.stringify(value)) + '::jsonb';
   const compact = {};
-  for (const [k, v] of Object.entries(obj)) {
+  for (const [k, v] of Object.entries(value)) {
     if (v !== null && v !== undefined && v !== '') compact[k] = v;
   }
   return sqlString(JSON.stringify(compact)) + '::jsonb';

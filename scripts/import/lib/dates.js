@@ -7,6 +7,8 @@
 // timezone with no zone marker. Rather than doing DST math here, the emitted
 // SQL converts at apply time:  '<local>'::timestamp at time zone '<tz>'.
 
+import { sqlString } from './sql.js';
+
 const MONTHS = {
   jan: '01',
   feb: '02',
@@ -58,11 +60,16 @@ export function parseSheetTimestamp(value) {
   throw new Error(`Unrecognized timestamp: ${JSON.stringify(value)}`);
 }
 
-// SQL expression for a wall-clock timestamp in the sheet's timezone.
+// SQL expression for a wall-clock timestamp in the sheet's timezone. A blank tz
+// is refused rather than quoted, because sqlString maps it to null and every
+// timestamp would then land NULL instead of failing when the file is applied.
 export function sqlTimestampAtZone(value, tz) {
+  if (!String(tz ?? '').trim()) {
+    throw new Error(`sqlTimestampAtZone needs a tz, got: ${JSON.stringify(tz)}`);
+  }
   const local = parseSheetTimestamp(value);
   if (!local) return 'null';
-  return `('${local}'::timestamp at time zone '${tz}')`;
+  return `(${sqlString(local)}::timestamp at time zone ${sqlString(tz)})`;
 }
 
 // Season lookup by date from the ranges config ({name, start, end?}[]).
