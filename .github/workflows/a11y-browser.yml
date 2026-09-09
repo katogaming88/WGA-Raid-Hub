@@ -49,6 +49,17 @@ jobs:
           path: ~/.cache/ms-playwright
           key: ms-playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
 
+      # The runner image ships a pre-configured google-chrome-stable apt
+      # source that --with-deps' apt-get update below also refreshes, even
+      # though nothing here installs that package. Its mirror intermittently
+      # publishes a Packages index whose hash doesn't match its own Release
+      # file (a race on Google's end, not ours), which fails the whole apt-get
+      # update and takes chromium's real dependencies down with it. Dropping
+      # the source first removes the one repo we never needed from the
+      # transaction.
+      - name: Remove the unused google-chrome apt source
+        run: sudo rm -f /etc/apt/sources.list.d/google-chrome.list
+
       # --with-deps here but not in CONTRIBUTING.md: it shells out to apt, so
       # it works on this runner and fails on a contributor's Mac or Windows
       # box. It stays even on a cache hit, since the cache holds the browser
