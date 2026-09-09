@@ -16,14 +16,15 @@ answers to.
 
 ### Frontend
 
-- The profile card's **BiS Source** and **BiS List** section headers show an "updated X ago" label
+- The profile card's **BiS Source** and **BiS List** sections show an "Updated X ago" line
   ([#290](https://github.com/katogaming88/WGA-Raid-Hub/issues/290)), so an officer can see at a
   glance whether a raider is keeping that specific section current instead of one blended
-  last-updated figure that could hide which thing actually went stale. BiS List reflects only
-  self-received-marking activity -- wishlist completeness already has its own signal on the
-  officer dashboard's Incomplete Wishlists banner, so it isn't folded in here. BiS Source reads its
-  own dedicated column so an unrelated officer edit elsewhere on the player row can't make the link
-  look fresher than it is.
+  last-updated figure that could hide which thing actually went stale. It sits on its own line
+  under each header rather than crowding in beside the existing completion/tier/sync badges those
+  headers already carry. BiS List reflects only self-received-marking activity -- wishlist
+  completeness already has its own signal on the officer dashboard's Incomplete Wishlists banner,
+  so it isn't folded in here. BiS Source reads its own dedicated column so an unrelated officer
+  edit elsewhere on the player row can't make the link look fresher than it is.
 
 ### Backend
 

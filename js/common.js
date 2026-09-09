@@ -2018,27 +2018,27 @@ function _esc(str) {
     .replace(/'/g, '&#39;');
 }
 
-// Renders a section-header "updated X ago" label for a profile-card signal
-// column (#290: self_received_requests.updated_at, players.bis_link_updated_at,
-// item_preferences.updated_at). null/'' means the column has never been
-// touched -- distinct from "just now" -- so callers get no label at all
-// rather than a misleading one.
+// Relative-age text ("3d ago", "just now") for a profile-card signal column
+// (#290: self_received_requests.updated_at, players.bis_link_updated_at).
+// Callers prefix their own wording (e.g. "Updated "). null/'' means the
+// column has never been touched -- distinct from "just now" -- so callers
+// get no label at all rather than a misleading one.
 function timeAgoLabel(iso) {
   if (!iso) return '';
   var then = new Date(iso).getTime();
   if (isNaN(then)) return '';
   var seconds = Math.floor((Date.now() - then) / 1000);
-  if (seconds < 60) return 'updated just now';
+  if (seconds < 60) return 'just now';
   var minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return 'updated ' + minutes + 'm ago';
+  if (minutes < 60) return minutes + 'm ago';
   var hours = Math.floor(minutes / 60);
-  if (hours < 24) return 'updated ' + hours + 'h ago';
+  if (hours < 24) return hours + 'h ago';
   var days = Math.floor(hours / 24);
-  if (days < 30) return 'updated ' + days + 'd ago';
+  if (days < 30) return days + 'd ago';
   var months = Math.floor(days / 30);
-  if (months < 12) return 'updated ' + months + 'mo ago';
+  if (months < 12) return months + 'mo ago';
   var years = Math.floor(days / 365);
-  return 'updated ' + years + 'y ago';
+  return years + 'y ago';
 }
 
 // Latest of two nullable ISO timestamp strings, or null if both are absent.
@@ -7265,17 +7265,17 @@ function renderProfile(firstName, backTo, container) {
   var bisSectionHTML = featureEnabled('bis')
     ? bisTabIntroHTML +
       '<div class="profile-section"><div class="section-label">BiS Source' +
-      (player.bisLinkUpdatedAt
-        ? ' <span style="font-size:0.85rem;font-weight:400;color:var(--text-dim);">(' +
-          timeAgoLabel(player.bisLinkUpdatedAt) +
-          ')</span>'
-        : '') +
       (backTo !== 'officer'
         ? '<button class="help-btn" onclick="toggleHelp(\'help-bislink-' +
           player.firstName +
           '\')" title="Show help">?</button>'
         : '') +
       '</div>' +
+      (player.bisLinkUpdatedAt
+        ? '<div style="margin:-0.5rem 0 0.75rem;font-size:0.85rem;color:var(--text-dim);">Updated ' +
+          timeAgoLabel(player.bisLinkUpdatedAt) +
+          '</div>'
+        : '') +
       (backTo !== 'officer'
         ? '<div id="help-bislink-' +
           player.firstName +
@@ -7287,11 +7287,6 @@ function renderProfile(firstName, backTo, container) {
       '<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="var l=document.getElementById(\'prio-list-' +
       player.firstName +
       "');l.style.display=l.style.display==='none'?'block':'none';\">BiS List" +
-      (bisListUpdatedAt
-        ? ' <span style="font-size:0.85rem;font-weight:400;color:var(--text-dim);">(' +
-          timeAgoLabel(bisListUpdatedAt) +
-          ')</span>'
-        : '') +
       bisCompletionHTML +
       tierProgressHTML +
       // Self-service (#651): a raider can now sync their own tier picks
@@ -7325,6 +7320,11 @@ function renderProfile(firstName, backTo, container) {
       '<span style="font-size:1.07rem;color:var(--text-dim);">' +
       (backTo === 'landing' ? 'click to collapse' : 'click to expand') +
       '</span></div>' +
+      (bisListUpdatedAt
+        ? '<div style="margin:-0.5rem 0 0.75rem;font-size:0.85rem;color:var(--text-dim);">Updated ' +
+          timeAgoLabel(bisListUpdatedAt) +
+          '</div>'
+        : '') +
       (backTo !== 'officer'
         ? '<div id="help-bislist-' +
           player.firstName +
