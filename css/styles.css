@@ -243,7 +243,7 @@ body.flat-look #landingLoot.pub-loot { max-width: none; }
 
 /* Outbound guild/team link box (#288) -- deliberately outside .site-nav so it
    reads as "leaves the site" rather than another internal tab. */
-.header-links { position:absolute; top:1rem; right:1.5rem; display:flex; align-items:center; gap:0.5rem; padding:0.4rem 0.6rem; background:var(--bg-card); border:1px solid var(--border); border-radius:4px; }
+.header-links { position:absolute; top:1rem; right:1.5rem; display:flex; align-items:center; gap:0.5rem; padding:0.4rem 0.6rem; background:var(--bg-card); border:1px solid var(--border); border-radius:8px; }
 .header-links-label { font-size:0.72rem; letter-spacing:normal; text-transform:none; color:var(--text-muted); font-weight:600; }
 .header-link-icon { display:inline-flex; align-items:center; justify-content:center; width:2.6rem; height:2.6rem; border-radius:4px; background:rgba(255,255,255,0.04); text-decoration:none; opacity:0.8; transition:opacity 0.15s, background 0.15s; }
 .header-link-icon:hover { opacity:1; background:rgba(var(--gold-rgb),0.14); }
@@ -511,7 +511,7 @@ a.prog-boss-heroic-pulls:hover { color:var(--gold); text-decoration:underline; }
 .mini-cal-weekdays { display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:0.3rem; }
 .mini-cal-weekday { text-align:center; font-size:0.79rem; letter-spacing:normal; text-transform:none; color:var(--text-dim); }
 .mini-cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
-.mini-cal-day { min-height:58px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; background:var(--bg-card); border:1px solid var(--border); border-radius:4px; text-decoration:none; color:inherit; }
+.mini-cal-day { min-height:58px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; background:var(--bg-card); border:1px solid var(--border); border-radius:8px; text-decoration:none; color:inherit; }
 .mini-cal-day-pad { background:transparent; border-color:transparent; }
 .mini-cal-daynum { font-size:0.87rem; color:var(--text-muted); }
 .mini-cal-day-raid { border-color:var(--border-mid); }
@@ -594,7 +594,7 @@ select#playerSelect option { background:#1a1d27; }
 
 /* Profile view */
 #profileView { padding:0 2rem 3rem; max-width:820px; width:100%; margin:0 auto; }
-.profile-card { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; overflow:hidden; animation:fadeUp 0.25s ease; }
+.profile-card { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; overflow:hidden; animation:fadeUp 0.25s ease; }
 @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 .role-bar { height:3px; width:100%; }
 .role-bar-Tank   { background:var(--tank); }
@@ -814,7 +814,7 @@ select#playerSelect option { background:#1a1d27; }
 .onboarding-welcome-link { margin-left:0.4rem; background:none; border:none; color:var(--tank); font-weight:600; text-decoration:underline; cursor:pointer; padding:0; font-size:1rem; font-family:inherit; }
 
 /* Contested Items -- collapsed-by-default item rows, click to expand */
-.conflict-item { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; margin-bottom:0.75rem; overflow:hidden; }
+.conflict-item { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; margin-bottom:0.75rem; overflow:hidden; }
 .conflict-item-toggle { display:flex; align-items:center; gap:0.75rem; width:100%; background:none; border:none; padding:1rem 1.25rem; cursor:pointer; text-align:left; font-family:inherit; }
 .conflict-item-toggle:hover { background:var(--bg-elevated); }
 .conflict-item-name { font-size:1.1rem; font-weight:600; color:var(--text); display:flex; align-items:center; gap:0.75rem; flex:1; min-width:0; }
@@ -842,7 +842,7 @@ select#playerSelect option { background:#1a1d27; }
 .prio-drift-title { font-size:1rem; font-weight:700; letter-spacing:normal; text-transform:none; color:var(--gold); margin-bottom:0.55rem; }
 .prio-drift-explainer { font-size:0.87rem; color:var(--text-muted); margin:0.55rem 0 0.6rem; max-width:60em; }
 /* Priority List sub-tab's #1-priorities-held summary table */
-.prio-firstprio-summary { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:0.85rem 1.1rem; margin-bottom:1rem; }
+.prio-firstprio-summary { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:0.85rem 1.1rem; margin-bottom:1rem; }
 .prio-firstprio-title { font-size:1rem; font-weight:700; letter-spacing:normal; text-transform:none; color:var(--text-muted); margin-bottom:0.55rem; }
 .prio-firstprio-list { display:flex; flex-direction:column; gap:0.3rem; margin-top:0.55rem; }
 .prio-firstprio-row { display:flex; flex-wrap:wrap; align-items:center; gap:0.5rem; padding:0.2rem 0; border-bottom:1px solid var(--border); }
@@ -875,14 +875,14 @@ select#playerSelect option { background:#1a1d27; }
 .attend-slider { flex:1; min-width:160px; -webkit-appearance:none; appearance:none; height:4px; border-radius:2px; background:var(--bg-elevated); cursor:pointer; }
 .attend-slider::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:16px; height:16px; border-radius:50%; background:var(--gold); border:2px solid var(--bg-card); cursor:pointer; }
 .attend-slider::-moz-range-thumb { width:16px; height:16px; border-radius:50%; background:var(--gold); border:2px solid var(--bg-card); cursor:pointer; }
-.attend-player-row { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1rem 1.25rem; margin-bottom:0.75rem; }
+.attend-player-row { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:1rem 1.25rem; margin-bottom:0.75rem; }
 .attend-player-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem; }
 .attend-player-name { font-size:1rem; font-weight:600; color:var(--text); }
 .attend-penalty-list { display:flex; flex-direction:column; gap:0.25rem; margin-top:0.5rem; }
 .attend-penalty-entry { display:flex; justify-content:space-between; font-size:1rem; padding:0.2rem 0; border-bottom:1px solid var(--border); }
 
 /* Attendance manage panel */
-.attend-manage-panel { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1.25rem; margin-bottom:1.25rem; }
+.attend-manage-panel { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:1.25rem; margin-bottom:1.25rem; }
 .attend-manage-header { display:flex; align-items:center; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; margin-bottom:1rem; }
 .attend-confirm-banner { background:rgba(var(--gold-rgb),0.07); border:1px solid var(--gold-dim); border-radius:3px; padding:0.65rem 1rem; font-size:1rem; color:var(--text); margin-bottom:0.75rem; display:flex; align-items:center; flex-wrap:wrap; gap:0.5rem; }
 .attend-night-select { appearance:none; -webkit-appearance:none; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:var(--font-body); font-size:1rem; font-weight:500; padding:0.5rem 1rem 0.5rem 0.75rem; border-radius:3px; cursor:pointer; min-width:240px; max-width:100%; }
@@ -907,7 +907,7 @@ select#playerSelect option { background:#1a1d27; }
 .prio-collapsible:hover { color:var(--text); }
 .prio-chevron { font-size:1.02rem; font-weight:400; color:var(--text-dim); }
 .prio-sub-header { font-size:1.02rem; font-weight:600; letter-spacing:normal; text-transform:none; padding:0.4rem 0 0.25rem; margin-top:0.5rem; margin-bottom:0.3rem; }
-.prio-item { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1rem 1.25rem; margin-bottom:0.5rem; }
+.prio-item { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:1rem 1.25rem; margin-bottom:0.5rem; }
 .prio-item-header { display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem; flex-wrap:wrap; }
 .prio-item-slot { font-size:1rem; text-transform:none; letter-spacing:normal; }
 
@@ -935,7 +935,7 @@ select#playerSelect option { background:#1a1d27; }
 .prio-role-Melee  { color:var(--melee);  background:rgba(255,124,92,0.1);  border:1px solid rgba(255,124,92,0.3); }
 .prio-role-Ranged { color:var(--ranged); background:rgba(191,140,255,0.1); border:1px solid rgba(191,140,255,0.3); }
 .prio-chip-disabled { opacity:0.35; cursor:not-allowed; }
-.prio-export-card { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1rem 1.25rem; margin-bottom:1.25rem; }
+.prio-export-card { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:1rem 1.25rem; margin-bottom:1.25rem; }
 .prio-export-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
 .prio-export-label { font-size:1.04rem; font-weight:600; letter-spacing:normal; text-transform:none; color:var(--text-muted); }
 .prio-export-textarea { width:100%; font-family:monospace; font-size:0.93rem; padding:0.6rem 0.75rem; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; resize:vertical; min-height:72px; margin-top:0.85rem; margin-bottom:0.6rem; box-sizing:border-box; }
@@ -1041,7 +1041,7 @@ select#playerSelect option { background:#1a1d27; }
 .signup-status-open { background:rgba(61,220,132,0.12); color:var(--heal); border:1px solid rgba(61,220,132,0.3); }
 .signup-status-closed { background:rgba(255,124,92,0.1); color:var(--melee); border:1px solid rgba(255,124,92,0.25); }
 .signup-officer-note { font-size:1.07rem; color:var(--text-muted); margin-top:1rem; line-height:1.5; }
-.signup-response-card { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1rem 1.25rem; margin-bottom:0.75rem; }
+.signup-response-card { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:1rem 1.25rem; margin-bottom:0.75rem; }
 .signup-response-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
 .signup-response-name { font-family:var(--font-heading); font-size:1.07rem; font-weight:700; color:var(--text); }
 .signup-response-time { font-size:1rem; color:var(--text-muted); letter-spacing:0.04em; white-space:nowrap; }
@@ -1060,7 +1060,7 @@ select#playerSelect option { background:#1a1d27; }
 .self-received-note { font-size:1.02rem; color:var(--text-muted); margin:0.25rem 0 0; line-height:1.4; }
 
 /* Pending requests (officer) */
-.request-card { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1rem 1.25rem; margin-bottom:0.75rem; }
+.request-card { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:1rem 1.25rem; margin-bottom:0.75rem; }
 .request-card-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:0.35rem; }
 .request-player { font-family:var(--font-heading); font-size:1.07rem; font-weight:700; color:var(--text); }
 .request-item { font-size:1.04rem; font-weight:600; color:var(--text); }
