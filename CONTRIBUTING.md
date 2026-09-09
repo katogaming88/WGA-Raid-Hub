@@ -183,8 +183,9 @@ names the version it deployed.
   saying so; `tests/ci/date-format-check.test.js` enforces both
 - Structural checks over the HTML and the CI tooling live in `tests/ci/`
   (`npm run test:ci`): landmarks, heading order, resolvable anchors, the
-  `?v=` asset tags, and the changelog classifier. These read the pages as
-  text, so they judge markup and never behaviour
+  `?v=` asset tags, the changelog classifier and the RLS autocommit guard.
+  These read the pages and the source as text, so they judge markup and never
+  behaviour
 - Accessibility runs in a real browser under `tests/browser/`
   (`npm run test:a11y`), which needs a one-time
   `npx playwright install chromium`. It serves the site locally and answers
@@ -242,7 +243,7 @@ names the version it deployed.
 | `supabase/functions/` | Edge Functions (Deno). Webhook relays (`boe-webhook`, `boe-sold-webhook`, `discord-bot-webhook`, `contact-webhook`), scheduled sync jobs (`wcl-sync`, `wcl-progression-sync`, `twitch-live-check`), and `upload-bio-photo`, which authenticates the caller and is the only writer to Storage -- see "Storage" below |
 | `bot/` | The Discord bot (#954): a discord.js gateway process running on kat's VM under pm2. Ten slash commands, an express endpoint the `discord-bot-webhook` relay posts to, and a 15-minute sweep for the signup sheet. Keeps its own `package.json`, `tsconfig.json` and lockfile, and its own workflow (`.github/workflows/bot.yml`), which runs the format check, its tests and the build on Node 20 to match the VM. It formats with the root prettier config rather than one of its own, and is outside every root script: lint, typecheck, format and the test suites all read `js/`, `scripts/` and `tests/` only |
 | `scripts/import/` | One-off/recurring data import tooling (loot, attendance, etc.) |
-| `scripts/ci/` | CI checks that need more than a workflow step (changelog classification, the team-wide read guard), plus the version stamper (`npm run stamp`), which owns the page registry the asset-version check reads |
+| `scripts/ci/` | CI checks that need more than a workflow step (changelog classification, the team-wide read guard, the RLS autocommit guard), plus the version stamper (`npm run stamp`), which owns the page registry the asset-version check reads |
 | `dbdoc/` | Generated schema docs (tbls). Never edit by hand; regenerate with `npm run db:docs` |
 | `docs/RLS.md` | Hand-maintained RLS policy reference (tbls cannot generate this) |
 
@@ -396,3 +397,45 @@ PRs that change `supabase/migrations/` must also:
   test seed), then `npm run test:rls`. CI runs the same suite on every
   supabase/ or tests/ change. If a policy legitimately changed, update the
   matching assertions in `tests/rls/` and the matrix in docs/RLS.md together
+
+### Writing RLS tests
+
+Every file in `tests/rls/` runs as its own worker against one database, so a
+fixture that commits is visible to every other file until something deletes it.
+That is not a small window to accept: two files writing the same row made a
+third fail on a different case each run, and because the cleanup closed the
+window, the table was clean by the time anyone queried it and the failure read
+as a bug in the file that failed (#1021).
+
+**Fixtures go inside `withTxn` from `tests/rls/helpers.js`**, which opens one
+connection, runs everything in one transaction and always rolls back. It hands
+the test a postgres-role `q` for fixtures and assertions, and `asRole`,
+`asUser` and `asAnon` for calls made as a PostgREST role on that same
+connection. Same connection is the point: a role-scoped read can then see the
+rows the test just wrote without any of them being committed.
+
+```js
+await withTxn(async ({ q, asRole }) => {
+  await q("insert into public.raid_schedule (team_id, weekday, start_time) values (1, 4, '20:00')");
+  const res = await asRole('authenticated', RAIDER_T1)('select count(*)::int as n from public.raid_schedule');
+  expect(res.rows[0].n).toBe(0);
+});
+```
+
+`countAs` and `queryAs` open a connection of their own, so they cannot see an
+uncommitted fixture. Use them against seeded data, never against a row the test
+wrote. Reaching for `pool.query` to work around that is what created the
+problem above.
+
+`scripts/ci/rls-no-autocommit-check.js` enforces this and runs in the Lint
+workflow. It parses each file rather than grepping it. A call that writes
+nothing declares so on or just above itself, which is how the pg_proc catalog
+read in `function-invariants.test.js` passes:
+
+```js
+// rls-pool-read-only: reads the pg_proc catalog, writes nothing.
+```
+
+Run it locally with `node scripts/ci/rls-no-autocommit-check.js`. It cannot see
+a hand-rolled `pool.connect()` that commits instead of rolling back, so a new
+harness of your own is on you rather than on the check.
