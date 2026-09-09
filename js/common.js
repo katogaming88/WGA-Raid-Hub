@@ -7272,7 +7272,7 @@ function renderProfile(firstName, backTo, container) {
         : '') +
       '</div>' +
       (player.bisLinkUpdatedAt
-        ? '<div style="margin:-0.5rem 0 0.75rem;font-size:0.85rem;color:var(--text-dim);">Updated ' +
+        ? '<div style="margin:-0.5rem 0 0.75rem;font-size:1.05rem;font-weight:600;color:var(--gold);">Updated ' +
           timeAgoLabel(player.bisLinkUpdatedAt) +
           '</div>'
         : '') +
@@ -7321,7 +7321,7 @@ function renderProfile(firstName, backTo, container) {
       (backTo === 'landing' ? 'click to collapse' : 'click to expand') +
       '</span></div>' +
       (bisListUpdatedAt
-        ? '<div style="margin:-0.5rem 0 0.75rem;font-size:0.85rem;color:var(--text-dim);">Updated ' +
+        ? '<div style="margin:-0.5rem 0 0.75rem;font-size:1.05rem;font-weight:600;color:var(--gold);">Updated ' +
           timeAgoLabel(bisListUpdatedAt) +
           '</div>'
         : '') +
