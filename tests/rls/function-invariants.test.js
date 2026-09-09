@@ -55,6 +55,7 @@ const DYNAMIC_SQL = [
 ];
 
 async function publicFunctions() {
+  // rls-pool-read-only: reads the pg_proc catalog, writes nothing.
   const { rows } = await pool.query(`
     select p.proname,
            p.prosrc,

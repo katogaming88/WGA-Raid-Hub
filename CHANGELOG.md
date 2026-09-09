@@ -12,6 +12,21 @@ answers to.
 
 ---
 
+## [3.97.7] - 2026-09-08
+
+### Project
+
+- The database test suite no longer fails at random
+  ([#1021](https://github.com/katogaming88/WGA-Raid-Hub/issues/1021)). Two test files set their
+  fixtures up in a way that made them briefly visible to every other test running at the same time,
+  so a test about the raid rotator failed on a different case each run and passed whenever it ran on
+  its own. The rows were cleaned up immediately, which is why the tables looked innocent afterwards
+  and the failure looked like a bug in the test that failed. Both files now write inside a
+  transaction that is rolled back, a check in CI refuses the pattern from coming back, and the
+  denial tests they contain got stronger on the way through: each one now proves its fixture landed
+  before proving the row is hidden, so a setup that quietly failed can no longer pass as a
+  successful denial.
+
 ## [3.97.6] - 2026-09-08
 
 ### Backend

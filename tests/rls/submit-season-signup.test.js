@@ -9,41 +9,11 @@
 // session. The first case below is the one that separates them; the rest are
 // controls that hold on either definition.
 //
-// Same withTxn shape as own-signup.test.js (parameterized uid, since the
-// callers here vary). Each test runs in one rolled-back transaction: fixture
-// writes happen as postgres, the RPC call happens as the impersonated caller,
-// and assertions happen back as postgres.
+// Uses the shared withTxn from helpers.js: each test runs in one rolled-back
+// transaction, fixture writes happen as postgres, the RPC call happens as the
+// impersonated caller, and assertions happen back as postgres.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, SIGNUP_OWNER_T1, RLS_DENIED } from './helpers.js';
-
-async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asRole = (role, uid) => async (text, params) => {
-      await q('savepoint submit_signup_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify(uid ? { sub: uid, role } : { role })
-      ]);
-      await q(`set local role ${role}`);
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint submit_signup_call');
-        throw err;
-      }
-    };
-    const asUser = (uid, text, params) => asRole('authenticated', uid)(text, params);
-    const asAnon = (text, params) => asRole('anon', null)(text, params);
-    return await fn({ q, asUser, asAnon });
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
-}
+import { pool, withTxn, SIGNUP_OWNER_T1, RLS_DENIED } from './helpers.js';
 
 // supabase/seed.sql gives team 1 an activeSignupSeason and no signupsOpen key,
 // so the flag is set per test rather than assumed.
