@@ -1,0 +1,107 @@
+name: Security advisors
+
+# Supabase's security linter, run weekly against production (#1011).
+#
+# The same check runs on every migration PR in schema-docs.yml, but there it
+# reads a schema rebuilt from the migration files, which is not what production
+# has. SQL applied through the dashboard SQL Editor lands on prod and never
+# reaches a file: that is the blind spot migration-ledger-check.yml exists for,
+# and this sweep is the same idea aimed at the shape of the schema rather than
+# at the ledger. It reads the live database.
+#
+# --db-url rather than --linked. --linked reads the Management API and needs an
+# access token no workflow here holds, and it mints a login role as a side
+# effect; --db-url runs the CLI's embedded lint query inside a transaction it
+# always rolls back, so this sweep writes nothing. SUPABASE_DB_URL is the
+# session pooler string (see db-backup.yml for why: the direct connection is
+# IPv6-only and GitHub runners are IPv4-only).
+#
+# What this cannot see, from that same choice: the definer-function-executable
+# findings and the leaked-password toggle come only from the Management API, so
+# a green run here is not the dashboard's Security Advisor page agreeing. It is
+# the SQL lints, which are the ones that describe the schema.
+#
+# Failures ping Discord via the db-backup.yml pattern, since scheduled-workflow
+# failure emails only reach whoever last touched this file.
+on:
+  schedule:
+    - cron: '45 10 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  advisors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check required secret is set
+        id: check_secret
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "Missing required repo secret: SUPABASE_DB_URL"
+            exit 1
+          fi
+
+      # Pinned to the version schema-docs.yml installs, so both gates read one
+      # lint set and a CLI release cannot make this sweep and the PR check
+      # disagree about what counts as a finding. Bump the two together.
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.115.0
+
+      # Two commands on purpose, not a pipeline: a pipe's exit code is the last
+      # command's, so a failed advisor run would feed an empty document to the
+      # script and pass. --fail-on none because the allowlist decides what
+      # fails here, not the CLI's own level threshold.
+      - name: Read advisors and check the allowlist
+        id: advisors
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          supabase db advisors --db-url "$DB_URL" --type security --level warn --fail-on none --output-format json > advisors.json
+          node scripts/ci/advisor-check.js advisors.json
+
+      - name: Notify Discord on scheduled failure
+        if: failure() && github.event_name == 'schedule'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW: ${{ github.workflow }}
+          S_SECRET: ${{ steps.check_secret.outcome }}
+          S_ADVISORS: ${{ steps.advisors.outcome }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_WEBHOOK_URL is not set -- cannot post, but the run above already failed loudly on its own."
+            exit 0
+          fi
+
+          FAILED_STEP="unknown step"
+          [ "$S_SECRET" = "failure" ] && FAILED_STEP="Check required secret is set"
+          [ "$S_ADVISORS" = "failure" ] && FAILED_STEP="Read advisors and check the allowlist"
+
+          PAYLOAD=$(cat <<EOF
+          {
+            "embeds": [{
+              "title": "A security advisor finding on production is not on the allowlist",
+              "color": 15158332,
+              "fields": [
+                { "name": "Workflow", "value": "${WORKFLOW}", "inline": true },
+                { "name": "Failed step", "value": "${FAILED_STEP}", "inline": true }
+              ],
+              "url": "${RUN_URL}"
+            }]
+          }
+          EOF
+          )
+
+          curl -s -o /dev/null -w "%{http_code}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK_URL"
+          echo

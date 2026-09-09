@@ -183,9 +183,9 @@ names the version it deployed.
   saying so; `tests/ci/date-format-check.test.js` enforces both
 - Structural checks over the HTML and the CI tooling live in `tests/ci/`
   (`npm run test:ci`): landmarks, heading order, resolvable anchors, the
-  `?v=` asset tags, the changelog classifier and the RLS autocommit guard.
-  These read the pages and the source as text, so they judge markup and never
-  behaviour
+  `?v=` asset tags, the changelog classifier, the RLS autocommit guard and the
+  security advisor allowlist. These read the pages and the source as text, so
+  they judge markup and never behaviour
 - Accessibility runs in a real browser under `tests/browser/`
   (`npm run test:a11y`), which needs a one-time
   `npx playwright install chromium`. It serves the site locally and answers
@@ -243,7 +243,7 @@ names the version it deployed.
 | `supabase/functions/` | Edge Functions (Deno). Webhook relays (`boe-webhook`, `boe-sold-webhook`, `discord-bot-webhook`, `contact-webhook`), scheduled sync jobs (`wcl-sync`, `wcl-progression-sync`, `twitch-live-check`), and `upload-bio-photo`, which authenticates the caller and is the only writer to Storage -- see "Storage" below |
 | `bot/` | The Discord bot (#954): a discord.js gateway process running on kat's VM under pm2. Ten slash commands, an express endpoint the `discord-bot-webhook` relay posts to, and a 15-minute sweep for the signup sheet. Keeps its own `package.json`, `tsconfig.json` and lockfile, and its own workflow (`.github/workflows/bot.yml`), which runs the format check, its tests and the build on Node 20 to match the VM. It formats with the root prettier config rather than one of its own, and is outside every root script: lint, typecheck, format and the test suites all read `js/`, `scripts/` and `tests/` only |
 | `scripts/import/` | One-off/recurring data import tooling (loot, attendance, etc.) |
-| `scripts/ci/` | CI checks that need more than a workflow step (changelog classification, the team-wide read guard, the RLS autocommit guard), plus the version stamper (`npm run stamp`), which owns the page registry the asset-version check reads |
+| `scripts/ci/` | CI checks that need more than a workflow step (changelog classification, the team-wide read guard, the RLS autocommit guard, the security advisor allowlist), plus the version stamper (`npm run stamp`), which owns the page registry the asset-version check reads |
 | `dbdoc/` | Generated schema docs (tbls). Never edit by hand; regenerate with `npm run db:docs` |
 | `docs/RLS.md` | Hand-maintained RLS policy reference (tbls cannot generate this) |
 
@@ -330,6 +330,33 @@ A new definer function that is meant to be anon-callable is added to
 `ANON_DEFINER_ALLOWLIST` in that test file, in the same PR as its migration. The
 test asserts set equality, so an accidental grant and an accidental revoke both
 fail. `npm run test:rls` runs it.
+
+### Security advisors
+
+Supabase's own security linter runs on every migration PR (#1011), in the schema
+docs workflow, against the stack that job has just built from the migration
+files. `scripts/ci/advisor-check.js` reads the report and fails anything at WARN
+or above that is not in its allowlist, printing the lint, the object and the
+remediation URL. Run it locally the way CI does:
+
+```bash
+supabase db advisors --local --type security --level warn --fail-on none --output-format json > advisors.json
+node scripts/ci/advisor-check.js advisors.json
+```
+
+Each allowlist entry carries its reason in the file, and the issue that retires
+it where one exists. An entry keyed on a `cacheKey` accepts one object and
+**fails the run once it matches nothing**, so a finding that gets fixed takes its
+entry out with it, and a report that came back empty cannot pass as a clean
+schema. An entry keyed on a lint `name` accepts that whole lint and passes when
+it matches nothing.
+
+The local run and `--linked` do not read the same linter, which decides what a
+green run means. `--local` and `--db-url` run the CLI's embedded SQL query, 23
+lints, inside a transaction it rolls back. `--linked` reads the Management API,
+and the definer-function-executable findings and the leaked-password toggle come
+only from there, so no CI run can produce them. `.github/workflows/security-advisors.yml`
+sweeps production weekly through `--db-url` and inherits the same limit.
 
 ## Storage
 
