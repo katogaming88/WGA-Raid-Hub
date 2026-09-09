@@ -12,6 +12,18 @@ answers to.
 
 ---
 
+## [3.98.0] - 2026-09-09
+
+### Frontend
+
+- New officer-only **Reassign** sub-tab on the Loot tab ([#1029](https://github.com/katogaming88/WGA-Raid-Hub/issues/1029)):
+  pick a player, see their raid-awarded loot, and reassign a specific item to a different roster
+  player -- for when loot council awarded it to one raider and it was then traded in-game to
+  someone else. No new RPC or migration: `rclc_loot` already has a full officer RLS write policy,
+  so this is a plain client update plus an audit log entry, the same pattern already used for
+  correcting an attendance report's exclusion flag. Received badges elsewhere are computed live
+  from `rclc_loot`, so the correction shows up everywhere else the next time that data loads.
+
 ## [3.97.8] - 2026-09-08
 
 ### Project
