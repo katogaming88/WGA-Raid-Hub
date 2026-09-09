@@ -90,46 +90,76 @@ body { background:var(--bg); color:var(--text); font-family:var(--font-body); fo
 .theme-switcher-dev label { font-size:0.85rem; color:var(--text-muted); letter-spacing:0.06em; text-transform:uppercase; min-width:3.2rem; }
 .theme-switcher-dev select { font-family:var(--font-body); font-size:0.95rem; background:var(--bg-elevated); color:var(--text); border:1px solid var(--border-mid); border-radius:4px; padding:0.3rem 0.5rem; }
 
-/* "Flat & minimal" look (#864 follow-up) -- applied directly to index.html
-   via <body class="flat-look">, not a switcher toggle: this touches so many
-   rules (text-transform/letter-spacing alone is on 80+ selectors across the
-   whole stylesheet) that plumbing it as a live-comparable toggle everywhere
-   would be a much bigger job than trying the direction out first. Scoped by
-   the body class rather than editing the base rules in place, so
-   officer.html/guild.html/admin.html (sharing this same stylesheet) are
-   completely unaffected until this direction is confirmed -- at which point
-   the winning values replace the base rules and this whole block goes away,
-   the same lifecycle the theme/font playground above has.
-   The three moves: (1) uppercase+letter-spaced labels become plain sentence
-   case -- that treatment is what reads as "guild site," (2) colored
-   border-top accent stripes and glow/shadow effects drop out in favor of
-   plain 1px borders and flat backgrounds, (3) a bit more breathing room
-   between sections. Deliberately NOT touching layout/structure, spacing
-   within a component, or any color value -- those are separate questions
-   from this one. */
-body.flat-look .site-nav-item,
-body.flat-look .sidebar-sub,
-body.flat-look .oqa-label,
-body.flat-look .pub-stat-label,
-body.flat-look .prog-aotc,
-body.flat-look .roster-sub-tab,
-body.flat-look .about-sub-tab,
-body.flat-look .pub-loot-title,
-body.flat-look .pub-loot-diff,
-body.flat-look .mini-cal-header,
-body.flat-look .mini-cal-weekday,
-body.flat-look .selector-label,
-body.flat-look .team-switcher,
-body.flat-look .modal-title,
-body.flat-look .roster-summary-title,
-body.flat-look .roster-summary-role-label,
-body.flat-look .roster-summary-total-label,
-body.flat-look .roster-summary-section-label,
-body.flat-look .btn,
-body.flat-look .badge,
-body.flat-look .discord-nav-dropdown button,
-body.flat-look .theme-switcher-dev label,
-body.flat-look .calendar-legend-item {
+/* "Flat & minimal" look (#864 follow-up). Move 1 of 3 -- uppercase+letter-
+   spaced labels become plain sentence case, the treatment that reads as
+   "guild site" rather than "marketing template" -- is confirmed and applied
+   here unconditionally so index.html and officer.html (and every other page
+   sharing this stylesheet) read consistently, instead of index.html alone
+   via <body class="flat-look">. Moves 2 (border-top accent stripes/glow) and
+   3 (breathing room between sections) are separate, narrower decisions;
+   move 2 already landed piecemeal on the specific cards it applied to
+   (#1043), move 3 remains scoped to body.flat-look below, unconfirmed. */
+.site-nav-item,
+.sidebar-sub,
+.oqa-label,
+.pub-stat-label,
+.prog-aotc,
+.roster-sub-tab,
+.about-sub-tab,
+.pub-loot-title,
+.pub-loot-diff,
+.mini-cal-header,
+.mini-cal-weekday,
+.selector-label,
+.team-switcher,
+.modal-title,
+.roster-summary-title,
+.roster-summary-role-label,
+.roster-summary-total-label,
+.roster-summary-section-label,
+.btn,
+.badge,
+.discord-nav-dropdown button,
+.theme-switcher-dev label,
+.calendar-legend-item,
+.header-sub,
+.header-links-label,
+.stream-widget-pill,
+.section-label,
+.priority-item-slot,
+.stat-label,
+.nav-item,
+.roster-table th,
+.roster-table tr.group-header td,
+.day-roster-edit-btn,
+.tag,
+.filter-chip,
+.trial-promo-title,
+.trial-promo-table th,
+.onboarding-alert-title,
+.onboarding-alert-table th,
+.received-badge,
+.prio-overalloc-title,
+.prio-drift-title,
+.prio-firstprio-title,
+.prio-overalloc-diff,
+.fairness-section-header,
+.prio-section-header,
+.prio-sub-header,
+.prio-item-slot,
+.item-detail-line,
+.prio-rank-wishlist,
+.prio-rank-received,
+.prio-export-label,
+.prio-edit-section-label,
+.prio-diff-badge,
+.footer,
+.signup-step-label,
+.signup-label,
+.signup-cta,
+.signup-status-label,
+.add-player-label,
+.help-ref-heading {
   text-transform: none;
   letter-spacing: normal;
 }
