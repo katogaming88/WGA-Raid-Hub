@@ -122,6 +122,10 @@ For the full file-by-file breakdown, local dev setup (Docker + Supabase CLI), mi
 
 See [`docs/supabase-local-dev-setup.md`](docs/supabase-local-dev-setup.md) for setting up the local Supabase stack (Docker + CLI) from scratch.
 
+To see a PR's migration running under the site before it merges, section 10 of
+that document is four commands from `migration:new` to `localhost:3000` signed
+in as a seeded persona.
+
 ```
 npm run lint           # eslint over js/, scripts/, tests/
 npm run format:check   # prettier check

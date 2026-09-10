@@ -337,6 +337,119 @@ reading its id and secret through `env()` from a root `.env` (already
 gitignored), plus `http://127.0.0.1:54321/auth/v1/callback` added to the redirect
 list of a Discord application. The seeded personas cover every role without it.
 
+## 10. Rehearse a migration PR end to end
+
+Since #1050 the merge is what applies a migration to production, so your own
+machine is the place to see a migration running under the site, before the PR
+merges. Sections 8 and 9 supply the pieces; this is the order for a PR that
+touches a migration and a page.
+
+**Four commands from an empty file to the site signed in on top of it.** The
+stack has to be up first (`supabase start`), and `npm run serve` holds its
+terminal, so it wants a second one.
+
+```sh
+npm run migration:new -- <slug>   # 1. stamps a file under supabase/migrations/; write the SQL in it
+supabase db reset                 # 2. rebuilds the database from every migration, then the seed
+npm run serve                     # 3. serves the site at http://localhost:3000 from your checkout
+npm run dev:login -- officer      # 4. prints a sign-in link; open it
+```
+
+Then open the pages the PR touches, as the person the change is for. The table
+in section 9 says who each persona is; `officer` is the right first pick for
+most schema work and `raider` for anything on the profile side. This is the step
+nothing else covers: the RLS suite proves what the policies allow and says
+nothing about whether the page asks for it correctly.
+
+Once the loop is running:
+
+- **Change the SQL, reset, reload.** `supabase db reset` is the only way to
+  re-apply a migration file, and it rebuilds from empty every time, so what you
+  are looking at is what a fresh database gets rather than the accumulation of
+  your afternoon. Let it finish before reloading.
+- **Change a page, reload.** The site is served straight from your checkout and
+  read from disk on every request, so nothing needs restarting.
+- **A reset does not sign you out.** The pages read the session from the browser
+  rather than asking the server, and the seed puts the same people back, so what
+  you already have keeps working. It lasts about an hour, after which the
+  renewal fails against a database that no longer holds the token and you mint
+  another link.
+- **A reset does not read `supabase/config.toml` either.** If you changed
+  anything under `[auth]`, that takes `supabase stop && supabase start`; section
+  9 has the symptom, which is a sign-in link that keeps landing on the old port.
+- **On the slug and the stamp:** name the slug after the object changed
+  (`<table>_<column>`, `<function>_<what changed>`), and open the file with
+  `-- #NNN: <what it does>.`, a bare `--`, then why it is needed. Never
+  `supabase migration new`, which stamps UTC and has twice sorted a later
+  migration ahead of an earlier one.
+
+**Before opening the PR, regenerate what the schema drives.** CI fails a PR
+whose generated docs are stale and cannot regenerate them for you:
+
+```sh
+npm run db:docs     # dbdoc/, after any schema change
+npm run db:rls      # docs/rls_policies.csv, only if a policy changed
+```
+
+Section 6 has the tbls install, which is a manual download the first time, and
+the version trap that produces a trigger-order diff that is not real staleness.
+A policy change also moves [RLS.md](RLS.md) and the assertions in `tests/rls/`,
+in the same PR.
+
+**What the PR runs for you.** The RLS suite, `supabase db lint` and the security
+advisors all run on a migration PR against a stack CI builds from your files, so
+none of them has to run here first. Run them locally when you want the answer
+sooner than the checks give it:
+
+```sh
+npm run test:rls
+supabase db lint --local --schema public --level warning --fail-on warning
+supabase db advisors --local --type security --level warn --fail-on none --output-format json > advisors.json
+node scripts/ci/advisor-check.js advisors.json
+```
+
+**What the ledger check on your PR is saying.** On a pull request it runs with
+`--pending-ok`: a committed migration that is not on production yet passes and
+is listed, because that is now the normal state of every migration PR. It still
+fails a file that sorts below the newest version applied on prod, and a ledger
+row with no file behind it. Section 7 has both checks and the one case they
+read differently.
+
+**Do not push it to production first.** `supabase db push` from your branch
+works, which is the problem: it writes the ledger row while the file is still
+unsettled. Re-stamp the migration, which the out-of-order rule regularly asks
+for, or abandon the PR, and production is left holding a ledger row naming a
+file `main` never had. The strict check fails that, the strict check runs inside
+the Deploy workflow, and every deploy for everyone is blocked until someone
+repairs the ledger by hand. Pushing by hand is the repair route now, not the
+delivery route.
+
+**When the stack misbehaves, ask whether the database is there before reading
+any assertion.** A run that fails wholesale is a claim about the environment
+rather than about the change:
+
+```sh
+psql "postgres://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable" \
+  -c "select count(*) from pg_proc where pronamespace = 'public'::regnamespace"
+```
+
+Two known failures answer that badly, and a completed `supabase db reset` cures
+both. A stack that has been up for many hours can report `(healthy)` from
+`docker ps` while Postgres refuses every client, because the healthcheck is a
+claim about the container and not about connections. And a reset that is still
+running has only part of its schema applied, so anything started against it is
+genuinely missing objects. Both arrive as errors raised per test, which read
+like assertion failures, which is why this one query is worth more than the
+first red case. Section 1d covers psql if you skipped it.
+
+**The local stack is not sealed from production yet.** Four migrations schedule
+`pg_cron` jobs whose command carries the production functions URL
+(`twitch-live-check`, `wcl-progression-sync`, `blizzard-gear-sync`,
+`optional-rsvp-reminders`), every `supabase db reset` recreates them, and a
+running stack calls production every five minutes. The calls are refused with
+401, because the local Vault holds no secret and never has, but a refused call
+is still a call. #1055 deactivates them in the seed.
+
 ## Known quirk: vector container restart loop (Windows)
 
 On Docker Desktop for Windows the `supabase_vector` container (log shipping for the
