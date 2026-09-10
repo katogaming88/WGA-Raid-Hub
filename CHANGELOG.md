@@ -12,6 +12,30 @@ answers to.
 
 ---
 
+## [3.102.0] - 2026-09-10
+
+### Project
+
+- `npm run db:snapshot` loads the nightly production backup into the local
+  stack, so a migration can be rehearsed against the data production actually
+  holds rather than against a 27-row seed
+  ([#1056](https://github.com/katogaming88/WGA-Raid-Hub/issues/1056)). It picks
+  the newest dump out of R2, resets to the newest migration that had merged
+  when the dump was taken, empties and reloads every table in `public`, clears
+  the links into `auth.users` so a local sign-in can bind to a real person's
+  rows, then runs the branch's own migrations on top. `--plan` prints the steps
+  and runs nothing. It needs a read-only bucket token, and the result is
+  production data on the machine: the next reset wipes it and the downloaded
+  file is deleted as soon as the restore succeeds.
+- Section 12 of the local dev setup doc covers who can reach the bucket and how
+  a token is granted, the one-time profile setup that keeps the account id off
+  every command line, signing in with a real Discord id once the seeded
+  personas are gone, and the four ways it fails with what to do about each.
+- The backup runbook named an AWS CLI profile (`wga-backup-ro`) that does not
+  exist, so its two commands failed for anyone following them. It now names the
+  real one and relies on the endpoint set on that profile rather than repeating
+  the account id.
+
 ## [3.101.3] - 2026-09-10
 
 ### Functions

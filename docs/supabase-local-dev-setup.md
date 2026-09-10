@@ -531,6 +531,140 @@ since it holds no state:
 docker restart supabase_kong_WGA-Raid-Hub
 ```
 
+## 12. Rehearse against last night's production data
+
+Sections 8 to 11 all run on the 27-row seed, so a migration is rehearsed on
+three players and two teams and a page is clicked through on the same. This
+loads the nightly backup instead: the `pg_dump` of `public` that
+`db-backup.yml` ships to R2 every morning, restored under the schema it was
+taken from, with this branch's own migrations run on top.
+
+```sh
+npm run db:snapshot           # newest dump, schema version worked out for you
+npm run db:snapshot -- --plan # print the steps and run nothing
+```
+
+**This puts production data on your machine.** Real names, Discord ids, officer
+notes, the audit log. The next `supabase db reset` wipes it, the downloaded
+file is deleted as soon as the restore succeeds, and none of it is ever
+committed or shared. Treat the laptop it is on the way you would treat the
+production dashboard.
+
+### Getting access to the bucket
+
+Who can reach it today:
+
+- **kat**, who owns the Cloudflare account and the bucket.
+- **The repo's Actions secrets**, which the nightly workflow uses.
+- **Russell**, through the read-only token from #544, in a local AWS CLI
+  profile.
+
+A token to this bucket is a copy of production, so it is granted the way
+production access is granted, not the way a dev tool is. If you need one, kat
+mints it in the Cloudflare dashboard scoped to this one bucket with **Object
+Read only**, never the read-write token the workflow uses and never an
+account-wide one. One token per person: R2 has no per-user identity, the token
+*is* the identity, so a shared one cannot be revoked for one person.
+
+Set it up once:
+
+```sh
+aws configure --profile wga-raidhub-backups-ro
+aws configure set endpoint_url https://<account-id>.r2.cloudflarestorage.com --profile wga-raidhub-backups-ro
+```
+
+The second line is why no command here carries `--endpoint-url` and why the
+account id is typed exactly once. It is not in this repo (it is a repo secret);
+it is on the R2 page of the Cloudflare dashboard. `npm run db:snapshot` uses
+that profile by default; `--profile <name>` or `AWS_PROFILE` overrides it.
+
+### What it does, and why each step is there
+
+1. Lists the bucket and takes the newest `wga-<date>.dump`, ignoring the
+   `wga-auth-` dumps beside it.
+2. Works out the schema that dump belongs to: the newest migration **merged**
+   before the dump was captured. Merged, not stamped, because since #1050 the
+   merge is what applies a migration to production, and a PR that sits open for
+   a day is normal here. `supabase db reset --version <that> --no-seed`.
+3. Switches the cron jobs off. The seed normally does that (section 10) and
+   `--no-seed` skipped it.
+4. Empties every table in `public`. 46 migrations insert rows of their own, and
+   a data-only restore on top of those would stop at the first duplicate key.
+   The list comes from the catalog, so a new table cannot be missed.
+5. `pg_restore --data-only --disable-triggers`. Triggers off because the nine
+   foreign keys into `auth.users` would every one fail: your local `auth.users`
+   is empty and the restored rows carry production's ids.
+6. Nulls those nine columns. This is the full-rebuild runbook's own step 9, and
+   it is what makes signing in work: `link_auth_user_to_member()` only ever
+   fills a link that is `null`, so leaving production's ids in place would mean
+   signing in successfully and seeing nothing.
+7. `supabase migration up --local`, so this branch's migrations run on
+   production-shaped data. This is the step the whole thing exists for.
+8. Prints the row counts of the eight tables the backup workflow refuses to see
+   empty, so a restore that technically succeeded but loaded nothing is
+   visible.
+
+Sequences come back with the data. `restart identity` resets them by ownership
+rather than by name, which is what handles `season_signups` still owning the
+legacy `signups_id_seq`, and the dump then sets each one. No `setval` by hand,
+unlike the selective restore in [backup-restore.md](backup-restore.md).
+
+### Signing in afterwards
+
+The seeded personas are gone: they were seed rows and the seed did not run. Use
+a real Discord id instead, which the restored roster is full of:
+
+```sh
+psql "postgres://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable" \
+  -c "select discord_id, name_realm, role from public.team_members where role = 'officer' limit 5"
+npm run dev:login -- --discord-id <one of those>
+```
+
+That mints a local account whose `provider_id` is that id, which is what the
+link trigger keys on, so it binds to that person's real rows across
+`team_members`, `site_admins`, `boe_managers` and `guild_officers`.
+`npm run dev:login -- officer` would mint an account with no `provider_id` at
+all and sign you in with no access, which reads like broken policies.
+
+Photos still point at production Storage, so they either load from the public
+bucket or do not load. Nothing to fix.
+
+**Do not run `npm run test:rls` against a snapshot.** The suite asserts against
+the seed, and the seeded personas and fixtures are not there. `supabase db
+reset` first, which also puts the quiet cron jobs back.
+
+### When it fails
+
+Every step stops on its own error and names itself, and the restore runs in one
+transaction, so a failure leaves the tables empty rather than half loaded. The
+downloaded dump is kept on a failure and deleted on success.
+
+- **`ERROR: column "..." does not exist`, naming a table.** The dump and the
+  schema disagree. Usually the checkout is behind: `git pull` on `main` (or
+  rebase the branch) and run it again. Otherwise pass an older `--dump` or an
+  explicit `--version`.
+- **`No migration on this branch was merged before ...`.** The dump predates
+  the history you have, or the clone is shallow. Pass `--version <stamp>`.
+- **`SSL: SSLV3_ALERT_HANDSHAKE_FAILURE`** from `aws`. This is always the
+  account id in the endpoint and never the path or the key, because TLS
+  finishes before the request path is sent. Re-check the `endpoint_url` on the
+  profile.
+- **`input file is too short`** from `pg_restore`. A truncated download, which
+  on this machine usually means an unclean shutdown mid-fetch. Run it again.
+
+If your `pg_restore` is older than 17 it cannot read the archive. The stack's
+own container has a matching one:
+
+```sh
+MSYS_NO_PATHCONV=1 docker cp <the dump> supabase_db_WGA-Raid-Hub:/tmp/wga.dump
+MSYS_NO_PATHCONV=1 docker exec supabase_db_WGA-Raid-Hub \
+  pg_restore --data-only --disable-triggers --no-owner --exit-on-error --single-transaction \
+  -U supabase_admin -d postgres /tmp/wga.dump
+```
+
+`MSYS_NO_PATHCONV=1` because those are paths inside the container: without it
+Git Bash rewrites them and the error names a path you never typed.
+
 ## Known quirk: vector container restart loop (Windows)
 
 On Docker Desktop for Windows the `supabase_vector` container (log shipping for the
