@@ -17,14 +17,66 @@
 --            team_leader role anywhere, but granted guild_officers -- models
 --            a Guild Master raiding on one team with no team-leadership role
 
-insert into auth.users (id) values
-  ('00000000-0000-0000-0000-000000000001'),
-  ('00000000-0000-0000-0000-000000000002'),
-  ('00000000-0000-0000-0000-000000000003'),
-  ('00000000-0000-0000-0000-000000000004'),
-  ('00000000-0000-0000-0000-000000000005'),
-  ('00000000-0000-0000-0000-000000000006'),
-  ('00000000-0000-0000-0000-000000000007');
+-- The auth side of those identities (#1053). Until this they were bare ids,
+-- which is all tests/rls needs (it impersonates through request.jwt.claims
+-- inside a rolled-back transaction and never authenticates). A browser cannot
+-- do that, so signing in to the local site needs rows the auth service will
+-- issue a magic link against: `npm run dev:login -- officer`.
+--
+-- Three details are load bearing:
+--   * provider_id must equal the grant row's discord_id below, because
+--     link_auth_user_to_member() keys on that. A mismatch signs in fine and
+--     then sees nothing, which reads as broken policies.
+--   * the four token columns are '' rather than null. GoTrue scans them into
+--     plain strings, so a null is a 500 on sign-in; the other four token
+--     columns already default to ''.
+--   * @wga.local is never a real inbox, and the local stack mails nothing
+--     anyway (Mailpit catches it).
+--
+-- ...0006 gets no persona name in the login script because it stands for
+-- somebody with a signup and no roster row, so it has no grant row to link to.
+-- `npm run dev:login -- --discord-id <id>` reaches any identity, seeded or not.
+insert into auth.users (
+  instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+  confirmation_token, recovery_token, email_change, email_change_token_new,
+  raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+)
+select
+  '00000000-0000-0000-0000-000000000000',
+  p.id::uuid,
+  'authenticated',
+  'authenticated',
+  p.email,
+  '',
+  now(),
+  '', '', '', '',
+  '{"provider":"email","providers":["email"]}'::jsonb,
+  jsonb_build_object('provider_id', p.provider_id, 'full_name', p.full_name),
+  now(),
+  now()
+from (values
+  ('00000000-0000-0000-0000-000000000001', 'officer@wga.local',       'discord-officer-1',      'Seed Officer'),
+  ('00000000-0000-0000-0000-000000000002', 'leader@wga.local',        'discord-leader-1',       'Seed Leader'),
+  ('00000000-0000-0000-0000-000000000003', 'raider@wga.local',        'discord-raider-1',       'Seed Raider'),
+  ('00000000-0000-0000-0000-000000000004', 'admin@wga.local',         'discord-site-admin',     'Seed Admin'),
+  ('00000000-0000-0000-0000-000000000005', 'officer2@wga.local',      'discord-officer-2',      'Seed Officer Two'),
+  ('00000000-0000-0000-0000-000000000006', 'signup-owner@wga.local',  'discord-signup-owner',   'Seed Signup Owner'),
+  ('00000000-0000-0000-0000-000000000007', 'guild-officer@wga.local', 'discord-guildofficer-1', 'Seed Guild Officer')
+) as p(id, email, provider_id, full_name);
+
+-- One identity row each, so an account looks like one that signed in rather
+-- than one conjured in SQL. The auth service reads these when listing a user's
+-- providers.
+insert into auth.identities (provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+select
+  u.raw_user_meta_data ->> 'provider_id',
+  u.id,
+  jsonb_build_object('sub', u.id::text, 'email', u.email, 'provider_id', u.raw_user_meta_data ->> 'provider_id'),
+  'email',
+  now(),
+  now(),
+  now()
+from auth.users u;
 
 insert into public.teams (id, name, slug) values
   (1, 'Team Phoenix', 'phoenix'),

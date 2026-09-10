@@ -45,16 +45,19 @@ const USERS = `
 
 describe('seeded personas (#1053)', () => {
   it('seeds the identities the RLS suite documents, so the assertions below have a subject', async () => {
+    // rls-pool-read-only: reads the seeded identities, writes nothing.
     const { rows } = await pool.query(USERS);
     expect(rows.length).toBe(7);
   });
 
   it('gives every seeded user an email, which is what a link is issued against', async () => {
+    // rls-pool-read-only: reads the seeded identities, writes nothing.
     const { rows } = await pool.query(USERS);
     expect(rows.filter((r) => !r.email).map((r) => r.id)).toEqual([]);
   });
 
   it('gives every seeded user the aud and role the auth service expects', async () => {
+    // rls-pool-read-only: reads the seeded identities, writes nothing.
     const { rows } = await pool.query(USERS);
     expect(rows.filter((r) => r.aud !== 'authenticated' || r.role !== 'authenticated')).toEqual([]);
   });
@@ -63,6 +66,7 @@ describe('seeded personas (#1053)', () => {
     // GoTrue reads these into plain strings, so a NULL is a 500 on sign-in
     // rather than a validation error. The columns with an empty-string default
     // are already safe; these four have no default.
+    // rls-pool-read-only: reads the seeded identities, writes nothing.
     const { rows } = await pool.query(USERS);
     const nulls = rows
       .filter(
@@ -79,6 +83,7 @@ describe('seeded personas (#1053)', () => {
   it('matches each user provider_id to the discord_id of the grant row it stands for', async () => {
     // The link trigger (link_auth_user_to_member) keys on exactly this, so a
     // mismatch is an account that signs in and can see nothing.
+    // rls-pool-read-only: reads the seeded identities, writes nothing.
     const { rows } = await pool.query(USERS);
     const granted = rows.filter((r) => r.grant_discord_id !== null);
     expect(granted.length).toBeGreaterThan(4);
@@ -86,6 +91,7 @@ describe('seeded personas (#1053)', () => {
   });
 
   it('gives every user an identities row, so the account looks like one that signed in', async () => {
+    // rls-pool-read-only: reads the seeded identities, writes nothing.
     const { rows } = await pool.query(
       'select u.id from auth.users u left join auth.identities i on i.user_id = u.id where i.user_id is null'
     );
@@ -98,6 +104,7 @@ describe('seeded personas (#1053)', () => {
     const source = readFileSync(join(ROOT, 'scripts', 'dev', 'local-login.js'), 'utf8');
     const emails = [...source.matchAll(/'([a-z0-9-]+@wga\.local)'/g)].map((m) => m[1]);
     expect(emails.length).toBeGreaterThan(0);
+    // rls-pool-read-only: reads the seeded identities, writes nothing.
     const { rows } = await pool.query(USERS);
     const seeded = new Set(rows.map((r) => r.email));
     expect(emails.filter((email) => !seeded.has(email))).toEqual([]);

@@ -540,10 +540,14 @@ describe('team officers settle payouts for their own team (#888)', () => {
 // caller's Discord id on the row (null for anon), a raider reads the rows they
 // submitted signed in whatever character name they typed, and the listings of
 // those rows come with them. Never client-supplied: the trigger keeps the
-// column off the plain-UPDATE list. The seed's auth users carry no provider_id
-// (supabase/seed.sql), so a synthetic finder is inserted here; its Discord id
-// matches no team_members, site_admins or boe_managers row, so
-// link_auth_user_to_member() links nothing.
+// column off the plain-UPDATE list. Two synthetic users are inserted here
+// rather than borrowed from the seed: the finder, whose Discord id matches no
+// team_members, site_admins or boe_managers row so link_auth_user_to_member()
+// links nothing, and a raider carrying no provider_id at all. Both used to come
+// free from the seed, whose auth users held an id and nothing else; #1053 gave
+// every seeded user a Discord identity so they can sign in to the local site,
+// which left the two cases below with no subject. They own their fixtures now,
+// so a later seed change cannot quietly take the subject away again.
 describe("the finder's Discord id (#889)", () => {
   const FINDER = '00000000-0000-0000-0000-0000000000a9';
   const FINDER_DISCORD = 'discord-finder-9';
@@ -552,6 +556,20 @@ describe("the finder's Discord id (#889)", () => {
       FINDER,
       FINDER_DISCORD
     ]);
+  // A raider on team 1 whose token carries no provider_id, so
+  // current_discord_id() is null for them. Team 1 rather than no team at all,
+  // because that is what these two cases used to assert against and the team
+  // membership is what makes "sees nothing" a real answer rather than a
+  // vacuous one.
+  const NO_DISCORD = '00000000-0000-0000-0000-0000000000aa';
+  const addNoDiscordRaider = async (q) => {
+    await q('insert into auth.users (id) values ($1)', [NO_DISCORD]);
+    await q(
+      `insert into public.team_members (team_id, discord_id, auth_user_id, role, name_realm)
+       values (1, 'discord-no-token-id', $1, 'raider', 'Seednotoken-Illidan')`,
+      [NO_DISCORD]
+    );
+  };
   // Team 4 (Wrathless) has no players, so the typed name never resolves and
   // the Discord id is the only link the row carries.
   const submit = (args) => `select public.submit_boe_found(${args}) as id`;
@@ -586,25 +604,30 @@ describe("the finder's Discord id (#889)", () => {
     });
   });
 
-  // Green before and after the migration: the seeded raider has no
-  // provider_id, so current_discord_id() is null for them, and a null must
-  // never match the null on a row submitted signed out.
+  // Green before and after the migration: a caller with no provider_id has a
+  // null current_discord_id(), and a null must never match the null on a row
+  // submitted signed out.
   it('a user with no Discord id sees neither a signed-in find nor a signed-out one', async () => {
     await withTxn(async ({ q, asUser, asAnon }) => {
       await addFinder(q);
+      await addNoDiscordRaider(q);
       await asUser(FINDER, submit(FIND));
       const id = (await asAnon(submit(FIND))).rows[0].id;
       await asUser(OFFICER_T1, 'select public.boe_record_listing($1, 100000)', [id]);
-      expect((await asUser(RAIDER_T1, 'select id from public.boe_items')).rows.length).toBe(0);
-      expect((await asUser(RAIDER_T1, 'select id from public.boe_listings')).rows.length).toBe(0);
+      expect((await asUser(NO_DISCORD, 'select id from public.boe_items')).rows.length).toBe(0);
+      expect((await asUser(NO_DISCORD, 'select id from public.boe_listings')).rows.length).toBe(0);
     });
   });
 
   it('current_discord_id() is null for anon and for a user without a provider id', async () => {
     await withTxn(async ({ q, asUser, asAnon }) => {
       await addFinder(q);
+      await addNoDiscordRaider(q);
       expect((await asAnon('select public.current_discord_id() as d')).rows[0].d).toBeNull();
-      expect((await asUser(RAIDER_T1, 'select public.current_discord_id() as d')).rows[0].d).toBeNull();
+      expect((await asUser(NO_DISCORD, 'select public.current_discord_id() as d')).rows[0].d).toBeNull();
+      // The seeded raider now carries one (#1053), which is the other half of
+      // the same rule and would otherwise go unasserted.
+      expect((await asUser(RAIDER_T1, 'select public.current_discord_id() as d')).rows[0].d).toBe('discord-raider-1');
       expect((await asUser(FINDER, 'select public.current_discord_id() as d')).rows[0].d).toBe(FINDER_DISCORD);
     });
   });
