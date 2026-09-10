@@ -8,17 +8,15 @@
 //
 // What is asserted here is the agreement between three places that have to
 // match and can drift independently: the auth.users row, the grant row it is
-// meant to be, and the persona table in scripts/dev/local-login.js. The link
+// meant to be, and the naming scheme a snapshot mints from the teams table
+// (#1065), which the seed follows by hand so one name means one person on
+// either stack. The link
 // trigger keys on provider_id matching discord_id, so a mismatch would show as
 // a person signing in successfully and then having no access at all, which
 // reads as broken policies rather than a bad fixture.
 import { describe, it, expect, afterAll } from 'vitest';
 import { pool } from './helpers.js';
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+import { resolveTarget } from '../../scripts/dev/local-login.js';
 
 afterAll(() => pool.end());
 
@@ -98,15 +96,41 @@ describe('seeded personas (#1053)', () => {
     expect(rows.map((r) => r.id)).toEqual([]);
   });
 
-  it('agrees with the persona table the login script offers', async () => {
-    // Three places name these people. This is the one that would otherwise
-    // drift silently, because the script is never exercised by the suite.
-    const source = readFileSync(join(ROOT, 'scripts', 'dev', 'local-login.js'), 'utf8');
-    const emails = [...source.matchAll(/'([a-z0-9-]+@wga\.local)'/g)].map((m) => m[1]);
-    expect(emails.length).toBeGreaterThan(0);
+  it('is reachable by name through the login script, which builds the address from it', async () => {
+    // The static persona table is gone (#1065): any name resolves to its
+    // wga.local address and the running stack says whether it exists. So what
+    // has to hold is that every seeded address is one the script can build.
     // rls-pool-read-only: reads the seeded identities, writes nothing.
     const { rows } = await pool.query(USERS);
-    const seeded = new Set(rows.map((r) => r.email));
-    expect(emails.filter((email) => !seeded.has(email))).toEqual([]);
+    for (const { email } of rows) {
+      const name = email.replace(/@wga\.local$/, '');
+      expect(resolveTarget({ persona: name }).email).toBe(email);
+    }
+  });
+
+  it('names every team member the way a snapshot would, so one vocabulary covers both stacks', async () => {
+    // A snapshot mints <slug>-officer, <slug>-leader and <slug>-raider from
+    // the teams table (#1065). The seed follows the same scheme by hand, and
+    // this is what stops the two from drifting apart: phoenix-officer has to
+    // mean the same person after a reset and after a snapshot. The one seeded
+    // team member named for a guild-wide grant instead (guild-officer, a
+    // raider who holds guild_officers) is excluded, since the grant is what it
+    // stands for.
+    // rls-pool-read-only: reads the seeded identities, writes nothing.
+    const { rows } = await pool.query(`
+      select u.email, t.slug, tm.role
+        from auth.users u
+        join public.team_members tm on tm.auth_user_id = u.id
+        join public.teams t on t.id = tm.team_id
+        left join public.guild_officers go on go.auth_user_id = u.id
+        left join public.site_admins sa on sa.auth_user_id = u.id
+       where go.id is null and sa.id is null
+       order by u.email
+    `);
+    expect(rows.length).toBeGreaterThan(2);
+    const short = { officer: 'officer', team_leader: 'leader', raider: 'raider' };
+    for (const { email, slug, role } of rows) {
+      expect(email).toBe(`${slug}-${short[role]}@wga.local`);
+    }
   });
 });
