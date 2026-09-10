@@ -223,3 +223,19 @@ select setval('public.loot_id_seq', 10);
 select setval('public.boe_items_id_seq', 10);
 select setval('public.boe_listings_id_seq', 10);
 select setval('public.boe_managers_id_seq', 10);
+
+-- Keep this stack off production (#1055).
+--
+-- Four migrations schedule pg_cron jobs whose command carries the production
+-- functions URL, and a reset recreates them, so without this a developer
+-- machine and every CI stack call production on a schedule. They are refused
+-- 401 because the local Vault holds no secret, which is a property of the
+-- Vault and not of the stack being sealed.
+--
+-- Deactivating rather than rewriting the URL: the command is what the
+-- migration wrote, and it has to stay that way, because it is production's
+-- schedule and nothing compares the two. This file runs on local and CI
+-- resets only; `db push` never runs it, so production is untouched.
+--
+-- To run one on purpose for a session: select cron.alter_job(<jobid>, active := true);
+select cron.alter_job(jobid, active := false) from cron.job;

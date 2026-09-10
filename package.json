@@ -10,6 +10,7 @@
     "migration:new": "node scripts/ci/migration-new.js",
     "serve": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/dev/serve.js",
     "dev:login": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/dev/local-login.js",
+    "dev:sink": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/dev/discord-sink.js",
     "format": "prettier --write \"js/**/*.js\" \"scripts/**/*.js\" \"tests/**/*.js\"",
     "format:check": "prettier --check \"js/**/*.js\" \"scripts/**/*.js\" \"tests/**/*.js\"",
     "test:ci": "vitest run tests/ci",

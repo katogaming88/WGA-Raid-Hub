@@ -12,6 +12,39 @@ answers to.
 
 ---
 
+## [3.101.3] - 2026-09-10
+
+### Functions
+
+- `supabase/functions/.env.example` gained the `BOT_WEBHOOK_URL` and
+  `BOT_WEBHOOK_SECRET` pair that `discord-bot-webhook` has read since #991, and
+  a header pointing every webhook variable at the local sink for a rehearsal
+  ([#1055](https://github.com/katogaming88/WGA-Raid-Hub/issues/1055)). Nothing
+  deployed and no function changed: that file is only ever read by
+  `supabase functions serve`.
+
+### Project
+
+- The local stack no longer calls production
+  ([#1055](https://github.com/katogaming88/WGA-Raid-Hub/issues/1055)). Four
+  migrations schedule `pg_cron` jobs whose command carries the production
+  functions URL, and every `supabase db reset` recreated them, so any developer
+  machine and every CI run called production on a schedule. Measured on one
+  machine forty minutes after a reset: ten calls, every one refused 401 because
+  the local Vault holds no secret. The seed now switches all four off after the
+  fixtures. The jobs stay in the catalog, because that schedule is
+  production's, and production itself is untouched, since the seed runs only on
+  a local or CI reset.
+- `npm run dev:sink` catches what the Edge Functions would have posted to
+  Discord, printing each body and answering 204 the way an incoming webhook
+  does, with `-- --status 500` for the refusal paths. It means a poster can be
+  rehearsed without a webhook URL that reaches a channel a team operates in.
+- Section 11 of the local dev setup doc covers running the functions against
+  the local stack: pointing the webhook variables at the sink, what
+  `verify_jwt` decides per function, a smoke-mode post, firing a cron function
+  by hand now that the schedule is off, and the Kong restart that cures a fresh
+  serve answering nothing.
+
 ## [3.101.2] - 2026-09-10
 
 ### Project
