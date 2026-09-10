@@ -211,12 +211,30 @@ export function plan({ version, dumpPath }) {
 }
 
 function runStep(step, exec) {
-  const result = exec(step.command, step.args);
+  // A step whose output is read has to be captured; the rest stream straight to
+  // the terminal, because a db reset and a restore are the slow ones and a
+  // person wants to watch them rather than wait in silence. Getting this wrong
+  // is quiet: an inherited stdout leaves result.stdout null, and the parse of
+  // it then fails somewhere else entirely.
+  const result = exec(step.command, step.args, { capture: Boolean(step.capture) });
   if (result.status !== 0) {
     const detail = (result.stderr || result.stdout || '').toString().trim().split('\n').slice(-5).join('\n');
     throw new Error(`Step "${step.label}" failed (${step.command} exited ${result.status}).\n${detail}`);
   }
+  if (step.capture && !result.stdout) {
+    throw new Error(`Step "${step.label}" produced no output to read. Expected ${step.command} to print to stdout.`);
+  }
   return result;
+}
+
+/** The bucket listing, parsed, with a message that names the real problem. */
+function readListing(options, exec) {
+  const raw = runStep({ label: 'list', capture: true, ...listCommand(options) }, exec).stdout;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error(`The bucket listing was not JSON. First 200 characters:\n${String(raw).slice(0, 200)}`);
+  }
 }
 
 /**
@@ -226,7 +244,13 @@ function runStep(step, exec) {
 export function run(options = {}, deps = {}) {
   const exec =
     deps.exec ||
-    ((command, args) => spawnSync(command, args, { encoding: 'utf8', stdio: options.plan ? 'pipe' : 'inherit' }));
+    ((command, args, { capture } = {}) =>
+      spawnSync(command, args, {
+        encoding: 'utf8',
+        // stderr stays inherited on a captured step so a credential or network
+        // failure is readable as it happens rather than only in the throw.
+        stdio: capture ? ['ignore', 'pipe', 'inherit'] : 'inherit'
+      }));
   const remove = deps.rm || ((path) => rmSync(path, { force: true }));
   const log = deps.log || (() => {});
 
@@ -236,7 +260,7 @@ export function run(options = {}, deps = {}) {
   // --plan never reaches the network, so it needs a version handed to it or
   // computed from a dump that is already named.
   if (!options.plan) {
-    const listing = JSON.parse(runStep({ label: 'list', ...listCommand(options) }, exec).stdout);
+    const listing = readListing(options, exec);
     const chosen = options.dump
       ? { key: `pg/${options.dump}`, lastModified: pick(listing, options.dump) }
       : newestDump(listing);
@@ -258,6 +282,7 @@ export function run(options = {}, deps = {}) {
       const log_ = runStep(
         {
           label: 'history',
+          capture: true,
           command: 'git',
           args: [
             'log',

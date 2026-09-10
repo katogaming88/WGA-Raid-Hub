@@ -269,4 +269,34 @@ describe('run (#1056)', () => {
     expect(removed.length).toBe(1);
     expect(removed[0]).toContain('wga-2026-09-09.dump');
   });
+
+  it('captures the output of a step it reads, and lets the slow ones stream', () => {
+    // The listing has to be captured to be parsed. The reset and the restore
+    // are the slow steps and belong on the terminal, so a person can watch them
+    // rather than wait in silence. Getting this backwards is quiet: an
+    // inherited stdout leaves the result empty and the failure lands at the
+    // parse, several lines away from the cause.
+    const seen = [];
+    const exec = (cmd, args, opts) => {
+      seen.push({ cmd, capture: Boolean(opts && opts.capture) });
+      return cmd === 'aws' && args[0] === 's3api'
+        ? { status: 0, stdout: JSON.stringify(LISTING) }
+        : { status: 0, stdout: '' };
+    };
+    run({ version: '20260909050000' }, { exec });
+    expect(seen.find((s) => s.cmd === 'aws').capture).toBe(true);
+    expect(seen.find((s) => s.cmd === 'supabase').capture).toBe(false);
+    expect(seen.find((s) => s.cmd === 'pg_restore').capture).toBe(false);
+  });
+
+  it('says which step printed nothing, rather than failing later at the parse', () => {
+    const exec = (cmd) => (cmd === 'aws' ? { status: 0, stdout: null } : { status: 0, stdout: '' });
+    expect(() => run({ version: '20260909050000' }, { exec })).toThrow(/list.*no output/i);
+  });
+
+  it('names the listing when it comes back as something other than JSON', () => {
+    const exec = (cmd) =>
+      cmd === 'aws' ? { status: 0, stdout: 'Unable to locate credentials' } : { status: 0, stdout: '' };
+    expect(() => run({ version: '20260909050000' }, { exec })).toThrow(/not JSON/i);
+  });
 });
