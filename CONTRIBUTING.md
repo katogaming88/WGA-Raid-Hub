@@ -99,12 +99,16 @@ Two files at the root carry that, and they are separate on purpose:
 | File | Written by | Holds |
 |------|-----------|-------|
 | `version.json` | `npm run stamp` | The product version and a `pieces` map, computed from the paths the branch changed. Pure JSON, because the stamp and the CI invariant both parse it |
-| `build.json` | GitHub Pages, at deploy | The deployed commit and the build time. It carries Jekyll front matter, which is what makes Jekyll render the Liquid tags inside it, and front matter is exactly what would make `version.json` unparseable |
+| `build.json` | Jekyll, at deploy | The deployed commit and the build time. It carries Jekyll front matter, which is what makes Jekyll render the Liquid tags inside it, and front matter is exactly what would make `version.json` unparseable |
 
 An absent entry in `pieces` means that piece has never been stamped, never that
 it has drifted. A chore PR moves no piece, so it leaves the manifest alone. The version says which release something belongs to; the
 platform identity says which artifact is actually live. Both are needed, because
-only the second one can show that a piece was merged and never deployed.
+only the second one can show that a piece was merged and never deployed. Since
+#1050 the database is the one piece that cannot drift that way: its migrations
+apply from the Deploy workflow before the site ships, so the ledger head and
+`REQUIRED_SCHEMA` agree after every successful deploy. The Edge Functions still
+deploy by hand and the counter is still the only thing that says so.
 
 Bumping the version means more than one file: every local `css/`/`js/` tag on
 every page carries a `?v=<VERSION>` cache-bust query string (#431), 56 of them
@@ -403,10 +407,15 @@ PRs that change `supabase/migrations/` must also:
   `.agents/skills/supabase/SKILL.md` says to use the CLI command; it is pinned
   upstream and cannot be edited here, so this rule overrides it and CI enforces
   the override.
-- Before `supabase db push`, the new file must sort **after** every migration
-  already applied on prod. If someone else's file landed first and yours now
-  sorts below it, re-stamp yours with
-  `npm run migration:new -- --rename supabase/migrations/<file>`. Never reach
+- A migration reaches production when its pull request merges: the Deploy
+  workflow pushes it and only then deploys the site (#1050). Running
+  `supabase db push` by hand is a repair route now, not the delivery route.
+- The new file must still sort **after** every migration already applied on
+  prod, because the push refuses the whole run when one does not, and at merge
+  that refusal blocks the deploy. If someone else's file landed first and yours
+  now sorts below it, re-stamp yours with
+  `npm run migration:new -- --rename supabase/migrations/<file>`. The pull
+  request ledger check fails that case before it can reach a merge. Never reach
   for `--include-all` to get around it.
 - Open the file with a header: `-- #NNN: <what it does>.`, then a bare `--`,
   then why it is needed. Cite a prior migration by filename when this one

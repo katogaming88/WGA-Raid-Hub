@@ -184,9 +184,15 @@ CI checks both.
 
 ## 7. Applying migrations to production
 
-The rule: a migration reaches prod through `supabase db push`, run from the
-repo root with the CLI linked (section 4). Running the SQL in the dashboard
-SQL Editor does not count as applying it, even though the schema change lands.
+The rule: a migration reaches prod when its pull request merges. The Deploy
+workflow (`.github/workflows/deploy.yml`, #1050) runs `supabase db push`
+against prod and only then builds and publishes the site, so a release can
+never reach raiders ahead of the schema it needs. Nothing to run by hand, and
+nothing to remember after the merge.
+
+Running the SQL in the dashboard SQL Editor still does not count as applying
+it, and the consequence is larger than it used to be: it now blocks every
+deploy, not just this one.
 
 The why: the SQL Editor never writes `supabase_migrations.schema_migrations`,
 the ledger that `db push` and `migration list` read. Every editor-applied
@@ -196,15 +202,27 @@ refuses to run at all (`LegacyDbPushMissingRemoteError`). On 2026-08-31 the
 ledger was 22 migrations behind the live schema for exactly this reason and
 had to be reconciled by hand (`supabase migration repair --status applied`,
 after verifying each migration's effect was live on prod first; marking an
-unapplied migration applied would tell push to never run it).
+unapplied migration applied would tell push to never run it). That repair is
+what `db push` by hand is for now: recovering the ledger, rather than
+delivering a migration.
 
-CI enforces the rule: the Migration ledger check workflow compares
-`supabase/migrations/` filenames against the ledger on every PR touching
-migrations, on pushes to main, and in a weekly sweep. A PR adding a migration
-stays red until someone runs `supabase db push`. One wrinkle: a push writes
-only to the database, so GitHub does not notice it happened. After pushing,
-re-run the check from the PR's Checks tab (or push any commit) to turn it
-green.
+Two checks watch this, and they read the same tree against the same ledger with
+different verdicts on one case:
+
+- **On a pull request**, the Migration ledger check runs with `--pending-ok`. A
+  committed migration that is not yet on prod is the normal state of a
+  migration PR, since the merge is what applies it, so that passes and is
+  listed. A file sorting below the newest applied version still fails, because
+  the push would refuse the whole run and the merge would deploy nothing. So
+  does a ledger row with no file behind it.
+- **At merge and in the weekly sweep**, the same script runs strict, where a
+  migration in the tree and not in the ledger is a failure. In the Deploy
+  workflow it runs immediately after the push, so what it catches is a push
+  that silently did not take.
+
+When the push fails, the site does not deploy and the run posts to Discord.
+Fix forward in a new PR: never edit a merged migration, and never reach for
+`--include-all`.
 
 Known limits:
 

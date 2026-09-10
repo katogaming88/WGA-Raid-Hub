@@ -90,10 +90,13 @@ export const BUILD_FILE = 'build.json';
 
 /**
  * The build identity, rendered by Jekyll at deploy time rather than written
- * here. Only the Pages build knows the deployed commit, and empty front matter
- * is what makes Jekyll process the file at all. It is a separate file from the
- * manifest on purpose: front matter would make version.json unparseable, both
- * to this script and to the CI invariant that reads it back.
+ * here. Only the deploy knows the commit it is publishing, and empty front
+ * matter is what makes Jekyll process the file at all. It is a separate file
+ * from the manifest on purpose: front matter would make version.json
+ * unparseable, both to this script and to the CI invariant that reads it back.
+ * Since #1050 Jekyll runs inside the Deploy workflow rather than as a Pages
+ * branch build, which is why that workflow prints the rendered file: the
+ * commit now arrives as an action input instead of from the Pages environment.
  */
 export function buildJsonContent() {
   return [
