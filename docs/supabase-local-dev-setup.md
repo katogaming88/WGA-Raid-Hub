@@ -278,6 +278,65 @@ Three things are worth knowing before something looks broken:
 To point a browser at production deliberately, open the deployed site. There is
 no switch for pointing a local page at production, on purpose.
 
+## 9. Sign in as a seeded persona
+
+Section 8 gets you the site; this gets you a person. The only sign-in the site
+offers is Discord OAuth against production, so on a local stack every page shows
+the signed-out view until you mint a link:
+
+```sh
+npm run dev:login -- officer
+```
+
+It prints a link. Open it, and the browser lands back on `localhost:3000` signed
+in. Every page on that origin sees the session, so switch to `officer.html` or
+`admin.html` without doing it again.
+
+Six people are seeded, and what each is for:
+
+| Persona | Who they are |
+|---------|--------------|
+| `officer` | Officer on team 1. The officer dashboard, the roster, loot and signups |
+| `leader` | Team leader on team 1. Officer plus the team-leader-only paths |
+| `raider` | Raider on team 1. The raider-facing side: profile, wishlist, BiS, signup |
+| `admin` | Site admin with no team role. `admin.html` and nothing team-scoped |
+| `officer2` | Officer on team 2. What one team's officer must not see of another's |
+| `guild-officer` | Guild officer who raids on team 1 with no leadership role |
+
+A seventh identity is seeded with no grant row at all, standing for somebody who
+signed up and has no roster row. It has no persona name because there is no role
+to look at, and `--discord-id` reaches it if it is ever wanted.
+
+**Any Discord id, not just the six.**
+
+```sh
+npm run dev:login -- --discord-id 123456789012345678
+```
+
+This creates or reuses an account whose `provider_id` is that id, which is what
+`link_auth_user_to_member()` keys on, so it binds to whatever grant rows already
+name that person. On a seeded stack that is nobody; it matters after section 12,
+where real rows are restored with their auth links cleared.
+
+**No email is sent and none is needed.** The addresses are `@wga.local`, the
+link comes back from the API rather than an inbox, and anything the stack does
+try to mail is caught by Mailpit at <http://127.0.0.1:54324>.
+
+**If it says the stack is not running**, start it with `supabase start`. The
+script reads the API URL and the service key from `supabase status` each time
+it runs, so neither is ever written down.
+
+**Changing `[auth]` in `supabase/config.toml` needs a restart, not a reset.**
+The auth container reads that file when it starts, so `supabase db reset` leaves
+the old `site_url` in place and links keep redirecting to the previous port.
+`supabase stop && supabase start` applies it.
+
+**Signing in as your real Discord self** is possible and not needed for most
+work. It takes a `[auth.external.discord]` block in `supabase/config.toml`
+reading its id and secret through `env()` from a root `.env` (already
+gitignored), plus `http://127.0.0.1:54321/auth/v1/callback` added to the redirect
+list of a Discord application. The seeded personas cover every role without it.
+
 ## Known quirk: vector container restart loop (Windows)
 
 On Docker Desktop for Windows the `supabase_vector` container (log shipping for the
