@@ -72,7 +72,8 @@ describe('parseMergeTimes (#1056)', () => {
   });
 
   it('keeps the first record for a file, which is the newest commit that added it', () => {
-    const readded = LOG + '\n2026-01-01T00:00:00-05:00\n\nsupabase/migrations/20260909170340_app_version_ledger_head.sql\n';
+    const readded =
+      LOG + '\n2026-01-01T00:00:00-05:00\n\nsupabase/migrations/20260909170340_app_version_ledger_head.sql\n';
     const found = parseMergeTimes(readded).filter((e) => e.version === '20260909170340');
     expect(found).toEqual([{ version: '20260909170340', mergedAt: '2026-09-09T18:06:48-04:00' }]);
   });
@@ -219,6 +220,20 @@ describe('the bucket call (#1056)', () => {
 });
 
 describe('run (#1056)', () => {
+  it('builds steps that can be printed, with no hole where a computed value goes', () => {
+    // --plan runs before anything is fetched, so the dump path and the version
+    // are both still unknown. Leaving either undefined puts it straight into an
+    // argument list, and the failure surfaces in the printer rather than here.
+    const steps = run(
+      { plan: true, version: '20260909050000', dumpPath: '/tmp/d.dump' },
+      { exec: () => ({ status: 0 }) }
+    );
+    for (const step of steps) {
+      expect(typeof step.command).toBe('string');
+      for (const arg of step.args) expect(typeof arg).toBe('string');
+    }
+  });
+
   it('executes nothing under --plan, and never reaches the network', () => {
     const calls = [];
     run(
@@ -233,17 +248,25 @@ describe('run (#1056)', () => {
     expect(calls).toEqual([]);
   });
 
-  it('stops at the first failing step and names it, leaving the dump behind', () => {
+  it('stops at the first failing step and names it, leaving the dump behind to diagnose', () => {
     const removed = [];
-    expect(() =>
-      run(
-        { version: '20260909050000', dumpPath: '/tmp/wga-snapshot/d.dump' },
-        {
-          exec: (cmd) => (cmd === 'pg_restore' ? { status: 1, stderr: 'relation does not exist' } : { status: 0, stdout: '' }),
-          rm: (p) => removed.push(p)
-        }
-      )
-    ).toThrow(/restore/);
+    const exec = (cmd) => {
+      if (cmd === 'aws') return { status: 0, stdout: JSON.stringify(LISTING) };
+      if (cmd === 'pg_restore') return { status: 1, stderr: 'ERROR: column "note" of relation "loot" does not exist' };
+      return { status: 0, stdout: '' };
+    };
+    expect(() => run({ version: '20260909050000' }, { exec, rm: (p) => removed.push(p) })).toThrow(/restore/);
+    // The downloaded dump is production data, so it is deleted the moment the
+    // restore succeeds. This is the other branch: it stays, because the two
+    // failure shapes here are both diagnosed from the file.
     expect(removed).toEqual([]);
+  });
+
+  it('deletes the dump once the restore has taken', () => {
+    const removed = [];
+    const exec = (cmd) => (cmd === 'aws' ? { status: 0, stdout: JSON.stringify(LISTING) } : { status: 0, stdout: '' });
+    run({ version: '20260909050000' }, { exec, rm: (p) => removed.push(p) });
+    expect(removed.length).toBe(1);
+    expect(removed[0]).toContain('wga-2026-09-09.dump');
   });
 });
