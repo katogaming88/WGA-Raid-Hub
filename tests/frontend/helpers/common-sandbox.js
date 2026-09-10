@@ -21,10 +21,16 @@ export const quietConsole = { log: () => {}, warn: () => {}, error: () => {} };
 // Runs js/common.js in a fresh context and hands back the sandbox, so its var
 // and function declarations are readable as properties. Pass a console
 // stand-in to capture what the code under test warns about.
-export function loadCommonJs(consoleObj) {
+//
+// `location` is merged over the default rather than replacing it, for the one
+// caller that needs a hostname (#1052 resolves the Supabase target from it).
+// The default deliberately carries none: every other suite in this directory
+// stubs location without one, and that absent case has to keep meaning
+// production.
+export function loadCommonJs(consoleObj, { location } = {}) {
   const sandbox = {
     window: {},
-    location: { search: '', pathname: '/' },
+    location: { search: '', pathname: '/', ...(location || {}) },
     sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
     localStorage: { getItem: () => null, setItem: () => {} },
     document: {
