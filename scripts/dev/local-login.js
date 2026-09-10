@@ -1,6 +1,7 @@
-// Sign in to the local site as one of the seeded people (#1053).
+// Sign in to the local site as a named persona (#1053, #1065).
 //
-//   npm run dev:login -- officer
+//   npm run dev:login                        # lists the personas this stack holds
+//   npm run dev:login -- phoenix-officer
 //   npm run dev:login -- --discord-id 123456789012345678
 //
 // It prints a magic link. Opening it in the browser puts a session on
@@ -11,30 +12,28 @@
 // never written down, and the addresses are @wga.local, which is not a real
 // inbox.
 //
-// The Discord id form is what composes with a restored production snapshot: the
-// grant rows are real and their auth links are nulled, so a fresh account whose
-// provider_id matches one of them gets linked by link_auth_user_to_member() on
-// insert. It is also the escape hatch for any identity the seed does not name.
+// The personas are whoever the running stack holds at @wga.local: the seed's
+// people after a reset, and the ones snapshot-personas.js mints after
+// `npm run db:snapshot`. Both name them the same way, <team>-officer,
+// <team>-leader, <team>-raider, plus admin, guild-officer and boe-manager, so
+// a name means the same person on either stack. The list is read before any
+// link is minted, because generate_link creates an account for an address it
+// has never seen, and on a snapshot that is a successful sign-in with no grant
+// row at all, which reads as broken policies.
+//
+// The Discord id form is the route for one specific real person on a restored
+// snapshot: the grant rows are real and their auth links are nulled, so a
+// fresh account whose provider_id matches one of them gets linked by
+// link_auth_user_to_member() on insert. It reads that person's data.
 //
 // Node built-ins only, like everything in scripts/.
 import { execFileSync } from 'node:child_process';
 
-// The six seeded people with a grant row, and the addresses seed.sql gives
-// them. tests/rls/seed-personas.test.js pins these against the seed, because
-// three places name the same people and only one of them is exercised by the
-// suite.
-//
-// The seventh seeded identity (...0006) is deliberately absent: it stands for
-// somebody with a signup and no roster row, so it has no grant row to link to
-// and no role to look at. Reach it with --discord-id if it is ever wanted.
-export const PERSONAS = {
-  officer: 'officer@wga.local',
-  leader: 'leader@wga.local',
-  raider: 'raider@wga.local',
-  admin: 'admin@wga.local',
-  officer2: 'officer2@wga.local',
-  'guild-officer': 'guild-officer@wga.local'
-};
+const DOMAIN = '@wga.local';
+
+// A persona name is an address local part, and the batch that mints them
+// refuses anything else, so the same rule applies here.
+const PERSONA_NAME = /^[a-z0-9-]+$/;
 
 // Discord snowflakes are 17 to 20 digits. Checked rather than trusted, because
 // a typo mints an account that links to nothing and the symptom is a successful
@@ -47,16 +46,15 @@ export function resolveTarget({ persona, discordId } = {}) {
     if (!DISCORD_ID.test(discordId)) {
       throw new Error(`Not a Discord id: ${discordId}. Expected 17 to 20 digits.`);
     }
-    return { email: `${discordId}@wga.local`, discordId };
+    return { email: `${discordId}${DOMAIN}`, discordId };
   }
   if (!persona) {
-    throw new Error(`Name a persona (${Object.keys(PERSONAS).join(', ')}) or pass --discord-id <id>.`);
+    throw new Error('Name a persona or pass --discord-id <id>.');
   }
-  const email = PERSONAS[persona];
-  if (!email) {
-    throw new Error(`No seeded persona called "${persona}". Try one of: ${Object.keys(PERSONAS).join(', ')}.`);
+  if (!PERSONA_NAME.test(persona)) {
+    throw new Error(`Not a persona name: "${persona}". Expected lowercase letters, digits and hyphens.`);
   }
-  return { email };
+  return { email: `${persona}${DOMAIN}` };
 }
 
 /** Reads the local API URL and service key from the running stack. */
@@ -66,6 +64,30 @@ export function readStatus() {
     stdio: ['ignore', 'pipe', 'pipe']
   });
   return JSON.parse(raw);
+}
+
+function adminHeaders(status) {
+  return {
+    apikey: status.SERVICE_ROLE_KEY,
+    Authorization: `Bearer ${status.SERVICE_ROLE_KEY}`
+  };
+}
+
+/** The admin user list call, as a URL and fetch options. */
+export function listRequest(status) {
+  return {
+    url: `${status.API_URL}/auth/v1/admin/users?page=1&per_page=1000`,
+    options: { method: 'GET', headers: adminHeaders(status) }
+  };
+}
+
+/** The persona names in a user list: the wga.local accounts, bare, sorted. */
+export function personaNames(payload) {
+  return ((payload && payload.users) || [])
+    .map((user) => user && user.email)
+    .filter((email) => typeof email === 'string' && email.endsWith(DOMAIN))
+    .map((email) => email.slice(0, -DOMAIN.length))
+    .sort();
 }
 
 /** The admin generate_link call, as a URL and fetch options. */
@@ -78,11 +100,7 @@ export function linkRequest(status, { email, discordId }) {
     url: `${status.API_URL}/auth/v1/admin/generate_link`,
     options: {
       method: 'POST',
-      headers: {
-        apikey: status.SERVICE_ROLE_KEY,
-        Authorization: `Bearer ${status.SERVICE_ROLE_KEY}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { ...adminHeaders(status), 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     }
   };
@@ -97,11 +115,20 @@ export function readLink(payload) {
   return link;
 }
 
+async function callAuth(doFetch, { url, options }) {
+  const response = await doFetch(url, options);
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`The auth API refused with ${response.status}: ${detail}`);
+  }
+  return response.json();
+}
+
 /**
  * Mints the link. `deps` exists so the tests can drive this without a stack;
  * production passes neither.
  */
-export async function login(target, deps = {}) {
+export async function login(target = {}, deps = {}) {
   const status = deps.status || readStatus;
   const doFetch = deps.fetch || fetch;
 
@@ -115,14 +142,20 @@ export async function login(target, deps = {}) {
     throw new Error('Could not read the local stack. Is it running? Start it with `supabase start`.');
   }
 
-  const resolved = resolveTarget(target);
-  const { url, options } = linkRequest(stack, resolved);
-  const response = await doFetch(url, options);
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`The auth API refused with ${response.status}: ${detail}`);
+  if (!target.discordId) {
+    const names = personaNames(await callAuth(doFetch, listRequest(stack)));
+    const held = names.length ? names.join(', ') : 'nothing yet (run `supabase db reset` or `npm run db:snapshot`)';
+    if (!target.persona) {
+      throw new Error(`Name a persona. On this stack: ${held}. Or pass --discord-id <id>.`);
+    }
+    resolveTarget(target);
+    if (!names.includes(target.persona)) {
+      throw new Error(`No account called "${target.persona}" on this stack. It has: ${held}. Nothing was created.`);
+    }
   }
-  return readLink(await response.json());
+
+  const resolved = resolveTarget(target);
+  return readLink(await callAuth(doFetch, linkRequest(stack, resolved)));
 }
 
 function parseArgs(argv) {
@@ -142,10 +175,13 @@ function main() {
   });
 }
 
-// Only when run, not when imported by the tests.
+// Only when run, not when imported by the tests. The exit code is set rather
+// than forced: process.exit() straight after a fetch trips a libuv assertion
+// on Windows (Node 24, "!(handle->flags & UV_HANDLE_CLOSING)"), printing a
+// crash under a message that was itself the whole point.
 if (process.argv[1] && process.argv[1].endsWith('local-login.js')) {
   main().catch((err) => {
     console.error(err.message);
-    process.exit(1);
+    process.exitCode = 1;
   });
 }

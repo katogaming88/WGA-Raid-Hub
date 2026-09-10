@@ -15,6 +15,11 @@ export const SIGNUP_OWNER_T1 = '00000000-0000-0000-0000-000000000006';
 // #607: raider on team 1, no officer/team_leader role anywhere, granted
 // via guild_officers (not derived from any team_members role).
 export const GUILD_OFFICER = '00000000-0000-0000-0000-000000000007';
+// #1065: Immolation (team 3) seeded with its own three people, so the seeded
+// teams table has the same shape as production's.
+export const OFFICER_T3 = '00000000-0000-0000-0000-000000000008';
+export const TEAM_LEADER_T3 = '00000000-0000-0000-0000-000000000009';
+export const RAIDER_T3 = '00000000-0000-0000-0000-000000000010';
 
 // SQLSTATE for "new row violates row-level security policy".
 export const RLS_DENIED = '42501';

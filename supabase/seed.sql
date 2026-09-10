@@ -6,22 +6,34 @@
 -- request.jwt.claims to impersonate each person; they must stay in sync
 -- with tests/rls/helpers.js.
 --
---   ...0001  officer on team 1
---   ...0002  team leader on team 1
---   ...0003  raider on team 1
---   ...0004  site admin (no team role)
---   ...0005  officer on team 2
+--   ...0001  officer on team 1          phoenix-officer
+--   ...0002  team leader on team 1      phoenix-leader
+--   ...0003  raider on team 1           phoenix-raider
+--   ...0004  site admin (no team role)  admin
+--   ...0005  officer on team 2          hellfire-officer
 --   ...0006  a season_signups.auth_user_id owner, no team_members/players row
 --            (get_own_signup()/update_own_signup() never touch those tables)
+--                                       signup-owner
 --   ...0007  guild officer (#607): a plain raider on team 1, no officer/
 --            team_leader role anywhere, but granted guild_officers -- models
 --            a Guild Master raiding on one team with no team-leadership role
+--                                       guild-officer
+--   ...0008  officer on team 3          immolation-officer
+--   ...0009  team leader on team 3      immolation-leader
+--   ...0010  raider on team 3           immolation-raider
+--
+-- The persona names follow the scheme a restored snapshot mints from the
+-- teams table (scripts/dev/snapshot-personas.js, #1065): <slug>-officer,
+-- <slug>-leader, <slug>-raider, and the guild-wide grants by name. Team 1 is
+-- Phoenix and team 2 Hellfire Rollers here as in production, so
+-- phoenix-officer means the same person after a reset and after a snapshot.
+-- tests/rls/seed-personas.test.js holds the seed to it.
 
 -- The auth side of those identities (#1053). Until this they were bare ids,
 -- which is all tests/rls needs (it impersonates through request.jwt.claims
 -- inside a rolled-back transaction and never authenticates). A browser cannot
 -- do that, so signing in to the local site needs rows the auth service will
--- issue a magic link against: `npm run dev:login -- officer`.
+-- issue a magic link against: `npm run dev:login -- phoenix-officer`.
 --
 -- Three details are load bearing:
 --   * provider_id must equal the grant row's discord_id below, because
@@ -55,13 +67,16 @@ select
   now(),
   now()
 from (values
-  ('00000000-0000-0000-0000-000000000001', 'officer@wga.local',       'discord-officer-1',      'Seed Officer'),
-  ('00000000-0000-0000-0000-000000000002', 'leader@wga.local',        'discord-leader-1',       'Seed Leader'),
-  ('00000000-0000-0000-0000-000000000003', 'raider@wga.local',        'discord-raider-1',       'Seed Raider'),
-  ('00000000-0000-0000-0000-000000000004', 'admin@wga.local',         'discord-site-admin',     'Seed Admin'),
-  ('00000000-0000-0000-0000-000000000005', 'officer2@wga.local',      'discord-officer-2',      'Seed Officer Two'),
-  ('00000000-0000-0000-0000-000000000006', 'signup-owner@wga.local',  'discord-signup-owner',   'Seed Signup Owner'),
-  ('00000000-0000-0000-0000-000000000007', 'guild-officer@wga.local', 'discord-guildofficer-1', 'Seed Guild Officer')
+  ('00000000-0000-0000-0000-000000000001', 'phoenix-officer@wga.local',  'discord-officer-1',      'Phoenix Officer'),
+  ('00000000-0000-0000-0000-000000000002', 'phoenix-leader@wga.local',   'discord-leader-1',       'Phoenix Leader'),
+  ('00000000-0000-0000-0000-000000000003', 'phoenix-raider@wga.local',   'discord-raider-1',       'Phoenix Raider'),
+  ('00000000-0000-0000-0000-000000000004', 'admin@wga.local',            'discord-site-admin',     'Admin'),
+  ('00000000-0000-0000-0000-000000000005', 'hellfire-officer@wga.local', 'discord-officer-2',      'Hellfire Officer'),
+  ('00000000-0000-0000-0000-000000000006', 'signup-owner@wga.local',     'discord-signup-owner',   'Signup Owner'),
+  ('00000000-0000-0000-0000-000000000007', 'guild-officer@wga.local',    'discord-guildofficer-1', 'Guild Officer'),
+  ('00000000-0000-0000-0000-000000000008', 'immolation-officer@wga.local', 'discord-officer-3',     'Immolation Officer'),
+  ('00000000-0000-0000-0000-000000000009', 'immolation-leader@wga.local',  'discord-leader-3',      'Immolation Leader'),
+  ('00000000-0000-0000-0000-000000000010', 'immolation-raider@wga.local',  'discord-raider-3',      'Immolation Raider')
 ) as p(id, email, provider_id, full_name);
 
 -- One identity row each, so an account looks like one that signed in rather
@@ -78,16 +93,24 @@ select
   now()
 from auth.users u;
 
+-- Production's teams, less Wrathless (id 4), which a migration creates on
+-- every stack (20260826220829_wrathless_team.sql). Immolation was created in
+-- production by hand, so it is seeded here to keep the seeded teams table the
+-- same shape as production's (#1065).
 insert into public.teams (id, name, slug) values
   (1, 'Team Phoenix', 'phoenix'),
-  (2, 'Hellfire Rollers', 'hellfire');
+  (2, 'Hellfire Rollers', 'hellfire'),
+  (3, 'Immolation', 'immolation');
 
 insert into public.team_members (id, team_id, discord_id, auth_user_id, role, name_realm) values
   (1, 1, 'discord-officer-1', '00000000-0000-0000-0000-000000000001', 'officer', 'Seedofficer-Illidan'),
   (2, 1, 'discord-leader-1',  '00000000-0000-0000-0000-000000000002', 'team_leader', 'Seedleader-Illidan'),
   (3, 1, 'discord-raider-1',  '00000000-0000-0000-0000-000000000003', 'raider',  'Seedraider-Illidan'),
   (4, 2, 'discord-officer-2', '00000000-0000-0000-0000-000000000005', 'officer', 'Seedofficertwo-Illidan'),
-  (5, 1, 'discord-guildofficer-1', '00000000-0000-0000-0000-000000000007', 'raider', 'Seedguildofficer-Illidan');
+  (5, 1, 'discord-guildofficer-1', '00000000-0000-0000-0000-000000000007', 'raider', 'Seedguildofficer-Illidan'),
+  (6, 3, 'discord-officer-3', '00000000-0000-0000-0000-000000000008', 'officer', 'Seedimmolationofficer-Illidan'),
+  (7, 3, 'discord-leader-3',  '00000000-0000-0000-0000-000000000009', 'team_leader', 'Seedimmolationleader-Illidan'),
+  (8, 3, 'discord-raider-3',  '00000000-0000-0000-0000-000000000010', 'raider',  'Seedimmolationraider-Illidan');
 
 insert into public.site_admins (id, discord_id, auth_user_id) values
   (1, 'discord-site-admin', '00000000-0000-0000-0000-000000000004');
@@ -109,7 +132,8 @@ insert into public.items (id, wow_item_id, name, slot, armor_type, is_boe) value
 insert into public.players (id, team_id, name_realm, class_spec_id) values
   (1, 1, 'Seedraider-Illidan', 1),
   (2, 1, 'Seedplayertwo-Illidan', 1),
-  (3, 2, 'Seedhellfire-Illidan', 1);
+  (3, 2, 'Seedhellfire-Illidan', 1),
+  (4, 3, 'Seedimmolationraider-Illidan', 1);
 
 -- One row per gated table so the harness can prove invisibility to the
 -- wrong roles and visibility plus UPDATE reach to the right ones.
@@ -196,7 +220,8 @@ insert into public.player_wcl_season_perf (player_id, team_id, season) values
 
 insert into public.team_settings (team_id, config) values
   (1, '{"activeSignupSeason":"seed-season"}'),
-  (2, '{"activeSignupSeason":"seed-season"}');
+  (2, '{"activeSignupSeason":"seed-season"}'),
+  (3, '{"activeSignupSeason":"seed-season"}');
 
 insert into public.item_bosses (item_id, boss) values
   (1, 'Seed Test Boss');

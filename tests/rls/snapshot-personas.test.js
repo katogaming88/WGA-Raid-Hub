@@ -23,7 +23,15 @@ afterAll(() => pool.end());
 
 const GRANT_TABLES = ['team_members', 'site_admins', 'guild_officers', 'boe_managers'];
 
-/** Empties auth.users, proves it, runs the batch, and hands the test its transaction. */
+const SEEDED = {
+  members: "select count(*)::int as n from public.team_members where discord_id not like '9%'",
+  players: "select count(*)::int as n from public.players where name_realm not like '%-Persona'"
+};
+
+/**
+ * Empties auth.users, proves it, runs the batch, and hands the test its
+ * transaction plus the seeded row counts taken before the batch ran.
+ */
 function onSnapshot(fn) {
   return withTxn(async (txn) => {
     const { q } = txn;
@@ -32,8 +40,12 @@ function onSnapshot(fn) {
     expect(empty.rows[0].n).toBe(0);
     const unlinked = await q(`select count(*)::int as n from public.team_members where auth_user_id is not null`);
     expect(unlinked.rows[0].n).toBe(0);
+    const before = {
+      members: (await q(SEEDED.members)).rows[0].n,
+      players: (await q(SEEDED.players)).rows[0].n
+    };
     await q(PERSONAS_SQL);
-    return fn(txn);
+    return fn({ ...txn, before });
   });
 }
 
@@ -46,18 +58,16 @@ async function uidOf(q, name) {
 describe('the persona batch on a snapshot-shaped stack (#1065)', () => {
   it('mints three people per team plus the three guild-wide ones, all at wga.local', () =>
     onSnapshot(async ({ q }) => {
+      // Expected from the teams table, not written down: the seed holds two
+      // teams and a migration adds a third (Wrathless), and production has
+      // four. A team added anywhere gets its three people with no code change.
+      const teams = await q('select slug from public.teams');
+      const expected = ['admin', 'boe-manager', 'guild-officer'];
+      for (const { slug } of teams.rows) expected.push(`${slug}-officer`, `${slug}-leader`, `${slug}-raider`);
+      expect(teams.rows.length).toBeGreaterThan(1);
+
       const { rows } = await q("select email from auth.users where email like '%@wga.local' order by email");
-      expect(rows.map((r) => r.email.replace('@wga.local', ''))).toEqual([
-        'admin',
-        'boe-manager',
-        'guild-officer',
-        'hellfire-leader',
-        'hellfire-officer',
-        'hellfire-raider',
-        'phoenix-leader',
-        'phoenix-officer',
-        'phoenix-raider'
-      ]);
+      expect(rows.map((r) => r.email.replace('@wga.local', ''))).toEqual(expected.sort());
       const stray = await q("select count(*)::int as n from auth.users where email not like '%@wga.local'");
       expect(stray.rows[0].n).toBe(0);
     }));
@@ -100,7 +110,7 @@ describe('the persona batch on a snapshot-shaped stack (#1065)', () => {
     }));
 
   it('only adds rows: the seeded grants stay unlinked and uncounted, the seeded players untouched', () =>
-    onSnapshot(async ({ q }) => {
+    onSnapshot(async ({ q, before }) => {
       for (const table of GRANT_TABLES) {
         const { rows } = await q(`
           select count(*)::int as linked
@@ -109,10 +119,8 @@ describe('the persona batch on a snapshot-shaped stack (#1065)', () => {
         `);
         expect(rows[0].linked, `${table}: a seeded row was bound`).toBe(0);
       }
-      const seeded = await q("select count(*)::int as n from public.team_members where discord_id not like '9%'");
-      expect(seeded.rows[0].n).toBe(5);
-      const players = await q("select count(*)::int as n from public.players where name_realm not like '%-Persona'");
-      expect(players.rows[0].n).toBe(3);
+      expect((await q(SEEDED.members)).rows[0].n).toBe(before.members);
+      expect((await q(SEEDED.players)).rows[0].n).toBe(before.players);
     }));
 
   it('answers the role helpers for the right persona and no other', () =>

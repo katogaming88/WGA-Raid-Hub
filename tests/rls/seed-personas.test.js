@@ -45,7 +45,7 @@ describe('seeded personas (#1053)', () => {
   it('seeds the identities the RLS suite documents, so the assertions below have a subject', async () => {
     // rls-pool-read-only: reads the seeded identities, writes nothing.
     const { rows } = await pool.query(USERS);
-    expect(rows.length).toBe(7);
+    expect(rows.length).toBe(10);
   });
 
   it('gives every seeded user an email, which is what a link is issued against', async () => {
