@@ -44,7 +44,7 @@ function resolveInsideRoot(root, requestPath) {
  * @param {string} root directory to serve
  * @returns {Promise<{ port: number, close: () => Promise<void> }>}
  */
-export function startServer(root) {
+export function startServer(root, { port = 0, host = '127.0.0.1' } = {}) {
   const server = createServer(async (req, res) => {
     // Split rather than `new URL`: only the path matters, and index.html
     // always arrives with a ?team= query the file system knows nothing about.
@@ -80,9 +80,12 @@ export function startServer(root) {
 
   return new Promise((resolveStart, rejectStart) => {
     server.once('error', rejectStart);
-    // Port 0 lets the OS pick: a fixed port collides with a dev server or with
-    // a second vitest worker running the same file.
-    server.listen(0, '127.0.0.1', () => {
+    // Port 0 stays the default: a fixed port collides with a dev server or
+    // with a second vitest worker running the same file, and the browser suite
+    // runs many of both. `npm run serve` passes one explicitly (#1052), because
+    // a person opening the site needs a port the runbook can name and the auth
+    // redirect list can hold.
+    server.listen(port, host, () => {
       const address = server.address();
       resolveStart({
         port: typeof address === 'object' && address ? address.port : 0,

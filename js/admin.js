@@ -8,8 +8,24 @@
 // This page isn't scoped to a team, so it gets its own minimal Supabase
 // client and a lean auth check that only needs is_site_admin().
 
-var SUPABASE_URL = 'https://kxgjqnpwfklbgrxdgmmv.supabase.co';
-var SUPABASE_ANON_KEY = 'sb_publishable_OdTUOR0Do1ThdKUPBh5inA_OWq78POC';
+// supabase-target:start
+// Which Supabase this page talks to (#1052). Served from localhost or
+// 127.0.0.1 it is the local stack, so a PR's migration and the page that goes
+// with it can be looked at together before the merge applies the migration for
+// real. Anything else is production, including a page with no hostname (the vm
+// sandboxes in tests/frontend), so the default is never the local one.
+//
+// The hostname and nothing else decides it: a query key or a stored flag would
+// be a way to talk a page served from the real domain into pointing elsewhere.
+// The local key is Supabase's published demo anon JWT, the same on every
+// machine, and it grants nothing anywhere but a local stack.
+var WGA_LOCAL_HOSTS = ['localhost', '127.0.0.1'];
+var WGA_IS_LOCAL = typeof location !== 'undefined' && WGA_LOCAL_HOSTS.indexOf(location.hostname) !== -1;
+var SUPABASE_URL = WGA_IS_LOCAL ? 'http://127.0.0.1:54321' : 'https://kxgjqnpwfklbgrxdgmmv.supabase.co';
+var SUPABASE_ANON_KEY = WGA_IS_LOCAL
+  ? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
+  : 'sb_publishable_OdTUOR0Do1ThdKUPBh5inA_OWq78POC';
+// supabase-target:end
 var supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 var _adminTeams = [];
