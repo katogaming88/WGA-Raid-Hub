@@ -1,0 +1,213 @@
+name: Deploy
+
+# One workflow takes a merge to production (#1050): the migrations go first,
+# then the site, and the site only if the migrations applied.
+#
+# Before this, GitHub Pages built from `main` on its own about forty seconds
+# after a merge while `supabase db push` stayed a separate step someone ran in a
+# terminal afterwards. In between, the deployed site called RPCs the database
+# did not have yet, and that arrived as scattered errors at individual calls
+# rather than as one statement about the system. Nothing detects that window
+# now; it cannot open, because `deploy` needs `migrate`.
+#
+# Three consequences, all accepted rather than worked around:
+#
+#   - A merge takes a minute or two to reach the site rather than forty seconds.
+#   - The Discord deploy embed credits the Actions bot, because the workflow
+#     token creates the deployment rather than the person who merged.
+#   - SQL applied by hand in the dashboard leaves supabase_migrations behind, and
+#     that now blocks every deploy until `supabase migration repair` runs. That
+#     rule predates this workflow (docs/supabase-local-dev-setup.md section 7);
+#     what changes is that ignoring it stops the site shipping instead of only
+#     turning a check red.
+#
+# The push runs on every merge, not only on merges that carry a migration. It is
+# idempotent, and running it always is what picks up a push that failed earlier.
+
+on:
+  push:
+    branches: [main]
+  # Two uses: publishing the site by hand once the publishing source is switched
+  # over, and a dry run that prints what a push would apply without applying it.
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Print the migrations that would be applied, then stop.'
+        type: boolean
+        default: false
+
+# Serialised, not cancelled. A cancelled run is a half-finished deploy: the
+# first merge's migrations can already be on prod with its site build thrown
+# away. Same reasoning as release.yml.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: Apply migrations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check required secret is set
+        id: check_secret
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "Missing required repo secret: SUPABASE_DB_URL"
+            exit 1
+          fi
+
+      # Pinned to the version security-advisors.yml and schema-docs.yml install,
+      # so one CLI release cannot make the gates and the deploy disagree. Bump
+      # the three together.
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.115.0
+
+      # --yes because the runner has no TTY, where an unanswered confirmation
+      # prompt is a hang rather than a refusal. The CLI applies each file in its
+      # own transaction, so a file that fails leaves nothing half applied and
+      # the fix is a forward migration in a new PR.
+      - name: Push migrations
+        id: push
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            supabase db push --db-url "$DB_URL" --dry-run
+          else
+            supabase db push --db-url "$DB_URL" --yes
+          fi
+
+      # Two commands on purpose, not a pipeline: a pipe's exit code is the last
+      # command's, so a failed psql would feed an empty ledger to the script and
+      # misreport every migration in the tree as pending. No --pending-ok here:
+      # after the push above there should be nothing pending, and anything left
+      # is a push that silently did not take.
+      - name: Read ledger and compare
+        id: compare
+        if: ${{ !inputs.dry_run }}
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          psql "$DB_URL" -tAc "select version from supabase_migrations.schema_migrations" > ledger.txt
+          node scripts/ci/migration-ledger-check.js < ledger.txt
+
+      # A failed push produces no deployment, so the existing deploy
+      # notification cannot fire for it and the site quietly keeps serving the
+      # previous release. This is the only thing that says so.
+      - name: Notify Discord on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW: ${{ github.workflow }}
+          S_SECRET: ${{ steps.check_secret.outcome }}
+          S_PUSH: ${{ steps.push.outcome }}
+          S_COMPARE: ${{ steps.compare.outcome }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_WEBHOOK_URL is not set -- cannot post, but the run above already failed loudly on its own."
+            exit 0
+          fi
+
+          FAILED_STEP="unknown step"
+          [ "$S_SECRET" = "failure" ] && FAILED_STEP="Check required secret is set"
+          [ "$S_PUSH" = "failure" ] && FAILED_STEP="Push migrations"
+          [ "$S_COMPARE" = "failure" ] && FAILED_STEP="Read ledger and compare"
+
+          PAYLOAD=$(cat <<PAYLOAD_JSON
+          {
+            "embeds": [{
+              "title": "Deploy blocked: the migrations did not reach production",
+              "color": 15158332,
+              "fields": [
+                { "name": "Workflow", "value": "${WORKFLOW}", "inline": true },
+                { "name": "Failed step", "value": "${FAILED_STEP}", "inline": true }
+              ],
+              "url": "${RUN_URL}"
+            }]
+          }
+          PAYLOAD_JSON
+          )
+
+          curl -s -o /dev/null -w "%{http_code}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK_URL"
+          echo
+
+  # Whether Pages is serving what this workflow builds or still building from
+  # the branch itself. Switching that is a repository setting, and on a
+  # personal-account repository only the owner can change it, so this workflow
+  # has to be able to land and run before it happens. While the answer is
+  # `legacy` the deploy job below stays skipped and the branch build keeps
+  # serving the site exactly as it did.
+  #
+  # A failed read is a hard failure rather than a skip: after the switch, a
+  # silently skipped deploy would stop the site updating with nothing to say so.
+  pages-source:
+    name: Read the Pages build type
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    outputs:
+      build_type: ${{ steps.read.outputs.build_type }}
+    steps:
+      - name: Read it
+        id: read
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -o pipefail
+          BUILD_TYPE="$(gh api "repos/$REPO/pages" --jq '.build_type')"
+          echo "Pages build type: $BUILD_TYPE"
+          echo "build_type=$BUILD_TYPE" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build the site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # The same build container Pages runs for a branch build, so switching the
+      # source changes who invokes Jekyll and not what it produces. Jekyll has to
+      # stay: build.json carries empty front matter purely so Jekyll renders the
+      # deployed commit and build time into it (#967), and that file is the only
+      # record of which commit is live. Never add .nojekyll.
+      - uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./
+          destination: ./_site
+
+      # Printed rather than asserted. build_revision comes from the action's
+      # input rather than from the Pages environment now, and this is where that
+      # is checked on the first run, before anything depends on it.
+      - name: Show the rendered build identity
+        run: cat ./_site/build.json
+
+      - uses: actions/upload-pages-artifact@v3
+
+  deploy:
+    name: Deploy to Pages
+    needs: [migrate, build, pages-source]
+    if: ${{ needs.pages-source.outputs.build_type == 'workflow' && !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
