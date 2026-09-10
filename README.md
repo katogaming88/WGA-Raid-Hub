@@ -138,6 +138,8 @@ npm run db:rls         # regenerate docs/rls_policies.csv
 npm run migration:new -- <slug>   # new migration, stamped from the Eastern clock
 npm run serve          # serve the site at localhost:3000 against the local stack
 npm run dev:login -- officer      # print a sign-in link for a seeded persona
+npm run dev:sink       # catch what the Edge Functions would post to Discord
+npm run db:snapshot    # load the nightly production dump into the local stack
 ```
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full PR checklist (what a migration change additionally requires) and versioning/changelog rules.

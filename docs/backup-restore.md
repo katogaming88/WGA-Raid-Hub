@@ -8,7 +8,9 @@ This doc covers what exists and why, then the runbook: step-by-step recovery for
 
 - **R2 bucket** (`wga-raid-hub-backups`): see #541 for how it and its scoped API token were created.
 - **Repo secrets**: `SUPABASE_DB_URL`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` -- see #542.
-- **The workflow**: `.github/workflows/db-backup.yml`, runs nightly (~10:00 UTC) plus manual `workflow_dispatch`. See the workflow's own header comment for the full mechanics (dump, restore-verification, upload).
+- **The workflow**: `.github/workflows/db-backup.yml`, scheduled daily at 10:00 UTC plus manual `workflow_dispatch`. See the workflow's own header comment for the full mechanics (dump, restore-verification, upload).
+
+  **It does not run at 10:00.** GitHub queues scheduled workflows at low priority and the top of the hour is the most contended slot, so it starts late every day: measured across eight consecutive runs (2026-09-03 to 2026-09-10), between 13:13 and 15:28 UTC. Nothing is wrong when this morning's dump is not there yet; before mid-afternoon UTC the newest object in the bucket is yesterday's. Each object's `LastModified` is within a minute of the `pg_dump` that produced it, so read that rather than assuming a time.
 
 ## What gets backed up
 
@@ -85,18 +87,20 @@ Who can reach the bucket:
 
 - kat's Cloudflare login (bucket owner) and the bucket's read-write API token.
 - The repo's Actions secrets (what the nightly workflow uses).
-- Russell's read-only API token (#544), held in a local AWS CLI profile (`wga-backup-ro`).
+- Russell's read-only API token (#544), held in a local AWS CLI profile (`wga-raidhub-backups-ro`).
 
 Any S3 client works; the AWS CLI is what CI uses:
 
 ```sh
-aws s3 ls s3://wga-raid-hub-backups/pg/ \
-  --endpoint-url "https://<account-id>.r2.cloudflarestorage.com" --profile wga-backup-ro
-aws s3 cp s3://wga-raid-hub-backups/pg/wga-<date>.dump . \
-  --endpoint-url "https://<account-id>.r2.cloudflarestorage.com" --profile wga-backup-ro
+aws s3 ls s3://wga-raid-hub-backups/pg/ --profile wga-raidhub-backups-ro
+aws s3 cp s3://wga-raid-hub-backups/pg/wga-<date>.dump . --profile wga-raidhub-backups-ro
 ```
 
 The account id is not written here (public repo); it's visible in the Cloudflare dashboard and stored as the `R2_ACCOUNT_ID` repo secret.
+
+Set it on the profile once (`aws configure set endpoint_url https://<account-id>.r2.cloudflarestorage.com --profile wga-raidhub-backups-ro`) and no command here needs `--endpoint-url` again.
+
+To load a dump into the local stack for rehearsing a migration rather than for recovery, see section 12 of [supabase-local-dev-setup.md](supabase-local-dev-setup.md), which wraps these steps as `npm run db:snapshot`.
 
 ## Runbook: selective restore (bad delete, Danger Zone accident)
 

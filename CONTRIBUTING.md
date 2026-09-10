@@ -400,6 +400,11 @@ PRs that change `supabase/migrations/` must also:
   applies it: [section 10 of the local dev doc](docs/supabase-local-dev-setup.md)
   is four commands from a new migration file to `localhost:3000` signed in as a
   seeded persona, then the bullets below in the order a PR needs them.
+- Rehearse it against real data when the shape of the data matters:
+  `npm run db:snapshot` loads the nightly production dump under the schema it
+  was taken from and runs this branch's migrations on top (section 12 of the
+  local dev doc). It needs a read-only bucket token, and it puts production
+  data on your machine.
 - Create the file with `npm run migration:new -- <slug>`, which stamps it with
   the **real current Eastern wall clock** (`YYYYMMDDHHMMSS`). Supabase orders
   and applies migrations by that prefix, so it is a sort key shared between
