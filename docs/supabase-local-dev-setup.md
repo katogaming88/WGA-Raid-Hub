@@ -237,6 +237,47 @@ Known limits:
   like. Both name the same fix,
   `npm run migration:new -- --rename supabase/migrations/<file>`.
 
+## 8. Run the site against the local stack
+
+The stack has the schema and the seed. This puts the site on top of it, so a PR
+that touches a migration and a page can be looked at as one thing rather than
+as an RLS suite and a guess.
+
+```sh
+supabase start     # if it is not already up
+npm run serve      # binds http://localhost:3000, Ctrl+C to stop
+```
+
+Then open <http://localhost:3000/?team=phoenix>.
+
+**How the page knows.** `js/common.js` and `js/admin.js` resolve the Supabase
+target from `location.hostname`: `localhost` and `127.0.0.1` select the local
+stack at `http://127.0.0.1:54321` with Supabase's published demo anon key,
+anything else selects production. The match is exact, so
+`localhost.example.com` is production, and a page with no hostname at all (the
+vm sandboxes in `tests/frontend`) is production too. Nothing else can switch it:
+no query string, no stored flag. `admin.html` carries its own copy of that block
+because it loads neither `common.js` nor `discord.js`, and a CI test pins the
+two copies identical.
+
+**Use `localhost`, not `127.0.0.1`, in the browser.** Both resolve the local
+stack, but the Twitch embed passes the hostname as its `parent`
+(`js/streamers.js`) and accepts `localhost`; the numeric form can be refused,
+which shows up as an empty Streams tab rather than an error.
+
+Three things are worth knowing before something looks broken:
+
+- **You are signed out, on every page.** The only sign-in is Discord OAuth
+  against production, and the seeded `auth.users` rows are ids with nothing
+  attached. Officer and admin pages will offer a login and stop there.
+- **The CDN still needs internet.** `supabase-js` and the fonts load from the
+  network; only the database and the API are local.
+- **`build.json` reads as unrendered Liquid**, because Jekyll runs at deploy
+  rather than here. Nothing on the site reads it.
+
+To point a browser at production deliberately, open the deployed site. There is
+no switch for pointing a local page at production, on purpose.
+
 ## Known quirk: vector container restart loop (Windows)
 
 On Docker Desktop for Windows the `supabase_vector` container (log shipping for the
