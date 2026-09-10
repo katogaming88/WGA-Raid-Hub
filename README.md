@@ -132,6 +132,7 @@ npm --prefix bot test  # vitest -- the Discord bot, which keeps its own deps and
 npm run db:docs        # regenerate dbdoc/ after a migration change
 npm run db:rls         # regenerate docs/rls_policies.csv
 npm run migration:new -- <slug>   # new migration, stamped from the Eastern clock
+npm run serve          # serve the site at localhost:3000 against the local stack
 ```
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full PR checklist (what a migration change additionally requires) and versioning/changelog rules.

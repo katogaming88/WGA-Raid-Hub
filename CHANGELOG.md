@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.101.0] - 2026-09-10
+
+### Frontend
+
+- The site can now be run against a local copy of the database
+  ([#1052](https://github.com/katogaming88/WGA-Raid-Hub/issues/1052)). Pages served from
+  `localhost` talk to the local development stack instead of the live one, so a change to the
+  database and the page that goes with it can be looked at together before either reaches anyone.
+  Nothing about the deployed site changes: it decides purely on the address it is served from, an
+  exact match on two names, and there is no setting or link that can point a page on the real
+  domain somewhere else.
+- `npm run serve` opens the site at `localhost:3000` for that purpose, reusing the small file
+  server the accessibility tests already run rather than adding a second one.
+
 ## [3.100.1] - 2026-09-09
 
 ### Project

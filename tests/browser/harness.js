@@ -150,7 +150,11 @@ export function installRoutes(page, port) {
       });
     }
 
-    if (host.endsWith('.supabase.co')) {
+    // Both spellings of "Supabase" now. Pages served on 127.0.0.1 resolve the
+    // local stack (#1052), so without the second test every read in this suite
+    // would go to the recorded-and-aborted list and the state assertions would
+    // fail on a page that is behaving correctly.
+    if (host.endsWith('.supabase.co') || (host === '127.0.0.1' && url.port === '54321')) {
       // Phase A is the public pages, so there is never a session. Everything
       // under /auth/v1 answers "signed out" rather than erroring, which is the
       // state a first-time visitor is in.
