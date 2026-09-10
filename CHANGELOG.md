@@ -28,9 +28,9 @@ answers to.
   reset and after a snapshot. `npm run dev:login` with no name lists who the
   running stack holds, and a name it does not hold is refused instead of
   minting an account that signs in with no access. `--discord-id` is
-  unchanged. The seed also gains Immolation (team 3) with an officer, a team
-  leader and a raider of its own, so the seeded teams table has the same
-  shape as production's.
+  unchanged. The seed now carries all three people for each of production's
+  four teams plus a boe-manager, so it offers exactly the names a snapshot
+  mints.
 
 ## [3.102.0] - 2026-09-10
 

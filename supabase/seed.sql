@@ -21,6 +21,12 @@
 --   ...0008  officer on team 3          immolation-officer
 --   ...0009  team leader on team 3      immolation-leader
 --   ...0010  raider on team 3           immolation-raider
+--   ...0011  officer on team 4          wrathless-officer
+--   ...0012  team leader on team 4      wrathless-leader
+--   ...0013  raider on team 4           wrathless-raider
+--   ...0014  BoE manager, no team row   boe-manager
+--   ...0015  team leader on team 2      hellfire-leader
+--   ...0016  raider on team 2           hellfire-raider
 --
 -- The persona names follow the scheme a restored snapshot mints from the
 -- teams table (scripts/dev/snapshot-personas.js, #1065): <slug>-officer,
@@ -76,7 +82,13 @@ from (values
   ('00000000-0000-0000-0000-000000000007', 'guild-officer@wga.local',    'discord-guildofficer-1', 'Guild Officer'),
   ('00000000-0000-0000-0000-000000000008', 'immolation-officer@wga.local', 'discord-officer-3',     'Immolation Officer'),
   ('00000000-0000-0000-0000-000000000009', 'immolation-leader@wga.local',  'discord-leader-3',      'Immolation Leader'),
-  ('00000000-0000-0000-0000-000000000010', 'immolation-raider@wga.local',  'discord-raider-3',      'Immolation Raider')
+  ('00000000-0000-0000-0000-000000000010', 'immolation-raider@wga.local',  'discord-raider-3',      'Immolation Raider'),
+  ('00000000-0000-0000-0000-000000000011', 'wrathless-officer@wga.local',  'discord-officer-4',     'Wrathless Officer'),
+  ('00000000-0000-0000-0000-000000000012', 'wrathless-leader@wga.local',   'discord-leader-4',      'Wrathless Leader'),
+  ('00000000-0000-0000-0000-000000000013', 'wrathless-raider@wga.local',   'discord-raider-4',      'Wrathless Raider'),
+  ('00000000-0000-0000-0000-000000000014', 'boe-manager@wga.local',        'discord-boe-manager',   'BoE Manager'),
+  ('00000000-0000-0000-0000-000000000015', 'hellfire-leader@wga.local',    'discord-leader-2',      'Hellfire Leader'),
+  ('00000000-0000-0000-0000-000000000016', 'hellfire-raider@wga.local',    'discord-raider-2',      'Hellfire Raider')
 ) as p(id, email, provider_id, full_name);
 
 -- One identity row each, so an account looks like one that signed in rather
@@ -110,7 +122,12 @@ insert into public.team_members (id, team_id, discord_id, auth_user_id, role, na
   (5, 1, 'discord-guildofficer-1', '00000000-0000-0000-0000-000000000007', 'raider', 'Seedguildofficer-Illidan'),
   (6, 3, 'discord-officer-3', '00000000-0000-0000-0000-000000000008', 'officer', 'Seedimmolationofficer-Illidan'),
   (7, 3, 'discord-leader-3',  '00000000-0000-0000-0000-000000000009', 'team_leader', 'Seedimmolationleader-Illidan'),
-  (8, 3, 'discord-raider-3',  '00000000-0000-0000-0000-000000000010', 'raider',  'Seedimmolationraider-Illidan');
+  (8, 3, 'discord-raider-3',  '00000000-0000-0000-0000-000000000010', 'raider',  'Seedimmolationraider-Illidan'),
+  (9, 4, 'discord-officer-4', '00000000-0000-0000-0000-000000000011', 'officer', 'Seedwrathlessofficer-Illidan'),
+  (10, 4, 'discord-leader-4', '00000000-0000-0000-0000-000000000012', 'team_leader', 'Seedwrathlessleader-Illidan'),
+  (11, 4, 'discord-raider-4', '00000000-0000-0000-0000-000000000013', 'raider',  'Seedwrathlessraider-Illidan'),
+  (12, 2, 'discord-leader-2',  '00000000-0000-0000-0000-000000000015', 'team_leader', 'Seedhellfireleader-Illidan'),
+  (13, 2, 'discord-raider-2',  '00000000-0000-0000-0000-000000000016', 'raider',  'Seedhellfireraider-Illidan');
 
 insert into public.site_admins (id, discord_id, auth_user_id) values
   (1, 'discord-site-admin', '00000000-0000-0000-0000-000000000004');
@@ -133,7 +150,9 @@ insert into public.players (id, team_id, name_realm, class_spec_id) values
   (1, 1, 'Seedraider-Illidan', 1),
   (2, 1, 'Seedplayertwo-Illidan', 1),
   (3, 2, 'Seedhellfire-Illidan', 1),
-  (4, 3, 'Seedimmolationraider-Illidan', 1);
+  (4, 3, 'Seedimmolationraider-Illidan', 1),
+  (5, 4, 'Seedwrathlessraider-Illidan', 1),
+  (6, 2, 'Seedhellfireraider-Illidan', 1);
 
 -- One row per gated table so the harness can prove invisibility to the
 -- wrong roles and visibility plus UPDATE reach to the right ones.
@@ -195,8 +214,15 @@ insert into public.boe_items (id, team_id, player_id, finder_name, item_id, item
 insert into public.boe_listings (id, team_id, boe_item_id, price, listed_at) values
   (1, 1, 2, 160000, '2026-01-02T12:00:00Z');
 
+-- Two grants. Row 1 is the BoE suite's manager (#753): it acts as OFFICER_T1
+-- for the manager-only paths and contrasts it with the ungranted team-1 leader
+-- and team-2 officer, so that row is test convenience. Row 2 is the persona
+-- (#1065): only this grant and no team row, the guild banker who is not a
+-- site admin, which is what the grant exists for since a site admin already
+-- passes every BoE gate.
 insert into public.boe_managers (id, discord_id, auth_user_id) values
-  (1, 'discord-officer-1', '00000000-0000-0000-0000-000000000001');
+  (1, 'discord-officer-1', '00000000-0000-0000-0000-000000000001'),
+  (2, 'discord-boe-manager', '00000000-0000-0000-0000-000000000014');
 
 -- Rows for public-read tables the matrix test asserts are visible.
 
@@ -229,7 +255,7 @@ insert into public.item_bosses (item_id, boss) values
 -- Serial sequences must move past the explicit ids above or the first
 -- INSERT a test makes collides on the primary key.
 select setval('public.teams_id_seq', 10);
-select setval('public.team_members_id_seq', 10);
+select setval('public.team_members_id_seq', 20); -- eleven seeded rows, so 10 would collide
 select setval('public.site_admins_id_seq', 10);
 select setval('public.guild_officers_id_seq', 10);
 select setval('public.classes_specs_id_seq', 10);

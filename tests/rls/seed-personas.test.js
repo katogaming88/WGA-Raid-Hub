@@ -33,11 +33,12 @@ const USERS = `
          u.recovery_token,
          u.email_change,
          u.email_change_token_new,
-         coalesce(tm.discord_id, sa.discord_id, go.discord_id) as grant_discord_id
+         coalesce(tm.discord_id, sa.discord_id, go.discord_id, bm.discord_id) as grant_discord_id
     from auth.users u
     left join public.team_members  tm on tm.auth_user_id = u.id
     left join public.site_admins   sa on sa.auth_user_id = u.id
     left join public.guild_officers go on go.auth_user_id = u.id
+    left join public.boe_managers  bm on bm.auth_user_id = u.id
    order by u.id
 `;
 
@@ -45,7 +46,7 @@ describe('seeded personas (#1053)', () => {
   it('seeds the identities the RLS suite documents, so the assertions below have a subject', async () => {
     // rls-pool-read-only: reads the seeded identities, writes nothing.
     const { rows } = await pool.query(USERS);
-    expect(rows.length).toBe(10);
+    expect(rows.length).toBe(16);
   });
 
   it('gives every seeded user an email, which is what a link is issued against', async () => {
@@ -132,5 +133,39 @@ describe('seeded personas (#1053)', () => {
     for (const { email, slug, role } of rows) {
       expect(email).toBe(`${slug}-${short[role]}@wga.local`);
     }
+  });
+
+  it('offers the same set a snapshot would mint from its own teams table', async () => {
+    // The other direction of the scheme: not only is every seeded person
+    // named correctly, every team on the seeded stack has all three, whether
+    // the team is a seed row or one a migration created (Wrathless). A team
+    // added anywhere without its people fails here rather than surfacing as a
+    // name that works after a snapshot and not after a reset.
+    // rls-pool-read-only: reads the seeded identities, writes nothing.
+    const { rows: teams } = await pool.query('select slug from public.teams order by slug');
+    expect(teams.length).toBeGreaterThan(1);
+    const expected = ['admin', 'guild-officer', 'boe-manager'];
+    for (const { slug } of teams) expected.push(`${slug}-officer`, `${slug}-leader`, `${slug}-raider`);
+    // rls-pool-read-only: reads the seeded identities, writes nothing.
+    const { rows } = await pool.query(USERS);
+    const names = new Set(rows.map((r) => r.email.replace(/@wga\.local$/, '')));
+    expect(expected.filter((name) => !names.has(name))).toEqual([]);
+  });
+
+  it('grants the BoE manager to its own persona and to the Phoenix officer, and nobody else', async () => {
+    // boe-manager holds only that grant: the guild banker who is not a site
+    // admin, which is what the grant exists for (#745, #766) since a site
+    // admin already passes every BoE gate. The Phoenix officer's row is older
+    // (#753): the BoE suite acts as OFFICER_T1 for the manager-only paths and
+    // contrasts it with the ungranted leader and team-2 officer, so that row
+    // is test convenience rather than a model of the guild, and it stays.
+    // rls-pool-read-only: reads the seeded grants, writes nothing.
+    const { rows } = await pool.query(`
+      select u.email
+        from public.boe_managers m
+        join auth.users u on u.id = m.auth_user_id
+       order by u.email
+    `);
+    expect(rows.map((r) => r.email)).toEqual(['boe-manager@wga.local', 'phoenix-officer@wga.local']);
   });
 });

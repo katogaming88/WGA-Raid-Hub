@@ -54,8 +54,8 @@ async function withTxn(fn) {
 }
 
 // Seeded rows this file leans on (supabase/seed.sql):
-//   team_members 1 = discord-officer-1 (OFFICER_T1, team 1, holds the only
-//     boe_managers grant), 3 = discord-raider-1 (RAIDER_T1, team 1),
+//   team_members 1 = discord-officer-1 (OFFICER_T1, team 1, holds a
+//     boe_managers grant, as does BOE_MANAGER with no team row), 3 = discord-raider-1 (RAIDER_T1, team 1),
 //     4 = discord-officer-2 (OFFICER_T2, team 2, no manager grant)
 //   players 1 = Seedraider-Illidan, team 1, team_member_id null
 //   boe_items 1 = found, team 1, player_id 1, finder_name Seedraider-Illidan

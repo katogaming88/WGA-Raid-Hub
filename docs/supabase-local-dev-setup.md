@@ -321,26 +321,34 @@ running stack does not hold is refused with the list of the ones it does. Team 1
 is Phoenix and team 2 Hellfire Rollers in the seed as in production, so
 `phoenix-officer` is the same person either way.
 
-What the seed holds, and what each is for:
+What the seed holds, and what each is for. The teams are production's four:
+Phoenix, Hellfire Rollers and Immolation from the seed, Wrathless from the
+migration that created it, and each has its three people, so the seed offers
+every name a snapshot mints.
 
 | Persona | Who they are |
 |---------|--------------|
-| `phoenix-officer` | Officer on team 1. The officer dashboard, the roster, loot and signups |
+| `phoenix-officer` | Officer on team 1. The officer dashboard, the roster, loot and signups. Also holds the BoE manager grant, because the BoE suite acts as one identity that is both an officer and a manager |
 | `phoenix-leader` | Team leader on team 1. Officer plus the team-leader-only paths |
 | `phoenix-raider` | Raider on team 1 with the character Seedraider-Illidan. The raider-facing side: profile, wishlist, BiS, signup |
 | `hellfire-officer` | Officer on team 2. What one team's officer must not see of another's |
-| `admin` | Site admin with no team role. `admin.html` and nothing team-scoped |
-| `guild-officer` | Guild officer who raids on team 1 with no leadership role |
+| `hellfire-leader` | Team leader on team 2 |
+| `hellfire-raider` | Raider on team 2 with the character Seedhellfireraider-Illidan |
 | `immolation-officer` | Officer on team 3 |
 | `immolation-leader` | Team leader on team 3 |
 | `immolation-raider` | Raider on team 3 with the character Seedimmolationraider-Illidan |
+| `wrathless-officer` | Officer on team 4 |
+| `wrathless-leader` | Team leader on team 4 |
+| `wrathless-raider` | Raider on team 4 with the character Seedwrathlessraider-Illidan |
+| `admin` | Site admin with no team role. `admin.html` and nothing team-scoped. A site admin passes every BoE gate too |
+| `guild-officer` | Guild officer who raids on team 1 with no leadership role. Writes on players, attendance, schedule and officer notes on every team; no approvals, season, priority, loot import or BoE |
+| `boe-manager` | The BoE manager grant and nothing else: the guild banker who is not a site admin, which is what the grant exists for |
 | `signup-owner` | A signup with no roster row and no grant. The signed-in view of somebody who applied and was never added |
 
-The seeded teams are production's: Phoenix, Hellfire Rollers and Immolation
-from the seed, Wrathless from the migration that created it. A snapshot holds
-the three per team for every one of them, plus `admin`, `guild-officer` and
-`boe-manager`; section 12 has that table. The seed has no `boe-manager` and no
-people on Wrathless, and a snapshot has no `signup-owner`.
+A snapshot mints the same twelve team names plus `admin`, `guild-officer` and
+`boe-manager`; section 12 has that table. The only names on one stack and not
+the other are `signup-owner`, which is a seed fixture, and whatever a fifth
+production team would add.
 
 **One specific real person, by Discord id.**
 
