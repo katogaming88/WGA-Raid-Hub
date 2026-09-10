@@ -1,5 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { newestDump, parseMergeTimes, resetVersionFor, listCommand, plan, run } from '../../scripts/dev/db-snapshot.js';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import {
+  newestDump,
+  parseMergeTimes,
+  resetVersionFor,
+  listCommand,
+  plan,
+  run,
+  EMPTY_CHECK_TABLES
+} from '../../scripts/dev/db-snapshot.js';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 // Last night's production data under the PR's migrations (#1056).
 //
@@ -298,5 +311,44 @@ describe('run (#1056)', () => {
     const exec = (cmd) =>
       cmd === 'aws' ? { status: 0, stdout: 'Unable to locate credentials' } : { status: 0, stdout: '' };
     expect(() => run({ version: '20260909050000' }, { exec })).toThrow(/not JSON/i);
+  });
+
+  // spawnSync on a program that is not on PATH returns status null with
+  // error.code ENOENT and no stderr at all, so without this the message is
+  // "aws exited null" and nothing else. It is the first thing a new machine
+  // hits, and the two programs it hits are the two the repo never asked anyone
+  // to install.
+  const missing = (name) => (cmd) =>
+    cmd === name
+      ? { status: null, error: Object.assign(new Error('spawnSync ENOENT'), { code: 'ENOENT' }) }
+      : { status: 0, stdout: JSON.stringify(LISTING) };
+
+  it('says the AWS CLI is missing rather than reporting a null exit', () => {
+    expect(() => run({ version: '20260909050000' }, { exec: missing('aws') })).toThrow(
+      /aws.*not installed|not on PATH/i
+    );
+    expect(() => run({ version: '20260909050000' }, { exec: missing('aws') })).toThrow(/AWS CLI/);
+  });
+
+  it('names the Postgres client, and its version floor, when pg_restore is missing', () => {
+    // The archive is written by a 17 server, so an older client cannot read it.
+    const exec = (cmd) =>
+      cmd === 'pg_restore'
+        ? { status: null, error: Object.assign(new Error('spawnSync ENOENT'), { code: 'ENOENT' }) }
+        : { status: 0, stdout: JSON.stringify(LISTING) };
+    expect(() => run({ version: '20260909050000' }, { exec })).toThrow(/pg_restore/);
+    expect(() => run({ version: '20260909050000' }, { exec })).toThrow(/17/);
+  });
+});
+
+describe('the printed counts follow the backup workflow (#1056)', () => {
+  it('checks exactly the tables db-backup.yml refuses to see empty', () => {
+    // Two lists of the same thing in two files drift, and this pair drifts
+    // silently: the snapshot would keep reporting on a table the backup stopped
+    // caring about, or stay quiet about one it started caring about.
+    const workflow = readFileSync(join(ROOT, '.github', 'workflows', 'db-backup.yml'), 'utf8');
+    const line = workflow.match(/EMPTY_CHECK="([^"]+)"/);
+    expect(line, 'db-backup.yml no longer declares EMPTY_CHECK').not.toBeNull();
+    expect(EMPTY_CHECK_TABLES).toEqual(line[1].trim().split(/\s+/));
   });
 });
