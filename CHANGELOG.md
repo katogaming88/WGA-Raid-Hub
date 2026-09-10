@@ -12,6 +12,18 @@ answers to.
 
 ---
 
+## [3.101.2] - 2026-09-10
+
+### Project
+
+- A walk-through for rehearsing a migration PR before it merges
+  ([#1054](https://github.com/katogaming88/WGA-Raid-Hub/issues/1054)). Section
+  10 of the local dev doc is four commands from a new migration file to the site
+  on `localhost:3000` signed in as a seeded persona, then what to regenerate
+  before the PR, what the PR's own checks run for you, what its ledger check
+  means, why pushing to production by hand first can block every deploy, and the
+  two local failures a reset cures.
+
 ## [3.101.1] - 2026-09-10
 
 ### Project

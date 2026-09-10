@@ -396,6 +396,10 @@ step by step in [docs/supabase-local-dev-setup.md](docs/supabase-local-dev-setup
 
 PRs that change `supabase/migrations/` must also:
 
+- See it running under the site before the merge, since the merge is what
+  applies it: [section 10 of the local dev doc](docs/supabase-local-dev-setup.md)
+  is four commands from a new migration file to `localhost:3000` signed in as a
+  seeded persona, then the bullets below in the order a PR needs them.
 - Create the file with `npm run migration:new -- <slug>`, which stamps it with
   the **real current Eastern wall clock** (`YYYYMMDDHHMMSS`). Supabase orders
   and applies migrations by that prefix, so it is a sort key shared between
