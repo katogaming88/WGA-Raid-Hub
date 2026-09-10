@@ -56,17 +56,37 @@ On macOS/Linux: `brew install supabase/tap/supabase`.
 If a freshly installed command is not found in an already-open terminal, open a new
 terminal (the PATH change only applies to new sessions).
 
-### 1d. psql client (optional but useful)
+### 1d. psql and pg_restore
 
-For command-line checks against the local database. On Windows:
+For command-line checks against the local database, and required by sections
+11 and 12. On Windows:
 
 ```powershell
 scoop install postgresql
 ```
 
+On macOS: `brew install libpq`, or the full `postgresql@17`.
+
+**Version 17 or newer.** The local server is 17 (`supabase/config.toml`), and a
+client older than the server cannot read an archive that server wrote, which is
+how section 12 fails on an old client. Check with `pg_restore --version`.
+
 Note: scoop's postgresql package adds its `bin` directory to PATH instead of
 creating shims, so `psql` only resolves in terminals opened after the install.
-The binary lives at `~\scoop\apps\postgresql\current\bin\psql.exe`.
+The binary lives under `scoop/apps/postgresql/current/bin/`.
+
+### 1e. AWS CLI (section 12 only)
+
+Only needed to pull a production dump out of R2 (section 12). Everything else
+in this document works without it.
+
+```powershell
+scoop install aws
+```
+
+On macOS: `brew install awscli`. Version 2.13 or newer, because section 12 puts
+the R2 endpoint on the profile rather than on every command line, and older
+versions ignore it there. Check with `aws --version`.
 
 ## 2. Start the stack
 
@@ -440,7 +460,7 @@ claim about the container and not about connections. And a reset that is still
 running has only part of its schema applied, so anything started against it is
 genuinely missing objects. Both arrive as errors raised per test, which read
 like assertion failures, which is why this one query is worth more than the
-first red case. Section 1d covers psql if you skipped it.
+first red case. Section 1d has psql if it is not installed yet.
 
 **Nothing on this stack reaches production.** Four migrations schedule
 `pg_cron` jobs whose command carries the production functions URL, and a reset
@@ -533,11 +553,29 @@ docker restart supabase_kong_WGA-Raid-Hub
 
 ## 12. Rehearse against last night's production data
 
-Sections 8 to 11 all run on the 27-row seed, so a migration is rehearsed on
+**This section is optional.** Sections 8 to 11 are the everyday rehearsal
+loop: they need no account, no token, and put nothing sensitive on your
+machine. Come here only when the shape of the data matters, and you can get
+everything else working first.
+
+Those sections all run on the 27-row seed, so a migration is rehearsed on
 three players and two teams and a page is clicked through on the same. This
 loads the nightly backup instead: the `pg_dump` of `public` that
-`db-backup.yml` ships to R2 every morning, restored under the schema it was
-taken from, with this branch's own migrations run on top.
+`db-backup.yml` ships to R2, restored under the schema it was taken from,
+with this branch's own migrations run on top.
+
+**When the dump is from.** The backup is scheduled for 10:00 UTC and does not
+run then. Measured across eight consecutive days, GitHub started it between
+13:13 and 15:28 UTC, because scheduled workflows are queued at low priority
+and the top of the hour is the most contended slot there is. So before
+mid-afternoon UTC the newest dump is yesterday's, which is fine and is not a
+failed backup. The tool reads each object's own timestamp rather than
+assuming one, and prints the capture instant it used.
+
+**What it needs first:** the AWS CLI (section 1e), a Postgres client 17 or
+newer (section 1d), and a read-only token for the bucket, which the next
+subsection covers. Without them the run stops on its first step and says which
+one is missing.
 
 ```sh
 npm run db:snapshot           # newest dump, schema version worked out for you
@@ -554,17 +592,18 @@ production dashboard.
 
 Who can reach it today:
 
-- **kat**, who owns the Cloudflare account and the bucket.
+- **The bucket owner**, through the Cloudflare account itself (kat).
 - **The repo's Actions secrets**, which the nightly workflow uses.
-- **Russell**, through the read-only token from #544, in a local AWS CLI
-  profile.
+- **One read-only token**, issued per person and held in a local AWS CLI
+  profile. Russell has one, from #544.
 
 A token to this bucket is a copy of production, so it is granted the way
-production access is granted, not the way a dev tool is. If you need one, kat
-mints it in the Cloudflare dashboard scoped to this one bucket with **Object
-Read only**, never the read-write token the workflow uses and never an
-account-wide one. One token per person: R2 has no per-user identity, the token
-*is* the identity, so a shared one cannot be revoked for one person.
+production access is granted, not the way a dev tool is. The bucket owner
+mints one in the Cloudflare dashboard, scoped to this bucket alone with
+**Object Read only**: never the read-write token the nightly workflow uses,
+and never an account-wide one. One token per person, because R2 has no
+per-user identity. The token *is* the identity, so a shared one cannot be
+revoked for one person without revoking it for everybody.
 
 Set it up once:
 
@@ -575,8 +614,21 @@ aws configure set endpoint_url https://<account-id>.r2.cloudflarestorage.com --p
 
 The second line is why no command here carries `--endpoint-url` and why the
 account id is typed exactly once. It is not in this repo (it is a repo secret);
-it is on the R2 page of the Cloudflare dashboard. `npm run db:snapshot` uses
-that profile by default; `--profile <name>` or `AWS_PROFILE` overrides it.
+it is on the R2 page of the Cloudflare dashboard. **Both lines matter**: keys
+without the endpoint send the request to Amazon, which answers
+`InvalidAccessKeyId` and reads like a bad token.
+
+Prove it before going further, because everything below assumes it works:
+
+```sh
+aws s3 ls s3://wga-raid-hub-backups/pg/ --profile wga-raidhub-backups-ro
+```
+
+A list of `wga-<date>.dump` objects means you are done. Two things to know:
+pressing Enter at an `aws configure` prompt leaves that key **blank** when
+there was nothing stored before, rather than keeping an old value; and
+`npm run db:snapshot` looks for a profile named `wga-raidhub-backups-ro`, so
+either name yours that or pass `--profile <name>` (or set `AWS_PROFILE`).
 
 ### What it does, and why each step is there
 
@@ -602,7 +654,10 @@ that profile by default; `--profile <name>` or `AWS_PROFILE` overrides it.
    production-shaped data. This is the step the whole thing exists for.
 8. Prints the row counts of the eight tables the backup workflow refuses to see
    empty, so a restore that technically succeeded but loaded nothing is
-   visible.
+   visible. A test keeps that list identical to the workflow's own.
+
+The dump is about a megabyte, so the download is never the slow part. The
+reset is.
 
 Sequences come back with the data. `restart identity` resets them by ownership
 rather than by name, which is what handles `season_signups` still owning the
@@ -633,6 +688,13 @@ bucket or do not load. Nothing to fix.
 the seed, and the seeded personas and fixtures are not there. `supabase db
 reset` first, which also puts the quiet cron jobs back.
 
+**Reset before you re-stamp or drop a migration you rehearsed here.**
+`supabase migration up --local` writes the version into the local ledger, so
+removing or renaming that file afterwards leaves a local row naming a file that
+no longer exists. It is the same orphan the strict check catches on production
+(section 7), and out-of-order re-stamping asks for exactly this often enough to
+be worth the habit. A reset clears it.
+
 ### When it fails
 
 Every step stops on its own error and names itself, and the restore runs in one
@@ -645,6 +707,14 @@ downloaded dump is kept on a failure and deleted on success.
   explicit `--version`.
 - **`No migration on this branch was merged before ...`.** The dump predates
   the history you have, or the clone is shallow. Pass `--version <stamp>`.
+- **`Credential access key has length 0, should be 32`.** The profile exists
+  with empty keys, which is what `aws configure` leaves when you press Enter
+  through its prompts. Run it again and paste both values.
+- **`InvalidAccessKeyId: ... does not exist in our records`.** The keys are set
+  but the endpoint is not, so the request went to Amazon rather than
+  Cloudflare. Run the `aws configure set endpoint_url` line above.
+- **`"aws" is not installed or not on PATH`**, or the same for `pg_restore`.
+  Sections 1e and 1d.
 - **`SSL: SSLV3_ALERT_HANDSHAKE_FAILURE`** from `aws`. This is always the
   account id in the endpoint and never the path or the key, because TLS
   finishes before the request path is sent. Re-check the `endpoint_url` on the
@@ -653,7 +723,7 @@ downloaded dump is kept on a failure and deleted on success.
   on this machine usually means an unclean shutdown mid-fetch. Run it again.
 
 If your `pg_restore` is older than 17 it cannot read the archive. The stack's
-own container has a matching one:
+own container carries 17.6, so it can:
 
 ```sh
 MSYS_NO_PATHCONV=1 docker cp <the dump> supabase_db_WGA-Raid-Hub:/tmp/wga.dump
@@ -662,8 +732,9 @@ MSYS_NO_PATHCONV=1 docker exec supabase_db_WGA-Raid-Hub \
   -U supabase_admin -d postgres /tmp/wga.dump
 ```
 
-`MSYS_NO_PATHCONV=1` because those are paths inside the container: without it
-Git Bash rewrites them and the error names a path you never typed.
+`MSYS_NO_PATHCONV=1` is for Git Bash on Windows only, and drops on macOS and
+Linux. Those are paths inside the container, and without it Git Bash rewrites
+them so the error names a path you never typed.
 
 ## Known quirk: vector container restart loop (Windows)
 

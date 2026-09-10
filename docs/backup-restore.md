@@ -8,7 +8,9 @@ This doc covers what exists and why, then the runbook: step-by-step recovery for
 
 - **R2 bucket** (`wga-raid-hub-backups`): see #541 for how it and its scoped API token were created.
 - **Repo secrets**: `SUPABASE_DB_URL`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` -- see #542.
-- **The workflow**: `.github/workflows/db-backup.yml`, runs nightly (~10:00 UTC) plus manual `workflow_dispatch`. See the workflow's own header comment for the full mechanics (dump, restore-verification, upload).
+- **The workflow**: `.github/workflows/db-backup.yml`, scheduled daily at 10:00 UTC plus manual `workflow_dispatch`. See the workflow's own header comment for the full mechanics (dump, restore-verification, upload).
+
+  **It does not run at 10:00.** GitHub queues scheduled workflows at low priority and the top of the hour is the most contended slot, so it starts late every day: measured across eight consecutive runs (2026-09-03 to 2026-09-10), between 13:13 and 15:28 UTC. Nothing is wrong when this morning's dump is not there yet; before mid-afternoon UTC the newest object in the bucket is yesterday's. Each object's `LastModified` is within a minute of the `pg_dump` that produced it, so read that rather than assuming a time.
 
 ## What gets backed up
 

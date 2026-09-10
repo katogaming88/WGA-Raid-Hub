@@ -82,17 +82,37 @@ delete from public.no_character_dismissals;
 `;
 
 // The tables db-backup.yml refuses to see empty, printed so a restore that
-// technically succeeded but loaded nothing is visible.
-const COUNTS = `
-select 'players' as t, count(*) from public.players
-union all select 'item_preferences', count(*) from public.item_preferences
-union all select 'season_signups', count(*) from public.season_signups
-union all select 'team_settings', count(*) from public.team_settings
-union all select 'team_members', count(*) from public.team_members
-union all select 'teams', count(*) from public.teams
-union all select 'site_admins', count(*) from public.site_admins
-union all select 'attendance', count(*) from public.attendance;
-`;
+// technically succeeded but loaded nothing is visible. Kept identical to that
+// workflow's EMPTY_CHECK by a test rather than by anyone remembering: two lists
+// of the same thing in two files drift, and this pair drifts silently.
+export const EMPTY_CHECK_TABLES = [
+  'players',
+  'item_preferences',
+  'season_signups',
+  'team_settings',
+  'team_members',
+  'teams',
+  'site_admins',
+  'attendance'
+];
+
+const COUNTS =
+  EMPTY_CHECK_TABLES.map(
+    (table, i) =>
+      `${i === 0 ? 'select' : 'union all select'} '${table}'${i === 0 ? ' as t' : ''}, count(*) from public.${table}`
+  ).join('\n') + ';\n';
+
+// What installs each program the steps shell out to. spawnSync on something
+// that is not on PATH returns a null status with no stderr, so without this the
+// whole message is "aws exited null", which is the first thing a machine that
+// has never done this before will see.
+const INSTALLED_BY = {
+  aws: 'the AWS CLI (scoop install aws, or the installer from aws.amazon.com/cli). Section 1e.',
+  pg_restore: 'a Postgres client, version 17 or newer, because the server that wrote the archive is 17. Section 1d.',
+  psql: 'a Postgres client, version 17 or newer. Section 1d.',
+  supabase: 'the Supabase CLI. Section 1c.',
+  git: 'git.'
+};
 
 /** The bucket listing call. JSON because LastModified is then an exact instant. */
 export function listCommand({ profile, endpointUrl } = {}) {
@@ -217,6 +237,11 @@ function runStep(step, exec) {
   // is quiet: an inherited stdout leaves result.stdout null, and the parse of
   // it then fails somewhere else entirely.
   const result = exec(step.command, step.args, { capture: Boolean(step.capture) });
+  if (result.error && result.error.code === 'ENOENT') {
+    throw new Error(
+      `"${step.command}" is not installed or not on PATH. It comes from ${INSTALLED_BY[step.command] || 'your package manager.'}`
+    );
+  }
   if (result.status !== 0) {
     const detail = (result.stderr || result.stdout || '').toString().trim().split('\n').slice(-5).join('\n');
     throw new Error(`Step "${step.label}" failed (${step.command} exited ${result.status}).\n${detail}`);

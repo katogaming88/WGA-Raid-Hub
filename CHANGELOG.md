@@ -31,6 +31,13 @@ answers to.
   a token is granted, the one-time profile setup that keeps the account id off
   every command line, signing in with a real Discord id once the seeded
   personas are gone, and the four ways it fails with what to do about each.
+- The local dev doc now names the AWS CLI and a Postgres client 17 or newer as
+  prerequisites, since the snapshot needs both and neither was listed anywhere.
+  Section 12 is marked optional, says what the run actually does when a tool or
+  a credential is missing, and no longer claims the nightly backup lands at
+  10:00 UTC: GitHub starts it between 13:13 and 15:28, measured over eight
+  consecutive days, so before mid-afternoon UTC the newest dump is the previous
+  day's. The backup runbook and the workflow header carried the same wrong time.
 - The backup runbook named an AWS CLI profile (`wga-backup-ro`) that does not
   exist, so its two commands failed for anyone following them. It now names the
   real one and relies on the endpoint set on that profile rather than repeating
