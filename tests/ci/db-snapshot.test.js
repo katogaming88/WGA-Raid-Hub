@@ -1,0 +1,249 @@
+import { describe, it, expect } from 'vitest';
+import { newestDump, parseMergeTimes, resetVersionFor, listCommand, plan, run } from '../../scripts/dev/db-snapshot.js';
+
+// Last night's production data under the PR's migrations (#1056).
+//
+// The local stack rebuilds from a 27-row seed, so a migration is rehearsed on
+// three players and two teams. This loads the nightly dump instead. Everything
+// here runs with the bucket and the database injected, because the real thing
+// reads production onto the machine and a test that did so would be either
+// skipped or unsafe.
+//
+// What is pinned is the part that is easy to get wrong and impossible to see
+// afterwards: which dump, which schema version it belongs to, and the order and
+// flags of the steps. A restore into the wrong schema does not announce itself.
+
+const LISTING = {
+  IsTruncated: false,
+  Contents: [
+    { Key: 'pg/wga-2026-09-08.dump', LastModified: '2026-09-08T10:02:11Z' },
+    { Key: 'pg/wga-auth-2026-09-09.dump', LastModified: '2026-09-09T10:03:40Z' },
+    { Key: 'pg/wga-2026-09-09.dump', LastModified: '2026-09-09T10:02:55Z' },
+    { Key: 'pg/wga-auth-2026-09-08.dump', LastModified: '2026-09-08T10:03:02Z' }
+  ]
+};
+
+describe('newestDump (#1056)', () => {
+  it('picks the newest public dump', () => {
+    expect(newestDump(LISTING).key).toBe('pg/wga-2026-09-09.dump');
+  });
+
+  it('carries the capture instant, which is what the schema version is computed from', () => {
+    // The upload time, not the 10:00 UTC schedule: GitHub cron drifts, and the
+    // dump is uploaded minutes after it is taken.
+    expect(newestDump(LISTING).lastModified).toBe('2026-09-09T10:02:55Z');
+  });
+
+  it('ignores the auth dumps, which are never restored here', () => {
+    const authOnly = { IsTruncated: false, Contents: [LISTING.Contents[1], LISTING.Contents[3]] };
+    expect(() => newestDump(authOnly)).toThrow(/no .*dump/i);
+  });
+
+  it('refuses an empty listing rather than handing undefined to a download', () => {
+    expect(() => newestDump({ IsTruncated: false, Contents: [] })).toThrow(/no .*dump/i);
+  });
+
+  it('refuses a truncated listing rather than picking the newest of one page', () => {
+    // Retention is 365 days times two objects, so the 1000-key page is reachable.
+    expect(() => newestDump({ ...LISTING, IsTruncated: true })).toThrow(/truncated|more than/i);
+  });
+});
+
+describe('parseMergeTimes (#1056)', () => {
+  // git log --first-parent --no-renames --diff-filter=A --format=%cI --name-only
+  const LOG = [
+    '2026-09-09T18:06:48-04:00',
+    '',
+    'supabase/migrations/20260909170340_app_version_ledger_head.sql',
+    '',
+    '2026-09-09T14:14:52-04:00',
+    '',
+    'supabase/migrations/20260909131340_profile_updated_at_timestamps.sql',
+    'supabase/migrations/20260909134816_self_received_requests_updated_at_insert_trigger.sql',
+    ''
+  ].join('\n');
+
+  it('reads a version and its merge instant out of each block', () => {
+    expect(parseMergeTimes(LOG)).toEqual([
+      { version: '20260909170340', mergedAt: '2026-09-09T18:06:48-04:00' },
+      { version: '20260909131340', mergedAt: '2026-09-09T14:14:52-04:00' },
+      { version: '20260909134816', mergedAt: '2026-09-09T14:14:52-04:00' }
+    ]);
+  });
+
+  it('keeps the first record for a file, which is the newest commit that added it', () => {
+    const readded = LOG + '\n2026-01-01T00:00:00-05:00\n\nsupabase/migrations/20260909170340_app_version_ledger_head.sql\n';
+    const found = parseMergeTimes(readded).filter((e) => e.version === '20260909170340');
+    expect(found).toEqual([{ version: '20260909170340', mergedAt: '2026-09-09T18:06:48-04:00' }]);
+  });
+});
+
+describe('resetVersionFor (#1056)', () => {
+  const CAPTURE = '2026-09-09T10:00:00Z';
+  const entries = [
+    { version: '20260908090000', mergedAt: '2026-09-08T12:00:00Z' },
+    { version: '20260909050000', mergedAt: '2026-09-09T09:59:00Z' },
+    { version: '20260909053000', mergedAt: '2026-09-09T10:01:00Z' }
+  ];
+
+  it('takes the newest migration merged before the capture', () => {
+    expect(resetVersionFor(CAPTURE, entries)).toBe('20260909050000');
+  });
+
+  it('excludes one merged a minute after the capture', () => {
+    // After #1050 the merge is what applies a migration to production, so a
+    // migration merged after the dump was taken is not in the dump's schema.
+    expect(resetVersionFor(CAPTURE, entries)).not.toBe('20260909053000');
+  });
+
+  it('excludes a migration stamped before the capture but merged after it', () => {
+    // This is the case the stamp-based rule got wrong. A stamp is when the file
+    // was created; a PR that sits open for a day is normal here, and including
+    // a migration the dump's schema never had can fail the restore on a NOT
+    // NULL column with no default.
+    const stampedEarly = [
+      { version: '20260908090000', mergedAt: '2026-09-08T12:00:00Z' },
+      { version: '20260909010000', mergedAt: '2026-09-09T15:00:00Z' }
+    ];
+    expect(resetVersionFor(CAPTURE, stampedEarly)).toBe('20260908090000');
+  });
+
+  it('refuses when nothing was merged before the capture, naming what to pass', () => {
+    expect(() => resetVersionFor('2020-01-01T00:00:00Z', entries)).toThrow(/--version/);
+  });
+});
+
+describe('plan (#1056)', () => {
+  const built = plan({ version: '20260909050000', dumpPath: '/tmp/wga-snapshot/wga-2026-09-09.dump' });
+  const labels = built.map((step) => step.label);
+  const step = (label) => built.find((s) => s.label === label);
+  const argsOf = (label) => step(label).args.join(' ');
+
+  it('orders reset, cron quiet, truncate, restore, unlink, migrate, counts', () => {
+    expect(labels).toEqual(['reset', 'cron', 'truncate', 'restore', 'unlink', 'migrate', 'counts']);
+  });
+
+  it('resets to the computed version without the seed', () => {
+    expect(argsOf('reset')).toContain('--version 20260909050000');
+    expect(argsOf('reset')).toContain('--no-seed');
+  });
+
+  it('quiets cron in its own committed call, before the truncate', () => {
+    // Not folded into the truncate batch: that batch is one transaction, so
+    // nothing in it takes effect until it commits, and the jobs would stay live
+    // for the whole of it. A --no-seed reset leaves them active.
+    expect(labels.indexOf('cron')).toBeLessThan(labels.indexOf('truncate'));
+    expect(argsOf('cron')).toContain('cron.alter_job');
+    expect(argsOf('cron')).not.toContain('--single-transaction');
+  });
+
+  it('empties every public base table by asking the catalog, not by listing them', () => {
+    // A written-down list is a list that goes stale the next time someone adds
+    // a table, and the symptom would be a duplicate key deep in the restore.
+    expect(argsOf('truncate')).toContain('pg_tables');
+    expect(argsOf('truncate')).toContain('restart identity cascade');
+  });
+
+  it('restores data only, with triggers off and the whole thing in one transaction', () => {
+    const args = argsOf('restore');
+    expect(args).toContain('--data-only');
+    expect(args).toContain('--disable-triggers');
+    expect(args).toContain('--no-owner');
+    expect(args).toContain('--exit-on-error');
+    expect(args).toContain('--single-transaction');
+    expect(args).toContain('/tmp/wga-snapshot/wga-2026-09-09.dump');
+  });
+
+  it('runs as supabase_admin, the only local superuser', () => {
+    // postgres has bypassrls but not rolsuper, and --disable-triggers needs
+    // superuser. Measured on this stack.
+    expect(argsOf('restore')).toContain('supabase_admin');
+    expect(argsOf('truncate')).toContain('supabase_admin');
+  });
+
+  it('stops every psql batch on the first error', () => {
+    // A psql call with several statements exits 0 past a failed one and the
+    // surrounding successes paper over the hole (2026-09-08).
+    for (const label of ['cron', 'truncate', 'unlink', 'counts']) {
+      expect(argsOf(label)).toContain('ON_ERROR_STOP=1');
+    }
+  });
+
+  it('unlinks every column that points at auth.users, and deletes the one that cannot be nulled', () => {
+    const args = argsOf('unlink');
+    for (const table of [
+      'audit_log',
+      'boe_managers',
+      'guild_officers',
+      'season_signups',
+      'site_admins',
+      'team_members',
+      'priority_conflict_dismissals',
+      'priority_stale_dismissals'
+    ]) {
+      expect(args).toContain(table);
+    }
+    expect(args).toMatch(/delete from public\.no_character_dismissals/);
+  });
+
+  it('runs the branch own migrations on top, last', () => {
+    expect(argsOf('migrate')).toContain('--local');
+    expect(labels.indexOf('migrate')).toBeGreaterThan(labels.indexOf('unlink'));
+  });
+});
+
+describe('the bucket call (#1056)', () => {
+  const args = (opts) => listCommand(opts).args.join(' ');
+
+  it('asks for json, so the capture instant is exact rather than a printed local time', () => {
+    expect(args({})).toContain('list-objects-v2');
+    expect(args({})).toContain('--output json');
+  });
+
+  it('names the read-only profile by default', () => {
+    expect(args({})).toContain('--profile wga-raidhub-backups-ro');
+  });
+
+  it('carries no endpoint, because the profile holds it', () => {
+    // aws configure set endpoint_url ... --profile <p>, typed once. Keeping the
+    // account id off the command line is the point: it is a repo secret and it
+    // is not written down anywhere here.
+    expect(args({})).not.toContain('--endpoint-url');
+  });
+
+  it('carries one when the environment names it, for a caller with no profile', () => {
+    expect(args({ endpointUrl: 'https://acct.r2.cloudflarestorage.com' })).toContain(
+      '--endpoint-url https://acct.r2.cloudflarestorage.com'
+    );
+  });
+});
+
+describe('run (#1056)', () => {
+  it('executes nothing under --plan, and never reaches the network', () => {
+    const calls = [];
+    run(
+      { plan: true, version: '20260909050000' },
+      {
+        exec: (cmd, args) => {
+          calls.push([cmd, ...args].join(' '));
+          return { status: 0, stdout: '' };
+        }
+      }
+    );
+    expect(calls).toEqual([]);
+  });
+
+  it('stops at the first failing step and names it, leaving the dump behind', () => {
+    const removed = [];
+    expect(() =>
+      run(
+        { version: '20260909050000', dumpPath: '/tmp/wga-snapshot/d.dump' },
+        {
+          exec: (cmd) => (cmd === 'pg_restore' ? { status: 1, stderr: 'relation does not exist' } : { status: 0, stdout: '' }),
+          rm: (p) => removed.push(p)
+        }
+      )
+    ).toThrow(/restore/);
+    expect(removed).toEqual([]);
+  });
+});
