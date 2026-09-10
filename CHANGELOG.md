@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.101.1] - 2026-09-10
+
+### Project
+
+- Anyone working on the site can now sign in to their local copy as one of six seeded people
+  ([#1053](https://github.com/katogaming88/WGA-Raid-Hub/issues/1053)): an officer, a team leader,
+  a raider, a site admin, an officer on the second team, and a guild officer. `npm run dev:login`
+  prints a link that signs the browser in. Until now the only way in was a real Discord login
+  against the live site, so a page could be looked at locally but never used as anybody.
+- The same command reaches any Discord id rather than only the six, which is what will let a
+  restored copy of real data be clicked through as the person it belongs to.
+- Two existing tests were repaired rather than adjusted. Both described how the site behaves for
+  somebody with no Discord identity and leaned on the seeded raider being one, which this change
+  ended. One of them kept passing for a different reason than it was written for, which is the
+  worse half. They now set up that person themselves.
+
 ## [3.101.0] - 2026-09-10
 
 ### Frontend
