@@ -12,6 +12,26 @@ answers to.
 
 ---
 
+## [3.103.0] - 2026-09-10
+
+### Project
+
+- One persona vocabulary on both local stacks
+  ([#1065](https://github.com/katogaming88/WGA-Raid-Hub/issues/1065)).
+  `npm run db:snapshot` now mints, from the restored teams table, an officer,
+  a team leader and a raider per team plus `admin`, `guild-officer` and
+  `boe-manager`: each a real grant bound to a synthetic account, and each
+  raider owning a character of its own, so a PR can be rehearsed on
+  production data as any role without signing in as a real person. The seed
+  names its people the same way (`phoenix-officer`, `phoenix-raider`,
+  `hellfire-officer` and so on), so a name means the same person after a
+  reset and after a snapshot. `npm run dev:login` with no name lists who the
+  running stack holds, and a name it does not hold is refused instead of
+  minting an account that signs in with no access. `--discord-id` is
+  unchanged. The seed now carries all three people for each of production's
+  four teams plus a boe-manager, so it offers exactly the names a snapshot
+  mints.
+
 ## [3.102.0] - 2026-09-10
 
 ### Project

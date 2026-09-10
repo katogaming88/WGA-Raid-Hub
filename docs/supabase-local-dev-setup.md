@@ -298,36 +298,59 @@ Three things are worth knowing before something looks broken:
 To point a browser at production deliberately, open the deployed site. There is
 no switch for pointing a local page at production, on purpose.
 
-## 9. Sign in as a seeded persona
+## 9. Sign in as a named persona
 
 Section 8 gets you the site; this gets you a person. The only sign-in the site
 offers is Discord OAuth against production, so on a local stack every page shows
 the signed-out view until you mint a link:
 
 ```sh
-npm run dev:login -- officer
+npm run dev:login                    # lists who this stack holds
+npm run dev:login -- phoenix-officer
 ```
 
 It prints a link. Open it, and the browser lands back on `localhost:3000` signed
 in. Every page on that origin sees the session, so switch to `officer.html` or
 `admin.html` without doing it again.
 
-Six people are seeded, and what each is for:
+The names are the same on both states of the stack. After `supabase db reset`
+they are the seed's people; after `npm run db:snapshot` (section 12) they are
+minted from the real teams table. A name is `<team>-officer`, `<team>-leader`
+or `<team>-raider`, or one of the three guild-wide grants, and a name the
+running stack does not hold is refused with the list of the ones it does. Team 1
+is Phoenix and team 2 Hellfire Rollers in the seed as in production, so
+`phoenix-officer` is the same person either way.
+
+What the seed holds, and what each is for. The teams are production's four:
+Phoenix, Hellfire Rollers and Immolation from the seed, Wrathless from the
+migration that created it, and each has its three people, so the seed offers
+every name a snapshot mints.
 
 | Persona | Who they are |
 |---------|--------------|
-| `officer` | Officer on team 1. The officer dashboard, the roster, loot and signups |
-| `leader` | Team leader on team 1. Officer plus the team-leader-only paths |
-| `raider` | Raider on team 1. The raider-facing side: profile, wishlist, BiS, signup |
-| `admin` | Site admin with no team role. `admin.html` and nothing team-scoped |
-| `officer2` | Officer on team 2. What one team's officer must not see of another's |
-| `guild-officer` | Guild officer who raids on team 1 with no leadership role |
+| `phoenix-officer` | Officer on team 1. The officer dashboard, the roster, loot and signups. Also holds the BoE manager grant, because the BoE suite acts as one identity that is both an officer and a manager |
+| `phoenix-leader` | Team leader on team 1. Officer plus the team-leader-only paths |
+| `phoenix-raider` | Raider on team 1 with the character Seedraider-Illidan. The raider-facing side: profile, wishlist, BiS, signup |
+| `hellfire-officer` | Officer on team 2. What one team's officer must not see of another's |
+| `hellfire-leader` | Team leader on team 2 |
+| `hellfire-raider` | Raider on team 2 with the character Seedhellfireraider-Illidan |
+| `immolation-officer` | Officer on team 3 |
+| `immolation-leader` | Team leader on team 3 |
+| `immolation-raider` | Raider on team 3 with the character Seedimmolationraider-Illidan |
+| `wrathless-officer` | Officer on team 4 |
+| `wrathless-leader` | Team leader on team 4 |
+| `wrathless-raider` | Raider on team 4 with the character Seedwrathlessraider-Illidan |
+| `admin` | Site admin with no team role. `admin.html` and nothing team-scoped. A site admin passes every BoE gate too |
+| `guild-officer` | Guild officer who raids on team 1 with no leadership role. Writes on players, attendance, schedule and officer notes on every team; no approvals, season, priority, loot import or BoE |
+| `boe-manager` | The BoE manager grant and nothing else: the guild banker who is not a site admin, which is what the grant exists for |
+| `signup-owner` | A signup with no roster row and no grant. The signed-in view of somebody who applied and was never added |
 
-A seventh identity is seeded with no grant row at all, standing for somebody who
-signed up and has no roster row. It has no persona name because there is no role
-to look at, and `--discord-id` reaches it if it is ever wanted.
+A snapshot mints the same twelve team names plus `admin`, `guild-officer` and
+`boe-manager`; section 12 has that table. The only names on one stack and not
+the other are `signup-owner`, which is a seed fixture, and whatever a fifth
+production team would add.
 
-**Any Discord id, not just the six.**
+**One specific real person, by Discord id.**
 
 ```sh
 npm run dev:login -- --discord-id 123456789012345678
@@ -336,7 +359,8 @@ npm run dev:login -- --discord-id 123456789012345678
 This creates or reuses an account whose `provider_id` is that id, which is what
 `link_auth_user_to_member()` keys on, so it binds to whatever grant rows already
 name that person. On a seeded stack that is nobody; it matters after section 12,
-where real rows are restored with their auth links cleared.
+where real rows are restored with their auth links cleared, and there it means
+reading that person's data. The named personas cover every role without it.
 
 **No email is sent and none is needed.** The addresses are `@wga.local`, the
 link comes back from the API rather than an inbox, and anything the stack does
@@ -372,12 +396,12 @@ terminal, so it wants a second one.
 npm run migration:new -- <slug>   # 1. stamps a file under supabase/migrations/; write the SQL in it
 supabase db reset                 # 2. rebuilds the database from every migration, then the seed
 npm run serve                     # 3. serves the site at http://localhost:3000 from your checkout
-npm run dev:login -- officer      # 4. prints a sign-in link; open it
+npm run dev:login -- phoenix-officer   # 4. prints a sign-in link; open it
 ```
 
 Then open the pages the PR touches, as the person the change is for. The table
-in section 9 says who each persona is; `officer` is the right first pick for
-most schema work and `raider` for anything on the profile side. This is the step
+in section 9 says who each persona is; `phoenix-officer` is the right first pick
+for most schema work and `phoenix-raider` for anything on the profile side. This is the step
 nothing else covers: the RLS suite proves what the policies allow and says
 nothing about whether the page asks for it correctly.
 
@@ -558,8 +582,9 @@ loop: they need no account, no token, and put nothing sensitive on your
 machine. Come here only when the shape of the data matters, and you can get
 everything else working first.
 
-Those sections all run on the 27-row seed, so a migration is rehearsed on
-three players and two teams and a page is clicked through on the same. This
+Those sections all run on the seed, so a migration is rehearsed on four
+players and a handful of people across three teams, and a page is clicked
+through on the same. This
 loads the nightly backup instead: the `pg_dump` of `public` that
 `db-backup.yml` ships to R2, restored under the schema it was taken from,
 with this branch's own migrations run on top.
@@ -650,9 +675,15 @@ either name yours that or pass `--profile <name>` (or set `AWS_PROFILE`).
    it is what makes signing in work: `link_auth_user_to_member()` only ever
    fills a link that is `null`, so leaving production's ids in place would mean
    signing in successfully and seeing nothing.
-7. `supabase migration up --local`, so this branch's migrations run on
+7. Mints the personas: an officer, a team leader and a raider for every team
+   in the restored `teams` table, plus `admin`, `guild-officer` and
+   `boe-manager`, each an account with its grant row bound to it and, for each
+   raider, one character of its own. After the nulling so no real account is
+   ever bound; before the migrations so these rows go through them like the
+   restored ones. It prints the names.
+8. `supabase migration up --local`, so this branch's migrations run on
    production-shaped data. This is the step the whole thing exists for.
-8. Prints the row counts of the eight tables the backup workflow refuses to see
+9. Prints the row counts of the eight tables the backup workflow refuses to see
    empty, so a restore that technically succeeded but loaded nothing is
    visible. A test keeps that list identical to the workflow's own.
 
@@ -666,20 +697,35 @@ unlike the selective restore in [backup-restore.md](backup-restore.md).
 
 ### Signing in afterwards
 
-The seeded personas are gone: they were seed rows and the seed did not run. Use
-a real Discord id instead, which the restored roster is full of:
+The seeded people are gone, because they were seed rows and the seed did not
+run. Step 7 minted their replacements, and `npm run dev:login` with no name
+lists them. On today's four teams that is fifteen:
 
-```sh
-psql "postgres://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable" \
-  -c "select discord_id, name_realm, role from public.team_members where role = 'officer' limit 5"
-npm run dev:login -- --discord-id <one of those>
-```
+| Persona | Who they are |
+|---------|--------------|
+| `<team>-officer` | Officer on that real team: `phoenix-officer`, `hellfire-officer`, `immolation-officer`, `wrathless-officer` |
+| `<team>-leader` | Team leader on that team, same four |
+| `<team>-raider` | Raider on that team, owning the character `<Team>raider-Persona` with an empty wishlist and BiS, same four |
+| `admin` | Site admin |
+| `guild-officer` | The guild-wide grant, no team row |
+| `boe-manager` | The guild-wide BoE manager grant |
 
-That mints a local account whose `provider_id` is that id, which is what the
-link trigger keys on, so it binds to that person's real rows across
-`team_members`, `site_admins`, `boe_managers` and `guild_officers`.
-`npm run dev:login -- officer` would mint an account with no `provider_id` at
-all and sign you in with no access, which reads like broken policies.
+These are real grants, not impersonation: every policy reads
+`auth_user_id = auth.uid()` and nothing else, so `phoenix-officer` sees exactly
+what a Phoenix officer sees and is nobody. The rows are synthetic and easy to
+tell apart: Discord ids of 20 digits starting with 9, which no real id can be,
+and one `<Team>raider-Persona` on each team's roster, which is the raider
+persona's character. A new team gets its three with no code change.
+
+**A name the stack does not hold is refused**, with the list of the ones it
+does. Before this, `npm run dev:login -- officer` on a snapshot minted an
+account with no grant row and signed you in with no access, which read like
+broken policies.
+
+**One specific real person** is still reachable with `--discord-id <id>`,
+which binds a local account to that person's real rows across `team_members`,
+`site_admins`, `boe_managers` and `guild_officers`. That is reading their
+data; reach for it only when the question is about that person.
 
 Photos still point at production Storage, so they either load from the public
 bucket or do not load. Nothing to fix.

@@ -11,13 +11,14 @@ import {
   run,
   EMPTY_CHECK_TABLES
 } from '../../scripts/dev/db-snapshot.js';
+import { PERSONAS_SQL } from '../../scripts/dev/snapshot-personas.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 // Last night's production data under the PR's migrations (#1056).
 //
-// The local stack rebuilds from a 27-row seed, so a migration is rehearsed on
-// three players and two teams. This loads the nightly dump instead. Everything
+// The local stack rebuilds from a small seed, so a migration is rehearsed on
+// four players and three teams. This loads the nightly dump instead. Everything
 // here runs with the bucket and the database injected, because the real thing
 // reads production onto the machine and a test that did so would be either
 // skipped or unsafe.
@@ -133,8 +134,8 @@ describe('plan (#1056)', () => {
   const step = (label) => built.find((s) => s.label === label);
   const argsOf = (label) => step(label).args.join(' ');
 
-  it('orders reset, cron quiet, truncate, restore, unlink, migrate, counts', () => {
-    expect(labels).toEqual(['reset', 'cron', 'truncate', 'restore', 'unlink', 'migrate', 'counts']);
+  it('orders reset, cron quiet, truncate, restore, unlink, personas, migrate, counts', () => {
+    expect(labels).toEqual(['reset', 'cron', 'truncate', 'restore', 'unlink', 'personas', 'migrate', 'counts']);
   });
 
   it('resets to the computed version without the seed', () => {
@@ -173,12 +174,13 @@ describe('plan (#1056)', () => {
     // superuser. Measured on this stack.
     expect(argsOf('restore')).toContain('supabase_admin');
     expect(argsOf('truncate')).toContain('supabase_admin');
+    expect(argsOf('personas')).toContain('supabase_admin');
   });
 
   it('stops every psql batch on the first error', () => {
     // A psql call with several statements exits 0 past a failed one and the
     // surrounding successes paper over the hole (2026-09-08).
-    for (const label of ['cron', 'truncate', 'unlink', 'counts']) {
+    for (const label of ['cron', 'truncate', 'unlink', 'personas', 'counts']) {
       expect(argsOf(label)).toContain('ON_ERROR_STOP=1');
     }
   });
@@ -200,9 +202,56 @@ describe('plan (#1056)', () => {
     expect(args).toMatch(/delete from public\.no_character_dismissals/);
   });
 
+  it('mints the personas after the unlink and before the migrations, in one transaction', () => {
+    // After unlink so auth.users is empty and every restored link is null,
+    // which keeps the guarantee that step exists for: no real account is ever
+    // bound on this machine. Before migrate so the persona rows go through the
+    // branch's migrations exactly as the restored rows do.
+    expect(labels.indexOf('personas')).toBeGreaterThan(labels.indexOf('unlink'));
+    expect(labels.indexOf('personas')).toBeLessThan(labels.indexOf('migrate'));
+    expect(argsOf('personas')).toContain('--single-transaction');
+    expect(step('personas').args).toContain(PERSONAS_SQL);
+  });
+
   it('runs the branch own migrations on top, last', () => {
     expect(argsOf('migrate')).toContain('--local');
-    expect(labels.indexOf('migrate')).toBeGreaterThan(labels.indexOf('unlink'));
+    expect(labels.indexOf('migrate')).toBeGreaterThan(labels.indexOf('personas'));
+  });
+});
+
+describe('the persona batch (#1065)', () => {
+  // The batch is SQL the tests cannot run here (tests/rls/snapshot-personas
+  // does, against the seeded stack). What is pinned is what it reads and
+  // writes, so a table added to the grant set or dropped from it shows up.
+  it('derives the team personas from the teams table rather than a list', () => {
+    expect(PERSONAS_SQL).toMatch(/from public\.teams/);
+  });
+
+  it('mints an account and an identity, then every grant row and the raider character', () => {
+    for (const table of [
+      'auth.users',
+      'auth.identities',
+      'public.team_members',
+      'public.site_admins',
+      'public.guild_officers',
+      'public.boe_managers',
+      'public.players'
+    ]) {
+      expect(PERSONAS_SQL).toContain(`insert into ${table}`);
+    }
+    expect(PERSONAS_SQL).toContain('raider-Persona');
+  });
+
+  it('reserves 20-digit ids starting with 9, which no snowflake can ever be', () => {
+    // A Discord snowflake is an unsigned 64-bit integer, so it never exceeds
+    // 18446744073709551615. Twenty digits starting with 9 is outside the space
+    // for good, and the unique constraints turn any collision into a loud
+    // insert failure rather than a silent bind to a stranger's row.
+    expect(PERSONAS_SQL).toContain("'9000000000000000'");
+  });
+
+  it('never papers over a collision', () => {
+    expect(PERSONAS_SQL).not.toMatch(/on conflict/i);
   });
 });
 

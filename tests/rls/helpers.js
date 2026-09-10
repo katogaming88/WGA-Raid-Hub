@@ -15,6 +15,21 @@ export const SIGNUP_OWNER_T1 = '00000000-0000-0000-0000-000000000006';
 // #607: raider on team 1, no officer/team_leader role anywhere, granted
 // via guild_officers (not derived from any team_members role).
 export const GUILD_OFFICER = '00000000-0000-0000-0000-000000000007';
+// #1065: every seeded team has its own three people, so the seed offers the
+// same persona names a snapshot mints. Immolation (team 3) is a seed row;
+// Wrathless (team 4) comes from the migration that created it.
+export const OFFICER_T3 = '00000000-0000-0000-0000-000000000008';
+export const TEAM_LEADER_T3 = '00000000-0000-0000-0000-000000000009';
+export const RAIDER_T3 = '00000000-0000-0000-0000-000000000010';
+export const OFFICER_T4 = '00000000-0000-0000-0000-000000000011';
+export const TEAM_LEADER_T4 = '00000000-0000-0000-0000-000000000012';
+export const RAIDER_T4 = '00000000-0000-0000-0000-000000000013';
+// The BoE manager persona: only that grant, no team row, the guild banker who
+// is not a site admin (#745, #766). OFFICER_T1 also holds the grant, for the
+// BoE suite (#753).
+export const BOE_MANAGER = '00000000-0000-0000-0000-000000000014';
+export const TEAM_LEADER_T2 = '00000000-0000-0000-0000-000000000015';
+export const RAIDER_T2 = '00000000-0000-0000-0000-000000000016';
 
 // SQLSTATE for "new row violates row-level security policy".
 export const RLS_DENIED = '42501';

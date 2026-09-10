@@ -59,7 +59,8 @@ const linkPlayer1ToRaider = (q) => q('update public.players set team_member_id =
 // Seeded BoE fixtures (supabase/seed.sql): boe_items 1 = found, player 1,
 // team 1; boe_items 2 = sold, unresolved finder, team 1, split 150000 ->
 // 30000 / 112500 with a 7500 fee (#861); boe_listings 1 hangs off item 2; boe_managers grants
-// discord-officer-1 (OFFICER_T1). The team-1 leader stays ungranted on
+// discord-officer-1 (OFFICER_T1) and discord-boe-manager (BOE_MANAGER, the
+// persona, #1065). The team-1 leader stays ungranted on
 // purpose. No team-2 BoE rows are seeded: the cross-team fixtures below are
 // created inside the test transaction so no other suite's counts move.
 const addTeam2Item = (q) =>
@@ -424,10 +425,12 @@ describe('the manager gate on the lifecycle RPCs', () => {
   // way to see who can, so any officer on any team reads the list.
   it('any officer reads boe_managers; a raider and anon do not', async () => {
     await withTxn(async ({ asUser, asAnon }) => {
-      expect((await asUser(OFFICER_T1, 'select id from public.boe_managers')).rows.length).toBe(1);
-      expect((await asUser(OFFICER_T2, 'select id from public.boe_managers')).rows.length).toBe(1);
-      expect((await asUser(TEAM_LEADER_T1, 'select id from public.boe_managers')).rows.length).toBe(1);
-      expect((await asUser(SITE_ADMIN, 'select id from public.boe_managers')).rows.length).toBe(1);
+      // Two seeded grants: discord-officer-1 (OFFICER_T1) and discord-boe-manager
+      // (BOE_MANAGER, the persona, #1065).
+      expect((await asUser(OFFICER_T1, 'select id from public.boe_managers')).rows.length).toBe(2);
+      expect((await asUser(OFFICER_T2, 'select id from public.boe_managers')).rows.length).toBe(2);
+      expect((await asUser(TEAM_LEADER_T1, 'select id from public.boe_managers')).rows.length).toBe(2);
+      expect((await asUser(SITE_ADMIN, 'select id from public.boe_managers')).rows.length).toBe(2);
       expect((await asUser(RAIDER_T1, 'select id from public.boe_managers')).rows.length).toBe(0);
       expect((await asAnon('select id from public.boe_managers')).rows.length).toBe(0);
     });

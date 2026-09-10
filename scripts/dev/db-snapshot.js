@@ -4,15 +4,16 @@
 //   npm run db:snapshot -- --plan       # print the steps, run nothing
 //   npm run db:snapshot -- --dump wga-2026-09-08.dump --version 20260908090000
 //
-// The local stack rebuilds from a 27-row seed, so a migration is otherwise
-// rehearsed on three players and two teams. This pulls the nightly pg_dump of
+// The local stack rebuilds from a small seed, so a migration is otherwise
+// rehearsed on four players and three teams. This pulls the nightly pg_dump of
 // `public` out of R2, resets to the schema that dump belongs to, loads it, and
 // runs this branch's own migrations on top.
 //
-// The result is production data on your machine. The next `supabase db reset`
-// wipes it, it is never committed, and the downloaded file is deleted as soon
-// as the restore succeeds. Section 12 of docs/supabase-local-dev-setup.md has
-// the rest, including who can reach the bucket and why a token to it is
+// The result is production data on your machine, with a named persona per
+// role per team to sign in as (snapshot-personas.js). The next `supabase db
+// reset` wipes it, it is never committed, and the downloaded file is deleted
+// as soon as the restore succeeds. Section 12 of docs/supabase-local-dev-setup.md
+// has the rest, including who can reach the bucket and why a token to it is
 // granted the way production access is granted.
 //
 // Node built-ins only, like everything in scripts/. Every command is spawned
@@ -21,6 +22,7 @@ import { spawnSync } from 'node:child_process';
 import { rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { PERSONAS_SQL } from './snapshot-personas.js';
 
 const BUCKET = 's3://wga-raid-hub-backups/pg/';
 
@@ -225,6 +227,9 @@ export function plan({ version, dumpPath }) {
       ]
     },
     psql('unlink', UNLINK, true),
+    // After unlink, so no real account is ever bound; before migrate, so the
+    // persona rows go through the branch's migrations as the restored ones do.
+    psql('personas', PERSONAS_SQL, true),
     { label: 'migrate', command: 'supabase', args: ['migration', 'up', '--local'] },
     psql('counts', COUNTS, false)
   ];
@@ -384,7 +389,7 @@ function main() {
     return;
   }
   console.log('\nProduction data is now on this machine. `supabase db reset` puts the seed back.');
-  console.log('Sign in with: npm run dev:login -- --discord-id <a real discord id from team_members>');
+  console.log('Sign in with: npm run dev:login -- <one of the personas printed above>');
 }
 
 // Only when run, not when imported by the tests.
