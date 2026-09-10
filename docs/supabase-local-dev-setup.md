@@ -442,13 +442,94 @@ genuinely missing objects. Both arrive as errors raised per test, which read
 like assertion failures, which is why this one query is worth more than the
 first red case. Section 1d covers psql if you skipped it.
 
-**The local stack is not sealed from production yet.** Four migrations schedule
-`pg_cron` jobs whose command carries the production functions URL
-(`twitch-live-check`, `wcl-progression-sync`, `blizzard-gear-sync`,
-`optional-rsvp-reminders`), every `supabase db reset` recreates them, and a
-running stack calls production every five minutes. The calls are refused with
-401, because the local Vault holds no secret and never has, but a refused call
-is still a call. #1055 deactivates them in the seed.
+**Nothing on this stack reaches production.** Four migrations schedule
+`pg_cron` jobs whose command carries the production functions URL, and a reset
+recreates them, so the seed switches all four off after the fixtures (#1055).
+They stay in the catalog, because that schedule is production's and editing it
+locally would drift from prod in a way nothing compares. Section 11 has how to
+run one on purpose.
+
+## 11. Serve the Edge Functions locally
+
+The site reaches the functions on its own once section 8 is running, because
+every call goes through `supabaseClient.functions.invoke` and the client is
+already pointed at the local stack. What needs setting up is where the
+functions post to, since most of them end at a Discord webhook and a rehearsal
+that needs a real webhook URL is a rehearsal that can post into a channel a
+team operates in.
+
+**Catch the posts on your own machine.** In its own terminal:
+
+```sh
+npm run dev:sink                  # answers 204 like Discord, prints what it was sent
+npm run dev:sink -- --status 500  # the other half: refuses, so the error paths run
+```
+
+**Point the functions at it.** Copy `supabase/functions/.env.example` to
+`supabase/functions/.env` (gitignored) and set every `*_WEBHOOK_URL` to the
+sink, plus any value you like for `OPTIONAL_RSVP_REMINDERS_SECRET`:
+
+```sh
+BOE_WEBHOOK_URL=http://host.docker.internal:8899/webhooks/boe-found
+DISCORD_TEST_WEBHOOK_URL=http://host.docker.internal:8899/webhooks/test-channel
+OPTIONAL_RSVP_REMINDERS_SECRET=any-local-value
+```
+
+`host.docker.internal` rather than `127.0.0.1`: the functions runtime is a
+container and cannot see the machine's own localhost.
+
+**Serve them.**
+
+```sh
+supabase functions serve --env-file supabase/functions/.env
+```
+
+The CLI injects `SUPABASE_URL`, `SUPABASE_ANON_KEY` and
+`SUPABASE_SERVICE_ROLE_KEY` for the local stack, so those never go in the file.
+Whether a function wants an `Authorization` header is `verify_jwt` in
+`config.toml`, per function since #958: the five listed there take none, and
+everything else wants the anon key.
+
+**Post to one in smoke mode**, which is the mode that exists so a poster can be
+exercised without reaching a team's channel (#1007). It goes to
+`DISCORD_TEST_WEBHOOK_URL` and prefixes the message with `[smoke]`:
+
+```sh
+ANON=$(supabase status -o json | node -pe "JSON.parse(require('fs').readFileSync(0)).ANON_KEY")
+curl -X POST "http://127.0.0.1:54321/functions/v1/boe-webhook" \
+  -H "apikey: $ANON" -H "Authorization: Bearer $ANON" \
+  -H "Content-Type: application/json" \
+  -H "x-cron-secret: any-local-value" \
+  -d '{"id":1,"smoke":true}'
+```
+
+That answers `{"success":true}` and the post prints in the sink's terminal.
+`id` is a row in `boe_items`; the seed ships two.
+
+**Fire a cron function by hand.** The scheduled jobs are inactive on a local
+stack (section 10), so this is how those functions get run. They take no JWT
+and check the operator header instead:
+
+```sh
+curl -X POST "http://127.0.0.1:54321/functions/v1/optional-rsvp-reminders" \
+  -H "Content-Type: application/json" \
+  -H "x-cron-secret: any-local-value" -d '{}'
+```
+
+To let the schedule itself run for a session, switch one job back on:
+`select cron.alter_job(<jobid>, active := true);`. It will call **production**,
+not your stack, because the command the migration wrote names the production
+host. That is almost never what you want.
+
+**If a fresh serve answers nothing**, with `curl: (52) Empty reply from server`
+and no request lines in the runtime's log, it is Kong rather than the function.
+A `functions serve` starts a new edge-runtime container and a Kong that has
+been up for days keeps routing to the one that is gone. Restarting it is safe,
+since it holds no state:
+
+```sh
+docker restart supabase_kong_WGA-Raid-Hub
+```
 
 ## Known quirk: vector container restart loop (Windows)
 
