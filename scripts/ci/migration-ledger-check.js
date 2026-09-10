@@ -8,11 +8,13 @@
 // version). On 2026-08-31 the ledger was 22 migrations behind the live
 // schema for exactly this reason and had to be repaired by hand.
 //
-// A local-only version means a committed migration nobody has pushed through
-// the CLI: the fix is `supabase db push` (which both applies it if needed and
-// writes the ledger row). A remote-only version means the ledger names a
-// migration the repo no longer carries, which should never happen and needs a
-// human.
+// A local-only version means a committed migration that is not on prod. Since
+// #1050 that is the normal state of a migration pull request, because the
+// Deploy workflow applies it at merge, so --pending-ok reports those and passes
+// and the pull request check runs that way. Everywhere else the flag is absent
+// and a local-only version still fails, which is what catches a merge whose
+// push never ran. A remote-only version means the ledger names a migration the
+// repo no longer carries, which should never happen and needs a human.
 //
 // Two more rules ride along, both about the 14-digit prefix rather than the
 // ledger (#927). Order: a pending file may not sort below the newest version
@@ -28,7 +30,7 @@
 //
 // Usage:
 //   psql "$DB_URL" -tAc "select version from supabase_migrations.schema_migrations" > ledger.txt
-//   node scripts/ci/migration-ledger-check.js [migrations-dir] [--new <path>]... < ledger.txt
+//   node scripts/ci/migration-ledger-check.js [migrations-dir] [--pending-ok] [--new <path>]... < ledger.txt
 //
 // The ledger read and the comparison are deliberately separate commands: in a
 // pipeline the pipe's exit code is node's, so a failed psql would feed an
@@ -123,10 +125,13 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const args = process.argv.slice(2);
   const positional = [];
   const newFiles = [];
+  let pendingOk = false;
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--new') {
       const value = args[++i];
       if (value) newFiles.push(value);
+    } else if (args[i] === '--pending-ok') {
+      pendingOk = true;
     } else {
       positional.push(args[i]);
     }
@@ -193,7 +198,14 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     for (const file of noHistory) console.log(`  ${basename(file)}`);
   }
   if (localOnly.length > 0) {
-    console.log(`Committed but not recorded as applied on prod (run supabase db push):`);
+    // The order rule above has already judged these, so what is left here is
+    // only whether being unapplied is itself a failure. On a pull request it is
+    // not: the Deploy workflow applies them when the branch merges.
+    console.log(
+      pendingOk
+        ? 'Pending, and the Deploy workflow applies these at merge:'
+        : 'Committed but not recorded as applied on prod (run supabase db push):'
+    );
     for (const v of localOnly) console.log(`  ${v}`);
   }
   if (remoteOnly.length > 0) {
@@ -201,7 +213,8 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     for (const v of remoteOnly) console.log(`  ${v}`);
   }
 
-  const failed = pendingBelow.length > 0 || stampedAhead.length > 0 || localOnly.length > 0 || remoteOnly.length > 0;
+  const failed =
+    pendingBelow.length > 0 || stampedAhead.length > 0 || (!pendingOk && localOnly.length > 0) || remoteOnly.length > 0;
   if (!failed) console.log(`Ledger and ${dir} agree (${local.length} versions).`);
   console.log(`Rules: checked ${localOnly.length} pending for order, ${newFiles.length} new for clock.`);
   process.exit(failed ? 1 : 0);

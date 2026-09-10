@@ -1,0 +1,130 @@
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// The Deploy workflow (#1050). A frontend PR used to reach the site about forty
+// seconds after merging while `supabase db push` stayed a separate step someone
+// ran afterwards, so the deployed site could call RPCs the database did not
+// have yet. This workflow applies the migrations first and deploys the site
+// only if that succeeded.
+//
+// What is asserted here is the ordering, because that is the entire point and
+// it is invisible from the outside: a workflow that pushes and deploys in
+// parallel looks almost identical and reintroduces the window. There is no YAML
+// parser in this repo (nothing else needs one), so the jobs are split on
+// indentation, the same way tests/ci/functions-config.test.js reads bare-key
+// TOML rather than taking a dependency.
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const WORKFLOWS = join(ROOT, '.github', 'workflows');
+
+const read = (name) => readFileSync(join(WORKFLOWS, name), 'utf8');
+
+// Comments are stripped first. Two of these assertions look for a flag or a
+// key, and the workflow explains itself in prose above each step, so a match on
+// a comment would let a removed step keep passing.
+function stripComments(yaml) {
+  return yaml
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*#/.test(line))
+    .join('\n');
+}
+
+/** Job name to its block, split on the two-space indent under `jobs:`. */
+function readJobs(yaml) {
+  const jobs = new Map();
+  const lines = stripComments(yaml).split(/\r?\n/);
+  const start = lines.findIndex((line) => /^jobs:\s*$/.test(line));
+  let current = null;
+  for (const line of lines.slice(start + 1)) {
+    const header = line.match(/^ {2}([A-Za-z][\w-]*):\s*$/);
+    if (header) {
+      current = header[1];
+      jobs.set(current, []);
+      continue;
+    }
+    if (current) jobs.get(current).push(line);
+  }
+  return new Map([...jobs].map(([name, body]) => [name, body.join('\n')]));
+}
+
+const deploy = read('deploy.yml');
+const jobs = readJobs(deploy);
+
+describe('the Deploy workflow (#1050)', () => {
+  it('runs on a merge to main', () => {
+    const on = stripComments(deploy).split(/^jobs:/m)[0];
+    expect(on).toMatch(/push:/);
+    expect(on).toMatch(/branches:\s*\[main\]/);
+  });
+
+  it('queues two merges instead of cancelling the first', () => {
+    // A cancelled run is a half-applied deploy: the migrations of the first
+    // merge may already be on prod with its site build discarded.
+    expect(stripComments(deploy)).toMatch(/concurrency:[\s\S]*?cancel-in-progress:\s*false/);
+  });
+
+  it('pushes the migrations over the existing secret, without prompting', () => {
+    const migrate = jobs.get('migrate');
+    expect(migrate).toBeDefined();
+    expect(migrate).toMatch(/supabase db push/);
+    expect(migrate).toMatch(/--db-url/);
+    expect(migrate).toMatch(/SUPABASE_DB_URL/);
+    // The runner has no TTY, so an unanswered confirmation prompt is a hang
+    // rather than a refusal.
+    expect(migrate).toMatch(/--yes/);
+  });
+
+  it('checks the ledger after pushing, not before', () => {
+    const migrate = jobs.get('migrate');
+    const pushAt = migrate.indexOf('supabase db push');
+    const checkAt = migrate.indexOf('migration-ledger-check.js');
+    expect(pushAt).toBeGreaterThanOrEqual(0);
+    expect(checkAt).toBeGreaterThan(pushAt);
+  });
+
+  it('deploys only after the migrations applied', () => {
+    // The dependency this whole workflow exists for. Without it the two jobs
+    // race and the site can still win.
+    const needs = jobs.get('deploy').match(/needs:\s*(.+)/);
+    expect(needs).not.toBeNull();
+    expect(needs[1]).toContain('migrate');
+  });
+
+  it('carries the permissions Pages deployment requires', () => {
+    const deployJob = jobs.get('deploy');
+    expect(deployJob).toMatch(/pages:\s*write/);
+    expect(deployJob).toMatch(/id-token:\s*write/);
+    expect(deployJob).toMatch(/environment:/);
+  });
+
+  it('skips deploying while Pages still builds from the branch', () => {
+    // The workflow lands before the publishing source is switched, which is a
+    // repository setting only the owner can change. Until then the branch build
+    // still serves the site and this job must not fight it.
+    const deployJob = jobs.get('deploy');
+    expect(deployJob).toMatch(/if:/);
+    expect(deployJob).toMatch(/build_type/);
+    expect(deployJob).toMatch(/workflow/);
+  });
+});
+
+describe('the ledger check moves to pending-ok on pull requests (#1050)', () => {
+  const ledger = read('migration-ledger-check.yml');
+
+  it('passes --pending-ok on a pull request', () => {
+    // A migration PR is now committed-but-unapplied by design: the Deploy
+    // workflow applies it at merge.
+    expect(stripComments(ledger)).toMatch(/--pending-ok/);
+  });
+
+  it('no longer runs on a push to main, because Deploy checks that itself', () => {
+    const on = stripComments(ledger).split(/^jobs:/m)[0];
+    expect(on).not.toMatch(/push:/);
+  });
+
+  it('still sweeps on a schedule', () => {
+    expect(stripComments(ledger)).toMatch(/schedule:/);
+  });
+});

@@ -1372,3 +1372,21 @@ The schema had no version anyone could ask for. The ledger holds one, `supabase_
 **No `service_role` grant.** Nothing server-side asks this. The Edge Functions connect with a key that bypasses RLS and could read the ledger directly if one ever needed to.
 
 [Full discussion -> #969](https://github.com/katogaming88/WGA-Raid-Hub/issues/969).
+
+## #1050 -- migrations reach production from the deploy pipeline, ahead of the site
+
+Shipped: no migration. Workflow and CI only; the read half is `app_version()` from #969.
+
+A frontend release deployed the moment it merged, because GitHub Pages built from `main` on its own in about forty seconds, while `supabase db push` stayed a separate step someone ran in a terminal afterwards. Between those two the deployed site called RPCs the database did not have, and the failure surfaced as scattered errors at individual calls rather than as one statement about the system.
+
+**Prevention rather than detection.** #970 proposed reading the ledger head at boot and showing a banner while it trailed `REQUIRED_SCHEMA`. That describes the window accurately and leaves it open. One workflow now applies the migrations and then publishes the site, with the publish depending on the apply, so after every successful deploy the two values agree by construction and there is nothing left for a banner to report. #970 closed as superseded.
+
+**The credential already existed.** `SUPABASE_DB_URL` carries the ledger read in three workflows, and that read touches a table only `postgres` can see, so the deploy needed no new secret and no new trust.
+
+**Applying is no longer a thing anyone remembers to do, so the ledger discipline stops being advisory.** SQL applied by hand in the dashboard leaves `supabase_migrations.schema_migrations` behind; that already failed a check, and now it blocks every deploy until `supabase migration repair --status applied` runs. The consequence lands on whoever can fix it rather than on raiders, which is the argument against the banner restated.
+
+**The pull request check had to change meaning, because the normal state changed.** A committed and unapplied migration used to mean somebody forgot to push; it now describes every migration PR before its merge. The check takes `--pending-ok` there and passes those, while still failing the two shapes that describe a push which would refuse: a pending file sorting below the newest applied version, and a ledger row with no file behind it. The strict form runs in the deploy, straight after the push, where anything pending means the push silently did not take.
+
+**Jekyll stays in the loop deliberately.** `build.json` carries empty front matter so that the deployed commit and build time are rendered into it, and that file is the only record of which commit is live. The workflow runs the same build container Pages ran, so switching the publishing source changed who invokes Jekyll rather than what it produces.
+
+[Full discussion -> #1050](https://github.com/katogaming88/WGA-Raid-Hub/issues/1050).

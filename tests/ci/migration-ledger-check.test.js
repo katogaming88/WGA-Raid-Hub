@@ -337,3 +337,68 @@ describe('CLI, order and clock rules', () => {
     }
   });
 });
+
+// The pull-request mode added by #1050. Applying moved into the Deploy
+// workflow, so a migration that is committed and not yet on prod is what every
+// migration PR looks like on purpose, and the pending rule that used to fail it
+// would now fail every one of them. --pending-ok reports those and passes.
+//
+// What it must not loosen is the pair of rules that describe a push which would
+// refuse: a file sorting below the newest applied version, and a ledger row
+// with no file behind it. Both still fail, and both are asserted here rather
+// than assumed, because this flag is one `||` away from turning the check off.
+describe('CLI, --pending-ok (#1050)', () => {
+  function makeMigrationsDir(versions) {
+    const dir = mkdtempSync(join(tmpdir(), 'ledger-pending-'));
+    for (const v of versions) writeFileSync(join(dir, `${v}_test_migration.sql`), '-- test\n');
+    return dir;
+  }
+
+  function run(dir, stdin, extraArgs = []) {
+    try {
+      const stdout = execFileSync('node', [SCRIPT, dir, ...extraArgs], { input: stdin, encoding: 'utf8' });
+      return { status: 0, stdout };
+    } catch (err) {
+      return { status: err.status, stdout: err.stdout };
+    }
+  }
+
+  it('passes a pending migration that sorts above the ledger head, and says it is pending', () => {
+    const dir = makeMigrationsDir(['20260704204411', '20260909170340']);
+    try {
+      const result = run(dir, '20260704204411\n', ['--pending-ok']);
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('20260909170340');
+      expect(result.stdout).toContain('Deploy workflow');
+      // Without the flag the same input is the old failure, so the case above
+      // is measuring the flag rather than a directory that was always clean.
+      expect(run(dir, '20260704204411\n').status).toBe(1);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('still fails a pending migration that sorts below the newest applied version', () => {
+    const dir = makeMigrationsDir(['20260704204411', '20260826011447']);
+    try {
+      const result = run(dir, '20260704204411\n20260826030444\n', ['--pending-ok']);
+      expect(result.status).toBe(1);
+      expect(result.stdout).toContain('20260826011447');
+      expect(result.stdout).toContain('--rename');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('still fails a version the ledger holds and the tree does not', () => {
+    const dir = makeMigrationsDir(['20260704204411']);
+    try {
+      const result = run(dir, '20260704204411\n20260812045902\n', ['--pending-ok']);
+      expect(result.status).toBe(1);
+      expect(result.stdout).toContain('20260812045902');
+      expect(result.stdout).toContain('needs a human');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

@@ -9,12 +9,14 @@ name: Migration ledger check
 # this reason and had to be repaired by hand (supabase migration repair,
 # after verifying each migration's effect was live on prod).
 #
-# This check compares supabase/migrations/ filenames against the ledger and
-# fails on any drift, in either direction. The enforcement shape: a PR adding
-# a migration stays red until someone runs `supabase db push`, which writes
-# the ledger row and turns it green. A db push creates no GitHub event, so
-# after pushing, re-run this check from the PR's Checks tab (or push any
-# commit).
+# This check compares supabase/migrations/ filenames against the ledger. Since
+# #1050 the Deploy workflow applies migrations when a PR merges, so a committed
+# and unapplied migration is what every migration PR looks like on purpose and
+# this run passes --pending-ok, which reports those without failing. What it
+# still fails on is the drift that describes a push which would refuse: a
+# pending file sorting below the newest applied version, and a ledger row with
+# no file behind it. The strict form, where being unapplied fails, runs inside
+# the Deploy workflow straight after the push, and in the weekly sweep.
 #
 # Known limit: SQL run in the editor with no committed file is invisible here
 # (that is `supabase db diff` territory, not wired up).
@@ -28,14 +30,15 @@ name: Migration ledger check
 # migration new` UTC stamp and a hand-typed round number both look like.
 #
 # The clock rule needs history, hence fetch-depth: 0, and it judges the event's
-# own new files rather than the pending ones, so running `db push` does not
-# silence it. A squash merge rewrites the author date to merge time, so the
-# pull_request run is the one with teeth; the push run is a backstop.
+# own new files rather than the pending ones, so applying them does not silence
+# it. A squash merge rewrites the author date to merge time, so the
+# pull_request run is the one with teeth.
 #
 # The weekly schedule is the backstop for drift that lands without a PR
-# touching migrations; failures there ping Discord via the db-backup.yml
-# pattern, since scheduled-workflow failure emails only reach whoever last
-# touched this file.
+# touching migrations, which since #1050 mostly means SQL applied by hand in
+# the dashboard. That now blocks every deploy as well as failing here; failures
+# ping Discord via the db-backup.yml pattern, since scheduled-workflow failure
+# emails only reach whoever last touched this file.
 on:
   pull_request:
     paths:
@@ -43,10 +46,6 @@ on:
       - 'scripts/ci/migration-ledger-check.js'
       - 'scripts/ci/migration-new.js'
       - '.github/workflows/migration-ledger-check.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'supabase/migrations/**'
   schedule:
     - cron: '30 10 * * 1'
   workflow_dispatch:
@@ -119,7 +118,7 @@ jobs:
           NEW_ARGS: ${{ steps.new_files.outputs.args }}
         run: |
           psql "$DB_URL" -tAc "select version from supabase_migrations.schema_migrations" > ledger.txt
-          node scripts/ci/migration-ledger-check.js $NEW_ARGS < ledger.txt
+          node scripts/ci/migration-ledger-check.js --pending-ok $NEW_ARGS < ledger.txt
 
       - name: Notify Discord on scheduled failure
         if: failure() && github.event_name == 'schedule'
