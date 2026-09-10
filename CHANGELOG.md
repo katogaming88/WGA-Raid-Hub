@@ -12,6 +12,28 @@ answers to.
 
 ---
 
+## [3.100.1] - 2026-09-09
+
+### Project
+
+- Merging a pull request now applies its database changes and publishes the site in one run,
+  in that order ([#1050](https://github.com/katogaming88/WGA-Raid-Hub/issues/1050)). The site
+  used to go live about forty seconds after a merge while the matching database update stayed a
+  separate step someone ran by hand afterwards, so for a few minutes the live site could ask the
+  database for things it did not have yet, and that showed up as scattered errors on whichever
+  features happened to need the new part. The new workflow applies the database changes first and
+  publishes only if they succeeded, so that gap cannot open. If the database step fails, the site
+  keeps serving the previous release and the run says so in Discord.
+- Two consequences worth knowing. A merge now takes a minute or two to reach the site rather than
+  about forty seconds, and the deploy notification credits the automation rather than whoever
+  merged. Applying SQL by hand in the Supabase dashboard leaves the migration record behind, and
+  that already failed a check; from now on it also stops the site deploying until the record is
+  repaired.
+- The migration check on a pull request was rewritten to match, since a change that is committed
+  and not yet applied is now what every database pull request looks like before it merges. It
+  still fails the cases that would make the merge deploy nothing, and the strict version runs
+  during the deploy itself.
+
 ## [3.100.0] - 2026-09-09
 
 ### Backend
