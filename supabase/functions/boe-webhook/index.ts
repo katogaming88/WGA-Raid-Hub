@@ -30,7 +30,7 @@
 // bot test channel, takes no claim, and marks the post. Without the header it
 // refuses, and with no test channel configured it refuses rather than falling
 // back to the live one, which is the whole point of the mode.
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
   }
 
   let claimTaken = false;
-  let db: ReturnType<typeof createClient> | null = null;
+  let db: SupabaseClient<any> | null = null;
   let numericId = 0;
 
   const releaseClaim = async () => {

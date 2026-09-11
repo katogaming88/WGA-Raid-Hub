@@ -11,9 +11,10 @@
 //   - Officer-triggered on-demand sync: forwards the caller's JWT (like
 //     wcl-sync), checks my_team_role(teamId)/is_site_admin, and syncs only
 //     that team's roster -- or a single player, if playerId is passed.
-// Deploy with --no-verify-jwt (same as twitch-live-check/wcl-sync both
-// need to be reachable without Supabase's own JWT gate, since this
-// function does its own auth check either way).
+// verify_jwt is off for this function in supabase/config.toml (#958), which
+// the CLI reads at deploy, so a bare `supabase functions deploy` keeps it
+// reachable without Supabase's own JWT gate. It does its own auth check
+// either way.
 //
 // Unlike Raider.IO (this repo's original design for this feature, #845),
 // the Blizzard API needs OAuth client-credentials (BLIZZARD_CLIENT_ID/
@@ -50,7 +51,7 @@
 // the fairness comparison's own "already itemized at least this well"
 // philosophy -- an ambiguous boundary item undercounting as a lower track
 // would be the wrong direction to err in for that comparison.
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -147,7 +148,7 @@ function buildRows(playerId: number, equippedItems: any[], thresholds: Record<st
 }
 
 async function syncRoster(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any>,
   players: Array<{ id: number; name_realm: string }>,
   thresholds: Record<string, number> | null,
   token: string
