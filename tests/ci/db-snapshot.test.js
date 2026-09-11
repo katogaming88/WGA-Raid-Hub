@@ -18,7 +18,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 // Last night's production data under the PR's migrations (#1056).
 //
 // The local stack rebuilds from a small seed, so a migration is rehearsed on
-// four players and three teams. This loads the nightly dump instead. Everything
+// six players and four teams. This loads the nightly dump instead. Everything
 // here runs with the bucket and the database injected, because the real thing
 // reads production onto the machine and a test that did so would be either
 // skipped or unsafe.

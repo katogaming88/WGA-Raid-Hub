@@ -12,6 +12,23 @@ answers to.
 
 ---
 
+## [3.103.1] - 2026-09-10
+
+### Project
+
+- Section 12 of the local dev walkthrough no longer sends a reader looking for
+  a token that does not exist
+  ([#1064](https://github.com/katogaming88/WGA-Raid-Hub/issues/1064)). The
+  AWS CLI profile name is introduced as a label you choose on your own
+  machine, unrelated to the token's name in Cloudflare, before the first
+  command that uses it; the list of who can reach the bucket is replaced by
+  how access works, one read-only token per person; and the bucket owner's
+  own case is written down: mint yourself a bucket-scoped read-only token and
+  hold it in a profile like anyone else, never the account credentials or the
+  read-write token. The section's count of what the seeded stack holds (six
+  players across four teams since 3.103.0) is corrected in the doc and in the
+  two comments that repeat it.
+
 ## [3.103.0] - 2026-09-10
 
 ### Project
