@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.103.2] - 2026-09-11
+
+### Frontend
+
+- The Requests tab's Recent decisions list gets a search box, filtering by
+  player, item, source, or note, so a specific approval or rejection doesn't
+  need a scroll through every decision on the team.
+
+---
+
 ## [3.103.1] - 2026-09-10
 
 ### Project

@@ -228,7 +228,11 @@ describe('buildRequestsTab fetches and renders recent decisions', () => {
 });
 
 describe('deleteRequest', () => {
-  function setup({ rpc, confirmResult = true } = {}) {
+  // deleteRequest no longer removes the card directly -- it drops the row
+  // from the cached decision list and re-renders through renderRecentDecisions
+  // (so the search filter still applies after a delete), so setup seeds that
+  // cache the same way buildRequestsTab would have.
+  function setup({ rpc, confirmResult = true, rows = [APPROVED_ROW] } = {}) {
     const { client, captured } = makeClient({ rpc });
     const { card, revertBtn, deleteBtn } = makeCard({
       'data-row': '5',
@@ -241,32 +245,34 @@ describe('deleteRequest', () => {
     const els = { requestsDecisions: makeEl(), 'decision-error-5': errorEl };
     const bySelector = { '.request-card[data-row="5"]': card };
     const { sandbox, spies } = loadSandbox({ client, els, bySelector, confirmResult });
-    return { sandbox, spies, captured, card, revertBtn, deleteBtn, errorEl };
+    sandbox._requestsDecisionRows = rows;
+    return { sandbox, spies, captured, card, revertBtn, deleteBtn, errorEl, els };
   }
 
-  it('confirms, calls the RPC, and removes the card on success', async () => {
-    const { sandbox, spies, captured, card } = setup();
-    sandbox.deleteRequest(5, setupBtn(card));
+  it('confirms, calls the RPC, and re-renders without the deleted row on success', async () => {
+    const { sandbox, spies, captured, deleteBtn, els } = setup();
+    sandbox.deleteRequest(5, deleteBtn);
     await flush();
     expect(spies.confirms.length).toBe(1);
     expect(captured.rpcCalls).toContainEqual({ name: 'delete_self_received_request', args: { p_id: 5 } });
-    expect(card.removed).toBe(true);
+    expect(els.requestsDecisions.innerHTML).toContain('No decisions yet.');
+    expect(sandbox._requestsDecisionRows.length).toBe(0);
     // The RPC writes the audit entry server-side and delete stays silent.
     expect(spies.audit.length).toBe(0);
     expect(spies.notify.length).toBe(0);
   });
 
   it('does nothing when the confirm is declined', async () => {
-    const { sandbox, captured, card, deleteBtn } = setup({ confirmResult: false });
+    const { sandbox, captured, deleteBtn } = setup({ confirmResult: false });
     sandbox.deleteRequest(5, deleteBtn);
     await flush();
     expect(captured.rpcCalls.length).toBe(0);
     expect(deleteBtn.disabled).toBe(false);
-    expect(card.removed).toBe(false);
+    expect(sandbox._requestsDecisionRows.length).toBe(1);
   });
 
   it('surfaces an RPC error inline and re-enables the buttons', async () => {
-    const { sandbox, spies, card, deleteBtn, revertBtn, errorEl } = setup({
+    const { sandbox, spies, deleteBtn, revertBtn, errorEl } = setup({
       rpc: {
         delete_self_received_request: () => ({ data: null, error: { message: 'Self-received request not found' } })
       }
@@ -276,17 +282,10 @@ describe('deleteRequest', () => {
     expect(errorEl.textContent).toContain('Self-received request not found');
     expect(deleteBtn.disabled).toBe(false);
     expect(revertBtn.disabled).toBe(false);
-    expect(card.removed).toBe(false);
+    expect(sandbox._requestsDecisionRows.length).toBe(1);
     expect(spies.audit.length).toBe(0);
   });
 });
-
-// deleteRequest is invoked from the card's own Delete button.
-function setupBtn(card) {
-  const revertBtn = { disabled: false, textContent: 'Revert to pending' };
-  const deleteBtn = { disabled: false, textContent: 'Delete', previousElementSibling: revertBtn };
-  return deleteBtn;
-}
 
 describe('revertRequest', () => {
   function setup({ tables, bySelector: extraSel } = {}) {
