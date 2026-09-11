@@ -582,12 +582,11 @@ loop: they need no account, no token, and put nothing sensitive on your
 machine. Come here only when the shape of the data matters, and you can get
 everything else working first.
 
-Those sections all run on the seed, so a migration is rehearsed on four
-players and a handful of people across three teams, and a page is clicked
-through on the same. This
-loads the nightly backup instead: the `pg_dump` of `public` that
-`db-backup.yml` ships to R2, restored under the schema it was taken from,
-with this branch's own migrations run on top.
+Those sections all run on the seeded stack, so a migration is rehearsed on
+six players and a handful of people across four teams, and a page is clicked
+through on the same. This loads the nightly backup instead: the `pg_dump` of
+`public` that `db-backup.yml` ships to R2, restored under the schema it was
+taken from, with this branch's own migrations run on top.
 
 **When the dump is from.** The backup is scheduled for 10:00 UTC and does not
 run then. Measured across eight consecutive days, GitHub started it between
@@ -615,20 +614,32 @@ production dashboard.
 
 ### Getting access to the bucket
 
-Who can reach it today:
-
-- **The bucket owner**, through the Cloudflare account itself (kat).
-- **The repo's Actions secrets**, which the nightly workflow uses.
-- **One read-only token**, issued per person and held in a local AWS CLI
-  profile. Russell has one, from #544.
-
 A token to this bucket is a copy of production, so it is granted the way
-production access is granted, not the way a dev tool is. The bucket owner
-mints one in the Cloudflare dashboard, scoped to this bucket alone with
-**Object Read only**: never the read-write token the nightly workflow uses,
+production access is granted, not the way a dev tool is. Two kinds of
+credential reach the bucket: the read-write token the nightly workflow holds
+as a repo secret, and one read-only token per person, minted in the
+Cloudflare dashboard, scoped to this bucket alone with **Object Read only**,
+and held in that person's own AWS CLI profile. Never the read-write token,
 and never an account-wide one. One token per person, because R2 has no
-per-user identity. The token *is* the identity, so a shared one cannot be
+per-user identity: the token *is* the identity, so a shared one cannot be
 revoked for one person without revoking it for everybody.
+
+**If you do not own the bucket**, the owner mints your token and hands it to
+you. It is yours alone, and revoking it touches nobody else.
+
+**If you do own the bucket**, owning it is how tokens get minted, not how
+dumps are read on your machine. Mint yourself one the same way, scoped to
+this bucket with Object Read only, and hold it in a profile like anyone else;
+that is how it is done today. Not the account's own credentials, and not the
+read-write token the workflow holds: a read-write production credential on a
+dev machine is exactly what the split exists to prevent.
+
+**The profile's name is a label you choose on your own machine.** It has
+nothing to do with what the token is called in Cloudflare, and nobody else's
+profile is visible to you. `npm run db:snapshot` looks for a profile named
+`wga-raidhub-backups-ro` unless told otherwise, so either name yours that or
+pass `--profile <name>` (or set `AWS_PROFILE`). The commands below use the
+default.
 
 Set it up once:
 
@@ -649,11 +660,9 @@ Prove it before going further, because everything below assumes it works:
 aws s3 ls s3://wga-raid-hub-backups/pg/ --profile wga-raidhub-backups-ro
 ```
 
-A list of `wga-<date>.dump` objects means you are done. Two things to know:
+A list of `wga-<date>.dump` objects means you are done. One thing to know:
 pressing Enter at an `aws configure` prompt leaves that key **blank** when
-there was nothing stored before, rather than keeping an old value; and
-`npm run db:snapshot` looks for a profile named `wga-raidhub-backups-ro`, so
-either name yours that or pass `--profile <name>` (or set `AWS_PROFILE`).
+there was nothing stored before, rather than keeping an old value.
 
 ### What it does, and why each step is there
 

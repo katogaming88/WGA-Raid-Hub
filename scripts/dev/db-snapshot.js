@@ -5,7 +5,7 @@
 //   npm run db:snapshot -- --dump wga-2026-09-08.dump --version 20260908090000
 //
 // The local stack rebuilds from a small seed, so a migration is otherwise
-// rehearsed on four players and three teams. This pulls the nightly pg_dump of
+// rehearsed on six players and four teams. This pulls the nightly pg_dump of
 // `public` out of R2, resets to the schema that dump belongs to, loads it, and
 // runs this branch's own migrations on top.
 //
