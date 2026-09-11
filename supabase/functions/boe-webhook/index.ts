@@ -235,3 +235,7 @@ Deno.serve(async (req) => {
     return jsonResponse({ success: false, error: err instanceof Error ? err.message : 'Unknown error' });
   }
 });
+
+// Deliberate type error: proves the gate fails a run (#928 acceptance).
+const gateProof: number = "not a number";
+console.log(gateProof);
