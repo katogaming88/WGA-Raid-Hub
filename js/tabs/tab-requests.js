@@ -1,3 +1,7 @@
+// Raw rows behind the Recent decisions list, cached so the search filter
+// (renderRecentDecisions) can re-render without refetching.
+var _requestsDecisionRows = [];
+
 function buildRequestsTab() {
   var container = document.getElementById('requestsContainer');
   if (!container) return;
@@ -61,7 +65,8 @@ function buildRequestsTab() {
           '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">' + result.error.message + '</p>';
         return;
       }
-      renderRecentDecisions(result.data || []);
+      _requestsDecisionRows = result.data || [];
+      renderRecentDecisions();
     });
 }
 
@@ -89,11 +94,26 @@ function selfReceivedObtainedBisEntry(row) {
   return null;
 }
 
-function renderRecentDecisions(rows) {
+function renderRecentDecisions() {
   var container = document.getElementById('requestsDecisions');
   if (!container) return;
+  var searchEl = document.getElementById('requestsDecisionsSearch');
+  var searchLow = searchEl ? searchEl.value.trim().toLowerCase() : '';
+  var rows = searchLow
+    ? _requestsDecisionRows.filter(function (row) {
+        var itemRow = row.items || {};
+        var nameRealm = (row.players && row.players.name_realm) || '';
+        var haystack = [nameRealm, itemRow.name || '', row.source || '', row.note || '', row.slot || '']
+          .join(' ')
+          .toLowerCase();
+        return haystack.indexOf(searchLow) !== -1;
+      })
+    : _requestsDecisionRows;
   if (!rows.length) {
-    container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No decisions yet.</p>';
+    container.innerHTML =
+      '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">' +
+      (searchLow ? 'No decisions match your search.' : 'No decisions yet.') +
+      '</p>';
     return;
   }
   var html =
@@ -206,8 +226,10 @@ function deleteRequest(requestId, btnEl) {
       _decisionError(requestId, result.error.message);
       return;
     }
-    if (card) card.remove();
-    checkEmptyDecisions();
+    _requestsDecisionRows = _requestsDecisionRows.filter(function (row) {
+      return row.id !== requestId;
+    });
+    renderRecentDecisions();
   });
 }
 
@@ -248,13 +270,6 @@ function revertRequest(requestId, btnEl) {
       buildRequestsTab();
       updateNavBadges();
     });
-}
-
-function checkEmptyDecisions() {
-  var container = document.getElementById('requestsDecisions');
-  if (container && !container.querySelector('.request-card')) {
-    container.innerHTML = '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">No decisions yet.</p>';
-  }
 }
 
 function renderPendingRequests(requests) {
