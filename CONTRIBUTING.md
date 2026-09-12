@@ -254,14 +254,23 @@ sibling modules such as `format.ts`. A test hands `handle` a plain object; no
 test mocks supabase-js's fluent builder, because a fake that omits one link
 of a chain turns a throw into a silent empty result. `boe-sold-webhook` is
 the worked example; a function takes this shape when the PR that next
-touches it does, with tests for what it touches. Anything two functions
-share moves to `supabase/functions/_shared/` when the second one arrives.
+touches it does, with tests for what it touches. A function too large to
+split in one PR takes the entry half first: `wcl-sync` has the serve line,
+`handler.ts` exporting `handle(req, deps)` with the caller's client as its
+one injected dependency, and `request.ts` for the body (#1013); its WCL
+fetch and environment reads still come from the platform and join `deps`
+with the PR that first puts an action under test, which is what arms the
+action tests it defers. Anything two functions share lives in
+`supabase/functions/_shared/` (`gql.ts`, the GraphQL literal builders, since
+#1013). The CLI neither serves nor deploys a directory whose name starts
+with an underscore, and `tests/ci/functions-config.test.js` applies the same
+rule when it reads the function list.
 
 **Five layers, one runner each, every behaviour in exactly one.**
 
 | Layer | Runner | Home | What it holds |
 |-------|--------|------|---------------|
-| Pure | `deno task test` | `tests/edge/<function>/` | Message and response builders and their `allowed_mentions`, gate classification, arithmetic, formatting |
+| Pure | `deno task test` | `tests/edge/<function>/`, `tests/edge/_shared/` | Message and response builders and their `allowed_mentions`, request parsing, query literals, gate classification, arithmetic, formatting |
 | Handler | `deno task test` | same | `handle(request, deps)` against injected dependencies, with a recording fetch |
 | Database | `npm run test:rls` | `tests/rls/` | RPC semantics, constraints, RLS, cron rows, races |
 | Contract | `deno task test` plus `tests/ci/` | `tests/edge/contract/` | Both ends of the relay, captured payloads, response-type enums (none yet) |
@@ -324,7 +333,7 @@ answers from a scripted queue, with `discordNoContent()` and
 | `css/admin.css` | Admin-page-specific styles |
 | `css/guild.css` | Guild-page-specific styles, plus the keyboard/motion baselines scoped to that page until #435 generalises them |
 | `supabase/` | Supabase CLI project: local dev stack config and schema migrations. `config.toml` also carries the per-function `verify_jwt` flags the CLI reads at deploy (#958), so a deploy that names no function no longer resets them |
-| `supabase/functions/` | Edge Functions (Deno). Webhook relays (`boe-webhook`, `boe-sold-webhook`, `discord-bot-webhook`, `contact-webhook`), scheduled jobs (`wcl-progression-sync`, `twitch-live-check`, `blizzard-gear-sync`, `optional-rsvp-reminders`), and two that act on a caller's behalf and check their role first: `wcl-sync`, which an officer triggers, and `upload-bio-photo`, the only writer to Storage -- see "Storage" below. Run them against the local stack with `supabase functions serve` and catch every post in `npm run dev:sink` rather than a real webhook: section 11 of [the local dev doc](docs/supabase-local-dev-setup.md). Tests live under `tests/edge/` and run with `deno task test`; `boe-sold-webhook` is split into `index.ts`, `handler.ts`, `format.ts` and `deps.ts` for them (see "Testing Edge Functions") |
+| `supabase/functions/` | Edge Functions (Deno). Webhook relays (`boe-webhook`, `boe-sold-webhook`, `discord-bot-webhook`, `contact-webhook`), scheduled jobs (`wcl-progression-sync`, `twitch-live-check`, `blizzard-gear-sync`, `optional-rsvp-reminders`), and two that act on a caller's behalf and check their role first: `wcl-sync`, which an officer triggers, and `upload-bio-photo`, the only writer to Storage -- see "Storage" below. Run them against the local stack with `supabase functions serve` and catch every post in `npm run dev:sink` rather than a real webhook: section 11 of [the local dev doc](docs/supabase-local-dev-setup.md). Tests live under `tests/edge/` and run with `deno task test`; `boe-sold-webhook` is split into `index.ts`, `handler.ts`, `format.ts` and `deps.ts` for them, `wcl-sync` into `index.ts`, `handler.ts`, `request.ts` and `deps.ts`, and `_shared/` holds what more than one function uses (see "Testing Edge Functions") |
 | `bot/` | The Discord bot (#954): a discord.js gateway process running on kat's VM under pm2. Ten slash commands, an express endpoint the `discord-bot-webhook` relay posts to, and a 15-minute sweep for the signup sheet. Keeps its own `package.json`, `tsconfig.json` and lockfile, and its own workflow (`.github/workflows/bot.yml`), which runs the format check, its tests and the build on Node 20 to match the VM. It formats with the root prettier config rather than one of its own, and is outside every root script: lint, typecheck, format and the test suites all read `js/`, `scripts/` and `tests/` only |
 | `scripts/import/` | One-off/recurring data import tooling (loot, attendance, etc.) |
 | `scripts/ci/` | CI checks that need more than a workflow step (changelog classification, the team-wide read guard, the RLS autocommit guard, the security advisor allowlist), plus the version stamper (`npm run stamp`), which owns the page registry the asset-version check reads |
