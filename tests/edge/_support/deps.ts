@@ -27,30 +27,30 @@ export function fakeDb(state: FakeDbState = {}): FakeDb {
   const record = (method: keyof SaleDb, ...args: unknown[]) => calls.push({ method, args });
   return {
     calls,
-    async getUser(authHeader) {
+    getUser(authHeader) {
       record('getUser', authHeader);
-      return state.user === undefined ? { id: MANAGER_USER_ID } : state.user;
+      return Promise.resolve(state.user === undefined ? { id: MANAGER_USER_ID } : state.user);
     },
-    async isBoeManager(authHeader) {
+    isBoeManager(authHeader) {
       record('isBoeManager', authHeader);
-      return state.boeManager ?? true;
+      return Promise.resolve(state.boeManager ?? true);
     },
-    async isSiteAdmin(authHeader) {
+    isSiteAdmin(authHeader) {
       record('isSiteAdmin', authHeader);
-      return state.siteAdmin ?? false;
+      return Promise.resolve(state.siteAdmin ?? false);
     },
-    async readSale(id) {
+    readSale(id) {
       record('readSale', id);
-      if (state.readFails) throw new Error(state.readFails);
-      return (state.rows ?? []).find((row) => row.id === id) ?? null;
+      if (state.readFails) return Promise.reject(new Error(state.readFails));
+      return Promise.resolve((state.rows ?? []).find((row) => row.id === id) ?? null);
     },
-    async resolveFinderDiscordId(authHeader, id) {
+    resolveFinderDiscordId(authHeader, id) {
       record('resolveFinderDiscordId', authHeader, id);
-      return state.finderId ?? null;
+      return Promise.resolve(state.finderId ?? null);
     },
-    async managerDiscordIds() {
+    managerDiscordIds() {
       record('managerDiscordIds');
-      return state.managerIds ?? [];
+      return Promise.resolve(state.managerIds ?? []);
     }
   };
 }
