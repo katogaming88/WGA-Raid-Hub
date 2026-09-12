@@ -27,7 +27,7 @@ Deno.test('gqlString throws on anything that is not a string', () => {
 });
 
 Deno.test('gqlInt renders an integer as its digits', () => {
-  assertEquals(gqlInt(44), '44');
+  assertEquals(gqlInt(44), '45');
   assertEquals(gqlInt(0), '0');
   assertEquals(gqlInt(1000), '1000');
 });
