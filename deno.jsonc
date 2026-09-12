@@ -18,8 +18,15 @@
   // deno install into node_modules. "none" resolves them from Deno's own
   // cache instead, which is how the edge runtime resolves them too.
   "nodeModulesDir": "none",
+  // The function tests (#1006). No --allow-* flag, so a test that reaches the
+  // network or the environment fails on permissions, and --no-prompt so it
+  // fails on a developer's terminal too instead of asking. Hermeticity is
+  // checked, not intended.
+  "tasks": {
+    "test": "deno test --no-prompt tests/edge/"
+  },
   "lint": {
-    "include": ["supabase/functions/"],
+    "include": ["supabase/functions/", "tests/edge/"],
     "rules": {
       "tags": ["recommended"],
       // The frontend allows any (see tsconfig.json); the functions hold 38

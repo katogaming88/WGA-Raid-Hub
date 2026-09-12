@@ -1,15 +1,17 @@
 name: Edge Functions
 
-# Type-checks and lints supabase/functions/ (#928 Stage 1). Nothing else in
-# CI parses these files: `supabase functions deploy` bundles without checking,
+# Type-checks and lints supabase/functions/ (#928 Stage 1) and runs the
+# function tests under tests/edge/ (#1006). Nothing else in CI parses or
+# executes these files: `supabase functions deploy` bundles without checking,
 # so before this the first execution of a changed function was in production.
-# Formatting is Prettier's, in lint.yml, whose paths now include this
-# directory.
+# Formatting is Prettier's, in lint.yml, whose paths include both
+# directories.
 
 on:
   pull_request:
     paths:
       - 'supabase/functions/**'
+      - 'tests/edge/**'
       - 'deno.jsonc'
       - '.github/workflows/edge-functions.yml'
 
@@ -38,3 +40,6 @@ jobs:
       # Scope and rules come from deno.jsonc.
       - name: Lint
         run: deno lint
+      # The task carries the flags; see deno.jsonc.
+      - name: Test
+        run: deno task test
