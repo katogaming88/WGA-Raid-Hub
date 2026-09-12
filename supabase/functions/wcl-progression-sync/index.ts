@@ -37,6 +37,7 @@
 // zone(id).encounters for the canonical id list every run, same query
 // wcl-sync's getZoneEncounters action already uses.
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
+import { gqlInt } from '../_shared/gql.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -185,7 +186,7 @@ async function syncTeamZone(
   const zoneId = parseInt(String(raid.wclZoneId || ''), 10);
   if (!zoneId || Number.isNaN(zoneId)) return null;
 
-  const zoneQuery = `query { worldData { zone(id: ${zoneId}) { name encounters { id name } } } }`;
+  const zoneQuery = `query { worldData { zone(id: ${gqlInt(zoneId)}) { name encounters { id name } } } }`;
   const zoneResult = await wclQuery(token, zoneQuery);
   const zone = zoneResult?.data?.worldData?.zone;
   if (!zone) return null;
@@ -213,7 +214,7 @@ async function syncTeamZone(
     const reportsQuery = `
       query {
         reportData {
-          reports(guildID: ${guildId}, limit: ${REPORT_LIMIT}, page: ${page}) {
+          reports(guildID: ${gqlInt(guildId)}, limit: ${REPORT_LIMIT}, page: ${page}) {
             data {
               code
               startTime

@@ -26,6 +26,8 @@
 // calls and the environment reads below still come from the platform, and
 // join Deps with the PR that first puts an action under test.
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
+import { gqlInt, gqlString } from '../_shared/gql.ts';
+import { parseRequest } from './request.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -122,7 +124,7 @@ async function getZoneEncounters(zoneId: number) {
   const token = await getAccessToken();
   if (!token) throw new Error('Failed to get WCL access token. Check WCL_CLIENT_ID/WCL_CLIENT_SECRET.');
 
-  const query = `query { worldData { zone(id: ${zoneId}) { name encounters { id name } } } }`;
+  const query = `query { worldData { zone(id: ${gqlInt(zoneId)}) { name encounters { id name } } } }`;
   const result = await wclQuery(token, query);
   const zone = result?.data?.worldData?.zone;
   if (!zone) throw new Error('Zone not found');
@@ -138,7 +140,7 @@ async function fetchProgression(zoneId: number, guildId: number) {
   const query = `
     query {
       reportData {
-        reports(guildID: ${guildId}, zoneID: ${zoneId}, limit: 100) {
+        reports(guildID: ${gqlInt(guildId)}, zoneID: ${gqlInt(zoneId)}, limit: 100) {
           data {
             startTime
             fights(killType: Kills) {
@@ -226,7 +228,7 @@ async function fetchReportFights(token: string, reportCode: string): Promise<any
     const query = `
       query {
         reportData {
-          report(code: "${reportCode}") {
+          report(code: ${gqlString(reportCode)}) {
             rankings(difficulty: ${difficulty})
           }
         }
@@ -253,7 +255,7 @@ async function refreshPerformance(token: string, guildId: number, teamId: number
   const reportsQuery = `
     query {
       reportData {
-        reports(guildID: ${guildId}, limit: ${BEST_REPORTS}) {
+        reports(guildID: ${gqlInt(guildId)}, limit: ${BEST_REPORTS}) {
           data { code title startTime endTime }
         }
       }
@@ -416,7 +418,7 @@ const ALT_RUN_KEYWORD = 'Alt';
 const ALT_RUN_PATTERN = new RegExp(`\\b${ALT_RUN_KEYWORD}\\b`);
 
 async function getReportZone(token: string, reportCode: string): Promise<number | null> {
-  const query = `query { reportData { report(code: "${reportCode}") { zone { id } } } }`;
+  const query = `query { reportData { report(code: ${gqlString(reportCode)}) { zone { id } } } }`;
   const result = await wclQuery(token, query);
   return result?.data?.reportData?.report?.zone?.id ?? null;
 }
@@ -436,7 +438,7 @@ async function getReportEncounterIds(token: string, reportCode: string): Promise
   const query = `
     query {
       reportData {
-        report(code: "${reportCode}") {
+        report(code: ${gqlString(reportCode)}) {
           fights(killType: Kills) { encounterID }
         }
       }
@@ -469,7 +471,7 @@ async function getReportParticipants(token: string, reportCode: string): Promise
   const combatantsQuery = `
     query {
       reportData {
-        report(code: "${reportCode}") {
+        report(code: ${gqlString(reportCode)}) {
           masterData { actors(type: "Player") { name } }
         }
       }
@@ -510,7 +512,7 @@ async function getFirstPullParticipants(
   const fightsQuery = `
     query {
       reportData {
-        report(code: "${reportCode}") {
+        report(code: ${gqlString(reportCode)}) {
           fights { id startTime difficulty encounterID }
         }
       }
@@ -526,7 +528,7 @@ async function getFirstPullParticipants(
   const detailsQuery = `
     query {
       reportData {
-        report(code: "${reportCode}") {
+        report(code: ${gqlString(reportCode)}) {
           playerDetails(fightIDs: [${firstPull.id}])
         }
       }
@@ -578,7 +580,7 @@ async function refreshAttendance(token: string, guildId: number, teamId: number,
     const reportsQuery = `
       query {
         reportData {
-          reports(guildID: ${guildId}, limit: ${SEASON_REPORT_LIMIT}, page: ${page}${startTimeMs ? `, startTime: ${startTimeMs}` : ''}) {
+          reports(guildID: ${gqlInt(guildId)}, limit: ${SEASON_REPORT_LIMIT}, page: ${page}${startTimeMs ? `, startTime: ${startTimeMs}` : ''}) {
             data { code title startTime }
             has_more_pages
           }
@@ -835,7 +837,7 @@ async function fetchSeasonPerf(teamId: number, season: string, zoneId: number, s
     const aliasedFields = chunk
       .map(
         (p, j) =>
-          `p${j}: character(name: ${JSON.stringify(p.firstName)}, serverSlug: ${JSON.stringify(p.serverSlug)}, serverRegion: "US") { zoneRankings(zoneID: ${zoneId}, metric: dps) }`
+          `p${j}: character(name: ${JSON.stringify(p.firstName)}, serverSlug: ${JSON.stringify(p.serverSlug)}, serverRegion: "US") { zoneRankings(zoneID: ${gqlInt(zoneId)}, metric: dps) }`
       )
       .join('\n');
     const query = `query { characterData { ${aliasedFields} } }`;
@@ -900,11 +902,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // `.error` themselves rather than unpacking supabase-js's FunctionsHttpError
   // (which requires reading error.context separately to get this same body).
   try {
-    const { action, teamId, zoneId, season } = await req.json();
-
-    if (!action || !teamId) {
-      return jsonResponse({ success: false, error: 'Missing action or teamId' });
+    // The whole body is validated before the gate (#1013): a zoneId or
+    // teamId is a positive integer or the request is refused, so nothing
+    // below interpolates text it did not choose.
+    const parsed = parseRequest(await req.json());
+    if (parsed.ok === false) {
+      return jsonResponse({ success: false, error: parsed.error });
     }
+    const { action, teamId, zoneId, season } = parsed.request;
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -926,13 +931,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
 
     if (action === 'getZoneEncounters') {
-      if (!zoneId) return jsonResponse({ success: false, error: 'Missing zoneId' });
       const result = await getZoneEncounters(zoneId);
       return jsonResponse(result);
     }
 
     if (action === 'fetchProgression') {
-      if (!zoneId) return jsonResponse({ success: false, error: 'Missing zoneId' });
       const { data: team, error: teamError } = await supabase
         .from('teams')
         .select('wcl_guild_id')
@@ -987,8 +990,6 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
 
     if (action === 'fetchSeasonPerf') {
-      if (!zoneId) return jsonResponse({ success: false, error: 'Missing zoneId' });
-      if (!season) return jsonResponse({ success: false, error: 'Missing season' });
       // No wcl_guild_id lookup here -- unlike every other action in this
       // file, fetchSeasonPerf queries each character directly rather than
       // through guild membership, so it has no guild-ID dependency at all.
