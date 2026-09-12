@@ -1,7 +1,8 @@
 name: Deploy
 
 # One workflow takes a merge to production (#1050): the migrations go first,
-# then the site, and the site only if the migrations applied.
+# then the Edge Functions the push changed (#1083), then the site, and the
+# site only if both applied.
 #
 # Before this, GitHub Pages built from `main` on its own about forty seconds
 # after a merge while `supabase db push` stayed a separate step someone ran in a
@@ -32,9 +33,13 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Print the migrations that would be applied, then stop.'
+        description: 'Print the migrations and the functions that would be applied, then stop.'
         type: boolean
         default: false
+      functions:
+        description: 'Functions to deploy by hand: "all", or names separated by commas. Empty deploys none.'
+        type: string
+        default: ''
 
 # Serialised, not cancelled. A cancelled run is a half-finished deploy: the
 # first merge's migrations can already be on prod with its site build thrown
@@ -68,7 +73,7 @@ jobs:
       # the three together.
       - uses: supabase/setup-cli@v3
         with:
-          version: 2.115.0
+          version: 2.117.0
 
       # --yes because the runner has no TTY, where an unanswered confirmation
       # prompt is a hang rather than a refusal. The CLI applies each file in its
@@ -153,6 +158,146 @@ jobs:
   #
   # A failed read is a hard failure rather than a skip: after the switch, a
   # silently skipped deploy would stop the site updating with nothing to say so.
+  # The functions half (#1083). A push deploys the Edge Functions it changed:
+  # a change under one function's directory deploys that function, a change
+  # under _shared/ deploys every function that imports from it, a change to
+  # config.toml deploys all of them (the verify_jwt flags are deploy-time),
+  # and anything else deploys nothing. scripts/ci/functions-to-deploy.js is
+  # the rule; it also carries the hold list, functions main cannot deploy yet,
+  # each with its reason and the PR that lifts it.
+  #
+  # The job always runs and decides inside its steps, because `deploy` needs
+  # it and a job skipped by an if: skips everything that needs it. The token
+  # is a personal access token on a dedicated Developer account in the
+  # organization, under a secret name that says what it may do; the migrate
+  # job's connection string is not involved. The CLI pin is shared with
+  # migrate and sits at 2.117.0 or above, the first release that accepts the
+  # sbp_v0 token format Supabase issues now.
+  #
+  # By hand: `gh workflow run deploy.yml -f functions=all` (or a comma list)
+  # redeploys from the Actions tab, for a catch-up or after a restore.
+  functions:
+    name: Deploy the functions
+    needs: migrate
+    runs-on: ubuntu-latest
+    env:
+      # The project the site talks to, the same ref js/common.js sends to
+      # every browser; tests/ci/deploy-workflow.test.js pins the two equal.
+      PROJECT_REF: kxgjqnpwfklbgrxdgmmv
+    outputs:
+      functions: ${{ steps.select.outputs.functions }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Both ends of the push have to be in the clone for the diff. The
+          # compare API would do without this, but it caps at 300 files and
+          # says nothing when it truncates.
+          fetch-depth: 0
+      - name: Select the functions this push changed
+        id: select
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+          NAMES: ${{ inputs.functions }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            node scripts/ci/functions-to-deploy.js --names "$NAMES"
+          else
+            git diff --name-only "$BEFORE" "$SHA" | node scripts/ci/functions-to-deploy.js
+          fi
+      - name: Check the deploy token is set
+        id: check_secret
+        if: ${{ steps.select.outputs.functions != '' }}
+        env:
+          TOKEN: ${{ secrets.SUPABASE_EDGE_FUNCTIONS_DEPLOY_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "Missing required repo secret: SUPABASE_EDGE_FUNCTIONS_DEPLOY_TOKEN"
+            exit 1
+          fi
+      - uses: supabase/setup-cli@v3
+        if: ${{ steps.select.outputs.functions != '' && !inputs.dry_run }}
+        with:
+          version: 2.117.0
+      - name: Deploy them, one at a time
+        id: deploy
+        if: ${{ steps.select.outputs.functions != '' && !inputs.dry_run }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_EDGE_FUNCTIONS_DEPLOY_TOKEN }}
+          FUNCTIONS: ${{ steps.select.outputs.functions }}
+        run: |
+          for name in $FUNCTIONS; do
+            echo "::group::supabase functions deploy $name"
+            supabase functions deploy "$name" --project-ref "$PROJECT_REF"
+            echo "::endgroup::"
+          done
+      - name: Write the summary
+        if: ${{ always() && steps.select.outcome == 'success' }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_EDGE_FUNCTIONS_DEPLOY_TOKEN }}
+          FUNCTIONS: ${{ steps.select.outputs.functions }}
+          HELD: ${{ steps.select.outputs.held }}
+          DEPLOYED: ${{ steps.deploy.outcome }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          {
+            echo "## Edge Functions"
+            if [ -z "$FUNCTIONS" ]; then
+              echo "Nothing to deploy: this push changed no function."
+            elif [ "$DRY_RUN" = "true" ]; then
+              echo "Dry run. Would deploy: $FUNCTIONS"
+            else
+              echo "Deploy step: $DEPLOYED. Selected: $FUNCTIONS"
+            fi
+            if [ -n "$HELD" ]; then
+              echo "Held, never deployed from here (scripts/ci/functions-to-deploy.js says why): $HELD"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$FUNCTIONS" ] && [ "$DRY_RUN" != "true" ]; then
+            supabase functions list --project-ref "$PROJECT_REF" -o json \
+              | node scripts/ci/functions-summary.js >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Notify Discord on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW: ${{ github.workflow }}
+          FUNCTIONS: ${{ steps.select.outputs.functions }}
+          S_SELECT: ${{ steps.select.outcome }}
+          S_SECRET: ${{ steps.check_secret.outcome }}
+          S_DEPLOY: ${{ steps.deploy.outcome }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_WEBHOOK_URL is not set -- cannot post, but the run above already failed loudly on its own."
+            exit 0
+          fi
+          FAILED_STEP="unknown step"
+          [ "$S_SELECT" = "failure" ] && FAILED_STEP="Select the functions this push changed"
+          [ "$S_SECRET" = "failure" ] && FAILED_STEP="Check the deploy token is set"
+          [ "$S_DEPLOY" = "failure" ] && FAILED_STEP="Deploy them, one at a time"
+          PAYLOAD=$(cat <<PAYLOAD_JSON
+          {
+            "embeds": [{
+              "title": "Deploy blocked: a function did not reach production",
+              "color": 15158332,
+              "fields": [
+                { "name": "Workflow", "value": "${WORKFLOW}", "inline": true },
+                { "name": "Failed step", "value": "${FAILED_STEP}", "inline": true },
+                { "name": "Functions", "value": "${FUNCTIONS:-none selected}", "inline": false }
+              ],
+              "url": "${RUN_URL}"
+            }]
+          }
+          PAYLOAD_JSON
+          )
+          curl -s -o /dev/null -w "%{http_code}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK_URL"
+          echo
+
   pages-source:
     name: Read the Pages build type
     runs-on: ubuntu-latest
@@ -199,7 +344,7 @@ jobs:
 
   deploy:
     name: Deploy to Pages
-    needs: [migrate, build, pages-source]
+    needs: [migrate, functions, build, pages-source]
     if: ${{ needs.pages-source.outputs.build_type == 'workflow' && !inputs.dry_run }}
     runs-on: ubuntu-latest
     permissions:

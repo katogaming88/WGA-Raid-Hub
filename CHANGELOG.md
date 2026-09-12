@@ -12,6 +12,27 @@ answers to.
 
 ---
 
+## [3.104.3] - 2026-09-12
+
+### Project
+
+- A merge deploys the Edge Functions it changed
+  ([#1083](https://github.com/katogaming88/WGA-Raid-Hub/issues/1083), the
+  functions half of #1050). `deploy.yml` gains a `functions` job between
+  the migrations and the site: `git diff` over the push's range through
+  `scripts/ci/functions-to-deploy.js` picks the changed functions (a
+  `_shared/` change picks its importers, a `config.toml` change picks all),
+  `supabase functions deploy` runs per name with a token held under
+  `SUPABASE_EDGE_FUNCTIONS_DEPLOY_TOKEN`, and the site deploys only after.
+  `discord-bot-webhook` is held by name until #959, since `main` needs
+  secrets production does not have. A `functions` input on
+  `workflow_dispatch` redeploys by hand (`all`, or names), the run summary
+  lists the versions, and a failure posts the migrations job's Discord
+  embed shape. The CLI pin moves to 2.117.0 in both jobs, the first release
+  that accepts the `sbp_v0` token format. From here on a function PR that
+  introduces a secret name sets it before the merge, since the merge is the
+  deploy.
+
 ## [3.104.2] - 2026-09-12
 
 ### Functions

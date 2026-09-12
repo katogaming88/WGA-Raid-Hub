@@ -1010,8 +1010,12 @@ and `BOT_WEBHOOK_SECRET` pair instead, and neither is set on the project, so
 deploying `discord-bot-webhook` before #959 lands would break every relay call.
 #959 is where that pair and the routing settle.
 
-Deploy these functions by hand after adding (or deciding against) those
-secrets. None takes `--no-verify-jwt`: the report card, the manage page and the
+Since #1083 a merged function deploys from the Deploy workflow, so these
+three reach production with the PR that changes them, once the secrets above
+are in place; the by-hand form below is for a catch-up, a machine without
+CI, or a rebuilt project (`gh workflow run deploy.yml -f functions=all` does
+the same from the Actions tab, holding what `scripts/ci/functions-to-deploy.js`
+holds). None takes `--no-verify-jwt`: the report card, the manage page and the
 contact form all send the anon key. The five functions that do skip the JWT gate
 carry `verify_jwt = false` in `supabase/config.toml` since #958, so no deploy
 needs that flag on the command line, and a deploy naming no function no longer

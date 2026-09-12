@@ -206,9 +206,13 @@ CI checks both.
 
 The rule: a migration reaches prod when its pull request merges. The Deploy
 workflow (`.github/workflows/deploy.yml`, #1050) runs `supabase db push`
-against prod and only then builds and publishes the site, so a release can
-never reach raiders ahead of the schema it needs. Nothing to run by hand, and
-nothing to remember after the merge.
+against prod, then deploys the Edge Functions the merge changed (#1083; a
+`_shared/` change deploys its importers, a `config.toml` change deploys all,
+and `scripts/ci/functions-to-deploy.js` holds by name what `main` cannot
+deploy yet), and only then builds and publishes the site, so a release can
+never reach raiders ahead of the schema or the functions it needs. Nothing to
+run by hand, and nothing to remember after the merge; a redeploy by hand is
+`gh workflow run deploy.yml -f functions=all` (or a comma list of names).
 
 Running the SQL in the dashboard SQL Editor still does not count as applying
 it, and the consequence is larger than it used to be: it now blocks every

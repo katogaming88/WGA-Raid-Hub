@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { HOLD } from '../../scripts/ci/functions-to-deploy.js';
 
 // The Deploy workflow (#1050). A frontend PR used to reach the site about forty
 // seconds after merging while `supabase db push` stayed a separate step someone
@@ -126,5 +127,93 @@ describe('the ledger check moves to pending-ok on pull requests (#1050)', () => 
 
   it('still sweeps on a schedule', () => {
     expect(stripComments(ledger)).toMatch(/schedule:/);
+  });
+});
+
+// The functions half (#1083): a merge deploys the Edge Functions the push
+// changed, from a job that sits between the migrations and the site, so a
+// function is never behind its schema and the site is never ahead of its
+// functions. The token is a classic personal access token on a dedicated
+// Developer account (scoped tokens were not on the account yet); its secret
+// name says what it may do. CLI 2.117.0 is the first release that accepts
+// the sbp_v0 token format Supabase issues now, so the pin cannot sit below it.
+function atLeast(version, floor) {
+  const a = version.split('.').map(Number);
+  const b = floor.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return a[i] > b[i];
+  }
+  return true;
+}
+
+describe('the functions half of Deploy (#1083)', () => {
+  const functionsJob = jobs.get('functions');
+  const migrate = jobs.get('migrate');
+
+  it('has a functions job that runs after the migrations', () => {
+    expect(functionsJob).toBeDefined();
+    const needs = functionsJob.match(/needs:\s*(.+)/);
+    expect(needs).not.toBeNull();
+    expect(needs[1]).toContain('migrate');
+  });
+
+  it('deploys the site only after the functions did, and still after the migrations', () => {
+    const needs = jobs.get('deploy').match(/needs:\s*(.+)/)[1];
+    expect(needs).toContain('functions');
+    expect(needs).toContain('migrate');
+  });
+
+  it('is never skipped at the job level, so the site job can need it', () => {
+    // A job-level if: that reads false skips every job that needs it; the
+    // decision has to be made inside the steps instead.
+    const head = functionsJob.split(/\n\s+steps:/)[0];
+    expect(head).not.toMatch(/^\s+if:/m);
+  });
+
+  it('pins the CLI to one version in both jobs, at or above the release that accepts sbp_v0 tokens', () => {
+    const pin = (job) => (job.match(/version:\s*(\d+\.\d+\.\d+)/) || [])[1];
+    expect(pin(migrate)).toBeDefined();
+    expect(pin(functionsJob)).toBe(pin(migrate));
+    expect(atLeast(pin(functionsJob), '2.117.0')).toBe(true);
+  });
+
+  it('reads the deploy token under its own name and hands it to the CLI as SUPABASE_ACCESS_TOKEN', () => {
+    expect(functionsJob).toMatch(
+      /SUPABASE_ACCESS_TOKEN:\s*\$\{\{\s*secrets\.SUPABASE_EDGE_FUNCTIONS_DEPLOY_TOKEN\s*\}\}/
+    );
+    expect(deploy).not.toMatch(/secrets\.SUPABASE_ACCESS_TOKEN\b/);
+  });
+
+  it('diffs the push with git over a full clone, not the compare API', () => {
+    expect(functionsJob).toMatch(/fetch-depth:\s*0/);
+    expect(functionsJob).toMatch(/git diff --name-only/);
+    expect(functionsJob).toMatch(/functions-to-deploy\.js/);
+    expect(functionsJob).not.toMatch(/\/compare\//);
+  });
+
+  it('deploys by name and never prunes or turns the JWT gate off', () => {
+    expect(functionsJob).toMatch(/supabase functions deploy/);
+    expect(deploy).not.toMatch(/--prune/);
+    expect(deploy).not.toMatch(/--no-verify-jwt/);
+  });
+
+  it('targets the project the site talks to', () => {
+    const ref = (functionsJob.match(/PROJECT_REF:\s*([a-z]{20})/) || [])[1];
+    expect(ref).toBeDefined();
+    const common = readFileSync(join(ROOT, 'js', 'common.js'), 'utf8');
+    expect(common).toContain(`https://${ref}.supabase.co`);
+  });
+
+  it('offers a functions input for a catch-up by hand', () => {
+    const on = stripComments(deploy).split(/^jobs:/m)[0];
+    expect(on).toMatch(/workflow_dispatch:/);
+    expect(on).toMatch(/^\s+functions:\s*$/m);
+  });
+
+  it('holds only functions that exist', () => {
+    expect(HOLD.length).toBeGreaterThan(0);
+    for (const held of HOLD) {
+      expect(existsSync(join(ROOT, 'supabase', 'functions', held.name, 'index.ts'))).toBe(true);
+    }
   });
 });
