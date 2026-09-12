@@ -41,8 +41,13 @@ function readFunctionTables(toml) {
 
 const tables = readFunctionTables(readFileSync(join(ROOT, 'supabase', 'config.toml'), 'utf8'));
 
+// A directory is a function only when its name fits the CLI's slug rule; a
+// leading underscore (supabase/functions/_shared/) is shared code the CLI
+// neither serves nor deploys, and it has no index.ts to read.
+const FUNCTION_SLUG = /^[A-Za-z][A-Za-z0-9_-]*$/;
+
 const functionDirs = readdirSync(FUNCTIONS_DIR, { withFileTypes: true })
-  .filter((entry) => entry.isDirectory())
+  .filter((entry) => entry.isDirectory() && FUNCTION_SLUG.test(entry.name))
   .map((entry) => entry.name);
 
 // Only the leading comment block counts. The flag is named in a file's opening
