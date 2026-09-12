@@ -52,7 +52,7 @@ function buildRequestsTab() {
   supabaseClient
     .from('self_received_requests')
     .select(
-      'id, status, track, source, note, slot, submitted_at, player_id, self_item_id, players(name_realm), items(name, slot)'
+      'id, status, track, source, note, officer_notes, slot, submitted_at, player_id, self_item_id, players(name_realm), items(name, slot)'
     )
     .eq('team_id', _teamCfg.supabaseTeamId)
     .in('status', ['approved', 'rejected'])
@@ -171,6 +171,11 @@ function renderRecentDecisions() {
         : '') +
       (obtainedHint
         ? '<div style="font-size:0.98rem;color:var(--text-muted);margin-top:0.5rem;">Also marked obtained in BiS Manager. If this approval was a mistake, untick it there.</div>'
+        : '') +
+      (!approved && row.officer_notes
+        ? '<div style="font-size:1rem;color:var(--text-muted);margin-top:0.5rem;">Rejection reason: <span style="color:var(--text);">' +
+          row.officer_notes +
+          '</span></div>'
         : '') +
       '<p class="request-action-error" id="decision-error-' +
       row.id +
@@ -321,7 +326,7 @@ function renderPendingRequests(requests) {
       '<button class="btn request-approve-btn" onclick="approveRequest(' +
       r.id +
       ', this)">Approve</button>' +
-      '<button class="btn request-reject-btn" onclick="rejectRequest(' +
+      '<button class="btn request-reject-btn" onclick="rejectRequestPrompt(' +
       r.id +
       ', this)">Reject</button>' +
       '</div>' +
@@ -360,7 +365,53 @@ function approveRequest(requestId, btnEl) {
     });
 }
 
-function rejectRequest(requestId, btnEl) {
+// Swaps the Approve/Reject buttons for a note field, same pattern as
+// tab-mplus.js's rejectMPlusExclusion -- an officer can leave a reason
+// (shown to the raider and kept on the row) before confirming.
+function rejectRequestPrompt(requestId, btnEl) {
+  var actionsDiv = btnEl.parentNode;
+  var noteId = '_requestRejectNote' + requestId;
+  actionsDiv.innerHTML =
+    '<div style="width:100%;">' +
+    '<div style="font-size:1.04rem;color:var(--text-muted);margin-bottom:0.4rem;">Rejection reason (optional, shown to raider):</div>' +
+    '<textarea id="' +
+    noteId +
+    '" rows="2" placeholder="e.g. Not on the wishlist for this character" style="width:100%;box-sizing:border-box;background:var(--bg-alt);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:0.4rem 0.5rem;font-size:1rem;resize:vertical;"></textarea>' +
+    '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
+    '<button id="_requestRejectConfirm' +
+    requestId +
+    '" class="btn btn-danger" style="font-size:1rem;padding:0.25rem 0.75rem;">Reject</button>' +
+    '<button id="_requestRejectCancel' +
+    requestId +
+    '" class="btn btn-muted" style="font-size:1rem;padding:0.25rem 0.75rem;">Cancel</button>' +
+    '</div>' +
+    '</div>';
+
+  var noteInput = document.getElementById(noteId);
+  var confirmBtn = document.getElementById('_requestRejectConfirm' + requestId);
+  var cancelBtn = document.getElementById('_requestRejectCancel' + requestId);
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function () {
+      actionsDiv.innerHTML =
+        '<button class="btn request-approve-btn" onclick="approveRequest(' +
+        requestId +
+        ',this)">Approve</button>' +
+        '<button class="btn request-reject-btn" onclick="rejectRequestPrompt(' +
+        requestId +
+        ',this)">Reject</button>';
+    });
+  }
+
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', function () {
+      var note = noteInput ? noteInput.value.trim() : '';
+      rejectRequest(requestId, note, confirmBtn);
+    });
+  }
+}
+
+function rejectRequest(requestId, note, btnEl) {
   btnEl.disabled = true;
   btnEl.textContent = '...';
   var card = document.querySelector('.request-card[data-row="' + requestId + '"]');
@@ -369,7 +420,7 @@ function rejectRequest(requestId, btnEl) {
 
   supabaseClient
     .from('self_received_requests')
-    .update({ status: 'rejected' })
+    .update({ status: 'rejected', officer_notes: note || null })
     .eq('id', requestId)
     .eq('team_id', _teamCfg.supabaseTeamId)
     .then(function (result) {
@@ -379,8 +430,13 @@ function rejectRequest(requestId, btnEl) {
         return;
       }
       var player = findRosterPlayerByNameRealm(nameRealm);
-      writeAuditLog('Self-Received Rejected', 'players', player ? player.id : null, item);
-      if (player) notifyPlayer(player.id, 'Your self-received item (' + item + ') was rejected.');
+      writeAuditLog('Self-Received Rejected', 'players', player ? player.id : null, item + (note ? ' -- ' + note : ''));
+      if (player) {
+        notifyPlayer(
+          player.id,
+          'Your self-received item (' + item + ') was rejected.' + (note ? ' Reason: ' + note : '')
+        );
+      }
       if (card) card.remove();
       checkEmptyRequests();
     });

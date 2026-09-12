@@ -427,10 +427,19 @@ describe('approve and reject audit details name the item (in-passing fix)', () =
 
   it('rejectRequest passes the item name as the audit detail', async () => {
     const { sandbox, spies } = setup();
-    sandbox.rejectRequest(9, { disabled: false, textContent: 'Reject' });
+    sandbox.rejectRequest(9, '', { disabled: false, textContent: 'Reject' });
     await flush();
     expect(spies.audit.length).toBe(1);
     expect(spies.audit[0].action).toBe('Self-Received Rejected');
     expect(spies.audit[0].detail).toContain('Seed Test Robe');
+  });
+
+  it('rejectRequest appends the officer note to the audit detail and update', async () => {
+    const { sandbox, spies, captured } = setup();
+    sandbox.rejectRequest(9, 'Not on your wishlist', { disabled: false, textContent: 'Reject' });
+    await flush();
+    expect(spies.audit[0].detail).toContain('Not on your wishlist');
+    const update = captured.byTable.self_received_requests.find((c) => c.update);
+    expect(update.update.officer_notes).toBe('Not on your wishlist');
   });
 });

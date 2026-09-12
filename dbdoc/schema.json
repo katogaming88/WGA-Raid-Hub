@@ -1986,6 +1986,11 @@
           "name": "updated_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "officer_notes",
+          "type": "text",
+          "nullable": true
         }
       ],
       "indexes": [

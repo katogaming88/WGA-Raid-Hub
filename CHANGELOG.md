@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.104.0] - 2026-09-12
+
+### Frontend
+
+- Rejecting a self-received item request can carry an officer note, same
+  pattern as the M+ exclusion and BiS request reject flows (`tab-mplus.js`'s
+  `confirmRejectMPlusExclusion`): the Reject button swaps in an optional
+  reason field, shown to the raider in their notification and kept on the
+  row for the Recent decisions list.
+
+### Backend
+
+- `self_received_requests` gains an `officer_notes` column, matching the
+  column `bis_requests` and `mplus_exclusion_requests` already carry for the
+  same purpose.
+
 ## [3.103.3] - 2026-09-11
 
 ### Functions

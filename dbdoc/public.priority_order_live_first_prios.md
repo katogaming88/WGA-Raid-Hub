@@ -53,7 +53,7 @@ CREATE VIEW priority_order_live_first_prios AS (
 | [public.players](public.players.md) | 23 |  | BASE TABLE |
 | [public.item_bosses](public.item_bosses.md) | 2 |  | BASE TABLE |
 | [public.rclc_loot](public.rclc_loot.md) | 11 |  | BASE TABLE |
-| [public.self_received_requests](public.self_received_requests.md) | 11 |  | BASE TABLE |
+| [public.self_received_requests](public.self_received_requests.md) | 12 |  | BASE TABLE |
 
 ## Relations
 

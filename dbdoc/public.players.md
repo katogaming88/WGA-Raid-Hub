@@ -227,6 +227,7 @@ erDiagram
   text note
   text slot
   timestamp_with_time_zone updated_at
+  text officer_notes
 }
 "public.streamers" {
   integer id
