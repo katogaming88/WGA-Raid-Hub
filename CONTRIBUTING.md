@@ -174,6 +174,19 @@ names the version it deployed.
   build step). If you touch a checked file, run `npm run typecheck`; CI runs
   the same check on every `js/` change. Add `// @ts-check` to more `js/`
   files as they get touched
+- Edge Functions under `supabase/functions/` are type-checked and linted in
+  CI on every PR that touches them (`.github/workflows/edge-functions.yml`:
+  `deno check` over each `index.ts`, `deno lint` over the directory, config
+  in `deno.jsonc` at the repo root), and formatted by the same Prettier run
+  as everything else. Locally: `scoop install deno` on Windows, then
+  `deno check supabase/functions/*/index.ts`, `deno lint` and
+  `npm run format:check`. The workflow pins the exact Deno release the local
+  install uses; bump both in one commit, because CI would otherwise float on
+  its own while local stays put. That is the checker's Deno, not the
+  runtime's: `supabase/config.toml` pins only the runtime's major, and
+  `supabase functions deploy` still bundles without checking anything, so
+  the gate is the only place a type error in a function is caught before
+  production
 - Frontend logic has unit tests under `tests/frontend/` (they load the plain
   `js/` scripts into a vm sandbox, no browser needed). Run
   `npm run test:frontend`; CI runs the suite on every `js/` change. That job

@@ -6,6 +6,7 @@ on:
       - 'js/**'
       - 'scripts/**'
       - 'tests/**'
+      - 'supabase/functions/**'
       - '.eslintrc.json'
       - '.prettierrc.json'
       - 'tsconfig.json'

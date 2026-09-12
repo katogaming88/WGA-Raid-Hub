@@ -19,7 +19,7 @@
 // WCL_CLIENT_SECRET, needed purely to keep the WarcraftLogs OAuth
 // credentials off the client -- configured in Project Settings > Edge
 // Functions > Secrets per #205.
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -243,12 +243,7 @@ async function fetchReportFights(token: string, reportCode: string): Promise<any
   return fights;
 }
 
-async function refreshPerformance(
-  token: string,
-  guildId: number,
-  teamId: number,
-  supabase: ReturnType<typeof createClient>
-) {
+async function refreshPerformance(token: string, guildId: number, teamId: number, supabase: SupabaseClient<any>) {
   const reportsQuery = `
     query {
       reportData {
@@ -553,12 +548,7 @@ async function getFirstPullParticipants(
   return names;
 }
 
-async function refreshAttendance(
-  token: string,
-  guildId: number,
-  teamId: number,
-  supabase: ReturnType<typeof createClient>
-) {
+async function refreshAttendance(token: string, guildId: number, teamId: number, supabase: SupabaseClient<any>) {
   const { data: settingsRow } = await supabase
     .from('team_settings')
     .select('config')
@@ -567,9 +557,7 @@ async function refreshAttendance(
   const config: any = (settingsRow as any)?.config || {};
   const seasonStart: string | null = config.seasonStart || null;
   const raidProgression: any[] = Array.isArray(config.raidProgression) ? config.raidProgression : [];
-  const validZoneIds = new Set(
-    raidProgression.map((r) => parseInt(r.wclZoneId, 10)).filter((id) => !Number.isNaN(id))
-  );
+  const validZoneIds = new Set(raidProgression.map((r) => parseInt(r.wclZoneId, 10)).filter((id) => !Number.isNaN(id)));
   const validEncounterIds = new Set(
     raidProgression
       .flatMap((r) => (Array.isArray(r.bosses) ? r.bosses : []))
@@ -804,7 +792,7 @@ function realmToServerSlug(realm: string): string {
 // roster instead of one per player.
 const CHARACTERS_PER_QUERY = 10;
 
-async function fetchSeasonPerf(teamId: number, season: string, zoneId: number, supabase: ReturnType<typeof createClient>) {
+async function fetchSeasonPerf(teamId: number, season: string, zoneId: number, supabase: SupabaseClient<any>) {
   const { data: players, error: playersError } = await supabase
     .from('players')
     .select('id, name_realm, classes_specs(role)')
@@ -962,7 +950,11 @@ Deno.serve(async (req) => {
         return jsonResponse({ success: false, error: 'No WCL guild ID configured for this team' });
       }
       const token = await getAccessToken();
-      if (!token) return jsonResponse({ success: false, error: 'Failed to get WCL access token. Check WCL_CLIENT_ID/WCL_CLIENT_SECRET.' });
+      if (!token)
+        return jsonResponse({
+          success: false,
+          error: 'Failed to get WCL access token. Check WCL_CLIENT_ID/WCL_CLIENT_SECRET.'
+        });
       const result = await refreshPerformance(token, team.wcl_guild_id, teamId, supabase);
       return jsonResponse(result);
     }
@@ -978,7 +970,11 @@ Deno.serve(async (req) => {
         return jsonResponse({ success: false, error: 'No WCL guild ID configured for this team' });
       }
       const token = await getAccessToken();
-      if (!token) return jsonResponse({ success: false, error: 'Failed to get WCL access token. Check WCL_CLIENT_ID/WCL_CLIENT_SECRET.' });
+      if (!token)
+        return jsonResponse({
+          success: false,
+          error: 'Failed to get WCL access token. Check WCL_CLIENT_ID/WCL_CLIENT_SECRET.'
+        });
       const result = await refreshAttendance(token, team.wcl_guild_id, teamId, supabase);
       return jsonResponse(result);
     }

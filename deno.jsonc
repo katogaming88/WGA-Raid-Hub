@@ -1,0 +1,39 @@
+// Deno config for the Edge Functions gate (#928 Stage 1): what `deno check`
+// and `deno lint` read in .github/workflows/edge-functions.yml and locally.
+//
+// It lives at the repo root, outside supabase/, on purpose: the Supabase CLI
+// reads supabase/functions/<name>/deno.json and supabase/functions/deno.json
+// for deploy resolution and never looks here, so nothing in this file can
+// change what gets bundled.
+{
+  // tsconfig.json's stance for the frontend, carried over. Tightening is
+  // #603's shape and is done on purpose, not as a side effect of the gate.
+  "compilerOptions": {
+    "strict": false,
+    "noImplicitAny": false
+  },
+  // The repo root has a package.json, which flips Deno into node_modules
+  // resolution for npm: specifiers (supabase-js on jsr pulls in
+  // npm:@supabase/realtime-js and friends) and makes the check demand a
+  // deno install into node_modules. "none" resolves them from Deno's own
+  // cache instead, which is how the edge runtime resolves them too.
+  "nodeModulesDir": "none",
+  "lint": {
+    "include": ["supabase/functions/"],
+    "rules": {
+      "tags": ["recommended"],
+      // The frontend allows any (see tsconfig.json); the functions hold 38
+      // of them across six files today, and a lint gate is not where that
+      // changes.
+      "exclude": ["no-explicit-any"]
+    }
+  },
+  // No lockfile. `supabase functions deploy` bundles jsr:@supabase/supabase-js@2
+  // fresh from the registry each time, so the check resolves it the same way
+  // and a type change in a new 2.x turns a PR red before it can reach a
+  // deploy, rather than a lockfile here hiding it. Dependabot's deno support
+  // updates import maps in this file and regenerates deno.lock; the
+  // functions import inline, which it does not touch, so there is nothing
+  // for it to manage until an import map lives where the CLI reads one.
+  "lock": false
+}

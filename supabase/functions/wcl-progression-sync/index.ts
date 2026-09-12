@@ -20,10 +20,11 @@
 //     WCL_PROGRESS_SYNC_SECRET repo secret (Settings > Secrets and variables >
 //     Actions) for the GitHub Actions workflow that calls this on a schedule.
 //
-// Also needs deploying with --no-verify-jwt (bare curl from GitHub Actions,
-// no Supabase session/JWT at all) -- see twitch-live-check's header comment
-// for why this differs from wcl-sync (verify_jwt: true).
-//   supabase functions deploy wcl-progression-sync --no-verify-jwt
+// verify_jwt is off for this function in supabase/config.toml (#958): it is
+// called by a bare curl from GitHub Actions, no Supabase session/JWT at all.
+// The CLI reads that at deploy, so a bare `supabase functions deploy` keeps
+// it. See twitch-live-check's header comment for why this differs from
+// wcl-sync (verify_jwt: true).
 //
 // Source of the "which zone/bosses" question: a team's raidProgression entry
 // in team_settings.config (the same officer-curated list Season Settings'
@@ -35,7 +36,7 @@
 // Rather than depend on it, this re-queries WCL's own
 // zone(id).encounters for the canonical id list every run, same query
 // wcl-sync's getZoneEncounters action already uses.
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -179,7 +180,7 @@ async function syncTeamZone(
   season: string,
   raid: RaidConfigEntry,
   sortIndex: number,
-  supabase: ReturnType<typeof createClient>
+  supabase: SupabaseClient<any>
 ): Promise<{ zoneName: string; encounters: number } | null> {
   const zoneId = parseInt(String(raid.wclZoneId || ''), 10);
   if (!zoneId || Number.isNaN(zoneId)) return null;

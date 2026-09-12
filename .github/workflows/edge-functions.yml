@@ -1,0 +1,40 @@
+name: Edge Functions
+
+# Type-checks and lints supabase/functions/ (#928 Stage 1). Nothing else in
+# CI parses these files: `supabase functions deploy` bundles without checking,
+# so before this the first execution of a changed function was in production.
+# Formatting is Prettier's, in lint.yml, whose paths now include this
+# directory.
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/functions/**'
+      - 'deno.jsonc'
+      - '.github/workflows/edge-functions.yml'
+
+# A new push to the PR supersedes any still-running check on the old commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Pinned to the exact release installed locally (scoop on Windows), so
+      # CI and a developer's machine run the same checker; a floating version
+      # here would change what passes without any commit saying so. Bump this
+      # and the local install in the same commit. Dependabot bumps the action
+      # ref but never a version passed as an input. This is the checker's
+      # Deno, not the runtime's: config.toml pins only the runtime's major.
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: 2.9.6
+      # Every entry point, so a function that nothing imports is still checked.
+      - name: Type check
+        run: deno check supabase/functions/*/index.ts
+      # Scope and rules come from deno.jsonc.
+      - name: Lint
+        run: deno lint

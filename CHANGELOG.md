@@ -12,6 +12,34 @@ answers to.
 
 ---
 
+## [3.103.3] - 2026-09-11
+
+### Functions
+
+- Five functions take a type-only correction so they pass the new check
+  ([#928](https://github.com/katogaming88/WGA-Raid-Hub/issues/928)):
+  `blizzard-gear-sync`, `boe-webhook`, `upload-bio-photo`,
+  `wcl-progression-sync` and `wcl-sync` typed their Supabase client as
+  `ReturnType<typeof createClient>`, which resolves to a client whose every
+  table row is `never`; they now say `SupabaseClient<any>`, which is what
+  `createClient()` already infers. `wcl-sync` is also reformatted to the
+  repo's Prettier style, and the header comments of `blizzard-gear-sync` and
+  `wcl-progression-sync` no longer say to deploy with `--no-verify-jwt`,
+  since `supabase/config.toml` has carried that setting since 3.99.1 (#958).
+  Nothing behaves differently and none of the five was redeployed.
+
+### Project
+
+- Edge Functions are gated in CI
+  ([#928](https://github.com/katogaming88/WGA-Raid-Hub/issues/928), Stage 1).
+  A new workflow runs `deno check` over every `supabase/functions/*/index.ts`
+  and `deno lint` over the directory on each PR that touches them, pinned to
+  the Deno release installed locally, with `deno.jsonc` at the repo root
+  carrying the frontend's typing stance. Prettier's `format` and
+  `format:check` now cover the functions, and the Lint workflow runs on their
+  changes. Before this nothing in CI parsed a function, so the first
+  execution of a change was in production.
+
 ## [3.103.2] - 2026-09-11
 
 ### Frontend

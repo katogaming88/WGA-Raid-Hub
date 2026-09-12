@@ -17,7 +17,7 @@
 //
 // Auth pattern (forward the caller's own JWT, resolve role RPCs through it)
 // mirrors wcl-sync/index.ts's action dispatcher.
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import { Image } from 'https://deno.land/x/imagescript@1.3.0/mod.ts';
 
 const CORS_HEADERS = {
@@ -62,7 +62,7 @@ async function resolveCaller(authHeader: string | null) {
   return { uid: user.id, supabase, storage };
 }
 
-async function isModerator(supabase: ReturnType<typeof createClient>) {
+async function isModerator(supabase: SupabaseClient<any>) {
   const [{ data: isSiteAdmin }, { data: isGuildOfficer }, { data: isTeamLeader }] = await Promise.all([
     supabase.rpc('is_site_admin'),
     supabase.rpc('is_guild_officer'),
@@ -71,12 +71,7 @@ async function isModerator(supabase: ReturnType<typeof createClient>) {
   return isSiteAdmin === true || isGuildOfficer === true || isTeamLeader === true;
 }
 
-async function handleUpload(
-  req: Request,
-  uid: string,
-  supabase: ReturnType<typeof createClient>,
-  storage: ReturnType<typeof createClient>
-) {
+async function handleUpload(req: Request, uid: string, supabase: SupabaseClient<any>, storage: SupabaseClient<any>) {
   if (!(await isModerator(supabase))) {
     return jsonResponse({ success: false, error: 'Not authorized' }, 403);
   }
@@ -150,12 +145,7 @@ async function handleUpload(
   return jsonResponse({ success: true, url: publicUrl });
 }
 
-async function handleDelete(
-  req: Request,
-  uid: string,
-  supabase: ReturnType<typeof createClient>,
-  storage: ReturnType<typeof createClient>
-) {
+async function handleDelete(req: Request, uid: string, supabase: SupabaseClient<any>, storage: SupabaseClient<any>) {
   const { targetPath } = await req.json();
   if (!targetPath || typeof targetPath !== 'string') {
     return jsonResponse({ success: false, error: 'Missing targetPath' }, 400);
