@@ -12,6 +12,33 @@ answers to.
 
 ---
 
+## [3.104.2] - 2026-09-12
+
+### Functions
+
+- `wcl-sync` refuses a `zoneId` or `teamId` that is not a positive integer
+  before it reads anything, as `Invalid zoneId` / `Invalid teamId`, and
+  builds every WarcraftLogs query literal through a helper: report codes
+  are quoted with `gqlString()` at all six sites and zone and guild ids go
+  through `gqlInt()`, in `wcl-progression-sync` too
+  ([#1013](https://github.com/katogaming88/WGA-Raid-Hub/issues/1013)). The
+  whole request body is now validated ahead of the officer gate; the
+  messages a blank field or an unknown action gets are unchanged, and
+  every refusal is still the 200 `{ success, error }` body the tabs show.
+  Both functions are redeployed after this merges.
+
+### Project
+
+- `supabase/functions/_shared/` exists, holding `gql.ts`, the first module
+  two functions share; `wcl-sync` takes the entry half of the testable
+  shape (`index.ts` serving `handle(req, deps)` from `handler.ts`, with
+  `request.ts` for the body) and 27 cases under `tests/edge/` pin the
+  builders, the parsing and every refusal ahead of the gate.
+  `tests/ci/functions-gql-literals.test.js` fails on any bare `${zoneId}`,
+  `${guildId}` or `${reportCode}` in a function, and
+  `tests/ci/functions-config.test.js` reads the function list by the CLI's
+  own slug rule so `_shared/` is not taken for a function.
+
 ## [3.104.1] - 2026-09-12
 
 ### Functions
