@@ -3,7 +3,7 @@
 // push come in on stdin, or --names for a workflow_dispatch, and the names
 // to deploy go out one per line. A held function never deploys, whatever
 // the input; the hold carries its reason and the issue that removes it.
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -25,18 +25,103 @@ export const HOLD = [
   }
 ];
 
-export function listFunctions(_root = ROOT) {
-  throw new Error('unbuilt');
+export function listFunctions(root = ROOT) {
+  const dir = join(root, 'supabase', 'functions');
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && FUNCTION_SLUG.test(entry.name))
+    .map((entry) => entry.name)
+    .sort();
 }
 
-export function sharedImporters(_root = ROOT) {
-  throw new Error('unbuilt');
+// Read from the tree rather than kept as a list, so it is true on the day.
+export function sharedImporters(root = ROOT) {
+  return listFunctions(root).filter((name) => {
+    const dir = join(root, 'supabase', 'functions', name);
+    return readdirSync(dir)
+      .filter((file) => file.endsWith('.ts'))
+      .some((file) => readFileSync(join(dir, file), 'utf8').includes('_shared/'));
+  });
 }
 
-export function selectFunctions(_opts = {}) {
-  throw new Error('unbuilt');
+/**
+ * `names` wins when given: 'all', or an array of function names (an unknown
+ * one throws). Otherwise `changed` is the push's changed paths, repo-relative.
+ */
+export function selectFunctions({ changed = [], names = null, root = ROOT } = {}) {
+  const all = listFunctions(root);
+  const wanted = new Set();
+
+  if (names !== null && names !== undefined) {
+    if (names === 'all') {
+      all.forEach((name) => wanted.add(name));
+    } else {
+      for (const name of names) {
+        if (!all.includes(name)) throw new Error(`Unknown function: ${name}`);
+        wanted.add(name);
+      }
+    }
+  } else {
+    let importers = null;
+    for (const raw of changed) {
+      const path = raw.replace(/\\/g, '/');
+      if (path === 'supabase/config.toml') {
+        all.forEach((name) => wanted.add(name));
+        continue;
+      }
+      const match = path.match(/^supabase\/functions\/([^/]+)\//);
+      if (!match) continue;
+      if (match[1] === '_shared') {
+        if (importers === null) importers = sharedImporters(root);
+        importers.forEach((name) => wanted.add(name));
+        continue;
+      }
+      // A path under a directory that no longer exists is a deleted function,
+      // and there is nothing to deploy for it.
+      if (all.includes(match[1])) wanted.add(match[1]);
+    }
+  }
+
+  const held = HOLD.filter((entry) => wanted.has(entry.name)).map(({ name, reason }) => ({ name, reason }));
+  const deploy = [...wanted].filter((name) => !HOLD.some((entry) => entry.name === name)).sort();
+  return { deploy, held };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  throw new Error('unbuilt');
+  const args = process.argv.slice(2);
+  const option = (flag) => {
+    const at = args.indexOf(flag);
+    return at >= 0 ? (args[at + 1] ?? '') : undefined;
+  };
+  const root = option('--root') ?? ROOT;
+  const namesArg = option('--names');
+  let names = null;
+  if (namesArg !== undefined) {
+    const trimmed = namesArg.trim();
+    names =
+      trimmed === 'all'
+        ? 'all'
+        : trimmed === ''
+          ? []
+          : trimmed
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean);
+  }
+  const changed =
+    names === null
+      ? readFileSync(0, 'utf8')
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean)
+      : [];
+  const { deploy, held } = selectFunctions({ changed, names, root });
+  for (const entry of held) console.error(`held: ${entry.name} (${entry.reason})`);
+  for (const name of deploy) console.log(name);
+  if (process.env.GITHUB_OUTPUT) {
+    appendFileSync(
+      process.env.GITHUB_OUTPUT,
+      `functions=${deploy.join(' ')}\nheld=${held.map((entry) => entry.name).join(' ')}\n`
+    );
+  }
 }
