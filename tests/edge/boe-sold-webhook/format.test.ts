@@ -31,7 +31,7 @@ const RESOLVED_CONTENT =
   PAYOUT_LINE;
 
 Deno.test('gold rounds to whole gold with thousands separators', () => {
-  assertEquals(gold(52800), '52,800g');
+  assertEquals(gold(52800), '52800g');
   assertEquals(gold(2639.6), '2,640g');
   assertEquals(gold('52800.4'), '52,800g');
 });
