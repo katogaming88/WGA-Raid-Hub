@@ -15,6 +15,7 @@
 | note | text |  | true |  |  |  |
 | slot | text |  | true |  |  | BiS slot the request was raised against, mirroring bis_items.slot. Lets an approval target one row when the same item -- notably an is_placeholder source like M+ -- sits in several slots. Null on rows predating #386. |
 | updated_at | timestamp with time zone |  | true |  |  |  |
+| officer_notes | text |  | true |  |  |  |
 
 ## Constraints
 
@@ -62,6 +63,7 @@ erDiagram
   text note
   text slot
   timestamp_with_time_zone updated_at
+  text officer_notes
 }
 "public.teams" {
   integer id

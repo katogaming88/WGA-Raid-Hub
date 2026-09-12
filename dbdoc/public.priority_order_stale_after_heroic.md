@@ -48,7 +48,7 @@ CREATE VIEW priority_order_stale_after_heroic AS (
 | [public.items](public.items.md) | 14 |  | BASE TABLE |
 | [public.players](public.players.md) | 23 |  | BASE TABLE |
 | [public.rclc_loot](public.rclc_loot.md) | 11 |  | BASE TABLE |
-| [public.self_received_requests](public.self_received_requests.md) | 11 |  | BASE TABLE |
+| [public.self_received_requests](public.self_received_requests.md) | 12 |  | BASE TABLE |
 
 ## Relations
 
