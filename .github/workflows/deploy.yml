@@ -1,7 +1,8 @@
 name: Deploy
 
 # One workflow takes a merge to production (#1050): the migrations go first,
-# then the site, and the site only if the migrations applied.
+# then the Edge Functions the push changed (#1083), then the site, and the
+# site only if both applied.
 #
 # Before this, GitHub Pages built from `main` on its own about forty seconds
 # after a merge while `supabase db push` stayed a separate step someone ran in a

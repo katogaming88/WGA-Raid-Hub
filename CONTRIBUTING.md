@@ -187,7 +187,14 @@ names the version it deployed.
   `supabase functions deploy` still bundles without checking anything, so
   the gate is the only place a type error in a function is caught before
   production. Their tests run in the same workflow: see "Testing Edge
-  Functions" below
+  Functions" below. A merged function deploys from `deploy.yml` (#1083):
+  the push's changed functions, a `_shared/` change's importers, or all of
+  them on a `config.toml` change, between the migrations and the site. A
+  function `main` cannot deploy yet is held by name in
+  `scripts/ci/functions-to-deploy.js` with its reason and the PR that lifts
+  it. Because the merge is the deploy, a PR that introduces a new secret
+  name has that secret set in the dashboard before it merges, or the
+  function answers `skipped` without it, the way the posters do
 - Frontend logic has unit tests under `tests/frontend/` (they load the plain
   `js/` scripts into a vm sandbox, no browser needed). Run
   `npm run test:frontend`; CI runs the suite on every `js/` change. That job
@@ -274,7 +281,7 @@ rule when it reads the function list.
 | Handler | `deno task test` | same | `handle(request, deps)` against injected dependencies, with a recording fetch |
 | Database | `npm run test:rls` | `tests/rls/` | RPC semantics, constraints, RLS, cron rows, races |
 | Contract | `deno task test` plus `tests/ci/` | `tests/edge/contract/` | Both ends of the relay, captured payloads, response-type enums (none yet) |
-| Live | by hand | the PR body | What only Discord answers, listed before a deploy and recorded after |
+| Live | by hand | the PR body | What only Discord answers, listed before the merge that deploys and recorded after |
 
 **The harness**, `tests/edge/_support/`: `corpus.ts` holds the named ids,
 row presets and `envOf()` (one role, one value, so a copy-paste between
