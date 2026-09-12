@@ -12,6 +12,36 @@ answers to.
 
 ---
 
+## [3.104.1] - 2026-09-12
+
+### Functions
+
+- `boe-sold-webhook` is split into modules so it can be tested without a
+  server ([#1006](https://github.com/katogaming88/WGA-Raid-Hub/issues/1006)):
+  `index.ts` serves `handle(req, productionDeps())` and nothing else,
+  `handler.ts` holds the gate, the reads and the response codes over a named
+  `SaleDb` interface, `format.ts` holds the text of the post, and `deps.ts`
+  is the supabase-js side. Every line of behaviour moved rather than
+  changed: the post's content and `allowed_mentions` were pinned by running
+  the pre-split code over the test rows before the split, and 34 cases hold
+  it there. The function is redeployed after this merges so production runs
+  the split bundle rather than the old one.
+
+### Project
+
+- The Edge Functions have a test harness and CI runs it
+  ([#1006](https://github.com/katogaming88/WGA-Raid-Hub/issues/1006), the
+  first PR of #928 Stage 2). `deno task test` runs `tests/edge/` with no
+  permission granted and no prompt, so a test that reaches the network or
+  the environment fails; the Edge Functions workflow runs it beside
+  `deno check` and `deno lint`, Prettier and `deno lint` cover the new
+  directory, and the gate test asserts the four files agree.
+  `tests/edge/_support/` holds the corpus, a recording fetch and an
+  in-memory db with a call log; `tests/edge/boe-sold-webhook/` is the worked
+  example. CONTRIBUTING gains a "Testing Edge Functions" section with the
+  shape a testable function takes, the five test layers and the
+  conventions.
+
 ## [3.104.0] - 2026-09-12
 
 ### Frontend

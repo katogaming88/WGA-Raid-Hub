@@ -132,6 +132,7 @@ npm run format:check   # prettier check over js/, scripts/, tests/ and the Edge 
 npm run typecheck      # tsc --noEmit (js/common.js is @ts-check'd)
 deno check supabase/functions/*/index.ts   # type-check the Edge Functions (deno via scoop)
 deno lint              # lint them; scope and rules live in deno.jsonc
+deno task test         # their tests under tests/edge/, no permissions granted
 npm run test:frontend  # vitest -- frontend logic, no browser needed
 npm run test:rls       # vitest -- RLS policy behavior against a local reset
 npm --prefix bot test  # vitest -- the Discord bot, which keeps its own deps and gates
