@@ -2372,15 +2372,19 @@ function prioEditRenderList() {
     // PRIO_EDIT.scores -- an officer manually building the list needs to see
     // these without triggering a re-suggest.
     var rowLootFlags = prioEditLootFlags(nameRealm);
-    // Champion/Normal is informational only (never blocks a Heroic or
-    // Mythic rank -- see prioEditLootFlags()), so shown on both tracks.
-    if (rowLootFlags.hasNormal) {
-      html += '<span class="prio-diff-badge prio-diff-champion" title="Has the Champion (Normal) version">N</span>';
-    }
     // "Has Heroic" is mythic-track only -- still eligible for mythic, but
     // penalized.
     if (PRIO_EDIT.difficulty === 'Mythic' && rowLootFlags.hasHeroic) {
       html += '<span class="prio-diff-badge prio-diff-heroic" title="Has the Heroic version">H</span>';
+    }
+    // Champion/Normal is informational only (never blocks a Heroic or
+    // Mythic rank -- see prioEditLootFlags()), so shown on both tracks --
+    // but only when Heroic isn't already shown: generate_priority_order()'s
+    // has_hero multiplier already dominates has_champ once both are true
+    // (see the Myth-track factor math), so a redundant N next to H would
+    // imply a distinction that has no scoring effect.
+    if (rowLootFlags.hasNormal && !(PRIO_EDIT.difficulty === 'Mythic' && rowLootFlags.hasHeroic)) {
+      html += '<span class="prio-diff-badge prio-diff-champion" title="Has the Champion (Normal) version">N</span>';
     }
     var scoreData = PRIO_EDIT.scores && PRIO_EDIT.scores[nameRealm];
     var metaHtml = '';
@@ -2572,8 +2576,12 @@ function prioEditRenderPool() {
       html += '<span class="prio-diff-badge prio-diff-heroic" title="' + badgeTitle + '">H</span>';
     // Champion/Normal never blocks -- it's outside the priority system
     // entirely (see prioEditLootFlags()) -- so it's shown independently of
-    // the blocking H/M badge above, not as an else-if.
-    if (flags.hasNormal)
+    // the blocking H/M badge above, not as an else-if. But suppressed once
+    // Heroic or Mythic is already shown: generate_priority_order()'s has_hero
+    // multiplier already dominates has_champ once both are true, so a
+    // redundant N next to H/M would imply a distinction with no scoring
+    // effect.
+    if (flags.hasNormal && !flags.hasMythic && !flags.hasHeroic)
       html += '<span class="prio-diff-badge prio-diff-champion" title="Has the Champion (Normal) version">N</span>';
     // Surfaces what this player tagged the item on their own wishlist --
     // including 'pass'/'catalyst', which never make the BiS-players pool but

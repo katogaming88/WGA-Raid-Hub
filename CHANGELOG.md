@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.104.4] - 2026-09-12
+
+### Frontend
+
+- The Priority tab's ranked-list rows and BiS pool no longer show a
+  redundant `N` (Champion/Normal) badge next to `H`/`M` (Heroic/Mythic) --
+  `generate_priority_order()`'s Mythic-track multiplier already treats
+  `has_hero` as dominant over `has_champ` once both are true (the same
+  0.85x either way), so showing both implied a scoring distinction that
+  doesn't exist.
+
 ## [3.104.3] - 2026-09-12
 
 ### Project
