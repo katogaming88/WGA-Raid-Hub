@@ -12,6 +12,32 @@ answers to.
 
 ---
 
+## [3.105.0] - 2026-09-12
+
+### Functions
+
+- Removed smoke mode from `boe-webhook` and `contact-webhook`
+  ([#1086](https://github.com/katogaming88/WGA-Raid-Hub/issues/1086),
+  superseding #1007). The mode existed to prove a deploy without a raider
+  seeing a test post, back when function deploys were by hand and a local
+  run could reach a team's channel; a merge now deploys behind the gates
+  (#1083) and a local stack is about to post to the test webhook on its own
+  (#1081), so production keeps no test mode. The `smoke` body field, the
+  `x-cron-secret` check, the `[smoke]` marker and the test-webhook branch
+  are gone from both posters, and `boe-webhook` claims its row on every
+  post. A request that still carries `smoke: true` is an ordinary post from
+  here: the field is ignored, as it was before #956. Both functions redeploy
+  with this merge; `DISCORD_TEST_WEBHOOK_URL` is read by nothing deployed
+  after it.
+
+### Project
+
+- `.env.example` drops the test webhook and the smoke sentences, and the
+  setup guide and section 11 of the local dev doc lose the smoke curls;
+  posting by hand is now the same curl the site sends.
+
+---
+
 ## [3.104.4] - 2026-09-12
 
 ### Frontend
