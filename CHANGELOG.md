@@ -12,6 +12,38 @@ answers to.
 
 ---
 
+## [3.107.0] - 2026-09-13
+
+### Backend
+
+- Equipped gear now records its real upgrade track, read from the item's own
+  bonus IDs, instead of guessing it from item level. The guess could not
+  work: the tracks overlap by design (Hero 6/6 and Myth 2/6 are both ilvl
+  321), so with this guild's Myth floor of 318 every fully-upgraded Hero item
+  read as Myth. Measured against the live roster, only 351 of 712 items were
+  classified correctly -- 286 Hero items read as Myth and 75 Champion items
+  as Hero, with 53 of 54 raiders holding at least one wrongly-"Myth" piece.
+  Because the priority generator removes a candidate outright when it thinks
+  they already own the item on Myth, that had been silently pulling people
+  off lists they belonged on. New `track_bonus_ids` lookup table (seeded per
+  tier, appended never edited), and `player_equipped_gear` keeps the raw
+  `bonus_list` so tracks can be re-derived without a re-sync.
+- `generate_priority_order()`'s equipped-slot factor now grades in three
+  steps by that real track -- Myth in the slot 0.92, Hero 0.96, Champion or
+  lower (or an empty slot) no penalty -- rather than a single item-level
+  threshold test. Rings and trinkets grade off the **lower** of their two
+  slots, so someone wearing one Myth and one Champion trinket still counts as
+  wanting a trinket; the old check took the better of the two. Weapons stay
+  single-slot, since whether main hand and off hand are a pair depends on
+  dual-wielding, which the schema can't know.
+
+### Functions
+
+- `blizzard-gear-sync` reads each equipped item's `bonus_list` from the
+  Blizzard API and resolves the track through `track_bonus_ids`. The
+  item-level comparison survives only as a fallback for gear carrying no
+  track bonus ID at all (crafted, Timewarped and similar).
+
 ## [3.106.1] - 2026-09-13
 
 ### Backend

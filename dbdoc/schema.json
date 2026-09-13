@@ -4844,13 +4844,20 @@
         {
           "name": "track",
           "type": "text",
-          "nullable": true
+          "nullable": true,
+          "comment": "Gear upgrade track (Explorer/Adventurer/Veteran/Champion/Hero/Myth), derived from bonus_list via track_bonus_ids. Falls back to the item_level-vs-trackIlvlThresholds guess only when no bonus ID matches (crafted, Timewarped and similar gear carries no track bonus ID) -- that fallback cannot distinguish overlapping tracks and is a last resort, not the primary source."
         },
         {
           "name": "synced_at",
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "bonus_list",
+          "type": "integer[]",
+          "nullable": true,
+          "comment": "The item's bonus IDs exactly as the Blizzard Character Equipment Summary returned them. track is derived from these via track_bonus_ids; kept raw so it can be re-derived without a re-sync."
         }
       ],
       "indexes": [
@@ -6030,6 +6037,62 @@
           "referenced_table": "",
           "columns": [
             "signup_channel_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.track_bonus_ids",
+      "type": "BASE TABLE",
+      "comment": "Maps a WoW item bonus ID to its gear upgrade track and rank (e.g. 12853 -\u003e Myth 5/6). Read by blizzard-gear-sync when syncing equipped gear, and the intended future home of the constants currently inlined in import_rclc_loot(). Seeded by hand per tier -- append the new block, never edit or delete old rows, since older gear keeps its original bonus IDs.",
+      "columns": [
+        {
+          "name": "bonus_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "track",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "rank",
+          "type": "smallint",
+          "nullable": false
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false,
+          "comment": "Provenance only -- which tier this block was allocated for. Lookups deliberately ignore it; Blizzard issues a fresh ID block each tier so rows cannot collide across seasons."
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "track_bonus_ids_pkey",
+          "def": "CREATE UNIQUE INDEX track_bonus_ids_pkey ON public.track_bonus_ids USING btree (bonus_id)",
+          "table": "public.track_bonus_ids",
+          "columns": [
+            "bonus_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "track_bonus_ids_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (bonus_id)",
+          "table": "public.track_bonus_ids",
+          "referenced_table": "",
+          "columns": [
+            "bonus_id"
           ]
         }
       ]

@@ -308,6 +308,7 @@ erDiagram
   integer item_level
   text track
   timestamp_with_time_zone synced_at
+  integer__ bonus_list
 }
 "public.priority_stale_dismissals" {
   integer id
