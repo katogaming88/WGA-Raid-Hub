@@ -10,7 +10,7 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ## 2026-09-13 -- user metadata stops deciding who owns a team_members row (#1117)
 
-Shipped: `20260913180752_claim_character_refuse_linked_row.sql`
+Shipped: `20260913184623_claim_character_refuse_linked_row.sql`
 
 `claim_character()` resolves a caller with no `auth_user_id` match by their Discord id, read from `auth.users.raw_user_meta_data ->> 'provider_id'`. That column is writable by the account it belongs to, so the caller chose which `team_members` row the fallback found, and the fallback relinked it without checking whether anyone already held it. A row with a role took its role along.
 
