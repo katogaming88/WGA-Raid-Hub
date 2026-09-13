@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.108.0] - 2026-09-13
+
+### Frontend
+
+- Priority List Conflicts banner gains a **Dismiss all** button at the top of
+  the expanded list, clearing every live stale-after-Heroic and same-boss
+  conflict in one confirm instead of one click per row. The "N dismissed"
+  list gets a matching **Restore all**, scoped to the team and season in view.
+  Each writes one bulk insert/delete per dismissal table; if one table's write
+  fails, only the other's rows change in the banner.
+
 ## [3.107.1] - 2026-09-13
 
 ### Backend
