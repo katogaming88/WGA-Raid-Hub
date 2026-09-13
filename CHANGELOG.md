@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.109.1] - 2026-09-13
+
+### Project
+
+- Every merge to main now also uploads the built site to Cloudflare Pages
+  (project `wga-raid-hub`), the host the site is moving to (#1099). It is a
+  new job in the Deploy workflow that reuses the GitHub Pages build and runs
+  only after the migrations and functions, so the site still never goes live
+  ahead of the database. GitHub Pages keeps serving everyone until the
+  rebuild's cutover. The job creates the Cloudflare project on its first run
+  and skips itself with a notice until the `CLOUDFLARE_API_TOKEN` and
+  `CLOUDFLARE_ACCOUNT_ID` secrets are set.
+
 ## [3.109.0] - 2026-09-13
 
 ### Frontend

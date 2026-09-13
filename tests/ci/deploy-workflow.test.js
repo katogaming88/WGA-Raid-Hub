@@ -163,6 +163,26 @@ describe('the functions half of Deploy (#1083)', () => {
     expect(needs).toContain('migrate');
   });
 
+  it('uploads to Cloudflare Pages only after the migrations and functions, from the same build (#1099)', () => {
+    const cloudflare = jobs.get('cloudflare');
+    expect(cloudflare).toBeDefined();
+    const needs = cloudflare.match(/needs:\s*(.+)/)[1];
+    expect(needs).toContain('migrate');
+    expect(needs).toContain('functions');
+    expect(needs).toContain('build');
+    expect(cloudflare).toMatch(/name:\s*github-pages/);
+    expect(cloudflare).toMatch(/pages deploy \.\/_site/);
+    expect(cloudflare).toMatch(/CF_PROJECT:\s*wga-raid-hub\s*$/m);
+  });
+
+  it('skips the Cloudflare upload on a dry run and while its secrets are unset', () => {
+    const cloudflare = jobs.get('cloudflare');
+    expect(cloudflare.split(/\n\s+steps:/)[0]).toMatch(/if:\s*\$\{\{\s*!inputs\.dry_run\s*\}\}/);
+    expect(cloudflare).toMatch(/secrets\.CLOUDFLARE_API_TOKEN/);
+    expect(cloudflare).toMatch(/secrets\.CLOUDFLARE_ACCOUNT_ID/);
+    expect(cloudflare).toMatch(/configured=false/);
+  });
+
   it('is never skipped at the job level, so the site job can need it', () => {
     // A job-level if: that reads false skips every job that needs it; the
     // decision has to be made inside the steps instead.

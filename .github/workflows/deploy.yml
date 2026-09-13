@@ -356,3 +356,85 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # The same built site, uploaded to Cloudflare Pages as well (#1099). It runs
+  # beside the GitHub Pages deploy, not instead of it: GitHub Pages keeps serving
+  # everyone until the rebuild's cutover (#1105). It needs the same jobs the
+  # GitHub Pages deploy does, so the site still never reaches Cloudflare ahead of
+  # the migrations and functions it calls. Uploaded from here with wrangler rather
+  # than through Cloudflare's own Git integration, which builds on its own
+  # schedule and could put the site live before the database has what it needs.
+  #
+  # Cloudflare's default cache header on Pages is `public, max-age=0,
+  # must-revalidate` with an ETag, so a browser checks for a new copy on every
+  # load and gets a cheap 304 when nothing changed. That is the header GitHub
+  # Pages would not let us set (#450), so no _headers file is added.
+  cloudflare:
+    name: Deploy to Cloudflare Pages
+    needs: [migrate, functions, build]
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CF_PROJECT: wga-raid-hub
+    steps:
+      # Skipped with a notice rather than failed while the secrets are unset, so
+      # a merge before they exist does not mark the whole Deploy run red.
+      - name: Check the Cloudflare secrets are set
+        id: secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::notice::CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID is not set; skipping the Cloudflare Pages deploy."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/download-artifact@v4
+        if: ${{ steps.secrets.outputs.configured == 'true' }}
+        with:
+          name: github-pages
+          path: ./artifact
+
+      - name: Unpack the built site
+        if: ${{ steps.secrets.outputs.configured == 'true' }}
+        run: |
+          mkdir -p ./_site
+          tar -xf ./artifact/artifact.tar -C ./_site
+          cat ./_site/build.json
+
+      # Pages projects are created once. Doing it here keeps the setup to two
+      # secrets instead of a trip through the dashboard first.
+      - name: Create the Pages project on the first run
+        if: ${{ steps.secrets.outputs.configured == 'true' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        # Create and accept "already exists", rather than grepping the project
+        # list: a name match there would also hit wga-raid-hub-app (#1101).
+        run: |
+          if OUT="$(npx --yes wrangler@4 pages project create "$CF_PROJECT" --production-branch=main 2>&1)"; then
+            echo "Created Pages project $CF_PROJECT."
+          elif echo "$OUT" | grep -qi "already exists"; then
+            echo "Pages project $CF_PROJECT exists."
+          else
+            echo "$OUT"
+            exit 1
+          fi
+
+      - name: Upload to Cloudflare Pages
+        if: ${{ steps.secrets.outputs.configured == 'true' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          npx --yes wrangler@4 pages deploy ./_site \
+            --project-name="$CF_PROJECT" \
+            --branch=main \
+            --commit-hash="$COMMIT_SHA" \
+            --commit-dirty=false
