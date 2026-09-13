@@ -808,7 +808,11 @@ When an officer or site admin logs in with Discord for the first time, Supabase
 creates a row in `auth.users`. At that moment they already have a row in
 `team_members` or `site_admins` (seeded in issue #203) but `auth_user_id` is still
 null. This trigger fires automatically on every new `auth.users` insert, reads the
-Discord user ID from the login metadata, and fills in the UUID on both tables.
+Discord user ID from the login metadata, and fills in the UUID across all four
+grant tables. It runs only for an account Discord itself created: the id it
+matches on sits in `raw_user_meta_data`, which the account can write, so the
+guard reads the provider out of `raw_app_meta_data`, which only the service role
+can (#1118).
 
 Without this trigger, an officer would log in successfully but `my_team_role()` and
 `is_site_admin()` would both return null -- they would be logged in but treated as
@@ -819,14 +823,31 @@ create or replace function link_auth_user_to_member()
 returns trigger
 language plpgsql
 security definer
+set search_path = 'public'
 as $$
 begin
+  -- Only the provider writes raw_app_meta_data. The provider_id below is the
+  -- account's own to set, so without this the match proves nothing (#1118).
+  if new.raw_app_meta_data ->> 'provider' is distinct from 'discord' then
+    return new;
+  end if;
+
   update team_members
   set auth_user_id = new.id
   where discord_id = new.raw_user_meta_data ->> 'provider_id'
     and auth_user_id is null;
 
   update site_admins
+  set auth_user_id = new.id
+  where discord_id = new.raw_user_meta_data ->> 'provider_id'
+    and auth_user_id is null;
+
+  update boe_managers
+  set auth_user_id = new.id
+  where discord_id = new.raw_user_meta_data ->> 'provider_id'
+    and auth_user_id is null;
+
+  update guild_officers
   set auth_user_id = new.id
   where discord_id = new.raw_user_meta_data ->> 'provider_id'
     and auth_user_id is null;

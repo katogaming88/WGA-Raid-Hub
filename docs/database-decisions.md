@@ -8,6 +8,20 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-13 -- only a Discord signup links a grant row (#1118)
+
+Shipped: `20260913192229_link_trigger_requires_discord_provider.sql`
+
+The other half of #1117, and the same root cause. `link_auth_user_to_member()` fires `after insert on auth.users` and fills `auth_user_id` on any unlinked row in `team_members`, `site_admins`, `guild_officers` or `boe_managers` whose `discord_id` matches `new.raw_user_meta_data ->> 'provider_id'`. Whoever creates the account supplies that value, so the trigger handed out grants on an unverified claim: an email signup carrying somebody's Discord snowflake inherited their row and its role, with no character needed. Each update already carried `and auth_user_id is null`, so the exposure was bounded by the unlinked-grant census, one row on production.
+
+- **One early return, not a fourth condition on each update.** Same semantics, and a fifth grant table added later is covered without anyone remembering to add the clause. `is distinct from` is what makes an account with no `raw_app_meta_data` return early instead of comparing against null.
+- **Insert-only, deliberately.** Firing on update as well would have let the local dev tool stamp the provider after creation, but a repeat OAuth sign-in performs three updates (`UpdateOnly(identity)`, `UpdateUserMetaData`, `UpdateAppMetaDataProviders`), so the trigger would run on every sign-in and keep re-reading metadata that stays writable until #1119's successor retires it.
+- **An `auth.identities` check is not available here.** The trigger fires before any identity row exists for the new user, which is also why this is a narrowing of the metadata read rather than the move to `auth.identities` that finishes the job.
+- **`provider`, the scalar, not the `providers` array.** At insert an account has exactly one provider and the two agree. GoTrue rewrites `provider = providers[0]` when a second identity is linked later, which an insert trigger never sees.
+- **Nothing on production changes.** All 73 accounts read `raw_app_meta_data ->> 'provider' = 'discord'` and none lacks an `auth.identities` row, measured the day this shipped.
+
+The dev tool moved with it. `npm run dev:login -- --discord-id` used to be one `generate_link` call and leaned on this trigger to bind the grants. There is no way to reach the guard through the auth API: `adminUserCreate` stamps `provider: "email"` on the model, runs `tx.Create(user)`, and applies caller-supplied `app_metadata` only afterwards as an UPDATE, so the trigger sees `email` every time. Only a real OAuth signup stamps `discord` before the insert. The route now mints its `auth.users` and `auth.identities` rows by SQL, the way `seed.sql` and `snapshot-personas.js` already mint personas, and the guarded trigger links them.
+
 ## 2026-09-13 -- user metadata stops deciding who owns a team_members row (#1117)
 
 Shipped: `20260913184623_claim_character_refuse_linked_row.sql`

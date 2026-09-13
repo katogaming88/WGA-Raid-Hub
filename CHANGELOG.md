@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [Unreleased]
+
+### Backend
+
+- Signing up with an email address can no longer inherit somebody else's officer
+  role ([#1118](https://github.com/katogaming88/WGA-Raid-Hub/issues/1118)). When
+  an account is created, the site links it to any roster entry or admin grant
+  already waiting on that person's Discord id. It matched on a field the new
+  account itself supplies, so an account made with an email address and someone
+  else's Discord id was handed their place and whatever it carried. Only an
+  account created by signing in through Discord links anything now. Nobody's
+  existing access changes: every account on the site was made that way.
+
 ## [3.112.1] - 2026-09-13
 
 ### Backend
