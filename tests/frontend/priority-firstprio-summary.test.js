@@ -133,6 +133,28 @@ describe('getPriorityListConflicts (no longer flags plain #1-count holders)', ()
     ]);
   });
 
+  // Regression: the same two items held #1 on BOTH Hero and Myth behind one
+  // boss used to recover the same track for both groups (first item-name
+  // match wins), so the banner showed two rows with one dismissal key --
+  // Dismiss all then sent a duplicate row and the unique key rejected the
+  // whole same-boss batch (409).
+  it('keeps each group on its own track when the same items stack on two tracks', () => {
+    const rows = [
+      { player_id: 1, name_realm: 'Alpha-Realm', item_name: 'Item A', track: 'Hero', boss: 'Boss 1' },
+      { player_id: 1, name_realm: 'Alpha-Realm', item_name: 'Item B', track: 'Hero', boss: 'Boss 1' },
+      { player_id: 1, name_realm: 'Alpha-Realm', item_name: 'Item B', track: 'Myth', boss: 'Boss 1' },
+      { player_id: 1, name_realm: 'Alpha-Realm', item_name: 'Item A', track: 'Myth', boss: 'Boss 1' }
+    ];
+    const sandbox = makeSandbox({
+      priorityLiveFirstPrios: rows,
+      priorityConflictDismissals: [{ player_id: 1, season: 'test-season', boss: 'Boss 1', track: 'Hero' }]
+    });
+    const conflicts = sandbox.getPriorityListConflicts();
+    expect(conflicts.sameBossGroups).toEqual([
+      { playerId: '1', nameRealm: 'Alpha-Realm', boss: 'Boss 1', track: 'Myth', itemNames: ['Item B', 'Item A'] }
+    ]);
+  });
+
   // Dismiss/restore for stale-after-Heroic entries (priority_stale_dismissals,
   // 20260901164305) -- sibling to the same-boss dismiss tests above, keyed by
   // player+item instead of player+boss+track.

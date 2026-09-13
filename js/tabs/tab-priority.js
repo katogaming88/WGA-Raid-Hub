@@ -224,12 +224,20 @@ function _priorityFirstPriosByPlayer() {
 // (that's expected and unavoidable once a raid has 30+ managed items -- see
 // getPriorityFirstPrioSummary()'s own comment for why that stopped being
 // flagged as a conflict here).
-function _priorityFirstPrioSameBossGroups(entry) {
+//
+// withTrack adds each group's track -- getPriorityListConflicts() needs it for
+// the dismissal key; getPriorityFirstPrioSummary() keeps the plain
+// {boss, itemNames} shape its tests pin.
+function _priorityFirstPrioSameBossGroups(entry, withTrack) {
   var byBossTrack = {};
   entry.items.forEach(function (it) {
     if (!it.boss) return;
     var key = it.boss + '|' + it.track;
-    (byBossTrack[key] = byBossTrack[key] || { boss: it.boss, itemNames: [] }).itemNames.push(it.itemName);
+    if (!byBossTrack[key]) {
+      byBossTrack[key] = { boss: it.boss, itemNames: [] };
+      if (withTrack) byBossTrack[key].track = it.track;
+    }
+    byBossTrack[key].itemNames.push(it.itemName);
   });
   var groups = [];
   Object.keys(byBossTrack).forEach(function (key) {
@@ -289,25 +297,13 @@ function getPriorityListConflicts() {
   var sameBossGroups = [];
   Object.keys(byPlayer).forEach(function (playerId) {
     var entry = byPlayer[playerId];
-    _priorityFirstPrioSameBossGroups(entry).forEach(function (group) {
-      // _priorityFirstPrioSameBossGroups() (shared with
-      // getPriorityFirstPrioSummary(), whose tests pin its exact
-      // {boss, itemNames} return shape) doesn't carry track on the group
-      // itself -- recovered here from entry.items, since every item in one
-      // group was grouped by the same boss+track pairing to begin with.
-      var track = null;
-      for (var gi = 0; gi < entry.items.length; gi++) {
-        if (entry.items[gi].boss === group.boss && group.itemNames.indexOf(entry.items[gi].itemName) !== -1) {
-          track = entry.items[gi].track;
-          break;
-        }
-      }
-      if (dismissed[playerId + '|' + group.boss + '|' + track]) return;
+    _priorityFirstPrioSameBossGroups(entry, true).forEach(function (group) {
+      if (dismissed[playerId + '|' + group.boss + '|' + group.track]) return;
       sameBossGroups.push({
         playerId: playerId,
         nameRealm: entry.nameRealm,
         boss: group.boss,
-        track: track,
+        track: group.track,
         itemNames: group.itemNames
       });
     });
