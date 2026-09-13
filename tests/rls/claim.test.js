@@ -51,10 +51,12 @@ const claim = (asUser, uid, teamId, nameRealm) =>
   asUser(uid, 'select * from public.claim_character($1, $2)', [teamId, nameRealm]);
 
 // Inserts an auth.users row (firing on_auth_user_created) and returns nothing;
-// callers pass a distinct uuid and provider_id per test.
+// callers pass a distinct uuid and provider_id per test. Stamped as a Discord
+// signup because since #1118 the trigger links grant rows only for one.
 const addAuthUser = (q, uid, providerId) =>
-  q('insert into auth.users (id, raw_user_meta_data) values ($1, $2)', [
+  q('insert into auth.users (id, raw_app_meta_data, raw_user_meta_data) values ($1, $2, $3)', [
     uid,
+    JSON.stringify({ provider: 'discord', providers: ['discord'] }),
     JSON.stringify({ provider_id: providerId })
   ]);
 
