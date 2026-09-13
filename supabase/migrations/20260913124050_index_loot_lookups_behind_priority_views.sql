@@ -29,24 +29,28 @@
 -- self_received_requests went 3 rows (July) -> 85 (August) -> 152
 -- (September). Same query, ~40x the work.
 --
--- These indexes turn each probe into a lookup, so the read rules are
--- evaluated against a handful of rows instead of all of them. They also
--- cover public.priority_order_stale_after_heroic, which probes the same two
--- tables (once, not per row -- 2ms, never acute), and the two views built on
--- top of the first-prios one (priority_order_first_prio_counts,
--- priority_order_same_boss_conflicts), which inherited the timeout wholesale.
+-- The index turns that probe into a lookup, so the read rules are evaluated
+-- against a handful of rows instead of all of them. Measured on restored
+-- production data, signed in as a team-1 officer:
 --
--- Column order follows each view's own predicate, most selective first, so
+--   season-filtered (the fairness flag):  1279.9 ms -> 1.05 ms
+--   unfiltered ("#1 Priorities Held"):    1329.8 ms -> 1.12 ms
+--
+-- It also covers public.priority_order_stale_after_heroic, which probes the
+-- same table, and the two views built on top of the first-prios one
+-- (priority_order_first_prio_counts, priority_order_same_boss_conflicts),
+-- which inherited the timeout wholesale.
+--
+-- Column order follows the view's own predicate, most selective first, so
 -- the probe is a single index lookup rather than a range scan.
 
--- rl.team_id = po.team_id and rl.season = po.season and rl.item_id =
--- po.item_id and rl.track = po.track and rl.player_id = po.player_id
-create index if not exists rclc_loot_team_season_item_track_player_idx
-  on public.rclc_loot (team_id, season, item_id, track, player_id);
-
-comment on index public.rclc_loot_team_season_item_track_player_idx is
-  'Covers the "already awarded this exact item on this track" probe in priority_order_live_first_prios and priority_order_stale_after_heroic. Without it those views seq-scan rclc_loot once per candidate row.';
-
+-- Only self_received_requests is indexed here. The other probe, against
+-- rclc_loot, is deliberately left alone: measured against restored
+-- production data it plans as a Hash Anti Join -- one 363-row scan, built
+-- once, not per candidate row -- so an index there is never chosen and would
+-- only add write cost to every loot import. Revisit if that probe ever shows
+-- up as a per-row scan the way this one did.
+--
 -- sr.status = 'approved' and sr.team_id = po.team_id and sr.self_item_id =
 -- po.item_id and sr.track = po.track and sr.player_id = po.player_id.
 -- Partial on the status both views actually probe: the rejected and pending

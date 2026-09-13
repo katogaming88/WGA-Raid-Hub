@@ -830,19 +830,6 @@
           "columns": [
             "id"
           ]
-        },
-        {
-          "name": "rclc_loot_team_season_item_track_player_idx",
-          "def": "CREATE INDEX rclc_loot_team_season_item_track_player_idx ON public.rclc_loot USING btree (team_id, season, item_id, track, player_id)",
-          "table": "public.rclc_loot",
-          "columns": [
-            "team_id",
-            "season",
-            "item_id",
-            "track",
-            "player_id"
-          ],
-          "comment": "Covers the \"already awarded this exact item on this track\" probe in priority_order_live_first_prios and priority_order_stale_after_heroic. Without it those views seq-scan rclc_loot once per candidate row."
         }
       ],
       "constraints": [

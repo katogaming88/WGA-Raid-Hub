@@ -16,19 +16,23 @@ answers to.
 
 ### Backend
 
-- Indexed the two loot lookups behind `priority_order_live_first_prios`, which
+- Indexed the self-received lookup behind `priority_order_live_first_prios`, which
   had been timing out (57014) for signed-in officers and silently killing
   Priority Edit's per-row fairness flag -- the blue triangle on the #1 row
   reading "Holds N other #1 priorities" -- along with the "#1 Priorities Held"
-  summary and the two views built on top of it. The view probes `rclc_loot`
-  and `self_received_requests` per candidate row and neither carried a
-  matching index, so each probe re-scanned the whole table: ~18k row visits
-  for a query returning 156. Read as `claude_readers` that costs nothing
-  (constant read rules, 12ms); read as an officer every visit evaluates
-  SECURITY DEFINER read rules, ~40k function calls, past the statement limit.
-  No migration ever created these indexes -- not a regression, they simply
-  never existed, and the view only crossed the limit as
-  `self_received_requests` grew from 3 rows in July to 152 in September.
+  summary and the two views built on top of it. The view re-scanned
+  `self_received_requests` once per candidate row -- ~19k row visits for a
+  query returning 160 -- and no index matched that probe. Read as
+  `claude_readers` that costs nothing (constant read rules); read as an
+  officer every visit evaluates SECURITY DEFINER read rules, which is what
+  blew the statement limit. Measured on restored production data as a team-1
+  officer: **1279.9ms -> 1.05ms** for the fairness flag's query, and
+  **1329.8ms -> 1.12ms** for the summary's. No migration ever created this
+  index -- not a regression, it simply never existed, and the view only
+  crossed the limit as `self_received_requests` grew from 3 rows in July to
+  152 in September. The sibling probe against `rclc_loot` is deliberately
+  left unindexed: it plans as a single hash build, not a per-row scan, so an
+  index there is never chosen and would only cost on every loot import.
 
 ### Frontend
 
