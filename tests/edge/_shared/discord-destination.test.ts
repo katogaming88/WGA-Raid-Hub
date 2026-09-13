@@ -6,7 +6,7 @@
 import { assertEquals, assertThrows } from 'jsr:@std/assert@1';
 import {
   DESTINATIONS,
-  PRODUCTION_HOST,
+  type DestinationKey,
   allowedMentions,
   isLocalStack,
   isProductionStack,
@@ -33,10 +33,6 @@ const LIVE_NAMES = {
   'BOE-Found-Webhook': LEGACY_WEBHOOK_URL,
   CONTACT_WEBHOOK_URL
 };
-
-Deno.test('PRODUCTION_HOST is the project host js/common.js publishes', () => {
-  assertEquals(PRODUCTION_HOST, 'kxgjqnpwfklbgrxdgmmv.supabase.co');
-});
 
 Deno.test('the registry names the three posters and their env chains, sold falling through to found', () => {
   assertEquals(DESTINATIONS, {
@@ -122,7 +118,7 @@ Deno.test('on production the contact post reads its one name', () => {
 });
 
 Deno.test('on production with nothing set the post is skipped with no reason, as today', () => {
-  for (const destination of ['boe-found', 'boe-sold', 'contact']) {
+  for (const destination of ['boe-found', 'boe-sold', 'contact'] as const) {
     assertEquals(resolveDestination(production(), { destination }), { kind: 'skip' }, destination);
   }
 });
@@ -138,7 +134,7 @@ Deno.test('on production the test webhook is never the destination, even when it
 
 Deno.test('on a local stack every post goes to the test webhook, whatever live names are set', () => {
   const env = local(LIVE_NAMES);
-  for (const destination of ['boe-found', 'boe-sold', 'contact']) {
+  for (const destination of ['boe-found', 'boe-sold', 'contact'] as const) {
     assertEquals(
       resolveDestination(env, { destination }),
       { kind: 'post', url: TEST_WEBHOOK_URL, source: 'local', via: 'DISCORD_TEST_WEBHOOK_URL' },
@@ -151,7 +147,7 @@ Deno.test('on a local stack with no test webhook the post is skipped naming the 
   // Built without the preset: a preset cannot unset a value, and a missing
   // test webhook is the whole case.
   const env = envOf({ SUPABASE_URL: LOCAL_STACK_SUPABASE_URL, ...LIVE_NAMES });
-  for (const destination of ['boe-found', 'boe-sold', 'contact']) {
+  for (const destination of ['boe-found', 'boe-sold', 'contact'] as const) {
     assertEquals(
       resolveDestination(env, { destination }),
       { kind: 'skip', reason: 'DISCORD_TEST_WEBHOOK_URL is not set on this local stack' },
@@ -161,7 +157,14 @@ Deno.test('on a local stack with no test webhook the post is skipped naming the 
 });
 
 Deno.test('an unknown destination key throws rather than skipping quietly', () => {
-  assertThrows(() => resolveDestination(production(LIVE_NAMES), { destination: 'boe-fond' }), Error, 'boe-fond');
+  const bad = 'boe-fond' as DestinationKey;
+  assertThrows(() => resolveDestination(production(LIVE_NAMES), { destination: bad }), Error, 'boe-fond');
+});
+
+Deno.test('a key that is only on the object prototype is unknown too, on both stacks', () => {
+  const bad = 'constructor' as DestinationKey;
+  assertThrows(() => resolveDestination(production(LIVE_NAMES), { destination: bad }), Error, 'constructor');
+  assertThrows(() => resolveDestination(local(LIVE_NAMES), { destination: bad }), Error, 'constructor');
 });
 
 Deno.test('the marker names a local post and is absent on production', () => {

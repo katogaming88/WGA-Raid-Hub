@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { listFunctionSources } from '../../scripts/ci/functions-to-deploy.js';
 
 // wcl-sync and wcl-progression-sync build GraphQL text by interpolation, and
 // #1013 routed the values that come from a request, a row or a WCL payload
@@ -13,21 +13,8 @@ import { fileURLToPath } from 'node:url';
 // new site that reuses their vocabulary, not every interpolation there is.
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const FUNCTIONS_DIR = join(ROOT, 'supabase', 'functions');
 
-function listTs(dir, out = []) {
-  for (const name of readdirSync(dir)) {
-    const full = join(dir, name);
-    if (statSync(full).isDirectory()) listTs(full, out);
-    else if (name.endsWith('.ts')) out.push(full);
-  }
-  return out;
-}
-
-const files = listTs(FUNCTIONS_DIR).map((full) => ({
-  path: relative(ROOT, full).replace(/\\/g, '/'),
-  source: readFileSync(full, 'utf8')
-}));
+const files = listFunctionSources(ROOT);
 
 const BARE = /\$\{\s*(reportCode|zoneId|guildId)\s*\}/g;
 const GUARDED = /\bgql(String|Int)\(/g;

@@ -209,10 +209,6 @@ Deno.test('a body that is not JSON is the catch-all: a 200 that says it failed',
   assertEquals(calls, []);
 });
 
-// The local rule (#1081): the function reads where it runs from SUPABASE_URL,
-// and a local stack posts to the test webhook whatever live names its env
-// carries. The harness is production by default, so the cases above mean
-// what they meant before the rule.
 Deno.test('the harness runs as production unless a case says otherwise', () => {
   const { deps } = testDeps();
   assertEquals(deps.env.get('SUPABASE_URL'), PRODUCTION_SUPABASE_URL);

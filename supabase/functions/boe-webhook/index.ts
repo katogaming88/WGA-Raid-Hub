@@ -103,9 +103,9 @@ Deno.serve(async (req) => {
     // production, the test webhook on a local stack, nowhere with nothing set.
     const dest = resolveDestination(Deno.env, { destination: 'boe-found' });
     if (dest.kind === 'skip') {
+      if (dest.reason) console.warn('discord destination boe-found: skipped, ' + dest.reason);
       return jsonResponse({ success: true, skipped: true, ...(dest.reason ? { reason: dest.reason } : {}) });
     }
-    console.info('discord destination boe-found: ' + dest.source + ' via ' + dest.via);
 
     db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
@@ -204,6 +204,8 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: false, error: 'Discord responded with ' + response.status });
     }
 
+    // Once per post Discord took, never the URL.
+    console.info('discord destination boe-found: ' + dest.source + ' via ' + dest.via);
     return jsonResponse({ success: true });
   } catch (err) {
     console.error('boe-webhook error:', err);

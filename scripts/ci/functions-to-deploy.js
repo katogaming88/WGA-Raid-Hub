@@ -4,7 +4,7 @@
 // to deploy go out one per line. A held function never deploys, whatever
 // the input; the hold carries its reason and the issue that removes it.
 import { appendFileSync, existsSync, readdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -32,6 +32,26 @@ export function listFunctions(root = ROOT) {
     .filter((entry) => entry.isDirectory() && FUNCTION_SLUG.test(entry.name))
     .map((entry) => entry.name)
     .sort();
+}
+
+// Every TypeScript source under supabase/functions/, _shared/ included, as
+// { path, source } with a forward-slash repo-relative path. The CI guards
+// over the functions read them through this.
+export function listFunctionSources(root = ROOT) {
+  const base = join(root, 'supabase', 'functions');
+  if (!existsSync(base)) return [];
+  const out = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith('.ts')) {
+        out.push({ path: relative(root, full).replace(/\\/g, '/'), source: readFileSync(full, 'utf8') });
+      }
+    }
+  };
+  walk(base);
+  return out.sort((a, b) => a.path.localeCompare(b.path));
 }
 
 // Read from the tree rather than kept as a list, so it is true on the day.

@@ -18,7 +18,7 @@
 // real ones and index.ts is the one line that serves it. The text of the
 // post is format.ts.
 import { type SaleRow, soldPost } from './format.ts';
-import { resolveDestination } from '../_shared/discord-destination.ts';
+import { type Env, resolveDestination } from '../_shared/discord-destination.ts';
 
 export type { SaleRow };
 
@@ -34,7 +34,7 @@ export interface SaleDb {
   managerDiscordIds(): Promise<string[]>;
 }
 
-export type Env = { get(name: string): string | undefined };
+export type { Env };
 
 export type Deps = { fetch: typeof fetch; env: Env; db: SaleDb };
 
@@ -86,9 +86,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // it no-ops, the way the found function does.
     const dest = resolveDestination(deps.env, { destination: 'boe-sold' });
     if (dest.kind === 'skip') {
+      if (dest.reason) console.warn('discord destination boe-sold: skipped, ' + dest.reason);
       return jsonResponse({ success: true, skipped: true, ...(dest.reason ? { reason: dest.reason } : {}) });
     }
-    console.info('discord destination boe-sold: ' + dest.source + ' via ' + dest.via);
 
     let row: SaleRow | null;
     try {
@@ -132,6 +132,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return jsonResponse({ success: false, error: 'Discord responded with ' + response.status });
     }
 
+    // Once per post Discord took, never the URL.
+    console.info('discord destination boe-sold: ' + dest.source + ' via ' + dest.via);
     return jsonResponse({ success: true });
   } catch (err) {
     console.error('boe-sold-webhook error:', err);

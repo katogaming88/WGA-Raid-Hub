@@ -158,12 +158,8 @@ export function closing(payoutDonated: boolean | null | undefined, managerIds: s
 // name and notifies no one, because it is not on that list; with one manager
 // today, listing them would mean a ping on every sale for a season.
 //
-// parse is written out rather than left off the resolved branch. An absent
-// parse is treated as empty, but this posts to a guild-wide channel, so the
-// guard against pinging everyone in it should be a line somebody can read
-// instead of a default somebody has to know.
-//
-// The marker goes in ahead of the clamp, so a local post that runs long is
+// The mentions come from allowedMentions in _shared/discord-destination.ts;
+// the marker goes in ahead of the clamp, so a local post that runs long is
 // still marked.
 export function soldPost(
   row: SaleRow,

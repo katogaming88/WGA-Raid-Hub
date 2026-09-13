@@ -152,9 +152,6 @@ Deno.test('soldPost clamps a longer content to 1997 characters and an ellipsis',
   assertEquals(post.content.length, 2000);
 });
 
-// The local rule (#1081): a post from a local stack carries the marker as
-// its first line and allows nobody to ping; the default source reproduces
-// the production body above, byte for byte.
 Deno.test('soldPost from a local stack leads with the marker and allows nobody to ping', () => {
   assertEquals(soldPost(SOLD_ROW, FINDER_ID, [MANAGER_ID], 'local'), {
     username: 'BoE Sales',

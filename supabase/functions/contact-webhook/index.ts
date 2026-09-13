@@ -2,8 +2,8 @@
 // sub-tab posts site issue reports here. Unlike discord-bot-webhook (a
 // per-team relay to each team's own self-hosted bot server), every team's
 // report needs to land in the same single admin Discord channel -- so this
-// posts directly to a Discord native incoming webhook using CONTACT_WEBHOOK_URL,
-// with no per-team routing and no secondary bot hop.
+// posts directly to a Discord native incoming webhook through the shared
+// destination resolver, with no per-team routing and no secondary bot hop.
 //
 // Still a public unauthenticated form, but the submitter's identity comes off
 // the JWT rather than out of the request body (#957). An identity the caller
@@ -65,9 +65,9 @@ Deno.serve(async (req) => {
     // production, the test webhook on a local stack, nowhere with nothing set.
     const dest = resolveDestination(Deno.env, { destination: 'contact' });
     if (dest.kind === 'skip') {
+      if (dest.reason) console.warn('discord destination contact: skipped, ' + dest.reason);
       return jsonResponse({ success: true, skipped: true, ...(dest.reason ? { reason: dest.reason } : {}) });
     }
-    console.info('discord destination contact: ' + dest.source + ' via ' + dest.via);
 
     const submitter = await resolveSubmitter(req.headers.get('Authorization'));
 
@@ -112,6 +112,8 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: false, error: 'Discord responded with ' + response.status });
     }
 
+    // Once per post Discord took, never the URL.
+    console.info('discord destination contact: ' + dest.source + ' via ' + dest.via);
     return jsonResponse({ success: true });
   } catch (err) {
     console.error('contact-webhook error:', err);
