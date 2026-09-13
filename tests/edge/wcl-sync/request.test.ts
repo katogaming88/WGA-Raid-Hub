@@ -65,12 +65,27 @@ Deno.test('a zoneId that is present and not a positive integer is invalid, whate
 Deno.test('an action that needs no zone passes with zoneId null and season null', () => {
   assertEquals(parseRequest({ action: 'refreshPerformance', teamId: 1 }), {
     ok: true,
-    request: { action: 'refreshPerformance', teamId: 1, zoneId: null, season: null }
+    request: { action: 'refreshPerformance', teamId: 1, zoneId: null, season: null, scoringMetric: 'bracket' }
   });
   assertEquals(parseRequest({ action: 'refreshAttendance', teamId: '7', zoneId: 0 }), {
     ok: true,
-    request: { action: 'refreshAttendance', teamId: 7, zoneId: null, season: null }
+    request: { action: 'refreshAttendance', teamId: 7, zoneId: null, season: null, scoringMetric: 'bracket' }
   });
+});
+
+Deno.test('scoringMetric defaults to bracket, accepts overall, and rejects anything else', () => {
+  assertEquals(parseRequest({ action: 'refreshPerformance', teamId: 1, scoringMetric: '' }), {
+    ok: true,
+    request: { action: 'refreshPerformance', teamId: 1, zoneId: null, season: null, scoringMetric: 'bracket' }
+  });
+  assertEquals(parseRequest({ action: 'refreshPerformance', teamId: 1, scoringMetric: 'overall' }), {
+    ok: true,
+    request: { action: 'refreshPerformance', teamId: 1, zoneId: null, season: null, scoringMetric: 'overall' }
+  });
+  assertEquals(
+    parseRequest({ action: 'refreshPerformance', teamId: 1, scoringMetric: 'rankPercent' }),
+    refused('Invalid scoringMetric')
+  );
 });
 
 Deno.test('fetchSeasonPerf needs a season that is a non-empty string', () => {
@@ -85,7 +100,7 @@ Deno.test('fetchSeasonPerf needs a season that is a non-empty string', () => {
   );
   assertEquals(parseRequest({ action: 'fetchSeasonPerf', teamId: 1, zoneId: '44', season: 'TWW3' }), {
     ok: true,
-    request: { action: 'fetchSeasonPerf', teamId: 1, zoneId: 44, season: 'TWW3' }
+    request: { action: 'fetchSeasonPerf', teamId: 1, zoneId: 44, season: 'TWW3', scoringMetric: 'bracket' }
   });
 });
 

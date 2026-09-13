@@ -36,6 +36,8 @@ function refreshWclPerformance() {
   var btn = document.getElementById('refreshPerfBtn');
   var status = document.getElementById('refreshPerfStatus');
   var progress = document.getElementById('refreshPerfProgress');
+  var metricSelect = document.getElementById('perfScoringMetric');
+  var scoringMetric = metricSelect ? metricSelect.value : 'bracket';
   if (btn) btn.disabled = true;
   if (status) {
     status.textContent = 'Fetching from WCL...';
@@ -44,19 +46,24 @@ function refreshWclPerformance() {
   if (progress) progress.classList.add('active');
 
   supabaseClient.functions
-    .invoke('wcl-sync', { body: { action: 'refreshPerformance', teamId: _teamCfg.supabaseTeamId } })
+    .invoke('wcl-sync', {
+      body: { action: 'refreshPerformance', teamId: _teamCfg.supabaseTeamId, scoringMetric: scoringMetric }
+    })
     .then(function (res) {
       if (btn) btn.disabled = false;
       if (progress) progress.classList.remove('active');
       var result = res.data;
       if (!res.error && result && result.success) {
+        var metricLabel = result.scoringMetric === 'overall' ? 'Overall %' : 'Ilvl Bracket %';
         var statusText =
           result.updated +
           ' player(s) updated (' +
           result.recentReports +
           ' recent / ' +
           result.trendReports +
-          ' trend reports).';
+          ' trend reports, ' +
+          metricLabel +
+          ').';
         if (status) {
           status.textContent = statusText;
           status.style.color = 'var(--heal)';
