@@ -3,6 +3,7 @@ import {
   resolveTarget,
   linkRequest,
   listRequest,
+  mintRequest,
   personaNames,
   readLink,
   login
@@ -22,7 +23,8 @@ import {
 
 const STATUS = {
   API_URL: 'http://127.0.0.1:54321',
-  SERVICE_ROLE_KEY: 'service-role-key-for-tests'
+  SERVICE_ROLE_KEY: 'service-role-key-for-tests',
+  DB_URL: 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
 };
 
 const LINK = 'http://localhost:3000/#t';
@@ -88,9 +90,58 @@ describe('linkRequest (#1053)', () => {
     expect(JSON.parse(built.options.body)).toEqual({ type: 'magiclink', email: 'phoenix-officer@wga.local' });
   });
 
+  it('carries no user metadata, on either route', () => {
+    // Before #1118 the Discord route put provider_id in `data` here and let
+    // the link trigger read it. The mint sets it now, so the body is the same
+    // two keys whichever way the target was named, and a link for an account
+    // that exists is type=magiclink rather than type=signup.
+    const forDiscord = linkRequest(STATUS, { email: '123456789012345678@wga.local', discordId: '123456789012345678' });
+    expect(JSON.parse(forDiscord.options.body)).toEqual({
+      type: 'magiclink',
+      email: '123456789012345678@wga.local'
+    });
+  });
+
   it('authorises with the local service role key in both headers the API wants', () => {
     expect(built.options.headers.apikey).toBe(STATUS.SERVICE_ROLE_KEY);
     expect(built.options.headers.Authorization).toBe(`Bearer ${STATUS.SERVICE_ROLE_KEY}`);
+  });
+});
+
+describe('mintRequest (#1118)', () => {
+  const built = mintRequest(STATUS, {
+    email: '123456789012345678@wga.local',
+    discordId: '123456789012345678'
+  });
+  const sql = built.args[built.args.length - 1];
+
+  it('runs psql against the stack DB_URL, one transaction, stopping on error', () => {
+    // Same shape db-snapshot.js uses. scripts/ is Node built-ins only, so
+    // there is no pg client here to reach for.
+    expect(built.command).toBe('psql');
+    expect(built.args).toEqual(
+      expect.arrayContaining(['-X', '-v', 'ON_ERROR_STOP=1', '--single-transaction', '-d', STATUS.DB_URL])
+    );
+  });
+
+  it('stamps the account as a Discord signup, which is what the trigger reads', () => {
+    expect(sql).toContain('"provider":"discord"');
+    expect(sql).toContain('raw_app_meta_data');
+  });
+
+  it('writes the Discord id as provider_id in both the user and the identity', () => {
+    expect(sql).toContain('auth.users');
+    expect(sql).toContain('auth.identities');
+    expect(sql.match(/123456789012345678/g).length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('refuses when the stack reported no DB_URL, before anything is minted', () => {
+    expect(() =>
+      mintRequest(
+        { API_URL: STATUS.API_URL, SERVICE_ROLE_KEY: STATUS.SERVICE_ROLE_KEY },
+        { email: 'x@wga.local', discordId: '123456789012345678' }
+      )
+    ).toThrow(/DB_URL/);
   });
 });
 
@@ -174,14 +225,43 @@ describe('login (#1053, #1065)', () => {
     );
   });
 
-  it('passes the Discord id as user metadata, and never consults the list for it', async () => {
-    // --discord-id is the deliberate mint-or-reuse route, so the existence
-    // check does not apply to it.
+  // Rewritten for #1118. This used to assert the opposite of the first two
+  // lines below: one call, straight to generate_link, carrying the Discord id
+  // as user metadata for the link trigger to read. The trigger now links only
+  // an account stamped as a Discord signup in raw_app_meta_data, and no auth
+  // API call can stamp that at insert, so the account is minted by SQL and the
+  // list is what says whether it needs minting at all.
+  it('mints a Discord-provider account when the stack does not hold one', async () => {
     const calls = [];
-    await login({ discordId: '123456789012345678' }, { status: () => STATUS, fetch: stackWith([], calls) });
-    expect(calls.length).toBe(1);
-    expect(calls[0].url).toContain('/generate_link');
-    expect(JSON.parse(calls[0].options.body).data).toEqual({ provider_id: '123456789012345678' });
+    const minted = [];
+    await login(
+      { discordId: '123456789012345678' },
+      { status: () => STATUS, fetch: stackWith([], calls), mint: (req) => minted.push(req) }
+    );
+
+    expect(calls.map((call) => call.url.includes('/admin/users'))).toEqual([true, false]);
+    expect(calls[1].url).toContain('/generate_link');
+    expect(minted.length).toBe(1);
+    expect(minted[0].command).toBe('psql');
+    expect(minted[0].args).toContain(STATUS.DB_URL);
+  });
+
+  it('reuses an account the stack already holds, and mints nothing', async () => {
+    const minted = [];
+    await login(
+      { discordId: '123456789012345678' },
+      { status: () => STATUS, fetch: stackWith(['123456789012345678']), mint: (req) => minted.push(req) }
+    );
+    expect(minted).toEqual([]);
+  });
+
+  it('never mints on the persona route', async () => {
+    const minted = [];
+    await login(
+      { persona: 'phoenix-officer' },
+      { status: () => STATUS, fetch: stackWith(['phoenix-officer']), mint: (req) => minted.push(req) }
+    );
+    expect(minted).toEqual([]);
   });
 
   it('says the stack is down rather than throwing a connection error', async () => {
