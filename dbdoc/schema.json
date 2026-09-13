@@ -830,6 +830,19 @@
           "columns": [
             "id"
           ]
+        },
+        {
+          "name": "rclc_loot_team_season_item_track_player_idx",
+          "def": "CREATE INDEX rclc_loot_team_season_item_track_player_idx ON public.rclc_loot USING btree (team_id, season, item_id, track, player_id)",
+          "table": "public.rclc_loot",
+          "columns": [
+            "team_id",
+            "season",
+            "item_id",
+            "track",
+            "player_id"
+          ],
+          "comment": "Covers the \"already awarded this exact item on this track\" probe in priority_order_live_first_prios and priority_order_stale_after_heroic. Without it those views seq-scan rclc_loot once per candidate row."
         }
       ],
       "constraints": [
@@ -2001,6 +2014,18 @@
           "columns": [
             "id"
           ]
+        },
+        {
+          "name": "self_received_requests_approved_team_item_track_player_idx",
+          "def": "CREATE INDEX self_received_requests_approved_team_item_track_player_idx ON public.self_received_requests USING btree (team_id, self_item_id, track, player_id) WHERE (status = 'approved'::text)",
+          "table": "public.self_received_requests",
+          "columns": [
+            "team_id",
+            "self_item_id",
+            "track",
+            "player_id"
+          ],
+          "comment": "Covers the \"already self-received this exact item on this track\" probe in priority_order_live_first_prios and priority_order_stale_after_heroic. Partial on status = 'approved', the only status those views probe. Without it the first-prios view re-scans this table once per candidate row, which timed out for signed-in officers once the table passed ~150 rows."
         }
       ],
       "constraints": [

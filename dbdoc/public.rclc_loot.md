@@ -29,10 +29,11 @@
 
 ## Indexes
 
-| Name | Definition |
-| ---- | ---------- |
-| loot_dedupe_key_key | CREATE UNIQUE INDEX loot_dedupe_key_key ON public.rclc_loot USING btree (dedupe_key) |
-| loot_pkey | CREATE UNIQUE INDEX loot_pkey ON public.rclc_loot USING btree (id) |
+| Name | Definition | Comment |
+| ---- | ---------- | ------- |
+| loot_dedupe_key_key | CREATE UNIQUE INDEX loot_dedupe_key_key ON public.rclc_loot USING btree (dedupe_key) |  |
+| loot_pkey | CREATE UNIQUE INDEX loot_pkey ON public.rclc_loot USING btree (id) |  |
+| rclc_loot_team_season_item_track_player_idx | CREATE INDEX rclc_loot_team_season_item_track_player_idx ON public.rclc_loot USING btree (team_id, season, item_id, track, player_id) | Covers the "already awarded this exact item on this track" probe in priority_order_live_first_prios and priority_order_stale_after_heroic. Without it those views seq-scan rclc_loot once per candidate row. |
 
 ## Triggers
 

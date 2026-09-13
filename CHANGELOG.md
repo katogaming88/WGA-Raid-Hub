@@ -12,6 +12,30 @@ answers to.
 
 ---
 
+## [3.107.1] - 2026-09-13
+
+### Backend
+
+- Indexed the two loot lookups behind `priority_order_live_first_prios`, which
+  had been timing out (57014) for signed-in officers and silently killing
+  Priority Edit's per-row fairness flag -- the blue triangle on the #1 row
+  reading "Holds N other #1 priorities" -- along with the "#1 Priorities Held"
+  summary and the two views built on top of it. The view probes `rclc_loot`
+  and `self_received_requests` per candidate row and neither carried a
+  matching index, so each probe re-scanned the whole table: ~18k row visits
+  for a query returning 156. Read as `claude_readers` that costs nothing
+  (constant read rules, 12ms); read as an officer every visit evaluates
+  SECURITY DEFINER read rules, ~40k function calls, past the statement limit.
+  No migration ever created these indexes -- not a regression, they simply
+  never existed, and the view only crossed the limit as
+  `self_received_requests` grew from 3 rows in July to 152 in September.
+
+### Frontend
+
+- Priority Edit's fairness-warning fetch logs a failed read instead of
+  returning silently, so the next breakage of this shape is visible rather
+  than presenting as a feature that quietly stopped appearing.
+
 ## [3.107.0] - 2026-09-13
 
 ### Backend
