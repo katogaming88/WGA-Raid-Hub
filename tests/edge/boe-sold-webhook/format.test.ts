@@ -151,3 +151,25 @@ Deno.test('soldPost clamps a longer content to 1997 characters and an ellipsis',
   assertEquals(post.content, full.slice(0, 1997) + '...');
   assertEquals(post.content.length, 2000);
 });
+
+// The local rule (#1081): a post from a local stack carries the marker as
+// its first line and allows nobody to ping; the default source reproduces
+// the production body above, byte for byte.
+Deno.test('soldPost from a local stack leads with the marker and allows nobody to ping', () => {
+  assertEquals(soldPost(SOLD_ROW, FINDER_ID, [MANAGER_ID], 'local'), {
+    username: 'BoE Sales',
+    content: '[local]\n' + RESOLVED_CONTENT,
+    allowed_mentions: { parse: [], users: [] }
+  });
+});
+
+Deno.test('soldPost with the source left off is the production body', () => {
+  assertEquals(soldPost(SOLD_ROW, FINDER_ID, [MANAGER_ID]), soldPost(SOLD_ROW, FINDER_ID, [MANAGER_ID], 'production'));
+});
+
+Deno.test('a clamped local post keeps the marker as its first line and lands on the limit', () => {
+  const post = soldPost({ ...SOLD_ROW, item_name: 'V'.repeat(1709) }, FINDER_ID, [MANAGER_ID], 'local');
+  assertEquals(post.content.startsWith('[local]\n## BoE Sold\n'), true);
+  assertEquals(post.content.endsWith('...'), true);
+  assertEquals(post.content.length, 2000);
+});

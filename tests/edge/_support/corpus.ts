@@ -3,6 +3,7 @@
 // reads as a sentence and a copy-paste between roles fails rather than
 // passing by coincidence. Nothing here is a real Discord id or a real key.
 import type { Env, SaleRow } from '../../../supabase/functions/boe-sold-webhook/handler.ts';
+import { PRODUCTION_HOST } from '../../../supabase/functions/_shared/discord-destination.ts';
 
 // Discord snowflakes. Eighteen digits like the real thing, leading with the
 // role's own digit so a wrong one is visible in a failure message.
@@ -14,10 +15,18 @@ export const SECOND_MANAGER_ID = '200000000000000003';
 export const MANAGER_USER_ID = 'b0e00000-0000-4000-8000-000000000001';
 export const MANAGER_AUTH = 'Bearer manager-session';
 
-// Webhook URLs, one per env name the sold poster reads.
+// Webhook URLs, one per env name the sold poster reads, and the test
+// channel's, where a local stack sends everything (#1081).
 export const SOLD_WEBHOOK_URL = 'https://discord.test/api/webhooks/sold';
 export const FOUND_WEBHOOK_URL = 'https://discord.test/api/webhooks/found';
 export const LEGACY_WEBHOOK_URL = 'https://discord.test/api/webhooks/legacy';
+export const TEST_WEBHOOK_URL = 'https://discord.test/api/webhooks/test-channel';
+
+// What the platform sets SUPABASE_URL to: the project on production, kong
+// inside the CLI's edge-runtime container locally (read off the container,
+// 2026-09-12).
+export const PRODUCTION_SUPABASE_URL = 'https://' + PRODUCTION_HOST;
+export const LOCAL_STACK_SUPABASE_URL = 'http://kong:8000';
 
 // The sale from boe-sold-webhook's own header comment: the numbers add up
 // (fee off the top, guild cut net of it) and the finder is resolved.

@@ -11,8 +11,10 @@ import {
   LEGACY_WEBHOOK_URL,
   MANAGER_AUTH,
   MANAGER_ID,
+  PRODUCTION_SUPABASE_URL,
   SOLD_ROW,
-  SOLD_WEBHOOK_URL
+  SOLD_WEBHOOK_URL,
+  TEST_WEBHOOK_URL
 } from '../_support/corpus.ts';
 import { fakeDb, testDeps } from '../_support/deps.ts';
 import { discordError, discordNoContent } from '../_support/fetch.ts';
@@ -202,3 +204,58 @@ Deno.test('a body that is not JSON is the catch-all: a 200 that says it failed',
   assertEquals(typeof body.error, 'string');
   assertEquals(calls, []);
 });
+
+// The local rule (#1081): the function reads where it runs from SUPABASE_URL,
+// and a local stack posts to the test webhook whatever live names its env
+// carries. The harness is production by default, so the cases above mean
+// what they meant before the rule.
+Deno.test('the harness runs as production unless a case says otherwise', () => {
+  const { deps } = testDeps();
+  assertEquals(deps.env.get('SUPABASE_URL'), PRODUCTION_SUPABASE_URL);
+});
+
+Deno.test(
+  'on a local stack the sold post goes to the test webhook, marked, with nobody pinged, and never to a live name',
+  async () => {
+    const db = fakeDb({ rows: [SOLD_ROW], finderId: FINDER_ID, managerIds: [MANAGER_ID] });
+    const { deps, calls } = testDeps({
+      db,
+      stack: 'local',
+      env: {
+        BOE_SOLD_WEBHOOK_URL: SOLD_WEBHOOK_URL,
+        BOE_WEBHOOK_URL: FOUND_WEBHOOK_URL,
+        'BOE-Found-Webhook': LEGACY_WEBHOOK_URL,
+        DISCORD_TEST_WEBHOOK_URL: TEST_WEBHOOK_URL
+      },
+      responses: [discordNoContent()]
+    });
+    const res = await handle(post({ id: 41 }), deps);
+    assertEquals(await json(res), { status: 200, body: { success: true } });
+    assertEquals(calls.length, 1);
+    assertEquals(calls[0].url, TEST_WEBHOOK_URL);
+    assertEquals(JSON.parse(calls[0].body ?? ''), soldPost(SOLD_ROW, FINDER_ID, [MANAGER_ID], 'local'));
+  }
+);
+
+Deno.test(
+  'on a local stack with no test webhook the post is skipped naming it, after the gate and before the row read',
+  async () => {
+    const db = fakeDb({ rows: [SOLD_ROW] });
+    const { deps, calls } = testDeps({
+      db,
+      stack: 'local',
+      env: { BOE_SOLD_WEBHOOK_URL: SOLD_WEBHOOK_URL },
+      responses: [discordNoContent()]
+    });
+    const res = await handle(post({ id: 41 }), deps);
+    assertEquals(await json(res), {
+      status: 200,
+      body: { success: true, skipped: true, reason: 'DISCORD_TEST_WEBHOOK_URL is not set on this local stack' }
+    });
+    assertEquals(
+      db.calls.map((c) => c.method),
+      ['getUser', 'isBoeManager', 'isSiteAdmin']
+    );
+    assertEquals(calls, []);
+  }
+);

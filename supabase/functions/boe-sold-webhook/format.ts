@@ -157,7 +157,7 @@ export function closing(payoutDonated: boolean | null | undefined, managerIds: s
 // parse is treated as empty, but this posts to a guild-wide channel, so the
 // guard against pinging everyone in it should be a line somebody can read
 // instead of a default somebody has to know.
-export function soldPost(row: SaleRow, finderId: string | null, managerIds: string[]): SoldPost {
+export function soldPost(row: SaleRow, finderId: string | null, managerIds: string[], _source?: string): SoldPost {
   const content =
     '## BoE Sold\n' +
     finderText(finderId, row.finder_name) +
