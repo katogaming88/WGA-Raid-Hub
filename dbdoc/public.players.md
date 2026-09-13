@@ -54,6 +54,7 @@
 | trg_players_updated_at | CREATE TRIGGER trg_players_updated_at BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
 | trg_players_restrict_self_update | CREATE TRIGGER trg_players_restrict_self_update BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION restrict_players_self_update_to_bonus_roll() |
 | trg_players_bis_link_updated_at | CREATE TRIGGER trg_players_bis_link_updated_at BEFORE UPDATE OF bis_link ON public.players FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
+| players_clear_no_character_dismissal | CREATE TRIGGER players_clear_no_character_dismissal AFTER INSERT OR UPDATE OF team_member_id ON public.players FOR EACH ROW WHEN ((new.team_member_id IS NOT NULL)) EXECUTE FUNCTION clear_no_character_dismissal_on_link() |
 
 ## Relations
 

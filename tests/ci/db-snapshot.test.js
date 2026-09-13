@@ -199,6 +199,8 @@ describe('plan (#1056)', () => {
     ]) {
       expect(args).toContain(table);
     }
+    expect(args).toMatch(/delete from public\.account_preferences/);
+    // Until #940 reaches production, the restored schema still has the table it replaced.
     expect(args).toMatch(/delete from public\.no_character_dismissals/);
   });
 

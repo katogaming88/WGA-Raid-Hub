@@ -12,6 +12,36 @@ answers to.
 
 ---
 
+## [3.109.0] - 2026-09-13
+
+### Frontend
+
+- The notification bell's **Clear read** now remembers what you cleared on
+  your account instead of in this browser, so cleared notifications stay
+  cleared on another device and after a character rename. Anything this
+  browser had already cleared is carried over once, the first time the bell
+  loads, so nothing you cleared comes back.
+- The "I don't have a character yet" choice on the claim prompt is saved to
+  the same per-account store. It behaves the same as before, except that it
+  now clears itself once the account claims a character.
+
+### Backend
+
+- Added `account_preferences`, one per-account store for "remember this for
+  me" settings (#940), replacing a table per flag. One row per account, team
+  and key, with `team_id` null for guild-wide keys; a CHECK lists the allowed
+  keys and pins which are guild-wide and which are per team. Each account
+  reads and writes only its own rows. It starts with two keys:
+  `no_character_dismissed` (guild-wide, moved from `no_character_dismissals`)
+  and `notifications_cleared_through` (per team, previously browser-only).
+- `no_character_dismissals` is dropped. Its rows moved across, except those for
+  accounts that have claimed a character since dismissing the prompt, which is
+  11 of the 12 on production: nothing ever cleared that table.
+- Linking a character to an account now clears that account's
+  `no_character_dismissed` key, through a trigger on `players` so every path
+  that sets the link is covered: `claim_character()`,
+  `add_signup_to_roster()`'s main swap, and any future one.
+
 ## [3.108.1] - 2026-09-13
 
 ### Frontend

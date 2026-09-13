@@ -1396,6 +1396,10 @@
         {
           "name": "trg_players_bis_link_updated_at",
           "def": "CREATE TRIGGER trg_players_bis_link_updated_at BEFORE UPDATE OF bis_link ON public.players FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "players_clear_no_character_dismissal",
+          "def": "CREATE TRIGGER players_clear_no_character_dismissal AFTER INSERT OR UPDATE OF team_member_id ON public.players FOR EACH ROW WHEN ((new.team_member_id IS NOT NULL)) EXECUTE FUNCTION clear_no_character_dismissal_on_link()"
         }
       ]
     },
@@ -3999,82 +4003,6 @@
       ]
     },
     {
-      "name": "public.no_character_dismissals",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "id",
-          "type": "integer",
-          "nullable": false,
-          "default": "nextval('no_character_dismissals_id_seq'::regclass)"
-        },
-        {
-          "name": "auth_user_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "dismissed_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "no_character_dismissals_pkey",
-          "def": "CREATE UNIQUE INDEX no_character_dismissals_pkey ON public.no_character_dismissals USING btree (id)",
-          "table": "public.no_character_dismissals",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "no_character_dismissals_auth_user_id_key",
-          "def": "CREATE UNIQUE INDEX no_character_dismissals_auth_user_id_key ON public.no_character_dismissals USING btree (auth_user_id)",
-          "table": "public.no_character_dismissals",
-          "columns": [
-            "auth_user_id"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "no_character_dismissals_auth_user_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
-          "table": "public.no_character_dismissals",
-          "referenced_table": "auth.users",
-          "columns": [
-            "auth_user_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "no_character_dismissals_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.no_character_dismissals",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "no_character_dismissals_auth_user_id_key",
-          "type": "UNIQUE",
-          "def": "UNIQUE (auth_user_id)",
-          "table": "public.no_character_dismissals",
-          "referenced_table": "",
-          "columns": [
-            "auth_user_id"
-          ]
-        }
-      ]
-    },
-    {
       "name": "public.boe_items",
       "type": "BASE TABLE",
       "columns": [
@@ -6108,6 +6036,131 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.account_preferences",
+      "type": "BASE TABLE",
+      "comment": "Per-account preferences, one row per (account, team, key); team_id is null for guild-wide keys. The account_preferences_known_key CHECK lists every allowed key. Replaced no_character_dismissals (#940).",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "key",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "value",
+          "type": "jsonb",
+          "nullable": false
+        },
+        {
+          "name": "set_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "account_preferences_pkey",
+          "def": "CREATE UNIQUE INDEX account_preferences_pkey ON public.account_preferences USING btree (id)",
+          "table": "public.account_preferences",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "account_preferences_one_per_key",
+          "def": "CREATE UNIQUE INDEX account_preferences_one_per_key ON public.account_preferences USING btree (auth_user_id, team_id, key) NULLS NOT DISTINCT",
+          "table": "public.account_preferences",
+          "columns": [
+            "auth_user_id",
+            "team_id",
+            "key"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "account_preferences_known_key",
+          "type": "CHECK",
+          "def": "CHECK ((((key = 'no_character_dismissed'::text) AND (team_id IS NULL)) OR ((key = 'notifications_cleared_through'::text) AND (team_id IS NOT NULL))))",
+          "table": "public.account_preferences",
+          "referenced_table": "",
+          "columns": [
+            "key",
+            "team_id"
+          ]
+        },
+        {
+          "name": "account_preferences_auth_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+          "table": "public.account_preferences",
+          "referenced_table": "auth.users",
+          "columns": [
+            "auth_user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "account_preferences_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.account_preferences",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "account_preferences_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.account_preferences",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "account_preferences_one_per_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE NULLS NOT DISTINCT (auth_user_id, team_id, key)",
+          "table": "public.account_preferences",
+          "referenced_table": "",
+          "columns": [
+            "auth_user_id",
+            "team_id",
+            "key"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "account_preferences_touch_set_at",
+          "def": "CREATE TRIGGER account_preferences_touch_set_at BEFORE UPDATE ON public.account_preferences FOR EACH ROW EXECUTE FUNCTION touch_account_preference_set_at()"
+        }
+      ]
     }
   ],
   "relations": [
@@ -7007,6 +7060,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.account_preferences",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -7499,6 +7565,18 @@
     {
       "name": "public.app_version",
       "return_type": "jsonb",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.touch_account_preference_set_at",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.clear_no_character_dismissal_on_link",
+      "return_type": "trigger",
       "arguments": "",
       "type": "FUNCTION"
     }
