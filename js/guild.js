@@ -132,7 +132,7 @@ function resolveGuildTeam() {
         Promise.resolve(
           supabaseClient
             .from('team_members')
-            .select('team_id, players!players_team_member_id_fkey(name_realm)')
+            .select('team_id, players!players_team_member_id_fkey(name_realm, archived_at)')
             .eq('auth_user_id', session.user.id)
         ),
         10000
@@ -140,7 +140,10 @@ function resolveGuildTeam() {
         if (!res || res.error) return fallback();
         var slugs = [];
         ((res && res.data) || []).forEach(function (row) {
-          var players = row.players || [];
+          // An archived character keeps its link (#941); only a live one counts as a claim.
+          var players = (row.players || []).filter(function (p) {
+            return p && !p.archived_at;
+          });
           if (!players.length || !players[0].name_realm) return;
           var slug = _guildSlugForTeamId(row.team_id);
           if (slug && slugs.indexOf(slug) === -1) slugs.push(slug);

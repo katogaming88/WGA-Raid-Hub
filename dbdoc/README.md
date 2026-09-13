@@ -14,7 +14,7 @@
 | [public.rclc_loot](public.rclc_loot.md) | 11 |  | BASE TABLE |
 | [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) | 9 |  | BASE TABLE |
 | [public.player_wcl_season_perf](public.player_wcl_season_perf.md) | 7 |  | BASE TABLE |
-| [public.players](public.players.md) | 24 |  | BASE TABLE |
+| [public.players](public.players.md) | 25 |  | BASE TABLE |
 | [public.priority_order](public.priority_order.md) | 8 |  | BASE TABLE |
 | [public.scoring](public.scoring.md) | 10 |  | BASE TABLE |
 | [public.season_signups](public.season_signups.md) | 18 |  | BASE TABLE |
@@ -155,6 +155,7 @@
 | public.retire_guild_url_key | trigger |  | FUNCTION |
 | public.retire_team_url_key | trigger |  | FUNCTION |
 | public.resolve_address | record | p_guild_key text, p_team_key text DEFAULT NULL::text, p_player_code text DEFAULT NULL::text | FUNCTION |
+| public.resolve_person | jsonb | p_discord_id text | FUNCTION |
 
 ## Enums
 
@@ -377,6 +378,7 @@ erDiagram
   boolean is_rotator
   timestamp_with_time_zone bis_link_updated_at
   text url_code
+  text name_realm_key
 }
 "public.priority_order" {
   integer id

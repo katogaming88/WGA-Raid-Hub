@@ -108,6 +108,7 @@ erDiagram
   boolean is_rotator
   timestamp_with_time_zone bis_link_updated_at
   text url_code
+  text name_realm_key
 }
 ```
 

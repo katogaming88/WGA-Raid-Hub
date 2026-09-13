@@ -985,6 +985,7 @@ export type Database = {
           m_plus_excluded: boolean
           m_plus_note: string | null
           name_realm: string
+          name_realm_key: string | null
           nickname: string | null
           team_id: number
           team_member_id: number | null
@@ -1010,6 +1011,7 @@ export type Database = {
           m_plus_excluded?: boolean
           m_plus_note?: string | null
           name_realm: string
+          name_realm_key?: never
           nickname?: string | null
           team_id: number
           team_member_id?: number | null
@@ -1035,6 +1037,7 @@ export type Database = {
           m_plus_excluded?: boolean
           m_plus_note?: string | null
           name_realm?: string
+          name_realm_key?: never
           nickname?: string | null
           team_id?: number
           team_member_id?: number | null
@@ -2685,6 +2688,10 @@ export type Database = {
         Args: { p_player_id: number; p_season: string; p_team_id: number }
         Returns: number
       }
+      resolve_actor_name: {
+        Args: { p_actor_id: string; p_team_id: number }
+        Returns: string
+      }
       resolve_address: {
         Args: { p_guild_key: string; p_player_code?: string; p_team_key?: string }
         Returns: {
@@ -2697,10 +2704,6 @@ export type Database = {
           team_key: string
         }[]
       }
-      resolve_actor_name: {
-        Args: { p_actor_id: string; p_team_id: number }
-        Returns: string
-      }
       resolve_boe_finder_discord_id: {
         Args: { p_boe_id: number }
         Returns: string
@@ -2709,6 +2712,7 @@ export type Database = {
         Args: { p_actor_id: string; p_team_id: number }
         Returns: string
       }
+      resolve_person: { Args: { p_discord_id: string }; Returns: Json }
       save_priority_order: {
         Args: {
           p_item_id: number

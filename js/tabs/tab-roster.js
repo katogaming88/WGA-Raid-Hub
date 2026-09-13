@@ -900,11 +900,15 @@ function addPlayerToRosterSupabase(payload) {
     .then(function (csResult) {
       if (csResult.error || !csResult.data) throw new Error('Unknown class/spec combination.');
       var classSpecId = csResult.data.id;
+      // Matched on name_realm_key, which ignores case and spaces like the unique
+      // index (#941), so "Fxd-Area52" revives an archived "Fxd-Area 52" instead
+      // of failing on a duplicate.
+      var nameRealmKey = payload.nameRealm.replace(/ /g, '').toLowerCase();
       return supabaseClient
         .from('players')
         .select('id, archived_at')
         .eq('team_id', teamId)
-        .eq('name_realm', payload.nameRealm)
+        .eq('name_realm_key', nameRealmKey)
         .maybeSingle()
         .then(function (existing) {
           if (existing.error) throw new Error(existing.error.message);
