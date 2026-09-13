@@ -12,6 +12,39 @@ answers to.
 
 ---
 
+## [3.112.0] - 2026-09-13
+
+### Backend
+
+- Characters stay linked to their person after a main swap
+  ([#941](https://github.com/katogaming88/WGA-Raid-Hub/issues/941)). Adding a
+  swapped signup to the roster used to clear the Discord link on the old
+  character, so its BoE finds, loot and attendance could no longer be traced
+  back to anyone. The link now stays, and the old character still can't be
+  edited as the raider's own: wishlists, RSVPs, the bonus roll target and the
+  other self-service actions only work on their active character.
+- Relinked the five archived Phoenix characters behind 8 BoE finds that showed
+  no finder (Fluphie, Razuvious, Xyorill, Inquizical, Flamess) to their
+  current raiders. All 8 now resolve to the person who found them.
+- A character name that differs only by spaces or capitals ("Area 52" vs
+  "Area52") is now one character per team. The two archived pairs that had
+  already split in two (Fxd, Adrestia) are merged, with their loot kept.
+  Re-adding a signup under either spelling brings the archived character back
+  instead of making a second one.
+- Reviving an archived character for a signup moves its link to the person
+  who signed up, if it still pointed at someone else.
+- Added `resolve_person()`: everything known about one Discord account
+  (roles, BoE manager, and each team's characters, archived included), for
+  the person themself, officers of their teams, guild officers and site
+  admins.
+
+### Frontend
+
+- The officer **Add Player** form finds an archived character regardless of
+  spaces or capitals in its name, and brings it back instead of failing.
+- Sign-in landing, the team picker and the "claimed on another team" prompt
+  ignore archived characters, now that those keep their link.
+
 ## [3.111.0] - 2026-09-13
 
 ### Backend

@@ -2,32 +2,33 @@
 
 ## Columns
 
-| Name | Type | Default | Nullable | Children | Parents | Comment |
-| ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('players_id_seq'::regclass) | false | [public.attendance](public.attendance.md) [public.bis_items](public.bis_items.md) [public.bis_requests](public.bis_requests.md) [public.rclc_loot](public.rclc_loot.md) [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.self_received_requests](public.self_received_requests.md) [public.streamers](public.streamers.md) [public.notifications](public.notifications.md) [public.item_preferences](public.item_preferences.md) [public.boe_items](public.boe_items.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.player_equipped_gear](public.player_equipped_gear.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.raid_rsvps](public.raid_rsvps.md) [public.raid_rsvp_reminders_sent](public.raid_rsvp_reminders_sent.md) [public.player_officer_notes](public.player_officer_notes.md) |  |  |
-| team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
-| name_realm | text |  | false |  |  |  |
-| class_spec_id | integer |  | true |  | [public.classes_specs](public.classes_specs.md) |  |
-| is_trial | boolean | false | false |  |  |  |
-| is_bench | boolean | false | false |  |  |  |
-| nickname | text |  | true |  |  |  |
-| bis_link | text |  | true |  |  |  |
-| join_date | date |  | true |  |  |  |
-| m_plus_excluded | boolean | false | false |  |  |  |
-| m_plus_note | text |  | true |  |  |  |
-| team_member_id | integer |  | true |  | [public.team_members](public.team_members.md) |  |
-| archived_at | timestamp with time zone |  | true |  |  |  |
-| updated_at | timestamp with time zone |  | true |  |  |  |
-| bis_allowed | boolean | false | false |  |  |  |
-| is_backup_tank | boolean | false | false |  |  |  |
-| is_backup_healer | boolean | false | false |  |  |  |
-| wishlist_allowed | boolean | false | false |  |  |  |
-| tier_pieces_equipped | integer |  | true |  |  |  |
-| tier_pieces_synced_at | timestamp with time zone |  | true |  |  |  |
-| bonus_roll_encounter_id | integer |  | true |  | [public.raid_encounters](public.raid_encounters.md) |  |
-| is_rotator | boolean | false | false |  |  | Rotator roster status (#924): not automatically Present/Attending on a raid night like Bench, but officer-assigned per raid week (officer_set_rotator_week()) rather than self-RSVP. |
-| bis_link_updated_at | timestamp with time zone |  | true |  |  |  |
-| url_code | text | new_url_code() | false |  |  | The player's code in an address (/players/\<code\>, #1114). Random, unique site-wide, and fixed once issued so shared links keep working. |
+| Name | Type | Default | Nullable | Extra Definition | Children | Parents | Comment |
+| ---- | ---- | ------- | -------- | ---------------- | -------- | ------- | ------- |
+| id | integer | nextval('players_id_seq'::regclass) | false |  | [public.attendance](public.attendance.md) [public.bis_items](public.bis_items.md) [public.bis_requests](public.bis_requests.md) [public.rclc_loot](public.rclc_loot.md) [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.self_received_requests](public.self_received_requests.md) [public.streamers](public.streamers.md) [public.notifications](public.notifications.md) [public.item_preferences](public.item_preferences.md) [public.boe_items](public.boe_items.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.player_equipped_gear](public.player_equipped_gear.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.raid_rsvps](public.raid_rsvps.md) [public.raid_rsvp_reminders_sent](public.raid_rsvp_reminders_sent.md) [public.player_officer_notes](public.player_officer_notes.md) |  |  |
+| team_id | integer |  | false |  |  | [public.teams](public.teams.md) |  |
+| name_realm | text |  | false |  |  |  |  |
+| class_spec_id | integer |  | true |  |  | [public.classes_specs](public.classes_specs.md) |  |
+| is_trial | boolean | false | false |  |  |  |  |
+| is_bench | boolean | false | false |  |  |  |  |
+| nickname | text |  | true |  |  |  |  |
+| bis_link | text |  | true |  |  |  |  |
+| join_date | date |  | true |  |  |  |  |
+| m_plus_excluded | boolean | false | false |  |  |  |  |
+| m_plus_note | text |  | true |  |  |  |  |
+| team_member_id | integer |  | true |  |  | [public.team_members](public.team_members.md) |  |
+| archived_at | timestamp with time zone |  | true |  |  |  |  |
+| updated_at | timestamp with time zone |  | true |  |  |  |  |
+| bis_allowed | boolean | false | false |  |  |  |  |
+| is_backup_tank | boolean | false | false |  |  |  |  |
+| is_backup_healer | boolean | false | false |  |  |  |  |
+| wishlist_allowed | boolean | false | false |  |  |  |  |
+| tier_pieces_equipped | integer |  | true |  |  |  |  |
+| tier_pieces_synced_at | timestamp with time zone |  | true |  |  |  |  |
+| bonus_roll_encounter_id | integer |  | true |  |  | [public.raid_encounters](public.raid_encounters.md) |  |
+| is_rotator | boolean | false | false |  |  |  | Rotator roster status (#924): not automatically Present/Attending on a raid night like Bench, but officer-assigned per raid week (officer_set_rotator_week()) rather than self-RSVP. |
+| bis_link_updated_at | timestamp with time zone |  | true |  |  |  |  |
+| url_code | text | new_url_code() | false |  |  |  | The player's code in an address (/players/\<code\>, #1114). Random, unique site-wide, and fixed once issued so shared links keep working. |
+| name_realm_key | text |  | true | GENERATED ALWAYS AS lower(replace(name_realm, ' '::text, ''::text)) STORED |  |  | name_realm in lower case with spaces removed, so "Fxd-Area 52" and "fxd-Area52" are one character (#941). Unique per team. |
 
 ## Constraints
 
@@ -50,6 +51,8 @@
 | players_pkey | CREATE UNIQUE INDEX players_pkey ON public.players USING btree (id) |
 | players_team_id_name_realm_key | CREATE UNIQUE INDEX players_team_id_name_realm_key ON public.players USING btree (team_id, name_realm) |
 | players_url_code_key | CREATE UNIQUE INDEX players_url_code_key ON public.players USING btree (url_code) |
+| players_team_id_name_realm_key_key | CREATE UNIQUE INDEX players_team_id_name_realm_key_key ON public.players USING btree (team_id, name_realm_key) |
+| players_team_member_id_idx | CREATE INDEX players_team_member_id_idx ON public.players USING btree (team_member_id) |
 
 ## Triggers
 
@@ -116,6 +119,7 @@ erDiagram
   boolean is_rotator
   timestamp_with_time_zone bis_link_updated_at
   text url_code
+  text name_realm_key
 }
 "public.attendance" {
   integer id

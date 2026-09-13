@@ -1078,13 +1078,16 @@ function resolveColdLanding() {
       // team_members rows, letting us find a claim on any team in one query.
       return supabaseClient
         .from('team_members')
-        .select('team_id, players!players_team_member_id_fkey(name_realm)')
+        .select('team_id, players!players_team_member_id_fkey(name_realm, archived_at)')
         .eq('auth_user_id', session.user.id)
         .then(function (res) {
           var rows = (res && res.data) || [];
           var claimedSlug = null;
           for (var i = 0; i < rows.length && !claimedSlug; i++) {
-            var players = rows[i].players || [];
+            // An archived character keeps its link (#941); only a live one counts as a claim.
+            var players = (rows[i].players || []).filter(function (p) {
+              return p && !p.archived_at;
+            });
             if (!players.length || !players[0].name_realm) continue;
             Object.keys(TEAMS).forEach(function (slug) {
               if (!claimedSlug && TEAMS[slug].supabaseTeamId === rows[i].team_id) claimedSlug = slug;

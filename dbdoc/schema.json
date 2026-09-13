@@ -1285,6 +1285,13 @@
           "nullable": false,
           "default": "new_url_code()",
           "comment": "The player's code in an address (/players/\u003ccode\u003e, #1114). Random, unique site-wide, and fixed once issued so shared links keep working."
+        },
+        {
+          "name": "name_realm_key",
+          "type": "text",
+          "nullable": true,
+          "extra_def": "GENERATED ALWAYS AS lower(replace(name_realm, ' '::text, ''::text)) STORED",
+          "comment": "name_realm in lower case with spaces removed, so \"Fxd-Area 52\" and \"fxd-Area52\" are one character (#941). Unique per team."
         }
       ],
       "indexes": [
@@ -1311,6 +1318,23 @@
           "table": "public.players",
           "columns": [
             "url_code"
+          ]
+        },
+        {
+          "name": "players_team_id_name_realm_key_key",
+          "def": "CREATE UNIQUE INDEX players_team_id_name_realm_key_key ON public.players USING btree (team_id, name_realm_key)",
+          "table": "public.players",
+          "columns": [
+            "team_id",
+            "name_realm_key"
+          ]
+        },
+        {
+          "name": "players_team_member_id_idx",
+          "def": "CREATE INDEX players_team_member_id_idx ON public.players USING btree (team_member_id)",
+          "table": "public.players",
+          "columns": [
+            "team_member_id"
           ]
         }
       ],
@@ -7930,6 +7954,12 @@
       "name": "public.resolve_address",
       "return_type": "record",
       "arguments": "p_guild_key text, p_team_key text DEFAULT NULL::text, p_player_code text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.resolve_person",
+      "return_type": "jsonb",
+      "arguments": "p_discord_id text",
       "type": "FUNCTION"
     }
   ],

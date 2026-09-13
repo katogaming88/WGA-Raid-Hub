@@ -8,6 +8,21 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-13 -- a person keeps the link to their archived characters, and name_realm matches ignoring spaces and case (#941)
+
+Shipped: `20260913182610_resolve_person_and_kept_character_links.sql`
+
+Measured on production 2026-09-05 and again 2026-09-13 (unchanged). The identity question gets a function and an index, not a table; the people table is still #942.
+
+- **The link stays on archive.** `add_signup_to_roster()` nulled `players.team_member_id` on the character a main swap retired, which is why none of the eight BoE finds pointing at an archived character could resolve a finder. It no longer does. Consequence accepted: one person can own several `players` rows on a team, only one of them active.
+- **Every person-to-character reader filters archived rows.** `is_own_player()` was the one database reader without the filter; it gained it, so a raider's own-row rules never reach a retired character. On the client, the three embedded `players!players_team_member_id_fkey` reads (claim-elsewhere prompt, guild page team pick, roster cold landing) filter too, the same way `js/boe.js` already did. `admin_revoke_team_role()` now counts archived linked characters as claims, which is right: deleting that member would null the kept links.
+- **Reviving a reused name hands the link to the signer.** If a signup's name matches an archived row still linked to a different member of that team, the link moves to the signing account's member. A signup with no account (19 of 76 on production) leaves the link alone, because a returning raider re-signing is far more common than a reused character name.
+- **`name_realm_key`**: a stored generated column, `lower(replace(name_realm, ' ', ''))`, with a unique index per team. Case and spaces only, the same rule `import_rclc_loot()` already matched on; apostrophes and hyphens are left alone because nothing on production differs by them. The stored `name_realm` keeps its original spelling. The old exact `(team_id, name_realm)` constraint stays for the legacy import script's conflict target.
+- **Duplicates merged, not left to fail the index.** Both groups on production were an archived officer-entered row plus an archived import stub carrying three `rclc_loot` rows. The merge keeps the active, then linked, then lowest-id row, moves the tables that cannot clash (`rclc_loot`, `boe_items`, `bis_requests`, `self_received_requests`, `season_signups`, and `audit_log` targets), and refuses to run if a merged-away row has anything in any other table.
+- **The backfill links were named by Kat** (2026-09-13), not inferred: nothing recorded which member an archived character had. Fluphie -> Fluffyfistz, Razuvious -> Torbjorn, Xyorill -> Neldreth, Inquizical -> Soulcialist, Flamess -> Flamè, each linked to whoever holds the current character.
+- **`resolve_person(discord_id)`** returns one jsonb value rather than rows, because the answer is nested (grants, teams, characters). Visibility follows the existing read rules: self, site admins and guild officers see every team; team officers see only teams they run; the `site_admin`/`guild_officer` flags are shown only to the person and site admins.
+- **A generated column is invisible to BEFORE triggers.** `restrict_players_self_update_to_bonus_roll()` compares the whole row via `to_jsonb()`, and `name_realm_key` reads null in `NEW` there, so it now subtracts that column too. Any future generated column on a table with a whole-row guard needs the same.
+
 ## 2026-09-13 -- how guilds, URL keys and player codes are stored (#1114)
 
 Shipped: `20260913180002_guild_url_keys.sql`
