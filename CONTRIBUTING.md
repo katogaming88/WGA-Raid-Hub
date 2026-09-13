@@ -278,14 +278,17 @@ applies the same rule when it reads the function list.
 (#1081). `_shared/discord-destination.ts` reads the platform's
 `SUPABASE_URL`: the one production host posts to the poster's live name, and
 anything else is a local stack that posts to `DISCORD_TEST_WEBHOOK_URL`
-marked `[local]` with nobody pinged, or skips naming the variable. A poster
+marked `[local]` with nobody pinged, or skips naming the variable. The three
+webhook posters resolve through it; `discord-bot-webhook` forwards to a bot
+process over its own protocol and is outside the rule until #959. A poster
 names a key in `DESTINATIONS` (`boe-found`, `boe-sold`, `contact`) and
-never reads a webhook name itself; `tests/ci/functions-webhook-destination.test.js`
-pins that, and pins the production host against `js/common.js` and
-`deploy.yml`. Adding a channel is a key in the registry with its env chain,
-named at the call site. The Live layer's production proof is the first real
-post after the deploy, which logs `discord destination <key>: production via
-<name>`.
+never names a webhook variable itself; `tests/ci/functions-webhook-destination.test.js`
+fails on any registry name outside the module and pins the production host
+against `js/common.js`, and `edge-functions.yml` runs it on a functions
+change. Adding a channel is a key in the registry with its env chain, named
+at the call site. The Live layer's production proof is the first real post
+after the deploy, which logs `discord destination <key>: production via
+<name>` once Discord has taken it.
 
 **Five layers, one runner each, every behaviour in exactly one.**
 

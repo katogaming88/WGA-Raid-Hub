@@ -514,9 +514,12 @@ npm run dev:sink -- --status 500  # the other half: refuses, so the error paths 
 ```
 
 **Point the functions at it.** A function decides where its Discord post
-goes from where it is running (#1081): on a local stack every poster sends to
+goes from where it is running (#1081): on a local stack the three webhook
+posters (`boe-webhook`, `boe-sold-webhook`, `contact-webhook`) send to
 `DISCORD_TEST_WEBHOOK_URL`, marked `[local]` with nobody pinged, and never
-to a live name, whatever the file holds. Copy `supabase/functions/.env.example`
+to a live name, whatever the file holds. `discord-bot-webhook` is outside
+that rule until #959: it forwards to `BOT_WEBHOOK_URL`, so point that at the
+sink too if a rehearsal reaches it. Copy `supabase/functions/.env.example`
 to `supabase/functions/.env` (gitignored) and set that one variable to the
 sink, plus any value you like for `OPTIONAL_RSVP_REMINDERS_SECRET`:
 
