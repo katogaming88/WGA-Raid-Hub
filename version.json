@@ -1,7 +1,7 @@
 {
-  "version": "3.110.0",
+  "version": "3.110.1",
   "pieces": {
-    "frontend": "3.109.0",
+    "frontend": "3.110.1",
     "db": "3.109.0",
     "bot": "3.94.0",
     "functions": {}

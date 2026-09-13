@@ -82,8 +82,7 @@ function renderDiscordNav(session) {
         if (!document.getElementById('profileView')) {
           // On officer.html -- navigate to the public page and auto-open the profile there
           sessionStorage.setItem('wga_open_profile', '1');
-          var base = window.location.pathname.replace('officer.html', 'index.html');
-          window.location.href = base + (TEAM_SLUG !== 'phoenix' ? '?team=' + TEAM_SLUG : '');
+          window.location.href = publicPageHref();
           return;
         }
         if (typeof showView === 'function') showView('profile');
@@ -527,6 +526,16 @@ function dismissNoCharacterClaim() {
     .catch(function () {
       if (btn) btn.disabled = false;
     });
+}
+
+// The public team page, from the officer dashboard ("My Profile" in the nav
+// dropdown). Relative to the current directory rather than a rewrite of
+// location.pathname: Cloudflare Pages serves officer.html as /officer
+// (#1099), so replacing 'officer.html' in the path matched nothing and the
+// button reloaded the dashboard. A relative 'index.html' resolves on both
+// hosts, and under GitHub Pages' /WGA-Raid-Hub/ prefix.
+function publicPageHref() {
+  return 'index.html' + (TEAM_SLUG !== 'phoenix' ? '?team=' + TEAM_SLUG : '');
 }
 
 // Admin tab access level for a resolved session: true grants the full tab

@@ -690,6 +690,25 @@ describe('onDiscordSessionRestored (#371 collision regression)', () => {
   });
 });
 
+// "My Profile" from the officer dashboard goes to the public team page. It
+// used to rewrite location.pathname, which matched nothing on Cloudflare
+// Pages, where officer.html is served as /officer (#1099).
+describe('publicPageHref', () => {
+  it('points at the public page without reading the current path', () => {
+    const sandbox = loadDiscordJs({ supabaseClient: null });
+    expect(sandbox.publicPageHref()).toBe('index.html');
+  });
+
+  it("carries a non-default team's slug", () => {
+    const sandbox = loadDiscordJs({ supabaseClient: null, hooks: { TEAM_SLUG: 'hellfire' } });
+    expect(sandbox.publicPageHref()).toBe('index.html?team=hellfire');
+  });
+
+  it('no longer rewrites the path, so it cannot miss a pretty URL', () => {
+    expect(DISCORD_JS).not.toMatch(/pathname\.replace\(\s*'officer\.html'/);
+  });
+});
+
 // #365 follow-up, reshaped by #317: adminAccessLevel() is the single source
 // of truth both showAdminTab() call sites (officer.html, js/officer.js) defer
 // to for the tri-state result. 'team_leader' grants the team-leader surfaces

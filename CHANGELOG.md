@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.110.1] - 2026-09-13
+
+### Frontend
+
+- Fixed **My Profile** in the nav dropdown on the officer dashboard reloading
+  the dashboard instead of opening your profile on wgaraidhub.com. It built
+  the public page's address by replacing `officer.html` in the current path,
+  and Cloudflare Pages serves that page as `/officer`, so there was nothing to
+  replace. It now links to the public page directly, which works on both the
+  new address and the old github.io one.
+
 ## [3.110.0] - 2026-09-13
 
 ### Functions
