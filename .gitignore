@@ -43,3 +43,6 @@ tier_token_map_insert.sql
 
 # RCLC loot import scratch paste, see conversation w/ Claude 2026-08-28
 rclc-tonight-combined.json
+
+# Impeccable design-skill scratch (decision pages, mocks), see conversation w/ Claude 2026-09-13
+.impeccable/
