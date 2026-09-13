@@ -27,7 +27,7 @@
 // join Deps with the PR that first puts an action under test.
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import { gqlInt, gqlString } from '../_shared/gql.ts';
-import { parseRequest } from './request.ts';
+import { parseRequest, type ScoringMetric } from './request.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -251,7 +251,13 @@ async function fetchReportFights(token: string, reportCode: string): Promise<any
   return fights;
 }
 
-async function refreshPerformance(token: string, guildId: number, teamId: number, supabase: SupabaseClient<any>) {
+async function refreshPerformance(
+  token: string,
+  guildId: number,
+  teamId: number,
+  supabase: SupabaseClient<any>,
+  scoringMetric: ScoringMetric
+) {
   const reportsQuery = `
     query {
       reportData {
@@ -300,8 +306,16 @@ async function refreshPerformance(token: string, guildId: number, teamId: number
         const entries = fight.roles[roleKey]?.characters || [];
         for (const character of entries) {
           const name = character.name;
-          const ilvlPct = character.bracketPercent;
-          if (!name || ilvlPct == null || ilvlPct === 0) continue;
+          // bracketPercent (percentile within the player's ilvl bracket) vs
+          // rankPercent (percentile across everyone who logged the fight) --
+          // an officer's per-refresh choice, not a saved setting. bracketPercent's
+          // own comparison pool shifts size as the tier goes on (few players
+          // at a given ilvl early, many by the end), so the same performance
+          // can score differently over time under it; rankPercent's pool is
+          // the whole playerbase and far more stable, but folds gear level
+          // back into the score the way bracketPercent was chosen to avoid.
+          const pct = scoringMetric === 'overall' ? character.rankPercent : character.bracketPercent;
+          if (!name || pct == null || pct === 0) continue;
 
           const firstName = String(name).trim().toLowerCase();
           const expectedRole = roleByFirstName.get(firstName) || 'dps';
@@ -311,14 +325,14 @@ async function refreshPerformance(token: string, guildId: number, teamId: number
 
           if (i < RECENT_REPORTS) {
             if (!recentData.has(firstName)) recentData.set(firstName, []);
-            recentData.get(firstName)!.push(ilvlPct);
+            recentData.get(firstName)!.push(pct);
           }
           if (i < TREND_REPORTS) {
             if (!trendData.has(firstName)) trendData.set(firstName, []);
-            trendData.get(firstName)!.push(ilvlPct);
+            trendData.get(firstName)!.push(pct);
           }
           if (!bestData.has(firstName)) bestData.set(firstName, []);
-          bestData.get(firstName)!.push(ilvlPct);
+          bestData.get(firstName)!.push(pct);
         }
       }
     }
@@ -386,6 +400,7 @@ async function refreshPerformance(token: string, guildId: number, teamId: number
     updated,
     recentReports: Math.min(RECENT_REPORTS, reports.length),
     trendReports: Math.min(TREND_REPORTS, reports.length),
+    scoringMetric,
     scores
   };
 }
@@ -909,7 +924,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (parsed.ok === false) {
       return jsonResponse({ success: false, error: parsed.error });
     }
-    const { action, teamId, zoneId, season } = parsed.request;
+    const { action, teamId, zoneId, season, scoringMetric } = parsed.request;
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -965,7 +980,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           success: false,
           error: 'Failed to get WCL access token. Check WCL_CLIENT_ID/WCL_CLIENT_SECRET.'
         });
-      const result = await refreshPerformance(token, team.wcl_guild_id, teamId, supabase);
+      const result = await refreshPerformance(token, team.wcl_guild_id, teamId, supabase, scoringMetric);
       return jsonResponse(result);
     }
 

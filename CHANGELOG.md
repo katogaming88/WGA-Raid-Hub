@@ -12,6 +12,26 @@ answers to.
 
 ---
 
+## [3.105.1] - 2026-09-12
+
+### Frontend
+
+- The Scoring tab's "Refresh from WCL" gains a per-refresh metric picker
+  (Ilvl Bracket % / Overall %) instead of always scoring on ilvl bracket
+  percentile -- bracket %'s comparison pool grows as the tier goes on (few
+  players share an ilvl bracket early, many by the end), so the same
+  performance can score lower late in a tier purely from pool size, not
+  play. Overall % samples the whole logged playerbase instead, at the cost
+  of folding gear level back into the score. Officers pick whichever fits
+  the moment rather than a saved team setting.
+
+### Functions
+
+- `wcl-sync`'s `refreshPerformance` accepts a `scoringMetric` request field
+  (`'bracket'` | `'overall'`, default `'bracket'`), switching between WCL's
+  `bracketPercent` and `rankPercent` fields per pull before they're averaged
+  into Recent/Trend/Best.
+
 ## [3.104.4] - 2026-09-12
 
 ### Frontend

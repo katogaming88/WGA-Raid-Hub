@@ -11,7 +11,15 @@ export const ACTIONS = [
 
 export type Action = (typeof ACTIONS)[number];
 
-export type ParsedRequest = { action: Action; teamId: number; zoneId: number | null; season: string | null };
+export type ScoringMetric = 'bracket' | 'overall';
+
+export type ParsedRequest = {
+  action: Action;
+  teamId: number;
+  zoneId: number | null;
+  season: string | null;
+  scoringMetric: ScoringMetric;
+};
 
 export type ParseResult = { ok: true; request: ParsedRequest } | { ok: false; error: string };
 
@@ -53,5 +61,20 @@ export function parseRequest(body: unknown): ParseResult {
   const seasonCode = typeof season === 'string' && season !== '' ? season : null;
   if (action === 'fetchSeasonPerf' && seasonCode === null) return { ok: false, error: 'Missing season' };
 
-  return { ok: true, request: { action: action as Action, teamId: team, zoneId: zone, season: seasonCode } };
+  // Officers pick this per refresh on the Scoring tab, not a saved team
+  // setting -- absent (every other action, or an old cached frontend build)
+  // defaults to 'bracket', the only mode that existed before this field.
+  const { scoringMetric } = fields;
+  let metric: ScoringMetric = 'bracket';
+  if (scoringMetric !== undefined && scoringMetric !== null && scoringMetric !== '') {
+    if (scoringMetric !== 'bracket' && scoringMetric !== 'overall') {
+      return { ok: false, error: 'Invalid scoringMetric' };
+    }
+    metric = scoringMetric;
+  }
+
+  return {
+    ok: true,
+    request: { action: action as Action, teamId: team, zoneId: zone, season: seasonCode, scoringMetric: metric }
+  };
 }

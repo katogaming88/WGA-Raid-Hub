@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.104.4">
-  <link rel="stylesheet" href="css/officer.css?v=3.104.4">
+  <link rel="stylesheet" href="css/styles.css?v=3.105.1">
+  <link rel="stylesheet" href="css/officer.css?v=3.105.1">
   <!-- Hover tooltips for Buff Coverage's spell links (#491) and item links
        (Priority tab/BiS grid, itemNameBlockHtml(), #567). Auto-attaches to
        any <a class="wowhead">. whTooltips must be set before power.js loads
@@ -433,6 +433,10 @@
             <div class="attend-manage-header">
               <span class="section-label" style="margin-bottom:0;">WCL Performance Scores<button class="help-btn" onclick="toggleHelp('help-scoring')" title="Show help">?</button></span>
               <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                <select id="perfScoringMetric" class="btn btn-muted" style="cursor:pointer;">
+                  <option value="bracket">Ilvl Bracket %</option>
+                  <option value="overall">Overall %</option>
+                </select>
                 <button class="btn btn-muted" id="refreshPerfBtn" onclick="refreshWclPerformance()">Refresh from WCL</button>
                 <span id="refreshPerfStatus" style="font-size:0.92rem;"></span>
                 <button class="btn btn-gold" id="commitPerfBtn" onclick="confirmCommitPerformance()" style="margin-left:0.5rem;">Commit Performance Scores</button>
@@ -441,7 +445,7 @@
             </div>
             <div id="refreshPerfProgress" class="wcl-progress-bar"><div class="wcl-progress-bar-fill"></div></div>
             <div id="help-scoring" class="help-tip" style="margin-top:0.5rem;margin-bottom:0.75rem;">
-              <strong>Refresh from WCL</strong> -- fetches the last raid reports from WCL and calculates ilvl bracket % scores (Recent/Trend/Best) for each DPS player. Tanks and healers are skipped and marked Manual. Scores are held in a session draft until committed.<br>
+              <strong>Refresh from WCL</strong> -- fetches the last raid reports from WCL and calculates Recent/Trend/Best scores for each DPS player, using whichever metric is selected: <strong>Ilvl Bracket %</strong> (percentile within same-gear players -- consistent across gear levels, but the comparison pool grows as the tier goes on, which can push scores down over time even with steady play) or <strong>Overall %</strong> (percentile across everyone who logged the fight -- a stabler pool over the tier, but rewards being ahead on gear). Tanks and healers are skipped and marked Manual. Scores are held in a session draft until committed.<br>
               <strong>Commit Performance Scores</strong> -- saves the Recent score from the draft above into Scoring (<code>performance_score</code>), which is what the Priority Generator uses. Safe to run multiple times; it always recalculates from scratch.
             </div>
             <div id="perfConfirmBanner" class="attend-confirm-banner" style="display:none;">
@@ -457,7 +461,7 @@
               <span><span style="color:#b085f0;font-weight:700;">&#9632;</span> Trend fallback (no recent data)</span>
               <span><span style="color:var(--melee);font-weight:700;">&#9632;</span> No data</span>
               <span><span style="color:var(--text-muted);font-weight:700;">&#9632;</span> Excluded (Tank/Healer)</span>
-              <span style="color:var(--text-dim);">Scores = ilvl bracket percentile / 10</span>
+              <span style="color:var(--text-dim);">Scores = selected percentile / 10</span>
             </div>
             <div id="scoringContent"></div>
           </div>
@@ -1195,7 +1199,7 @@
 
   </main>
 
-  <footer class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNum">3.104.4</span> &middot; <a
+  <footer class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNum">3.105.1</span> &middot; <a
       class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank"
       rel="noopener">Changelog</a></footer>
 
@@ -1311,28 +1315,28 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.104.4"></script>
-  <script src="js/discord.js?v=3.104.4"></script>
-  <script src="js/officer.js?v=3.104.4"></script>
-  <script src="js/tabs/tab-roster.js?v=3.104.4"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.104.4"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.104.4"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.104.4"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.104.4"></script>
-  <script src="js/tabs/tab-signups.js?v=3.104.4"></script>
-  <script src="js/tabs/tab-requests.js?v=3.104.4"></script>
-  <script src="js/tabs/tab-bis.js?v=3.104.4"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.104.4"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.104.4"></script>
-  <script src="js/tabs/tab-priority.js?v=3.104.4"></script>
-  <script src="js/tabs/tab-audit.js?v=3.104.4"></script>
-  <script src="js/tabs/tab-reports.js?v=3.104.4"></script>
-  <script src="js/tabs/tab-season.js?v=3.104.4"></script>
-  <script src="js/tabs/tab-schedule.js?v=3.104.4"></script>
-  <script src="js/tabs/tab-bios.js?v=3.104.4"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.104.4"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.104.4"></script>
-  <script src="js/tabs/tab-admin.js?v=3.104.4"></script>
+  <script src="js/common.js?v=3.105.1"></script>
+  <script src="js/discord.js?v=3.105.1"></script>
+  <script src="js/officer.js?v=3.105.1"></script>
+  <script src="js/tabs/tab-roster.js?v=3.105.1"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.105.1"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.105.1"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.105.1"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.105.1"></script>
+  <script src="js/tabs/tab-signups.js?v=3.105.1"></script>
+  <script src="js/tabs/tab-requests.js?v=3.105.1"></script>
+  <script src="js/tabs/tab-bis.js?v=3.105.1"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.105.1"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.105.1"></script>
+  <script src="js/tabs/tab-priority.js?v=3.105.1"></script>
+  <script src="js/tabs/tab-audit.js?v=3.105.1"></script>
+  <script src="js/tabs/tab-reports.js?v=3.105.1"></script>
+  <script src="js/tabs/tab-season.js?v=3.105.1"></script>
+  <script src="js/tabs/tab-schedule.js?v=3.105.1"></script>
+  <script src="js/tabs/tab-bios.js?v=3.105.1"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.105.1"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.105.1"></script>
+  <script src="js/tabs/tab-admin.js?v=3.105.1"></script>
   <script>
 renderSiteNav('officer');
 document.getElementById('versionNum').textContent = VERSION;
