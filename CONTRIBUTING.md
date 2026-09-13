@@ -269,9 +269,23 @@ fetch and environment reads still come from the platform and join `deps`
 with the PR that first puts an action under test, which is what arms the
 action tests it defers. Anything two functions share lives in
 `supabase/functions/_shared/` (`gql.ts`, the GraphQL literal builders, since
-#1013). The CLI neither serves nor deploys a directory whose name starts
-with an underscore, and `tests/ci/functions-config.test.js` applies the same
-rule when it reads the function list.
+#1013; `discord-destination.ts`, where every Discord post's destination is
+decided, since #1081). The CLI neither serves nor deploys a directory whose
+name starts with an underscore, and `tests/ci/functions-config.test.js`
+applies the same rule when it reads the function list.
+
+**Where a Discord post goes is decided by the function from where it runs**
+(#1081). `_shared/discord-destination.ts` reads the platform's
+`SUPABASE_URL`: the one production host posts to the poster's live name, and
+anything else is a local stack that posts to `DISCORD_TEST_WEBHOOK_URL`
+marked `[local]` with nobody pinged, or skips naming the variable. A poster
+names a key in `DESTINATIONS` (`boe-found`, `boe-sold`, `contact`) and
+never reads a webhook name itself; `tests/ci/functions-webhook-destination.test.js`
+pins that, and pins the production host against `js/common.js` and
+`deploy.yml`. Adding a channel is a key in the registry with its env chain,
+named at the call site. The Live layer's production proof is the first real
+post after the deploy, which logs `discord destination <key>: production via
+<name>`.
 
 **Five layers, one runner each, every behaviour in exactly one.**
 
@@ -288,7 +302,8 @@ row presets and `envOf()` (one role, one value, so a copy-paste between
 roles fails); `fetch.ts` is a recording fetch that stores every call and
 answers from a scripted queue, with `discordNoContent()` and
 `discordError(status)`; `deps.ts` is `fakeDb(state)` with a call log and
-`testDeps()`.
+`testDeps()`, whose `stack` option is `'production'` unless a case says
+`'local'`, so every case written before #1081 keeps its meaning.
 
 **Conventions.**
 
@@ -340,7 +355,7 @@ answers from a scripted queue, with `discordNoContent()` and
 | `css/admin.css` | Admin-page-specific styles |
 | `css/guild.css` | Guild-page-specific styles, plus the keyboard/motion baselines scoped to that page until #435 generalises them |
 | `supabase/` | Supabase CLI project: local dev stack config and schema migrations. `config.toml` also carries the per-function `verify_jwt` flags the CLI reads at deploy (#958), so a deploy that names no function no longer resets them |
-| `supabase/functions/` | Edge Functions (Deno). Webhook relays (`boe-webhook`, `boe-sold-webhook`, `discord-bot-webhook`, `contact-webhook`), scheduled jobs (`wcl-progression-sync`, `twitch-live-check`, `blizzard-gear-sync`, `optional-rsvp-reminders`), and two that act on a caller's behalf and check their role first: `wcl-sync`, which an officer triggers, and `upload-bio-photo`, the only writer to Storage -- see "Storage" below. Run them against the local stack with `supabase functions serve` and catch every post in `npm run dev:sink` rather than a real webhook: section 11 of [the local dev doc](docs/supabase-local-dev-setup.md). Tests live under `tests/edge/` and run with `deno task test`; `boe-sold-webhook` is split into `index.ts`, `handler.ts`, `format.ts` and `deps.ts` for them, `wcl-sync` into `index.ts`, `handler.ts`, `request.ts` and `deps.ts`, and `_shared/` holds what more than one function uses (see "Testing Edge Functions") |
+| `supabase/functions/` | Edge Functions (Deno). Webhook relays (`boe-webhook`, `boe-sold-webhook`, `discord-bot-webhook`, `contact-webhook`), scheduled jobs (`wcl-progression-sync`, `twitch-live-check`, `blizzard-gear-sync`, `optional-rsvp-reminders`), and two that act on a caller's behalf and check their role first: `wcl-sync`, which an officer triggers, and `upload-bio-photo`, the only writer to Storage -- see "Storage" below. Run them against the local stack with `supabase functions serve` and catch every post in `npm run dev:sink` rather than a real webhook: section 11 of [the local dev doc](docs/supabase-local-dev-setup.md). Tests live under `tests/edge/` and run with `deno task test`; `boe-sold-webhook` is split into `index.ts`, `handler.ts`, `format.ts` and `deps.ts` for them, `wcl-sync` into `index.ts`, `handler.ts`, `request.ts` and `deps.ts`, and `_shared/` holds what more than one function uses: the GraphQL literal builders and the Discord destination resolver, which sends every post from a local stack to the test webhook (see "Testing Edge Functions") |
 | `bot/` | The Discord bot (#954): a discord.js gateway process running on kat's VM under pm2. Ten slash commands, an express endpoint the `discord-bot-webhook` relay posts to, and a 15-minute sweep for the signup sheet. Keeps its own `package.json`, `tsconfig.json` and lockfile, and its own workflow (`.github/workflows/bot.yml`), which runs the format check, its tests and the build on Node 20 to match the VM. It formats with the root prettier config rather than one of its own, and is outside every root script: lint, typecheck, format and the test suites all read `js/`, `scripts/` and `tests/` only |
 | `scripts/import/` | One-off/recurring data import tooling (loot, attendance, etc.) |
 | `scripts/ci/` | CI checks that need more than a workflow step (changelog classification, the team-wide read guard, the RLS autocommit guard, the security advisor allowlist), plus the version stamper (`npm run stamp`), which owns the page registry the asset-version check reads |
