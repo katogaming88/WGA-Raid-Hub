@@ -12,6 +12,21 @@ answers to.
 
 ---
 
+## [3.112.1] - 2026-09-13
+
+### Backend
+
+- Claiming a character can no longer take somebody else's place on a team
+  ([#1117](https://github.com/katogaming88/WGA-Raid-Hub/issues/1117)).
+  `claim_character()` finds the caller's roster entry by their Discord id when
+  no account link exists yet, and that id is read from a field the account
+  itself can change, so it was possible to be handed an entry that already
+  belonged to another person, along with whatever role it carried. The claim is
+  now refused when the entry it finds is already linked to a different account.
+  Claiming an entry that nobody holds yet is unchanged: that is how a name
+  imported from the Discord Claims sheet gets picked up by its owner, and how a
+  first claim works for everyone else.
+
 ## [3.112.0] - 2026-09-13
 
 ### Backend
