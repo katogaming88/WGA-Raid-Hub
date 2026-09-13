@@ -80,7 +80,19 @@ update public.site_admins                  set auth_user_id = null where auth_us
 update public.team_members                 set auth_user_id = null where auth_user_id is not null;
 update public.priority_conflict_dismissals set dismissed_by = null where dismissed_by is not null;
 update public.priority_stale_dismissals    set dismissed_by = null where dismissed_by is not null;
-delete from public.no_character_dismissals;
+-- Per-account preference rows hang off auth.users too, so they go rather
+-- than dangle. This runs on production's schema, before the branch's own
+-- migrations: until #940 is applied there the rows are still in
+-- no_character_dismissals, and after it they are in account_preferences.
+do $$
+begin
+  if to_regclass('public.account_preferences') is not null then
+    execute 'delete from public.account_preferences';
+  end if;
+  if to_regclass('public.no_character_dismissals') is not null then
+    execute 'delete from public.no_character_dismissals';
+  end if;
+end $$;
 `;
 
 // The tables db-backup.yml refuses to see empty, printed so a restore that

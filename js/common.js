@@ -109,14 +109,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.108.1';
+var VERSION = '3.109.0';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20260913124050';
+var REQUIRED_SCHEMA = '20260913162438';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -480,32 +480,77 @@ function markNotificationsRead(ids) {
 // (js/discord.js) on every session state change, so it covers login,
 // restored-session, logout, and claim on both index.html and officer.html.
 var _notifCache = [];
-var _notifNameRealm = null; // current session's linked character, for the cleared-threshold storage key
+/** @type {{ authUserId?: string, nameRealm?: string } | null} */
+var _notifSession = null; // the session the bell is showing, for the cleared-through key below
+var _notifClearedThrough = 0;
 
 // "Clear read" (below) never deletes/mutates notifications rows -- it only
-// remembers, per browser and per linked character, the highest id that was
-// cleared so already-read rows below that id stay hidden across refreshes.
-// Keyed like DISCORD_SESSION_KEY (js/discord.js): one browser is assumed to
-// be one raider at a time per team, plus the character name so a later claim
-// of a different alt on the same browser doesn't inherit an unrelated clear.
-function _notifClearedStorageKey(nameRealm) {
-  return 'wga_notif_cleared_' + TEAM_SLUG + '_' + nameRealm;
+// remembers the highest id that was cleared, so already-read rows below that
+// id stay hidden across refreshes. It is stored as the per-team
+// notifications_cleared_through key in account_preferences (#940), so it
+// follows the account across devices and survives a character rename; it
+// used to live in this browser's localStorage only.
+var NOTIF_CLEARED_KEY = 'notifications_cleared_through';
+
+function _notifTeamId() {
+  return _teamCfg ? _teamCfg.supabaseTeamId : null;
+}
+
+// Reads the stored marker. The one-time carry-over below moves a value this
+// browser still holds from before #940 into the store and forgets it, so a
+// raider who cleared their bell doesn't see those rows come back once.
+function _loadNotifClearedThrough(session) {
+  var teamId = _notifTeamId();
+  if (!supabaseClient || !session.authUserId || teamId == null) return Promise.resolve(0);
+  return supabaseClient
+    .from('account_preferences')
+    .select('value')
+    .eq('auth_user_id', session.authUserId)
+    .eq('team_id', teamId)
+    .eq('key', NOTIF_CLEARED_KEY)
+    .maybeSingle()
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Failed to read cleared notifications.', result.error.message);
+        return 0;
+      }
+      var stored = result.data ? Number(result.data.value) || 0 : 0;
+      var legacyKey = 'wga_notif_cleared_' + TEAM_SLUG + '_' + session.nameRealm;
+      var legacy = 0;
+      try {
+        legacy = parseInt(localStorage.getItem(legacyKey), 10) || 0;
+        localStorage.removeItem(legacyKey);
+      } catch (_) {}
+      if (legacy > stored) {
+        _saveNotifClearedThrough(session, legacy);
+        return legacy;
+      }
+      return stored;
+    });
+}
+
+function _saveNotifClearedThrough(session, id) {
+  var teamId = _notifTeamId();
+  if (!supabaseClient || !session || !session.authUserId || teamId == null) return;
+  supabaseClient
+    .from('account_preferences')
+    .upsert(
+      { auth_user_id: session.authUserId, team_id: teamId, key: NOTIF_CLEARED_KEY, value: id },
+      { onConflict: 'auth_user_id,team_id,key' }
+    )
+    .then(function (result) {
+      if (result.error) console.warn('Failed to save cleared notifications.', result.error.message);
+    });
 }
 
 function _getNotifClearedThreshold() {
-  if (!_notifNameRealm) return 0;
-  try {
-    return parseInt(localStorage.getItem(_notifClearedStorageKey(_notifNameRealm)), 10) || 0;
-  } catch (_) {
-    return 0;
-  }
+  return _notifSession ? _notifClearedThrough : 0;
 }
 
 function _setNotifClearedThreshold(id) {
-  if (!_notifNameRealm) return;
-  try {
-    localStorage.setItem(_notifClearedStorageKey(_notifNameRealm), String(id));
-  } catch (_) {}
+  if (!_notifSession) return;
+  _notifClearedThrough = id;
+  _saveNotifClearedThrough(_notifSession, id);
 }
 
 function renderNotifBell(session) {
@@ -513,12 +558,21 @@ function renderNotifBell(session) {
   if (!btn) return;
   if (!session || !session.nameRealm) {
     btn.style.display = 'none';
-    _notifNameRealm = null;
+    _notifSession = null;
+    _notifClearedThrough = 0;
     closeNotifDropdown();
     return;
   }
-  _notifNameRealm = session.nameRealm;
+  _notifSession = session;
+  _notifClearedThrough = 0;
   btn.style.display = '';
+  _loadNotifClearedThrough(session).then(function (id) {
+    // A later session change wins over a slow read for an earlier one.
+    if (_notifSession !== session) return;
+    _notifClearedThrough = id;
+    var dd = document.getElementById('notifDropdown');
+    if (dd && dd.style.display !== 'none') renderNotifDropdown();
+  });
   refreshNotifBell();
 }
 
@@ -582,7 +636,7 @@ function closeNotifDropdown() {
 }
 
 // "Clear read" doesn't delete or mutate any notifications row -- it raises
-// the cleared-threshold (persisted in localStorage) to the highest id
+// the cleared-threshold (persisted in account_preferences) to the highest id
 // currently in view, so every already-read row hides on this and future
 // renders (including after a refresh) without touching the DB. A
 // notification that arrives later and gets read still shows normally, since

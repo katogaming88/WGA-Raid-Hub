@@ -8,6 +8,21 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-13 -- one per-account preferences store instead of a table per flag (#940)
+
+Shipped: `20260913162438_account_preferences.sql`
+
+Russell's rule, decided 2026-09-05 on #940 and built now: a "don't show me this again" is a key in a per-account store, not a table of its own. `account_preferences` holds one row per (account, team, key), `team_id` null for guild-wide keys, and replaced `no_character_dismissals` (#512). It also took the notification bell's "cleared through" marker out of `localStorage`, where one inbox had two read-states and the browser's half was lost on a new device.
+
+- **Rows per key, not one jsonb blob per account.** A shapeless blob is what `team_settings.config` drifted into; rows keep a `set_at` per key and keep the keys enumerable.
+- **A CHECK names every allowed key** and pins which are guild-wide and which are per team, so adding a key is a migration rather than a typo.
+- **The unique key is a real `unique nulls not distinct` constraint**, not an expression index on `coalesce(team_id, 0)`, because PostgREST's `on_conflict` takes column names and needs a matching constraint for the client's upserts.
+- **Direct writes under an own-rows RLS rule, no RPC**, the same reasoning #512 gave: no cross-table validation, only "write one row for myself".
+- **Claiming a character clears the dismissal, by trigger on `players`**, not by a line in each function, because several paths set the link (`claim_character()`, `add_signup_to_roster()`'s main swap, any future one). The old table was never cleared: 11 of its 12 rows on production belonged to accounts that had since claimed a character, and those rows were not carried over.
+- **Deliberately not moved:** `streamers.guild_wide_opt_out` belongs to the person but has no data to migrate, so it moves when `streamers` is next touched; `wga_team`, `wga_open_profile` and the stream widget's collapse state are device state and stay in the browser.
+
+When the people table lands (#942), `auth_user_id` becomes `person_id` and nothing else about the store changes.
+
 ## 2026-09-13 -- page addresses carry a guild key and a team key, readable for WGA and coded for everyone else (#1100)
 
 Not shipped yet. The schema half lands with or before the new app shell (#1101); the full address map is on [#1100](https://github.com/katogaming88/WGA-Raid-Hub/issues/1100#issuecomment-5655852445).

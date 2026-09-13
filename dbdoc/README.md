@@ -43,7 +43,6 @@
 | [public.incoming_roster](public.incoming_roster.md) | 7 |  | VIEW |
 | [public.guild_officers](public.guild_officers.md) | 3 |  | BASE TABLE |
 | [public.tier_token_map](public.tier_token_map.md) | 5 |  | BASE TABLE |
-| [public.no_character_dismissals](public.no_character_dismissals.md) | 3 |  | BASE TABLE |
 | [public.boe_items](public.boe_items.md) | 26 |  | BASE TABLE |
 | [public.boe_listings](public.boe_listings.md) | 8 |  | BASE TABLE |
 | [public.boe_managers](public.boe_managers.md) | 4 |  | BASE TABLE |
@@ -59,6 +58,7 @@
 | [public.player_officer_notes](public.player_officer_notes.md) | 6 | Officer-only annotations on a roster slot (#925): the private officer note, and why a player was removed plus the freeform specifics (#476). One row per players row, created on first write. These lived on players until #925, where the table's public read policy and its table-level anon grant made them readable with the publishable key and by every signed-in raider. m_plus_note stayed on players because the public profile renders it. archived_reason keeps the fixed vocabulary its old CHECK constraint carried. | BASE TABLE |
 | [public.team_discord_config](public.team_discord_config.md) | 12 | Per-team Discord infra config for the consolidated multi-tenant bot (#991): guild/channel/role ids and script URLs the bot needs to route a relayed action to the right place. Written and read only by the bot's service-role client; no read use case for an officer or end user. Mirrors raid_signup_sheets' locked-down shape (#900). | BASE TABLE |
 | [public.track_bonus_ids](public.track_bonus_ids.md) | 5 | Maps a WoW item bonus ID to its gear upgrade track and rank (e.g. 12853 -> Myth 5/6). Read by blizzard-gear-sync when syncing equipped gear, and the intended future home of the constants currently inlined in import_rclc_loot(). Seeded by hand per tier -- append the new block, never edit or delete old rows, since older gear keeps its original bonus IDs. | BASE TABLE |
+| [public.account_preferences](public.account_preferences.md) | 6 | Per-account preferences, one row per (account, team, key); team_id is null for guild-wide keys. The account_preferences_known_key CHECK lists every allowed key. Replaced no_character_dismissals (#940). | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -146,6 +146,8 @@
 | public.officer_set_rsvp | void | p_team_id integer, p_player_id integer, p_raid_date date, p_status text, p_note text | FUNCTION |
 | public.officer_set_rotator_week | void | p_team_id integer, p_player_id integer, p_week_start date, p_in boolean | FUNCTION |
 | public.app_version | jsonb |  | FUNCTION |
+| public.touch_account_preference_set_at | trigger |  | FUNCTION |
+| public.clear_no_character_dismissal_on_link | trigger |  | FUNCTION |
 
 ## Enums
 
@@ -239,6 +241,7 @@ erDiagram
 "public.player_officer_notes" |o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.player_officer_notes" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_discord_config" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.account_preferences" }o--o| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -639,11 +642,6 @@ erDiagram
   integer resolved_item_id FK
   timestamp_with_time_zone created_at
 }
-"public.no_character_dismissals" {
-  integer id
-  uuid auth_user_id FK
-  timestamp_with_time_zone dismissed_at
-}
 "public.boe_items" {
   integer id
   integer team_id FK
@@ -801,6 +799,14 @@ erDiagram
   smallint rank
   text season
   timestamp_with_time_zone created_at
+}
+"public.account_preferences" {
+  bigint id
+  uuid auth_user_id FK
+  integer team_id FK
+  text key
+  jsonb value
+  timestamp_with_time_zone set_at
 }
 ```
 

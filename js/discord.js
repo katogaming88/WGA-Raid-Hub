@@ -256,7 +256,13 @@ function resolveDiscordSession(session) {
         // sequential ones.
         return Promise.all([
           findClaimElsewhere(session.user.id),
-          supabaseClient.from('no_character_dismissals').select('id').eq('auth_user_id', session.user.id).maybeSingle()
+          supabaseClient
+            .from('account_preferences')
+            .select('id')
+            .eq('auth_user_id', session.user.id)
+            .is('team_id', null)
+            .eq('key', 'no_character_dismissed')
+            .maybeSingle()
         ]).then(function (results) {
           mapped.claimedElsewhere = results[0];
           mapped.dismissedNoCharacter = !!results[1].data;
@@ -488,13 +494,15 @@ function submitCharacterClaim() {
     });
 }
 
-// #512: permanent "no character, stop asking" opt-out -- inserts one row
-// into no_character_dismissals for this account (global, not per-team; RLS
-// only lets a caller write their own auth_user_id) and patches the cached
-// session so both the modal's auto-popup and the landing-page inline card
-// (_renderClaimPrompt, js/officer-quick-actions.js) stop showing immediately,
-// not just after the next login. ignoreDuplicates makes a double-click race
-// a harmless no-op instead of a unique-violation error.
+// #512: "no character, stop asking" opt-out -- writes the guild-wide
+// no_character_dismissed key into account_preferences for this account (#940;
+// team_id null, RLS only lets a caller write their own auth_user_id) and
+// patches the cached session so both the modal's auto-popup and the
+// landing-page inline card (_renderClaimPrompt, js/officer-quick-actions.js)
+// stop showing immediately, not just after the next login. The key clears
+// itself server-side once the account claims a character. ignoreDuplicates
+// makes a double-click race a harmless no-op instead of a unique-violation
+// error.
 function dismissNoCharacterClaim() {
   var session = getDiscordSession();
   if (!session || !session.authUserId || !supabaseClient) return;
@@ -503,8 +511,11 @@ function dismissNoCharacterClaim() {
   if (btn) btn.disabled = true;
 
   supabaseClient
-    .from('no_character_dismissals')
-    .upsert({ auth_user_id: session.authUserId }, { onConflict: 'auth_user_id', ignoreDuplicates: true })
+    .from('account_preferences')
+    .upsert(
+      { auth_user_id: session.authUserId, team_id: null, key: 'no_character_dismissed', value: true },
+      { onConflict: 'auth_user_id,team_id,key', ignoreDuplicates: true }
+    )
     .then(function (result) {
       if (btn) btn.disabled = false;
       if (result.error) return;

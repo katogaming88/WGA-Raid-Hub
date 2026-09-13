@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_preferences: {
+        Row: {
+          auth_user_id: string
+          id: number
+          key: string
+          set_at: string
+          team_id: number | null
+          value: Json
+        }
+        Insert: {
+          auth_user_id: string
+          id?: never
+          key: string
+          set_at?: string
+          team_id?: number | null
+          value: Json
+        }
+        Update: {
+          auth_user_id?: string
+          id?: never
+          key?: string
+          set_at?: string
+          team_id?: number | null
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_preferences_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance: {
         Row: {
           id: number
@@ -688,24 +723,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      no_character_dismissals: {
-        Row: {
-          auth_user_id: string
-          dismissed_at: string
-          id: number
-        }
-        Insert: {
-          auth_user_id: string
-          dismissed_at?: string
-          id?: number
-        }
-        Update: {
-          auth_user_id?: string
-          dismissed_at?: string
-          id?: number
-        }
-        Relationships: []
       }
       notifications: {
         Row: {
