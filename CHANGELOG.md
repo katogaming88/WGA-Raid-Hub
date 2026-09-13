@@ -25,6 +25,13 @@ answers to.
   account created by signing in through Discord links anything now. Nobody's
   existing access changes: every account on the site was made that way.
 
+### Project
+
+- `npm run dev:login -- --discord-id <id>` mints its local account as a Discord
+  signup, so the grant rows still bind under the new rule. The route needs
+  `psql` now, which the persona route does not, and it reuses an account the
+  stack already holds instead of minting a second one.
+
 ## [3.112.1] - 2026-09-13
 
 ### Backend
