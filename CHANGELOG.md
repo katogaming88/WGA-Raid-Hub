@@ -12,6 +12,18 @@ answers to.
 
 ---
 
+## [3.106.1] - 2026-09-13
+
+### Backend
+
+- Fixes 3.106.0's equipped-item exclusion, which never actually excluded
+  anyone: it compared `player_equipped_gear.item_id` (Blizzard's real
+  `wow_item_id`) directly against `p_item_id` (this app's own `items.id`
+  catalog key) -- two different id spaces that only ever look alike by
+  coincidence. Confirmed live: Soulcialist had Gebbo's Bottomless Bag
+  equipped and still ranked for it. Now resolves through `items.wow_item_id`
+  before comparing.
+
 ## [3.106.0] - 2026-09-13
 
 ### Backend
