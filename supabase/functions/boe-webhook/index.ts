@@ -26,6 +26,7 @@
 // decorative. The note is still raider text once it is on the row, so both
 // sanitisers below stay.
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
+import { marker, resolveDestination } from '../_shared/discord-destination.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -98,15 +99,13 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: false, error: 'Missing id' }, 400);
     }
 
-    // BOE_WEBHOOK_URL is the documented name (setup guide, .env.example) and
-    // the one local `functions serve` can load from a dotenv file. The prod
-    // secret was created in the dashboard as BOE-Found-Webhook (2026-08-26)
-    // and the runtime delivers hyphenated names fine, so read it as the
-    // fallback rather than asking for a re-paste. Either name works.
-    const webhookUrl = Deno.env.get('BOE_WEBHOOK_URL') || Deno.env.get('BOE-Found-Webhook');
-    if (!webhookUrl) {
-      return jsonResponse({ success: true, skipped: true });
+    // Where this goes is the resolver's call (#1081): the found channel on
+    // production, the test webhook on a local stack, nowhere with nothing set.
+    const dest = resolveDestination(Deno.env, { destination: 'boe-found' });
+    if (dest.kind === 'skip') {
+      return jsonResponse({ success: true, skipped: true, ...(dest.reason ? { reason: dest.reason } : {}) });
     }
+    console.info('discord destination boe-found: ' + dest.source + ' via ' + dest.via);
 
     db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
@@ -178,9 +177,11 @@ Deno.serve(async (req) => {
     }
     claimTaken = true;
 
+    const mark = marker(dest.source);
+    if (mark) lines.unshift(mark);
     const content = lines.join('\n');
 
-    const response = await fetch(webhookUrl, {
+    const response = await fetch(dest.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

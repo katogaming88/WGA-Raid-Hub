@@ -40,6 +40,11 @@
 //   - A donated row (#862) ends with thanks instead. Telling someone to
 //     collect gold they chose to give away is the one thing the old message
 //     could not have got wrong, because the option did not exist.
+//
+// From a local stack (#1081) the same post leads with [local] and pings
+// nobody; production is byte for byte the shape above.
+
+import { type Source, allowedMentions, marker } from '../_shared/discord-destination.ts';
 
 export type SaleRow = {
   id: number;
@@ -157,8 +162,18 @@ export function closing(payoutDonated: boolean | null | undefined, managerIds: s
 // parse is treated as empty, but this posts to a guild-wide channel, so the
 // guard against pinging everyone in it should be a line somebody can read
 // instead of a default somebody has to know.
-export function soldPost(row: SaleRow, finderId: string | null, managerIds: string[], _source?: string): SoldPost {
+//
+// The marker goes in ahead of the clamp, so a local post that runs long is
+// still marked.
+export function soldPost(
+  row: SaleRow,
+  finderId: string | null,
+  managerIds: string[],
+  source: Source = 'production'
+): SoldPost {
+  const mark = marker(source);
   const content =
+    (mark ? mark + '\n' : '') +
     '## BoE Sold\n' +
     finderText(finderId, row.finder_name) +
     '\n\n' +
@@ -171,6 +186,6 @@ export function soldPost(row: SaleRow, finderId: string | null, managerIds: stri
     // settings, which a rename there would silently change.
     username: 'BoE Sales',
     content: content.length > 2000 ? content.slice(0, 1997) + '...' : content,
-    allowed_mentions: { parse: [], users: finderId ? [finderId] : [] }
+    allowed_mentions: allowedMentions(source, finderId ? [finderId] : [])
   };
 }

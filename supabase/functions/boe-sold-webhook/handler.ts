@@ -18,6 +18,7 @@
 // real ones and index.ts is the one line that serves it. The text of the
 // post is format.ts.
 import { type SaleRow, soldPost } from './format.ts';
+import { resolveDestination } from '../_shared/discord-destination.ts';
 
 export type { SaleRow };
 
@@ -80,15 +81,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return jsonResponse({ success: false, error: 'Not authorized' }, 403);
     }
 
-    // BOE_SOLD_WEBHOOK_URL first, so the sold post can be moved to its own
-    // channel by adding one dashboard secret rather than by a code change.
-    // With none set it lands in the found channel; with nothing set at all it
-    // no-ops, the way the found function does.
-    const webhookUrl =
-      deps.env.get('BOE_SOLD_WEBHOOK_URL') || deps.env.get('BOE_WEBHOOK_URL') || deps.env.get('BOE-Found-Webhook');
-    if (!webhookUrl) {
-      return jsonResponse({ success: true, skipped: true });
+    // Where this goes is the resolver's call (#1081): the sold chain on
+    // production, the test webhook on a local stack. With nothing to post to
+    // it no-ops, the way the found function does.
+    const dest = resolveDestination(deps.env, { destination: 'boe-sold' });
+    if (dest.kind === 'skip') {
+      return jsonResponse({ success: true, skipped: true, ...(dest.reason ? { reason: dest.reason } : {}) });
     }
+    console.info('discord destination boe-sold: ' + dest.source + ' via ' + dest.via);
 
     let row: SaleRow | null;
     try {
@@ -121,10 +121,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // anyone editing this file.
     const managerIds = await deps.db.managerDiscordIds();
 
-    const response = await deps.fetch(webhookUrl, {
+    const response = await deps.fetch(dest.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(soldPost(row, finderId, managerIds))
+      body: JSON.stringify(soldPost(row, finderId, managerIds, dest.source))
     });
 
     if (!response.ok) {

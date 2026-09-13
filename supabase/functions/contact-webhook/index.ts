@@ -12,6 +12,7 @@
 // reply is a right-click away; signed out, the post says so. The typed name
 // stays the body's: it is a name somebody typed, not a claim about who they are.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { marker, resolveDestination } from '../_shared/discord-destination.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -60,10 +61,13 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: false, error: 'Missing message' });
     }
 
-    const webhookUrl = Deno.env.get('CONTACT_WEBHOOK_URL');
-    if (!webhookUrl) {
-      return jsonResponse({ success: true, skipped: true });
+    // Where this goes is the resolver's call (#1081): the alert channel on
+    // production, the test webhook on a local stack, nowhere with nothing set.
+    const dest = resolveDestination(Deno.env, { destination: 'contact' });
+    if (dest.kind === 'skip') {
+      return jsonResponse({ success: true, skipped: true, ...(dest.reason ? { reason: dest.reason } : {}) });
     }
+    console.info('discord destination contact: ' + dest.source + ' via ' + dest.via);
 
     const submitter = await resolveSubmitter(req.headers.get('Authorization'));
 
@@ -76,10 +80,14 @@ Deno.serve(async (req) => {
         ? truncate(submitter.username, 1024)
         : '(not logged in)';
 
-    const response = await fetch(webhookUrl, {
+    // An embed has no first line to mark, so a local post carries the marker
+    // as content above it; production sends no content key at all.
+    const mark = marker(dest.source);
+    const response = await fetch(dest.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        ...(mark ? { content: mark } : {}),
         embeds: [
           {
             title: 'Site Contact Form Submission',
