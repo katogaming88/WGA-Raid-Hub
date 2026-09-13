@@ -14,7 +14,7 @@
 | [public.rclc_loot](public.rclc_loot.md) | 11 |  | BASE TABLE |
 | [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) | 9 |  | BASE TABLE |
 | [public.player_wcl_season_perf](public.player_wcl_season_perf.md) | 7 |  | BASE TABLE |
-| [public.players](public.players.md) | 23 |  | BASE TABLE |
+| [public.players](public.players.md) | 24 |  | BASE TABLE |
 | [public.priority_order](public.priority_order.md) | 8 |  | BASE TABLE |
 | [public.scoring](public.scoring.md) | 10 |  | BASE TABLE |
 | [public.season_signups](public.season_signups.md) | 18 |  | BASE TABLE |
@@ -22,7 +22,7 @@
 | [public.site_admins](public.site_admins.md) | 3 |  | BASE TABLE |
 | [public.team_members](public.team_members.md) | 7 |  | BASE TABLE |
 | [public.team_settings](public.team_settings.md) | 3 |  | BASE TABLE |
-| [public.teams](public.teams.md) | 5 |  | BASE TABLE |
+| [public.teams](public.teams.md) | 6 |  | BASE TABLE |
 | [public.pending_roster](public.pending_roster.md) | 15 |  | VIEW |
 | [public.rnlsi](public.rnlsi.md) | 6 |  | VIEW |
 | [public.bis_demand_vs_awards](public.bis_demand_vs_awards.md) | 7 |  | VIEW |
@@ -59,6 +59,8 @@
 | [public.team_discord_config](public.team_discord_config.md) | 12 | Per-team Discord infra config for the consolidated multi-tenant bot (#991): guild/channel/role ids and script URLs the bot needs to route a relayed action to the right place. Written and read only by the bot's service-role client; no read use case for an officer or end user. Mirrors raid_signup_sheets' locked-down shape (#900). | BASE TABLE |
 | [public.track_bonus_ids](public.track_bonus_ids.md) | 5 | Maps a WoW item bonus ID to its gear upgrade track and rank (e.g. 12853 -> Myth 5/6). Read by blizzard-gear-sync when syncing equipped gear, and the intended future home of the constants currently inlined in import_rclc_loot(). Seeded by hand per tier -- append the new block, never edit or delete old rows, since older gear keeps its original bonus IDs. | BASE TABLE |
 | [public.account_preferences](public.account_preferences.md) | 6 | Per-account preferences, one row per (account, team, key); team_id is null for guild-wide keys. The account_preferences_known_key CHECK lists every allowed key. Replaced no_character_dismissals (#940). | BASE TABLE |
+| [public.guilds](public.guilds.md) | 4 | One row per guild. url_key is the /g/<key> segment of an address: readable for WGA, a random code for any other guild (#1100, #1114). | BASE TABLE |
+| [public.retired_url_keys](public.retired_url_keys.md) | 5 | Keys a guild (team_id null) or team used to have, so old addresses still resolve. Written only by the key-change triggers on guilds and teams (#1114). guild_id is the guild the key lived under. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -148,6 +150,11 @@
 | public.app_version | jsonb |  | FUNCTION |
 | public.touch_account_preference_set_at | trigger |  | FUNCTION |
 | public.clear_no_character_dismissal_on_link | trigger |  | FUNCTION |
+| public.new_url_code | text |  | FUNCTION |
+| public.keep_player_url_code | trigger |  | FUNCTION |
+| public.retire_guild_url_key | trigger |  | FUNCTION |
+| public.retire_team_url_key | trigger |  | FUNCTION |
+| public.resolve_address | record | p_guild_key text, p_team_key text DEFAULT NULL::text, p_player_code text DEFAULT NULL::text | FUNCTION |
 
 ## Enums
 
@@ -205,6 +212,7 @@ erDiagram
 "public.self_received_requests" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_members" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_settings" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.teams" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id)"
 "public.streamers" |o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.streamers" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.notifications" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
@@ -242,6 +250,8 @@ erDiagram
 "public.player_officer_notes" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_discord_config" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.account_preferences" }o--o| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.retired_url_keys" }o--o| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.retired_url_keys" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -366,6 +376,7 @@ erDiagram
   integer bonus_roll_encounter_id FK
   boolean is_rotator
   timestamp_with_time_zone bis_link_updated_at
+  text url_code
 }
 "public.priority_order" {
   integer id
@@ -448,6 +459,7 @@ erDiagram
   text slug
   timestamp_with_time_zone archived_at
   integer wcl_guild_id
+  integer guild_id FK
 }
 "public.pending_roster" {
   integer signup_id
@@ -807,6 +819,19 @@ erDiagram
   text key
   jsonb value
   timestamp_with_time_zone set_at
+}
+"public.guilds" {
+  integer id
+  text name
+  text url_key
+  timestamp_with_time_zone created_at
+}
+"public.retired_url_keys" {
+  bigint id
+  integer guild_id FK
+  integer team_id FK
+  text url_key
+  timestamp_with_time_zone retired_at
 }
 ```
 

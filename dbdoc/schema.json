@@ -1278,6 +1278,13 @@
           "name": "bis_link_updated_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "url_code",
+          "type": "text",
+          "nullable": false,
+          "default": "new_url_code()",
+          "comment": "The player's code in an address (/players/\u003ccode\u003e, #1114). Random, unique site-wide, and fixed once issued so shared links keep working."
         }
       ],
       "indexes": [
@@ -1297,6 +1304,14 @@
             "team_id",
             "name_realm"
           ]
+        },
+        {
+          "name": "players_url_code_key",
+          "def": "CREATE UNIQUE INDEX players_url_code_key ON public.players USING btree (url_code)",
+          "table": "public.players",
+          "columns": [
+            "url_code"
+          ]
         }
       ],
       "constraints": [
@@ -1308,6 +1323,16 @@
           "referenced_table": "",
           "columns": [
             "tier_pieces_equipped"
+          ]
+        },
+        {
+          "name": "players_url_code_format",
+          "type": "CHECK",
+          "def": "CHECK ((url_code ~ '^[a-z0-9]{8}$'::text))",
+          "table": "public.players",
+          "referenced_table": "",
+          "columns": [
+            "url_code"
           ]
         },
         {
@@ -1382,6 +1407,16 @@
           "referenced_columns": [
             "id"
           ]
+        },
+        {
+          "name": "players_url_code_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (url_code)",
+          "table": "public.players",
+          "referenced_table": "",
+          "columns": [
+            "url_code"
+          ]
         }
       ],
       "triggers": [
@@ -1400,6 +1435,10 @@
         {
           "name": "players_clear_no_character_dismissal",
           "def": "CREATE TRIGGER players_clear_no_character_dismissal AFTER INSERT OR UPDATE OF team_member_id ON public.players FOR EACH ROW WHEN ((new.team_member_id IS NOT NULL)) EXECUTE FUNCTION clear_no_character_dismissal_on_link()"
+        },
+        {
+          "name": "players_keep_url_code",
+          "def": "CREATE TRIGGER players_keep_url_code BEFORE UPDATE OF url_code ON public.players FOR EACH ROW EXECUTE FUNCTION keep_player_url_code()"
         }
       ]
     },
@@ -2387,7 +2426,9 @@
         {
           "name": "slug",
           "type": "text",
-          "nullable": false
+          "nullable": false,
+          "default": "new_url_code()",
+          "comment": "The team's URL key: the /t/\u003ckey\u003e segment of an address, unique within its guild (#1114). The current site's ?team= parameter reads it too."
         },
         {
           "name": "archived_at",
@@ -2398,6 +2439,11 @@
           "name": "wcl_guild_id",
           "type": "integer",
           "nullable": true
+        },
+        {
+          "name": "guild_id",
+          "type": "integer",
+          "nullable": false
         }
       ],
       "indexes": [
@@ -2418,15 +2464,26 @@
           ]
         },
         {
-          "name": "teams_slug_key",
-          "def": "CREATE UNIQUE INDEX teams_slug_key ON public.teams USING btree (slug)",
+          "name": "teams_guild_id_slug_key",
+          "def": "CREATE UNIQUE INDEX teams_guild_id_slug_key ON public.teams USING btree (guild_id, slug)",
           "table": "public.teams",
           "columns": [
+            "guild_id",
             "slug"
           ]
         }
       ],
       "constraints": [
+        {
+          "name": "teams_slug_format",
+          "type": "CHECK",
+          "def": "CHECK (((slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text) AND ((length(slug) \u003e= 2) AND (length(slug) \u003c= 32))))",
+          "table": "public.teams",
+          "referenced_table": "",
+          "columns": [
+            "slug"
+          ]
+        },
         {
           "name": "teams_name_key",
           "type": "UNIQUE",
@@ -2448,14 +2505,34 @@
           ]
         },
         {
-          "name": "teams_slug_key",
+          "name": "teams_guild_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (guild_id) REFERENCES guilds(id)",
+          "table": "public.teams",
+          "referenced_table": "public.guilds",
+          "columns": [
+            "guild_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "teams_guild_id_slug_key",
           "type": "UNIQUE",
-          "def": "UNIQUE (slug)",
+          "def": "UNIQUE (guild_id, slug)",
           "table": "public.teams",
           "referenced_table": "",
           "columns": [
+            "guild_id",
             "slug"
           ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "teams_retire_url_key",
+          "def": "CREATE TRIGGER teams_retire_url_key AFTER UPDATE OF slug, guild_id ON public.teams FOR EACH ROW WHEN (((old.slug IS DISTINCT FROM new.slug) OR (old.guild_id IS DISTINCT FROM new.guild_id))) EXECUTE FUNCTION retire_team_url_key()"
         }
       ]
     },
@@ -6161,6 +6238,212 @@
           "def": "CREATE TRIGGER account_preferences_touch_set_at BEFORE UPDATE ON public.account_preferences FOR EACH ROW EXECUTE FUNCTION touch_account_preference_set_at()"
         }
       ]
+    },
+    {
+      "name": "public.guilds",
+      "type": "BASE TABLE",
+      "comment": "One row per guild. url_key is the /g/\u003ckey\u003e segment of an address: readable for WGA, a random code for any other guild (#1100, #1114).",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "url_key",
+          "type": "text",
+          "nullable": false,
+          "default": "new_url_code()"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "guilds_pkey",
+          "def": "CREATE UNIQUE INDEX guilds_pkey ON public.guilds USING btree (id)",
+          "table": "public.guilds",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "guilds_name_key",
+          "def": "CREATE UNIQUE INDEX guilds_name_key ON public.guilds USING btree (name)",
+          "table": "public.guilds",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "guilds_url_key_key",
+          "def": "CREATE UNIQUE INDEX guilds_url_key_key ON public.guilds USING btree (url_key)",
+          "table": "public.guilds",
+          "columns": [
+            "url_key"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "guilds_url_key_format",
+          "type": "CHECK",
+          "def": "CHECK (((url_key ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text) AND ((length(url_key) \u003e= 2) AND (length(url_key) \u003c= 32))))",
+          "table": "public.guilds",
+          "referenced_table": "",
+          "columns": [
+            "url_key"
+          ]
+        },
+        {
+          "name": "guilds_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.guilds",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "guilds_name_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (name)",
+          "table": "public.guilds",
+          "referenced_table": "",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "guilds_url_key_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (url_key)",
+          "table": "public.guilds",
+          "referenced_table": "",
+          "columns": [
+            "url_key"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "guilds_retire_url_key",
+          "def": "CREATE TRIGGER guilds_retire_url_key AFTER UPDATE OF url_key ON public.guilds FOR EACH ROW WHEN ((old.url_key IS DISTINCT FROM new.url_key)) EXECUTE FUNCTION retire_guild_url_key()"
+        }
+      ]
+    },
+    {
+      "name": "public.retired_url_keys",
+      "type": "BASE TABLE",
+      "comment": "Keys a guild (team_id null) or team used to have, so old addresses still resolve. Written only by the key-change triggers on guilds and teams (#1114). guild_id is the guild the key lived under.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "guild_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "url_key",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "retired_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "retired_url_keys_pkey",
+          "def": "CREATE UNIQUE INDEX retired_url_keys_pkey ON public.retired_url_keys USING btree (id)",
+          "table": "public.retired_url_keys",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "retired_url_keys_one_per_owner",
+          "def": "CREATE UNIQUE INDEX retired_url_keys_one_per_owner ON public.retired_url_keys USING btree (guild_id, team_id, url_key) NULLS NOT DISTINCT",
+          "table": "public.retired_url_keys",
+          "columns": [
+            "guild_id",
+            "team_id",
+            "url_key"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "retired_url_keys_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.retired_url_keys",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "retired_url_keys_guild_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE",
+          "table": "public.retired_url_keys",
+          "referenced_table": "public.guilds",
+          "columns": [
+            "guild_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "retired_url_keys_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.retired_url_keys",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "retired_url_keys_one_per_owner",
+          "type": "UNIQUE",
+          "def": "UNIQUE NULLS NOT DISTINCT (guild_id, team_id, url_key)",
+          "table": "public.retired_url_keys",
+          "referenced_table": "",
+          "columns": [
+            "guild_id",
+            "team_id",
+            "url_key"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -6592,6 +6875,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.teams",
+      "columns": [
+        "guild_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.guilds",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (guild_id) REFERENCES guilds(id)"
     },
     {
       "table": "public.streamers",
@@ -7073,6 +7369,32 @@
       ],
       "parent_cardinality": "zero_or_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.retired_url_keys",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.retired_url_keys",
+      "columns": [
+        "guild_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.guilds",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -7578,6 +7900,36 @@
       "name": "public.clear_no_character_dismissal_on_link",
       "return_type": "trigger",
       "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.new_url_code",
+      "return_type": "text",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.keep_player_url_code",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.retire_guild_url_key",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.retire_team_url_key",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.resolve_address",
+      "return_type": "record",
+      "arguments": "p_guild_key text, p_team_key text DEFAULT NULL::text, p_player_code text DEFAULT NULL::text",
       "type": "FUNCTION"
     }
   ],

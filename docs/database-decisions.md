@@ -8,6 +8,21 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-13 -- how guilds, URL keys and player codes are stored (#1114)
+
+Shipped: `20260913180002_guild_url_keys.sql`
+
+The schema half of the address decision below (#1100). Settled while building it:
+
+- **Player codes are unique site-wide, not per team.** Simpler to look up, and it survives the code moving to `people` when #942 lands. A code is still looked up *under* the team the address names, so a real code pasted under the wrong team is not found rather than silently redirected.
+- **A player code never changes.** A trigger refuses any update to `players.url_code`, because officers can otherwise edit the whole row, and there is no retired-code table to catch a changed one. Nothing about a player (rename, realm move, main swap) needs a new code.
+- **One lookup function, `resolve_address()`, rather than plain reads on three tables.** The app makes one call per navigation and gets back ids, each part's current key, and `is_canonical`. No row means not found; `is_canonical = false` means the address used a retired key or different letter case, so the app redirects. Security invoker, since every table it reads is already public, which is what lets a signed-out visitor open a shared link.
+- **Retired keys are written by trigger on `guilds` and `teams`**, not by the admin functions, so a key changed from a migration or the service role is kept too. Changing a key back to one it used to have removes it from the retired list. A current key always wins over a retired one; among retired keys, the most recent wins.
+- **No new write path for keys.** Guilds have no client write access at all, and team keys are already set only through the site-admin functions `admin_create_team()` and `admin_update_team()`, so "only a site admin can set a readable key" held without adding anything.
+- **Key format**: lowercase letters, digits and single hyphens, 2 to 32 characters, as a CHECK on both tables. Random keys and codes are 8 characters from `[a-z0-9]`, from `pgcrypto`'s `gen_random_bytes`. A collision (odds about 1 in 2.8 trillion per pair) is not retried; the unique constraint turns it into an error.
+- **Guild-wide grants stay unscoped for now.** `guild_officers`, `boe_managers` and `site_admins` get a guild when #942's `guild_grants` replaces them; nothing needs a second guild before then. `admin_create_team()` refuses to guess once a second guild exists, and #1045 adds the argument.
+- **Still site-wide for now**, noted for #1045: `teams.name` is unique across all guilds, and a few current-site paths look a team up by slug alone (`?team=`, Edge Functions). Both are correct while there is one guild.
+
 ## 2026-09-13 -- one per-account preferences store instead of a table per flag (#940)
 
 Shipped: `20260913162438_account_preferences.sql`
@@ -25,7 +40,7 @@ When the people table lands (#942), `auth_user_id` becomes `person_id` and nothi
 
 ## 2026-09-13 -- page addresses carry a guild key and a team key, readable for WGA and coded for everyone else (#1100)
 
-Not shipped yet. The schema half lands with or before the new app shell (#1101); the full address map is on [#1100](https://github.com/katogaming88/WGA-Raid-Hub/issues/1100#issuecomment-5655852445).
+The schema half shipped with #1114 (entry above); the app shell (#1101) routes on it. the full address map is on [#1100](https://github.com/katogaming88/WGA-Raid-Hub/issues/1100#issuecomment-5655852445).
 
 The rebuilt site (#1109) routes every guild-scoped page as `/g/<guild key>/t/<team key>/...`, so WGA's Phoenix roster is `/g/wga/t/phoenix/roster`. Kat's call: WGA keeps readable names, and any other guild that uses the site later gets random codes (`/g/k3n9x2qa/t/p7q4m81z/roster`), the way WoWUtils addresses its groups. There is one route shape; the difference is only in what the key holds.
 

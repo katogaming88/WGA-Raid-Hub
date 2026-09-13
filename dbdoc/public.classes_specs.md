@@ -65,6 +65,7 @@ erDiagram
   integer bonus_roll_encounter_id FK
   boolean is_rotator
   timestamp_with_time_zone bis_link_updated_at
+  text url_code
 }
 "public.season_signups" {
   integer id
