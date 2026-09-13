@@ -37,11 +37,11 @@ describe('the Discord sink (#1055)', () => {
 
   it('keeps what it was sent, parsed, so a poster payload can be read back', async () => {
     running = await startSink({ port: 0 });
-    await post(running.port, JSON.stringify({ content: '[smoke] BoE found', embeds: [{ title: 'Item' }] }));
+    await post(running.port, JSON.stringify({ content: 'BoE found', embeds: [{ title: 'Item' }] }));
     expect(running.received.length).toBe(1);
     expect(running.received[0].method).toBe('POST');
     expect(running.received[0].path).toBe('/webhooks/1234/abcd');
-    expect(running.received[0].body).toEqual({ content: '[smoke] BoE found', embeds: [{ title: 'Item' }] });
+    expect(running.received[0].body).toEqual({ content: 'BoE found', embeds: [{ title: 'Item' }] });
   });
 
   it('keeps a body that is not JSON as raw text rather than throwing', async () => {

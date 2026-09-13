@@ -519,7 +519,6 @@ sink, plus any value you like for `OPTIONAL_RSVP_REMINDERS_SECRET`:
 
 ```sh
 BOE_WEBHOOK_URL=http://host.docker.internal:8899/webhooks/boe-found
-DISCORD_TEST_WEBHOOK_URL=http://host.docker.internal:8899/webhooks/test-channel
 OPTIONAL_RSVP_REMINDERS_SECRET=any-local-value
 ```
 
@@ -538,21 +537,21 @@ Whether a function wants an `Authorization` header is `verify_jwt` in
 `config.toml`, per function since #958: the five listed there take none, and
 everything else wants the anon key.
 
-**Post to one in smoke mode**, which is the mode that exists so a poster can be
-exercised without reaching a team's channel (#1007). It goes to
-`DISCORD_TEST_WEBHOOK_URL` and prefixes the message with `[smoke]`:
+**Post to one.** From the site running in section 8, or by hand:
 
 ```sh
 ANON=$(supabase status -o json | node -pe "JSON.parse(require('fs').readFileSync(0)).ANON_KEY")
 curl -X POST "http://127.0.0.1:54321/functions/v1/boe-webhook" \
   -H "apikey: $ANON" -H "Authorization: Bearer $ANON" \
   -H "Content-Type: application/json" \
-  -H "x-cron-secret: any-local-value" \
-  -d '{"id":1,"smoke":true}'
+  -d '{"id":1}'
 ```
 
 That answers `{"success":true}` and the post prints in the sink's terminal.
-`id` is a row in `boe_items`; the seed ships two.
+`id` is a row in `boe_items`; the seed ships two. The posters carry no test
+mode (#1086), so what prints is the real post: the found post claims its row
+(`found_posted_at`), and a second post of the same id answers
+`already posted` until the stack is reset.
 
 **Fire a cron function by hand.** The scheduled jobs are inactive on a local
 stack (section 10), so this is how those functions get run. They take no JWT

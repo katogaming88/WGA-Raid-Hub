@@ -11,15 +11,11 @@
 // it. Signed in, the Discord id on the token renders as a <@id> mention so a
 // reply is a right-click away; signed out, the post says so. The typed name
 // stays the body's: it is a name somebody typed, not a claim about who they are.
-//
-// Smoke mode (#1007): `smoke: true` plus the x-cron-secret header posts to the
-// bot test channel, marks the post, and refuses rather than falling back to the
-// live channel if no test webhook is configured.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
 
@@ -58,27 +54,14 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { team, name, message, smoke } = await req.json();
+    const { team, name, message } = await req.json();
 
     if (!message || !String(message).trim()) {
       return jsonResponse({ success: false, error: 'Missing message' });
     }
 
-    const isSmoke = smoke === true;
-    if (isSmoke) {
-      // The operator credential the cron functions already use, rather than a
-      // second secret: this is the same class of caller.
-      const cronSecret = Deno.env.get('OPTIONAL_RSVP_REMINDERS_SECRET');
-      if (!cronSecret || req.headers.get('x-cron-secret') !== cronSecret) {
-        return jsonResponse({ success: false, error: 'Smoke mode needs the cron secret' }, 401);
-      }
-    }
-
-    const webhookUrl = isSmoke ? Deno.env.get('DISCORD_TEST_WEBHOOK_URL') : Deno.env.get('CONTACT_WEBHOOK_URL');
+    const webhookUrl = Deno.env.get('CONTACT_WEBHOOK_URL');
     if (!webhookUrl) {
-      if (isSmoke) {
-        return jsonResponse({ success: false, error: 'No test webhook is configured' }, 500);
-      }
       return jsonResponse({ success: true, skipped: true });
     }
 
@@ -97,9 +80,6 @@ Deno.serve(async (req) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        // The marker rides above the embed, since an embed has no first line
-        // of its own to put it on.
-        content: isSmoke ? '[smoke]' : undefined,
         embeds: [
           {
             title: 'Site Contact Form Submission',
@@ -114,7 +94,7 @@ Deno.serve(async (req) => {
           }
         ],
         // Nothing here has any business notifying anyone. An embed never pings
-        // on its own, so this covers the content line beside it.
+        // on its own; this is the line somebody can read.
         allowed_mentions: { parse: [] }
       })
     });
