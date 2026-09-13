@@ -175,6 +175,74 @@ describe('claim_character links a character to the caller', () => {
   });
 });
 
+// #1117: the discord_id fallback resolves the caller from raw_user_meta_data,
+// which the account itself can write. Without an unlinked check it hands over
+// a team_members row that already belongs to somebody, role and all. The
+// fixture writes the metadata directly because that is the state the auth API
+// leaves behind, not because the API is what these cases exercise.
+describe('claim_character refuses a team_members row linked to another account', () => {
+  const IMPOSTOR = '00000000-0000-0000-0000-0000000000c1';
+  // team_members 4 is the hellfire officer (discord-officer-2), linked to user
+  // 5, and hellfire has an unclaimed seeded character.
+  const OFFICER_DISCORD = 'discord-officer-2';
+  const OFFICER_UID = '00000000-0000-0000-0000-000000000005';
+  const HELLFIRE = 2;
+  const TARGET = 'Seedhellfire-Illidan';
+
+  const addImpostor = (q) =>
+    q('insert into auth.users (id, raw_user_meta_data) values ($1, jsonb_build_object($2::text, $3::text))', [
+      IMPOSTOR,
+      'provider_id',
+      OFFICER_DISCORD
+    ]);
+
+  it('refuses the claim and leaves the officer row with its owner', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await addImpostor(q);
+      await expect(claim(asUser, IMPOSTOR, HELLFIRE, TARGET)).rejects.toThrow(
+        /linked to (a different|another) account/i
+      );
+
+      const row = (await q('select auth_user_id from public.team_members where id = 4')).rows[0];
+      expect(row.auth_user_id).toBe(OFFICER_UID);
+    });
+  });
+
+  it('leaves the impostor with no role on that team', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await addImpostor(q);
+      await expect(claim(asUser, IMPOSTOR, HELLFIRE, TARGET)).rejects.toThrow();
+
+      const rows = (await q('select id from public.team_members where auth_user_id = $1', [IMPOSTOR])).rows;
+      expect(rows).toHaveLength(0);
+    });
+  });
+
+  it('leaves the target character unclaimed', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await addImpostor(q);
+      await expect(claim(asUser, IMPOSTOR, HELLFIRE, TARGET)).rejects.toThrow();
+
+      const player = (
+        await q('select team_member_id from public.players where name_realm = $1 and team_id = $2', [TARGET, HELLFIRE])
+      ).rows[0];
+      expect(player.team_member_id).toBeNull();
+    });
+  });
+
+  it('still lets the rightful owner claim on that team', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const res = await claim(asUser, OFFICER_UID, HELLFIRE, TARGET);
+      expect(res.rows[0].role).toBe('officer');
+
+      const player = (
+        await q('select team_member_id from public.players where name_realm = $1 and team_id = $2', [TARGET, HELLFIRE])
+      ).rows[0];
+      expect(player.team_member_id).toBe(4);
+    });
+  });
+});
+
 describe('the one-time name_realm backfill links matching players', () => {
   it('sets team_member_id where a team_members.name_realm matches a player', async () => {
     await withTxn(async ({ q }) => {
