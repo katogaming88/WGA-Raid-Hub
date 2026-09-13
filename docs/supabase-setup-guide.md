@@ -985,8 +985,7 @@ In Supabase: **Project Settings** -> **Edge Functions** -> **Secrets**. Add each
 | `BOE_WEBHOOK_URL`              | Discord channel settings -> Integrations -> Webhooks (#746) |
 | `BOE_SOLD_WEBHOOK_URL`         | Optional (#873). Same place, for a separate sold channel   |
 | `CONTACT_WEBHOOK_URL`          | Same place, on the admin channel the contact form reports to (#577) |
-| `DISCORD_TEST_WEBHOOK_URL`     | Same place, on the bot test channel (#1007)                |
-| `OPTIONAL_RSVP_REMINDERS_SECRET` | The cron secret in vault (#895); smoke mode checks it too |
+| `OPTIONAL_RSVP_REMINDERS_SECRET` | The cron secret in vault (#895)                          |
 
 Note: the BoE webhook secret exists on prod under the name `BOE-Found-Webhook`
 (created that way in the dashboard, 2026-08-26). The boe-webhook function reads
@@ -996,13 +995,6 @@ Note: `BOE_SOLD_WEBHOOK_URL` is optional. `boe-sold-webhook` reads it first and
 falls back to the found pair, so with nothing added the sold message lands in the
 found channel and moving it later is one dashboard entry rather than a code change.
 With none of the three set the function no-ops with `{ skipped: true }`.
-
-Note: `DISCORD_TEST_WEBHOOK_URL` is where a smoke test posts (#1007), so nothing
-under test reaches a channel a team operates in. A smoke request carries
-`smoke: true` in the body and the `x-cron-secret` header, which is
-`OPTIONAL_RSVP_REMINDERS_SECRET`; without the header the function answers 401,
-and with no test webhook set it refuses rather than posting to the live
-channel. `boe-webhook` honours it since #956 and `contact-webhook` since #957.
 
 Note: the four `BOT_WEBHOOK_*` entries above predate #991, which put every team
 on one bot process. The relay on `main` reads a single shared `BOT_WEBHOOK_URL`
@@ -1027,25 +1019,11 @@ supabase functions deploy boe-sold-webhook
 supabase functions deploy contact-webhook
 ```
 
-Smoke the found post into the test channel (the id is any `boe_items` row):
-
-```bash
-curl -X POST "$SUPABASE_URL/functions/v1/boe-webhook" \
-  -H "Authorization: Bearer $ANON_KEY" -H "apikey: $ANON_KEY" \
-  -H "x-cron-secret: $CRON_SECRET" -H 'Content-Type: application/json' \
-  -d '{"id":1,"smoke":true}'
-```
-
-Smoke the contact post the same way. Called with the anon key like this it
-reports as not logged in, which is what a signed-out visitor's report looks
-like; the signed-in path takes a real session and is checked from the browser:
-
-```bash
-curl -X POST "$SUPABASE_URL/functions/v1/contact-webhook" \
-  -H "Authorization: Bearer $ANON_KEY" -H "apikey: $ANON_KEY" \
-  -H "x-cron-secret: $CRON_SECRET" -H 'Content-Type: application/json' \
-  -d '{"team":"phoenix","name":"Smoke","message":"smoke test","smoke":true}'
-```
+The deployed posters carry no test mode (#1086): a body carrying `smoke: true`
+is an ordinary post. The proof that a deploy worked is the first real post that
+follows it, and a rehearsal runs on the local stack against the sink (section
+11 of `docs/supabase-local-dev-setup.md`), where nothing reaches a channel a
+team operates in.
 
 Note: `contact-webhook` takes the submitter's identity from the JWT since #957.
 The Discord line on the post is the caller's own account, so a report can no
