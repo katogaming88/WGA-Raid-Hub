@@ -427,6 +427,118 @@ function restorePriorityStale(playerId, itemId) {
     });
 }
 
+// Bulk version of dismissPriorityStale()/dismissPriorityConflict() for every
+// live conflict in the banner at once -- one multi-row insert per table
+// rather than N single-row round trips. Each table's in-memory patch only
+// applies if its own insert succeeded, so a partial failure still leaves the
+// banner matching what's actually saved.
+function dismissAllPriorityConflicts() {
+  if (!supabaseClient) return;
+  var conflicts = getPriorityListConflicts();
+  if (!conflicts.count) return;
+  if (!confirm('Dismiss all ' + conflicts.count + ' Priority List conflicts?')) return;
+  var season = resolveSeasonViewCode();
+  var teamId = _teamCfg.supabaseTeamId;
+
+  var staleRows = conflicts.staleEntries.map(function (e) {
+    return { player_id: e.player_id, season: season, item_id: e.item_id };
+  });
+  var groupRows = conflicts.sameBossGroups.map(function (g) {
+    return { player_id: Number(g.playerId), season: season, boss: g.boss, track: g.track };
+  });
+  var withTeam = function (r) {
+    return Object.assign({ team_id: teamId }, r);
+  };
+
+  var writes = [];
+  if (staleRows.length) {
+    writes.push(
+      supabaseClient
+        .from('priority_stale_dismissals')
+        .insert(staleRows.map(withTeam))
+        .then(function (result) {
+          if (result.error) {
+            console.warn('priority_stale_dismissals bulk insert failed.', result.error.message);
+            return;
+          }
+          DATA.priorityStaleDismissals = (DATA.priorityStaleDismissals || []).concat(staleRows);
+          DATA._priorityStaleDismissalsRawRows = (DATA._priorityStaleDismissalsRawRows || []).concat(staleRows);
+        })
+    );
+  }
+  if (groupRows.length) {
+    writes.push(
+      supabaseClient
+        .from('priority_conflict_dismissals')
+        .insert(groupRows.map(withTeam))
+        .then(function (result) {
+          if (result.error) {
+            console.warn('priority_conflict_dismissals bulk insert failed.', result.error.message);
+            return;
+          }
+          DATA.priorityConflictDismissals = (DATA.priorityConflictDismissals || []).concat(groupRows);
+          DATA._priorityConflictDismissalsRawRows = (DATA._priorityConflictDismissalsRawRows || []).concat(groupRows);
+        })
+    );
+  }
+  Promise.all(writes).then(updatePriorityBadges);
+}
+
+// Inverse of dismissAllPriorityConflicts() -- clears every dismissal for this
+// team+season in both tables, which is exactly what the "N dismissed" list
+// shows (DATA.priority*Dismissals are already scoped to the season in view).
+// The raw-row caches span seasons, so only this season's rows are dropped.
+function restoreAllPriorityConflicts() {
+  if (!supabaseClient) return;
+  var groupCount = (DATA.priorityConflictDismissals || []).length;
+  var staleCount = (DATA.priorityStaleDismissals || []).length;
+  var total = groupCount + staleCount;
+  if (!total) return;
+  if (!confirm('Restore all ' + total + ' dismissed Priority List conflicts?')) return;
+  var season = resolveSeasonViewCode();
+  var teamId = _teamCfg.supabaseTeamId;
+  var otherSeason = function (d) {
+    return d.season !== season;
+  };
+
+  var writes = [];
+  if (staleCount) {
+    writes.push(
+      supabaseClient
+        .from('priority_stale_dismissals')
+        .delete()
+        .eq('team_id', teamId)
+        .eq('season', season)
+        .then(function (result) {
+          if (result.error) {
+            console.warn('priority_stale_dismissals bulk delete failed.', result.error.message);
+            return;
+          }
+          DATA.priorityStaleDismissals = [];
+          DATA._priorityStaleDismissalsRawRows = (DATA._priorityStaleDismissalsRawRows || []).filter(otherSeason);
+        })
+    );
+  }
+  if (groupCount) {
+    writes.push(
+      supabaseClient
+        .from('priority_conflict_dismissals')
+        .delete()
+        .eq('team_id', teamId)
+        .eq('season', season)
+        .then(function (result) {
+          if (result.error) {
+            console.warn('priority_conflict_dismissals bulk delete failed.', result.error.message);
+            return;
+          }
+          DATA.priorityConflictDismissals = [];
+          DATA._priorityConflictDismissalsRawRows = (DATA._priorityConflictDismissalsRawRows || []).filter(otherSeason);
+        })
+    );
+  }
+  Promise.all(writes).then(updatePriorityBadges);
+}
+
 // Separated out from getPriorityListConflicts()/its banner -- drift is its
 // own section now (see buildPriorityDriftBannerHtml()) rather than a third
 // entry type mixed into the stale/same-boss conflicts list.
@@ -483,7 +595,11 @@ function buildPriorityConflictsBannerHtml(conflicts, expanded) {
   }
 
   if (expanded && conflicts.count) {
-    html += '<div class="prio-overalloc-list">';
+    html +=
+      '<div class="prio-overalloc-list">' +
+      '<div class="prio-overalloc-player prio-conflict-dismiss-all-row">' +
+      '<button type="button" class="prio-conflict-dismiss-btn" title="Dismiss every conflict listed below" ' +
+      'onclick="event.stopPropagation();dismissAllPriorityConflicts()">Dismiss all</button></div>';
     conflicts.staleEntries.forEach(function (e) {
       html +=
         '<div class="prio-overalloc-player"><span class="prio-overalloc-name">' +
@@ -556,7 +672,11 @@ function buildDismissedPriorityConflictsHtml(dismissedGroups, dismissedStale, ex
     ' dismissed</span></button>';
 
   if (expanded) {
-    html += '<div class="prio-overalloc-list">';
+    html +=
+      '<div class="prio-overalloc-list">' +
+      '<div class="prio-overalloc-player prio-conflict-dismiss-all-row">' +
+      '<button type="button" class="prio-conflict-dismiss-btn" title="Restore every dismissal listed below" ' +
+      'onclick="event.stopPropagation();restoreAllPriorityConflicts()">Restore all</button></div>';
     dismissedGroups.forEach(function (d) {
       var player = (DATA.roster || []).find(function (p) {
         return p.id === d.player_id;

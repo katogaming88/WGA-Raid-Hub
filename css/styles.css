@@ -596,6 +596,7 @@ select#playerSelect option { background:#1a1d27; }
 /* Dismiss/Restore for same-boss conflict groups, and the collapsed "N dismissed" line below the main banner */
 .prio-conflict-dismiss-btn { font-size:0.82rem; padding:1px 8px; border-radius:2px; background:none; border:1px solid var(--border-mid); color:var(--text-muted); cursor:pointer; margin-left:auto; }
 .prio-conflict-dismiss-btn:hover { border-color:var(--text-muted); color:var(--text); }
+.prio-conflict-dismiss-all-row { padding-bottom:0.3rem; margin-bottom:0.15rem; border-bottom:1px solid rgba(214,90,60,0.2); }
 .prio-overalloc-dismissed { margin-top:0.65rem; padding-top:0.6rem; border-top:1px solid rgba(214,90,60,0.2); }
 
 /* Loot fairness */
