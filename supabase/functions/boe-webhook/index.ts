@@ -25,16 +25,11 @@
 // In plain content it would, so allowed_mentions is load bearing rather than
 // decorative. The note is still raider text once it is on the row, so both
 // sanitisers below stay.
-//
-// Smoke mode (#1007): `smoke: true` plus the x-cron-secret header posts to the
-// bot test channel, takes no claim, and marks the post. Without the header it
-// refuses, and with no test channel configured it refuses rather than falling
-// back to the live one, which is the whole point of the mode.
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
 
@@ -97,20 +92,10 @@ Deno.serve(async (req) => {
   };
 
   try {
-    const { id, smoke } = await req.json();
+    const { id } = await req.json();
     numericId = Number(id);
     if (id === undefined || id === null || id === '' || !Number.isInteger(numericId) || numericId <= 0) {
       return jsonResponse({ success: false, error: 'Missing id' }, 400);
-    }
-
-    const isSmoke = smoke === true;
-    if (isSmoke) {
-      // The operator credential the cron functions already use, rather than a
-      // second secret: this is the same class of caller.
-      const cronSecret = Deno.env.get('OPTIONAL_RSVP_REMINDERS_SECRET');
-      if (!cronSecret || req.headers.get('x-cron-secret') !== cronSecret) {
-        return jsonResponse({ success: false, error: 'Smoke mode needs the cron secret' }, 401);
-      }
     }
 
     // BOE_WEBHOOK_URL is the documented name (setup guide, .env.example) and
@@ -118,13 +103,8 @@ Deno.serve(async (req) => {
     // secret was created in the dashboard as BOE-Found-Webhook (2026-08-26)
     // and the runtime delivers hyphenated names fine, so read it as the
     // fallback rather than asking for a re-paste. Either name works.
-    const webhookUrl = isSmoke
-      ? Deno.env.get('DISCORD_TEST_WEBHOOK_URL')
-      : Deno.env.get('BOE_WEBHOOK_URL') || Deno.env.get('BOE-Found-Webhook');
+    const webhookUrl = Deno.env.get('BOE_WEBHOOK_URL') || Deno.env.get('BOE-Found-Webhook');
     if (!webhookUrl) {
-      if (isSmoke) {
-        return jsonResponse({ success: false, error: 'No test webhook is configured' }, 500);
-      }
       return jsonResponse({ success: true, skipped: true });
     }
 
@@ -179,29 +159,24 @@ Deno.serve(async (req) => {
     if (row.payout_donated === true) {
       lines.push("**Finder's cut:** Donating to the guild");
     }
-    if (isSmoke) {
-      lines.unshift('[smoke]');
-    }
 
     // The claim is the gate, so it sits between building the post and sending
     // it: two callers racing on one id both reach here and exactly one gets a
-    // row back. A smoke claims nothing, so it can be run twice.
-    if (!isSmoke) {
-      const { data: claimed, error: claimError } = await db
-        .from('boe_items')
-        .update({ found_posted_at: new Date().toISOString() })
-        .eq('id', numericId)
-        .is('found_posted_at', null)
-        .select('id');
-      if (claimError) {
-        console.error('boe-webhook claim failed:', claimError.message);
-        return jsonResponse({ success: false, error: 'Could not claim the find' }, 500);
-      }
-      if (!claimed || claimed.length === 0) {
-        return jsonResponse({ success: true, skipped: true, reason: 'already posted' });
-      }
-      claimTaken = true;
+    // row back.
+    const { data: claimed, error: claimError } = await db
+      .from('boe_items')
+      .update({ found_posted_at: new Date().toISOString() })
+      .eq('id', numericId)
+      .is('found_posted_at', null)
+      .select('id');
+    if (claimError) {
+      console.error('boe-webhook claim failed:', claimError.message);
+      return jsonResponse({ success: false, error: 'Could not claim the find' }, 500);
     }
+    if (!claimed || claimed.length === 0) {
+      return jsonResponse({ success: true, skipped: true, reason: 'already posted' });
+    }
+    claimTaken = true;
 
     const content = lines.join('\n');
 
