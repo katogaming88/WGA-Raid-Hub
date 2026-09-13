@@ -18,6 +18,7 @@
 // real ones and index.ts is the one line that serves it. The text of the
 // post is format.ts.
 import { type SaleRow, soldPost } from './format.ts';
+import { type Env, resolveDestination } from '../_shared/discord-destination.ts';
 
 export type { SaleRow };
 
@@ -33,7 +34,7 @@ export interface SaleDb {
   managerDiscordIds(): Promise<string[]>;
 }
 
-export type Env = { get(name: string): string | undefined };
+export type { Env };
 
 export type Deps = { fetch: typeof fetch; env: Env; db: SaleDb };
 
@@ -80,14 +81,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return jsonResponse({ success: false, error: 'Not authorized' }, 403);
     }
 
-    // BOE_SOLD_WEBHOOK_URL first, so the sold post can be moved to its own
-    // channel by adding one dashboard secret rather than by a code change.
-    // With none set it lands in the found channel; with nothing set at all it
-    // no-ops, the way the found function does.
-    const webhookUrl =
-      deps.env.get('BOE_SOLD_WEBHOOK_URL') || deps.env.get('BOE_WEBHOOK_URL') || deps.env.get('BOE-Found-Webhook');
-    if (!webhookUrl) {
-      return jsonResponse({ success: true, skipped: true });
+    // Where this goes is the resolver's call (#1081): the sold chain on
+    // production, the test webhook on a local stack. With nothing to post to
+    // it no-ops, the way the found function does.
+    const dest = resolveDestination(deps.env, { destination: 'boe-sold' });
+    if (dest.kind === 'skip') {
+      if (dest.reason) console.warn('discord destination boe-sold: skipped, ' + dest.reason);
+      return jsonResponse({ success: true, skipped: true, ...(dest.reason ? { reason: dest.reason } : {}) });
     }
 
     let row: SaleRow | null;
@@ -121,10 +121,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // anyone editing this file.
     const managerIds = await deps.db.managerDiscordIds();
 
-    const response = await deps.fetch(webhookUrl, {
+    const response = await deps.fetch(dest.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(soldPost(row, finderId, managerIds))
+      body: JSON.stringify(soldPost(row, finderId, managerIds, dest.source))
     });
 
     if (!response.ok) {
@@ -132,6 +132,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return jsonResponse({ success: false, error: 'Discord responded with ' + response.status });
     }
 
+    // Once per post Discord took, never the URL.
+    console.info('discord destination boe-sold: ' + dest.source + ' via ' + dest.via);
     return jsonResponse({ success: true });
   } catch (err) {
     console.error('boe-sold-webhook error:', err);

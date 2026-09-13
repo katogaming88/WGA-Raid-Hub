@@ -12,6 +12,52 @@ answers to.
 
 ---
 
+## [3.110.0] - 2026-09-13
+
+### Functions
+
+- The three webhook posters (`boe-webhook`, `boe-sold-webhook`,
+  `contact-webhook`) now send every Discord post where the function is
+  running says it should
+  ([#1081](https://github.com/katogaming88/WGA-Raid-Hub/issues/1081)). One
+  shared module, `supabase/functions/_shared/discord-destination.ts`, reads
+  the platform's `SUPABASE_URL`: on the production host a post goes to the
+  live channel exactly as before, and on any other host (a local stack, a
+  preview, a restore under a new ref) it goes to `DISCORD_TEST_WEBHOOK_URL`
+  marked `[local]` with nobody pinged, or is skipped naming that variable
+  when it is unset. A developer's stack can no longer post through those
+  three into a channel a team operates in, whatever its `.env` holds, and
+  nobody edits that file per session any more; `discord-bot-webhook`
+  forwards to a bot process over its own protocol and stays outside the rule
+  until #959. Production posts are unchanged byte for byte. Each poster logs
+  `discord destination <key>: <source> via <name>` once per post Discord
+  took, and a skip with a reason logs a warning; never the URL. A misspelt
+  destination key is a type error, and a prototype name is unknown rather
+  than a post.
+
+### Project
+
+- `tests/edge/_shared/discord-destination.test.ts` pins the resolver (the
+  registry and its chains, the production rows, the local rows, the skip
+  reasons, the unknown and prototype keys); the sold suite gains the local
+  post, the local skip and a bare local preset posting. The harness has one
+  env knob: `production(values)` and `local(values)` in the corpus are each
+  a complete env for their stack, and a bare `testDeps()` still runs as
+  production, so every earlier case keeps its meaning.
+  `tests/ci/functions-webhook-destination.test.js` takes its policed names
+  from the registry, fails on any of them anywhere in a function outside the
+  module, and pins the production host against `js/common.js`;
+  `edge-functions.yml` runs the function guards on a functions change, which
+  no workflow did before. Seven mutations, six killed; the seventh edits the
+  guard's own inputs, which review owns. Rehearsed on the local stack: three
+  posts to the sink under `[local]`, none to a live name, three skips with
+  the test webhook unset, the info line after Discord's answer and the warning
+  on the skip. `.env.example` carries `DISCORD_TEST_WEBHOOK_URL` as the one
+  local variable; section 11 of the local dev doc, CONTRIBUTING, the setup
+  guide and the restore runbook's step 8 carry the rule. The production secret
+  named `DISCORD_TEST_WEBHOOK_URL` stays set: unread on the production host,
+  it is where a restore or preview would post, marked `[local]`.
+
 ## [3.109.1] - 2026-09-13
 
 ### Project

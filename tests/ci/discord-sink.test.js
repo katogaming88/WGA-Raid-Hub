@@ -2,8 +2,9 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { startSink } from '../../scripts/dev/discord-sink.js';
 
 // The stand-in for Discord (#1055). A rehearsal that needs a real webhook URL
-// is a rehearsal that can post into a channel a team operates in, so every
-// *_WEBHOOK_URL points here instead and the posts are read from a terminal.
+// is a rehearsal that can post into a channel a team operates in, so
+// DISCORD_TEST_WEBHOOK_URL points here instead and the posts are read from a
+// terminal.
 //
 // This is the shape the 2026-09-07 boe-webhook proof used as a throwaway,
 // tracked now so the next person does not write it again. What the tests pin

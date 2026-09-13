@@ -4,9 +4,9 @@
 //   npm run dev:sink -- --status 500
 //
 // It answers every request the way an incoming webhook does and prints what it
-// was sent. Point every *_WEBHOOK_URL in supabase/functions/.env at it and a
-// rehearsal exercises the real post path with nothing reaching a channel a
-// team operates in. From inside the functions runtime the host is
+// was sent. Point DISCORD_TEST_WEBHOOK_URL in supabase/functions/.env at it
+// (and BOT_WEBHOOK_URL, for the relay) and a rehearsal exercises the real post
+// path with nothing reaching a channel a team operates in. From inside the functions runtime the host is
 // `http://host.docker.internal:8899/<anything>`, because the container cannot
 // see the machine's own localhost.
 //

@@ -513,17 +513,25 @@ npm run dev:sink                  # answers 204 like Discord, prints what it was
 npm run dev:sink -- --status 500  # the other half: refuses, so the error paths run
 ```
 
-**Point the functions at it.** Copy `supabase/functions/.env.example` to
-`supabase/functions/.env` (gitignored) and set every `*_WEBHOOK_URL` to the
+**Point the functions at it.** A function decides where its Discord post
+goes from where it is running (#1081): on a local stack the three webhook
+posters (`boe-webhook`, `boe-sold-webhook`, `contact-webhook`) send to
+`DISCORD_TEST_WEBHOOK_URL`, marked `[local]` with nobody pinged, and never
+to a live name, whatever the file holds. `discord-bot-webhook` is outside
+that rule until #959: it forwards to `BOT_WEBHOOK_URL`, so point that at the
+sink too if a rehearsal reaches it. Copy `supabase/functions/.env.example`
+to `supabase/functions/.env` (gitignored) and set that one variable to the
 sink, plus any value you like for `OPTIONAL_RSVP_REMINDERS_SECRET`:
 
 ```sh
-BOE_WEBHOOK_URL=http://host.docker.internal:8899/webhooks/boe-found
+DISCORD_TEST_WEBHOOK_URL=http://host.docker.internal:8899/webhooks/test-channel
 OPTIONAL_RSVP_REMINDERS_SECRET=any-local-value
 ```
 
 `host.docker.internal` rather than `127.0.0.1`: the functions runtime is a
-container and cannot see the machine's own localhost.
+container and cannot see the machine's own localhost. To see the post in
+Discord instead, set the variable to the bot test channel's webhook URL. With
+it unset, every poster answers `skipped` naming it and posts nowhere.
 
 **Serve them.**
 
@@ -547,9 +555,11 @@ curl -X POST "http://127.0.0.1:54321/functions/v1/boe-webhook" \
   -d '{"id":1}'
 ```
 
-That answers `{"success":true}` and the post prints in the sink's terminal.
-`id` is a row in `boe_items`; the seed ships two. The posters carry no test
-mode (#1086), so what prints is the real post: the found post claims its row
+That answers `{"success":true}` and the post prints in the sink's terminal
+with `[local]` as its first line; the serve terminal logs
+`discord destination boe-found: local via DISCORD_TEST_WEBHOOK_URL`. `id` is
+a row in `boe_items`; the seed ships two. The posters carry no test mode
+(#1086), so what prints is the real post: the found post claims its row
 (`found_posted_at`), and a second post of the same id answers
 `already posted` until the stack is reset.
 

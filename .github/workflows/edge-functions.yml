@@ -5,7 +5,9 @@ name: Edge Functions
 # executes these files: `supabase functions deploy` bundles without checking,
 # so before this the first execution of a changed function was in production.
 # Formatting is Prettier's, in lint.yml, whose paths include both
-# directories.
+# directories. The vitest guards over the functions (tests/ci/functions-*)
+# run here too, because what they police lives under supabase/functions/
+# and js/common.js and no other workflow watches those paths for them.
 
 on:
   pull_request:
@@ -13,6 +15,9 @@ on:
       - 'supabase/functions/**'
       - 'tests/edge/**'
       - 'deno.jsonc'
+      - 'js/common.js'
+      - 'scripts/ci/functions-to-deploy.js'
+      - 'tests/ci/functions-*.test.js'
       - '.github/workflows/edge-functions.yml'
 
 # A new push to the PR supersedes any still-running check on the old commit.
@@ -43,3 +48,13 @@ jobs:
       # The task carries the flags; see deno.jsonc.
       - name: Test
         run: deno task test
+      # The source-level guards: no bare WCL literal (#1013), no webhook name
+      # outside the destination module and the production host pinned to
+      # js/common.js (#1081). vitest, so Node beside Deno.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Guards
+        run: npx vitest run tests/ci/functions-*.test.js

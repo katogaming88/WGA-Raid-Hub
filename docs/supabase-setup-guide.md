@@ -991,6 +991,15 @@ Note: the BoE webhook secret exists on prod under the name `BOE-Found-Webhook`
 (created that way in the dashboard, 2026-08-26). The boe-webhook function reads
 `BOE_WEBHOOK_URL` first and falls back to that name, so either works.
 
+Note: the three webhook posters resolve their destination through
+`supabase/functions/_shared/discord-destination.ts` (#1081), which reads the
+names above on the production host only and `DISCORD_TEST_WEBHOOK_URL` on any
+other host (a local stack, section 11 of `docs/supabase-local-dev-setup.md`; a
+preview or a restore under a new ref). Keep the production secret of that name
+set: on the production host nothing reads it, and on any other host it is where
+every post lands, marked `[local]`, which is what makes a wrong
+`PRODUCTION_HOST` visible rather than a silent skip.
+
 Note: `BOE_SOLD_WEBHOOK_URL` is optional. `boe-sold-webhook` reads it first and
 falls back to the found pair, so with nothing added the sold message lands in the
 found channel and moving it later is one dashboard entry rather than a code change.

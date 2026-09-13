@@ -47,6 +47,17 @@ describe('the Edge Functions workflow', () => {
     expect(workflow).toMatch(/^\s+run: deno lint$/m);
     expect(workflow).toMatch(/^\s+run: deno task test$/m);
   });
+
+  // The vitest guards over the functions (#1013's literals, #1081's
+  // destinations) read supabase/functions/**, js/common.js and their own
+  // lister; changelog-check-tests.yml runs them only on a tests/ci or
+  // scripts/ci change, so a PR touching only a function would skip them.
+  it('runs the function guards on the paths they police', () => {
+    expect(workflow).toMatch(/^\s+- 'js\/common\.js'$/m);
+    expect(workflow).toMatch(/^\s+- 'scripts\/ci\/functions-to-deploy\.js'$/m);
+    expect(workflow).toMatch(/^\s+- 'tests\/ci\/functions-\*\.test\.js'$/m);
+    expect(workflow).toMatch(/^\s+run: npx vitest run tests\/ci\/functions-\*\.test\.js$/m);
+  });
 });
 
 describe('the Deno config', () => {

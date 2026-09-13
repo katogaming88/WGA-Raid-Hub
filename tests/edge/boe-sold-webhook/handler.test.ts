@@ -9,10 +9,16 @@ import {
   FINDER_ID,
   FOUND_WEBHOOK_URL,
   LEGACY_WEBHOOK_URL,
+  LOCAL_STACK_SUPABASE_URL,
   MANAGER_AUTH,
   MANAGER_ID,
+  PRODUCTION_SUPABASE_URL,
   SOLD_ROW,
-  SOLD_WEBHOOK_URL
+  SOLD_WEBHOOK_URL,
+  TEST_WEBHOOK_URL,
+  envOf,
+  local,
+  production
 } from '../_support/corpus.ts';
 import { fakeDb, testDeps } from '../_support/deps.ts';
 import { discordError, discordNoContent } from '../_support/fetch.ts';
@@ -104,7 +110,7 @@ Deno.test('a site admin without the manager grant passes the gate', async () => 
 
 Deno.test('with no webhook URL configured the call is skipped after the gate and before the row read', async () => {
   const db = fakeDb({ rows: [SOLD_ROW] });
-  const { deps, calls } = testDeps({ db, env: {}, responses: [discordNoContent()] });
+  const { deps, calls } = testDeps({ db, env: production(), responses: [discordNoContent()] });
   const res = await handle(post({ id: 41 }), deps);
   assertEquals(await json(res), { status: 200, body: { success: true, skipped: true } });
   assertEquals(
@@ -184,7 +190,7 @@ Deno.test('the sold webhook URL wins over the found one, which wins over the leg
     [legacyOnly, LEGACY_WEBHOOK_URL]
   ] as const) {
     const db = fakeDb({ rows: [SOLD_ROW], finderId: FINDER_ID });
-    const { deps, calls } = testDeps({ db, env, responses: [discordNoContent()] });
+    const { deps, calls } = testDeps({ db, env: production(env), responses: [discordNoContent()] });
     await handle(post({ id: 41 }), deps);
     assertEquals(
       calls.map((c) => c.url),
@@ -202,3 +208,63 @@ Deno.test('a body that is not JSON is the catch-all: a 200 that says it failed',
   assertEquals(typeof body.error, 'string');
   assertEquals(calls, []);
 });
+
+Deno.test('the harness runs as production unless a case says otherwise', () => {
+  const { deps } = testDeps();
+  assertEquals(deps.env.get('SUPABASE_URL'), PRODUCTION_SUPABASE_URL);
+});
+
+Deno.test('the local preset alone is enough to post: it carries the test webhook', async () => {
+  const db = fakeDb({ rows: [SOLD_ROW], finderId: FINDER_ID, managerIds: [MANAGER_ID] });
+  const { deps, calls } = testDeps({ db, env: local(), responses: [discordNoContent()] });
+  const res = await handle(post({ id: 41 }), deps);
+  assertEquals(await json(res), { status: 200, body: { success: true } });
+  assertEquals(
+    calls.map((c) => c.url),
+    [TEST_WEBHOOK_URL]
+  );
+});
+
+Deno.test(
+  'on a local stack the sold post goes to the test webhook, marked, with nobody pinged, and never to a live name',
+  async () => {
+    const db = fakeDb({ rows: [SOLD_ROW], finderId: FINDER_ID, managerIds: [MANAGER_ID] });
+    const { deps, calls } = testDeps({
+      db,
+      env: local({
+        BOE_SOLD_WEBHOOK_URL: SOLD_WEBHOOK_URL,
+        BOE_WEBHOOK_URL: FOUND_WEBHOOK_URL,
+        'BOE-Found-Webhook': LEGACY_WEBHOOK_URL
+      }),
+      responses: [discordNoContent()]
+    });
+    const res = await handle(post({ id: 41 }), deps);
+    assertEquals(await json(res), { status: 200, body: { success: true } });
+    assertEquals(calls.length, 1);
+    assertEquals(calls[0].url, TEST_WEBHOOK_URL);
+    assertEquals(JSON.parse(calls[0].body ?? ''), soldPost(SOLD_ROW, FINDER_ID, [MANAGER_ID], 'local'));
+  }
+);
+
+Deno.test(
+  'on a local stack with no test webhook the post is skipped naming it, after the gate and before the row read',
+  async () => {
+    const db = fakeDb({ rows: [SOLD_ROW] });
+    // Built without the preset, since a preset cannot unset the test webhook.
+    const { deps, calls } = testDeps({
+      db,
+      env: envOf({ SUPABASE_URL: LOCAL_STACK_SUPABASE_URL, BOE_SOLD_WEBHOOK_URL: SOLD_WEBHOOK_URL }),
+      responses: [discordNoContent()]
+    });
+    const res = await handle(post({ id: 41 }), deps);
+    assertEquals(await json(res), {
+      status: 200,
+      body: { success: true, skipped: true, reason: 'DISCORD_TEST_WEBHOOK_URL is not set on this local stack' }
+    });
+    assertEquals(
+      db.calls.map((c) => c.method),
+      ['getUser', 'isBoeManager', 'isSiteAdmin']
+    );
+    assertEquals(calls, []);
+  }
+);
