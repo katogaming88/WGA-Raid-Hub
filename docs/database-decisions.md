@@ -8,6 +8,21 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-13 -- page addresses carry a guild key and a team key, readable for WGA and coded for everyone else (#1100)
+
+Not shipped yet. The schema half lands with or before the new app shell (#1101); the full address map is on [#1100](https://github.com/katogaming88/WGA-Raid-Hub/issues/1100#issuecomment-5655852445).
+
+The rebuilt site (#1109) routes every guild-scoped page as `/g/<guild key>/t/<team key>/...`, so WGA's Phoenix roster is `/g/wga/t/phoenix/roster`. Kat's call: WGA keeps readable names, and any other guild that uses the site later gets random codes (`/g/k3n9x2qa/t/p7q4m81z/roster`), the way WoWUtils addresses its groups. There is one route shape; the difference is only in what the key holds.
+
+What that asks of the database:
+
+- **A guild level exists.** A `guilds` row for WGA with key `wga`, and every team linked to it. Nothing models the guild today (guild-wide things like BoE sales and guild officers are simply not team-scoped), and #1045 and the people table in #942 both need it anyway, so the address decision is what brings it forward rather than a new cost.
+- **Guilds and teams each carry one URL key.** Teams reuse `teams.slug` (`phoenix`, `hellfire`, `immolation`, `wrathless`). A new guild or team gets a random 8-character lowercase alphanumeric key by default, and only a site admin can replace it with a readable one, so no guild can claim a name like `wga`. Guild keys are unique site-wide, team keys unique within their guild.
+- **Players are addressed by a code, never by `name_realm`.** A readable player address would break on a rename, a realm transfer, or a main swap, and `name_realm` is not even normalised today (#941 found `Area 52` and `Area52` forking one person into two rows). A code column on `players` avoids all of that and carries over to `people` when #942 lands.
+- **A changed readable key keeps redirecting.** When a guild or team key is renamed, the old key is kept and resolves to the new one, so links already posted in Discord keep working.
+
+Rejected: name-based addresses without a guild segment (`/phoenix/roster`), which read best for WGA today but would need every shared link redirected the day a second guild arrives, and team names can collide across guilds. Codes for WGA too, which would give up readability for WGA's own raiders to buy nothing the key-per-guild scheme does not already give.
+
 ## 2026-09-08 -- SQL injection posture: static SQL, pinned search paths, and grants that match production (#1009, #1010, #1011, #1020)
 
 Shipped: `20260908155617_pin_search_path_on_invoker_functions.sql`, `20260908155859_revoke_anon_on_submit_season_signup.sql`, `20260908200838_submit_season_signup_restore_require_auth.sql`
