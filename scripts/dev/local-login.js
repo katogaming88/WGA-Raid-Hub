@@ -26,6 +26,11 @@
 // fresh account whose provider_id matches one of them gets linked by
 // link_auth_user_to_member() on insert. It reads that person's data.
 //
+// That account is minted here in SQL rather than through the auth API, because
+// since #1118 the trigger links only an account stamped as a Discord signup in
+// raw_app_meta_data, and no admin API call can stamp that before the insert it
+// fires on. See mintSql. It needs psql, which the persona route does not.
+//
 // Node built-ins only, like everything in scripts/.
 import { execFileSync } from 'node:child_process';
 
@@ -90,12 +95,80 @@ export function personaNames(payload) {
     .sort();
 }
 
+/**
+ * The SQL that mints one Discord-provider account.
+ *
+ * The auth admin API cannot produce one: adminUserCreate stamps
+ * provider "email" on the model, inserts, and applies any app_metadata the
+ * caller passed afterwards as an update, while on_auth_user_created fires on
+ * the insert. So the guard added in #1118 would see "email" every time. Only a
+ * real OAuth signup stamps discord before the insert, and the local stack has
+ * no Discord provider configured. Minting the rows directly is what seed.sql
+ * and snapshot-personas.js already do, on this same column list, and the
+ * guarded trigger links the grant rows off the users insert.
+ *
+ * Interpolated rather than bound because psql -c takes no parameters. Safe
+ * here: resolveTarget has already held discordId to 17 to 20 digits, and the
+ * address is built from it.
+ */
+export function mintSql(discordId, email) {
+  return `
+with created as (
+  insert into auth.users (
+    instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+    confirmation_token, recovery_token, email_change, email_change_token_new,
+    raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+  )
+  values (
+    '00000000-0000-0000-0000-000000000000', gen_random_uuid(),
+    'authenticated', 'authenticated', '${email}', '', now(),
+    '', '', '', '',
+    '{"provider":"discord","providers":["discord"]}'::jsonb,
+    jsonb_build_object('provider_id', '${discordId}'),
+    now(), now()
+  )
+  returning id
+)
+insert into auth.identities (
+  provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at
+)
+select '${discordId}', c.id,
+       jsonb_build_object('sub', c.id::text, 'email', '${email}', 'provider_id', '${discordId}'),
+       'discord', now(), now(), now()
+  from created c;
+`.trim();
+}
+
+/** The mint, as a command and its arguments. Runs nothing. */
+export function mintRequest(status, { email, discordId }) {
+  if (!status.DB_URL) {
+    throw new Error('The stack reported no DB_URL, so the account cannot be minted. Is it running?');
+  }
+  return {
+    command: 'psql',
+    // -X so a personal .psqlrc cannot change how this behaves, and one
+    // transaction so a failed identity insert takes the user row with it.
+    // Same shape as db-snapshot.js.
+    args: ['-X', '-v', 'ON_ERROR_STOP=1', '--single-transaction', '-d', status.DB_URL, '-c', mintSql(discordId, email)]
+  };
+}
+
+function runMint({ command, args }) {
+  try {
+    return execFileSync(command, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      throw new Error(
+        'psql is not on PATH, and --discord-id needs it to mint the account. Section 1d of docs/supabase-local-dev-setup.md installs it.'
+      );
+    }
+    throw new Error(`Could not mint the account: ${String(err.stderr || err.message).trim()}`);
+  }
+}
+
 /** The admin generate_link call, as a URL and fetch options. */
-export function linkRequest(status, { email, discordId }) {
+export function linkRequest(status, { email }) {
   const body = { type: 'magiclink', email };
-  // Carried as user metadata so the link trigger can bind the new account to
-  // whatever grant rows already name that Discord id.
-  if (discordId) body.data = { provider_id: discordId };
   return {
     url: `${status.API_URL}/auth/v1/admin/generate_link`,
     options: {
@@ -131,6 +204,7 @@ async function callAuth(doFetch, { url, options }) {
 export async function login(target = {}, deps = {}) {
   const status = deps.status || readStatus;
   const doFetch = deps.fetch || fetch;
+  const mint = deps.mint || runMint;
 
   let stack;
   try {
@@ -142,8 +216,11 @@ export async function login(target = {}, deps = {}) {
     throw new Error('Could not read the local stack. Is it running? Start it with `supabase start`.');
   }
 
+  // Read on both routes now. A persona name is checked against it, and the
+  // Discord route mints only when the stack does not already hold the account.
+  const names = personaNames(await callAuth(doFetch, listRequest(stack)));
+
   if (!target.discordId) {
-    const names = personaNames(await callAuth(doFetch, listRequest(stack)));
     const held = names.length ? names.join(', ') : 'nothing yet (run `supabase db reset` or `npm run db:snapshot`)';
     if (!target.persona) {
       throw new Error(`Name a persona. On this stack: ${held}. Or pass --discord-id <id>.`);
@@ -155,6 +232,10 @@ export async function login(target = {}, deps = {}) {
   }
 
   const resolved = resolveTarget(target);
+  if (resolved.discordId && !names.includes(resolved.discordId)) {
+    mint(mintRequest(stack, resolved));
+  }
+
   return readLink(await callAuth(doFetch, linkRequest(stack, resolved)));
 }
 

@@ -367,8 +367,12 @@ describe('the manager gate on the lifecycle RPCs', () => {
           .auth_user_id
       ).toBeNull();
 
+      // Stamped as a Discord signup: since #1118 the trigger revives a grant
+      // only for one.
       await q(
-        "insert into auth.users (id, raw_user_meta_data) values ($1, jsonb_build_object('provider_id', 'discord-not-yet-seen'))",
+        `insert into auth.users (id, raw_app_meta_data, raw_user_meta_data)
+         values ($1, '{"provider":"discord","providers":["discord"]}'::jsonb,
+                 jsonb_build_object('provider_id', 'discord-not-yet-seen'))`,
         [uid]
       );
       expect(

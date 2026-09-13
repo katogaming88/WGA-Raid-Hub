@@ -366,6 +366,19 @@ name that person. On a seeded stack that is nobody; it matters after section 12,
 where real rows are restored with their auth links cleared, and there it means
 reading that person's data. The named personas cover every role without it.
 
+**This route needs `psql`** (section 1d), which the persona route does not. Since
+[#1118](https://github.com/katogaming88/WGA-Raid-Hub/issues/1118) the link trigger
+binds grant rows only for an account stamped as a Discord signup in
+`raw_app_meta_data`, which is service-role-only, and no admin API call can stamp
+it before the insert the trigger fires on. So the account is minted as two rows
+in SQL, in `auth.users` and `auth.identities`, the same way `supabase/seed.sql`
+and `scripts/dev/snapshot-personas.js` mint the personas, and the trigger links
+it from there. An account the stack already holds is reused and nothing is minted.
+
+Because the account exists and is confirmed before the link is asked for, this
+route now returns a `type=magiclink` link. A `type=signup` link from it means the
+mint did not happen and the account is new and holds nothing.
+
 **No email is sent and none is needed.** The addresses are `@wga.local`, the
 link comes back from the API rather than an inbox, and anything the stack does
 try to mail is caught by Mailpit at <http://127.0.0.1:54324>.

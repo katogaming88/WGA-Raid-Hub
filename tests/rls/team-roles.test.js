@@ -73,13 +73,14 @@ const revoke = (asUser, uid, teamId, discordId) =>
   asUser(uid, 'select public.admin_revoke_team_role($1, $2)', [teamId, discordId]);
 
 // The ::text casts are required: node-pg cannot infer a type for a parameter
-// used only inside jsonb_build_object (found the hard way on #889).
+// used only inside jsonb_build_object (found the hard way on #889). Stamped as
+// a Discord signup because since #1118 the trigger links grant rows only for
+// one.
 const makeAuthUser = (q, uid, discordId) =>
-  q('insert into auth.users (id, raw_user_meta_data) values ($1, jsonb_build_object($2::text, $3::text))', [
-    uid,
-    'provider_id',
-    discordId
-  ]);
+  q(
+    'insert into auth.users (id, raw_app_meta_data, raw_user_meta_data) values ($1, $2::jsonb, jsonb_build_object($3::text, $4::text))',
+    [uid, '{"provider":"discord","providers":["discord"]}', 'provider_id', discordId]
+  );
 
 const memberRow = (q, teamId, discordId) =>
   q('select * from public.team_members where team_id = $1 and discord_id = $2', [teamId, discordId]).then(
