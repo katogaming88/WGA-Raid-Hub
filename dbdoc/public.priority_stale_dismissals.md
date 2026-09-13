@@ -64,6 +64,7 @@ erDiagram
   text slug
   timestamp_with_time_zone archived_at
   integer wcl_guild_id
+  integer guild_id FK
 }
 "public.players" {
   integer id
@@ -89,6 +90,7 @@ erDiagram
   integer bonus_roll_encounter_id FK
   boolean is_rotator
   timestamp_with_time_zone bis_link_updated_at
+  text url_code
 }
 "public.items" {
   integer id

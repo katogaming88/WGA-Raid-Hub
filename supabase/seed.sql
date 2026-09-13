@@ -109,10 +109,11 @@ from auth.users u;
 -- every stack (20260826220829_wrathless_team.sql). Immolation was created in
 -- production by hand, so it is seeded here to keep the seeded teams table the
 -- same shape as production's (#1065).
-insert into public.teams (id, name, slug) values
-  (1, 'Team Phoenix', 'phoenix'),
-  (2, 'Hellfire Rollers', 'hellfire'),
-  (3, 'Immolation', 'immolation');
+-- The guild row itself is also made by a migration (20260913180002_guild_url_keys.sql).
+insert into public.teams (id, name, slug, guild_id) values
+  (1, 'Team Phoenix', 'phoenix', (select id from public.guilds where url_key = 'wga')),
+  (2, 'Hellfire Rollers', 'hellfire', (select id from public.guilds where url_key = 'wga')),
+  (3, 'Immolation', 'immolation', (select id from public.guilds where url_key = 'wga'));
 
 insert into public.team_members (id, team_id, discord_id, auth_user_id, role, name_realm) values
   (1, 1, 'discord-officer-1', '00000000-0000-0000-0000-000000000001', 'officer', 'Seedofficer-Illidan'),

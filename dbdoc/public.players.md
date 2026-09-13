@@ -27,18 +27,21 @@
 | bonus_roll_encounter_id | integer |  | true |  | [public.raid_encounters](public.raid_encounters.md) |  |
 | is_rotator | boolean | false | false |  |  | Rotator roster status (#924): not automatically Present/Attending on a raid night like Bench, but officer-assigned per raid week (officer_set_rotator_week()) rather than self-RSVP. |
 | bis_link_updated_at | timestamp with time zone |  | true |  |  |  |
+| url_code | text | new_url_code() | false |  |  | The player's code in an address (/players/\<code\>, #1114). Random, unique site-wide, and fixed once issued so shared links keep working. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | players_tier_pieces_equipped_range | CHECK | CHECK (((tier_pieces_equipped IS NULL) OR ((tier_pieces_equipped >= 0) AND (tier_pieces_equipped <= 5)))) |
+| players_url_code_format | CHECK | CHECK ((url_code ~ '^[a-z0-9]{8}$'::text)) |
 | players_class_spec_id_fkey | FOREIGN KEY | FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE |
 | players_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | players_team_id_name_realm_key | UNIQUE | UNIQUE (team_id, name_realm) |
 | players_team_member_id_fkey | FOREIGN KEY | FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE SET NULL |
 | players_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | players_bonus_roll_encounter_id_fkey | FOREIGN KEY | FOREIGN KEY (bonus_roll_encounter_id) REFERENCES raid_encounters(id) ON DELETE SET NULL |
+| players_url_code_key | UNIQUE | UNIQUE (url_code) |
 
 ## Indexes
 
@@ -46,6 +49,7 @@
 | ---- | ---------- |
 | players_pkey | CREATE UNIQUE INDEX players_pkey ON public.players USING btree (id) |
 | players_team_id_name_realm_key | CREATE UNIQUE INDEX players_team_id_name_realm_key ON public.players USING btree (team_id, name_realm) |
+| players_url_code_key | CREATE UNIQUE INDEX players_url_code_key ON public.players USING btree (url_code) |
 
 ## Triggers
 
@@ -55,6 +59,7 @@
 | trg_players_restrict_self_update | CREATE TRIGGER trg_players_restrict_self_update BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION restrict_players_self_update_to_bonus_roll() |
 | trg_players_bis_link_updated_at | CREATE TRIGGER trg_players_bis_link_updated_at BEFORE UPDATE OF bis_link ON public.players FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
 | players_clear_no_character_dismissal | CREATE TRIGGER players_clear_no_character_dismissal AFTER INSERT OR UPDATE OF team_member_id ON public.players FOR EACH ROW WHEN ((new.team_member_id IS NOT NULL)) EXECUTE FUNCTION clear_no_character_dismissal_on_link() |
+| players_keep_url_code | CREATE TRIGGER players_keep_url_code BEFORE UPDATE OF url_code ON public.players FOR EACH ROW EXECUTE FUNCTION keep_player_url_code() |
 
 ## Relations
 
@@ -110,6 +115,7 @@ erDiagram
   integer bonus_roll_encounter_id FK
   boolean is_rotator
   timestamp_with_time_zone bis_link_updated_at
+  text url_code
 }
 "public.attendance" {
   integer id
@@ -352,6 +358,7 @@ erDiagram
   text slug
   timestamp_with_time_zone archived_at
   integer wcl_guild_id
+  integer guild_id FK
 }
 "public.classes_specs" {
   integer id

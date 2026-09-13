@@ -4,19 +4,22 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('teams_id_seq'::regclass) | false | [public.attendance](public.attendance.md) [public.audit_log](public.audit_log.md) [public.bis_requests](public.bis_requests.md) [public.rclc_loot](public.rclc_loot.md) [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.players](public.players.md) [public.priority_order](public.priority_order.md) [public.season_signups](public.season_signups.md) [public.self_received_requests](public.self_received_requests.md) [public.team_members](public.team_members.md) [public.team_settings](public.team_settings.md) [public.streamers](public.streamers.md) [public.notifications](public.notifications.md) [public.team_raid_progress](public.team_raid_progress.md) [public.item_preferences](public.item_preferences.md) [public.boe_items](public.boe_items.md) [public.boe_listings](public.boe_listings.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.raid_schedule](public.raid_schedule.md) [public.raid_schedule_exceptions](public.raid_schedule_exceptions.md) [public.raid_rsvps](public.raid_rsvps.md) [public.raid_rsvp_reminders_sent](public.raid_rsvp_reminders_sent.md) [public.raid_signup_sheets](public.raid_signup_sheets.md) [public.player_officer_notes](public.player_officer_notes.md) [public.team_discord_config](public.team_discord_config.md) [public.account_preferences](public.account_preferences.md) |  |  |
+| id | integer | nextval('teams_id_seq'::regclass) | false | [public.attendance](public.attendance.md) [public.audit_log](public.audit_log.md) [public.bis_requests](public.bis_requests.md) [public.rclc_loot](public.rclc_loot.md) [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.players](public.players.md) [public.priority_order](public.priority_order.md) [public.season_signups](public.season_signups.md) [public.self_received_requests](public.self_received_requests.md) [public.team_members](public.team_members.md) [public.team_settings](public.team_settings.md) [public.streamers](public.streamers.md) [public.notifications](public.notifications.md) [public.team_raid_progress](public.team_raid_progress.md) [public.item_preferences](public.item_preferences.md) [public.boe_items](public.boe_items.md) [public.boe_listings](public.boe_listings.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.raid_schedule](public.raid_schedule.md) [public.raid_schedule_exceptions](public.raid_schedule_exceptions.md) [public.raid_rsvps](public.raid_rsvps.md) [public.raid_rsvp_reminders_sent](public.raid_rsvp_reminders_sent.md) [public.raid_signup_sheets](public.raid_signup_sheets.md) [public.player_officer_notes](public.player_officer_notes.md) [public.team_discord_config](public.team_discord_config.md) [public.account_preferences](public.account_preferences.md) [public.retired_url_keys](public.retired_url_keys.md) |  |  |
 | name | text |  | false |  |  |  |
-| slug | text |  | false |  |  |  |
+| slug | text | new_url_code() | false |  |  | The team's URL key: the /t/\<key\> segment of an address, unique within its guild (#1114). The current site's ?team= parameter reads it too. |
 | archived_at | timestamp with time zone |  | true |  |  |  |
 | wcl_guild_id | integer |  | true |  |  |  |
+| guild_id | integer |  | false |  | [public.guilds](public.guilds.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| teams_slug_format | CHECK | CHECK (((slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text) AND ((length(slug) >= 2) AND (length(slug) <= 32)))) |
 | teams_name_key | UNIQUE | UNIQUE (name) |
 | teams_pkey | PRIMARY KEY | PRIMARY KEY (id) |
-| teams_slug_key | UNIQUE | UNIQUE (slug) |
+| teams_guild_id_fkey | FOREIGN KEY | FOREIGN KEY (guild_id) REFERENCES guilds(id) |
+| teams_guild_id_slug_key | UNIQUE | UNIQUE (guild_id, slug) |
 
 ## Indexes
 
@@ -24,7 +27,13 @@
 | ---- | ---------- |
 | teams_name_key | CREATE UNIQUE INDEX teams_name_key ON public.teams USING btree (name) |
 | teams_pkey | CREATE UNIQUE INDEX teams_pkey ON public.teams USING btree (id) |
-| teams_slug_key | CREATE UNIQUE INDEX teams_slug_key ON public.teams USING btree (slug) |
+| teams_guild_id_slug_key | CREATE UNIQUE INDEX teams_guild_id_slug_key ON public.teams USING btree (guild_id, slug) |
+
+## Triggers
+
+| Name | Definition |
+| ---- | ---------- |
+| teams_retire_url_key | CREATE TRIGGER teams_retire_url_key AFTER UPDATE OF slug, guild_id ON public.teams FOR EACH ROW WHEN (((old.slug IS DISTINCT FROM new.slug) OR (old.guild_id IS DISTINCT FROM new.guild_id))) EXECUTE FUNCTION retire_team_url_key() |
 
 ## Relations
 
@@ -60,6 +69,8 @@ erDiagram
 "public.player_officer_notes" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_discord_config" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.account_preferences" }o--o| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.retired_url_keys" }o--o| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.teams" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id)"
 
 "public.teams" {
   integer id
@@ -67,6 +78,7 @@ erDiagram
   text slug
   timestamp_with_time_zone archived_at
   integer wcl_guild_id
+  integer guild_id FK
 }
 "public.attendance" {
   integer id
@@ -156,6 +168,7 @@ erDiagram
   integer bonus_roll_encounter_id FK
   boolean is_rotator
   timestamp_with_time_zone bis_link_updated_at
+  text url_code
 }
 "public.priority_order" {
   integer id
@@ -406,6 +419,19 @@ erDiagram
   text key
   jsonb value
   timestamp_with_time_zone set_at
+}
+"public.retired_url_keys" {
+  bigint id
+  integer guild_id FK
+  integer team_id FK
+  text url_key
+  timestamp_with_time_zone retired_at
+}
+"public.guilds" {
+  integer id
+  text name
+  text url_key
+  timestamp_with_time_zone created_at
 }
 ```
 

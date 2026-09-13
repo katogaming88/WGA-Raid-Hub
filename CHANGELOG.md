@@ -12,6 +12,37 @@ answers to.
 
 ---
 
+## [3.111.0] - 2026-09-13
+
+### Backend
+
+- Added the database side of the new app's page addresses
+  ([#1114](https://github.com/katogaming88/WGA-Raid-Hub/issues/1114)), decided
+  in [#1100](https://github.com/katogaming88/WGA-Raid-Hub/issues/1100).
+  Nothing on the current site uses them yet.
+  - A **`guilds`** table, with WGA as its one row (key `wga`), and every team
+    now belongs to it (`teams.guild_id`).
+  - A team's **slug is its address key** and is unique within its guild
+    rather than site-wide. Guild and team keys must be lowercase letters,
+    digits and hyphens; a new one gets a random 8-character code unless a
+    site admin names it.
+  - Every player has a **`url_code`**, a random 8-character code that is
+    issued once and can't be changed, so a shared profile link keeps working.
+  - Renaming a guild or team key keeps the old one in **`retired_url_keys`**,
+    so links already posted in Discord still find the right page.
+  - **`resolve_address()`** turns an address's keys into the guild, team and
+    player they point at, and says when the address used an old key or
+    different letter case so the app can redirect.
+  - `admin_create_team()` puts a new team in the guild, and refuses to guess
+    once there is more than one guild.
+
+### Project
+
+- The seed data links its teams to the guild. The backup coverage map lists
+  the two new tables, corrects the table count (46), and names the seven
+  tables still missing from the map for
+  [#699](https://github.com/katogaming88/WGA-Raid-Hub/issues/699).
+
 ## [3.110.1] - 2026-09-13
 
 ### Frontend

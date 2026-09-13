@@ -18,6 +18,7 @@ const PUBLIC_READ = [
   'attendance',
   'bis_items',
   'classes_specs',
+  'guilds',
   'item_bosses',
   'items',
   'player_wcl_season_perf',

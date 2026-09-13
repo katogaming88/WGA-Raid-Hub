@@ -507,6 +507,27 @@ export type Database = {
         }
         Relationships: []
       }
+      guilds: {
+        Row: {
+          created_at: string
+          id: number
+          name: string
+          url_key: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          name: string
+          url_key?: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          name?: string
+          url_key?: string
+        }
+        Relationships: []
+      }
       item_bosses: {
         Row: {
           boss: string
@@ -970,6 +991,7 @@ export type Database = {
           tier_pieces_equipped: number | null
           tier_pieces_synced_at: string | null
           updated_at: string | null
+          url_code: string
           wishlist_allowed: boolean
         }
         Insert: {
@@ -994,6 +1016,7 @@ export type Database = {
           tier_pieces_equipped?: number | null
           tier_pieces_synced_at?: string | null
           updated_at?: string | null
+          url_code?: string
           wishlist_allowed?: boolean
         }
         Update: {
@@ -1018,6 +1041,7 @@ export type Database = {
           tier_pieces_equipped?: number | null
           tier_pieces_synced_at?: string | null
           updated_at?: string | null
+          url_code?: string
           wishlist_allowed?: boolean
         }
         Relationships: [
@@ -1417,6 +1441,45 @@ export type Database = {
           },
           {
             foreignKeyName: "loot_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      retired_url_keys: {
+        Row: {
+          guild_id: number
+          id: number
+          retired_at: string
+          team_id: number | null
+          url_key: string
+        }
+        Insert: {
+          guild_id: number
+          id?: never
+          retired_at?: string
+          team_id?: number | null
+          url_key: string
+        }
+        Update: {
+          guild_id?: number
+          id?: never
+          retired_at?: string
+          team_id?: number | null
+          url_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retired_url_keys_guild_id_fkey"
+            columns: ["guild_id"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retired_url_keys_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
@@ -1922,6 +1985,7 @@ export type Database = {
       teams: {
         Row: {
           archived_at: string | null
+          guild_id: number
           id: number
           name: string
           slug: string
@@ -1929,19 +1993,29 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          guild_id: number
           id?: number
           name: string
-          slug: string
+          slug?: string
           wcl_guild_id?: number | null
         }
         Update: {
           archived_at?: string | null
+          guild_id?: number
           id?: number
           name?: string
           slug?: string
           wcl_guild_id?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "teams_guild_id_fkey"
+            columns: ["guild_id"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tier_token_map: {
         Row: {
@@ -2602,6 +2676,7 @@ export type Database = {
       is_site_admin: { Args: never; Returns: boolean }
       is_team_leader_anywhere: { Args: never; Returns: boolean }
       my_team_role: { Args: { p_team_id: number }; Returns: string }
+      new_url_code: { Args: never; Returns: string }
       notify_player: {
         Args: { p_message: string; p_player_id: number }
         Returns: number
@@ -2609,6 +2684,18 @@ export type Database = {
       remove_player_priority_order: {
         Args: { p_player_id: number; p_season: string; p_team_id: number }
         Returns: number
+      }
+      resolve_address: {
+        Args: { p_guild_key: string; p_player_code?: string; p_team_key?: string }
+        Returns: {
+          guild_id: number
+          guild_key: string
+          is_canonical: boolean
+          player_code: string
+          player_id: number
+          team_id: number
+          team_key: string
+        }[]
       }
       resolve_actor_name: {
         Args: { p_actor_id: string; p_team_id: number }

@@ -36,6 +36,8 @@ classes_specs,Public read classes_specs,public,SELECT,PERMISSIVE,true,
 guild_officers,Claude readers read guild_officers,claude_readers,SELECT,PERMISSIVE,true,
 guild_officers,Site Admins read guild_officers,public,SELECT,PERMISSIVE,is_site_admin(),
 guild_officers,Site Admins write guild_officers,public,ALL,PERMISSIVE,is_site_admin(),is_site_admin()
+guilds,Claude readers read guilds,claude_readers,SELECT,PERMISSIVE,true,
+guilds,Public read guilds,public,SELECT,PERMISSIVE,true,
 item_bosses,Claude readers read item_bosses,claude_readers,SELECT,PERMISSIVE,true,
 item_bosses,Public read item_bosses,public,SELECT,PERMISSIVE,true,
 item_preferences,Claude readers read item_preferences,claude_readers,SELECT,PERMISSIVE,true,
@@ -94,6 +96,8 @@ raid_zones,Public read raid_zones,public,SELECT,PERMISSIVE,true,
 rclc_loot,Claude readers read rclc_loot,claude_readers,SELECT,PERMISSIVE,true,
 rclc_loot,Officer write loot,public,ALL,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())"
 rclc_loot,Public read loot,public,SELECT,PERMISSIVE,true,
+retired_url_keys,Claude readers read retired_url_keys,claude_readers,SELECT,PERMISSIVE,true,
+retired_url_keys,Public read retired_url_keys,public,SELECT,PERMISSIVE,true,
 scoring,Claude readers read scoring,claude_readers,SELECT,PERMISSIVE,true,
 scoring,Officers write scoring,public,ALL,PERMISSIVE,"((my_team_role(( SELECT players.team_id
    FROM players
