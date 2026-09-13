@@ -12,6 +12,24 @@ answers to.
 
 ---
 
+## [3.106.0] - 2026-09-13
+
+### Backend
+
+- `generate_priority_order()`'s existing-item exclusion now also checks
+  `player_equipped_gear`, not just `rclc_loot` and approved
+  `self_received_requests` -- a raider with the exact item equipped but no
+  logged loot-council award or self-received report (most commonly a
+  self-received drop nobody remembered to log) no longer keeps getting
+  ranked for it. Resolves through `tier_token_map` (token -> resolved class
+  item) so a tier token's wishlist entry still matches the raider's actual
+  equipped, class-specific piece. Requires a team's `player_equipped_gear`
+  sync to have run and, for the has_myth/has_hero split, an officer-set
+  `trackIlvlThresholds` -- same no-op-without-config behavior the existing
+  equipped-slot-ilvl multiplier already has. Independent of and additive to
+  that multiplier, which only ever compares ilvl-vs-threshold, never
+  item_id.
+
 ## [3.105.1] - 2026-09-12
 
 ### Frontend
