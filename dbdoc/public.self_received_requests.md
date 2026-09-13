@@ -30,9 +30,10 @@
 
 ## Indexes
 
-| Name | Definition |
-| ---- | ---------- |
-| self_received_requests_pkey | CREATE UNIQUE INDEX self_received_requests_pkey ON public.self_received_requests USING btree (id) |
+| Name | Definition | Comment |
+| ---- | ---------- | ------- |
+| self_received_requests_pkey | CREATE UNIQUE INDEX self_received_requests_pkey ON public.self_received_requests USING btree (id) |  |
+| self_received_requests_approved_team_item_track_player_idx | CREATE INDEX self_received_requests_approved_team_item_track_player_idx ON public.self_received_requests USING btree (team_id, self_item_id, track, player_id) WHERE (status = 'approved'::text) | Covers the "already self-received this exact item on this track" probe in priority_order_live_first_prios and priority_order_stale_after_heroic. Partial on status = 'approved', the only status those views probe. Without it the first-prios view re-scans this table once per candidate row, which timed out for signed-in officers once the table passed ~150 rows. |
 
 ## Triggers
 

@@ -2277,7 +2277,16 @@ function prioEditFetchFairnessWarnings() {
     .eq('team_id', _teamCfg.supabaseTeamId)
     .eq('season', season)
     .then(function (result) {
-      if (result.error || !result.data) return;
+      // Warn rather than return silently: this read timing out (57014, once
+      // the tables it probes grew past the statement limit -- see
+      // 20260913124050) made the per-row fairness flag vanish with nothing
+      // logged, which is why it went unnoticed. Matches
+      // fetchSupabasePriorityLiveFirstPrios()'s handling of the same view.
+      if (result.error) {
+        console.warn('Supabase priority_order_live_first_prios query failed.', result.error.message);
+        return;
+      }
+      if (!result.data) return;
       var rosterById = {};
       (DATA.roster || []).forEach(function (p) {
         rosterById[p.id] = p;
