@@ -68,7 +68,35 @@ function jsonResponse(body: unknown, status = 200) {
 
 const TRACKS_HIGH_TO_LOW = ['Myth', 'Hero', 'Champion', 'Veteran', 'Adventurer', 'Explorer'] as const;
 
-function deriveTrack(itemLevel: number | null, thresholds: Record<string, number> | null): string | null {
+// The item's own bonus IDs are the real track signal, and the only one that
+// can separate tracks whose item-level ranges overlap (Hero 6/6 and Myth 2/6
+// are both 321). track_bonus_ids holds the mapping; see
+// 20260913013949_track_bonus_ids_and_equipped_bonus_list.sql for how badly
+// the item-level guess below scored when measured against the live roster.
+async function loadBonusTrackMap(supabase: SupabaseClient<any>): Promise<Map<number, string>> {
+  const { data, error } = await supabase.from('track_bonus_ids').select('bonus_id, track');
+  if (error) {
+    console.error('blizzard-gear-sync: failed to load track_bonus_ids', error.message);
+    return new Map();
+  }
+  return new Map((data || []).map((r: any) => [r.bonus_id as number, r.track as string]));
+}
+
+// Item level is a fallback only, for gear that carries no track bonus ID at
+// all -- crafted, Timewarped and similar, roughly a fifth of a real roster's
+// items. It cannot distinguish overlapping tracks and will read a
+// fully-upgraded Hero item as Myth, so it must never take precedence over a
+// bonus ID that did resolve.
+function deriveTrack(
+  itemLevel: number | null,
+  thresholds: Record<string, number> | null,
+  bonusList: number[],
+  bonusTracks: Map<number, string>
+): string | null {
+  for (const bonusId of bonusList) {
+    const track = bonusTracks.get(bonusId);
+    if (track) return track;
+  }
   if (itemLevel == null || !thresholds) return null;
   for (const track of TRACKS_HIGH_TO_LOW) {
     const floor = thresholds[track];
@@ -114,6 +142,7 @@ type EquippedRow = {
   item_id: number;
   item_level: number | null;
   track: string | null;
+  bonus_list: number[];
 };
 
 async function fetchEquipment(firstName: string, realm: string, token: string): Promise<any[] | null> {
@@ -129,19 +158,26 @@ async function fetchEquipment(firstName: string, realm: string, token: string): 
   return data?.equipped_items || null;
 }
 
-function buildRows(playerId: number, equippedItems: any[], thresholds: Record<string, number> | null): EquippedRow[] {
+function buildRows(
+  playerId: number,
+  equippedItems: any[],
+  thresholds: Record<string, number> | null,
+  bonusTracks: Map<number, string>
+): EquippedRow[] {
   const rows: EquippedRow[] = [];
   for (const it of equippedItems) {
     const slot = it?.slot?.type;
     const itemId = it?.item?.id;
     if (!slot || itemId == null) continue;
     const itemLevel = typeof it?.level?.value === 'number' ? it.level.value : null;
+    const bonusList = Array.isArray(it?.bonus_list) ? it.bonus_list.filter((b: unknown) => typeof b === 'number') : [];
     rows.push({
       player_id: playerId,
       equipment_slot: slot,
       item_id: itemId,
       item_level: itemLevel,
-      track: deriveTrack(itemLevel, thresholds)
+      track: deriveTrack(itemLevel, thresholds, bonusList, bonusTracks),
+      bonus_list: bonusList
     });
   }
   return rows;
@@ -151,7 +187,8 @@ async function syncRoster(
   supabase: SupabaseClient<any>,
   players: Array<{ id: number; name_realm: string }>,
   thresholds: Record<string, number> | null,
-  token: string
+  token: string,
+  bonusTracks: Map<number, string>
 ): Promise<{ synced: number; skipped: number }> {
   let synced = 0;
   let skipped = 0;
@@ -171,7 +208,7 @@ async function syncRoster(
       continue;
     }
 
-    const rows = buildRows(player.id, equippedItems, thresholds).map((r) => ({
+    const rows = buildRows(player.id, equippedItems, thresholds, bonusTracks).map((r) => ({
       ...r,
       synced_at: new Date().toISOString()
     }));
@@ -215,6 +252,9 @@ Deno.serve(async (req) => {
       const { data: teams, error: teamsError } = await supabase.from('team_settings').select('team_id, config');
       if (teamsError) return jsonResponse({ success: false, error: teamsError.message }, 500);
 
+      // Loaded once for the whole sweep, not per team -- it's global catalog
+      // data, not per-team config like the thresholds below.
+      const bonusTracks = await loadBonusTrackMap(supabase);
       let synced = 0;
       let skipped = 0;
       for (const team of teams || []) {
@@ -228,7 +268,7 @@ Deno.serve(async (req) => {
           console.error('blizzard-gear-sync: failed to load roster for team', team.team_id, playersError.message);
           continue;
         }
-        const result = await syncRoster(supabase, players || [], thresholds, token);
+        const result = await syncRoster(supabase, players || [], thresholds, token, bonusTracks);
         synced += result.synced;
         skipped += result.skipped;
       }
@@ -267,7 +307,8 @@ Deno.serve(async (req) => {
     const { data: players, error: playersError } = await query;
     if (playersError) return jsonResponse({ success: false, error: playersError.message }, 500);
 
-    const result = await syncRoster(supabase, players || [], thresholds, token);
+    const bonusTracks = await loadBonusTrackMap(supabase);
+    const result = await syncRoster(supabase, players || [], thresholds, token, bonusTracks);
     return jsonResponse({ success: true, ...result });
   } catch (err) {
     console.error('blizzard-gear-sync error:', err);
