@@ -12,6 +12,18 @@ answers to.
 
 ---
 
+## [3.108.1] - 2026-09-13
+
+### Frontend
+
+- Fixed Priority List Conflicts' **Dismiss all** failing with a 409 for
+  same-boss conflicts. When one raider held #1 on the same items behind one
+  boss on both Hero and Myth, both rows were given the first matching item's
+  track, so the bulk insert sent the same dismissal twice and the unique key
+  rejected the whole same-boss batch. The same mix-up meant dismissing either
+  of those rows one at a time silently hid both. Each group now carries its
+  own track straight from the grouping step.
+
 ## [3.108.0] - 2026-09-13
 
 ### Frontend
