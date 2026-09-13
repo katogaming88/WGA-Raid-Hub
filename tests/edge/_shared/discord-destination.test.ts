@@ -14,6 +14,7 @@ import {
   resolveDestination
 } from '../../../supabase/functions/_shared/discord-destination.ts';
 import {
+  CONTACT_WEBHOOK_URL,
   FINDER_ID,
   FOUND_WEBHOOK_URL,
   LEGACY_WEBHOOK_URL,
@@ -21,10 +22,10 @@ import {
   PRODUCTION_SUPABASE_URL,
   SOLD_WEBHOOK_URL,
   TEST_WEBHOOK_URL,
-  envOf
+  envOf,
+  local,
+  production
 } from '../_support/corpus.ts';
-
-const CONTACT_WEBHOOK_URL = 'https://discord.test/api/webhooks/contact';
 
 const LIVE_NAMES = {
   BOE_SOLD_WEBHOOK_URL: SOLD_WEBHOOK_URL,
@@ -32,9 +33,6 @@ const LIVE_NAMES = {
   'BOE-Found-Webhook': LEGACY_WEBHOOK_URL,
   CONTACT_WEBHOOK_URL
 };
-
-const production = (values: Record<string, string> = {}) => envOf({ SUPABASE_URL: PRODUCTION_SUPABASE_URL, ...values });
-const local = (values: Record<string, string> = {}) => envOf({ SUPABASE_URL: LOCAL_STACK_SUPABASE_URL, ...values });
 
 Deno.test('PRODUCTION_HOST is the project host js/common.js publishes', () => {
   assertEquals(PRODUCTION_HOST, 'kxgjqnpwfklbgrxdgmmv.supabase.co');
@@ -139,7 +137,7 @@ Deno.test('on production the test webhook is never the destination, even when it
 });
 
 Deno.test('on a local stack every post goes to the test webhook, whatever live names are set', () => {
-  const env = local({ ...LIVE_NAMES, DISCORD_TEST_WEBHOOK_URL: TEST_WEBHOOK_URL });
+  const env = local(LIVE_NAMES);
   for (const destination of ['boe-found', 'boe-sold', 'contact']) {
     assertEquals(
       resolveDestination(env, { destination }),
@@ -150,7 +148,9 @@ Deno.test('on a local stack every post goes to the test webhook, whatever live n
 });
 
 Deno.test('on a local stack with no test webhook the post is skipped naming the variable, never a live name', () => {
-  const env = local(LIVE_NAMES);
+  // Built without the preset: a preset cannot unset a value, and a missing
+  // test webhook is the whole case.
+  const env = envOf({ SUPABASE_URL: LOCAL_STACK_SUPABASE_URL, ...LIVE_NAMES });
   for (const destination of ['boe-found', 'boe-sold', 'contact']) {
     assertEquals(
       resolveDestination(env, { destination }),

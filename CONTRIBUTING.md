@@ -302,8 +302,10 @@ row presets and `envOf()` (one role, one value, so a copy-paste between
 roles fails); `fetch.ts` is a recording fetch that stores every call and
 answers from a scripted queue, with `discordNoContent()` and
 `discordError(status)`; `deps.ts` is `fakeDb(state)` with a call log and
-`testDeps()`, whose `stack` option is `'production'` unless a case says
-`'local'`, so every case written before #1081 keeps its meaning.
+`testDeps()`, whose default env is production with the sold webhook set, so
+every case written before #1081 keeps its meaning; `production(values)` and
+`local(values)` are the two env presets, each a complete env for its stack,
+so a case about the stack names only what it changes.
 
 **Conventions.**
 

@@ -2,14 +2,8 @@
 // interface the handler reads, with a call log so a test can assert a later
 // step ran and not only the step under test. A fake that omits a method
 // turns a throw into silent truncation; the log is what catches that.
-import type { Deps, SaleDb, SaleRow } from '../../../supabase/functions/boe-sold-webhook/handler.ts';
-import {
-  LOCAL_STACK_SUPABASE_URL,
-  MANAGER_USER_ID,
-  PRODUCTION_SUPABASE_URL,
-  SOLD_WEBHOOK_URL,
-  envOf
-} from './corpus.ts';
+import type { Deps, Env, SaleDb, SaleRow } from '../../../supabase/functions/boe-sold-webhook/handler.ts';
+import { MANAGER_USER_ID, SOLD_WEBHOOK_URL, production } from './corpus.ts';
 import { recordingFetch } from './fetch.ts';
 
 export type FakeDbState = {
@@ -61,18 +55,13 @@ export function fakeDb(state: FakeDbState = {}): FakeDb {
   };
 }
 
-// `stack` is where the function believes it is running (#1081): production
-// by default, so every case written before the rule keeps its meaning, and
-// 'local' for the cases about the rule itself.
-export function testDeps(
-  opts: { db?: FakeDb; env?: Record<string, string>; responses?: Response[]; stack?: 'production' | 'local' } = {}
-) {
+// The default env is production with the sold webhook set, so every case
+// written before #1081 means what it meant; a case about the stack passes
+// production(...) or local(...) from the corpus.
+export function testDeps(opts: { db?: FakeDb; env?: Env; responses?: Response[] } = {}) {
   const { fetch, calls } = recordingFetch(opts.responses ?? []);
   const db: FakeDb = opts.db ?? fakeDb();
-  const env = envOf({
-    SUPABASE_URL: opts.stack === 'local' ? LOCAL_STACK_SUPABASE_URL : PRODUCTION_SUPABASE_URL,
-    ...(opts.env ?? { BOE_SOLD_WEBHOOK_URL: SOLD_WEBHOOK_URL })
-  });
+  const env = opts.env ?? production({ BOE_SOLD_WEBHOOK_URL: SOLD_WEBHOOK_URL });
   const deps: Deps = { fetch, env, db };
   return { deps, calls, db };
 }

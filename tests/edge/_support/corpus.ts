@@ -15,16 +15,16 @@ export const SECOND_MANAGER_ID = '200000000000000003';
 export const MANAGER_USER_ID = 'b0e00000-0000-4000-8000-000000000001';
 export const MANAGER_AUTH = 'Bearer manager-session';
 
-// Webhook URLs, one per env name the sold poster reads, and the test
-// channel's, where a local stack sends everything (#1081).
+// Webhook URLs, one per env name a poster reads, and the test channel's,
+// where a local stack sends everything (#1081).
 export const SOLD_WEBHOOK_URL = 'https://discord.test/api/webhooks/sold';
 export const FOUND_WEBHOOK_URL = 'https://discord.test/api/webhooks/found';
 export const LEGACY_WEBHOOK_URL = 'https://discord.test/api/webhooks/legacy';
+export const CONTACT_WEBHOOK_URL = 'https://discord.test/api/webhooks/contact';
 export const TEST_WEBHOOK_URL = 'https://discord.test/api/webhooks/test-channel';
 
 // What the platform sets SUPABASE_URL to: the project on production, kong
-// inside the CLI's edge-runtime container locally (read off the container,
-// 2026-09-12).
+// inside the CLI's edge-runtime container locally.
 export const PRODUCTION_SUPABASE_URL = 'https://' + PRODUCTION_HOST;
 export const LOCAL_STACK_SUPABASE_URL = 'http://kong:8000';
 
@@ -48,4 +48,17 @@ export const SOLD_ROW: SaleRow = {
 // An Env over a plain record, the shape Deno.env has in production.
 export function envOf(values: Record<string, string>): Env {
   return { get: (name) => values[name] };
+}
+
+// One env per stack, each carrying what the stack itself decides (#1081). A
+// local stack has one destination, so local() alone posts; production's
+// destinations are the chains a case is about, and nothing set is a real
+// production state, so production() carries only where it runs. A case adds
+// what it changes on top.
+export function production(values: Record<string, string> = {}): Env {
+  return envOf({ SUPABASE_URL: PRODUCTION_SUPABASE_URL, ...values });
+}
+
+export function local(values: Record<string, string> = {}): Env {
+  return envOf({ SUPABASE_URL: LOCAL_STACK_SUPABASE_URL, DISCORD_TEST_WEBHOOK_URL: TEST_WEBHOOK_URL, ...values });
 }
