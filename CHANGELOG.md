@@ -12,7 +12,7 @@ answers to.
 
 ---
 
-## [Unreleased]
+## [3.112.2] - 2026-09-13
 
 ### Backend
 
