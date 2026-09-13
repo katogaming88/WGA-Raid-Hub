@@ -8,6 +8,20 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-13 -- user metadata stops deciding who owns a team_members row (#1117)
+
+Shipped: `20260913180752_claim_character_refuse_linked_row.sql`
+
+`claim_character()` resolves a caller with no `auth_user_id` match by their Discord id, read from `auth.users.raw_user_meta_data ->> 'provider_id'`. That column is writable by the account it belongs to, so the caller chose which `team_members` row the fallback found, and the fallback relinked it without checking whether anyone already held it. A row with a role took its role along.
+
+- **The guard is an unlinked check, not a removal of the fallback.** Adopting an unlinked row is the Discord Claims import path (#338) and the reason the fallback exists: a blind insert there violates `team_members_team_id_discord_id_key`. Only a row already linked to a different account is refused.
+- **It refuses rather than falling through to the insert.** Falling through would hit that same unique constraint and surface a constraint name instead of the reason.
+- **The check rides on the select that already runs**, taking `tm.auth_user_id` alongside the id and role, so there is no second read to go stale between the check and the write.
+- **`raw_app_meta_data`, not `raw_user_meta_data`, is the trustworthy half** of an auth row: it is service-role-only and stamped by GoTrue. The repo's own Supabase skill says so at `.agents/skills/supabase/SKILL.md:37`, and the guard on `link_auth_user_to_member()` (#1118) uses it.
+- **This does not retire metadata as an identity source.** The two BoE read policies, `submit_boe_found` and the four `admin_grant_*` RPCs still read the same column. Resolving identity from `auth.identities`, which only the provider writes, is the full fix and is tracked separately. Production helps here: all 73 accounts carry `raw_app_meta_data.provider = 'discord'`, none lacks an identities row, and no `provider_id` is duplicated.
+
+This narrows an equivalence `docs/RLS.md` and this log had both recorded as intended, that the metadata claim and a Discord identity are the same fact. They hold the same value; only one of them is attested.
+
 ## 2026-09-13 -- a person keeps the link to their archived characters, and name_realm matches ignoring spaces and case (#941)
 
 Shipped: `20260913182610_resolve_person_and_kept_character_links.sql`

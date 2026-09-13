@@ -3,7 +3,7 @@
 --
 -- The fallback branch resolves the caller's Discord id from
 -- auth.users.raw_user_meta_data, a column the account itself can write, and
--- then set auth_user_id on whatever row it found on that team. Nothing checked
+-- then sets auth_user_id on whatever row it found on that team. Nothing checked
 -- the row was unlinked, so a caller who put another person's Discord id in
 -- their own metadata took that person's row, and its role, away from them.
 --
