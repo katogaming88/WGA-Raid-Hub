@@ -394,7 +394,7 @@ jobs:
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         if: ${{ steps.secrets.outputs.configured == 'true' }}
         with:
           name: github-pages
