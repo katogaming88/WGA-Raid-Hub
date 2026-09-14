@@ -272,10 +272,7 @@ describe('computePieces', () => {
         return [];
       }
     });
-    expect(asked).toEqual([
-      'supabase/functions/_shared/gql.ts',
-      'supabase/functions/_shared/discord-destination.ts'
-    ]);
+    expect(asked).toEqual(['supabase/functions/_shared/gql.ts', 'supabase/functions/_shared/discord-destination.ts']);
   });
 
   // Silently stamping nothing would be a release claiming it changed no

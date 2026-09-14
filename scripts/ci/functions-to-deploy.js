@@ -54,14 +54,59 @@ export function listFunctionSources(root = ROOT) {
   return out.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-// Read from the tree rather than kept as a list, so it is true on the day.
-export function sharedImporters(root = ROOT) {
-  return listFunctions(root).filter((name) => {
-    const dir = join(root, 'supabase', 'functions', name);
-    return readdirSync(dir)
-      .filter((file) => file.endsWith('.ts'))
-      .some((file) => readFileSync(join(dir, file), 'utf8').includes('_shared/'));
-  });
+// Every relative import in a source, as repo-relative forward-slash paths.
+// Only relative specifiers: a jsr: or https: import is not a file in here.
+const IMPORT_SPECIFIER = /(?:from|import)\s*['"](\.[^'"]*)['"]/g;
+
+function importsOf(path, source) {
+  const dir = path.slice(0, path.lastIndexOf('/'));
+  const out = [];
+  for (const match of source.matchAll(IMPORT_SPECIFIER)) {
+    const parts = dir.split('/');
+    for (const segment of match[1].split('/')) {
+      if (segment === '.') continue;
+      else if (segment === '..') parts.pop();
+      else parts.push(segment);
+    }
+    out.push(parts.join('/'));
+  }
+  return out;
+}
+
+/**
+ * Which functions a shared module reaches, following imports rather than
+ * looking for the substring `_shared/` (#971). The substring answered a
+ * different question and got it wrong in both directions: a change to one
+ * shared module selected every function importing any of them, and an import
+ * from a subdirectory was missed because the read was not recursive (#1126).
+ *
+ * `modulePath` is repo-relative with forward slashes. Reachability is
+ * transitive, so a function importing a shared module that imports the
+ * changed one is named too.
+ */
+export function importersOf(modulePath, root = ROOT) {
+  const sources = listFunctionSources(root);
+  const importers = new Map();
+  for (const { path, source } of sources) {
+    for (const target of importsOf(path, source)) {
+      if (!importers.has(target)) importers.set(target, []);
+      importers.get(target).push(path);
+    }
+  }
+
+  const seen = new Set([modulePath]);
+  const queue = [modulePath];
+  const names = new Set();
+  while (queue.length) {
+    for (const path of importers.get(queue.shift()) ?? []) {
+      if (seen.has(path)) continue;
+      seen.add(path);
+      queue.push(path);
+      const match = path.match(/^supabase\/functions\/([^/]+)\//);
+      if (match && match[1] !== '_shared') names.add(match[1]);
+    }
+  }
+  return [...names].sort();
 }
 
 /**
@@ -82,7 +127,6 @@ export function selectFunctions({ changed = [], names = null, root = ROOT } = {}
       }
     }
   } else {
-    let importers = null;
     for (const raw of changed) {
       const path = raw.replace(/\\/g, '/');
       if (path === 'supabase/config.toml') {
@@ -92,8 +136,7 @@ export function selectFunctions({ changed = [], names = null, root = ROOT } = {}
       const match = path.match(/^supabase\/functions\/([^/]+)\//);
       if (!match) continue;
       if (match[1] === '_shared') {
-        if (importers === null) importers = sharedImporters(root);
-        importers.forEach((name) => wanted.add(name));
+        importersOf(path, root).forEach((name) => wanted.add(name));
         continue;
       }
       // A path under a directory that no longer exists is a deleted function,

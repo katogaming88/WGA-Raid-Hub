@@ -82,9 +82,29 @@ describe('every deployed function carries a version (#971)', () => {
         problems.push(`${name}: no CORS_HEADERS literal found`);
         continue;
       }
-      if (!/'X-WGA-Version':\s*VERSION\b/.test(literal)) problems.push(`${name}: CORS_HEADERS does not set X-WGA-Version`);
+      if (!/'X-WGA-Version':\s*VERSION\b/.test(literal))
+        problems.push(`${name}: CORS_HEADERS does not set X-WGA-Version`);
       if (!/'Access-Control-Expose-Headers':\s*'X-WGA-Version'/.test(literal)) {
         problems.push(`${name}: CORS_HEADERS does not expose X-WGA-Version`);
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+
+  // The deploy compares the header against version.json, so the two have to
+  // agree here first. This is also what says the stamp actually ran: a
+  // hand-edited or unstamped file shows up as a mismatch rather than as a
+  // green PR that fails the read-back after it has merged.
+  it('carries the version the manifest claims for it', () => {
+    const manifest = JSON.parse(readFileSync(join(ROOT, 'version.json'), 'utf8'));
+    const entries = manifest.pieces?.functions ?? {};
+    const problems = [];
+    for (const name of deployed) {
+      const path = join(ROOT, 'supabase', 'functions', name, 'version.ts');
+      if (!existsSync(path)) continue;
+      const stamped = readFileSync(path, 'utf8').match(/export const VERSION = '([^']*)';/)?.[1];
+      if (stamped !== entries[name]) {
+        problems.push(`${name}: version.ts says ${stamped}, the manifest says ${entries[name] ?? 'nothing'}`);
       }
     }
     expect(problems).toEqual([]);

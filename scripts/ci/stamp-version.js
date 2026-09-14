@@ -180,10 +180,14 @@ export function stampFunctionVersion(source, version) {
  * which moves no shipped path, must come out of this with the manifest it
  * went in with.
  *
- * _shared/** counts as touching every function, because it is compiled into
- * each bundle and therefore ships in all of them.
+ * A shared module ships in the bundles that import it, not in all of them
+ * (#971). Which functions those are is a question about the tree, so it
+ * arrives as `importersOf` and this stays a pure function of its arguments.
+ * A shared path with no lookup throws rather than stamping nothing: a
+ * release claiming it moved no function while a shared module changed is the
+ * one error the manifest cannot detect afterwards.
  */
-export function computePieces({ changed, previous = {}, version, functions = [] }) {
+export function computePieces({ changed, previous = {}, version, functions = [], importersOf = null }) {
   const touched = new Set(changed.map((path) => classifyPath(path)).filter(Boolean));
   const pieces = {};
 
@@ -195,14 +199,22 @@ export function computePieces({ changed, previous = {}, version, functions = [] 
     }
   }
 
-  const sharedChanged = changed.some((path) => path.startsWith('supabase/functions/_shared/'));
+  const sharedPaths = changed.filter((path) => path.startsWith('supabase/functions/_shared/'));
+  if (sharedPaths.length && !importersOf) {
+    throw new Error('computePieces needs importersOf to say which functions a _shared change ships in');
+  }
+  const shared = new Set();
+  for (const path of sharedPaths) {
+    for (const name of importersOf(path)) shared.add(name);
+  }
+
   const previousFunctions = previous.functions ?? {};
   const nextFunctions = {};
   for (const name of new Set([...functions, ...Object.keys(previousFunctions)])) {
     const trackable = functions.includes(name) || previousFunctions[name] !== undefined;
     if (!trackable) continue;
     const ownChanged = changed.some((path) => path.startsWith(`supabase/functions/${name}/`));
-    if ((ownChanged || sharedChanged) && functions.includes(name)) {
+    if ((ownChanged || shared.has(name)) && functions.includes(name)) {
       nextFunctions[name] = version;
     } else if (previousFunctions[name] !== undefined) {
       nextFunctions[name] = previousFunctions[name];
@@ -302,7 +314,8 @@ export function stampAll({ root = ROOT, version, pages = PAGES, changed } = {}) 
     changed: changedFiles,
     previous: previousManifest.pieces ?? {},
     version,
-    functions
+    functions,
+    importersOf: (path) => importersOf(path, root)
   });
 
   writes.push({ path: manifestPath, text: JSON.stringify({ version, pieces }, null, 2) + '\n' });

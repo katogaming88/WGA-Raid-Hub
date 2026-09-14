@@ -23,6 +23,7 @@
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { isRootPage, pageIsStampOnly, mergeBaseOf } from './changelog-check.js';
+import { importersOf } from './functions-to-deploy.js';
 import { computePieces, MANIFEST_FILE } from './stamp-version.js';
 
 function git(args, cwd) {
@@ -92,7 +93,9 @@ export function checkManifest(baseRef, cwd = process.cwd()) {
     changed,
     previous,
     version: head.version,
-    functions: stampedFunctionsAt('HEAD', cwd)
+    functions: stampedFunctionsAt('HEAD', cwd),
+    // The checkout is at HEAD, which is the tree the manifest describes.
+    importersOf: (path) => importersOf(path, cwd)
   });
 
   const actual = head.pieces ?? {};
