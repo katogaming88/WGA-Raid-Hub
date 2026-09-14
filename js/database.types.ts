@@ -2794,6 +2794,12 @@ export type Database = {
           id: number
         }[]
       }
+      team_battlenet_connections: {
+        Args: { p_team_id: number }
+        Returns: {
+          team_member_id: number
+        }[]
+      }
       unarchive_season: {
         Args: { p_index: number; p_team_id: number }
         Returns: Json

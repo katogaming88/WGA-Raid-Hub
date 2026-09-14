@@ -11,8 +11,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Phase | Time so far |
 | --- | ---: |
 | Planning and design | 1 h 50 m |
-| Revamp 1: decisions and foundation | 3 h 40 m |
-| **All revamp work** | **5 h 30 m** |
+| Revamp 1: decisions and foundation | 5 h 15 m |
+| **All revamp work** | **7 h 05 m** |
 
 ## Log
 
@@ -32,7 +32,15 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | 9:42–10:06 PM | #1106 access rules once per query | Revamp 1 | 25 m | ~18 m build incl. benchmark and one Kat question, ~6 m review | PR #1144. Benchmark changed the plan: rule rewrite instead of login-token hook |
 | 10:10–10:30 PM | #1107 one file per database function | Revamp 1 | 20 m | ~10 m spike of Supabase's declarative schema, one Kat decision, ~8 m build; review time not yet counted | Spike found the declarative tool unsafe here (dropped a constraint, would have paused prod cron jobs); built a generated per-function mirror instead |
 | 10:32–10:56 PM | #1101 part 1: app scaffold and look | Revamp 1 | 25 m | ~15 m build, ~10 m Kat testing locally, a light-mode nav fix, and a changelog merge conflict | Colors, frame, drawer, routes, contrast test, App CI workflow. Contrast check moved a few mockup colors (Death Knight the most) |
-| 10:58–11:08 PM | #1101 part 2: addresses and data layer | Revamp 1 | 10 m | build; review time not yet counted | resolve_address lookups with redirects, team switcher, TanStack Query data layer with visible errors, first real read; checked against the local database |
+| 10:58–11:24 PM | #1101 part 2: addresses and data layer | Revamp 1 | 25 m | ~10 m build, ~15 m Kat review and merge | resolve_address lookups with redirects, team switcher, TanStack Query data layer with visible errors, first real read; checked against the local database |
+
+### 2026-09-14
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Notes |
+| --- | --- | --- | ---: | --- | --- |
+| 8:33–8:50 AM | #1101 part 3: Discord sign-in, roles, dialog | Revamp 1 | 15 m | build | Paused when Kat switched sign-in to Battle.net. The dialog and roles helper carry over; the Discord sign-in code gets reworked |
+| 8:50–9:47 AM | Battle.net sign-in: decision and local test | Revamp 1 (Identity) | 55 m | shared, heavy on Kat | Battle.net client, provider setup (two false starts: the `custom:` prefix, and Blizzard's key format breaking oidc), Discord secret, two stack restarts, four sign-in tests. Decision logged, #942 and #1101 re-planned, #1157 filed |
+| 9:49–10:00 AM | #1157 Connect Battle.net on the current site | Revamp 1 (Identity) | 10 m | build; review time not yet counted | Menu button, officer claims column, `team_battlenet_connections()`, local setup script |
 
 ## Not counted (same sessions, not revamp)
 
@@ -42,5 +50,6 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 
 ## Remaining in Revamp 1
 
-- #1101 app shell (includes the preview project and the accessibility checklist)
+- #1101 app shell (includes the preview project and the accessibility checklist; part 3 re-planned around Battle.net sign-in)
+- #1157 Connect Battle.net on the current site, and the hosted Battle.net setup
 - #1108 `tier_token_map` gets a season (Season milestone, due before the next tier set)

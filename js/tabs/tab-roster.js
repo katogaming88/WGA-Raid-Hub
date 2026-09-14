@@ -1789,7 +1789,9 @@ function renderDiscordClaims() {
   var el = document.getElementById('rosterDiscordClaimsContent');
   if (!el || !supabaseClient) return;
   el.innerHTML = '<p style="color:var(--text-muted);font-size:1.02rem;">Loading...</p>';
-  fetchTeamClaims().then(function (claims) {
+  Promise.all([fetchTeamClaims(), fetchBattlenetConnections()]).then(function (results) {
+    var claims = results[0];
+    var battlenet = results[1];
     // fetchTeamClaims() and DATA.roster both scope to this team's active
     // (archived_at is null) players, so claims.length / total is a direct
     // "how many have claimed" count, not an approximation.
@@ -1804,6 +1806,24 @@ function renderDiscordClaims() {
       ' ' +
       (claims.length === 1 ? 'has' : 'have') +
       ' claimed a character.</p>';
+
+    // #1157: the new site signs in with Battle.net, so officers chase anyone
+    // who has not connected it before the switch. Counted per claim, since a
+    // Battle.net login attaches to the account behind a claim.
+    var connectedCount = battlenet
+      ? claims.filter(function (c) {
+          return battlenet[c.teamMemberId];
+        }).length
+      : 0;
+    countHtml += battlenet
+      ? '<p style="color:var(--text-muted);font-size:1.02rem;margin-bottom:0.75rem;">' +
+        connectedCount +
+        ' of ' +
+        claims.length +
+        ' claimed ' +
+        (claims.length === 1 ? 'character has' : 'characters have') +
+        ' Battle.net connected, which the new site will sign in with.</p>'
+      : '<p role="alert" style="color:var(--text-muted);font-size:1.02rem;margin-bottom:0.75rem;">Could not load who has connected Battle.net.</p>';
 
     var claimedNorm = {};
     claims.forEach(function (c) {
@@ -1850,15 +1870,23 @@ function renderDiscordClaims() {
             escHtml(c.discordId) +
             '</span>'
           : escHtml(c.discordId);
+        var battlenetCell = !battlenet
+          ? '<span style="color:var(--text-dim)">Unknown</span>'
+          : battlenet[c.teamMemberId]
+            ? '<span style="color:var(--heal)">Connected</span>'
+            : '<span style="color:var(--text-muted)">Not yet</span>';
         return (
           '<tr>' +
-          '<td style="width:35%">' +
+          '<td style="width:30%">' +
           escHtml(c.nameRealm) +
           '</td>' +
-          '<td style="width:30%">' +
+          '<td style="width:25%">' +
           discordCell +
           '</td>' +
-          '<td style="width:20%">' +
+          '<td style="width:15%">' +
+          battlenetCell +
+          '</td>' +
+          '<td style="width:15%">' +
           roleCell +
           '</td>' +
           '<td style="width:15%;text-align:right">' +
@@ -1873,9 +1901,10 @@ function renderDiscordClaims() {
       unclaimedHtml +
       '<table class="loot-table" style="width:100%;table-layout:fixed;">' +
       '<thead><tr>' +
-      '<th style="width:35%;text-align:left">Character</th>' +
-      '<th style="width:30%;text-align:left">Discord</th>' +
-      '<th style="width:20%;text-align:left">Role</th>' +
+      '<th style="width:30%;text-align:left">Character</th>' +
+      '<th style="width:25%;text-align:left">Discord</th>' +
+      '<th style="width:15%;text-align:left">Battle.net</th>' +
+      '<th style="width:15%;text-align:left">Role</th>' +
       '<th style="width:15%"></th>' +
       '</tr></thead>' +
       '<tbody>' +

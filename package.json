@@ -10,6 +10,7 @@
     "migration:new": "node scripts/ci/migration-new.js",
     "serve": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/dev/serve.js",
     "dev:login": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/dev/local-login.js",
+    "dev:battlenet": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/dev/battlenet-provider.js",
     "dev:sink": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/dev/discord-sink.js",
     "db:snapshot": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/dev/db-snapshot.js",
     "format": "prettier --write \"js/**/*.js\" \"scripts/**/*.js\" \"tests/**/*.js\" \"supabase/functions/**/*.ts\" \"tests/edge/**/*.ts\"",

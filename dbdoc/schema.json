@@ -7985,6 +7985,12 @@
       "return_type": "uuid",
       "arguments": "p_discord_id text",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_battlenet_connections",
+      "return_type": "int4",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

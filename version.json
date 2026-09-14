@@ -1,8 +1,8 @@
 {
-  "version": "3.112.14",
+  "version": "3.113.0",
   "pieces": {
-    "frontend": "3.112.8",
-    "db": "3.112.8",
+    "frontend": "3.113.0",
+    "db": "3.113.0",
     "bot": "3.94.0",
     "functions": {
       "blizzard-gear-sync": "3.112.13",

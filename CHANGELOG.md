@@ -12,6 +12,40 @@ answers to.
 
 ---
 
+## [3.113.0] - 2026-09-14
+
+### Frontend
+
+- **Connect Battle.net.** The signed-in menu has a new Connect Battle.net
+  button. The rebuilt site launching in January signs in with Battle.net, and
+  connecting it now, while you're signed in with Discord, means either login
+  opens the same account on launch day. Once connected, the menu shows your
+  BattleTag. If that Battle.net account is already attached to a different
+  login, a message says so instead of failing silently (#1157).
+- The officer claims table on the Roster tab has a Battle.net column
+  (Connected or Not yet) and a count, so officers can see who still needs to
+  connect before the switch.
+
+### Backend
+
+- New `team_battlenet_connections(team_id)`: which of a team's members have
+  a Battle.net login on their account. Officers, the team leader, site admins
+  and guild officers only. It returns member ids, not Battle.net account
+  details.
+
+### Project
+
+- Decision logged: the new app signs in with Battle.net, with Discord linked
+  to the same account, tested end to end on the local stack first (#1101,
+  #942, #1157).
+- `npm run dev:battlenet` adds Battle.net sign-in to the local stack, and
+  puts it back after a `supabase db reset` drops it. Local Supabase also
+  accepts sign-ins returning to the new app's dev server, allows account
+  linking, and can do real Discord sign-in when `supabase/.env` holds the
+  secret. It stays off without one, so a stack with no secret still starts.
+
+---
+
 ## [3.112.14] - 2026-09-14
 
 ### Project

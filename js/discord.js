@@ -99,6 +99,19 @@ function renderDiscordNav(session) {
       };
       dd.appendChild(claimBtn);
     }
+    // #1157: the new site signs in with Battle.net, so people connect it here
+    // first, while they are signed in with the Discord account they already have.
+    if (currentSession && currentSession.battleTag) {
+      var bnetLine = document.createElement('div');
+      bnetLine.className = 'discord-nav-dropdown-note';
+      bnetLine.textContent = 'Battle.net: ' + currentSession.battleTag;
+      dd.appendChild(bnetLine);
+    } else if (currentSession) {
+      var bnetBtn = document.createElement('button');
+      bnetBtn.textContent = 'Connect Battle.net';
+      bnetBtn.onclick = connectBattlenet;
+      dd.appendChild(bnetBtn);
+    }
     var logoutBtn = document.createElement('button');
     logoutBtn.textContent = 'Log out';
     logoutBtn.onclick = discordLogout;
@@ -160,6 +173,111 @@ function withTimeout(promise, ms) {
       }
     );
   });
+}
+
+// ── Connect Battle.net (#1157) ───────────────────────────────────────────────
+
+// The new site (#1101) signs in with Battle.net, with Discord linked to the same
+// account. Supabase cannot merge two accounts, so someone who first signs in
+// there with Battle.net would get a second, empty one. Connecting Battle.net
+// here, to the Discord account they already use, is how most people avoid that.
+
+var BATTLENET_PROVIDER = 'custom:battlenet';
+var LINKING_BATTLENET_KEY = 'wga_linking_battlenet';
+
+// The BattleTag on an account's Battle.net identity, or null when it has none.
+// An identity without a BattleTag still counts as connected.
+function battlenetTag(user) {
+  var identities = (user && user.identities) || [];
+  for (var i = 0; i < identities.length; i++) {
+    if (identities[i].provider !== BATTLENET_PROVIDER) continue;
+    var claims = (identities[i].identity_data && identities[i].identity_data.custom_claims) || {};
+    return claims.battletag || 'connected';
+  }
+  return null;
+}
+
+// Full-page redirect to Battle.net, back to this page. Supabase attaches the
+// Battle.net login to the signed-in account rather than signing in as a new one.
+function connectBattlenet() {
+  if (!supabaseClient) return;
+  try {
+    sessionStorage.setItem(LINKING_BATTLENET_KEY, '1');
+  } catch (_) {}
+  Promise.resolve(
+    supabaseClient.auth.linkIdentity({
+      provider: BATTLENET_PROVIDER,
+      options: { redirectTo: window.location.origin + window.location.pathname + window.location.search }
+    })
+  ).then(function (result) {
+    if (result && result.error) showBattlenetNotice('error', battlenetErrorMessage(result.error.message));
+  });
+}
+
+// A refused link comes back in the address (hash or query, depending on where
+// it failed), not as a rejected promise. Read it once at load, before
+// supabase-js tidies the address.
+function readAuthRedirectError(loc) {
+  if (!loc) return null;
+  var sources = [loc.hash ? loc.hash.slice(1) : '', loc.search ? loc.search.slice(1) : ''];
+  for (var i = 0; i < sources.length; i++) {
+    var params = new URLSearchParams(sources[i]);
+    var description = params.get('error_description');
+    if (description) return { code: params.get('error_code'), description: description.replace(/\+/g, ' ') };
+  }
+  return null;
+}
+
+function battlenetErrorMessage(description) {
+  if (/already linked/i.test(description || '')) {
+    return 'That Battle.net account is already connected to a different login on WGA Raid Hub, so it was not added to this one. Ask a site admin if it needs to move.';
+  }
+  return 'Battle.net could not be connected: ' + (description || 'something went wrong') + '. Try again in a moment.';
+}
+
+var _authRedirectError = typeof window !== 'undefined' ? readAuthRedirectError(window.location) : null;
+
+// Called once the session has resolved on page load. Says how a Connect
+// Battle.net round trip went, only when this tab started one.
+function reportBattlenetLinkResult(mapped) {
+  var started = false;
+  try {
+    started = sessionStorage.getItem(LINKING_BATTLENET_KEY) === '1';
+    sessionStorage.removeItem(LINKING_BATTLENET_KEY);
+  } catch (_) {}
+  if (!started) return;
+  if (_authRedirectError) {
+    showBattlenetNotice('error', battlenetErrorMessage(_authRedirectError.description));
+  } else if (mapped && mapped.battleTag) {
+    showBattlenetNotice(
+      'success',
+      'Battle.net connected' + (mapped.battleTag !== 'connected' ? ' (' + mapped.battleTag + ')' : '') + '.'
+    );
+  }
+}
+
+// A notice at the top of the page. Errors are role="alert" and stay until
+// dismissed; success is role="status".
+function showBattlenetNotice(kind, message) {
+  if (typeof document === 'undefined' || !document.body) return;
+  var existing = document.getElementById('battlenetNotice');
+  if (existing) existing.parentNode.removeChild(existing);
+  var box = document.createElement('div');
+  box.id = 'battlenetNotice';
+  box.className = 'battlenet-notice battlenet-notice-' + kind;
+  box.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+  var text = document.createElement('span');
+  text.textContent = message;
+  box.appendChild(text);
+  var close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'btn btn-muted';
+  close.textContent = 'Dismiss';
+  close.onclick = function () {
+    if (box.parentNode) box.parentNode.removeChild(box);
+  };
+  box.appendChild(close);
+  document.body.insertBefore(box, document.body.firstChild);
 }
 
 // ── Session mapping ──────────────────────────────────────────────────────────
@@ -232,6 +350,8 @@ function resolveDiscordSession(session) {
         var nameRealm = (linked && linked.name_realm) || (member && member.name_realm) || null;
         var mapped = {
           authUserId: session.user.id,
+          // #1157: the BattleTag of a connected Battle.net login, or null.
+          battleTag: battlenetTag(session.user),
           teamMemberId: member ? member.id : null,
           username: session.user.user_metadata.full_name || session.user.user_metadata.name,
           // Discord snowflake ID, read off this browser's own session for the
@@ -321,6 +441,7 @@ function initDiscordLogin() {
         .then(function (mapped) {
           setDiscordSession(mapped);
           renderDiscordNav(mapped);
+          reportBattlenetLinkResult(mapped);
           if (typeof onDiscordSessionRestored === 'function') onDiscordSessionRestored(mapped);
         })
         .catch(fallBackToNoSession);
@@ -620,6 +741,30 @@ function fetchTeamClaims() {
         return claims;
       });
     });
+}
+
+// Which of this team's members have connected Battle.net (#1157), as a set of
+// team_members ids: { 12: true }. Null when it could not be read, so the claims
+// table can say so rather than showing everyone as "Not yet".
+function fetchBattlenetConnections() {
+  if (!supabaseClient) return Promise.resolve(null);
+  return Promise.resolve(supabaseClient.rpc('team_battlenet_connections', { p_team_id: _teamCfg.supabaseTeamId })).then(
+    function (result) {
+      if (result.error) {
+        console.warn('Failed to load Battle.net connections.', result.error.message);
+        return null;
+      }
+      var connected = {};
+      (result.data || []).forEach(function (row) {
+        connected[row.team_member_id] = true;
+      });
+      return connected;
+    },
+    function (err) {
+      console.warn('Failed to load Battle.net connections.', err);
+      return null;
+    }
+  );
 }
 
 // ── Logout ────────────────────────────────────────────────────────────────────
