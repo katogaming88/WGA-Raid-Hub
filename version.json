@@ -1,5 +1,5 @@
 {
-  "version": "3.119.1",
+  "version": "3.119.2",
   "pieces": {
     "frontend": "3.115.0",
     "db": "3.119.1",
@@ -7,8 +7,8 @@
     "functions": {
       "blizzard-gear-sync": "3.112.13",
       "boe-sold-webhook": "3.112.13",
-      "boe-webhook": "3.112.13",
-      "contact-webhook": "3.112.13",
+      "boe-webhook": "3.119.2",
+      "contact-webhook": "3.119.2",
       "discard-empty-account": "3.114.0",
       "optional-rsvp-reminders": "3.112.13",
       "twitch-live-check": "3.112.13",
