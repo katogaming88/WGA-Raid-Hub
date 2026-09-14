@@ -12,6 +12,41 @@ answers to.
 
 ---
 
+## [3.114.0] - 2026-09-14
+
+### Functions
+
+- New `discard-empty-account`: removes the caller's own account, only when it
+  is a Battle.net sign-in with nothing else on it. It exists for one case: a
+  raider who already uses the site with Discord signs in to the new app with
+  Battle.net first, which makes a second, empty account that Supabase can't
+  merge. The account removed is always the one the caller's token belongs to,
+  and the database refuses the delete if anything is attached to it.
+
+### Project
+
+- The new app has sign-in, the third part of the app shell
+  ([#1101](https://github.com/katogaming88/WGA-Raid-Hub/issues/1101)). It is
+  still not deployed anywhere.
+  - **Sign in with Battle.net**, with Discord as a second button. The sidebar
+    shows who is signed in, their role and main on the team they are
+    viewing, and Sign out.
+  - **Both logins on one account.** A Battle.net-only account is asked to
+    connect Discord, since roles come from it; a Discord-only account is asked
+    to connect Battle.net. Someone whose Discord already has an account gets
+    "Use your Discord account", which removes the empty Battle.net sign-in,
+    signs in with Discord, and connects Battle.net there.
+  - **Roles loaded once** through `resolve_person()` and one `can()` check
+    that pages ask. The Officer menu group and the officer pages open only for
+    that team's officers, a site admin or a guild officer; everyone else gets
+    a plain message instead of an empty page.
+  - **Shared dialog and status messages**: one accessible dialog (focus moves
+    in, stays in, returns; Escape closes) and one place for success, progress
+    and error messages, with errors kept until dismissed.
+  - Finding each person's characters from Blizzard is part 3b, with #942.
+
+---
+
 ## [3.113.0] - 2026-09-14
 
 ### Frontend

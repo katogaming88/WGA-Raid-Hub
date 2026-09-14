@@ -19,11 +19,20 @@ type Answer = { data?: unknown; error?: { message: string } | null; count?: numb
 export type FakeHandlers = {
   rpc?: (name: string, args: Record<string, unknown>) => Answer | Promise<Answer>;
   from?: (read: Read) => Answer | Promise<Answer>;
+  // The signed-in session getSession() answers with; none means signed out.
+  session?: unknown;
+  invoke?: (name: string) => Answer | Promise<Answer>;
 };
 
-export function fakeClient(handlers: FakeHandlers): Client & { reads: Read[]; rpcs: [string, unknown][] } {
+// Every auth and function call a test might assert on, in order.
+export type AuthCall = [string, unknown];
+
+export function fakeClient(
+  handlers: FakeHandlers
+): Client & { reads: Read[]; rpcs: [string, unknown][]; authCalls: AuthCall[] } {
   const reads: Read[] = [];
   const rpcs: [string, unknown][] = [];
+  const authCalls: AuthCall[] = [];
 
   const settle = async (answer: Answer | Promise<Answer>) => {
     const a = await answer;
@@ -33,6 +42,30 @@ export function fakeClient(handlers: FakeHandlers): Client & { reads: Read[]; rp
   const client = {
     reads,
     rpcs,
+    authCalls,
+    auth: {
+      getSession: () => Promise.resolve({ data: { session: handlers.session ?? null }, error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      signInWithOAuth: (args: unknown) => {
+        authCalls.push(['signInWithOAuth', args]);
+        return Promise.resolve({ data: {}, error: null });
+      },
+      linkIdentity: (args: unknown) => {
+        authCalls.push(['linkIdentity', args]);
+        return Promise.resolve({ data: {}, error: null });
+      },
+      signOut: (args?: unknown) => {
+        authCalls.push(['signOut', args]);
+        return Promise.resolve({ error: null });
+      }
+    },
+    functions: {
+      invoke: async (name: string, args: unknown) => {
+        authCalls.push(['invoke', [name, args]]);
+        const a = await (handlers.invoke ? handlers.invoke(name) : { data: { success: true } });
+        return { data: a.data ?? null, error: a.error ?? null };
+      }
+    },
     rpc(name: string, args: Record<string, unknown>) {
       rpcs.push([name, args]);
       return settle(handlers.rpc ? handlers.rpc(name, args) : { data: null });
@@ -61,6 +94,10 @@ export function fakeClient(handlers: FakeHandlers): Client & { reads: Read[]; rp
           read.single = true;
           return builder;
         },
+        maybeSingle() {
+          read.single = true;
+          return builder;
+        },
         then(resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) {
           reads.push(read);
           return settle(handlers.from ? handlers.from(read) : { data: null }).then(resolve, reject);
@@ -69,7 +106,25 @@ export function fakeClient(handlers: FakeHandlers): Client & { reads: Read[]; rp
       return builder;
     }
   };
-  return client as unknown as Client & { reads: Read[]; rpcs: [string, unknown][] };
+  return client as unknown as Client & { reads: Read[]; rpcs: [string, unknown][]; authCalls: AuthCall[] };
+}
+
+// A session as supabase-js stores one, with the logins the account holds.
+export function fakeSession(logins: { battlenet?: string; discord?: { id: string; name: string } }, userId = 'user-1') {
+  const identities = [];
+  if (logins.battlenet) {
+    identities.push({
+      provider: 'custom:battlenet',
+      identity_data: { custom_claims: { battletag: logins.battlenet } }
+    });
+  }
+  if (logins.discord) {
+    identities.push({
+      provider: 'discord',
+      identity_data: { full_name: logins.discord.name, custom_claims: { global_name: logins.discord.name } }
+    });
+  }
+  return { access_token: 't', user: { id: userId, identities, user_metadata: {} } };
 }
 
 export const filterValue = (read: Read, column: string) => read.filters.find(([, c]) => c === column)?.[2];

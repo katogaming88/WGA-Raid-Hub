@@ -1,4 +1,10 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationResult,
+  type UseQueryResult
+} from '@tanstack/react-query';
 import type { Client } from '../lib/supabase';
 import { useSupabase } from './DataProvider';
 
@@ -38,5 +44,23 @@ export function useSupabaseQuery<T>(
     queryKey: key,
     queryFn: () => unwrap(read(client)),
     enabled: options.enabled ?? true
+  });
+}
+
+// The only way a page writes to Supabase. A failed write throws like a failed
+// read, so the caller's error state shows it and it gets reported. Once it
+// succeeds, every cached read whose key starts with one of `refreshes` is
+// read again, so no page shows numbers from before the write (#1101).
+export function useSupabaseMutation<T, V>(
+  write: (client: Client, variables: V) => PromiseLike<Result<T>>,
+  options: { key: readonly unknown[]; refreshes: readonly (readonly unknown[])[] }
+): UseMutationResult<T, Error, V> {
+  const client = useSupabase();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: options.key,
+    mutationFn: (variables: V) => unwrap(write(client, variables)),
+    onSuccess: () =>
+      Promise.all(options.refreshes.map((queryKey) => queryClient.invalidateQueries({ queryKey }))).then(() => {})
   });
 }

@@ -1,5 +1,5 @@
 {
-  "version": "3.113.0",
+  "version": "3.114.0",
   "pieces": {
     "frontend": "3.113.0",
     "db": "3.113.0",
@@ -9,6 +9,7 @@
       "boe-sold-webhook": "3.112.13",
       "boe-webhook": "3.112.13",
       "contact-webhook": "3.112.13",
+      "discard-empty-account": "3.114.0",
       "optional-rsvp-reminders": "3.112.13",
       "twitch-live-check": "3.112.13",
       "upload-bio-photo": "3.112.13",

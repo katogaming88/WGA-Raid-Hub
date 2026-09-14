@@ -3,6 +3,7 @@ import { AppShell } from './layout/AppShell';
 import { HomePage } from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
+import { RequireAbility } from './auth/RequireAbility';
 import { GUILD_PAGES, TEAM_PAGES } from './layout/nav';
 import { defaultPath } from './config';
 
@@ -29,7 +30,14 @@ export const routes: RouteObject[] = [
           { index: true, element: <HomePage />, handle: { title: 'Home' } satisfies RouteHandle },
           ...Object.entries(TEAM_PAGES).map(([path, title]) => ({
             path,
-            element: <PlaceholderPage title={title} />,
+            // Officer tools open only for the people who may use them (#1100: they sit under /officer/).
+            element: path.startsWith('officer/') ? (
+              <RequireAbility ability="viewOfficerTools" title={title}>
+                <PlaceholderPage title={title} />
+              </RequireAbility>
+            ) : (
+              <PlaceholderPage title={title} />
+            ),
             handle: { title } satisfies RouteHandle
           }))
         ]
