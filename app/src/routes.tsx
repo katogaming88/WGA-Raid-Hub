@@ -39,7 +39,8 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <HomePage />, handle: { title: 'Home' } satisfies RouteHandle },
           ...Object.entries(TEAM_PAGES).map(([path, title]) => ({
-            path,
+            // My profile has tabs, each with its own address (/me/gear).
+            path: path === 'me' ? 'me/:tab?' : path,
             // Officer tools open only for the people who may use them (#1100: they sit under /officer/).
             element: path.startsWith('officer/') ? (
               <RequireAbility ability="viewOfficerTools" title={title}>
@@ -51,7 +52,11 @@ export const routes: RouteObject[] = [
             handle: { title } satisfies RouteHandle
           })),
           // A player's profile by its address code (#1100), for the raider and officers.
-          { path: 'p/:playerCode', element: <PlayerProfilePage />, handle: { title: 'Profile' } satisfies RouteHandle }
+          {
+            path: 'p/:playerCode/:tab?',
+            element: <PlayerProfilePage />,
+            handle: { title: 'Profile' } satisfies RouteHandle
+          }
         ]
       },
       { path: '*', element: <NotFoundPage />, handle: { title: 'Page not found' } satisfies RouteHandle }

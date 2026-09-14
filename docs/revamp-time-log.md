@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | --- | ---: |
 | Planning and design | 1 h 50 m |
 | Revamp 1: decisions and foundation | 6 h 55 m |
-| Revamp 2: public pages | 1 h 50 m |
-| **All revamp work** | **10 h 35 m** |
+| Revamp 2: public pages | 2 h 20 m |
+| **All revamp work** | **11 h 5 m** |
 
 ## Log
 
@@ -53,6 +53,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | 1:28–1:50 PM | #1102 Roster page, part 1 (#870) | Revamp 2 | 20 m | build; Kat review not yet counted | First page built the #1102 way: the current Roster tab's behavior recorded as browser tests, then the same checks run against the new page. Layout from the approved mockup, checked with Phoenix's real roster. Browser tests caught screen-reader text widening the page on phones |
 | 1:53–2:05 PM | Roster page review fix | Revamp 2 | 10 m | ~5 m build, ~5 m Kat review on the preview | Kat spotted the summary panels lining up with the filter rather than the table; filter moved above both columns, with a browser test for the alignment |
 | 2:07–2:25 PM | #868 player profile, part 1 | Revamp 2 | 20 m | ~18 m build, ~1 m Kat deciding who can open a profile | Kat kept today's rule: the raider and officers. Recording needed signed-in states on the current site for the first time. Found that raiders can't read their own refused M+ requests (officers only), recorded as-is |
+| 3:06–3:20 PM | #868 player profile, part 2: loot priority | Revamp 2 | 15 m | build | BiS picks with "#2 of 5" standings on both tracks, received status, wishlist summary. Checking with a real raider's data caught the wishlist summary skipping picks saved before rows named their slot (7 of 16 instead of 16) |
+| 3:24–3:40 PM | Profile tabs (same PR) | Revamp 2 | 15 m | build, one Kat decision | Kat asked for sub-tabs so the profile is not a long scroll. Overview, Loot, Gear, Wishlist, each with its own address so the bot's wishlist link keeps working. Kat then moved equipped gear onto the Overview, laid out like the in-game character pane (Kat's screenshot), so the Gear tab went |
 
 ## Not counted (same sessions, not revamp)
 

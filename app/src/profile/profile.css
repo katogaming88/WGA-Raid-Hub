@@ -334,3 +334,164 @@
     width: auto;
   }
 }
+
+/* Loot priority (#868 part 2). */
+
+.card-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.priority-table tbody th {
+  font-weight: 400;
+}
+
+.priority-item {
+  display: block;
+  font-weight: 600;
+}
+
+.priority-slot {
+  display: block;
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+}
+
+.standing {
+  white-space: nowrap;
+}
+
+.standing .num {
+  font-weight: 650;
+}
+
+.standing-first .num {
+  color: var(--brand);
+}
+
+.standing-of {
+  color: var(--text-muted);
+}
+
+.received {
+  white-space: nowrap;
+}
+
+.received-label {
+  color: var(--good);
+  font-weight: 600;
+}
+
+.received-detail {
+  color: var(--text-muted);
+}
+
+.wishlist-summary {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.wishlist-summary .num {
+  color: var(--text);
+  font-weight: 650;
+}
+
+/* Profile tabs (Kat, 2026-09-14). */
+
+.profile-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  align-self: flex-start;
+  padding: 2px;
+  border-radius: 7px;
+  background: var(--sidebar);
+  border: 1px solid var(--border);
+}
+
+.profile-tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 5px;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.profile-tab:hover {
+  color: var(--text);
+}
+
+.profile-tab[aria-selected='true'] {
+  background: var(--raised);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+
+.profile-panel,
+.profile-wishlist {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Equipped gear like the character pane: two columns, weapons across the
+   bottom. One column on a narrow screen. */
+.gear-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 var(--space-5);
+}
+
+/* The same widths in every group, so the groups line up. */
+.gear-table {
+  table-layout: fixed;
+}
+
+.gear-col-slot {
+  width: 88px;
+}
+
+.gear-col-level {
+  width: 48px;
+}
+
+.gear-col-track {
+  width: 60px;
+}
+
+.gear-weapons {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 760px) {
+  .gear-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .gear-item {
+    overflow-wrap: anywhere;
+  }
+
+  /* Stacked, the groups read as one list, so only the first shows its column
+     headings. The others keep theirs for screen readers. */
+  .gear-group:not(:first-child) thead th {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+.gear-table abbr {
+  text-decoration: none;
+}

@@ -12,6 +12,33 @@ answers to.
 
 ---
 
+## [3.118.0] - 2026-09-14
+
+### Project
+
+- The new app's player profile, part 2: **Loot priority**
+  ([#868](https://github.com/katogaming88/WGA-Raid-Hub/issues/868)). Every
+  BiS pick on the wishlist for this season, in gear order, with the raider's
+  place on each item's Heroic and Mythic list ("#2 of 5") and whether they
+  already have it (the best copy from the loot import or a receipt they
+  reported). A tier token shows as the piece it becomes for their class, and
+  a crafted or M+ pick shows the slot it was picked for. Only BiS picks are
+  listed, following the BiS-or-Pass decision (#1032, #1033).
+- A Wishlist card counts the slots with a BiS pick and the slots passed.
+- The profile is split into tabs so it is not one long scroll: **Overview**
+  (the four numbers, equipped gear, loot priority, wishlist count, attendance,
+  M+), **Loot** (items received) and **Wishlist** (the BiS or Pass editor
+  arrives there next). Each tab has its own address (`/me/loot`,
+  `/p/<code>/wishlist`), so a link can open one directly, and the arrow keys
+  move between them.
+- Equipped gear is laid out like the in-game character pane: Head through
+  Wrist on the left, Hands through the trinkets on the right, weapons across
+  the bottom. On a phone it is one list with one set of column headings.
+- The recorded profile behavior gains the loot priority list, checked against
+  the current site's BiS List and the new card.
+
+---
+
 ## [3.117.1] - 2026-09-14
 
 ### Backend

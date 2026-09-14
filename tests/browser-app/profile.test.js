@@ -5,10 +5,16 @@ import {
   EXPECTED_DODGEY_MPLUS_FOR_OFFICER,
   EXPECTED_TORBJORN,
   GEAR,
-  ITEMS,
   LOOT,
   MPLUS_REJECTIONS,
   PLAYERS,
+  PRIORITY_ITEMS,
+  PRIORITY_ORDER,
+  RAID_ZONES,
+  SELF_RECEIVED,
+  TIER_TOKEN_MAP,
+  WISHLIST,
+  EXPECTED_PRIORITY,
   SEASON,
   VIEWERS,
   sortedLoot
@@ -52,7 +58,12 @@ function tablesFor(profilePlayer, viewerKey) {
     attendance: ATTENDANCE.filter((r) => r.player_id === profilePlayer.id),
     rclc_loot: LOOT.filter((r) => r.player_id === profilePlayer.id),
     player_equipped_gear: GEAR.filter((r) => r.player_id === profilePlayer.id),
-    items: ITEMS,
+    items: PRIORITY_ITEMS,
+    raid_zones: RAID_ZONES,
+    item_preferences: WISHLIST.filter((r) => r.player_id === profilePlayer.id),
+    priority_order: PRIORITY_ORDER.filter((r) => r.season === SEASON.code),
+    tier_token_map: TIER_TOKEN_MAP.filter((r) => r.class === profilePlayer.classes_specs.class),
+    self_received_requests: SELF_RECEIVED.filter((r) => r.player_id === profilePlayer.id),
     mplus_exclusion_requests:
       VIEWERS[viewerKey]?.role === 'officer' ? MPLUS_REJECTIONS.filter((r) => r.player_id === profilePlayer.id) : []
   };
@@ -68,6 +79,8 @@ function open(path, viewerKey, profilePlayer) {
 }
 
 // The shape tests/behavior/profile.js describes, read from the new markup.
+// Items received sit on their own tab, so a read of the Overview leaves them
+// out and the test opens that tab for them.
 function readProfile(page) {
   return page.evaluate(() => {
     const main = document.querySelector('main');
@@ -77,11 +90,11 @@ function readProfile(page) {
     const link = (site) => main.querySelector(`.profile-links a[data-site="${site}"]`)?.getAttribute('href') ?? null;
 
     const loot = card('Items received');
-    const lastBox = loot.querySelector('.loot-last');
+    const lastBox = loot?.querySelector('.loot-last');
     const gear = card('Equipped gear');
     const mplus = card('M+ exclusion');
-    const status = mplus.querySelector('.mplus-status');
-    const pct = text(card('Attendance').querySelector('.attendance-pct .num'));
+    const status = mplus?.querySelector('.mplus-status');
+    const attend = card('Attendance');
 
     return {
       name: text(main.querySelector('.profile-name')),
@@ -91,14 +104,14 @@ function readProfile(page) {
       tags: [...main.querySelectorAll('.profile-tag')].map(text),
       joined: text(main.querySelector('.profile-joined'))?.replace(/^Joined /, '') ?? null,
       links: { warcraftLogs: link('warcraftLogs'), raiderIo: link('raiderIo'), armory: link('armory') },
-      attendance: {
-        pct,
-        flagged: [...card('Attendance').querySelectorAll('.attendance-flagged li')].map((li) => ({
+      attendance: attend && {
+        pct: text(attend.querySelector('.attendance-pct .num')),
+        flagged: [...attend.querySelectorAll('.attendance-flagged li')].map((li) => ({
           date: text(li.querySelector('.flagged-date')),
           status: text(li.querySelector('.flagged-status'))
         }))
       },
-      loot: {
+      loot: loot && {
         count: Number(text(loot.querySelector('.loot-count'))),
         season: text(loot.querySelector('.loot-season')),
         last: lastBox
@@ -116,13 +129,19 @@ function readProfile(page) {
           date: text(tr.querySelector('.loot-date'))
         }))
       },
-      gear: [...gear.querySelectorAll('tbody tr')].map((tr) => ({
-        slot: text(tr.querySelector('.gear-slot')),
-        item: text(tr.querySelector('.gear-item')),
-        itemLevel: Number(text(tr.querySelector('.gear-level'))),
-        track: text(tr.querySelector('.gear-track')) || null
-      })),
-      mplus: status ? { status: text(status), note: text(mplus.querySelector('.mplus-note')) } : null
+      gear:
+        gear &&
+        [...gear.querySelectorAll('tbody tr')].map((tr) => ({
+          slot: text(tr.querySelector('.gear-slot')),
+          item: text(tr.querySelector('.gear-item')),
+          itemLevel: Number(text(tr.querySelector('.gear-level'))),
+          track: text(tr.querySelector('.gear-track')) || null
+        })),
+      mplus: !mplus
+        ? undefined
+        : status
+          ? { status: text(status), note: text(mplus.querySelector('.mplus-note')) }
+          : null
     };
   });
 }
@@ -154,7 +173,11 @@ describe('Profile (new app), the raider’s own, checked against the current sit
     try {
       await opened.page.waitForSelector('main .profile-name');
       await loaded(opened.page);
-      const profile = await readProfile(opened.page);
+      const overview = await readProfile(opened.page);
+      await opened.page.getByRole('tab', { name: 'Loot' }).click();
+      await opened.page.waitForSelector('main .loot-table');
+      const { loot } = await readProfile(opened.page);
+      const profile = { ...overview, loot };
       expect({ ...profile, loot: sortedLoot(profile.loot) }).toEqual({
         ...EXPECTED_TORBJORN,
         loot: sortedLoot(EXPECTED_TORBJORN.loot)
@@ -194,6 +217,54 @@ describe('Profile (new app), who may open it', () => {
       await opened.page.waitForSelector('main .profile-name');
       await opened.page.waitForSelector('main .mplus-status');
       expect((await readProfile(opened.page)).mplus).toEqual(EXPECTED_DODGEY_MPLUS_FOR_OFFICER);
+    } finally {
+      await opened.context.close();
+    }
+  });
+});
+
+// The loot priority rows, as tests/behavior/profile.js describes them.
+function readPriority(page) {
+  return page.evaluate(() => {
+    const text = (el) => (el ? el.textContent.trim() : null);
+    const standing = (cell, track) => {
+      const rank = cell.querySelector('.standing .num');
+      return rank ? { track, rank: Number(text(rank).replace('#', '')) } : null;
+    };
+    return [...document.querySelectorAll('main .priority-table tbody tr')].map((tr) => {
+      const received = tr.querySelector('.received');
+      return {
+        slot: tr.dataset.placeholder ? null : text(tr.querySelector('.priority-slot')),
+        item: text(tr.querySelector('.priority-item')),
+        ranks: [
+          standing(tr.querySelector('.priority-heroic'), 'Heroic'),
+          standing(tr.querySelector('.priority-mythic'), 'Mythic')
+        ].filter(Boolean),
+        received: received
+          ? {
+              track: text(received.querySelector('.received-track')),
+              detail: text(received.querySelector('.received-detail'))
+            }
+          : null
+      };
+    });
+  });
+}
+
+describe('Profile (new app), loot priority, checked against the current site', () => {
+  it('lists this season’s BiS picks with their ranks and what was already received', async () => {
+    const opened = await open('/g/wga/t/phoenix/me', 'torbjorn', TORBJORN);
+    try {
+      await opened.page.waitForSelector('main .priority-table tbody tr');
+      expect(await readPriority(opened.page)).toEqual(EXPECTED_PRIORITY);
+      // What the current site does not show: how many are ranked, and the
+      // crafted pick's own slot. The ring fills both ring slots, so five slots have a pick.
+      const hands = opened.page.locator('main .priority-table tbody tr', { hasText: 'Deathgrips' });
+      await expect(hands.locator('.priority-heroic').textContent()).resolves.toBe('#2 of 2');
+      const crafted = opened.page.locator('main .priority-table tbody tr[data-placeholder]');
+      await expect(crafted.locator('.priority-slot').textContent()).resolves.toBe('Wrist');
+      await expect(opened.page.locator('main .wishlist-bis').textContent()).resolves.toBe('5');
+      expect(opened.unexpected).toEqual([]);
     } finally {
       await opened.context.close();
     }

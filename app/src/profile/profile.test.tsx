@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type Read } from '../test/fakeSupabase';
 import { attendance, characterLinks, equippedGear, formatJoinDate, seasonCode, seasonLoot } from './profile';
+import { lootPriority, wishlistSummary } from './lootPriority';
 
 const SEASON = { name: 'Midnight Season 2', code: 'MID2', start: '2026-08-01', end: '2026-12-31' };
 
@@ -197,13 +199,47 @@ describe('Profile page', () => {
 
   it('shows a failed read in its own card with a way to retry', async () => {
     renderApp(
-      '/g/wga/t/phoenix/me',
+      '/g/wga/t/phoenix/me/loot',
       profileHandlers(person('raider', 11), { rclc_loot: () => ({ error: { message: 'loot read failed' } }) })
     );
     const loot = (await screen.findByRole('heading', { name: 'Items received' })).closest('section')!;
     const alert = await within(loot).findByRole('alert');
     expect(alert).toHaveTextContent('loot read failed');
     expect(within(alert).getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+  });
+});
+
+describe('Profile tabs', () => {
+  it('give each section its own address and keep My profile current in the menu', async () => {
+    const { router } = renderApp('/g/wga/t/phoenix/me', profileHandlers(person('raider', 11)));
+    const overview = await screen.findByRole('tab', { name: 'Overview' });
+    expect(overview).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel')).toHaveAccessibleName('Overview');
+    expect(screen.getByRole('heading', { name: 'Equipped gear' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: 'Loot' }));
+    expect(router.state.location.pathname).toBe('/g/wga/t/phoenix/me/loot');
+    expect(await screen.findByRole('heading', { name: 'Items received' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Loot priority' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'My profile' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('move with the arrow keys', async () => {
+    const { router } = renderApp('/g/wga/t/phoenix/me/loot', profileHandlers(person('raider', 11)));
+    const loot = await screen.findByRole('tab', { name: 'Loot' });
+    loot.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(router.state.location.pathname).toBe('/g/wga/t/phoenix/me/wishlist');
+    expect(screen.getByRole('tab', { name: 'Wishlist' })).toHaveFocus();
+    await userEvent.keyboard('{Home}');
+    expect(router.state.location.pathname).toBe('/g/wga/t/phoenix/me');
+  });
+
+  it('open an officer view at the tab in its address, and send an unknown tab to the Overview', async () => {
+    const { router } = renderApp('/g/wga/t/phoenix/p/tb000011/wishlist', profileHandlers(person('officer', null)));
+    expect(await screen.findByRole('tab', { name: 'Wishlist' })).toHaveAttribute('aria-selected', 'true');
+    await router.navigate('/g/wga/t/phoenix/p/tb000011/nope');
+    await waitFor(() => expect(router.state.location.pathname).toBe('/g/wga/t/phoenix/p/tb000011'));
+    expect(await screen.findByRole('tab', { name: 'Overview', selected: true })).toBeInTheDocument();
   });
 });
 
@@ -237,5 +273,89 @@ describe('Roster names', () => {
       'href',
       '/g/wga/t/phoenix/p/dg000012'
     );
+  });
+});
+
+describe('lootPriority', () => {
+  const season = SEASON;
+  const catalog = [
+    { id: 1, name: 'Venomforged Idol', slot: 'Hands', wcl_zone_id: 53, is_placeholder: false },
+    { id: 2, name: 'Band of the Hollow Choir', slot: 'Finger', wcl_zone_id: 53, is_placeholder: false },
+    { id: 3, name: 'Crafted', slot: 'Placeholder', wcl_zone_id: null, is_placeholder: true },
+    { id: 4, name: 'Old Tier Cloak', slot: 'Back', wcl_zone_id: 46, is_placeholder: false },
+    { id: 5, name: 'Caustic Sash', slot: 'Waist', wcl_zone_id: 53, is_placeholder: false }
+  ];
+  const zones = [
+    { wcl_zone_id: 53, season: 'Midnight Season 2' },
+    { wcl_zone_id: 46, season: 'Midnight Season 1' }
+  ];
+  const pick = (item_id: number, slot: string, status = 'bis') => ({ item_id, status, slot, season: SEASON.name });
+  const base = {
+    playerId: 11,
+    catalog,
+    zones,
+    season,
+    ranks: [
+      { item_id: 1, track: 'Hero', rank: 1, player_id: 12 },
+      { item_id: 1, track: 'Hero', rank: 2, player_id: 11 },
+      { item_id: 1, track: 'Myth', rank: 1, player_id: 11 }
+    ],
+    tierTokens: [{ token_item_id: 1, resolved: { name: 'Grave-Knight Deathgrips' } }],
+    loot: [{ track: 'Hero', awarded_at: '2026-08-20T18:00:00Z', items: { name: 'Caustic Sash' } }],
+    selfReceived: [
+      { track: 'Myth', source: 'Great Vault', slot: null, items: { name: 'Caustic Sash' } },
+      { track: 'Hero', source: 'Crafted', slot: 'Wrist', items: { name: 'Crafted' } }
+    ]
+  };
+
+  it('lists this season’s BiS picks in slot order, once per ring, with standings and receipts', () => {
+    const rows = lootPriority({
+      ...base,
+      wishlist: [
+        pick(2, 'Finger 1'),
+        pick(2, 'Finger 2'),
+        pick(1, 'Hands'),
+        pick(3, 'Wrist'),
+        pick(4, 'Back'),
+        pick(5, 'Waist'),
+        pick(5, 'Feet', 'good')
+      ]
+    });
+    expect(rows.map((r) => [r.slot, r.item, r.ranks, r.received])).toEqual([
+      ['Wrist', 'Crafted', [], { track: 'Heroic', detail: 'Crafted' }],
+      [
+        'Hands',
+        'Grave-Knight Deathgrips',
+        [
+          { track: 'Heroic', rank: 2, of: 2 },
+          { track: 'Mythic', rank: 1, of: 1 }
+        ],
+        null
+      ],
+      // A Mythic Great Vault copy beats the Heroic raid drop.
+      ['Waist', 'Caustic Sash', [], { track: 'Mythic', detail: 'Great Vault' }],
+      ['Finger', 'Band of the Hollow Choir', [], null]
+    ]);
+  });
+
+  it('counts the wishlist’s slots with a BiS pick and the ones passed', () => {
+    expect(
+      wishlistSummary(
+        [pick(2, 'Finger 1'), pick(1, 'Hands'), pick(5, 'Waist', 'pass'), pick(4, 'Back'), pick(5, 'Hands', 'pass')],
+        catalog,
+        zones,
+        season
+      )
+      // The ring on Finger 1 covers Finger 2 too.
+    ).toEqual({ bis: 3, pass: 1, total: 16 });
+  });
+
+  it('counts a pick saved without a slot by its item, and a ring in both ring slots', () => {
+    const legacy = (item_id: number, status = 'bis') => ({ item_id, status, slot: null, season: SEASON.name });
+    expect(wishlistSummary([legacy(2), legacy(1), legacy(5, 'pass')], catalog, zones, season)).toEqual({
+      bis: 3,
+      pass: 1,
+      total: 16
+    });
   });
 });

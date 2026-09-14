@@ -199,3 +199,147 @@ export function sortedLoot(loot) {
   const sort = (items) => [...items].sort((a, b) => key(a).localeCompare(key(b)));
   return { ...loot, last: loot.last && { ...loot.last, items: sort(loot.last.items) }, all: sort(loot.all) };
 }
+
+// ---------------------------------------------------------------------------
+// Loot priority (#868 part 2): the raider's BiS picks for the season, where
+// they stand on each item's Heroic and Mythic priority list, and whether they
+// already have it. Each suite reads it as
+//
+//   [{ slot, item, ranks: [{ track, rank }], received: { track, detail } | null }]
+//
+// `slot` is null for a crafted or M+ pick, whose row the current site labels
+// with the catalog's placeholder slot rather than the slot it was picked for.
+
+export const RAID_ZONES = [
+  { wcl_zone_id: 53, season: 'Midnight Season 2', name: 'The Venomous Abyss', sort_index: 0 },
+  { wcl_zone_id: 46, season: 'Midnight Season 1', name: 'March on Quel’Danas', sort_index: 1 }
+];
+
+const item = (id, name, slot, zone, placeholder = false) => ({
+  id,
+  wow_item_id: 212000 + (id - 900),
+  name,
+  slot,
+  armor_type: '',
+  is_placeholder: placeholder,
+  icon: null,
+  wcl_zone_id: zone,
+  secondary_stats: null,
+  main_stats: null,
+  weapon_subtype: null,
+  is_ptr: false,
+  is_boe: false
+});
+
+// The catalog the loot priority reads: every item above, now with the raid it
+// drops in, plus the wishlist's own.
+export const PRIORITY_ITEMS = [
+  item(901, 'Venomforged Effigy', 'Head', 53),
+  item(902, 'Soulcoiler Ritual Vessel', 'Trinket', 53),
+  item(903, 'Caustic Chain-Wrapped Sash', 'Waist', 53),
+  item(904, 'Coiled Hex Legguards', 'Legs', 53),
+  item(905, 'Last Season Band', 'Finger', 46),
+  item(906, 'Venomforged Idol', 'Hands', 53),
+  item(907, 'Baleful Grave-Knight’s Deathgrips', 'Hands', 53),
+  item(908, 'Band of the Hollow Choir', 'Finger', 53),
+  item(909, 'Crafted', 'Placeholder', null, true),
+  item(910, 'Old Tier Cloak', 'Back', 46),
+  item(911, 'Second Choice Boots', 'Feet', 53)
+];
+
+const pref = (id, itemId, status, slot) => ({
+  id,
+  team_id: 1,
+  player_id: 11,
+  item_id: itemId,
+  status,
+  note: null,
+  slot,
+  season: 'Midnight Season 2',
+  synced_bis: false
+});
+
+export const WISHLIST = [
+  pref(1, 906, 'bis', 'Hands'),
+  pref(2, 903, 'bis', 'Waist'),
+  // One ring picked for both ring slots is one pick.
+  pref(3, 908, 'bis', 'Finger 1'),
+  pref(4, 908, 'bis', 'Finger 2'),
+  pref(5, 909, 'bis', 'Wrist'),
+  // Last season's raid: not this season's list.
+  pref(6, 910, 'bis', 'Back'),
+  // Not a BiS pick.
+  pref(7, 911, 'good', 'Feet')
+];
+
+const ranked = (id, itemId, track, rank, nameRealm, season = 'MID2') => ({
+  id,
+  team_id: 1,
+  item_id: itemId,
+  track,
+  rank,
+  season,
+  player_id: PLAYERS.find((p) => p.name_realm === nameRealm).id,
+  items: { name: PRIORITY_ITEMS.find((i) => i.id === itemId).name },
+  players: { name_realm: nameRealm }
+});
+
+export const PRIORITY_ORDER = [
+  ranked(1, 906, 'Hero', 1, 'Dodgey-Illidan'),
+  ranked(2, 906, 'Hero', 2, 'Torbjorn-Illidan'),
+  ranked(3, 906, 'Myth', 1, 'Torbjorn-Illidan'),
+  ranked(4, 908, 'Hero', 1, 'Torbjorn-Illidan'),
+  ranked(5, 908, 'Hero', 2, 'Dodgey-Illidan'),
+  ranked(6, 908, 'Hero', 3, 'Kato-Illidan'),
+  // Last season's list for the same ring.
+  ranked(7, 908, 'Myth', 1, 'Torbjorn-Illidan', 'MID1')
+];
+
+export const TIER_TOKEN_MAP = [
+  {
+    season: 'MID2',
+    class: 'Death Knight',
+    token_item_id: 906,
+    resolved_item_id: 907,
+    token: { name: 'Venomforged Idol' },
+    resolved: { name: 'Baleful Grave-Knight’s Deathgrips' }
+  }
+];
+
+export const SELF_RECEIVED = [
+  {
+    id: 1,
+    team_id: 1,
+    player_id: 11,
+    self_item_id: 909,
+    status: 'approved',
+    track: 'Hero',
+    source: 'Crafted',
+    slot: 'Wrist',
+    updated_at: '2026-08-22T12:00:00+00:00',
+    players: { name_realm: 'Torbjorn-Illidan' },
+    items: { name: 'Crafted', slot: 'Placeholder' }
+  }
+];
+
+// In gear-panel order of the slot each pick is for.
+export const EXPECTED_PRIORITY = [
+  { slot: null, item: 'Crafted', ranks: [], received: { track: 'Heroic', detail: 'Crafted' } },
+  {
+    slot: 'Hands',
+    // A tier token shows as the piece it becomes for the raider's class.
+    item: 'Baleful Grave-Knight’s Deathgrips',
+    ranks: [
+      { track: 'Heroic', rank: 2 },
+      { track: 'Mythic', rank: 1 }
+    ],
+    received: null
+  },
+  {
+    slot: 'Waist',
+    item: 'Caustic Chain-Wrapped Sash',
+    ranks: [],
+    received: { track: 'Mythic', detail: 'Aug 27, 2026' }
+  },
+  { slot: 'Finger', item: 'Band of the Hollow Choir', ranks: [{ track: 'Heroic', rank: 1 }], received: null }
+];
