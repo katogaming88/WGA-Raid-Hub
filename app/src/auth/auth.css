@@ -1,7 +1,15 @@
-.account-panel {
+/* Two classes, so this wins over layout.css's .signed-in whichever file loads
+   last. Lined up with the nav items: 10px in, like .nav-item. */
+.signed-in.account-panel {
   flex-direction: column;
   align-items: stretch;
-  gap: var(--space-2);
+  gap: var(--space-1);
+  padding: 10px 10px 0;
+}
+
+/* Under the name, not under the avatar: 28px avatar + 10px gap. */
+.account-panel .account-who ~ .link-button {
+  margin-left: 38px;
 }
 
 .account-who {

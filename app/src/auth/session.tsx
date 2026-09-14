@@ -82,6 +82,20 @@ export function readAuthError(location: { hash: string; search: string }): strin
   return null;
 }
 
+const AUTH_ERROR_PARAMS = ['error', 'error_code', 'error_description'];
+
+// The address without Supabase's error parameters. A refused link leaves them
+// in the query, and anything built from the address afterwards (the return
+// address of the next sign-in) would carry the old error back with it.
+export function withoutAuthError(location: { pathname: string; search: string; hash: string }): string {
+  const search = new URLSearchParams(location.search);
+  AUTH_ERROR_PARAMS.forEach((name) => search.delete(name));
+  const hash = new URLSearchParams(location.hash.slice(1));
+  const hashIsError = AUTH_ERROR_PARAMS.some((name) => hash.has(name));
+  const query = search.toString();
+  return location.pathname + (query ? `?${query}` : '') + (hashIsError ? '' : location.hash);
+}
+
 export function isAlreadyLinked(error: string | null): boolean {
   return /already linked/i.test(error ?? '');
 }
@@ -115,17 +129,23 @@ function setIntent(intent: Intent) {
 // which has to happen before the router can redirect the address away.
 export async function loadInitialSession(
   client: Client,
-  location: { hash: string; search: string } = window.location
+  location: Location = window.location
 ): Promise<{ user: SignedInUser | null; authReturn: AuthReturn }> {
   const error = readAuthError(location);
   const intent = takeIntent();
+  // Read once, then gone from the address, so a reload or the next sign-in
+  // does not report it again.
+  if (error) window.history.replaceState(window.history.state, '', withoutAuthError(location));
   const { data, error: sessionError } = await client.auth.getSession();
   if (sessionError) reportError(sessionError, { where: 'sign-in' });
   if (error) reportError(new Error(error), { where: `sign-in:${intent ?? 'unknown'}` });
   return { user: userFromSession(data.session), authReturn: { intent, error } };
 }
 
-const returnAddress = () => window.location.origin + window.location.pathname + window.location.search;
+const returnAddress = () => {
+  const { origin, pathname, search } = window.location;
+  return origin + withoutAuthError({ pathname, search, hash: '' });
+};
 
 export function SessionProvider({
   initialUser,

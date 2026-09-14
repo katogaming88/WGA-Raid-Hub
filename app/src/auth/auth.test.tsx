@@ -5,7 +5,7 @@ import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type FakeHandlers } from '../test/fakeSupabase';
 import { setErrorReporter } from '../lib/errors';
 import { can, toAccess, NO_ACCESS, type Access } from './access';
-import { isAlreadyLinked, readAuthError, userFromSession } from './session';
+import { isAlreadyLinked, readAuthError, userFromSession, withoutAuthError } from './session';
 import type { Session } from '@supabase/supabase-js';
 
 afterEach(() => setErrorReporter(null));
@@ -246,6 +246,37 @@ describe('session and access helpers', () => {
     expect(readAuthError({ hash: '', search: '?error_description=nope' })).toBe('nope');
     expect(readAuthError({ hash: '#access_token=x', search: '' })).toBeNull();
     expect(isAlreadyLinked('Identity is already linked to another user')).toBe(true);
+  });
+
+  it('strips a refused sign-in from the address, so the next return address does not carry it back', () => {
+    expect(
+      withoutAuthError({
+        pathname: '/g/wga/t/phoenix',
+        search:
+          '?tab=x&error=server_error&error_code=identity_already_exists&error_description=Identity+is+already+linked',
+        hash: ''
+      })
+    ).toBe('/g/wga/t/phoenix?tab=x');
+    expect(withoutAuthError({ pathname: '/', search: '', hash: '#error=access_denied&error_description=Nope' })).toBe(
+      '/'
+    );
+    expect(withoutAuthError({ pathname: '/roster', search: '?tab=x', hash: '#top' })).toBe('/roster?tab=x#top');
+  });
+
+  it('leaves no stale error for the switch to carry back from Discord', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/g/wga/t/phoenix?error_description=Identity+is+already+linked+to+another+user'
+    );
+    const { client } = renderApp('/g/wga/t/phoenix', signedIn(fakeSession({ battlenet: 'Aeglos#1234' }), null));
+    await userEvent.click(await screen.findByRole('button', { name: 'Already use WGA Raid Hub with Discord?' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Switch to my Discord account' }));
+    await waitFor(() => expect(client.authCalls[2]?.[0]).toBe('signInWithOAuth'));
+    expect(client.authCalls[2]?.[1]).toMatchObject({
+      options: { redirectTo: 'http://localhost:3000/g/wga/t/phoenix' }
+    });
+    window.history.replaceState(null, '', '/');
   });
 
   it('drops archived characters, which keep their link but are not claims', () => {
