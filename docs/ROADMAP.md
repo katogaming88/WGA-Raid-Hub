@@ -4,7 +4,7 @@ The roadmap lives on the issue tracker, not here.
 
 - **[Milestones](https://github.com/katogaming88/WGA-Raid-Hub/milestones)** hold the planned
   work, grouped by the question each part answers.
-- **[#947](https://github.com/katogaming88/WGA-Raid-Hub/issues/947)** pins the build order
+- **[#1155](https://github.com/katogaming88/WGA-Raid-Hub/issues/1155)** pins the build order
   across the milestones that run in parallel, and records every change to that order with
   the reason for it.
 - **[CHANGELOG.md](../CHANGELOG.md)** is what has shipped, by release.
