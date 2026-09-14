@@ -11,6 +11,7 @@ on:
       # cutover (app/src/lib/supabase.ts).
       - 'js/database.types.ts'
       - 'tests/browser-app/**'
+      - 'tests/behavior/**'
       - 'tests/browser/static-server.js'
       - '.github/workflows/app.yml'
 

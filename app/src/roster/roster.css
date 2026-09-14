@@ -1,0 +1,301 @@
+/* Roster page (#870), from the 2026-09-13 "Final look" mockup. */
+
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.page-subtitle {
+  margin: 0;
+}
+
+.text-dim {
+  color: var(--text-dim);
+}
+
+.roster-tabs,
+.role-filter {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  align-self: flex-start;
+  padding: 2px;
+  border-radius: 7px;
+  background: var(--sidebar);
+  border: 1px solid var(--border);
+}
+
+.roster-tab,
+.role-filter-option {
+  min-height: 28px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.roster-tab:hover,
+.role-filter-option:hover {
+  color: var(--text);
+}
+
+.roster-tab[aria-selected='true'],
+.role-filter-option[aria-pressed='true'] {
+  background: var(--raised);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+
+.roster-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.roster-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.roster-main > p {
+  margin: 0;
+}
+
+.section-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 650;
+}
+
+/* Positioned so the screen-reader-only text in its cells (absolutely
+   positioned) scrolls with the table instead of widening the page. */
+.roster-table-wrap {
+  position: relative;
+  overflow-x: auto;
+}
+
+.roster-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.roster-table thead th {
+  height: 34px;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.roster-table .col-num {
+  text-align: right;
+}
+
+.role-row th {
+  height: 30px;
+  padding: 0 var(--space-4);
+  background: var(--sidebar);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-weight: 600;
+}
+
+.role-name {
+  color: var(--text);
+}
+
+.role-count {
+  margin-left: var(--space-1);
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.roster-table tbody tr:not(.role-row) > * {
+  height: 34px;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.roster-table tbody tr:not(.role-row) > .col-num {
+  text-align: right;
+}
+
+.roster-table tbody tr:not(.role-row):hover > * {
+  background: var(--hover);
+}
+
+.raider-cell {
+  font-weight: 400;
+}
+
+.raider-name {
+  font-weight: 600;
+}
+
+.raider-character {
+  margin-left: var(--space-2);
+  color: var(--text-muted);
+}
+
+.raider-character::before {
+  content: '(';
+}
+
+.raider-character::after {
+  content: ')';
+}
+
+.raider-spec {
+  margin-left: var(--space-2);
+  color: var(--text-dim);
+}
+
+.tier {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tier-pips {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.tier-pip {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--raised);
+  border: 1px solid var(--border-strong);
+}
+
+.tier-pip.on {
+  background: var(--brand);
+  border-color: var(--brand);
+}
+
+.tier-count {
+  color: var(--text-muted);
+}
+
+.status-cell {
+  width: 1%;
+}
+
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--raised);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.status-tag + .status-tag {
+  margin-left: var(--space-1);
+}
+
+.status-trial {
+  color: var(--warn);
+}
+
+.roster-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 240px;
+  flex-shrink: 0;
+}
+
+.side-card {
+  padding: var(--space-3) var(--space-4);
+}
+
+.side-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-md);
+  font-weight: 650;
+}
+
+.side-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+
+.side-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.side-list dt {
+  color: var(--text-muted);
+}
+
+.side-list dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.side-note {
+  margin: 0;
+}
+
+/* On a phone the spec goes under the name, so item level and tier fit
+   without scrolling the table. */
+@media (max-width: 640px) {
+  .roster-table tbody tr:not(.role-row) > * {
+    height: auto;
+    padding-block: 6px;
+    padding-inline: var(--space-3);
+  }
+
+  .roster-table thead th,
+  .role-row th {
+    padding-inline: var(--space-3);
+  }
+
+  .raider-spec {
+    display: block;
+    margin-left: 0;
+    font-size: var(--text-xs);
+  }
+}
+
+@media (max-width: 960px) {
+  .roster-layout {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .roster-side {
+    width: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .side-card {
+    flex: 1 1 200px;
+  }
+}

@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | --- | ---: |
 | Planning and design | 1 h 50 m |
 | Revamp 1: decisions and foundation | 6 h 55 m |
-| Revamp 2: public pages | 1 h |
-| **All revamp work** | **9 h 45 m** |
+| Revamp 2: public pages | 1 h 20 m |
+| **All revamp work** | **10 h 5 m** |
 
 ## Log
 
@@ -50,6 +50,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | 11:48 AM–12:28 PM | Decide #1070 and #1076 (Heroic sale runs) | Revamp 2 | 40 m | ~8 m build (reading six issues, framing options), ~30 m Kat deciding | Guests are signups on a run; per-run signup; guild price list copied onto each sale; type on each buyer; calendar shows types not prices; sales team officers manage. Still open: which team (setup), parse-bar strictness (moved to #1074) |
 | 1:02–1:09 PM | Decide #1032 and #1033 (wishlist is BiS or Pass) | Revamp 2 | 5 m | ~4 m build (prod wishlist and award counts, framing options), ~3 m Kat deciding and merge | BiS or Pass only, at cutover; old 2nd Choice/Sidegrade/Catalyst rows deleted then; one pick per slot, two for paired slots. Kat chose it over a single "Upgrade" choice after seeing 97 of 256 awards went to non-BiS marks |
 | 1:11–1:27 PM | Decide #868 (Mark Received, M+ in the wishlist) | Revamp 2 | 15 m | ~8 m build (prod receipts and rejected "Other" notes, catalog check), ~7 m Kat deciding | Mark Received is for outside guild raids, with Weekly quest and Pug raid added as instant sources and Other kept for officer review (Kat's point: Torbjorn's weekly-quest legs). Real M+ and crafted items in the catalog, filed as #1166 |
+| 1:28–1:50 PM | #1102 Roster page, part 1 (#870) | Revamp 2 | 20 m | build; Kat review not yet counted | First page built the #1102 way: the current Roster tab's behavior recorded as browser tests, then the same checks run against the new page. Layout from the approved mockup, checked with Phoenix's real roster. Browser tests caught screen-reader text widening the page on phones |
 
 ## Not counted (same sessions, not revamp)
 

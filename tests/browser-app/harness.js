@@ -100,7 +100,8 @@ function json(body, headers = {}) {
  * @param {import('playwright').Browser} browser
  * @param {number} port
  * @param {{ path: string, viewport?: {width:number,height:number}, session?: object, who?: keyof PEOPLE,
- *           reducedMotion?: 'reduce'|'no-preference', colorScheme?: 'light'|'dark', sentinel?: string }} state
+ *           reducedMotion?: 'reduce'|'no-preference', colorScheme?: 'light'|'dark', sentinel?: string,
+ *           tables?: Record<string, unknown[]> }} state
  */
 export async function openApp(browser, port, state) {
   const host = supabaseHost();
@@ -119,6 +120,8 @@ export async function openApp(browser, port, state) {
     await context.addInitScript(([k, v]) => window.localStorage.setItem(k, v), [key, JSON.stringify(state.session)]);
   }
   const who = state.who ? PEOPLE[state.who] : null;
+  // Rows per table for the pages that read them, answered whatever the filters.
+  const tables = { players: [], player_equipped_gear: [], incoming_roster: [], team_settings: [], ...state.tables };
 
   await page.route('**/*', async (route) => {
     const request = route.request();
@@ -147,8 +150,16 @@ export async function openApp(browser, port, state) {
       if (rest === 'rpc/resolve_person') return route.fulfill(json(who?.person ?? null));
       if (rest === 'guilds') return route.fulfill(json({ id: 1, name: 'We Go Again', url_key: 'wga' }));
       if (rest === 'teams') return route.fulfill(json(TEAMS));
-      if (rest === 'players') return route.fulfill(json([], { 'content-range': '*/18' }));
+      // Home's roster count is a HEAD read; the Roster page lists the rows.
+      if (rest === 'players' && request.method() === 'HEAD') {
+        return route.fulfill(json([], { 'content-range': '*/18' }));
+      }
       if (rest === 'account_preferences') return route.fulfill(json(null));
+      if (rest in tables) {
+        const rows = tables[rest];
+        const single = /vnd\.pgrst\.object/.test(request.headers()['accept'] ?? '');
+        return route.fulfill(json(single ? (rows[0] ?? null) : rows));
+      }
     }
 
     unexpected.push(`${request.method()} ${request.url()}`);
@@ -157,5 +168,7 @@ export async function openApp(browser, port, state) {
 
   await page.goto(`http://127.0.0.1:${port}${state.path}`, { waitUntil: 'load' });
   await page.waitForSelector(state.sentinel ?? 'main h1', { timeout: 20000 });
+  // A state reached by clicking once the page is there, like a tab.
+  if (state.click) await page.click(state.click);
   return { context, page, unexpected, pageErrors };
 }

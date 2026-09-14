@@ -1,12 +1,25 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { AxeBuilder } from '@axe-core/playwright';
 import { launchBrowser, openApp, startApp, storedSession, NARROW } from './harness.js';
+import { SCENARIO } from '../behavior/roster.js';
 
 // The new app in a real browser (#1101 part 4): the shell's accessibility
 // checklist, measured rather than trusted. Unlike tests/browser/, there is no
 // baseline. The app starts clean and a violation is a failure, full stop.
 
 const WCAG_21_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
+
+// The Roster page's reads: the recorded scenario plus synced gear, so item
+// level, tier pips and tags are all on the page axe measures.
+const GEAR_SLOTS = ['HEAD', 'NECK', 'SHOULDER', 'BACK', 'CHEST', 'WRIST', 'HANDS', 'WAIST'];
+const ROSTER = {
+  players: SCENARIO.players.map((p, i) => ({ ...p, tier_pieces_equipped: i % 6 })),
+  player_equipped_gear: SCENARIO.players.flatMap((p) =>
+    GEAR_SLOTS.map((equipment_slot) => ({ player_id: p.id, equipment_slot, item_level: 318 + p.id }))
+  ),
+  incoming_roster: SCENARIO.incoming,
+  team_settings: [{ signupSeason: SCENARIO.activeSignupSeason }]
+};
 
 const OFFICER = storedSession({ battlenet: 'Kato#1499', discord: 'Phoenix Officer' });
 const BATTLENET_ONLY = storedSession({ battlenet: 'Aeglos#1234' });
@@ -42,7 +55,22 @@ const STATES = [
     who: 'battlenetOnly',
     sentinel: 'text=Connect your Discord'
   },
-  { label: 'page not found', path: '/g/wga/t/phoenix/nope', sentinel: 'text=Page not found' }
+  { label: 'page not found', path: '/g/wga/t/phoenix/nope', sentinel: 'text=Page not found' },
+  { label: 'roster', path: '/g/wga/t/phoenix/roster', sentinel: 'table.roster-table', tables: ROSTER },
+  {
+    label: 'roster, light',
+    path: '/g/wga/t/phoenix/roster',
+    sentinel: 'table.roster-table',
+    tables: ROSTER,
+    colorScheme: 'light'
+  },
+  {
+    label: 'roster, next season tab',
+    path: '/g/wga/t/phoenix/roster',
+    sentinel: 'table.roster-table',
+    tables: ROSTER,
+    click: 'role=tab[name="Season 4 Roster (Tentative)"]'
+  }
 ];
 
 let server;
