@@ -195,6 +195,19 @@ names the version it deployed.
   it. Because the merge is the deploy, a PR that introduces a new secret
   name has that secret set in the dashboard before it merges, or the
   function answers `skipped` without it, the way the posters do
+- Every deployed function answers `X-WGA-Version` on every response, the
+  CORS preflight included, read from its own
+  `supabase/functions/<name>/version.ts` (#971). The stamp writes that file
+  at every release that touches the function, so it matches the function's
+  entry in `version.json`, and the deploy checks that it does: after
+  deploying, the `functions` job calls each function it deployed and fails
+  if the answer is not the version main just stamped. That is what says a
+  function actually reached production, which nothing could ask before:
+  Supabase's own per-deploy counter is a metadata revision that moves when
+  identical code is redeployed. `discord-bot-webhook` carries no version
+  file while its hold stands, so it is skipped by name rather than reported
+  as drift. To read one by hand, see section 11 of
+  [the local dev doc](docs/supabase-local-dev-setup.md)
 - Frontend logic has unit tests under `tests/frontend/` (they load the plain
   `js/` scripts into a vm sandbox, no browser needed). Run
   `npm run test:frontend`; CI runs the suite on every `js/` change. That job

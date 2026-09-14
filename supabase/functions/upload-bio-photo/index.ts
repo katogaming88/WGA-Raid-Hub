@@ -19,11 +19,14 @@
 // mirrors wcl-sync/index.ts's action dispatcher.
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import { Image } from 'https://deno.land/x/imagescript@1.3.0/mod.ts';
+import { VERSION } from './version.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, DELETE, OPTIONS'
+  'Access-Control-Allow-Methods': 'POST, DELETE, OPTIONS',
+  'Access-Control-Expose-Headers': 'X-WGA-Version',
+  'X-WGA-Version': VERSION
 };
 
 const BUCKET = 'bio-photos';

@@ -31,11 +31,14 @@
 // technique for turning a wall-clock date+time in a named zone into a UTC
 // instant without a datetime library.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { VERSION } from './version.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Expose-Headers': 'X-WGA-Version',
+  'X-WGA-Version': VERSION
 };
 
 function jsonResponse(body: unknown, status = 200) {

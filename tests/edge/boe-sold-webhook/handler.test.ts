@@ -5,6 +5,7 @@
 import { assertEquals } from 'jsr:@std/assert@1';
 import { handle } from '../../../supabase/functions/boe-sold-webhook/handler.ts';
 import { soldPost } from '../../../supabase/functions/boe-sold-webhook/format.ts';
+import { VERSION } from '../../../supabase/functions/boe-sold-webhook/version.ts';
 import {
   FINDER_ID,
   FOUND_WEBHOOK_URL,
@@ -52,6 +53,10 @@ Deno.test('OPTIONS answers the CORS preflight without touching anything', async 
   assertEquals(res.headers.get('Access-Control-Allow-Origin'), '*');
   assertEquals(res.headers.get('Access-Control-Allow-Headers'), 'authorization, x-client-info, apikey, content-type');
   assertEquals(res.headers.get('Access-Control-Allow-Methods'), 'POST, OPTIONS');
+  // #971: the version travels on every response, the preflight included,
+  // and Expose-Headers is what lets a browser read it at all.
+  assertEquals(res.headers.get('X-WGA-Version'), VERSION);
+  assertEquals(res.headers.get('Access-Control-Expose-Headers'), 'X-WGA-Version');
   assertEquals(db.calls, []);
   assertEquals(calls, []);
 });

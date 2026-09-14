@@ -232,6 +232,61 @@ jobs:
             supabase functions deploy "$name" --project-ref "$PROJECT_REF"
             echo "::endgroup::"
           done
+      # Read the version back out of what was just deployed (#971), the way
+      # migrate reads the ledger back after pushing. A deploy the CLI accepted
+      # is not the same as a function serving the new bundle, and before this
+      # nothing could ask production what it was running: Supabase's own
+      # per-deploy counter is a metadata revision that moves when identical
+      # code is redeployed, so it never answered this question.
+      #
+      # Unauthenticated OPTIONS, and no key of any kind. The gateway passes a
+      # preflight through to the function even where verify_jwt is on
+      # (measured against contact-webhook, 2026-09-14), and every function
+      # answers its preflight as the first thing it does, so this reaches no
+      # side effect.
+      - name: Check each function answers its stamped X-WGA-Version
+        id: verify
+        if: ${{ steps.select.outputs.functions != '' && !inputs.dry_run }}
+        env:
+          FUNCTIONS: ${{ steps.select.outputs.functions }}
+        run: |
+          base="https://${PROJECT_REF}.supabase.co/functions/v1"
+          problems=""
+          for name in $FUNCTIONS; do
+            want=$(node -p "require('./version.json').pieces.functions[process.argv[1]] || ''" "$name")
+            if [ -z "$want" ]; then
+              # Nothing to compare against is not a pass. A deployed function
+              # with no manifest entry means the stamp and the deploy disagree
+              # about what exists.
+              echo "$name: no entry in version.json to compare against"
+              problems="$problems $name(no-manifest-entry)"
+              continue
+            fi
+            # The deploy returns when Supabase accepts it, not when the runtime
+            # is serving it, so give the swap a few seconds rather than failing
+            # a live deploy on a reporting race. Five tries over twenty seconds.
+            got=""
+            for attempt in 1 2 3 4 5; do
+              got=$(curl -s -X OPTIONS -D - -o /dev/null --max-time 10 "$base/$name" \
+                | tr -d '\r' | grep -i '^x-wga-version:' | head -1 | cut -d' ' -f2)
+              [ "$got" = "$want" ] && break
+              [ "$attempt" = 5 ] || sleep 5
+            done
+            if [ "$got" = "$want" ]; then
+              echo "$name: $got"
+            elif [ -z "$got" ]; then
+              echo "$name: answered no X-WGA-Version at all, wanted $want"
+              problems="$problems $name(no-header)"
+            else
+              echo "$name: answered $got, wanted $want"
+              problems="$problems $name($got)"
+            fi
+          done
+          echo "problems=${problems# }" >> "$GITHUB_OUTPUT"
+          if [ -n "$problems" ]; then
+            echo "::error::Deployed, but not answering the stamped version:$problems"
+            exit 1
+          fi
       - name: Write the summary
         if: ${{ always() && steps.select.outcome == 'success' }}
         env:
@@ -239,6 +294,8 @@ jobs:
           FUNCTIONS: ${{ steps.select.outputs.functions }}
           HELD: ${{ steps.select.outputs.held }}
           DEPLOYED: ${{ steps.deploy.outcome }}
+          VERIFIED: ${{ steps.verify.outcome }}
+          PROBLEMS: ${{ steps.verify.outputs.problems }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
           {
@@ -249,6 +306,10 @@ jobs:
               echo "Dry run. Would deploy: $FUNCTIONS"
             else
               echo "Deploy step: $DEPLOYED. Selected: $FUNCTIONS"
+              echo "Version read-back: $VERIFIED."
+              if [ -n "$PROBLEMS" ]; then
+                echo "Did not answer their stamped version: $PROBLEMS"
+              fi
             fi
             if [ -n "$HELD" ]; then
               echo "Held, never deployed from here (scripts/ci/functions-to-deploy.js says why): $HELD"
@@ -268,6 +329,7 @@ jobs:
           S_SELECT: ${{ steps.select.outcome }}
           S_SECRET: ${{ steps.check_secret.outcome }}
           S_DEPLOY: ${{ steps.deploy.outcome }}
+          S_VERIFY: ${{ steps.verify.outcome }}
         run: |
           if [ -z "$DISCORD_WEBHOOK_URL" ]; then
             echo "DISCORD_WEBHOOK_URL is not set -- cannot post, but the run above already failed loudly on its own."
@@ -277,6 +339,7 @@ jobs:
           [ "$S_SELECT" = "failure" ] && FAILED_STEP="Select the functions this push changed"
           [ "$S_SECRET" = "failure" ] && FAILED_STEP="Check the deploy token is set"
           [ "$S_DEPLOY" = "failure" ] && FAILED_STEP="Deploy them, one at a time"
+          [ "$S_VERIFY" = "failure" ] && FAILED_STEP="Check each function answers its stamped X-WGA-Version"
           PAYLOAD=$(cat <<PAYLOAD_JSON
           {
             "embeds": [{

@@ -7,6 +7,7 @@
 // still run on the platform fetch and are not exercised here.
 import { assertEquals } from 'jsr:@std/assert@1';
 import { type Deps, handle } from '../../../supabase/functions/wcl-sync/handler.ts';
+import { VERSION } from '../../../supabase/functions/wcl-sync/version.ts';
 
 const URL = 'http://edge.test/functions/v1/wcl-sync';
 const OFFICER_AUTH = 'Bearer officer-session';
@@ -54,6 +55,9 @@ Deno.test('OPTIONS answers the CORS preflight without building a client', async 
   assertEquals(res.status, 200);
   assertEquals(await res.text(), 'ok');
   assertEquals(res.headers.get('Access-Control-Allow-Origin'), '*');
+  // #971: the version travels on every response, the preflight included.
+  assertEquals(res.headers.get('X-WGA-Version'), VERSION);
+  assertEquals(res.headers.get('Access-Control-Expose-Headers'), 'X-WGA-Version');
   assertEquals(built, []);
 });
 

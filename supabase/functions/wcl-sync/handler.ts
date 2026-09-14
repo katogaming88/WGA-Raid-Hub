@@ -28,11 +28,14 @@
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import { gqlInt, gqlString } from '../_shared/gql.ts';
 import { parseRequest, type ScoringMetric } from './request.ts';
+import { VERSION } from './version.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Expose-Headers': 'X-WGA-Version',
+  'X-WGA-Version': VERSION
 };
 
 function jsonResponse(body: unknown, status = 200) {
