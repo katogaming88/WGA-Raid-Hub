@@ -365,6 +365,7 @@ so a case about the stack names only what it changes.
 | `scripts/import/` | One-off/recurring data import tooling (loot, attendance, etc.) |
 | `scripts/ci/` | CI checks that need more than a workflow step (changelog classification, the team-wide read guard, the RLS autocommit guard, the security advisor allowlist), plus the version stamper (`npm run stamp`), which owns the page registry the asset-version check reads |
 | `dbdoc/` | Generated schema docs (tbls). Never edit by hand; regenerate with `npm run db:docs` |
+| `supabase/definitions/` | Generated current definition of every database function and view, one file each (#1107). Never edit by hand; regenerate with `npm run db:definitions` |
 | `docs/RLS.md` | Hand-maintained RLS policy reference (tbls cannot generate this) |
 
 ## Reading team-wide data
@@ -550,6 +551,11 @@ PRs that change `supabase/migrations/` must also:
   slug; the prefix already carries one.
 - Regenerate the schema docs: `supabase db reset`, then `npm run db:docs`, and
   commit the `dbdoc/` changes (CI fails stale docs)
+- Regenerate the function and view definitions: `npm run db:definitions`, and
+  commit the `supabase/definitions/` changes (CI fails stale files). Each
+  function and view has one file there holding its current definition, so a
+  migration that rewrites a function shows only the lines that changed. Never
+  edit those files by hand; the migration is still what changes the database
 - Update [docs/RLS.md](docs/RLS.md) if the migration adds, alters, or drops an
   RLS policy (CI checks this too)
 - Regenerate the policy export if policies changed: `npm run db:rls`, and

@@ -12,6 +12,21 @@ answers to.
 
 ---
 
+## [3.112.7] - 2026-09-13
+
+### Project
+
+- Every database function and view now has one file holding its current
+  definition, under `supabase/definitions/`
+  ([#1107](https://github.com/katogaming88/WGA-Raid-Hub/issues/1107)).
+  Changing a function still takes a migration that repeats the whole thing,
+  but the PR now also shows just the lines that changed (a one-line rule
+  change in `generate_priority_order` reads as a 1-line diff instead of a
+  337-line new file), and `git log` on a file is that function's history.
+  `npm run db:definitions` regenerates them, and the Schema docs workflow
+  fails a PR that forgot to. Supabase's declarative schema was tried first
+  and not adopted; the spike is on #1107.
+
 ## [3.112.6] - 2026-09-13
 
 ### Project

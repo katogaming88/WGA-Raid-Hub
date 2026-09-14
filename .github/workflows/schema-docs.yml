@@ -10,6 +10,8 @@ on:
       - '.tbls.yml'
       - 'docs/rls_policies.*'
       - 'scripts/ci/advisor-check.js'
+      - 'supabase/definitions/**'
+      - 'scripts/ci/export-definitions.js'
       - '.github/workflows/schema-docs.yml'
 
 # A new push to the PR supersedes any still-running check on the old commit,
@@ -114,3 +116,12 @@ jobs:
         run: |
           psql "postgres://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable" -f docs/rls_policies.sql
           git diff --exit-code docs/rls_policies.csv
+      # One file per function and view, the current definition as the
+      # migrations build it (#1107). Same contract as dbdoc/: a PR that changes
+      # a function shows the changed lines there, and this fails when the
+      # committed files were not regenerated. psql only, no npm install.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+      - name: Fail if supabase/definitions/ is stale
+        run: node scripts/ci/export-definitions.js --check
