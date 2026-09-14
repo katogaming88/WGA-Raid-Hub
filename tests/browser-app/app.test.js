@@ -88,12 +88,12 @@ function profileState(label, viewerKey, profileKey, extra = {}) {
 }
 
 // The wishlist editor's reads (tests/behavior/wishlist.js), with one slot
-// opened so its items and marks are on the page axe measures.
+// chosen so its items and marks are on the page axe measures.
 const wishlistEditorState = (label, extra = {}) =>
   profileState(label, 'torbjorn', 'torbjorn', {
     path: '/g/wga/t/phoenix/me/wishlist',
-    sentinel: 'main .wishlist-slot',
-    click: 'main .wishlist-slot[data-slot="Finger 2"] summary',
+    sentinel: 'main .wishlist-slot-tab',
+    click: 'main .wishlist-slot-tab[data-slot="Finger 2"]',
     ...extra,
     tables: {
       ...profileState('', 'torbjorn', 'torbjorn').tables,

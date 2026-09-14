@@ -1,3 +1,4 @@
+import { useRef, useState, type KeyboardEvent } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { DataState } from '../components/DataState';
 import { bothQueries } from '../data/query';
@@ -107,68 +108,131 @@ function Editor({
       {slots.length === 0 ? (
         <p className="text-muted card-note">No raid items are set up for this season yet.</p>
       ) : (
-        <div className="wishlist-slots">
-          {slots.map((s) => (
-            <SlotCard
-              key={s.slot}
-              slot={s}
-              disabled={!editable || mark.isPending}
-              onMark={(itemId, next) => set(s.slot, itemId, next)}
-            />
-          ))}
-        </div>
+        <SlotTabs slots={slots} disabled={!editable || mark.isPending} onMark={set} />
       )}
     </>
   );
 }
 
-function SlotCard({
-  slot,
+const pickFor = (slot: EditorSlot) => {
+  const bis = slot.items.find((i) => i.mark === 'bis');
+  return bis ? bis.name : slot.notFromRaid ? `${slot.notFromRaid} (not from raid)` : null;
+};
+
+const tabId = (slot: string) => `wishlist-slot-${slot.toLowerCase().replace(/s+/g, '-')}`;
+
+// The slots across the top (Kat, 2026-09-14), each a tab showing whether it
+// has a BiS pick; the chosen slot's items are listed below. Arrow keys, Home
+// and End move between slots.
+function SlotTabs({
+  slots,
   disabled,
   onMark
 }: {
-  slot: EditorSlot;
+  slots: EditorSlot[];
   disabled: boolean;
-  onMark: (itemId: number, next: Mark | null) => void;
+  onMark: (slot: string, itemId: number, next: Mark | null) => void;
 }) {
-  const bis = slot.items.find((i) => i.mark === 'bis');
-  const pick = bis ? bis.name : slot.notFromRaid ? `${slot.notFromRaid} (not from raid)` : null;
+  const [chosen, setChosen] = useState(slots[0]!.slot);
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const index = Math.max(
+    0,
+    slots.findIndex((s) => s.slot === chosen)
+  );
+  const current = slots[index]!;
+
+  const onKeyDown = (event: KeyboardEvent) => {
+    const last = slots.length - 1;
+    const next =
+      event.key === 'ArrowRight'
+        ? (index + 1) % slots.length
+        : event.key === 'ArrowLeft'
+          ? (index - 1 + slots.length) % slots.length
+          : event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? last
+              : null;
+    if (next === null) return;
+    event.preventDefault();
+    setChosen(slots[next]!.slot);
+    refs.current[next]?.focus();
+  };
+
+  const pick = pickFor(current);
   return (
-    <details className="wishlist-slot" data-slot={slot.slot}>
-      <summary className="wishlist-slot-summary">
-        <span className="wishlist-slot-name">{slot.slot}</span>
-        <span className={pick ? 'wishlist-slot-pick' : 'wishlist-slot-pick text-muted'}>{pick ?? 'No BiS pick'}</span>
-      </summary>
-      {slot.notFromRaid && (
-        <p className="card-note wishlist-not-raid">
-          Your BiS for this slot is <strong>{slot.notFromRaid}</strong>. Marking a raid item BiS replaces it.
+    <>
+      <div className="wishlist-slot-tabs" role="tablist" aria-label="Gear slots">
+        {slots.map((s, i) => {
+          const picked = pickFor(s) !== null;
+          return (
+            <button
+              key={s.slot}
+              ref={(el) => {
+                refs.current[i] = el;
+              }}
+              type="button"
+              role="tab"
+              id={tabId(s.slot)}
+              aria-selected={s === current}
+              aria-controls="wishlist-slot-panel"
+              tabIndex={s === current ? 0 : -1}
+              className="wishlist-slot-tab"
+              data-slot={s.slot}
+              data-picked={picked || undefined}
+              onClick={() => setChosen(s.slot)}
+              onKeyDown={onKeyDown}
+            >
+              <span className="wishlist-slot-dot" aria-hidden="true" />
+              {s.slot}
+              <span className="visually-hidden">{picked ? ', BiS picked' : ', no BiS pick'}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        id="wishlist-slot-panel"
+        role="tabpanel"
+        aria-labelledby={tabId(current.slot)}
+        className="wishlist-slot"
+        data-slot={current.slot}
+      >
+        <p className="wishlist-slot-summary">
+          <span className="wishlist-slot-name">{current.slot}</span>
+          <span className={pick ? 'wishlist-slot-pick' : 'wishlist-slot-pick text-muted'}>{pick ?? 'No BiS pick'}</span>
         </p>
-      )}
-      <ul className="wishlist-items">
-        {slot.items.map((item) => (
-          <li key={item.itemId} className="wishlist-item" data-mark={item.mark ?? undefined}>
-            <span className="wishlist-item-name">{item.name}</span>
-            {item.takenBy ? (
-              <span className="wishlist-taken">Your {item.takenBy} BiS</span>
-            ) : (
-              <span className="mark-buttons" role="group" aria-label={`${item.name}, ${slot.slot}`}>
-                {(['bis', 'pass'] as const).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    className={`mark-button mark-${m}`}
-                    aria-pressed={item.mark === m}
-                    disabled={disabled}
-                    onClick={() => onMark(item.itemId, item.mark === m ? null : m)}
-                  >
-                    {m === 'bis' ? 'BiS' : 'Pass'}
-                  </button>
-                ))}
-              </span>
-            )}
-          </li>
-        ))}
-      </ul>
-    </details>
+        {current.notFromRaid && (
+          <p className="card-note wishlist-not-raid">
+            Your BiS for this slot is <strong>{current.notFromRaid}</strong>. Marking a raid item BiS replaces it.
+          </p>
+        )}
+        <ul className="wishlist-items">
+          {current.items.map((item) => (
+            <li key={item.itemId} className="wishlist-item" data-mark={item.mark ?? undefined}>
+              <span className="wishlist-item-name">{item.name}</span>
+              {item.takenBy ? (
+                <span className="wishlist-taken">Your {item.takenBy} BiS</span>
+              ) : (
+                <span className="mark-buttons" role="group" aria-label={`${item.name}, ${current.slot}`}>
+                  {(['bis', 'pass'] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      className={`mark-button mark-${m}`}
+                      aria-pressed={item.mark === m}
+                      disabled={disabled}
+                      onClick={() => onMark(current.slot, item.itemId, item.mark === m ? null : m)}
+                    >
+                      {m === 'bis' ? 'BiS' : 'Pass'}
+                    </button>
+                  ))}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </>
   );
 }

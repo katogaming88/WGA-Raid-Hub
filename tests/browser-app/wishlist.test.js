@@ -60,34 +60,41 @@ function open({ path = '/g/wga/t/phoenix/me/wishlist', viewer = 'torbjorn', open
 }
 
 async function showEditor(page) {
-  await page.waitForSelector('main .wishlist-slot', { timeout: 20000 });
-  await page.evaluate(() => document.querySelectorAll('main .wishlist-slot').forEach((d) => (d.open = true)));
+  await page.waitForSelector('main .wishlist-slot-tab', { timeout: 20000 });
 }
 
-// The shape tests/behavior/wishlist.js describes, read from the slot rows.
-function readEditor(page) {
-  return page.evaluate(() => {
-    const text = (el) => (el ? el.textContent.trim() : null);
-    return [...document.querySelectorAll('main .wishlist-slot')].map((slot) => {
-      const entry = {
-        slot: slot.dataset.slot,
-        items: [],
-        bis: [],
-        pass: [],
-        taken: [],
-        notFromRaid: text(slot.querySelector('.wishlist-not-raid strong'))
-      };
-      for (const li of slot.querySelectorAll('.wishlist-item')) {
-        const name = text(li.querySelector('.wishlist-item-name'));
-        entry.items.push(name);
-        const taken = text(li.querySelector('.wishlist-taken'));
-        if (taken) entry.taken.push({ item: name, by: /^Your (.*) BiS$/.exec(taken)[1] });
-        if (li.dataset.mark) entry[li.dataset.mark].push(name);
-      }
-      entry.items.sort();
-      return entry;
-    });
-  });
+// The shape tests/behavior/wishlist.js describes, read one slot tab at a time.
+async function readEditor(page) {
+  const slots = await page.locator('main .wishlist-slot-tab').evaluateAll((tabs) => tabs.map((t) => t.dataset.slot));
+  const editor = [];
+  for (const slot of slots) {
+    await page.click(`main .wishlist-slot-tab[data-slot="${slot}"]`);
+    await page.waitForSelector(`main .wishlist-slot[data-slot="${slot}"]`);
+    editor.push(
+      await page.evaluate(() => {
+        const text = (el) => (el ? el.textContent.trim() : null);
+        const panel = document.querySelector('main .wishlist-slot');
+        const entry = {
+          slot: panel.dataset.slot,
+          items: [],
+          bis: [],
+          pass: [],
+          taken: [],
+          notFromRaid: text(panel.querySelector('.wishlist-not-raid strong'))
+        };
+        for (const li of panel.querySelectorAll('.wishlist-item')) {
+          const name = text(li.querySelector('.wishlist-item-name'));
+          entry.items.push(name);
+          const taken = text(li.querySelector('.wishlist-taken'));
+          if (taken) entry.taken.push({ item: name, by: /^Your (.*) BiS$/.exec(taken)[1] });
+          if (li.dataset.mark) entry[li.dataset.mark].push(name);
+        }
+        entry.items.sort();
+        return entry;
+      })
+    );
+  }
+  return editor;
 }
 
 function recordWrites(page) {
@@ -104,8 +111,11 @@ function recordWrites(page) {
   return writes;
 }
 
-const itemRow = (page, slot, name) =>
-  page.locator(`main .wishlist-slot[data-slot="${slot}"] .wishlist-item`, { hasText: name });
+// Opens a slot's tab and finds an item in it.
+const itemRow = async (page, slot, name) => {
+  await page.click(`main .wishlist-slot-tab[data-slot="${slot}"]`);
+  return page.locator(`main .wishlist-slot[data-slot="${slot}"] .wishlist-item`, { hasText: name });
+};
 
 const enabledMarks = (page) => page.locator('main .mark-button:not([disabled])').count();
 
@@ -128,10 +138,13 @@ describe('Wishlist (new app), what each slot offers and shows, checked against t
     try {
       await showEditor(opened.page);
       expect(await readEditor(opened.page)).toEqual(EXPECTED_EDITOR);
-      // The slot's pick, shown without opening it.
-      await expect(
-        opened.page.locator('main .wishlist-slot[data-slot="Neck"] .wishlist-slot-pick').textContent()
-      ).resolves.toBe('M+ (not from raid)');
+      // Which slots have a BiS pick, shown on the tabs themselves.
+      const picked = await opened.page
+        .locator('main .wishlist-slot-tab[data-picked]')
+        .evaluateAll((tabs) => tabs.map((t) => t.dataset.slot));
+      expect(picked).toEqual(['Head', 'Neck', 'Finger 1', 'Trinket 1', 'Weapon', 'Off Hand']);
+      await opened.page.click('main .wishlist-slot-tab[data-slot="Neck"]');
+      await expect(opened.page.locator('main .wishlist-slot-pick').textContent()).resolves.toBe('M+ (not from raid)');
       expect(opened.unexpected).toEqual([]);
       expect(opened.pageErrors).toEqual([]);
     } finally {
@@ -175,13 +188,37 @@ describe('Wishlist (new app), when editing is closed, checked against the curren
   });
 });
 
+describe('Wishlist (new app), slot tabs', () => {
+  it('move with the arrow keys and show the chosen slot', async () => {
+    const opened = await open();
+    try {
+      await showEditor(opened.page);
+      const tab = (slot) => opened.page.locator(`main .wishlist-slot-tab[data-slot="${slot}"]`);
+      await expect(tab('Head').getAttribute('aria-selected')).resolves.toBe('true');
+      await expect(tab('Hands').textContent()).resolves.toBe('Hands, no BiS pick');
+      await tab('Head').focus();
+      await opened.page.keyboard.press('ArrowRight');
+      await expect(tab('Neck').evaluate((el) => el === document.activeElement)).resolves.toBe(true);
+      await expect(opened.page.locator('#wishlist-slot-panel').getAttribute('data-slot')).resolves.toBe('Neck');
+      await opened.page.keyboard.press('End');
+      await expect(opened.page.locator('#wishlist-slot-panel').getAttribute('data-slot')).resolves.toBe('Off Hand');
+    } finally {
+      await opened.context.close();
+    }
+  });
+});
+
 describe('Wishlist (new app), marking, checked against the current site', () => {
   it('saves a new BiS pick and unmarks the ring it replaces', async () => {
     const opened = await open();
     try {
       await showEditor(opened.page);
       const writes = recordWrites(opened.page);
-      await itemRow(opened.page, 'Finger 1', 'Signet of Coiled Ash').getByRole('button', { name: 'BiS' }).click();
+      await (
+        await itemRow(opened.page, 'Finger 1', 'Signet of Coiled Ash')
+      )
+        .getByRole('button', { name: 'BiS' })
+        .click();
       await expect.poll(() => writes.filter((w) => w.method === 'POST').length).toBe(1);
 
       expect(writes.find((w) => w.method === 'POST').body).toMatchObject(NEW_BIS_ROW);
@@ -200,7 +237,7 @@ describe('Wishlist (new app), marking, checked against the current site', () => 
     try {
       await showEditor(opened.page);
       const writes = recordWrites(opened.page);
-      const bis = itemRow(opened.page, 'Head', 'Venom-Etched Greathelm').getByRole('button', { name: 'BiS' });
+      const bis = (await itemRow(opened.page, 'Head', 'Venom-Etched Greathelm')).getByRole('button', { name: 'BiS' });
       await expect(bis.getAttribute('aria-pressed')).resolves.toBe('true');
       await bis.click();
       await expect.poll(() => writes.length).toBe(1);

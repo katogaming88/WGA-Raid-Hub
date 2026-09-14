@@ -505,15 +505,63 @@
 
 /* Wishlist editor (#868 part 3): a slot per row, opened to mark its items. */
 
-.wishlist-slots {
-  display: flex;
-  flex-direction: column;
+/* The slots across the top, eight to a row like the two sides of the
+   character pane; four to a row on a narrow screen. */
+.wishlist-slot-tabs {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 2px;
+  padding: 2px;
+  border-radius: 7px;
+  background: var(--sidebar);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
 }
 
-.wishlist-slot + .wishlist-slot {
-  border-top: 1px solid var(--border);
+.wishlist-slot-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.wishlist-slot-tab:hover {
+  color: var(--text);
+}
+
+.wishlist-slot-tab[aria-selected='true'] {
+  background: var(--raised);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+
+/* Hollow until the slot has a BiS pick. */
+.wishlist-slot-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid var(--text-dim);
+}
+
+.wishlist-slot-tab[data-picked] .wishlist-slot-dot {
+  background: var(--good);
+  border-color: var(--good);
+}
+
+.wishlist-slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .wishlist-slot-summary {
@@ -521,17 +569,11 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: 2px var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  cursor: pointer;
-}
-
-.wishlist-slot-summary:hover {
-  background: var(--hover);
+  margin: 0;
 }
 
 .wishlist-slot-name {
-  min-width: 80px;
-  font-weight: 600;
+  font-weight: 650;
 }
 
 .wishlist-slot-pick {
@@ -539,14 +581,20 @@
   overflow-wrap: anywhere;
 }
 
+@media (max-width: 760px) {
+  .wishlist-slot-tabs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 .wishlist-not-raid {
-  padding: 0 var(--space-3);
   color: var(--text-muted);
 }
 
 .wishlist-items {
   margin: 0;
-  padding: 0 var(--space-3) var(--space-2);
+  padding: 0;
+  border-top: 1px solid var(--border);
   list-style: none;
 }
 
