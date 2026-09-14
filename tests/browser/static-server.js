@@ -42,16 +42,27 @@ function resolveInsideRoot(root, requestPath) {
 
 /**
  * @param {string} root directory to serve
+ * @param {{ port?: number, host?: string, spaFallback?: boolean }} [options]
+ *   spaFallback: answer an address with no file extension that matches no file
+ *   with root's index.html, the way Cloudflare Pages serves a single-page app
+ *   (the new app in app/, #1101). A missing asset still 404s.
  * @returns {Promise<{ port: number, close: () => Promise<void> }>}
  */
-export function startServer(root, { port = 0, host = '127.0.0.1' } = {}) {
+export function startServer(root, { port = 0, host = '127.0.0.1', spaFallback = false } = {}) {
   const server = createServer(async (req, res) => {
     // Split rather than `new URL`: only the path matters, and index.html
     // always arrives with a ?team= query the file system knows nothing about.
     let path = (req.url || '/').split('?')[0].split('#')[0];
     if (path === '/' || path === '') path = '/index.html';
 
-    const full = resolveInsideRoot(root, path);
+    let full = resolveInsideRoot(root, path);
+    if (full && spaFallback && extname(full) === '') {
+      const exists = await stat(full).then(
+        (info) => info.isFile(),
+        () => false
+      );
+      if (!exists) full = join(resolve(root), 'index.html');
+    }
     if (!full) {
       res.writeHead(403).end('Forbidden');
       return;

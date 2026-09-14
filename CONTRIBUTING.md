@@ -242,6 +242,12 @@ names the version it deployed.
   `states.js` and reads its outline back, then checks the modality contract:
   Tab shows a ring, a click on a button or a link does not, and a click into
   a text box or a select does
+- The new app in `app/` has its own browser suite under `tests/browser-app/`
+  (`npm run test:app-browser`, after `cd app && npm run build`). It serves
+  `app/dist` and answers every Supabase request from its harness, including
+  signed-in states. There is no baseline: the app started clean, so any
+  WCAG 2.1 AA violation, sideways scroll at 480px, missing focus ring, or
+  motion under `prefers-reduced-motion` fails. The App workflow runs it
 - `tests/browser/a11y-baseline.json` records every violation the site has
   today, compared for exact equality. A PR that fixes one has to delete its
   entries, and a PR that adds one fails. Refresh it with

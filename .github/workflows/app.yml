@@ -10,6 +10,8 @@ on:
       # The app's Supabase types come from the current site's copy until the
       # cutover (app/src/lib/supabase.ts).
       - 'js/database.types.ts'
+      - 'tests/browser-app/**'
+      - 'tests/browser/static-server.js'
       - '.github/workflows/app.yml'
 
 concurrency:
@@ -40,3 +42,39 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+
+  # The built app in a real browser (#1101 part 4): axe at WCAG 2.1 AA with no
+  # baseline, reflow at 480px, focus rings, the dialog and drawer focus rules,
+  # and reduced motion. Playwright and axe come from the root package, which the
+  # current site's browser suite already uses; the setup mirrors
+  # a11y-browser.yml, including its apt-source workaround.
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            app/package-lock.json
+      - run: npm ci
+      - name: Build the app
+        working-directory: app
+        run: |
+          npm ci
+          npm run build
+      - name: Resolve the playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('./node_modules/playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ms-playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - name: Remove the unused google-chrome apt source
+        run: sudo find /etc/apt/sources.list.d -type f -exec grep -q 'dl\.google\.com/linux/chrome' {} \; -delete
+      - name: Install chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run the app browser tests
+        run: npm run test:app-browser

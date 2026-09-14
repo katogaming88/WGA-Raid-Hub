@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Navigate, NavLink, Outlet, useLocation, useMatches, useParams } from 'react-router';
 import { FlameMark, Icon } from '../components/Icon';
 import { DataState } from '../components/DataState';
@@ -61,8 +62,12 @@ export function AppShell() {
     setOpenedAt(location.pathname);
     setDrawerOpen(true);
   };
+  // The menu button sits in the main column, which is inert while the drawer is
+  // open, and a browser ignores focus() on an inert element. So the close is
+  // rendered first (flushSync), and only then does focus go back. jsdom does not
+  // enforce inert; the browser test in tests/browser-app/ caught this.
   const closeDrawer = () => {
-    setDrawerOpen(false);
+    flushSync(() => setDrawerOpen(false));
     menuButton.current?.focus();
   };
 
@@ -73,10 +78,7 @@ export function AppShell() {
     if (!drawerOpen) return;
     sidebar.current?.querySelector<HTMLElement>('a[href], button:not([disabled])')?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setDrawerOpen(false);
-        menuButton.current?.focus();
-      }
+      if (event.key === 'Escape') closeDrawer();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);

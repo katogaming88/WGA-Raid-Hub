@@ -12,6 +12,27 @@ answers to.
 
 ---
 
+## [3.114.1] - 2026-09-14
+
+### Project
+
+- The new app deploys to its own private preview, the last part of the app
+  shell ([#1101](https://github.com/katogaming88/WGA-Raid-Hub/issues/1101)).
+  Every merge builds `app/` and uploads it to the Cloudflare Pages project
+  `wga-raid-hub-app`, after the migrations and functions, the same way the
+  current site deploys. It is not linked from anywhere.
+- The app has its own browser tests (`npm run test:app-browser`), run by the
+  App workflow: WCAG 2.1 AA with axe on every screen in both themes with no
+  allowed violations, no sideways scroll at 480px, a visible focus ring on
+  every control, the dialog and the narrow-screen menu keeping and returning
+  focus, and no motion when the system asks for less.
+- Fixed in the app: closing the narrow-screen menu with Escape or the close
+  button now returns focus to the menu button. A real browser ignores focus
+  on the part of the page the open menu disables; the unit tests could not
+  see that, the browser tests did.
+
+---
+
 ## [3.114.0] - 2026-09-14
 
 ### Functions
