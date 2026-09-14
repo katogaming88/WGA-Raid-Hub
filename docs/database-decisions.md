@@ -8,6 +8,29 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-14 -- Heroic sale runs: guests are signups on a run, and prices are a guild list copied onto each sale (#1070, #1076)
+
+Shipped: not yet. Decisions only; the tables arrive with #1073 (guest signup) in Revamp 2 and #1077 (buyers) in Revamp 3.
+
+Kat's calls before Revamp 2, for the Heroic Sale Runs feature that launches with the rebuilt site. The sales team is a small core roster plus guests from other teams who help on specific runs.
+
+**A guest is a signup on a run, not a roster row (#1070).** Aeglos stays on Phoenix's roster only; helping on one run creates a signup that references his own character (his Phoenix `players` row) and that run's event id (#1071), with a status of pending, approved or declined. The rejected alternative, a hidden guest row on the sales team's `players`, would reuse RSVPs as they are, but give one character two roster rows and make every roster, loot and priority read remember to skip guests. The signup shape is also what #942's people table extends: one person, active on more than one team's data, the same case as #486.
+
+- A run's roster is the core roster plus its approved signups. Attendance for a run reads from that, not from `raid_rsvps`.
+- Guests sign up per run. The core roster never signs up.
+- Each signup stores the guest's per-boss Heroic parse results at signup time (#1074). How strict the bar is (hard gate, officer judgment, or gate with override) is still open and moved to #1074; it is a rule over that stored data, not a different shape.
+- Which team is the sales team is not decided. Nothing names it: it is a team setting (see the no-guild-specific-names rule), so choosing it is setup.
+
+**Prices are a guild price list, copied onto each sale (#1076).** The same snapshot pattern as `boe_items`' payout floor and pivot: a sale copies the list price when it is recorded and can be adjusted, and a later list change never rewrites a past sale.
+
+- **Type and price live on the buyer's record (#1077), not on the run.** Whether one run sells more than one type is "probably yes" and unconfirmed; per-buyer covers both answers.
+- **A run carries a display-only list of the types it is selling**, shown on the calendar. Prices never appear there.
+- **The sales team's officers and leader manage the price list, buyers and sales**, plus site admins. No new grant, and not `boe_managers`.
+
+[Roster model -> #1070](https://github.com/katogaming88/WGA-Raid-Hub/issues/1070), [pricing -> #1076](https://github.com/katogaming88/WGA-Raid-Hub/issues/1076), milestone Heroic Sale Runs.
+
+---
+
 ## 2026-09-14 -- tier_token_map carries a season code, and a season with no tier tokens is said out loud (#1108)
 
 Shipped: `20260914113413_tier_token_map_season.sql`

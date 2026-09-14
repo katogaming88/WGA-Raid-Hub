@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.115.1] - 2026-09-14
+
+### Project
+
+- Decisions logged for Heroic sale runs (#1070, #1076): a guest from
+  another team takes part as a signup on a specific run rather than a second
+  roster row, prices come from a guild price list copied onto each sale, and
+  each buyer's record carries what they bought. Still open: which team is the
+  sales team, and how strict the Heroic parse bar is (moved to #1074).
+- The revamp time log records #1108, the end of Revamp 1, and these
+  decisions as the start of Revamp 2.
+
+---
+
 ## [3.115.0] - 2026-09-14
 
 ### Frontend
