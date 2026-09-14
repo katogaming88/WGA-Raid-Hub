@@ -172,6 +172,7 @@ Link state is written to `supabase/.temp/`, which is gitignored. Verify with
 | `supabase status` | Show endpoints and keys |
 | `supabase db reset` | Rebuild the local database from `supabase/migrations/` + seed |
 | `npm run db:docs` | Regenerate the schema docs in `dbdoc/` (see section 6) |
+| `npm run db:definitions` | Regenerate `supabase/definitions/`, one file per function and view (see section 6) |
 
 Docker Desktop must be running before `supabase start`.
 
@@ -192,7 +193,15 @@ Then, whenever migrations change:
 ```powershell
 supabase db reset   # make the local DB match the migration files
 npm run db:docs     # regenerate dbdoc/
+npm run db:definitions   # regenerate supabase/definitions/
 ```
+
+`supabase/definitions/` holds the current definition of every function and view,
+one file each, read from the local database ([#1107](https://github.com/katogaming88/WGA-Raid-Hub/issues/1107)).
+It needs only `psql` on PATH. Commit its changes with the migration: a function
+rewrite then shows the lines that changed next to the full migration copy, and
+`git log` on one file is that function's history. `npm run db:definitions:check`
+runs the same staleness check CI runs.
 
 Use the latest tbls release: the schema-docs workflow installs latest, and since tbls 1.96.0
 trigger listings are in creation order on every platform, so an older local tbls can produce a
@@ -449,6 +458,7 @@ whose generated docs are stale and cannot regenerate them for you:
 
 ```sh
 npm run db:docs     # dbdoc/, after any schema change
+npm run db:definitions   # supabase/definitions/, after any function or view change
 npm run db:rls      # docs/rls_policies.csv, only if a policy changed
 ```
 

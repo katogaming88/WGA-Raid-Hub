@@ -11,8 +11,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Phase | Time so far |
 | --- | ---: |
 | Planning and design | 1 h 50 m |
-| Revamp 1: decisions and foundation | 2 h 45 m |
-| **All revamp work** | **4 h 35 m** |
+| Revamp 1: decisions and foundation | 3 h 05 m |
+| **All revamp work** | **4 h 55 m** |
 
 ## Log
 
@@ -30,6 +30,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | 5:57–6:11 PM | #1114 guild record, URL keys, player codes | Revamp 1 | 15 m | ~11 m build, ~3 m review | PR #1119 |
 | 6:17–6:43 PM | #941 person lookup, kept character links, name matching | Revamp 1 (Identity prerequisite) | 25 m | ~22 m build incl. one Kat question, ~4 m review | PR #1121. Tested on prod backup |
 | 9:42–10:06 PM | #1106 access rules once per query | Revamp 1 | 25 m | ~18 m build incl. benchmark and one Kat question, ~6 m review | PR #1144. Benchmark changed the plan: rule rewrite instead of login-token hook |
+| 10:10–10:30 PM | #1107 one file per database function | Revamp 1 | 20 m | ~10 m spike of Supabase's declarative schema, one Kat decision, ~8 m build; review time not yet counted | Spike found the declarative tool unsafe here (dropped a constraint, would have paused prod cron jobs); built a generated per-function mirror instead |
 
 ## Not counted (same sessions, not revamp)
 
@@ -39,6 +40,5 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 
 ## Remaining in Revamp 1
 
-- #1107 one file per database function
 - #1101 app shell (includes the preview project and the accessibility checklist)
 - #1108 `tier_token_map` gets a season (Season milestone, due before the next tier set)
