@@ -13,6 +13,7 @@
 // stays the body's: it is a name somebody typed, not a claim about who they are.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { marker, resolveDestination } from '../_shared/discord-destination.ts';
+import { contactPayload } from './format.ts';
 import { resolveSubmitter, type SubmitterClient } from './submitter.ts';
 import { VERSION } from './version.ts';
 
@@ -30,8 +31,6 @@ function jsonResponse(body: unknown, status = 200) {
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
   });
 }
-
-const truncate = (s: string, max: number) => (s.length > max ? s.slice(0, max - 1) + '...' : s);
 
 // The caller's own JWT, read the way upload-bio-photo and boe-sold-webhook
 // read it. Signed out the site sends its publishable key here instead, which
@@ -64,40 +63,12 @@ Deno.serve(async (req) => {
 
     const submitter = await resolveSubmitter(req.headers.get('Authorization'), makeCallerClient);
 
-    // <@id> renders as a clickable mention in the embed field (right-click ->
-    // Message) same as it would in plain message content -- no ping/
-    // notification fires from this alone, it's just a clickable chip.
-    const discordField = submitter?.discordId
-      ? '<@' + submitter.discordId + '>'
-      : submitter?.username
-        ? truncate(submitter.username, 1024)
-        : '(not logged in)';
-
-    // An embed has no first line to mark, so a local post carries the marker
-    // as content above it; production sends no content key at all.
-    const mark = marker(dest.source);
+    // The post itself is format.ts: the four fields, and the [local] marker as
+    // content when there is one.
     const response = await fetch(dest.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...(mark ? { content: mark } : {}),
-        embeds: [
-          {
-            title: 'Site Contact Form Submission',
-            color: 0xd6a344,
-            fields: [
-              { name: 'Team', value: String(team || 'Unknown'), inline: true },
-              { name: 'Name', value: name ? truncate(String(name), 1024) : '(not provided)', inline: true },
-              { name: 'Discord', value: discordField, inline: true },
-              { name: 'Message', value: truncate(String(message), 1024) }
-            ],
-            timestamp: new Date().toISOString()
-          }
-        ],
-        // Nothing here has any business notifying anyone. An embed never pings
-        // on its own; this is the line somebody can read.
-        allowed_mentions: { parse: [] }
-      })
+      body: JSON.stringify(contactPayload({ team, name, message, submitter, mark: marker(dest.source) }))
     });
 
     if (!response.ok) {
