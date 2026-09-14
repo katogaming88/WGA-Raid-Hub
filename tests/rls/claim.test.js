@@ -10,7 +10,7 @@
 // so an expected raise does not abort the whole transaction (and does not mask
 // the real error when the role reset runs inside an aborted transaction).
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, RAIDER_T1 } from './helpers.js';
+import { pool, insertDiscordUser, RAIDER_T1 } from './helpers.js';
 
 // Seeded rows this file leans on (supabase/seed.sql): player 1 is team 1
 // 'Seedraider-Illidan', player 2 is team 1 'Seedplayertwo-Illidan', player 3
@@ -50,15 +50,9 @@ async function withTxn(fn) {
 const claim = (asUser, uid, teamId, nameRealm) =>
   asUser(uid, 'select * from public.claim_character($1, $2)', [teamId, nameRealm]);
 
-// Inserts an auth.users row (firing on_auth_user_created) and returns nothing;
-// callers pass a distinct uuid and provider_id per test. Stamped as a Discord
-// signup because since #1118 the trigger links grant rows only for one.
-const addAuthUser = (q, uid, providerId) =>
-  q('insert into auth.users (id, raw_app_meta_data, raw_user_meta_data) values ($1, $2, $3)', [
-    uid,
-    JSON.stringify({ provider: 'discord', providers: ['discord'] }),
-    JSON.stringify({ provider_id: providerId })
-  ]);
+// An account and the Discord identity behind it, which is what fires the link
+// trigger since #1135; callers pass a distinct uuid and Discord id per test.
+const addAuthUser = (q, uid, providerId) => insertDiscordUser(q, uid, providerId);
 
 describe('team_members self-read policy', () => {
   it('a raider sees exactly their own row', async () => {
@@ -177,58 +171,48 @@ describe('claim_character links a character to the caller', () => {
   });
 });
 
-// #1117: the discord_id fallback resolves the caller from raw_user_meta_data,
-// which the account itself can write. Without an unlinked check it hands over
-// a team_members row that already belongs to somebody, role and all. The
-// fixture writes the metadata directly because that is the state the auth API
-// leaves behind, not because the API is what these cases exercise.
-describe('claim_character refuses a team_members row linked to another account', () => {
+// #1117 put a guard on the discord_id fallback, which used to resolve the
+// caller from raw_user_meta_data and so handed over a team_members row that
+// already belonged to somebody. #1135 resolved the same fallback from
+// auth.identities, which closes that route one step earlier: an account cannot
+// present as a Discord id it does not hold, so it never reaches the guard.
+//
+// Both halves are worth a case. The first group is the forgery, which now goes
+// nowhere. The second constructs the collision #1117's guard exists for, which
+// after #1135 only legacy data can produce, and checks the guard still refuses.
+describe('a forged Discord id in metadata reaches nobody else row', () => {
   const IMPOSTOR = '00000000-0000-0000-0000-0000000000c1';
   // team_members 4 is the hellfire officer (discord-officer-2), linked to user
   // 5, and hellfire has an unclaimed seeded character.
   const OFFICER_DISCORD = 'discord-officer-2';
   const OFFICER_UID = '00000000-0000-0000-0000-000000000005';
+  const IMPOSTOR_DISCORD = 'discord-impostor-claim';
   const HELLFIRE = 2;
   const TARGET = 'Seedhellfire-Illidan';
 
-  const addImpostor = (q) =>
-    q('insert into auth.users (id, raw_user_meta_data) values ($1, jsonb_build_object($2::text, $3::text))', [
-      IMPOSTOR,
-      'provider_id',
-      OFFICER_DISCORD
-    ]);
+  // Metadata claiming the officer Discord id, over an identity row that says
+  // otherwise. The metadata is exactly what the account itself can write.
+  const addImpostor = (q) => insertDiscordUser(q, IMPOSTOR, IMPOSTOR_DISCORD, OFFICER_DISCORD);
 
-  it('refuses the claim and leaves the officer row with its owner', async () => {
+  it('leaves the officer row with its owner', async () => {
     await withTxn(async ({ q, asUser }) => {
       await addImpostor(q);
-      await expect(claim(asUser, IMPOSTOR, HELLFIRE, TARGET)).rejects.toThrow(
-        /linked to (a different|another) account/i
-      );
+      await claim(asUser, IMPOSTOR, HELLFIRE, TARGET);
 
       const row = (await q('select auth_user_id from public.team_members where id = 4')).rows[0];
       expect(row.auth_user_id).toBe(OFFICER_UID);
     });
   });
 
-  it('leaves the impostor with no role on that team', async () => {
+  it('gives the impostor a raider row on their own Discord id, not the officer role', async () => {
     await withTxn(async ({ q, asUser }) => {
       await addImpostor(q);
-      await expect(claim(asUser, IMPOSTOR, HELLFIRE, TARGET)).rejects.toThrow();
+      const res = await claim(asUser, IMPOSTOR, HELLFIRE, TARGET);
+      expect(res.rows[0].role).toBe('raider');
 
-      const rows = (await q('select id from public.team_members where auth_user_id = $1', [IMPOSTOR])).rows;
-      expect(rows).toHaveLength(0);
-    });
-  });
-
-  it('leaves the target character unclaimed', async () => {
-    await withTxn(async ({ q, asUser }) => {
-      await addImpostor(q);
-      await expect(claim(asUser, IMPOSTOR, HELLFIRE, TARGET)).rejects.toThrow();
-
-      const player = (
-        await q('select team_member_id from public.players where name_realm = $1 and team_id = $2', [TARGET, HELLFIRE])
-      ).rows[0];
-      expect(player.team_member_id).toBeNull();
+      const rows = (await q('select discord_id, role from public.team_members where auth_user_id = $1', [IMPOSTOR]))
+        .rows;
+      expect(rows).toEqual([{ discord_id: IMPOSTOR_DISCORD, role: 'raider' }]);
     });
   });
 
@@ -241,6 +225,41 @@ describe('claim_character refuses a team_members row linked to another account',
         await q('select team_member_id from public.players where name_realm = $1 and team_id = $2', [TARGET, HELLFIRE])
       ).rows[0];
       expect(player.team_member_id).toBe(4);
+    });
+  });
+});
+
+describe('claim_character refuses a team_members row linked to another account (#1117)', () => {
+  const CALLER = '00000000-0000-0000-0000-0000000000c2';
+  const OTHER = '00000000-0000-0000-0000-000000000005';
+  const SHARED_DISCORD = 'discord-legacy-collision';
+  const HELLFIRE = 2;
+  const TARGET = 'Seedhellfire-Illidan';
+
+  // A row carrying the caller own Discord id but linked to somebody else.
+  // Since #1135 nothing in the schema can create this: the link paths all
+  // resolve through auth.identities, which is unique on (provider_id,
+  // provider). It survives as the shape a hand-written row, or a row linked
+  // before #1135 on metadata that has since changed, would leave behind.
+  it('refuses rather than relinking, and leaves the row with its owner', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await insertDiscordUser(q, CALLER, SHARED_DISCORD);
+      const memberId = (
+        await q(
+          `insert into public.team_members (team_id, discord_id, auth_user_id, role)
+           values ($1, $2, $3, 'officer') returning id`,
+          [HELLFIRE, SHARED_DISCORD, OTHER]
+        )
+      ).rows[0].id;
+
+      await expect(claim(asUser, CALLER, HELLFIRE, TARGET)).rejects.toThrow(/linked to (a different|another) account/i);
+
+      const row = (await q('select auth_user_id from public.team_members where id = $1', [memberId])).rows[0];
+      expect(row.auth_user_id).toBe(OTHER);
+      const player = (
+        await q('select team_member_id from public.players where name_realm = $1 and team_id = $2', [TARGET, HELLFIRE])
+      ).rows[0];
+      expect(player.team_member_id).toBeNull();
     });
   });
 });

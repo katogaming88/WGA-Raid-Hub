@@ -234,10 +234,13 @@ function resolveDiscordSession(session) {
           authUserId: session.user.id,
           teamMemberId: member ? member.id : null,
           username: session.user.user_metadata.full_name || session.user.user_metadata.name,
-          // Discord snowflake ID (same raw_user_meta_data.provider_id the
-          // claim_character/admin-grant RPCs match on server-side) -- lets
-          // the Contact form tag the submitter as a clickable/pingable
-          // mention instead of asking for an email address (#577 follow-up).
+          // Discord snowflake ID, read off this browser's own session for the
+          // page's own use. No server path trusts it: since #1135 every RPC and
+          // policy resolves identity from auth.identities, which only the OAuth
+          // exchange writes, and the Contact form's mention is stamped by
+          // contact-webhook from current_discord_id() rather than from anything
+          // sent up here. Rewriting it in your own browser changes what your own
+          // page renders and nothing else.
           discordId: session.user.user_metadata.provider_id || null,
           nameRealm: nameRealm,
           isOfficer: !!member && (member.role === 'officer' || member.role === 'team_leader'),

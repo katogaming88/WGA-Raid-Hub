@@ -12,6 +12,37 @@ answers to.
 
 ---
 
+## [Unreleased]
+
+### Frontend
+
+- Your account's Discord identity now comes from the record Discord itself
+  writes when you sign in, instead of a copy of it that the account could
+  edit ([#1135](https://github.com/katogaming88/WGA-Raid-Hub/issues/1135)).
+  Nothing changes for anyone signed in with Discord, which is everyone, and
+  no roles or links needed repairing.
+
+### Backend
+
+- The database now answers "which Discord account is this" from that same
+  record, in every place that asked: the two BoE raider reads, the finder
+  stamped on a submitted find, claiming a character, looking a person up,
+  and the four officer, team leader, guild officer and BoE manager grant
+  tools, which also stopped guessing when more than one account could match.
+  The trigger that links a grant to its holder on first sign-in now fires on
+  that identity appearing rather than on the account row. The two guards
+  shipped earlier today
+  ([#1117](https://github.com/katogaming88/WGA-Raid-Hub/issues/1117),
+  [#1118](https://github.com/katogaming88/WGA-Raid-Hub/issues/1118)) closed
+  the two ways this could be used; this removes the reason they were needed
+  ([#1135](https://github.com/katogaming88/WGA-Raid-Hub/issues/1135)).
+
+### Functions
+
+- The Contact form's report names the submitter from the same record, so a
+  report can no longer be made to mention somebody else
+  ([#1135](https://github.com/katogaming88/WGA-Raid-Hub/issues/1135)).
+
 ## [3.112.7] - 2026-09-13
 
 ### Project

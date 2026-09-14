@@ -124,4 +124,21 @@ describe('function invariants (#1010)', () => {
     const eventTriggers = fns.filter((f) => f.is_event_trigger).map((f) => f.proname);
     expect(eventTriggers).toEqual(['rls_auto_enable']);
   });
+
+  // T5 (#1135). raw_user_meta_data is written by GoTrue on every OAuth sign-in
+  // and is writable by the account it describes, so the copy of the Discord id
+  // it carries cannot be removed and must not be trusted. current_discord_id()
+  // and auth_user_for_discord_id() read auth.identities instead; this is what
+  // stops a seventh caller quietly going back to the easy column.
+  //
+  // Scoped to provider_id on purpose. Three functions read full_name and name
+  // out of the same column for display, which is fine: a forged display name
+  // is a cosmetic problem, not an authorization one.
+  it('T5: no function resolves identity from raw_user_meta_data', async () => {
+    const fns = await publicFunctions();
+    const readers = fns
+      .filter((f) => /raw_user_meta_data\s*->>\s*'provider_id'/.test(stripComments(f.prosrc)))
+      .map((f) => f.proname);
+    expect(readers).toEqual([]);
+  });
 });
