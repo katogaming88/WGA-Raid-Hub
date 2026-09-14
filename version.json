@@ -1,9 +1,19 @@
 {
-  "version": "3.112.12",
+  "version": "3.112.13",
   "pieces": {
     "frontend": "3.112.8",
     "db": "3.112.8",
     "bot": "3.94.0",
-    "functions": {}
+    "functions": {
+      "blizzard-gear-sync": "3.112.13",
+      "boe-sold-webhook": "3.112.13",
+      "boe-webhook": "3.112.13",
+      "contact-webhook": "3.112.13",
+      "optional-rsvp-reminders": "3.112.13",
+      "twitch-live-check": "3.112.13",
+      "upload-bio-photo": "3.112.13",
+      "wcl-progression-sync": "3.112.13",
+      "wcl-sync": "3.112.13"
+    }
   }
 }

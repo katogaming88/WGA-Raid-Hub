@@ -12,6 +12,24 @@ answers to.
 
 ---
 
+## [3.112.13] - 2026-09-14
+
+### Functions
+
+- Every Edge Function now reports its own version. Each one answers an
+  `X-WGA-Version` header on every response, so you can ask a function what
+  release it is running instead of guessing from when it was last deployed.
+
+### Project
+
+- The deploy checks its own work: after deploying the functions a merge
+  changed, it calls each one and fails the run if the version it answers is
+  not the version that just shipped. A function that quietly did not reach
+  production is now loud instead of invisible.
+- A change to a shared function module redeploys the functions that actually
+  import it, rather than every function that mentions the shared directory,
+  and an import from a subdirectory is no longer missed.
+
 ## [3.112.12] - 2026-09-14
 
 ### Frontend
