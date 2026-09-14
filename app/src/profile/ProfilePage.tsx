@@ -438,9 +438,9 @@ function ItemsReceived({ loot }: { loot: ReturnType<typeof seasonLoot> }) {
 }
 
 // Laid out like the in-game character pane (Kat, 2026-09-14): Head through
-// Wrist on the left, Hands through the trinkets on the right, then Main Hand
-// under the left column and Off Hand under the right. Each group is its own
-// small table, read left, right, main hand, off hand.
+// Wrist on the left, Hands through the trinkets on the right, weapons across
+// the bottom (Kat preferred this to one weapon under each column). Each group
+// is its own small table, read left, right, bottom.
 const RIGHT_COLUMN = new Set(['Hands', 'Waist', 'Legs', 'Feet', 'Finger 1', 'Finger 2', 'Trinket 1', 'Trinket 2']);
 
 function EquippedGear({ rows, names }: { rows: Parameters<typeof equippedGear>[0]; names: Map<number, string> }) {
@@ -453,16 +453,16 @@ function EquippedGear({ rows, names }: { rows: Parameters<typeof equippedGear>[0
       items: gear.filter((g) => !RIGHT_COLUMN.has(g.slot) && g.slot !== 'Main Hand' && g.slot !== 'Off Hand')
     },
     { key: 'right', caption: 'Equipped gear, hands to trinkets', items: gear.filter((g) => RIGHT_COLUMN.has(g.slot)) },
-    { key: 'main-hand', caption: 'Equipped main hand', items: gear.filter((g) => g.slot === 'Main Hand') },
-    { key: 'off-hand', caption: 'Equipped off hand', items: gear.filter((g) => g.slot === 'Off Hand') }
+    {
+      key: 'weapons',
+      caption: 'Equipped weapons',
+      items: gear.filter((g) => g.slot === 'Main Hand' || g.slot === 'Off Hand')
+    }
   ].filter((c) => c.items.length > 0);
   return (
     <div className="gear-columns">
       {columns.map((column) => (
-        <div
-          key={column.key}
-          className={`profile-table-wrap gear-group gear-${column.key}${column.key.endsWith('hand') ? ' gear-weapon' : ''}`}
-        >
+        <div key={column.key} className={`profile-table-wrap gear-group gear-${column.key}`}>
           <table className="profile-table gear-table">
             <caption className="visually-hidden">{column.caption}</caption>
             {/* The same widths in every group, so the groups line up (profile.css). */}

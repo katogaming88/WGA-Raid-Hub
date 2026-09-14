@@ -439,8 +439,8 @@
   gap: 18px;
 }
 
-/* Equipped gear like the character pane: two columns, weapons under them.
-   One column on a narrow screen. */
+/* Equipped gear like the character pane: two columns, weapons across the
+   bottom. One column on a narrow screen. */
 .gear-columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -453,29 +453,19 @@
 }
 
 .gear-col-slot {
-  width: 84px;
+  width: 88px;
 }
 
 .gear-col-level {
-  width: 44px;
+  width: 48px;
 }
 
 .gear-col-track {
-  width: 56px;
+  width: 60px;
 }
 
-/* The weapons sit right under the other groups, so their column headings would
-   only repeat them. Kept for screen readers. */
-.gear-weapon thead th {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
+.gear-weapons {
+  grid-column: 1 / -1;
 }
 
 @media (max-width: 760px) {
