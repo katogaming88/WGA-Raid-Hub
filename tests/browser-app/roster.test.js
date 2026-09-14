@@ -83,6 +83,20 @@ describe('Roster page (new app), checked against the current site', () => {
   });
 });
 
+describe('Roster page (new app) layout', () => {
+  it('starts the summary panel level with the top of the roster table', async () => {
+    const opened = await openApp(browser, server.port, STATE);
+    try {
+      const top = (selector) => opened.page.locator(selector).evaluate((el) => el.getBoundingClientRect().top);
+      expect(await top('#roster-panel-current .roster-side')).toBe(
+        await top('#roster-panel-current .roster-table-wrap')
+      );
+    } finally {
+      await opened.context.close();
+    }
+  });
+});
+
 describe('Roster page (new app), without approved signups', () => {
   it('shows no next-season tab', async () => {
     const opened = await openApp(browser, server.port, { ...STATE, tables: { ...ROSTER_TABLES, incoming_roster: [] } });

@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.116.1] - 2026-09-14
+
+### Project
+
+- New app Roster page: the role filter now sits above both columns, so the
+  summary panels start level with the top of the roster table instead of
+  with the filter. A browser test checks the two line up.
+
+---
+
 ## [3.116.0] - 2026-09-14
 
 ### Project
