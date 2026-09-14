@@ -25,6 +25,14 @@ answers to.
   and a cut never lands in the middle of an emoji. The BoE found post
   shared the same helper; its name and note budgets are now exact.
 
+### Project
+
+- `npm run stamp` stamps a release that changes a module under
+  `supabase/functions/_shared/`. The stamp asks which functions import the
+  changed module (#971) but never imported the lookup, so the first such
+  release since then failed with `importersOf is not defined`. A test now
+  runs that path against a fixture tree.
+
 ---
 
 ## [3.119.1] - 2026-09-14

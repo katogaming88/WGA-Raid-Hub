@@ -194,6 +194,39 @@ describe('stampAll', () => {
     expect(readFileSync(join(dir, 'js', 'common.js'), 'utf8')).toBe(FIXTURE_COMMON);
     expect(readFileSync(join(dir, 'index.html'), 'utf8')).toBe(FIXTURE_HTML);
   });
+
+  // The stamp asks functions-to-deploy.js which functions import a changed
+  // shared module (#971). The first release to touch _shared/ after that
+  // wiring found the lookup referenced and never imported (#1129), so this
+  // runs the real path: a function that imports the module is stamped, one
+  // that does not keeps its version.
+  it('stamps the functions that import a changed shared module, through the real lookup', () => {
+    const fn = (name, body) => {
+      mkdirSync(join(dir, 'supabase', 'functions', name), { recursive: true });
+      writeFileSync(join(dir, 'supabase', 'functions', name, 'index.ts'), body, 'utf8');
+      writeFileSync(
+        join(dir, 'supabase', 'functions', name, 'version.ts'),
+        "export const VERSION = '1.0.0';\n",
+        'utf8'
+      );
+    };
+    mkdirSync(join(dir, 'supabase', 'functions', '_shared'), { recursive: true });
+    writeFileSync(join(dir, 'supabase', 'functions', '_shared', 'text.ts'), 'export const x = 1;\n', 'utf8');
+    fn('importer', "import { x } from '../_shared/text.ts';\nconsole.log(x);\n");
+    fn('bystander', "console.log('nothing shared');\n");
+    writeFileSync(
+      join(dir, 'version.json'),
+      JSON.stringify({ version: '1.0.0', pieces: { functions: { importer: '1.0.0', bystander: '1.0.0' } } }),
+      'utf8'
+    );
+
+    stampAll({ root: dir, version: '2.1.3', pages: ['index.html'], changed: ['supabase/functions/_shared/text.ts'] });
+
+    const manifest = JSON.parse(readFileSync(join(dir, 'version.json'), 'utf8'));
+    expect(manifest.pieces.functions).toEqual({ importer: '2.1.3', bystander: '1.0.0' });
+    expect(readFileSync(join(dir, 'supabase', 'functions', 'importer', 'version.ts'), 'utf8')).toContain("'2.1.3'");
+    expect(readFileSync(join(dir, 'supabase', 'functions', 'bystander', 'version.ts'), 'utf8')).toContain("'1.0.0'");
+  });
 });
 
 describe('readVersion', () => {
