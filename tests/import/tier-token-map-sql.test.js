@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tierTokenMapRows } from '../../scripts/generate-tier-token-map-sql.js';
+import { SEASON, tierTokenMapRows } from '../../scripts/generate-tier-token-map-sql.js';
 
 // #1012: this generator carried a third private copy of sqlString. It quoted
 // correctly, which matters because this tier's resolved names are full of
@@ -33,6 +33,11 @@ describe('tierTokenMapRows', () => {
     const rows = tierTokenMapRows([entry()]);
     expect(rows[0]).toContain('select id from items where lower(name)');
     expect(rows[0]).not.toMatch(/wow_item_id/);
+  });
+
+  it('stamps every row with the season, the current one by default (#1108)', () => {
+    expect(tierTokenMapRows([entry()])[0]).toMatch(new RegExp(`^  \\('${SEASON}', `));
+    expect(tierTokenMapRows([entry()], 'MID3')[0]).toMatch(/^ {2}\('MID3', /);
   });
 
   it('emits one row per slot on the class', () => {

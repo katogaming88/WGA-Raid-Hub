@@ -9,6 +9,7 @@
 | class | text |  | false |  |  |  |
 | resolved_item_id | integer |  | false |  | [public.items](public.items.md) |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
+| season | text |  | false |  |  | Season code (MID2) this token mapping belongs to (#1108). Readers filter on the current season; #932 adds the foreign key to seasons(code). |
 
 ## Constraints
 
@@ -23,8 +24,8 @@
 | Name | Definition |
 | ---- | ---------- |
 | tier_token_map_pkey | CREATE UNIQUE INDEX tier_token_map_pkey ON public.tier_token_map USING btree (id) |
-| tier_token_map_token_class_key | CREATE UNIQUE INDEX tier_token_map_token_class_key ON public.tier_token_map USING btree (token_item_id, class) |
 | tier_token_map_resolved_item_key | CREATE UNIQUE INDEX tier_token_map_resolved_item_key ON public.tier_token_map USING btree (resolved_item_id) |
+| tier_token_map_season_token_class_key | CREATE UNIQUE INDEX tier_token_map_season_token_class_key ON public.tier_token_map USING btree (season, token_item_id, class) |
 
 ## Relations
 
@@ -40,6 +41,7 @@ erDiagram
   text class
   integer resolved_item_id FK
   timestamp_with_time_zone created_at
+  text season
 }
 "public.items" {
   integer id

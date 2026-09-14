@@ -1,7 +1,46 @@
--- Function public.generate_priority_order: current definition, generated from the database.
--- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
--- execute (site roles): authenticated
+-- #1108: tier_token_map carries a season.
+--
+-- Every row has been implicitly Midnight Season 2's, the only tier ever
+-- seeded. When the next tier set ships, its tokens get added next to these,
+-- and two things go wrong without a season on each row:
+--
+--   - The site's tier-piece counter (classTierResolvedItemsBySlot,
+--     js/common.js) inverts the map into one resolved item per class per
+--     slot. With two seasons' rows it keeps whichever it meets last, so a
+--     raider's tier count can be checked against last season's items, and
+--     that count feeds generate_priority_order()'s tier weighting.
+--   - An archived season's mapping can only be kept by leaving its rows in a
+--     table that has no way to say which season they belong to.
+--
+-- The column holds the season code (MID2), the form priority_order,
+-- rclc_loot and scoring already use and the one #932's seasons table keys
+-- on, so #932 can add the foreign key without converting anything.
+--
+-- No default: a seeding script that forgets the season should fail on the
+-- insert, not quietly file the new tier under the old one.
 
+alter table public.tier_token_map add column season text;
+
+update public.tier_token_map set season = 'MID2' where season is null;
+
+alter table public.tier_token_map alter column season set not null;
+
+-- The key becomes per season. A resolved item still belongs to exactly one
+-- token/class pair: each tier's class pieces are new items, so the global
+-- uniqueness on resolved_item_id stays as it is.
+drop index public.tier_token_map_token_class_key;
+
+create unique index tier_token_map_season_token_class_key
+  on public.tier_token_map (season, token_item_id, class);
+
+comment on column public.tier_token_map.season is
+  'Season code (MID2) this token mapping belongs to (#1108). Readers filter on the current season; #932 adds the foreign key to seasons(code).';
+
+-- generate_priority_order(): the two tier_token_map lookups now match the
+-- season being generated, from the definition as of 20260913013951. Token
+-- item ids are new each tier, so for today's data this changes no result;
+-- it keeps a regenerated archived season on its own season's tokens, and
+-- makes "is this a tier token" a statement about this season.
 CREATE OR REPLACE FUNCTION public.generate_priority_order(p_team_id integer, p_season text, p_item_id integer, p_track text)
  RETURNS TABLE(player_id integer, name_realm text, role text, weighted_total numeric, status_label text, wishlist_status text)
  LANGUAGE plpgsql
@@ -341,3 +380,4 @@ begin
     coalesce(case when raw_score is not null then round(raw_score * final_mult, 1) end, -1) desc;
 end;
 $function$;
+

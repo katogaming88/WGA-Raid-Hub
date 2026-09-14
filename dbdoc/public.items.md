@@ -136,6 +136,7 @@ erDiagram
   text class
   integer resolved_item_id FK
   timestamp_with_time_zone created_at
+  text season
 }
 "public.boe_items" {
   integer id

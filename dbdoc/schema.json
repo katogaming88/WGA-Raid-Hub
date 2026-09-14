@@ -4035,6 +4035,12 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false,
+          "comment": "Season code (MID2) this token mapping belongs to (#1108). Readers filter on the current season; #932 adds the foreign key to seasons(code)."
         }
       ],
       "indexes": [
@@ -4047,20 +4053,21 @@
           ]
         },
         {
-          "name": "tier_token_map_token_class_key",
-          "def": "CREATE UNIQUE INDEX tier_token_map_token_class_key ON public.tier_token_map USING btree (token_item_id, class)",
-          "table": "public.tier_token_map",
-          "columns": [
-            "token_item_id",
-            "class"
-          ]
-        },
-        {
           "name": "tier_token_map_resolved_item_key",
           "def": "CREATE UNIQUE INDEX tier_token_map_resolved_item_key ON public.tier_token_map USING btree (resolved_item_id)",
           "table": "public.tier_token_map",
           "columns": [
             "resolved_item_id"
+          ]
+        },
+        {
+          "name": "tier_token_map_season_token_class_key",
+          "def": "CREATE UNIQUE INDEX tier_token_map_season_token_class_key ON public.tier_token_map USING btree (season, token_item_id, class)",
+          "table": "public.tier_token_map",
+          "columns": [
+            "season",
+            "token_item_id",
+            "class"
           ]
         }
       ],
