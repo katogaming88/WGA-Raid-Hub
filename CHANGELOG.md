@@ -26,11 +26,14 @@ answers to.
   listed, following the BiS-or-Pass decision (#1032, #1033).
 - A Wishlist card counts the slots with a BiS pick and the slots passed.
 - The profile is split into tabs so it is not one long scroll: **Overview**
-  (the four numbers, loot priority, wishlist count, attendance, M+),
-  **Loot** (items received), **Gear** (equipped gear) and **Wishlist** (the
-  BiS or Pass editor arrives there next). Each tab has its own address
-  (`/me/gear`, `/p/<code>/wishlist`), so a link can open one directly, and
-  the arrow keys move between them.
+  (the four numbers, equipped gear, loot priority, wishlist count, attendance,
+  M+), **Loot** (items received) and **Wishlist** (the BiS or Pass editor
+  arrives there next). Each tab has its own address (`/me/loot`,
+  `/p/<code>/wishlist`), so a link can open one directly, and the arrow keys
+  move between them.
+- Equipped gear is laid out like the in-game character pane: Head through
+  Wrist on the left, Hands through the trinkets on the right, weapons across
+  the bottom.
 - The recorded profile behavior gains the loot priority list, checked against
   the current site's BiS List and the new card.
 

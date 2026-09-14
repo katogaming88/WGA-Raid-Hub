@@ -215,9 +215,10 @@ describe('Profile tabs', () => {
     const overview = await screen.findByRole('tab', { name: 'Overview' });
     expect(overview).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tabpanel')).toHaveAccessibleName('Overview');
-    await userEvent.click(screen.getByRole('tab', { name: 'Gear' }));
-    expect(router.state.location.pathname).toBe('/g/wga/t/phoenix/me/gear');
-    expect(await screen.findByRole('heading', { name: 'Equipped gear' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Equipped gear' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: 'Loot' }));
+    expect(router.state.location.pathname).toBe('/g/wga/t/phoenix/me/loot');
+    expect(await screen.findByRole('heading', { name: 'Items received' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Loot priority' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'My profile' })).toHaveAttribute('aria-current', 'page');
   });
@@ -227,8 +228,8 @@ describe('Profile tabs', () => {
     const loot = await screen.findByRole('tab', { name: 'Loot' });
     loot.focus();
     await userEvent.keyboard('{ArrowRight}');
-    expect(router.state.location.pathname).toBe('/g/wga/t/phoenix/me/gear');
-    expect(screen.getByRole('tab', { name: 'Gear' })).toHaveFocus();
+    expect(router.state.location.pathname).toBe('/g/wga/t/phoenix/me/wishlist');
+    expect(screen.getByRole('tab', { name: 'Wishlist' })).toHaveFocus();
     await userEvent.keyboard('{Home}');
     expect(router.state.location.pathname).toBe('/g/wga/t/phoenix/me');
   });

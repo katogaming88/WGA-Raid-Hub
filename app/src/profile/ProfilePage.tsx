@@ -37,7 +37,6 @@ import './profile.css';
 export const PROFILE_TABS = [
   { key: '', label: 'Overview' },
   { key: 'loot', label: 'Loot' },
-  { key: 'gear', label: 'Gear' },
   { key: 'wishlist', label: 'Wishlist' }
 ] as const;
 
@@ -303,6 +302,17 @@ function Profile({
 
             <div className="profile-layout">
               <div className="profile-main">
+                {/* Equipped gear on the Overview (Kat, 2026-09-14), laid out like the
+                    character pane so it stays short. */}
+                <section className="card profile-card" aria-labelledby="gear-title">
+                  <h2 id="gear-title" className="card-title">
+                    Equipped gear
+                  </h2>
+                  <DataState query={gear} label="equipped gear">
+                    {({ rows, names }) => <EquippedGear rows={rows} names={names} />}
+                  </DataState>
+                </section>
+
                 <LootPriorityCard player={player} teamId={teamId} season={season} loot={loot} />
               </div>
 
@@ -340,17 +350,6 @@ function Profile({
             </h2>
             <DataState query={bothQueries(season, loot)} label="items received">
               {([s, rows]) => <ItemsReceived loot={seasonLoot(rows, s)} />}
-            </DataState>
-          </section>
-        )}
-
-        {tab === 'gear' && (
-          <section className="card profile-card" aria-labelledby="gear-title">
-            <h2 id="gear-title" className="card-title">
-              Equipped gear
-            </h2>
-            <DataState query={gear} label="equipped gear">
-              {({ rows, names }) => <EquippedGear rows={rows} names={names} />}
             </DataState>
           </section>
         )}
@@ -438,36 +437,55 @@ function ItemsReceived({ loot }: { loot: ReturnType<typeof seasonLoot> }) {
   );
 }
 
+// Laid out like the in-game character pane (Kat, 2026-09-14): Head through
+// Wrist on the left, Hands through the trinkets on the right, weapons across
+// the bottom. Each group is its own small table, read left, right, bottom.
+const RIGHT_COLUMN = new Set(['Hands', 'Waist', 'Legs', 'Feet', 'Finger 1', 'Finger 2', 'Trinket 1', 'Trinket 2']);
+const WEAPONS = new Set(['Main Hand', 'Off Hand']);
+
 function EquippedGear({ rows, names }: { rows: Parameters<typeof equippedGear>[0]; names: Map<number, string> }) {
   const gear = equippedGear(rows, names);
   if (!gear.length) return <p className="text-muted card-note">No gear synced from Blizzard yet.</p>;
+  const columns = [
+    {
+      key: 'left',
+      caption: 'Equipped gear, head to wrists',
+      items: gear.filter((g) => !RIGHT_COLUMN.has(g.slot) && !WEAPONS.has(g.slot))
+    },
+    { key: 'right', caption: 'Equipped gear, hands to trinkets', items: gear.filter((g) => RIGHT_COLUMN.has(g.slot)) },
+    { key: 'weapons', caption: 'Equipped weapons', items: gear.filter((g) => WEAPONS.has(g.slot)) }
+  ].filter((c) => c.items.length > 0);
   return (
-    <div className="profile-table-wrap">
-      <table className="profile-table gear-table">
-        <caption className="visually-hidden">Equipped gear</caption>
-        <thead>
-          <tr>
-            <th scope="col">Slot</th>
-            <th scope="col">Item</th>
-            <th scope="col" className="col-num">
-              Item level
-            </th>
-            <th scope="col">Track</th>
-          </tr>
-        </thead>
-        <tbody>
-          {gear.map((g) => (
-            <tr key={g.slot}>
-              <th scope="row" className="gear-slot">
-                {g.slot}
-              </th>
-              <td className="gear-item">{g.item}</td>
-              <td className="col-num num gear-level">{g.itemLevel ?? '–'}</td>
-              <td className="gear-track">{g.track ?? ''}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="gear-columns">
+      {columns.map((column) => (
+        <div key={column.key} className={`profile-table-wrap gear-group gear-${column.key}`}>
+          <table className="profile-table gear-table">
+            <caption className="visually-hidden">{column.caption}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Slot</th>
+                <th scope="col">Item</th>
+                <th scope="col" className="col-num">
+                  <abbr title="Item level">ilvl</abbr>
+                </th>
+                <th scope="col">Track</th>
+              </tr>
+            </thead>
+            <tbody>
+              {column.items.map((g) => (
+                <tr key={g.slot}>
+                  <th scope="row" className="gear-slot">
+                    {g.slot}
+                  </th>
+                  <td className="gear-item">{g.item}</td>
+                  <td className="col-num num gear-level">{g.itemLevel ?? '–'}</td>
+                  <td className="gear-track">{g.track ?? ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
     </div>
   );
 }

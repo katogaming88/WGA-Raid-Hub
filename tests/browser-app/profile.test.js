@@ -79,8 +79,8 @@ function open(path, viewerKey, profilePlayer) {
 }
 
 // The shape tests/behavior/profile.js describes, read from the new markup.
-// Items received and equipped gear sit on their own tabs, so a read of the
-// Overview leaves them out and the test opens those tabs for them.
+// Items received sit on their own tab, so a read of the Overview leaves them
+// out and the test opens that tab for them.
 function readProfile(page) {
   return page.evaluate(() => {
     const main = document.querySelector('main');
@@ -177,10 +177,7 @@ describe('Profile (new app), the raider’s own, checked against the current sit
       await opened.page.getByRole('tab', { name: 'Loot' }).click();
       await opened.page.waitForSelector('main .loot-table');
       const { loot } = await readProfile(opened.page);
-      await opened.page.getByRole('tab', { name: 'Gear' }).click();
-      await opened.page.waitForSelector('main .gear-table');
-      const { gear } = await readProfile(opened.page);
-      const profile = { ...overview, loot, gear };
+      const profile = { ...overview, loot };
       expect({ ...profile, loot: sortedLoot(profile.loot) }).toEqual({
         ...EXPECTED_TORBJORN,
         loot: sortedLoot(EXPECTED_TORBJORN.loot)

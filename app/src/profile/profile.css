@@ -438,3 +438,25 @@
   flex-direction: column;
   gap: 18px;
 }
+
+/* Equipped gear like the character pane: two columns, weapons across the
+   bottom. One column on a narrow screen. */
+.gear-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 var(--space-5);
+}
+
+.gear-weapons {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 760px) {
+  .gear-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.gear-table abbr {
+  text-decoration: none;
+}
