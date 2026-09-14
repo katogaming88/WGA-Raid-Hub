@@ -34,7 +34,7 @@ export function contactPayload({ team, name, message, submitter, mark, now }: Co
         title: 'Site Contact Form Submission',
         color: 0xd6a344,
         fields: [
-          { name: 'Team', value: String(team || 'Unknown'), inline: true },
+          { name: 'Team', value: truncate(String(team || 'Unknown'), EMBED_FIELD_VALUE_MAX), inline: true },
           {
             name: 'Name',
             value: name ? truncate(String(name), EMBED_FIELD_VALUE_MAX) : '(not provided)',

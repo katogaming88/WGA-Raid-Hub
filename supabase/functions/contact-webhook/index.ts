@@ -63,8 +63,8 @@ Deno.serve(async (req) => {
 
     const submitter = await resolveSubmitter(req.headers.get('Authorization'), makeCallerClient);
 
-    // The post itself is format.ts: the four fields, and the [local] marker as
-    // content when there is one.
+    // The post itself is format.ts: the four fields, each inside the 1024
+    // Discord allows, and the [local] marker as content when there is one.
     const response = await fetch(dest.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

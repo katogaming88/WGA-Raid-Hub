@@ -12,6 +12,21 @@ answers to.
 
 ---
 
+## [3.119.2] - 2026-09-14
+
+### Functions
+
+- A long report from the Contact form reaches the admin channel
+  ([#1129](https://github.com/katogaming88/WGA-Raid-Hub/issues/1129)).
+  The post cut a long message to 1026 characters against the 1024 Discord
+  allows an embed field, so Discord refused the whole post and the report
+  was gone, with "Discord responded with 400" as the only trace. Every
+  field is now cut at 1024 with a visible `...`, the team name included,
+  and a cut never lands in the middle of an emoji. The BoE found post
+  shared the same helper; its name and note budgets are now exact.
+
+---
+
 ## [3.119.1] - 2026-09-14
 
 ### Backend
