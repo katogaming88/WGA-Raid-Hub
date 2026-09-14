@@ -8,6 +8,18 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-14 -- Editing can be limited to a computer, and the wishlist is read-only on phones and tablets
+
+Shipped: `app/src/lib/device.ts` and the wishlist editor (#868 part 3). No schema change; a rule for the new app's pages, logged here with the wishlist decisions it came from.
+
+Kat's concern: on a phone, a stray tap can mark the wrong item BiS or Pass.
+
+- **A site-wide switch, chosen per page.** `useTouchScreen()` tells a page it is on a phone or tablet. The wishlist editor uses it now. Mark Received, the M+ request form and officer tools decide for themselves when they are built.
+- **Judged by the main pointer, not the screen width** (`(pointer: coarse)`). A computer browser that is narrow or zoomed far in, as low vision users do, still edits; screen width would have locked them out. Tablets are treated as phones. A touch-screen laptop keeps its trackpad as the main pointer and edits.
+- **The wishlist stays visible on a phone:** slots, picks and marks show, the BiS and Pass buttons are disabled, and a note says editing works on a computer.
+
+---
+
 ## 2026-09-14 -- The new wishlist editor has no notes, and adds no M+ or crafted picks until real items exist (#868)
 
 Shipped: the editor, in the new app only (#868 part 3). No schema change; `item_preferences.note` and the placeholder rows stay until cutover.

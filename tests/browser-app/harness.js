@@ -102,14 +102,16 @@ function json(body, headers = {}) {
  * @param {{ path: string, viewport?: {width:number,height:number}, session?: object, who?: keyof PEOPLE,
  *           reducedMotion?: 'reduce'|'no-preference', colorScheme?: 'light'|'dark', sentinel?: string,
  *           tables?: Record<string, unknown[]>, person?: { discordId: string|null, person: object|null },
- *           click?: string }} state
+ *           click?: string, touch?: boolean }} state
  */
 export async function openApp(browser, port, state) {
   const host = supabaseHost();
   const context = await browser.newContext({
     viewport: state.viewport ?? DESKTOP,
     reducedMotion: state.reducedMotion ?? 'no-preference',
-    colorScheme: state.colorScheme ?? 'dark'
+    colorScheme: state.colorScheme ?? 'dark',
+    // A phone: a touch screen as the main pointer, so (pointer: coarse) matches.
+    ...(state.touch ? { hasTouch: true, isMobile: true } : {})
   });
   const page = await context.newPage();
   const unexpected = [];

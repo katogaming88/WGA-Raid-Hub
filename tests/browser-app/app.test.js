@@ -169,6 +169,7 @@ const STATES = [
   }),
   wishlistEditorState('my profile, wishlist editor, a slot open'),
   wishlistEditorState('my profile, wishlist editor, a slot open, light', { colorScheme: 'light' }),
+  wishlistEditorState('my profile, wishlist editor, on a phone', { touch: true, viewport: NARROW }),
   wishlistEditorState('my profile, wishlist editor, closed', {
     tables: { team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end, open: 'false', view: null }] }
   }),

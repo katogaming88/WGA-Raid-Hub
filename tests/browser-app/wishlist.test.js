@@ -44,11 +44,13 @@ function open({
   viewer = 'torbjorn',
   open = true,
   allowed = false,
-  viewport
+  viewport,
+  touch = false
 } = {}) {
   return openApp(browser, server.port, {
     path,
     viewport,
+    touch,
     sentinel: 'main h1',
     tables: {
       players: [{ ...TORBJORN, wishlist_allowed: allowed }],
@@ -230,6 +232,8 @@ describe('Wishlist (new app), slot row on a phone', () => {
         };
       });
       expect(row).toEqual({ lines: 1, scrolls: true, pageOverflow: 0 });
+      // A narrow window on a computer, not a touch screen, can still edit.
+      expect(await enabledMarks(opened.page)).toBeGreaterThan(0);
       // A slot off the edge scrolls into view when the keyboard reaches it.
       await opened.page.locator('main .wishlist-slot-tab[data-slot="Head"]').focus();
       await opened.page.keyboard.press('End');
@@ -239,6 +243,20 @@ describe('Wishlist (new app), slot row on a phone', () => {
         return last.right <= tabs.right + 1 && last.left >= tabs.left - 1;
       });
       expect(visible).toBe(true);
+    } finally {
+      await opened.context.close();
+    }
+  });
+});
+
+describe('Wishlist (new app), on a touch screen', () => {
+  it('shows the marks read-only, with a note that editing works on a computer', async () => {
+    const opened = await open({ viewport: { width: 400, height: 860 }, touch: true });
+    try {
+      await showEditor(opened.page);
+      expect(await readEditor(opened.page)).toEqual(EXPECTED_EDITOR);
+      await opened.page.waitForSelector('main .wishlist-touch');
+      expect(await enabledMarks(opened.page)).toBe(0);
     } finally {
       await opened.context.close();
     }

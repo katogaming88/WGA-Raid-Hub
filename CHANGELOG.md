@@ -25,6 +25,11 @@ answers to.
   One BiS pick per slot: a new one unmarks the old one (#1032). A ring or
   trinket is BiS in one of its two slots. Editing follows the team's Wishlist
   open setting and the per-raider exception; officers see it read-only.
+- On a phone or tablet the wishlist is read-only, with a note that editing
+  works on a computer, since a stray tap could mark the wrong item. The app
+  judges this by a touch screen rather than the screen width, so a narrow or
+  zoomed-in computer browser can still edit. Other pages can use the same
+  switch.
 - No notes, and existing M+ or crafted picks show read-only until real items
   arrive (#1166). Old 2nd Choice, Sidegrade and Catalyst Only marks read as
   unmarked.

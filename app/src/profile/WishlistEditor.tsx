@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { DataState } from '../components/DataState';
+import { useTouchScreen } from '../lib/device';
 import { bothQueries } from '../data/query';
 import type { SeasonWindow } from './profile';
 import { seasonCode } from './profile';
@@ -35,6 +36,8 @@ export function WishlistEditor({
   const zones = useRaidZones();
   const seasonName = season.isSuccess && settings.isSuccess ? settings.data.view || season.data.name : null;
   const tokens = useSeasonTierTokens(seasonName ? seasonCode(seasonName) : null);
+  // Not on a phone or tablet, where a stray tap marks the wrong item.
+  const touch = useTouchScreen();
 
   return (
     <section className="card profile-card" aria-labelledby="wishlist-editor-title">
@@ -60,8 +63,9 @@ export function WishlistEditor({
                 }}
                 teamId={teamId}
                 playerId={player.id}
-                editable={own && (s.open || player.wishlist_allowed)}
+                editable={own && (s.open || player.wishlist_allowed) && !touch}
                 closed={own && !s.open && !player.wishlist_allowed}
+                touch={own && touch}
               />
             )}
           </DataState>
@@ -76,13 +80,15 @@ function Editor({
   teamId,
   playerId,
   editable,
-  closed
+  closed,
+  touch
 }: {
   input: EditorInput;
   teamId: number;
   playerId: number;
   editable: boolean;
   closed: boolean;
+  touch: boolean;
 }) {
   const mark = useMarkWishlist(playerId);
   const slots = editorSlots(input);
@@ -94,6 +100,10 @@ function Editor({
       {closed ? (
         <p className="card-note wishlist-closed">
           Wishlist editing is closed, so your marks are read-only. Ask an officer if something needs to change.
+        </p>
+      ) : touch ? (
+        <p className="card-note wishlist-closed wishlist-touch">
+          Wishlist editing works on a computer, so your marks are read-only on a phone or tablet.
         </p>
       ) : editable ? (
         <p className="card-note text-muted">
