@@ -12,6 +12,14 @@ answers to.
 
 ---
 
+## [3.112.11] - 2026-09-13
+
+### Frontend
+
+- A character name starting with an accented capital (e.g. Éleanor) is no
+  longer rejected as "must start with a capital letter" on the signup form or
+  Add Player.
+
 ## [3.112.10] - 2026-09-13
 
 ### Project

@@ -109,7 +109,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.112.10';
+var VERSION = '3.112.11';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
@@ -1402,8 +1402,10 @@ var CLASS_SPECS = {
 function validateCharName(name) {
   if (!name) return 'Please enter your character name.';
   if (name.length < 2 || name.length > 12) return 'Character name must be 2-12 characters.';
-  if (!/^[A-Z]/.test(name)) return 'Character name must start with a capital letter (e.g. Katorri).';
-  if (/[A-Z]/.test(name.slice(1)))
+  // \p{Lu} (any uppercase letter), not [A-Z]: WoW names can start with an
+  // accented capital like Éleanor.
+  if (!/^\p{Lu}/u.test(name)) return 'Character name must start with a capital letter (e.g. Katorri).';
+  if (/\p{Lu}/u.test(name.slice(1)))
     return (
       'Character name can only have one capital letter (the first). Did you mean ' +
       name[0] +
