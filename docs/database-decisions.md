@@ -8,6 +8,34 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-14 -- Editing can be limited to a computer, and the wishlist is read-only on phones and tablets
+
+Shipped: `app/src/lib/device.ts` and the wishlist editor (#868 part 3). No schema change; a rule for the new app's pages, logged here with the wishlist decisions it came from.
+
+Kat's concern: on a phone, a stray tap can mark the wrong item BiS or Pass.
+
+- **A site-wide switch, chosen per page.** `useTouchScreen()` tells a page it is on a phone or tablet. The wishlist editor uses it now. Mark Received, the M+ request form and officer tools decide for themselves when they are built.
+- **Judged by the main pointer, not the screen width** (`(pointer: coarse)`). A computer browser that is narrow or zoomed far in, as low vision users do, still edits; screen width would have locked them out. Tablets are treated as phones. A touch-screen laptop keeps its trackpad as the main pointer and edits.
+- **The wishlist stays visible on a phone:** slots, picks and marks show, the BiS and Pass buttons are disabled, and a note says editing works on a computer.
+
+---
+
+## 2026-09-14 -- The new wishlist editor has no notes, and adds no M+ or crafted picks until real items exist (#868)
+
+Shipped: the editor, in the new app only (#868 part 3). No schema change; `item_preferences.note` and the placeholder rows stay until cutover.
+
+**Measured on prod before deciding (2026-09-14).** 330 wishlist notes from 51 raiders, most of them naming the M+ or crafted item behind a generic pick ("Arcanoweave", "Silvermoon Argent's Sneakers"), a few noting another spec ("Bis if I need to play Outlaw"). 289 generic picks: 172 M+, 113 Crafted, 4 Catalyst.
+
+- **No notes.** The editor is BiS or Pass only. Existing notes stay in the table and are not shown. The real items from #1166 replace what most notes were for.
+- **M+ and crafted picks wait for #1166.** Existing generic picks show read-only on their slot. Marking a raid item BiS for that slot replaces the generic pick, as on the current site.
+- **A replaced BiS pick is unmarked**, not kept as 2nd Choice, following #1032.
+- **Rows keep the current site's shape** so both sites read the same data until cutover: no slot saved for a one-item slot, the slot named for rings, trinkets and weapons. The editor does not write the current site's copy of a ring or trinket BiS into the other slot (`synced_bis`); `generate_priority_order()` reads one row per item either way.
+- **A ring or trinket is BiS in one of its two slots, and a Pass covers both.** Six Phoenix raiders saved both BiS trinkets under Trinket 1 on the current site; when one slot holds two and the other none, the later pick reads as the other slot's. The profile's wishlist count reads picks the same way, so a ring counts for one slot, not two.
+
+[Player profile -> #868](https://github.com/katogaming88/WGA-Raid-Hub/issues/868), [real M+ and crafted items -> #1166](https://github.com/katogaming88/WGA-Raid-Hub/issues/1166).
+
+---
+
 ## 2026-09-14 -- Mark Received is for gear from outside guild raids, and the wishlist names real M+ and crafted items (#868)
 
 Shipped: not yet. Decisions only; built with the player profile in the new app (#868, #1102), the catalog half in #1166, and the placeholder switch at cutover (#1105).

@@ -6,13 +6,25 @@
 
 import type { SeasonWindow } from './profile';
 
-export type WishlistRow = { item_id: number; status: string; slot: string | null; season: string | null };
+export type WishlistRow = {
+  item_id: number;
+  status: string;
+  slot: string | null;
+  season: string | null;
+  // A copy of a ring or trinket BiS the current site saves in the other slot.
+  synced_bis?: boolean;
+};
 export type CatalogItem = {
   id: number;
   name: string;
   slot: string;
   wcl_zone_id: number | null;
   is_placeholder: boolean;
+  // What the wishlist editor filters on (wishlist.ts).
+  armor_type?: string | null;
+  // jsonb: a list of STRENGTH, AGILITY and INTELLECT.
+  main_stats?: unknown;
+  weapon_subtype?: string | null;
 };
 export type ZoneRow = { wcl_zone_id: number | null; season: string | null };
 export type RankRow = { item_id: number; track: string; rank: number; player_id: number };
@@ -188,45 +200,4 @@ function received(item: CatalogItem, slot: string, loot: ReceivedLoot[], self: S
   }
   if (receipt) return { track: receiptTrack as Received['track'], detail: receipt.source ?? 'Self-reported' };
   return null;
-}
-
-const CATALOG_TO_WISHLIST_SLOTS: Record<string, string[]> = {
-  Finger: ['Finger 1', 'Finger 2'],
-  Trinket: ['Trinket 1', 'Trinket 2'],
-  'One-Hand': ['Weapon'],
-  'Two-Hand': ['Weapon'],
-  Ranged: ['Weapon'],
-  'Held In Off-hand': ['Off Hand']
-};
-
-function slotsFor(item: CatalogItem, pickSlot: string | null): string[] {
-  if (item.is_placeholder) return pickSlot ? [pickSlot] : [];
-  return CATALOG_TO_WISHLIST_SLOTS[item.slot] ?? [item.slot];
-}
-
-// How many of the sixteen slots have a BiS pick this season, and how many the
-// raider passed on.
-export function wishlistSummary(
-  wishlist: WishlistRow[],
-  catalog: CatalogItem[],
-  zones: ZoneRow[],
-  season: SeasonWindow
-): { bis: number; pass: number; total: number } {
-  const byId = new Map(catalog.map((i) => [i.id, i]));
-  const bis = new Set<string>();
-  const pass = new Set<string>();
-  for (const pick of wishlist) {
-    const item = byId.get(pick.item_id);
-    if (!item || !inSeason(pick, item, season, zones)) continue;
-    // A pick saved before wishlist rows named their slot covers the slots
-    // its item fits, and a ring or trinket covers both of its slots, as on
-    // the current site (wishlistPrefForRow()).
-    const slots = pick.slot && !PAIRED_SLOTS.has(pick.slot) ? [pick.slot] : slotsFor(item, pick.slot);
-    for (const slot of slots.filter((s) => WISHLIST_SLOTS.includes(s))) {
-      if (pick.status === 'bis') bis.add(slot);
-      else if (pick.status === 'pass') pass.add(slot);
-    }
-  }
-  for (const slot of bis) pass.delete(slot);
-  return { bis: bis.size, pass: pass.size, total: WISHLIST_SLOTS.length };
 }

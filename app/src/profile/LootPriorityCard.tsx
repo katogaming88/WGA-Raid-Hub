@@ -1,7 +1,8 @@
 import type { UseQueryResult } from '@tanstack/react-query';
 import { DataState } from '../components/DataState';
 import { bothQueries } from '../data/query';
-import { lootPriority, wishlistSummary, type PriorityRow, type Standing } from './lootPriority';
+import { lootPriority, type PriorityRow, type Standing } from './lootPriority';
+import { wishlistSummary } from './wishlist';
 import type { LootRow, SeasonWindow } from './profile';
 import {
   useCatalog,

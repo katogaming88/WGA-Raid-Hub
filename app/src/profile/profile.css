@@ -502,3 +502,178 @@
 .gear-table abbr {
   text-decoration: none;
 }
+
+/* Wishlist editor (#868 part 3): a slot per row, opened to mark its items. */
+
+/* The slots across the top in one row, scrolling sideways when they do not
+   fit (Kat, 2026-09-14). */
+.wishlist-slot-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  overflow-x: auto;
+  border-radius: 7px;
+  background: var(--sidebar);
+  border: 1px solid var(--border);
+}
+
+.wishlist-slot-tab {
+  /* Holds its screen-reader text inside the scrolling row. */
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  flex: 1 0 auto;
+}
+
+.wishlist-slot-tab:hover {
+  color: var(--text);
+}
+
+.wishlist-slot-tab[aria-selected='true'] {
+  background: var(--raised);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+
+/* Hollow until the slot has a BiS pick. */
+.wishlist-slot-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid var(--text-dim);
+}
+
+.wishlist-slot-tab[data-picked] .wishlist-slot-dot {
+  background: var(--good);
+  border-color: var(--good);
+}
+
+.wishlist-slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.wishlist-slot-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px var(--space-3);
+  margin: 0;
+}
+
+.wishlist-slot-name {
+  font-weight: 650;
+}
+
+.wishlist-slot-pick {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.wishlist-not-raid {
+  color: var(--text-muted);
+}
+
+.wishlist-items {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+}
+
+.wishlist-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  padding: 6px 0;
+}
+
+.wishlist-item + .wishlist-item {
+  border-top: 1px solid var(--border);
+}
+
+.wishlist-item-name {
+  min-width: 0;
+  color: var(--epic);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.wishlist-taken {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.mark-buttons {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 7px;
+  background: var(--sidebar);
+  border: 1px solid var(--border);
+}
+
+.mark-button {
+  min-height: 28px;
+  min-width: 48px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.mark-button:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.mark-button[aria-pressed='true'] {
+  background: var(--raised);
+  box-shadow: 0 0 0 1px var(--border-strong);
+  font-weight: 650;
+}
+
+.mark-bis[aria-pressed='true'] {
+  color: var(--good);
+}
+
+.mark-pass[aria-pressed='true'] {
+  color: var(--bad);
+}
+
+.mark-button:disabled {
+  cursor: default;
+}
+
+.mark-button:disabled:not([aria-pressed='true']) {
+  opacity: 0.6;
+}
+
+.wishlist-closed,
+.wishlist-error {
+  margin: 0;
+  color: var(--warn);
+}
+
+.wishlist-error {
+  color: var(--bad);
+}

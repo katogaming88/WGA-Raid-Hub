@@ -258,12 +258,12 @@ describe('Profile (new app), loot priority, checked against the current site', (
       await opened.page.waitForSelector('main .priority-table tbody tr');
       expect(await readPriority(opened.page)).toEqual(EXPECTED_PRIORITY);
       // What the current site does not show: how many are ranked, and the
-      // crafted pick's own slot. The ring fills both ring slots, so five slots have a pick.
+      // crafted pick's own slot. The ring fills one ring slot, so four slots have a pick.
       const hands = opened.page.locator('main .priority-table tbody tr', { hasText: 'Deathgrips' });
       await expect(hands.locator('.priority-heroic').textContent()).resolves.toBe('#2 of 2');
       const crafted = opened.page.locator('main .priority-table tbody tr[data-placeholder]');
       await expect(crafted.locator('.priority-slot').textContent()).resolves.toBe('Wrist');
-      await expect(opened.page.locator('main .wishlist-bis').textContent()).resolves.toBe('5');
+      await expect(opened.page.locator('main .wishlist-bis').textContent()).resolves.toBe('4');
       expect(opened.unexpected).toEqual([]);
     } finally {
       await opened.context.close();

@@ -1,7 +1,8 @@
-import { useSupabaseQuery } from '../data/query';
+import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { AttendanceRow, GearRow, LootRow, SeasonWindow } from './profile';
 import { seasonCode } from './profile';
-import type { CatalogItem, RankRow, SelfReceivedRow, TierTokenRow, WishlistRow, ZoneRow } from './lootPriority';
+import type { CatalogItem, RankRow, SelfReceivedRow, TierTokenRow, ZoneRow } from './lootPriority';
+import type { NewPick, Pick, TokenRow, WritePlan } from './wishlist';
 
 export type ProfilePlayer = {
   id: number;
@@ -13,6 +14,7 @@ export type ProfilePlayer = {
   is_rotator: boolean;
   is_backup_tank: boolean;
   is_backup_healer: boolean;
+  wishlist_allowed: boolean;
   m_plus_excluded: boolean;
   m_plus_note: string | null;
   join_date: string | null;
@@ -21,7 +23,7 @@ export type ProfilePlayer = {
 };
 
 const PLAYER_COLUMNS =
-  'id, name_realm, nickname, url_code, is_trial, is_bench, is_rotator, is_backup_tank, is_backup_healer, m_plus_excluded, m_plus_note, join_date, tier_pieces_equipped, classes_specs(class, spec, role)';
+  'id, name_realm, nickname, url_code, is_trial, is_bench, is_rotator, is_backup_tank, is_backup_healer, wishlist_allowed, m_plus_excluded, m_plus_note, join_date, tier_pieces_equipped, classes_specs(class, spec, role)';
 
 // The profile's character, by id (My profile) or by its address code (an
 // officer opening someone else's). Active characters only.
@@ -112,15 +114,18 @@ export function useMplusRefusal(teamId: number, playerId: number, enabled: boole
 
 // A raider reads only their own wishlist and receipts; officers read the team's.
 export function useWishlist(playerId: number) {
-  return useSupabaseQuery<WishlistRow[]>(['wishlist', playerId], (client) =>
-    client.from('item_preferences').select('item_id, status, slot, season').eq('player_id', playerId)
+  return useSupabaseQuery<Pick[]>(['wishlist', playerId], (client) =>
+    client.from('item_preferences').select('id, item_id, status, slot, season, synced_bis').eq('player_id', playerId)
   );
 }
 
 // The item catalog, a few hundred rows, shared by every profile.
 export function useCatalog() {
   return useSupabaseQuery<CatalogItem[]>(['catalog'], (client) =>
-    client.from('items').select('id, name, slot, wcl_zone_id, is_placeholder').order('id')
+    client
+      .from('items')
+      .select('id, name, slot, wcl_zone_id, is_placeholder, armor_type, main_stats, weapon_subtype')
+      .order('id')
   );
 }
 
@@ -169,5 +174,61 @@ export function useSelfReceived(playerId: number) {
       .select('track, source, slot, items(name)')
       .eq('player_id', playerId)
       .eq('status', 'approved')
+  );
+}
+
+// Wishlist editor reads and writes (#868 part 3).
+
+// Whether the team's wishlist is open for editing, and the season an officer
+// is planning for, if they set one.
+export function useWishlistSettings(teamId: number) {
+  return useSupabaseQuery<{ open: boolean; view: string | null }>(['wishlist-settings', teamId], async (client) => {
+    const { data, error } = await client
+      .from('team_settings')
+      .select('open:config->>wishlistOpen, view:config->>seasonView')
+      .eq('team_id', teamId)
+      .maybeSingle();
+    if (error) return { data: null, error };
+    const row = (data ?? {}) as { open?: string | null; view?: string | null };
+    return { data: { open: row.open === 'true', view: row.view?.trim() || null }, error: null };
+  });
+}
+
+// Every class's tier pieces for a season: the editor offers the token, not the
+// piece it becomes.
+export function useSeasonTierTokens(seasonCode: string | null) {
+  return useSupabaseQuery<TokenRow[]>(
+    ['season-tier-tokens', seasonCode],
+    (client) =>
+      client.from('tier_token_map').select('token_item_id, resolved_item_id, class').eq('season', seasonCode!),
+    { enabled: seasonCode !== null }
+  );
+}
+
+// Applies a planMark() plan, one row at a time: deletes, then the kept row,
+// then a new one. The wishlist and everything read from it refresh after.
+export function useMarkWishlist(playerId: number) {
+  return useSupabaseMutation<null, WritePlan>(
+    async (client, plan) => {
+      if (plan.deletes.length) {
+        const { error } = await client.from('item_preferences').delete().in('id', plan.deletes);
+        if (error) return { data: null, error };
+      }
+      if (plan.update) {
+        const { id, status, slot } = plan.update;
+        const { error } = await client
+          .from('item_preferences')
+          .update({ status, slot, synced_bis: false })
+          .eq('id', id);
+        if (error) return { data: null, error };
+      }
+      if (plan.insert) {
+        const row: NewPick = plan.insert;
+        const { error } = await client.from('item_preferences').insert(row);
+        if (error) return { data: null, error };
+      }
+      return { data: null, error: null };
+    },
+    { key: ['mark-wishlist', playerId], refreshes: [['wishlist', playerId]] }
   );
 }
