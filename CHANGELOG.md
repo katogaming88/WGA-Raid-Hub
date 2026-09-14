@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.115.3] - 2026-09-14
+
+### Project
+
+- Decisions logged for the player profile (#868): in the new app, Mark
+  Received is for gear from outside guild raids, with Weekly quest and Pug
+  raid added as choices that count right away and Other still checked by an
+  officer, and the wishlist names real M+ and crafted items instead of a
+  generic M+ or Crafted pick (#1166).
+- The revamp time log records the decision and corrects the previous row's
+  times.
+
+---
+
 ## [3.115.2] - 2026-09-14
 
 ### Project

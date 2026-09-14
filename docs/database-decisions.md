@@ -8,6 +8,28 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-14 -- Mark Received is for gear from outside guild raids, and the wishlist names real M+ and crafted items (#868)
+
+Shipped: not yet. Decisions only; built with the player profile in the new app (#868, #1102), the catalog half in #1166, and the placeholder switch at cutover (#1105).
+
+**Measured on prod before deciding (2026-09-14).** Mark Received is used: 144 approved receipts since 2026-08-07 from 35 raiders overall, mostly Crafted (48), Bonus Roll (33), Great Vault (29) and M+ (25), all approved instantly. The confusion is guild raid drops. Of 17 entries filed under "Other", officers rejected 11: eight say outright they were guild raid drops the importer already records ("awarded in raid", "award through RCLC", "Given by loot council"), two have no note, and one is a traded piece. The approved "Other" entries were real outside-raid sources: Torbjorn's Heroic legs from a weekly quest, Soulcialist's boots from a pug raid, Voljiin's trinket from Timewalking, Neldreth's gloves from a Curio.
+
+**Mark Received becomes "got it outside a guild raid."**
+
+- Instant sources: M+, Great Vault, Crafted, Catalyst, Bonus Roll, **Weekly quest** and **Pug raid**. The last two are new, taken from the approved "Other" entries.
+- **Other stays and still goes to officer review**, for the rare real cases (Timewalking, a Curio, a piece someone traded, like Bearsdh's gloves from Twan's token).
+- The form says guild raid drops show up on their own after the loot import, which is the mistake behind most rejections.
+- `submit_self_received()`'s note check (a note containing "raid" is held for review) is revisited when Pug raid becomes a source, so a pug raid entry is not held for saying "raid".
+- A receipt still takes the raider off that item's Priority List, as today.
+
+**The wishlist names real M+ dungeon and crafted items (#1166).** The catalog holds raid loot only, and 50 raiders use the generic `M+` pick (151 slots), with 95 `Crafted` picks. Kat chose importing each season's dungeon pool and crafted gear so a slot names the actual item, over keeping the generic picks, accepting a per-season catalog refresh. These items are BiS picks and Mark Received targets and never get a priority number. The generic `M+`, `Crafted` and `Catalyst` placeholder rows are removed at the same cutover switch as #1032's, and raiders re-mark the real item.
+
+**BiS Source (`players.bis_link`) is dropped from the profile**, as #868 already stated.
+
+[Player profile -> #868](https://github.com/katogaming88/WGA-Raid-Hub/issues/868), [item catalog -> #1166](https://github.com/katogaming88/WGA-Raid-Hub/issues/1166).
+
+---
+
 ## 2026-09-14 -- The wishlist is a BiS pick or a Pass, and only a BiS pick gets a priority number (#1032, #1033)
 
 Shipped: not yet. Decision only; the change lands at cutover (#1105), with #935 retiring `bis_items` in the same arc.
