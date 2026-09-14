@@ -461,7 +461,18 @@
 }
 
 .gear-col-track {
-  width: 60px;
+  /* Fits "Champion", the longest track name. */
+  width: 84px;
+}
+
+/* The gear card never scrolls (Kat, 2026-09-14): the widths above always fit,
+   and a long item name wraps instead of pushing the table wider. */
+.gear-group {
+  overflow: visible;
+}
+
+.gear-item {
+  overflow-wrap: anywhere;
 }
 
 .gear-weapons {
@@ -471,10 +482,6 @@
 @media (max-width: 760px) {
   .gear-columns {
     grid-template-columns: 1fr;
-  }
-
-  .gear-item {
-    overflow-wrap: anywhere;
   }
 
   /* Stacked, the groups read as one list, so only the first shows its column

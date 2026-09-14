@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.118.1] - 2026-09-14
+
+### Project
+
+- New app profile: the Equipped gear card spans the full width of the Overview,
+  so both columns fit without wrapping, and it never scrolls. A "Champion"
+  track no longer overflowed its column and brought up a scrollbar in each
+  gear table. A browser test checks it on desktop and phone.
+
+---
+
 ## [3.118.0] - 2026-09-14
 
 ### Project

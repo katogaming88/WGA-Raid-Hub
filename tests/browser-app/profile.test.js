@@ -270,3 +270,49 @@ describe('Profile (new app), loot priority, checked against the current site', (
     }
   });
 });
+
+describe('Profile (new app), equipped gear', () => {
+  // Every slot, the longest track name, and item names long enough to wrap.
+  const SLOTS = ['HEAD', 'NECK', 'SHOULDER', 'BACK', 'CHEST', 'WRIST', 'HANDS', 'WAIST', 'LEGS', 'FEET'];
+  const EXTRA = ['FINGER_1', 'FINGER_2', 'TRINKET_1', 'TRINKET_2', 'MAIN_HAND', 'OFF_HAND'];
+  const longGear = [...SLOTS, ...EXTRA].map((equipment_slot, i) => ({
+    player_id: TORBJORN.id,
+    equipment_slot,
+    item_id: 212001 + (i % 5),
+    item_level: 308,
+    track: 'Champion'
+  }));
+  const longItems = PRIORITY_ITEMS.map((item) => ({
+    ...item,
+    name: `${item.name} of the Unending Venomous Abyss`
+  }));
+
+  for (const [label, viewport] of [
+    ['desktop', { width: 1280, height: 800 }],
+    ['phone', { width: 480, height: 800 }]
+  ]) {
+    it(`never scrolls, sideways or up and down, on ${label}`, async () => {
+      const opened = await openApp(browser, server.port, {
+        path: '/g/wga/t/phoenix/me',
+        sentinel: 'main .gear-table',
+        viewport,
+        tables: { ...tablesFor(TORBJORN, 'torbjorn'), player_equipped_gear: longGear, items: longItems },
+        ...signedIn('torbjorn')
+      });
+      try {
+        const scrolling = await opened.page.evaluate(() =>
+          [...document.querySelectorAll('main .gear-group, main .gear-columns')]
+            .filter((el) => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1)
+            .map((el) => el.className)
+        );
+        expect(scrolling).toEqual([]);
+        const overflowX = await opened.page.evaluate(() =>
+          [...document.querySelectorAll('main .gear-group')].map((el) => getComputedStyle(el).overflowX)
+        );
+        expect(new Set(overflowX)).toEqual(new Set(['visible']));
+      } finally {
+        await opened.context.close();
+      }
+    });
+  }
+});
