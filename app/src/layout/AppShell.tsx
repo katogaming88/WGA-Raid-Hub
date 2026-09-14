@@ -13,6 +13,9 @@ import {
   type Address
 } from '../data/address';
 import { NotFoundPage } from '../pages/NotFoundPage';
+import { AccountPanel } from '../auth/AccountPanel';
+import { ConnectPrompt } from '../auth/ConnectPrompt';
+import { can, useAccess } from '../auth/access';
 import { navGroups } from './nav';
 import { TeamSwitcher } from './TeamSwitcher';
 import type { RouteHandle } from '../routes';
@@ -42,8 +45,12 @@ export function AppShell() {
 
   const matches = useMatches();
   const pageTitle = (matches.at(-1)?.handle as RouteHandle | undefined)?.title ?? '';
+  const access = useAccess();
   const navTeamKey = teamKey ?? defaultTeamKey();
-  const groups = navGroups({ team: `/g/${guildKey}/t/${navTeamKey}`, guild: `/g/${guildKey}` });
+  const groups = navGroups(
+    { team: `/g/${guildKey}/t/${navTeamKey}`, guild: `/g/${guildKey}` },
+    { officer: can(access.data, 'viewOfficerTools', currentTeam?.id) }
+  );
 
   // Following a link closes the drawer.
   if (drawerOpen && location.pathname !== openedAt) {
@@ -109,6 +116,7 @@ export function AppShell() {
     };
     content = (
       <AddressProvider value={address}>
+        <ConnectPrompt />
         <Outlet />
       </AddressProvider>
     );
@@ -159,10 +167,7 @@ export function AppShell() {
           ))}
         </nav>
 
-        <div className="signed-in">
-          <span className="avatar" aria-hidden="true" />
-          <span className="text-muted">Not signed in</span>
-        </div>
+        <AccountPanel teamId={currentTeam?.id ?? null} />
       </aside>
 
       {drawerOpen && <div className="drawer-backdrop" aria-hidden="true" onClick={closeDrawer} />}

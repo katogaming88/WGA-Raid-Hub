@@ -75,7 +75,9 @@ describe('the data layer never hides a failed read (#1101)', () => {
       })
     );
 
-    const alert = await screen.findByRole('alert');
+    // Inside the page: the app-wide status area keeps an empty alert region too.
+    const main = await screen.findByRole('main');
+    const alert = await within(main).findByRole('alert');
     expect(alert).toHaveTextContent('Couldn’t load the roster.');
     expect(alert).toHaveTextContent('canceling statement due to statement timeout');
     expect(reported).toHaveBeenCalledWith(
@@ -86,13 +88,13 @@ describe('the data layer never hides a failed read (#1101)', () => {
     failing = false;
     await userEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
     expect(await screen.findByText('18')).toBeInTheDocument();
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(within(main).queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('shows the error when the address lookup itself fails, instead of page not found', async () => {
     setErrorReporter(() => {});
     renderApp('/g/wga/t/phoenix', seededHandlers({ rpc: () => ({ error: { message: 'network down' } }) }));
-    const alert = await screen.findByRole('alert');
+    const alert = await within(await screen.findByRole('main')).findByRole('alert');
     expect(alert).toHaveTextContent('Couldn’t load this page.');
     expect(screen.queryByRole('heading', { name: 'Page not found' })).not.toBeInTheDocument();
   });

@@ -1,0 +1,89 @@
+/* Two classes, so this wins over layout.css's .signed-in whichever file loads
+   last. Lined up with the nav items: 10px in, like .nav-item. */
+.signed-in.account-panel {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+  padding: 10px 10px 0;
+}
+
+/* Under the name, not under the avatar: 28px avatar + 10px gap. */
+.account-panel .account-who ~ .link-button {
+  margin-left: 38px;
+}
+
+.account-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.account-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.account-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-detail {
+  font-size: var(--text-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-signin {
+  justify-content: center;
+}
+
+.link-button {
+  align-self: flex-start;
+  min-height: var(--target-min);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.link-button:disabled {
+  color: var(--text-dim);
+  cursor: default;
+}
+
+.connect-card {
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+}
+
+.connect-card p {
+  margin: 0 0 var(--space-3);
+  color: var(--text-muted);
+}
+
+.connect-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: 650;
+}
+
+.connect-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+img.avatar {
+  object-fit: cover;
+}

@@ -6,6 +6,8 @@ import { routes } from './routes';
 import { DataProvider } from './data/DataProvider';
 import { createSupabaseClient } from './lib/supabase';
 import { errorMessage, reportError } from './lib/errors';
+import { loadInitialSession, SessionProvider } from './auth/session';
+import { StatusProvider } from './components/Status';
 import './styles/base.css';
 import './pages/pages.css';
 
@@ -15,9 +17,14 @@ if (!root) throw new Error('index.html is missing #root');
 let app;
 try {
   const client = createSupabaseClient();
+  const { user, authReturn } = await loadInitialSession(client);
   app = (
     <DataProvider client={client}>
-      <RouterProvider router={createBrowserRouter(routes)} />
+      <SessionProvider initialUser={user} initialAuthReturn={authReturn}>
+        <StatusProvider>
+          <RouterProvider router={createBrowserRouter(routes)} />
+        </StatusProvider>
+      </SessionProvider>
     </DataProvider>
   );
 } catch (error) {

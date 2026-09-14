@@ -11,8 +11,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Phase | Time so far |
 | --- | ---: |
 | Planning and design | 1 h 50 m |
-| Revamp 1: decisions and foundation | 5 h 15 m |
-| **All revamp work** | **7 h 05 m** |
+| Revamp 1: decisions and foundation | 6 h 00 m |
+| **All revamp work** | **7 h 50 m** |
 
 ## Log
 
@@ -40,7 +40,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | --- | --- | --- | ---: | --- | --- |
 | 8:33–8:50 AM | #1101 part 3: Discord sign-in, roles, dialog | Revamp 1 | 15 m | build | Paused when Kat switched sign-in to Battle.net. The dialog and roles helper carry over; the Discord sign-in code gets reworked |
 | 8:50–9:47 AM | Battle.net sign-in: decision and local test | Revamp 1 (Identity) | 55 m | shared, heavy on Kat | Battle.net client, provider setup (two false starts: the `custom:` prefix, and Blizzard's key format breaking oidc), Discord secret, two stack restarts, four sign-in tests. Decision logged, #942 and #1101 re-planned, #1157 filed |
-| 9:49–10:00 AM | #1157 Connect Battle.net on the current site | Revamp 1 (Identity) | 10 m | build; review time not yet counted | Menu button, officer claims column, `team_battlenet_connections()`, local setup script |
+| 9:49–10:22 AM | #1157 Connect Battle.net on the current site | Revamp 1 (Identity) | 35 m | ~15 m build, ~20 m Kat local test, hosted setup and merge | PR #1158. Menu button, officer claims column, `team_battlenet_connections()`, local setup script. The local test needed a claim made by hand, since the seed has none |
+| 10:23–10:45 AM | #1101 part 3a: Battle.net sign-in in the new app | Revamp 1 | 20 m | ~12 m build, ~10 m Kat testing locally; review not yet counted | Sign-in, Connect Discord and Battle.net, "Use your Discord account" switch with `discard-empty-account`, roles once, officer gating, dialog and status components. Testing found a sidebar misalignment and a stale error riding the switch's return address, both fixed. Characters from Blizzard split to 3b |
 
 ## Not counted (same sessions, not revamp)
 
