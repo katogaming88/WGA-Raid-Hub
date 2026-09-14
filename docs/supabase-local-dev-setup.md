@@ -544,6 +544,20 @@ npm run dev:sink                  # answers 204 like Discord, prints what it was
 npm run dev:sink -- --status 500  # the other half: refuses, so the error paths run
 ```
 
+**Ask a function what version it is running.** Every function answers
+`X-WGA-Version` on every response, the preflight included, so one call reads
+it without a key and without any side effect:
+
+```sh
+curl -s -i -X OPTIONS https://kxgjqnpwfklbgrxdgmmv.supabase.co/functions/v1/contact-webhook \
+  | grep -i x-wga-version
+```
+
+Against the local stack, swap the host for `http://127.0.0.1:54321`. The
+deploy runs this comparison itself after every deploy, so a mismatch on
+production should already have failed the run and posted; reading it by hand
+is for the times you want to see it rather than trust it.
+
 **Point the functions at it.** A function decides where its Discord post
 goes from where it is running (#1081): on a local stack the three webhook
 posters (`boe-webhook`, `boe-sold-webhook`, `contact-webhook`) send to
