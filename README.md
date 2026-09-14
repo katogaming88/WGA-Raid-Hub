@@ -151,4 +151,4 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full PR checklist (what a migra
 
 ## Roadmap
 
-Planned work lives on the [milestones](https://github.com/katogaming88/WGA-Raid-Hub/milestones), with the build order across them pinned on [#947](https://github.com/katogaming88/WGA-Raid-Hub/issues/947).
+Planned work lives on the [milestones](https://github.com/katogaming88/WGA-Raid-Hub/milestones), with the build order across them pinned on [#1155](https://github.com/katogaming88/WGA-Raid-Hub/issues/1155).

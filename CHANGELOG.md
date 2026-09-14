@@ -12,6 +12,18 @@ answers to.
 
 ---
 
+## [3.112.14] - 2026-09-14
+
+### Project
+
+- The build order across the milestones now lives on #1155, sorted by area
+  and by priority with schema hardening first; #947 closed at 61 KB with two
+  of its five milestones finished. README's Roadmap section and
+  `docs/ROADMAP.md` point at the new issue, as the milestone descriptions
+  already do.
+
+---
+
 ## [3.112.13] - 2026-09-14
 
 ### Functions
