@@ -39,6 +39,21 @@ answers to.
 
 ---
 
+## [3.117.1] - 2026-09-14
+
+### Backend
+
+- The daily equipped-gear sweep runs at 10:07 UTC instead of 10:00
+  ([#1095](https://github.com/katogaming88/WGA-Raid-Hub/issues/1095)). At
+  10:00 it shared a second with two other scheduled functions on a cold API,
+  and on 2026-09-12, 09-13 and 09-14 every database call it made for the next
+  minute timed out, so no gear was written and stale rows kept raiders off
+  priority lists they belonged on. The same sweep fired by hand later in the
+  day wrote every row in twenty seconds. Officers' "Sync Gear Levels Now" is
+  unchanged.
+
+---
+
 ## [3.117.0] - 2026-09-14
 
 ### Project
