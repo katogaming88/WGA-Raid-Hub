@@ -355,7 +355,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   # The same built site, uploaded to Cloudflare Pages as well (#1099). It runs
   # beside the GitHub Pages deploy, not instead of it: GitHub Pages keeps serving
