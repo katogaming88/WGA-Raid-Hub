@@ -18,6 +18,12 @@ import { pool } from './helpers.js';
 // reasoning written into the migration that introduces it.
 const KNOWN_DYNAMIC = ['rls_auto_enable'];
 
+// Functions allowed to compare my_team_role() without coalesce (#752, T6).
+// resolve_person puts the comparison in a WHERE clause, where a null excludes
+// the row exactly as false does. Adding a name here needs the same reasoning
+// written into the migration.
+const BARE_ROLE_COMPARE_OK = ['resolve_person'];
+
 // SECURITY DEFINER functions anon may execute, measured on prod 2026-09-08.
 // Eight RLS predicates and helpers, five public submit paths, one trigger
 // helper and is_own_player. #1106 added the three once-per-query rule helpers
@@ -140,5 +146,27 @@ describe('function invariants (#1010)', () => {
       .filter((f) => /raw_user_meta_data\s*->>\s*'provider_id'/.test(stripComments(f.prosrc)))
       .map((f) => f.proname);
     expect(readers).toEqual([]);
+  });
+
+  // T6 (#752). my_team_role() is null for a caller with no row on the team,
+  // and `null = 'team_leader'` is null, so `if not (null or false)` never
+  // raises: a gate that compares the role without coalesce lets a stranger
+  // through. Every gate wraps the comparison in coalesce(..., false) except
+  // the three this case was written red against, and nothing else would
+  // notice the next one. The coalesced count is asserted beside the empty
+  // list so a regex that matched nothing could not pass on its own.
+  it('T6: every my_team_role() comparison in a function body is wrapped in coalesce', async () => {
+    const fns = await publicFunctions();
+    const bare = new Set();
+    let coalesced = 0;
+    for (const f of fns) {
+      if (BARE_ROLE_COMPARE_OK.includes(f.proname)) continue;
+      for (const m of stripComments(f.prosrc).matchAll(/(coalesce\s*\(\s*)?(public\.)?my_team_role\s*\(/gi)) {
+        if (m[1]) coalesced += 1;
+        else bare.add(f.proname);
+      }
+    }
+    expect(coalesced).toBeGreaterThanOrEqual(15);
+    expect([...bare].sort()).toEqual([]);
   });
 });
