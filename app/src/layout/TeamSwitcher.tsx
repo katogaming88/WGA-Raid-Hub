@@ -21,6 +21,7 @@ export function TeamSwitcher({
   const [openedAt, setOpenedAt] = useState('');
   const location = useLocation();
   const button = useRef<HTMLButtonElement>(null);
+  const wrap = useRef<HTMLDivElement>(null);
   const listId = useId();
 
   if (open && location.pathname !== openedAt) setOpen(false);
@@ -33,8 +34,16 @@ export function TeamSwitcher({
         button.current?.focus();
       }
     };
+    // It floats over the nav, so a click anywhere else closes it.
+    const onPointer = (event: PointerEvent) => {
+      if (!wrap.current?.contains(event.target as Node)) setOpen(false);
+    };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPointer);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onPointer);
+    };
   }, [open]);
 
   // The part of the address after the team key, e.g. "/roster".
@@ -45,7 +54,7 @@ export function TeamSwitcher({
   const active = teams.filter((t) => !t.archived);
 
   return (
-    <div className="team-switcher-wrap">
+    <div className="team-switcher-wrap" ref={wrap}>
       <button
         ref={button}
         type="button"

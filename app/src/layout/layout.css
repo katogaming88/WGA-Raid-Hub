@@ -97,13 +97,20 @@
   color: var(--text-dim);
 }
 
+/* Floats over the nav below it rather than pushing it down (Kat, 2026-09-13). */
 .team-list {
-  margin: var(--space-1) 0 0;
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin: 0;
   padding: var(--space-1);
   list-style: none;
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   background: var(--panel);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
 }
 
 .team-option {
