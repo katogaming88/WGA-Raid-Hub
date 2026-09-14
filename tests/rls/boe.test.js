@@ -14,6 +14,7 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import {
   pool,
+  insertDiscordUser,
   OFFICER_T1,
   TEAM_LEADER_T1,
   RAIDER_T1,
@@ -367,14 +368,9 @@ describe('the manager gate on the lifecycle RPCs', () => {
           .auth_user_id
       ).toBeNull();
 
-      // Stamped as a Discord signup: since #1118 the trigger revives a grant
-      // only for one.
-      await q(
-        `insert into auth.users (id, raw_app_meta_data, raw_user_meta_data)
-         values ($1, '{"provider":"discord","providers":["discord"]}'::jsonb,
-                 jsonb_build_object('provider_id', 'discord-not-yet-seen'))`,
-        [uid]
-      );
+      // The account and its Discord identity: since #1135 the identity row is
+      // what the trigger fires on, so it is what revives the grant.
+      await insertDiscordUser(q, uid, 'discord-not-yet-seen');
       expect(
         (await q("select auth_user_id from public.boe_managers where discord_id = 'discord-not-yet-seen'")).rows[0]
           .auth_user_id
@@ -550,7 +546,7 @@ describe('team officers settle payouts for their own team (#888)', () => {
 // column off the plain-UPDATE list. Two synthetic users are inserted here
 // rather than borrowed from the seed: the finder, whose Discord id matches no
 // team_members, site_admins or boe_managers row so link_auth_user_to_member()
-// links nothing, and a raider carrying no provider_id at all. Both used to come
+// links nothing, and a raider with no Discord identity at all. Both used to come
 // free from the seed, whose auth users held an id and nothing else; #1053 gave
 // every seeded user a Discord identity so they can sign in to the local site,
 // which left the two cases below with no subject. They own their fixtures now,
@@ -558,13 +554,10 @@ describe('team officers settle payouts for their own team (#888)', () => {
 describe("the finder's Discord id (#889)", () => {
   const FINDER = '00000000-0000-0000-0000-0000000000a9';
   const FINDER_DISCORD = 'discord-finder-9';
-  const addFinder = (q) =>
-    q("insert into auth.users (id, raw_user_meta_data) values ($1, jsonb_build_object('provider_id', $2::text))", [
-      FINDER,
-      FINDER_DISCORD
-    ]);
-  // A raider on team 1 whose token carries no provider_id, so
-  // current_discord_id() is null for them. Team 1 rather than no team at all,
+  const addFinder = (q) => insertDiscordUser(q, FINDER, FINDER_DISCORD);
+  // A raider on team 1 with no Discord identity, so current_discord_id() is
+  // null for them. Since #1135 that is what makes it null: metadata does not
+  // enter into it. Team 1 rather than no team at all,
   // because that is what these two cases used to assert against and the team
   // membership is what makes "sees nothing" a real answer rather than a
   // vacuous one.

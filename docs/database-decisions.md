@@ -8,6 +8,28 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-13 -- identity is the auth.identities row, not the metadata copy (#1135)
+
+Shipped: `20260913215858_identity_from_auth_identities.sql`, `20260913220137_link_trigger_on_auth_identities.sql`
+
+The third and last piece of the #947 escalation arc, and the one that removes the cause rather than a route to it. #1117 stopped `claim_character()` taking over a linked row and #1118 stopped the link trigger firing for a non-Discord signup. Both are guards on a read that should not have been happening.
+
+GoTrue writes a Discord account's snowflake into two places at sign-in: `auth.identities.provider_id`, which only the provider writes, and `auth.users.raw_user_meta_data ->> 'provider_id'`, which the account itself can rewrite through `PUT /auth/v1/user`. Two records of one fact, one of them forgeable, and the schema read the forgeable one in seven places.
+
+**The decision is that there is one answer to who an account is, and it is the identity row.** `current_discord_id()` reads it, a new `auth_user_for_discord_id()` does the reverse for the four grant RPCs, and nothing else in the schema names the provider string. The metadata copy cannot be deleted, because GoTrue keeps writing it, so it is demoted instead: it is display residue, and T5 in `tests/rls/function-invariants.test.js` plus `tests/ci/functions-identity-source.test.js` refuse a new reader on either side.
+
+**The link trigger moved rather than being guarded again.** It fired `after insert on auth.users`, where the identity row does not exist yet: GoTrue inserts the account first and the identity after it, in the same transaction. That ordering is why #1118's guard had to go through `raw_app_meta_data` instead of the thing it actually wanted. On `auth.identities` the trigger reads the row it fired on, `new.provider` and `new.provider_id` and `new.user_id`, and the question disappears. It is also the shape #942's people table wants, where a verified external identity appearing is what attaches a person to their grants.
+
+Three consequences worth recording:
+
+- **The grant RPCs dropped their `limit 1`.** `identities_provider_id_provider_unique` on `(provider_id, provider)` makes the reverse lookup exact, where `auth.users` gave no such guarantee and an arbitrary row was being taken. `current_discord_id()` has no `limit 1` either, but for the opposite reason: one identity per provider per user is GoTrue's rule enforced at its API rather than a constraint here, so a limit would paper over a state worth seeing.
+- **The local seed moved to Discord identities.** It wrote `provider = 'email'`, so every persona would have resolved to nobody. Production has one discord identity per account and no email identity anywhere, and the seed now matches. It costs the local login nothing: `dev:login` signs in by admin magic link, GoTrue looks that up by `auth.users.email`, and verifying one against a discord-only account adds no email identity (checked on the pinned local stack).
+- **Nothing changed for any existing account.** Measured on production before shipping: 73 accounts, 73 identity rows, all discord, none missing, no duplicate `provider_id`, and zero accounts whose metadata disagreed with their identity row. No backfill, and no answer changes.
+
+Deliberately left alone: `resolve_actor_name()` and `resolve_discord_display_name()` read `full_name` and `name` out of the same metadata for display. A forged display name is cosmetic, not an escalation. Renaming the Discord-shaped vocabulary, and re-keying `boe_items.finder_discord_id` onto the account, belong to #942 and #659.
+
+---
+
 ## 2026-09-13 -- access rules read roles once per query, not from the login token (#1106)
 
 Shipped: `20260913215012_rls_helpers_once_per_query.sql`

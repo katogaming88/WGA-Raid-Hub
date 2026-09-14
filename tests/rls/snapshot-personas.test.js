@@ -75,12 +75,14 @@ describe('the persona batch on a snapshot-shaped stack (#1065)', () => {
   it('gives every account what the auth service needs to issue a link', () =>
     onSnapshot(async ({ q }) => {
       // The same three details the seed carries (#1053): aud and role,
-      // token columns that are strings rather than nulls, and an identities
-      // row so the account looks like one that signed in.
+      // token columns that are strings rather than nulls, and a Discord
+      // identity row, which since #1135 is what current_discord_id() and the
+      // grant link trigger read. An email identity would leave every persona
+      // resolving to nobody.
       const { rows } = await q(`
         select u.email
           from auth.users u
-          left join auth.identities i on i.user_id = u.id
+          left join auth.identities i on i.user_id = u.id and i.provider = 'discord'
          where u.aud <> 'authenticated' or u.role <> 'authenticated'
             or u.confirmation_token is null or u.recovery_token is null
             or u.email_change is null or u.email_change_token_new is null

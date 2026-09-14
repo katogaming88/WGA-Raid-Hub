@@ -13,7 +13,7 @@
 // postgres (bypasses RLS), the call happens as the named identity, assertions
 // happen back as postgres.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, OFFICER_T1, TEAM_LEADER_T1, SITE_ADMIN } from './helpers.js';
+import { pool, insertDiscordUser, OFFICER_T1, TEAM_LEADER_T1, SITE_ADMIN } from './helpers.js';
 
 // Seeded and migration-created rows this file leans on:
 //   team 1 'Team Phoenix', team 2 'Hellfire Rollers' (supabase/seed.sql)
@@ -72,15 +72,10 @@ const grant = (asUser, uid, teamId, discordId, role) =>
 const revoke = (asUser, uid, teamId, discordId) =>
   asUser(uid, 'select public.admin_revoke_team_role($1, $2)', [teamId, discordId]);
 
-// The ::text casts are required: node-pg cannot infer a type for a parameter
-// used only inside jsonb_build_object (found the hard way on #889). Stamped as
-// a Discord signup because since #1118 the trigger links grant rows only for
-// one.
-const makeAuthUser = (q, uid, discordId) =>
-  q(
-    'insert into auth.users (id, raw_app_meta_data, raw_user_meta_data) values ($1, $2::jsonb, jsonb_build_object($3::text, $4::text))',
-    [uid, '{"provider":"discord","providers":["discord"]}', 'provider_id', discordId]
-  );
+// An account and the Discord identity behind it. Since #1135 the identity row
+// is what the link trigger fires on and what the grant RPCs resolve through, so
+// an auth.users row on its own would link nothing.
+const makeAuthUser = (q, uid, discordId) => insertDiscordUser(q, uid, discordId);
 
 const memberRow = (q, teamId, discordId) =>
   q('select * from public.team_members where team_id = $1 and discord_id = $2', [teamId, discordId]).then(

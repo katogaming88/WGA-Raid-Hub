@@ -807,12 +807,12 @@ create policy "Officers read audit_log"
 When an officer or site admin logs in with Discord for the first time, Supabase
 creates a row in `auth.users`. At that moment they already have a row in
 `team_members` or `site_admins` (seeded in issue #203) but `auth_user_id` is still
-null. This trigger fires automatically on every new `auth.users` insert, reads the
-Discord user ID from the login metadata, and fills in the UUID across all four
-grant tables. It runs only for an account Discord itself created: the id it
-matches on sits in `raw_user_meta_data`, which the account can write, so the
-guard reads the provider out of `raw_app_meta_data`, which only the service role
-can (#1118).
+null. This trigger fires automatically when a Discord identity is added to an
+account, reads the Discord user ID off that identity row, and fills in the UUID
+across all four grant tables. It reads `auth.identities` rather than the account's
+metadata because only the OAuth exchange writes that table, while
+`raw_user_meta_data` is writable by the account it describes and so proves nothing
+(#1118, #1135).
 
 Without this trigger, an officer would log in successfully but `my_team_role()` and
 `is_site_admin()` would both return null -- they would be logged in but treated as
@@ -826,45 +826,45 @@ security definer
 set search_path = 'public'
 as $$
 begin
-  -- Only the provider writes raw_app_meta_data. The provider_id below is the
-  -- account's own to set, so without this the match proves nothing (#1118).
-  if new.raw_app_meta_data ->> 'provider' is distinct from 'discord' then
+  -- new.provider and new.provider_id are the identity row itself, written by
+  -- the OAuth exchange. Nothing here is the account's to set (#1118, #1135).
+  if new.provider is distinct from 'discord' then
     return new;
   end if;
 
   update team_members
-  set auth_user_id = new.id
-  where discord_id = new.raw_user_meta_data ->> 'provider_id'
+  set auth_user_id = new.user_id
+  where discord_id = new.provider_id
     and auth_user_id is null;
 
   update site_admins
-  set auth_user_id = new.id
-  where discord_id = new.raw_user_meta_data ->> 'provider_id'
+  set auth_user_id = new.user_id
+  where discord_id = new.provider_id
     and auth_user_id is null;
 
   update boe_managers
-  set auth_user_id = new.id
-  where discord_id = new.raw_user_meta_data ->> 'provider_id'
+  set auth_user_id = new.user_id
+  where discord_id = new.provider_id
     and auth_user_id is null;
 
   update guild_officers
-  set auth_user_id = new.id
-  where discord_id = new.raw_user_meta_data ->> 'provider_id'
+  set auth_user_id = new.user_id
+  where discord_id = new.provider_id
     and auth_user_id is null;
 
   return new;
 end;
 $$;
 
-create trigger on_auth_user_created
-  after insert on auth.users
+create trigger on_auth_identity_created
+  after insert on auth.identities
   for each row execute function link_auth_user_to_member();
 ```
 
 `new` is a special variable inside trigger functions that holds the row that was just
-inserted. `new.id` is the Supabase UUID. `new.raw_user_meta_data ->> 'provider_id'`
-extracts the Discord user ID from the login metadata. `->>` reads a JSON field as
-text.
+inserted. Here that row is the identity: `new.user_id` is the Supabase UUID,
+`new.provider` says which provider proved it, and `new.provider_id` is the Discord
+user ID that provider gave.
 
 ---
 
@@ -947,11 +947,12 @@ statement, never as a bare insert:
 
 ```sql
 -- The subselect is null for someone with no account yet, which is the case the trigger covers.
+-- Resolve through auth.identities, never through metadata the account can write (#1135).
 insert into team_members (team_id, discord_id, auth_user_id, role)
 values (
   4,
   'DISCORD_ID_HERE',
-  (select id from auth.users where raw_user_meta_data ->> 'provider_id' = 'DISCORD_ID_HERE'),
+  public.auth_user_for_discord_id('DISCORD_ID_HERE'),
   'officer'
 );  -- Wrathless officer
 ```
@@ -960,10 +961,9 @@ To repair a row that is already in place:
 
 ```sql
 update team_members tm
-set auth_user_id = u.id
-from auth.users u
-where u.raw_user_meta_data ->> 'provider_id' = tm.discord_id
-  and tm.auth_user_id is null;
+set auth_user_id = public.auth_user_for_discord_id(tm.discord_id)
+where tm.auth_user_id is null
+  and public.auth_user_for_discord_id(tm.discord_id) is not null;
 ```
 
 ---

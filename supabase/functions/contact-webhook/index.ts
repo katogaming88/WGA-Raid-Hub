@@ -13,6 +13,7 @@
 // stays the body's: it is a name somebody typed, not a claim about who they are.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { marker, resolveDestination } from '../_shared/discord-destination.ts';
+import { resolveSubmitter, type SubmitterClient } from './submitter.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -33,21 +34,10 @@ const truncate = (s: string, max: number) => (s.length > max ? s.slice(0, max - 
 // read it. Signed out the site sends its publishable key here instead, which
 // is not a user token, so getUser answers nobody -- that is the anonymous
 // path, not an error, because this form takes reports from anyone.
-async function resolveSubmitter(authHeader: string | null) {
-  if (!authHeader) return null;
-  const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
+const makeCallerClient = (authHeader: string) =>
+  createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
     global: { headers: { Authorization: authHeader } }
-  });
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-  const meta = (user.user_metadata || {}) as Record<string, unknown>;
-  return {
-    discordId: typeof meta.provider_id === 'string' ? meta.provider_id : null,
-    username: typeof meta.full_name === 'string' ? meta.full_name : typeof meta.name === 'string' ? meta.name : null
-  };
-}
+  }) as unknown as SubmitterClient;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -69,7 +59,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: true, skipped: true, ...(dest.reason ? { reason: dest.reason } : {}) });
     }
 
-    const submitter = await resolveSubmitter(req.headers.get('Authorization'));
+    const submitter = await resolveSubmitter(req.headers.get('Authorization'), makeCallerClient);
 
     // <@id> renders as a clickable mention in the embed field (right-click ->
     // Message) same as it would in plain message content -- no ping/

@@ -40,16 +40,20 @@ begin
   where tm.team_id = p_team_id and tm.auth_user_id = v_uid;
 
   if v_member_id is null then
-    select u.raw_user_meta_data ->> 'provider_id' into v_discord_id
-    from auth.users u where u.id = v_uid;
+    v_discord_id := public.current_discord_id();
+
+    if v_discord_id is null then
+      raise exception 'This account has no Discord identity to claim a character with';
+    end if;
 
     select tm.id, tm.role, tm.auth_user_id
       into v_member_id, v_member_role, v_member_auth_user_id
     from public.team_members tm
     where tm.team_id = p_team_id and tm.discord_id = v_discord_id;
 
-    -- Someone already holds this row. The caller reached it by carrying that
-    -- person's Discord id, which proves nothing, so refuse rather than relink.
+    -- Someone already holds this row. Since #1135 the caller's Discord id comes
+    -- from their identity row rather than from metadata they can write, so this
+    -- is now a genuine collision rather than the takeover #1117 was refusing.
     if v_member_id is not null and v_member_auth_user_id is not null then
       raise exception 'That Discord account is linked to a different account';
     end if;

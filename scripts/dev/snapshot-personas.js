@@ -79,7 +79,7 @@ select '00000000-0000-0000-0000-000000000000',
        '',
        now(),
        '', '', '', '',
-       '{"provider":"email","providers":["email"]}'::jsonb,
+       '{"provider":"discord","providers":["discord"]}'::jsonb,
        jsonb_build_object('provider_id', p.discord_id, 'full_name', initcap(replace(p.name, '-', ' '))),
        now(),
        now()
@@ -89,7 +89,7 @@ insert into auth.identities (provider_id, user_id, identity_data, provider, last
 select p.discord_id,
        p.user_id,
        jsonb_build_object('sub', p.user_id::text, 'email', p.name || '@wga.local', 'provider_id', p.discord_id),
-       'email',
+       'discord',
        now(),
        now(),
        now()
