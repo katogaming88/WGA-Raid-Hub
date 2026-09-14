@@ -16,5 +16,17 @@
 
 .team-key {
   color: var(--text);
-  text-transform: capitalize;
+}
+
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  color: var(--text-muted);
+}
+
+.stat-value {
+  font-size: var(--text-xl);
+  font-weight: 650;
+  color: var(--text);
 }

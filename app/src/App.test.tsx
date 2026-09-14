@@ -1,15 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createMemoryRouter } from 'react-router';
-import { RouterProvider } from 'react-router/dom';
-import { routes } from './routes';
-
-function renderAt(path: string) {
-  const router = createMemoryRouter(routes, { initialEntries: [path] });
-  const view = render(<RouterProvider router={router} />);
-  return { router, view };
-}
+import { renderApp as renderAt } from './test/renderApp';
 
 describe('routing', () => {
   it('sends / to the default team home', async () => {

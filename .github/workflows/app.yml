@@ -7,6 +7,9 @@ on:
   pull_request:
     paths:
       - 'app/**'
+      # The app's Supabase types come from the current site's copy until the
+      # cutover (app/src/lib/supabase.ts).
+      - 'js/database.types.ts'
       - '.github/workflows/app.yml'
 
 concurrency:

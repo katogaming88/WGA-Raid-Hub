@@ -12,6 +12,27 @@ answers to.
 
 ---
 
+## [3.112.10] - 2026-09-13
+
+### Project
+
+- The new app now reads from the database, part 2 of the app shell
+  ([#1101](https://github.com/katogaming88/WGA-Raid-Hub/issues/1101)). Still
+  not deployed anywhere.
+  - Every address is looked up through `resolve_address()` (#1114): an
+    unknown guild or team shows page not found, and a retired key or
+    different capitals move to the current address, keeping the page.
+  - The sidebar shows the guild's name, and the team switcher lists its
+    active teams; switching keeps the page you are on.
+  - One shared data layer (TanStack Query) for every read. A failed read
+    always shows an error box with the reason and a Retry button, and is
+    reported through one function the hosted error tracker will plug into.
+    Reads are cached across pages, so coming back to a page doesn't fetch it
+    again.
+  - Home shows the team's active roster count, the shell's first real read.
+  - Which Supabase the app talks to is set per build: the local stack for
+    `npm run dev`, the hosted project for `npm run build`.
+
 ## [3.112.9] - 2026-09-13
 
 ### Project

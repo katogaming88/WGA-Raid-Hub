@@ -11,8 +11,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Phase | Time so far |
 | --- | ---: |
 | Planning and design | 1 h 50 m |
-| Revamp 1: decisions and foundation | 3 h 25 m |
-| **All revamp work** | **5 h 15 m** |
+| Revamp 1: decisions and foundation | 3 h 40 m |
+| **All revamp work** | **5 h 30 m** |
 
 ## Log
 
@@ -31,7 +31,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | 6:17–6:43 PM | #941 person lookup, kept character links, name matching | Revamp 1 (Identity prerequisite) | 25 m | ~22 m build incl. one Kat question, ~4 m review | PR #1121. Tested on prod backup |
 | 9:42–10:06 PM | #1106 access rules once per query | Revamp 1 | 25 m | ~18 m build incl. benchmark and one Kat question, ~6 m review | PR #1144. Benchmark changed the plan: rule rewrite instead of login-token hook |
 | 10:10–10:30 PM | #1107 one file per database function | Revamp 1 | 20 m | ~10 m spike of Supabase's declarative schema, one Kat decision, ~8 m build; review time not yet counted | Spike found the declarative tool unsafe here (dropped a constraint, would have paused prod cron jobs); built a generated per-function mirror instead |
-| 10:32–10:50 PM | #1101 part 1: app scaffold and look | Revamp 1 | 20 m | build; review time not yet counted | Colors, frame, drawer, routes, contrast test, App CI workflow. Contrast check moved a few mockup colors (Death Knight the most) |
+| 10:32–10:56 PM | #1101 part 1: app scaffold and look | Revamp 1 | 25 m | ~15 m build, ~10 m Kat testing locally, a light-mode nav fix, and a changelog merge conflict | Colors, frame, drawer, routes, contrast test, App CI workflow. Contrast check moved a few mockup colors (Death Knight the most) |
+| 10:58–11:08 PM | #1101 part 2: addresses and data layer | Revamp 1 | 10 m | build; review time not yet counted | resolve_address lookups with redirects, team switcher, TanStack Query data layer with visible errors, first real read; checked against the local database |
 
 ## Not counted (same sessions, not revamp)
 
