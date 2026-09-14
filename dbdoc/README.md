@@ -160,6 +160,7 @@
 | public.my_leader_team_ids | _int4 |  | FUNCTION |
 | public.my_active_player_ids | _int4 |  | FUNCTION |
 | public.auth_user_for_discord_id | uuid | p_discord_id text | FUNCTION |
+| public.team_battlenet_connections | int4 | p_team_id integer | FUNCTION |
 
 ## Enums
 

@@ -8,6 +8,31 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-14 -- the new app signs in with Battle.net, and Discord is linked to the same account (#1101)
+
+Shipped: not yet. Lands with #1101 part 3 (sign-in) and #942 (people table); the hosted setup and the current site's Connect Battle.net button are #1157.
+
+Kat's call while #1101 part 3 was being built: the new app's sign-in button is Battle.net, not Discord. It is the direction discussion #689 set out, taken one step at a time: Battle.net becomes how a person signs in and proves which characters are theirs, while Discord stays attached to the same account, because every grant (`team_members`, `site_admins`, `guild_officers`, `boe_managers`), the bot and the Discord notifications are keyed on a Discord id today.
+
+**One auth account, two identities on it.** A person is one `auth.users` row carrying a `custom:battlenet` identity and a `discord` identity, joined with Supabase's manual identity linking. Nothing new in `public` is needed to hold the pair. #942's people table sits on top of that account rather than on either id.
+
+**Characters come from Blizzard, not from a dropdown.** The Battle.net login token reads the account's character list (`/profile/user/wow`), which replaces the claim-your-character prompt and finds alts (#631, #486) without anyone picking them. The list is read by an Edge Function, never trusted from the browser, and the function checks that the token's Battle.net account id is the identity actually linked to the caller: a refused link still hands the browser a working Battle.net token, so holding one proves nothing about the account.
+
+**Verified on the local stack before deciding (2026-09-14).** Battle.net sign-in creates an account with no email and the BattleTag on the identity; the token returned 47 characters across three WoW accounts; Discord-first then Connect Battle.net, and Battle.net-first then Connect Discord, both give one account with both identities, and either button opens it afterwards. A login already attached to a different account is refused ("Identity is already linked to another user"), so there is no takeover by linking.
+
+**The link trigger already covers the new order.** Since #1135 `link_auth_user_to_member()` fires on `auth.identities`, so connecting Discord to a Battle.net account links that person's pre-listed grants the same way a Discord sign-up does. No schema change for that.
+
+**Existing raiders are the one hard case, handled twice.** Everyone on the live site already has a Discord account. If they press Battle.net first they get a second, empty account, and connecting Discord to it is refused, because Supabase cannot merge accounts. So:
+
+- The current site gets a Connect Battle.net button (#1157), where everyone is already signed in with Discord, so most accounts carry both identities before the January cutover (#1105).
+- The new app notices a Battle.net sign-in that landed on a brand-new account with nothing attached, offers "Sign in with Discord instead", removes the empty account, and connects Battle.net to the real one.
+
+**Provider setup, recorded because both were found the hard way.** The provider is `custom:battlenet` of type `oauth2` (authorize, token and userinfo at `oauth.battle.net`), not `oidc`: Blizzard publishes its signing key in standard base64 and GoTrue's key parser refuses it. Custom providers live in the auth database, created through the admin API with the `custom:` prefix included, so they are not in `config.toml` and a local `supabase db reset` can lose one. The hosted project also needs manual linking switched on.
+
+[Discussion -> #689](https://github.com/katogaming88/WGA-Raid-Hub/discussions/689), [people table -> #942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942), part of #1101.
+
+---
+
 ## 2026-09-13 -- identity is the auth.identities row, not the metadata copy (#1135)
 
 Shipped: `20260913215858_identity_from_auth_identities.sql`, `20260913220137_link_trigger_on_auth_identities.sql`
