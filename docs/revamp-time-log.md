@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | --- | ---: |
 | Planning and design | 1 h 50 m |
 | Revamp 1: decisions and foundation | 6 h 55 m |
-| Revamp 2: public pages | 40 m |
-| **All revamp work** | **9 h 25 m** |
+| Revamp 2: public pages | 55 m |
+| **All revamp work** | **9 h 40 m** |
 
 ## Log
 
@@ -48,6 +48,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | 11:26–11:32 AM | Preview tester runbook | Revamp 1 | 5 m | ~4 m build, ~2 m Kat | `docs/app-preview.md` (v3.114.2). Kat decided doc changes in this repo go through PRs from now on |
 | 11:33–11:47 AM | #1108 `tier_token_map` gets a season | Revamp 1 (Season) | 15 m | ~11 m build, ~3 m Kat review and merge | PR #1163. Re-audit found the tier-piece counter would check gear against the wrong tier once two tiers are seeded, and Sync Roster Tier Counts would write 0 for everyone with no seed. Went ahead of #931 (format already settled by #932) |
 | 11:48 AM–12:28 PM | Decide #1070 and #1076 (Heroic sale runs) | Revamp 2 | 40 m | ~8 m build (reading six issues, framing options), ~30 m Kat deciding | Guests are signups on a run; per-run signup; guild price list copied onto each sale; type on each buyer; calendar shows types not prices; sales team officers manage. Still open: which team (setup), parse-bar strictness (moved to #1074) |
+| 1:02–1:15 PM | Decide #1032 and #1033 (wishlist is BiS or Pass) | Revamp 2 | 15 m | ~8 m build (prod wishlist and award counts, framing options), ~5 m Kat deciding | BiS or Pass only, at cutover; old 2nd Choice/Sidegrade/Catalyst rows deleted then; one pick per slot, two for paired slots. Kat chose it over a single "Upgrade" choice after seeing 97 of 256 awards went to non-BiS marks |
 
 ## Not counted (same sessions, not revamp)
 

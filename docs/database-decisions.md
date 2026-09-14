@@ -8,6 +8,23 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-14 -- The wishlist is a BiS pick or a Pass, and only a BiS pick gets a priority number (#1032, #1033)
+
+Shipped: not yet. Decision only; the change lands at cutover (#1105), with #935 retiring `bis_items` in the same arc.
+
+`item_preferences.status` allows five values today: `bis`, `good` (2nd Choice), `ok` (Sidegrade), `catalyst` (Catalyst Only) and `pass`. `generate_priority_order()` ranks every non-pass row, with BiS picks first and the others behind them. Kat's call: only `bis` and `pass` remain, and a raider with no BiS pick on an item gets no number for it.
+
+**Measured on prod before deciding (2026-09-14), active raiders on both teams.** The other three choices are heavily used: 1,137 rows (729 `good`, 348 `ok`, 60 `catalyst`) against 922 `bis`. Of the 256 items awarded since wishlists opened on 2026-08-07, 97 went to a raider who had marked it 2nd Choice, Sidegrade or Catalyst Only, and 98 to a BiS pick. No raid neck has a single BiS pick on either team, because raiders' BiS necks are crafted or from M+; Hellfire's Sentinel's Vitriolic Chain has 16 2nd Choice marks and went to Vellisara and Saucynuggz on them. After the change those drops have nobody on the list and officers award them by hand. Kat chose that knowingly over keeping a single "Upgrade" choice ranked behind every BiS pick.
+
+- **It takes effect at cutover, not before.** The current site keeps ranking 2nd Choice and Sidegrade until the new app launches, so no raider's Priority List changes mid-season. The new app's wishlist offers only BiS and Pass from its first day. The `generate_priority_order()` change (the candidate union loses every status but `bis`, and the `wishlist_rank` and score-multiplier tiers go) ships with #1105.
+- **Existing `good`, `ok` and `catalyst` rows are deleted at the switch**, and the status check narrows to `bis` and `pass`. Raiders re-mark as BiS anything they actually want. A Catalyst Only want becomes a BiS pick on the tier piece itself.
+- **One BiS pick per slot, two for paired slots**: Trinket, Ring, and one-hand weapons (dual wield, see the dual-slot item BiS semantics). A crafted or M+ placeholder counts as the pick for its slot, so a raider whose BiS neck is crafted has no raid neck pick.
+- Readers to audit before the switch: `build_rclc_export`, `bis_demand_vs_awards`, `wishlist_setup_status`, Contested Items, and the placeholder path in `generate_priority_order()`, which must keep ranking as it does.
+
+[Wishlist -> #1032](https://github.com/katogaming88/WGA-Raid-Hub/issues/1032), [priority -> #1033](https://github.com/katogaming88/WGA-Raid-Hub/issues/1033), [bis_items retirement -> #935](https://github.com/katogaming88/WGA-Raid-Hub/issues/935).
+
+---
+
 ## 2026-09-14 -- Heroic sale runs: guests are signups on a run, and prices are a guild list copied onto each sale (#1070, #1076)
 
 Shipped: not yet. Decisions only; the tables arrive with #1073 (guest signup) in Revamp 2 and #1077 (buyers) in Revamp 3.
