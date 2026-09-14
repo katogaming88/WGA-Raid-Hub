@@ -559,6 +559,20 @@ PRs that change `supabase/migrations/` must also:
   supabase/ or tests/ change. If a policy legitimately changed, update the
   matching assertions in `tests/rls/` and the matrix in docs/RLS.md together
 
+**The `test:rls` script carries `--no-file-parallelism` on purpose, and removing
+it brings back a flake ([#1115](https://github.com/katogaming88/WGA-Raid-Hub/issues/1115)).**
+The suite runs one worker per file against a single Postgres, and most files
+write the same handful of seeded rows: `players` id 1 alone is written by 17 of
+them. Run those files at once and transactions take the same rows in different
+orders, so Postgres breaks the cycle by killing one, which surfaces as
+`deadlock detected` in whichever file lost. It scales with core count, so a
+16-core machine failed several tests on most runs while CI's 4-core runner
+stayed green, which meant a green check there did not mean the suite passed
+here. Serial costs about 11 seconds and makes the result the same everywhere.
+Note it lives on the npm script, so `npx vitest run tests/rls` invoked directly
+is still parallel and can still deadlock. The durable fix is for those files to
+create their own rows instead of writing seeded ones; until then, keep the flag.
+
 ### Writing RLS tests
 
 Every file in `tests/rls/` runs as its own worker against one database, so a

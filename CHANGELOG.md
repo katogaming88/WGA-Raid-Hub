@@ -12,6 +12,18 @@ answers to.
 
 ---
 
+## [3.112.3] - 2026-09-13
+
+### Project
+
+- The RLS test suite runs its files one at a time
+  ([#1115](https://github.com/katogaming88/WGA-Raid-Hub/issues/1115)). It ran
+  one worker per file against a single database, and because most files write
+  the same few seeded rows, Postgres would break the resulting lock cycle by
+  killing one of them, failing whichever test happened to lose. It got worse as
+  files were added and it depended on how many cores the machine had, so a green
+  check in CI did not mean the suite passed locally. Costs about 11 seconds.
+
 ## [3.112.2] - 2026-09-13
 
 ### Backend

@@ -15,7 +15,7 @@
     "format": "prettier --write \"js/**/*.js\" \"scripts/**/*.js\" \"tests/**/*.js\" \"supabase/functions/**/*.ts\" \"tests/edge/**/*.ts\"",
     "format:check": "prettier --check \"js/**/*.js\" \"scripts/**/*.js\" \"tests/**/*.js\" \"supabase/functions/**/*.ts\" \"tests/edge/**/*.ts\"",
     "test:ci": "vitest run tests/ci",
-    "test:rls": "vitest run tests/rls",
+    "test:rls": "vitest run tests/rls --no-file-parallelism",
     "test:import": "vitest run tests/import",
     "test:frontend": "vitest run tests/frontend",
     "test:a11y": "vitest run tests/browser --testTimeout=30000 --hookTimeout=60000",
