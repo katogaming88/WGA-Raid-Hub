@@ -12,6 +12,18 @@ answers to.
 
 ---
 
+## [3.112.4] - 2026-09-13
+
+### Backend
+
+- Adding a signup from the **Pending Roster** tab now shows up in the Audit
+  Log ([#1136](https://github.com/katogaming88/WGA-Raid-Hub/issues/1136)).
+  The added character gets a "Player Added" entry, and on a main swap the
+  archived character gets "Main Swap: Old Character Removed", naming what
+  replaced it. Nothing was logged for these since the move off the
+  spreadsheet in June, so the 57 adds made since then (16 of them main swaps)
+  still have no entry and can't get one: nothing recorded who made them.
+
 ## [3.112.3] - 2026-09-13
 
 ### Project
