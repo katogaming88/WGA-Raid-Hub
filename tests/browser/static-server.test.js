@@ -112,6 +112,23 @@ describe('static-server', () => {
     expect(res.status).toBe(403);
   });
 
+  it('with spaFallback, serves index.html for an app address and still 404s a missing asset', async () => {
+    const spa = await startServer(root, { spaFallback: true });
+    try {
+      const page = await fetch('http://127.0.0.1:' + spa.port + '/g/wga/t/phoenix/roster');
+      expect(page.status).toBe(200);
+      expect(await page.text()).toContain('root page');
+      expect((await fetch('http://127.0.0.1:' + spa.port + '/assets/missing.js')).status).toBe(404);
+      expect(await (await fetch('http://127.0.0.1:' + spa.port + '/news.json')).text()).toContain('items');
+    } finally {
+      await spa.close();
+    }
+  });
+
+  it('without spaFallback, an extensionless address still 404s', async () => {
+    expect((await get('/g/wga/t/phoenix')).status).toBe(404);
+  });
+
   it('stops listening after close()', async () => {
     const other = await startServer(root);
     await other.close();
