@@ -2026,6 +2026,7 @@ export type Database = {
           created_at: string
           id: number
           resolved_item_id: number
+          season: string
           token_item_id: number
         }
         Insert: {
@@ -2033,6 +2034,7 @@ export type Database = {
           created_at?: string
           id?: number
           resolved_item_id: number
+          season: string
           token_item_id: number
         }
         Update: {
@@ -2040,6 +2042,7 @@ export type Database = {
           created_at?: string
           id?: number
           resolved_item_id?: number
+          season?: string
           token_item_id?: number
         }
         Relationships: [

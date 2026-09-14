@@ -916,6 +916,21 @@ function syncRosterTierCounts() {
     return p.firstName && p.realm;
   });
   if (!roster.length) return;
+
+  // With no tier tokens for this season every count would come out 0, and
+  // writing that over each raider's last real count is silent damage (#1108).
+  // Refuse instead, and say why, on every trigger's status line.
+  var tierStatus = tierTokenSetupStatus(tierSeasonCode());
+  if (tierStatus !== 'ok') {
+    statuses.forEach(function (status) {
+      status.textContent =
+        tierStatus === 'missing'
+          ? 'Not synced: no tier tokens are set up for ' + seasonDisplayName(tierSeasonCode()) + ' yet.'
+          : 'Not synced: could not check the tier token setup. Reload and try again.';
+      status.style.color = 'var(--gold)';
+    });
+    return;
+  }
   btns.forEach(function (btn) {
     btn.disabled = true;
   });
@@ -1183,6 +1198,21 @@ function refreshVisiblePriorityTab() {
   updatePriorityBadges();
 }
 
+// #1108: tier_token_map is seeded by hand each tier. Until the season being
+// generated has rows, tier-token drops get no tier weighting and nothing else
+// says so, so this banner does. Empty when the setup is there or not loaded yet.
+function buildPriorityTierSetupBannerHtml(status, seasonCode) {
+  if (status === 'ok' || !DATA || DATA._tierTokenMapRawRows === undefined) return '';
+  var season = escHtml(seasonDisplayName(seasonCode));
+  var body =
+    status === 'missing'
+      ? '<strong>No tier tokens are set up for ' +
+        season +
+        '.</strong> Tier-token drops get no tier-piece weighting in generated priority, and Sync Roster Tier Counts is paused until they are added. Seeding steps: docs/updating-fetch-items-for-new-tier.md.'
+      : '<strong>Could not check the tier token setup.</strong> Tier weighting and Sync Roster Tier Counts may be off. Reload the page to try again.';
+  return '<div class="prio-drift-banner" role="alert">' + body + '</div>';
+}
+
 function updatePriorityBadges() {
   var unmanagedCount = getUnmanagedItems().length;
   var conflicts = getPriorityListConflicts();
@@ -1211,6 +1241,11 @@ function updatePriorityBadges() {
   if (conflictsBanner)
     conflictsBanner.innerHTML = buildPriorityConflictsBannerHtml(conflicts, _priorityConflictsExpanded);
   if (driftBanner) driftBanner.innerHTML = buildPriorityDriftBannerHtml(driftInfo, _priorityDriftExpanded);
+  var tierSetupBanner = document.getElementById('priorityTierSetupBanner');
+  if (tierSetupBanner) {
+    var tierSeason = tierSeasonCode();
+    tierSetupBanner.innerHTML = buildPriorityTierSetupBannerHtml(tierTokenSetupStatus(tierSeason), tierSeason);
+  }
   if (firstPrioSummary)
     firstPrioSummary.innerHTML = buildPriorityFirstPrioSummaryHtml(
       getPriorityFirstPrioSummary(),

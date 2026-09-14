@@ -109,14 +109,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.114.2';
+var VERSION = '3.115.0';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20260914095049';
+var REQUIRED_SCHEMA = '20260914113413';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -940,8 +940,12 @@ function applyRaiderIoTierSync(player, gearItems) {
 // shape already carries "what is this class's resolved piece for slot X",
 // just keyed the other way around (by token, then class) -- no second
 // lookup table needed.
+//
+// Only the season being generated (#1108): with two tiers seeded, every class
+// has two resolved pieces per slot, and walking both would keep whichever
+// came last, checking a raider's gear against the wrong tier.
 function classTierResolvedItemsBySlot(playerClass) {
-  var tierTokenMap = (DATA && DATA.tierTokenMap) || {};
+  var tierTokenMap = tierTokenMapForSeason(tierSeasonCode());
   var itemSlots = (DATA && DATA.itemSlots) || {};
   var bySlot = {};
   if (!playerClass) return bySlot;
@@ -3342,12 +3346,17 @@ function fetchSupabaseItemBosses() {
 // needs no changes. Two FKs to items (token + resolved) need the `!<fkey>`
 // disambiguation hint since Postgrest can't otherwise tell which one a bare
 // `items(name)` embed refers to.
+//
+// Each row carries its season code since #1108. Resolves to the rows (an empty
+// array when nothing is seeded) or null when the read failed or timed out, so
+// the Priority tab can tell "no tier tokens for this season" apart from
+// "could not check".
 function fetchSupabaseTierTokenMap() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('tier_token_map')
     .select(
-      'class, token:items!tier_token_map_token_item_id_fkey(name), resolved:items!tier_token_map_resolved_item_id_fkey(name)'
+      'season, class, token:items!tier_token_map_token_item_id_fkey(name), resolved:items!tier_token_map_resolved_item_id_fkey(name)'
     )
     .then(
       function (result) {
@@ -3355,7 +3364,7 @@ function fetchSupabaseTierTokenMap() {
           console.warn('Supabase tier_token_map query failed.', result.error.message);
           return null;
         }
-        return result.data && result.data.length ? result.data : null;
+        return result.data || [];
       },
       function (err) {
         console.warn('Supabase tier_token_map query failed.', err);
@@ -3382,10 +3391,17 @@ function fetchSupabaseTierTokenMap() {
 // wishlistBucketRealItems and tab-bis.js's bisSlotOnInput skip any name in
 // this set when walking the full catalog -- a resolved item should only ever
 // be reachable by substitution through its token, never listed directly.
-function mapSupabaseTierTokenMap(rows) {
+//
+// With no seasonCode it is built from every season's rows: token names are new
+// each tier, so a past season's BiS or wishlist row still shows its resolved
+// piece, and no season's resolved items get listed as catalog rows of their
+// own. Anything about one season (counting equipped tier pieces) passes the
+// season, through tierTokenMapForSeason() (#1108).
+function mapSupabaseTierTokenMap(rows, seasonCode) {
   var map = {};
   var resolvedNames = {};
   (rows || []).forEach(function (row) {
+    if (seasonCode && row.season !== seasonCode) return;
     var tokenName = row.token && row.token.name;
     var resolvedName = row.resolved && row.resolved.name;
     if (!tokenName || !resolvedName || !row.class) return;
@@ -3394,6 +3410,38 @@ function mapSupabaseTierTokenMap(rows) {
     resolvedNames[resolvedName] = true;
   });
   return { map: map, resolvedNames: resolvedNames };
+}
+
+// The season tier pieces are counted for: the same one generate_priority_order()
+// is called with (Season View, else the team's season), falling back to the
+// guild's CURRENT_SEASON before team settings have loaded (#1108).
+function tierSeasonCode() {
+  return resolveSeasonViewCode() || CURRENT_SEASON.code;
+}
+
+/**
+ * { tokenName: { class: resolvedName } } for one season only (#1108).
+ * @param {string} seasonCode
+ */
+function tierTokenMapForSeason(seasonCode) {
+  return mapSupabaseTierTokenMap((DATA && DATA._tierTokenMapRawRows) || [], seasonCode).map;
+}
+
+/**
+ * Whether tier tokens are set up for a season, so a missing seed is said out
+ * loud instead of tier weighting quietly doing nothing (#1108).
+ * 'unknown' until the map has loaded or when the read failed.
+ * @param {string} seasonCode
+ * @returns {'ok' | 'missing' | 'unknown'}
+ */
+function tierTokenSetupStatus(seasonCode) {
+  var rows = DATA && DATA._tierTokenMapRawRows;
+  if (!Array.isArray(rows)) return 'unknown';
+  return rows.some(function (row) {
+    return row.season === seasonCode;
+  })
+    ? 'ok'
+    : 'missing';
 }
 
 // Builds the DATA.itemSlots/itemArmorTypes maps (name -> slot / name ->
@@ -4120,6 +4168,8 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
       DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
       var tierTokenMapResult = mapSupabaseTierTokenMap(tierTokenMapRows);
       DATA.tierTokenMap = tierTokenMapResult.map;
+      // Kept raw for tierTokenMapForSeason(); null means the read failed (#1108).
+      DATA._tierTokenMapRawRows = tierTokenMapRows;
       DATA.tierResolvedItemNames = tierTokenMapResult.resolvedNames;
       // A resolved tier item never has its own item_bosses row (it doesn't
       // physically drop -- see mapSupabaseTierTokenMap's comment), so

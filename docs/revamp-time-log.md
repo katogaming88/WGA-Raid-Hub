@@ -11,8 +11,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Phase | Time so far |
 | --- | ---: |
 | Planning and design | 1 h 50 m |
-| Revamp 1: decisions and foundation | 6 h 35 m |
-| **All revamp work** | **8 h 25 m** |
+| Revamp 1: decisions and foundation | 6 h 40 m |
+| **All revamp work** | **8 h 30 m** |
 
 ## Log
 
@@ -44,6 +44,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | 10:23–10:45 AM | #1101 part 3a: Battle.net sign-in in the new app | Revamp 1 | 20 m | ~12 m build, ~10 m Kat testing locally; review not yet counted | Sign-in, Connect Discord and Battle.net, "Use your Discord account" switch with `discard-empty-account`, roles once, officer gating, dialog and status components. Testing found a sidebar misalignment and a stale error riding the switch's return address, both fixed. Characters from Blizzard split to 3b |
 | 10:45–10:52 AM | #1101 part 3a: CI fix and merge | Revamp 1 | 5 m | ~4 m build, ~3 m Kat merge | Edge Functions type check failed on a tagged union under non-strict Deno; fixed and checked locally with `npx deno` |
 | 10:53–11:25 AM | #1101 part 4: preview deploy and app browser tests, then closing #1101 | Revamp 1 | 30 m | ~12 m build, ~18 m Kat merge, Cloudflare Access and Supabase setup, and the first sign-in on the preview | PR #1160. The browser tests found a real focus bug in the narrow-screen menu. One false start: sign-in landed on the old site until the preview was added to Supabase's redirect list. #1101 closed; Sentry split to #1161, characters from Battle.net to #1162. Runbook in `docs/app-preview.md` |
+| 11:26–11:32 AM | Preview tester runbook | Revamp 1 | 5 m | ~4 m build, ~2 m Kat | `docs/app-preview.md` (v3.114.2). Kat decided doc changes in this repo go through PRs from now on |
+| 11:33 AM– | #1108 `tier_token_map` gets a season | Revamp 1 (Season) | in progress | build; review not yet counted | Re-audit found the tier-piece counter would check gear against the wrong tier once two tiers are seeded, and Sync Roster Tier Counts would write 0 for everyone with no seed. Went ahead of #931 (format already settled by #932) |
 
 ## Not counted (same sessions, not revamp)
 

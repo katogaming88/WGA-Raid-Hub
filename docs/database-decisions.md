@@ -8,6 +8,29 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-14 -- tier_token_map carries a season code, and a season with no tier tokens is said out loud (#1108)
+
+Shipped: `20260914113413_tier_token_map_season.sql`
+
+`tier_token_map` had no season, so every row was implicitly Midnight Season 2's. The issue named the obvious cost (a re-seed replaces last season's mapping and nothing warns while it is missing). Re-auditing the readers found a worse one: the site's tier-piece counter, `classTierResolvedItemsBySlot()`, inverts the whole table into one resolved piece per class per slot. With a second tier seeded next to the first, it keeps whichever row it meets last, so a raider's equipped gear gets checked against the wrong tier, and that count is what `generate_priority_order()` weights tier-token drops by.
+
+**The column holds the season code (`MID2`), not the display name.** It is the form `priority_order`, `rclc_loot` and `scoring` use, the form `generate_priority_order()` is called with, and the key #932's `seasons` table is planned around, so #932 adds the foreign key without converting a value. This went ahead of #931's inventory, which #1155 lists first, because this is the one question #1108 needed from it and #932 had already answered it.
+
+- **Required, no default.** A seeding run that leaves the season out fails on insert rather than filing a new tier under no season. `scripts/generate-tier-token-map-sql.js` now stamps it from a `SEASON` constant changed with the token names.
+- **Key is `(season, token_item_id, class)`.** The global uniqueness on `resolved_item_id` stays: each tier's class pieces are new items.
+- **`generate_priority_order()` matches the season it is generating** in both of its lookups. Token ids are new each tier, so this changes no result on today's data; it keeps a regenerated archived season on its own tokens.
+
+**The site keeps every season's rows for display and counts one.** The Wishlist and BiS grid still substitute resolved pieces from all seasons (token names differ per tier, and a past season's rows still need their names). The tier-piece counter reads only the season being generated: Season View, else the team's season, the same one the Priority tab passes to the function.
+
+**"Fails loudly" became a warning and a refusal, not an error.** Raising inside `generate_priority_order()` would stop priority for every item, not just tier tokens, the moment a tier launched ahead of its seed. Instead:
+
+- The Priority tab shows "No tier tokens are set up for Midnight Season N" when the season being generated has no rows, and a distinct "could not check" when the read failed, so a network error is not reported as a missing seed.
+- **Sync Roster Tier Counts refuses to run** in either case. Before this it would have counted 0 pieces for everyone and written that over each raider's last real count.
+
+[Full discussion -> #1108](https://github.com/katogaming88/WGA-Raid-Hub/issues/1108), Season milestone.
+
+---
+
 ## 2026-09-14 -- the new app signs in with Battle.net, and Discord is linked to the same account (#1101)
 
 Shipped: not yet. Lands with #1101 part 3 (sign-in) and #942 (people table); the hosted setup and the current site's Connect Battle.net button are #1157.

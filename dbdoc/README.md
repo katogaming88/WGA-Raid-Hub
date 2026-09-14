@@ -42,7 +42,7 @@
 | [public.site_settings](public.site_settings.md) | 7 |  | BASE TABLE |
 | [public.incoming_roster](public.incoming_roster.md) | 7 |  | VIEW |
 | [public.guild_officers](public.guild_officers.md) | 3 |  | BASE TABLE |
-| [public.tier_token_map](public.tier_token_map.md) | 5 |  | BASE TABLE |
+| [public.tier_token_map](public.tier_token_map.md) | 6 |  | BASE TABLE |
 | [public.boe_items](public.boe_items.md) | 26 |  | BASE TABLE |
 | [public.boe_listings](public.boe_listings.md) | 8 |  | BASE TABLE |
 | [public.boe_managers](public.boe_managers.md) | 4 |  | BASE TABLE |
@@ -660,6 +660,7 @@ erDiagram
   text class
   integer resolved_item_id FK
   timestamp_with_time_zone created_at
+  text season
 }
 "public.boe_items" {
   integer id

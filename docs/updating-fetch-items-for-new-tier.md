@@ -117,3 +117,20 @@ Same PTR gap, client side this time: the Wowhead hover-tooltip widget (`window.w
 While importing a new tier, set it in the same SQL Editor paste as the rest of the import (or a follow-up statement): `update items set is_ptr = true where wcl_zone_id = <this tier's WCL_ZONE_ID>;`. Flip it back to `false` for the same rows once the tier ships live, same time `WCL_ZONE_ID` goes into `raid_zones` below.
 
 Once you're ready to go live with the new tier, add its `WCL_ZONE_ID` to `raid_zones` and to the team's `raidProgression` in **Season Settings** -- that's what flips the season filter (#535) over to showing these items by default instead of requiring "Show all seasons". Also flip `items.is_ptr` back to `false` for this tier's rows (`update items set is_ptr = false where wcl_zone_id = <WCL_ZONE_ID>;`) and re-run `scripts/fetch-item-stats.js` to pick up anything that only resolved via the Wowhead PTR fallback -- Blizzard's static item database should have real data for all of it now.
+
+## Tier set tokens: `tier_token_map` (#1108)
+
+Tier gear drops as a generic per-armor-type token ("Venomwoven Idol"), and each class turns it into its own named piece. `tier_token_map` links the two, one row per class per slot, and each row carries its **season code** (`MID2`). Three things read it:
+
+- the Wishlist and BiS grid, to show a raider their class's piece instead of the token
+- the tier-piece counter behind **Sync Roster Tier Counts**, which only looks at the season being generated
+- `generate_priority_order()`, which only treats a drop as a tier token for the season it is generating
+
+Seeding a new tier **adds** rows next to the old season's. Never delete or overwrite the previous season's rows: archived seasons still read them, and nothing else records them.
+
+1. Run `scripts/fetch-tier-resolved-items.js` after updating its item list and `WCL_ZONE_ID` for the new tier. It writes `tier_resolved_items.csv`; import those items with the rest of the tier's catalog.
+2. In `scripts/generate-tier-token-map-sql.js`, update `SEASON` to the new season code (for example `MID3`), the token nouns/suffixes, and each class's piece names. Then run it to get `tier_token_map_insert.sql`.
+3. Import that SQL after both the tokens and the resolved pieces are in `items`. It matches both sides by name.
+4. Check the Priority tab. Until the season the team is generating for has rows, it shows a **"No tier tokens are set up for …"** warning, and **Sync Roster Tier Counts** refuses to run. Those can also appear between the tier launching and the seed being imported; that is expected, and the fix is this section.
+
+The `season` column has no default on purpose: an insert without it fails instead of filing the new tier under no season.

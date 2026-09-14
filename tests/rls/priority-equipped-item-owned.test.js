@@ -182,11 +182,10 @@ describe('generate_priority_order equipped-item exclusion', () => {
         "insert into public.items (id, wow_item_id, name, slot) values ($1, $2, 'Seed Resolved Chest', 'Chest')",
         [RESOLVED_ITEM_ID, RESOLVED_WOW_ITEM_ID]
       );
-      await q('insert into public.tier_token_map (token_item_id, class, resolved_item_id) values ($1, $2, $3)', [
-        TOKEN_ITEM_ID,
-        'Seed',
-        RESOLVED_ITEM_ID
-      ]);
+      await q(
+        'insert into public.tier_token_map (season, token_item_id, class, resolved_item_id) values ($1, $2, $3, $4)',
+        [SEASON, TOKEN_ITEM_ID, 'Seed', RESOLVED_ITEM_ID]
+      );
       await seedScoring(q, 1, 100, 100);
       await seedScoring(q, 2, 100, 100);
       await seedBoth1And2Bis(q, TOKEN_ITEM_ID);

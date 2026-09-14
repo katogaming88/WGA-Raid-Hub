@@ -12,6 +12,40 @@ answers to.
 
 ---
 
+## [3.115.0] - 2026-09-14
+
+### Frontend
+
+- **Tier pieces count against the right tier.** When the next tier set is
+  added, each raider's tier-piece count (Sync Roster Tier Counts, which
+  weights tier-token loot priority) now checks their gear against the season
+  being generated only. Before, with two tiers set up, it could check against
+  last tier's pieces (#1108).
+- **The Priority tab warns when a season has no tier tokens set up.** Until
+  a new tier's tokens are added, it says so, and names the season, instead of
+  tier weighting quietly doing nothing. It says "could not check" when the
+  setup could not be read, rather than claiming nothing is set up.
+- **Sync Roster Tier Counts refuses to run** when the season has no tier
+  tokens, instead of writing 0 tier pieces over every raider's last count.
+
+### Backend
+
+- `tier_token_map` has a required `season` column (the season code, `MID2`
+  for every existing row), and its key is per season, so a new tier's rows go
+  in next to the old ones instead of replacing them.
+  `generate_priority_order()` only treats a drop as a tier token for the
+  season it is generating; no result changes on today's data.
+
+### Project
+
+- `scripts/generate-tier-token-map-sql.js` stamps each row with a `SEASON`
+  constant, and `docs/updating-fetch-items-for-new-tier.md` has a new section
+  on seeding a tier's tokens: add rows, never replace the last season's, and
+  what the Priority tab shows until they are in.
+- Decision logged in `docs/database-decisions.md`.
+
+---
+
 ## [3.114.2] - 2026-09-14
 
 ### Project
