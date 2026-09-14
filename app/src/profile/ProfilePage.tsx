@@ -300,19 +300,19 @@ function Profile({
               <Stat label="Items this season" value={seasonAwards ? String(seasonAwards.awards.length) : '–'} />
             </dl>
 
+            {/* Equipped gear on the Overview, full width so both columns fit without
+                wrapping (Kat, 2026-09-14), laid out like the character pane. */}
+            <section className="card profile-card" aria-labelledby="gear-title">
+              <h2 id="gear-title" className="card-title">
+                Equipped gear
+              </h2>
+              <DataState query={gear} label="equipped gear">
+                {({ rows, names }) => <EquippedGear rows={rows} names={names} />}
+              </DataState>
+            </section>
+
             <div className="profile-layout">
               <div className="profile-main">
-                {/* Equipped gear on the Overview (Kat, 2026-09-14), laid out like the
-                    character pane so it stays short. */}
-                <section className="card profile-card" aria-labelledby="gear-title">
-                  <h2 id="gear-title" className="card-title">
-                    Equipped gear
-                  </h2>
-                  <DataState query={gear} label="equipped gear">
-                    {({ rows, names }) => <EquippedGear rows={rows} names={names} />}
-                  </DataState>
-                </section>
-
                 <LootPriorityCard player={player} teamId={teamId} season={season} loot={loot} />
               </div>
 
