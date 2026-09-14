@@ -51,6 +51,12 @@
   box-shadow: 0 0 0 1px var(--border-strong);
 }
 
+.roster-current {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
 .roster-layout {
   display: flex;
   align-items: flex-start;

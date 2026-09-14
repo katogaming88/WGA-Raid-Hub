@@ -161,25 +161,29 @@ function CurrentRoster({ groups }: { groups: RoleGroup[] }) {
     );
   }
 
+  // The filter sits above both columns, so the summary panel starts level with
+  // the table rather than with the filter (Kat, 2026-09-14).
   return (
-    <div className="roster-layout">
-      <div className="roster-main">
-        <div className="role-filter" role="group" aria-label="Show role">
-          {(['All', ...ROLE_ORDER] as Filter[]).map((f) => (
-            <button
-              key={f}
-              type="button"
-              className="role-filter-option"
-              aria-pressed={filter === f}
-              onClick={() => setFilter(f)}
-            >
-              {f === 'All' ? 'Everyone' : ROLE_LABELS[f]}
-            </button>
-          ))}
-        </div>
-        <RosterTable groups={shown} caption="Current roster" details />
+    <div className="roster-current">
+      <div className="role-filter" role="group" aria-label="Show role">
+        {(['All', ...ROLE_ORDER] as Filter[]).map((f) => (
+          <button
+            key={f}
+            type="button"
+            className="role-filter-option"
+            aria-pressed={filter === f}
+            onClick={() => setFilter(f)}
+          >
+            {f === 'All' ? 'Everyone' : ROLE_LABELS[f]}
+          </button>
+        ))}
       </div>
-      <RosterSummaryPanel summary={summary} />
+      <div className="roster-layout">
+        <div className="roster-main">
+          <RosterTable groups={shown} caption="Current roster" details />
+        </div>
+        <RosterSummaryPanel summary={summary} />
+      </div>
     </div>
   );
 }
