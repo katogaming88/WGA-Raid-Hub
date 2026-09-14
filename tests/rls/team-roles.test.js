@@ -17,7 +17,8 @@ import { pool, insertDiscordUser, OFFICER_T1, TEAM_LEADER_T1, SITE_ADMIN } from 
 
 // Seeded and migration-created rows this file leans on:
 //   team 1 'Team Phoenix', team 2 'Hellfire Rollers' (supabase/seed.sql)
-//   team 4 'Wrathless', no members and no players (20260826220829)
+//   team 4 'Wrathless' (20260826220829), seeded with an officer, a team leader,
+//   a raider and one player since #1065
 //   player 1 'Seedraider-Illidan' on team 1, team_member_id null
 const TEAM_1 = 1;
 const TEAM_2 = 2;
@@ -32,6 +33,10 @@ const TWO_TEAM = 'discord-two-team-1';
 const TWO_TEAM_UID = '00000000-0000-0000-0000-0000000000a2';
 const NEW_GUILD_OFFICER = 'discord-new-guild-officer-1';
 const NEW_GUILD_OFFICER_UID = '00000000-0000-0000-0000-0000000000a3';
+const STRANGER = 'discord-stranger-1';
+const STRANGER_UID = '00000000-0000-0000-0000-0000000000a4';
+const NEW_BOE_MANAGER = 'discord-new-boe-manager-1';
+const NEW_BOE_MANAGER_UID = '00000000-0000-0000-0000-0000000000a5';
 
 async function withTxn(fn) {
   const client = await pool.connect();
@@ -223,8 +228,9 @@ describe('admin_grant_team_role() authorization', () => {
   });
 
   it('nobody but a site admin can bootstrap a rosterless team', async () => {
-    // my_team_role(4) is null for everyone because team 4 has no members, so
-    // the team-leader half of the gate cannot open a team that is empty.
+    // The caller holds no row on team 4, so my_team_role(4) is null for them.
+    // The gate coalesces that null to false (#752); before it did, the null
+    // let the call through and only write_audit_log() turned it away.
     await withTxn(async (q, asUser) => {
       await expect(grant(asUser, TEAM_LEADER_T1, WRATHLESS, NO_ACCOUNT, 'officer')).rejects.toThrow(/not authorized/i);
     });
@@ -233,6 +239,41 @@ describe('admin_grant_team_role() authorization', () => {
   it('an officer cannot grant', async () => {
     await withTxn(async (q, asUser) => {
       await expect(grant(asUser, OFFICER_T1, TEAM_1, NO_ACCOUNT, 'officer')).rejects.toThrow(/not authorized/i);
+    });
+  });
+
+  // Written red against #752. my_team_role() is null for a caller with no row
+  // on the team, the bare comparison made the gate null, and the raise never
+  // fired. write_audit_log() carries the coalesced gate and used to catch a
+  // grant to somebody else, which is why the cases above stayed green; a
+  // grant to oneself, or a call from a tier that passes the audit log's own
+  // gate, went through. Each caller is built here so a later seed edit
+  // cannot hand it a row and turn a refusal into a wrong-reason pass.
+  it('an account with no role anywhere cannot grant itself team leader', async () => {
+    await withTxn(async (q, asUser) => {
+      await makeAuthUser(q, STRANGER_UID, STRANGER);
+      await expect(grant(asUser, STRANGER_UID, TEAM_2, STRANGER, 'team_leader')).rejects.toThrow(/not authorized/i);
+      expect(await memberRow(q, TEAM_2, STRANGER)).toBeUndefined();
+    });
+  });
+
+  it('a BoE manager with no row on the team cannot grant', async () => {
+    await withTxn(async (q, asUser) => {
+      await q('insert into public.boe_managers (discord_id) values ($1)', [NEW_BOE_MANAGER]);
+      await makeAuthUser(q, NEW_BOE_MANAGER_UID, NEW_BOE_MANAGER);
+      await expect(grant(asUser, NEW_BOE_MANAGER_UID, TEAM_2, NO_ACCOUNT, 'officer')).rejects.toThrow(
+        /not authorized/i
+      );
+    });
+  });
+
+  it('a guild officer with no row on the team cannot revoke', async () => {
+    await withTxn(async (q, asUser) => {
+      await q('insert into public.guild_officers (discord_id) values ($1)', [STRANGER]);
+      await newMember(q, TEAM_1, STRANGER, 'raider');
+      await makeAuthUser(q, STRANGER_UID, STRANGER);
+      await expect(revoke(asUser, STRANGER_UID, TEAM_2, 'discord-officer-2')).rejects.toThrow(/not authorized/i);
+      expect((await memberRow(q, TEAM_2, 'discord-officer-2')).role).toBe('officer');
     });
   });
 
