@@ -8,7 +8,7 @@ CREATE OR REPLACE FUNCTION public.current_discord_id()
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-  select u.raw_user_meta_data ->> 'provider_id'
-  from auth.users u
-  where u.id = auth.uid();
+  select i.provider_id
+  from auth.identities i
+  where i.user_id = auth.uid() and i.provider = 'discord';
 $function$;
