@@ -88,9 +88,10 @@ function restResponse(rows, headers) {
  *
  * @param {import('playwright').Page} page
  * @param {number} port port the static server is listening on
+ * @param {Record<string, unknown>} [overrides] rows to answer for a table instead of its fixture file
  * @returns {{ unexpected: string[], pageErrors: string[], consoleErrors: string[] }}
  */
-export function installRoutes(page, port) {
+export function installRoutes(page, port, overrides = {}) {
   const unexpected = [];
   const pageErrors = [];
   const consoleErrors = [];
@@ -174,7 +175,7 @@ export function installRoutes(page, port) {
         // selects, and an extra property is harmless to render code. Filters
         // and ordering are ignored, so a fixture is a render input rather than
         // a database.
-        const rows = fixture(rest, []);
+        const rows = rest in overrides ? overrides[rest] : fixture(rest, []);
         return route.fulfill(restResponse(Array.isArray(rows) ? rows : [rows], headers));
       }
     }
@@ -207,11 +208,12 @@ export function launchBrowser() {
  * @param {import('playwright').Browser} browser
  * @param {number} port
  * @param {{ label: string, path: string, sentinel: string, click?: string }} state
+ * @param {Record<string, unknown>} [overrides] see installRoutes()
  */
-export async function openState(browser, port, state) {
+export async function openState(browser, port, state, overrides = {}) {
   const context = await browser.newContext({ viewport: DESKTOP });
   const page = await context.newPage();
-  const recorded = installRoutes(page, port);
+  const recorded = installRoutes(page, port, overrides);
   await page.goto('http://127.0.0.1:' + port + state.path, { waitUntil: 'load' });
   if (state.click) await page.click(state.click);
   try {

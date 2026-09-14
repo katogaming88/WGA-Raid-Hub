@@ -170,8 +170,11 @@ export function seededHandlers(overrides: FakeHandlers = {}): FakeHandlers {
     from(read) {
       if (read.table === 'guilds') return { data: { id: 1, name: 'We Go Again', url_key: 'wga' } };
       if (read.table === 'teams') return { data: byColumn(TEAMS, read.order) };
-      if (read.table === 'players') return { count: filterValue(read, 'team_id') === 1 ? 18 : 12 };
-      return { data: null };
+      if (read.table === 'players' && (read.options as { head?: boolean } | undefined)?.head) {
+        return { count: filterValue(read, 'team_id') === 1 ? 18 : 12 };
+      }
+      // A list read with nothing seeded is an empty list, as PostgREST answers.
+      return { data: read.single ? null : [] };
     },
     ...overrides
   };

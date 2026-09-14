@@ -1,4 +1,6 @@
+import type { ReactElement } from 'react';
 import { Navigate, type RouteObject } from 'react-router';
+import { RosterPage } from './roster/RosterPage';
 import { AppShell } from './layout/AppShell';
 import { HomePage } from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -8,6 +10,12 @@ import { GUILD_PAGES, TEAM_PAGES } from './layout/nav';
 import { defaultPath } from './config';
 
 export type RouteHandle = { title: string };
+
+// Team pages rebuilt so far (#1102). Every other page in TEAM_PAGES is still a
+// placeholder.
+const BUILT_PAGES: Record<string, ReactElement> = {
+  roster: <RosterPage />
+};
 
 // Addresses from #1100: /g/<guild key>/t/<team key>/... for team pages,
 // /g/<guild key>/... for guild-wide ones. The keys are not looked up yet; that
@@ -36,7 +44,7 @@ export const routes: RouteObject[] = [
                 <PlaceholderPage title={title} />
               </RequireAbility>
             ) : (
-              <PlaceholderPage title={title} />
+              (BUILT_PAGES[path] ?? <PlaceholderPage title={title} />)
             ),
             handle: { title } satisfies RouteHandle
           }))

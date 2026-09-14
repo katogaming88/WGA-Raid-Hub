@@ -18,6 +18,8 @@ on:
       - 'css/**'
       - 'js/**'
       - 'tests/browser/**'
+      # Behavior recorded here and checked against the new app too (#1102).
+      - 'tests/behavior/**'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/a11y-browser.yml'

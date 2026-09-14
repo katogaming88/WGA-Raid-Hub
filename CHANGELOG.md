@@ -12,6 +12,30 @@ answers to.
 
 ---
 
+## [3.116.0] - 2026-09-14
+
+### Project
+
+- The new app has its first rebuilt page: **Roster**
+  ([#870](https://github.com/katogaming88/WGA-Raid-Hub/issues/870), part of
+  [#1102](https://github.com/katogaming88/WGA-Raid-Hub/issues/1102)). It
+  appears on the private preview once merged.
+  - Raiders grouped by role, sorted by the name they go by, with the
+    character name beside a nickname, as today.
+  - New: names in class color, spec and class written out, equipped item level
+    (from the Blizzard gear sync), tier pieces as pips with the count,
+    Trial / Bench / Rotator tags, a role filter, and a summary of the roster
+    (role counts, average and lowest item level, armor types).
+  - Next season's tentative roster stays a tab, named for the signup season,
+    and now works with the arrow keys.
+- First recorded page behavior (#1102 step 1): `tests/behavior/roster.js`
+  describes the Roster page once, and it is checked against the current
+  site's Roster tab (`tests/browser/roster-recorded.test.js`) and the new
+  page (`tests/browser-app/roster.test.js`). The Roster page's states join the
+  app's accessibility checks.
+
+---
+
 ## [3.115.3] - 2026-09-14
 
 ### Project

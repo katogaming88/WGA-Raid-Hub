@@ -137,7 +137,11 @@ describe('one real read (#1101 done-when)', () => {
     await screen.findByRole('heading', { level: 1, name: 'Roster' });
     await userEvent.click(screen.getByRole('link', { name: 'Home' }));
     await screen.findByText('18');
-    expect(client.reads.filter((r) => r.table === 'players')).toHaveLength(1);
+    // Home's count read, not the Roster page's own list read.
+    const countReads = client.reads.filter(
+      (r) => r.table === 'players' && (r.options as { head?: boolean } | undefined)?.head
+    );
+    expect(countReads).toHaveLength(1);
   });
 });
 
