@@ -2,7 +2,20 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { AxeBuilder } from '@axe-core/playwright';
 import { launchBrowser, openApp, startApp, storedSession, NARROW } from './harness.js';
 import { SCENARIO } from '../behavior/roster.js';
-import { ATTENDANCE, GEAR, ITEMS, LOOT, MPLUS_REJECTIONS, SEASON, VIEWERS } from '../behavior/profile.js';
+import {
+  ATTENDANCE,
+  GEAR,
+  LOOT,
+  MPLUS_REJECTIONS,
+  PRIORITY_ITEMS,
+  PRIORITY_ORDER,
+  RAID_ZONES,
+  SEASON,
+  SELF_RECEIVED,
+  TIER_TOKEN_MAP,
+  VIEWERS,
+  WISHLIST
+} from '../behavior/profile.js';
 
 // The new app in a real browser (#1101 part 4): the shell's accessibility
 // checklist, measured rather than trusted. Unlike tests/browser/, there is no
@@ -60,7 +73,12 @@ function profileState(label, viewerKey, profileKey, extra = {}) {
       attendance: ATTENDANCE.filter((r) => r.player_id === shown.id),
       rclc_loot: LOOT.filter((r) => r.player_id === shown.id),
       player_equipped_gear: GEAR.filter((r) => r.player_id === shown.id),
-      items: ITEMS,
+      items: PRIORITY_ITEMS,
+      raid_zones: RAID_ZONES,
+      item_preferences: WISHLIST.filter((r) => r.player_id === shown.id),
+      priority_order: PRIORITY_ORDER.filter((r) => r.season === SEASON.code),
+      tier_token_map: TIER_TOKEN_MAP.filter((r) => r.class === shown.classes_specs.class),
+      self_received_requests: SELF_RECEIVED.filter((r) => r.player_id === shown.id),
       mplus_exclusion_requests:
         viewer.role === 'officer' ? MPLUS_REJECTIONS.filter((r) => r.player_id === shown.id) : []
     },

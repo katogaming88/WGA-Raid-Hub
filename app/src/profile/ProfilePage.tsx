@@ -25,6 +25,7 @@ import {
   useProfilePlayer,
   type ProfilePlayer
 } from './useProfile';
+import { LootPriorityCard, WishlistSummaryCard } from './LootPriorityCard';
 import './profile.css';
 
 // A profile opens for the raider it belongs to and for the team's officers
@@ -213,6 +214,8 @@ function Profile({ player, teamId, officerView }: { player: ProfilePlayer; teamI
 
       <div className="profile-layout">
         <div className="profile-main">
+          <LootPriorityCard player={player} teamId={teamId} season={season} loot={loot} />
+
           <section className="card profile-card" aria-labelledby="loot-title">
             <h2 id="loot-title" className="card-title">
               Items received
@@ -232,7 +235,9 @@ function Profile({ player, teamId, officerView }: { player: ProfilePlayer; teamI
           </section>
         </div>
 
-        <aside className="profile-side" aria-label="Attendance and M+">
+        <aside className="profile-side" aria-label="Wishlist, attendance and M+">
+          <WishlistSummaryCard player={player} season={season} />
+
           <section className="card profile-card" aria-labelledby="attendance-title">
             <h2 id="attendance-title" className="card-title">
               Attendance

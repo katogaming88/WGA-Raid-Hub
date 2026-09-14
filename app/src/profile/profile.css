@@ -334,3 +334,65 @@
     width: auto;
   }
 }
+
+/* Loot priority (#868 part 2). */
+
+.card-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.priority-table tbody th {
+  font-weight: 400;
+}
+
+.priority-item {
+  display: block;
+  font-weight: 600;
+}
+
+.priority-slot {
+  display: block;
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+}
+
+.standing {
+  white-space: nowrap;
+}
+
+.standing .num {
+  font-weight: 650;
+}
+
+.standing-first .num {
+  color: var(--brand);
+}
+
+.standing-of {
+  color: var(--text-muted);
+}
+
+.received {
+  white-space: nowrap;
+}
+
+.received-label {
+  color: var(--good);
+  font-weight: 600;
+}
+
+.received-detail {
+  color: var(--text-muted);
+}
+
+.wishlist-summary {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.wishlist-summary .num {
+  color: var(--text);
+  font-weight: 650;
+}

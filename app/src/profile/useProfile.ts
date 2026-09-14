@@ -1,6 +1,7 @@
 import { useSupabaseQuery } from '../data/query';
 import type { AttendanceRow, GearRow, LootRow, SeasonWindow } from './profile';
 import { seasonCode } from './profile';
+import type { CatalogItem, RankRow, SelfReceivedRow, TierTokenRow, WishlistRow, ZoneRow } from './lootPriority';
 
 export type ProfilePlayer = {
   id: number;
@@ -104,5 +105,69 @@ export function useMplusRefusal(teamId: number, playerId: number, enabled: boole
         .limit(1)
         .maybeSingle(),
     { enabled }
+  );
+}
+
+// Loot priority reads (#868 part 2).
+
+// A raider reads only their own wishlist and receipts; officers read the team's.
+export function useWishlist(playerId: number) {
+  return useSupabaseQuery<WishlistRow[]>(['wishlist', playerId], (client) =>
+    client.from('item_preferences').select('item_id, status, slot, season').eq('player_id', playerId)
+  );
+}
+
+// The item catalog, a few hundred rows, shared by every profile.
+export function useCatalog() {
+  return useSupabaseQuery<CatalogItem[]>(['catalog'], (client) =>
+    client.from('items').select('id, name, slot, wcl_zone_id, is_placeholder').order('id')
+  );
+}
+
+export function useRaidZones() {
+  return useSupabaseQuery<ZoneRow[]>(['raid-zones'], (client) =>
+    client.from('raid_zones').select('wcl_zone_id, season')
+  );
+}
+
+// Every saved rank for the picked items this season, so a standing can say
+// "#2 of 5". Only the items asked about, since the whole table grows by a
+// season's worth of rows every season.
+export function useItemRanks(teamId: number, seasonCode: string | null, itemIds: number[]) {
+  const ids = [...new Set(itemIds)].sort((a, b) => a - b);
+  return useSupabaseQuery<RankRow[]>(
+    ['item-ranks', teamId, seasonCode, ids],
+    (client) =>
+      client
+        .from('priority_order')
+        .select('item_id, track, rank, player_id')
+        .eq('team_id', teamId)
+        .eq('season', seasonCode!)
+        .in('item_id', ids),
+    { enabled: seasonCode !== null && ids.length > 0 }
+  );
+}
+
+// Tier tokens this season, as the piece each becomes for the raider's class.
+export function useTierTokens(seasonCode: string | null, className: string | null) {
+  return useSupabaseQuery<TierTokenRow[]>(
+    ['tier-tokens', seasonCode, className],
+    (client) =>
+      client
+        .from('tier_token_map')
+        .select('token_item_id, resolved:items!tier_token_map_resolved_item_id_fkey(name)')
+        .eq('season', seasonCode!)
+        .eq('class', className!),
+    { enabled: seasonCode !== null && className !== null }
+  );
+}
+
+export function useSelfReceived(playerId: number) {
+  return useSupabaseQuery<SelfReceivedRow[]>(['self-received', playerId], (client) =>
+    client
+      .from('self_received_requests')
+      .select('track, source, slot, items(name)')
+      .eq('player_id', playerId)
+      .eq('status', 'approved')
   );
 }
