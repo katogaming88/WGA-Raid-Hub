@@ -23,7 +23,8 @@ answers to.
     unknown guild or team shows page not found, and a retired key or
     different capitals move to the current address, keeping the page.
   - The sidebar shows the guild's name, and the team switcher lists its
-    active teams; switching keeps the page you are on.
+    active teams in team order (by id, not alphabetical); switching keeps the
+    page you are on.
   - One shared data layer (TanStack Query) for every read. A failed read
     always shows an error box with the reason and a Retry button, and is
     reported through one function the hosted error tracker will plug into.

@@ -11,6 +11,7 @@ export type Read = {
   options: unknown;
   filters: [string, string, unknown][];
   single: boolean;
+  order?: string;
 };
 
 type Answer = { data?: unknown; error?: { message: string } | null; count?: number | null };
@@ -52,7 +53,8 @@ export function fakeClient(handlers: FakeHandlers): Client & { reads: Read[]; rp
           read.filters.push(['is', column, value]);
           return builder;
         },
-        order() {
+        order(column: string) {
+          read.order = column;
           return builder;
         },
         single() {
@@ -73,12 +75,17 @@ export function fakeClient(handlers: FakeHandlers): Client & { reads: Read[]; rp
 export const filterValue = (read: Read, column: string) => read.filters.find(([, c]) => c === column)?.[2];
 
 // The seeded world most tests run in: WGA with Phoenix and Hellfire, an
-// archived team, and "old-phoenix" as a retired key for Phoenix.
+// archived team, and "old-phoenix" as a retired key for Phoenix. Stored
+// alphabetically on purpose, so a read that forgets to order by id shows the
+// wrong order.
 const TEAMS = [
-  { id: 1, name: 'Phoenix', slug: 'phoenix', archived_at: null },
   { id: 2, name: 'Hellfire Rollers', slug: 'hellfire', archived_at: null },
-  { id: 9, name: 'Old Team', slug: 'old-team', archived_at: '2026-01-01T00:00:00Z' }
+  { id: 9, name: 'Old Team', slug: 'old-team', archived_at: '2026-01-01T00:00:00Z' },
+  { id: 1, name: 'Phoenix', slug: 'phoenix', archived_at: null }
 ];
+
+const byColumn = (rows: Record<string, unknown>[], column: string | undefined) =>
+  column ? [...rows].sort((a, b) => (a[column]! < b[column]! ? -1 : a[column]! > b[column]! ? 1 : 0)) : rows;
 
 export function seededHandlers(overrides: FakeHandlers = {}): FakeHandlers {
   return {
@@ -88,7 +95,7 @@ export function seededHandlers(overrides: FakeHandlers = {}): FakeHandlers {
       const teamKey = args['p_team_key'] === undefined ? null : String(args['p_team_key']);
       if (guildKey.toLowerCase() !== 'wga') return { data: [] };
       const current = teamKey === null ? null : TEAMS.find((t) => t.slug === teamKey.toLowerCase());
-      const retired = teamKey?.toLowerCase() === 'old-phoenix' ? TEAMS[0] : undefined;
+      const retired = teamKey?.toLowerCase() === 'old-phoenix' ? TEAMS.find((t) => t.id === 1) : undefined;
       const team = current ?? retired ?? null;
       if (teamKey !== null && !team) return { data: [] };
       return {
@@ -107,7 +114,7 @@ export function seededHandlers(overrides: FakeHandlers = {}): FakeHandlers {
     },
     from(read) {
       if (read.table === 'guilds') return { data: { id: 1, name: 'We Go Again', url_key: 'wga' } };
-      if (read.table === 'teams') return { data: TEAMS };
+      if (read.table === 'teams') return { data: byColumn(TEAMS, read.order) };
       if (read.table === 'players') return { count: filterValue(read, 'team_id') === 1 ? 18 : 12 };
       return { data: null };
     },
