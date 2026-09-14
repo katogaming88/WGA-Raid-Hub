@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.112.5] - 2026-09-13
+
+### Backend
+
+- Officer screens that load many rows are faster
+  ([#1106](https://github.com/katogaming88/WGA-Raid-Hub/issues/1106)). The
+  database used to re-check "what's this person's role?" separately for every
+  row it returned; it now checks once per request. Measured on a copy of
+  production data as a Phoenix officer: wishlists 127 ms to 5 ms, audit log
+  45 ms to 2 ms, BiS demand report 42 ms to 2 ms, self-received items 10 ms to
+  1 ms. Everyone sees exactly the same rows as before, and removing someone's
+  role still takes effect immediately.
+
 ## [3.112.4] - 2026-09-13
 
 ### Backend
