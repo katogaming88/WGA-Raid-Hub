@@ -30,7 +30,7 @@ answers to.
 - The Wishlist card now counts a ring or trinket BiS for one slot, as the
   editor reads it.
 - How it behaves was recorded from the current site's My Wishlist first
-  (), and the same checks run against the new app.
+  (`tests/behavior/wishlist.js`), and the same checks run against the new app.
 
 ---
 

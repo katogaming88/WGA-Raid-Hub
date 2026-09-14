@@ -10,14 +10,14 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ## 2026-09-14 -- The new wishlist editor has no notes, and adds no M+ or crafted picks until real items exist (#868)
 
-Shipped: the editor, in the new app only (#868 part 3). No schema change;  and the placeholder rows stay until cutover.
+Shipped: the editor, in the new app only (#868 part 3). No schema change; `item_preferences.note` and the placeholder rows stay until cutover.
 
 **Measured on prod before deciding (2026-09-14).** 330 wishlist notes from 51 raiders, most of them naming the M+ or crafted item behind a generic pick ("Arcanoweave", "Silvermoon Argent's Sneakers"), a few noting another spec ("Bis if I need to play Outlaw"). 289 generic picks: 172 M+, 113 Crafted, 4 Catalyst.
 
 - **No notes.** The editor is BiS or Pass only. Existing notes stay in the table and are not shown. The real items from #1166 replace what most notes were for.
 - **M+ and crafted picks wait for #1166.** Existing generic picks show read-only on their slot. Marking a raid item BiS for that slot replaces the generic pick, as on the current site.
 - **A replaced BiS pick is unmarked**, not kept as 2nd Choice, following #1032.
-- **Rows keep the current site's shape** so both sites read the same data until cutover: no slot saved for a one-item slot, the slot named for rings, trinkets and weapons. The editor does not write the current site's copy of a ring or trinket BiS into the other slot ();  reads one row per item either way.
+- **Rows keep the current site's shape** so both sites read the same data until cutover: no slot saved for a one-item slot, the slot named for rings, trinkets and weapons. The editor does not write the current site's copy of a ring or trinket BiS into the other slot (`synced_bis`); `generate_priority_order()` reads one row per item either way.
 - **A ring or trinket is BiS in one of its two slots, and a Pass covers both.** Six Phoenix raiders saved both BiS trinkets under Trinket 1 on the current site; when one slot holds two and the other none, the later pick reads as the other slot's. The profile's wishlist count reads picks the same way, so a ring counts for one slot, not two.
 
 [Player profile -> #868](https://github.com/katogaming88/WGA-Raid-Hub/issues/868), [real M+ and crafted items -> #1166](https://github.com/katogaming88/WGA-Raid-Hub/issues/1166).
