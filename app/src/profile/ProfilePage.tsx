@@ -26,6 +26,7 @@ import {
   type ProfilePlayer
 } from './useProfile';
 import { LootPriorityCard, WishlistSummaryCard } from './LootPriorityCard';
+import { WishlistEditor } from './WishlistEditor';
 import './profile.css';
 
 // A profile opens for the raider it belongs to and for the team's officers
@@ -82,7 +83,7 @@ export function MyProfilePage() {
       </Closed>
     );
   }
-  return <ProfileLoader teamId={team.id} by={{ id: own.playerId }} base={base} />;
+  return <ProfileLoader teamId={team.id} by={{ id: own.playerId }} base={base} own />;
 }
 
 // Someone's profile by its address code, for its raider or an officer.
@@ -118,19 +119,22 @@ export function PlayerProfilePage() {
       </Closed>
     );
   }
-  return <ProfileLoader teamId={team.id} by={{ code: playerCode }} officerView={isOfficer} base={base} />;
+  return <ProfileLoader teamId={team.id} by={{ code: playerCode }} officerView={isOfficer} own={isOwn} base={base} />;
 }
 
 function ProfileLoader({
   teamId,
   by,
   base,
-  officerView = false
+  officerView = false,
+  own = false
 }: {
   teamId: number;
   by: { id: number } | { code: string };
   base: string;
   officerView?: boolean;
+  // The signed-in raider's own character, which they may edit.
+  own?: boolean;
 }) {
   const player = useProfilePlayer(teamId, by);
   const { tab = '' } = useParams();
@@ -140,7 +144,7 @@ function ProfileLoader({
     <DataState query={player} label="the profile">
       {(p) =>
         p ? (
-          <Profile player={p} teamId={teamId} officerView={officerView} base={base} tab={tab as TabKey} />
+          <Profile player={p} teamId={teamId} officerView={officerView} own={own} base={base} tab={tab as TabKey} />
         ) : (
           <Closed>
             <p>No one on this team’s roster has that profile address.</p>
@@ -202,12 +206,14 @@ function Profile({
   player,
   teamId,
   officerView,
+  own,
   base,
   tab
 }: {
   player: ProfilePlayer;
   teamId: number;
   officerView: boolean;
+  own: boolean;
   base: string;
   tab: TabKey;
 }) {
@@ -357,9 +363,7 @@ function Profile({
         {tab === 'wishlist' && (
           <div className="profile-wishlist">
             <WishlistSummaryCard player={player} season={season} />
-            <div className="card placeholder">
-              <p>Choosing BiS or Pass for each slot arrives here next.</p>
-            </div>
+            <WishlistEditor player={player} teamId={teamId} season={season} own={own} />
           </div>
         )}
       </div>

@@ -12,6 +12,28 @@ answers to.
 
 ---
 
+## [3.119.0] - 2026-09-14
+
+### Project
+
+- The new app's player profile, part 3: the **wishlist editor**
+  ([#868](https://github.com/katogaming88/WGA-Raid-Hub/issues/868)). The
+  Wishlist tab lists each slot with the raid items the raider can use (armor
+  type, main stat, weapon types, shields, dual wield, healer and tank
+  trinkets, tier tokens named for their class) and marks each one BiS or Pass.
+  One BiS pick per slot: a new one unmarks the old one (#1032). A ring or
+  trinket is BiS in one of its two slots. Editing follows the team's Wishlist
+  open setting and the per-raider exception; officers see it read-only.
+- No notes, and existing M+ or crafted picks show read-only until real items
+  arrive (#1166). Old 2nd Choice, Sidegrade and Catalyst Only marks read as
+  unmarked.
+- The Wishlist card now counts a ring or trinket BiS for one slot, as the
+  editor reads it.
+- How it behaves was recorded from the current site's My Wishlist first
+  (), and the same checks run against the new app.
+
+---
+
 ## [3.118.1] - 2026-09-14
 
 ### Project

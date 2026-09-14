@@ -16,6 +16,7 @@ import {
   VIEWERS,
   WISHLIST
 } from '../behavior/profile.js';
+import * as WISHLIST_EDITOR from '../behavior/wishlist.js';
 
 // The new app in a real browser (#1101 part 4): the shell's accessibility
 // checklist, measured rather than trusted. Unlike tests/browser/, there is no
@@ -86,6 +87,25 @@ function profileState(label, viewerKey, profileKey, extra = {}) {
   };
 }
 
+// The wishlist editor's reads (tests/behavior/wishlist.js), with one slot
+// opened so its items and marks are on the page axe measures.
+const wishlistEditorState = (label, extra = {}) =>
+  profileState(label, 'torbjorn', 'torbjorn', {
+    path: '/g/wga/t/phoenix/me/wishlist',
+    sentinel: 'main .wishlist-slot',
+    click: 'main .wishlist-slot[data-slot="Finger 2"] summary',
+    ...extra,
+    tables: {
+      ...profileState('', 'torbjorn', 'torbjorn').tables,
+      team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end, open: 'true', view: null }],
+      items: WISHLIST_EDITOR.ITEMS,
+      raid_zones: WISHLIST_EDITOR.RAID_ZONES,
+      item_preferences: WISHLIST_EDITOR.WISHLIST,
+      tier_token_map: WISHLIST_EDITOR.TIER_TOKEN_MAP,
+      ...extra.tables
+    }
+  });
+
 const OFFICER = storedSession({ battlenet: 'Kato#1499', discord: 'Phoenix Officer' });
 const BATTLENET_ONLY = storedSession({ battlenet: 'Aeglos#1234' });
 
@@ -146,6 +166,11 @@ const STATES = [
     path: '/g/wga/t/phoenix/me/wishlist',
     sentinel: 'main .wishlist-summary',
     colorScheme: 'light'
+  }),
+  wishlistEditorState('my profile, wishlist editor, a slot open'),
+  wishlistEditorState('my profile, wishlist editor, a slot open, light', { colorScheme: 'light' }),
+  wishlistEditorState('my profile, wishlist editor, closed', {
+    tables: { team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end, open: 'false', view: null }] }
   }),
   profileState('officer opening a profile with a refused M+ request', 'officer', 'dodgey', {
     sentinel: 'main .mplus-status'

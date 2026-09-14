@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | --- | ---: |
 | Planning and design | 1 h 50 m |
 | Revamp 1: decisions and foundation | 6 h 55 m |
-| Revamp 2: public pages | 2 h 30 m |
-| **All revamp work** | **11 h 15 m** |
+| Revamp 2: public pages | 3 h 00 m |
+| **All revamp work** | **11 h 45 m** |
 
 ## Log
 
@@ -56,6 +56,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | 3:06–3:20 PM | #868 player profile, part 2: loot priority | Revamp 2 | 15 m | build | BiS picks with "#2 of 5" standings on both tracks, received status, wishlist summary. Checking with a real raider's data caught the wishlist summary skipping picks saved before rows named their slot (7 of 16 instead of 16) |
 | 3:24–3:40 PM | Profile tabs (same PR) | Revamp 2 | 15 m | build, one Kat decision | Kat asked for sub-tabs so the profile is not a long scroll. Overview, Loot, Gear, Wishlist, each with its own address so the bot's wishlist link keeps working. Kat then moved equipped gear onto the Overview, laid out like the in-game character pane (Kat's screenshot), so the Gear tab went |
 | 3:45–3:55 PM | Profile gear card fix | Revamp 2 | 10 m | ~8 m build, ~2 m Kat review | Kat spotted scrollbars in the gear tables ("Champion" overflowed). Card moved to full width at Kat's suggestion, with a no-scroll test |
+| 3:58–4:30 PM | #868 player profile, part 3: wishlist editor | Revamp 2 | 30 m | ~28 m build, ~2 m Kat deciding | BiS or Pass by slot. Kat dropped notes and left M+/crafted picks read-only until #1166. Running the rules over 29 Phoenix wishlists found six raiders with both BiS trinkets saved under Trinket 1; they now read as one in each slot |
 
 ## Not counted (same sessions, not revamp)
 
