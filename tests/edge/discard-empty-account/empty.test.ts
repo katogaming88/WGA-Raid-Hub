@@ -2,24 +2,24 @@
 // else on it, the account a raider who already uses Discord gets by pressing
 // Battle.net first. Rows attached to an account are refused by the database's
 // foreign keys; this pins the identity half.
-import { assertEquals } from 'jsr:@std/assert@1';
-import { canDiscard, isStillReferenced } from '../../../supabase/functions/discard-empty-account/empty.ts';
+import { assertEquals, assertNotEquals } from 'jsr:@std/assert@1';
+import { isStillReferenced, whyKeep } from '../../../supabase/functions/discard-empty-account/empty.ts';
 
 const account = (...providers: string[]) => ({ id: 'u1', identities: providers.map((provider) => ({ provider })) });
 
 Deno.test('a Battle.net-only account can be discarded', () => {
-  assertEquals(canDiscard(account('custom:battlenet')), { ok: true });
+  assertEquals(whyKeep(account('custom:battlenet')), null);
 });
 
 Deno.test('an account with Discord on it is never discarded', () => {
-  assertEquals(canDiscard(account('custom:battlenet', 'discord')).ok, false);
-  assertEquals(canDiscard(account('discord')).ok, false);
+  assertNotEquals(whyKeep(account('custom:battlenet', 'discord')), null);
+  assertNotEquals(whyKeep(account('discord')), null);
 });
 
-Deno.test('an account with no identities, or none at all, is refused', () => {
-  assertEquals(canDiscard(account()).ok, false);
-  assertEquals(canDiscard({ id: 'u1', identities: null }).ok, false);
-  assertEquals(canDiscard(null).ok, false);
+Deno.test('an account with no identities, or no account at all, is refused', () => {
+  assertNotEquals(whyKeep(account()), null);
+  assertNotEquals(whyKeep({ id: 'u1', identities: null }), null);
+  assertNotEquals(whyKeep(null), null);
 });
 
 Deno.test('a delete blocked by attached rows reads as still referenced', () => {

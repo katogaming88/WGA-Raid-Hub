@@ -11,7 +11,7 @@
 // Self-only: the account deleted is the one the caller's own token resolves to,
 // never an id from the body. The gateway verifies the JWT (verify_jwt default).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { canDiscard, isStillReferenced } from './empty.ts';
+import { isStillReferenced, whyKeep } from './empty.ts';
 import { VERSION } from './version.ts';
 
 const CORS_HEADERS = {
@@ -53,8 +53,8 @@ Deno.serve(async (req) => {
     return jsonResponse({ success: false, error: 'Could not read the account' }, 500);
   }
 
-  const verdict = canDiscard(fresh.user);
-  if (!verdict.ok) return jsonResponse({ success: false, error: verdict.reason }, 409);
+  const keep = whyKeep(fresh.user);
+  if (keep) return jsonResponse({ success: false, error: keep }, 409);
 
   const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
   if (deleteError) {
