@@ -32,8 +32,8 @@ answers to.
   `/p/<code>/wishlist`), so a link can open one directly, and the arrow keys
   move between them.
 - Equipped gear is laid out like the in-game character pane: Head through
-  Wrist on the left, Hands through the trinkets on the right, weapons across
-  the bottom.
+  Wrist on the left, Hands through the trinkets on the right, Main Hand and Off
+  Hand under them. On a phone it is one list with one set of column headings.
 - The recorded profile behavior gains the loot priority list, checked against
   the current site's BiS List and the new card.
 

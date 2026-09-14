@@ -438,10 +438,10 @@ function ItemsReceived({ loot }: { loot: ReturnType<typeof seasonLoot> }) {
 }
 
 // Laid out like the in-game character pane (Kat, 2026-09-14): Head through
-// Wrist on the left, Hands through the trinkets on the right, weapons across
-// the bottom. Each group is its own small table, read left, right, bottom.
+// Wrist on the left, Hands through the trinkets on the right, then Main Hand
+// under the left column and Off Hand under the right. Each group is its own
+// small table, read left, right, main hand, off hand.
 const RIGHT_COLUMN = new Set(['Hands', 'Waist', 'Legs', 'Feet', 'Finger 1', 'Finger 2', 'Trinket 1', 'Trinket 2']);
-const WEAPONS = new Set(['Main Hand', 'Off Hand']);
 
 function EquippedGear({ rows, names }: { rows: Parameters<typeof equippedGear>[0]; names: Map<number, string> }) {
   const gear = equippedGear(rows, names);
@@ -450,17 +450,28 @@ function EquippedGear({ rows, names }: { rows: Parameters<typeof equippedGear>[0
     {
       key: 'left',
       caption: 'Equipped gear, head to wrists',
-      items: gear.filter((g) => !RIGHT_COLUMN.has(g.slot) && !WEAPONS.has(g.slot))
+      items: gear.filter((g) => !RIGHT_COLUMN.has(g.slot) && g.slot !== 'Main Hand' && g.slot !== 'Off Hand')
     },
     { key: 'right', caption: 'Equipped gear, hands to trinkets', items: gear.filter((g) => RIGHT_COLUMN.has(g.slot)) },
-    { key: 'weapons', caption: 'Equipped weapons', items: gear.filter((g) => WEAPONS.has(g.slot)) }
+    { key: 'main-hand', caption: 'Equipped main hand', items: gear.filter((g) => g.slot === 'Main Hand') },
+    { key: 'off-hand', caption: 'Equipped off hand', items: gear.filter((g) => g.slot === 'Off Hand') }
   ].filter((c) => c.items.length > 0);
   return (
     <div className="gear-columns">
       {columns.map((column) => (
-        <div key={column.key} className={`profile-table-wrap gear-group gear-${column.key}`}>
+        <div
+          key={column.key}
+          className={`profile-table-wrap gear-group gear-${column.key}${column.key.endsWith('hand') ? ' gear-weapon' : ''}`}
+        >
           <table className="profile-table gear-table">
             <caption className="visually-hidden">{column.caption}</caption>
+            {/* The same widths in every group, so the groups line up (profile.css). */}
+            <colgroup>
+              <col className="gear-col-slot" />
+              <col />
+              <col className="gear-col-level" />
+              <col className="gear-col-track" />
+            </colgroup>
             <thead>
               <tr>
                 <th scope="col">Slot</th>
