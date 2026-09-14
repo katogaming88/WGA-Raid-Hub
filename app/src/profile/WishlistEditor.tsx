@@ -121,7 +121,7 @@ const pickFor = (slot: EditorSlot) => {
 
 const tabId = (slot: string) => `wishlist-slot-${slot.toLowerCase().replace(/s+/g, '-')}`;
 
-// The slots across the top (Kat, 2026-09-14), each a tab showing whether it
+// The slots across the top in one scrolling row (Kat, 2026-09-14), each a tab showing whether it
 // has a BiS pick; the chosen slot's items are listed below. Arrow keys, Home
 // and End move between slots.
 function SlotTabs({

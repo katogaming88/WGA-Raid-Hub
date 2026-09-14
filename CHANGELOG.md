@@ -18,8 +18,8 @@ answers to.
 
 - The new app's player profile, part 3: the **wishlist editor**
   ([#868](https://github.com/katogaming88/WGA-Raid-Hub/issues/868)). The
-  Wishlist tab shows the slots across the top as tabs, marked when they have a
-  BiS pick, and lists the chosen slot's raid items the raider can use (armor
+  Wishlist tab shows the slots across the top as one row of tabs, scrolling
+  sideways when they do not fit, each marked when it has a BiS pick, and lists the chosen slot's raid items the raider can use (armor
   type, main stat, weapon types, shields, dual wield, healer and tank
   trinkets, tier tokens named for their class) and marks each one BiS or Pass.
   One BiS pick per slot: a new one unmarks the old one (#1032). A ring or

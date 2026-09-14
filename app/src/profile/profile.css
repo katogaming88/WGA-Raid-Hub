@@ -505,19 +505,21 @@
 
 /* Wishlist editor (#868 part 3): a slot per row, opened to mark its items. */
 
-/* The slots across the top, eight to a row like the two sides of the
-   character pane; four to a row on a narrow screen. */
+/* The slots across the top in one row, scrolling sideways when they do not
+   fit (Kat, 2026-09-14). */
 .wishlist-slot-tabs {
-  display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  display: flex;
   gap: 2px;
   padding: 2px;
+  overflow-x: auto;
   border-radius: 7px;
   background: var(--sidebar);
   border: 1px solid var(--border);
 }
 
 .wishlist-slot-tab {
+  /* Holds its screen-reader text inside the scrolling row. */
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -532,6 +534,7 @@
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
+  flex: 1 0 auto;
 }
 
 .wishlist-slot-tab:hover {
@@ -579,12 +582,6 @@
 .wishlist-slot-pick {
   min-width: 0;
   overflow-wrap: anywhere;
-}
-
-@media (max-width: 760px) {
-  .wishlist-slot-tabs {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
 }
 
 .wishlist-not-raid {

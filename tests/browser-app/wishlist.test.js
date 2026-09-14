@@ -39,9 +39,16 @@ function signedIn(viewerKey) {
   };
 }
 
-function open({ path = '/g/wga/t/phoenix/me/wishlist', viewer = 'torbjorn', open = true, allowed = false } = {}) {
+function open({
+  path = '/g/wga/t/phoenix/me/wishlist',
+  viewer = 'torbjorn',
+  open = true,
+  allowed = false,
+  viewport
+} = {}) {
   return openApp(browser, server.port, {
     path,
+    viewport,
     sentinel: 'main h1',
     tables: {
       players: [{ ...TORBJORN, wishlist_allowed: allowed }],
@@ -202,6 +209,36 @@ describe('Wishlist (new app), slot tabs', () => {
       await expect(opened.page.locator('#wishlist-slot-panel').getAttribute('data-slot')).resolves.toBe('Neck');
       await opened.page.keyboard.press('End');
       await expect(opened.page.locator('#wishlist-slot-panel').getAttribute('data-slot')).resolves.toBe('Off Hand');
+    } finally {
+      await opened.context.close();
+    }
+  });
+});
+
+describe('Wishlist (new app), slot row on a phone', () => {
+  it('stays on one line and scrolls sideways inside its row, not the page', async () => {
+    const opened = await open({ viewport: { width: 400, height: 860 } });
+    try {
+      await showEditor(opened.page);
+      const row = await opened.page.evaluate(() => {
+        const tabs = document.querySelector('main .wishlist-slot-tabs');
+        const tops = new Set([...tabs.children].map((t) => t.offsetTop));
+        return {
+          lines: tops.size,
+          scrolls: tabs.scrollWidth > tabs.clientWidth,
+          pageOverflow: document.documentElement.scrollWidth - window.innerWidth
+        };
+      });
+      expect(row).toEqual({ lines: 1, scrolls: true, pageOverflow: 0 });
+      // A slot off the edge scrolls into view when the keyboard reaches it.
+      await opened.page.locator('main .wishlist-slot-tab[data-slot="Head"]').focus();
+      await opened.page.keyboard.press('End');
+      const visible = await opened.page.evaluate(() => {
+        const tabs = document.querySelector('main .wishlist-slot-tabs').getBoundingClientRect();
+        const last = document.querySelector('main .wishlist-slot-tab[data-slot="Off Hand"]').getBoundingClientRect();
+        return last.right <= tabs.right + 1 && last.left >= tabs.left - 1;
+      });
+      expect(visible).toBe(true);
     } finally {
       await opened.context.close();
     }
