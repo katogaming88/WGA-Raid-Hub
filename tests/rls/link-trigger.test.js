@@ -1,19 +1,20 @@
-// Behavior tests for the provider guard on link_auth_user_to_member() (#1118).
+// Behavior tests for link_auth_user_to_member() (#1118, moved in #1135).
 //
 // The trigger fills auth_user_id on any unlinked grant row whose discord_id
-// matches the new account's raw_user_meta_data ->> 'provider_id'. That column
-// is writable by the account it belongs to, so before this guard the trigger
-// decided who holds a grant on a value the signup supplied. It now runs only
-// for an account GoTrue stamped as a Discord signup, in raw_app_meta_data,
-// which is service-role-only.
+// matches the account's Discord id. It used to fire on auth.users and read
+// raw_user_meta_data ->> 'provider_id', a column the account itself can write,
+// so it decided who holds a grant on a value the signup supplied. #1118 guarded
+// that with raw_app_meta_data; #1135 removes the question by moving the trigger
+// onto auth.identities, where provider and provider_id are the row itself and
+// only the OAuth exchange writes them.
 //
-// after insert, so the fixtures write the grant rows first and the auth.users
-// row last: write order is what decides whether the trigger is the subject
+// after insert, so the fixtures write the grant rows first and the identity row
+// last: write order is what decides whether the trigger is the subject
 // (2026-09-03). Each case asserts the four rows start unlinked, so a fixture
 // that links them by some other route fails the setup instead of passing the
 // test for the wrong reason.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn } from './helpers.js';
+import { pool, withTxn, insertDiscordUser } from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -27,11 +28,8 @@ const DISCORD_SIGNUP = 'discord-guard-discord-1';
 const DISCORD_SIGNUP_UID = '00000000-0000-0000-0000-0000000000e1';
 const EMAIL_SIGNUP = 'discord-guard-email-1';
 const EMAIL_SIGNUP_UID = '00000000-0000-0000-0000-0000000000e2';
-const NO_META = 'discord-guard-nometa-1';
-const NO_META_UID = '00000000-0000-0000-0000-0000000000e3';
-
-const DISCORD_APP_META = '{"provider":"discord","providers":["discord"]}';
-const EMAIL_APP_META = '{"provider":"email","providers":["email"]}';
+const NO_IDENTITY = 'discord-guard-noidentity-1';
+const NO_IDENTITY_UID = '00000000-0000-0000-0000-0000000000e3';
 
 // One unlinked row in each of the four tables the trigger writes.
 async function addGrants(q, discordId) {
@@ -68,51 +66,77 @@ const allLinkedTo = (uid) => ({
   boe_managers: uid
 });
 
-// The ::text casts are required: node-pg cannot infer a type for a parameter
-// used only inside jsonb_build_object (#889).
-const addAuthUser = (q, uid, discordId, appMeta) =>
-  q(
-    'insert into auth.users (id, raw_app_meta_data, raw_user_meta_data) values ($1, $2::jsonb, jsonb_build_object($3::text, $4::text))',
-    [uid, appMeta, 'provider_id', discordId]
-  );
+describe('link_auth_user_to_member() links on the identity row (#1118, #1135)', () => {
+  // Two of these four are green on both sides of #1135 and are marked as such:
+  // they are the regression guards that the linking still works and still
+  // refuses email. The two that discriminate are the ones that separate the
+  // account row from the identity row, since that separation is the change.
+  it('links on the identity even when the account metadata claims nothing', async () => {
+    await withTxn(async ({ q }) => {
+      const uid = '00000000-0000-0000-0000-0000000000e4';
+      const discordId = 'discord-guard-identity-only-1';
+      await addGrants(q, discordId);
+      expect(await grantLinks(q, discordId)).toEqual(allNull);
 
-describe('link_auth_user_to_member() links only a Discord-provider account (#1118)', () => {
-  it('links all four grant tables for a Discord signup', async () => {
+      // No Discord stamp in raw_app_meta_data: the identity row is the only
+      // thing saying who this is, which is exactly the point of the move.
+      await q(
+        `insert into auth.users (id, raw_app_meta_data, raw_user_meta_data)
+         values ($1, '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb)`,
+        [uid]
+      );
+      await q(
+        `insert into auth.identities (provider_id, user_id, identity_data, provider, created_at, updated_at)
+         values ($1::text, $2::uuid, jsonb_build_object('sub', $3::text), 'discord', now(), now())`,
+        [discordId, uid, uid]
+      );
+
+      expect(await grantLinks(q, discordId)).toEqual(allLinkedTo(uid));
+    });
+  });
+
+  it('(control) links all four grant tables for an ordinary Discord account', async () => {
     await withTxn(async ({ q }) => {
       await addGrants(q, DISCORD_SIGNUP);
       expect(await grantLinks(q, DISCORD_SIGNUP)).toEqual(allNull);
 
-      await addAuthUser(q, DISCORD_SIGNUP_UID, DISCORD_SIGNUP, DISCORD_APP_META);
+      await insertDiscordUser(q, DISCORD_SIGNUP_UID, DISCORD_SIGNUP);
 
       expect(await grantLinks(q, DISCORD_SIGNUP)).toEqual(allLinkedTo(DISCORD_SIGNUP_UID));
     });
   });
 
-  it('links nothing for an email signup carrying the same Discord id', async () => {
+  it('(control) links nothing for a non-Discord identity carrying the same id', async () => {
     await withTxn(async ({ q }) => {
       await addGrants(q, EMAIL_SIGNUP);
       expect(await grantLinks(q, EMAIL_SIGNUP)).toEqual(allNull);
 
-      await addAuthUser(q, EMAIL_SIGNUP_UID, EMAIL_SIGNUP, EMAIL_APP_META);
+      await q('insert into auth.users (id) values ($1)', [EMAIL_SIGNUP_UID]);
+      await q(
+        `insert into auth.identities (provider_id, user_id, identity_data, provider, created_at, updated_at)
+         values ($1::text, $2::uuid, jsonb_build_object('sub', $3::text), 'email', now(), now())`,
+        [EMAIL_SIGNUP, EMAIL_SIGNUP_UID, EMAIL_SIGNUP_UID]
+      );
 
       expect(await grantLinks(q, EMAIL_SIGNUP)).toEqual(allNull);
     });
   });
 
-  it('links nothing for an account with no raw_app_meta_data at all', async () => {
+  it('links nothing for an account row with no identity behind it', async () => {
     await withTxn(async ({ q }) => {
-      await addGrants(q, NO_META);
-      expect(await grantLinks(q, NO_META)).toEqual(allNull);
+      await addGrants(q, NO_IDENTITY);
+      expect(await grantLinks(q, NO_IDENTITY)).toEqual(allNull);
 
-      // No raw_app_meta_data column in the insert, the shape boe.test.js's
-      // addNoDiscordRaider already writes: the guard reads null, not 'discord'.
-      await q('insert into auth.users (id, raw_user_meta_data) values ($1, jsonb_build_object($2::text, $3::text))', [
-        NO_META_UID,
-        'provider_id',
-        NO_META
-      ]);
+      // The whole point of the move: an auth.users row is not proof of
+      // anything, whatever its metadata says, so it links nothing on its own.
+      await q(
+        `insert into auth.users (id, raw_app_meta_data, raw_user_meta_data)
+         values ($1, '{"provider":"discord","providers":["discord"]}'::jsonb,
+                 jsonb_build_object('provider_id', $2::text))`,
+        [NO_IDENTITY_UID, NO_IDENTITY]
+      );
 
-      expect(await grantLinks(q, NO_META)).toEqual(allNull);
+      expect(await grantLinks(q, NO_IDENTITY)).toEqual(allNull);
     });
   });
 });
