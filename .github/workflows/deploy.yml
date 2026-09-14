@@ -264,13 +264,13 @@ jobs:
             fi
             # The deploy returns when Supabase accepts it, not when the runtime
             # is serving it, so give the swap a few seconds rather than failing
-            # a live deploy on a reporting race.
+            # a live deploy on a reporting race. Five tries over twenty seconds.
             got=""
-            for attempt in 1 2 3 4 5 6; do
-              got=$(curl -s -X OPTIONS -D - -o /dev/null --max-time 20 "$base/$name" \
+            for attempt in 1 2 3 4 5; do
+              got=$(curl -s -X OPTIONS -D - -o /dev/null --max-time 10 "$base/$name" \
                 | tr -d '\r' | grep -i '^x-wga-version:' | head -1 | cut -d' ' -f2)
               [ "$got" = "$want" ] && break
-              sleep 5
+              [ "$attempt" = 5 ] || sleep 5
             done
             if [ "$got" = "$want" ]; then
               echo "$name: $got"
