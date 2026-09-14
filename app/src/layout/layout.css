@@ -115,6 +115,7 @@
 }
 
 .nav-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -132,9 +133,24 @@
   color: var(--text);
 }
 
+/* The current page needs more than a background tint: in light mode the tint
+   is close to the sidebar itself (Kat, 2026-09-13). The brand bar on the left
+   carries the state at 3:1 or better in both modes. */
 .nav-item[aria-current='page'] {
-  background: var(--raised);
+  background: var(--nav-selected);
   color: var(--text);
+  font-weight: 600;
+}
+
+.nav-item[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--brand);
 }
 
 .nav-item[aria-current='page'] svg {

@@ -28,6 +28,7 @@
   --panel: #131820;
   --raised: #1a2029;
   --hover: #171c24;
+  --nav-selected: #1a2029;
   --border: #212833;
   --border-strong: #2c3441;
 
@@ -77,6 +78,8 @@
   --panel: #f6f8fb;
   --raised: #e6ebf2;
   --hover: #eef2f7;
+  /* Near-white so the current page stands off the slate sidebar. */
+  --nav-selected: #f6f8fb;
   --border: #cfd7e2;
   --border-strong: #bcc7d5;
 

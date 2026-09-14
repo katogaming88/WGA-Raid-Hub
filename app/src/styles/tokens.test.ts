@@ -54,6 +54,17 @@ describe.each(themes)('%s theme', (_name, tokens) => {
     }
   });
 
+  it('the current-page bar in the sidebar reaches 3:1 against the sidebar', () => {
+    expect(contrast(tokens['brand']!, tokens['sidebar']!)).toBeGreaterThanOrEqual(3);
+  });
+
+  it('text on the current-page highlight reaches 4.5:1', () => {
+    expect(tokens['nav-selected']).toMatch(/^#/);
+    for (const fg of ['text', 'brand']) {
+      expect(contrast(tokens[fg]!, tokens['nav-selected']!), fg).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   it('the main button and notification badge text reach 4.5:1', () => {
     expect(contrast(tokens['button-text']!, tokens['button']!)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(tokens['badge-text']!, tokens['badge']!)).toBeGreaterThanOrEqual(4.5);
