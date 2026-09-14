@@ -156,6 +156,9 @@
 | public.retire_team_url_key | trigger |  | FUNCTION |
 | public.resolve_address | record | p_guild_key text, p_team_key text DEFAULT NULL::text, p_player_code text DEFAULT NULL::text | FUNCTION |
 | public.resolve_person | jsonb | p_discord_id text | FUNCTION |
+| public.my_officer_team_ids | _int4 |  | FUNCTION |
+| public.my_leader_team_ids | _int4 |  | FUNCTION |
+| public.my_active_player_ids | _int4 |  | FUNCTION |
 
 ## Enums
 

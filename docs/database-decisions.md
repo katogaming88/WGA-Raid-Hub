@@ -8,6 +8,19 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-13 -- access rules read roles once per query, not from the login token (#1106)
+
+Shipped: `20260913215012_rls_helpers_once_per_query.sql`
+
+#1106 proposed a custom access token hook that writes each person's roles into their login token, so rules compare a token value instead of querying `team_members`. Its first step was a benchmark, run on the previous night's production backup as a signed-in officer ([results on #1106](https://github.com/katogaming88/WGA-Raid-Hub/issues/1106#issuecomment-5657881723)).
+
+- **The cost was per-row helper calls, not role lookups as such.** `my_team_role(team_id)` and `is_own_player(player_id)` take a per-row argument, so Postgres runs their query once for every row: 127 ms to read Phoenix's wishlists against 4 ms with the rules skipped, 45 against 2 for the audit log. Reads whose rules used no such call were already within a couple of milliseconds of skipped.
+- **Chosen: array helpers evaluated once per statement.** `my_officer_team_ids()`, `my_leader_team_ids()` and `my_active_player_ids()` return the caller's ids, and rules compare `team_id = ANY ((SELECT my_officer_team_ids())::integer[])`. The scalar subquery has no row reference, so it becomes an InitPlan. The argument-free helpers are wrapped `(SELECT ...)` for the same reason. After: every benchmarked officer read is within about half a millisecond of the rules-skipped time.
+- **Rejected: the login-token hook.** It cannot beat "rules skipped", which the rewrite already reaches, and it brings a stale-role window: a removed officer keeps access until their token refreshes (an hour by default), which #1106 would have needed a live check on sensitive writes to contain. It also needed enabling on the hosted project.
+- **Rewritten mechanically.** The 54 rule expressions were generated from `pg_policies` by substituting exactly those patterns. Verified by row-set equality: every seeded account and anon, against every public table, sees the identical rows before and after (782 combinations), and the full RLS write suite passes unchanged.
+- **Kept honest by a test.** `rule-helpers-once-per-query.test.js` fails when any rule calls a function other than a wrapped, argument-free helper, so a new rule in the old shape is caught in CI rather than by the next timeout.
+- **Semantics note:** `my_team_role()` picked an arbitrary row if an account had two memberships on one team; the array form counts any officer row. Nothing enforces one membership per account per team, but production has none.
+
 ## 2026-09-13 -- only a Discord signup links a grant row (#1118)
 
 Shipped: `20260913192229_link_trigger_requires_discord_provider.sql`

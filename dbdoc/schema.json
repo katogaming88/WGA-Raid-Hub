@@ -7961,6 +7961,24 @@
       "return_type": "jsonb",
       "arguments": "p_discord_id text",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.my_officer_team_ids",
+      "return_type": "_int4",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.my_leader_team_ids",
+      "return_type": "_int4",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.my_active_player_ids",
+      "return_type": "_int4",
+      "arguments": "",
+      "type": "FUNCTION"
     }
   ],
   "enums": [
