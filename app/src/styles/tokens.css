@@ -1,0 +1,158 @@
+/*
+ * Design tokens for the new app (#1101), from the look Kat settled on
+ * 2026-09-13: blue brand, ember main buttons, solid notification badges,
+ * soft-slate light mode, Onest. Mockups:
+ * https://claude.ai/code/artifact/1e200acf-fae4-49ba-b47a-e92944983cf8
+ *
+ * Structure from #1043: a surface ladder (page < sidebar < panel < raised),
+ * hairline borders, no glow, a small radius scale.
+ *
+ * Contrast (#1101's accessibility checklist: text 4.5:1 in both modes).
+ * Values that did not reach 4.5:1 against every surface they sit on were
+ * moved in lightness only, same hue, just far enough to pass:
+ *   dark  dim     #687384 -> #7e8999
+ *   light dim     #737d8c -> #5b636f
+ *   light good    #2f9a5c -> #226f42    light warn    #b98a14 -> #7d5d0e
+ *   light bad     #c94444 -> #b33434    light heroic  #1d8a99 -> #166b77
+ *   light mythic  #7a4fd0 -> #7245cd
+ *   class colors: see the --class-* comments below.
+ * Everything else is exactly the mockup value.
+ */
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --page: #0b0e13;
+  --sidebar: #0f131a;
+  --panel: #131820;
+  --raised: #1a2029;
+  --hover: #171c24;
+  --nav-selected: #1a2029;
+  --border: #212833;
+  --border-strong: #2c3441;
+
+  --text: #e6ebf2;
+  --text-muted: #9da8b8;
+  --text-dim: #7e8999;
+
+  --brand: #5b9cf5;
+  --brand-soft: rgba(91, 156, 245, 0.14);
+
+  --button: #f2703f;
+  --button-text: #1c0b04;
+
+  --badge: #e6ebf2;
+  --badge-text: #0b0e13;
+
+  --good: #5bc98a;
+  --warn: #e2b64f;
+  --bad: #e26d6d;
+  --heroic: #5ec4d3;
+  --mythic: #b48cf2;
+  --epic: #b36ef5;
+
+  /* Game class colors. Lightened where the in-game color is under 4.5:1 on
+     these dark panels: Death Knight #c41e3a, Demon Hunter #a330c9, Evoker
+     #33937f, Shaman #0070dd. */
+  --class-death-knight: #e55870;
+  --class-demon-hunter: #bd64da;
+  --class-druid: #ff7c0a;
+  --class-evoker: #359984;
+  --class-hunter: #aad372;
+  --class-mage: #3fc7eb;
+  --class-monk: #00ff98;
+  --class-paladin: #f48cba;
+  --class-priest: #ffffff;
+  --class-rogue: #fff468;
+  --class-shaman: #0c87ff;
+  --class-warlock: #8788ee;
+  --class-warrior: #c69b6d;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --page: #e4e9f0;
+  --sidebar: #dae1ea;
+  --panel: #f6f8fb;
+  --raised: #e6ebf2;
+  --hover: #eef2f7;
+  /* Near-white so the current page stands off the slate sidebar. */
+  --nav-selected: #f6f8fb;
+  --border: #cfd7e2;
+  --border-strong: #bcc7d5;
+
+  --text: #0f1623;
+  --text-muted: #46505f;
+  --text-dim: #5b636f;
+
+  --brand: #255fc0;
+  --brand-soft: rgba(37, 95, 192, 0.11);
+
+  --button: #c24a14;
+  --button-text: #ffffff;
+
+  --badge: #161b22;
+  --badge-text: #ffffff;
+
+  --good: #226f42;
+  --warn: #7d5d0e;
+  --bad: #b33434;
+  --heroic: #166b77;
+  --mythic: #7245cd;
+  --epic: #7a3ab8;
+
+  /* Class colors darkened for light panels (the mockup already darkened
+     Priest, Rogue and Hunter; the rest are taken to 4.5:1 the same way). */
+  --class-death-knight: #bd1d38;
+  --class-demon-hunter: #992dbd;
+  --class-druid: #9c4c00;
+  --class-evoker: #256d5e;
+  --class-hunter: #496b17;
+  --class-mage: #176983;
+  --class-monk: #007044;
+  --class-paladin: #ab3660;
+  --class-priest: #626262;
+  --class-rogue: #6e6100;
+  --class-shaman: #0060be;
+  --class-warlock: #5354c2;
+  --class-warrior: #7a5c38;
+}
+
+:root {
+  --font: 'Onest Variable', 'Segoe UI', system-ui, sans-serif;
+
+  /* No text under 12px (#1101 accessibility checklist). */
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 22px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 22px;
+  --space-6: 28px;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  --sidebar-width: 232px;
+  --topbar-height: 56px;
+  --control-height: 32px;
+  /* Smallest hit target for any control (#1101: at least 24px). */
+  --target-min: 24px;
+
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --duration: 140ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration: 0ms;
+  }
+}

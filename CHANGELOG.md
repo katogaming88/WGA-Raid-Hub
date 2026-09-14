@@ -12,6 +12,28 @@ answers to.
 
 ---
 
+## [3.112.9] - 2026-09-13
+
+### Project
+
+- Started the new app in `app/`, the first of four parts of the app shell
+  ([#1101](https://github.com/katogaming88/WGA-Raid-Hub/issues/1101)). It is
+  not deployed anywhere yet and changes nothing on the current site.
+  - Vite, React and TypeScript (strict), with its own dependencies.
+  - The chosen look as design tokens: blue brand, ember main button, solid
+    badges, soft-slate light mode, Onest, in dark and light mode with a
+    remembered toggle that follows the system setting until changed.
+  - The frame: sidebar grouped Team / You / Officer / Guild, top bar with a
+    breadcrumb, and a drawer on narrow screens. Page addresses follow #1100
+    (`/g/<guild>/t/<team>/...`, officer tools under `/officer/`), with
+    placeholder pages and a page-not-found page.
+  - Accessibility from the start: a skip link, one heading per page, visible
+    focus, reduced motion respected, a keyboard-safe drawer, 24px minimum
+    targets, no text under 12px. A test checks every text color reaches 4.5:1
+    on every surface in both modes; the few mockup colors that did not were
+    adjusted in lightness only, listed in `app/src/styles/tokens.css`.
+  - A new App workflow runs typecheck, lint, format, tests and a build on
+    every PR that touches `app/`.
 ## [3.112.8] - 2026-09-13
 
 ### Frontend
