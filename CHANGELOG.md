@@ -12,6 +12,31 @@ answers to.
 
 ---
 
+## [3.119.1] - 2026-09-14
+
+### Backend
+
+- Three officer gates refuse a caller with no row on the team
+  ([#752](https://github.com/katogaming88/WGA-Raid-Hub/issues/752)).
+  `direct_mark_received()`, `admin_grant_team_role()` and
+  `admin_revoke_team_role()` compared the caller's team role without
+  `coalesce`, and for somebody with no membership on that team the
+  comparison was null rather than false, so the refusal never fired: an
+  officer on another team, or any signed-in account, could mark a raider's
+  item received as approved, and an account with no role anywhere could
+  grant itself team leader on any team. Every other officer gate already
+  coalesced the comparison. Production's audit log shows the grant path
+  used once since it landed, by a site admin.
+
+### Project
+
+- The RLS suite pins the three gates with callers built per test, and a
+  sixth whole-schema invariant fails any function body that compares
+  `my_team_role()` without `coalesce`. `docs/RLS.md` and the decisions log
+  no longer say the null closed the gate.
+
+---
+
 ## [3.119.0] - 2026-09-14
 
 ### Project

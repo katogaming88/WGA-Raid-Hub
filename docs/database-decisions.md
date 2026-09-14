@@ -8,6 +8,19 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-14 -- Officer gates settle the null from my_team_role() with coalesce, and an invariant holds the line
+
+Tracking issue: [#752](https://github.com/katogaming88/WGA-Raid-Hub/issues/752). Shipped in `20260914172704_officer_gates_coalesce_missing_membership.sql`.
+
+- **Three gates compared `my_team_role()` bare, and the null opened them.** `my_team_role(team_id)` is null for a caller with no `team_members` row on that team, `null = 'team_leader'` is null, and `if not (false or null)` never raises. `direct_mark_received()` (the filed case), `admin_grant_team_role()` and `admin_revoke_team_role()` (#910, which landed after the issue was filed) had it; every other gate already wrapped the comparison in `coalesce(..., false)`. Measured before the fix: an account with no role anywhere granted itself `team_leader` on a team, and the audit-log call that follows the insert admitted it as that team's leader. Production's audit log shows one grant since the path landed, by a site admin.
+- **The null stays in `my_team_role()`; the gate is where it is settled.** Returning an empty string or raising for no row would change 22 callers, the #1106 rule helpers and the policies that read `is not null`. Coalescing at each comparison is the shape the siblings already had.
+- **T6 in `tests/rls/function-invariants.test.js` fails any function body that compares `my_team_role()` without `coalesce`.** `resolve_person()` is the named exception: its comparison sits in a WHERE clause, where a null excludes the row as false does. A future exception needs the same reasoning written into its migration.
+- **The #910 entry below said the null closed the gate; it opened it.** Only a site admin can open a rosterless team because nobody holds a row on such a team, not because of the null.
+
+[Full discussion -> #752](https://github.com/katogaming88/WGA-Raid-Hub/issues/752)
+
+---
+
 ## 2026-09-14 -- Editing can be limited to a computer, and the wishlist is read-only on phones and tablets
 
 Shipped: `app/src/lib/device.ts` and the wishlist editor (#868 part 3). No schema change; a rule for the new app's pages, logged here with the wishlist decisions it came from.
@@ -405,7 +418,7 @@ Tracking issue: [#910](https://github.com/katogaming88/WGA-Raid-Hub/issues/910),
 - **`claim_character()` was never the officer path, and making it one was rejected.** Claiming is a raider proving which character is theirs; a role is a grant. Relaxing the claim to mint membership rows would put the two on the same code path and give anyone who can claim a way to appear on a team's member list.
 - **Grant refuses to change a role that is already set.** `role` drives `my_team_role()`, `can_settle_boe()`, `is_any_team_officer()`, `is_team_leader_anywhere()` and the read rules built on them. An upsert whose conflict branch wrote `role` would let one mistyped Discord id demote a sitting team leader, with the audit entry reading like a fresh grant and nothing anywhere reading as an error. Changing a role stays with the promote path. The one repeat case that writes is filling an `auth_user_id` that was never linked, which is logged as a relink rather than a grant.
 - **Revoke demotes rather than deletes whenever a character is claimed.** `players_team_member_id_fkey` is `ON DELETE SET NULL`, so removing a member a character points at would silently unclaim that character: no error, no audit entry, and the person's own data quietly detached. A memberless row is deleted as normal.
-- **Only a site admin can open a rosterless team**, and that falls out of the gate rather than being a special case: the gate is `is_site_admin() or my_team_role(team_id) = 'team_leader'`, and `my_team_role()` is null for everybody on a team with no members.
+- **Only a site admin can open a rosterless team**, and that falls out of the gate rather than being a special case: the gate is `is_site_admin() or my_team_role(team_id) = 'team_leader'`, and `my_team_role()` is null for everybody on a team with no members. Corrected 2026-09-14 by #752: that null passed the gate rather than closing it, the gate now coalesces it to false, and the statement holds because nobody holds a row on a rosterless team.
 - **The identity refactor was considered and deferred.** The four grant tables each carry `(discord_id, auth_user_id)`: one person, unnamed, stored four times with four linkers. A `people` plus `team_memberships` model would collapse that and remove the unenforced duplication between `players.team_id` and its member's `team_id`. Against one dead row and one leader needing a second team, it is four to six PRs ending in a column drop on live prod with no rollback. Revisit only if Wrathless gains a roster.
 - **`link_auth_user_to_member()` gained its missing fourth branch.** It has covered `team_members`, `site_admins` and `boe_managers` since #766 and never `guild_officers`, so a guild officer granted before their first sign-in stayed unlinked. Both current holders signed in first, which is why nobody hit it.
 

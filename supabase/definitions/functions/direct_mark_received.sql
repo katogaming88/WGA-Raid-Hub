@@ -13,7 +13,7 @@ declare
   v_item_id integer;
   v_request_id integer;
 begin
-  if not (public.my_team_role(p_team_id) = any(array['officer', 'team_leader']) or public.is_site_admin()) then
+  if not (coalesce(public.my_team_role(p_team_id) = any (array['officer', 'team_leader']), false) or public.is_site_admin()) then
     raise exception 'Not authorized';
   end if;
 

@@ -12,7 +12,7 @@ declare
   v_existing public.team_members%rowtype;
   v_claimed integer;
 begin
-  if not (public.is_site_admin() or public.my_team_role(p_team_id) = 'team_leader') then
+  if not (public.is_site_admin() or coalesce(public.my_team_role(p_team_id) = 'team_leader', false)) then
     raise exception 'Not authorized';
   end if;
 
