@@ -1,0 +1,36 @@
+name: Decision log check
+
+# docs/database-decisions.md records intent in the same voice as fact: #250's
+# entry described four changes as though they had shipped and two never did.
+# The `Shipped:` line under an entry names the migration that carried it, and
+# this check fails a pull request whose line names a file that is not under
+# supabase/migrations/ (#943). Two kinds of PR can break a pointer: an edit to
+# the log, and a rename under supabase/migrations/ (the ledger check's
+# `--rename` route), so both paths trigger it.
+#
+# It needs no secret and no npm ci: the script has no dependencies, and it
+# proves the name exists, never that the object is live on production. The
+# ledger check is the other half (does prod hold what the files say) and runs
+# in its own workflow because it needs the production credential.
+on:
+  pull_request:
+    paths:
+      - 'docs/database-decisions.md'
+      - 'supabase/migrations/**'
+      - 'scripts/ci/decision-log-check.js'
+      - '.github/workflows/decision-log-check.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  decision-log-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+      - name: Every Shipped line names a migration that exists
+        run: node scripts/ci/decision-log-check.js

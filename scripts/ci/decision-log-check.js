@@ -35,13 +35,34 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
+const SHIPPED_LINE = /^\s*(?:-\s+)?Shipped:\s*(.*)$/;
+// The lookbehind keeps a longer digit run from matching on its last fourteen,
+// so a 15-digit stamp names no file and lands on the opener rule below.
+const MIGRATION_NAME = /(?<!\w)(\d{14}_[A-Za-z0-9_-]+\.sql)/g;
+const ISSUE_REF = /#\d+/;
+const OPENERS = ['not yet', 'no migration', 'by hand'];
+
 /**
  * Every `Shipped:` line in `text`: its 1-based line number, the text after the
  * label, and the migration filenames it names, each once, in order.
  * @returns {{line: number, text: string, files: string[]}[]}
  */
 export function shippedLines(text) {
-  return [];
+  const out = [];
+  const lines = text.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const match = lines[i].replace(/\r$/, '').match(SHIPPED_LINE);
+    if (!match) continue;
+    const rest = match[1];
+    const files = [...new Set([...rest.matchAll(MIGRATION_NAME)].map((m) => m[1]))];
+    out.push({ line: i + 1, text: rest, files });
+  }
+  return out;
+}
+
+function opener(text) {
+  const lower = text.toLowerCase();
+  return OPENERS.find((word) => lower.startsWith(word) && !/\w/.test(lower.charAt(word.length))) ?? null;
 }
 
 /**
@@ -49,7 +70,27 @@ export function shippedLines(text) {
  * @returns {{line: number, reason: string}[]}
  */
 export function checkDecisionLog(text, migrationFilenames, dir = 'supabase/migrations') {
-  return [];
+  const present = new Set(migrationFilenames);
+  const findings = [];
+  for (const entry of shippedLines(text)) {
+    if (entry.files.length > 0) {
+      for (const file of entry.files) {
+        if (!present.has(file))
+          findings.push({ line: entry.line, reason: `names ${file}, which is not under ${dir}/` });
+      }
+      continue;
+    }
+    const form = opener(entry.text);
+    if (form === null) {
+      findings.push({
+        line: entry.line,
+        reason: 'names no migration file and does not open with not yet, no migration or by hand'
+      });
+    } else if (form !== 'no migration' && !ISSUE_REF.test(entry.text)) {
+      findings.push({ line: entry.line, reason: `opens with "${form}" and names no issue (#N)` });
+    }
+  }
+  return findings;
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {

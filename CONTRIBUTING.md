@@ -563,6 +563,13 @@ PRs that change `supabase/migrations/` must also:
   `npm run migration:new -- --rename supabase/migrations/<file>`. The pull
   request ledger check fails that case before it can reach a merge. Never reach
   for `--include-all` to get around it.
+- Record the decision in [docs/database-decisions.md](docs/database-decisions.md)
+  with a line beginning `Shipped:` that names the migration file. An entry
+  with no migration opens that line with `not yet` (naming the issue that
+  will ship it), `no migration`, or `by hand` (naming the issue that records
+  the apply). `scripts/ci/decision-log-check.js` fails a pull request whose
+  line names a file that is not under `supabase/migrations/`, so a
+  `--rename` needs the log edit in the same PR (#943).
 - Open the file with a header: `-- #NNN: <what it does>.`, then a bare `--`,
   then why it is needed. Cite a prior migration by filename when this one
   patches it.

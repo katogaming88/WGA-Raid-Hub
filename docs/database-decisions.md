@@ -4,13 +4,17 @@ A running record of settled database/schema decisions and the reasoning behind t
 
 Issues carrying a decision are tagged with the `decision` label: `gh issue list --label decision --state all`.
 
+An entry that changed the schema carries a line beginning `Shipped:` under its heading, naming the migration file that carried it (`YYYYMMDDHHMMSS_slug.sql`; more than one, separated by commas). An entry whose change has not shipped opens that line with `not yet` and names the issue that will ship it; one that shipped no migration opens with `no migration` (a convention, a doc, CI, app code) or `by hand` (applied outside a migration, naming the issue that records it). `scripts/ci/decision-log-check.js` fails a pull request whose line names a file that is not under `supabase/migrations/`, a misspelling and a rename included (#943). It proves the name, not the object: whether the object an entry describes is live is still the build's own query, because #250 below recorded four changes in the voice of fact and two of them never shipped.
+
 Each heading's date is the real calendar date the decision was made. It is deliberately **not** taken from the accompanying migration's filename: those timestamps only have to increase monotonically, and have drifted well ahead of real time (the migration written on 2026-07-11 is named `20260726...`). Entries from 2026-07-12 through 2026-07-18 were dated that way by mistake and have been corrected to when they were actually committed. Since #927 new files are stamped by `npm run migration:new`, from the Eastern wall clock, and CI fails one that runs ahead of it, so the drift stops here rather than being corrected after the fact.
 
 ---
 
 ## 2026-09-14 -- Officer gates settle the null from my_team_role() with coalesce, and an invariant holds the line
 
-Tracking issue: [#752](https://github.com/katogaming88/WGA-Raid-Hub/issues/752). Shipped in `20260914172704_officer_gates_coalesce_missing_membership.sql`.
+Shipped: `20260914172704_officer_gates_coalesce_missing_membership.sql`
+
+Tracking issue: [#752](https://github.com/katogaming88/WGA-Raid-Hub/issues/752).
 
 - **Three gates compared `my_team_role()` bare, and the null opened them.** `my_team_role(team_id)` is null for a caller with no `team_members` row on that team, `null = 'team_leader'` is null, and `if not (false or null)` never raises. `direct_mark_received()` (the filed case), `admin_grant_team_role()` and `admin_revoke_team_role()` (#910, which landed after the issue was filed) had it; every other gate already wrapped the comparison in `coalesce(..., false)`. Measured before the fix: an account with no role anywhere granted itself `team_leader` on a team, and the audit-log call that follows the insert admitted it as that team's leader. Production's audit log shows one grant since the path landed, by a site admin.
 - **The null stays in `my_team_role()`; the gate is where it is settled.** Returning an empty string or raising for no row would change 22 callers, the #1106 rule helpers and the policies that read `is not null`. Coalescing at each comparison is the shape the siblings already had.
@@ -23,7 +27,7 @@ Tracking issue: [#752](https://github.com/katogaming88/WGA-Raid-Hub/issues/752).
 
 ## 2026-09-14 -- Editing can be limited to a computer, and the wishlist is read-only on phones and tablets
 
-Shipped: `app/src/lib/device.ts` and the wishlist editor (#868 part 3). No schema change; a rule for the new app's pages, logged here with the wishlist decisions it came from.
+Shipped: no migration; `app/src/lib/device.ts` and the wishlist editor (#868 part 3). A rule for the new app's pages, logged here with the wishlist decisions it came from.
 
 Kat's concern: on a phone, a stray tap can mark the wrong item BiS or Pass.
 
@@ -35,7 +39,7 @@ Kat's concern: on a phone, a stray tap can mark the wrong item BiS or Pass.
 
 ## 2026-09-14 -- The new wishlist editor has no notes, and adds no M+ or crafted picks until real items exist (#868)
 
-Shipped: the editor, in the new app only (#868 part 3). No schema change; `item_preferences.note` and the placeholder rows stay until cutover.
+Shipped: no migration; the editor, in the new app only (#868 part 3). `item_preferences.note` and the placeholder rows stay until cutover.
 
 **Measured on prod before deciding (2026-09-14).** 330 wishlist notes from 51 raiders, most of them naming the M+ or crafted item behind a generic pick ("Arcanoweave", "Silvermoon Argent's Sneakers"), a few noting another spec ("Bis if I need to play Outlaw"). 289 generic picks: 172 M+, 113 Crafted, 4 Catalyst.
 
@@ -1427,6 +1431,8 @@ Triggered by losing a hand-arranged Supabase schema visualizer layout: the visua
 
 ## #250 -- Schema audit: Phase 1 review
 
+Shipped: `20260709170000_attendance_player_id_set_null.sql`, the attendance FK, the one bullet of the four that shipped (measured against production 2026-09-14: no `seasons` table, no `season_snapshots`, `team_settings` readable by `public`). Not yet the seasons table, which #932 ships. Never the `team_settings`/`season_snapshots` read lock: `20260711220932_drop_season_snapshots.sql` (#455) dropped that table, and `team_settings` is public-read on purpose, since the public pages read it. Never the auth-link trigger; `admin_grant_team_role()` (`20260904052807_team_role_grant.sql`, #910) resolves the account at grant time instead.
+
 - **Seasons table.** Adding a `seasons` lookup table (`slug` PK, `name`, `starts_at`, `ends_at`) instead of a format CHECK on `season text` columns. A CHECK can't catch a well-formed typo (`MN11` vs `MN1`); only an FK against a canonical table can. `ends_at IS NULL` also gives "current season" for free, which the priority generator and #143 (archived seasons) both need.
 - **team_settings / season_snapshots SELECT policy.** Locked down to team members only (`my_team_role(team_id) is not null`). Both tables carry data with no reason to be publicly readable, unlike roster/loot which the public site intentionally exposes.
 - **attendance FK on-delete.** Changed `attendance.player_id` to `ON DELETE SET NULL` (was `CASCADE`), matching `rclc_loot`. Soft-delete (`players.archived_at`, decided in #258) is the primary path; this FK change is the safety net if a hard-delete ever happens anyway.
@@ -1453,10 +1459,13 @@ Umbrella issue. Original scope, later split into #262 (nullability/duplicate gua
 
 ## #258 -- Scoring, WCL data, and identity design decisions
 
+Shipped: `20260704204411_initial_schema.sql` carries the tables and columns below. The `bis_items` half of the last bullet was reversed by `20260725135340_bis_items_item_preferences_season.sql` (PR #579); see its correction.
+
 - **scoring table:** add `season text NOT NULL`, unique key becomes `(player_id, season)`. Additive per season instead of overwritten, for trend analysis and priority generation.
 - **player_wcl_season_perf (new table):** separate from `scoring` -- different source (WCL character API vs. team reports), different update cadence (once per season vs. per raid import). Holds `best_perf_avg` / `median_perf_avg` fetched at season start, used as the heroic priority baseline until current-season `scoring` data accumulates.
 - **Identity/lifecycle fix:** `players.team_member_id` (FK -> `team_members.id`, nullable) links a character row to the person/Discord account. `players.archived_at` (soft-delete) preserves character history across a main-swap instead of losing it to a hard-delete. `season_signups.approved_player_id` (FK -> `players.id`, `ON DELETE SET NULL`) links a signup to the character it produced.
 - **Season-scoping of wipe-between-seasons tables:** `scoring` gets a `season` column (preserve history). `mplus_exclusion_requests` and `bis_items` do NOT -- both wipe between seasons on purpose (gear/tier resets the exclusion criteria and BiS lists are rebuilt fresh each tier), and that intent is written down here so it isn't mistaken for a bug later.
+  - **Correction, 2026-09-14 (#943): `bis_items.season` exists.** `20260725135340_bis_items_item_preferences_season.sql` (PR #579) added it so Other Sources placeholder rows could expire with their season, and production holds 4 rows, all four carrying one season value. The `mplus_exclusion_requests` half stands. #935 retires `bis_items` altogether.
 
 [Full discussion -> #258](https://github.com/katogaming88/WGA-Raid-Hub/issues/258)
 
