@@ -12,6 +12,14 @@ answers to.
 
 ---
 
+## [3.112.12] - 2026-09-14
+
+### Frontend
+
+- The realm picker on the signup form and Add Player now includes The Scryers,
+  plus other realms that were missing from the list (The Forgotten Coast, The
+  Underbog, Sargeras, Ragnaros, Draenor, Warsong, and more).
+
 ## [3.112.11] - 2026-09-13
 
 ### Frontend
