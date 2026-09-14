@@ -24,6 +24,8 @@ bot/dist/
 
 # One-time migration data (sheet CSV exports and generated SQL, see #320)
 data/
+# ...but the new app's data layer is source code, not an export (#1101).
+!app/src/data/
 
 # Per-tier item catalog scratch output (scripts/fetch-items.js,
 # scripts/items-csv-to-sql.js) -- regenerated every raid tier, never committed
