@@ -1,0 +1,44 @@
+# Revamp time log
+
+A rough record of how long the website revamp (#1109) takes, kept as the work happens. The point is a real answer to "how long did the rebuild take?" and a way to check the remaining phases against their due dates.
+
+**How times are measured.** Wall-clock time in Eastern, taken from the session transcript and GitHub timestamps. It starts when Kat asks for a piece of work and ends when that piece is merged, closed or decided. Rounded to 5 minutes. Breaks between sessions are not counted. "Build" is Claude working (reading, coding, testing, opening the PR). "Kat" is the time Kat spent deciding, doing dashboard/setup steps, reviewing, and merging. When the two overlap in a back-and-forth, the whole stretch is counted once under the item.
+
+Work that happened in the same sessions but isn't part of the revamp (bug fixes, lookups) is listed separately at the bottom and not counted in the totals.
+
+## Totals
+
+| Phase | Time so far |
+| --- | ---: |
+| Planning and design | 1 h 50 m |
+| Revamp 1: decisions and foundation | 2 h 45 m |
+| **All revamp work** | **4 h 35 m** |
+
+## Log
+
+### 2026-09-13
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Notes |
+| --- | --- | --- | ---: | --- | --- |
+| 2:01–2:16 PM | Rethink the site from scratch, size it for January, write the plan as issues | Planning | 15 m | mostly build | #1109 and its issues filed, framework + one app first |
+| 2:16–3:27 PM | Visual design direction | Planning | 70 m | shared | First concept cards didn't land ("hard to picture"); switched to rendered mockups. Blue + ember chosen, light-mode badges, PRODUCT.md committed |
+| 3:44–4:08 PM | Priorities and phases | Planning | 25 m | shared | Milestones Revamp 1–4; Identity and Discord notifications keep running alongside |
+| 4:08–4:21 PM | #1100 page addresses | Revamp 1 | 15 m | Kat decision | `/g/<guild>/t/<team>`, readable keys for WGA, codes for others and for players |
+| 4:21–4:40 PM | #940 per-account preferences | Revamp 1 (Identity prerequisite) | 20 m | ~12 m build, ~7 m review | PR #1111 |
+| 4:42–4:45 PM | #1104 feature freeze | Revamp 1 | 5 m | Kat decision | Option C: two-step freeze |
+| 4:50–5:49 PM | #1099 hosting on Cloudflare Pages | Revamp 1 | 60 m | shared, heavy on Kat | Domain bought, API token and secrets, custom domains, Supabase redirect URLs, www forwarding. PR #1112 (deploy job) and PR #1116 (My Profile fix under clean URLs) |
+| 5:57–6:11 PM | #1114 guild record, URL keys, player codes | Revamp 1 | 15 m | ~11 m build, ~3 m review | PR #1119 |
+| 6:17–6:43 PM | #941 person lookup, kept character links, name matching | Revamp 1 (Identity prerequisite) | 25 m | ~22 m build incl. one Kat question, ~4 m review | PR #1121. Tested on prod backup |
+| 9:42–10:06 PM | #1106 access rules once per query | Revamp 1 | 25 m | ~18 m build incl. benchmark and one Kat question, ~6 m review | PR #1144. Benchmark changed the plan: rule rewrite instead of login-token hook |
+
+## Not counted (same sessions, not revamp)
+
+| Date | Time (ET) | Item | Elapsed |
+| --- | --- | --- | ---: |
+| 2026-09-13 | 9:17–9:36 PM | Glizzygary wishlist lookup, then the missing Pending Roster audit entries (#1136, PR #1137) | 20 m |
+
+## Remaining in Revamp 1
+
+- #1107 one file per database function
+- #1101 app shell (includes the preview project and the accessibility checklist)
+- #1108 `tier_token_map` gets a season (Season milestone, due before the next tier set)

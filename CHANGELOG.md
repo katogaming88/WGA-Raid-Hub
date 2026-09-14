@@ -12,6 +12,15 @@ answers to.
 
 ---
 
+## [3.112.6] - 2026-09-13
+
+### Project
+
+- Added `docs/revamp-time-log.md`, a running record of roughly how long the
+  website revamp ([#1109](https://github.com/katogaming88/WGA-Raid-Hub/issues/1109))
+  takes: each piece of work with its time, split into Claude's build time and
+  Kat's decisions, setup and review, with phase totals.
+
 ## [3.112.5] - 2026-09-13
 
 ### Backend
