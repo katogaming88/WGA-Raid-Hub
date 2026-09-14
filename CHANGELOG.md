@@ -25,6 +25,12 @@ answers to.
   a crafted or M+ pick shows the slot it was picked for. Only BiS picks are
   listed, following the BiS-or-Pass decision (#1032, #1033).
 - A Wishlist card counts the slots with a BiS pick and the slots passed.
+- The profile is split into tabs so it is not one long scroll: **Overview**
+  (the four numbers, loot priority, wishlist count, attendance, M+),
+  **Loot** (items received), **Gear** (equipped gear) and **Wishlist** (the
+  BiS or Pass editor arrives there next). Each tab has its own address
+  (`/me/gear`, `/p/<code>/wishlist`), so a link can open one directly, and
+  the arrow keys move between them.
 - The recorded profile behavior gains the loot priority list, checked against
   the current site's BiS List and the new card.
 

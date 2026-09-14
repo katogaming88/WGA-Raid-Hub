@@ -138,6 +138,19 @@ const STATES = [
   },
   profileState('my profile', 'torbjorn', 'torbjorn'),
   profileState('my profile, light', 'torbjorn', 'torbjorn', { colorScheme: 'light' }),
+  profileState('my profile, loot tab', 'torbjorn', 'torbjorn', {
+    path: '/g/wga/t/phoenix/me/loot',
+    sentinel: 'main .loot-table'
+  }),
+  profileState('my profile, gear tab', 'torbjorn', 'torbjorn', {
+    path: '/g/wga/t/phoenix/me/gear',
+    sentinel: 'main .gear-table'
+  }),
+  profileState('my profile, wishlist tab, light', 'torbjorn', 'torbjorn', {
+    path: '/g/wga/t/phoenix/me/wishlist',
+    sentinel: 'main .wishlist-summary',
+    colorScheme: 'light'
+  }),
   profileState('officer opening a profile with a refused M+ request', 'officer', 'dodgey', {
     sentinel: 'main .mplus-status'
   }),

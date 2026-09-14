@@ -79,6 +79,8 @@ function open(path, viewerKey, profilePlayer) {
 }
 
 // The shape tests/behavior/profile.js describes, read from the new markup.
+// Items received and equipped gear sit on their own tabs, so a read of the
+// Overview leaves them out and the test opens those tabs for them.
 function readProfile(page) {
   return page.evaluate(() => {
     const main = document.querySelector('main');
@@ -88,11 +90,11 @@ function readProfile(page) {
     const link = (site) => main.querySelector(`.profile-links a[data-site="${site}"]`)?.getAttribute('href') ?? null;
 
     const loot = card('Items received');
-    const lastBox = loot.querySelector('.loot-last');
+    const lastBox = loot?.querySelector('.loot-last');
     const gear = card('Equipped gear');
     const mplus = card('M+ exclusion');
-    const status = mplus.querySelector('.mplus-status');
-    const pct = text(card('Attendance').querySelector('.attendance-pct .num'));
+    const status = mplus?.querySelector('.mplus-status');
+    const attend = card('Attendance');
 
     return {
       name: text(main.querySelector('.profile-name')),
@@ -102,14 +104,14 @@ function readProfile(page) {
       tags: [...main.querySelectorAll('.profile-tag')].map(text),
       joined: text(main.querySelector('.profile-joined'))?.replace(/^Joined /, '') ?? null,
       links: { warcraftLogs: link('warcraftLogs'), raiderIo: link('raiderIo'), armory: link('armory') },
-      attendance: {
-        pct,
-        flagged: [...card('Attendance').querySelectorAll('.attendance-flagged li')].map((li) => ({
+      attendance: attend && {
+        pct: text(attend.querySelector('.attendance-pct .num')),
+        flagged: [...attend.querySelectorAll('.attendance-flagged li')].map((li) => ({
           date: text(li.querySelector('.flagged-date')),
           status: text(li.querySelector('.flagged-status'))
         }))
       },
-      loot: {
+      loot: loot && {
         count: Number(text(loot.querySelector('.loot-count'))),
         season: text(loot.querySelector('.loot-season')),
         last: lastBox
@@ -127,13 +129,19 @@ function readProfile(page) {
           date: text(tr.querySelector('.loot-date'))
         }))
       },
-      gear: [...gear.querySelectorAll('tbody tr')].map((tr) => ({
-        slot: text(tr.querySelector('.gear-slot')),
-        item: text(tr.querySelector('.gear-item')),
-        itemLevel: Number(text(tr.querySelector('.gear-level'))),
-        track: text(tr.querySelector('.gear-track')) || null
-      })),
-      mplus: status ? { status: text(status), note: text(mplus.querySelector('.mplus-note')) } : null
+      gear:
+        gear &&
+        [...gear.querySelectorAll('tbody tr')].map((tr) => ({
+          slot: text(tr.querySelector('.gear-slot')),
+          item: text(tr.querySelector('.gear-item')),
+          itemLevel: Number(text(tr.querySelector('.gear-level'))),
+          track: text(tr.querySelector('.gear-track')) || null
+        })),
+      mplus: !mplus
+        ? undefined
+        : status
+          ? { status: text(status), note: text(mplus.querySelector('.mplus-note')) }
+          : null
     };
   });
 }
@@ -165,7 +173,14 @@ describe('Profile (new app), the raider’s own, checked against the current sit
     try {
       await opened.page.waitForSelector('main .profile-name');
       await loaded(opened.page);
-      const profile = await readProfile(opened.page);
+      const overview = await readProfile(opened.page);
+      await opened.page.getByRole('tab', { name: 'Loot' }).click();
+      await opened.page.waitForSelector('main .loot-table');
+      const { loot } = await readProfile(opened.page);
+      await opened.page.getByRole('tab', { name: 'Gear' }).click();
+      await opened.page.waitForSelector('main .gear-table');
+      const { gear } = await readProfile(opened.page);
+      const profile = { ...overview, loot, gear };
       expect({ ...profile, loot: sortedLoot(profile.loot) }).toEqual({
         ...EXPECTED_TORBJORN,
         loot: sortedLoot(EXPECTED_TORBJORN.loot)

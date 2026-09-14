@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type Read } from '../test/fakeSupabase';
 import { attendance, characterLinks, equippedGear, formatJoinDate, seasonCode, seasonLoot } from './profile';
@@ -198,13 +199,46 @@ describe('Profile page', () => {
 
   it('shows a failed read in its own card with a way to retry', async () => {
     renderApp(
-      '/g/wga/t/phoenix/me',
+      '/g/wga/t/phoenix/me/loot',
       profileHandlers(person('raider', 11), { rclc_loot: () => ({ error: { message: 'loot read failed' } }) })
     );
     const loot = (await screen.findByRole('heading', { name: 'Items received' })).closest('section')!;
     const alert = await within(loot).findByRole('alert');
     expect(alert).toHaveTextContent('loot read failed');
     expect(within(alert).getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+  });
+});
+
+describe('Profile tabs', () => {
+  it('give each section its own address and keep My profile current in the menu', async () => {
+    const { router } = renderApp('/g/wga/t/phoenix/me', profileHandlers(person('raider', 11)));
+    const overview = await screen.findByRole('tab', { name: 'Overview' });
+    expect(overview).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel')).toHaveAccessibleName('Overview');
+    await userEvent.click(screen.getByRole('tab', { name: 'Gear' }));
+    expect(router.state.location.pathname).toBe('/g/wga/t/phoenix/me/gear');
+    expect(await screen.findByRole('heading', { name: 'Equipped gear' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Loot priority' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'My profile' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('move with the arrow keys', async () => {
+    const { router } = renderApp('/g/wga/t/phoenix/me/loot', profileHandlers(person('raider', 11)));
+    const loot = await screen.findByRole('tab', { name: 'Loot' });
+    loot.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(router.state.location.pathname).toBe('/g/wga/t/phoenix/me/gear');
+    expect(screen.getByRole('tab', { name: 'Gear' })).toHaveFocus();
+    await userEvent.keyboard('{Home}');
+    expect(router.state.location.pathname).toBe('/g/wga/t/phoenix/me');
+  });
+
+  it('open an officer view at the tab in its address, and send an unknown tab to the Overview', async () => {
+    const { router } = renderApp('/g/wga/t/phoenix/p/tb000011/wishlist', profileHandlers(person('officer', null)));
+    expect(await screen.findByRole('tab', { name: 'Wishlist' })).toHaveAttribute('aria-selected', 'true');
+    await router.navigate('/g/wga/t/phoenix/p/tb000011/nope');
+    await waitFor(() => expect(router.state.location.pathname).toBe('/g/wga/t/phoenix/p/tb000011'));
+    expect(await screen.findByRole('tab', { name: 'Overview', selected: true })).toBeInTheDocument();
   });
 });
 

@@ -158,7 +158,7 @@ export function AppShell() {
               <ul>
                 {group.items.map((item) => (
                   <li key={item.to}>
-                    <NavLink to={item.to} end className="nav-item">
+                    <NavLink to={item.to} end={item.end ?? false} className="nav-item">
                       <Icon name={item.icon} />
                       <span>{item.label}</span>
                     </NavLink>

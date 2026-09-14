@@ -1,6 +1,8 @@
 import type { IconName } from '../components/Icon';
 
-export type NavItem = { label: string; icon: IconName; to: string };
+// `end`: current only on its exact address. Home needs it, since every team
+// page sits below it; My profile must not have it, so its tabs keep it current.
+export type NavItem = { label: string; icon: IconName; to: string; end?: boolean };
 export type NavGroup = { heading: string; items: NavItem[] };
 
 // Sidebar groups from the 2026-09-13 mockups. Team pages hang off
@@ -11,7 +13,7 @@ export function navGroups(base: { team: string; guild: string }, show: { officer
     {
       heading: 'Team',
       items: [
-        { label: 'Home', icon: 'home', to: base.team },
+        { label: 'Home', icon: 'home', to: base.team, end: true },
         { label: 'Roster', icon: 'roster', to: `${base.team}/roster` },
         { label: 'Calendar', icon: 'calendar', to: `${base.team}/calendar` },
         { label: 'Loot history', icon: 'loot', to: `${base.team}/loot` }
