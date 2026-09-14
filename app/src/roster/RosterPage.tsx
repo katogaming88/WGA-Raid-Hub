@@ -1,7 +1,10 @@
 import { useId, useRef, useState, type KeyboardEvent } from 'react';
-import type { UseQueryResult } from '@tanstack/react-query';
+import { Link } from 'react-router';
+import { can, charactersOn, useAccess } from '../auth/access';
+import { useSession } from '../auth/session';
 import { DataState } from '../components/DataState';
 import { useTeam } from '../data/address';
+import { bothQueries } from '../data/query';
 import {
   ROLE_LABELS,
   ROLE_ORDER,
@@ -18,23 +21,12 @@ import {
 import { useIncomingRoster, useRosterGear, useRosterPlayers, useSignupSeason } from './useRoster';
 import './roster.css';
 
-// Two reads that only make sense together, shown through one DataState: loading
-// until both land, an error (with one Retry for both) if either fails.
-function useBoth<A, B>(a: UseQueryResult<A>, b: UseQueryResult<B>): UseQueryResult<[A, B]> {
-  if (a.isSuccess && b.isSuccess) return { ...a, data: [a.data, b.data] } as UseQueryResult<[A, B]>;
-  const failed = a.isError ? a : b.isError ? b : null;
-  const refetch = () => Promise.all([a.refetch(), b.refetch()]);
-  if (failed)
-    return { ...failed, refetch, isFetching: a.isFetching || b.isFetching } as unknown as UseQueryResult<[A, B]>;
-  return { ...(a.isPending ? a : b), refetch } as unknown as UseQueryResult<[A, B]>;
-}
-
 type Filter = Role | 'All';
 
 export function RosterPage() {
   const team = useTeam();
-  const current = useBoth(useRosterPlayers(team.id), useRosterGear(team.id));
-  const incoming = useBoth(useIncomingRoster(team.id), useSignupSeason(team.id));
+  const current = bothQueries(useRosterPlayers(team.id), useRosterGear(team.id));
+  const incoming = bothQueries(useIncomingRoster(team.id), useSignupSeason(team.id));
   const [tab, setTab] = useState<'current' | 'incoming'>('current');
 
   const incomingGroups = incoming.isSuccess ? toIncoming(incoming.data[0]) : [];
@@ -148,7 +140,23 @@ function RosterTabs({
   );
 }
 
+// Who a roster name opens a profile for: every row for the team's officers,
+// a raider's own rows for them, and no one else (Kat, 2026-09-14, #868).
+function useProfileLinks(teamId: number): (raider: Raider) => string | null {
+  const { user } = useSession();
+  const access = useAccess();
+  if (!user || !access.isSuccess) return () => null;
+  const officer = can(access.data, 'viewOfficerTools', teamId);
+  const own = new Set(charactersOn(access.data, teamId).map((c) => c.playerId));
+  return (raider) =>
+    raider.urlCode && (officer || (raider.playerId !== null && own.has(raider.playerId)))
+      ? `../p/${raider.urlCode}`
+      : null;
+}
+
 function CurrentRoster({ groups }: { groups: RoleGroup[] }) {
+  const team = useTeam();
+  const profileLink = useProfileLinks(team.id);
   const [filter, setFilter] = useState<Filter>('All');
   const summary = summarize(groups);
   const shown = filter === 'All' ? groups : groups.filter((g) => g.role === filter);
@@ -180,7 +188,7 @@ function CurrentRoster({ groups }: { groups: RoleGroup[] }) {
       </div>
       <div className="roster-layout">
         <div className="roster-main">
-          <RosterTable groups={shown} caption="Current roster" details />
+          <RosterTable groups={shown} caption="Current roster" details profileLink={profileLink} />
         </div>
         <RosterSummaryPanel summary={summary} />
       </div>
@@ -201,7 +209,17 @@ function IncomingRoster({ groups }: { groups: RoleGroup[] }) {
   );
 }
 
-function RosterTable({ groups, caption, details }: { groups: RoleGroup[]; caption: string; details: boolean }) {
+function RosterTable({
+  groups,
+  caption,
+  details,
+  profileLink = () => null
+}: {
+  groups: RoleGroup[];
+  caption: string;
+  details: boolean;
+  profileLink?: (raider: Raider) => string | null;
+}) {
   const columns = details ? 4 : 1;
   return (
     <div className="card roster-table-wrap">
@@ -232,7 +250,7 @@ function RosterTable({ groups, caption, details }: { groups: RoleGroup[]; captio
               </th>
             </tr>
             {group.raiders.map((raider) => (
-              <RosterRow key={raider.key} raider={raider} details={details} />
+              <RosterRow key={raider.key} raider={raider} details={details} href={profileLink(raider)} />
             ))}
           </tbody>
         ))}
@@ -241,13 +259,19 @@ function RosterTable({ groups, caption, details }: { groups: RoleGroup[]; captio
   );
 }
 
-function RosterRow({ raider, details }: { raider: Raider; details: boolean }) {
+function RosterRow({ raider, details, href }: { raider: Raider; details: boolean; href: string | null }) {
   return (
     <tr>
       <th scope="row" className="raider-cell">
-        <span className="raider-name" style={{ color: classColor(raider.className) }}>
-          {raider.name}
-        </span>
+        {href ? (
+          <Link to={href} relative="path" className="raider-name" style={{ color: classColor(raider.className) }}>
+            {raider.name}
+          </Link>
+        ) : (
+          <span className="raider-name" style={{ color: classColor(raider.className) }}>
+            {raider.name}
+          </span>
+        )}
         {raider.character && <span className="raider-character">{raider.character}</span>}
         <span className="raider-spec">
           {raider.spec} {raider.className}

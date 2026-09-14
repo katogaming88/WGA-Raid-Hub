@@ -153,6 +153,18 @@
   font-weight: 600;
 }
 
+/* A name that opens a profile keeps its class color and gets an underline, so
+   it reads as a link without relying on color. */
+a.raider-name {
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 3px;
+}
+
+a.raider-name:hover {
+  text-decoration-color: currentColor;
+}
+
 .raider-character {
   margin-left: var(--space-2);
   color: var(--text-muted);

@@ -12,6 +12,31 @@ answers to.
 
 ---
 
+## [3.117.0] - 2026-09-14
+
+### Project
+
+- The new app has the player profile, part 1
+  ([#868](https://github.com/katogaming88/WGA-Raid-Hub/issues/868)). It opens
+  for the raider it belongs to (My profile) and for the team's officers, the
+  same rule as today; roster names link to it for exactly those people.
+  - Header with nickname, spec, role and character, Trial / Bench / Rotator /
+    Backup tags, join date, and Warcraft Logs, Raider.IO and Armory links.
+  - Item level, attendance, tier pieces and items this season at a glance.
+  - Items received this season (newest first, with the last raid night's
+    items together), equipped gear, attendance with the season's missed and
+    late nights, and M+ exclusion status (officers also see a refused
+    request, as today).
+  - Still to come: the loot priority list and wishlist, Mark Received, and
+    the M+ exclusion request form.
+- Recorded behavior for the profile: `tests/behavior/profile.js`, checked
+  against the current site's profile (`tests/browser/profile-recorded.test.js`,
+  which can now sign in as a raider or officer) and the new page
+  (`tests/browser-app/profile.test.js`). Profile states join the app's
+  accessibility checks.
+
+---
+
 ## [3.116.1] - 2026-09-14
 
 ### Project

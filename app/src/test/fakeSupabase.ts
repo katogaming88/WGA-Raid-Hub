@@ -86,8 +86,15 @@ export function fakeClient(
           read.filters.push(['is', column, value]);
           return builder;
         },
+        in(column: string, values: unknown[]) {
+          read.filters.push(['in', column, values]);
+          return builder;
+        },
         order(column: string) {
           read.order = column;
+          return builder;
+        },
+        limit() {
           return builder;
         },
         single() {
