@@ -230,6 +230,37 @@ describe('the functions half of Deploy (#1083)', () => {
     expect(on).toMatch(/^\s+functions:\s*$/m);
   });
 
+  // #971: the deploy reads back what it just deployed, the way migrate reads
+  // the ledger back after pushing. Without it the job's only evidence that a
+  // function reached production is that the CLI did not error.
+  it('reads the version header back after deploying, before the summary', () => {
+    const steps = functionsJob.split(/\n {6}- /);
+    const at = (needle) => steps.findIndex((step) => step.includes(needle));
+    const deploy = at('Deploy them, one at a time');
+    const verify = at('X-WGA-Version');
+    const summary = at('Write the summary');
+    expect(deploy).toBeGreaterThan(-1);
+    expect(verify).toBeGreaterThan(deploy);
+    expect(summary).toBeGreaterThan(verify);
+  });
+
+  it('lets the read-back fail the job, so a function that did not come up is loud', () => {
+    const steps = functionsJob.split(/\n {6}- /);
+    const verify = steps.find((step) => step.includes('X-WGA-Version'));
+    expect(verify).toBeDefined();
+    expect(verify).not.toMatch(/continue-on-error:\s*true/);
+    expect(verify).not.toMatch(/if:\s*\$\{\{\s*always\(\)/);
+  });
+
+  // A dry run deploys nothing, so there is nothing to read back and the job
+  // must not go red for the functions it deliberately left alone.
+  it('skips the read-back on a dry run and when nothing was selected', () => {
+    const steps = functionsJob.split(/\n {6}- /);
+    const verify = steps.find((step) => step.includes('X-WGA-Version'));
+    expect(verify).toMatch(/steps\.select\.outputs\.functions != ''/);
+    expect(verify).toMatch(/!inputs\.dry_run/);
+  });
+
   it('holds only functions that exist', () => {
     expect(HOLD.length).toBeGreaterThan(0);
     for (const held of HOLD) {

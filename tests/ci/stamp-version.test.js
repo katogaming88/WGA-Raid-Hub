@@ -247,16 +247,48 @@ describe('computePieces', () => {
     expect(pieces.functions).toEqual({ 'boe-webhook': '3.92.0', 'contact-webhook': '3.70.0' });
   });
 
-  // _shared is compiled into every function's bundle, so a change there ships
-  // in all of them and every one of their stamps has to move.
-  it('stamps every function when _shared changes', () => {
+  // A shared module ships in the bundles that import it, not in all of them
+  // (#971). Which ones is a question about the tree, so it comes in as an
+  // argument and this stays a pure function.
+  it('stamps the functions that import the changed shared module', () => {
     const pieces = computePieces({
       changed: ['supabase/functions/_shared/cors.ts'],
       previous: { functions: { 'boe-webhook': '3.80.0', 'contact-webhook': '3.70.0' } },
       version: '3.92.0',
-      functions: ['boe-webhook', 'contact-webhook']
+      functions: ['boe-webhook', 'contact-webhook'],
+      importersOf: () => ['boe-webhook']
     });
-    expect(pieces.functions).toEqual({ 'boe-webhook': '3.92.0', 'contact-webhook': '3.92.0' });
+    expect(pieces.functions).toEqual({ 'boe-webhook': '3.92.0', 'contact-webhook': '3.70.0' });
+  });
+
+  it('asks about the module that changed, not about _shared as a whole', () => {
+    const asked = [];
+    computePieces({
+      changed: ['supabase/functions/_shared/gql.ts', 'supabase/functions/_shared/discord-destination.ts'],
+      version: '3.92.0',
+      functions: ['boe-webhook'],
+      importersOf: (path) => {
+        asked.push(path);
+        return [];
+      }
+    });
+    expect(asked).toEqual([
+      'supabase/functions/_shared/gql.ts',
+      'supabase/functions/_shared/discord-destination.ts'
+    ]);
+  });
+
+  // Silently stamping nothing would be a release claiming it changed no
+  // function while a shared module moved, which is the one error the
+  // manifest cannot detect later.
+  it('refuses a shared change with no way to answer who imports it', () => {
+    expect(() =>
+      computePieces({
+        changed: ['supabase/functions/_shared/cors.ts'],
+        version: '3.92.0',
+        functions: ['boe-webhook']
+      })
+    ).toThrow(/importersOf/);
   });
 
   it('does not invent an entry for a function that never had one', () => {
