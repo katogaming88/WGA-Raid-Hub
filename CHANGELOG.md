@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.119.3] - 2026-09-14
+
+### Project
+
+- Decision-log entries name the migration that shipped them, and CI checks
+  that the file exists
+  ([#943](https://github.com/katogaming88/WGA-Raid-Hub/issues/943)).
+  `docs/database-decisions.md` carried 20 `Shipped:` lines that nothing
+  read. `scripts/ci/decision-log-check.js` now fails a pull request whose
+  line names a file that is not under `supabase/migrations/`, a
+  misspelling and a rename included, and a line naming none opens with
+  `not yet`, `no migration` or `by hand` to say why. #250 and #258 now say
+  which of their bullets shipped and which never did.
+
+---
+
 ## [3.119.2] - 2026-09-14
 
 ### Functions

@@ -113,7 +113,7 @@ For the full file-by-file breakdown, local dev setup (Docker + Supabase CLI), mi
 - [`dbdoc/`](dbdoc/) -- generated schema docs (tables, columns, triggers, functions, ER diagrams), regenerated with `npm run db:docs`. Never hand-edit.
 - [`docs/database-schema-reference.md`](docs/database-schema-reference.md) -- a narrative companion to `dbdoc/`.
 - [`docs/RLS.md`](docs/RLS.md) -- hand-maintained policy/function reference (tbls can't generate this).
-- [`docs/database-decisions.md`](docs/database-decisions.md) -- a running log of settled schema decisions and the reasoning behind them.
+- [`docs/database-decisions.md`](docs/database-decisions.md) -- a running log of settled schema decisions and the reasoning behind them; each entry names the migration that shipped it, and CI checks that the file exists.
 - [`docs/backup-restore.md`](docs/backup-restore.md) -- what's backed up, what's regenerable without a backup, and the restore runbook.
 - [`docs/app-preview.md`](docs/app-preview.md) -- the new app's private preview: what a tester needs, adding and removing testers, and how it is deployed and locked.
 
