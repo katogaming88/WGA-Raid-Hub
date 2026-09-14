@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.114.2] - 2026-09-14
+
+### Project
+
+- New runbook, `docs/app-preview.md`, for the new app's private preview:
+  what a tester needs (an email on the allow list and their own Battle.net
+  or Discord, no Cloudflare account), how to add and remove testers, the
+  free plan's seat limit, how the preview is deployed and locked, and the
+  sign-in problems found while setting it up. Linked from the README.
+- The revamp time log records part 4 and the closing of the app shell
+  (#1101).
+
+---
+
 ## [3.114.1] - 2026-09-14
 
 ### Project

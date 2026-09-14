@@ -115,6 +115,7 @@ For the full file-by-file breakdown, local dev setup (Docker + Supabase CLI), mi
 - [`docs/RLS.md`](docs/RLS.md) -- hand-maintained policy/function reference (tbls can't generate this).
 - [`docs/database-decisions.md`](docs/database-decisions.md) -- a running log of settled schema decisions and the reasoning behind them.
 - [`docs/backup-restore.md`](docs/backup-restore.md) -- what's backed up, what's regenerable without a backup, and the restore runbook.
+- [`docs/app-preview.md`](docs/app-preview.md) -- the new app's private preview: what a tester needs, adding and removing testers, and how it is deployed and locked.
 
 ---
 
