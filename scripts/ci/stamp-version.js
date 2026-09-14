@@ -22,6 +22,7 @@ import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { classifyPath, isRootPage, pageIsStampOnly } from './changelog-check.js';
+import { importersOf } from './functions-to-deploy.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 

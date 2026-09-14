@@ -27,6 +27,7 @@
 // sanitisers below stay.
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import { marker, resolveDestination } from '../_shared/discord-destination.ts';
+import { truncate } from '../_shared/discord-text.ts';
 import { VERSION } from './version.ts';
 
 const CORS_HEADERS = {
@@ -77,8 +78,6 @@ function stripBlockMarkers(s: string) {
     })
     .join('\n');
 }
-
-const truncate = (s: string, max: number) => (s.length > max ? s.slice(0, max - 1) + '...' : s);
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
