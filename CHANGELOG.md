@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.115.2] - 2026-09-14
+
+### Project
+
+- Decision logged for the wishlist and Priority List (#1032, #1033): from
+  the new app's launch, raiders mark an item BiS or Pass only, and only a
+  BiS pick gets a priority number. 2nd Choice, Sidegrade and Catalyst Only
+  entries are removed at that switch. The current site keeps its five
+  choices until then.
+- The revamp time log records the decision.
+
+---
+
 ## [3.115.1] - 2026-09-14
 
 ### Project
