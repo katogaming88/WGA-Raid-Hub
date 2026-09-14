@@ -166,7 +166,7 @@ export function installRoutes(page, port, overrides = {}) {
       const rest = url.pathname.split('/rest/v1/')[1];
       if (rest !== undefined) {
         if (rest.startsWith('rpc/')) {
-          const rpc = fixture('rpc', {});
+          const rpc = { ...fixture('rpc', {}), ...(overrides.rpc || {}) };
           const name = rest.slice(4);
           return route.fulfill(jsonResponse(name in rpc ? rpc[name] : null));
         }
@@ -199,6 +199,31 @@ export function launchBrowser() {
 }
 
 /**
+ * A Discord sign-in as supabase-js stores it. The token only has to look like
+ * an unexpired JWT.
+ * @param {{ userId: string, discordId: string, name: string }} who
+ */
+export function storedDiscordSession(who) {
+  const exp = Math.floor(Date.now() / 1000) + 3600;
+  const b64 = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
+  return {
+    access_token: `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: who.userId, exp, role: 'authenticated' })}.sig`,
+    refresh_token: 'refresh',
+    token_type: 'bearer',
+    expires_in: 3600,
+    expires_at: exp,
+    user: {
+      id: who.userId,
+      aud: 'authenticated',
+      role: 'authenticated',
+      identities: [{ provider: 'discord', identity_data: { full_name: who.name } }],
+      app_metadata: {},
+      user_metadata: { full_name: who.name, provider_id: who.discordId }
+    }
+  };
+}
+
+/**
  * Opens one state in its own browser context and waits for its sentinel.
  *
  * A fresh context per state, not a shared page: IS_COLD_LANDING reads
@@ -212,6 +237,15 @@ export function launchBrowser() {
  */
 export async function openState(browser, port, state, overrides = {}) {
   const context = await browser.newContext({ viewport: DESKTOP });
+  // A signed-in state: supabase-js reads an unexpired session from storage
+  // without calling the auth server. Pages on 127.0.0.1 use the local stack's
+  // URL (#1052), which names the storage key.
+  if (state.session) {
+    await context.addInitScript(
+      ([key, value]) => window.localStorage.setItem(key, value),
+      ['sb-127-auth-token', JSON.stringify(state.session)]
+    );
+  }
   const page = await context.newPage();
   const recorded = installRoutes(page, port, overrides);
   await page.goto('http://127.0.0.1:' + port + state.path, { waitUntil: 'load' });

@@ -10,6 +10,7 @@ export const ROLE_LABELS: Record<Role, string> = { Tank: 'Tanks', Heal: 'Healers
 export type PlayerRow = {
   id: number;
   name_realm: string;
+  url_code?: string | null;
   nickname: string | null;
   is_trial: boolean;
   is_bench: boolean;
@@ -32,6 +33,10 @@ export type Status = 'Trial' | 'Bench' | 'Rotator';
 
 export type Raider = {
   key: string;
+  // The roster character behind a row, and its profile address code. Null for
+  // a signup on next season's roster.
+  playerId: number | null;
+  urlCode: string | null;
   // What the roster calls them: the nickname when there is one.
   name: string;
   // The character's own name, shown beside a nickname.
@@ -56,7 +61,7 @@ const firstName = (nameRealm: string) => nameRealm.split('-')[0]!.trim();
 const GEAR_SLOTS = 16;
 const IGNORED_SLOTS = new Set(['SHIRT', 'TABARD']);
 
-export function equippedItemLevel(gear: GearRow[]): number | null {
+export function equippedItemLevel(gear: Pick<GearRow, 'equipment_slot' | 'item_level'>[]): number | null {
   const levels = new Map<string, number>();
   for (const row of gear) {
     if (IGNORED_SLOTS.has(row.equipment_slot) || row.item_level == null) continue;
@@ -99,6 +104,8 @@ export function toRoster(players: PlayerRow[], gear: GearRow[]): RoleGroup[] {
     if (p.is_rotator) statuses.push('Rotator');
     raiders.push({
       key: `player-${p.id}`,
+      playerId: p.id,
+      urlCode: p.url_code ?? null,
       name,
       character: name === character ? null : character,
       className: p.classes_specs!.class,
@@ -120,6 +127,8 @@ export function toIncoming(rows: IncomingRow[]): RoleGroup[] {
     if (!nameRealm || !isRole(row.role)) continue;
     raiders.push({
       key: `signup-${row.signup_id}`,
+      playerId: null,
+      urlCode: null,
       name: firstName(nameRealm),
       character: null,
       className: row.class ?? '',

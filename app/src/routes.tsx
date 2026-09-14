@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import { Navigate, type RouteObject } from 'react-router';
 import { RosterPage } from './roster/RosterPage';
+import { MyProfilePage, PlayerProfilePage } from './profile/ProfilePage';
 import { AppShell } from './layout/AppShell';
 import { HomePage } from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -14,7 +15,8 @@ export type RouteHandle = { title: string };
 // Team pages rebuilt so far (#1102). Every other page in TEAM_PAGES is still a
 // placeholder.
 const BUILT_PAGES: Record<string, ReactElement> = {
-  roster: <RosterPage />
+  roster: <RosterPage />,
+  me: <MyProfilePage />
 };
 
 // Addresses from #1100: /g/<guild key>/t/<team key>/... for team pages,
@@ -47,7 +49,9 @@ export const routes: RouteObject[] = [
               (BUILT_PAGES[path] ?? <PlaceholderPage title={title} />)
             ),
             handle: { title } satisfies RouteHandle
-          }))
+          })),
+          // A player's profile by its address code (#1100), for the raider and officers.
+          { path: 'p/:playerCode', element: <PlayerProfilePage />, handle: { title: 'Profile' } satisfies RouteHandle }
         ]
       },
       { path: '*', element: <NotFoundPage />, handle: { title: 'Page not found' } satisfies RouteHandle }

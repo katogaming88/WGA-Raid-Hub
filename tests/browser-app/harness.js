@@ -101,7 +101,8 @@ function json(body, headers = {}) {
  * @param {number} port
  * @param {{ path: string, viewport?: {width:number,height:number}, session?: object, who?: keyof PEOPLE,
  *           reducedMotion?: 'reduce'|'no-preference', colorScheme?: 'light'|'dark', sentinel?: string,
- *           tables?: Record<string, unknown[]> }} state
+ *           tables?: Record<string, unknown[]>, person?: { discordId: string|null, person: object|null },
+ *           click?: string }} state
  */
 export async function openApp(browser, port, state) {
   const host = supabaseHost();
@@ -119,7 +120,8 @@ export async function openApp(browser, port, state) {
     const key = `sb-${host.hostname.split('.')[0]}-auth-token`;
     await context.addInitScript(([k, v]) => window.localStorage.setItem(k, v), [key, JSON.stringify(state.session)]);
   }
-  const who = state.who ? PEOPLE[state.who] : null;
+  // `person` describes someone inline, for pages that need a particular raider.
+  const who = state.person ?? (state.who ? PEOPLE[state.who] : null);
   // Rows per table for the pages that read them, answered whatever the filters.
   const tables = { players: [], player_equipped_gear: [], incoming_roster: [], team_settings: [], ...state.tables };
 

@@ -47,6 +47,18 @@ export function useSupabaseQuery<T>(
   });
 }
 
+// Two reads that only make sense together, as one result for DataState: loading
+// until both land, an error (with one Retry for both) if either fails.
+export function bothQueries<A, B>(a: UseQueryResult<A>, b: UseQueryResult<B>): UseQueryResult<[A, B]> {
+  if (a.isSuccess && b.isSuccess) return { ...a, data: [a.data, b.data] } as UseQueryResult<[A, B]>;
+  const failed = a.isError ? a : b.isError ? b : null;
+  const refetch = () => Promise.all([a.refetch(), b.refetch()]);
+  if (failed) {
+    return { ...failed, refetch, isFetching: a.isFetching || b.isFetching } as unknown as UseQueryResult<[A, B]>;
+  }
+  return { ...(a.isPending ? a : b), refetch } as unknown as UseQueryResult<[A, B]>;
+}
+
 // The only way a page writes to Supabase. A failed write throws like a failed
 // read, so the caller's error state shows it and it gets reported. Once it
 // succeeds, every cached read whose key starts with one of `refreshes` is

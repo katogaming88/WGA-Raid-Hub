@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { AxeBuilder } from '@axe-core/playwright';
 import { launchBrowser, openApp, startApp, storedSession, NARROW } from './harness.js';
 import { SCENARIO } from '../behavior/roster.js';
+import { ATTENDANCE, GEAR, ITEMS, LOOT, MPLUS_REJECTIONS, SEASON, VIEWERS } from '../behavior/profile.js';
 
 // The new app in a real browser (#1101 part 4): the shell's accessibility
 // checklist, measured rather than trusted. Unlike tests/browser/, there is no
@@ -20,6 +21,52 @@ const ROSTER = {
   incoming_roster: SCENARIO.incoming,
   team_settings: [{ signupSeason: SCENARIO.activeSignupSeason }]
 };
+
+// A profile's reads (tests/behavior/profile.js), seen by a viewer.
+function profileState(label, viewerKey, profileKey, extra = {}) {
+  const viewer = VIEWERS[viewerKey];
+  const shown = VIEWERS[profileKey].player;
+  return {
+    label,
+    path: viewerKey === profileKey ? '/g/wga/t/phoenix/me' : `/g/wga/t/phoenix/p/${shown.url_code}`,
+    sentinel: 'main .profile-name',
+    session: storedSession({ battlenet: `${viewer.player.name_realm}#1`, discord: viewer.player.name_realm }),
+    person: {
+      discordId: viewer.discordId,
+      person: {
+        site_admin: false,
+        guild_officer: false,
+        boe_manager: false,
+        teams: [
+          {
+            team_id: 1,
+            team_member_id: viewer.teamMember,
+            role: viewer.role,
+            characters: [
+              {
+                player_id: viewer.player.id,
+                name_realm: viewer.player.name_realm,
+                url_code: viewer.player.url_code,
+                archived_at: null
+              }
+            ]
+          }
+        ]
+      }
+    },
+    tables: {
+      players: [shown],
+      team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end }],
+      attendance: ATTENDANCE.filter((r) => r.player_id === shown.id),
+      rclc_loot: LOOT.filter((r) => r.player_id === shown.id),
+      player_equipped_gear: GEAR.filter((r) => r.player_id === shown.id),
+      items: ITEMS,
+      mplus_exclusion_requests:
+        viewer.role === 'officer' ? MPLUS_REJECTIONS.filter((r) => r.player_id === shown.id) : []
+    },
+    ...extra
+  };
+}
 
 const OFFICER = storedSession({ battlenet: 'Kato#1499', discord: 'Phoenix Officer' });
 const BATTLENET_ONLY = storedSession({ battlenet: 'Aeglos#1234' });
@@ -70,7 +117,13 @@ const STATES = [
     sentinel: 'table.roster-table',
     tables: ROSTER,
     click: 'role=tab[name="Season 4 Roster (Tentative)"]'
-  }
+  },
+  profileState('my profile', 'torbjorn', 'torbjorn'),
+  profileState('my profile, light', 'torbjorn', 'torbjorn', { colorScheme: 'light' }),
+  profileState('officer opening a profile with a refused M+ request', 'officer', 'dodgey', {
+    sentinel: 'main .mplus-status'
+  }),
+  { label: 'my profile, signed out', path: '/g/wga/t/phoenix/me', sentinel: 'text=Sign in to see your profile' }
 ];
 
 let server;
