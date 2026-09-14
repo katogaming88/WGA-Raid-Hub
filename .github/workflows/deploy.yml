@@ -340,7 +340,7 @@ jobs:
       - name: Show the rendered build identity
         run: cat ./_site/build.json
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
 
   deploy:
     name: Deploy to Pages
