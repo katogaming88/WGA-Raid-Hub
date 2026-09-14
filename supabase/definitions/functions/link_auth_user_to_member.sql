@@ -9,30 +9,31 @@ CREATE OR REPLACE FUNCTION public.link_auth_user_to_member()
  SET search_path TO 'public'
 AS $function$
 begin
-  -- Only the provider writes raw_app_meta_data. The provider_id below is the
-  -- account's own to set, so without this the match proves nothing.
-  if new.raw_app_meta_data ->> 'provider' is distinct from 'discord' then
+  -- Only a Discord identity links a Discord-keyed grant. One early return
+  -- rather than a condition on each update, so a fifth grant table added later
+  -- is covered without anyone remembering.
+  if new.provider is distinct from 'discord' then
     return new;
   end if;
 
   update team_members
-  set auth_user_id = new.id
-  where discord_id = new.raw_user_meta_data ->> 'provider_id'
+  set auth_user_id = new.user_id
+  where discord_id = new.provider_id
     and auth_user_id is null;
 
   update site_admins
-  set auth_user_id = new.id
-  where discord_id = new.raw_user_meta_data ->> 'provider_id'
+  set auth_user_id = new.user_id
+  where discord_id = new.provider_id
     and auth_user_id is null;
 
   update boe_managers
-  set auth_user_id = new.id
-  where discord_id = new.raw_user_meta_data ->> 'provider_id'
+  set auth_user_id = new.user_id
+  where discord_id = new.provider_id
     and auth_user_id is null;
 
   update guild_officers
-  set auth_user_id = new.id
-  where discord_id = new.raw_user_meta_data ->> 'provider_id'
+  set auth_user_id = new.user_id
+  where discord_id = new.provider_id
     and auth_user_id is null;
 
   return new;

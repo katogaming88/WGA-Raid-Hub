@@ -7979,6 +7979,12 @@
       "return_type": "_int4",
       "arguments": "",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.auth_user_for_discord_id",
+      "return_type": "uuid",
+      "arguments": "p_discord_id text",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

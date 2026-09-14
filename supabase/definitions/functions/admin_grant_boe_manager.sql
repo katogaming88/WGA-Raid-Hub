@@ -20,10 +20,7 @@ begin
   end if;
 
   insert into public.boe_managers (discord_id, auth_user_id)
-  values (
-    p_discord_id,
-    (select id from auth.users where raw_user_meta_data ->> 'provider_id' = p_discord_id limit 1)
-  )
+  values (p_discord_id, public.auth_user_for_discord_id(p_discord_id))
   returning id into v_id;
 
   perform public.write_audit_log(null, 'boe_manager_granted', 'boe_manager', v_id, jsonb_build_object('discord_id', p_discord_id));

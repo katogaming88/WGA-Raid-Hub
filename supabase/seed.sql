@@ -68,7 +68,7 @@ select
   '',
   now(),
   '', '', '', '',
-  '{"provider":"email","providers":["email"]}'::jsonb,
+  '{"provider":"discord","providers":["discord"]}'::jsonb,
   jsonb_build_object('provider_id', p.provider_id, 'full_name', p.full_name),
   now(),
   now()
@@ -91,15 +91,22 @@ from (values
   ('00000000-0000-0000-0000-000000000016', 'hellfire-raider@wga.local',    'discord-raider-2',      'Hellfire Raider')
 ) as p(id, email, provider_id, full_name);
 
--- One identity row each, so an account looks like one that signed in rather
--- than one conjured in SQL. The auth service reads these when listing a user's
--- providers.
+-- One identity row each, and it is a Discord one, because since #1135 this is
+-- where identity comes from: current_discord_id() and the grant link trigger
+-- both read auth.identities, so a persona with an email identity resolves to
+-- nobody. Production looks exactly like this, one discord identity per account
+-- and no email identity anywhere.
+--
+-- It does not cost the local login. `npm run dev:login` signs a persona in with
+-- an admin magic link, which GoTrue looks up by auth.users.email, and verifying
+-- one against a discord-only account adds no email identity (checked on the
+-- pinned local stack, 2026-09-13).
 insert into auth.identities (provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
 select
   u.raw_user_meta_data ->> 'provider_id',
   u.id,
   jsonb_build_object('sub', u.id::text, 'email', u.email, 'provider_id', u.raw_user_meta_data ->> 'provider_id'),
-  'email',
+  'discord',
   now(),
   now(),
   now()

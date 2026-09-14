@@ -98,6 +98,30 @@ export async function withTxn(fn) {
   }
 }
 
+// An account as Discord OAuth leaves it (#1135): the auth.users row and the
+// auth.identities row the provider writes, in that order, which is the order
+// GoTrue itself uses and so the order link_auth_user_to_member() expects.
+//
+// `metaDiscordId` defaults to the real one. Pass a different value to build the
+// account this whole arc is about, whose user metadata claims one Discord id
+// while its identity row proves another; identity wins everywhere that matters.
+export async function insertDiscordUser(q, uid, discordId, metaDiscordId = discordId) {
+  await q(
+    `insert into auth.users (id, raw_app_meta_data, raw_user_meta_data)
+     values ($1, '{"provider":"discord","providers":["discord"]}'::jsonb,
+             jsonb_build_object('provider_id', $2::text))`,
+    [uid, metaDiscordId]
+  );
+  // uid is passed twice on purpose: node-pg cannot deduce one type for a
+  // parameter used both as the uuid column and inside jsonb_build_object.
+  await q(
+    `insert into auth.identities (provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+     values ($1::text, $2::uuid, jsonb_build_object('sub', $3::text, 'provider_id', $1::text), 'discord',
+             now(), now(), now())`,
+    [discordId, uid, uid]
+  );
+}
+
 // Visible row count under a role.
 export async function countAs(role, uid, table, where = 'true') {
   const res = await queryAs(role, uid, `select count(*)::int as n from public.${table} where ${where}`);

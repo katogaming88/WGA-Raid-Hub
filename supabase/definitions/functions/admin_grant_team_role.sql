@@ -34,17 +34,13 @@ begin
     raise exception 'That team is archived';
   end if;
 
-  -- Resolved here rather than left for a trigger to fill later. The trigger
-  -- that does exist, on_auth_user_created, is AFTER INSERT ON auth.users, so
-  -- it fires once at account creation and never again: a row inserted for
-  -- somebody who signed in months ago would keep a null auth_user_id, read as
-  -- no role at all, and look perfectly correct in the table. Null here means
-  -- the account does not exist yet, which is the case the trigger does cover.
-  -- (This reads auth.users; it is why the function is security definer.)
-  select id into v_auth_user_id
-  from auth.users
-  where raw_user_meta_data ->> 'provider_id' = p_discord_id
-  limit 1;
+  -- Resolved here rather than left for a trigger to fill later. The link
+  -- trigger fires on the account's Discord identity appearing, which happens
+  -- once: a row inserted for somebody who signed in months ago would keep a
+  -- null auth_user_id, read as no role at all, and look perfectly correct in
+  -- the table. Null here means no Discord account holds that id yet, which is
+  -- the case the trigger does cover.
+  v_auth_user_id := public.auth_user_for_discord_id(p_discord_id);
 
   select * into v_existing
   from public.team_members

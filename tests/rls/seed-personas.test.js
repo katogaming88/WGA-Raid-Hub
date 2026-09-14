@@ -89,10 +89,16 @@ describe('seeded personas (#1053)', () => {
     expect(granted.filter((r) => r.provider_id !== r.grant_discord_id).map((r) => r.id)).toEqual([]);
   });
 
-  it('gives every user an identities row, so the account looks like one that signed in', async () => {
+  it('gives every user a Discord identity row, which is where identity comes from', async () => {
+    // #1135: current_discord_id() and link_auth_user_to_member() both read
+    // auth.identities where provider = 'discord'. A persona seeded with an
+    // email identity, which is what this was until #1135, resolves to nobody
+    // and takes most of the suite with it.
     // rls-pool-read-only: reads the seeded identities, writes nothing.
     const { rows } = await pool.query(
-      'select u.id from auth.users u left join auth.identities i on i.user_id = u.id where i.user_id is null'
+      `select u.id from auth.users u
+         left join auth.identities i on i.user_id = u.id and i.provider = 'discord'
+        where i.user_id is null`
     );
     expect(rows.map((r) => r.id)).toEqual([]);
   });

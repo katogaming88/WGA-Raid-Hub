@@ -376,13 +376,21 @@ where real rows are restored with their auth links cleared, and there it means
 reading that person's data. The named personas cover every role without it.
 
 **This route needs `psql`** (section 1d), which the persona route does not. Since
-[#1118](https://github.com/katogaming88/WGA-Raid-Hub/issues/1118) the link trigger
-binds grant rows only for an account stamped as a Discord signup in
-`raw_app_meta_data`, which is service-role-only, and no admin API call can stamp
-it before the insert the trigger fires on. So the account is minted as two rows
-in SQL, in `auth.users` and `auth.identities`, the same way `supabase/seed.sql`
-and `scripts/dev/snapshot-personas.js` mint the personas, and the trigger links
-it from there. An account the stack already holds is reused and nothing is minted.
+[#1135](https://github.com/katogaming88/WGA-Raid-Hub/issues/1135) identity comes
+from `auth.identities`: the link trigger fires on a Discord identity row, and
+`current_discord_id()` reads one, so an account with no such row resolves to
+nobody and holds no grant. No admin API call creates that row. So the account is
+minted as two rows in SQL, in `auth.users` and `auth.identities`, the same way
+`supabase/seed.sql` and `scripts/dev/snapshot-personas.js` mint the personas, and
+the trigger links it from there. An account the stack already holds is reused and
+nothing is minted.
+
+The identity row's `provider` is `discord` everywhere on both stacks, which is
+what production looks like: 73 accounts, one Discord identity each, no email
+identity anywhere. Seeding an email identity instead, which is what the seed did
+before #1135, leaves every persona resolving to nobody. It costs the sign-in
+nothing, because the magic link below is looked up by `auth.users.email` and
+verifying one adds no email identity.
 
 Because the account exists and is confirmed before the link is asked for, this
 route now returns a `type=magiclink` link. A `type=signup` link from it means the
