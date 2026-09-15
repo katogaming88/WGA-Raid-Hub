@@ -12,6 +12,40 @@ answers to.
 
 ---
 
+## [3.120.0] - 2026-09-14
+
+### Backend
+
+- A raider can read their own M+ exclusion requests
+  ([#868](https://github.com/katogaming88/WGA-Raid-Hub/issues/868)). Only
+  officers could, so the current site's "Rejected" message and the officer's
+  note never showed for the raider it was about. It does now, on both sites.
+- A Mark Received report with the new **Pug raid** source auto-approves even
+  when its note says "raid". Other still goes to officer review.
+
+### Project
+
+- The new app's player profile, part 4: **Mark Received** and the **M+
+  exclusion request** (#868), each in a dialog.
+  - Mark Received sits on each loot priority row until a Mythic copy is on
+    file, for the raider's own character. It asks for the difficulty, how
+    they got it and an optional note, with **Weekly quest** and **Pug raid**
+    added to the sources, and says guild raid drops show up on their own.
+    A report held for review tells the officers in Discord, as today.
+  - The M+ card shows the raider their own status, including a rejected
+    request with the officer's note, and offers the request while the team
+    takes them. The form still needs Myth track in every M+ slot and at
+    least 2 of 3 gem sockets.
+  - Both work on a phone, since each has a Submit and a Cancel.
+- The loot priority list counts a raid item receipt saved with its catalog
+  slot. 43 of 73 approved receipts on live data are saved that way, and the
+  new app was ignoring them, so those items did not show as received.
+- How both forms behave was recorded from the current site first
+  (`tests/behavior/profile-forms.js`), and the same checks run against the
+  new app. Form fields have shared styles for the forms still to come.
+
+---
+
 ## [3.119.3] - 2026-09-14
 
 ### Project
