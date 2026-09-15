@@ -125,10 +125,10 @@ insert into public.teams (id, name, slug, guild_id) values
 -- The season every seeded stamp below carries (#932). Since the foreign keys
 -- on the fourteen season columns, a stamp has to name a seasons row; this one
 -- is 'seed-season' as both code and name so the seeded rows keep the value
--- the tests know, distinct from any real tier. It is closed, so
--- current_season() on a reset stack is still the migration's own MID2, the
--- way production reads it. A test that stamps its own season inserts its own
--- row inside its transaction (tests/rls/helpers.js seedSeason).
+-- the tests know, distinct from any real tier. Its window sits before the
+-- first tier, since tiers cannot overlap and only the migration's MID2 is
+-- open-ended. A test that stamps its own season inserts its own row inside
+-- its transaction (tests/rls/helpers.js seedSeason).
 insert into public.seasons (code, display_name, starts_at, ends_at) values
   ('seed-season', 'seed-season', '2026-01-01', '2026-01-31');
 

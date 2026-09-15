@@ -39,10 +39,12 @@
 // zone(id).encounters for the canonical id list every run, same query
 // wcl-sync's getZoneEncounters action already uses.
 //
-// The season a raid_zones row is filed under is the guild's current tier,
-// read once per run from current_season() (#932), not the syncing team's
-// seasonName: a raid belongs to a tier whatever cycle a team has clicked,
-// and a run with no current tier stops before it touches WarcraftLogs.
+// The season a raid_zones row is filed under is the syncing team's own
+// seasonName: raid_zones is one row per (wcl_zone_id, season) shared by
+// every team, and the site scopes a team's progress by that same name, so
+// two teams on different cycles stay apart through it. Since #932 the
+// column is a foreign key to seasons, so a team with no name is skipped
+// rather than stamped Unknown.
 //
 // handle() takes its reads and writes, its fetch and its environment as an
 // argument (#1006), so tests/edge/ runs it against plain objects; deps.ts
@@ -52,7 +54,6 @@ import { VERSION } from './version.ts';
 
 export type Env = { get(name: string): string | undefined };
 
-export type SeasonRow = { code: string; display_name: string };
 export type TeamRow = { id: number; wcl_guild_id: number };
 export type RaidZoneRow = {
   wcl_zone_id: number;
@@ -69,7 +70,6 @@ export type ProgressRow = Record<string, unknown>;
 // it over supabase-js in deps.ts; a test hands in a plain object. Each throws
 // when its statement fails.
 export interface ProgressDb {
-  currentSeason(): Promise<SeasonRow[]>;
   // Teams with a wcl_guild_id.
   teams(): Promise<TeamRow[]>;
   // The team's team_settings.config, {} when it has no row.
@@ -403,15 +403,6 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const teams = await deps.db.teams();
     if (teams.length === 0) return jsonResponse({ success: true, teams: 0, synced: 0 });
 
-    // The tier every raid_zones row written this run is filed under. Exactly
-    // one row, or the run stops here: a stamp with no tier would be the
-    // 'Unknown' season this used to write, which the foreign key now refuses.
-    const currentSeasons = await deps.db.currentSeason();
-    if (currentSeasons.length !== 1) {
-      return jsonResponse({ success: false, error: 'No current season' }, 500);
-    }
-    const season = currentSeasons[0].display_name;
-
     const token = await getAccessToken(deps);
     if (!token) return jsonResponse({ success: false, error: 'Failed to get WCL access token' }, 500);
 
@@ -423,6 +414,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         const config: any = await deps.db.teamConfig(team.id);
         const raids: RaidConfigEntry[] = Array.isArray(config.raidProgression) ? config.raidProgression : [];
         if (raids.length === 0) continue;
+        // The stamp on the team's raid_zones rows; no name, no rows.
+        const season: string = typeof config.seasonName === 'string' ? config.seasonName : '';
+        if (!season) continue;
 
         for (let i = 0; i < raids.length; i++) {
           const outcome = await syncTeamZone(deps, token, team.id, team.wcl_guild_id, season, raids[i], i);

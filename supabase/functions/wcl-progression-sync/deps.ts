@@ -4,7 +4,7 @@
 // tests/edge/ cannot cover and the rehearsal against the local stack does
 // (docs/supabase-local-dev-setup.md, section 11).
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
-import type { Deps, ProgressDb, SavedEncounter, SeasonRow, TeamRow } from './handler.ts';
+import type { Deps, ProgressDb, SavedEncounter, TeamRow } from './handler.ts';
 
 export function supabaseDb(): ProgressDb {
   // Service role: this writes progress for every team at once, which no
@@ -18,11 +18,6 @@ export function supabaseDb(): ProgressDb {
   };
 
   return {
-    async currentSeason() {
-      const { data, error } = await db().rpc('current_season');
-      if (error) throw new Error(error.message);
-      return (data || []) as SeasonRow[];
-    },
     async teams() {
       const { data, error } = await db().from('teams').select('id, wcl_guild_id').not('wcl_guild_id', 'is', null);
       if (error) throw new Error(error.message);
