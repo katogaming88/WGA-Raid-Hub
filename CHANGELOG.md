@@ -41,7 +41,8 @@ answers to.
   cover who can read a person, and that a membership's account cannot be
   pointed elsewhere.
 - From Rex's review: the access-rules doc describes the self-received
-  auto-approval and the Discord-id lookup through the person.
+  auto-approval and the Discord-id lookup through the person, and the setup
+  guide's team-role steps drop the repair that can no longer be needed.
 
 ---
 
