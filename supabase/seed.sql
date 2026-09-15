@@ -122,6 +122,16 @@ insert into public.teams (id, name, slug, guild_id) values
   (2, 'Hellfire Rollers', 'hellfire', (select id from public.guilds where url_key = 'wga')),
   (3, 'Immolation', 'immolation', (select id from public.guilds where url_key = 'wga'));
 
+-- The season every seeded stamp below carries (#932). Since the foreign keys
+-- on the fourteen season columns, a stamp has to name a seasons row; this one
+-- is 'seed-season' as both code and name so the seeded rows keep the value
+-- the tests know, distinct from any real tier. It is closed, so
+-- current_season() on a reset stack is still the migration's own MID2, the
+-- way production reads it. A test that stamps its own season inserts its own
+-- row inside its transaction (tests/rls/helpers.js seedSeason).
+insert into public.seasons (code, display_name, starts_at, ends_at) values
+  ('seed-season', 'seed-season', '2026-01-01', '2026-01-31');
+
 insert into public.team_members (id, team_id, discord_id, auth_user_id, role, name_realm) values
   (1, 1, 'discord-officer-1', '00000000-0000-0000-0000-000000000001', 'officer', 'Seedofficer-Illidan'),
   (2, 1, 'discord-leader-1',  '00000000-0000-0000-0000-000000000002', 'team_leader', 'Seedleader-Illidan'),

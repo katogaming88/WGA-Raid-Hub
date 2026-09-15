@@ -127,3 +127,17 @@ export async function countAs(role, uid, table, where = 'true') {
   const res = await queryAs(role, uid, `select count(*)::int as n from public.${table} where ${where}`);
   return res.rows[0].n;
 }
+
+// A season a fixture can stamp (#932). Every season column is a foreign key
+// to seasons since 20260914210617, so a test that writes its own season
+// (rather than the seed's 'seed-season' or a real tier) inserts the row
+// first, inside its transaction. One value serves as both the code and the
+// display name, so the same constant works on a code column and a name
+// column. The row is closed and dated before every tier, so current_season()
+// still answers MID2 while it exists.
+export async function seedSeason(q, season) {
+  await q(
+    "insert into public.seasons (code, display_name, starts_at, ends_at) values ($1, $1, '2026-01-01', '2026-01-02')",
+    [season]
+  );
+}

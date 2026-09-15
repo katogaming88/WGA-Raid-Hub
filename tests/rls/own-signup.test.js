@@ -9,7 +9,7 @@
 // shape (parameterized uid, since callers here vary -- the owner, a
 // different raider, an officer, anon).
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, RAIDER_T1, OFFICER_T1, SIGNUP_OWNER_T1 } from './helpers.js';
+import { pool, RAIDER_T1, OFFICER_T1, SIGNUP_OWNER_T1, seedSeason } from './helpers.js';
 
 async function withTxn(fn) {
   const client = await pool.connect();
@@ -43,7 +43,9 @@ async function withTxn(fn) {
 // Inserts a season_signups row as postgres (bypasses RLS), owned by
 // SIGNUP_OWNER_T1 unless overridden. team 1's active season is 'seed-season'
 // (supabase/seed.sql); classes_specs id 1 is the only seeded row (Mage/Frost).
-function insertSignup(q, overrides) {
+async function insertSignup(q, overrides) {
+  // A season other than the seed's needs its own seasons row first (#932).
+  if (overrides?.season && overrides.season !== 'seed-season') await seedSeason(q, overrides.season);
   const row = {
     team_id: 1,
     signup_name_realm: 'Ownsignup-Illidan',

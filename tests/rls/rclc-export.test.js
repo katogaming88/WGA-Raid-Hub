@@ -11,18 +11,32 @@
 // track, and assertions that used to check both H and M off one combined
 // payload now make two calls (one per track) instead.
 import { describe, it, expect } from 'vitest';
-import { pool, withRole, OFFICER_T1, TEAM_LEADER_T1, RAIDER_T1, OFFICER_T2 } from './helpers.js';
+import { pool, withTxn, seedSeason, OFFICER_T1, TEAM_LEADER_T1, RAIDER_T1, OFFICER_T2 } from './helpers.js';
+
+// The seasons this file stamps (#932): every season column is a foreign key
+// to seasons, and an officer cannot insert one, so they are seeded as
+// postgres before the role drops. Wraps the shared harness.
+async function withSeasons(role, uid, fn) {
+  return withTxn(async ({ q, asRole }) => {
+    await seedSeason(q, 'export-test');
+    await seedSeason(q, 'some-other-season');
+    return fn(asRole(role, uid));
+  });
+}
 
 // items has no authenticated-write policy (it's a read-only shared catalog,
 // populated only via migrations/import scripts), and
 // item_preferences' own "Raiders manage own item_preferences" RLS policy
 // only lets a player insert rows for themselves, not an officer inserting on
 // their behalf -- seed as the unrestricted pool connection, same as items,
-// before withRole() drops to `authenticated`.
+// before withSeasons() drops to `authenticated`.
 async function withItemsAndBisSeeded(role, uid, fn) {
   const client = await pool.connect();
   try {
     await client.query('begin');
+    // The seasons this file stamps (#932), as postgres before the role drops.
+    await seedSeason((text, params) => client.query(text, params), 'export-test');
+    await seedSeason((text, params) => client.query(text, params), 'some-other-season');
     await client.query(
       `insert into public.items (id, wow_item_id, name, slot, armor_type, is_placeholder) values
          (900, 90001, 'Test Trinket', 'Trinket', null, false),
@@ -68,6 +82,9 @@ async function withPriorityAndWishlistSeeded(role, uid, wishlistRows, fn) {
   const client = await pool.connect();
   try {
     await client.query('begin');
+    // The seasons this file stamps (#932), as postgres before the role drops.
+    await seedSeason((text, params) => client.query(text, params), 'export-test');
+    await seedSeason((text, params) => client.query(text, params), 'some-other-season');
     await client.query(
       `insert into public.priority_order (team_id, season, item_id, track, rank, player_id) values
          (1, 'export-test', 2, 'Hero', 1, 2),
@@ -92,7 +109,7 @@ async function withPriorityAndWishlistSeeded(role, uid, wishlistRows, fn) {
 
 describe('build_rclc_export excludes already-awarded recipients (#480)', () => {
   it('a Mythic recipient drops from both the Hero and Myth ranked lists for that item', async () => {
-    await withRole('authenticated', OFFICER_T1, async (q) => {
+    await withSeasons('authenticated', OFFICER_T1, async (q) => {
       await seedPriority(q);
       // player 1 (Seedraider-Illidan) already has Mythic loot for item 2.
       await q(
@@ -108,7 +125,7 @@ describe('build_rclc_export excludes already-awarded recipients (#480)', () => {
   });
 
   it('a Hero recipient drops from the Hero list only, still eligible for Myth', async () => {
-    await withRole('authenticated', OFFICER_T1, async (q) => {
+    await withSeasons('authenticated', OFFICER_T1, async (q) => {
       await seedPriority(q);
       // player 2 (Seedplayertwo-Illidan) already has Heroic loot for item 2.
       await q(
@@ -124,7 +141,7 @@ describe('build_rclc_export excludes already-awarded recipients (#480)', () => {
   });
 
   it('rclc_loot for a different season does not exclude anyone', async () => {
-    await withRole('authenticated', OFFICER_T1, async (q) => {
+    await withSeasons('authenticated', OFFICER_T1, async (q) => {
       await seedPriority(q);
       await q(
         `insert into public.rclc_loot (team_id, player_id, item_id, track, season) values
@@ -141,7 +158,7 @@ describe('build_rclc_export excludes already-awarded recipients (#480)', () => {
 
 describe('build_rclc_export', () => {
   it('rejects a track that is not Hero or Myth', async () => {
-    await withRole('authenticated', OFFICER_T1, async (q) => {
+    await withSeasons('authenticated', OFFICER_T1, async (q) => {
       await expect(q('select public.build_rclc_export(1, $1, $2)', ['export-test', 'Champion'])).rejects.toThrow(
         'Invalid track'
       );
@@ -164,7 +181,7 @@ describe('build_rclc_export', () => {
   });
 
   it('scopes priority to the requested track only, keyed by wow_item_id and ordered by rank', async () => {
-    await withRole('authenticated', OFFICER_T1, async (q) => {
+    await withSeasons('authenticated', OFFICER_T1, async (q) => {
       await seedPriority(q);
       const hero = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Hero']);
       const myth = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Myth']);
@@ -227,6 +244,8 @@ describe('build_rclc_export', () => {
     const client = await pool.connect();
     try {
       await client.query('begin');
+      // The season this case stamps (#932), as postgres before the role drops.
+      await seedSeason((text, params) => client.query(text, params), 'export-test');
       await client.query(
         `insert into public.priority_order (team_id, season, item_id, track, rank, player_id) values
            (1, 'export-test', 2, 'Hero', 1, 2),
@@ -268,7 +287,7 @@ describe('build_rclc_export', () => {
   });
 
   it("attaches the site's default wishlist tier labels when the team has no overrides", async () => {
-    await withRole('authenticated', OFFICER_T1, async (q) => {
+    await withSeasons('authenticated', OFFICER_T1, async (q) => {
       const res = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Hero']);
       expect(res.rows[0].payload.statusLabels).toEqual({ bis: 'BiS', good: '2nd Choice', ok: 'Sidegrade' });
     });
@@ -300,7 +319,7 @@ describe('build_rclc_export', () => {
   });
 
   it('scopes priority to the given season, not other seasons for the same team', async () => {
-    await withRole('authenticated', OFFICER_T1, async (q) => {
+    await withSeasons('authenticated', OFFICER_T1, async (q) => {
       await seedPriority(q);
       const res = await q('select public.build_rclc_export(1, $1, $2) as payload', ['some-other-season', 'Hero']);
       expect(res.rows[0].payload.priority).toEqual({});
@@ -317,7 +336,7 @@ describe('build_rclc_export', () => {
   });
 
   it('a team leader is also authorized', async () => {
-    await withRole('authenticated', TEAM_LEADER_T1, async (q) => {
+    await withSeasons('authenticated', TEAM_LEADER_T1, async (q) => {
       const res = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Hero']);
       // seed.sql has no item_preferences rows, so players comes back empty
       // here -- this test only asserts authorization succeeds and
@@ -327,7 +346,7 @@ describe('build_rclc_export', () => {
   });
 
   it('a raider is not authorized', async () => {
-    await withRole('authenticated', RAIDER_T1, async (q) => {
+    await withSeasons('authenticated', RAIDER_T1, async (q) => {
       await expect(q('select public.build_rclc_export(1, $1, $2)', ['export-test', 'Hero'])).rejects.toThrow(
         'Not authorized'
       );
@@ -335,7 +354,7 @@ describe('build_rclc_export', () => {
   });
 
   it('an officer on another team is not authorized for team 1', async () => {
-    await withRole('authenticated', OFFICER_T2, async (q) => {
+    await withSeasons('authenticated', OFFICER_T2, async (q) => {
       await expect(q('select public.build_rclc_export(1, $1, $2)', ['export-test', 'Hero'])).rejects.toThrow(
         'Not authorized'
       );

@@ -76,12 +76,15 @@ describe('every season column is a foreign key to seasons', () => {
 });
 
 describe('seasons', () => {
-  it('holds the two tiers with their dates', async () => {
+  // The seed adds one closed fixture season of its own (supabase/seed.sql),
+  // so a local stack holds three rows and production two.
+  it('holds the two tiers with their dates, plus the seed fixture', async () => {
     await withTxn(async ({ q }) => {
       const res = await q(
         'select code, display_name, starts_at::text as starts_at, ends_at::text as ends_at from public.seasons order by starts_at'
       );
       expect(res.rows).toEqual([
+        { code: 'seed-season', display_name: 'seed-season', starts_at: '2026-01-01', ends_at: '2026-01-31' },
         { code: 'MID1', display_name: 'Midnight Season 1', starts_at: '2026-03-17', ends_at: '2026-08-10' },
         { code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-08-11', ends_at: null }
       ]);
@@ -113,9 +116,9 @@ describe('seasons', () => {
   it('is readable by anyone and writable by nobody through the API roles', async () => {
     await withTxn(async ({ q, asAnon, asUser }) => {
       const anon = await asAnon('select code from public.seasons order by code');
-      expect(anon.rows.map((r) => r.code)).toEqual(['MID1', 'MID2']);
+      expect(anon.rows.map((r) => r.code)).toEqual(['MID1', 'MID2', 'seed-season']);
       const raider = await asUser(RAIDER_T1, 'select code from public.seasons order by code');
-      expect(raider.rows.map((r) => r.code)).toEqual(['MID1', 'MID2']);
+      expect(raider.rows.map((r) => r.code)).toEqual(['MID1', 'MID2', 'seed-season']);
       const insert =
         "insert into public.seasons (code, display_name, starts_at, ends_at) values ('MID0', 'Midnight Season 0', '2026-01-01', '2026-01-02')";
       await expect(asAnon(insert)).rejects.toMatchObject({ code: RLS_DENIED });
@@ -163,7 +166,7 @@ describe('current_season()', () => {
   it('returns no row before any tier has started', async () => {
     await withTxn(async ({ q }) => {
       await q(`update public.seasons set starts_at = ${TODAY} + 1, ends_at = null where code = 'MID2'`);
-      await q(`update public.seasons set starts_at = ${TODAY} + 1, ends_at = ${TODAY} + 1 where code = 'MID1'`);
+      await q(`update public.seasons set starts_at = ${TODAY} + 1, ends_at = ${TODAY} + 1 where code <> 'MID2'`);
       const res = await q('select code from public.current_season()');
       expect(res.rows).toEqual([]);
     });
