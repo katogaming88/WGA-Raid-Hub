@@ -73,10 +73,20 @@ export type LootRow = {
   season: string | null;
   awarded_at: string;
   items: { name: string } | null;
+  // Where an earlier character received it (#942 step 5b): an old main's name,
+  // or the team they left. Null or missing for the character's own loot.
+  from?: string | null;
 };
 
 export type Difficulty = 'Mythic' | 'Heroic' | 'Normal' | 'Other';
-export type Award = { key: number; name: string; difficulty: Difficulty; date: string; awardedAt: string };
+export type Award = {
+  key: number;
+  name: string;
+  difficulty: Difficulty;
+  date: string;
+  awardedAt: string;
+  from: string | null;
+};
 
 const difficultyOf = (track: string | null): Difficulty =>
   track === 'Myth' ? 'Mythic' : track === 'Hero' ? 'Heroic' : track === 'Champion' ? 'Normal' : 'Other';
@@ -100,7 +110,8 @@ export function seasonLoot(rows: LootRow[], season: SeasonWindow): SeasonLoot {
       name: r.items?.name ?? 'Unknown Item',
       difficulty: difficultyOf(r.track),
       date: AWARD_DATE.format(new Date(r.awarded_at)),
-      awardedAt: r.awarded_at
+      awardedAt: r.awarded_at,
+      from: r.from ?? null
     }))
     .sort((a, b) => (a.awardedAt < b.awardedAt ? 1 : a.awardedAt > b.awardedAt ? -1 : b.key - a.key));
   const newest = awards[0];

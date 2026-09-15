@@ -9,7 +9,7 @@ export function useRosterPlayers(teamId: number) {
     client
       .from('players')
       .select(
-        'id, name_realm, url_code, nickname, is_trial, is_bench, is_rotator, tier_pieces_equipped, join_date, classes_specs(class, spec, role)'
+        'id, name_realm, url_code, nickname, is_trial, is_bench, is_rotator, tier_pieces_equipped, join_date, team_member_id, classes_specs(class, spec, role)'
       )
       .eq('team_id', teamId)
       .is('archived_at', null)

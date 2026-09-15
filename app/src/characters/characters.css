@@ -1,0 +1,304 @@
+/* Characters: the profile card, the alts picker and the roster's alt rows (#942 step 5b). */
+
+.character-icon {
+  flex: none;
+  border-radius: var(--radius-sm);
+}
+
+.character-icon-letters {
+  display: inline-grid;
+  place-items: center;
+  background: var(--raised);
+  color: var(--page);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.character-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.character-name {
+  font-weight: 600;
+}
+
+.character-sub {
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+}
+
+/* Profile card */
+
+.characters-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.characters-head .card-title {
+  margin: 0;
+}
+
+.characters-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.character-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto 3ch;
+  align-items: center;
+  gap: var(--space-2) 10px;
+  padding: var(--space-2) 10px;
+}
+
+.character-row + .character-row {
+  border-top: 1px solid var(--border);
+}
+
+.character-main {
+  border-radius: var(--radius-md);
+  background: var(--raised);
+}
+
+.character-tag-main {
+  border-color: color-mix(in srgb, var(--brand) 40%, var(--border-strong));
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.character-level {
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.characters-privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+}
+
+.characters-lock {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-top: 2px;
+}
+
+/* Picker */
+
+.dialog .picker-intro,
+.dialog .picker-found {
+  margin-bottom: var(--space-2);
+}
+
+.picker-found {
+  font-size: var(--text-xs);
+}
+
+.picker-notices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.picker-notice {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.picker-linked {
+  color: var(--good);
+  font-weight: 600;
+}
+
+.picker-table-wrap {
+  overflow-x: auto;
+}
+
+.picker-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.picker-table th,
+.picker-table td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.picker-table thead th {
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.picker-table .col-num {
+  text-align: right;
+}
+
+.picker-character {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: inherit;
+}
+
+.picker-locked td {
+  color: var(--text-muted);
+}
+
+.picker-tag-good {
+  border-color: color-mix(in srgb, var(--good) 40%, var(--border-strong));
+  color: var(--good);
+}
+
+.picker-tag-warn {
+  border-color: color-mix(in srgb, var(--warn) 40%, var(--border-strong));
+  color: var(--warn);
+}
+
+.picker-note {
+  font-size: var(--text-xs);
+  white-space: normal;
+}
+
+.picker-choice {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--sidebar);
+}
+
+.picker-choice-option {
+  min-height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.picker-choice-option:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.picker-choice-option[aria-pressed='true'] {
+  background: var(--raised);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+
+.picker-choice-alt[aria-pressed='true'] {
+  color: var(--brand);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 55%, var(--border-strong));
+}
+
+.picker-refusal,
+.picker-error {
+  color: var(--text);
+}
+
+.picker-error {
+  margin-top: var(--space-3);
+  color: var(--bad);
+}
+
+.picker-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.picker-count {
+  font-size: var(--text-sm);
+}
+
+.picker-buttons {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Roster alt rows, officers only */
+
+.alts-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+}
+
+.alt-count {
+  margin-left: var(--space-2);
+  color: var(--brand);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.alt-row > * {
+  padding-block: 4px;
+  background: color-mix(in srgb, var(--raised) 45%, var(--panel));
+}
+
+.alt-row .raider-cell {
+  position: relative;
+  padding-left: 30px;
+}
+
+.alt-row .raider-cell::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 14px;
+  width: 9px;
+  height: 50%;
+  border-bottom: 1px solid var(--border-strong);
+  border-left: 1px solid var(--border-strong);
+  border-bottom-left-radius: 4px;
+}
+
+.alt-row .raider-name {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+/* Loot received on an earlier character */
+
+.loot-from {
+  margin-left: var(--space-2);
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  white-space: nowrap;
+}

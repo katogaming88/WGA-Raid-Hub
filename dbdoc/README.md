@@ -178,6 +178,7 @@
 | public.battlenet_account_id | text | p_auth_user_id uuid | FUNCTION |
 | public.link_battlenet_roster_characters | record | p_person_id integer, p_characters jsonb | FUNCTION |
 | public.save_battlenet_characters | characters | p_person_id integer, p_characters jsonb | FUNCTION |
+| public.earlier_characters | record | p_team_id integer | FUNCTION |
 
 ## Enums
 

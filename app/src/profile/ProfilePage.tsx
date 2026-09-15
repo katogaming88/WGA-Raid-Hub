@@ -29,6 +29,9 @@ import {
 import { LootPriorityCard, WishlistSummaryCard } from './LootPriorityCard';
 import { WishlistEditor } from './WishlistEditor';
 import { MplusRequestButton } from './ProfileForms';
+import { CharactersCard } from '../characters/CharactersCard';
+import { withEarlierLoot } from '../characters/characters';
+import { useEarlierLoot } from '../characters/useCharacters';
 import './profile.css';
 
 // A profile opens for the raider it belongs to and for the team's officers
@@ -224,6 +227,10 @@ function Profile({
   const loot = useLoot(player.id);
   const gear = useEquippedGear(player.id);
   // Officers read every request; a raider reads their own (20260914201423).
+  // Loot on the raider's earlier characters counts toward their season total
+  // (Kat, 2026-09-15): an old main on this team, or a team they left.
+  const { teams } = useAddress();
+  const earlier = useEarlierLoot(teamId, season.isSuccess ? season.data : null, true);
   const refusal = useMplusRefusal(teamId, player.id, (officerView || own) && !player.m_plus_excluded);
   const requests = useRequestSettings(teamId);
 
@@ -238,7 +245,19 @@ function Profile({
     season.isSuccess && attendanceRows.isSuccess
       ? attendance(attendanceRows.data, season.data, player.join_date)
       : null;
-  const seasonAwards = season.isSuccess && loot.isSuccess ? seasonLoot(loot.data, season.data) : null;
+  const allLoot = bothQueries(loot, earlier);
+  const combinedLoot = allLoot.isSuccess
+    ? withEarlierLoot(
+        player.id,
+        allLoot.data[0],
+        allLoot.data[1].loot,
+        allLoot.data[1].pairs,
+        allLoot.data[1].players,
+        teamId,
+        new Map(teams.map((t) => [t.id, t.name]))
+      )
+    : null;
+  const seasonAwards = season.isSuccess && combinedLoot ? seasonLoot(combinedLoot, season.data) : null;
 
   return (
     <section className="page profile-page" aria-labelledby="page-title">
@@ -326,7 +345,8 @@ function Profile({
                 <LootPriorityCard player={player} teamId={teamId} season={season} loot={loot} own={own} />
               </div>
 
-              <aside className="profile-side" aria-label="Wishlist, attendance and M+">
+              <aside className="profile-side" aria-label="Characters, wishlist, attendance and M+">
+                <CharactersCard player={player} itemLevel={itemLevel} own={own} />
                 <WishlistSummaryCard player={player} season={season} />
 
                 <section className="card profile-card" aria-labelledby="attendance-title">
@@ -363,8 +383,8 @@ function Profile({
             <h2 id="loot-title" className="card-title">
               Items received
             </h2>
-            <DataState query={bothQueries(season, loot)} label="items received">
-              {([s, rows]) => <ItemsReceived loot={seasonLoot(rows, s)} />}
+            <DataState query={bothQueries(season, allLoot)} label="items received">
+              {([s]) => <ItemsReceived loot={seasonLoot(combinedLoot ?? [], s)} />}
             </DataState>
           </section>
         )}
@@ -416,6 +436,7 @@ function ItemsReceived({ loot }: { loot: ReturnType<typeof seasonLoot> }) {
               <li key={a.key}>
                 <span className="loot-name">{a.name}</span>{' '}
                 <span className={difficultyClass(a.difficulty)}>{a.difficulty}</span>
+                <ReceivedOn from={a.from} />
               </li>
             ))}
           </ul>
@@ -436,6 +457,7 @@ function ItemsReceived({ loot }: { loot: ReturnType<typeof seasonLoot> }) {
               <tr key={a.key}>
                 <th scope="row" className="loot-name">
                   {a.name}
+                  <ReceivedOn from={a.from} />
                 </th>
                 <td>
                   <span className={difficultyClass(a.difficulty)}>{a.difficulty}</span>
@@ -448,6 +470,17 @@ function ItemsReceived({ loot }: { loot: ReturnType<typeof seasonLoot> }) {
       </div>
     </>
   );
+}
+
+// An item received on an earlier character: an old main, or a team the raider
+// left. Their own character's items carry no mark.
+function ReceivedOn({ from }: { from: string | null }) {
+  return from ? (
+    <>
+      {' '}
+      <span className="loot-from">on {from}</span>
+    </>
+  ) : null;
 }
 
 // Laid out like the in-game character pane (Kat, 2026-09-14): Head through

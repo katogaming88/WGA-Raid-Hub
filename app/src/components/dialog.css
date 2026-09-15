@@ -25,6 +25,10 @@
   color: var(--text);
 }
 
+.dialog-wide {
+  width: min(100%, 720px);
+}
+
 .dialog:focus-visible {
   outline-offset: -2px;
 }

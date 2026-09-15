@@ -16,6 +16,7 @@ import {
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { AccountPanel } from '../auth/AccountPanel';
 import { ConnectPrompt } from '../auth/ConnectPrompt';
+import { AltsPickerProvider } from '../characters/AltsPicker';
 import { can, useAccess } from '../auth/access';
 import { navGroups } from './nav';
 import { TeamSwitcher } from './TeamSwitcher';
@@ -118,8 +119,10 @@ export function AppShell() {
     };
     content = (
       <AddressProvider value={address}>
-        <ConnectPrompt />
-        <Outlet />
+        <AltsPickerProvider>
+          <ConnectPrompt />
+          <Outlet />
+        </AltsPickerProvider>
       </AddressProvider>
     );
   }

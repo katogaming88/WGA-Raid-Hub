@@ -25,12 +25,13 @@ export type SignedInUser = {
 
 // What the person was doing when they left for Battle.net or Discord, so the
 // page can say how it went when they come back.
-export type Intent = 'sign-in' | 'connect-discord' | 'connect-battlenet' | 'switch-to-discord';
+export type Intent = 'sign-in' | 'connect-discord' | 'connect-battlenet' | 'switch-to-discord' | 'choose-alts';
 
 // How a round trip to Battle.net or Discord ended, read once at startup.
 export type AuthReturn = { intent: Intent | null; error: string | null };
 
 const INTENT_KEY = 'wga-auth-intent';
+const PROVIDER_KEY = 'wga-auth-provider';
 
 type SessionValue = {
   user: SignedInUser | null;
@@ -39,6 +40,18 @@ type SessionValue = {
   clearAuthReturn: () => void;
   signIn: (provider: Provider) => Promise<void>;
   connect: (provider: Provider) => Promise<void>;
+  // The Battle.net access token from this page load's Battle.net round trip,
+  // for reading the account's characters (#942 step 5b). Held in memory only:
+  // a reload, or any other sign-in, drops it.
+  battlenetToken: string | null;
+  // Back from a round trip made to choose alts or to connect Battle.net, so
+  // the alts picker opens once on its own.
+  openAltsOnReturn: boolean;
+  clearOpenAltsOnReturn: () => void;
+  // To Battle.net and back for a fresh token, then the picker opens. Only for
+  // an account that already has Battle.net connected: on any other, a
+  // Battle.net sign-in would make a new account.
+  refreshBattlenet: () => Promise<void>;
   // For a Battle.net sign-in that landed on a new, empty account while the
   // person already has one under Discord: remove the empty one, sign in with
   // Discord, and connect Battle.net there when they come back.
@@ -100,27 +113,47 @@ export function isAlreadyLinked(error: string | null): boolean {
   return /already linked/i.test(error ?? '');
 }
 
-function takeIntent(): Intent | null {
+function takeIntent(): { intent: Intent | null; provider: string | null } {
   try {
     const intent = sessionStorage.getItem(INTENT_KEY);
+    const provider = sessionStorage.getItem(PROVIDER_KEY);
     sessionStorage.removeItem(INTENT_KEY);
-    return intent === 'sign-in' ||
-      intent === 'connect-discord' ||
-      intent === 'connect-battlenet' ||
-      intent === 'switch-to-discord'
-      ? intent
-      : null;
+    sessionStorage.removeItem(PROVIDER_KEY);
+    return {
+      intent:
+        intent === 'sign-in' ||
+        intent === 'connect-discord' ||
+        intent === 'connect-battlenet' ||
+        intent === 'switch-to-discord' ||
+        intent === 'choose-alts'
+          ? intent
+          : null,
+      provider
+    };
   } catch {
-    return null;
+    return { intent: null, provider: null };
   }
 }
 
-function setIntent(intent: Intent) {
+function setIntent(intent: Intent, provider: Provider) {
   try {
     sessionStorage.setItem(INTENT_KEY, intent);
+    sessionStorage.setItem(PROVIDER_KEY, provider);
   } catch {
     // Private windows can refuse storage; only the "how did it go" message is lost.
   }
+}
+
+// The session's provider token is whichever login the last round trip used,
+// so it is a Battle.net token only when that round trip was to Battle.net.
+export function battlenetTokenAfter(
+  intent: Intent | null,
+  provider: string | null,
+  error: string | null,
+  providerToken: string | null | undefined
+): string | null {
+  if (error || !providerToken || provider !== BATTLENET) return null;
+  return intent === 'sign-in' || intent === 'connect-battlenet' || intent === 'choose-alts' ? providerToken : null;
 }
 
 // Everything startup needs before the first render: the address's error (read
@@ -130,16 +163,20 @@ function setIntent(intent: Intent) {
 export async function loadInitialSession(
   client: Client,
   location: Location = window.location
-): Promise<{ user: SignedInUser | null; authReturn: AuthReturn }> {
+): Promise<{ user: SignedInUser | null; authReturn: AuthReturn; battlenetToken: string | null }> {
   const error = readAuthError(location);
-  const intent = takeIntent();
+  const { intent, provider } = takeIntent();
   // Read once, then gone from the address, so a reload or the next sign-in
   // does not report it again.
   if (error) window.history.replaceState(window.history.state, '', withoutAuthError(location));
   const { data, error: sessionError } = await client.auth.getSession();
   if (sessionError) reportError(sessionError, { where: 'sign-in' });
   if (error) reportError(new Error(error), { where: `sign-in:${intent ?? 'unknown'}` });
-  return { user: userFromSession(data.session), authReturn: { intent, error } };
+  return {
+    user: userFromSession(data.session),
+    authReturn: { intent, error },
+    battlenetToken: battlenetTokenAfter(intent, provider, error, data.session?.provider_token)
+  };
 }
 
 const returnAddress = () => {
@@ -150,16 +187,24 @@ const returnAddress = () => {
 export function SessionProvider({
   initialUser,
   initialAuthReturn = { intent: null, error: null },
+  initialBattlenetToken = null,
   children
 }: {
   initialUser: SignedInUser | null;
   initialAuthReturn?: AuthReturn;
+  initialBattlenetToken?: string | null;
   children: ReactNode;
 }) {
   const client = useSupabase();
   const queryClient = useQueryClient();
   const [user, setUser] = useState(initialUser);
   const [authReturn, setAuthReturn] = useState(initialAuthReturn);
+  const [battlenetToken, setBattlenetToken] = useState(initialBattlenetToken);
+  const [openAltsOnReturn, setOpenAltsOnReturn] = useState(
+    () =>
+      initialBattlenetToken !== null &&
+      (initialAuthReturn.intent === 'choose-alts' || initialAuthReturn.intent === 'connect-battlenet')
+  );
   const userId = useRef(initialUser?.id ?? null);
 
   useEffect(() => {
@@ -171,6 +216,7 @@ export function SessionProvider({
       if ((next?.id ?? null) !== userId.current) {
         userId.current = next?.id ?? null;
         queryClient.clear();
+        setBattlenetToken(null);
       }
       setUser((current) =>
         current && next && current.hasBattlenet === next.hasBattlenet && current.hasDiscord === next.hasDiscord
@@ -183,7 +229,7 @@ export function SessionProvider({
 
   const value = useMemo<SessionValue>(() => {
     const signIn = async (provider: Provider) => {
-      setIntent('sign-in');
+      setIntent('sign-in', provider);
       const { error } = await client.auth.signInWithOAuth({ provider, options: { redirectTo: returnAddress() } });
       if (error) throw error;
     };
@@ -192,8 +238,19 @@ export function SessionProvider({
       authReturn,
       clearAuthReturn: () => setAuthReturn({ intent: null, error: null }),
       signIn,
+      battlenetToken,
+      openAltsOnReturn,
+      clearOpenAltsOnReturn: () => setOpenAltsOnReturn(false),
+      async refreshBattlenet() {
+        setIntent('choose-alts', BATTLENET);
+        const { error } = await client.auth.signInWithOAuth({
+          provider: BATTLENET,
+          options: { redirectTo: returnAddress() }
+        });
+        if (error) throw error;
+      },
       async connect(provider) {
-        setIntent(provider === DISCORD ? 'connect-discord' : 'connect-battlenet');
+        setIntent(provider === DISCORD ? 'connect-discord' : 'connect-battlenet', provider);
         const { error } = await client.auth.linkIdentity({ provider, options: { redirectTo: returnAddress() } });
         if (error) throw error;
       },
@@ -202,7 +259,7 @@ export function SessionProvider({
         if (error) throw error;
         // The account is gone, so only this browser's copy of the session is left to clear.
         await client.auth.signOut({ scope: 'local' });
-        setIntent('switch-to-discord');
+        setIntent('switch-to-discord', DISCORD);
         const { error: signInError } = await client.auth.signInWithOAuth({
           provider: DISCORD,
           options: { redirectTo: returnAddress() }
@@ -216,10 +273,11 @@ export function SessionProvider({
         // listener missed it.
         userId.current = null;
         setUser(null);
+        setBattlenetToken(null);
         queryClient.clear();
       }
     };
-  }, [client, queryClient, user, authReturn]);
+  }, [client, queryClient, user, authReturn, battlenetToken, openAltsOnReturn]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

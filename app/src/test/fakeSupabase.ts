@@ -15,13 +15,16 @@ export type Read = {
 };
 
 type Answer = { data?: unknown; error?: { message: string } | null; count?: number | null };
+type InvokeAnswer = { data?: unknown; error?: { message: string; context?: unknown } | null };
 
 export type FakeHandlers = {
   rpc?: (name: string, args: Record<string, unknown>) => Answer | Promise<Answer>;
   from?: (read: Read) => Answer | Promise<Answer>;
   // The signed-in session getSession() answers with; none means signed out.
   session?: unknown;
-  invoke?: (name: string) => Answer | Promise<Answer>;
+  // `error` may carry `context`, the Response supabase-js attaches to a
+  // function's non-2xx answer.
+  invoke?: (name: string, args: unknown) => InvokeAnswer | Promise<InvokeAnswer>;
 };
 
 // Every auth and function call a test might assert on, in order.
@@ -62,7 +65,7 @@ export function fakeClient(
     functions: {
       invoke: async (name: string, args: unknown) => {
         authCalls.push(['invoke', [name, args]]);
-        const a = await (handlers.invoke ? handlers.invoke(name) : { data: { success: true } });
+        const a = await (handlers.invoke ? handlers.invoke(name, args) : { data: { success: true } });
         return { data: a.data ?? null, error: a.error ?? null };
       }
     },
