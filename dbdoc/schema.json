@@ -8728,6 +8728,12 @@
       "return_type": "trigger",
       "arguments": "",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.my_player_ids",
+      "return_type": "_int4",
+      "arguments": "",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

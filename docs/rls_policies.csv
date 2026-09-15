@@ -49,8 +49,8 @@ mplus_exclusion_requests,Officers read mplus_exclusion_requests,public,SELECT,PE
 mplus_exclusion_requests,Officers update mplus_exclusion_requests,public,UPDATE,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 mplus_exclusion_requests,Raiders read own mplus_exclusion_requests,public,SELECT,PERMISSIVE,(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])),
 notifications,Claude readers read notifications,claude_readers,SELECT,PERMISSIVE,true,
-notifications,Raiders mark own notifications read,public,UPDATE,PERMISSIVE,(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])),(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))
-notifications,Raiders read own notifications,public,SELECT,PERMISSIVE,(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])),
+notifications,Raiders mark own notifications read,public,UPDATE,PERMISSIVE,(player_id = ANY (( SELECT my_player_ids() AS my_player_ids)::integer[])),(player_id = ANY (( SELECT my_player_ids() AS my_player_ids)::integer[]))
+notifications,Raiders read own notifications,public,SELECT,PERMISSIVE,(player_id = ANY (( SELECT my_player_ids() AS my_player_ids)::integer[])),
 people,Claude readers read people,claude_readers,SELECT,PERMISSIVE,true,
 people,Officers read people on their teams,public,SELECT,PERMISSIVE,"((id IN ( SELECT tm.person_id
    FROM team_members tm

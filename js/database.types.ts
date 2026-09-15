@@ -2951,6 +2951,7 @@ export type Database = {
       is_site_admin: { Args: never; Returns: boolean }
       is_team_leader_anywhere: { Args: never; Returns: boolean }
       my_person_id: { Args: never; Returns: number }
+      my_player_ids: { Args: never; Returns: number[] }
       my_team_role: { Args: { p_team_id: number }; Returns: string }
       new_url_code: { Args: never; Returns: string }
       notify_player: {

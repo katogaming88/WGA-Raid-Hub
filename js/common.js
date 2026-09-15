@@ -109,14 +109,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.125.0';
+var VERSION = '3.126.0';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20260915161042';
+var REQUIRED_SCHEMA = '20260915170855';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -445,8 +445,9 @@ function notifyPlayer(playerId, message) {
   });
 }
 
-// Raiders read/mark-read their own rows directly (RLS: is_own_player(player_id)),
-// no RPC needed -- same self-service shape as streamers.
+// Raiders read/mark-read their own rows directly (RLS: player_id in
+// my_player_ids(), every character their person holds, archived ones included,
+// #942 step 4), no RPC needed.
 function fetchOwnNotifications() {
   if (!supabaseClient) return Promise.resolve([]);
   return supabaseClient

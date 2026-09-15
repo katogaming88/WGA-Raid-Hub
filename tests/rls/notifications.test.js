@@ -1,8 +1,8 @@
 // Behavior tests for notify_player() (#151) and the notifications table's RLS:
 // no direct INSERT policy for anyone (tests/rls/write-policies.test.js doesn't
 // cover this new table, so that's asserted here instead), notify_player() is
-// the only insert path, and a raider can only read/mark-read their own rows
-// via is_own_player(). Same single-transaction-plus-savepoint harness as
+// the only insert path, and a raider can only read/mark-read their own rows:
+// every character their person holds, archived ones included (#942 step 4). Same single-transaction-plus-savepoint harness as
 // tests/rls/write-audit-log.test.js.
 import { describe, it, expect, afterAll } from 'vitest';
 import { pool, OFFICER_T1, TEAM_LEADER_T1, RAIDER_T1, SITE_ADMIN, OFFICER_T2, RLS_DENIED } from './helpers.js';
@@ -148,6 +148,50 @@ describe('a raider can only read/mark-read their own notifications', () => {
       await asUser(RAIDER_T1, 'update public.notifications set read = true where id = $1', [id]);
       const after = (await q('select read from public.notifications where id = $1', [id])).rows[0];
       expect(after.read).toBe(false);
+    });
+  });
+});
+
+// #942 step 4: the inbox belongs to the person. A main swap archives the old
+// character but keeps it linked (#941), and its notifications stay in the
+// raider's inbox; before this they vanished with the character.
+describe("a raider's inbox includes their archived characters", () => {
+  const archivedCharacter = async (q) => {
+    await linkPlayer1ToRaider(q);
+    await q('update public.players set archived_at = now() where id = 1');
+  };
+
+  it('a notification on an archived character of theirs is seen and can be marked read', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const id = (await notify(asUser, OFFICER_T1, 1, 'On the old main.')).rows[0].id;
+      await archivedCharacter(q);
+
+      const seen = await asUser(RAIDER_T1, 'select id from public.notifications where id = $1', [id]);
+      expect(seen.rows.length).toBe(1);
+
+      await asUser(RAIDER_T1, 'update public.notifications set read = true where id = $1', [id]);
+      expect((await q('select read from public.notifications where id = $1', [id])).rows[0].read).toBe(true);
+    });
+  });
+
+  it("someone else's archived character stays out of the inbox", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const id = (await notify(asUser, OFFICER_T1, 1, 'Not yours.')).rows[0].id;
+      await archivedCharacter(q);
+
+      expect((await asUser(OFFICER_T1, 'select id from public.notifications where id = $1', [id])).rows.length).toBe(0);
+    });
+  });
+
+  it("an archived character's own rows stay read-only: my_active_player_ids still excludes it", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await archivedCharacter(q);
+      const { rows } = await asUser(
+        RAIDER_T1,
+        'select public.my_player_ids() as all_ids, public.my_active_player_ids() as active_ids'
+      );
+      expect(rows[0].all_ids).toContain(1);
+      expect(rows[0].active_ids).not.toContain(1);
     });
   });
 });
