@@ -445,8 +445,9 @@ function notifyPlayer(playerId, message) {
   });
 }
 
-// Raiders read/mark-read their own rows directly (RLS: is_own_player(player_id)),
-// no RPC needed -- same self-service shape as streamers.
+// Raiders read/mark-read their own rows directly (RLS: player_id in
+// my_player_ids(), every character their person holds, archived ones included,
+// #942 step 4), no RPC needed.
 function fetchOwnNotifications() {
   if (!supabaseClient) return Promise.resolve([]);
   return supabaseClient
