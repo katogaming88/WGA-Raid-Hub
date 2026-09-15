@@ -8,7 +8,7 @@ One row per human (#942). auth_user_id is their sign-in account, null for a Disc
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer |  | false | [public.site_admins](public.site_admins.md) [public.team_members](public.team_members.md) [public.guild_officers](public.guild_officers.md) [public.boe_managers](public.boe_managers.md) |  |  |
+| id | integer |  | false | [public.team_members](public.team_members.md) [public.guild_grants](public.guild_grants.md) |  |  |
 | auth_user_id | uuid |  | true |  |  |  |
 | discord_id | text |  | true |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
@@ -41,22 +41,14 @@ One row per human (#942). auth_user_id is their sign-in account, null for a Disc
 ```mermaid
 erDiagram
 
-"public.site_admins" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.team_members" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
-"public.guild_officers" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
-"public.boe_managers" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
+"public.guild_grants" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 
 "public.people" {
   integer id
   uuid auth_user_id FK
   text discord_id
   timestamp_with_time_zone created_at
-}
-"public.site_admins" {
-  integer id
-  text discord_id
-  uuid auth_user_id FK
-  integer person_id FK
 }
 "public.team_members" {
   integer id
@@ -68,18 +60,12 @@ erDiagram
   timestamp_with_time_zone updated_at
   integer person_id FK
 }
-"public.guild_officers" {
+"public.guild_grants" {
   integer id
-  text discord_id
-  uuid auth_user_id FK
   integer person_id FK
-}
-"public.boe_managers" {
-  integer id
-  text discord_id
-  uuid auth_user_id FK
+  integer guild_id FK
+  text grant_type
   timestamp_with_time_zone created_at
-  integer person_id FK
 }
 ```
 

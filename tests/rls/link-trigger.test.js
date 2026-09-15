@@ -14,7 +14,7 @@
 // that links them by some other route fails the setup instead of passing the
 // test for the wrong reason.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, insertDiscordUser } from './helpers.js';
+import { pool, withTxn, insertDiscordUser, grantGuild } from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -31,16 +31,18 @@ const EMAIL_SIGNUP_UID = '00000000-0000-0000-0000-0000000000e2';
 const NO_IDENTITY = 'discord-guard-noidentity-1';
 const NO_IDENTITY_UID = '00000000-0000-0000-0000-0000000000e3';
 
-// One unlinked row in each of the four tables the trigger writes.
+// One unlinked team_members row and one of each guild grant. Since #942 step 2
+// the grants reach their account through the person, so the three grant names
+// are read back through their views.
 async function addGrants(q, discordId) {
   await q('insert into public.team_members (team_id, discord_id, role) values ($1, $2, $3)', [
     WRATHLESS,
     discordId,
     'officer'
   ]);
-  await q('insert into public.site_admins (discord_id) values ($1)', [discordId]);
-  await q('insert into public.guild_officers (discord_id) values ($1)', [discordId]);
-  await q('insert into public.boe_managers (discord_id) values ($1)', [discordId]);
+  await grantGuild(q, discordId, 'site_admin');
+  await grantGuild(q, discordId, 'guild_officer');
+  await grantGuild(q, discordId, 'boe_manager');
 }
 
 // The four auth_user_id values, in one shape, so a case reads them together.

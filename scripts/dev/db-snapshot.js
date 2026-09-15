@@ -73,10 +73,7 @@ const CRON_QUIET = 'select cron.alter_job(jobid, active := false) from cron.job;
 // what makes `dev:login -- --discord-id <id>` reach a real officer's rows.
 const UNLINK = `
 update public.audit_log                    set actor_id = null     where actor_id is not null;
-update public.boe_managers                 set auth_user_id = null where auth_user_id is not null;
-update public.guild_officers               set auth_user_id = null where auth_user_id is not null;
 update public.season_signups               set auth_user_id = null where auth_user_id is not null;
-update public.site_admins                  set auth_user_id = null where auth_user_id is not null;
 update public.team_members                 set auth_user_id = null where auth_user_id is not null;
 update public.priority_conflict_dismissals set dismissed_by = null where dismissed_by is not null;
 update public.priority_stale_dismissals    set dismissed_by = null where dismissed_by is not null;
@@ -98,6 +95,14 @@ begin
   if to_regclass('public.people') is not null then
     execute 'update public.people set auth_user_id = null where auth_user_id is not null';
   end if;
+  -- Until #942 step 2 is applied there, the guild-wide grants are three tables
+  -- with their own account column; after it they are views of guild_grants,
+  -- which reach the account through the person above.
+  if (select relkind from pg_class where oid = to_regclass('public.site_admins')) = 'r' then
+    execute 'update public.boe_managers   set auth_user_id = null where auth_user_id is not null';
+    execute 'update public.guild_officers set auth_user_id = null where auth_user_id is not null';
+    execute 'update public.site_admins    set auth_user_id = null where auth_user_id is not null';
+  end if;
 end $$;
 `;
 
@@ -112,7 +117,7 @@ export const EMPTY_CHECK_TABLES = [
   'team_settings',
   'team_members',
   'teams',
-  'site_admins',
+  'guild_grants',
   'attendance'
 ];
 

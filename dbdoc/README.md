@@ -19,7 +19,6 @@
 | [public.scoring](public.scoring.md) | 10 |  | BASE TABLE |
 | [public.season_signups](public.season_signups.md) | 18 |  | BASE TABLE |
 | [public.self_received_requests](public.self_received_requests.md) | 12 |  | BASE TABLE |
-| [public.site_admins](public.site_admins.md) | 4 |  | BASE TABLE |
 | [public.team_members](public.team_members.md) | 8 |  | BASE TABLE |
 | [public.team_settings](public.team_settings.md) | 3 |  | BASE TABLE |
 | [public.teams](public.teams.md) | 6 |  | BASE TABLE |
@@ -41,11 +40,9 @@
 | [public.item_preferences](public.item_preferences.md) | 11 |  | BASE TABLE |
 | [public.site_settings](public.site_settings.md) | 9 |  | BASE TABLE |
 | [public.incoming_roster](public.incoming_roster.md) | 7 |  | VIEW |
-| [public.guild_officers](public.guild_officers.md) | 4 |  | BASE TABLE |
 | [public.tier_token_map](public.tier_token_map.md) | 6 |  | BASE TABLE |
 | [public.boe_items](public.boe_items.md) | 26 |  | BASE TABLE |
 | [public.boe_listings](public.boe_listings.md) | 8 |  | BASE TABLE |
-| [public.boe_managers](public.boe_managers.md) | 5 |  | BASE TABLE |
 | [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) | 8 | Officer-acknowledged Priority List same-boss conflicts (a player holding #1 on 2+ items behind one boss+track kill), so buildPriorityConflictsBannerHtml() (js/tabs/tab-priority.js) stops re-flagging a reviewed one. | BASE TABLE |
 | [public.player_equipped_gear](public.player_equipped_gear.md) | 8 | One row per player per physical gear slot (Blizzard API slot keys: HEAD, FINGER_1, FINGER_2, ...), synced from the Blizzard Character Equipment Summary endpoint. Feeds generate_priority_order()'s equipped-item-level fairness factor. | BASE TABLE |
 | [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) | 5 | Marks a team/season/item/track priority list as deliberately saved empty (no one wants the item) -- keeps it out of the Unmanaged Items list without a placeholder priority_order row. Cleared automatically the next time that item/track is saved with a non-empty roster. | BASE TABLE |
@@ -63,6 +60,10 @@
 | [public.retired_url_keys](public.retired_url_keys.md) | 5 | Keys a guild (team_id null) or team used to have, so old addresses still resolve. Written only by the key-change triggers on guilds and teams (#1114). guild_id is the guild the key lived under. | BASE TABLE |
 | [public.people](public.people.md) | 4 | One row per human (#942). auth_user_id is their sign-in account, null for a Discord id listed on a grant before its owner signed in. discord_id is null for an account with no Discord linked. Grant tables point here through person_id. | BASE TABLE |
 | [public.seasons](public.seasons.md) | 5 | One row per raid tier (#932). code is the short form the priority, loot and scoring tables hold (MID2); display_name is what officers see and type (Midnight Season 2). Every season column references one of the two. A tier is added by a migration that closes the outgoing row and inserts the new one. | BASE TABLE |
+| [public.guild_grants](public.guild_grants.md) | 5 | Guild-wide grants, one row per person per grant per guild (#942). Replaced site_admins, guild_officers and boe_managers, which remain as read-only views until cutover. | BASE TABLE |
+| [public.site_admins](public.site_admins.md) | 5 | Read-only view of guild_grants (#942), dropped at cutover (#1105). | VIEW |
+| [public.guild_officers](public.guild_officers.md) | 5 | Read-only view of guild_grants (#942), dropped at cutover (#1105). | VIEW |
+| [public.boe_managers](public.boe_managers.md) | 5 | Read-only view of guild_grants (#942), dropped at cutover (#1105). | VIEW |
 
 ## Stored procedures and functions
 
@@ -166,6 +167,10 @@
 | public.person_for_discord_id | int4 | p_discord_id text | FUNCTION |
 | public.set_person_from_discord_id | trigger |  | FUNCTION |
 | public.delete_empty_person | trigger |  | FUNCTION |
+| public.only_guild_id | int4 |  | FUNCTION |
+| public.admin_list_grants | record | p_grant_type text | FUNCTION |
+| public.admin_grant | int4 | p_grant_type text, p_discord_id text, p_label text | FUNCTION |
+| public.admin_revoke | void | p_grant_type text, p_discord_id text, p_label text | FUNCTION |
 
 ## Enums
 
@@ -227,7 +232,6 @@ erDiagram
 "public.self_received_requests" }o--|| "public.items" : "FOREIGN KEY (self_item_id) REFERENCES items(id) ON DELETE SET NULL"
 "public.self_received_requests" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.self_received_requests" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
-"public.site_admins" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.team_members" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_members" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.team_settings" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
@@ -244,7 +248,6 @@ erDiagram
 "public.item_preferences" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.item_preferences" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.item_preferences" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
-"public.guild_officers" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.tier_token_map" }o--|| "public.items" : "FOREIGN KEY (resolved_item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.tier_token_map" }o--|| "public.items" : "FOREIGN KEY (token_item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.tier_token_map" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
@@ -254,7 +257,6 @@ erDiagram
 "public.boe_items" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
 "public.boe_listings" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.boe_listings" }o--|| "public.boe_items" : "FOREIGN KEY (boe_item_id) REFERENCES boe_items(id) ON DELETE CASCADE"
-"public.boe_managers" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.priority_conflict_dismissals" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.priority_conflict_dismissals" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.priority_conflict_dismissals" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
@@ -281,6 +283,8 @@ erDiagram
 "public.account_preferences" }o--o| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.retired_url_keys" }o--o| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.retired_url_keys" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
+"public.guild_grants" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id)"
+"public.guild_grants" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 
 "public.attendance" {
   integer id
@@ -463,12 +467,6 @@ erDiagram
   text slot
   timestamp_with_time_zone updated_at
   text officer_notes
-}
-"public.site_admins" {
-  integer id
-  text discord_id
-  uuid auth_user_id FK
-  integer person_id FK
 }
 "public.team_members" {
   integer id
@@ -676,12 +674,6 @@ erDiagram
   text role
   text swap_from_name_realm
 }
-"public.guild_officers" {
-  integer id
-  text discord_id
-  uuid auth_user_id FK
-  integer person_id FK
-}
 "public.tier_token_map" {
   integer id
   integer token_item_id FK
@@ -727,13 +719,6 @@ erDiagram
   text note
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
-}
-"public.boe_managers" {
-  integer id
-  text discord_id
-  uuid auth_user_id FK
-  timestamp_with_time_zone created_at
-  integer person_id FK
 }
 "public.priority_conflict_dismissals" {
   integer id
@@ -881,6 +866,34 @@ erDiagram
   text display_name
   date starts_at
   date ends_at
+  timestamp_with_time_zone created_at
+}
+"public.guild_grants" {
+  integer id
+  integer person_id FK
+  integer guild_id FK
+  text grant_type
+  timestamp_with_time_zone created_at
+}
+"public.site_admins" {
+  integer id
+  text discord_id
+  uuid auth_user_id
+  integer person_id
+  timestamp_with_time_zone created_at
+}
+"public.guild_officers" {
+  integer id
+  text discord_id
+  uuid auth_user_id
+  integer person_id
+  timestamp_with_time_zone created_at
+}
+"public.boe_managers" {
+  integer id
+  text discord_id
+  uuid auth_user_id
+  integer person_id
   timestamp_with_time_zone created_at
 }
 ```

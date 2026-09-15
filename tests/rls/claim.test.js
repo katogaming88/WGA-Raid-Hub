@@ -10,7 +10,7 @@
 // so an expected raise does not abort the whole transaction (and does not mask
 // the real error when the role reset runs inside an aborted transaction).
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, insertDiscordUser, RAIDER_T1 } from './helpers.js';
+import { pool, insertDiscordUser, grantGuild, RAIDER_T1 } from './helpers.js';
 
 // Seeded rows this file leans on (supabase/seed.sql): player 1 is team 1
 // 'Seedraider-Illidan', player 2 is team 1 'Seedplayertwo-Illidan', player 3
@@ -304,10 +304,10 @@ describe('on_auth_user_created backfills auth_user_id (trigger capture)', () => 
     });
   });
 
-  it('links a site_admins row by Discord provider_id on user insert', async () => {
+  it('links a site admin grant by Discord provider_id on user insert', async () => {
     await withTxn(async ({ q }) => {
       const uid = '00000000-0000-0000-0000-0000000000dd';
-      await q("insert into public.site_admins (discord_id) values ('discord-admin-trig')");
+      await grantGuild(q, 'discord-admin-trig', 'site_admin');
       await addAuthUser(q, uid, 'discord-admin-trig');
       const admin = (await q("select auth_user_id from public.site_admins where discord_id = 'discord-admin-trig'"))
         .rows[0];

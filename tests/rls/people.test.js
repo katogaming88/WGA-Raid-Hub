@@ -1,12 +1,13 @@
 // The people table (#942 step 1).
 //
 // A person is every sign-in account plus every Discord id listed on a grant
-// before its owner signs in. The four grant tables carry person_id, kept level
-// with discord_id by trigger, and the sign-in trigger attaches the account.
+// before its owner signs in. team_members carries person_id, kept level with
+// discord_id by trigger; the guild-wide grants are guild_grants rows naming the
+// person (step 2); the sign-in trigger attaches the account.
 // Nothing reads person_id yet, so these cases pin the row itself: who gets
 // one, which row a grant points at, and the Battle.net-first merge.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, insertDiscordUser, RAIDER_T1, OFFICER_T2 } from './helpers.js';
+import { pool, withTxn, insertDiscordUser, grantGuild, RAIDER_T1, OFFICER_T2 } from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -66,16 +67,16 @@ describe('every grant row points at a person (#942)', () => {
     });
   });
 
-  it('one person across all four tables and two teams for one Discord id', async () => {
+  it('one person across both teams and all three guild grants for one Discord id', async () => {
     await withTxn(async ({ q }) => {
       await q('insert into public.team_members (team_id, discord_id, role) values (3, $1, $2), ($3, $1, $2)', [
         LISTED,
         'officer',
         WRATHLESS
       ]);
-      await q('insert into public.site_admins (discord_id) values ($1)', [LISTED]);
-      await q('insert into public.guild_officers (discord_id) values ($1)', [LISTED]);
-      await q('insert into public.boe_managers (discord_id) values ($1)', [LISTED]);
+      await grantGuild(q, LISTED, 'site_admin');
+      await grantGuild(q, LISTED, 'guild_officer');
+      await grantGuild(q, LISTED, 'boe_manager');
 
       const person = await personByDiscord(q, LISTED);
       expect(person.auth_user_id).toBeNull();

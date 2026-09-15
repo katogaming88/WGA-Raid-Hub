@@ -122,6 +122,17 @@ export async function insertDiscordUser(q, uid, discordId, metaDiscordId = disco
   );
 }
 
+// A guild-wide grant (#942): a guild_grants row for the person behind a Discord
+// id, created if nobody holds it yet, on the one guild. Written as whoever `q`
+// is, so a fixture writes it as postgres and a rule test as the caller.
+export function grantGuild(q, discordId, grantType) {
+  return q(
+    `insert into public.guild_grants (person_id, guild_id, grant_type)
+     values (public.person_for_discord_id($1), (select id from public.guilds), $2)`,
+    [discordId, grantType]
+  );
+}
+
 // Visible row count under a role.
 export async function countAs(role, uid, table, where = 'true') {
   const res = await queryAs(role, uid, `select count(*)::int as n from public.${table} where ${where}`);

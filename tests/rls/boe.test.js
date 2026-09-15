@@ -15,6 +15,7 @@ import { describe, it, expect, afterAll } from 'vitest';
 import {
   pool,
   insertDiscordUser,
+  grantGuild,
   OFFICER_T1,
   TEAM_LEADER_T1,
   RAIDER_T1,
@@ -73,15 +74,14 @@ const addTeam2Item = (q) =>
 // A plain raider on team 1 with no officer role anywhere and no guild officer
 // grant, so a boe_managers grant is the only authority they hold (#766).
 const RAIDER_DISCORD = 'discord-raider-1';
-const grantRaider = (q) =>
-  q('insert into public.boe_managers (discord_id, auth_user_id) values ($1, $2)', [RAIDER_DISCORD, RAIDER_T1]);
+const grantRaider = (q) => grantGuild(q, RAIDER_DISCORD, 'boe_manager');
 
 describe('no public read; officer reads are team-scoped unless granted', () => {
   it('anon sees no rows in any of the three tables', async () => {
     await withTxn(async ({ asAnon }) => {
       expect((await asAnon('select id from public.boe_items')).rows.length).toBe(0);
       expect((await asAnon('select id from public.boe_listings')).rows.length).toBe(0);
-      expect((await asAnon('select id from public.boe_managers')).rows.length).toBe(0);
+      expect((await asAnon("select id from public.guild_grants where grant_type = 'boe_manager'")).rows.length).toBe(0);
     });
   });
 
@@ -352,9 +352,9 @@ describe('the manager gate on the lifecycle RPCs', () => {
     });
   });
 
-  it('a grant whose auth_user_id never resolved authorizes nobody', async () => {
+  it('a grant to a Discord id nobody has signed in with authorizes nobody', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await q('insert into public.boe_managers (discord_id, auth_user_id) values ($1, null)', [RAIDER_DISCORD]);
+      await grantGuild(q, 'discord-never-signed-in', 'boe_manager');
       await expect(asUser(RAIDER_T1, 'select public.boe_record_listing(1, 100000)')).rejects.toThrow(/Not authorized/);
     });
   });
@@ -411,30 +411,41 @@ describe('the manager gate on the lifecycle RPCs', () => {
     });
   });
 
-  it('only a site admin can insert or delete boe_managers rows', async () => {
-    await withTxn(async ({ asUser }) => {
-      const INS = "insert into public.boe_managers (discord_id) values ('discord-leader-1')";
+  it('only a site admin can insert or delete BoE manager grants', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      // The person exists before either caller writes: people is not the table under test.
+      const person = (await q("select public.person_for_discord_id('discord-leader-1') as id")).rows[0].id;
+      const INS = `insert into public.guild_grants (person_id, guild_id, grant_type)
+                   values (${person}, (select id from public.guilds), 'boe_manager')`;
       await expect(asUser(OFFICER_T1, INS)).rejects.toMatchObject({ code: RLS_DENIED });
       const ins = await asUser(SITE_ADMIN, INS);
       expect(ins.rowCount).toBe(1);
-      const del = await asUser(SITE_ADMIN, "delete from public.boe_managers where discord_id = 'discord-leader-1'");
+      const del = await asUser(
+        SITE_ADMIN,
+        `delete from public.guild_grants where person_id = ${person} and grant_type = 'boe_manager'`
+      );
       expect(del.rowCount).toBe(1);
     });
   });
 
-  // The read deviates from the guild_officers template on purpose (#766): an
+  // The read deviates from the other grants on purpose (#766): an
   // ungranted officer looking at a find they cannot act on needs an in-app
   // way to see who can, so any officer on any team reads the list.
-  it('any officer reads boe_managers; a raider and anon do not', async () => {
+  it('any officer reads the BoE manager grants; a raider and anon do not', async () => {
     await withTxn(async ({ asUser, asAnon }) => {
       // Two seeded grants: discord-officer-1 (OFFICER_T1) and discord-boe-manager
       // (BOE_MANAGER, the persona, #1065).
-      expect((await asUser(OFFICER_T1, 'select id from public.boe_managers')).rows.length).toBe(2);
-      expect((await asUser(OFFICER_T2, 'select id from public.boe_managers')).rows.length).toBe(2);
-      expect((await asUser(TEAM_LEADER_T1, 'select id from public.boe_managers')).rows.length).toBe(2);
-      expect((await asUser(SITE_ADMIN, 'select id from public.boe_managers')).rows.length).toBe(2);
-      expect((await asUser(RAIDER_T1, 'select id from public.boe_managers')).rows.length).toBe(0);
-      expect((await asAnon('select id from public.boe_managers')).rows.length).toBe(0);
+      const SQL = "select id from public.guild_grants where grant_type = 'boe_manager'";
+      expect((await asUser(OFFICER_T1, SQL)).rows.length).toBe(2);
+      expect((await asUser(OFFICER_T2, SQL)).rows.length).toBe(2);
+      expect((await asUser(TEAM_LEADER_T1, SQL)).rows.length).toBe(2);
+      expect((await asUser(SITE_ADMIN, SQL)).rows.length).toBe(2);
+      expect((await asUser(RAIDER_T1, SQL)).rows.length).toBe(0);
+      expect((await asAnon(SQL)).rows.length).toBe(0);
+      // An officer reads who the BoE managers are, not the other grants.
+      expect(
+        (await asUser(OFFICER_T1, "select id from public.guild_grants where grant_type <> 'boe_manager'")).rows.length
+      ).toBe(0);
     });
   });
 });
@@ -547,7 +558,7 @@ describe('team officers settle payouts for their own team (#888)', () => {
 // those rows come with them. Never client-supplied: the trigger keeps the
 // column off the plain-UPDATE list. Two synthetic users are inserted here
 // rather than borrowed from the seed: the finder, whose Discord id matches no
-// team_members, site_admins or boe_managers row so link_auth_user_to_member()
+// team_members row or guild grant so link_auth_user_to_member()
 // links nothing, and a raider with no Discord identity at all. Both used to come
 // free from the seed, whose auth users held an id and nothing else; #1053 gave
 // every seeded user a Discord identity so they can sign in to the local site,

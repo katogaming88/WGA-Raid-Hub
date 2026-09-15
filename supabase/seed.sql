@@ -42,7 +42,7 @@
 -- issue a magic link against: `npm run dev:login -- phoenix-officer`.
 --
 -- Three details are load bearing:
---   * provider_id must equal the grant row's discord_id below, because
+--   * provider_id must equal the team or grant row's discord_id below, because
 --     link_auth_user_to_member() keys on that. A mismatch signs in fine and
 --     then sees nothing, which reads as broken policies.
 --   * the four token columns are '' rather than null. GoTrue scans them into
@@ -147,11 +147,14 @@ insert into public.team_members (id, team_id, discord_id, auth_user_id, role, na
   (12, 2, 'discord-leader-2',  '00000000-0000-0000-0000-000000000015', 'team_leader', 'Seedhellfireleader-Illidan'),
   (13, 2, 'discord-raider-2',  '00000000-0000-0000-0000-000000000016', 'raider',  'Seedhellfireraider-Illidan');
 
-insert into public.site_admins (id, discord_id, auth_user_id) values
-  (1, 'discord-site-admin', '00000000-0000-0000-0000-000000000004');
-
-insert into public.guild_officers (id, discord_id, auth_user_id) values
-  (1, 'discord-guildofficer-1', '00000000-0000-0000-0000-000000000007');
+-- Guild-wide grants (#942): one guild_grants row per person per grant. The
+-- identity rows above already made each person, so the lookup finds them.
+insert into public.guild_grants (person_id, guild_id, grant_type)
+select public.person_for_discord_id(g.discord_id), (select id from public.guilds where url_key = 'wga'), g.grant_type
+from (values
+  ('discord-site-admin', 'site_admin'),
+  ('discord-guildofficer-1', 'guild_officer')
+) as g(discord_id, grant_type);
 
 insert into public.classes_specs (id, class, spec, role) values
   (1, 'Mage', 'Frost', 'Ranged');
@@ -238,9 +241,9 @@ insert into public.boe_listings (id, team_id, boe_item_id, price, listed_at) val
 -- (#1065): only this grant and no team row, the guild banker who is not a
 -- site admin, which is what the grant exists for since a site admin already
 -- passes every BoE gate.
-insert into public.boe_managers (id, discord_id, auth_user_id) values
-  (1, 'discord-officer-1', '00000000-0000-0000-0000-000000000001'),
-  (2, 'discord-boe-manager', '00000000-0000-0000-0000-000000000014');
+insert into public.guild_grants (person_id, guild_id, grant_type)
+select public.person_for_discord_id(g.discord_id), (select id from public.guilds where url_key = 'wga'), 'boe_manager'
+from (values ('discord-officer-1'), ('discord-boe-manager')) as g(discord_id);
 
 -- Rows for public-read tables the matrix test asserts are visible.
 
@@ -274,8 +277,6 @@ insert into public.item_bosses (item_id, boss) values
 -- INSERT a test makes collides on the primary key.
 select setval('public.teams_id_seq', 10);
 select setval('public.team_members_id_seq', 20); -- eleven seeded rows, so 10 would collide
-select setval('public.site_admins_id_seq', 10);
-select setval('public.guild_officers_id_seq', 10);
 select setval('public.classes_specs_id_seq', 10);
 select setval('public.items_id_seq', 10);
 select setval('public.players_id_seq', 10);
@@ -291,7 +292,6 @@ select setval('public.priority_order_id_seq', 10);
 select setval('public.loot_id_seq', 10);
 select setval('public.boe_items_id_seq', 10);
 select setval('public.boe_listings_id_seq', 10);
-select setval('public.boe_managers_id_seq', 10);
 
 -- Keep this stack off production (#1055).
 --

@@ -12,6 +12,8 @@ declare
   v_is_self boolean := p_discord_id is not distinct from public.current_discord_id();
   v_is_site_admin boolean := public.is_site_admin();
   v_sees_all_teams boolean;
+  v_person people%rowtype;
+  v_grants text[];
   v_result jsonb;
 begin
   v_sees_all_teams := v_is_self or v_is_site_admin or public.is_guild_officer();
@@ -20,12 +22,16 @@ begin
     raise exception 'Not authorized';
   end if;
 
+  select * into v_person from people where discord_id = p_discord_id;
+
+  select coalesce(array_agg(g.grant_type), '{}') into v_grants
+    from guild_grants g
+   where g.person_id = v_person.id;
+
   if p_discord_id is null
      or not (
        exists (select 1 from team_members where discord_id = p_discord_id)
-       or exists (select 1 from site_admins where discord_id = p_discord_id)
-       or exists (select 1 from guild_officers where discord_id = p_discord_id)
-       or exists (select 1 from boe_managers where discord_id = p_discord_id)
+       or cardinality(v_grants) > 0
      ) then
     return null;
   end if;
@@ -34,15 +40,13 @@ begin
     'discord_id', p_discord_id,
     'auth_user_id', coalesce(
       (select tm.auth_user_id from team_members tm where tm.discord_id = p_discord_id and tm.auth_user_id is not null limit 1),
-      (select sa.auth_user_id from site_admins sa where sa.discord_id = p_discord_id),
-      (select go.auth_user_id from guild_officers go where go.discord_id = p_discord_id),
-      (select bm.auth_user_id from boe_managers bm where bm.discord_id = p_discord_id)
+      case when cardinality(v_grants) > 0 then v_person.auth_user_id end
     ),
     'site_admin', case when v_is_self or v_is_site_admin
-                       then exists (select 1 from site_admins where discord_id = p_discord_id) end,
+                       then 'site_admin' = any (v_grants) end,
     'guild_officer', case when v_is_self or v_is_site_admin
-                          then exists (select 1 from guild_officers where discord_id = p_discord_id) end,
-    'boe_manager', exists (select 1 from boe_managers where discord_id = p_discord_id),
+                          then 'guild_officer' = any (v_grants) end,
+    'boe_manager', 'boe_manager' = any (v_grants),
     'teams', coalesce((
       select jsonb_agg(
                jsonb_build_object(

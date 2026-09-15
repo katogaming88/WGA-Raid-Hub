@@ -8,7 +8,7 @@ One row per guild. url_key is the /g/<key> segment of an address: readable for W
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer |  | false | [public.teams](public.teams.md) [public.retired_url_keys](public.retired_url_keys.md) |  |  |
+| id | integer |  | false | [public.teams](public.teams.md) [public.retired_url_keys](public.retired_url_keys.md) [public.guild_grants](public.guild_grants.md) |  |  |
 | name | text |  | false |  |  |  |
 | url_key | text | new_url_code() | false |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
@@ -43,6 +43,7 @@ erDiagram
 
 "public.teams" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id)"
 "public.retired_url_keys" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
+"public.guild_grants" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id)"
 
 "public.guilds" {
   integer id
@@ -64,6 +65,13 @@ erDiagram
   integer team_id FK
   text url_key
   timestamp_with_time_zone retired_at
+}
+"public.guild_grants" {
+  integer id
+  integer person_id FK
+  integer guild_id FK
+  text grant_type
+  timestamp_with_time_zone created_at
 }
 ```
 

@@ -2247,113 +2247,6 @@
       ]
     },
     {
-      "name": "public.site_admins",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "id",
-          "type": "integer",
-          "nullable": false,
-          "default": "nextval('site_admins_id_seq'::regclass)"
-        },
-        {
-          "name": "discord_id",
-          "type": "text",
-          "nullable": false
-        },
-        {
-          "name": "auth_user_id",
-          "type": "uuid",
-          "nullable": true
-        },
-        {
-          "name": "person_id",
-          "type": "integer",
-          "nullable": false
-        }
-      ],
-      "indexes": [
-        {
-          "name": "site_admins_discord_id_key",
-          "def": "CREATE UNIQUE INDEX site_admins_discord_id_key ON public.site_admins USING btree (discord_id)",
-          "table": "public.site_admins",
-          "columns": [
-            "discord_id"
-          ]
-        },
-        {
-          "name": "site_admins_pkey",
-          "def": "CREATE UNIQUE INDEX site_admins_pkey ON public.site_admins USING btree (id)",
-          "table": "public.site_admins",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "site_admins_person_id_idx",
-          "def": "CREATE INDEX site_admins_person_id_idx ON public.site_admins USING btree (person_id)",
-          "table": "public.site_admins",
-          "columns": [
-            "person_id"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "site_admins_auth_user_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL",
-          "table": "public.site_admins",
-          "referenced_table": "auth.users",
-          "columns": [
-            "auth_user_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "site_admins_discord_id_key",
-          "type": "UNIQUE",
-          "def": "UNIQUE (discord_id)",
-          "table": "public.site_admins",
-          "referenced_table": "",
-          "columns": [
-            "discord_id"
-          ]
-        },
-        {
-          "name": "site_admins_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.site_admins",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "site_admins_person_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (person_id) REFERENCES people(id)",
-          "table": "public.site_admins",
-          "referenced_table": "public.people",
-          "columns": [
-            "person_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        }
-      ],
-      "triggers": [
-        {
-          "name": "site_admins_set_person",
-          "def": "CREATE TRIGGER site_admins_set_person BEFORE INSERT OR UPDATE ON public.site_admins FOR EACH ROW EXECUTE FUNCTION set_person_from_discord_id()"
-        }
-      ]
-    },
-    {
       "name": "public.team_members",
       "type": "BASE TABLE",
       "columns": [
@@ -4121,113 +4014,6 @@
       ]
     },
     {
-      "name": "public.guild_officers",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "id",
-          "type": "integer",
-          "nullable": false,
-          "default": "nextval('guild_officers_id_seq'::regclass)"
-        },
-        {
-          "name": "discord_id",
-          "type": "text",
-          "nullable": false
-        },
-        {
-          "name": "auth_user_id",
-          "type": "uuid",
-          "nullable": true
-        },
-        {
-          "name": "person_id",
-          "type": "integer",
-          "nullable": false
-        }
-      ],
-      "indexes": [
-        {
-          "name": "guild_officers_pkey",
-          "def": "CREATE UNIQUE INDEX guild_officers_pkey ON public.guild_officers USING btree (id)",
-          "table": "public.guild_officers",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "guild_officers_discord_id_key",
-          "def": "CREATE UNIQUE INDEX guild_officers_discord_id_key ON public.guild_officers USING btree (discord_id)",
-          "table": "public.guild_officers",
-          "columns": [
-            "discord_id"
-          ]
-        },
-        {
-          "name": "guild_officers_person_id_idx",
-          "def": "CREATE INDEX guild_officers_person_id_idx ON public.guild_officers USING btree (person_id)",
-          "table": "public.guild_officers",
-          "columns": [
-            "person_id"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "guild_officers_auth_user_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL",
-          "table": "public.guild_officers",
-          "referenced_table": "auth.users",
-          "columns": [
-            "auth_user_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "guild_officers_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.guild_officers",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "guild_officers_discord_id_key",
-          "type": "UNIQUE",
-          "def": "UNIQUE (discord_id)",
-          "table": "public.guild_officers",
-          "referenced_table": "",
-          "columns": [
-            "discord_id"
-          ]
-        },
-        {
-          "name": "guild_officers_person_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (person_id) REFERENCES people(id)",
-          "table": "public.guild_officers",
-          "referenced_table": "public.people",
-          "columns": [
-            "person_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        }
-      ],
-      "triggers": [
-        {
-          "name": "guild_officers_set_person",
-          "def": "CREATE TRIGGER guild_officers_set_person BEFORE INSERT OR UPDATE ON public.guild_officers FOR EACH ROW EXECUTE FUNCTION set_person_from_discord_id()"
-        }
-      ]
-    },
-    {
       "name": "public.tier_token_map",
       "type": "BASE TABLE",
       "columns": [
@@ -4880,119 +4666,6 @@
         {
           "name": "trg_boe_listings_updated_at",
           "def": "CREATE TRIGGER trg_boe_listings_updated_at BEFORE UPDATE ON public.boe_listings FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
-        }
-      ]
-    },
-    {
-      "name": "public.boe_managers",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "id",
-          "type": "integer",
-          "nullable": false,
-          "default": "nextval('boe_managers_id_seq'::regclass)"
-        },
-        {
-          "name": "discord_id",
-          "type": "text",
-          "nullable": false
-        },
-        {
-          "name": "auth_user_id",
-          "type": "uuid",
-          "nullable": true
-        },
-        {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        },
-        {
-          "name": "person_id",
-          "type": "integer",
-          "nullable": false
-        }
-      ],
-      "indexes": [
-        {
-          "name": "boe_managers_pkey",
-          "def": "CREATE UNIQUE INDEX boe_managers_pkey ON public.boe_managers USING btree (id)",
-          "table": "public.boe_managers",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "boe_managers_discord_id_key",
-          "def": "CREATE UNIQUE INDEX boe_managers_discord_id_key ON public.boe_managers USING btree (discord_id)",
-          "table": "public.boe_managers",
-          "columns": [
-            "discord_id"
-          ]
-        },
-        {
-          "name": "boe_managers_person_id_idx",
-          "def": "CREATE INDEX boe_managers_person_id_idx ON public.boe_managers USING btree (person_id)",
-          "table": "public.boe_managers",
-          "columns": [
-            "person_id"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "boe_managers_auth_user_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL",
-          "table": "public.boe_managers",
-          "referenced_table": "auth.users",
-          "columns": [
-            "auth_user_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "boe_managers_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.boe_managers",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "boe_managers_discord_id_key",
-          "type": "UNIQUE",
-          "def": "UNIQUE (discord_id)",
-          "table": "public.boe_managers",
-          "referenced_table": "",
-          "columns": [
-            "discord_id"
-          ]
-        },
-        {
-          "name": "boe_managers_person_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (person_id) REFERENCES people(id)",
-          "table": "public.boe_managers",
-          "referenced_table": "public.people",
-          "columns": [
-            "person_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        }
-      ],
-      "triggers": [
-        {
-          "name": "boe_managers_set_person",
-          "def": "CREATE TRIGGER boe_managers_set_person BEFORE INSERT OR UPDATE ON public.boe_managers FOR EACH ROW EXECUTE FUNCTION set_person_from_discord_id()"
         }
       ]
     },
@@ -7013,6 +6686,238 @@
           "referenced_table": ""
         }
       ]
+    },
+    {
+      "name": "public.guild_grants",
+      "type": "BASE TABLE",
+      "comment": "Guild-wide grants, one row per person per grant per guild (#942). Replaced site_admins, guild_officers and boe_managers, which remain as read-only views until cutover.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "person_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "guild_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "grant_type",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "guild_grants_pkey",
+          "def": "CREATE UNIQUE INDEX guild_grants_pkey ON public.guild_grants USING btree (id)",
+          "table": "public.guild_grants",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "guild_grants_person_id_guild_id_grant_type_key",
+          "def": "CREATE UNIQUE INDEX guild_grants_person_id_guild_id_grant_type_key ON public.guild_grants USING btree (person_id, guild_id, grant_type)",
+          "table": "public.guild_grants",
+          "columns": [
+            "person_id",
+            "guild_id",
+            "grant_type"
+          ]
+        },
+        {
+          "name": "guild_grants_guild_id_idx",
+          "def": "CREATE INDEX guild_grants_guild_id_idx ON public.guild_grants USING btree (guild_id)",
+          "table": "public.guild_grants",
+          "columns": [
+            "guild_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "guild_grants_grant_type_check",
+          "type": "CHECK",
+          "def": "CHECK ((grant_type = ANY (ARRAY['site_admin'::text, 'guild_officer'::text, 'boe_manager'::text])))",
+          "table": "public.guild_grants",
+          "referenced_table": "",
+          "columns": [
+            "grant_type"
+          ]
+        },
+        {
+          "name": "guild_grants_guild_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (guild_id) REFERENCES guilds(id)",
+          "table": "public.guild_grants",
+          "referenced_table": "public.guilds",
+          "columns": [
+            "guild_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "guild_grants_person_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (person_id) REFERENCES people(id)",
+          "table": "public.guild_grants",
+          "referenced_table": "public.people",
+          "columns": [
+            "person_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "guild_grants_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.guild_grants",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "guild_grants_person_id_guild_id_grant_type_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (person_id, guild_id, grant_type)",
+          "table": "public.guild_grants",
+          "referenced_table": "",
+          "columns": [
+            "person_id",
+            "guild_id",
+            "grant_type"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.site_admins",
+      "type": "VIEW",
+      "comment": "Read-only view of guild_grants (#942), dropped at cutover (#1105).",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "discord_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "person_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "def": "CREATE VIEW site_admins AS (\n SELECT g.id,\n    p.discord_id,\n    p.auth_user_id,\n    g.person_id,\n    g.created_at\n   FROM (guild_grants g\n     JOIN people p ON ((p.id = g.person_id)))\n  WHERE (g.grant_type = 'site_admin'::text)\n)",
+      "referenced_tables": [
+        "public.guild_grants",
+        "public.people"
+      ]
+    },
+    {
+      "name": "public.guild_officers",
+      "type": "VIEW",
+      "comment": "Read-only view of guild_grants (#942), dropped at cutover (#1105).",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "discord_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "person_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "def": "CREATE VIEW guild_officers AS (\n SELECT g.id,\n    p.discord_id,\n    p.auth_user_id,\n    g.person_id,\n    g.created_at\n   FROM (guild_grants g\n     JOIN people p ON ((p.id = g.person_id)))\n  WHERE (g.grant_type = 'guild_officer'::text)\n)",
+      "referenced_tables": [
+        "public.guild_grants",
+        "public.people"
+      ]
+    },
+    {
+      "name": "public.boe_managers",
+      "type": "VIEW",
+      "comment": "Read-only view of guild_grants (#942), dropped at cutover (#1105).",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "discord_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "person_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "def": "CREATE VIEW boe_managers AS (\n SELECT g.id,\n    p.discord_id,\n    p.auth_user_id,\n    g.person_id,\n    g.created_at\n   FROM (guild_grants g\n     JOIN people p ON ((p.id = g.person_id)))\n  WHERE (g.grant_type = 'boe_manager'::text)\n)",
+      "referenced_tables": [
+        "public.guild_grants",
+        "public.people"
+      ]
     }
   ],
   "relations": [
@@ -7498,19 +7403,6 @@
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     },
     {
-      "table": "public.site_admins",
-      "columns": [
-        "person_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.people",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (person_id) REFERENCES people(id)"
-    },
-    {
       "table": "public.team_members",
       "columns": [
         "team_id"
@@ -7719,19 +7611,6 @@
       "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)"
     },
     {
-      "table": "public.guild_officers",
-      "columns": [
-        "person_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.people",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (person_id) REFERENCES people(id)"
-    },
-    {
       "table": "public.tier_token_map",
       "columns": [
         "resolved_item_id"
@@ -7847,19 +7726,6 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (boe_item_id) REFERENCES boe_items(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.boe_managers",
-      "columns": [
-        "person_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.people",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (person_id) REFERENCES people(id)"
     },
     {
       "table": "public.priority_conflict_dismissals",
@@ -8198,6 +8064,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.guild_grants",
+      "columns": [
+        "guild_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.guilds",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (guild_id) REFERENCES guilds(id)"
+    },
+    {
+      "table": "public.guild_grants",
+      "columns": [
+        "person_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (person_id) REFERENCES people(id)"
     }
   ],
   "functions": [
@@ -8787,6 +8679,30 @@
       "name": "public.delete_empty_person",
       "return_type": "trigger",
       "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.only_guild_id",
+      "return_type": "int4",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_list_grants",
+      "return_type": "record",
+      "arguments": "p_grant_type text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_grant",
+      "return_type": "int4",
+      "arguments": "p_grant_type text, p_discord_id text, p_label text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_revoke",
+      "return_type": "void",
+      "arguments": "p_grant_type text, p_discord_id text, p_label text",
       "type": "FUNCTION"
     }
   ],

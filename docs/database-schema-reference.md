@@ -29,7 +29,7 @@ Includes notes on redundancies and why they exist.
 - [teams](#teams)
 - [team_settings](#team_settings)
 - [audit_log](#audit_log)
-- [site_admins](#site_admins)
+- [guild_grants](#guild_grants)
 - [scoring](#scoring)
 - [player_wcl_season_perf](#player_wcl_season_perf)
 - [classes_specs](#classes_specs)
@@ -273,15 +273,19 @@ Immutable event log of officer actions for accountability.
 
 ---
 
-## `site_admins`
+## `guild_grants`
 
-Global super-admins who can manage any team on the site. Separate from team-scoped membership.
+The guild-wide grants: site admin, guild officer and BoE manager, one row per person per grant per guild ([#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942) step 2). It replaced the `site_admins`, `guild_officers` and `boe_managers` tables, which remain as read-only views of it until cutover.
 
-| Column         | Type | Purpose                    |
-| -------------- | ---- | -------------------------- |
-| `id`           | int8 | PK                         |
-| `discord_id`   | text | Discord snowflake for auth |
-| `auth_user_id` | uuid | FK -> `auth.users.id`      |
+| Column       | Type        | Purpose                                                                 |
+| ------------ | ----------- | ----------------------------------------------------------------------- |
+| `id`         | int4        | PK                                                                      |
+| `person_id`  | int4        | FK -> `people.id`. The account the grant applies to is the person's     |
+| `guild_id`   | int4        | FK -> `guilds.id`. Every grant is on the one guild until #1045           |
+| `grant_type` | text        | `site_admin`, `guild_officer` or `boe_manager`                          |
+| `created_at` | timestamptz | Row creation                                                            |
+
+Unique on `(person_id, guild_id, grant_type)`. A site admin can grant to someone who has not signed in yet: the grant names their person, which is listed by Discord id, and `link_auth_user_to_member()` attaches the account to that person on first sign-in. Until then the person's `auth_user_id` is null, the grant is not active, and the `admin_list_*` functions return the null so the admin UI can say so. No team column on purpose: these grants apply on every team, and the BoE manager grant in particular because BoEs are guild property ([#766](https://github.com/katogaming88/WGA-Raid-Hub/issues/766)).
 
 ---
 
@@ -440,16 +444,7 @@ One row per AH listing event, so relists keep their history instead of collapsin
 
 ## `boe_managers`
 
-The standalone grant that gates BoE money mutations, same shape as `guild_officers` and `site_admins` ([#745](https://github.com/katogaming88/WGA-Raid-Hub/issues/745), reshaped guild-wide in [#766](https://github.com/katogaming88/WGA-Raid-Hub/issues/766)). No team column on purpose: BoEs are guild property, so a grantee is authorized on every team's finds.
-
-| Column         | Type        | Purpose                                                    |
-| -------------- | ----------- | ---------------------------------------------------------- |
-| `id`           | int4        | PK                                                          |
-| `discord_id`   | text        | Discord snowflake, unique. Known at grant time              |
-| `auth_user_id` | uuid        | FK -> `auth.users.id`, nullable. What `is_boe_manager()` matches |
-| `created_at`   | timestamptz | Row creation                                                |
-
-Two identity columns for the same reason `site_admins` and `guild_officers` have them: a site admin can grant to someone who has not signed in yet. `auth_user_id` resolves at grant time when that Discord account already exists in `auth.users`, and `link_auth_user_to_member()` fills it on their first login otherwise. A null `auth_user_id` means the grant is not active yet, and `admin_list_boe_managers()` returns the column so the admin UI can say so.
+Since [#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942) step 2, a read-only view of the `boe_manager` rows in [`guild_grants`](#guild_grants), with the same columns the table had (`id`, `discord_id`, `auth_user_id`, `created_at`, plus `person_id`). The grant gates BoE money mutations ([#745](https://github.com/katogaming88/WGA-Raid-Hub/issues/745), reshaped guild-wide in [#766](https://github.com/katogaming88/WGA-Raid-Hub/issues/766)). `site_admins` and `guild_officers` are the same kind of view. All three are dropped at cutover.
 
 ---
 
@@ -495,9 +490,9 @@ These look like the same field but represent different layers. `players.name_rea
 
 `team_members.name_realm` is legacy in practice. It came from the #338 import bridge, is read only by `resolve_actor_name()`, and has drifted: two of the nine officer rows in production name a character other than the one the account has claimed. `admin_grant_team_role()` (#910) leaves it null, because setting it buys a nav label and costs a dead "View My Profile" button for any name that is not on the roster. Retiring it or backfilling it is open work.
 
-### 5. `site_admins` vs `team_members` sharing `discord_id` and `auth_user_id`
+### 5. `guild_grants` vs `team_members`
 
-These fields appear in both tables but are not redundant -- they serve different scopes. `team_members` is team-scoped membership; `site_admins` is a global super-admin check that must work without joining through any team. Keeping them in a separate table also prevents a site admin from implicitly appearing as a member of every team.
+Both say what a person may do, but at different scopes. `team_members` is team-scoped membership with a role; `guild_grants` holds the grants that must work without joining through any team. Keeping them apart also stops a site admin from implicitly appearing as a member of every team. Both point at `people`; `team_members` still carries its own `discord_id` and `auth_user_id` until cutover.
 
 ### 6. `self_received_requests` vs `bis_requests` -- similar structure, different workflows
 

@@ -10,6 +10,22 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-15 -- One guild_grants table holds the site admin, guild officer and BoE manager grants (#942 step 2)
+
+Shipped: `20260915092357_guild_grants.sql`.
+
+Step 2 of the plan in the 2026-09-14 entry below. Settled while building it:
+
+- **A grant is a row: person, guild, grant type.** `guild_grants (person_id, guild_id, grant_type)`, with `grant_type` one of `site_admin`, `guild_officer`, `boe_manager`, unique per person per guild per type. The three tables were the same table three times, each with its own admin trio, link-trigger branch and read rules; a fourth guild-wide grant is now a new value.
+- **Nobody's access changes.** The read and write rules move across as they were: site admins read and write every grant, any officer or team leader reads the BoE manager grants (#766), and nobody else reads any. `is_site_admin()`, `is_guild_officer()`, `is_boe_manager()` and the nine `admin_*` functions keep their names, arguments, results and error wording.
+- **A grant has no account column; it reaches the account through the person.** The migration refuses to run if any grant's own `auth_user_id` differs from its person's, which is the check that "reads the person's account" answers exactly as "reads the grant's account" did. `link_auth_user_to_member()` no longer updates the three grant tables.
+- **The old names stay as read-only views until cutover**, readable only by the service role and the read-only database role. Nothing in either site reads them (the current site's admin page uses the `admin_*` functions); `boe-sold-webhook` reads `boe_managers` with the service role and moves off it when the views are dropped in step 6. Writes through them were not kept: only fixtures wrote the tables directly, and they now write `guild_grants`.
+- **Every grant sits on the one guild, and the checks still ask "in any guild".** Scoping a check to the guild being viewed is multi-tenancy (#1045). A new grant goes to `only_guild_id()`, which refuses once there is a second guild, as `admin_create_team()` does. This is the guild that the 2026-09-13 addresses entry said these grants would get here.
+- **One body per operation.** `admin_list_grants(type)`, `admin_grant(type, discord_id, label)` and `admin_revoke(type, discord_id, label)` hold the logic; the nine named functions are one-line wrappers, so the three copies cannot drift. The wrappers are what `authenticated` can execute; the shared bodies are not.
+- **Audit rows keep their action names** (`site_admin_granted`, `boe_manager_revoked`, ...) and target types. Their `target_id` is now a `guild_grants` id; older rows name the old table's id. Neither resolves to a name in the Admin tab's log, which reads the Discord id from `detail`.
+
+---
+
 ## 2026-09-15 -- The gear sweep records its outcome on site_settings, one column per trigger (#1174)
 
 Shipped: `20260915003743_site_settings_gear_sync_runs.sql`
@@ -46,7 +62,7 @@ Season lived in three places and none of them was a table: `CURRENT_SEASON` in `
 
 ## 2026-09-14 -- A person is a row, alts hang off it, and the build runs in six steps (#942)
 
-Shipped: `20260914221328_people_table.sql` (step 1). Steps 2 to 6: not yet, #942.
+Shipped: `20260914221328_people_table.sql` (step 1), `20260915092357_guild_grants.sql` (step 2, entry above). Steps 3 to 6: not yet, #942.
 
 The re-plan is on [#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942#issuecomment-5673595252). Kat's calls on 2026-09-14:
 

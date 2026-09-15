@@ -14,9 +14,7 @@ declare
 begin
   select id into v_own from people where auth_user_id = new.user_id;
 
-  -- Only a Discord identity links a Discord-keyed grant. One early return
-  -- rather than a condition on each update, so a fifth grant table added later
-  -- is covered without anyone remembering.
+  -- Only a Discord identity attaches a person listed by Discord id.
   if new.provider is distinct from 'discord' then
     if v_own is null then
       insert into people (auth_user_id) values (new.user_id) on conflict do nothing;
@@ -38,21 +36,6 @@ begin
   end if;
 
   update team_members
-  set auth_user_id = new.user_id
-  where discord_id = new.provider_id
-    and auth_user_id is null;
-
-  update site_admins
-  set auth_user_id = new.user_id
-  where discord_id = new.provider_id
-    and auth_user_id is null;
-
-  update boe_managers
-  set auth_user_id = new.user_id
-  where discord_id = new.provider_id
-    and auth_user_id is null;
-
-  update guild_officers
   set auth_user_id = new.user_id
   where discord_id = new.provider_id
     and auth_user_id is null;
