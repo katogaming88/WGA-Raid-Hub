@@ -6930,6 +6930,142 @@
         "public.guild_grants",
         "public.people"
       ]
+    },
+    {
+      "name": "public.characters",
+      "type": "BASE TABLE",
+      "comment": "Characters a person chose to show from their Battle.net account (#942 step 5, #1162). Written only by save_battlenet_characters() from the battlenet-characters Edge Function. A character here is an alt unless the same name_realm_key is a roster row linked to the person.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "person_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "blizzard_id",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "realm",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "realm_slug",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "name_realm",
+          "type": "text",
+          "nullable": true,
+          "extra_def": "GENERATED ALWAYS AS ((name || '-'::text) || realm) STORED"
+        },
+        {
+          "name": "name_realm_key",
+          "type": "text",
+          "nullable": true,
+          "extra_def": "GENERATED ALWAYS AS lower(replace(((name || '-'::text) || realm), ' '::text, ''::text)) STORED"
+        },
+        {
+          "name": "class_name",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "spec_name",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "level",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "item_level",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "saved_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "characters_pkey",
+          "def": "CREATE UNIQUE INDEX characters_pkey ON public.characters USING btree (id)",
+          "table": "public.characters",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "characters_blizzard_id_key",
+          "def": "CREATE UNIQUE INDEX characters_blizzard_id_key ON public.characters USING btree (blizzard_id)",
+          "table": "public.characters",
+          "columns": [
+            "blizzard_id"
+          ]
+        },
+        {
+          "name": "characters_person_id_idx",
+          "def": "CREATE INDEX characters_person_id_idx ON public.characters USING btree (person_id)",
+          "table": "public.characters",
+          "columns": [
+            "person_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "characters_person_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE",
+          "table": "public.characters",
+          "referenced_table": "public.people",
+          "columns": [
+            "person_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "characters_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.characters",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "characters_blizzard_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (blizzard_id)",
+          "table": "public.characters",
+          "referenced_table": "",
+          "columns": [
+            "blizzard_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -8102,6 +8238,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (person_id) REFERENCES people(id)"
+    },
+    {
+      "table": "public.characters",
+      "columns": [
+        "person_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -8733,6 +8882,24 @@
       "name": "public.my_player_ids",
       "return_type": "_int4",
       "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.battlenet_account_id",
+      "return_type": "text",
+      "arguments": "p_auth_user_id uuid",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.link_battlenet_roster_characters",
+      "return_type": "record",
+      "arguments": "p_person_id integer, p_characters jsonb",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.save_battlenet_characters",
+      "return_type": "characters",
+      "arguments": "p_person_id integer, p_characters jsonb",
       "type": "FUNCTION"
     }
   ],

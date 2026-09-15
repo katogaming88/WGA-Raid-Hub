@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | --- | ---: |
 | Planning and design | 1 h 50 m |
 | Revamp 1: decisions and foundation | 6 h 55 m |
-| Revamp 2: public pages | 6 h 35 m |
-| **All revamp work** | **15 h 20 m** |
+| Revamp 2: public pages | 6 h 50 m |
+| **All revamp work** | **15 h 35 m** |
 
 ## Log
 
@@ -68,6 +68,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | 9:15–9:55 AM | #942 step 2: `guild_grants` | Revamp 2 (Identity prerequisite) | 40 m | ~35 m build, ~5 m Kat freeing the database port; review not yet counted | One table for the site admin, guild officer and BoE manager grants, the old names kept as read-only views. The migration refuses to run if a grant's account differs from its person's. Windows had reserved the local database port, which needed Kat to restart a Windows service as admin |
 | 4:00–4:25 PM | #942 step 3: access checks through the person | Revamp 2 (Identity prerequisite) | 25 m | build; Rex review not yet counted | Seven permission checks, the member self-read rule and twelve functions moved onto the person. Production checked first (72 memberships, all matching). A trigger now keeps a membership's account equal to its person's, which removed two code paths with nothing left to handle and closed a team leader pointing a membership at another account. Deleting an account broke on the first try (the trigger copied the account back before the person was cleared) |
 | 4:55–5:15 PM | #942 step 4: the inbox belongs to the person | Revamp 2 (Identity prerequisite) | 20 m | ~15 m build, ~5 m Kat deciding | Built stacked on step 3's open PR. Production check reshaped the step: Kat chose an inbox that includes archived characters with the old notifications marked read, and kept preferences on the sign-in account (moving them gained nothing) |
+| 5:14–5:30 PM | #942 step 5a: characters from Battle.net (storage and function) | Revamp 2 (Identity prerequisite, #1162) | 15 m | ~12 m build, ~3 m Kat deciding | Stacked on step 4. Kat chose a raider-picked alt list, automatic roster links, and the main swap request as its own PR. Split the step: storage and the Edge Function now, the app picker with mockups next. A team membership still needs a Discord id, so Battle.net-only people are told to connect it |
 
 ## Not counted (same sessions, not revamp)
 
