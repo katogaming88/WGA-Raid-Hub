@@ -46,6 +46,21 @@ answers to.
 
 ---
 
+## [3.119.4] - 2026-09-14
+
+### Project
+
+- An inventory of every season column and `team_settings.config` key
+  ([#931](https://github.com/katogaming88/WGA-Raid-Hub/issues/931)).
+  `docs/season-inventory.md` names, for the fourteen table columns, the
+  ten view columns and the 22 config keys, who writes each, who reads it,
+  the format it holds, whether it means the guild's tier or a team's own
+  cycle, and what the next tier does to it if nothing changes: the input
+  to the Season milestone's schema steps. Measured against production on
+  2026-09-14.
+
+---
+
 ## [3.119.3] - 2026-09-14
 
 ### Project
