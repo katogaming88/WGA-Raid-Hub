@@ -3,7 +3,12 @@
 // timed out before the answer, and synced_at moves on any write. These pin
 // the outcome the function stores on site_settings after every run.
 import { assertEquals } from 'jsr:@std/assert@1';
-import { buildOutcome, newTally, noteError } from '../../../supabase/functions/blizzard-gear-sync/outcome.ts';
+import {
+  buildOutcome,
+  columnFor,
+  newTally,
+  noteError
+} from '../../../supabase/functions/blizzard-gear-sync/outcome.ts';
 
 const STARTED = new Date('2026-09-15T10:07:03Z');
 const FINISHED = new Date('2026-09-15T10:07:21Z');
@@ -63,4 +68,9 @@ Deno.test('an officer run records the officer trigger', () => {
   tally.players = 1;
   tally.synced = 1;
   assertEquals(buildOutcome('officer', STARTED, FINISHED, tally).trigger, 'officer');
+});
+
+Deno.test('each trigger writes its own column, so a sync by hand cannot refresh the sweep', () => {
+  assertEquals(columnFor('cron'), 'gear_sync_last_cron_run');
+  assertEquals(columnFor('officer'), 'gear_sync_last_officer_run');
 });

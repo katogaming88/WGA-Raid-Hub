@@ -79,8 +79,8 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const cronRun = (over = {}) => ({
   trigger: 'cron',
-  started_at: new Date(NOW - 9 * HOUR).toISOString(),
-  finished_at: new Date(NOW - 9 * HOUR + 20000).toISOString(),
+  started_at: new Date(NOW - 9 * HOUR - 20000).toISOString(),
+  finished_at: new Date(NOW - 9 * HOUR).toISOString(),
   synced: 55,
   skipped: 0,
   teams: 3,

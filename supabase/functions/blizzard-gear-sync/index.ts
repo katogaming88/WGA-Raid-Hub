@@ -53,6 +53,7 @@
 // would be the wrong direction to err in for that comparison.
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import { VERSION } from './version.ts';
+import { buildOutcome, columnFor, newTally, noteError, type Tally, type Trigger } from './outcome.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -191,23 +192,23 @@ async function syncRoster(
   players: Array<{ id: number; name_realm: string }>,
   thresholds: Record<string, number> | null,
   token: string,
-  bonusTracks: Map<number, string>
-): Promise<{ synced: number; skipped: number }> {
-  let synced = 0;
-  let skipped = 0;
+  bonusTracks: Map<number, string>,
+  tally: Tally
+): Promise<void> {
+  tally.players += players.length;
 
   for (const player of players) {
     const parts = String(player.name_realm || '').split('-');
     const firstName = (parts[0] || '').trim();
     const realm = parts.slice(1).join('-').trim();
     if (!firstName || !realm) {
-      skipped++;
+      tally.skipped++;
       continue;
     }
 
     const equippedItems = await fetchEquipment(firstName, realm, token);
     if (!equippedItems) {
-      skipped++;
+      tally.skipped++;
       continue;
     }
 
@@ -221,14 +222,41 @@ async function syncRoster(
         .upsert(rows, { onConflict: 'player_id,equipment_slot' });
       if (upsertError) {
         console.error('blizzard-gear-sync: upsert failed for player', player.id, upsertError.message);
-        skipped++;
+        noteError(tally, upsertError.message);
+        tally.skipped++;
         continue;
       }
     }
-    synced++;
+    tally.synced++;
   }
+}
 
-  return { synced, skipped };
+// What the run did, on the settings row (#1174): the scheduled sweep and an
+// officer's sync each keep their own column, so a sync by hand cannot refresh
+// the sweep's age. A failed write is logged and never changes the response.
+async function recordRun(service: SupabaseClient<any>, trigger: Trigger, startedAt: Date, tally: Tally): Promise<void> {
+  try {
+    const { error } = await service
+      .from('site_settings')
+      .update({ [columnFor(trigger)]: buildOutcome(trigger, startedAt, new Date(), tally) })
+      .eq('id', 1);
+    if (error) console.error('blizzard-gear-sync: failed to record the run', error.message);
+  } catch (err) {
+    console.error('blizzard-gear-sync: failed to record the run', err);
+  }
+}
+
+async function blizzardToken(): Promise<string> {
+  const clientId = Deno.env.get('BLIZZARD_CLIENT_ID');
+  const clientSecret = Deno.env.get('BLIZZARD_CLIENT_SECRET');
+  if (!clientId || !clientSecret) throw new Error('Blizzard credentials not configured');
+  const token = await getBlizzardToken(clientId, clientSecret);
+  if (!token) throw new Error('Failed to get Blizzard access token');
+  return token;
+}
+
+function serviceClient(): SupabaseClient<any> {
+  return createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 }
 
 Deno.serve(async (req) => {
@@ -236,31 +264,25 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: CORS_HEADERS });
   }
 
-  try {
-    const clientId = Deno.env.get('BLIZZARD_CLIENT_ID');
-    const clientSecret = Deno.env.get('BLIZZARD_CLIENT_SECRET');
-    if (!clientId || !clientSecret) {
-      return jsonResponse({ success: false, error: 'Blizzard credentials not configured' }, 500);
-    }
-    const token = await getBlizzardToken(clientId, clientSecret);
-    if (!token) return jsonResponse({ success: false, error: 'Failed to get Blizzard access token' }, 500);
+  const cronSecret = Deno.env.get('BLIZZARD_GEAR_SYNC_SECRET');
+  const isCronCall = !!cronSecret && req.headers.get('x-cron-secret') === cronSecret;
 
-    const cronSecret = Deno.env.get('BLIZZARD_GEAR_SYNC_SECRET');
-    const isCronCall = !!cronSecret && req.headers.get('x-cron-secret') === cronSecret;
-
-    if (isCronCall) {
-      // Full sweep, every team -- each team keeps its own trackIlvlThresholds,
-      // so this loops team-by-team rather than pulling every player at once.
-      const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  if (isCronCall) {
+    // Full sweep, every team -- each team keeps its own trackIlvlThresholds,
+    // so this loops team-by-team rather than pulling every player at once.
+    const supabase = serviceClient();
+    const startedAt = new Date();
+    const tally = newTally();
+    try {
+      const token = await blizzardToken();
       const { data: teams, error: teamsError } = await supabase.from('team_settings').select('team_id, config');
-      if (teamsError) return jsonResponse({ success: false, error: teamsError.message }, 500);
+      if (teamsError) throw new Error(teamsError.message);
 
       // Loaded once for the whole sweep, not per team -- it's global catalog
       // data, not per-team config like the thresholds below.
       const bonusTracks = await loadBonusTrackMap(supabase);
-      let synced = 0;
-      let skipped = 0;
       for (const team of teams || []) {
+        tally.teams++;
         const thresholds = (team.config as any)?.trackIlvlThresholds || null;
         const { data: players, error: playersError } = await supabase
           .from('players')
@@ -269,14 +291,23 @@ Deno.serve(async (req) => {
           .is('archived_at', null);
         if (playersError) {
           console.error('blizzard-gear-sync: failed to load roster for team', team.team_id, playersError.message);
+          noteError(tally, playersError.message);
           continue;
         }
-        const result = await syncRoster(supabase, players || [], thresholds, token, bonusTracks);
-        synced += result.synced;
-        skipped += result.skipped;
+        await syncRoster(supabase, players || [], thresholds, token, bonusTracks, tally);
       }
-      return jsonResponse({ success: true, synced, skipped });
+      return jsonResponse({ success: true, synced: tally.synced, skipped: tally.skipped });
+    } catch (err) {
+      console.error('blizzard-gear-sync error:', err);
+      noteError(tally, err);
+      return jsonResponse({ success: false, error: err instanceof Error ? err.message : 'Unknown error' }, 500);
+    } finally {
+      await recordRun(supabase, 'cron', startedAt, tally);
     }
+  }
+
+  try {
+    const token = await blizzardToken();
 
     // Officer-triggered, on-demand path -- forwards the caller's own JWT so
     // my_team_role()/is_site_admin() resolve exactly as they would for a
@@ -298,21 +329,33 @@ Deno.serve(async (req) => {
     const authorized = role === 'officer' || role === 'team_leader' || isSiteAdmin === true;
     if (!authorized) return jsonResponse({ success: false, error: 'Not authorized' }, 403);
 
-    const { data: settingsRow } = await supabase
-      .from('team_settings')
-      .select('config')
-      .eq('team_id', teamId)
-      .maybeSingle();
-    const thresholds = (settingsRow?.config as any)?.trackIlvlThresholds || null;
+    const startedAt = new Date();
+    const tally = newTally();
+    tally.teams = 1;
+    try {
+      const { data: settingsRow } = await supabase
+        .from('team_settings')
+        .select('config')
+        .eq('team_id', teamId)
+        .maybeSingle();
+      const thresholds = (settingsRow?.config as any)?.trackIlvlThresholds || null;
 
-    let query = supabase.from('players').select('id, name_realm').eq('team_id', teamId).is('archived_at', null);
-    if (playerId) query = query.eq('id', playerId);
-    const { data: players, error: playersError } = await query;
-    if (playersError) return jsonResponse({ success: false, error: playersError.message }, 500);
+      let query = supabase.from('players').select('id, name_realm').eq('team_id', teamId).is('archived_at', null);
+      if (playerId) query = query.eq('id', playerId);
+      const { data: players, error: playersError } = await query;
+      if (playersError) throw new Error(playersError.message);
 
-    const bonusTracks = await loadBonusTrackMap(supabase);
-    const result = await syncRoster(supabase, players || [], thresholds, token, bonusTracks);
-    return jsonResponse({ success: true, ...result });
+      const bonusTracks = await loadBonusTrackMap(supabase);
+      await syncRoster(supabase, players || [], thresholds, token, bonusTracks, tally);
+      return jsonResponse({ success: true, synced: tally.synced, skipped: tally.skipped });
+    } catch (err) {
+      noteError(tally, err);
+      throw err;
+    } finally {
+      // The caller's client cannot write site_settings; the record goes
+      // through the service role, after the authorization check above.
+      await recordRun(serviceClient(), 'officer', startedAt, tally);
+    }
   } catch (err) {
     console.error('blizzard-gear-sync error:', err);
     return jsonResponse({ success: false, error: err instanceof Error ? err.message : 'Unknown error' }, 500);

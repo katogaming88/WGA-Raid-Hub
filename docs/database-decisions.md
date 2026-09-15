@@ -10,6 +10,22 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-15 -- The gear sweep records its outcome on site_settings, one column per trigger (#1174)
+
+Shipped: `20260915003743_site_settings_gear_sync_runs.sql`
+
+The daily `blizzard-gear-sync` sweep wrote nothing on 2026-09-12 to 09-14 and nothing in the database said so (#1095): `cron.job_run_details` reports whether pg_cron queued the request, `net._http_response` holds a 5 s timeout for a function that runs 13 s, and `player_equipped_gear.synced_at` moves on any write, so one sync by hand erases the evidence of the missed mornings. The function's dashboard log was the only record, read by a person after the fact.
+
+- **The function writes its outcome to the settings row at the end of every run**, in its `finally`: `trigger`, `started_at`, `finished_at`, `synced`, `skipped`, `teams`, `players` and `error` (the first message, capped at 300 characters, or null). One row, the last run: `site_settings` is where the guild-wide singletons already live (`maintenance_mode`, `guild_officer_bios`, the BoE payout constants), and the Admin tab reads the row already. A new table for one value was rejected.
+- **Two columns, `gear_sync_last_cron_run` and `gear_sync_last_officer_run`, not one key.** The issue asked for one. An officer's "Sync Gear Levels Now" (or a single-player sync) writing the same key would reset the sweep's age, which is exactly how `synced_at` hides a dead cron today. Each trigger keeps its own column, the Admin tab warns from the cron one, and each write is a plain column update by the service role rather than a read-modify-write of one jsonb value.
+- **Public-read, function-written.** The row's SELECT policies already cover any column on it, so the error text is stored as the message alone. The writer is the function's service-role client, the first writer on this table that is not a SECURITY DEFINER RPC; on the officer path that client is created after the caller's authorization check, because the caller's own JWT cannot write the row.
+- **The age is the net, not the error field.** A repeat of 2026-09-14 that is still answering 504 at the sweep's end fails the record write too, and the previous day's record stays; the Admin tab warns at 36 hours from `finished_at`. When PostgREST has recovered by the end, the record carries `synced = 0` and the first message.
+- **Not here:** the same record for `twitch-live-check`, `wcl-progression-sync` and `optional-rsvp-reminders`, which share the shape; a bounded retry inside the sweep, which waits on the 10:00Z window being measured (#1095).
+
+[Full discussion -> #1174](https://github.com/katogaming88/WGA-Raid-Hub/issues/1174), Officer Tooling Improvements.
+
+---
+
 ## 2026-09-14 -- seasons is a table, every season column is a foreign key to it, and raid_zones keeps the team's stamp (#932)
 
 Shipped: `20260914224520_seasons_table.sql`
