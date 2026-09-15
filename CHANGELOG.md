@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.122.1] - 2026-09-14
+
+### Project
+
+- The revamp time log catches up on the evening of 2026-09-14: the people
+  table row now counts only the time spent on it, including Rex's review and
+  the merge, and the season dates decision and the issue and pull request
+  writing rules are listed as time not counted toward the revamp.
+
+---
+
 ## [3.122.0] - 2026-09-14
 
 ### Backend
