@@ -11,6 +11,7 @@
 | role | text |  | false |  |  |  |
 | name_realm | text |  | true |  |  |  |
 | updated_at | timestamp with time zone |  | true |  |  |  |
+| person_id | integer |  | false |  | [public.people](public.people.md) |  |
 
 ## Constraints
 
@@ -21,6 +22,8 @@
 | team_members_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | team_members_team_id_discord_id_key | UNIQUE | UNIQUE (team_id, discord_id) |
 | team_members_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
+| team_members_person_id_fkey | FOREIGN KEY | FOREIGN KEY (person_id) REFERENCES people(id) |
+| team_members_team_id_person_id_key | UNIQUE | UNIQUE (team_id, person_id) |
 
 ## Indexes
 
@@ -28,12 +31,14 @@
 | ---- | ---------- |
 | team_members_pkey | CREATE UNIQUE INDEX team_members_pkey ON public.team_members USING btree (id) |
 | team_members_team_id_discord_id_key | CREATE UNIQUE INDEX team_members_team_id_discord_id_key ON public.team_members USING btree (team_id, discord_id) |
+| team_members_team_id_person_id_key | CREATE UNIQUE INDEX team_members_team_id_person_id_key ON public.team_members USING btree (team_id, person_id) |
 
 ## Triggers
 
 | Name | Definition |
 | ---- | ---------- |
 | trg_team_members_updated_at | CREATE TRIGGER trg_team_members_updated_at BEFORE UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
+| team_members_set_person | CREATE TRIGGER team_members_set_person BEFORE INSERT OR UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION set_person_from_discord_id() |
 
 ## Relations
 
@@ -44,6 +49,7 @@ erDiagram
 "public.season_signups" }o--o| "public.team_members" : "FOREIGN KEY (reviewed_by) REFERENCES team_members(id) ON DELETE SET NULL"
 "public.raid_schedule_exceptions" }o--o| "public.team_members" : "FOREIGN KEY (created_by) REFERENCES team_members(id) ON DELETE SET NULL"
 "public.team_members" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_members" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 
 "public.team_members" {
   integer id
@@ -53,6 +59,7 @@ erDiagram
   text role
   text name_realm
   timestamp_with_time_zone updated_at
+  integer person_id FK
 }
 "public.players" {
   integer id
@@ -120,6 +127,12 @@ erDiagram
   timestamp_with_time_zone archived_at
   integer wcl_guild_id
   integer guild_id FK
+}
+"public.people" {
+  integer id
+  uuid auth_user_id FK
+  text discord_id
+  timestamp_with_time_zone created_at
 }
 ```
 

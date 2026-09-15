@@ -10,6 +10,28 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-14 -- A person is a row, alts hang off it, and the build runs in six steps (#942)
+
+Shipped: `20260914221328_people_table.sql` (step 1). Steps 2 to 6: not yet, #942.
+
+The re-plan is on [#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942#issuecomment-5673595252). Kat's calls on 2026-09-14:
+
+- **An alt is a character listed on the person, not a roster row.** Grihz's main is his roster row, with attendance, a Priority List spot and loot; his Evoker alt shows under his name with class, spec and item level and none of those. When an officer makes an alt the main, it becomes the roster row the way a main swap does today. Rejected: an `is_alt` flag on `players`, where every roster, attendance, priority, import and export read has to skip flagged rows and one missed read puts an alt into loot priority. This answers #631's open question.
+- **Someone on two teams (#486): officers of either team see the other team's name and nothing else from it.** Each team keeps its own roster row and history, one person above both.
+- **`team_members` id 8 is kept**, the Immolation officer listed by Discord id who has never signed in. They become a person with no account, and their access starts on first sign-in as it would today.
+
+Settled while building step 1:
+
+- **Every sign-in account is a person, and so is a Discord id listed before its owner signs in.** The person hangs off the account (the Battle.net decision above), with `discord_id` on the row as the key a listing uses until the account arrives.
+- **`team_members` stays and becomes the membership table**, rather than a new `team_memberships`. It already is the membership half; renaming it breaks the current site for nothing before January. It gains `person_id` now and loses `discord_id` and `auth_user_id` at cutover. It is still not promoted into the person.
+- **`person_id` is kept by trigger, not generated.** A generated column cannot read another table. The trigger overwrites it on every insert and update, not only when `discord_id` changes, because team leaders write `team_members` directly and a `person_id` they picked would outlive the steps that start trusting it.
+- **`players` gets no `person_id`.** A character reaches its person through `team_members`, as it reaches its account today; a second path would be a second thing to keep level.
+- **Battle.net first, then a listed Discord id: the listed person wins.** The grants point at it, so it takes the account and the account's own empty person is deleted. Nothing else points at a person in step 1; step 4 moves preferences onto the person and has to carry them across in that branch.
+- **A person with neither an account nor a Discord id deletes itself**, which is what discarding an empty Battle.net sign-in leaves. The account FK is `on delete set null`, so deleting an account never takes a listed person or their grants with it.
+- **Clients read their own row and write none**, the same no-write-rule shape as `notifications`.
+
+---
+
 ## 2026-09-14 -- The roster shows attendance and items awarded to officers only (#870)
 
 Shipped: no migration; the new app's Roster page (#870 part 2).

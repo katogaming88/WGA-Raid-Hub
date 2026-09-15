@@ -453,20 +453,31 @@ export type Database = {
           created_at: string
           discord_id: string
           id: number
+          person_id: number
         }
         Insert: {
           auth_user_id?: string | null
           created_at?: string
           discord_id: string
           id?: number
+          person_id: number
         }
         Update: {
           auth_user_id?: string | null
           created_at?: string
           discord_id?: string
           id?: number
+          person_id?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "boe_managers_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       classes_specs: {
         Row: {
@@ -494,18 +505,29 @@ export type Database = {
           auth_user_id: string | null
           discord_id: string
           id: number
+          person_id: number
         }
         Insert: {
           auth_user_id?: string | null
           discord_id: string
           id?: number
+          person_id: number
         }
         Update: {
           auth_user_id?: string | null
           discord_id?: string
           id?: number
+          person_id?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "guild_officers_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       guilds: {
         Row: {
@@ -800,6 +822,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      people: {
+        Row: {
+          auth_user_id: string | null
+          created_at: string
+          discord_id: string | null
+          id: number
+        }
+        Insert: {
+          auth_user_id?: string | null
+          created_at?: string
+          discord_id?: string | null
+          id?: never
+        }
+        Update: {
+          auth_user_id?: string | null
+          created_at?: string
+          discord_id?: string | null
+          id?: never
+        }
+        Relationships: []
       }
       player_equipped_gear: {
         Row: {
@@ -1744,18 +1787,29 @@ export type Database = {
           auth_user_id: string | null
           discord_id: string
           id: number
+          person_id: number
         }
         Insert: {
           auth_user_id?: string | null
           discord_id: string
           id?: number
+          person_id: number
         }
         Update: {
           auth_user_id?: string | null
           discord_id?: string
           id?: number
+          person_id?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "site_admins_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_settings: {
         Row: {
@@ -1861,6 +1915,7 @@ export type Database = {
           discord_id: string
           id: number
           name_realm: string | null
+          person_id: number
           role: string
           team_id: number
           updated_at: string | null
@@ -1870,6 +1925,7 @@ export type Database = {
           discord_id: string
           id?: number
           name_realm?: string | null
+          person_id: number
           role: string
           team_id: number
           updated_at?: string | null
@@ -1879,11 +1935,19 @@ export type Database = {
           discord_id?: string
           id?: number
           name_realm?: string | null
+          person_id?: number
           role?: string
           team_id?: number
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "team_members_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "team_members_team_id_fkey"
             columns: ["team_id"]

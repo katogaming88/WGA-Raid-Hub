@@ -92,6 +92,12 @@ begin
   if to_regclass('public.no_character_dismissals') is not null then
     execute 'delete from public.no_character_dismissals';
   end if;
+  -- #942: a person keeps their Discord id and loses the account, so a local
+  -- sign-in attaches to them the way a first sign-in does. A person with no
+  -- Discord id is left with nothing and removes itself.
+  if to_regclass('public.people') is not null then
+    execute 'update public.people set auth_user_id = null where auth_user_id is not null';
+  end if;
 end $$;
 `;
 

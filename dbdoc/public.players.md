@@ -378,6 +378,7 @@ erDiagram
   text role
   text name_realm
   timestamp_with_time_zone updated_at
+  integer person_id FK
 }
 "public.raid_encounters" {
   integer id

@@ -202,6 +202,8 @@ describe('plan (#1056)', () => {
     expect(args).toMatch(/delete from public\.account_preferences/);
     // Until #940 reaches production, the restored schema still has the table it replaced.
     expect(args).toMatch(/delete from public\.no_character_dismissals/);
+    // #942: people keep the Discord id and lose the production account.
+    expect(args).toMatch(/update public\.people set auth_user_id = null/);
   });
 
   it('mints the personas after the unlink and before the migrations, in one transaction', () => {

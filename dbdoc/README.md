@@ -19,8 +19,8 @@
 | [public.scoring](public.scoring.md) | 10 |  | BASE TABLE |
 | [public.season_signups](public.season_signups.md) | 18 |  | BASE TABLE |
 | [public.self_received_requests](public.self_received_requests.md) | 12 |  | BASE TABLE |
-| [public.site_admins](public.site_admins.md) | 3 |  | BASE TABLE |
-| [public.team_members](public.team_members.md) | 7 |  | BASE TABLE |
+| [public.site_admins](public.site_admins.md) | 4 |  | BASE TABLE |
+| [public.team_members](public.team_members.md) | 8 |  | BASE TABLE |
 | [public.team_settings](public.team_settings.md) | 3 |  | BASE TABLE |
 | [public.teams](public.teams.md) | 6 |  | BASE TABLE |
 | [public.pending_roster](public.pending_roster.md) | 15 |  | VIEW |
@@ -41,11 +41,11 @@
 | [public.item_preferences](public.item_preferences.md) | 11 |  | BASE TABLE |
 | [public.site_settings](public.site_settings.md) | 7 |  | BASE TABLE |
 | [public.incoming_roster](public.incoming_roster.md) | 7 |  | VIEW |
-| [public.guild_officers](public.guild_officers.md) | 3 |  | BASE TABLE |
+| [public.guild_officers](public.guild_officers.md) | 4 |  | BASE TABLE |
 | [public.tier_token_map](public.tier_token_map.md) | 6 |  | BASE TABLE |
 | [public.boe_items](public.boe_items.md) | 26 |  | BASE TABLE |
 | [public.boe_listings](public.boe_listings.md) | 8 |  | BASE TABLE |
-| [public.boe_managers](public.boe_managers.md) | 4 |  | BASE TABLE |
+| [public.boe_managers](public.boe_managers.md) | 5 |  | BASE TABLE |
 | [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) | 8 | Officer-acknowledged Priority List same-boss conflicts (a player holding #1 on 2+ items behind one boss+track kill), so buildPriorityConflictsBannerHtml() (js/tabs/tab-priority.js) stops re-flagging a reviewed one. | BASE TABLE |
 | [public.player_equipped_gear](public.player_equipped_gear.md) | 8 | One row per player per physical gear slot (Blizzard API slot keys: HEAD, FINGER_1, FINGER_2, ...), synced from the Blizzard Character Equipment Summary endpoint. Feeds generate_priority_order()'s equipped-item-level fairness factor. | BASE TABLE |
 | [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) | 5 | Marks a team/season/item/track priority list as deliberately saved empty (no one wants the item) -- keeps it out of the Unmanaged Items list without a placeholder priority_order row. Cleared automatically the next time that item/track is saved with a non-empty roster. | BASE TABLE |
@@ -61,6 +61,7 @@
 | [public.account_preferences](public.account_preferences.md) | 6 | Per-account preferences, one row per (account, team, key); team_id is null for guild-wide keys. The account_preferences_known_key CHECK lists every allowed key. Replaced no_character_dismissals (#940). | BASE TABLE |
 | [public.guilds](public.guilds.md) | 4 | One row per guild. url_key is the /g/<key> segment of an address: readable for WGA, a random code for any other guild (#1100, #1114). | BASE TABLE |
 | [public.retired_url_keys](public.retired_url_keys.md) | 5 | Keys a guild (team_id null) or team used to have, so old addresses still resolve. Written only by the key-change triggers on guilds and teams (#1114). guild_id is the guild the key lived under. | BASE TABLE |
+| [public.people](public.people.md) | 4 | One row per human (#942). auth_user_id is their sign-in account, null for a Discord id listed on a grant before its owner signed in. discord_id is null for an account with no Discord linked. Grant tables point here through person_id. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -161,6 +162,9 @@
 | public.my_active_player_ids | _int4 |  | FUNCTION |
 | public.auth_user_for_discord_id | uuid | p_discord_id text | FUNCTION |
 | public.team_battlenet_connections | int4 | p_team_id integer | FUNCTION |
+| public.person_for_discord_id | int4 | p_discord_id text | FUNCTION |
+| public.set_person_from_discord_id | trigger |  | FUNCTION |
+| public.delete_empty_person | trigger |  | FUNCTION |
 
 ## Enums
 
@@ -216,7 +220,9 @@ erDiagram
 "public.self_received_requests" }o--|| "public.items" : "FOREIGN KEY (self_item_id) REFERENCES items(id) ON DELETE SET NULL"
 "public.self_received_requests" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.self_received_requests" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.site_admins" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.team_members" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_members" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.team_settings" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.teams" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id)"
 "public.streamers" |o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
@@ -229,6 +235,7 @@ erDiagram
 "public.item_preferences" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.item_preferences" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.item_preferences" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.guild_officers" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.tier_token_map" }o--|| "public.items" : "FOREIGN KEY (resolved_item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.tier_token_map" }o--|| "public.items" : "FOREIGN KEY (token_item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.boe_items" }o--o| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
@@ -236,6 +243,7 @@ erDiagram
 "public.boe_items" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.boe_listings" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.boe_listings" }o--|| "public.boe_items" : "FOREIGN KEY (boe_item_id) REFERENCES boe_items(id) ON DELETE CASCADE"
+"public.boe_managers" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.priority_conflict_dismissals" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.priority_conflict_dismissals" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.player_equipped_gear" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
@@ -445,6 +453,7 @@ erDiagram
   integer id
   text discord_id
   uuid auth_user_id FK
+  integer person_id FK
 }
 "public.team_members" {
   integer id
@@ -454,6 +463,7 @@ erDiagram
   text role
   text name_realm
   timestamp_with_time_zone updated_at
+  integer person_id FK
 }
 "public.team_settings" {
   integer team_id FK
@@ -653,6 +663,7 @@ erDiagram
   integer id
   text discord_id
   uuid auth_user_id FK
+  integer person_id FK
 }
 "public.tier_token_map" {
   integer id
@@ -705,6 +716,7 @@ erDiagram
   text discord_id
   uuid auth_user_id FK
   timestamp_with_time_zone created_at
+  integer person_id FK
 }
 "public.priority_conflict_dismissals" {
   integer id
@@ -840,6 +852,12 @@ erDiagram
   integer team_id FK
   text url_key
   timestamp_with_time_zone retired_at
+}
+"public.people" {
+  integer id
+  uuid auth_user_id FK
+  text discord_id
+  timestamp_with_time_zone created_at
 }
 ```
 

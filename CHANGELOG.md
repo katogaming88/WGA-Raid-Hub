@@ -12,6 +12,31 @@ answers to.
 
 ---
 
+## [3.122.0] - 2026-09-14
+
+### Backend
+
+- A **people** table: one row for each person, however many teams and
+  characters they have
+  ([#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942), step 1).
+  - Every sign-in account is a person, and so is every Discord id an officer
+    lists before its owner signs in. The team membership, site admin, guild
+    officer and BoE manager lists each point at the person, so someone on two
+    teams is one person with two memberships.
+  - Signing in attaches the account to the person already listed. Signing in
+    with Battle.net first and connecting a listed Discord id afterwards ends up
+    on the listed person, and the empty one is removed.
+  - Nothing reads it yet, so nobody's access changes. Access checks, the
+    notification inbox and alts move onto it in the next steps.
+
+### Project
+
+- The local snapshot script clears the production account from each person,
+  so a local sign-in attaches the way a first sign-in does. The backup runbook
+  lists the new table and its account link.
+
+---
+
 ## [3.121.0] - 2026-09-14
 
 ### Project

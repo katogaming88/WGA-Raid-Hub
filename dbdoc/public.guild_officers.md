@@ -7,6 +7,7 @@
 | id | integer | nextval('guild_officers_id_seq'::regclass) | false |  |  |  |
 | discord_id | text |  | false |  |  |  |
 | auth_user_id | uuid |  | true |  |  |  |
+| person_id | integer |  | false |  | [public.people](public.people.md) |  |
 
 ## Constraints
 
@@ -15,6 +16,7 @@
 | guild_officers_auth_user_id_fkey | FOREIGN KEY | FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL |
 | guild_officers_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | guild_officers_discord_id_key | UNIQUE | UNIQUE (discord_id) |
+| guild_officers_person_id_fkey | FOREIGN KEY | FOREIGN KEY (person_id) REFERENCES people(id) |
 
 ## Indexes
 
@@ -22,17 +24,32 @@
 | ---- | ---------- |
 | guild_officers_pkey | CREATE UNIQUE INDEX guild_officers_pkey ON public.guild_officers USING btree (id) |
 | guild_officers_discord_id_key | CREATE UNIQUE INDEX guild_officers_discord_id_key ON public.guild_officers USING btree (discord_id) |
+| guild_officers_person_id_idx | CREATE INDEX guild_officers_person_id_idx ON public.guild_officers USING btree (person_id) |
+
+## Triggers
+
+| Name | Definition |
+| ---- | ---------- |
+| guild_officers_set_person | CREATE TRIGGER guild_officers_set_person BEFORE INSERT OR UPDATE ON public.guild_officers FOR EACH ROW EXECUTE FUNCTION set_person_from_discord_id() |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
+"public.guild_officers" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 
 "public.guild_officers" {
   integer id
   text discord_id
   uuid auth_user_id FK
+  integer person_id FK
+}
+"public.people" {
+  integer id
+  uuid auth_user_id FK
+  text discord_id
+  timestamp_with_time_zone created_at
 }
 ```
 
