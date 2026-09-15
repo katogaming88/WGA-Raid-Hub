@@ -170,6 +170,17 @@ names the version it deployed.
 These rules apply to every issue and pull request, whoever or whatever writes
 it.
 
+Every issue starts from one of three templates in `.github/ISSUE_TEMPLATE/`,
+picked on GitHub's New issue page or with `gh issue create --template`:
+
+| Template | Use it for |
+|----------|-----------|
+| Bug | Something works wrong, or not at all |
+| Change | A new feature, an improvement, or cleanup work |
+| Decision | A question that has to be settled before work starts |
+
+Pull requests fill in `.github/pull_request_template.md`.
+
 ### Plain language
 
 Say what is changing and why, in words anyone on the team can follow without
