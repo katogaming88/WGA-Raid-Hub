@@ -90,11 +90,14 @@ const cronRun = (over = {}) => ({
 });
 
 describe('gearSyncStatusText (#1174)', () => {
-  it('says so when no scheduled sweep has been recorded, without a warning', () => {
+  // The review of PR #1196: an empty cron column is the state right after
+  // the deploy, and also the state when the record write has failed every
+  // day since, so it warns rather than staying grey forever.
+  it('warns when no scheduled sweep has been recorded', () => {
     const { sandbox } = makeSandbox();
     expect(sandbox.gearSyncStatusText(null, null, NOW)).toEqual({
       text: 'No scheduled sweep recorded yet.',
-      warn: false
+      warn: true
     });
   });
 
@@ -111,6 +114,21 @@ describe('gearSyncStatusText (#1174)', () => {
     const status = sandbox.gearSyncStatusText(cronRun({ synced: 0, skipped: 55, error: 'Gateway Timeout' }), null, NOW);
     expect(status.warn).toBe(true);
     expect(status.text).toBe('Last sweep: 9h ago, 0 synced, 55 skipped. Error: Gateway Timeout');
+  });
+
+  // Same review: a sweep that reached raiders and synced none of them is not
+  // a healthy morning, whether or not a message was recorded.
+  it('warns when a sweep reached raiders and synced none, with no error recorded', () => {
+    const { sandbox } = makeSandbox();
+    const status = sandbox.gearSyncStatusText(cronRun({ synced: 0, skipped: 55, error: null }), null, NOW);
+    expect(status.warn).toBe(true);
+    expect(status.text).toBe('Last sweep: 9h ago, 0 synced, 55 skipped. Nothing was synced.');
+  });
+
+  it('does not warn on an empty roster that synced nobody', () => {
+    const { sandbox } = makeSandbox();
+    const status = sandbox.gearSyncStatusText(cronRun({ synced: 0, skipped: 0, players: 0 }), null, NOW);
+    expect(status).toEqual({ text: 'Last sweep: 9h ago, 0 synced, 0 skipped.', warn: false });
   });
 
   it('warns when the last sweep finished more than 36 hours ago', () => {

@@ -7,6 +7,7 @@ import {
   buildOutcome,
   columnFor,
   newTally,
+  noteEquipmentStatus,
   noteError
 } from '../../../supabase/functions/blizzard-gear-sync/outcome.ts';
 
@@ -73,4 +74,22 @@ Deno.test('an officer run records the officer trigger', () => {
 Deno.test('each trigger writes its own column, so a sync by hand cannot refresh the sweep', () => {
   assertEquals(columnFor('cron'), 'gear_sync_last_cron_run');
   assertEquals(columnFor('officer'), 'gear_sync_last_officer_run');
+});
+
+// The review of PR #1196: fetchEquipment() answered null on every non-OK
+// status, so a morning when Blizzard refused every character (429, an expired
+// token, an outage) recorded synced 0, skipped 55, error null and read as
+// healthy. The status is noted now; a 404 stays a plain skip, since that is a
+// character Blizzard does not know.
+Deno.test('a 404 from Blizzard is a plain skip and records no error', () => {
+  const tally = newTally();
+  noteEquipmentStatus(tally, 404, 'Unknown-Illidan');
+  assertEquals(tally.error, null);
+});
+
+Deno.test('any other refusal from Blizzard is noted with its status and the character', () => {
+  const tally = newTally();
+  noteEquipmentStatus(tally, 429, 'Grihz-Illidan');
+  noteEquipmentStatus(tally, 500, 'Second-Illidan');
+  assertEquals(tally.error, 'Blizzard 429 for Grihz-Illidan');
 });
