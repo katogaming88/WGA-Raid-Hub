@@ -1,5 +1,4 @@
-// #932: the seasons table, a foreign key on every season column, and one
-// definition of the guild's current tier (current_season()).
+// #932: the seasons table and a foreign key on every season column.
 //
 // Each test runs in one rolled-back transaction (helpers.js withTxn). The
 // inserts below ride the seed's rows: team 1, players 1 and 2, items 1 and 2.
@@ -41,10 +40,6 @@ const NAME_INSERTS = {
   season_signups:
     "insert into public.season_signups (team_id, signup_name_realm, season) values (1, 'Seasontest-Illidan', $1)"
 };
-
-// The function's own idea of today (America/New_York, the project's zone),
-// so a boundary case lands on the same calendar day the function reads.
-const TODAY = "(now() at time zone 'America/New_York')::date";
 
 describe('every season column is a foreign key to seasons', () => {
   for (const [table, sql] of Object.entries(CODE_INSERTS)) {
@@ -91,6 +86,8 @@ describe('seasons', () => {
     });
   });
 
+  // Tiers never overlap: the windows are inclusive on both ends, so an
+  // open-ended row runs to the end of time and a second one overlaps it.
   it('has exactly one open-ended row, and refuses a second', async () => {
     await withTxn(async ({ q }) => {
       const open = await q('select code from public.seasons where ends_at is null');
@@ -99,7 +96,30 @@ describe('seasons', () => {
         q(
           "insert into public.seasons (code, display_name, starts_at) values ('MID9', 'Midnight Season 9', '2027-01-05')"
         )
-      ).rejects.toMatchObject({ constraint: 'seasons_one_open_ended' });
+      ).rejects.toMatchObject({ constraint: 'seasons_no_overlap' });
+    });
+  });
+
+  it('refuses a closed window that overlaps a tier', async () => {
+    await withTxn(async ({ q }) => {
+      await expect(
+        q(
+          "insert into public.seasons (code, display_name, starts_at, ends_at) values ('MIDX', 'Midnight Season X', '2026-08-10', '2026-08-11')"
+        )
+      ).rejects.toMatchObject({ constraint: 'seasons_no_overlap' });
+    });
+  });
+
+  // The two-statement shape the next tier's migration takes: close the
+  // outgoing row the day before, insert the new one.
+  it('(control, green both sides) the next tier lands once the outgoing row is closed', async () => {
+    await withTxn(async ({ q }) => {
+      await q("update public.seasons set ends_at = '2027-01-04' where code = 'MID2'");
+      await q(
+        "insert into public.seasons (code, display_name, starts_at) values ('MID9', 'Midnight Season 9', '2027-01-05')"
+      );
+      const open = await q('select code from public.seasons where ends_at is null');
+      expect(open.rows.map((r) => r.code)).toEqual(['MID9']);
     });
   });
 
@@ -120,55 +140,11 @@ describe('seasons', () => {
       const raider = await asUser(RAIDER_T1, 'select code from public.seasons order by code');
       expect(raider.rows.map((r) => r.code)).toEqual(['MID1', 'MID2', 'seed-season']);
       const insert =
-        "insert into public.seasons (code, display_name, starts_at, ends_at) values ('MID0', 'Midnight Season 0', '2026-01-01', '2026-01-02')";
+        "insert into public.seasons (code, display_name, starts_at, ends_at) values ('MID0', 'Midnight Season 0', '2025-12-01', '2025-12-02')";
       await expect(asAnon(insert)).rejects.toMatchObject({ code: RLS_DENIED });
       await expect(asUser(RAIDER_T1, insert)).rejects.toMatchObject({ code: RLS_DENIED });
       // The postgres role still can, which is what a migration runs as.
       await q(insert);
-    });
-  });
-});
-
-describe('current_season()', () => {
-  it('returns the latest tier that has started: MID2 today', async () => {
-    await withTxn(async ({ q, asAnon }) => {
-      const res = await asAnon('select code from public.current_season()');
-      expect(res.rows.map((r) => r.code)).toEqual(['MID2']);
-    });
-  });
-
-  // The two-statement shape the next tier's migration takes: close the
-  // outgoing row, insert the new one. Landed on launch day it is current at
-  // once; landed early with a future start, the outgoing tier stays current
-  // even though its window has closed, so there is never a gap.
-  it('a tier starting today is current the moment it lands', async () => {
-    await withTxn(async ({ q }) => {
-      await q(`update public.seasons set ends_at = ${TODAY} - 1 where code = 'MID2'`);
-      await q(
-        `insert into public.seasons (code, display_name, starts_at) values ('MID9', 'Midnight Season 9', ${TODAY})`
-      );
-      const res = await q('select code from public.current_season()');
-      expect(res.rows.map((r) => r.code)).toEqual(['MID9']);
-    });
-  });
-
-  it('a tier starting tomorrow leaves the outgoing tier current', async () => {
-    await withTxn(async ({ q }) => {
-      await q(`update public.seasons set ends_at = ${TODAY} - 1 where code = 'MID2'`);
-      await q(
-        `insert into public.seasons (code, display_name, starts_at) values ('MID9', 'Midnight Season 9', ${TODAY} + 1)`
-      );
-      const res = await q('select code from public.current_season()');
-      expect(res.rows.map((r) => r.code)).toEqual(['MID2']);
-    });
-  });
-
-  it('returns no row before any tier has started', async () => {
-    await withTxn(async ({ q }) => {
-      await q(`update public.seasons set starts_at = ${TODAY} + 1, ends_at = null where code = 'MID2'`);
-      await q(`update public.seasons set starts_at = ${TODAY} + 1, ends_at = ${TODAY} + 1 where code <> 'MID2'`);
-      const res = await q('select code from public.current_season()');
-      expect(res.rows).toEqual([]);
     });
   });
 });

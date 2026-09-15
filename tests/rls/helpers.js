@@ -133,11 +133,14 @@ export async function countAs(role, uid, table, where = 'true') {
 // (rather than the seed's 'seed-season' or a real tier) inserts the row
 // first, inside its transaction. One value serves as both the code and the
 // display name, so the same constant works on a code column and a name
-// column. The row is closed and dated before every tier, so current_season()
-// still answers MID2 while it exists.
+// column. Tiers cannot overlap (seasons_no_overlap), so each call takes the
+// next single day from 2000-01-01: two seasons seeded in one transaction
+// never collide with each other, the seed's row or a real tier.
+let seededSeasonDays = 0;
 export async function seedSeason(q, season) {
-  await q(
-    "insert into public.seasons (code, display_name, starts_at, ends_at) values ($1, $1, '2026-01-01', '2026-01-02')",
-    [season]
-  );
+  const day = new Date(Date.UTC(2000, 0, 1 + seededSeasonDays++)).toISOString().slice(0, 10);
+  await q('insert into public.seasons (code, display_name, starts_at, ends_at) values ($1, $1, $2::date, $2::date)', [
+    season,
+    day
+  ]);
 }

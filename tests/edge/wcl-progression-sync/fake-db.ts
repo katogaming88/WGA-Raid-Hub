@@ -7,12 +7,10 @@ import type {
   ProgressRow,
   RaidZoneRow,
   SavedEncounter,
-  SeasonRow,
   TeamRow
 } from '../../../supabase/functions/wcl-progression-sync/handler.ts';
 
 export type FakeDbState = {
-  seasons?: SeasonRow[];
   teams?: TeamRow[];
   configs?: Record<number, Record<string, unknown>>;
 };
@@ -20,8 +18,6 @@ export type FakeDbState = {
 export type DbCall = { method: keyof ProgressDb; args: unknown[] };
 
 export type FakeDb = ProgressDb & { calls: DbCall[] };
-
-export const CURRENT_SEASON: SeasonRow = { code: 'MID2', display_name: 'Midnight Season 2' };
 
 export function fakeDb(state: FakeDbState = {}): FakeDb {
   const calls: DbCall[] = [];
@@ -31,10 +27,6 @@ export function fakeDb(state: FakeDbState = {}): FakeDb {
   let nextEncounterId = 500;
   return {
     calls,
-    currentSeason() {
-      record('currentSeason');
-      return Promise.resolve(state.seasons ?? [CURRENT_SEASON]);
-    },
     teams() {
       record('teams');
       return Promise.resolve(state.teams ?? []);
