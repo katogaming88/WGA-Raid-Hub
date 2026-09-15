@@ -20,7 +20,7 @@ Kat's calls while building the profile's two forms (#868 part 4).
 
 - **A raider reads their own M+ exclusion requests, every status.** Only officers could read `mplus_exclusion_requests`, so the current site's profile showed "Rejected" and the officer's note from a read that returned nothing to the raider it was about. The new rule matches "Raiders read own self_received_requests", in the once-per-query shape (#1106).
 - **A Pug raid report is not sent to review for mentioning "raid".** Pug raid is a Mark Received source now (the 2026-09-14 entry below), and its note will say "raid"; the source already says it was not a guild raid. Other still goes to review, and only the raider's own character auto-approves.
-- **Both forms work on a phone.** Each opens in a dialog with a Submit and a Cancel, so a stray tap saves nothing. The computer-only switch (the entry above) is not used for them.
+- **Both forms work on a phone.** Each opens in a dialog with a Submit and a Cancel, so a stray tap saves nothing. The computer-only switch (the entry below) is not used for them.
 
 [Player profile -> #868](https://github.com/katogaming88/WGA-Raid-Hub/issues/868).
 
