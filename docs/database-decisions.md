@@ -10,7 +10,7 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
-## 2026-09-14 -- A raider reads their own M+ exclusion requests, and a Pug raid report is not held for saying "raid" (#868)
+## 2026-09-14 -- A raider reads their own M+ exclusion requests, a Pug raid report is not held for saying "raid", and an Other report needs a note (#868)
 
 Shipped: `20260914201423_mplus_exclusion_requests_own_read.sql`, `20260914201439_submit_self_received_pug_raid_note.sql`
 
@@ -20,6 +20,7 @@ Kat's calls while building the profile's two forms (#868 part 4).
 
 - **A raider reads their own M+ exclusion requests, every status.** Only officers could read `mplus_exclusion_requests`, so the current site's profile showed "Rejected" and the officer's note from a read that returned nothing to the raider it was about. The new rule matches "Raiders read own self_received_requests", in the once-per-query shape (#1106).
 - **A Pug raid report is not sent to review for mentioning "raid".** Pug raid is a Mark Received source now (the 2026-09-14 entry below), and its note will say "raid"; the source already says it was not a guild raid. Other still goes to review, and only the raider's own character auto-approves.
+- **An Other report needs a note** (Kat's follow-up). Other goes to an officer, and a report with no note gives them nothing to judge it by. Both sites' forms require it, and `submit_self_received()` refuses one without it. Every other source stays optional.
 - **Both forms work on a phone.** Each opens in a dialog with a Submit and a Cancel, so a stray tap saves nothing. The computer-only switch (the entry below) is not used for them.
 
 [Player profile -> #868](https://github.com/katogaming88/WGA-Raid-Hub/issues/868).

@@ -106,6 +106,10 @@ export const REVIEW_REPORT = {
   }
 };
 
+// Other goes to an officer, so it is not sent without a note saying where the
+// item came from (Kat, 2026-09-14). Both sites refuse it before sending.
+export const OTHER_WITHOUT_NOTE = { row: 'Band of the Hollow Choir', difficulty: 'Heroic', source: 'Other', note: '' };
+
 // Dodgey's own M+ exclusion, as the M+ card reads it. `canRequest` is whether
 // the card offers the form.
 export const MPLUS_REJECTED_OPEN = { status: 'Rejected', note: 'Sockets missing', canRequest: true };

@@ -5,8 +5,14 @@
 -- Pug raid as a Mark Received source on 2026-09-14 (Soulcialist's boots were
 -- an approved "Other" entry from one), and a raider choosing it will naturally
 -- write "raid" in the note. The source already says it was not a guild raid,
--- so the note check skips it. Every other rule is unchanged: Other still goes
--- to review, and only the raider's own character auto-approves.
+-- so the note check skips it.
+--
+-- An Other report needs a note (Kat, 2026-09-14). Other goes to an officer,
+-- and a report with no note gives them nothing to judge it by: it is the
+-- catch-all for Timewalking, a Curio, a traded piece. Both sites' forms ask
+-- for it; this refuses one sent without it. Every other rule is unchanged:
+-- Other still goes to review, and only the raider's own character
+-- auto-approves.
 create or replace function public.submit_self_received(
   p_team_id integer,
   p_name_realm text,
@@ -32,6 +38,10 @@ begin
   where p.team_id = p_team_id and p.name_realm = p_name_realm and p.archived_at is null;
   if not found then
     raise exception 'Character not found on roster';
+  end if;
+
+  if coalesce(p_source, '') = 'Other' and btrim(coalesce(p_note, '')) = '' then
+    raise exception 'Say where the item came from in the note. An officer reviews Other reports.';
   end if;
 
   select i.id into v_item_id from public.items i where i.name = p_item_name;

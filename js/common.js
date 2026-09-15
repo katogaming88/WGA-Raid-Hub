@@ -5945,7 +5945,7 @@ function _selfReceivedTrackFromDiff(diff) {
 // wrong for whichever source they picked after page load.
 function selfReceivedNoteText(source) {
   return source === 'Other'
-    ? 'An officer will review and approve this. Once approved it will appear on your profile.'
+    ? 'An officer will review and approve this, so say where it came from in the notes. Once approved it will appear on your profile.'
     : 'This will be added to your profile right away.';
 }
 
@@ -5957,7 +5957,11 @@ function selfReceivedNoteText(source) {
 function selfReceivedSourceChanged(rowId) {
   var sourceEl = /** @type {HTMLSelectElement} */ (document.getElementById('src-' + rowId));
   var noteEl = document.getElementById('note-' + rowId);
-  if (!sourceEl || !noteEl) return;
+  if (!sourceEl) return;
+  // Other needs a note (Kat, 2026-09-14), so its box asks for one.
+  var notesEl = /** @type {HTMLTextAreaElement} */ (document.getElementById('notes-' + rowId));
+  if (notesEl) notesEl.placeholder = sourceEl.value === 'Other' ? 'Where did it come from? (required)' : 'Notes (optional)';
+  if (!noteEl) return;
   noteEl.textContent = selfReceivedNoteText(sourceEl.value);
 }
 
@@ -6071,6 +6075,16 @@ function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId, dbSl
   }
   if (!diffEl || !diffEl.value) {
     if (diffEl) diffEl.style.borderColor = 'var(--melee)';
+    return;
+  }
+  // Other goes to an officer, who needs to know where it came from (Kat,
+  // 2026-09-14); submit_self_received() refuses one without a note too.
+  if (sourceEl.value === 'Other' && (!notesEl || !notesEl.value.trim())) {
+    if (notesEl) {
+      notesEl.style.borderColor = 'var(--melee)';
+      notesEl.placeholder = 'Where did it come from? (required)';
+      notesEl.focus();
+    }
     return;
   }
   var diff = diffEl.value;

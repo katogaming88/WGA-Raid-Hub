@@ -21,6 +21,10 @@ begin
     raise exception 'Character not found on roster';
   end if;
 
+  if coalesce(p_source, '') = 'Other' and btrim(coalesce(p_note, '')) = '' then
+    raise exception 'Say where the item came from in the note. An officer reviews Other reports.';
+  end if;
+
   select i.id into v_item_id from public.items i where i.name = p_item_name;
   if not found then
     raise exception 'Unknown item: %', p_item_name;

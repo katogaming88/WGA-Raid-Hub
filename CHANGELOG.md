@@ -22,6 +22,14 @@ answers to.
   note never showed for the raider it was about. It does now, on both sites.
 - A Mark Received report with the new **Pug raid** source auto-approves even
   when its note says "raid". Other still goes to officer review.
+- An **Other** report needs a note. Other goes to an officer, who had
+  nothing to judge a report by without one; `submit_self_received()` now
+  refuses it.
+
+### Frontend
+
+- Mark Received asks for a note when the source is **Other**: the notes box
+  says it is required, and the form sends nothing until it is filled in.
 
 ### Project
 
@@ -29,8 +37,9 @@ answers to.
   exclusion request** (#868), each in a dialog.
   - Mark Received sits on each loot priority row until a Mythic copy is on
     file, for the raider's own character. It asks for the difficulty, how
-    they got it and an optional note, with **Weekly quest** and **Pug raid**
-    added to the sources, and says guild raid drops show up on their own.
+    they got it and a note (required for Other), with **Weekly quest** and
+    **Pug raid** added to the sources, and says guild raid drops show up on
+    their own.
     A report held for review tells the officers in Discord, as today.
   - The M+ card shows the raider their own status, including a rejected
     request with the officer's note, and offers the request while the team

@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | --- | ---: |
 | Planning and design | 1 h 50 m |
 | Revamp 1: decisions and foundation | 6 h 55 m |
-| Revamp 2: public pages | 3 h 40 m |
-| **All revamp work** | **12 h 25 m** |
+| Revamp 2: public pages | 4 h 05 m |
+| **All revamp work** | **12 h 50 m** |
 
 ## Log
 
@@ -57,7 +57,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | 3:24–3:40 PM | Profile tabs (same PR) | Revamp 2 | 15 m | build, one Kat decision | Kat asked for sub-tabs so the profile is not a long scroll. Overview, Loot, Gear, Wishlist, each with its own address so the bot's wishlist link keeps working. Kat then moved equipped gear onto the Overview, laid out like the in-game character pane (Kat's screenshot), so the Gear tab went |
 | 3:45–3:55 PM | Profile gear card fix | Revamp 2 | 10 m | ~8 m build, ~2 m Kat review | Kat spotted scrollbars in the gear tables ("Champion" overflowed). Card moved to full width at Kat's suggestion, with a no-scroll test |
 | 3:58–4:45 PM | #868 player profile, part 3: wishlist editor | Revamp 2 | 45 m | ~40 m build, ~5 m Kat deciding and reviewing | BiS or Pass by slot. Kat dropped notes and left M+/crafted picks read-only until #1166. Running the rules over 29 Phoenix wishlists found six raiders with both BiS trinkets saved under Trinket 1; they now read as one in each slot. Kat then moved the slots into one scrolling row of tabs and made editing computer-only (read-only on touch screens, not by width, so zoomed browsers still edit) |
-| 8:08–8:35 PM | #868 player profile, part 4: Mark Received and M+ request | Revamp 2 | 25 m | ~23 m build, ~2 m Kat deciding | Both forms in dialogs, recorded from the current site first. Kat kept both usable on phones and let raiders see their own rejected M+ request (a new read rule). Recording showed the current site saves raid item receipts with their catalog slot, which the new loot priority list had been ignoring (43 of 73 live receipts) |
+| 8:08–9:00 PM | #868 player profile, part 4: Mark Received and M+ request | Revamp 2 | 50 m | ~45 m build, ~5 m Kat deciding | Both forms in dialogs, recorded from the current site first. Kat kept both usable on phones and let raiders see their own rejected M+ request (a new read rule). Recording showed the current site saves raid item receipts with their catalog slot, which the new loot priority list had been ignoring (43 of 73 live receipts). Kat then made the note required for Other, on both sites and in the database |
 
 ## Not counted (same sessions, not revamp)
 

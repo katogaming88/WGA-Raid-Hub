@@ -63,10 +63,14 @@ function MarkReceivedDialog({
   const [source, setSource] = useState(row.placeholder && REPORT_SOURCES.includes(row.itemName) ? row.itemName : '');
   const [note, setNote] = useState('');
   const [missing, setMissing] = useState(false);
+  // Other goes to an officer, who needs to know where it came from (Kat,
+  // 2026-09-14). The database refuses one without a note as well.
+  const noteRequired = source === 'Other';
+  const noteMissing = noteRequired && note.trim() === '';
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (!track || !source) {
+    if (!track || !source || noteMissing) {
       setMissing(true);
       return;
     }
@@ -143,21 +147,34 @@ function MarkReceivedDialog({
           </select>
           <p id={`${id}-source-hint`} className="field-hint">
             {source === 'Other'
-              ? 'An officer reviews Other before it counts.'
+              ? 'An officer reviews Other before it counts, so say where it came from below.'
               : 'Counts right away and takes you off this item’s Priority List.'}
           </p>
         </div>
 
         <div className="field">
           <label className="field-label" htmlFor={`${id}-note`}>
-            Notes (optional)
+            {noteRequired ? 'Where did it come from?' : 'Notes (optional)'}
           </label>
-          <textarea id={`${id}-note`} className="textarea" value={note} onChange={(e) => setNote(e.target.value)} />
+          <textarea
+            id={`${id}-note`}
+            className="textarea"
+            value={note}
+            required={noteRequired}
+            aria-invalid={missing && noteMissing}
+            placeholder={noteRequired ? 'For example, Timewalking vendor, or traded by a teammate' : undefined}
+            onChange={(e) => setNote(e.target.value)}
+          />
         </div>
 
         {missing && (!track || !source) && (
           <p className="form-error" role="alert">
             Choose a difficulty and how you got it.
+          </p>
+        )}
+        {missing && track && source && noteMissing && (
+          <p className="form-error" role="alert">
+            Say where it came from. An officer reviews Other reports.
           </p>
         )}
         {submit.isError && (

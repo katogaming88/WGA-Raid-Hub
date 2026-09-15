@@ -18,6 +18,7 @@ import {
 import {
   CURRENT_SOURCES,
   MARKABLE,
+  OTHER_WITHOUT_NOTE,
   MPLUS_NONE_CLOSED,
   MPLUS_NONE_OPEN,
   MPLUS_REJECTED_CLOSED,
@@ -229,6 +230,23 @@ describe('Mark Received (current site)', () => {
       await form.getByRole('button', { name: 'Submit request' }).click();
       await form.locator('select[id^="diff-"]').selectOption('Heroic');
       await form.getByRole('button', { name: 'Submit request' }).click();
+      await opened.page.waitForTimeout(300);
+      expect(calls.filter((c) => c.name === 'submit_self_received')).toEqual([]);
+    } finally {
+      await opened.context.close();
+    }
+  });
+});
+
+describe('Mark Received (current site), an Other report', () => {
+  it('is not sent without a note', async () => {
+    const opened = await openOwnProfile('torbjorn', { autoApproved: false });
+    try {
+      await waitForPriority(opened.page);
+      const calls = recordCalls(opened.page);
+      const form = await fillReport(opened.page, OTHER_WITHOUT_NOTE);
+      await form.getByRole('button', { name: 'Submit request' }).click();
+      await expect(form.locator('textarea').getAttribute('placeholder')).resolves.toContain('required');
       await opened.page.waitForTimeout(300);
       expect(calls.filter((c) => c.name === 'submit_self_received')).toEqual([]);
     } finally {

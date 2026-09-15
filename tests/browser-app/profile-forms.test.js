@@ -21,6 +21,7 @@ import {
   MPLUS_REJECTED_OPEN,
   MPLUS_REQUEST,
   NEW_SOURCES,
+  OTHER_WITHOUT_NOTE,
   REPORTS,
   REVIEW_REPORT,
   VIEWERS
@@ -110,7 +111,8 @@ async function fillReport(page, report) {
   const dialog = await openReport(page, report.row);
   await dialog.getByLabel('Difficulty').selectOption({ label: report.difficulty });
   if (report.source) await dialog.getByLabel('How did you get it?').selectOption(report.source);
-  if (report.note) await dialog.getByLabel('Notes (optional)').fill(report.note);
+  // The box asks where it came from once Other is chosen.
+  if (report.note) await dialog.getByLabel(/^(Notes \(optional\)|Where did it come from\?)$/).fill(report.note);
   return dialog;
 }
 
@@ -250,6 +252,25 @@ describe('Mark Received (new app), checked against the current site', () => {
     try {
       await expect(opened.page.locator('main .mark-received').count()).resolves.toBe(0);
       await expect(opened.page.locator('main .mplus-request').count()).resolves.toBe(0);
+    } finally {
+      await opened.context.close();
+    }
+  });
+});
+
+describe('Mark Received (new app), an Other report, checked against the current site', () => {
+  it('is not sent without a note, and asks where it came from', async () => {
+    const opened = await openOwnProfile('torbjorn', { autoApproved: false });
+    try {
+      const calls = recordCalls(opened.page);
+      const dialog = await fillReport(opened.page, OTHER_WITHOUT_NOTE);
+      const note = dialog.getByLabel('Where did it come from?');
+      await expect(note.getAttribute('required')).resolves.not.toBeNull();
+      await dialog.getByRole('button', { name: 'Mark received' }).click();
+      await expect(dialog.getByRole('alert').textContent()).resolves.toContain('Say where it came from');
+      await expect(note.getAttribute('aria-invalid')).resolves.toBe('true');
+      await opened.page.waitForTimeout(300);
+      expect(calls.filter((c) => c.name === 'submit_self_received')).toEqual([]);
     } finally {
       await opened.context.close();
     }
