@@ -6,7 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | id | integer | nextval('priority_order_id_seq'::regclass) | false |  |  |  |
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
-| season | text |  | false |  |  |  |
+| season | text |  | false |  | [public.seasons](public.seasons.md) |  |
 | item_id | integer |  | false |  | [public.items](public.items.md) |  |
 | track | text |  | false |  |  |  |
 | rank | integer |  | false |  |  |  |
@@ -24,6 +24,7 @@
 | priority_order_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | priority_order_team_id_season_item_track_rank_key | UNIQUE | UNIQUE (team_id, season, item_id, track, rank) |
 | priority_order_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
+| priority_order_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(code) |
 
 ## Indexes
 
@@ -46,13 +47,14 @@
 erDiagram
 
 "public.priority_order" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.priority_order" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.priority_order" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id)"
 "public.priority_order" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 
 "public.priority_order" {
   integer id
   integer team_id FK
-  text season
+  text season FK
   integer item_id FK
   text track
   integer rank
@@ -66,6 +68,13 @@ erDiagram
   timestamp_with_time_zone archived_at
   integer wcl_guild_id
   integer guild_id FK
+}
+"public.seasons" {
+  text code
+  text display_name
+  date starts_at
+  date ends_at
+  timestamp_with_time_zone created_at
 }
 "public.items" {
   integer id

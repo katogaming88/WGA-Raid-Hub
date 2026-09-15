@@ -139,7 +139,7 @@ erDiagram
   boolean obtained
   timestamp_with_time_zone updated_at
   text slot
-  text season
+  text season FK
 }
 "public.bis_requests" {
   integer id
@@ -157,7 +157,7 @@ erDiagram
   integer player_id FK
   integer item_id FK
   text track
-  text season
+  text season FK
   timestamp_with_time_zone awarded_at
   text rclc_id
   text dedupe_key
@@ -179,7 +179,7 @@ erDiagram
   integer id
   integer player_id FK
   integer team_id FK
-  text season
+  text season FK
   numeric best_perf_avg
   numeric median_perf_avg
   timestamp_with_time_zone fetched_at
@@ -187,7 +187,7 @@ erDiagram
 "public.priority_order" {
   integer id
   integer team_id FK
-  text season
+  text season FK
   integer item_id FK
   text track
   integer rank
@@ -203,7 +203,7 @@ erDiagram
   numeric performance_score
   numeric attendance_score
   numeric attendance_pct
-  text season
+  text season FK
   timestamp_with_time_zone updated_at
 }
 "public.season_signups" {
@@ -217,7 +217,7 @@ erDiagram
   timestamp_with_time_zone submitted_at
   text status
   integer swap_class_spec_id FK
-  text season
+  text season FK
   timestamp_with_time_zone reviewed_at
   integer reviewed_by FK
   text signup_officer_note
@@ -270,7 +270,7 @@ erDiagram
   text slot
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
-  text season
+  text season FK
   boolean synced_bis
 }
 "public.boe_items" {
@@ -281,7 +281,7 @@ erDiagram
   integer item_id FK
   text item_name
   text track
-  text season
+  text season FK
   text note
   text status
   timestamp_with_time_zone found_at
@@ -305,7 +305,7 @@ erDiagram
   integer id
   integer team_id FK
   integer player_id FK
-  text season
+  text season FK
   text boss
   text track
   uuid dismissed_by FK
@@ -325,7 +325,7 @@ erDiagram
   integer id
   integer team_id FK
   integer player_id FK
-  text season
+  text season FK
   integer item_id FK
   uuid dismissed_by FK
   timestamp_with_time_zone dismissed_at

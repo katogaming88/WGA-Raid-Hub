@@ -11,7 +11,7 @@ Officer-acknowledged Priority List same-boss conflicts (a player holding #1 on 2
 | id | integer | nextval('priority_conflict_dismissals_id_seq'::regclass) | false |  |  |  |
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
 | player_id | integer |  | true |  | [public.players](public.players.md) |  |
-| season | text |  | false |  |  |  |
+| season | text |  | false |  | [public.seasons](public.seasons.md) |  |
 | boss | text |  | false |  |  |  |
 | track | text |  | false |  |  |  |
 | dismissed_by | uuid |  | true |  |  |  |
@@ -26,6 +26,7 @@ Officer-acknowledged Priority List same-boss conflicts (a player holding #1 on 2
 | priority_conflict_dismissals_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | priority_conflict_dismissals_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | priority_conflict_dismissals_team_id_player_id_season_boss__key | UNIQUE | UNIQUE (team_id, player_id, season, boss, track) |
+| priority_conflict_dismissals_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(code) |
 
 ## Indexes
 
@@ -47,12 +48,13 @@ erDiagram
 
 "public.priority_conflict_dismissals" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.priority_conflict_dismissals" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
+"public.priority_conflict_dismissals" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 
 "public.priority_conflict_dismissals" {
   integer id
   integer team_id FK
   integer player_id FK
-  text season
+  text season FK
   text boss
   text track
   uuid dismissed_by FK
@@ -92,6 +94,13 @@ erDiagram
   timestamp_with_time_zone bis_link_updated_at
   text url_code
   text name_realm_key
+}
+"public.seasons" {
+  text code
+  text display_name
+  date starts_at
+  date ends_at
+  timestamp_with_time_zone created_at
 }
 ```
 

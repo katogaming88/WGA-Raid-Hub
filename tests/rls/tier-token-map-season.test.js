@@ -3,7 +3,7 @@
 //
 // Each test runs in one rolled-back transaction (helpers.js withTxn).
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, OFFICER_T1 } from './helpers.js';
+import { pool, withTxn, OFFICER_T1, seedSeason } from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -13,6 +13,10 @@ const TOKEN = 8811;
 const RESOLVED = 8812;
 
 async function seedItems(q) {
+  // The two seasons this file maps tokens under (#932): tier_token_map.season
+  // is a foreign key to seasons.
+  await seedSeason(q, CURRENT);
+  await seedSeason(q, OTHER);
   await q("insert into public.items (id, wow_item_id, name, slot) values ($1, 881100, 'Season Test Token', 'Chest')", [
     TOKEN
   ]);

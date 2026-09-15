@@ -4,7 +4,7 @@
 // alongside promotion.test.js/read-matrix.test.js since it needs the live
 // local stack.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, countAs, queryAs, RAIDER_T1 } from './helpers.js';
+import { pool, countAs, queryAs, seedSeason, RAIDER_T1 } from './helpers.js';
 
 describe('incoming_roster is visible to everyone, scoped to the active season', () => {
   it('anon sees the seeded approved signup for team 1', async () => {
@@ -39,6 +39,8 @@ describe('incoming_roster respects season scoping', () => {
     const client = await pool.connect();
     try {
       await client.query('begin');
+      // The season this case stamps (#932): season_signups.season is a foreign key to seasons.
+      await seedSeason((text, params) => client.query(text, params), 'not-the-active-season');
       await client.query(
         `insert into public.season_signups (team_id, signup_name_realm, class_spec_id, season, status)
          values (1, 'Otherseason-Illidan', 1, 'not-the-active-season', 'approved')`

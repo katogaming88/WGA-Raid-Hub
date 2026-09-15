@@ -11,7 +11,7 @@ Officer-acknowledged "stale-after-Heroic" Priority List conflicts (a Mythic #1 w
 | id | integer | nextval('priority_stale_dismissals_id_seq'::regclass) | false |  |  |  |
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
 | player_id | integer |  | true |  | [public.players](public.players.md) |  |
-| season | text |  | false |  |  |  |
+| season | text |  | false |  | [public.seasons](public.seasons.md) |  |
 | item_id | integer |  | false |  | [public.items](public.items.md) |  |
 | dismissed_by | uuid |  | true |  |  |  |
 | dismissed_at | timestamp with time zone | now() | false |  |  |  |
@@ -26,6 +26,7 @@ Officer-acknowledged "stale-after-Heroic" Priority List conflicts (a Mythic #1 w
 | priority_stale_dismissals_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | priority_stale_dismissals_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | priority_stale_dismissals_team_id_player_id_season_item_id_key | UNIQUE | UNIQUE (team_id, player_id, season, item_id) |
+| priority_stale_dismissals_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(code) |
 
 ## Indexes
 
@@ -47,13 +48,14 @@ erDiagram
 
 "public.priority_stale_dismissals" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.priority_stale_dismissals" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
+"public.priority_stale_dismissals" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.priority_stale_dismissals" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
 
 "public.priority_stale_dismissals" {
   integer id
   integer team_id FK
   integer player_id FK
-  text season
+  text season FK
   integer item_id FK
   uuid dismissed_by FK
   timestamp_with_time_zone dismissed_at
@@ -92,6 +94,13 @@ erDiagram
   timestamp_with_time_zone bis_link_updated_at
   text url_code
   text name_realm_key
+}
+"public.seasons" {
+  text code
+  text display_name
+  date starts_at
+  date ends_at
+  timestamp_with_time_zone created_at
 }
 "public.items" {
   integer id

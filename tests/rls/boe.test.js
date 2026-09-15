@@ -21,7 +21,8 @@ import {
   SITE_ADMIN,
   OFFICER_T2,
   GUILD_OFFICER,
-  RLS_DENIED
+  RLS_DENIED,
+  seedSeason
 } from './helpers.js';
 
 async function withTxn(fn) {
@@ -259,6 +260,7 @@ describe('submit_boe_found', () => {
 
   it('the submit snapshots the seasonName in force', async () => {
     await withTxn(async ({ q, asAnon }) => {
+      await seedSeason(q, 'Test Season 3');
       await q(`update public.team_settings set config = config || '{"seasonName": "Test Season 3"}' where team_id = 1`);
       const res = await asAnon(submit("1, 'Seedraider-Illidan', 'Season Snapshot Blade', 'Myth', null, false, '6/6'"));
       const row = (await q('select season from public.boe_items where id = $1', [res.rows[0].id])).rows[0];

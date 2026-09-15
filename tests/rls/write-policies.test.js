@@ -22,17 +22,19 @@ async function expectDenied(role, uid, sql, params) {
 }
 
 // Tables with a direct my_team_role(team_id) officer-write policy. All
-// payloads target team 1 with team-1 players.
+// payloads target team 1 with team-1 players. Season stamps use the seed's
+// own 'seed-season' (every season column is a foreign key to seasons, #932)
+// on rows the seed does not already hold.
 const DIRECT_TEAM_INSERTS = {
   players: "insert into public.players (team_id, name_realm) values (1, 'Testinsert-Illidan')",
   attendance:
     "insert into public.attendance (team_id, player_id, raid_date, status) values (1, 1, '2026-02-02', 'Present')",
   priority_order:
-    "insert into public.priority_order (team_id, season, item_id, track, rank, player_id) values (1, 'test-season', 1, 'Hero', 1, 1)",
+    "insert into public.priority_order (team_id, season, item_id, track, rank, player_id) values (1, 'seed-season', 1, 'Hero', 1, 1)",
   rclc_loot:
-    "insert into public.rclc_loot (team_id, player_id, item_id, track, season) values (1, 1, 1, 'Hero', 'test-season')",
+    "insert into public.rclc_loot (team_id, player_id, item_id, track, season) values (1, 1, 1, 'Hero', 'seed-season')",
   player_wcl_season_perf:
-    "insert into public.player_wcl_season_perf (player_id, team_id, season) values (1, 1, 'test-season')",
+    "insert into public.player_wcl_season_perf (player_id, team_id, season) values (2, 1, 'seed-season')",
   player_officer_notes:
     "insert into public.player_officer_notes (player_id, team_id, officer_notes) values (2, 1, 'note')"
 };
@@ -65,7 +67,7 @@ describe('officer-write tables (team resolved through players subquery)', () => 
   // player 2 is on team 1; item 2 avoids the seeded unique pairs.
   const SUBQUERY_INSERTS = {
     bis_items: 'insert into public.bis_items (player_id, item_id) values (2, 2)',
-    scoring: "insert into public.scoring (player_id, season) values (2, 'test-season')"
+    scoring: "insert into public.scoring (player_id, season) values (2, 'seed-season')"
   };
   for (const [table, sql] of Object.entries(SUBQUERY_INSERTS)) {
     it(`team 1 officer can insert into ${table} for a team 1 player`, async () => {
@@ -136,7 +138,7 @@ describe('request tables have no INSERT path (service role only)', () => {
     mplus_exclusion_requests:
       "insert into public.mplus_exclusion_requests (team_id, player_id, reason) values (1, 2, 'test')",
     season_signups:
-      "insert into public.season_signups (team_id, signup_name_realm, season) values (1, 'Testsignup-Illidan', 'test-season')",
+      "insert into public.season_signups (team_id, signup_name_realm, season) values (1, 'Testsignup-Illidan', 'seed-season')",
     self_received_requests:
       'insert into public.self_received_requests (team_id, player_id, self_item_id) values (1, 1, 1)'
   };

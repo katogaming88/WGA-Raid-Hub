@@ -70,7 +70,7 @@ erDiagram
   integer item_id FK
   text item_name
   text track
-  text season
+  text season FK
   text note
   text status
   timestamp_with_time_zone found_at

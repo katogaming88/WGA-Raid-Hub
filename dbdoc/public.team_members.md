@@ -99,7 +99,7 @@ erDiagram
   timestamp_with_time_zone submitted_at
   text status
   integer swap_class_spec_id FK
-  text season
+  text season FK
   timestamp_with_time_zone reviewed_at
   integer reviewed_by FK
   text signup_officer_note

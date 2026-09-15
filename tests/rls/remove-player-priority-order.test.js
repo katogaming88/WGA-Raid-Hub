@@ -8,7 +8,18 @@
 // the given season only (past seasons are left alone as a historical
 // record, same reasoning as rclc_loot/bis_items/attendance).
 import { describe, it, expect } from 'vitest';
-import { pool, withRole, OFFICER_T1, RAIDER_T1, OFFICER_T2 } from './helpers.js';
+import { pool, withTxn, seedSeason, OFFICER_T1, RAIDER_T1, OFFICER_T2 } from './helpers.js';
+
+// The seasons this file stamps (#932): every season column is a foreign key
+// to seasons, and an officer cannot insert one, so they are seeded as
+// postgres before the role drops. Wraps the shared harness.
+async function withSeasons(role, uid, fn) {
+  return withTxn(async ({ q, asRole }) => {
+    await seedSeason(q, 'export-test');
+    await seedSeason(q, 'some-other-season');
+    return fn(asRole(role, uid));
+  });
+}
 
 const SEASON = 'export-test';
 
@@ -24,7 +35,7 @@ async function seedPriority(q) {
 
 describe('remove_player_priority_order', () => {
   it("deletes only the given player's rows for that team/season, leaving other players' ranks alone", async () => {
-    await withRole('authenticated', OFFICER_T1, async (q) => {
+    await withSeasons('authenticated', OFFICER_T1, async (q) => {
       await seedPriority(q);
 
       const res = await q('select public.remove_player_priority_order(1, $1, 1) as removed', [SEASON]);
@@ -39,7 +50,7 @@ describe('remove_player_priority_order', () => {
   });
 
   it('leaves other seasons for the same player untouched', async () => {
-    await withRole('authenticated', OFFICER_T1, async (q) => {
+    await withSeasons('authenticated', OFFICER_T1, async (q) => {
       await seedPriority(q);
       await q(
         `insert into public.priority_order (team_id, season, item_id, track, rank, player_id) values
@@ -56,14 +67,14 @@ describe('remove_player_priority_order', () => {
   });
 
   it('returns 0 when the player has no priority_order rows for that season', async () => {
-    await withRole('authenticated', OFFICER_T1, async (q) => {
+    await withSeasons('authenticated', OFFICER_T1, async (q) => {
       const res = await q('select public.remove_player_priority_order(1, $1, 1) as removed', [SEASON]);
       expect(res.rows[0].removed).toBe(0);
     });
   });
 
   it('a raider is not authorized', async () => {
-    await withRole('authenticated', RAIDER_T1, async (q) => {
+    await withSeasons('authenticated', RAIDER_T1, async (q) => {
       await expect(q('select public.remove_player_priority_order(1, $1, 1)', [SEASON])).rejects.toThrow(
         'Not authorized'
       );
@@ -71,7 +82,7 @@ describe('remove_player_priority_order', () => {
   });
 
   it('an officer on another team is not authorized for team 1', async () => {
-    await withRole('authenticated', OFFICER_T2, async (q) => {
+    await withSeasons('authenticated', OFFICER_T2, async (q) => {
       await expect(q('select public.remove_player_priority_order(1, $1, 1)', [SEASON])).rejects.toThrow(
         'Not authorized'
       );

@@ -7,7 +7,7 @@
 | id | integer |  | false |  |  |  |
 | player_id | integer |  | false |  | [public.players](public.players.md) |  |
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
-| season | text |  | false |  |  |  |
+| season | text |  | false |  | [public.seasons](public.seasons.md) |  |
 | best_perf_avg | numeric |  | true |  |  |  |
 | median_perf_avg | numeric |  | true |  |  |  |
 | fetched_at | timestamp with time zone | now() | false |  |  |  |
@@ -20,6 +20,7 @@
 | player_wcl_season_perf_player_id_season_key | UNIQUE | UNIQUE (player_id, season) |
 | player_wcl_season_perf_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
 | player_wcl_season_perf_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
+| player_wcl_season_perf_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(code) |
 
 ## Indexes
 
@@ -35,12 +36,13 @@ erDiagram
 
 "public.player_wcl_season_perf" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.player_wcl_season_perf" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.player_wcl_season_perf" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 
 "public.player_wcl_season_perf" {
   integer id
   integer player_id FK
   integer team_id FK
-  text season
+  text season FK
   numeric best_perf_avg
   numeric median_perf_avg
   timestamp_with_time_zone fetched_at
@@ -79,6 +81,13 @@ erDiagram
   timestamp_with_time_zone archived_at
   integer wcl_guild_id
   integer guild_id FK
+}
+"public.seasons" {
+  text code
+  text display_name
+  date starts_at
+  date ends_at
+  timestamp_with_time_zone created_at
 }
 ```
 

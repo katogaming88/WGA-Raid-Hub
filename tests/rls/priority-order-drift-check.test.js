@@ -6,13 +6,16 @@
 // a direct (RLS-bypassing) seed insert and an officer-role RPC call inside
 // one rolled-back transaction.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, OFFICER_T1, RAIDER_T1 } from './helpers.js';
+import { pool, OFFICER_T1, RAIDER_T1, seedSeason } from './helpers.js';
 
 async function withTxn(fn) {
   const client = await pool.connect();
   try {
     await client.query('begin');
     const q = (text, params) => client.query(text, params);
+    // The season this file stamps (#932): every season column is a foreign
+    // key to seasons, so the fixture row comes first in every transaction.
+    await seedSeason(q, SEASON);
     const asRole = (role, uid) => async (text, params) => {
       await q('savepoint podc_call');
       await q("select set_config('request.jwt.claims', $1, true)", [

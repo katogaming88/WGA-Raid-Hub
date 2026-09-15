@@ -18,7 +18,7 @@ This file documents the RLS policies on every public table. The generated schema
 
 ### How to read this matrix
 
-RLS is deny-by-default: with RLS enabled (it is, on all 47 tables), nobody can touch any row unless a policy explicitly grants it. Policies are additive; if any one policy matches an actor and operation, the action is allowed. Each row below summarizes which grants exist for that table.
+RLS is deny-by-default: with RLS enabled (it is, on all 48 tables), nobody can touch any row unless a policy explicitly grants it. Policies are additive; if any one policy matches an actor and operation, the action is allowed. Each row below summarizes which grants exist for that table.
 
 - **Public SELECT**: "yes" means a `FOR SELECT USING (true)` policy exists, so anyone (including anonymous visitors) can read every row. This is how the public site serves roster, loot, and standings without login. "no" means there is no public read path.
 - **Officer**: what a team officer can do, scoped to their own team's rows via `my_team_role(team_id)`. "all ops" covers SELECT, INSERT, UPDATE, and DELETE. "SELECT, UPDATE" means they can see and modify existing rows but cannot insert or delete. Team leaders pass every officer check too, since these policies accept both roles.
@@ -26,7 +26,7 @@ RLS is deny-by-default: with RLS enabled (it is, on all 47 tables), nobody can t
 - **Notes**: exceptions and known gaps.
 - **A blank cell** means no policy grants that actor anything, so deny-by-default applies. A table with only Public SELECT (like `classes_specs` or `teams`) is a read-only lookup: everyone can read it and only the service role can write it. A table blank in every column except Notes (`site_admins`) is invisible to everyone but the actor named there.
 
-One thing the matrix hides on purpose: every table also carries a `claude_readers` SELECT policy (uniform across all 47 tables, so it is stated here instead of as a column).
+One thing the matrix hides on purpose: every table also carries a `claude_readers` SELECT policy (uniform across all 48 tables, so it is stated here instead of as a column).
 
 | Table | Public SELECT | Officer | Team leader | Notes |
 | --- | --- | --- | --- | --- |
@@ -65,6 +65,7 @@ One thing the matrix hides on purpose: every table also carries a `claude_reader
 | rclc_loot | yes | all ops +site | (via officer) | |
 | retired_url_keys | yes | | | Read-only lookup ([#1114](https://github.com/katogaming88/WGA-Raid-Hub/issues/1114)): keys a guild or team used to have, so old addresses still resolve. No write policy; the only writers are the `guilds_retire_url_key` and `teams_retire_url_key` triggers (SECURITY DEFINER), which fire when a key changes |
 | scoring | yes | all ops +site | (via officer) | Team resolved through `players.team_id` subquery |
+| seasons | yes | | | Read-only lookup of the raid tiers, one row each ([#932](https://github.com/katogaming88/WGA-Raid-Hub/issues/932)); no write policy, a tier is added by a migration. Every `season` column is a foreign key to it: the nine code columns to `code`, the five name columns to `display_name`. Tiers cannot overlap (`seasons_no_overlap`), so at most one row is open-ended |
 | season_signups | no | SELECT +site, UPDATE +site | | No table INSERT policy; `submit_season_signup()` (SECURITY DEFINER) is the only write path ([#403](https://github.com/katogaming88/WGA-Raid-Hub/issues/403)). A raider reads and edits their own signup only through `get_own_signup()`/`update_own_signup()` (both SECURITY DEFINER, [#500](https://github.com/katogaming88/WGA-Raid-Hub/issues/500)) -- no read or write rule exists on the table itself for a raider role |
 | self_received_requests | no | SELECT +site, UPDATE +site | | No table INSERT or DELETE policy; `submit_self_received()`/`direct_mark_received()` (both SECURITY DEFINER) are the only insert paths ([#406](https://github.com/katogaming88/WGA-Raid-Hub/issues/406)) and `delete_self_received_request()` is the only delete path ([#756](https://github.com/katogaming88/WGA-Raid-Hub/issues/756)). A raider also reads their own rows (any status) via `is_own_player(player_id)` -- without this, a raider's own auto-approved or officer-approved submission was invisible to them even though it was already `approved`, since the only prior SELECT rules were officer/team_leader/site_admin |
 | site_admins | no | | | Site admins only: SELECT and all ops via `is_site_admin()` |

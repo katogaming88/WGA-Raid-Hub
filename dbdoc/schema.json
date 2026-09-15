@@ -346,6 +346,19 @@
           "referenced_columns": [
             "id"
           ]
+        },
+        {
+          "name": "bis_items_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)",
+          "table": "public.bis_items",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "display_name"
+          ]
         }
       ],
       "triggers": [
@@ -901,6 +914,19 @@
           "referenced_columns": [
             "id"
           ]
+        },
+        {
+          "name": "rclc_loot_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
+          "table": "public.rclc_loot",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "code"
+          ]
         }
       ],
       "triggers": [
@@ -1146,6 +1172,19 @@
           ],
           "referenced_columns": [
             "id"
+          ]
+        },
+        {
+          "name": "player_wcl_season_perf_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
+          "table": "public.player_wcl_season_perf",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "code"
           ]
         }
       ]
@@ -1633,6 +1672,19 @@
           "referenced_columns": [
             "id"
           ]
+        },
+        {
+          "name": "priority_order_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
+          "table": "public.priority_order",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "code"
+          ]
         }
       ],
       "triggers": [
@@ -1754,6 +1806,19 @@
           "columns": [
             "player_id",
             "season"
+          ]
+        },
+        {
+          "name": "scoring_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
+          "table": "public.scoring",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "code"
           ]
         }
       ],
@@ -1981,6 +2046,19 @@
           ],
           "referenced_columns": [
             "id"
+          ]
+        },
+        {
+          "name": "season_signups_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)",
+          "table": "public.season_signups",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "display_name"
           ]
         }
       ],
@@ -3263,6 +3341,19 @@
             "wcl_zone_id",
             "season"
           ]
+        },
+        {
+          "name": "raid_zones_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)",
+          "table": "public.raid_zones",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "display_name"
+          ]
         }
       ]
     },
@@ -3851,6 +3942,19 @@
           "columns": [
             "id"
           ]
+        },
+        {
+          "name": "item_preferences_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)",
+          "table": "public.item_preferences",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "display_name"
+          ]
         }
       ],
       "triggers": [
@@ -4212,6 +4316,19 @@
           "referenced_table": "",
           "columns": [
             "id"
+          ]
+        },
+        {
+          "name": "tier_token_map_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
+          "table": "public.tier_token_map",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "code"
           ]
         }
       ]
@@ -4598,6 +4715,19 @@
           "referenced_table": "",
           "columns": [
             "id"
+          ]
+        },
+        {
+          "name": "boe_items_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)",
+          "table": "public.boe_items",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "display_name"
           ]
         }
       ],
@@ -4987,6 +5117,19 @@
             "boss",
             "track"
           ]
+        },
+        {
+          "name": "priority_conflict_dismissals_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
+          "table": "public.priority_conflict_dismissals",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "code"
+          ]
         }
       ],
       "triggers": [
@@ -5196,6 +5339,19 @@
             "item_id",
             "track"
           ]
+        },
+        {
+          "name": "priority_order_confirmed_empty_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
+          "table": "public.priority_order_confirmed_empty",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "code"
+          ]
         }
       ]
     },
@@ -5337,6 +5493,19 @@
             "player_id",
             "season",
             "item_id"
+          ]
+        },
+        {
+          "name": "priority_stale_dismissals_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
+          "table": "public.priority_stale_dismissals",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "code"
           ]
         }
       ],
@@ -6280,6 +6449,19 @@
           "columns": [
             "bonus_id"
           ]
+        },
+        {
+          "name": "track_bonus_ids_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
+          "table": "public.track_bonus_ids",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "code"
+          ]
         }
       ]
     },
@@ -6718,6 +6900,107 @@
           "def": "CREATE TRIGGER people_delete_when_empty AFTER UPDATE OF auth_user_id, discord_id ON public.people FOR EACH ROW WHEN (((new.auth_user_id IS NULL) AND (new.discord_id IS NULL))) EXECUTE FUNCTION delete_empty_person()"
         }
       ]
+    },
+    {
+      "name": "public.seasons",
+      "type": "BASE TABLE",
+      "comment": "One row per raid tier (#932). code is the short form the priority, loot and scoring tables hold (MID2); display_name is what officers see and type (Midnight Season 2). Every season column references one of the two. A tier is added by a migration that closes the outgoing row and inserts the new one.",
+      "columns": [
+        {
+          "name": "code",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "display_name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "starts_at",
+          "type": "date",
+          "nullable": false,
+          "comment": "The day the tier launched."
+        },
+        {
+          "name": "ends_at",
+          "type": "date",
+          "nullable": true,
+          "comment": "Null while the tier is open-ended; the next tier's migration sets it. Tiers do not overlap (seasons_no_overlap), so at most one row is null."
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "seasons_pkey",
+          "def": "CREATE UNIQUE INDEX seasons_pkey ON public.seasons USING btree (code)",
+          "table": "public.seasons",
+          "columns": [
+            "code"
+          ]
+        },
+        {
+          "name": "seasons_display_name_key",
+          "def": "CREATE UNIQUE INDEX seasons_display_name_key ON public.seasons USING btree (display_name)",
+          "table": "public.seasons",
+          "columns": [
+            "display_name"
+          ]
+        },
+        {
+          "name": "seasons_no_overlap",
+          "def": "CREATE INDEX seasons_no_overlap ON public.seasons USING gist (daterange(starts_at, ends_at, '[]'::text))",
+          "table": "public.seasons",
+          "columns": [
+            "daterange"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "seasons_window_check",
+          "type": "CHECK",
+          "def": "CHECK (((ends_at IS NULL) OR (ends_at \u003e= starts_at)))",
+          "table": "public.seasons",
+          "referenced_table": "",
+          "columns": [
+            "ends_at",
+            "starts_at"
+          ]
+        },
+        {
+          "name": "seasons_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (code)",
+          "table": "public.seasons",
+          "referenced_table": "",
+          "columns": [
+            "code"
+          ]
+        },
+        {
+          "name": "seasons_display_name_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (display_name)",
+          "table": "public.seasons",
+          "referenced_table": "",
+          "columns": [
+            "display_name"
+          ]
+        },
+        {
+          "name": "seasons_no_overlap",
+          "type": "x",
+          "def": "EXCLUDE USING gist (daterange(starts_at, ends_at, '[]'::text) WITH \u0026\u0026)",
+          "table": "public.seasons",
+          "referenced_table": ""
+        }
+      ]
     }
   ],
   "relations": [
@@ -6785,6 +7068,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.bis_items",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "display_name"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)"
     },
     {
       "table": "public.bis_requests",
@@ -6865,6 +7161,19 @@
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     },
     {
+      "table": "public.rclc_loot",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
+    },
+    {
       "table": "public.mplus_exclusion_requests",
       "columns": [
         "player_id"
@@ -6915,6 +7224,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.player_wcl_season_perf",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
     },
     {
       "table": "public.players",
@@ -7008,6 +7330,19 @@
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     },
     {
+      "table": "public.priority_order",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
+    },
+    {
       "table": "public.scoring",
       "columns": [
         "player_id"
@@ -7019,6 +7354,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.scoring",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
     },
     {
       "table": "public.season_signups",
@@ -7084,6 +7432,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.season_signups",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "display_name"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)"
     },
     {
       "table": "public.self_received_requests",
@@ -7242,6 +7603,19 @@
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     },
     {
+      "table": "public.raid_zones",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "display_name"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)"
+    },
+    {
       "table": "public.raid_encounters",
       "columns": [
         "zone_id"
@@ -7320,6 +7694,19 @@
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     },
     {
+      "table": "public.item_preferences",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "display_name"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)"
+    },
+    {
       "table": "public.guild_officers",
       "columns": [
         "person_id"
@@ -7359,6 +7746,19 @@
       "def": "FOREIGN KEY (token_item_id) REFERENCES items(id) ON DELETE CASCADE"
     },
     {
+      "table": "public.tier_token_map",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
+    },
+    {
       "table": "public.boe_items",
       "columns": [
         "item_id"
@@ -7396,6 +7796,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.boe_items",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "display_name"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)"
     },
     {
       "table": "public.boe_listings",
@@ -7463,6 +7876,19 @@
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     },
     {
+      "table": "public.priority_conflict_dismissals",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
+    },
+    {
       "table": "public.player_equipped_gear",
       "columns": [
         "player_id"
@@ -7502,6 +7928,19 @@
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     },
     {
+      "table": "public.priority_order_confirmed_empty",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
+    },
+    {
       "table": "public.priority_stale_dismissals",
       "columns": [
         "item_id"
@@ -7539,6 +7978,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.priority_stale_dismissals",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
     },
     {
       "table": "public.raid_schedule",
@@ -7682,6 +8134,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.track_bonus_ids",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
     },
     {
       "table": "public.account_preferences",

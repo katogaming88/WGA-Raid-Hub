@@ -1,8 +1,8 @@
 {
-  "version": "3.122.1",
+  "version": "3.123.0",
   "pieces": {
     "frontend": "3.115.0",
-    "db": "3.122.0",
+    "db": "3.123.0",
     "bot": "3.94.0",
     "functions": {
       "blizzard-gear-sync": "3.112.13",
@@ -13,7 +13,7 @@
       "optional-rsvp-reminders": "3.112.13",
       "twitch-live-check": "3.112.13",
       "upload-bio-photo": "3.112.13",
-      "wcl-progression-sync": "3.112.13",
+      "wcl-progression-sync": "3.123.0",
       "wcl-sync": "3.112.13"
     }
   }

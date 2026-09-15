@@ -9,7 +9,7 @@ Marks a team/season/item/track priority list as deliberately saved empty (no one
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
-| season | text |  | false |  |  |  |
+| season | text |  | false |  | [public.seasons](public.seasons.md) |  |
 | item_id | integer |  | false |  | [public.items](public.items.md) |  |
 | track | text |  | false |  |  |  |
 | marked_at | timestamp with time zone | now() | false |  |  |  |
@@ -22,6 +22,7 @@ Marks a team/season/item/track priority list as deliberately saved empty (no one
 | priority_order_confirmed_empty_item_id_fkey | FOREIGN KEY | FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE |
 | priority_order_confirmed_empty_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | priority_order_confirmed_empty_pkey | PRIMARY KEY | PRIMARY KEY (team_id, season, item_id, track) |
+| priority_order_confirmed_empty_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(code) |
 
 ## Indexes
 
@@ -35,11 +36,12 @@ Marks a team/season/item/track priority list as deliberately saved empty (no one
 erDiagram
 
 "public.priority_order_confirmed_empty" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.priority_order_confirmed_empty" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.priority_order_confirmed_empty" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
 
 "public.priority_order_confirmed_empty" {
   integer team_id FK
-  text season
+  text season FK
   integer item_id FK
   text track
   timestamp_with_time_zone marked_at
@@ -51,6 +53,13 @@ erDiagram
   timestamp_with_time_zone archived_at
   integer wcl_guild_id
   integer guild_id FK
+}
+"public.seasons" {
+  text code
+  text display_name
+  date starts_at
+  date ends_at
+  timestamp_with_time_zone created_at
 }
 "public.items" {
   integer id
