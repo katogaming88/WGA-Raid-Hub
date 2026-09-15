@@ -129,7 +129,7 @@ export async function countAs(role, uid, table, where = 'true') {
 }
 
 // A season a fixture can stamp (#932). Every season column is a foreign key
-// to seasons since 20260914210617, so a test that writes its own season
+// to seasons since 20260914224520, so a test that writes its own season
 // (rather than the seed's 'seed-season' or a real tier) inserts the row
 // first, inside its transaction. One value serves as both the code and the
 // display name, so the same constant works on a code column and a name

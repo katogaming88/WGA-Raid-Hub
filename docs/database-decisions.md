@@ -12,7 +12,7 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ## 2026-09-14 -- seasons is a table, every season column is a foreign key to it, and raid_zones keeps the team's stamp (#932)
 
-Shipped: `20260914210617_seasons_table.sql`
+Shipped: `20260914224520_seasons_table.sql`
 
 Season lived in three places and none of them was a table: `CURRENT_SEASON` in `js/common.js` for the tier, keys on `team_settings.config` for a team's cycle, and a free-text stamp in two formats on fourteen columns with no CHECK, no foreign key and no default (`docs/season-inventory.md`, #931). A misspelt or invented season was written and found later by a report that came back empty. The first structural step of the Season milestone gives the tier a table and points every column at it, changing no stored value and no client.
 
@@ -1502,7 +1502,7 @@ Triggered by losing a hand-arranged Supabase schema visualizer layout: the visua
 
 ## #250 -- Schema audit: Phase 1 review
 
-Shipped: `20260709170000_attendance_player_id_set_null.sql`, the attendance FK, the one bullet of the four that shipped (measured against production 2026-09-14: no `seasons` table, no `season_snapshots`, `team_settings` readable by `public`). The seasons table shipped as `20260914210617_seasons_table.sql` (#932, 2026-09-14), keyed by `code` rather than `slug`, with tiers refused from overlapping rather than only one left open-ended (its entry above says why). Never the `team_settings`/`season_snapshots` read lock: `20260711220932_drop_season_snapshots.sql` (#455) dropped that table, and `team_settings` is public-read on purpose, since the public pages read it. Never the auth-link trigger; `admin_grant_team_role()` (`20260904052807_team_role_grant.sql`, #910) resolves the account at grant time instead.
+Shipped: `20260709170000_attendance_player_id_set_null.sql`, the attendance FK, the one bullet of the four that shipped (measured against production 2026-09-14: no `seasons` table, no `season_snapshots`, `team_settings` readable by `public`). The seasons table shipped as `20260914224520_seasons_table.sql` (#932, 2026-09-14), keyed by `code` rather than `slug`, with tiers refused from overlapping rather than only one left open-ended (its entry above says why). Never the `team_settings`/`season_snapshots` read lock: `20260711220932_drop_season_snapshots.sql` (#455) dropped that table, and `team_settings` is public-read on purpose, since the public pages read it. Never the auth-link trigger; `admin_grant_team_role()` (`20260904052807_team_role_grant.sql`, #910) resolves the account at grant time instead.
 
 - **Seasons table.** Adding a `seasons` lookup table (`slug` PK, `name`, `starts_at`, `ends_at`) instead of a format CHECK on `season text` columns. A CHECK can't catch a well-formed typo (`MN11` vs `MN1`); only an FK against a canonical table can. `ends_at IS NULL` also gives "current season" for free, which the priority generator and #143 (archived seasons) both need.
 - **team_settings / season_snapshots SELECT policy.** Locked down to team members only (`my_team_role(team_id) is not null`). Both tables carry data with no reason to be publicly readable, unlike roster/loot which the public site intentionally exposes.
