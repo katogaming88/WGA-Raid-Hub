@@ -223,6 +223,7 @@ erDiagram
   text role
   text name_realm
   timestamp_with_time_zone updated_at
+  integer person_id FK
 }
 "public.team_settings" {
   integer team_id FK

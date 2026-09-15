@@ -2187,6 +2187,11 @@
           "name": "auth_user_id",
           "type": "uuid",
           "nullable": true
+        },
+        {
+          "name": "person_id",
+          "type": "integer",
+          "nullable": false
         }
       ],
       "indexes": [
@@ -2204,6 +2209,14 @@
           "table": "public.site_admins",
           "columns": [
             "id"
+          ]
+        },
+        {
+          "name": "site_admins_person_id_idx",
+          "def": "CREATE INDEX site_admins_person_id_idx ON public.site_admins USING btree (person_id)",
+          "table": "public.site_admins",
+          "columns": [
+            "person_id"
           ]
         }
       ],
@@ -2240,6 +2253,25 @@
           "columns": [
             "id"
           ]
+        },
+        {
+          "name": "site_admins_person_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (person_id) REFERENCES people(id)",
+          "table": "public.site_admins",
+          "referenced_table": "public.people",
+          "columns": [
+            "person_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "site_admins_set_person",
+          "def": "CREATE TRIGGER site_admins_set_person BEFORE INSERT OR UPDATE ON public.site_admins FOR EACH ROW EXECUTE FUNCTION set_person_from_discord_id()"
         }
       ]
     },
@@ -2282,6 +2314,11 @@
           "name": "updated_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "person_id",
+          "type": "integer",
+          "nullable": false
         }
       ],
       "indexes": [
@@ -2300,6 +2337,15 @@
           "columns": [
             "team_id",
             "discord_id"
+          ]
+        },
+        {
+          "name": "team_members_team_id_person_id_key",
+          "def": "CREATE UNIQUE INDEX team_members_team_id_person_id_key ON public.team_members USING btree (team_id, person_id)",
+          "table": "public.team_members",
+          "columns": [
+            "team_id",
+            "person_id"
           ]
         }
       ],
@@ -2360,12 +2406,40 @@
           "referenced_columns": [
             "id"
           ]
+        },
+        {
+          "name": "team_members_person_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (person_id) REFERENCES people(id)",
+          "table": "public.team_members",
+          "referenced_table": "public.people",
+          "columns": [
+            "person_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_members_team_id_person_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, person_id)",
+          "table": "public.team_members",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "person_id"
+          ]
         }
       ],
       "triggers": [
         {
           "name": "trg_team_members_updated_at",
           "def": "CREATE TRIGGER trg_team_members_updated_at BEFORE UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "team_members_set_person",
+          "def": "CREATE TRIGGER team_members_set_person BEFORE INSERT OR UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION set_person_from_discord_id()"
         }
       ]
     },
@@ -3949,6 +4023,11 @@
           "name": "auth_user_id",
           "type": "uuid",
           "nullable": true
+        },
+        {
+          "name": "person_id",
+          "type": "integer",
+          "nullable": false
         }
       ],
       "indexes": [
@@ -3966,6 +4045,14 @@
           "table": "public.guild_officers",
           "columns": [
             "discord_id"
+          ]
+        },
+        {
+          "name": "guild_officers_person_id_idx",
+          "def": "CREATE INDEX guild_officers_person_id_idx ON public.guild_officers USING btree (person_id)",
+          "table": "public.guild_officers",
+          "columns": [
+            "person_id"
           ]
         }
       ],
@@ -4002,6 +4089,25 @@
           "columns": [
             "discord_id"
           ]
+        },
+        {
+          "name": "guild_officers_person_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (person_id) REFERENCES people(id)",
+          "table": "public.guild_officers",
+          "referenced_table": "public.people",
+          "columns": [
+            "person_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "guild_officers_set_person",
+          "def": "CREATE TRIGGER guild_officers_set_person BEFORE INSERT OR UPDATE ON public.guild_officers FOR EACH ROW EXECUTE FUNCTION set_person_from_discord_id()"
         }
       ]
     },
@@ -4660,6 +4766,11 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "person_id",
+          "type": "integer",
+          "nullable": false
         }
       ],
       "indexes": [
@@ -4677,6 +4788,14 @@
           "table": "public.boe_managers",
           "columns": [
             "discord_id"
+          ]
+        },
+        {
+          "name": "boe_managers_person_id_idx",
+          "def": "CREATE INDEX boe_managers_person_id_idx ON public.boe_managers USING btree (person_id)",
+          "table": "public.boe_managers",
+          "columns": [
+            "person_id"
           ]
         }
       ],
@@ -4713,6 +4832,25 @@
           "columns": [
             "discord_id"
           ]
+        },
+        {
+          "name": "boe_managers_person_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (person_id) REFERENCES people(id)",
+          "table": "public.boe_managers",
+          "referenced_table": "public.people",
+          "columns": [
+            "person_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "boe_managers_set_person",
+          "def": "CREATE TRIGGER boe_managers_set_person BEFORE INSERT OR UPDATE ON public.boe_managers FOR EACH ROW EXECUTE FUNCTION set_person_from_discord_id()"
         }
       ]
     },
@@ -6475,6 +6613,111 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.people",
+      "type": "BASE TABLE",
+      "comment": "One row per human (#942). auth_user_id is their sign-in account, null for a Discord id listed on a grant before its owner signed in. discord_id is null for an account with no Discord linked. Grant tables point here through person_id.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "discord_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "people_pkey",
+          "def": "CREATE UNIQUE INDEX people_pkey ON public.people USING btree (id)",
+          "table": "public.people",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "people_auth_user_id_key",
+          "def": "CREATE UNIQUE INDEX people_auth_user_id_key ON public.people USING btree (auth_user_id)",
+          "table": "public.people",
+          "columns": [
+            "auth_user_id"
+          ]
+        },
+        {
+          "name": "people_discord_id_key",
+          "def": "CREATE UNIQUE INDEX people_discord_id_key ON public.people USING btree (discord_id)",
+          "table": "public.people",
+          "columns": [
+            "discord_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "people_auth_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL",
+          "table": "public.people",
+          "referenced_table": "auth.users",
+          "columns": [
+            "auth_user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "people_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.people",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "people_auth_user_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (auth_user_id)",
+          "table": "public.people",
+          "referenced_table": "",
+          "columns": [
+            "auth_user_id"
+          ]
+        },
+        {
+          "name": "people_discord_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (discord_id)",
+          "table": "public.people",
+          "referenced_table": "",
+          "columns": [
+            "discord_id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "people_delete_when_empty",
+          "def": "CREATE TRIGGER people_delete_when_empty AFTER UPDATE OF auth_user_id, discord_id ON public.people FOR EACH ROW WHEN (((new.auth_user_id IS NULL) AND (new.discord_id IS NULL))) EXECUTE FUNCTION delete_empty_person()"
+        }
+      ]
     }
   ],
   "relations": [
@@ -6882,6 +7125,19 @@
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     },
     {
+      "table": "public.site_admins",
+      "columns": [
+        "person_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (person_id) REFERENCES people(id)"
+    },
+    {
       "table": "public.team_members",
       "columns": [
         "team_id"
@@ -6893,6 +7149,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_members",
+      "columns": [
+        "person_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (person_id) REFERENCES people(id)"
     },
     {
       "table": "public.team_settings",
@@ -7051,6 +7320,19 @@
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     },
     {
+      "table": "public.guild_officers",
+      "columns": [
+        "person_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (person_id) REFERENCES people(id)"
+    },
+    {
       "table": "public.tier_token_map",
       "columns": [
         "resolved_item_id"
@@ -7140,6 +7422,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (boe_item_id) REFERENCES boe_items(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.boe_managers",
+      "columns": [
+        "person_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (person_id) REFERENCES people(id)"
     },
     {
       "table": "public.priority_conflict_dismissals",
@@ -7997,6 +8292,24 @@
       "name": "public.team_battlenet_connections",
       "return_type": "int4",
       "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.person_for_discord_id",
+      "return_type": "int4",
+      "arguments": "p_discord_id text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_person_from_discord_id",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.delete_empty_person",
+      "return_type": "trigger",
+      "arguments": "",
       "type": "FUNCTION"
     }
   ],
