@@ -165,9 +165,68 @@ fix is a follow-up stamp PR to the next free number, never a retag.
 The Releases page is the public changelog, and the Discord deploy notification
 names the version it deployed.
 
+## Writing issues and pull requests
+
+These rules apply to every issue and pull request, whoever or whatever writes
+it.
+
+### Plain language
+
+Say what is changing and why, in words anyone on the team can follow without
+already knowing the code.
+
+- Lead with the effect on people: what a raider or officer sees or can do
+  differently, or what problem goes away.
+- Name things by what they do, not by an internal label. "The loot priority
+  list ignored receipts saved with a slot" beats "`bis_received` join misses
+  non-null `slot`".
+- Use a technical term only when there is no plainer word. When one is needed,
+  explain it with a short analogy the first time it appears. For example: "a
+  foreign key is like a library card number: the loan record points at a card,
+  so a card with loans can't be thrown away."
+- Give a real example with real names and numbers when a change is easier to
+  see than describe.
+- File names, function names and exact commands still belong in the body where
+  a reviewer needs them. Put them after the plain explanation, not in place of
+  it.
+
+### Small and focused
+
+- One issue covers one problem or one feature. If it grows a second, split it
+  into its own issue and link the two.
+- One pull request covers one issue. Unrelated fixes go in their own pull
+  request, even small ones.
+- The exception is Kat: Kat can choose to add an unrelated fix to a pull
+  request. When that happens, list it under its own heading in the pull
+  request body so it isn't missed in review.
+
+### Screenshots and design review
+
+A pull request that changes how something looks or adds something new to a
+page (the current site or the new app in `app/`) needs:
+
+- Screenshots in the pull request body of each changed view. Include the phone
+  width and light mode when those change too.
+- A design review before it merges. Kat reviews these and checks the design,
+  not just the code.
+
+A change nobody can see (logic, data, tests) needs no screenshots.
+
+### Who reviews
+
+| The pull request mainly changes | Reviewer |
+|--------------------------------|----------|
+| The database (big migrations, policies, data fixes), deploys, CI, hosting | Rex |
+| How the site or the new app looks or works (frontend, design) | Kat |
+
+A pull request with both halves gets both reviewers. Small database changes
+that ride along with a frontend feature can stay with Kat, but ask Rex if you
+are unsure.
+
 ## Pull requests
 
-- Keep PRs focused on one issue or theme
+- Use the pull request template (`.github/pull_request_template.md`) and
+  follow "Writing issues and pull requests" above
 - Update `CHANGELOG.md` under `### Frontend` / `### Backend` per the
   versioning section above
 - `js/common.js` is type-checked (`// @ts-check` plus JSDoc annotations, no

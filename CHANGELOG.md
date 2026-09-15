@@ -12,6 +12,25 @@ answers to.
 
 ---
 
+## [3.121.1] - 2026-09-14
+
+### Project
+
+- New rules for writing issues and pull requests, in CONTRIBUTING.md.
+  - **Plain language:** say what is changing and why so anyone on the team
+    can follow it. Use a technical term only when needed, and explain it with
+    a short analogy.
+  - **Small and focused:** one problem per issue, one issue per pull request.
+    Kat can choose to add an unrelated fix to a pull request.
+  - **Screenshots and design review:** a change to how something looks, or
+    something new on a page, needs screenshots and Kat's design review before
+    it merges.
+  - **Who reviews:** big database, devops and CI changes go to Rex. Frontend
+    and design go to Kat.
+- A new pull request template built around those rules: what's changing, why,
+  screenshots, database changes, what's left out, how it was tested, and who
+  reviews. The issue templates gained a plain-language reminder.
+
 ## [3.121.0] - 2026-09-14
 
 ### Project
