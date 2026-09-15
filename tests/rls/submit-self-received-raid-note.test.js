@@ -110,4 +110,39 @@ describe('submit_self_received: self-reported raid loot', () => {
       expect(res.rows[0].auto_approved).toBe(false);
     });
   });
+
+  // #868: Pug raid is a Mark Received source, and its note will say "raid".
+  it('auto-approves a Pug raid report whose note mentions "raid"', async () => {
+    await withTxn(async (q, asRaider) => {
+      await linkPlayerToAuthUser(q);
+      const res = await submit(asRaider, 'pugged a heroic raid last night', 'Pug raid');
+      expect(res.rows[0].auto_approved).toBe(true);
+    });
+  });
+
+  it('still sends an Other report to officer review with no mention of raid', async () => {
+    await withTxn(async (q, asRaider) => {
+      await linkPlayerToAuthUser(q);
+      const res = await submit(asRaider, 'timewalking vendor', 'Other');
+      expect(res.rows[0].auto_approved).toBe(false);
+    });
+  });
+
+  // #868: Other goes to an officer, who needs to know where it came from.
+  it('refuses an Other report with no note, or only spaces', async () => {
+    for (const note of ['', '   ', null]) {
+      await withTxn(async (q, asRaider) => {
+        await linkPlayerToAuthUser(q);
+        await expect(submit(asRaider, note, 'Other')).rejects.toThrow('Say where the item came from');
+      });
+    }
+  });
+
+  it('still takes a report from any other source without a note', async () => {
+    await withTxn(async (q, asRaider) => {
+      await linkPlayerToAuthUser(q);
+      const res = await submit(asRaider, null, 'Bonus Roll');
+      expect(res.rows[0].auto_approved).toBe(true);
+    });
+  });
 });

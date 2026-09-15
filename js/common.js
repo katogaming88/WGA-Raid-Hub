@@ -109,14 +109,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.119.4';
+var VERSION = '3.120.0';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20260914172704';
+var REQUIRED_SCHEMA = '20260914201439';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -5945,7 +5945,7 @@ function _selfReceivedTrackFromDiff(diff) {
 // wrong for whichever source they picked after page load.
 function selfReceivedNoteText(source) {
   return source === 'Other'
-    ? 'An officer will review and approve this. Once approved it will appear on your profile.'
+    ? 'An officer will review and approve this, so say where it came from in the notes. Once approved it will appear on your profile.'
     : 'This will be added to your profile right away.';
 }
 
@@ -5957,7 +5957,12 @@ function selfReceivedNoteText(source) {
 function selfReceivedSourceChanged(rowId) {
   var sourceEl = /** @type {HTMLSelectElement} */ (document.getElementById('src-' + rowId));
   var noteEl = document.getElementById('note-' + rowId);
-  if (!sourceEl || !noteEl) return;
+  if (!sourceEl) return;
+  // Other needs a note (Kat, 2026-09-14), so its box asks for one.
+  var notesEl = /** @type {HTMLTextAreaElement} */ (document.getElementById('notes-' + rowId));
+  if (notesEl)
+    notesEl.placeholder = sourceEl.value === 'Other' ? 'Where did it come from? (required)' : 'Notes (optional)';
+  if (!noteEl) return;
   noteEl.textContent = selfReceivedNoteText(sourceEl.value);
 }
 
@@ -6071,6 +6076,16 @@ function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId, dbSl
   }
   if (!diffEl || !diffEl.value) {
     if (diffEl) diffEl.style.borderColor = 'var(--melee)';
+    return;
+  }
+  // Other goes to an officer, who needs to know where it came from (Kat,
+  // 2026-09-14); submit_self_received() refuses one without a note too.
+  if (sourceEl.value === 'Other' && (!notesEl || !notesEl.value.trim())) {
+    if (notesEl) {
+      notesEl.style.borderColor = 'var(--melee)';
+      notesEl.placeholder = 'Where did it come from? (required)';
+      notesEl.focus();
+    }
     return;
   }
   var diff = diffEl.value;

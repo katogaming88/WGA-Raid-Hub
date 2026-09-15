@@ -48,6 +48,9 @@ export type PriorityRow = {
   // row's for a crafted or M+ pick.
   slot: string;
   item: string;
+  // The catalog's own name, which a report sends: a tier token's, not the
+  // piece it shows as.
+  itemName: string;
   placeholder: boolean;
   ranks: Standing[];
   received: Received | null;
@@ -149,6 +152,7 @@ export function lootPriority(input: {
         itemId: item.id,
         slot,
         item: input.tierTokens.find((t) => t.token_item_id === item.id)?.resolved?.name ?? item.name,
+        itemName: item.name,
         placeholder: item.is_placeholder,
         // Crafted and M+ picks are not council loot and are never ranked.
         ranks: item.is_placeholder ? [] : standings(item.id, input.playerId, input.ranks),
@@ -184,12 +188,14 @@ function received(item: CatalogItem, slot: string, loot: ReceivedLoot[], self: S
     null
   );
 
+  // A receipt is for the row's slot: the catalog's for a raid item, the picked
+  // slot for a crafted or M+ pick. One saved without a slot still counts when
+  // it is the only receipt for the item, as on the current site
+  // (selfReceivedEntryForRow()).
   const matches = self.filter((s) => s.items && norm(s.items.name) === name);
-  // A crafted or M+ pick can sit in several slots, so its receipt has to be
-  // for this slot; a raid item has no such ambiguity.
-  const receipt = item.is_placeholder
-    ? (matches.find((m) => m.slot === slot) ?? (matches.length === 1 && !matches[0]!.slot ? matches[0] : undefined))
-    : matches.find((m) => !m.slot);
+  const receipt =
+    matches.find((m) => m.slot && m.slot === slot) ??
+    (!slot ? matches.find((m) => !m.slot) : matches.length === 1 && !matches[0]!.slot ? matches[0] : undefined);
 
   const awardRank = bestAward ? (TRACK_ORDER[bestAward.track ?? ''] ?? 0) : -1;
   const receiptTrack = receipt ? trackName(receipt.track) : null;

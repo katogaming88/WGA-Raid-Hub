@@ -102,7 +102,7 @@ function json(body, headers = {}) {
  * @param {{ path: string, viewport?: {width:number,height:number}, session?: object, who?: keyof PEOPLE,
  *           reducedMotion?: 'reduce'|'no-preference', colorScheme?: 'light'|'dark', sentinel?: string,
  *           tables?: Record<string, unknown[]>, person?: { discordId: string|null, person: object|null },
- *           click?: string, touch?: boolean }} state
+ *           click?: string, touch?: boolean, rpc?: Record<string, unknown>, functions?: string[] }} state
  */
 export async function openApp(browser, port, state) {
   const host = supabaseHost();
@@ -152,6 +152,13 @@ export async function openApp(browser, port, state) {
       }
       if (rest === 'rpc/current_discord_id') return route.fulfill(json(who?.discordId ?? null));
       if (rest === 'rpc/resolve_person') return route.fulfill(json(who?.person ?? null));
+      // Other RPCs a state expects, like a form's submit.
+      if (rest?.startsWith('rpc/') && state.rpc && rest.slice(4) in state.rpc) {
+        return route.fulfill(json(state.rpc[rest.slice(4)]));
+      }
+      // Edge Functions a state expects, like the Discord notice.
+      const fn = url.pathname.split('/functions/v1/')[1];
+      if (fn && state.functions?.includes(fn)) return route.fulfill(json({ ok: true }));
       if (rest === 'guilds') return route.fulfill(json({ id: 1, name: 'We Go Again', url_key: 'wga' }));
       if (rest === 'teams') return route.fulfill(json(TEAMS));
       // Home's roster count is a HEAD read; the Roster page lists the rows.

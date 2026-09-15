@@ -23,10 +23,12 @@ import {
   useLoot,
   useMplusRefusal,
   useProfilePlayer,
+  useRequestSettings,
   type ProfilePlayer
 } from './useProfile';
 import { LootPriorityCard, WishlistSummaryCard } from './LootPriorityCard';
 import { WishlistEditor } from './WishlistEditor';
+import { MplusRequestButton } from './ProfileForms';
 import './profile.css';
 
 // A profile opens for the raider it belongs to and for the team's officers
@@ -221,7 +223,9 @@ function Profile({
   const attendanceRows = useAttendance(player.id);
   const loot = useLoot(player.id);
   const gear = useEquippedGear(player.id);
-  const refusal = useMplusRefusal(teamId, player.id, officerView && !player.m_plus_excluded);
+  // Officers read every request; a raider reads their own (20260914201423).
+  const refusal = useMplusRefusal(teamId, player.id, (officerView || own) && !player.m_plus_excluded);
+  const requests = useRequestSettings(teamId);
 
   const character = player.name_realm.split('-')[0]!.trim();
   const name = player.nickname?.trim() || character;
@@ -319,7 +323,7 @@ function Profile({
 
             <div className="profile-layout">
               <div className="profile-main">
-                <LootPriorityCard player={player} teamId={teamId} season={season} loot={loot} />
+                <LootPriorityCard player={player} teamId={teamId} season={season} loot={loot} own={own} />
               </div>
 
               <aside className="profile-side" aria-label="Wishlist, attendance and M+">
@@ -342,6 +346,11 @@ function Profile({
                     excluded={player.m_plus_excluded}
                     note={player.m_plus_note}
                     refusal={refusal.isSuccess ? refusal.data : null}
+                    request={
+                      own && requests.isSuccess && !player.m_plus_excluded
+                        ? { open: requests.data.mplusOpen, player, raiderIoUrl: links?.raiderIo ?? '' }
+                        : null
+                    }
                   />
                 </section>
               </aside>
@@ -530,14 +539,18 @@ function AttendanceCard({ attend }: { attend: ReturnType<typeof attendance> }) {
   );
 }
 
+// The raider's own M+ exclusion: their status, and the request form while the
+// team takes requests.
 function MplusStatus({
   excluded,
   note,
-  refusal
+  refusal,
+  request
 }: {
   excluded: boolean;
   note: string | null;
   refusal: { officer_notes: string | null } | null;
+  request: { open: boolean; player: ProfilePlayer; raiderIoUrl: string } | null;
 }) {
   if (excluded) {
     return (
@@ -549,6 +562,13 @@ function MplusStatus({
       </div>
     );
   }
+  const action = request ? (
+    request.open ? (
+      <MplusRequestButton player={request.player} raiderIoUrl={request.raiderIoUrl} again={!!refusal} />
+    ) : (
+      <p className="text-muted card-note mplus-closed">M+ exclusion requests are closed right now.</p>
+    )
+  ) : null;
   if (refusal) {
     return (
       <div className="mplus">
@@ -557,8 +577,14 @@ function MplusStatus({
           approved.
         </p>
         {refusal.officer_notes && <p className="mplus-note">{refusal.officer_notes}</p>}
+        {request?.open && action}
       </div>
     );
   }
-  return <p className="text-muted card-note">Not excluded from weekly M+.</p>;
+  return (
+    <div className="mplus">
+      <p className="text-muted card-note">Not excluded from weekly M+.</p>
+      {action}
+    </div>
+  );
 }

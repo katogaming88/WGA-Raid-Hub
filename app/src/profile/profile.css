@@ -677,3 +677,20 @@
 .wishlist-error {
   color: var(--bad);
 }
+
+/* Profile forms (#868 part 4). */
+
+.mplus .button {
+  align-self: flex-start;
+}
+
+.priority-status .mark-received {
+  min-height: 26px;
+  margin-left: var(--space-2);
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.report-item {
+  font-weight: 600;
+}
