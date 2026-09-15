@@ -12,6 +12,29 @@ answers to.
 
 ---
 
+## [3.127.0] - 2026-09-15
+
+### Backend
+
+- A **characters** table holds the alts a raider picks from their Battle.net
+  account ([#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942)
+  step 5, [#1162](https://github.com/katogaming88/WGA-Raid-Hub/issues/1162)).
+  Nothing uses it on a page yet; the new app's picker comes next.
+  - A roster character found on someone's Battle.net list is linked to them
+    automatically if nobody has claimed it. One claimed by someone else is
+    reported and left alone.
+  - The raider and the officers of their teams can see their alts. Nobody can
+    write them except the server, after checking the Battle.net sign-in.
+
+### Functions
+
+- New `battlenet-characters`: checks that a Battle.net sign-in belongs to the
+  person asking, reads their max-level characters from Blizzard with spec and
+  item level, links roster matches, and saves the ones they pick. The
+  Battle.net token is only ever sent to Blizzard.
+
+---
+
 ## [3.126.0] - 2026-09-15
 
 ### Frontend

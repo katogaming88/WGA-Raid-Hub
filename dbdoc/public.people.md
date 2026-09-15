@@ -8,7 +8,7 @@ One row per human (#942). auth_user_id is their sign-in account, null for a Disc
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer |  | false | [public.team_members](public.team_members.md) [public.guild_grants](public.guild_grants.md) |  |  |
+| id | integer |  | false | [public.team_members](public.team_members.md) [public.guild_grants](public.guild_grants.md) [public.characters](public.characters.md) |  |  |
 | auth_user_id | uuid |  | true |  |  |  |
 | discord_id | text |  | true |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
@@ -44,6 +44,7 @@ erDiagram
 
 "public.team_members" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.guild_grants" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
+"public.characters" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
 
 "public.people" {
   integer id
@@ -67,6 +68,21 @@ erDiagram
   integer guild_id FK
   text grant_type
   timestamp_with_time_zone created_at
+}
+"public.characters" {
+  integer id
+  integer person_id FK
+  bigint blizzard_id
+  text name
+  text realm
+  text realm_slug
+  text name_realm
+  text name_realm_key
+  text class_name
+  text spec_name
+  integer level
+  integer item_level
+  timestamp_with_time_zone saved_at
 }
 ```
 

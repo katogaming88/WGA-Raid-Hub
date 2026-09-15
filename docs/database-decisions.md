@@ -10,6 +10,27 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-15 -- Alts come from the Battle.net character list: raiders pick them, roster matches link on their own (#942 step 5, #1162)
+
+Shipped: `20260915171944_battlenet_characters.sql`.
+
+Kat's calls on 2026-09-15:
+
+- **A raider picks which characters to show as alts.** The list is their max-level characters (Midnight's level cap, 90), and only what they pick is saved, in a new `characters` table on the person. Rejected: saving every max-level character automatically (clutter), or every character at any level (47 on one tested account).
+- **A roster character on their Battle.net list is linked to them on its own.** If Grihz-Illidan is on Phoenix's roster and unclaimed, connecting Battle.net links it, with no claim step. Blizzard's list is the proof of ownership, stronger than the claim dropdown, which lets anyone pick any unclaimed character.
+- **The any-time main swap request (#631) is its own change, next.** It needs an officer approval screen.
+
+Settled while building it:
+
+- **The browser never writes characters.** The `battlenet-characters` Edge Function takes the Battle.net token, asks Blizzard whose it is (`oauth.battle.net/userinfo`) and refuses unless that is the Battle.net login linked to the caller: a refused Connect still leaves a working token in the browser (#1162's 2026-09-14 test). It then reads the character list itself and calls three service-role-only database functions. Picked ids from the request are kept only when they are on the caller's own list.
+- **A character someone else already claimed is reported, never moved.** `link_battlenet_roster_characters()` answers `claimed_by_someone_else` and leaves it for an officer. An archived roster row is not linked.
+- **No Discord, no membership, until cutover.** A membership still needs `team_members.discord_id`, so a Battle.net-only person is told `needs_discord` for a roster match rather than linked. Step 6 removes the need.
+- **A saved character can move people.** A Blizzard character id is unique, so saving one another person had saved moves it: the token has just shown whose it is.
+- **Who reads characters matches who reads `people`** (the person, officers of their teams, site admins, guild officers). Whether alts show on public pages is decided with the roster and profile screens in the app part of this step.
+- **The token is never stored or logged**, only sent to Blizzard for the one request.
+
+---
+
 ## 2026-09-15 -- The notification inbox belongs to the person; preferences stay on the account (#942 step 4)
 
 Shipped: `20260915170855_inbox_belongs_to_person.sql`.
@@ -95,7 +116,7 @@ Season lived in three places and none of them was a table: `CURRENT_SEASON` in `
 
 ## 2026-09-14 -- A person is a row, alts hang off it, and the build runs in six steps (#942)
 
-Shipped: `20260914221328_people_table.sql` (step 1), `20260915092357_guild_grants.sql` (step 2), `20260915161042_person_predicates.sql` (step 3), `20260915170855_inbox_belongs_to_person.sql` (step 4, reshaped: inbox only), all in entries above. Steps 5 and 6: not yet, #942.
+Shipped: `20260914221328_people_table.sql` (step 1), `20260915092357_guild_grants.sql` (step 2), `20260915161042_person_predicates.sql` (step 3), `20260915170855_inbox_belongs_to_person.sql` (step 4, reshaped: inbox only), `20260915171944_battlenet_characters.sql` (step 5, storage and Edge Function; the app screens and the main swap request follow), all in entries above. Step 6: not yet, #942.
 
 The re-plan is on [#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942#issuecomment-5673595252). Kat's calls on 2026-09-14:
 

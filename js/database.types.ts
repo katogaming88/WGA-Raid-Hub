@@ -461,6 +461,62 @@ export type Database = {
           },
         ]
       }
+      characters: {
+        Row: {
+          blizzard_id: number
+          class_name: string | null
+          id: number
+          item_level: number | null
+          level: number | null
+          name: string
+          name_realm: string | null
+          name_realm_key: string | null
+          person_id: number
+          realm: string
+          realm_slug: string
+          saved_at: string
+          spec_name: string | null
+        }
+        Insert: {
+          blizzard_id: number
+          class_name?: string | null
+          id?: never
+          item_level?: number | null
+          level?: number | null
+          name: string
+          name_realm?: string | null
+          name_realm_key?: string | null
+          person_id: number
+          realm: string
+          realm_slug: string
+          saved_at?: string
+          spec_name?: string | null
+        }
+        Update: {
+          blizzard_id?: number
+          class_name?: string | null
+          id?: never
+          item_level?: number | null
+          level?: number | null
+          name?: string
+          name_realm?: string | null
+          name_realm_key?: string | null
+          person_id?: number
+          realm?: string
+          realm_slug?: string
+          saved_at?: string
+          spec_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "characters_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classes_specs: {
         Row: {
           class: string
@@ -2812,6 +2868,10 @@ export type Database = {
         Args: { p_detail: string; p_player_id: number; p_reason: string }
         Returns: string
       }
+      battlenet_account_id: {
+        Args: { p_auth_user_id: string }
+        Returns: string
+      }
       boe_mark_paid: {
         Args: { p_donated?: boolean; p_id: number; p_paid_at?: string }
         Returns: undefined
@@ -2950,6 +3010,15 @@ export type Database = {
       is_own_player: { Args: { p_player_id: number }; Returns: boolean }
       is_site_admin: { Args: never; Returns: boolean }
       is_team_leader_anywhere: { Args: never; Returns: boolean }
+      link_battlenet_roster_characters: {
+        Args: { p_characters: Json; p_person_id: number }
+        Returns: {
+          name_realm: string
+          outcome: string
+          player_id: number
+          team_id: number
+        }[]
+      }
       my_person_id: { Args: never; Returns: number }
       my_player_ids: { Args: never; Returns: number[] }
       my_team_role: { Args: { p_team_id: number }; Returns: string }
@@ -2988,6 +3057,30 @@ export type Database = {
         Returns: string
       }
       resolve_person: { Args: { p_discord_id: string }; Returns: Json }
+      save_battlenet_characters: {
+        Args: { p_characters: Json; p_person_id: number }
+        Returns: {
+          blizzard_id: number
+          class_name: string | null
+          id: number
+          item_level: number | null
+          level: number | null
+          name: string
+          name_realm: string | null
+          name_realm_key: string | null
+          person_id: number
+          realm: string
+          realm_slug: string
+          saved_at: string
+          spec_name: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "characters"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       save_priority_order: {
         Args: {
           p_item_id: number

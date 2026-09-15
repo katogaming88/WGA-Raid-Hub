@@ -64,6 +64,7 @@
 | [public.site_admins](public.site_admins.md) | 5 | Read-only view of guild_grants (#942), dropped at cutover (#1105). | VIEW |
 | [public.guild_officers](public.guild_officers.md) | 5 | Read-only view of guild_grants (#942), dropped at cutover (#1105). | VIEW |
 | [public.boe_managers](public.boe_managers.md) | 5 | Read-only view of guild_grants (#942), dropped at cutover (#1105). | VIEW |
+| [public.characters](public.characters.md) | 13 | Characters a person chose to show from their Battle.net account (#942 step 5, #1162). Written only by save_battlenet_characters() from the battlenet-characters Edge Function. A character here is an alt unless the same name_realm_key is a roster row linked to the person. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -174,6 +175,9 @@
 | public.my_person_id | int4 |  | FUNCTION |
 | public.copy_person_account_to_members | trigger |  | FUNCTION |
 | public.my_player_ids | _int4 |  | FUNCTION |
+| public.battlenet_account_id | text | p_auth_user_id uuid | FUNCTION |
+| public.link_battlenet_roster_characters | record | p_person_id integer, p_characters jsonb | FUNCTION |
+| public.save_battlenet_characters | characters | p_person_id integer, p_characters jsonb | FUNCTION |
 
 ## Enums
 
@@ -288,6 +292,7 @@ erDiagram
 "public.retired_url_keys" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
 "public.guild_grants" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id)"
 "public.guild_grants" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
+"public.characters" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -898,6 +903,21 @@ erDiagram
   uuid auth_user_id
   integer person_id
   timestamp_with_time_zone created_at
+}
+"public.characters" {
+  integer id
+  integer person_id FK
+  bigint blizzard_id
+  text name
+  text realm
+  text realm_slug
+  text name_realm
+  text name_realm_key
+  text class_name
+  text spec_name
+  integer level
+  integer item_level
+  timestamp_with_time_zone saved_at
 }
 ```
 
