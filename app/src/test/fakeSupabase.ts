@@ -90,6 +90,14 @@ export function fakeClient(
           read.filters.push(['in', column, values]);
           return builder;
         },
+        gte(column: string, value: unknown) {
+          read.filters.push(['gte', column, value]);
+          return builder;
+        },
+        range(from: number, to: number) {
+          read.filters.push(['range', String(from), to]);
+          return builder;
+        },
         order(column: string) {
           read.order = column;
           return builder;

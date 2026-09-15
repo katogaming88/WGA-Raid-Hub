@@ -10,6 +10,20 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-14 -- The roster shows attendance and items awarded to officers only (#870)
+
+Shipped: no migration; the new app's Roster page (#870 part 2).
+
+The approved design had Attendance, Items and BiS obtained columns on the roster. Kat's call: showing another raider's items awarded "is not good, as it can cause drama", and attendance the same.
+
+- **Attendance and items awarded are officer-only columns.** Raiders and visitors see name, spec, item level, tier and tags. Both tables stay publicly readable, as they are for the profile and the current site; this decides what the roster offers, and the page does not read them for anyone but an officer.
+- **BiS obtained is not on the roster.** It comes from wishlists, which only officers and the raider can read; it belongs with officer tools.
+- **Spec icons are bundled with the app**, Blizzard's own art saved from Wowhead's icon server, rather than loaded from Wowhead on every visit.
+
+[Roster -> #870](https://github.com/katogaming88/WGA-Raid-Hub/issues/870).
+
+---
+
 ## 2026-09-14 -- A raider reads their own M+ exclusion requests, a Pug raid report is not held for saying "raid", and an Other report needs a note (#868)
 
 Shipped: `20260914201423_mplus_exclusion_requests_own_read.sql`, `20260914201439_submit_self_received_pug_raid_note.sql`

@@ -95,7 +95,7 @@
 
 .roster-table thead th {
   height: 34px;
-  padding: 0 var(--space-4);
+  padding: 0 var(--space-3);
   border-bottom: 1px solid var(--border);
   color: var(--text-dim);
   font-size: var(--text-xs);
@@ -112,7 +112,7 @@
 
 .role-row th {
   height: 30px;
-  padding: 0 var(--space-4);
+  padding: 0 var(--space-3);
   background: var(--sidebar);
   border-bottom: 1px solid var(--border);
   text-align: left;
@@ -131,7 +131,8 @@
 
 .roster-table tbody tr:not(.role-row) > * {
   height: 34px;
-  padding: 0 var(--space-4);
+  /* 12px, so an officer's two extra columns still fit beside the summary. */
+  padding: 0 var(--space-3);
   border-bottom: 1px solid var(--border);
   text-align: left;
   white-space: nowrap;
@@ -147,6 +148,15 @@
 
 .raider-cell {
   font-weight: 400;
+}
+
+/* The spec icon before a name (#870). */
+.spec-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: var(--space-2);
+  border-radius: var(--radius-sm);
+  vertical-align: -5px;
 }
 
 .raider-name {

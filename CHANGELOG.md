@@ -12,6 +12,27 @@ answers to.
 
 ---
 
+## [3.121.0] - 2026-09-14
+
+### Project
+
+- The new app's Roster page, part 2
+  ([#870](https://github.com/katogaming88/WGA-Raid-Hub/issues/870)).
+  - Each raider has their **spec icon** beside their name, on the current and
+    next-season rosters. The 40 icons are Blizzard's, saved into the app
+    (`app/public/spec-icons/`) and loaded as files, so only the ones on screen
+    download.
+  - **Officers** see two more columns: this season's **attendance** and
+    **items awarded**, worked out the same way as the profile. Raiders and
+    visitors see neither, and the page does not read them for anyone else, so
+    the public roster never invites loot or attendance comparisons.
+  - Cells are a little tighter so the officer columns fit beside the summary
+    panel, and the table can be scrolled with the keyboard when it is wider
+    than the screen.
+- Alts on the roster still wait for #942.
+
+---
+
 ## [3.120.0] - 2026-09-14
 
 ### Backend
