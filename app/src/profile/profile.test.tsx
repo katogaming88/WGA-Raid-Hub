@@ -174,8 +174,9 @@ describe('Profile page', () => {
     );
     const read = client.reads.find((r) => r.table === 'players' && r.single)!;
     expect(read.filters).toContainEqual(['eq', 'id', 11]);
-    // Only officers can read M+ requests, so a raider's page does not ask.
-    expect(client.reads.some((r) => r.table === 'mplus_exclusion_requests')).toBe(false);
+    // A raider reads their own M+ requests (20260914201423), and only theirs.
+    const mplus = await waitFor(() => client.reads.find((r) => r.table === 'mplus_exclusion_requests')!);
+    expect(mplus.filters).toContainEqual(['eq', 'player_id', 11]);
   });
 
   it('says so when the signed-in person has no character on the team', async () => {
@@ -337,6 +338,21 @@ describe('lootPriority', () => {
       ['Waist', 'Caustic Sash', [], { track: 'Mythic', detail: 'Great Vault' }],
       ['Finger', 'Band of the Hollow Choir', [], null]
     ]);
+  });
+
+  it('counts a raid item receipt saved with its catalog slot, as most live ones are', () => {
+    const [row] = lootPriority({
+      ...base,
+      loot: [],
+      wishlist: [pick(2, 'Finger 1')],
+      selfReceived: [
+        { track: 'Myth', source: 'Bonus Roll', slot: 'Finger', items: { name: 'Band of the Hollow Choir' } }
+      ]
+    });
+    expect(row!.received).toEqual({ track: 'Mythic', detail: 'Bonus Roll' });
+    // The report names the catalog item, not the class piece a token shows as.
+    const [token] = lootPriority({ ...base, wishlist: [pick(1, 'Hands')] });
+    expect([token!.item, token!.itemName]).toEqual(['Grave-Knight Deathgrips', 'Venomforged Idol']);
   });
 
   it('counts the wishlist’s slots with a BiS pick and the ones passed', () => {

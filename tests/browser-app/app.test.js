@@ -173,6 +173,20 @@ const STATES = [
   wishlistEditorState('my profile, wishlist editor, closed', {
     tables: { team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end, open: 'false', view: null }] }
   }),
+  // The profile's two forms, open (#868 part 4).
+  profileState('my profile, Mark received dialog', 'torbjorn', 'torbjorn', {
+    sentinel: 'main .priority-table .mark-received',
+    click: 'main .priority-table .mark-received >> nth=0'
+  }),
+  profileState('my profile, M+ exclusion request dialog, light', 'dodgey', 'dodgey', {
+    sentinel: 'main .mplus-request',
+    click: 'main .mplus-request',
+    colorScheme: 'light',
+    tables: {
+      ...profileState('', 'dodgey', 'dodgey').tables,
+      team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end, mplusOpen: 'true' }]
+    }
+  }),
   profileState('officer opening a profile with a refused M+ request', 'officer', 'dodgey', {
     sentinel: 'main .mplus-status'
   }),

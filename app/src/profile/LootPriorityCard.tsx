@@ -2,12 +2,14 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import { DataState } from '../components/DataState';
 import { bothQueries } from '../data/query';
 import { lootPriority, type PriorityRow, type Standing } from './lootPriority';
+import { MarkReceivedButton } from './ProfileForms';
 import { wishlistSummary } from './wishlist';
 import type { LootRow, SeasonWindow } from './profile';
 import {
   useCatalog,
   useItemRanks,
   useRaidZones,
+  useRequestSettings,
   useSelfReceived,
   useTierTokens,
   useWishlist,
@@ -24,13 +26,18 @@ export function LootPriorityCard({
   player,
   teamId,
   season,
-  loot
+  loot,
+  own
 }: {
   player: ProfilePlayer;
   teamId: number;
   season: UseQueryResult<SeasonWindow>;
   loot: UseQueryResult<LootRow[]>;
+  // The signed-in raider's own character, which they can mark items received for.
+  own: boolean;
 }) {
+  const settings = useRequestSettings(teamId);
+  const canReport = own && settings.isSuccess && settings.data.reports;
   const wishlist = useWishlist(player.id);
   const catalog = useCatalog();
   const zones = useRaidZones();
@@ -58,6 +65,8 @@ export function LootPriorityCard({
       <DataState query={reads} label="loot priority">
         {([[[s, w], [c, z]], [[r, t], [l, sr]]]) => (
           <PriorityTable
+            player={player}
+            canReport={canReport}
             rows={lootPriority({
               playerId: player.id,
               wishlist: w,
@@ -92,7 +101,15 @@ function StandingCell({ standing }: { standing: Standing | undefined }) {
   );
 }
 
-function PriorityTable({ rows }: { rows: PriorityRow[] }) {
+function PriorityTable({
+  rows,
+  player,
+  canReport
+}: {
+  rows: PriorityRow[];
+  player: ProfilePlayer;
+  canReport: boolean;
+}) {
   if (!rows.length) {
     return <p className="text-muted card-note">No BiS picks on the wishlist for this season yet.</p>;
   }
@@ -135,6 +152,8 @@ function PriorityTable({ rows }: { rows: PriorityRow[] }) {
                 ) : (
                   <span className="text-muted">Wanted</span>
                 )}
+                {/* Until a Mythic copy is on file, as on the current site. */}
+                {canReport && row.received?.track !== 'Mythic' && <MarkReceivedButton player={player} row={row} />}
               </td>
             </tr>
           ))}

@@ -116,3 +116,60 @@ button {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
 }
+
+/* Form fields: a label above its control, a hint or error below it (#868). */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: var(--space-3);
+}
+
+.field-label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.field-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 6px var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--page);
+  color: var(--text);
+  font: inherit;
+}
+
+.textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+
+.input[aria-invalid='true'],
+.select[aria-invalid='true'] {
+  border-color: var(--bad);
+}
+
+.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.checkbox input {
+  margin-top: 3px;
+}
+
+.form-error {
+  color: var(--bad);
+}
