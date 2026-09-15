@@ -35,6 +35,7 @@ One row per human (#942). auth_user_id is their sign-in account, null for a Disc
 | Name | Definition |
 | ---- | ---------- |
 | people_delete_when_empty | CREATE TRIGGER people_delete_when_empty AFTER UPDATE OF auth_user_id, discord_id ON public.people FOR EACH ROW WHEN (((new.auth_user_id IS NULL) AND (new.discord_id IS NULL))) EXECUTE FUNCTION delete_empty_person() |
+| people_copy_account_to_members | CREATE TRIGGER people_copy_account_to_members AFTER UPDATE OF auth_user_id ON public.people FOR EACH ROW WHEN ((old.auth_user_id IS DISTINCT FROM new.auth_user_id)) EXECUTE FUNCTION copy_person_account_to_members() |
 
 ## Relations
 

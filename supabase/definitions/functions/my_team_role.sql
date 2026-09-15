@@ -11,6 +11,6 @@ AS $function$
   select role
   from team_members
   where team_id = p_team_id
-    and auth_user_id = auth.uid()
+    and person_id = my_person_id()
   limit 1;
-  $function$;
+$function$;

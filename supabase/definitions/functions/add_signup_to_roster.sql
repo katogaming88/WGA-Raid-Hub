@@ -39,7 +39,8 @@ begin
   if v_signup.auth_user_id is not null then
     select tm.id into v_signer_member_id
       from public.team_members tm
-     where tm.team_id = v_signup.team_id and tm.auth_user_id = v_signup.auth_user_id;
+      join public.people pe on pe.id = tm.person_id
+     where tm.team_id = v_signup.team_id and pe.auth_user_id = v_signup.auth_user_id;
   end if;
 
   insert into public.players (

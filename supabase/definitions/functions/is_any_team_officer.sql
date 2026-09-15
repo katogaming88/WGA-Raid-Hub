@@ -10,7 +10,7 @@ CREATE OR REPLACE FUNCTION public.is_any_team_officer()
 AS $function$
   select exists (
     select 1 from team_members
-    where auth_user_id = auth.uid()
+    where person_id = my_person_id()
       and role = any (array['officer', 'team_leader'])
   );
 $function$;

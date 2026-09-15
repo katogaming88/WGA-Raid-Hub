@@ -7,4 +7,10 @@ CREATE OR REPLACE FUNCTION public.is_team_leader_anywhere()
  LANGUAGE sql
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
-AS $function$ select exists (select 1 from team_members where auth_user_id = auth.uid() and role = 'team_leader'); $function$;
+AS $function$
+  select exists (
+    select 1 from team_members
+    where person_id = my_person_id()
+      and role = 'team_leader'
+  );
+$function$;

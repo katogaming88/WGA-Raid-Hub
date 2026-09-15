@@ -11,6 +11,6 @@ AS $function$
   select coalesce(array_agg(p.id), '{}')
     from players p
     join team_members tm on tm.id = p.team_member_id
-   where tm.auth_user_id = auth.uid()
+   where tm.person_id = my_person_id()
      and p.archived_at is null;
 $function$;

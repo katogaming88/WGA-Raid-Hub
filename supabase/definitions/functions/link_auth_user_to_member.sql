@@ -35,11 +35,6 @@ begin
     update people set auth_user_id = new.user_id where id = v_listed and auth_user_id is null;
   end if;
 
-  update team_members
-  set auth_user_id = new.user_id
-  where discord_id = new.provider_id
-    and auth_user_id is null;
-
   return new;
 end;
 $function$;

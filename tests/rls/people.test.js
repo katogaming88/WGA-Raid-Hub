@@ -7,7 +7,18 @@
 // Nothing reads person_id yet, so these cases pin the row itself: who gets
 // one, which row a grant points at, and the Battle.net-first merge.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, insertDiscordUser, grantGuild, RAIDER_T1, OFFICER_T2 } from './helpers.js';
+import {
+  pool,
+  withTxn,
+  insertDiscordUser,
+  grantGuild,
+  RAIDER_T1,
+  OFFICER_T1,
+  OFFICER_T2,
+  TEAM_LEADER_T1,
+  SITE_ADMIN,
+  GUILD_OFFICER
+} from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -190,6 +201,38 @@ describe('who reads people (#942)', () => {
       const { rows } = await asUser(RAIDER_T1, 'select id from public.people');
       expect(rows).toEqual([{ id: own.id }]);
       expect((await asAnon('select id from public.people')).rowCount).toBe(0);
+    });
+  });
+
+  // Step 3: whoever reads a membership reads the person behind it, because the
+  // functions that run as the caller join people where they used to read the
+  // membership's own discord_id and auth_user_id copies.
+  const peopleOnTeam = (q, teamId) =>
+    q('select person_id from public.team_members where team_id = $1', [teamId]).then((r) =>
+      r.rows.map((x) => x.person_id).sort((x, y) => x - y)
+    );
+  const visible = (rows) => rows.map((r) => r.id);
+
+  it("an officer reads the people on their own team and not another team's", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team1 = await peopleOnTeam(q, 1);
+      const team2 = await peopleOnTeam(q, 2);
+      const seen = visible((await asUser(OFFICER_T1, 'select id from public.people')).rows);
+      expect(team1.every((id) => seen.includes(id))).toBe(true);
+      expect(team2.some((id) => seen.includes(id))).toBe(false);
+    });
+  });
+
+  it('a team leader reads their team; a site admin and a guild officer read every team', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team1 = await peopleOnTeam(q, 1);
+      const team2 = await peopleOnTeam(q, 2);
+      const leader = visible((await asUser(TEAM_LEADER_T1, 'select id from public.people')).rows);
+      expect(team1.every((id) => leader.includes(id))).toBe(true);
+      for (const uid of [SITE_ADMIN, GUILD_OFFICER]) {
+        const seen = visible((await asUser(uid, 'select id from public.people')).rows);
+        expect([...team1, ...team2].every((id) => seen.includes(id))).toBe(true);
+      }
     });
   });
 

@@ -10,6 +10,6 @@ CREATE OR REPLACE FUNCTION public.my_leader_team_ids()
 AS $function$
   select coalesce(array_agg(distinct team_id), '{}')
     from team_members
-   where auth_user_id = auth.uid()
+   where person_id = my_person_id()
      and role = 'team_leader';
 $function$;

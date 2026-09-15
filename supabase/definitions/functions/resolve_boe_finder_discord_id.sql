@@ -33,10 +33,11 @@ begin
 
   -- 2. The claimed character submit_boe_found resolved on the finding team.
   if v_row.player_id is not null then
-    select tm.discord_id
+    select pe.discord_id
     into v_discord_id
     from public.players p
     join public.team_members tm on tm.id = p.team_member_id
+    join public.people pe on pe.id = tm.person_id
     where p.id = v_row.player_id;
 
     if v_discord_id is not null then
@@ -65,10 +66,11 @@ begin
   -- (a realm rename leaves one behind), and refusing that would help nobody.
   -- Two rows reaching two different people is the case worth refusing, and it
   -- falls back to the finder's name in bold rather than pinging a guess.
-  select count(distinct tm.discord_id), min(tm.discord_id)
+  select count(distinct pe.discord_id), min(pe.discord_id)
   into v_distinct, v_discord_id
   from public.players p
   join public.team_members tm on tm.id = p.team_member_id
+  join public.people pe on pe.id = tm.person_id
   where lower(btrim(split_part(p.name_realm, '-', 1))) = v_first;
 
   if v_distinct = 1 then

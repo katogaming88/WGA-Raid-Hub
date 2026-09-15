@@ -20,6 +20,7 @@ const HELPERS = [
   'is_boe_manager',
   'is_any_team_officer',
   'current_discord_id',
+  'my_person_id',
   'auth\\.uid'
 ];
 // Postgres stores (SELECT f()) as "( SELECT f() AS f)".

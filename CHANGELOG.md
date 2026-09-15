@@ -12,6 +12,40 @@ answers to.
 
 ---
 
+## [3.125.0] - 2026-09-15
+
+### Frontend
+
+- A code comment in the claim prompt now says what its membership lookup
+  filters on. Nothing behaves differently.
+
+### Backend
+
+- Every team access check now finds the signed-in person through their
+  person record instead of through each team membership's own copy of their
+  account and Discord id
+  ([#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942), step 3).
+  - Nobody's access changes. The migration checks that every membership's
+    account and Discord id match its person first, and stops if any do not.
+  - A membership's account is now always copied from the person, so it can no
+    longer be set by hand. A team leader could previously point a membership
+    on their team at another account.
+  - Re-granting a team role someone already holds is always refused. It used
+    to fill in a missing account link, which can no longer be missing.
+  - Officers, site admins and guild officers can read the person record behind
+    the memberships they can already see.
+
+### Project
+
+- The access-rules doc and the decision log describe the change. New tests
+  cover who can read a person, and that a membership's account cannot be
+  pointed elsewhere.
+- From Rex's review: the access-rules doc describes the self-received
+  auto-approval and the Discord-id lookup through the person, and the setup
+  guide's team-role steps drop the repair that can no longer be needed.
+
+---
+
 ## [3.124.0] - 2026-09-15
 
 ### Backend

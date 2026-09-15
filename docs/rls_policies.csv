@@ -52,6 +52,9 @@ notifications,Claude readers read notifications,claude_readers,SELECT,PERMISSIVE
 notifications,Raiders mark own notifications read,public,UPDATE,PERMISSIVE,(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])),(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))
 notifications,Raiders read own notifications,public,SELECT,PERMISSIVE,(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])),
 people,Claude readers read people,claude_readers,SELECT,PERMISSIVE,true,
+people,Officers read people on their teams,public,SELECT,PERMISSIVE,"((id IN ( SELECT tm.person_id
+   FROM team_members tm
+  WHERE (tm.team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])))) OR ( SELECT is_site_admin() AS is_site_admin) OR ( SELECT is_guild_officer() AS is_guild_officer))",
 people,People read own people row,public,SELECT,PERMISSIVE,(auth_user_id = ( SELECT auth.uid() AS uid)),
 player_equipped_gear,Claude readers read player_equipped_gear,claude_readers,SELECT,PERMISSIVE,true,
 player_equipped_gear,Officers write player_equipped_gear,public,ALL,PERMISSIVE,"((( SELECT players.team_id
@@ -123,7 +126,7 @@ streamers,Public read streamers,public,SELECT,PERMISSIVE,true,
 streamers,Raiders manage own streamer,public,ALL,PERMISSIVE,(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])),(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))
 team_discord_config,Claude readers read team_discord_config,claude_readers,SELECT,PERMISSIVE,true,
 team_members,Claude readers read team_members,claude_readers,SELECT,PERMISSIVE,true,
-team_members,Members read own team_members,public,SELECT,PERMISSIVE,(auth_user_id = ( SELECT auth.uid() AS uid)),
+team_members,Members read own team_members,public,SELECT,PERMISSIVE,(person_id = ( SELECT my_person_id() AS my_person_id)),
 team_members,Officers read own team_members,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin) OR ( SELECT is_guild_officer() AS is_guild_officer)),
 team_members,Team leaders write team_members,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_leader_team_ids() AS my_leader_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_leader_team_ids() AS my_leader_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 team_raid_progress,Claude readers read team_raid_progress,claude_readers,SELECT,PERMISSIVE,true,
