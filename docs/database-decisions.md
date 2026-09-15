@@ -10,6 +10,23 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-14 -- seasons is a table, every season column is a foreign key to it, and the sync stamps the guild's tier (#932)
+
+Shipped: `20260914210617_seasons_table.sql`
+
+Season lived in three places and none of them was a table: `CURRENT_SEASON` in `js/common.js` for the tier, keys on `team_settings.config` for a team's cycle, and a free-text stamp in two formats on fourteen columns with no CHECK, no foreign key and no default (`docs/season-inventory.md`, #931). A misspelt or invented season was written and found later by a report that came back empty. The first structural step of the Season milestone gives the tier a table and points every column at it, changing no stored value and no client.
+
+- **`seasons(code primary key, display_name unique, starts_at, ends_at)`, one row per raid tier, global.** Tiers are Blizzard's calendar, the same for every guild, so there is no `guild_id`; a team's own cycle is #939's `team_seasons`. Two rows, dated from `data/seasons.json`. Public read, `claude_readers`, no write policy: a tier is a migration.
+- **Every season column references it, formats unchanged.** The nine code columns (`priority_order`, `rclc_loot`, `scoring`, `player_wcl_season_perf`, the three priority dismissal and marker tables, `tier_token_map`, `track_bonus_ids`) to `seasons(code)`; the five name columns (`bis_items`, `boe_items`, `item_preferences`, `raid_zones`, `season_signups`) to `seasons(display_name)`, which is unique and so a valid target. Nulls stay allowed where they were (#937 and #934 own those). #933 to #938 convert the name columns to codes on top of the keys.
+- **The current tier is the latest row whose `starts_at` has passed, in `current_season()`, not the open-ended row.** #250 planned `ends_at is null` and the issue carried it. Milestone 29's decision 3 lets a team roll its cycle over before a tier launches (Hellfire stamped Season 2 rows from 08-07 for an 08-22 start), which after the keys means the next tier's row has to exist ahead of launch; under the null rule the sync would have stamped the new tier the moment the row landed. With a future `starts_at` the outgoing tier stays current, even past its own `ends_at`, so there is never a gap. At most one row is open-ended (a partial unique index), which keeps the issue's invariant as a database fact and its acceptance query true.
+- **The next tier is a migration that closes the outgoing row and inserts the new one, landed before any team names the tier.** From here a season name with no row refuses that team's signups (`activeSignupSeason`), finds, wishlist picks and BiS placeholders (`seasonName`) with a constraint error until the row exists, which is the refusal the issue asked for, on an input officers type. Nothing on production is in that state. `docs/updating-fetch-items-for-new-tier.md` carries the step; #934 and #938 give those paths their own refusals when they convert them.
+- **`wcl-progression-sync` stamps `raid_zones` with `current_season()`'s display name, not the syncing team's `seasonName`.** A raid belongs to a tier whatever cycle a team has clicked. The run reads the tier once, before its first WarcraftLogs call, and stops with 500 `No current season` when there is not exactly one; the `Unknown` stamp is gone rather than skipped. Both syncing teams held `Midnight Season 2`, so the rows written are the ones already there. The function took the testable shape (`handler.ts`, `deps.ts`) with the split measured against the pre-split aggregation's rows.
+- **The seed carries a closed `seed-season` row and each RLS fixture seeds its own season.** Fifteen files stamped seasons the table would not hold; `seedSeason()` in `tests/rls/helpers.js` is the fixture, inside the test's transaction.
+
+[Full discussion -> #932](https://github.com/katogaming88/WGA-Raid-Hub/issues/932), Season milestone.
+
+---
+
 ## 2026-09-14 -- A person is a row, alts hang off it, and the build runs in six steps (#942)
 
 Shipped: `20260914221328_people_table.sql` (step 1). Steps 2 to 6: not yet, #942.
@@ -1485,7 +1502,7 @@ Triggered by losing a hand-arranged Supabase schema visualizer layout: the visua
 
 ## #250 -- Schema audit: Phase 1 review
 
-Shipped: `20260709170000_attendance_player_id_set_null.sql`, the attendance FK, the one bullet of the four that shipped (measured against production 2026-09-14: no `seasons` table, no `season_snapshots`, `team_settings` readable by `public`). Not yet the seasons table, which #932 ships. Never the `team_settings`/`season_snapshots` read lock: `20260711220932_drop_season_snapshots.sql` (#455) dropped that table, and `team_settings` is public-read on purpose, since the public pages read it. Never the auth-link trigger; `admin_grant_team_role()` (`20260904052807_team_role_grant.sql`, #910) resolves the account at grant time instead.
+Shipped: `20260709170000_attendance_player_id_set_null.sql`, the attendance FK, the one bullet of the four that shipped (measured against production 2026-09-14: no `seasons` table, no `season_snapshots`, `team_settings` readable by `public`). The seasons table shipped as `20260914210617_seasons_table.sql` (#932, 2026-09-14), keyed by `code` rather than `slug` and with the current tier read from `starts_at` rather than `ends_at is null` (its entry above says why). Never the `team_settings`/`season_snapshots` read lock: `20260711220932_drop_season_snapshots.sql` (#455) dropped that table, and `team_settings` is public-read on purpose, since the public pages read it. Never the auth-link trigger; `admin_grant_team_role()` (`20260904052807_team_role_grant.sql`, #910) resolves the account at grant time instead.
 
 - **Seasons table.** Adding a `seasons` lookup table (`slug` PK, `name`, `starts_at`, `ends_at`) instead of a format CHECK on `season text` columns. A CHECK can't catch a well-formed typo (`MN11` vs `MN1`); only an FK against a canonical table can. `ends_at IS NULL` also gives "current season" for free, which the priority generator and #143 (archived seasons) both need.
 - **team_settings / season_snapshots SELECT policy.** Locked down to team members only (`my_team_role(team_id) is not null`). Both tables carry data with no reason to be publicly readable, unlike roster/loot which the public site intentionally exposes.

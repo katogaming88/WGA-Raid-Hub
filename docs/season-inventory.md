@@ -4,6 +4,8 @@ Every place the database and the code hold a season, read at commit `d206bea` (m
 
 ## How to read this
 
+**Since #932 (2026-09-14, `20260914210617_seasons_table.sql`) the tier is a table.** `seasons` holds one row per raid tier, every column in section 2 is a foreign key to it (the code columns to `code`, the name columns to `display_name`, values unchanged), `current_season()` names the tier, and `wcl-progression-sync` stamps `raid_zones` from it. The entries below stand as the reading they were, at the commit and date in the first line; a sentence saying no key or no table exists describes that reading.
+
 Season lives in three places today and none of them is a table.
 
 - **The guild's raid tier.** Which tier is current is `CURRENT_SEASON` in `js/common.js`, a constant edited by hand once per tier. The database holds no guild-level season: `to_regclass('public.seasons')` and `('public.team_seasons')` are both null.

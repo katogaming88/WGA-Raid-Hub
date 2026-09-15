@@ -134,3 +134,14 @@ Seeding a new tier **adds** rows next to the old season's. Never delete or overw
 4. Check the Priority tab. Until the season the team is generating for has rows, it shows a **"No tier tokens are set up for …"** warning, and **Sync Roster Tier Counts** refuses to run. Those can also appear between the tier launching and the seed being imported; that is expected, and the fix is this section.
 
 The `season` column has no default on purpose: an insert without it fails instead of filing the new tier under no season.
+
+## The tier itself: `seasons` (#932)
+
+Every season column is a foreign key to `seasons`, one row per raid tier (`code` such as `MID3`, `display_name` such as `Midnight Season 3`, `starts_at`, `ends_at`). The row for a new tier is a migration, and it lands **before any team names the tier**: from the moment an officer sets Season Name or Signup Season to a name with no row, that team's signups, BoE finds, wishlist picks and BiS placeholders are refused until the row exists. The tier-token seed above needs the row too.
+
+One migration, two statements, in this order:
+
+1. Close the outgoing tier: `update public.seasons set ends_at = '<the day before launch>' where code = 'MID2';`
+2. Insert the new one: `insert into public.seasons (code, display_name, starts_at) values ('MID3', 'Midnight Season 3', '<launch day>');`
+
+At most one row can be open-ended, so a second insert before the first update is refused. `current_season()` is the latest tier whose `starts_at` has passed, so the migration can land early with a future date: the outgoing tier stays current, `wcl-progression-sync` keeps stamping it, and a team that rolls its cycle over ahead of launch can already stamp the new name. On launch day the new row is current on its own.
