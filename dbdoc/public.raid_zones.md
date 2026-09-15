@@ -7,7 +7,7 @@
 | id | integer | nextval('raid_zones_id_seq'::regclass) | false | [public.raid_encounters](public.raid_encounters.md) |  |  |
 | wcl_zone_id | integer |  | false |  |  |  |
 | name | text |  | false |  |  |  |
-| season | text |  | false |  |  |  |
+| season | text |  | false |  | [public.seasons](public.seasons.md) |  |
 | is_mini_raid | boolean | false | false |  |  |  |
 | sort_index | integer | 0 | false |  |  |  |
 
@@ -17,6 +17,7 @@
 | ---- | ---- | ---------- |
 | raid_zones_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | raid_zones_wcl_zone_id_season_key | UNIQUE | UNIQUE (wcl_zone_id, season) |
+| raid_zones_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(display_name) |
 
 ## Indexes
 
@@ -31,12 +32,13 @@
 erDiagram
 
 "public.raid_encounters" }o--|| "public.raid_zones" : "FOREIGN KEY (zone_id) REFERENCES raid_zones(id) ON DELETE CASCADE"
+"public.raid_zones" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
 
 "public.raid_zones" {
   integer id
   integer wcl_zone_id
   text name
-  text season
+  text season FK
   boolean is_mini_raid
   integer sort_index
 }
@@ -46,6 +48,13 @@ erDiagram
   integer wcl_encounter_id
   text name
   integer sort_index
+}
+"public.seasons" {
+  text code
+  text display_name
+  date starts_at
+  date ends_at
+  timestamp_with_time_zone created_at
 }
 ```
 

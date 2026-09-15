@@ -212,6 +212,13 @@ export type Database = {
             referencedRelation: "rnlsi"
             referencedColumns: ["player_id"]
           },
+          {
+            foreignKeyName: "bis_items_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["display_name"]
+          },
         ]
       }
       bis_requests: {
@@ -389,6 +396,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "rnlsi"
             referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "boe_items_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["display_name"]
           },
           {
             foreignKeyName: "boe_items_team_id_fkey"
@@ -641,6 +655,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "rnlsi"
             referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "item_preferences_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["display_name"]
           },
           {
             foreignKeyName: "item_preferences_team_id_fkey"
@@ -1003,6 +1024,13 @@ export type Database = {
             referencedColumns: ["player_id"]
           },
           {
+            foreignKeyName: "player_wcl_season_perf_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+          {
             foreignKeyName: "player_wcl_season_perf_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
@@ -1175,6 +1203,13 @@ export type Database = {
             referencedColumns: ["player_id"]
           },
           {
+            foreignKeyName: "priority_conflict_dismissals_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+          {
             foreignKeyName: "priority_conflict_dismissals_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
@@ -1244,6 +1279,13 @@ export type Database = {
             referencedColumns: ["player_id"]
           },
           {
+            foreignKeyName: "priority_order_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+          {
             foreignKeyName: "priority_order_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
@@ -1281,6 +1323,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "priority_order_confirmed_empty_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
           },
           {
             foreignKeyName: "priority_order_confirmed_empty_team_id_fkey"
@@ -1349,6 +1398,13 @@ export type Database = {
             referencedColumns: ["player_id"]
           },
           {
+            foreignKeyName: "priority_stale_dismissals_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+          {
             foreignKeyName: "priority_stale_dismissals_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
@@ -1414,7 +1470,15 @@ export type Database = {
           sort_index?: number
           wcl_zone_id?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "raid_zones_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["display_name"]
+          },
+        ]
       }
       rclc_loot: {
         Row: {
@@ -1491,6 +1555,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rclc_loot_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
           },
         ]
       }
@@ -1592,6 +1663,13 @@ export type Database = {
             referencedRelation: "rnlsi"
             referencedColumns: ["player_id"]
           },
+          {
+            foreignKeyName: "scoring_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
         ]
       }
       season_signups: {
@@ -1685,6 +1763,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "season_signups_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["display_name"]
+          },
+          {
             foreignKeyName: "season_signups_swap_class_spec_id_fkey"
             columns: ["swap_class_spec_id"]
             isOneToOne: false
@@ -1706,6 +1791,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      seasons: {
+        Row: {
+          code: string
+          created_at: string
+          display_name: string
+          ends_at: string | null
+          starts_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          display_name: string
+          ends_at?: string | null
+          starts_at: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          display_name?: string
+          ends_at?: string | null
+          starts_at?: string
+        }
+        Relationships: []
       }
       self_received_requests: {
         Row: {
@@ -2118,6 +2227,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tier_token_map_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+          {
             foreignKeyName: "tier_token_map_token_item_id_fkey"
             columns: ["token_item_id"]
             isOneToOne: false
@@ -2152,6 +2268,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rclc_loot_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
           },
         ]
       }
@@ -2202,6 +2325,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "season_signups_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["display_name"]
+          },
+          {
             foreignKeyName: "signups_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
@@ -2241,6 +2371,13 @@ export type Database = {
             referencedColumns: ["player_id"]
           },
           {
+            foreignKeyName: "priority_order_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+          {
             foreignKeyName: "priority_order_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
@@ -2257,6 +2394,13 @@ export type Database = {
           team_id: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "priority_order_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
           {
             foreignKeyName: "priority_order_team_id_fkey"
             columns: ["team_id"]
@@ -2306,6 +2450,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "rnlsi"
             referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "priority_order_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
           },
           {
             foreignKeyName: "priority_order_team_id_fkey"
@@ -2366,6 +2517,13 @@ export type Database = {
             referencedColumns: ["player_id"]
           },
           {
+            foreignKeyName: "priority_order_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+          {
             foreignKeyName: "priority_order_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
@@ -2412,6 +2570,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "rnlsi"
             referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "priority_order_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
           },
           {
             foreignKeyName: "priority_order_team_id_fkey"
@@ -2465,6 +2630,13 @@ export type Database = {
             referencedColumns: ["player_id"]
           },
           {
+            foreignKeyName: "priority_order_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+          {
             foreignKeyName: "priority_order_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
@@ -2508,6 +2680,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rclc_loot_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
           },
         ]
       }

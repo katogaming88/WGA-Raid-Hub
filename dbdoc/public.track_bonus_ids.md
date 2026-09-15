@@ -11,7 +11,7 @@ Maps a WoW item bonus ID to its gear upgrade track and rank (e.g. 12853 -> Myth 
 | bonus_id | integer |  | false |  |  |  |
 | track | text |  | false |  |  |  |
 | rank | smallint |  | false |  |  |  |
-| season | text |  | false |  |  | Provenance only -- which tier this block was allocated for. Lookups deliberately ignore it; Blizzard issues a fresh ID block each tier so rows cannot collide across seasons. |
+| season | text |  | false |  | [public.seasons](public.seasons.md) | Provenance only -- which tier this block was allocated for. Lookups deliberately ignore it; Blizzard issues a fresh ID block each tier so rows cannot collide across seasons. |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 
 ## Constraints
@@ -19,6 +19,7 @@ Maps a WoW item bonus ID to its gear upgrade track and rank (e.g. 12853 -> Myth 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | track_bonus_ids_pkey | PRIMARY KEY | PRIMARY KEY (bonus_id) |
+| track_bonus_ids_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(code) |
 
 ## Indexes
 
@@ -31,12 +32,20 @@ Maps a WoW item bonus ID to its gear upgrade track and rank (e.g. 12853 -> Myth 
 ```mermaid
 erDiagram
 
+"public.track_bonus_ids" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 
 "public.track_bonus_ids" {
   integer bonus_id
   text track
   smallint rank
-  text season
+  text season FK
+  timestamp_with_time_zone created_at
+}
+"public.seasons" {
+  text code
+  text display_name
+  date starts_at
+  date ends_at
   timestamp_with_time_zone created_at
 }
 ```

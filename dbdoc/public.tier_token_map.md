@@ -9,7 +9,7 @@
 | class | text |  | false |  |  |  |
 | resolved_item_id | integer |  | false |  | [public.items](public.items.md) |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
-| season | text |  | false |  |  | Season code (MID2) this token mapping belongs to (#1108). Readers filter on the current season; #932 adds the foreign key to seasons(code). |
+| season | text |  | false |  | [public.seasons](public.seasons.md) | Season code (MID2) this token mapping belongs to (#1108). Readers filter on the current season; #932 adds the foreign key to seasons(code). |
 
 ## Constraints
 
@@ -18,6 +18,7 @@
 | tier_token_map_resolved_item_id_fkey | FOREIGN KEY | FOREIGN KEY (resolved_item_id) REFERENCES items(id) ON DELETE CASCADE |
 | tier_token_map_token_item_id_fkey | FOREIGN KEY | FOREIGN KEY (token_item_id) REFERENCES items(id) ON DELETE CASCADE |
 | tier_token_map_pkey | PRIMARY KEY | PRIMARY KEY (id) |
+| tier_token_map_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(code) |
 
 ## Indexes
 
@@ -34,6 +35,7 @@ erDiagram
 
 "public.tier_token_map" }o--|| "public.items" : "FOREIGN KEY (token_item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.tier_token_map" }o--|| "public.items" : "FOREIGN KEY (resolved_item_id) REFERENCES items(id) ON DELETE CASCADE"
+"public.tier_token_map" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 
 "public.tier_token_map" {
   integer id
@@ -41,7 +43,7 @@ erDiagram
   text class
   integer resolved_item_id FK
   timestamp_with_time_zone created_at
-  text season
+  text season FK
 }
 "public.items" {
   integer id
@@ -58,6 +60,13 @@ erDiagram
   jsonb main_stats
   text weapon_subtype
   boolean is_boe
+}
+"public.seasons" {
+  text code
+  text display_name
+  date starts_at
+  date ends_at
+  timestamp_with_time_zone created_at
 }
 ```
 

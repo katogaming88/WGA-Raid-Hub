@@ -74,7 +74,7 @@ erDiagram
   boolean obtained
   timestamp_with_time_zone updated_at
   text slot
-  text season
+  text season FK
 }
 "public.item_bosses" {
   integer item_id FK
@@ -86,7 +86,7 @@ erDiagram
   integer player_id FK
   integer item_id FK
   text track
-  text season
+  text season FK
   timestamp_with_time_zone awarded_at
   text rclc_id
   text dedupe_key
@@ -96,7 +96,7 @@ erDiagram
 "public.priority_order" {
   integer id
   integer team_id FK
-  text season
+  text season FK
   integer item_id FK
   text track
   integer rank
@@ -127,7 +127,7 @@ erDiagram
   text slot
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
-  text season
+  text season FK
   boolean synced_bis
 }
 "public.tier_token_map" {
@@ -136,7 +136,7 @@ erDiagram
   text class
   integer resolved_item_id FK
   timestamp_with_time_zone created_at
-  text season
+  text season FK
 }
 "public.boe_items" {
   integer id
@@ -146,7 +146,7 @@ erDiagram
   integer item_id FK
   text item_name
   text track
-  text season
+  text season FK
   text note
   text status
   timestamp_with_time_zone found_at
@@ -168,7 +168,7 @@ erDiagram
 }
 "public.priority_order_confirmed_empty" {
   integer team_id FK
-  text season
+  text season FK
   integer item_id FK
   text track
   timestamp_with_time_zone marked_at
@@ -177,7 +177,7 @@ erDiagram
   integer id
   integer team_id FK
   integer player_id FK
-  text season
+  text season FK
   integer item_id FK
   uuid dismissed_by FK
   timestamp_with_time_zone dismissed_at

@@ -10,7 +10,7 @@
 | obtained | boolean | false | false |  |  |  |
 | updated_at | timestamp with time zone |  | true |  |  |  |
 | slot | text |  | true |  |  |  |
-| season | text |  | true |  |  |  |
+| season | text |  | true |  | [public.seasons](public.seasons.md) |  |
 
 ## Constraints
 
@@ -19,6 +19,7 @@
 | bis_items_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | bis_items_item_id_fkey | FOREIGN KEY | FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL |
 | bis_items_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
+| bis_items_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(display_name) |
 
 ## Indexes
 
@@ -41,6 +42,7 @@ erDiagram
 
 "public.bis_items" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.bis_items" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
+"public.bis_items" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
 
 "public.bis_items" {
   integer id
@@ -49,7 +51,7 @@ erDiagram
   boolean obtained
   timestamp_with_time_zone updated_at
   text slot
-  text season
+  text season FK
 }
 "public.players" {
   integer id
@@ -93,6 +95,13 @@ erDiagram
   jsonb main_stats
   text weapon_subtype
   boolean is_boe
+}
+"public.seasons" {
+  text code
+  text display_name
+  date starts_at
+  date ends_at
+  timestamp_with_time_zone created_at
 }
 ```
 

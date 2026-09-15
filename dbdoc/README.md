@@ -62,6 +62,7 @@
 | [public.guilds](public.guilds.md) | 4 | One row per guild. url_key is the /g/<key> segment of an address: readable for WGA, a random code for any other guild (#1100, #1114). | BASE TABLE |
 | [public.retired_url_keys](public.retired_url_keys.md) | 5 | Keys a guild (team_id null) or team used to have, so old addresses still resolve. Written only by the key-change triggers on guilds and teams (#1114). guild_id is the guild the key lived under. | BASE TABLE |
 | [public.people](public.people.md) | 4 | One row per human (#942). auth_user_id is their sign-in account, null for a Discord id listed on a grant before its owner signed in. discord_id is null for an account with no Discord linked. Grant tables point here through person_id. | BASE TABLE |
+| [public.seasons](public.seasons.md) | 5 | One row per raid tier (#932). code is the short form the priority, loot and scoring tables hold (MID2); display_name is what officers see and type (Midnight Season 2). Every season column references one of the two. A tier is added by a migration that closes the outgoing row and inserts the new one. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -194,16 +195,19 @@ erDiagram
 "public.audit_log" }o--o| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.bis_items" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
 "public.bis_items" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.bis_items" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
 "public.bis_requests" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.bis_requests" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.item_bosses" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.rclc_loot" }o--o| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
 "public.rclc_loot" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.rclc_loot" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.rclc_loot" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.mplus_exclusion_requests" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.mplus_exclusion_requests" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.player_wcl_season_perf" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.player_wcl_season_perf" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.player_wcl_season_perf" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.players" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
 "public.players" }o--o| "public.team_members" : "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE SET NULL"
 "public.players" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
@@ -211,12 +215,15 @@ erDiagram
 "public.priority_order" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id)"
 "public.priority_order" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.priority_order" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.priority_order" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.scoring" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.scoring" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.season_signups" }o--o| "public.classes_specs" : "FOREIGN KEY (swap_class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
 "public.season_signups" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
 "public.season_signups" }o--o| "public.players" : "FOREIGN KEY (approved_player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.season_signups" }o--o| "public.team_members" : "FOREIGN KEY (reviewed_by) REFERENCES team_members(id) ON DELETE SET NULL"
 "public.season_signups" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.season_signups" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
 "public.self_received_requests" }o--|| "public.items" : "FOREIGN KEY (self_item_id) REFERENCES items(id) ON DELETE SET NULL"
 "public.self_received_requests" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.self_received_requests" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
@@ -229,29 +236,36 @@ erDiagram
 "public.streamers" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.notifications" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.notifications" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.raid_zones" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
 "public.raid_encounters" }o--|| "public.raid_zones" : "FOREIGN KEY (zone_id) REFERENCES raid_zones(id) ON DELETE CASCADE"
 "public.team_raid_progress" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_raid_progress" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 "public.item_preferences" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.item_preferences" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.item_preferences" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.item_preferences" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
 "public.guild_officers" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.tier_token_map" }o--|| "public.items" : "FOREIGN KEY (resolved_item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.tier_token_map" }o--|| "public.items" : "FOREIGN KEY (token_item_id) REFERENCES items(id) ON DELETE CASCADE"
+"public.tier_token_map" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.boe_items" }o--o| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
 "public.boe_items" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.boe_items" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.boe_items" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
 "public.boe_listings" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.boe_listings" }o--|| "public.boe_items" : "FOREIGN KEY (boe_item_id) REFERENCES boe_items(id) ON DELETE CASCADE"
 "public.boe_managers" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.priority_conflict_dismissals" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.priority_conflict_dismissals" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.priority_conflict_dismissals" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.player_equipped_gear" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.priority_order_confirmed_empty" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.priority_order_confirmed_empty" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.priority_order_confirmed_empty" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.priority_stale_dismissals" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.priority_stale_dismissals" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.priority_stale_dismissals" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.priority_stale_dismissals" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.raid_schedule" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.raid_schedule_exceptions" }o--o| "public.team_members" : "FOREIGN KEY (created_by) REFERENCES team_members(id) ON DELETE SET NULL"
 "public.raid_schedule_exceptions" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
@@ -263,6 +277,7 @@ erDiagram
 "public.player_officer_notes" |o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.player_officer_notes" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_discord_config" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.track_bonus_ids" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.account_preferences" }o--o| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.retired_url_keys" }o--o| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.retired_url_keys" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
@@ -295,7 +310,7 @@ erDiagram
   boolean obtained
   timestamp_with_time_zone updated_at
   text slot
-  text season
+  text season FK
 }
 "public.bis_requests" {
   integer id
@@ -339,7 +354,7 @@ erDiagram
   integer player_id FK
   integer item_id FK
   text track
-  text season
+  text season FK
   timestamp_with_time_zone awarded_at
   text rclc_id
   text dedupe_key
@@ -361,7 +376,7 @@ erDiagram
   integer id
   integer player_id FK
   integer team_id FK
-  text season
+  text season FK
   numeric best_perf_avg
   numeric median_perf_avg
   timestamp_with_time_zone fetched_at
@@ -396,7 +411,7 @@ erDiagram
 "public.priority_order" {
   integer id
   integer team_id FK
-  text season
+  text season FK
   integer item_id FK
   text track
   integer rank
@@ -412,7 +427,7 @@ erDiagram
   numeric performance_score
   numeric attendance_score
   numeric attendance_pct
-  text season
+  text season FK
   timestamp_with_time_zone updated_at
 }
 "public.season_signups" {
@@ -426,7 +441,7 @@ erDiagram
   timestamp_with_time_zone submitted_at
   text status
   integer swap_class_spec_id FK
-  text season
+  text season FK
   timestamp_with_time_zone reviewed_at
   integer reviewed_by FK
   text signup_officer_note
@@ -562,7 +577,7 @@ erDiagram
   integer id
   integer wcl_zone_id
   text name
-  text season
+  text season FK
   boolean is_mini_raid
   integer sort_index
 }
@@ -638,7 +653,7 @@ erDiagram
   text slot
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
-  text season
+  text season FK
   boolean synced_bis
 }
 "public.site_settings" {
@@ -671,7 +686,7 @@ erDiagram
   text class
   integer resolved_item_id FK
   timestamp_with_time_zone created_at
-  text season
+  text season FK
 }
 "public.boe_items" {
   integer id
@@ -681,7 +696,7 @@ erDiagram
   integer item_id FK
   text item_name
   text track
-  text season
+  text season FK
   text note
   text status
   timestamp_with_time_zone found_at
@@ -722,7 +737,7 @@ erDiagram
   integer id
   integer team_id FK
   integer player_id FK
-  text season
+  text season FK
   text boss
   text track
   uuid dismissed_by FK
@@ -740,7 +755,7 @@ erDiagram
 }
 "public.priority_order_confirmed_empty" {
   integer team_id FK
-  text season
+  text season FK
   integer item_id FK
   text track
   timestamp_with_time_zone marked_at
@@ -749,7 +764,7 @@ erDiagram
   integer id
   integer team_id FK
   integer player_id FK
-  text season
+  text season FK
   integer item_id FK
   uuid dismissed_by FK
   timestamp_with_time_zone dismissed_at
@@ -829,7 +844,7 @@ erDiagram
   integer bonus_id
   text track
   smallint rank
-  text season
+  text season FK
   timestamp_with_time_zone created_at
 }
 "public.account_preferences" {
@@ -857,6 +872,13 @@ erDiagram
   integer id
   uuid auth_user_id FK
   text discord_id
+  timestamp_with_time_zone created_at
+}
+"public.seasons" {
+  text code
+  text display_name
+  date starts_at
+  date ends_at
   timestamp_with_time_zone created_at
 }
 ```

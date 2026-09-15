@@ -88,7 +88,7 @@ erDiagram
   integer id
   integer wcl_zone_id
   text name
-  text season
+  text season FK
   boolean is_mini_raid
   integer sort_index
 }

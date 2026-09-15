@@ -12,7 +12,7 @@
 | performance_score | numeric |  | true |  |  |  |
 | attendance_score | numeric |  | true |  |  |  |
 | attendance_pct | numeric |  | true |  |  |  |
-| season | text |  | false |  |  |  |
+| season | text |  | false |  | [public.seasons](public.seasons.md) |  |
 | updated_at | timestamp with time zone |  | true |  |  |  |
 
 ## Constraints
@@ -22,6 +22,7 @@
 | scoring_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
 | scoring_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | scoring_player_id_season_key | UNIQUE | UNIQUE (player_id, season) |
+| scoring_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(code) |
 
 ## Indexes
 
@@ -42,6 +43,7 @@
 erDiagram
 
 "public.scoring" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.scoring" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 
 "public.scoring" {
   integer id
@@ -52,7 +54,7 @@ erDiagram
   numeric performance_score
   numeric attendance_score
   numeric attendance_pct
-  text season
+  text season FK
   timestamp_with_time_zone updated_at
 }
 "public.players" {
@@ -81,6 +83,13 @@ erDiagram
   timestamp_with_time_zone bis_link_updated_at
   text url_code
   text name_realm_key
+}
+"public.seasons" {
+  text code
+  text display_name
+  date starts_at
+  date ends_at
+  timestamp_with_time_zone created_at
 }
 ```
 

@@ -14,7 +14,7 @@
 | submitted_at | timestamp with time zone | now() | false |  |  |  |
 | status | text | 'pending'::text | false |  |  |  |
 | swap_class_spec_id | integer |  | true |  | [public.classes_specs](public.classes_specs.md) |  |
-| season | text |  | true |  |  |  |
+| season | text |  | true |  | [public.seasons](public.seasons.md) |  |
 | reviewed_at | timestamp with time zone |  | true |  |  |  |
 | reviewed_by | integer |  | true |  | [public.team_members](public.team_members.md) |  |
 | signup_officer_note | text |  | true |  |  |  |
@@ -36,6 +36,7 @@
 | signups_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | season_signups_reviewed_by_fkey | FOREIGN KEY | FOREIGN KEY (reviewed_by) REFERENCES team_members(id) ON DELETE SET NULL |
 | signups_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
+| season_signups_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(display_name) |
 
 ## Indexes
 
@@ -57,6 +58,7 @@ erDiagram
 "public.season_signups" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.season_signups" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
 "public.season_signups" }o--o| "public.classes_specs" : "FOREIGN KEY (swap_class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
+"public.season_signups" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
 "public.season_signups" }o--o| "public.team_members" : "FOREIGN KEY (reviewed_by) REFERENCES team_members(id) ON DELETE SET NULL"
 "public.season_signups" }o--o| "public.players" : "FOREIGN KEY (approved_player_id) REFERENCES players(id) ON DELETE SET NULL"
 
@@ -71,7 +73,7 @@ erDiagram
   timestamp_with_time_zone submitted_at
   text status
   integer swap_class_spec_id FK
-  text season
+  text season FK
   timestamp_with_time_zone reviewed_at
   integer reviewed_by FK
   text signup_officer_note
@@ -93,6 +95,13 @@ erDiagram
   text class
   text spec
   text role
+}
+"public.seasons" {
+  text code
+  text display_name
+  date starts_at
+  date ends_at
+  timestamp_with_time_zone created_at
 }
 "public.team_members" {
   integer id

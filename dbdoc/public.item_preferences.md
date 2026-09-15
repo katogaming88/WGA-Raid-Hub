@@ -13,7 +13,7 @@
 | slot | text |  | true |  |  |  |
 | updated_at | timestamp with time zone |  | true |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
-| season | text |  | true |  |  |  |
+| season | text |  | true |  | [public.seasons](public.seasons.md) |  |
 | synced_bis | boolean | false | false |  |  |  |
 
 ## Constraints
@@ -25,6 +25,7 @@
 | item_preferences_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
 | item_preferences_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | item_preferences_pkey | PRIMARY KEY | PRIMARY KEY (id) |
+| item_preferences_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(display_name) |
 
 ## Indexes
 
@@ -49,6 +50,7 @@ erDiagram
 "public.item_preferences" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.item_preferences" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.item_preferences" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
+"public.item_preferences" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
 
 "public.item_preferences" {
   integer id
@@ -60,7 +62,7 @@ erDiagram
   text slot
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
-  text season
+  text season FK
   boolean synced_bis
 }
 "public.teams" {
@@ -113,6 +115,13 @@ erDiagram
   jsonb main_stats
   text weapon_subtype
   boolean is_boe
+}
+"public.seasons" {
+  text code
+  text display_name
+  date starts_at
+  date ends_at
+  timestamp_with_time_zone created_at
 }
 ```
 

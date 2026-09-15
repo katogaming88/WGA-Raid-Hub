@@ -9,7 +9,7 @@
 | player_id | integer |  | true |  | [public.players](public.players.md) |  |
 | item_id | integer |  | true |  | [public.items](public.items.md) |  |
 | track | text |  | true |  |  |  |
-| season | text |  | true |  |  |  |
+| season | text |  | true |  | [public.seasons](public.seasons.md) |  |
 | awarded_at | timestamp with time zone | now() | false |  |  |  |
 | rclc_id | text |  | true |  |  |  |
 | dedupe_key | text |  | true |  |  |  |
@@ -26,6 +26,7 @@
 | loot_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | loot_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL |
 | loot_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
+| rclc_loot_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(code) |
 
 ## Indexes
 
@@ -48,6 +49,7 @@ erDiagram
 "public.rclc_loot" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.rclc_loot" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.rclc_loot" }o--o| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
+"public.rclc_loot" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 
 "public.rclc_loot" {
   integer id
@@ -55,7 +57,7 @@ erDiagram
   integer player_id FK
   integer item_id FK
   text track
-  text season
+  text season FK
   timestamp_with_time_zone awarded_at
   text rclc_id
   text dedupe_key
@@ -112,6 +114,13 @@ erDiagram
   jsonb main_stats
   text weapon_subtype
   boolean is_boe
+}
+"public.seasons" {
+  text code
+  text display_name
+  date starts_at
+  date ends_at
+  timestamp_with_time_zone created_at
 }
 ```
 
