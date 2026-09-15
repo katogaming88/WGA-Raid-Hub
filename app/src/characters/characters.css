@@ -178,7 +178,10 @@
   color: var(--warn);
 }
 
-.picker-note {
+.picker-table td.picker-note {
+  /* Wraps to a second line rather than pushing the table into a sideways
+     scroll: this is the longest cell in the dialog. */
+  max-width: 22ch;
   font-size: var(--text-xs);
   white-space: normal;
 }
