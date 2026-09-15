@@ -5960,7 +5960,8 @@ function selfReceivedSourceChanged(rowId) {
   if (!sourceEl) return;
   // Other needs a note (Kat, 2026-09-14), so its box asks for one.
   var notesEl = /** @type {HTMLTextAreaElement} */ (document.getElementById('notes-' + rowId));
-  if (notesEl) notesEl.placeholder = sourceEl.value === 'Other' ? 'Where did it come from? (required)' : 'Notes (optional)';
+  if (notesEl)
+    notesEl.placeholder = sourceEl.value === 'Other' ? 'Where did it come from? (required)' : 'Notes (optional)';
   if (!noteEl) return;
   noteEl.textContent = selfReceivedNoteText(sourceEl.value);
 }
