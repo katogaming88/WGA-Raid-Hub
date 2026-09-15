@@ -14,6 +14,11 @@ answers to.
 
 ## [3.125.0] - 2026-09-15
 
+### Frontend
+
+- A code comment in the claim prompt now says what its membership lookup
+  filters on. Nothing behaves differently.
+
 ### Backend
 
 - Every team access check now finds the signed-in person through their
@@ -35,6 +40,8 @@ answers to.
 - The access-rules doc and the decision log describe the change. New tests
   cover who can read a person, and that a membership's account cannot be
   pointed elsewhere.
+- From Rex's review: the access-rules doc describes the self-received
+  auto-approval and the Discord-id lookup through the person.
 
 ---
 
