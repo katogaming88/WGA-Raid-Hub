@@ -32,6 +32,8 @@ answers to.
 - The local snapshot script and the persona batch write grants the new way,
   and still work on a production dump taken before this release. The nightly
   backup check counts the new grants table instead of the site admin list.
+- The README, the access-rules doc and the backup runbook describe site
+  admin access as a grant and count 46 tables.
 
 ---
 

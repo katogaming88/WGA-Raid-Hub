@@ -44,11 +44,11 @@ Other public nav tabs: **Roster** (current + next-season "tentative" roster), **
 
 ### Discord login (raiders and officers)
 
-Everyone signs in with the same Discord button (Supabase Auth, full-page redirect). On first login a raider claims their character from the team's roster; a persistent "Claim your character" prompt on the landing page covers logging in without a claim yet, including pointing at the right team if they're already claimed elsewhere. Officer/admin status is derived from the database (`team_members.role`, `site_admins`), not a separate login -- an existing Discord session just unlocks more once it resolves.
+Everyone signs in with the same Discord button (Supabase Auth, full-page redirect). On first login a raider claims their character from the team's roster; a persistent "Claim your character" prompt on the landing page covers logging in without a claim yet, including pointing at the right team if they're already claimed elsewhere. Officer/admin status is derived from the database (`team_members.role`, a `site_admin` grant in `guild_grants`), not a separate login -- an existing Discord session just unlocks more once it resolves.
 
 - **My Profile** -- nav dropdown shortcut to your claimed character's profile
 - **Officer Access** -- shown to officers/team leaders/site admins, links straight to `officer.html`
-- **Site Admin** -- a separate Discord-authenticated page (`admin.html`), gated to `site_admins` only
+- **Site Admin** -- a separate Discord-authenticated page (`admin.html`), gated to site admins only (a `site_admin` row in `guild_grants`)
 
 ### Officer dashboard (`officer.html`)
 
@@ -75,7 +75,7 @@ Discord-authenticated, session lasts 2 hours. A global season selector filters l
 
 ### Site Admin dashboard (`admin.html`)
 
-A separate, site-wide (not per-team) page gated to `site_admins`:
+A separate, site-wide (not per-team) page gated to site admins:
 - **Teams** -- create/archive teams
 - **Site Admins** -- grant/revoke site-admin access by Discord ID
 - **Guild Officers** -- grant/revoke guild-wide officer access by Discord ID (view + player/attendance/bio edits on every team, without site-admin write access)
@@ -91,7 +91,7 @@ A separate, site-wide (not per-team) page gated to `site_admins`:
 - **Discord OAuth via Supabase Auth** is the only login method, for raiders, officers, and admins alike -- one button, one flow.
 - **Character claim** links a raider's Discord identity to a `players` row (`team_members` + `claim_character()`); a person can claim characters on multiple teams.
 - **Officer access** is a `team_members.role` value (`officer`/`team_leader`), not a separate credential -- granted/revoked from the Roster tab's Discord Claims sub-tab or the Admin tab.
-- **Site-admin access** is the `site_admins` table (by Discord ID), managed from `admin.html`.
+- **Site-admin access** is a `site_admin` row in the `guild_grants` table, granted by Discord ID from `admin.html`.
 - Every write path is enforced by Postgres Row Level Security, not client-side checks -- see [`docs/RLS.md`](docs/RLS.md) for the full policy/function matrix.
 
 ---
