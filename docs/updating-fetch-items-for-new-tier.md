@@ -144,4 +144,4 @@ One migration, two statements, in this order:
 1. Close the outgoing tier: `update public.seasons set ends_at = '<the day before launch>' where code = 'MID2';`
 2. Insert the new one: `insert into public.seasons (code, display_name, starts_at) values ('MID3', 'Midnight Season 3', '<launch day>');`
 
-At most one row can be open-ended, so a second insert before the first update is refused. `current_season()` is the latest tier whose `starts_at` has passed, so the migration can land early with a future date: the outgoing tier stays current, `wcl-progression-sync` keeps stamping it, and a team that rolls its cycle over ahead of launch can already stamp the new name. On launch day the new row is current on its own.
+Tiers cannot overlap (`seasons_no_overlap`, inclusive on both ends), so a second open-ended insert before the first update is refused, and so is a start date on or before the outgoing tier's end. The migration can land early with a future date: nothing reads which tier is current, `wcl-progression-sync` stamps each team's own Season Name, and a team that rolls its cycle over ahead of launch can stamp the new name from the day the row exists.

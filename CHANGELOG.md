@@ -12,6 +12,41 @@ answers to.
 
 ---
 
+## [Unreleased]
+
+### Backend
+
+- A `seasons` table, one row per raid tier, and every season column a
+  foreign key to it
+  ([#932](https://github.com/katogaming88/WGA-Raid-Hub/issues/932)).
+  Season was a constant, a config key and free text in two formats across
+  fourteen columns, with nothing refusing a misspelt or invented one. The
+  table holds the two tiers with their dates (from `data/seasons.json`);
+  the nine code columns reference `code` and the five name columns
+  `display_name`, values unchanged, nulls allowed where they were. Tiers
+  cannot overlap, so at most one is open-ended. A new tier is a migration
+  that closes the outgoing row and inserts the new one, landed before any
+  team names it: from now on a Season Name or Signup Season with no row
+  refuses that team's signups, finds, wishlist picks and BiS placeholders
+  until the row exists (`docs/updating-fetch-items-for-new-tier.md`).
+
+### Functions
+
+- `wcl-progression-sync` skips a team with raids but no Season Name
+  instead of filing its raids under `Unknown`, which the new key refuses
+  ([#932](https://github.com/katogaming88/WGA-Raid-Hub/issues/932)). The
+  stamp stays the team's own Season Name: `raid_zones` is shared by every
+  team per zone and season, and the site scopes a team's progress by that
+  name, so it is what keeps teams on different cycles apart. The function
+  took the testable shape (`handler.ts`, `deps.ts`), with its aggregation
+  measured against the rows the previous build produced.
+
+### Project
+
+- The new-tier runbook gains the `seasons` step, and the decisions log
+  records why `raid_zones` keeps the team's stamp
+  ([#932](https://github.com/katogaming88/WGA-Raid-Hub/issues/932)).
+
 ## [3.122.1] - 2026-09-14
 
 ### Project
