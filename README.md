@@ -114,6 +114,7 @@ For the full file-by-file breakdown, local dev setup (Docker + Supabase CLI), mi
 - [`docs/database-schema-reference.md`](docs/database-schema-reference.md) -- a narrative companion to `dbdoc/`.
 - [`docs/RLS.md`](docs/RLS.md) -- hand-maintained policy/function reference (tbls can't generate this).
 - [`docs/database-decisions.md`](docs/database-decisions.md) -- a running log of settled schema decisions and the reasoning behind them; each entry names the migration that shipped it, and CI checks that the file exists.
+- [`docs/season-inventory.md`](docs/season-inventory.md) -- every season column and `team_settings.config` key: who writes it, who reads it, the format it holds, and whether it means the guild's tier or a team's own cycle. The input to the Season milestone's schema steps.
 - [`docs/backup-restore.md`](docs/backup-restore.md) -- what's backed up, what's regenerable without a backup, and the restore runbook.
 - [`docs/app-preview.md`](docs/app-preview.md) -- the new app's private preview: what a tester needs, adding and removing testers, and how it is deployed and locked.
 
