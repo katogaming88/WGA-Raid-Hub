@@ -29,6 +29,7 @@ Settled while building step 1:
 - **Battle.net first, then a listed Discord id: the listed person wins.** The grants point at it, so it takes the account and the account's own empty person is deleted. Nothing else points at a person in step 1; step 4 moves preferences onto the person and has to carry them across in that branch.
 - **A person with neither an account nor a Discord id deletes itself**, which is what discarding an empty Battle.net sign-in leaves. The account FK is `on delete set null`, so deleting an account never takes a listed person or their grants with it.
 - **Clients read their own row and write none**, the same no-write-rule shape as `notifications`.
+- **A Discord identity is never unlinked from an account** (Kat, 2026-09-14, from Rex's review of #1191). The link trigger only handles an identity appearing. If an account could drop its Discord id and link another, the old id would stay on its person, the new id would create a second person with no account, and the next account to link the old id would get no person at all. Nothing unlinks today, so the rule costs nothing now: the new app does not offer `unlinkIdentity` for Discord. Rejected for now: a delete trigger on `auth.identities` that detaches the person. Revisit it only if switching Discord accounts becomes something people need.
 
 ---
 

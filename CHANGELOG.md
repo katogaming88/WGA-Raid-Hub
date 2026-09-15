@@ -34,6 +34,8 @@ answers to.
 - The local snapshot script clears the production account from each person,
   so a local sign-in attaches the way a first sign-in does. The backup runbook
   lists the new table and its account link.
+- The decision log records that a Discord account is never disconnected from
+  a sign-in once linked, so a person always keeps the same Discord id.
 
 ---
 
