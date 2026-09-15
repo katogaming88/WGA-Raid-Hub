@@ -39,7 +39,7 @@
 | [public.priority_order_same_boss_conflicts](public.priority_order_same_boss_conflicts.md) | 10 |  | VIEW |
 | [public.priority_order_stale_after_heroic](public.priority_order_stale_after_heroic.md) | 7 |  | VIEW |
 | [public.item_preferences](public.item_preferences.md) | 11 |  | BASE TABLE |
-| [public.site_settings](public.site_settings.md) | 7 |  | BASE TABLE |
+| [public.site_settings](public.site_settings.md) | 9 |  | BASE TABLE |
 | [public.incoming_roster](public.incoming_roster.md) | 7 |  | VIEW |
 | [public.guild_officers](public.guild_officers.md) | 4 |  | BASE TABLE |
 | [public.tier_token_map](public.tier_token_map.md) | 6 |  | BASE TABLE |
@@ -664,6 +664,8 @@ erDiagram
   jsonb guild_officer_bios
   bigint boe_payout_floor
   bigint boe_payout_pivot
+  jsonb gear_sync_last_cron_run
+  jsonb gear_sync_last_officer_run
 }
 "public.incoming_roster" {
   integer signup_id

@@ -12,6 +12,39 @@ answers to.
 
 ---
 
+## [3.123.1] - 2026-09-15
+
+### Frontend
+
+- The Admin tab's Features page says when the equipped gear sweep last ran,
+  under "Sync Gear Levels Now"
+  ([#1174](https://github.com/katogaming88/WGA-Raid-Hub/issues/1174)):
+  how long ago, how many raiders it synced and skipped, and the first error
+  if it recorded one. The line turns red on a recorded error, when the sweep
+  reached raiders and synced none of them, when no sweep has been recorded at
+  all, or when the scheduled sweep has not finished in 36 hours, so a sweep
+  that stops writing is visible the next morning instead of when a priority
+  list looks wrong. An officer's whole-team sync is shown after it and never
+  resets that age.
+
+### Backend
+
+- Two columns on `site_settings` hold the gear sweep's last outcome, one for
+  the scheduled run and one for an officer's on-demand sync
+  ([#1174](https://github.com/katogaming88/WGA-Raid-Hub/issues/1174)).
+  Public-read like the rest of the row; only the function writes them.
+
+### Functions
+
+- `blizzard-gear-sync` records what every run did before it answers: when it
+  started and finished, the trigger, the counts and the first error
+  ([#1174](https://github.com/katogaming88/WGA-Raid-Hub/issues/1174)).
+  A refusal from Blizzard other than an unknown character (a rate limit, an
+  expired token, an outage) is the run's error rather than a silent skip, and
+  a failed read of the track table stops the run before it writes a guessed
+  track for anyone. A failure to record is logged and never changes the
+  response; a single-raider sync is not recorded.
+
 ## [3.123.0] - 2026-09-14
 
 ### Backend

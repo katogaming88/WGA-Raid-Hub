@@ -1,11 +1,11 @@
 {
-  "version": "3.123.0",
+  "version": "3.123.1",
   "pieces": {
-    "frontend": "3.115.0",
-    "db": "3.123.0",
+    "frontend": "3.123.1",
+    "db": "3.123.1",
     "bot": "3.94.0",
     "functions": {
-      "blizzard-gear-sync": "3.112.13",
+      "blizzard-gear-sync": "3.123.1",
       "boe-sold-webhook": "3.112.13",
       "boe-webhook": "3.119.2",
       "contact-webhook": "3.119.2",

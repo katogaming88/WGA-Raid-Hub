@@ -1924,6 +1924,8 @@ export type Database = {
         Row: {
           boe_payout_floor: number
           boe_payout_pivot: number
+          gear_sync_last_cron_run: Json | null
+          gear_sync_last_officer_run: Json | null
           guild_officer_bios: Json
           id: number
           maintenance_message: string | null
@@ -1933,6 +1935,8 @@ export type Database = {
         Insert: {
           boe_payout_floor?: number
           boe_payout_pivot?: number
+          gear_sync_last_cron_run?: Json | null
+          gear_sync_last_officer_run?: Json | null
           guild_officer_bios?: Json
           id?: number
           maintenance_message?: string | null
@@ -1942,6 +1946,8 @@ export type Database = {
         Update: {
           boe_payout_floor?: number
           boe_payout_pivot?: number
+          gear_sync_last_cron_run?: Json | null
+          gear_sync_last_officer_run?: Json | null
           guild_officer_bios?: Json
           id?: number
           maintenance_message?: string | null

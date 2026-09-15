@@ -42,6 +42,7 @@ function switchAdminSubTab(name, btnEl) {
     renderAdminFeatureFlags();
     renderAdminWishlistLabels();
     renderAdminTrackThresholds();
+    renderGearSyncStatus();
   }
   if (name === 'danger') renderDangerZone();
 }
@@ -800,6 +801,7 @@ function runSyncBlizzardGearForTeam() {
         statusEl.textContent =
           result.synced + ' synced' + (result.skipped ? ', ' + result.skipped + ' skipped' : '') + '.';
       }
+      renderGearSyncStatus();
     })
     .catch(function (err) {
       if (btn) {
@@ -810,5 +812,70 @@ function runSyncBlizzardGearForTeam() {
         statusEl.style.color = 'var(--melee)';
         statusEl.textContent = 'Failed: ' + err.message;
       }
+    });
+}
+
+// The sweep's last-run line under that button (#1174), from the two records
+// blizzard-gear-sync leaves on site_settings. The scheduled sweep's record
+// carries the warning; an officer's own sync is appended after it and never
+// resets the sweep's age.
+var GEAR_SYNC_STALE_MS = 36 * 60 * 60 * 1000;
+
+function gearSyncStatusText(cronRun, officerRun, nowMs) {
+  if (!cronRun) return { text: 'No scheduled sweep recorded yet.', warn: true };
+  var text =
+    'Last sweep: ' +
+    (timeAgoLabel(cronRun.finished_at) || 'unknown age') +
+    ', ' +
+    (cronRun.synced || 0) +
+    ' synced, ' +
+    (cronRun.skipped || 0) +
+    ' skipped.';
+  var warn = false;
+  if (cronRun.error) {
+    text += ' Error: ' + cronRun.error;
+    warn = true;
+  } else if (!cronRun.synced && cronRun.players > 0) {
+    text += ' Nothing was synced.';
+    warn = true;
+  }
+  var finished = Date.parse(cronRun.finished_at);
+  if (isNaN(finished) || nowMs - finished > GEAR_SYNC_STALE_MS) {
+    text += ' The scheduled sweep has not run in 36 hours.';
+    warn = true;
+  }
+  if (officerRun) {
+    text +=
+      ' Last on-demand sync: ' +
+      (timeAgoLabel(officerRun.finished_at) || 'unknown age') +
+      ', ' +
+      (officerRun.synced || 0) +
+      ' synced.';
+  }
+  return { text: text, warn: warn };
+}
+
+function renderGearSyncStatus() {
+  var el = document.getElementById('gearSyncStatus');
+  if (!el || !supabaseClient) return Promise.resolve();
+  return supabaseClient
+    .from('site_settings')
+    .select('gear_sync_last_cron_run, gear_sync_last_officer_run')
+    .eq('id', 1)
+    .maybeSingle()
+    .then(function (result) {
+      if (result.error) {
+        el.style.color = '';
+        el.textContent = 'Could not read the last sweep: ' + result.error.message;
+        return;
+      }
+      var row = result.data || {};
+      var status = gearSyncStatusText(
+        row.gear_sync_last_cron_run || null,
+        row.gear_sync_last_officer_run || null,
+        Date.now()
+      );
+      el.style.color = status.warn ? 'var(--melee)' : '';
+      el.textContent = status.text;
     });
 }
