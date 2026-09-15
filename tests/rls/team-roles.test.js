@@ -1,8 +1,8 @@
 // Behavior tests for admin_grant_team_role() / admin_revoke_team_role() and
 // the guild_officers branch added to link_auth_user_to_member() (#910).
 //
-// The per-team tier is the only grant tier with no RPC: site_admins,
-// boe_managers and guild_officers each have an admin_{list,grant,revoke}_*
+// The per-team tier is the only grant tier with no RPC: the three guild-wide
+// grants (site admin, BoE manager, guild officer) each have an admin_{list,grant,revoke}_*
 // trio, and team_members has none, so a team with no roster cannot be given
 // an officer at all. These cover the grant's four branches, the gate, the
 // revoke's demote-vs-delete split, and a person holding a role on two teams,
@@ -13,7 +13,7 @@
 // postgres (bypasses RLS), the call happens as the named identity, assertions
 // happen back as postgres.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, insertDiscordUser, OFFICER_T1, TEAM_LEADER_T1, SITE_ADMIN } from './helpers.js';
+import { pool, insertDiscordUser, grantGuild, OFFICER_T1, TEAM_LEADER_T1, SITE_ADMIN } from './helpers.js';
 
 // Seeded and migration-created rows this file leans on:
 //   team 1 'Team Phoenix', team 2 'Hellfire Rollers' (supabase/seed.sql)
@@ -259,7 +259,7 @@ describe('admin_grant_team_role() authorization', () => {
 
   it('a BoE manager with no row on the team cannot grant', async () => {
     await withTxn(async (q, asUser) => {
-      await q('insert into public.boe_managers (discord_id) values ($1)', [NEW_BOE_MANAGER]);
+      await grantGuild(q, NEW_BOE_MANAGER, 'boe_manager');
       await makeAuthUser(q, NEW_BOE_MANAGER_UID, NEW_BOE_MANAGER);
       await expect(grant(asUser, NEW_BOE_MANAGER_UID, TEAM_2, NO_ACCOUNT, 'officer')).rejects.toThrow(
         /not authorized/i
@@ -269,7 +269,7 @@ describe('admin_grant_team_role() authorization', () => {
 
   it('a guild officer with no row on the team cannot revoke', async () => {
     await withTxn(async (q, asUser) => {
-      await q('insert into public.guild_officers (discord_id) values ($1)', [STRANGER]);
+      await grantGuild(q, STRANGER, 'guild_officer');
       await newMember(q, TEAM_1, STRANGER, 'raider');
       await makeAuthUser(q, STRANGER_UID, STRANGER);
       await expect(revoke(asUser, STRANGER_UID, TEAM_2, 'discord-officer-2')).rejects.toThrow(/not authorized/i);
@@ -368,7 +368,7 @@ describe('admin_revoke_team_role() never unclaims a character', () => {
 describe('link_auth_user_to_member() covers guild_officers', () => {
   it('links a guild officer granted before they had signed in', async () => {
     await withTxn(async (q) => {
-      await q('insert into public.guild_officers (discord_id) values ($1)', [NEW_GUILD_OFFICER]);
+      await grantGuild(q, NEW_GUILD_OFFICER, 'guild_officer');
       await makeAuthUser(q, NEW_GUILD_OFFICER_UID, NEW_GUILD_OFFICER);
 
       const row = (await q('select auth_user_id from public.guild_officers where discord_id = $1', [NEW_GUILD_OFFICER]))
@@ -382,7 +382,7 @@ describe('link_auth_user_to_member() covers guild_officers', () => {
   it('still links the other three tables', async () => {
     await withTxn(async (q) => {
       await newMember(q, WRATHLESS, NEW_GUILD_OFFICER, 'officer');
-      await q('insert into public.boe_managers (discord_id) values ($1)', [NEW_GUILD_OFFICER]);
+      await grantGuild(q, NEW_GUILD_OFFICER, 'boe_manager');
       await makeAuthUser(q, NEW_GUILD_OFFICER_UID, NEW_GUILD_OFFICER);
 
       expect((await memberRow(q, WRATHLESS, NEW_GUILD_OFFICER)).auth_user_id).toBe(NEW_GUILD_OFFICER_UID);

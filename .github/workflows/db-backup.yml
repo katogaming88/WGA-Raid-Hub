@@ -171,7 +171,7 @@ jobs:
           #
           # Adding a table here is a one-line change; see docs/backup-restore.md
           # "When the schema changes" for when that is warranted.
-          EMPTY_CHECK="players item_preferences season_signups team_settings team_members teams site_admins attendance"
+          EMPTY_CHECK="players item_preferences season_signups team_settings team_members teams guild_grants attendance"
 
           # Accumulate rather than exiting on the first failure, like the
           # missing-secret guard above: one table empty means one bad table,

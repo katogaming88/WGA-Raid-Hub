@@ -790,8 +790,8 @@ account with no grant row and signed you in with no access, which read like
 broken policies.
 
 **One specific real person** is still reachable with `--discord-id <id>`,
-which binds a local account to that person's real rows across `team_members`,
-`site_admins`, `boe_managers` and `guild_officers`. That is reading their
+which binds a local account to that person's real rows: their `team_members`
+rows and their guild-wide grants in `guild_grants`. That is reading their
 data; reach for it only when the question is about that person.
 
 Photos still point at production Storage, so they either load from the public

@@ -7,4 +7,11 @@ CREATE OR REPLACE FUNCTION public.is_guild_officer()
  LANGUAGE sql
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
-AS $function$ select exists (select 1 from guild_officers where auth_user_id = auth.uid()); $function$;
+AS $function$
+  select exists (
+    select 1 from guild_grants g
+      join people p on p.id = g.person_id
+     where p.auth_user_id = auth.uid()
+       and g.grant_type = 'guild_officer'
+  );
+$function$;

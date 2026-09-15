@@ -28,14 +28,12 @@ boe_listings,Officers read boe_listings,public,SELECT,PERMISSIVE,((team_id = ANY
 boe_listings,Raiders read own boe_listings,public,SELECT,PERMISSIVE,"(EXISTS ( SELECT 1
    FROM boe_items b
   WHERE ((b.id = boe_listings.boe_item_id) AND ((b.player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])) OR ((b.finder_discord_id IS NOT NULL) AND (b.finder_discord_id = ( SELECT current_discord_id() AS current_discord_id)))))))",
-boe_managers,Claude readers read boe_managers,claude_readers,SELECT,PERMISSIVE,true,
-boe_managers,Officers read boe_managers,public,SELECT,PERMISSIVE,(( SELECT is_any_team_officer() AS is_any_team_officer) OR ( SELECT is_site_admin() AS is_site_admin)),
-boe_managers,Site Admins write boe_managers,public,ALL,PERMISSIVE,( SELECT is_site_admin() AS is_site_admin),( SELECT is_site_admin() AS is_site_admin)
 classes_specs,Claude readers read classes_specs,claude_readers,SELECT,PERMISSIVE,true,
 classes_specs,Public read classes_specs,public,SELECT,PERMISSIVE,true,
-guild_officers,Claude readers read guild_officers,claude_readers,SELECT,PERMISSIVE,true,
-guild_officers,Site Admins read guild_officers,public,SELECT,PERMISSIVE,( SELECT is_site_admin() AS is_site_admin),
-guild_officers,Site Admins write guild_officers,public,ALL,PERMISSIVE,( SELECT is_site_admin() AS is_site_admin),( SELECT is_site_admin() AS is_site_admin)
+guild_grants,Claude readers read guild_grants,claude_readers,SELECT,PERMISSIVE,true,
+guild_grants,Officers read BoE manager grants,public,SELECT,PERMISSIVE,((grant_type = 'boe_manager'::text) AND ( SELECT is_any_team_officer() AS is_any_team_officer)),
+guild_grants,Site Admins read guild_grants,public,SELECT,PERMISSIVE,( SELECT is_site_admin() AS is_site_admin),
+guild_grants,Site Admins write guild_grants,public,ALL,PERMISSIVE,( SELECT is_site_admin() AS is_site_admin),( SELECT is_site_admin() AS is_site_admin)
 guilds,Claude readers read guilds,claude_readers,SELECT,PERMISSIVE,true,
 guilds,Public read guilds,public,SELECT,PERMISSIVE,true,
 item_bosses,Claude readers read item_bosses,claude_readers,SELECT,PERMISSIVE,true,
@@ -117,9 +115,6 @@ self_received_requests,Claude readers read self_received_requests,claude_readers
 self_received_requests,Officers read self_received_requests,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 self_received_requests,Officers update self_received_requests,public,UPDATE,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 self_received_requests,Raiders read own self_received_requests,public,SELECT,PERMISSIVE,(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])),
-site_admins,Claude readers read site_admins,claude_readers,SELECT,PERMISSIVE,true,
-site_admins,Site Admins read site_admins,public,SELECT,PERMISSIVE,( SELECT is_site_admin() AS is_site_admin),
-site_admins,Site Admins write site_admins,public,ALL,PERMISSIVE,( SELECT is_site_admin() AS is_site_admin),( SELECT is_site_admin() AS is_site_admin)
 site_settings,Claude readers read site_settings,claude_readers,SELECT,PERMISSIVE,true,
 site_settings,Public read site_settings,public,SELECT,PERMISSIVE,true,
 streamers,Claude readers read streamers,claude_readers,SELECT,PERMISSIVE,true,

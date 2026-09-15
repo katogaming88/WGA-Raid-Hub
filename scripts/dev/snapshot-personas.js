@@ -46,7 +46,7 @@ guild_rows as (
          g.name,
          g.tier,
          g.code
-    from (values ('admin', 'site_admins', 1), ('guild-officer', 'guild_officers', 2), ('boe-manager', 'boe_managers', 3))
+    from (values ('admin', 'site_admin', 1), ('guild-officer', 'guild_officer', 2), ('boe-manager', 'boe_manager', 3))
            as g(name, tier, code)
 )
 select team_id, slug, role, name, tier, code,
@@ -98,14 +98,26 @@ select p.discord_id,
 insert into public.team_members (team_id, discord_id, auth_user_id, role)
 select team_id, discord_id, user_id, role from persona where team_id is not null;
 
-insert into public.site_admins (discord_id, auth_user_id)
-select discord_id, user_id from persona where tier = 'site_admins';
+-- This runs on the schema the dump came from, before the branch's migrations.
+-- From #942 step 2 the guild-wide grants are guild_grants rows and the old
+-- table names are read-only views; before it they are the three tables.
+do $grants$
+begin
+  if to_regclass('public.guild_grants') is not null then
+    insert into public.guild_grants (person_id, guild_id, grant_type)
+    select public.person_for_discord_id(p.discord_id), (select id from public.guilds), p.tier
+      from persona p where p.tier is not null;
+  else
+    insert into public.site_admins (discord_id, auth_user_id)
+    select discord_id, user_id from persona where tier = 'site_admin';
 
-insert into public.guild_officers (discord_id, auth_user_id)
-select discord_id, user_id from persona where tier = 'guild_officers';
+    insert into public.guild_officers (discord_id, auth_user_id)
+    select discord_id, user_id from persona where tier = 'guild_officer';
 
-insert into public.boe_managers (discord_id, auth_user_id)
-select discord_id, user_id from persona where tier = 'boe_managers';
+    insert into public.boe_managers (discord_id, auth_user_id)
+    select discord_id, user_id from persona where tier = 'boe_manager';
+  end if;
+end $grants$;
 
 insert into public.players (team_id, name_realm, class_spec_id, team_member_id)
 select p.team_id,

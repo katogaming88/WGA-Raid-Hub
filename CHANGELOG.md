@@ -12,6 +12,31 @@ answers to.
 
 ---
 
+## [3.124.0] - 2026-09-15
+
+### Backend
+
+- The site admin, guild officer and BoE manager lists are now one list of
+  grants, each naming a person, the grant and the guild
+  ([#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942), step 2).
+  - Nobody's access changes. The Admin page lists, grants and revokes exactly
+    as before, and the same people can see who holds which grant.
+  - A grant finds its sign-in account through the person rather than keeping
+    its own copy. The migration stops if any grant's account disagreed with
+    its person's, so no one gains or loses access when it runs.
+  - The three old list names still answer for reading, for server-side tools,
+    until the switch to the new site.
+
+### Project
+
+- The local snapshot script and the persona batch write grants the new way,
+  and still work on a production dump taken before this release. The nightly
+  backup check counts the new grants table instead of the site admin list.
+- The README, the access-rules doc and the backup runbook describe site
+  admin access as a grant and count 46 tables.
+
+---
+
 ## [3.123.1] - 2026-09-15
 
 ### Frontend

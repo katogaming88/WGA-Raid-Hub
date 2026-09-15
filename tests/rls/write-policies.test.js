@@ -114,14 +114,21 @@ describe('team_settings is team-leader and site-admin only', () => {
   });
 });
 
-describe('site_admins is site-admin only', () => {
-  const sql = "insert into public.site_admins (discord_id) values ('discord-new-site-admin')";
+describe('guild_grants is site-admin only (#942)', () => {
+  // A seeded person with no grant of this kind. Looked up as postgres: a caller
+  // reads only their own people row, and people is not what is under test.
+  const sql = (person) =>
+    `insert into public.guild_grants (person_id, guild_id, grant_type)
+     values (${person}, (select id from public.guilds), 'site_admin')`;
+  const raiderPerson = async () =>
+    // rls-pool-read-only: reads a seeded person's id, writes nothing.
+    (await pool.query("select id from public.people where discord_id = 'discord-raider-1'")).rows[0].id;
   it('site admin can insert', async () => {
-    const res = await queryAs('authenticated', SITE_ADMIN, sql);
+    const res = await queryAs('authenticated', SITE_ADMIN, sql(await raiderPerson()));
     expect(res.rowCount).toBe(1);
   });
   it('team 1 team leader cannot insert', async () => {
-    await expectDenied('authenticated', TEAM_LEADER_T1, sql);
+    await expectDenied('authenticated', TEAM_LEADER_T1, sql(await raiderPerson()));
   });
 });
 

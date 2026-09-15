@@ -461,38 +461,6 @@ export type Database = {
           },
         ]
       }
-      boe_managers: {
-        Row: {
-          auth_user_id: string | null
-          created_at: string
-          discord_id: string
-          id: number
-          person_id: number
-        }
-        Insert: {
-          auth_user_id?: string | null
-          created_at?: string
-          discord_id: string
-          id?: number
-          person_id: number
-        }
-        Update: {
-          auth_user_id?: string | null
-          created_at?: string
-          discord_id?: string
-          id?: number
-          person_id?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "boe_managers_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       classes_specs: {
         Row: {
           class: string
@@ -514,28 +482,38 @@ export type Database = {
         }
         Relationships: []
       }
-      guild_officers: {
+      guild_grants: {
         Row: {
-          auth_user_id: string | null
-          discord_id: string
+          created_at: string
+          grant_type: string
+          guild_id: number
           id: number
           person_id: number
         }
         Insert: {
-          auth_user_id?: string | null
-          discord_id: string
-          id?: number
+          created_at?: string
+          grant_type: string
+          guild_id: number
+          id?: never
           person_id: number
         }
         Update: {
-          auth_user_id?: string | null
-          discord_id?: string
-          id?: number
+          created_at?: string
+          grant_type?: string
+          guild_id?: number
+          id?: never
           person_id?: number
         }
         Relationships: [
           {
-            foreignKeyName: "guild_officers_person_id_fkey"
+            foreignKeyName: "guild_grants_guild_id_fkey"
+            columns: ["guild_id"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guild_grants_person_id_fkey"
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
@@ -1891,35 +1869,6 @@ export type Database = {
           },
         ]
       }
-      site_admins: {
-        Row: {
-          auth_user_id: string | null
-          discord_id: string
-          id: number
-          person_id: number
-        }
-        Insert: {
-          auth_user_id?: string | null
-          discord_id: string
-          id?: number
-          person_id: number
-        }
-        Update: {
-          auth_user_id?: string | null
-          discord_id?: string
-          id?: number
-          person_id?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "site_admins_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       site_settings: {
         Row: {
           boe_payout_floor: number
@@ -2281,6 +2230,42 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "seasons"
             referencedColumns: ["code"]
+          },
+        ]
+      }
+      boe_managers: {
+        Row: {
+          auth_user_id: string | null
+          created_at: string | null
+          discord_id: string | null
+          id: number | null
+          person_id: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guild_grants_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guild_officers: {
+        Row: {
+          auth_user_id: string | null
+          created_at: string | null
+          discord_id: string | null
+          id: number | null
+          person_id: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guild_grants_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2696,6 +2681,24 @@ export type Database = {
           },
         ]
       }
+      site_admins: {
+        Row: {
+          auth_user_id: string | null
+          created_at: string | null
+          discord_id: string | null
+          id: number | null
+          person_id: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guild_grants_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       add_signup_to_roster: {
@@ -2710,6 +2713,10 @@ export type Database = {
       }
       admin_create_team: {
         Args: { p_name: string; p_slug: string }
+        Returns: number
+      }
+      admin_grant: {
+        Args: { p_discord_id: string; p_grant_type: string; p_label: string }
         Returns: number
       }
       admin_grant_boe_manager: {
@@ -2737,6 +2744,15 @@ export type Database = {
           id: number
         }[]
       }
+      admin_list_grants: {
+        Args: { p_grant_type: string }
+        Returns: {
+          auth_user_id: string
+          discord_id: string
+          display_name: string
+          id: number
+        }[]
+      }
       admin_list_guild_officers: {
         Args: never
         Returns: {
@@ -2754,6 +2770,10 @@ export type Database = {
           display_name: string
           id: number
         }[]
+      }
+      admin_revoke: {
+        Args: { p_discord_id: string; p_grant_type: string; p_label: string }
+        Returns: undefined
       }
       admin_revoke_boe_manager: {
         Args: { p_discord_id: string }
@@ -2936,6 +2956,7 @@ export type Database = {
         Args: { p_message: string; p_player_id: number }
         Returns: number
       }
+      only_guild_id: { Args: never; Returns: number }
       remove_player_priority_order: {
         Args: { p_player_id: number; p_season: string; p_team_id: number }
         Returns: number

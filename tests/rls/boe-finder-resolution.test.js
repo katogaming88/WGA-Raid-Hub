@@ -22,7 +22,7 @@
 // the gate cases assert a raise, and without a savepoint per call an expected
 // failure aborts the shared transaction and masks the real error.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, OFFICER_T1, OFFICER_T2, SITE_ADMIN } from './helpers.js';
+import { pool, grantGuild, OFFICER_T1, OFFICER_T2, SITE_ADMIN } from './helpers.js';
 
 async function withTxn(fn) {
   const client = await pool.connect();
@@ -242,10 +242,7 @@ describe('resolve_boe_finder_discord_id: the grant is what admits the caller', (
       const id = await unresolvedItem(q, TEAM_1, 'Grantonly-Illidan');
       await newPlayer(q, TEAM_2, 'Grantonly-Illidan', TM_OFFICER_2, false);
       // OFFICER_T2 is a plain officer on team 2 until the grant lands.
-      await q('insert into public.boe_managers (discord_id, auth_user_id) values ($1, $2)', [
-        DISCORD_OFFICER_2,
-        OFFICER_T2
-      ]);
+      await grantGuild(q, DISCORD_OFFICER_2, 'boe_manager');
 
       expect(await resolve(asUser, OFFICER_T2, id)).toBe(DISCORD_OFFICER_2);
     });

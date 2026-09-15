@@ -204,6 +204,9 @@ describe('plan (#1056)', () => {
     expect(args).toMatch(/delete from public\.no_character_dismissals/);
     // #942: people keep the Discord id and lose the production account.
     expect(args).toMatch(/update public\.people set auth_user_id = null/);
+    // #942 step 2: the three grant names are only updated while they are still
+    // tables; after it they are views that reach the account through people.
+    expect(args).toMatch(/relkind from pg_class where oid = to_regclass\('public\.site_admins'\)\) = 'r'/);
   });
 
   it('mints the personas after the unlink and before the migrations, in one transaction', () => {
@@ -236,6 +239,9 @@ describe('the persona batch (#1065)', () => {
       'auth.users',
       'auth.identities',
       'public.team_members',
+      'public.guild_grants',
+      // Until #942 step 2 reaches production, the dump's schema still has the
+      // three tables it replaced.
       'public.site_admins',
       'public.guild_officers',
       'public.boe_managers',
@@ -243,6 +249,7 @@ describe('the persona batch (#1065)', () => {
     ]) {
       expect(PERSONAS_SQL).toContain(`insert into ${table}`);
     }
+    expect(PERSONAS_SQL).toMatch(/to_regclass\('public\.guild_grants'\)/);
     expect(PERSONAS_SQL).toContain('raider-Persona');
   });
 
