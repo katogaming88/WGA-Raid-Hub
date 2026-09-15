@@ -16,7 +16,10 @@ const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
 function makeSandbox(source, note) {
   const rpcCalls = [];
   const els = {};
-  const el = (id) => (els[id] ??= { value: '', innerHTML: '', style: {}, placeholder: '', focus() {} });
+  const el = (id) => {
+    if (!els[id]) els[id] = { value: '', innerHTML: '', style: {}, placeholder: '', focus() {} };
+    return els[id];
+  };
   const sandbox = {
     window: {},
     location: { search: '', pathname: '/' },
