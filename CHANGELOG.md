@@ -14,6 +14,11 @@ answers to.
 
 ## [3.126.0] - 2026-09-15
 
+### Frontend
+
+- A code comment on the notification bell now names the rule that decides
+  whose notifications it shows. Nothing behaves differently.
+
 ### Backend
 
 - A raider's notifications belong to them, not to their current character
@@ -26,10 +31,17 @@ answers to.
 
 - The decision log records that saved preferences stay with the sign-in
   account, since it is the same account whichever way someone signs in.
+- From Rex's review: the access-rules doc no longer lists notifications
+  among the rules that see only a raider's current character.
 
 ---
 
 ## [3.125.0] - 2026-09-15
+
+### Frontend
+
+- A code comment in the claim prompt now says what its membership lookup
+  filters on. Nothing behaves differently.
 
 ### Backend
 
@@ -52,6 +64,9 @@ answers to.
 - The access-rules doc and the decision log describe the change. New tests
   cover who can read a person, and that a membership's account cannot be
   pointed elsewhere.
+- From Rex's review: the access-rules doc describes the self-received
+  auto-approval and the Discord-id lookup through the person, and the setup
+  guide's team-role steps drop the repair that can no longer be needed.
 
 ---
 

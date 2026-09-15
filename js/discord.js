@@ -282,8 +282,11 @@ function showBattlenetNotice(kind, message) {
 
 // ── Session mapping ──────────────────────────────────────────────────────────
 
-// "Members read own team_members" (#212) filters only on auth_user_id, with no
-// team_id restriction, so a raider's other-team row is readable from here too.
+// "Members read own team_members" (#212) returns every membership of the
+// caller's person (#942 step 3), with no team_id restriction, so a raider's
+// other-team row is readable from here too. This query's own auth_user_id
+// filter reads the copy the database keeps equal to the person's account
+// until cutover.
 // Used to tell "never claimed anywhere" apart from "claimed, just not on this
 // team" so the landing claim prompt can point at the right team instead of
 // implying a claim has to start from scratch (#368 follow-up).
