@@ -10,8 +10,9 @@ import { pool, withTxn, insertDiscordUser, RAIDER_T1, OFFICER_T2 } from './helpe
 
 afterAll(() => pool.end());
 
-// Team 4 'Wrathless' has no seeded members, so a team_members row here
-// collides with nothing.
+// Team 4 'Wrathless' seeds three members (team_members ids 9 to 11). The
+// Discord ids below are invented, so a team_members row here collides with
+// none of them; a case counting team 4 rows has to allow for the seeded three.
 const WRATHLESS = 4;
 
 // Invented here; no other file uses these ids.
