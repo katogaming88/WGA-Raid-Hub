@@ -1,13 +1,26 @@
--- Function public.submit_self_received: current definition, generated from the database.
--- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
--- execute (site roles): anon, authenticated
-
-CREATE OR REPLACE FUNCTION public.submit_self_received(p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_slot text DEFAULT NULL::text)
- RETURNS TABLE(id integer, auto_approved boolean)
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
+-- A Mark Received report from a pug raid is not held for saying "raid" (#868).
+--
+-- 20260908195554 sends any report whose note mentions "raid" as its own word
+-- to officer review, to catch guild raid drops reported by hand. Kat added
+-- Pug raid as a Mark Received source on 2026-09-14 (Soulcialist's boots were
+-- an approved "Other" entry from one), and a raider choosing it will naturally
+-- write "raid" in the note. The source already says it was not a guild raid,
+-- so the note check skips it. Every other rule is unchanged: Other still goes
+-- to review, and only the raider's own character auto-approves.
+create or replace function public.submit_self_received(
+  p_team_id integer,
+  p_name_realm text,
+  p_item_name text,
+  p_track text default null::text,
+  p_source text default null::text,
+  p_note text default null::text,
+  p_slot text default null::text
+)
+returns table(id integer, auto_approved boolean)
+language plpgsql
+security definer
+set search_path to 'public'
+as $$
 declare
   v_player_id integer;
   v_item_id integer;
@@ -56,4 +69,4 @@ begin
   end if;
 
   return query select v_request_id, coalesce(v_auto_approved, false);
-end $function$;
+end $$;

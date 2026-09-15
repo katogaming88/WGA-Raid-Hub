@@ -110,4 +110,21 @@ describe('submit_self_received: self-reported raid loot', () => {
       expect(res.rows[0].auto_approved).toBe(false);
     });
   });
+
+  // #868: Pug raid is a Mark Received source, and its note will say "raid".
+  it('auto-approves a Pug raid report whose note mentions "raid"', async () => {
+    await withTxn(async (q, asRaider) => {
+      await linkPlayerToAuthUser(q);
+      const res = await submit(asRaider, 'pugged a heroic raid last night', 'Pug raid');
+      expect(res.rows[0].auto_approved).toBe(true);
+    });
+  });
+
+  it('still sends an Other report to officer review with no mention of raid', async () => {
+    await withTxn(async (q, asRaider) => {
+      await linkPlayerToAuthUser(q);
+      const res = await submit(asRaider, 'timewalking vendor', 'Other');
+      expect(res.rows[0].auto_approved).toBe(false);
+    });
+  });
 });
