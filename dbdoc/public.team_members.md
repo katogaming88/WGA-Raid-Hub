@@ -32,6 +32,7 @@
 | team_members_pkey | CREATE UNIQUE INDEX team_members_pkey ON public.team_members USING btree (id) |
 | team_members_team_id_discord_id_key | CREATE UNIQUE INDEX team_members_team_id_discord_id_key ON public.team_members USING btree (team_id, discord_id) |
 | team_members_team_id_person_id_key | CREATE UNIQUE INDEX team_members_team_id_person_id_key ON public.team_members USING btree (team_id, person_id) |
+| team_members_person_id_idx | CREATE INDEX team_members_person_id_idx ON public.team_members USING btree (person_id) |
 
 ## Triggers
 

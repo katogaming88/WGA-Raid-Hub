@@ -45,6 +45,7 @@ const ANON_DEFINER_ALLOWLIST = [
   'my_active_player_ids',
   'my_leader_team_ids',
   'my_officer_team_ids',
+  'my_person_id',
   'my_team_role',
   'submit_bis_link',
   'submit_boe_found',

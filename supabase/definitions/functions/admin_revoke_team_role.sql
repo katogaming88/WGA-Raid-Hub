@@ -18,7 +18,8 @@ begin
 
   select * into v_existing
   from public.team_members
-  where team_id = p_team_id and discord_id = p_discord_id
+  where team_id = p_team_id
+    and person_id = (select id from public.people where discord_id = p_discord_id)
   for update;
 
   if not found then

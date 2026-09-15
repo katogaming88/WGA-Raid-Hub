@@ -30,7 +30,7 @@ begin
 
   if p_discord_id is null
      or not (
-       exists (select 1 from team_members where discord_id = p_discord_id)
+       exists (select 1 from team_members where person_id = v_person.id)
        or cardinality(v_grants) > 0
      ) then
     return null;
@@ -38,10 +38,7 @@ begin
 
   select jsonb_build_object(
     'discord_id', p_discord_id,
-    'auth_user_id', coalesce(
-      (select tm.auth_user_id from team_members tm where tm.discord_id = p_discord_id and tm.auth_user_id is not null limit 1),
-      case when cardinality(v_grants) > 0 then v_person.auth_user_id end
-    ),
+    'auth_user_id', v_person.auth_user_id,
     'site_admin', case when v_is_self or v_is_site_admin
                        then 'site_admin' = any (v_grants) end,
     'guild_officer', case when v_is_self or v_is_site_admin
@@ -70,7 +67,7 @@ begin
                order by tm.team_id
              )
         from team_members tm
-       where tm.discord_id = p_discord_id
+       where tm.person_id = v_person.id
          and (v_sees_all_teams or public.my_team_role(tm.team_id) = any (array['officer', 'team_leader']))
     ), '[]'::jsonb)
   )

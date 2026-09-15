@@ -13,7 +13,6 @@ declare
   v_player_id integer;
   v_member_id integer;
   v_member_role text;
-  v_member_auth_user_id uuid;
   v_discord_id text;
 begin
   if v_uid is null then
@@ -30,14 +29,9 @@ begin
     raise exception 'Character not found on roster';
   end if;
 
-  -- Find the caller's person row: by auth link first, then by an unlinked
-  -- Discord id (a row imported from the claims sheet, #338, that the login
-  -- trigger has not linked yet), otherwise create it. Reusing the discord_id
-  -- row avoids the team_members_team_id_discord_id_key unique violation a
-  -- blind insert would hit.
   select tm.id, tm.role into v_member_id, v_member_role
   from public.team_members tm
-  where tm.team_id = p_team_id and tm.auth_user_id = v_uid;
+  where tm.team_id = p_team_id and tm.person_id = public.my_person_id();
 
   if v_member_id is null then
     v_discord_id := public.current_discord_id();
@@ -46,27 +40,11 @@ begin
       raise exception 'This account has no Discord identity to claim a character with';
     end if;
 
-    select tm.id, tm.role, tm.auth_user_id
-      into v_member_id, v_member_role, v_member_auth_user_id
-    from public.team_members tm
-    where tm.team_id = p_team_id and tm.discord_id = v_discord_id;
-
-    -- Someone already holds this row. Since #1135 the caller's Discord id comes
-    -- from their identity row rather than from metadata they can write, so this
-    -- is now a genuine collision rather than the takeover #1117 was refusing.
-    if v_member_id is not null and v_member_auth_user_id is not null then
-      raise exception 'That Discord account is linked to a different account';
-    end if;
-
-    if v_member_id is null then
-      insert into public.team_members (team_id, discord_id, auth_user_id, role)
-      values (p_team_id, v_discord_id, v_uid, 'raider')
-      returning id into v_member_id;
-      v_member_role := 'raider';
-    else
-      update public.team_members tm set auth_user_id = v_uid
-      where tm.id = v_member_id;
-    end if;
+    -- The trigger resolves the person and its account from the Discord id.
+    insert into public.team_members (team_id, discord_id, role)
+    values (p_team_id, v_discord_id, 'raider')
+    returning id into v_member_id;
+    v_member_role := 'raider';
   end if;
 
   -- Never silently take over a character already linked to someone. The guard

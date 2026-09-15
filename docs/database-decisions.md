@@ -10,6 +10,22 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-15 -- Every team access check finds the caller through their person, and a membership's account is always its person's (#942 step 3)
+
+Shipped: `20260915161042_person_predicates.sql`.
+
+Step 3 of the plan in the 2026-09-14 entry below. Settled while building it:
+
+- **Every reader moves; writers do not.** `my_team_role()`, `my_officer_team_ids()`, `my_leader_team_ids()`, `my_active_player_ids()`, `is_own_player()`, `is_any_team_officer()`, `is_team_leader_anywhere()`, the `team_members` self-read rule, and the twelve functions that looked a member up by `team_members.auth_user_id` or `discord_id` now go through `person_id`. Functions still write `discord_id` on a new membership, because the person is resolved from it. At cutover (step 6) nothing reads the two copies and they can go.
+- **Nobody's access changes, and production was checked first.** On 2026-09-15 all 72 memberships' `auth_user_id` and `discord_id` matched their person's (read-only query). The migration refuses to run if any differ.
+- **The copies are kept by trigger, not trusted.** `set_person_from_discord_id()` now also sets `team_members.auth_user_id` from the person on every write, and `copy_person_account_to_members()` carries a person's account change onto their memberships. The copy stays for the current site, which filters its own memberships by `auth_user_id`. The link trigger no longer updates `team_members` itself.
+- **Behavior change, on purpose: a membership's account can no longer be set by hand.** A team leader could write `auth_user_id` on a row in their team and bind that membership (and its role) to any account. Whatever is written is now replaced with the person's account. It follows that two old code paths had no state left to handle, and were removed rather than kept as dead branches: `claim_character()`'s refusal of a row linked to another account (#1117), and `admin_grant_team_role()`'s repair of a row whose account was never filled in. A re-grant of the same role is now always refused, still saying so when no account holds the Discord id yet.
+- **Whoever reads a membership reads its person.** A new read rule on `people` lets an officer or team leader of a team, a site admin or a guild officer read the people behind that team's memberships. They could already read those memberships' Discord id and account copies, so nothing new is exposed. It is needed because `add_signup_to_roster()` runs as the calling officer and now joins `people`.
+- **`my_person_id()`** is the caller's person, the one new helper. Rules call it wrapped, once per query, like the #1106 helpers.
+- **Not moved in this step:** `season_signups.auth_user_id` (the signup's own record of its submitter, not a membership copy); `account_preferences` and `notifications` (step 4); `optional-rsvp-reminders`, `boe-sold-webhook` and the bot, which read `team_members.discord_id` or the `boe_managers` view with the service role and keep working through the copies until step 6.
+
+---
+
 ## 2026-09-15 -- One guild_grants table holds the site admin, guild officer and BoE manager grants (#942 step 2)
 
 Shipped: `20260915092357_guild_grants.sql`.
@@ -62,7 +78,7 @@ Season lived in three places and none of them was a table: `CURRENT_SEASON` in `
 
 ## 2026-09-14 -- A person is a row, alts hang off it, and the build runs in six steps (#942)
 
-Shipped: `20260914221328_people_table.sql` (step 1), `20260915092357_guild_grants.sql` (step 2, entry above). Steps 3 to 6: not yet, #942.
+Shipped: `20260914221328_people_table.sql` (step 1), `20260915092357_guild_grants.sql` (step 2), `20260915161042_person_predicates.sql` (step 3), both in entries above. Steps 4 to 6: not yet, #942.
 
 The re-plan is on [#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942#issuecomment-5673595252). Kat's calls on 2026-09-14:
 

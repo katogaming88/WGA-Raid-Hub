@@ -21,7 +21,8 @@ begin
 
   select tm.id, tm.name_realm into v_member_id, v_tm_name_realm
   from public.team_members tm
-  where tm.team_id = p_team_id and tm.auth_user_id = p_actor_id;
+  where tm.team_id = p_team_id
+    and tm.person_id = (select pe.id from public.people pe where pe.auth_user_id = p_actor_id);
 
   if v_member_id is not null then
     select p.nickname, p.name_realm into v_nickname, v_player_name_realm

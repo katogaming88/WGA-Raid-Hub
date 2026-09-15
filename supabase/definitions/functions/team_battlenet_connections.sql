@@ -20,12 +20,13 @@ begin
   return query
   select tm.id
   from public.team_members tm
+  join public.people pe on pe.id = tm.person_id
   where tm.team_id = p_team_id
-    and tm.auth_user_id is not null
+    and pe.auth_user_id is not null
     and exists (
       select 1
       from auth.identities i
-      where i.user_id = tm.auth_user_id
+      where i.user_id = pe.auth_user_id
         and i.provider = 'custom:battlenet'
     )
   order by tm.id;

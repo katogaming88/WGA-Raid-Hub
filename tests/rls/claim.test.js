@@ -229,19 +229,18 @@ describe('a forged Discord id in metadata reaches nobody else row', () => {
   });
 });
 
-describe('claim_character refuses a team_members row linked to another account (#1117)', () => {
+describe("a team_members row's account is always its person's (#942 step 3)", () => {
   const CALLER = '00000000-0000-0000-0000-0000000000c2';
   const OTHER = '00000000-0000-0000-0000-000000000005';
   const SHARED_DISCORD = 'discord-legacy-collision';
   const HELLFIRE = 2;
   const TARGET = 'Seedhellfire-Illidan';
 
-  // A row carrying the caller own Discord id but linked to somebody else.
-  // Since #1135 nothing in the schema can create this: the link paths all
-  // resolve through auth.identities, which is unique on (provider_id,
-  // provider). It survives as the shape a hand-written row, or a row linked
-  // before #1135 on metadata that has since changed, would leave behind.
-  it('refuses rather than relinking, and leaves the row with its owner', async () => {
+  // Until step 3, claim_character refused a row carrying the caller's own
+  // Discord id but linked to somebody else (#1117). That row can no longer be
+  // written: whatever auth_user_id a write names, the row gets the account of
+  // the person its Discord id belongs to.
+  it('a row written with another account gets the Discord id owner instead, and the owner can claim', async () => {
     await withTxn(async ({ q, asUser }) => {
       await insertDiscordUser(q, CALLER, SHARED_DISCORD);
       const memberId = (
@@ -251,15 +250,29 @@ describe('claim_character refuses a team_members row linked to another account (
           [HELLFIRE, SHARED_DISCORD, OTHER]
         )
       ).rows[0].id;
+      expect(
+        (await q('select auth_user_id from public.team_members where id = $1', [memberId])).rows[0].auth_user_id
+      ).toBe(CALLER);
 
-      await expect(claim(asUser, CALLER, HELLFIRE, TARGET)).rejects.toThrow(/linked to (a different|another) account/i);
-
-      const row = (await q('select auth_user_id from public.team_members where id = $1', [memberId])).rows[0];
-      expect(row.auth_user_id).toBe(OTHER);
+      await claim(asUser, CALLER, HELLFIRE, TARGET);
       const player = (
         await q('select team_member_id from public.players where name_realm = $1 and team_id = $2', [TARGET, HELLFIRE])
       ).rows[0];
-      expect(player.team_member_id).toBeNull();
+      expect(player.team_member_id).toBe(memberId);
+    });
+  });
+
+  it('a team leader cannot point a membership on their team at another account', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      // team_members id 3 is the seeded team 1 raider (RAIDER_T1).
+      await asUser(
+        '00000000-0000-0000-0000-000000000002',
+        'update public.team_members set auth_user_id = $1 where id = 3',
+        [OTHER]
+      );
+      expect((await q('select auth_user_id from public.team_members where id = 3')).rows[0].auth_user_id).toBe(
+        RAIDER_T1
+      );
     });
   });
 });

@@ -2318,6 +2318,14 @@
             "team_id",
             "person_id"
           ]
+        },
+        {
+          "name": "team_members_person_id_idx",
+          "def": "CREATE INDEX team_members_person_id_idx ON public.team_members USING btree (person_id)",
+          "table": "public.team_members",
+          "columns": [
+            "person_id"
+          ]
         }
       ],
       "constraints": [
@@ -6583,6 +6591,10 @@
         {
           "name": "people_delete_when_empty",
           "def": "CREATE TRIGGER people_delete_when_empty AFTER UPDATE OF auth_user_id, discord_id ON public.people FOR EACH ROW WHEN (((new.auth_user_id IS NULL) AND (new.discord_id IS NULL))) EXECUTE FUNCTION delete_empty_person()"
+        },
+        {
+          "name": "people_copy_account_to_members",
+          "def": "CREATE TRIGGER people_copy_account_to_members AFTER UPDATE OF auth_user_id ON public.people FOR EACH ROW WHEN ((old.auth_user_id IS DISTINCT FROM new.auth_user_id)) EXECUTE FUNCTION copy_person_account_to_members()"
         }
       ]
     },
@@ -8703,6 +8715,18 @@
       "name": "public.admin_revoke",
       "return_type": "void",
       "arguments": "p_grant_type text, p_discord_id text, p_label text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.my_person_id",
+      "return_type": "int4",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.copy_person_account_to_members",
+      "return_type": "trigger",
+      "arguments": "",
       "type": "FUNCTION"
     }
   ],

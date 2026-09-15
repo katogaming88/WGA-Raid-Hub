@@ -25,10 +25,11 @@ declare
   missing text[];
 begin
   for prec in
-    select p.id, p.name_realm, p.bis_link, tm.discord_id,
+    select p.id, p.name_realm, p.bis_link, pe.discord_id,
       (select count(*) from item_preferences ip where ip.player_id = p.id) as wishlist_count
     from players p
     join team_members tm on tm.id = p.team_member_id
+    join people pe on pe.id = tm.person_id
     where p.team_id = p_team_id
       and p.archived_at is null
   loop
