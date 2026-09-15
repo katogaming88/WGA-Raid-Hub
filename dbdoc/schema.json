@@ -4027,7 +4027,7 @@
           "name": "gear_sync_last_officer_run",
           "type": "jsonb",
           "nullable": true,
-          "comment": "Outcome of the last officer-triggered blizzard-gear-sync run (Sync Gear Levels Now), same shape as gear_sync_last_cron_run."
+          "comment": "Outcome of the last officer-triggered whole-team blizzard-gear-sync run (Sync Gear Levels Now), same shape as gear_sync_last_cron_run. A single-raider sync is not recorded."
         }
       ],
       "indexes": [

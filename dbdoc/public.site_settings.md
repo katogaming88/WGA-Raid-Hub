@@ -12,7 +12,7 @@
 | boe_payout_floor | bigint | 20000 | false |  |  |  |
 | boe_payout_pivot | bigint | 100000 | false |  |  |  |
 | gear_sync_last_cron_run | jsonb |  | true |  |  | Outcome of the last scheduled blizzard-gear-sync sweep, written by the function: trigger, started_at, finished_at, synced, skipped, teams, players, error (first message or null). |
-| gear_sync_last_officer_run | jsonb |  | true |  |  | Outcome of the last officer-triggered blizzard-gear-sync run (Sync Gear Levels Now), same shape as gear_sync_last_cron_run. |
+| gear_sync_last_officer_run | jsonb |  | true |  |  | Outcome of the last officer-triggered whole-team blizzard-gear-sync run (Sync Gear Levels Now), same shape as gear_sync_last_cron_run. A single-raider sync is not recorded. |
 
 ## Constraints
 

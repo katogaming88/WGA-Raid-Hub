@@ -53,7 +53,15 @@
 // would be the wrong direction to err in for that comparison.
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import { VERSION } from './version.ts';
-import { buildOutcome, columnFor, newTally, noteError, type Tally, type Trigger } from './outcome.ts';
+import {
+  buildOutcome,
+  columnFor,
+  newTally,
+  noteEquipmentStatus,
+  noteError,
+  type Tally,
+  type Trigger
+} from './outcome.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -77,12 +85,11 @@ const TRACKS_HIGH_TO_LOW = ['Myth', 'Hero', 'Champion', 'Veteran', 'Adventurer',
 // are both 321). track_bonus_ids holds the mapping; see
 // 20260913013949_track_bonus_ids_and_equipped_bonus_list.sql for how badly
 // the item-level guess below scored when measured against the live roster.
+// A failed read stops the run before it writes: guessed tracks are worse than
+// no write, since the previous run's tracks are still right.
 async function loadBonusTrackMap(supabase: SupabaseClient<any>): Promise<Map<number, string>> {
   const { data, error } = await supabase.from('track_bonus_ids').select('bonus_id, track');
-  if (error) {
-    console.error('blizzard-gear-sync: failed to load track_bonus_ids', error.message);
-    return new Map();
-  }
+  if (error) throw new Error('Failed to load track_bonus_ids: ' + error.message);
   return new Map((data || []).map((r: any) => [r.bonus_id as number, r.track as string]));
 }
 
@@ -149,7 +156,9 @@ type EquippedRow = {
   bonus_list: number[];
 };
 
-async function fetchEquipment(firstName: string, realm: string, token: string): Promise<any[] | null> {
+type EquipmentAnswer = { status: number; items: any[] | null };
+
+async function fetchEquipment(firstName: string, realm: string, token: string): Promise<EquipmentAnswer> {
   const url =
     'https://us.api.blizzard.com/profile/wow/character/' +
     encodeURIComponent(realmSlug(realm)) +
@@ -157,9 +166,9 @@ async function fetchEquipment(firstName: string, realm: string, token: string): 
     encodeURIComponent(firstName.toLowerCase()) +
     '/equipment?namespace=profile-us&locale=en_US';
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (!res.ok) return null;
+  if (!res.ok) return { status: res.status, items: null };
   const data = await res.json();
-  return data?.equipped_items || null;
+  return { status: res.status, items: data?.equipped_items || null };
 }
 
 function buildRows(
@@ -206,11 +215,13 @@ async function syncRoster(
       continue;
     }
 
-    const equippedItems = await fetchEquipment(firstName, realm, token);
-    if (!equippedItems) {
+    const answer = await fetchEquipment(firstName, realm, token);
+    if (!answer.items) {
+      if (answer.status >= 400) noteEquipmentStatus(tally, answer.status, player.name_realm);
       tally.skipped++;
       continue;
     }
+    const equippedItems = answer.items;
 
     const rows = buildRows(player.id, equippedItems, thresholds, bonusTracks).map((r) => ({
       ...r,
@@ -353,8 +364,10 @@ Deno.serve(async (req) => {
       throw err;
     } finally {
       // The caller's client cannot write site_settings; the record goes
-      // through the service role, after the authorization check above.
-      await recordRun(serviceClient(), 'officer', startedAt, tally);
+      // through the service role, after the authorization check above. A
+      // single-raider sync is not recorded: the column is the last sync of a
+      // whole team, and a one-raider record would read as one.
+      if (!playerId) await recordRun(serviceClient(), 'officer', startedAt, tally);
     }
   } catch (err) {
     console.error('blizzard-gear-sync error:', err);

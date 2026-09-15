@@ -23,4 +23,4 @@ alter table public.site_settings
 comment on column public.site_settings.gear_sync_last_cron_run is
   'Outcome of the last scheduled blizzard-gear-sync sweep, written by the function: trigger, started_at, finished_at, synced, skipped, teams, players, error (first message or null).';
 comment on column public.site_settings.gear_sync_last_officer_run is
-  'Outcome of the last officer-triggered blizzard-gear-sync run (Sync Gear Levels Now), same shape as gear_sync_last_cron_run.';
+  'Outcome of the last officer-triggered whole-team blizzard-gear-sync run (Sync Gear Levels Now), same shape as gear_sync_last_cron_run. A single-raider sync is not recorded.';

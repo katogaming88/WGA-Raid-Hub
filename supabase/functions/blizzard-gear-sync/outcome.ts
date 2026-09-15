@@ -37,6 +37,14 @@ export function noteError(tally: Tally, err: unknown): void {
   tally.error = message.length > ERROR_MAX ? message.slice(0, ERROR_MAX) : message;
 }
 
+// A 404 is a character Blizzard does not know, a plain skip; any other
+// refusal (429, an expired token, an outage) is the run's error, so a morning
+// when every character was refused cannot record as healthy.
+export function noteEquipmentStatus(tally: Tally, status: number, nameRealm: string): void {
+  if (status === 404) return;
+  noteError(tally, `Blizzard ${status} for ${nameRealm}`);
+}
+
 export function buildOutcome(trigger: Trigger, startedAt: Date, finishedAt: Date, tally: Tally): RunOutcome {
   return {
     trigger,

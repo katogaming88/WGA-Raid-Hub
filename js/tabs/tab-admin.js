@@ -822,7 +822,7 @@ function runSyncBlizzardGearForTeam() {
 var GEAR_SYNC_STALE_MS = 36 * 60 * 60 * 1000;
 
 function gearSyncStatusText(cronRun, officerRun, nowMs) {
-  if (!cronRun) return { text: 'No scheduled sweep recorded yet.', warn: false };
+  if (!cronRun) return { text: 'No scheduled sweep recorded yet.', warn: true };
   var text =
     'Last sweep: ' +
     (timeAgoLabel(cronRun.finished_at) || 'unknown age') +
@@ -834,6 +834,9 @@ function gearSyncStatusText(cronRun, officerRun, nowMs) {
   var warn = false;
   if (cronRun.error) {
     text += ' Error: ' + cronRun.error;
+    warn = true;
+  } else if (!cronRun.synced && cronRun.players > 0) {
+    text += ' Nothing was synced.';
     warn = true;
   }
   var finished = Date.parse(cronRun.finished_at);
