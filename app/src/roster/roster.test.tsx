@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
-import { seededHandlers, type Read } from '../test/fakeSupabase';
+import { fakeSession, seededHandlers, type Read } from '../test/fakeSupabase';
+import { existsSync, readdirSync } from 'node:fs';
+import { SPEC_ICON_KEYS, specIcon } from './specIcons';
 import {
   equippedItemLevel,
+  officerStats,
   summarize,
   summaryLine,
   toIncoming,
@@ -229,5 +232,130 @@ describe('Roster page', () => {
     expect(alert).toHaveTextContent('Couldn’t load the roster.');
     expect(alert).toHaveTextContent('gear read failed');
     expect(within(alert).getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+  });
+});
+
+describe('specIcon', () => {
+  // Every spec in classes_specs on 2026-09-14.
+  const SPECS: [string, string[]][] = [
+    ['Death Knight', ['Blood', 'Frost', 'Unholy']],
+    ['Demon Hunter', ['Devourer', 'Havoc', 'Vengeance']],
+    ['Druid', ['Balance', 'Feral', 'Guardian', 'Restoration']],
+    ['Evoker', ['Augmentation', 'Devastation', 'Preservation']],
+    ['Hunter', ['Beast Mastery', 'Marksmanship', 'Survival']],
+    ['Mage', ['Arcane', 'Fire', 'Frost']],
+    ['Monk', ['Brewmaster', 'Mistweaver', 'Windwalker']],
+    ['Paladin', ['Holy', 'Protection', 'Retribution']],
+    ['Priest', ['Discipline', 'Holy', 'Shadow']],
+    ['Rogue', ['Assassination', 'Outlaw', 'Subtlety']],
+    ['Shaman', ['Elemental', 'Enhancement', 'Restoration']],
+    ['Warlock', ['Affliction', 'Demonology', 'Destruction']],
+    ['Warrior', ['Arms', 'Fury', 'Protection']]
+  ];
+
+  it('has an icon for every spec, with Frost told apart by class', () => {
+    const missing = SPECS.flatMap(([klass, specs]) =>
+      specs.filter((s) => !specIcon(klass, s)).map((s) => `${s} ${klass}`)
+    );
+    expect(missing).toEqual([]);
+    expect(specIcon('Mage', 'Frost')).not.toBe(specIcon('Death Knight', 'Frost'));
+  });
+
+  it('has a file for every icon it names, and no file it does not name', () => {
+    const files = readdirSync('public/spec-icons').map((f) => f.replace(/.jpg$/, ''));
+    expect(files.sort()).toEqual([...SPEC_ICON_KEYS].sort());
+    expect(existsSync(`public${specIcon('Demon Hunter', 'Devourer')}`)).toBe(true);
+  });
+
+  it('has none for an unknown or missing spec', () => {
+    expect(specIcon('Death Knight', 'Pyromancy')).toBeNull();
+    expect(specIcon(null, 'Frost')).toBeNull();
+  });
+});
+
+describe('officerStats', () => {
+  const season = { name: 'Midnight Season 2', code: 'MID2', start: '2026-08-01', end: '2026-12-31' };
+  const night = (player_id: number, raid_date: string, status: string) => ({
+    player_id,
+    raid_date,
+    status,
+    report_excluded: false
+  });
+  const award = (id: number, player_id: number, seasonCode: string) => ({
+    id,
+    player_id,
+    track: 'Hero',
+    season: seasonCode,
+    awarded_at: '2026-08-20T18:00:00Z',
+    items: { name: 'Item' }
+  });
+
+  it('works out attendance from the join date and counts this season’s awards, as the profile does', () => {
+    const stats = officerStats(
+      [
+        { id: 1, join_date: '2026-08-10' },
+        { id: 2, join_date: null }
+      ],
+      [
+        night(1, '2026-08-05', 'No Show'),
+        night(1, '2026-08-12', 'Present'),
+        night(1, '2026-08-14', 'Late (no notice)')
+      ],
+      [award(1, 1, 'MID2'), award(2, 1, 'MID1'), award(3, 1, 'MID2')],
+      season
+    );
+    // The No Show before the join date does not count: (1 + 0.5) / 2.
+    expect(stats.get(1)).toEqual({ attendancePct: 75, items: 2 });
+    expect(stats.get(2)).toEqual({ attendancePct: 100, items: 0 });
+  });
+});
+
+describe('Roster page, officer columns', () => {
+  const person = (role: string) => ({
+    site_admin: false,
+    guild_officer: false,
+    boe_manager: false,
+    teams: [{ team_id: 1, team_member_id: 1, role, characters: [] }]
+  });
+  const handlers = (role: string) => {
+    const base = rosterHandlers({
+      players: [player(1, 'Torbjorn-Illidan', 'Death Knight', 'Frost', 'Melee', { join_date: '2026-08-10' })],
+      team_settings: { name: 'Midnight Season 2', start: '2026-08-01', end: '2026-12-31', signupSeason: '' },
+      attendance: [
+        { player_id: 1, raid_date: '2026-08-12', status: 'Present', report_excluded: false },
+        { player_id: 1, raid_date: '2026-08-14', status: 'Late (no notice)', report_excluded: false }
+      ],
+      rclc_loot: [
+        { id: 1, player_id: 1, track: 'Hero', season: 'MID2', awarded_at: '2026-08-20T18:00:00Z', items: { name: 'X' } }
+      ]
+    });
+    return {
+      ...base,
+      session: fakeSession({ battlenet: 'X#1', discord: { id: 'd', name: 'X' } }),
+      rpc(name: string, args: Record<string, unknown>) {
+        if (name === 'current_discord_id') return { data: 'discord-x' };
+        if (name === 'resolve_person') return { data: person(role) };
+        return base.rpc!(name, args);
+      }
+    };
+  };
+
+  it('shows attendance and items awarded to an officer', async () => {
+    renderApp('/g/wga/t/phoenix/roster', handlers('officer'));
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    expect(await within(table).findByRole('columnheader', { name: 'Attendance' })).toBeInTheDocument();
+    const row = within(table)
+      .getByRole('rowheader', { name: /Torbjorn/ })
+      .closest('tr')!;
+    expect(row.querySelector('.roster-attendance')).toHaveTextContent('75.0%');
+    expect(row.querySelector('.roster-items')).toHaveTextContent('1');
+  });
+
+  it('shows neither to a raider, and does not read them', async () => {
+    const { client } = renderApp('/g/wga/t/phoenix/roster', handlers('raider'));
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    await within(table).findByRole('rowheader', { name: /Torbjorn/ });
+    expect(within(table).queryByRole('columnheader', { name: 'Attendance' })).not.toBeInTheDocument();
+    expect(client.reads.some((r) => r.table === 'attendance' || r.table === 'rclc_loot')).toBe(false);
   });
 });

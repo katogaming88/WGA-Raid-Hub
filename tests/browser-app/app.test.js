@@ -150,6 +150,21 @@ const STATES = [
     colorScheme: 'light'
   },
   {
+    label: 'roster, officer, with attendance and items',
+    path: '/g/wga/t/phoenix/roster',
+    sentinel: 'table.roster-table .roster-attendance',
+    session: OFFICER,
+    who: 'officer',
+    tables: {
+      ...ROSTER,
+      team_settings: [
+        { name: SEASON.name, start: SEASON.start, end: SEASON.end, signupSeason: SCENARIO.activeSignupSeason }
+      ],
+      attendance: [],
+      rclc_loot: []
+    }
+  },
+  {
     label: 'roster, next season tab',
     path: '/g/wga/t/phoenix/roster',
     sentinel: 'table.roster-table',

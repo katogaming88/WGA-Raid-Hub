@@ -5,20 +5,24 @@ import { useSession } from '../auth/session';
 import { DataState } from '../components/DataState';
 import { useTeam } from '../data/address';
 import { bothQueries } from '../data/query';
+import { useCurrentSeason } from '../profile/useProfile';
 import {
   ROLE_LABELS,
   ROLE_ORDER,
   classColor,
+  officerStats,
   summarize,
   summaryLine,
   toIncoming,
   toRoster,
+  type OfficerStats,
   type Raider,
   type Role,
   type RoleGroup,
   type RosterSummary
 } from './roster';
-import { useIncomingRoster, useRosterGear, useRosterPlayers, useSignupSeason } from './useRoster';
+import { specIcon } from './specIcons';
+import { useIncomingRoster, useRosterGear, useRosterOfficerData, useRosterPlayers, useSignupSeason } from './useRoster';
 import './roster.css';
 
 type Filter = Role | 'All';
@@ -59,7 +63,7 @@ export function RosterPage() {
         hidden={showing !== 'current'}
       >
         <DataState query={current} label="the roster">
-          {([players, gear]) => <CurrentRoster groups={toRoster(players, gear)} />}
+          {([players, gear]) => <CurrentRoster groups={toRoster(players, gear)} players={players} />}
         </DataState>
       </div>
 
@@ -154,9 +158,25 @@ function useProfileLinks(teamId: number): (raider: Raider) => string | null {
       : null;
 }
 
-function CurrentRoster({ groups }: { groups: RoleGroup[] }) {
+// Whether the signed-in person is one of this team's officers.
+function useIsOfficer(teamId: number): boolean {
+  const { user } = useSession();
+  const access = useAccess();
+  return !!user && access.isSuccess && can(access.data, 'viewOfficerTools', teamId);
+}
+
+function CurrentRoster({ groups, players }: { groups: RoleGroup[]; players: Parameters<typeof officerStats>[0] }) {
   const team = useTeam();
   const profileLink = useProfileLinks(team.id);
+  // Attendance and items awarded, for officers only (Kat, 2026-09-14): shown
+  // to everyone they would invite loot and attendance comparisons.
+  const officer = useIsOfficer(team.id);
+  const season = useCurrentSeason(team.id);
+  const officerData = useRosterOfficerData(team.id, season.isSuccess ? season.data : null, officer);
+  const stats =
+    officer && season.isSuccess && officerData.isSuccess
+      ? officerStats(players, officerData.data.attendance, officerData.data.loot, season.data)
+      : null;
   const [filter, setFilter] = useState<Filter>('All');
   const summary = summarize(groups);
   const shown = filter === 'All' ? groups : groups.filter((g) => g.role === filter);
@@ -186,9 +206,14 @@ function CurrentRoster({ groups }: { groups: RoleGroup[] }) {
           </button>
         ))}
       </div>
+      {officer && officerData.isError && (
+        <DataState query={officerData} label="attendance and items">
+          {() => null}
+        </DataState>
+      )}
       <div className="roster-layout">
         <div className="roster-main">
-          <RosterTable groups={shown} caption="Current roster" details profileLink={profileLink} />
+          <RosterTable groups={shown} caption="Current roster" details profileLink={profileLink} stats={stats} />
         </div>
         <RosterSummaryPanel summary={summary} />
       </div>
@@ -213,16 +238,21 @@ function RosterTable({
   groups,
   caption,
   details,
-  profileLink = () => null
+  profileLink = () => null,
+  stats = null
 }: {
   groups: RoleGroup[];
   caption: string;
   details: boolean;
   profileLink?: (raider: Raider) => string | null;
+  stats?: Map<number, OfficerStats> | null;
 }) {
-  const columns = details ? 4 : 1;
+  const columns = details ? (stats ? 6 : 4) : 1;
   return (
-    <div className="card roster-table-wrap">
+    // Focusable, so the table can be scrolled from the keyboard when it is wider
+    // than the screen (axe: scrollable-region-focusable).
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+    <div className="card roster-table-wrap" tabIndex={0} role="region" aria-label={caption}>
       <table className="roster-table">
         <caption className="visually-hidden">{caption}</caption>
         <thead>
@@ -234,6 +264,16 @@ function RosterTable({
                   Item level
                 </th>
                 <th scope="col">Tier</th>
+                {stats && (
+                  <>
+                    <th scope="col" className="col-num">
+                      Attendance
+                    </th>
+                    <th scope="col" className="col-num">
+                      <abbr title="Items awarded this season">Items</abbr>
+                    </th>
+                  </>
+                )}
                 <th scope="col">
                   <span className="visually-hidden">Status</span>
                 </th>
@@ -250,7 +290,13 @@ function RosterTable({
               </th>
             </tr>
             {group.raiders.map((raider) => (
-              <RosterRow key={raider.key} raider={raider} details={details} href={profileLink(raider)} />
+              <RosterRow
+                key={raider.key}
+                raider={raider}
+                details={details}
+                href={profileLink(raider)}
+                stats={stats ? (raider.playerId !== null ? (stats.get(raider.playerId) ?? null) : null) : undefined}
+              />
             ))}
           </tbody>
         ))}
@@ -259,10 +305,24 @@ function RosterTable({
   );
 }
 
-function RosterRow({ raider, details, href }: { raider: Raider; details: boolean; href: string | null }) {
+function RosterRow({
+  raider,
+  details,
+  href,
+  stats
+}: {
+  raider: Raider;
+  details: boolean;
+  href: string | null;
+  // Undefined when the columns are not shown; null for a row with no numbers.
+  stats?: OfficerStats | null | undefined;
+}) {
+  const icon = specIcon(raider.className, raider.spec);
   return (
     <tr>
       <th scope="row" className="raider-cell">
+        {/* Decorative: the spec is written out below the name. */}
+        {icon && <img className="spec-icon" src={icon} alt="" width={20} height={20} loading="lazy" />}
         {href ? (
           <Link to={href} relative="path" className="raider-name" style={{ color: classColor(raider.className) }}>
             {raider.name}
@@ -292,6 +352,12 @@ function RosterRow({ raider, details, href }: { raider: Raider; details: boolean
           <td>
             <TierPieces count={raider.tierPieces} />
           </td>
+          {stats !== undefined && (
+            <>
+              <td className="col-num num roster-attendance">{stats ? `${stats.attendancePct.toFixed(1)}%` : '–'}</td>
+              <td className="col-num num roster-items">{stats ? stats.items : '–'}</td>
+            </>
+          )}
           <td className="status-cell">
             {raider.statuses.map((s) => (
               <span key={s} className={`status-tag status-${s.toLowerCase()}`}>

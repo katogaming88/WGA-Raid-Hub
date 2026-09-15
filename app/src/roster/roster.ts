@@ -2,6 +2,8 @@
 // the component so the rules (who is listed, in what order, how item level is
 // worked out) are tested without rendering.
 
+import { attendance, seasonLoot, type AttendanceRow, type LootRow, type SeasonWindow } from '../profile/profile';
+
 export type Role = 'Tank' | 'Heal' | 'Melee' | 'Ranged';
 
 export const ROLE_ORDER: Role[] = ['Tank', 'Heal', 'Melee', 'Ranged'];
@@ -16,6 +18,7 @@ export type PlayerRow = {
   is_bench: boolean;
   is_rotator: boolean;
   tier_pieces_equipped: number | null;
+  join_date?: string | null;
   classes_specs: { class: string; spec: string; role: string | null } | null;
 };
 
@@ -213,4 +216,33 @@ export function summaryLine(summary: RosterSummary): string {
 
 export function classColor(className: string): string {
   return `var(--class-${className.toLowerCase().replace(/\s+/g, '-')}, var(--text))`;
+}
+
+// Officer-only numbers for each raider (Kat, 2026-09-14): this season's
+// attendance and items awarded, worked out the way the profile does so the
+// two always agree. Other raiders never see these, to keep loot and
+// attendance comparisons out of the public roster.
+export type OfficerStats = { attendancePct: number; items: number };
+
+export function officerStats(
+  players: Pick<PlayerRow, 'id' | 'join_date'>[],
+  attendanceRows: (AttendanceRow & { player_id: number | null })[],
+  lootRows: (LootRow & { player_id: number | null })[],
+  season: SeasonWindow
+): Map<number, OfficerStats> {
+  const nights = new Map<number, AttendanceRow[]>();
+  for (const row of attendanceRows)
+    if (row.player_id !== null) nights.set(row.player_id, [...(nights.get(row.player_id) ?? []), row]);
+  const loot = new Map<number, LootRow[]>();
+  for (const row of lootRows)
+    if (row.player_id !== null) loot.set(row.player_id, [...(loot.get(row.player_id) ?? []), row]);
+  return new Map(
+    players.map((p) => [
+      p.id,
+      {
+        attendancePct: attendance(nights.get(p.id) ?? [], season, p.join_date ?? null).pct,
+        items: seasonLoot(loot.get(p.id) ?? [], season).awards.length
+      }
+    ])
+  );
 }
