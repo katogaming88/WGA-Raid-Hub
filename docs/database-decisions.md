@@ -10,6 +10,23 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-15 -- The notification inbox belongs to the person; preferences stay on the account (#942 step 4)
+
+Shipped: `20260915170855_inbox_belongs_to_person.sql`.
+
+Step 4 of the #942 plan, reshaped before it was built. Kat's calls on 2026-09-15:
+
+- **The inbox belongs to the person.** A raider sees notifications on every character they hold, archived ones included. Before this, a main swap archived the old character (still linked to them since #941) and its notifications vanished from their bell. On production that was 21 notifications on archived characters, 12 held by someone who can still sign in.
+- **Old ones arrive read.** The migration marks the existing notifications on archived characters read (6 were unread), so nobody gets a bell badge for old messages about a character they swapped away from. Chosen over showing them unread, and over keeping today's current-character-only inbox.
+- **`account_preferences` stays keyed by the sign-in account**, not moved to the person as the plan said. The account id does not change when Battle.net and Discord are linked to it, and `account_preferences.auth_user_id` is not a column cutover drops, so moving it would change the sign-in code on both sites for no gain.
+
+Settled while building it:
+
+- **No `notifications.person_id` column.** A notification stays addressed to a character; the read and mark-read rules decide whose inbox it is by asking the person through `my_player_ids()`, the archived-inclusive counterpart of `my_active_player_ids()`.
+- **Only the inbox widens.** Every other raider-own-row rule (wishlists, BiS obtained, streamer, self-received, RSVPs, BoE reads, the bonus roll target) keeps `my_active_player_ids()`, so an archived character's own rows stay read-only.
+
+---
+
 ## 2026-09-15 -- Every team access check finds the caller through their person, and a membership's account is always its person's (#942 step 3)
 
 Shipped: `20260915161042_person_predicates.sql`.
@@ -78,7 +95,7 @@ Season lived in three places and none of them was a table: `CURRENT_SEASON` in `
 
 ## 2026-09-14 -- A person is a row, alts hang off it, and the build runs in six steps (#942)
 
-Shipped: `20260914221328_people_table.sql` (step 1), `20260915092357_guild_grants.sql` (step 2), `20260915161042_person_predicates.sql` (step 3), both in entries above. Steps 4 to 6: not yet, #942.
+Shipped: `20260914221328_people_table.sql` (step 1), `20260915092357_guild_grants.sql` (step 2), `20260915161042_person_predicates.sql` (step 3), `20260915170855_inbox_belongs_to_person.sql` (step 4, reshaped: inbox only), all in entries above. Steps 5 and 6: not yet, #942.
 
 The re-plan is on [#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942#issuecomment-5673595252). Kat's calls on 2026-09-14:
 

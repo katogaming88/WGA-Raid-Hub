@@ -12,6 +12,23 @@ answers to.
 
 ---
 
+## [3.126.0] - 2026-09-15
+
+### Backend
+
+- A raider's notifications belong to them, not to their current character
+  ([#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942), step 4).
+  After a main swap, notifications about the old character stay in the bell
+  instead of disappearing. The ones already sitting on old characters are
+  marked read, so nobody gets a badge for old news.
+
+### Project
+
+- The decision log records that saved preferences stay with the sign-in
+  account, since it is the same account whichever way someone signs in.
+
+---
+
 ## [3.125.0] - 2026-09-15
 
 ### Backend

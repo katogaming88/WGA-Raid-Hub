@@ -173,6 +173,7 @@
 | public.admin_revoke | void | p_grant_type text, p_discord_id text, p_label text | FUNCTION |
 | public.my_person_id | int4 |  | FUNCTION |
 | public.copy_person_account_to_members | trigger |  | FUNCTION |
+| public.my_player_ids | _int4 |  | FUNCTION |
 
 ## Enums
 
