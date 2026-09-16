@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |      1 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |      7 h 35 m |
-| **All revamp work**                | **16 h 20 m** |
+| Revamp 2: public pages             |      8 h 00 m |
+| **All revamp work**                | **16 h 45 m** |
 
 ## Log
 
@@ -60,6 +60,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | 8:08–9:00 PM                  | #868 player profile, part 4: Mark Received and M+ request              | Revamp 2                         |    50 m | ~45 m build, ~5 m Kat deciding                                                                           | Both forms in dialogs, recorded from the current site first. Kat kept both usable on phones and let raiders see their own rejected M+ request (a new read rule). Recording showed the current site saves raid item receipts with their catalog slot, which the new loot priority list had been ignoring (43 of 73 live receipts). Kat then made the note required for Other, on both sites and in the database                                |
 | 9:05–9:40 PM                  | #870 Roster page, part 2: spec icons, officer columns                  | Revamp 2                         |    35 m | ~28 m build, ~7 m Kat deciding                                                                           | Spec icons bundled (Kat), all 40 checked by eye; Devourer uses the Void icon. Kat kept attendance and items awarded officer-only to avoid loot drama, and dropped BiS obtained from the roster. Tightened cells so the officer columns fit without scrolling                                                                                                                                                                                  |
 | 9:57–10:22 PM, 11:28–11:35 PM | #942 people table: re-plan, then step 1                                | Revamp 2 (Identity prerequisite) |    30 m | ~25 m build, ~5 m Kat deciding and merging                                                               | Audit against production, six-step plan posted on #942. Kat chose alts listed on the person rather than as roster rows, kept the never-signed-in Immolation officer, and let officers see a two-team raider's other team name only. Step 1 (PR #1191) adds the table with nothing reading it yet. Rex checked the migration's guard against production before merge; from his review Kat ruled that Discord is never unlinked from an account |
+
+### 2026-09-16
+
+| Time (ET)    | Item                                                | Phase                                   | Elapsed | Build / Kat                                  | Notes                                                                                                                                                                                                                                                                                                                                              |
+| ------------ | --------------------------------------------------- | --------------------------------------- | ------: | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1:05-1:30 AM | #942 step 5c: the any-time main swap request (#631) | Revamp 2 (Identity prerequisite, #1162) |    25 m | ~20 m build, ~5 m Kat deciding               | Three decisions up front: officers review it on the Roster page (the Reviews page is still a placeholder), the ask names a character already listed as an alt, and approving keeps today's archive-and-revive behaviour. Kat wants the "Main tick" rework from #631 instead, but as a change made just before cutover so the current site keeps working |
 
 ### 2026-09-15
 

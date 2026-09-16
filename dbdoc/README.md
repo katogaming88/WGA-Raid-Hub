@@ -65,6 +65,7 @@
 | [public.guild_officers](public.guild_officers.md) | 5 | Read-only view of guild_grants (#942), dropped at cutover (#1105). | VIEW |
 | [public.boe_managers](public.boe_managers.md) | 5 | Read-only view of guild_grants (#942), dropped at cutover (#1105). | VIEW |
 | [public.characters](public.characters.md) | 13 | Characters a person chose to show from their Battle.net account (#942 step 5, #1162). Written only by save_battlenet_characters() from the battlenet-characters Edge Function. A character here is an alt unless the same name_realm_key is a roster row linked to the person. | BASE TABLE |
+| [public.main_swap_requests](public.main_swap_requests.md) | 14 | A raider's request to make one of their alts their roster character, outside a signup window (#631, #942 step 5c). Written only by request_main_swap(), cancel_main_swap_request() and review_main_swap_request(). name_realm and class_spec_id are what they asked for, kept here so the request still reads right after the character row changes. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -179,6 +180,9 @@
 | public.link_battlenet_roster_characters | record | p_person_id integer, p_characters jsonb | FUNCTION |
 | public.save_battlenet_characters | characters | p_person_id integer, p_characters jsonb | FUNCTION |
 | public.earlier_characters | record | p_team_id integer | FUNCTION |
+| public.request_main_swap | int4 | p_team_id integer, p_character_id integer, p_class_spec_id integer, p_note text DEFAULT NULL::text | FUNCTION |
+| public.cancel_main_swap_request | void | p_request_id integer | FUNCTION |
+| public.review_main_swap_request | int4 | p_request_id integer, p_approve boolean, p_note text DEFAULT NULL::text | FUNCTION |
 
 ## Enums
 
@@ -294,6 +298,13 @@ erDiagram
 "public.guild_grants" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id)"
 "public.guild_grants" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.characters" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
+"public.main_swap_requests" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
+"public.main_swap_requests" }o--o| "public.players" : "FOREIGN KEY (approved_player_id) REFERENCES players(id)"
+"public.main_swap_requests" }o--|| "public.players" : "FOREIGN KEY (from_player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.main_swap_requests" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.main_swap_requests" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
+"public.main_swap_requests" }o--o| "public.people" : "FOREIGN KEY (reviewed_by) REFERENCES people(id)"
+"public.main_swap_requests" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
 
 "public.attendance" {
   integer id
@@ -919,6 +930,22 @@ erDiagram
   integer level
   integer item_level
   timestamp_with_time_zone saved_at
+}
+"public.main_swap_requests" {
+  integer id
+  integer team_id FK
+  integer person_id FK
+  integer from_player_id FK
+  integer character_id FK
+  text name_realm
+  integer class_spec_id FK
+  text note
+  text status
+  timestamp_with_time_zone requested_at
+  timestamp_with_time_zone reviewed_at
+  integer reviewed_by FK
+  text officer_note
+  integer approved_player_id FK
 }
 ```
 

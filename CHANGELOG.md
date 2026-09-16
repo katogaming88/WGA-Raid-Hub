@@ -12,6 +12,44 @@ answers to.
 
 ---
 
+## [3.130.0] - 2026-09-16
+
+### Backend
+
+- A raider can now ask for a **main swap at any time**, not only during a
+  signup window ([#631](https://github.com/katogaming88/WGA-Raid-Hub/issues/631),
+  [#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942) step 5).
+  - New `main_swap_requests` table, with `request_main_swap()`,
+    `cancel_main_swap_request()` and `review_main_swap_request()` as the only
+    write paths. The raider reads their own request; the team's officers (and
+    site admins and guild officers) read the team's.
+  - The ask has to name one of their own characters from Battle.net, and a
+    spec of that character's class. Only one request per raider per team can
+    be waiting at a time.
+  - Approving does what a main swap at signup already does: the new character
+    joins the roster or comes back to it, the old one leaves it but keeps its
+    loot and raid history, and the join date and attendance move across. The
+    old character's standing Priority List rows for the live season are
+    cleared, and the same two Audit Log lines are written.
+  - The raider is told in their inbox either way, with the officer's note.
+  - The current site is unchanged; this is for the new app.
+
+### Project
+
+- The new app's **main swap request**
+  ([#631](https://github.com/katogaming88/WGA-Raid-Hub/issues/631)).
+  - Each alt on the profile's Characters card has **Ask to raid on this one**,
+    which asks for the spec you would raid and an optional note. It works on a
+    phone, like the profile's other forms.
+  - While a request is waiting, that alt says "Waiting for an officer" and
+    offers **Cancel request**; the other alts can't be asked for.
+  - **Officers** see the waiting swaps in a panel at the top of the Roster
+    page, with who moves where, how long it has waited, the raider's note, and
+    Approve / Decline with a note back. It moves to the Reviews page when that
+    page is built.
+
+---
+
 ## [3.129.1] - 2026-09-16
 
 ### Frontend

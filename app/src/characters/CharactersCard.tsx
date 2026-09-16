@@ -1,10 +1,15 @@
+import { useState } from 'react';
 import { DataState } from '../components/DataState';
+import { useTeam } from '../data/address';
 import { useTouchScreen } from '../lib/device';
 import { classColor } from '../roster/roster';
 import type { ProfilePlayer } from '../profile/useProfile';
 import { useOpenAltsPicker } from './AltsPicker';
 import { CharacterIcon } from './CharacterIcon';
-import { altsOf } from './characters';
+import { MainSwapDialog } from './MainSwapDialog';
+import { altsOf, type SavedCharacter } from './characters';
+import { altAsk, type SwapRequest } from './mainSwap';
+import { useCancelMainSwap, useMyMainSwap } from './useMainSwaps';
 import { usePersonCharacters, usePersonOfPlayer } from './useCharacters';
 import './characters.css';
 
@@ -56,9 +61,7 @@ export function CharactersCard({
         </li>
       </ul>
       <DataState query={person} label="alts">
-        {(personId) =>
-          personId === null ? null : <Alts personId={personId} rosterNameRealm={player.name_realm} own={own} />
-        }
+        {(personId) => (personId === null ? null : <Alts personId={personId} player={player} own={own} />)}
       </DataState>
       {own && touch && <p className="text-muted card-note">Choosing alts works on a computer.</p>}
       <p className="characters-privacy">
@@ -74,13 +77,17 @@ export function CharactersCard({
   );
 }
 
-function Alts({ personId, rosterNameRealm, own }: { personId: number; rosterNameRealm: string; own: boolean }) {
+function Alts({ personId, player, own }: { personId: number; player: ProfilePlayer; own: boolean }) {
   const saved = usePersonCharacters(personId);
+  const team = useTeam();
   const touch = useTouchScreen();
+  // The raider's own waiting request, so the alt it names says so and the
+  // others say why they cannot be asked for (#631).
+  const pending = useMyMainSwap(team.id, own ? personId : null);
   return (
     <DataState query={saved} label="alts">
       {(rows) => {
-        const alts = altsOf(rows, [rosterNameRealm]);
+        const alts = altsOf(rows, [player.name_realm]);
         if (!alts.length) {
           return (
             <p className="text-muted card-note characters-empty">
@@ -91,27 +98,84 @@ function Alts({ personId, rosterNameRealm, own }: { personId: number; rosterName
         return (
           <ul className="characters-list" aria-label="Alts">
             {alts.map((alt) => (
-              <li key={alt.id} className="character-row">
-                <CharacterIcon className={alt.class_name} spec={alt.spec_name} />
-                <span className="character-text">
-                  <span
-                    className="character-name"
-                    style={{ color: alt.class_name ? classColor(alt.class_name) : undefined }}
-                  >
-                    {alt.name}
-                  </span>
-                  <span className="character-sub">
-                    {alt.realm}
-                    {alt.spec_name && ` · ${alt.spec_name}`}
-                  </span>
-                </span>
-                <span className="status-tag character-tag">Alt</span>
-                <span className="num character-level">{alt.item_level ?? '–'}</span>
-              </li>
+              <AltRow
+                key={alt.id}
+                alt={alt}
+                player={player}
+                own={own}
+                pending={pending.isSuccess ? pending.data : null}
+              />
             ))}
           </ul>
         );
       }}
     </DataState>
+  );
+}
+
+function AltRow({
+  alt,
+  player,
+  own,
+  pending
+}: {
+  alt: SavedCharacter;
+  player: ProfilePlayer;
+  own: boolean;
+  pending: SwapRequest | null;
+}) {
+  const [asking, setAsking] = useState(false);
+  const ask = own ? altAsk(pending, `${alt.name}-${alt.realm}`) : null;
+  return (
+    <li className={own ? 'character-row character-row-own' : 'character-row'}>
+      <CharacterIcon className={alt.class_name} spec={alt.spec_name} />
+      <span className="character-text">
+        <span className="character-name" style={{ color: alt.class_name ? classColor(alt.class_name) : undefined }}>
+          {alt.name}
+        </span>
+        <span className="character-sub">
+          {alt.realm}
+          {alt.spec_name && ` · ${alt.spec_name}`}
+        </span>
+      </span>
+      <span
+        className={
+          ask?.kind === 'waiting' ? 'status-tag character-tag character-tag-waiting' : 'status-tag character-tag'
+        }
+      >
+        {ask?.kind === 'waiting' ? 'Waiting for an officer' : 'Alt'}
+      </span>
+      <span className="num character-level">{alt.item_level ?? '–'}</span>
+      {ask?.kind === 'ask' && (
+        <button type="button" className="button button-small character-ask" onClick={() => setAsking(true)}>
+          Ask to raid on this one
+        </button>
+      )}
+      {ask?.kind === 'waiting' && <CancelAsk request={pending!} />}
+      {asking && <MainSwapDialog alt={alt} fromNameRealm={player.name_realm} onClose={() => setAsking(false)} />}
+    </li>
+  );
+}
+
+// Take back a request an officer has not reached yet.
+function CancelAsk({ request }: { request: SwapRequest }) {
+  const team = useTeam();
+  const cancel = useCancelMainSwap(team.id);
+  return (
+    <span className="character-ask characters-cancel">
+      <button
+        type="button"
+        className="button button-small"
+        onClick={() => cancel.mutate({ requestId: request.id })}
+        disabled={cancel.isPending}
+      >
+        {cancel.isPending ? 'Cancelling…' : 'Cancel request'}
+      </button>
+      {cancel.isError && (
+        <span className="form-error" role="alert">
+          {cancel.error.message}
+        </span>
+      )}
+    </span>
   );
 }

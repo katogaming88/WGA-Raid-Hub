@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('classes_specs_id_seq'::regclass) | false | [public.players](public.players.md) [public.season_signups](public.season_signups.md) |  |  |
+| id | integer | nextval('classes_specs_id_seq'::regclass) | false | [public.players](public.players.md) [public.season_signups](public.season_signups.md) [public.main_swap_requests](public.main_swap_requests.md) |  |  |
 | class | text |  | false |  |  |  |
 | spec | text |  | false |  |  |  |
 | role | text |  | true |  |  |  |
@@ -34,6 +34,7 @@ erDiagram
 "public.players" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
 "public.season_signups" }o--o| "public.classes_specs" : "FOREIGN KEY (swap_class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
 "public.season_signups" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
+"public.main_swap_requests" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
 
 "public.classes_specs" {
   integer id
@@ -87,6 +88,22 @@ erDiagram
   timestamp_with_time_zone updated_at
   text swap_from_name_realm
   uuid auth_user_id FK
+}
+"public.main_swap_requests" {
+  integer id
+  integer team_id FK
+  integer person_id FK
+  integer from_player_id FK
+  integer character_id FK
+  text name_realm
+  integer class_spec_id FK
+  text note
+  text status
+  timestamp_with_time_zone requested_at
+  timestamp_with_time_zone reviewed_at
+  integer reviewed_by FK
+  text officer_note
+  integer approved_player_id FK
 }
 ```
 

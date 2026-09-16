@@ -25,6 +25,7 @@ import { specIcon } from './specIcons';
 import { CharacterIcon } from '../characters/CharacterIcon';
 import { altCountLabel, altsOf, earlierOwners, type SavedCharacter } from '../characters/characters';
 import { useEarlierLoot, useTeamAlts } from '../characters/useCharacters';
+import { MainSwapReviews } from '../characters/MainSwapReviews';
 import { useIncomingRoster, useRosterGear, useRosterOfficerData, useRosterPlayers, useSignupSeason } from './useRoster';
 import './roster.css';
 
@@ -234,6 +235,8 @@ function CurrentRoster({ groups, players }: { groups: RoleGroup[]; players: Rost
   // the table rather than with the filter (Kat, 2026-09-14).
   return (
     <div className="roster-current">
+      {/* Main swaps waiting for an officer (#631), above the team they change. */}
+      <MainSwapReviews teamId={team.id} officer={officer} />
       <div className="role-filter" role="group" aria-label="Show role">
         {(['All', ...ROLE_ORDER] as Filter[]).map((f) => (
           <button

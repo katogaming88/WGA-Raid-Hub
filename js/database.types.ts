@@ -757,6 +757,135 @@ export type Database = {
         }
         Relationships: []
       }
+      main_swap_requests: {
+        Row: {
+          approved_player_id: number | null
+          character_id: number | null
+          class_spec_id: number | null
+          from_player_id: number
+          id: number
+          name_realm: string
+          note: string | null
+          officer_note: string | null
+          person_id: number
+          requested_at: string
+          reviewed_at: string | null
+          reviewed_by: number | null
+          status: string
+          team_id: number
+        }
+        Insert: {
+          approved_player_id?: number | null
+          character_id?: number | null
+          class_spec_id?: number | null
+          from_player_id: number
+          id?: never
+          name_realm: string
+          note?: string | null
+          officer_note?: string | null
+          person_id: number
+          requested_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: number | null
+          status?: string
+          team_id: number
+        }
+        Update: {
+          approved_player_id?: number | null
+          character_id?: number | null
+          class_spec_id?: number | null
+          from_player_id?: number
+          id?: never
+          name_realm?: string
+          note?: string | null
+          officer_note?: string | null
+          person_id?: number
+          requested_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: number | null
+          status?: string
+          team_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "main_swap_requests_approved_player_id_fkey"
+            columns: ["approved_player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "main_swap_requests_approved_player_id_fkey"
+            columns: ["approved_player_id"]
+            isOneToOne: false
+            referencedRelation: "priority_order_gaps"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "main_swap_requests_approved_player_id_fkey"
+            columns: ["approved_player_id"]
+            isOneToOne: false
+            referencedRelation: "rnlsi"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "main_swap_requests_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "main_swap_requests_class_spec_id_fkey"
+            columns: ["class_spec_id"]
+            isOneToOne: false
+            referencedRelation: "classes_specs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "main_swap_requests_from_player_id_fkey"
+            columns: ["from_player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "main_swap_requests_from_player_id_fkey"
+            columns: ["from_player_id"]
+            isOneToOne: false
+            referencedRelation: "priority_order_gaps"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "main_swap_requests_from_player_id_fkey"
+            columns: ["from_player_id"]
+            isOneToOne: false
+            referencedRelation: "rnlsi"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "main_swap_requests_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "main_swap_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "main_swap_requests_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mplus_exclusion_requests: {
         Row: {
           id: number
@@ -2904,6 +3033,10 @@ export type Database = {
         Returns: Json
       }
       can_settle_boe: { Args: { p_team_id: number }; Returns: boolean }
+      cancel_main_swap_request: {
+        Args: { p_request_id: number }
+        Returns: undefined
+      }
       check_priority_order_drift: {
         Args: { p_season: string; p_team_id: number }
         Returns: {
@@ -3039,6 +3172,15 @@ export type Database = {
         Args: { p_player_id: number; p_season: string; p_team_id: number }
         Returns: number
       }
+      request_main_swap: {
+        Args: {
+          p_character_id: number
+          p_class_spec_id: number
+          p_note?: string
+          p_team_id: number
+        }
+        Returns: number
+      }
       resolve_actor_name: {
         Args: { p_actor_id: string; p_team_id: number }
         Returns: string
@@ -3064,6 +3206,10 @@ export type Database = {
         Returns: string
       }
       resolve_person: { Args: { p_discord_id: string }; Returns: Json }
+      review_main_swap_request: {
+        Args: { p_approve: boolean; p_note?: string; p_request_id: number }
+        Returns: number
+      }
       save_battlenet_characters: {
         Args: { p_characters: Json; p_person_id: number }
         Returns: {

@@ -8,7 +8,7 @@ One row per human (#942). auth_user_id is their sign-in account, null for a Disc
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer |  | false | [public.team_members](public.team_members.md) [public.guild_grants](public.guild_grants.md) [public.characters](public.characters.md) |  |  |
+| id | integer |  | false | [public.team_members](public.team_members.md) [public.guild_grants](public.guild_grants.md) [public.characters](public.characters.md) [public.main_swap_requests](public.main_swap_requests.md) |  |  |
 | auth_user_id | uuid |  | true |  |  |  |
 | discord_id | text |  | true |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
@@ -45,6 +45,8 @@ erDiagram
 "public.team_members" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.guild_grants" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.characters" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
+"public.main_swap_requests" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
+"public.main_swap_requests" }o--o| "public.people" : "FOREIGN KEY (reviewed_by) REFERENCES people(id)"
 
 "public.people" {
   integer id
@@ -83,6 +85,22 @@ erDiagram
   integer level
   integer item_level
   timestamp_with_time_zone saved_at
+}
+"public.main_swap_requests" {
+  integer id
+  integer team_id FK
+  integer person_id FK
+  integer from_player_id FK
+  integer character_id FK
+  text name_realm
+  integer class_spec_id FK
+  text note
+  text status
+  timestamp_with_time_zone requested_at
+  timestamp_with_time_zone reviewed_at
+  integer reviewed_by FK
+  text officer_note
+  integer approved_player_id FK
 }
 ```
 

@@ -8,7 +8,7 @@ Characters a person chose to show from their Battle.net account (#942 step 5, #1
 
 | Name | Type | Default | Nullable | Extra Definition | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | ---------------- | -------- | ------- | ------- |
-| id | integer |  | false |  |  |  |  |
+| id | integer |  | false |  | [public.main_swap_requests](public.main_swap_requests.md) |  |  |
 | person_id | integer |  | false |  |  | [public.people](public.people.md) |  |
 | blizzard_id | bigint |  | false |  |  |  |  |
 | name | text |  | false |  |  |  |  |
@@ -43,6 +43,7 @@ Characters a person chose to show from their Battle.net account (#942 step 5, #1
 ```mermaid
 erDiagram
 
+"public.main_swap_requests" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
 "public.characters" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
 
 "public.characters" {
@@ -59,6 +60,22 @@ erDiagram
   integer level
   integer item_level
   timestamp_with_time_zone saved_at
+}
+"public.main_swap_requests" {
+  integer id
+  integer team_id FK
+  integer person_id FK
+  integer from_player_id FK
+  integer character_id FK
+  text name_realm
+  integer class_spec_id FK
+  text note
+  text status
+  timestamp_with_time_zone requested_at
+  timestamp_with_time_zone reviewed_at
+  integer reviewed_by FK
+  text officer_note
+  integer approved_player_id FK
 }
 "public.people" {
   integer id
