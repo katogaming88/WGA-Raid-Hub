@@ -20,6 +20,7 @@ import { AltsPickerProvider } from '../characters/AltsPicker';
 import { can, useAccess } from '../auth/access';
 import { navGroups } from './nav';
 import { TeamSwitcher } from './TeamSwitcher';
+import { StreamWidget } from '../streams/StreamWidget';
 import type { RouteHandle } from '../routes';
 import './layout.css';
 
@@ -122,6 +123,7 @@ export function AppShell() {
         <AltsPickerProvider>
           <ConnectPrompt />
           <Outlet />
+          {currentTeam && <StreamWidget teamId={currentTeam.id} teamIds={teams.map((t) => t.id)} />}
         </AltsPickerProvider>
       </AddressProvider>
     );

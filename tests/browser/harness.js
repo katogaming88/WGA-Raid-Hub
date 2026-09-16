@@ -232,7 +232,7 @@ export function storedDiscordSession(who) {
  *
  * @param {import('playwright').Browser} browser
  * @param {number} port
- * @param {{ label: string, path: string, sentinel: string, click?: string }} state
+ * @param {{ label: string, path: string, sentinel: string, click?: string, session?: object, clock?: string }} state
  * @param {Record<string, unknown>} [overrides] see installRoutes()
  */
 export async function openState(browser, port, state, overrides = {}) {
@@ -246,6 +246,8 @@ export async function openState(browser, port, state, overrides = {}) {
       ['sb-127-auth-token', JSON.stringify(state.session)]
     );
   }
+  // A page that reads "today", like the calendar, sees this date instead.
+  if (state.clock) await context.clock.setFixedTime(new Date(state.clock));
   const page = await context.newPage();
   const recorded = installRoutes(page, port, overrides);
   await page.goto('http://127.0.0.1:' + port + state.path, { waitUntil: 'load' });

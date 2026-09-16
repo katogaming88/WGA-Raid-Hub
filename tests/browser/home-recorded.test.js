@@ -9,11 +9,21 @@ import {
   EXPECTED_FEED,
   EXPECTED_SEARCH,
   SEARCH,
-  NO_MATCH
+  NO_MATCH,
+  PROGRESSION,
+  EXPECTED_PROGRESSION,
+  CALENDAR,
+  EXPECTED_CALENDAR,
+  TODAY,
+  STREAMS,
+  EXPECTED_STREAMS,
+  LIVE_TEXT,
+  NOBODY_LIVE
 } from '../behavior/home.js';
 
-// The landing view as the current site shows it -- the stats row and the
-// recent loot feed -- recorded so the new app's Home page can be checked
+// The landing view as the current site shows it -- the stats row, the recent
+// loot feed, raid progression, the calendar widget and the live stream
+// widget -- recorded so the new app's Home page can be checked
 // against the same expectations (tests/behavior/home.js, #1102 step 1).
 
 const overrides = (loot = SCENARIO.loot) => ({
@@ -109,5 +119,155 @@ describe('Home (current site): stats row and recent loot', () => {
   it('goes back to the preview when the search is cleared', async () => {
     await search(opened.page, '');
     expect(await readFeed(opened.page)).toEqual(EXPECTED_FEED);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Raid progression, the calendar widget and the live stream widget.
+
+const blockOverrides = (streamers = STREAMS) => ({
+  ...overrides(),
+  team_settings: fixture('team_settings', []).map((r) => ({
+    ...r,
+    config: { ...r.config, seasonName: SEASON.name, raidProgression: PROGRESSION.raids }
+  })),
+  team_raid_progress: PROGRESSION.rows,
+  raid_schedule: CALENDAR.schedule,
+  raid_schedule_exceptions: CALENDAR.exceptions,
+  raid_rsvps: [],
+  streamers
+});
+
+const BLOCKS = {
+  label: 'index-landing-blocks',
+  path: '/index.html?team=phoenix',
+  sentinel: '#landingCalendar a.mini-cal-day-raid',
+  clock: TODAY
+};
+
+// "34 pulls -- best 12.4%" -> { pulls: 34, best: 12.4 }
+const PULLS = /^(\d+) pulls?(?: -- best ([\d.]+)%)?$/;
+
+function readProgression(page) {
+  return page.locator('#landingProgression .prog-card').evaluateAll((cards, pullsSource) => {
+    const pullsRe = new RegExp(pullsSource);
+    const pullsOf = (el) => {
+      if (!el) return { pulls: null, best: null, link: null };
+      const m = pullsRe.exec(el.textContent.trim());
+      return {
+        pulls: m ? Number(m[1]) : null,
+        best: m && m[2] !== undefined ? Number(m[2]) : null,
+        link: el.getAttribute('href')
+      };
+    };
+    const text = (root, sel) => root.querySelector(sel)?.textContent.trim() ?? null;
+    return cards.map((card) => {
+      const score = { heroic: null, mythic: null, total: 0 };
+      card.querySelectorAll('.prog-score').forEach((el) => {
+        const [, killed, total, diff] = /^(\d+)\/(\d+) ([HM])$/.exec(el.textContent.trim());
+        score[diff === 'H' ? 'heroic' : 'mythic'] = Number(killed);
+        score.total = Number(total);
+      });
+      const bar = card.querySelector('.prog-bar');
+      return {
+        name: text(card, '.prog-raid-name'),
+        score,
+        bar: bar
+          ? {
+              pct: parseInt(bar.style.width, 10),
+              difficulty: bar.classList.contains('prog-bar-heroic') ? 'heroic' : 'mythic'
+            }
+          : null,
+        bosses: [...card.querySelectorAll('.prog-boss-item')].map((item) => {
+          const date = text(item, '.prog-boss-date');
+          const mythicPulls = pullsOf(item.querySelector('.prog-boss-pulls'));
+          const heroicRow = item.querySelector('.prog-boss-heroic');
+          return {
+            number: Number(text(item, '.prog-boss-num')),
+            name: text(item, '.prog-boss-name'),
+            mythic: date || mythicPulls.pulls !== null ? { date, ...mythicPulls } : null,
+            heroic: heroicRow
+              ? {
+                  date: text(heroicRow, '.prog-boss-heroic-date'),
+                  ...pullsOf(heroicRow.querySelector('.prog-boss-heroic-pulls'))
+                }
+              : null
+          };
+        }),
+        aotc: text(card, '.prog-aotc-date')
+      };
+    });
+  }, PULLS.source);
+}
+
+function readCalendar(page) {
+  return page.locator('#landingCalendar').evaluate((root) => ({
+    month: root.querySelector('.mini-cal-header span').textContent.trim(),
+    today: Number(root.querySelector('.mini-cal-day-today .mini-cal-daynum').textContent),
+    days: [...root.querySelectorAll('a.mini-cal-day-raid')].map((a) => ({
+      date: new URL(a.href).searchParams.get('date'),
+      status: a.querySelector('.calendar-status').getAttribute('aria-label'),
+      count: a.querySelector('.mini-cal-daycount')?.textContent.trim() ?? null
+    })),
+    legend: [...root.querySelectorAll('.calendar-legend-item')].map((el) => el.textContent.trim())
+  }));
+}
+
+function readStreams(page) {
+  return page.locator('#streamWidgetPanel').evaluate((panel) => ({
+    live: [...panel.querySelectorAll('.stream-card')].map((card) => ({
+      name: card.querySelector('.stream-name').textContent.trim(),
+      channel: card.querySelector('.stream-twitch-link').textContent.trim().replace('twitch.tv/', ''),
+      note: card.querySelector('.stream-note')?.textContent.trim() ?? ''
+    })),
+    empty: panel.querySelector('.stream-widget-empty')?.textContent.trim() ?? null
+  }));
+}
+
+describe('Home (current site): raid progression, calendar and streams', () => {
+  let opened;
+
+  beforeAll(async () => {
+    opened = await openState(browser, server.port, BLOCKS, blockOverrides());
+    await opened.page.waitForSelector('#landingProgression .prog-card');
+    await opened.page.waitForSelector('#streamWidgetPanel .stream-card');
+  });
+
+  afterAll(async () => {
+    if (opened) await opened.context.close();
+  });
+
+  it('shows each raid’s progress, matching bosses by encounter id or name', async () => {
+    expect(await readProgression(opened.page)).toEqual(EXPECTED_PROGRESSION);
+    expect(opened.pageErrors).toEqual([]);
+    expect(opened.unexpected).toEqual([]);
+  });
+
+  it('shows this month’s raid nights, each linking to its day', async () => {
+    expect(await readCalendar(opened.page)).toEqual(EXPECTED_CALENDAR);
+  });
+
+  it('lists whoever is live in the stream widget, and names them', async () => {
+    expect(await readStreams(opened.page)).toEqual(EXPECTED_STREAMS);
+    await expect(opened.page.locator('#streamLiveTopbar').textContent()).resolves.toBe(LIVE_TEXT);
+  });
+});
+
+describe('Home (current site): nobody live', () => {
+  it('says so in the stream widget', async () => {
+    const offline = STREAMS.map((s) => ({ ...s, is_live: false }));
+    const opened = await openState(
+      browser,
+      server.port,
+      { ...BLOCKS, label: 'index-landing-offline', sentinel: '#streamWidgetPanel .stream-widget-empty' },
+      blockOverrides(offline)
+    );
+    try {
+      expect(await readStreams(opened.page)).toEqual(NOBODY_LIVE);
+      await expect(opened.page.locator('#streamWidgetPill').textContent()).resolves.toBe('Streams');
+      await expect(opened.page.locator('#streamLiveTopbar').isVisible()).resolves.toBe(false);
+    } finally {
+      await opened.context.close();
+    }
   });
 });

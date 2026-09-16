@@ -1,5 +1,6 @@
-/* Team Home (#1102): the stats row and the recent loot feed, in the 2026-09-13
-   look -- panels on the page surface, hairline borders, dense rows. */
+/* Team Home (#1102): the stats row, raid progression, the calendar and the
+   recent loot feed, in the 2026-09-13 look -- panels on the page surface,
+   hairline borders, dense rows. */
 
 .home-stats {
   display: grid;
@@ -116,6 +117,271 @@
 
 .loot-date {
   color: var(--text-muted);
+}
+
+/* Progression beside the calendar; stacked on a narrow screen. */
+.home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.home-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+/* Raid progression */
+
+.raid-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.raid + .raid {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.raid-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.raid-name {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.raid-scores {
+  display: inline-flex;
+  gap: var(--space-3);
+}
+
+.raid-bar {
+  height: 6px;
+  margin-top: var(--space-2);
+  border-radius: 999px;
+  background: var(--raised);
+  overflow: hidden;
+}
+
+.raid-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+}
+
+.raid-bar-heroic {
+  background: var(--heroic);
+}
+
+.raid-bar-mythic {
+  background: var(--mythic);
+}
+
+.raid-aotc {
+  margin: var(--space-2) 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.raid-aotc time {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.boss-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.boss {
+  display: flex;
+  gap: var(--space-2);
+  padding: 6px 0;
+}
+
+.boss-number {
+  width: 20px;
+  flex-shrink: 0;
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+  line-height: 20px;
+  text-align: right;
+}
+
+.boss-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.boss-name {
+  line-height: 20px;
+  font-weight: 500;
+}
+
+.boss:not(.boss-killed) .boss-name {
+  color: var(--text-muted);
+}
+
+.boss-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.boss-difficulty {
+  min-width: 44px;
+}
+
+.boss-best {
+  color: var(--text-dim);
+}
+
+/* Calendar */
+
+.cal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.cal-month {
+  margin: 0;
+  font-weight: 600;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.cal-weekday {
+  padding-bottom: 2px;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.cal-cell {
+  display: contents;
+}
+
+.cal-day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-height: 44px;
+  padding: 4px 2px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+  text-decoration: none;
+}
+
+.cal-day-raid {
+  background: var(--raised);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+a.cal-day-raid:hover {
+  border-color: var(--border-strong);
+  background: var(--hover);
+}
+
+.cal-day-today {
+  border-color: var(--brand);
+}
+
+.cal-daynum {
+  font-weight: 600;
+}
+
+.cal-count {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+/* A marker's shape carries the status as well as its colour (#442):
+   a filled dot for Present, a ring for a flagged answer, a bar for Absent. */
+.cal-marker {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  margin-top: auto;
+  border-radius: 50%;
+}
+
+.cal-marker-present {
+  background: var(--good);
+}
+
+.cal-marker-tentative {
+  border: 2px solid var(--warn);
+}
+
+.cal-marker-absent {
+  height: 3px;
+  margin-block: 2.5px;
+  border-radius: 2px;
+  background: var(--bad);
+}
+
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.cal-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cal-legend .cal-marker {
+  margin-top: 0;
+}
+
+.home-calendar-more {
+  align-self: flex-start;
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+@media (max-width: 1000px) {
+  .home-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 720px) {

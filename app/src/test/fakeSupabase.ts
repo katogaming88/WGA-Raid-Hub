@@ -97,6 +97,10 @@ export function fakeClient(
           read.filters.push(['gte', column, value]);
           return builder;
         },
+        lte(column: string, value: unknown) {
+          read.filters.push(['lte', column, value]);
+          return builder;
+        },
         range(from: number, to: number) {
           read.filters.push(['range', String(from), to]);
           return builder;
