@@ -189,24 +189,6 @@
   font-weight: 600;
 }
 
-/* Difficulty is written out, so the color is only a second cue (#442). */
-.difficulty {
-  font-weight: 600;
-}
-
-.difficulty-mythic {
-  color: var(--mythic);
-}
-
-.difficulty-heroic {
-  color: var(--heroic);
-}
-
-.difficulty-normal,
-.difficulty-other {
-  color: var(--text-muted);
-}
-
 /* Positioned so screen-reader-only text scrolls with the table. */
 .profile-table-wrap {
   position: relative;

@@ -147,6 +147,8 @@ export async function openApp(browser, port, state) {
     // unless a state lists them.
     main_swap_requests: [],
     classes_specs: [],
+    // Home's stats row and loot feed (#1102).
+    rclc_loot: [],
     ...state.tables
   };
 
@@ -190,10 +192,6 @@ export async function openApp(browser, port, state) {
       if (fn && state.functions?.includes(fn)) return route.fulfill(json({ ok: true }));
       if (rest === 'guilds') return route.fulfill(json({ id: 1, name: 'We Go Again', url_key: 'wga' }));
       if (rest === 'teams') return route.fulfill(json(TEAMS));
-      // Home's roster count is a HEAD read; the Roster page lists the rows.
-      if (rest === 'players' && request.method() === 'HEAD') {
-        return route.fulfill(json([], { 'content-range': '*/18' }));
-      }
       if (rest === 'account_preferences') return route.fulfill(json(null));
       if (rest in tables) {
         const rows = tables[rest];

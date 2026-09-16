@@ -12,6 +12,35 @@ answers to.
 
 ---
 
+## [3.131.0] - 2026-09-16
+
+### Project
+
+- The new app's team **Home** page, first half
+  ([#1102](https://github.com/katogaming88/WGA-Raid-Hub/issues/1102)).
+  - A **stats row**: how many raiders are on the roster, and how many items the
+    team has been awarded this season. A character with no class and spec is
+    not a roster entry and is not counted, and an off-spec or Mythic+ roll is
+    left out of the item count, both matching the current site.
+  - A **recent loot feed**: the ten newest awards, newest first, with the
+    raider, the item, its difficulty in words, and the raid night's own date.
+    The search box filters by item name and reaches past the ten, and says how
+    many matched. There is still no search by raider, on purpose
+    ([#99](https://github.com/katogaming88/WGA-Raid-Hub/issues/99)).
+  - The page is titled with the team's name and the season it is showing, and
+    it says so plainly when the team has no loot recorded yet.
+  - One deliberate difference from the current site: the second number is
+    called **Items this season**, not "Items This Tier" -- "tier" now means
+    class tier-set gear, and raid content is a season.
+  - How the current page behaves is recorded first as browser tests
+    (`tests/behavior/home.js`, `tests/browser/home-recorded.test.js`), and the
+    new page is checked against the same expectations
+    (`tests/browser-app/home.test.js`), which is the #1102 workflow.
+- Raid progression and the live stream widget are the second half of Home and
+  come next.
+
+---
+
 ## [3.130.1] - 2026-09-16
 
 ### Project

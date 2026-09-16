@@ -6,13 +6,14 @@ import { renderApp as renderAt } from './test/renderApp';
 describe('routing', () => {
   it('sends / to the default team home', async () => {
     const { router } = renderAt('/');
-    expect(await screen.findByRole('heading', { level: 1, name: 'Home' })).toBeInTheDocument();
+    // Home's title is the team's own name.
+    expect(await screen.findByRole('heading', { level: 1, name: 'Phoenix' })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/g/wga/t/phoenix');
   });
 
   it('marks the current page in the sidebar and the breadcrumb', async () => {
     renderAt('/g/wga/t/phoenix');
-    await screen.findByRole('heading', { level: 1, name: 'Home' });
+    await screen.findByRole('heading', { level: 1, name: 'Phoenix' });
     await userEvent.click(screen.getByRole('link', { name: 'Roster' }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Roster' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Roster' })).toHaveAttribute('aria-current', 'page');
