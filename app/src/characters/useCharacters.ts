@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
+import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import type { LootRow, SeasonWindow } from '../profile/profile';
 import type { CharactersAnswer, EarlierPair, EarlierPlayer, SavedCharacter } from './characters';
@@ -76,12 +76,16 @@ export function useEarlierLoot(teamId: number, season: SeasonWindow | null, enab
       if (!ids.length) return { data: NO_EARLIER, error: null };
       const players = await client.from('players').select('id, name_realm, team_id').in('id', ids);
       if (players.error) return { data: null, error: players.error };
-      let lootQuery = client
-        .from('rclc_loot')
-        .select('id, player_id, track, season, awarded_at, items(name)')
-        .in('player_id', ids);
-      if (season?.code) lootQuery = lootQuery.eq('season', season.code);
-      const loot = await lootQuery.order('id');
+      // Paged, like the roster's own loot read: a season past 1000 rows would
+      // otherwise stop counting silently.
+      const loot = await readAll<EarlierLoot['loot'][number]>((from, to) => {
+        let q = client
+          .from('rclc_loot')
+          .select('id, player_id, track, season, awarded_at, items(name)')
+          .in('player_id', ids);
+        if (season?.code) q = q.eq('season', season.code);
+        return q.order('id').range(from, to);
+      });
       if (loot.error) return { data: null, error: loot.error };
       return {
         data: {

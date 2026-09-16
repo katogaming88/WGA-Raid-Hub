@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.128.1] - 2026-09-15
+
+### Project
+
+- Opening the alts picker now puts the keyboard in the dialog. It aimed at
+  the Save button, which is still greyed out while your characters load, so
+  the keyboard was left on the page behind the dialog and the first Tab went
+  to the close button. Any dialog whose first control starts disabled is
+  fixed by the same change (Rex's review of
+  [#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942) step 5b).
+- The earlier-characters loot read now pages like the roster's own loot read,
+  so a season with more than 1000 such rows keeps counting instead of
+  stopping silently at 1000.
+
+---
+
 ## [3.128.0] - 2026-09-15
 
 ### Backend

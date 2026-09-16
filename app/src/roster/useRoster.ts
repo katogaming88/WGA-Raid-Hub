@@ -1,4 +1,4 @@
-import { useSupabaseQuery } from '../data/query';
+import { readAll, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import type { AttendanceRow, LootRow, SeasonWindow } from '../profile/profile';
 import type { GearRow, IncomingRow, PlayerRow } from './roster';
@@ -47,22 +47,6 @@ export function useSignupSeason(teamId: number) {
     const season = (data as { signupSeason?: unknown } | null)?.signupSeason;
     return { data: typeof season === 'string' ? season.trim() : '', error: null };
   });
-}
-
-// Every row of a read, a page at a time: the API returns at most 1000 rows per
-// request, and a team's season of attendance grows past that.
-const PAGE = 1000;
-
-type Page<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
-
-async function readAll<T>(page: (from: number, to: number) => Page<T>) {
-  const rows: T[] = [];
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await page(from, from + PAGE - 1);
-    if (error) return { data: null, error };
-    rows.push(...(data ?? []));
-    if (!data || data.length < PAGE) return { data: rows, error: null };
-  }
 }
 
 // The team's attendance and loot for the season, for the officer-only roster

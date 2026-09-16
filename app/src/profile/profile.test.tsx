@@ -497,6 +497,9 @@ describe('Characters card and alts picker', () => {
       battlenetToken: 'bnet-token'
     });
     const dialog = await screen.findByRole('dialog', { name: 'Choose your alts' });
+    // Save is still disabled while the characters load, so focus has to land on
+    // something else inside the dialog rather than staying on the page behind it.
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
     expect(await within(dialog).findByText('Phoenix · claimed by you')).toBeInTheDocument();
     expect(within(dialog).getByText('Hellfire Rollers · claimed by another player')).toBeInTheDocument();
     expect(within(dialog).getByText('Ask your officers to check the claim')).toBeInTheDocument();
