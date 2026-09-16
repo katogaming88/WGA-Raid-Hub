@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |      1 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |      9 h 07 m |
-| **All revamp work**                | **17 h 52 m** |
+| Revamp 2: public pages             |     10 h 17 m |
+| **All revamp work**                | **19 h 02 m** |
 
 ## Log
 
@@ -68,7 +68,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | 1:05-1:30 AM | #942 step 5c: the any-time main swap request (#631) | Revamp 2 (Identity prerequisite, #1162) |    25 m | ~20 m build, ~5 m Kat deciding               | Three decisions up front: officers review it on the Roster page (the Reviews page is still a placeholder), the ask names a character already listed as an alt, and approving keeps today's archive-and-revive behaviour. Kat wants the "Main tick" rework from #631 instead, but as a change made just before cutover so the current site keeps working |
 | 1:50-2:05 AM | #1195 Mark received in its own column                | Revamp 2 (#868)                         |    15 m | build                                          | The buttons followed the status text, which is a different length on every row. Their own column, left out entirely for someone viewing another raider's profile. At phone width the card's table scrolls sideways to reach it, the way the gear and loot tables already do |
 | 2:08-2:30 AM | #1102 team Home, first half: stats row and recent loot | Revamp 2 (#1102) |    22 m | ~19 m build, ~3 m Kat deciding | Kat chose two PRs (stats and loot now, progression and streams next) and to keep the calendar widget but drop the character picker. Built the #1102 way: the current page's behavior recorded as browser tests first, then the new page checked against the same expectations. One deliberate rename, Items This Tier -> Items this season |
-| 12:51-1:20 PM | #1102 team Home, second half: raid progression, calendar, live streams | Revamp 2 (#1102) |    30 m | build; Kat review not yet counted | Recorded the current site's three blocks first, then built them. The stream widget went into the app's frame, since today it floats on every page, not just Home. The shared database types file was missing the calendar tables. Kat kept the stream panel open by default: it only covered the calendar in the 1280px-wide screenshots |
+| 12:51-1:40 PM | #1102 team Home, second half: raid progression, calendar, live streams | Revamp 2 (#1102) |    45 m | ~30 m build, ~15 m Kat testing locally and two layout asks | Recorded the current site's three blocks first, then built them. The stream widget went into the app's frame, since today it floats on every page. Kat tested on the local snapshot (one local Supabase port fix), kept the stream panel open by default, and asked for bosses to read down columns, four to a column, and a wider calendar. PR #1215 |
+| 1:40-2:35 PM | #1102 Calendar: design options and the raider answers read | Revamp 2 (#1102) |    55 m | ~30 m build, ~25 m Kat choosing designs | Six mockups on a design canvas; Kat picked the night-chips month and the answer-panel night page, added a Heads up section for who is out or late, an officer change dialog, phone and light mode. Per-boss lineups filed as #1216 for later. Building showed raiders could only read their own answers, so Kat chose answers-without-notes for raiders and schedule-only when signed out: a new database read, in its own PR for Rex |
 
 ### 2026-09-15
 

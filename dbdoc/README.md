@@ -183,6 +183,7 @@
 | public.request_main_swap | int4 | p_team_id integer, p_character_id integer, p_class_spec_id integer, p_note text DEFAULT NULL::text | FUNCTION |
 | public.cancel_main_swap_request | void | p_request_id integer | FUNCTION |
 | public.review_main_swap_request | int4 | p_request_id integer, p_approve boolean, p_note text DEFAULT NULL::text | FUNCTION |
+| public.team_rsvp_answers | record | p_team_id integer, p_from date, p_to date | FUNCTION |
 
 ## Enums
 
