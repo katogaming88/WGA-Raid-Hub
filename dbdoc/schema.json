@@ -7066,6 +7066,235 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.main_swap_requests",
+      "type": "BASE TABLE",
+      "comment": "A raider's request to make one of their alts their roster character, outside a signup window (#631, #942 step 5c). Written only by request_main_swap(), cancel_main_swap_request() and review_main_swap_request(). name_realm and class_spec_id are what they asked for, kept here so the request still reads right after the character row changes.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "person_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "from_player_id",
+          "type": "integer",
+          "nullable": false,
+          "comment": "Their roster character when they asked. The one that gets archived on approval."
+        },
+        {
+          "name": "character_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "name_realm",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "class_spec_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'pending'::text"
+        },
+        {
+          "name": "requested_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "reviewed_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "reviewed_by",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "officer_note",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "approved_player_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "The roster row the approval landed on: the revived character, or the new one."
+        }
+      ],
+      "indexes": [
+        {
+          "name": "main_swap_requests_pkey",
+          "def": "CREATE UNIQUE INDEX main_swap_requests_pkey ON public.main_swap_requests USING btree (id)",
+          "table": "public.main_swap_requests",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "main_swap_requests_team_pending_idx",
+          "def": "CREATE INDEX main_swap_requests_team_pending_idx ON public.main_swap_requests USING btree (team_id) WHERE (status = 'pending'::text)",
+          "table": "public.main_swap_requests",
+          "columns": [
+            "team_id"
+          ]
+        },
+        {
+          "name": "main_swap_requests_person_idx",
+          "def": "CREATE INDEX main_swap_requests_person_idx ON public.main_swap_requests USING btree (person_id)",
+          "table": "public.main_swap_requests",
+          "columns": [
+            "person_id"
+          ]
+        },
+        {
+          "name": "main_swap_requests_one_pending",
+          "def": "CREATE UNIQUE INDEX main_swap_requests_one_pending ON public.main_swap_requests USING btree (team_id, person_id) WHERE (status = 'pending'::text)",
+          "table": "public.main_swap_requests",
+          "columns": [
+            "team_id",
+            "person_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "main_swap_requests_status_check",
+          "type": "CHECK",
+          "def": "CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'declined'::text, 'cancelled'::text])))",
+          "table": "public.main_swap_requests",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "main_swap_requests_class_spec_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE",
+          "table": "public.main_swap_requests",
+          "referenced_table": "public.classes_specs",
+          "columns": [
+            "class_spec_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "main_swap_requests_approved_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (approved_player_id) REFERENCES players(id)",
+          "table": "public.main_swap_requests",
+          "referenced_table": "public.players",
+          "columns": [
+            "approved_player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "main_swap_requests_from_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (from_player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.main_swap_requests",
+          "referenced_table": "public.players",
+          "columns": [
+            "from_player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "main_swap_requests_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.main_swap_requests",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "main_swap_requests_person_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE",
+          "table": "public.main_swap_requests",
+          "referenced_table": "public.people",
+          "columns": [
+            "person_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "main_swap_requests_reviewed_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (reviewed_by) REFERENCES people(id)",
+          "table": "public.main_swap_requests",
+          "referenced_table": "public.people",
+          "columns": [
+            "reviewed_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "main_swap_requests_character_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL",
+          "table": "public.main_swap_requests",
+          "referenced_table": "public.characters",
+          "columns": [
+            "character_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "main_swap_requests_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.main_swap_requests",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -8251,6 +8480,97 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.main_swap_requests",
+      "columns": [
+        "class_spec_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.classes_specs",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
+    },
+    {
+      "table": "public.main_swap_requests",
+      "columns": [
+        "approved_player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (approved_player_id) REFERENCES players(id)"
+    },
+    {
+      "table": "public.main_swap_requests",
+      "columns": [
+        "from_player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (from_player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.main_swap_requests",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.main_swap_requests",
+      "columns": [
+        "person_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.main_swap_requests",
+      "columns": [
+        "reviewed_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (reviewed_by) REFERENCES people(id)"
+    },
+    {
+      "table": "public.main_swap_requests",
+      "columns": [
+        "character_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.characters",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
     }
   ],
   "functions": [
@@ -8906,6 +9226,24 @@
       "name": "public.earlier_characters",
       "return_type": "record",
       "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.request_main_swap",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_character_id integer, p_class_spec_id integer, p_note text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.cancel_main_swap_request",
+      "return_type": "void",
+      "arguments": "p_request_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.review_main_swap_request",
+      "return_type": "int4",
+      "arguments": "p_request_id integer, p_approve boolean, p_note text DEFAULT NULL::text",
       "type": "FUNCTION"
     }
   ],

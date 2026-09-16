@@ -146,6 +146,30 @@ const rosterWithAlts = () => {
   };
 };
 
+// A main swap waiting for an officer (#631), and the specs the ask offers.
+const SPECS = [
+  { id: 1, class: 'Evoker', spec: 'Preservation', role: 'Heal' },
+  { id: 2, class: 'Evoker', spec: 'Devastation', role: 'Ranged' },
+  { id: 3, class: 'Druid', spec: 'Guardian', role: 'Tank' }
+];
+
+const waitingSwap = (fromNameRealm) => [
+  {
+    id: 1,
+    team_id: 1,
+    person_id: 70,
+    from_player_id: 1,
+    character_id: 1,
+    name_realm: 'Grihzy-Illidan',
+    class_spec_id: 1,
+    note: 'Geared it over the break and it is ahead of my Death Knight.',
+    status: 'pending',
+    requested_at: '2026-09-14T18:00:00Z',
+    from_player: { name_realm: fromNameRealm },
+    classes_specs: { class: 'Evoker', spec: 'Preservation', role: 'Heal' }
+  }
+];
+
 const pickerCharacter = (blizzard_id, name, className, spec, item_level, roster = null) => ({
   blizzard_id,
   name,
@@ -268,6 +292,33 @@ const STATES = [
     tables: ROSTER,
     click: 'role=tab[name="Season 4 Roster (Tentative)"]'
   },
+  {
+    label: 'roster, officer, a main swap waiting',
+    path: '/g/wga/t/phoenix/roster',
+    sentinel: '.main-swaps',
+    session: OFFICER,
+    who: 'officer',
+    tables: { ...rosterWithAlts(), main_swap_requests: waitingSwap(SCENARIO.players[0].name_realm) }
+  },
+  profileState('my profile, ask to raid on an alt', 'torbjorn', 'torbjorn', {
+    sentinel: 'main .character-ask',
+    click: 'main .character-ask',
+    tables: {
+      ...profileState('', 'torbjorn', 'torbjorn').tables,
+      players: [{ ...VIEWERS.torbjorn.player, team_members: { person_id: 70 } }],
+      characters: ALT_CHARACTERS,
+      classes_specs: SPECS
+    }
+  }),
+  profileState('my profile, a main swap waiting for an officer', 'torbjorn', 'torbjorn', {
+    sentinel: 'main .character-tag-waiting',
+    tables: {
+      ...profileState('', 'torbjorn', 'torbjorn').tables,
+      players: [{ ...VIEWERS.torbjorn.player, team_members: { person_id: 70 } }],
+      characters: ALT_CHARACTERS,
+      main_swap_requests: waitingSwap(VIEWERS.torbjorn.player.name_realm)
+    }
+  }),
   profileState('my profile', 'torbjorn', 'torbjorn'),
   profileState('my profile, characters and alts', 'torbjorn', 'torbjorn', {
     sentinel: 'main .characters-card .character-row + .character-row',

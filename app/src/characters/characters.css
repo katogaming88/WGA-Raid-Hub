@@ -305,3 +305,98 @@
   font-weight: 400;
   white-space: nowrap;
 }
+
+/* Main swap requests (#631, #942 step 5c) */
+
+/* The ask sits on its own line under the character, so a narrow card never
+   pushes the name or the item level sideways. */
+.character-ask {
+  grid-column: 2 / -1;
+  justify-self: start;
+}
+
+.button-small {
+  min-height: 30px;
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.character-tag-waiting {
+  border-color: color-mix(in srgb, var(--warn, var(--brand)) 40%, var(--border-strong));
+  color: var(--text-muted);
+}
+
+.characters-cancel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* The officer panel on the roster */
+
+.main-swaps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  /* .card carries no padding of its own, the way .profile-card sets its own. */
+  padding: var(--space-4) var(--space-5);
+}
+
+.main-swap-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.main-swap-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.main-swap-row + .main-swap-row {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.main-swap-text {
+  min-width: 0;
+}
+
+.main-swap-line {
+  margin: 0;
+}
+
+.main-swap-when,
+.main-swap-note {
+  margin: 2px 0 0;
+  font-size: var(--text-xs);
+}
+
+.main-swap-note {
+  color: var(--text-muted);
+}
+
+.main-swap-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.main-swap-actions .input {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+/* Approve and Decline stay together when the note takes the line above. */
+.main-swap-buttons {
+  display: flex;
+  gap: var(--space-2);
+}

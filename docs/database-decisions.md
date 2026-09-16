@@ -10,6 +10,28 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-16 -- A raider can ask for a main swap any day, and an officer approves it on the roster (#631, #942 step 5c)
+
+Shipped: `20260916010611_main_swap_requests.sql`.
+
+Until now the only main swap was a field on a season signup, so it existed only while a signup window was open. A raider who rerolled mid-tier had no way to ask for one.
+
+Kat's calls on 2026-09-16:
+
+- **The raider asks, an officer approves.** Never a self-service roster write. `request_main_swap()` records the ask; `review_main_swap_request()` does the work.
+- **They ask with a character already listed as an alt** (step 5b), so Blizzard's own character list is the proof they own it. A character not on the list is added by choosing alts first.
+- **Officers review it on the roster page**, in a panel above the team, because the officer Reviews page is still a placeholder in the new app. It moves there when that page is built.
+- **Approving keeps today's behaviour.** The old character leaves the roster and keeps its loot and raid history; the join date and attendance move across. Kat wants the "every character stays on the books with a Main tick" idea from #631 instead, but as a change made **just before cutover** (#1105), so the current site keeps working unchanged until then.
+
+Settled while building it:
+
+- **The swap steps are `add_signup_to_roster()`'s, minus the signup.** Same on-conflict revival (a character they played before keeps its id, so its loot stays attached), same join-date carry, same attendance move that skips a night the destination already has, same live-season `priority_order` clear, same two audit lines. Sharing the code was rejected for now: the signup path is the current site's and moves at cutover, and a shared function would have to serve both call sites through that move.
+- **The spec is the raider's to pick, not Blizzard's to report.** The saved character carries whatever spec Blizzard last saw it in, which is often not the one they mean to raid. The dialog offers that spec first but lists the class's others, and the database refuses a spec of another class.
+- **One request per person per team**, as a partial unique index as well as a named refusal, so a double submit cannot make two.
+- **The approval notice is inserted straight into `notifications`** rather than through `notify_player()`, whose own check admits a team's officers and site admins but not a guild officer, who may review this.
+
+---
+
 ## 2026-09-15 -- Who sees alts, and loot totals that follow the raider across mains and teams (#942 step 5b)
 
 Shipped: `20260915185428_loot_from_earlier_characters.sql`.
