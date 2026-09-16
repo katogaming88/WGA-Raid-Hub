@@ -376,6 +376,9 @@ function buildPublicStats() {
     var items = loot[keys[i]].items || [];
     for (var j = 0; j < items.length; j++) {
       if (currentSeason && items[j].season !== currentSeason) continue;
+      // Matches the profile's own Items Received count (js/common.js
+      // mapSupabaseLoot) -- an off-spec roll isn't loot the team "got".
+      if (items[j].offSpec) continue;
       totalItems++;
     }
   }
@@ -423,6 +426,7 @@ function buildRecentLoot() {
         item: items[j].name,
         difficulty: items[j].difficulty,
         date: items[j].date,
+        offSpec: !!items[j].offSpec,
         _d: new Date(items[j].date)
       });
     }
@@ -481,6 +485,7 @@ function renderLootFeed() {
       '</span>' +
       '<span class="pub-loot-item">' +
       e.item +
+      (e.offSpec ? ' ' + offSpecLootTagHtml() : '') +
       '</span>' +
       '<span class="pub-loot-diff ' +
       diffClass +

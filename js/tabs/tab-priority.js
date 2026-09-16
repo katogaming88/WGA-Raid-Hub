@@ -2630,6 +2630,12 @@ function prioEditLootFlags(firstName) {
   if (loot && loot.items) {
     for (var j = 0; j < loot.items.length; j++) {
       if (loot.items[j].name.toLowerCase() !== itemLower) continue;
+      // An OS/M+ roll is not an award for this character's main spec, so it
+      // can't set a blocking flag here -- generate_priority_order() already
+      // ignores it, and this function gates prioEditIsBlocked(), so leaving
+      // it in meant the editor refused to rank someone the generated list
+      // ranks perfectly happily.
+      if (loot.items[j].offSpec) continue;
       // 'Normal' is mapSupabaseLoot()'s label for a Champion-track drop
       // (js/common.js) -- informational only here, never blocking: Champion
       // loot sits outside the priority system entirely (docs/database-
