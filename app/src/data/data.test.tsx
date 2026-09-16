@@ -6,6 +6,42 @@ import { seededHandlers } from '../test/fakeSupabase';
 import { setErrorReporter } from '../lib/errors';
 import { canonicalPath } from './address';
 import { readSupabaseConfig } from '../lib/supabase';
+import type { FakeHandlers } from '../test/fakeSupabase';
+
+// Home is the page these data-layer checks run through, so it needs a roster
+// and a season to render. Two raiders with a role and one without, which is
+// what the page counts.
+const raiders = async () => (await screen.findByText('Raiders')).parentElement!.querySelector('dd')!;
+
+const homeHandlers = (): FakeHandlers => {
+  const base = seededHandlers();
+  return seededHandlers({
+    from: (read) => {
+      if (read.table === 'players' && !read.single) {
+        return {
+          data: [
+            {
+              id: 1,
+              name_realm: 'Aurelith-Illidan',
+              nickname: null,
+              classes_specs: { class: 'Warrior', spec: 'Protection', role: 'Tank' }
+            },
+            {
+              id: 2,
+              name_realm: 'Brightmoor-Illidan',
+              nickname: null,
+              classes_specs: { class: 'Paladin', spec: 'Holy', role: 'Heal' }
+            },
+            { id: 3, name_realm: 'Nospec-Illidan', nickname: null, classes_specs: null }
+          ]
+        };
+      }
+      if (read.table === 'team_settings')
+        return { data: { name: 'Midnight Season 3', start: '2026-03-04', end: null } };
+      return base.from!(read);
+    }
+  });
+};
 
 afterEach(() => setErrorReporter(null));
 
@@ -37,7 +73,7 @@ describe('address lookup (#1114)', () => {
 
   it('moves different capitals to the current keys', async () => {
     const { router } = renderApp('/g/WGA/t/Phoenix');
-    await screen.findByRole('heading', { level: 1, name: 'Home' });
+    await screen.findByRole('heading', { level: 1, name: 'Phoenix' });
     expect(router.state.location.pathname).toBe('/g/wga/t/phoenix');
   });
 
@@ -64,7 +100,7 @@ describe('the data layer never hides a failed read (#1101)', () => {
     const reported = vi.fn();
     setErrorReporter(reported);
     let failing = true;
-    const base = seededHandlers();
+    const base = homeHandlers();
     renderApp(
       '/g/wga/t/phoenix',
       seededHandlers({
@@ -78,16 +114,17 @@ describe('the data layer never hides a failed read (#1101)', () => {
     // Inside the page: the app-wide status area keeps an empty alert region too.
     const main = await screen.findByRole('main');
     const alert = await within(main).findByRole('alert');
-    expect(alert).toHaveTextContent('Couldn’t load the roster.');
+    expect(alert).toHaveTextContent('Couldn’t load the team’s season.');
     expect(alert).toHaveTextContent('canceling statement due to statement timeout');
     expect(reported).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'canceling statement due to statement timeout' }),
-      expect.objectContaining({ where: 'read', key: ['roster-count', 1] })
+      expect.objectContaining({ where: 'read', key: ['roster', 1] })
     );
 
     failing = false;
-    await userEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
-    expect(await screen.findByText('18')).toBeInTheDocument();
+    // Retry waits for the page's other reads to settle before it is offered.
+    await userEvent.click(await within(alert).findByRole('button', { name: 'Retry' }));
+    expect(await raiders()).toHaveTextContent('2');
     expect(within(main).queryByRole('alert')).not.toBeInTheDocument();
   });
 
@@ -102,7 +139,7 @@ describe('the data layer never hides a failed read (#1101)', () => {
   it('announces loading while a read is in flight', async () => {
     let release: () => void = () => {};
     const gate = new Promise<void>((r) => (release = r));
-    const base = seededHandlers();
+    const base = homeHandlers();
     renderApp(
       '/g/wga/t/phoenix',
       seededHandlers({
@@ -112,36 +149,33 @@ describe('the data layer never hides a failed read (#1101)', () => {
         }
       })
     );
-    expect(await screen.findByText('Loading the roster…')).toHaveAttribute('role', 'status');
+    expect(await screen.findByText('Loading the team’s season…')).toHaveAttribute('role', 'status');
     release();
-    expect(await screen.findByText('18')).toBeInTheDocument();
+    expect(await raiders()).toHaveTextContent('2');
   });
 });
 
-describe('one real read (#1101 done-when)', () => {
-  it('shows the active roster count, reading only active players on this team', async () => {
-    const { client } = renderApp('/g/wga/t/phoenix');
-    expect(await screen.findByText('18')).toBeInTheDocument();
+describe('reads through the data layer', () => {
+  it('counts the raiders on this team, reading only its active players', async () => {
+    const { client } = renderApp('/g/wga/t/phoenix', homeHandlers());
+    expect(await raiders()).toHaveTextContent('2');
     const read = client.reads.find((r) => r.table === 'players')!;
     expect(read.filters).toEqual([
       ['eq', 'team_id', 1],
       ['is', 'archived_at', null]
     ]);
-    expect(read.options).toEqual({ count: 'exact', head: true });
   });
 
   it('reuses cached reads when coming back to a page', async () => {
-    const { client } = renderApp('/g/wga/t/phoenix');
-    await screen.findByText('18');
+    const { client } = renderApp('/g/wga/t/phoenix', homeHandlers());
+    await raiders();
     await userEvent.click(screen.getByRole('link', { name: 'Roster' }));
     await screen.findByRole('heading', { level: 1, name: 'Roster' });
     await userEvent.click(screen.getByRole('link', { name: 'Home' }));
-    await screen.findByText('18');
-    // Home's count read, not the Roster page's own list read.
-    const countReads = client.reads.filter(
-      (r) => r.table === 'players' && (r.options as { head?: boolean } | undefined)?.head
-    );
-    expect(countReads).toHaveLength(1);
+    await raiders();
+    // Home and Roster read the same roster, so the second visit reads nothing:
+    // one read for the list, one for the gear the Roster page adds.
+    expect(client.reads.filter((r) => r.table === 'players')).toHaveLength(1);
   });
 });
 
@@ -172,7 +206,7 @@ describe('team switcher', () => {
     const toggle = await screen.findByRole('button', { name: /Phoenix/ });
     await userEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    await userEvent.click(screen.getByRole('heading', { level: 1, name: 'Home' }));
+    await userEvent.click(screen.getByRole('heading', { level: 1, name: 'Phoenix' }));
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 

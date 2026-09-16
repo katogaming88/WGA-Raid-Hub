@@ -72,6 +72,46 @@ button {
   border: 0;
 }
 
+/* Page furniture every page shares: a title with an optional line under it,
+   and a section heading inside a card. */
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.page-subtitle {
+  margin: 0;
+}
+
+.text-dim {
+  color: var(--text-dim);
+}
+
+.section-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 650;
+}
+
+/* Difficulty is written out, so the color is only a second cue (#442). */
+.difficulty {
+  font-weight: 600;
+}
+
+.difficulty-mythic {
+  color: var(--mythic);
+}
+
+.difficulty-heroic {
+  color: var(--heroic);
+}
+
+.difficulty-normal,
+.difficulty-other {
+  color: var(--text-muted);
+}
+
 /* Buttons: neutral by default. Only one .button-primary per screen (Kat, 2026-09-13). */
 .button {
   display: inline-flex;

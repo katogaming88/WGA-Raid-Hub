@@ -88,7 +88,7 @@ export type Award = {
   from: string | null;
 };
 
-const difficultyOf = (track: string | null): Difficulty =>
+export const difficultyOf = (track: string | null): Difficulty =>
   track === 'Myth' ? 'Mythic' : track === 'Hero' ? 'Heroic' : track === 'Champion' ? 'Normal' : 'Other';
 
 // Award dates are shown on Eastern time, where the raids happen, so an award

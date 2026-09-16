@@ -17,6 +17,7 @@ import {
   WISHLIST
 } from '../behavior/profile.js';
 import * as WISHLIST_EDITOR from '../behavior/wishlist.js';
+import { SCENARIO as HOME, SEASON as HOME_SEASON } from '../behavior/home.js';
 
 // The new app in a real browser (#1101 part 4): the shell's accessibility
 // checklist, measured rather than trusted. Unlike tests/browser/, there is no
@@ -220,9 +221,24 @@ const pickerState = (label, extra = {}) =>
 const BATTLENET_ONLY = storedSession({ battlenet: 'Aeglos#1234' });
 
 // Every screen the shell has today, in both themes where color matters.
+// Home's reads (tests/behavior/home.js): a roster and a season of loot, so
+// the stats row and the loot feed are both on the page axe measures.
+const HOME_TABLES = {
+  players: HOME.players,
+  rclc_loot: HOME.loot,
+  team_settings: [{ name: HOME_SEASON.name, start: null, end: null }]
+};
+const HOME_SENTINEL = '.home-loot-table tbody tr';
+
 const STATES = [
-  { label: 'home, signed out', path: '/g/wga/t/phoenix', sentinel: 'text=active raiders' },
-  { label: 'home, signed out, light', path: '/g/wga/t/phoenix', sentinel: 'text=active raiders', colorScheme: 'light' },
+  { label: 'home, signed out', path: '/g/wga/t/phoenix', sentinel: HOME_SENTINEL, tables: HOME_TABLES },
+  {
+    label: 'home, signed out, light',
+    path: '/g/wga/t/phoenix',
+    sentinel: HOME_SENTINEL,
+    tables: HOME_TABLES,
+    colorScheme: 'light'
+  },
   {
     label: 'officer page, signed out',
     path: '/g/wga/t/phoenix/officer/priority',
@@ -413,7 +429,8 @@ describe('narrow-screen drawer', () => {
   it('opens as a dialog-like panel with no violations and returns focus on Escape', async () => {
     const { context, page } = await openApp(browser, server.port, {
       path: '/g/wga/t/phoenix',
-      sentinel: 'text=active raiders',
+      sentinel: HOME_SENTINEL,
+      tables: HOME_TABLES,
       viewport: NARROW
     });
     try {

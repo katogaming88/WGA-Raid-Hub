@@ -3,7 +3,7 @@ import { Navigate, type RouteObject } from 'react-router';
 import { RosterPage } from './roster/RosterPage';
 import { MyProfilePage, PlayerProfilePage } from './profile/ProfilePage';
 import { AppShell } from './layout/AppShell';
-import { HomePage } from './pages/HomePage';
+import { HomePage } from './home/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { RequireAbility } from './auth/RequireAbility';
