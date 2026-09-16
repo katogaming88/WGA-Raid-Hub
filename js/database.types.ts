@@ -2958,6 +2958,13 @@ export type Database = {
         }
         Returns: number
       }
+      earlier_characters: {
+        Args: { p_team_id: number }
+        Returns: {
+          earlier_player_id: number
+          player_id: number
+        }[]
+      }
       flag_bis_list_changed: {
         Args: {
           p_name_realm: string

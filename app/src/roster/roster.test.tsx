@@ -359,3 +359,81 @@ describe('Roster page, officer columns', () => {
     expect(client.reads.some((r) => r.table === 'attendance' || r.table === 'rclc_loot')).toBe(false);
   });
 });
+
+// Alts under their raider (#942 step 5b): officers only, hidden until shown.
+describe('Roster page, alts', () => {
+  const person = (role: string) => ({
+    site_admin: false,
+    guild_officer: false,
+    boe_manager: false,
+    teams: [{ team_id: 1, team_member_id: 1, role, characters: [] }]
+  });
+  const handlers = (role: string) => {
+    const base = rosterHandlers({
+      players: [
+        player(1, 'Grihz-Illidan', 'Shaman', 'Restoration', 'Heal', { team_member_id: 7 }),
+        player(2, 'Sakonna-Illidan', 'Priest', 'Holy', 'Heal', { team_member_id: 8 })
+      ],
+      team_settings: { name: 'Midnight Season 2', start: '2026-08-01', end: '2026-12-31', signupSeason: '' },
+      team_members: [
+        { id: 7, person_id: 70 },
+        { id: 8, person_id: 80 }
+      ],
+      characters: [
+        {
+          id: 1,
+          person_id: 70,
+          name: 'Grihzy',
+          realm: 'Illidan',
+          class_name: 'Evoker',
+          spec_name: 'Preservation',
+          item_level: 701
+        },
+        {
+          id: 2,
+          person_id: 70,
+          name: 'Grihzbear',
+          realm: 'Area 52',
+          class_name: 'Druid',
+          spec_name: 'Guardian',
+          item_level: 689
+        }
+      ]
+    });
+    return {
+      ...base,
+      session: fakeSession({ battlenet: 'X#1', discord: { id: 'd', name: 'X' } }),
+      rpc(name: string, args: Record<string, unknown>) {
+        if (name === 'current_discord_id') return { data: 'discord-x' };
+        if (name === 'resolve_person') return { data: person(role) };
+        return base.rpc!(name, args);
+      }
+    };
+  };
+
+  it('counts an officer’s raiders’ alts and shows their rows only when asked', async () => {
+    renderApp('/g/wga/t/phoenix/roster', handlers('officer'));
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    expect(await within(table).findByText('2 alts')).toBeInTheDocument();
+    expect(within(table).queryByRole('rowheader', { name: /Grihzy/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hide alts' })).toHaveAttribute('aria-pressed', 'true');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Show alts' }));
+    const rows = within(table).getAllByRole('row');
+    const names = rows.map((r) => r.querySelector('th')?.textContent ?? '');
+    const grihz = names.findIndex((n) => n.startsWith('Grihz') && n.includes('2 alts'));
+    expect(names[grihz + 1]).toContain('Grihzy, alt of Grihz');
+    expect(names[grihz + 2]).toContain('Grihzbear, alt of Grihz');
+    expect(names[grihz + 2]).toContain('Guardian · Area 52');
+  });
+
+  it('shows a raider no alts, no switch, and does not read them', async () => {
+    const { client } = renderApp('/g/wga/t/phoenix/roster', handlers('raider'));
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    await within(table).findByRole('rowheader', { name: /Sakonna/ });
+    expect(within(table).queryByText('2 alts')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Show alts' })).not.toBeInTheDocument();
+    expect(client.reads.some((r) => r.table === 'characters' || r.table === 'team_members')).toBe(false);
+    expect(client.rpcs.some(([name]) => name === 'earlier_characters')).toBe(false);
+  });
+});

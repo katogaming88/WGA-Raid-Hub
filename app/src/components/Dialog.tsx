@@ -10,7 +10,8 @@ const FOCUSABLE =
 // later form (#1101 checklist, from #369 and #1034).
 //
 // - role="dialog", aria-modal and aria-labelledby its title
-// - focus moves in on open (to `initialFocus`, else the first control), Tab
+// - focus moves in on open (to `initialFocus` when it can take focus, else the
+//   first control), Tab
 //   and Shift+Tab stay inside, and focus returns to what had it on close
 // - Escape and the backdrop close it, unless `busy` (a write in flight)
 // - everything else on the page is inert while it is open
@@ -21,11 +22,14 @@ export function Dialog({
   onClose,
   busy = false,
   initialFocus,
+  wide = false,
   children
 }: {
   title: string;
   onClose: () => void;
   busy?: boolean;
+  // For a dialog holding a table, such as the alts picker.
+  wide?: boolean;
   initialFocus?: React.RefObject<HTMLElement | null>;
   children: ReactNode;
 }) {
@@ -42,8 +46,15 @@ export function Dialog({
 
   useEffect(() => {
     const returnTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const target = initialFocus?.current ?? panel.current?.querySelector<HTMLElement>(FOCUSABLE) ?? panel.current;
-    target?.focus();
+    // `initialFocus` can point at a control that is still disabled when the
+    // dialog opens (the alts picker's Save, until the character list loads).
+    // Focusing a disabled control does nothing, so fall back when it did not
+    // take rather than leaving focus on the body behind the dialog.
+    initialFocus?.current?.focus();
+    if (!panel.current?.contains(document.activeElement)) {
+      const fallback = panel.current?.querySelector<HTMLElement>(FOCUSABLE) ?? panel.current;
+      fallback?.focus();
+    }
 
     // Inert the rest of the page. Only the elements this dialog made inert are
     // restored, so a drawer that was already inert stays that way.
@@ -92,7 +103,14 @@ export function Dialog({
   return createPortal(
     <div ref={host} className="dialog-host">
       <div className="dialog-backdrop" aria-hidden="true" onClick={() => !busy && onClose()} />
-      <div ref={panel} className="dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
+      <div
+        ref={panel}
+        className={wide ? 'dialog dialog-wide' : 'dialog'}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+      >
         <div className="dialog-header">
           <h2 id={titleId} className="dialog-title">
             {title}

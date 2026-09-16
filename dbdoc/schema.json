@@ -8901,6 +8901,12 @@
       "return_type": "characters",
       "arguments": "p_person_id integer, p_characters jsonb",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.earlier_characters",
+      "return_type": "record",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

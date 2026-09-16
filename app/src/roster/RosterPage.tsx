@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type KeyboardEvent } from 'react';
+import { Fragment, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { Link } from 'react-router';
 import { can, charactersOn, useAccess } from '../auth/access';
 import { useSession } from '../auth/session';
@@ -22,6 +22,9 @@ import {
   type RosterSummary
 } from './roster';
 import { specIcon } from './specIcons';
+import { CharacterIcon } from '../characters/CharacterIcon';
+import { altCountLabel, altsOf, earlierOwners, type SavedCharacter } from '../characters/characters';
+import { useEarlierLoot, useTeamAlts } from '../characters/useCharacters';
 import { useIncomingRoster, useRosterGear, useRosterOfficerData, useRosterPlayers, useSignupSeason } from './useRoster';
 import './roster.css';
 
@@ -165,17 +168,55 @@ function useIsOfficer(teamId: number): boolean {
   return !!user && access.isSuccess && can(access.data, 'viewOfficerTools', teamId);
 }
 
-function CurrentRoster({ groups, players }: { groups: RoleGroup[]; players: Parameters<typeof officerStats>[0] }) {
+type RosterPlayers = Parameters<typeof toRoster>[0];
+
+// Each roster row's alts, for officers (#942 step 5b). A saved character that
+// is itself on this roster is not an alt here.
+function altsByPlayer(
+  players: RosterPlayers,
+  personByMember: Map<number, number>,
+  characters: SavedCharacter[]
+): Map<number, SavedCharacter[]> {
+  const byPerson = new Map<number, SavedCharacter[]>();
+  for (const c of characters) byPerson.set(c.person_id, [...(byPerson.get(c.person_id) ?? []), c]);
+  const onRoster = players.map((p) => p.name_realm);
+  const out = new Map<number, SavedCharacter[]>();
+  for (const p of players) {
+    const person = p.team_member_id != null ? personByMember.get(p.team_member_id) : undefined;
+    const alts = person !== undefined ? altsOf(byPerson.get(person) ?? [], onRoster) : [];
+    if (alts.length) out.set(p.id, alts);
+  }
+  return out;
+}
+
+function CurrentRoster({ groups, players }: { groups: RoleGroup[]; players: RosterPlayers }) {
   const team = useTeam();
   const profileLink = useProfileLinks(team.id);
   // Attendance and items awarded, for officers only (Kat, 2026-09-14): shown
   // to everyone they would invite loot and attendance comparisons.
   const officer = useIsOfficer(team.id);
   const season = useCurrentSeason(team.id);
-  const officerData = useRosterOfficerData(team.id, season.isSuccess ? season.data : null, officer);
+  // Items include loot on each raider's earlier characters (Kat, 2026-09-15).
+  const officerData = bothQueries(
+    useRosterOfficerData(team.id, season.isSuccess ? season.data : null, officer),
+    useEarlierLoot(team.id, season.isSuccess ? season.data : null, officer)
+  );
   const stats =
     officer && season.isSuccess && officerData.isSuccess
-      ? officerStats(players, officerData.data.attendance, officerData.data.loot, season.data)
+      ? officerStats(
+          players,
+          officerData.data[0].attendance,
+          [...officerData.data[0].loot, ...officerData.data[1].loot],
+          season.data,
+          earlierOwners(officerData.data[1].pairs)
+        )
+      : null;
+  // Alt rows start hidden (Kat, 2026-09-15), and nobody but officers reads them.
+  const teamAlts = useTeamAlts(team.id, officer);
+  const [showAlts, setShowAlts] = useState(false);
+  const alts =
+    officer && teamAlts.isSuccess
+      ? altsByPlayer(players, teamAlts.data.personByMember, teamAlts.data.characters)
       : null;
   const [filter, setFilter] = useState<Filter>('All');
   const summary = summarize(groups);
@@ -206,14 +247,50 @@ function CurrentRoster({ groups, players }: { groups: RoleGroup[]; players: Para
           </button>
         ))}
       </div>
+      {officer && (
+        <div className="alts-toggle">
+          <div className="role-filter" role="group" aria-label="Alts">
+            <button
+              type="button"
+              className="role-filter-option"
+              aria-pressed={showAlts}
+              onClick={() => setShowAlts(true)}
+            >
+              Show alts
+            </button>
+            <button
+              type="button"
+              className="role-filter-option"
+              aria-pressed={!showAlts}
+              onClick={() => setShowAlts(false)}
+            >
+              Hide alts
+            </button>
+          </div>
+          <span>Only officers see this switch and the rows under a raider.</span>
+        </div>
+      )}
       {officer && officerData.isError && (
         <DataState query={officerData} label="attendance and items">
           {() => null}
         </DataState>
       )}
+      {officer && teamAlts.isError && (
+        <DataState query={teamAlts} label="alts">
+          {() => null}
+        </DataState>
+      )}
       <div className="roster-layout">
         <div className="roster-main">
-          <RosterTable groups={shown} caption="Current roster" details profileLink={profileLink} stats={stats} />
+          <RosterTable
+            groups={shown}
+            caption="Current roster"
+            details
+            profileLink={profileLink}
+            stats={stats}
+            alts={alts}
+            showAlts={showAlts}
+          />
         </div>
         <RosterSummaryPanel summary={summary} />
       </div>
@@ -239,13 +316,18 @@ function RosterTable({
   caption,
   details,
   profileLink = () => null,
-  stats = null
+  stats = null,
+  alts = null,
+  showAlts = false
 }: {
   groups: RoleGroup[];
   caption: string;
   details: boolean;
   profileLink?: (raider: Raider) => string | null;
   stats?: Map<number, OfficerStats> | null;
+  // Officers only: each row's alts, and whether their rows are showing.
+  alts?: Map<number, SavedCharacter[]> | null;
+  showAlts?: boolean;
 }) {
   const columns = details ? (stats ? 6 : 4) : 1;
   return (
@@ -289,15 +371,24 @@ function RosterTable({
                 <span className="role-count num">{group.raiders.length}</span>
               </th>
             </tr>
-            {group.raiders.map((raider) => (
-              <RosterRow
-                key={raider.key}
-                raider={raider}
-                details={details}
-                href={profileLink(raider)}
-                stats={stats ? (raider.playerId !== null ? (stats.get(raider.playerId) ?? null) : null) : undefined}
-              />
-            ))}
+            {group.raiders.map((raider) => {
+              const raiderAlts = raider.playerId !== null ? (alts?.get(raider.playerId) ?? []) : [];
+              return (
+                <Fragment key={raider.key}>
+                  <RosterRow
+                    raider={raider}
+                    details={details}
+                    href={profileLink(raider)}
+                    stats={stats ? (raider.playerId !== null ? (stats.get(raider.playerId) ?? null) : null) : undefined}
+                    altCount={raiderAlts.length}
+                  />
+                  {showAlts &&
+                    raiderAlts.map((alt) => (
+                      <AltRow key={`alt-${alt.id}`} alt={alt} of={raider.name} withStats={stats !== null} />
+                    ))}
+                </Fragment>
+              );
+            })}
           </tbody>
         ))}
       </table>
@@ -309,11 +400,14 @@ function RosterRow({
   raider,
   details,
   href,
-  stats
+  stats,
+  altCount = 0
 }: {
   raider: Raider;
   details: boolean;
   href: string | null;
+  // Officers only: how many alts the raider listed.
+  altCount?: number;
   // Undefined when the columns are not shown; null for a row with no numbers.
   stats?: OfficerStats | null | undefined;
 }) {
@@ -333,6 +427,7 @@ function RosterRow({
           </span>
         )}
         {raider.character && <span className="raider-character">{raider.character}</span>}
+        {altCount > 0 && <span className="alt-count">{altCountLabel(altCount)}</span>}
         <span className="raider-spec">
           {raider.spec} {raider.className}
         </span>
@@ -367,6 +462,40 @@ function RosterRow({
           </td>
         </>
       )}
+    </tr>
+  );
+}
+
+// An alt under its raider, for officers. No tier, attendance or items: alts
+// earn none of them (#942).
+function AltRow({ alt, of, withStats }: { alt: SavedCharacter; of: string; withStats: boolean }) {
+  const none = (
+    <>
+      <span aria-hidden="true">–</span>
+      <span className="visually-hidden">None</span>
+    </>
+  );
+  return (
+    <tr className="alt-row">
+      <th scope="row" className="raider-cell">
+        <CharacterIcon className={alt.class_name} spec={alt.spec_name} size={20} />
+        <span className="raider-name" style={{ color: alt.class_name ? classColor(alt.class_name) : undefined }}>
+          {alt.name}
+        </span>
+        <span className="visually-hidden">, alt of {of}</span>
+        <span className="raider-spec">{[alt.spec_name, alt.realm].filter(Boolean).join(' · ')}</span>
+      </th>
+      <td className="col-num num text-muted">{alt.item_level ?? none}</td>
+      <td className="text-dim">{none}</td>
+      {withStats && (
+        <>
+          <td className="col-num text-dim">{none}</td>
+          <td className="col-num text-dim">{none}</td>
+        </>
+      )}
+      <td className="status-cell">
+        <span className="status-tag">Alt</span>
+      </td>
     </tr>
   );
 }

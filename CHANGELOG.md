@@ -12,6 +12,60 @@ answers to.
 
 ---
 
+## [3.128.1] - 2026-09-15
+
+### Project
+
+- Opening the alts picker now puts the keyboard in the dialog. It aimed at
+  the Save button, which is still greyed out while your characters load, so
+  the keyboard was left on the page behind the dialog and the first Tab went
+  to the close button. Any dialog whose first control starts disabled is
+  fixed by the same change (Rex's review of
+  [#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942) step 5b).
+- The earlier-characters loot read now pages like the roster's own loot read,
+  so a season with more than 1000 such rows keeps counting instead of
+  stopping silently at 1000.
+
+---
+
+## [3.128.0] - 2026-09-15
+
+### Backend
+
+- New `earlier_characters(team)` finds each raider's earlier characters, so
+  their season loot total in the new app counts everything they received
+  ([#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942) step 5).
+  - An earlier character is an old main on the same team, or a character on
+    a team they have left. A raider on two teams at once keeps a separate
+    total on each.
+  - It answers only the team's officers (and site admins and guild officers),
+    or the raider about their own characters. Signed-out visitors can't call
+    it.
+  - The current site doesn't use it, and the Priority List's "already has this
+    item" check still looks only at the character itself.
+
+### Project
+
+- The new app's alts
+  ([#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942) step 5,
+  [#1162](https://github.com/katogaming88/WGA-Raid-Hub/issues/1162)).
+  - **Choose alts** on your own profile lists your level 90 characters from
+    Battle.net, to mark as Alt or Skip. It opens on its own once after you
+    connect Battle.net. It works on a computer only.
+  - A character already on a roster can't be picked. The picker shows it as
+    yours, or as claimed by another player with "Ask your officers to check
+    the claim", without naming who.
+  - The profile's new **Characters** card lists your roster character first,
+    tagged Raiding, then your alts. Only you and your team's officers see it.
+  - **Officers** see an alt count beside each raider on the Roster page, and a
+    Show alts switch (off to start) that lists alt rows under the raider.
+    Raiders and visitors see neither.
+  - **Items** on the officer roster, and the profile's items received, now
+    include loot from earlier characters. Those items are marked "on
+    <character>" for an old main, or "on <team>" for a team the raider left.
+
+---
+
 ## [3.127.1] - 2026-09-16
 
 ### Project
@@ -23,6 +77,8 @@ answers to.
   branch's merge base with it, so the rehearsal resets to what production had
   when the dump was taken and runs the branch's migrations on top, whatever
   their commit time. Section 12 of the local dev setup says which ref decides.
+
+---
 
 ## [3.127.0] - 2026-09-15
 
@@ -814,6 +870,7 @@ answers to.
     adjusted in lightness only, listed in `app/src/styles/tokens.css`.
   - A new App workflow runs typecheck, lint, format, tests and a build on
     every PR that touches `app/`.
+
 ## [3.112.8] - 2026-09-13
 
 ### Frontend

@@ -12,11 +12,11 @@ import { fakeClient, seededHandlers, type FakeHandlers } from './fakeSupabase';
 // cache settings, sign-in state and error reporting the app uses. Retries are
 // off so an error state shows on the first failure. The session comes from
 // `handlers.session`; `authReturn` stands in for coming back from Battle.net or
-// Discord.
+// Discord, and `battlenetToken` for the Battle.net token that round trip left.
 export function renderApp(
   path: string,
   handlers: FakeHandlers = seededHandlers(),
-  options: { authReturn?: AuthReturn } = {}
+  options: { authReturn?: AuthReturn; battlenetToken?: string } = {}
 ) {
   const client = fakeClient(handlers);
   const router = createMemoryRouter(routes, { initialEntries: [path] });
@@ -28,7 +28,11 @@ export function renderApp(
   const user = userFromSession((handlers.session ?? null) as Session | null);
   const view = render(
     <DataProvider client={client} queryClient={queryClient}>
-      <SessionProvider initialUser={user} {...(options.authReturn ? { initialAuthReturn: options.authReturn } : {})}>
+      <SessionProvider
+        initialUser={user}
+        {...(options.authReturn ? { initialAuthReturn: options.authReturn } : {})}
+        initialBattlenetToken={options.battlenetToken ?? null}
+      >
         <StatusProvider>
           <RouterProvider router={router} />
         </StatusProvider>

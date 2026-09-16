@@ -10,6 +10,26 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-15 -- Who sees alts, and loot totals that follow the raider across mains and teams (#942 step 5b)
+
+Shipped: `20260915185428_loot_from_earlier_characters.sql`.
+
+Kat's calls on 2026-09-15, made on the mockups (https://claude.ai/artifact/VM16JDUUWPVC9YaQV19eRY):
+
+- **Alts show only to the raider and their team's officers**, never on a public page. The `characters` read rules from step 5a already match (the person, officers of their teams, site admins, guild officers), so no rule changed.
+- **Choosing alts works on a computer only**, using the `useTouchScreen()` switch the wishlist editor uses.
+- **Alt rows on the officer roster start hidden**, behind a Show alts switch. An "N alts" count beside the raider shows either way.
+- **A character someone else claimed says "claimed by another player"** and "Ask your officers to check the claim", without naming who. The raider's own team's officers take it up with the other team.
+- **Loot on an earlier main this season counts toward the raider's total**, because officers weigh it when awarding. Only the total changes (the new app's roster Items column and the profile's items received, with old-main items marked "on <character>"). The Priority List's "already has this item" check stays per character, and the current site is unchanged.
+- **Loot from a team the raider left mid-season carries over too**, listed and marked "on <team>". Leaving means their character there is archived. Someone on two teams at once keeps a separate total on each, so the 2026-09-14 "officers see only the other team's name" rule stands.
+
+Settled while building it:
+
+- **Which characters belong to the same person is not public, so one function answers it.** Loot and roster rows are readable by anyone, but a team's officers read only their own team's memberships. They cannot see the Hellfire membership behind a raider's old Hellfire character. `earlier_characters(team_id)` (security definer, authenticated only) returns pairs of roster row and earlier character: archived characters of the same person, either on this team or on a team where the person has no active character. It returns every pair to the team's officers, site admins and guild officers, only the caller's own pairs to anyone else, and nothing when signed out. The app reads the loot itself by player id.
+- **The Battle.net token stays in memory.** The picker needs the token from a Battle.net round trip. The app keeps it only for that page load, and only when the last round trip went to Battle.net (a Discord sign-in leaves Discord's token). Without one, "Choose alts" goes to Battle.net and back. A person with no Battle.net login is sent to connect it instead, since a Battle.net sign-in there would make a new account.
+
+---
+
 ## 2026-09-15 -- Alts come from the Battle.net character list: raiders pick them, roster matches link on their own (#942 step 5, #1162)
 
 Shipped: `20260915171944_battlenet_characters.sql`.
@@ -405,7 +425,7 @@ Shipped: `20260913180002_guild_url_keys.sql`
 
 The schema half of the address decision below (#1100). Settled while building it:
 
-- **Player codes are unique site-wide, not per team.** Simpler to look up, and it survives the code moving to `people` when #942 lands. A code is still looked up *under* the team the address names, so a real code pasted under the wrong team is not found rather than silently redirected.
+- **Player codes are unique site-wide, not per team.** Simpler to look up, and it survives the code moving to `people` when #942 lands. A code is still looked up _under_ the team the address names, so a real code pasted under the wrong team is not found rather than silently redirected.
 - **A player code never changes.** A trigger refuses any update to `players.url_code`, because officers can otherwise edit the whole row, and there is no retired-code table to catch a changed one. Nothing about a player (rename, realm move, main swap) needs a new code.
 - **One lookup function, `resolve_address()`, rather than plain reads on three tables.** The app makes one call per navigation and gets back ids, each part's current key, and `is_canonical`. No row means not found; `is_canonical = false` means the address used a retired key or different letter case, so the app redirects. Security invoker, since every table it reads is already public, which is what lets a signed-out visitor open a shared link.
 - **Retired keys are written by trigger on `guilds` and `teams`**, not by the admin functions, so a key changed from a migration or the service role is kept too. Changing a key back to one it used to have removes it from the retired list. A current key always wins over a retired one; among retired keys, the most recent wins.
@@ -563,7 +583,7 @@ Tracking issue: [#900](https://github.com/katogaming88/WGA-Raid-Hub/issues/900),
 
 Tracking issue: [#895](https://github.com/katogaming88/WGA-Raid-Hub/issues/895), Phase 4 of 4 for the raid calendar (part of #640).
 
-- **Bench players are not excluded from an optional night.** On a normal raid night, bench has nothing to RSVP about -- there's no default-Present for them to override, so `set_own_rsvp()` blocked them outright. Kat's correction while scoping this phase: an optional night (e.g. a bonus clear) is exactly the kind of night a bench player might get pulled in for, so treating bench the same as a mandatory night would silently exclude players who could actually attend. `set_own_rsvp()`'s bench guard now only applies when the target night is *not* optional; the reminder sweep's roster query (`optional-rsvp-reminders`) deliberately has no `is_bench=false` filter, unlike every other roster query in this schema.
+- **Bench players are not excluded from an optional night.** On a normal raid night, bench has nothing to RSVP about -- there's no default-Present for them to override, so `set_own_rsvp()` blocked them outright. Kat's correction while scoping this phase: an optional night (e.g. a bonus clear) is exactly the kind of night a bench player might get pulled in for, so treating bench the same as a mandatory night would silently exclude players who could actually attend. `set_own_rsvp()`'s bench guard now only applies when the target night is _not_ optional; the reminder sweep's roster query (`optional-rsvp-reminders`) deliberately has no `is_bench=false` filter, unlike every other roster query in this schema.
 - **A shared `is_optional_raid_night(team_id, raid_date)` SQL function, not two copies of the precedence.** Both `set_own_rsvp()`'s server-side gate on the `Attending` status/bench exception, and the Edge Function's date-window scan, need to agree on exactly what counts as an optional night (cancelled exception wins > added exception wins > active recurring rule > not a raid night at all). Rather than port `js/calendar.js`'s `computeRaidNights()` precedence into both SQL and the Edge Function's TypeScript separately -- and risk the two drifting -- it's one `STABLE` SQL function, called from both.
 - **`raid_rsvp_reminders_sent` gets RLS enabled with no read policy for anyone but the service role and `claude_readers`** (not even officer-read, unlike `audit_log`). It's a pure dedup log for the 24h/2h DM sweep, not an audit trail of a real action someone took -- a checkpoint row is meaningless without cross-referencing `raid_rsvps`/`raid_schedule` anyway, and there's no officer workflow that needs to see it. A service-role query in the SQL Editor is enough if it ever needs debugging.
 - **The dedup insert happens after the bot-relay call succeeds, not before.** A crashed/timed-out relay call legitimately retries on the next 15-minute cron tick rather than being falsely marked sent -- same fire-and-forget tolerance already accepted by `_notifyRsvpBot`'s own RSVP-change notification. The accepted tradeoff is a rare double-DM if the relay succeeds but the dedup insert itself fails.
@@ -1595,7 +1615,7 @@ Shipped: `20260709170000_attendance_player_id_set_null.sql`, the attendance FK, 
 - **team_settings / season_snapshots SELECT policy.** Locked down to team members only (`my_team_role(team_id) is not null`). Both tables carry data with no reason to be publicly readable, unlike roster/loot which the public site intentionally exposes.
 - **attendance FK on-delete.** Changed `attendance.player_id` to `ON DELETE SET NULL` (was `CASCADE`), matching `rclc_loot`. Soft-delete (`players.archived_at`, decided in #258) is the primary path; this FK change is the safety net if a hard-delete ever happens anyway.
 - **Auth-link backfill.** Added an `AFTER INSERT` trigger on `team_members` and `site_admins` that backfills `auth_user_id` immediately if the person already has an `auth.users` row (covers the case where someone logs in via Discord before an officer seeds their row).
-  - **Correction, 2026-09-04 (#910): that trigger was never written.** `pg_trigger` on all five grant and roster tables carries only `updated_at` and one self-update guard, and no migration contains it. The trigger that does exist, `on_auth_user_created`, is `AFTER INSERT ON auth.users`, so it fires at account creation and covers the opposite case: a row seeded *before* the person signs in. The case this bullet describes, a row seeded *after*, was never handled, which is why production carried an unlinked grant row that read as correct and granted nothing, and why `docs/supabase-setup-guide.md` claimed the column "fills itself on first sign-in". `admin_grant_team_role()` replaces the trigger by resolving the id in the grant statement itself.
+  - **Correction, 2026-09-04 (#910): that trigger was never written.** `pg_trigger` on all five grant and roster tables carries only `updated_at` and one self-update guard, and no migration contains it. The trigger that does exist, `on_auth_user_created`, is `AFTER INSERT ON auth.users`, so it fires at account creation and covers the opposite case: a row seeded _before_ the person signs in. The case this bullet describes, a row seeded _after_, was never handled, which is why production carried an unlinked grant row that read as correct and granted nothing, and why `docs/supabase-setup-guide.md` claimed the column "fills itself on first sign-in". `admin_grant_team_role()` replaces the trigger by resolving the id in the grant statement itself.
   - **Two of this entry's four bullets have now been found unshipped.** The attendance FK was caught the same way in July and is recorded at the #218 entry above ("the decision #250 already called for but never actually migrated"). The seasons table and the `team_settings`/`season_snapshots` read rule have not been checked against the live schema. A decision log records intent: an entry describing a schema object is a claim to verify against `pg_trigger`, `pg_proc` or `pg_constraint` before anything leans on the behaviour it promises.
 
 [Full discussion -> #250](https://github.com/katogaming88/WGA-Raid-Hub/issues/250)
@@ -1764,6 +1784,7 @@ The 2026-09-03 "raid_rsvps has no public or officer write policy at all" decisio
 `officer_set_rsvp(p_team_id, p_player_id, p_raid_date, p_status, p_note)` is that function, SECURITY DEFINER, gated the same way as `set_team_officer_bios()` (officer/team_leader via `my_team_role()`, or `is_guild_officer()`, or `is_site_admin()`). `raid_rsvps`'s RLS is untouched -- still SELECT-only, no INSERT/UPDATE/DELETE policy for anyone; this RPC remains the only officer write path, same shape as `set_own_rsvp()` for raiders.
 
 Two deliberate differences from `set_own_rsvp()`:
+
 - Takes `p_player_id` as a parameter rather than resolving from `auth.uid()` -- an officer is acting on someone else's row, not asserting their own status, so there's no "own row" TOCTOU concern to design around here.
 - No bench-on-a-normal-night gate on the target player. `set_own_rsvp()` blocks a bench raider from setting any status on a normal night because there's nothing for them to override there; an officer correction has no such restriction, since fixing a bench player's row (including on an optional night) is exactly the use case.
 - A note is always required, even though the officer -- not the raider -- initiated the change, so the raider can see why their status was changed on their behalf.

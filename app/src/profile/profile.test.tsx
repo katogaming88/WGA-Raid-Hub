@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
-import { fakeSession, seededHandlers, type Read } from '../test/fakeSupabase';
+import { fakeSession, filterValue, seededHandlers, type Read } from '../test/fakeSupabase';
 import { attendance, characterLinks, equippedGear, formatJoinDate, seasonCode, seasonLoot } from './profile';
 import { lootPriority } from './lootPriority';
 import { wishlistSummary } from './wishlist';
@@ -207,7 +207,9 @@ describe('Profile page', () => {
     const loot = (await screen.findByRole('heading', { name: 'Items received' })).closest('section')!;
     const alert = await within(loot).findByRole('alert');
     expect(alert).toHaveTextContent('loot read failed');
-    expect(within(alert).getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    // Found rather than got: the button waits for the earlier characters' read
+    // (#942 step 5b), which loads beside the loot.
+    expect(await within(alert).findByRole('button', { name: 'Retry' })).toBeInTheDocument();
   });
 });
 
@@ -388,5 +390,211 @@ describe('lootPriority', () => {
       pass: 2,
       total: 16
     });
+  });
+});
+
+// Characters and alts (#942 step 5b).
+describe('Characters card and alts picker', () => {
+  const GRIHZY = {
+    id: 1,
+    person_id: 70,
+    name: 'Grihzy',
+    realm: 'Illidan',
+    class_name: 'Evoker',
+    spec_name: 'Preservation',
+    item_level: 701
+  };
+  const withPerson = (tables: Record<string, (read: Read) => unknown> = {}) => ({
+    players: (read: Read) =>
+      read.columns === 'team_members(person_id)' ? { data: { team_members: { person_id: 70 } } } : { data: TORBJORN },
+    characters: () => ({ data: [GRIHZY] }),
+    ...tables
+  });
+
+  const answer = {
+    success: true,
+    characters: [
+      {
+        blizzard_id: 101,
+        name: 'Torbjorn',
+        realm: 'Illidan',
+        realm_slug: 'illidan',
+        class_name: 'Death Knight',
+        spec_name: 'Frost',
+        level: 90,
+        item_level: 708,
+        saved: false,
+        roster: { player_id: 11, team_id: 1, name_realm: 'Torbjorn-Illidan', outcome: 'already_yours' }
+      },
+      {
+        blizzard_id: 102,
+        name: 'Grihzy',
+        realm: 'Illidan',
+        realm_slug: 'illidan',
+        class_name: 'Evoker',
+        spec_name: 'Preservation',
+        level: 90,
+        item_level: 701,
+        saved: true,
+        roster: null
+      },
+      {
+        blizzard_id: 103,
+        name: 'Grihzfrost',
+        realm: 'Illidan',
+        realm_slug: 'illidan',
+        class_name: 'Mage',
+        spec_name: 'Frost',
+        level: 90,
+        item_level: null,
+        saved: false,
+        roster: null
+      },
+      {
+        blizzard_id: 104,
+        name: 'Holygrihz',
+        realm: 'Illidan',
+        realm_slug: 'illidan',
+        class_name: 'Paladin',
+        spec_name: 'Holy',
+        level: 90,
+        item_level: 694,
+        saved: false,
+        roster: { player_id: 30, team_id: 2, name_realm: 'Holygrihz-Illidan', outcome: 'claimed_by_someone_else' }
+      }
+    ],
+    roster: [
+      { player_id: 11, team_id: 1, name_realm: 'Torbjorn-Illidan', outcome: 'already_yours' },
+      { player_id: 30, team_id: 2, name_realm: 'Holygrihz-Illidan', outcome: 'claimed_by_someone_else' },
+      { player_id: 31, team_id: 1, name_realm: 'Lowbie-Illidan', outcome: 'linked' }
+    ]
+  };
+
+  it('lists the roster character first, then the alts, on the raider’s own profile', async () => {
+    renderApp('/g/wga/t/phoenix/me', profileHandlers(person('raider', 11), withPerson()));
+    const card = (await screen.findByRole('heading', { name: 'Characters' })).closest('section')!;
+    expect(within(card).getByText('Raiding')).toBeInTheDocument();
+    const alts = await within(card).findByRole('list', { name: 'Alts' });
+    expect(within(alts).getByText('Grihzy')).toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: 'Choose alts' })).toBeInTheDocument();
+    expect(card).toHaveTextContent('Only you and your team’s officers see your alts.');
+  });
+
+  it('shows an officer the alts without the picker', async () => {
+    renderApp('/g/wga/t/phoenix/p/tb000011', profileHandlers(person('officer', null), withPerson()));
+    const card = (await screen.findByRole('heading', { name: 'Characters' })).closest('section')!;
+    expect(await within(card).findByText('Grihzy')).toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: 'Choose alts' })).not.toBeInTheDocument();
+  });
+
+  it('opens on its own after the Battle.net trip, and saves the picked alts', async () => {
+    const handlers = {
+      ...profileHandlers(person('raider', 11), withPerson()),
+      invoke: () => ({ data: answer })
+    };
+    const { client } = renderApp('/g/wga/t/phoenix/me', handlers, {
+      authReturn: { intent: 'choose-alts', error: null },
+      battlenetToken: 'bnet-token'
+    });
+    const dialog = await screen.findByRole('dialog', { name: 'Choose your alts' });
+    // Save is still disabled while the characters load, so focus has to land on
+    // something else inside the dialog rather than staying on the page behind it.
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    expect(await within(dialog).findByText('Phoenix · claimed by you')).toBeInTheDocument();
+    expect(within(dialog).getByText('Hellfire Rollers · claimed by another player')).toBeInTheDocument();
+    expect(within(dialog).getByText('Ask your officers to check the claim')).toBeInTheDocument();
+    expect(dialog).toHaveTextContent('Lowbie-Illidan was on Phoenix’s roster, so it’s now your roster character.');
+    // Saved before, so it starts as an alt; the rest start as Skip.
+    expect(within(dialog).getByRole('group', { name: 'Show Grihzy as' })).toContainElement(
+      within(dialog).getAllByRole('button', { name: 'Alt', pressed: true })[0]!
+    );
+    expect(within(dialog).getByText(/alts? selected/)).toHaveTextContent('1 alt selected');
+
+    const frost = within(dialog).getByRole('group', { name: 'Show Grihzfrost as' });
+    await userEvent.click(within(frost).getByRole('button', { name: 'Alt' }));
+    expect(within(dialog).getByText(/alts? selected/)).toHaveTextContent('2 alts selected');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save alts' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    const calls = client.authCalls.filter(([kind]) => kind === 'invoke').map(([, call]) => call);
+    expect(calls).toEqual([
+      ['battlenet-characters', { body: { token: 'bnet-token' } }],
+      ['battlenet-characters', { body: { token: 'bnet-token', save: [102, 103] } }]
+    ]);
+  });
+
+  it('sends the raider back to Battle.net when there is no token, and when it has expired', async () => {
+    const expired = new Response(JSON.stringify({ success: false, error: 'Your Battle.net sign-in has expired.' }), {
+      status: 401
+    });
+    const noToken = renderApp('/g/wga/t/phoenix/me', profileHandlers(person('raider', 11), withPerson()));
+    await userEvent.click(await screen.findByRole('button', { name: 'Choose alts' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Continue to Battle.net' }));
+    expect(noToken.client.authCalls).toContainEqual([
+      'signInWithOAuth',
+      expect.objectContaining({ provider: 'custom:battlenet' })
+    ]);
+    noToken.view.unmount();
+
+    renderApp(
+      '/g/wga/t/phoenix/me',
+      {
+        ...profileHandlers(person('raider', 11), withPerson()),
+        invoke: () => ({ error: { message: 'Edge Function returned a non-2xx status code', context: expired } })
+      },
+      { authReturn: { intent: 'choose-alts', error: null }, battlenetToken: 'old' }
+    );
+    const dialog = await screen.findByRole('dialog', { name: 'Choose your alts' });
+    expect(await within(dialog).findByText('Your Battle.net sign-in has expired.')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Sign in with Battle.net again' })).toBeInTheDocument();
+  });
+
+  it('marks loot received on an earlier character and counts it in the season total', async () => {
+    const award = (id: number, player_id: number, name: string, day: number) => ({
+      id,
+      player_id,
+      track: 'Hero',
+      season: 'MID2',
+      awarded_at: `2026-08-${String(day).padStart(2, '0')}T18:00:00Z`,
+      items: { name }
+    });
+    const base = profileHandlers(
+      person('raider', 11),
+      withPerson({
+        rclc_loot: (read) => ({
+          data:
+            filterValue(read, 'player_id') === 11
+              ? [award(1, 11, 'Mine', 20)]
+              : [award(2, 20, 'Old', 12), award(3, 30, 'Left', 5)]
+        }),
+        players: (read) =>
+          read.columns === 'team_members(person_id)'
+            ? { data: { team_members: { person_id: 70 } } }
+            : read.single
+              ? { data: TORBJORN }
+              : {
+                  data: [
+                    { id: 20, name_realm: 'Oldmain-Illidan', team_id: 1 },
+                    { id: 30, name_realm: 'Lefty-Illidan', team_id: 2 }
+                  ]
+                }
+      })
+    );
+    renderApp('/g/wga/t/phoenix/me/loot', {
+      ...base,
+      rpc: (name, args) =>
+        name === 'earlier_characters'
+          ? {
+              data: [
+                { player_id: 11, earlier_player_id: 20 },
+                { player_id: 11, earlier_player_id: 30 }
+              ]
+            }
+          : base.rpc!(name, args)
+    });
+    expect(await screen.findByRole('rowheader', { name: 'Old on Oldmain' })).toBeInTheDocument();
+    expect(screen.getByRole('rowheader', { name: 'Left on Hellfire Rollers' })).toBeInTheDocument();
+    expect(screen.getByRole('rowheader', { name: 'Mine' })).toBeInTheDocument();
+    expect(document.querySelector('.loot-count')).toHaveTextContent('3');
   });
 });

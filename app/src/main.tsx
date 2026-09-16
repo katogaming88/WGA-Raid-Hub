@@ -17,10 +17,10 @@ if (!root) throw new Error('index.html is missing #root');
 let app;
 try {
   const client = createSupabaseClient();
-  const { user, authReturn } = await loadInitialSession(client);
+  const { user, authReturn, battlenetToken } = await loadInitialSession(client);
   app = (
     <DataProvider client={client}>
-      <SessionProvider initialUser={user} initialAuthReturn={authReturn}>
+      <SessionProvider initialUser={user} initialAuthReturn={authReturn} initialBattlenetToken={battlenetToken}>
         <StatusProvider>
           <RouterProvider router={createBrowserRouter(routes)} />
         </StatusProvider>

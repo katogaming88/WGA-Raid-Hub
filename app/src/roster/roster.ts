@@ -19,6 +19,7 @@ export type PlayerRow = {
   is_rotator: boolean;
   tier_pieces_equipped: number | null;
   join_date?: string | null;
+  team_member_id?: number | null;
   classes_specs: { class: string; spec: string; role: string | null } | null;
 };
 
@@ -224,18 +225,29 @@ export function classColor(className: string): string {
 // attendance comparisons out of the public roster.
 export type OfficerStats = { attendancePct: number; items: number };
 
+//
+// Items count every item the raider received this season (Kat, 2026-09-15),
+// so loot on an earlier character counts for the roster row it now belongs
+// to: `earlierOwner` maps each earlier character to that row. Rows are counted
+// once however many reads they came from.
 export function officerStats(
   players: Pick<PlayerRow, 'id' | 'join_date'>[],
   attendanceRows: (AttendanceRow & { player_id: number | null })[],
   lootRows: (LootRow & { player_id: number | null })[],
-  season: SeasonWindow
+  season: SeasonWindow,
+  earlierOwner: Map<number, number> = new Map()
 ): Map<number, OfficerStats> {
   const nights = new Map<number, AttendanceRow[]>();
   for (const row of attendanceRows)
     if (row.player_id !== null) nights.set(row.player_id, [...(nights.get(row.player_id) ?? []), row]);
   const loot = new Map<number, LootRow[]>();
-  for (const row of lootRows)
-    if (row.player_id !== null) loot.set(row.player_id, [...(loot.get(row.player_id) ?? []), row]);
+  const counted = new Set<number>();
+  for (const row of lootRows) {
+    if (row.player_id === null || counted.has(row.id)) continue;
+    counted.add(row.id);
+    const owner = earlierOwner.get(row.player_id) ?? row.player_id;
+    loot.set(owner, [...(loot.get(owner) ?? []), row]);
+  }
   return new Map(
     players.map((p) => [
       p.id,

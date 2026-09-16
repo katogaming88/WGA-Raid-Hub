@@ -67,7 +67,7 @@ export const PEOPLE = {
 // A session as supabase-js stores it. The token only has to look like a JWT
 // that has not expired, so the client reads it from storage without calling
 // the auth server.
-export function storedSession({ battlenet, discord }) {
+export function storedSession({ battlenet, discord, providerToken }) {
   const exp = Math.floor(Date.now() / 1000) + 3600;
   const b64 = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
   const identities = [];
@@ -86,6 +86,8 @@ export function storedSession({ battlenet, discord }) {
     token_type: 'bearer',
     expires_in: 3600,
     expires_at: exp,
+    // The Battle.net access token a round trip leaves behind (#942 step 5b).
+    ...(providerToken ? { provider_token: providerToken } : {}),
     user: { id: 'user-1', aud: 'authenticated', role: 'authenticated', identities, app_metadata: {}, user_metadata: {} }
   };
 }
@@ -102,7 +104,8 @@ function json(body, headers = {}) {
  * @param {{ path: string, viewport?: {width:number,height:number}, session?: object, who?: keyof PEOPLE,
  *           reducedMotion?: 'reduce'|'no-preference', colorScheme?: 'light'|'dark', sentinel?: string,
  *           tables?: Record<string, unknown[]>, person?: { discordId: string|null, person: object|null },
- *           click?: string, touch?: boolean, rpc?: Record<string, unknown>, functions?: string[] }} state
+ *           click?: string, touch?: boolean, rpc?: Record<string, unknown>, functions?: string[],
+ *           functionAnswers?: Record<string, unknown>, sessionStorage?: Record<string, string> }} state
  */
 export async function openApp(browser, port, state) {
   const host = supabaseHost();
@@ -118,6 +121,12 @@ export async function openApp(browser, port, state) {
   const pageErrors = [];
   page.on('pageerror', (err) => pageErrors.push(String(err?.message ?? err)));
 
+  // What the app read on its way back from Battle.net or Discord (#942 step 5b).
+  if (state.sessionStorage) {
+    await context.addInitScript((entries) => {
+      for (const [key, value] of entries) window.sessionStorage.setItem(key, value);
+    }, Object.entries(state.sessionStorage));
+  }
   if (state.session) {
     const key = `sb-${host.hostname.split('.')[0]}-auth-token`;
     await context.addInitScript(([k, v]) => window.localStorage.setItem(k, v), [key, JSON.stringify(state.session)]);
@@ -125,7 +134,17 @@ export async function openApp(browser, port, state) {
   // `person` describes someone inline, for pages that need a particular raider.
   const who = state.person ?? (state.who ? PEOPLE[state.who] : null);
   // Rows per table for the pages that read them, answered whatever the filters.
-  const tables = { players: [], player_equipped_gear: [], incoming_roster: [], team_settings: [], ...state.tables };
+  // characters and team_members are the alts reads (#942 step 5b): empty
+  // unless a state lists them, like the other tables here.
+  const tables = {
+    players: [],
+    player_equipped_gear: [],
+    incoming_roster: [],
+    team_settings: [],
+    characters: [],
+    team_members: [],
+    ...state.tables
+  };
 
   await page.route('**/*', async (route) => {
     const request = route.request();
@@ -151,6 +170,9 @@ export async function openApp(browser, port, state) {
         );
       }
       if (rest === 'rpc/current_discord_id') return route.fulfill(json(who?.discordId ?? null));
+      // Earlier characters whose loot counts toward a raider's total (#942
+      // step 5b): none unless the state says otherwise.
+      if (rest === 'rpc/earlier_characters' && !state.rpc?.earlier_characters) return route.fulfill(json([]));
       if (rest === 'rpc/resolve_person') return route.fulfill(json(who?.person ?? null));
       // Other RPCs a state expects, like a form's submit.
       if (rest?.startsWith('rpc/') && state.rpc && rest.slice(4) in state.rpc) {
@@ -158,6 +180,9 @@ export async function openApp(browser, port, state) {
       }
       // Edge Functions a state expects, like the Discord notice.
       const fn = url.pathname.split('/functions/v1/')[1];
+      if (fn && state.functionAnswers && fn in state.functionAnswers) {
+        return route.fulfill(json(state.functionAnswers[fn]));
+      }
       if (fn && state.functions?.includes(fn)) return route.fulfill(json({ ok: true }));
       if (rest === 'guilds') return route.fulfill(json({ id: 1, name: 'We Go Again', url_key: 'wga' }));
       if (rest === 'teams') return route.fulfill(json(TEAMS));

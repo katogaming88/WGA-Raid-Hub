@@ -107,6 +107,92 @@ const wishlistEditorState = (label, extra = {}) =>
   });
 
 const OFFICER = storedSession({ battlenet: 'Kato#1499', discord: 'Phoenix Officer' });
+
+// Alts (#942 step 5b): saved characters, the memberships they hang off, and
+// what the battlenet-characters function answers the picker with.
+const ALT_CHARACTERS = [
+  {
+    id: 1,
+    person_id: 70,
+    name: 'Grihzy',
+    realm: 'Illidan',
+    class_name: 'Evoker',
+    spec_name: 'Preservation',
+    item_level: 701
+  },
+  {
+    id: 2,
+    person_id: 70,
+    name: 'Grihzbear',
+    realm: 'Area 52',
+    class_name: 'Druid',
+    spec_name: 'Guardian',
+    item_level: 689
+  }
+];
+
+const rosterWithAlts = () => {
+  const first = SCENARIO.players[0];
+  return {
+    ...ROSTER,
+    players: ROSTER.players.map((p) => ({ ...p, team_member_id: p.id })),
+    team_members: ROSTER.players.map((p) => ({ id: p.id, person_id: p.id === first.id ? 70 : 100 + p.id })),
+    characters: ALT_CHARACTERS,
+    team_settings: [
+      { name: SEASON.name, start: SEASON.start, end: SEASON.end, signupSeason: SCENARIO.activeSignupSeason }
+    ],
+    attendance: [],
+    rclc_loot: []
+  };
+};
+
+const pickerCharacter = (blizzard_id, name, className, spec, item_level, roster = null) => ({
+  blizzard_id,
+  name,
+  realm: 'Illidan',
+  realm_slug: 'illidan',
+  class_name: className,
+  spec_name: spec,
+  level: 90,
+  item_level,
+  saved: blizzard_id === 102,
+  roster
+});
+
+const PICKER_ANSWER = {
+  success: true,
+  characters: [
+    pickerCharacter(101, 'Torbjorn', 'Death Knight', 'Frost', 708, {
+      player_id: VIEWERS.torbjorn.player.id,
+      team_id: 1,
+      name_realm: VIEWERS.torbjorn.player.name_realm,
+      outcome: 'already_yours'
+    }),
+    pickerCharacter(102, 'Grihzy', 'Evoker', 'Preservation', 701),
+    pickerCharacter(103, 'Grihzbear', 'Druid', 'Guardian', 689),
+    pickerCharacter(104, 'Holygrihz', 'Paladin', 'Holy', 694, {
+      player_id: 99,
+      team_id: 2,
+      name_realm: 'Holygrihz-Illidan',
+      outcome: 'claimed_by_someone_else'
+    })
+  ],
+  roster: []
+};
+
+// Back from Battle.net with a token, which is when the picker opens on its own.
+const pickerState = (label, extra = {}) =>
+  profileState(label, 'torbjorn', 'torbjorn', {
+    sentinel: '.picker-table',
+    session: storedSession({
+      battlenet: `${VIEWERS.torbjorn.player.name_realm}#1`,
+      discord: VIEWERS.torbjorn.player.name_realm,
+      providerToken: 'battlenet-token'
+    }),
+    sessionStorage: { 'wga-auth-intent': 'choose-alts', 'wga-auth-provider': 'custom:battlenet' },
+    functionAnswers: { 'battlenet-characters': PICKER_ANSWER },
+    ...extra
+  });
 const BATTLENET_ONLY = storedSession({ battlenet: 'Aeglos#1234' });
 
 // Every screen the shell has today, in both themes where color matters.
@@ -141,6 +227,17 @@ const STATES = [
     sentinel: 'text=Connect your Discord'
   },
   { label: 'page not found', path: '/g/wga/t/phoenix/nope', sentinel: 'text=Page not found' },
+  {
+    label: 'roster, officer, alts showing',
+    path: '/g/wga/t/phoenix/roster',
+    sentinel: 'table.roster-table .alt-count',
+    session: OFFICER,
+    who: 'officer',
+    tables: rosterWithAlts(),
+    click: 'role=button[name="Show alts"]'
+  },
+  pickerState('alts picker'),
+  pickerState('alts picker, light', { colorScheme: 'light' }),
   { label: 'roster', path: '/g/wga/t/phoenix/roster', sentinel: 'table.roster-table', tables: ROSTER },
   {
     label: 'roster, light',
@@ -172,6 +269,14 @@ const STATES = [
     click: 'role=tab[name="Season 4 Roster (Tentative)"]'
   },
   profileState('my profile', 'torbjorn', 'torbjorn'),
+  profileState('my profile, characters and alts', 'torbjorn', 'torbjorn', {
+    sentinel: 'main .characters-card .character-row + .character-row',
+    tables: {
+      ...profileState('', 'torbjorn', 'torbjorn').tables,
+      players: [{ ...VIEWERS.torbjorn.player, team_members: { person_id: 70 } }],
+      characters: ALT_CHARACTERS
+    }
+  }),
   profileState('my profile, light', 'torbjorn', 'torbjorn', { colorScheme: 'light' }),
   profileState('my profile, loot tab', 'torbjorn', 'torbjorn', {
     path: '/g/wga/t/phoenix/me/loot',

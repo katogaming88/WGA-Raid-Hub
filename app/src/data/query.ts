@@ -76,3 +76,19 @@ export function useSupabaseMutation<T, V>(
       Promise.all(options.refreshes.map((queryKey) => queryClient.invalidateQueries({ queryKey }))).then(() => {})
   });
 }
+
+// Every row of a read, a page at a time: the API returns at most 1000 rows per
+// request, and a team's season of attendance grows past that.
+const PAGE = 1000;
+
+type Page<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
+
+export async function readAll<T>(page: (from: number, to: number) => Page<T>) {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await page(from, from + PAGE - 1);
+    if (error) return { data: null, error };
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE) return { data: rows, error: null };
+  }
+}
