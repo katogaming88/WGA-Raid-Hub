@@ -157,8 +157,58 @@ describe('mapSupabaseLoot', () => {
       name: 'Signet of the Starved Beast',
       difficulty: 'Heroic',
       date: 'Mar 25, 2026',
+      offSpec: false,
       season: 'Midnight Season 1'
     });
+  });
+
+  // The response label is guild-configurable freeform text, so these cases are
+  // the real labels both teams have actually used, not invented ones. The rule
+  // has to stay identical to generate_priority_order()'s SQL -- a UI rule that
+  // merely resembles it is how OS/M+ got counted in the first place.
+  it('keeps an OS/M+ roll in items but out of every count', () => {
+    const rows = [lootRow(), lootRow({ id: 2, track: 'Myth', response: 'OS/M+' })];
+    const map = sandbox.mapSupabaseLoot(rows);
+    expect(map['katorri-stormrage'].count).toBe(1);
+    expect(map['katorri-stormrage'].mythicCount).toBe(0);
+    expect(map['katorri-stormrage'].heroicCount).toBe(1);
+    expect(map['katorri-stormrage'].items.length).toBe(2);
+    expect(map['katorri-stormrage'].items.map((i) => i.offSpec)).toEqual([false, true]);
+  });
+
+  it('counts a main-spec label normally', () => {
+    ['Upgrade', 'Tert/Track Upg', '4 Set', 'Catalyst', 'Top Pick', 'Need'].forEach((response) => {
+      const map = sandbox.mapSupabaseLoot([lootRow({ response })]);
+      expect(map['katorri-stormrage'].count, response).toBe(1);
+      expect(map['katorri-stormrage'].items[0].offSpec, response).toBe(false);
+    });
+  });
+
+  it('treats a missing response as main spec, so rows imported before the label was captured still count', () => {
+    const map = sandbox.mapSupabaseLoot([lootRow({ response: null }), lootRow({ id: 2, response: '' })]);
+    expect(map['katorri-stormrage'].count).toBe(2);
+  });
+
+  it('matches os only as a standalone token, the same as the SQL', () => {
+    // "Offspec/Greed" deliberately does NOT match: generate_priority_order()'s
+    // \mos\M does not match it either, and the UI diverging from the SQL is
+    // the bug this whole change exists to close. Tracked separately.
+    const map = sandbox.mapSupabaseLoot([lootRow({ response: 'Offspec/Greed' })]);
+    expect(map['katorri-stormrage'].items[0].offSpec).toBe(false);
+    const m = sandbox.mapSupabaseLoot([lootRow({ response: 'os' })]);
+    expect(m['katorri-stormrage'].items[0].offSpec).toBe(true);
+  });
+
+  it('matches m+ anywhere in the label, but only the literal "m+"', () => {
+    expect(sandbox.mapSupabaseLoot([lootRow({ response: 'M+ only' })])['katorri-stormrage'].items[0].offSpec).toBe(
+      true
+    );
+    // "Mythic+" does not match: the literal two characters are "c+", not
+    // "m+". The SQL has the same blind spot, and matching it is the point --
+    // a team that writes "Mythic+" is not covered by either side today.
+    expect(
+      sandbox.mapSupabaseLoot([lootRow({ response: 'Mythic+ carry' })])['katorri-stormrage'].items[0].offSpec
+    ).toBe(false);
   });
 
   it('falls back to Other for an unrecognized track value', () => {

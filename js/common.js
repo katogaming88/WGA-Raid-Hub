@@ -109,7 +109,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.128.2';
+var VERSION = '3.129.0';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
@@ -2300,7 +2300,7 @@ function fetchSupabaseLoot() {
       var q = supabaseClient
         .from('rclc_loot')
         .select(
-          'id, track, season, awarded_at, items(name), players(name_realm)',
+          'id, track, season, awarded_at, response, items(name), players(name_realm)',
           afterId === null ? { count: 'exact' } : undefined
         )
         .eq('team_id', _teamCfg.supabaseTeamId)
@@ -2324,6 +2324,24 @@ function fetchSupabaseLoot() {
       return b.id - a.id;
     });
   });
+}
+
+// Mirrors generate_priority_order()'s own exclusion test (see
+// supabase/definitions/functions/generate_priority_order.sql) character for
+// character: a standalone "os" token, or "m+" anywhere. response is
+// guild-configurable freeform text, not a fixed vocabulary -- Phoenix writes
+// "OS/M+", another team could write "Offspec / M+" -- so this stays a loose
+// token match rather than an exact-string list.
+//
+// Kept deliberately identical to the SQL rather than "improved" here: the
+// whole class of bug this came from (#856 follow-up) was one code path
+// knowing about OS/M+ while another didn't, and a UI rule that's merely
+// similar to the SQL rule reintroduces exactly that split. If the rule needs
+// to change, it changes in both places in the same PR.
+function isOffSpecLootResponse(response) {
+  var r = String(response == null ? '' : response);
+  if (!r) return false;
+  return /\bos\b/i.test(r) || /m\+/i.test(r);
 }
 
 /**
@@ -2368,13 +2386,21 @@ function mapSupabaseLoot(rows) {
     }
     if (!result[key]) result[key] = { count: 0, heroicCount: 0, mythicCount: 0, items: [] };
     var entry = result[key];
-    entry.count++;
-    if (difficulty === 'Heroic') entry.heroicCount++;
-    else if (difficulty === 'Mythic') entry.mythicCount++;
+    // An OS/M+ roll stays in items (it's real history and the profile shows
+    // it, tagged) but is left out of every count: those counts are what the
+    // site treats as "loot this raider has had", and an off-spec roll isn't
+    // an award against their main-spec share.
+    var offSpec = isOffSpecLootResponse(row.response);
+    if (!offSpec) {
+      entry.count++;
+      if (difficulty === 'Heroic') entry.heroicCount++;
+      else if (difficulty === 'Mythic') entry.mythicCount++;
+    }
     entry.items.push({
       name: row.items && row.items.name ? row.items.name : 'Unknown Item',
       difficulty: difficulty,
       date: date,
+      offSpec: offSpec,
       season: seasonDisplayName(row.season) || ''
     });
   });
@@ -4986,6 +5012,10 @@ function refreshBisCompletion(firstName, nameRealm) {
   var receivedMap = {};
   if (lootEntry && lootEntry.items) {
     for (var j = 0; j < lootEntry.items.length; j++) {
+      // Off-spec rolls skipped so BiS completion agrees with the priority
+      // system: if generate_priority_order() still ranks them for the item,
+      // this can't be showing the slot as done.
+      if (typeof lootEntry.items[j] === 'object' && lootEntry.items[j].offSpec) continue;
       var n = typeof lootEntry.items[j] === 'string' ? lootEntry.items[j] : lootEntry.items[j].name;
       receivedMap[normalise(n)] = true;
     }
@@ -5028,17 +5058,28 @@ function getLootEntry(nameOrNameRealm) {
   return null;
 }
 
-function getSeasonLootItems(firstName) {
+// Off-spec rolls are left out unless includeOffSpec is passed. Excluding by
+// default is deliberate: every caller that isn't literally rendering loot
+// history is asking "what has this raider had?" to make a decision with --
+// whether to block a priority rank, whether a slot is already spent, how a
+// fairness column reads -- and an OS/M+ roll is not an answer to that
+// question. Only the profile's history list opts back in, and it tags what
+// it shows. A new caller that forgets the flag gets the safe behaviour.
+function getSeasonLootItems(firstName, includeOffSpec) {
   var entry = getLootEntry(firstName);
   var items = (entry && entry.items) || [];
-  if (!ACTIVE_SEASON) return items;
   return items.filter(function (item) {
+    if (!includeOffSpec && item && item.offSpec) return false;
+    if (!ACTIVE_SEASON) return true;
     return item.season === ACTIVE_SEASON;
   });
 }
 
+// Counts here are main-spec only, matching DATA.lootCounts' own counts and
+// generate_priority_order()'s exclusion. .items matches them, so a caller
+// can't read a count of 1 next to a list of 2 and have to wonder which is
+// right -- the profile card asks for the fuller list separately.
 function getSeasonLootEntry(firstName) {
-  if (!ACTIVE_SEASON) return getLootEntry(firstName);
   var items = getSeasonLootItems(firstName);
   var heroic = 0,
     mythic = 0;
@@ -5047,6 +5088,15 @@ function getSeasonLootEntry(firstName) {
     else if (items[i].difficulty === 'Mythic') mythic++;
   }
   return { count: items.length, heroicCount: heroic, mythicCount: mythic, items: items };
+}
+
+// One shared tag so the label reads the same everywhere it appears. Short
+// on purpose: it sits inline next to item names in already-dense rows.
+function offSpecLootTagHtml() {
+  return (
+    '<span class="loot-offspec-tag" title="Won on an off-spec or Mythic+ roll -- ' +
+    'not counted toward loot received">OS/M+</span>'
+  );
 }
 
 // -- Render helpers ---------------------------------------------------------
@@ -6370,7 +6420,9 @@ function renderProfile(firstName, backTo, container) {
   var lootCount = lootEntry ? lootEntry.count : 0;
   var lootItemsHTML = '';
   var lastItems = [];
-  var seasonLootItems = getSeasonLootItems(player.nameRealm);
+  // includeOffSpec: this list is loot history, so an OS/M+ roll belongs in
+  // it -- tagged, and already left out of lootCount above.
+  var seasonLootItems = getSeasonLootItems(player.nameRealm, true);
   if (seasonLootItems.length > 0) {
     var sortedLoot = seasonLootItems.slice().sort(function (a, b) {
       return new Date(b.date).getTime() - new Date(a.date).getTime();
@@ -6386,12 +6438,14 @@ function renderProfile(firstName, backTo, container) {
       var li_diff = typeof li_obj === 'object' && li_obj.difficulty ? li_obj.difficulty : '';
       var li_date = typeof li_obj === 'object' && li_obj.date ? li_obj.date : '';
       var li_slot = lookupItemSlot(li_name);
+      var li_off = typeof li_obj === 'object' && li_obj.offSpec;
       var li_sub =
         (li_slot ? '<span style="color:' + getSlotColor(li_slot) + ';">' + li_slot + '</span>' : '') +
         (li_slot && li_diff ? ' - ' : '') +
         (li_diff ? '<span>' + li_diff + '</span>' : '') +
         ((li_slot || li_diff) && li_date ? ' - ' : '') +
-        (li_date ? '<span>' + li_date + '</span>' : '');
+        (li_date ? '<span>' + li_date + '</span>' : '') +
+        (li_off ? ' ' + offSpecLootTagHtml() : '');
       lootItemsHTML +=
         '<div style="font-size:1rem;color:var(--text);padding:0.3rem 0;border-bottom:1px solid var(--border);">' +
         li_name +
@@ -7402,9 +7456,10 @@ function renderProfile(firstName, backTo, container) {
                 ';font-weight:600;">' +
                 lxi.name +
                 '</div>' +
-                (lxi.difficulty
+                (lxi.difficulty || lxi.offSpec
                   ? '<div style="font-size:1rem;color:var(--text-muted);margin-top:0.1rem;">' +
-                    lxi.difficulty +
+                    (lxi.difficulty || '') +
+                    (lxi.offSpec ? (lxi.difficulty ? ' ' : '') + offSpecLootTagHtml() : '') +
                     '</div>'
                   : '') +
                 '</div>';

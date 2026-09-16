@@ -12,6 +12,29 @@ answers to.
 
 ---
 
+## [3.129.0] - 2026-09-16
+
+### Frontend
+
+- **An OS/M+ roll no longer counts as loot received.** Winning an item on an
+  off-spec or Mythic+ roll isn't the council handing you your main-spec
+  upgrade, and priority generation has ignored those rolls since #856 -- but
+  every screen still counted them, because the loot query never fetched the
+  response label in the first place. The label is now read, and an OS/M+ roll
+  is left out of the profile's Items Received count, the landing page's Items
+  This Tier stat, the roster's loot column and sorting, and BiS completion.
+- **Off-spec rolls still show in loot history, now tagged.** They stay in the
+  Recent Loot feed and on the profile's expanded item list, with an "OS/M+"
+  tag next to the item name so the row is explained rather than quietly
+  dropped or silently miscounted.
+- **The Priority editor no longer refuses to rank someone over an off-spec
+  roll.** It shared the same data, so it blocked adding a raider who'd won the
+  item OS/M+ -- while the generated list ranked them normally. The editor and
+  `generate_priority_order()` now agree.
+- Note: the match rule is deliberately character-for-character identical to
+  the SQL's (a standalone "os", or a literal "m+"). A label like
+  "Offspec/Greed" or "Mythic+" matches neither side today.
+
 ## [3.128.2] - 2026-09-16
 
 ### Frontend
