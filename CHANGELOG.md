@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.130.1] - 2026-09-16
+
+### Project
+
+- On the new app's profile, **Mark received** now sits in its own column on the
+  Loot priority card, so the buttons line up
+  ([#1195](https://github.com/katogaming88/WGA-Raid-Hub/issues/1195)). They used
+  to follow the status text, which is a different length on every row ("Wanted",
+  "Received Heroic Catalyst"), so each button started somewhere different. A row
+  with nothing to mark leaves the cell empty, and someone looking at another
+  raider's profile doesn't get the column at all. At phone width the card's
+  table scrolls sideways to reach it, the way the gear and loot tables already
+  do.
+
+---
+
 ## [3.130.0] - 2026-09-16
 
 ### Backend

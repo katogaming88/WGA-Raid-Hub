@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |      1 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |      8 h 00 m |
-| **All revamp work**                | **16 h 45 m** |
+| Revamp 2: public pages             |      8 h 15 m |
+| **All revamp work**                | **17 h 00 m** |
 
 ## Log
 
@@ -66,6 +66,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Time (ET)    | Item                                                | Phase                                   | Elapsed | Build / Kat                                  | Notes                                                                                                                                                                                                                                                                                                                                              |
 | ------------ | --------------------------------------------------- | --------------------------------------- | ------: | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1:05-1:30 AM | #942 step 5c: the any-time main swap request (#631) | Revamp 2 (Identity prerequisite, #1162) |    25 m | ~20 m build, ~5 m Kat deciding               | Three decisions up front: officers review it on the Roster page (the Reviews page is still a placeholder), the ask names a character already listed as an alt, and approving keeps today's archive-and-revive behaviour. Kat wants the "Main tick" rework from #631 instead, but as a change made just before cutover so the current site keeps working |
+| 1:50-2:05 AM | #1195 Mark received in its own column                | Revamp 2 (#868)                         |    15 m | build                                          | The buttons followed the status text, which is a different length on every row. Their own column, left out entirely for someone viewing another raider's profile. At phone width the card's table scrolls sideways to reach it, the way the gear and loot tables already do |
 
 ### 2026-09-15
 

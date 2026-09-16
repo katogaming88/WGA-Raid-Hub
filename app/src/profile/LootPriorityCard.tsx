@@ -123,6 +123,14 @@ function PriorityTable({
             <th scope="col">Heroic</th>
             <th scope="col">Mythic</th>
             <th scope="col">Status</th>
+            {/* Its own column so the buttons line up, whatever the status
+                reads (#1195). Left out entirely when there is nothing to
+                mark, rather than leaving an empty column on every row. */}
+            {canReport && (
+              <th scope="col">
+                <span className="visually-hidden">Mark received</span>
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -152,9 +160,13 @@ function PriorityTable({
                 ) : (
                   <span className="text-muted">Wanted</span>
                 )}
-                {/* Until a Mythic copy is on file, as on the current site. */}
-                {canReport && row.received?.track !== 'Mythic' && <MarkReceivedButton player={player} row={row} />}
               </td>
+              {canReport && (
+                <td className="priority-action">
+                  {/* Until a Mythic copy is on file, as on the current site. */}
+                  {row.received?.track !== 'Mythic' && <MarkReceivedButton player={player} row={row} />}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
