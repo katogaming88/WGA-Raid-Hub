@@ -1,0 +1,818 @@
+/* The Calendar page (#1102), as chosen on 2026-09-16: a month of night chips,
+   and a night page with your answer on the left, Heads up on top and the
+   roster in role columns. */
+
+.calendar-page {
+  max-width: 1400px;
+}
+
+.calendar-head,
+.night-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+}
+
+.month-nav,
+.night-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.month-label {
+  min-width: 150px;
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 650;
+  text-align: center;
+}
+
+.button.icon-only {
+  justify-content: center;
+  width: var(--control-height);
+  padding: 0;
+}
+
+.button[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+a.button {
+  text-decoration: none;
+}
+
+.grow {
+  flex: 1;
+}
+
+.eyebrow {
+  margin: 0;
+  padding: 0;
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.calendar-note {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  color: var(--text-muted);
+}
+
+/* Status marks: shape as well as colour (#442). */
+.mark {
+  display: inline-block;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.mark-in {
+  background: var(--good);
+}
+
+.mark-flag {
+  border: 2px solid var(--warn);
+}
+
+.mark-out {
+  width: 9px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--bad);
+}
+
+.mark-apart {
+  border: 2px dashed var(--text-dim);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pill-in {
+  background: color-mix(in srgb, var(--good) 12%, var(--panel));
+  color: var(--good);
+}
+
+.pill-flag {
+  background: color-mix(in srgb, var(--warn) 12%, var(--panel));
+  color: var(--warn);
+}
+
+.pill-out {
+  background: color-mix(in srgb, var(--bad) 11%, var(--panel));
+  color: var(--bad);
+}
+
+.pill-apart {
+  background: var(--raised);
+  color: var(--text-muted);
+}
+
+/* Your next raid */
+
+.next-raid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+}
+
+.next-raid-when {
+  font-size: var(--text-md);
+  font-weight: 650;
+}
+
+/* The month grid */
+
+.month-grid-card {
+  overflow: hidden;
+}
+
+.month-weekdays,
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.month-weekdays {
+  border-bottom: 1px solid var(--border);
+}
+
+.month-weekdays span {
+  padding: var(--space-2) 10px;
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.month-day {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  min-height: 118px;
+  padding: var(--space-2);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.month-day:nth-child(7n) {
+  border-right: 0;
+}
+
+.month-day:nth-last-child(-n + 7) {
+  border-bottom: 0;
+}
+
+.month-daynum {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.month-day-other .month-daynum {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.month-day-today .month-daynum {
+  background: var(--brand);
+  color: var(--page);
+}
+
+.night-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 7px var(--space-2) var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--brand);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  color: var(--text);
+  text-decoration: none;
+  transition: background var(--duration) var(--ease);
+}
+
+a.night-chip:hover {
+  border-color: var(--brand);
+  background: var(--hover);
+}
+
+.night-optional {
+  border-left-style: dashed;
+  border-left-color: var(--warn);
+}
+
+.night-extra {
+  border-left-color: var(--good);
+}
+
+/* A past night steps back without fading its text below reading contrast. */
+.night-past {
+  border-color: var(--border);
+  border-left-color: var(--border-strong);
+  background: transparent;
+}
+
+.night-cancelled {
+  border-style: dashed;
+  border-left: 3px dashed var(--border-strong);
+  background: transparent;
+}
+
+.night-cancelled .night-title {
+  color: var(--text-dim);
+  text-decoration: line-through;
+}
+
+.night-cancelled-label {
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.night-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 6px;
+}
+
+.night-title {
+  font-weight: 600;
+}
+
+.night-time,
+.night-count {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.night-count b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.night-mine {
+  display: flex;
+}
+
+/* The phone list */
+
+.month-list {
+  display: none;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  list-style: none;
+}
+
+.month-list-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 6px 0;
+}
+
+.month-list-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-3);
+}
+
+.month-list-row .night-chip {
+  flex: 1;
+  min-height: 44px;
+}
+
+.month-list-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 40px;
+  flex-shrink: 0;
+  padding-top: 6px;
+}
+
+.month-list-date small {
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.month-list-date b {
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.month-list-date .is-today {
+  color: var(--brand);
+}
+
+.month-list-today {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--brand);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.month-list-today::before,
+.month-list-today::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--brand);
+}
+
+.month-list-empty {
+  padding: var(--space-3) 0;
+}
+
+.calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.calendar-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-edge {
+  width: 14px;
+  height: 10px;
+  box-sizing: border-box;
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--brand);
+  border-radius: 3px;
+  background: var(--raised);
+}
+
+.legend-optional {
+  border-left: 3px dashed var(--warn);
+}
+
+.legend-extra {
+  border-left-color: var(--good);
+}
+
+/* The night page */
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.night-step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.night-step-date {
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+}
+
+.night-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.night-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 270px;
+  flex-shrink: 0;
+  padding: var(--space-4);
+}
+
+.rail-section + .rail-section {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.own-answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.own-answer fieldset,
+.officer-answer fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.own-answer .field {
+  margin: 0;
+}
+
+.answer-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.answer-choice {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  cursor: pointer;
+}
+
+.answer-choice input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.answer-choice:has(input:focus-visible) {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.answer-choice.is-chosen {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  box-shadow: inset 0 0 0 1px var(--brand);
+  font-weight: 600;
+}
+
+.night-counts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: var(--space-2) 0 0;
+}
+
+.night-count-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.night-count-row dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-muted);
+}
+
+.night-count-sub {
+  padding-left: var(--space-3);
+  font-size: var(--text-xs);
+}
+
+.night-count-row dd {
+  margin: 0;
+  font-weight: 650;
+}
+
+.latest-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.latest-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-sm);
+}
+
+.latest-list time {
+  font-size: var(--text-xs);
+}
+
+.latest-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.night-name {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.night-main {
+  container-type: inline-size;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.heads-up {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 14px var(--space-4);
+}
+
+.heads-up-groups {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.heads-up-group {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.heads-up-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.heads-up-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.heads-up-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.heads-up-out {
+  border-color: color-mix(in srgb, var(--bad) 45%, var(--border));
+}
+
+.heads-up-flag {
+  border-color: color-mix(in srgb, var(--warn) 45%, var(--border));
+}
+
+.heads-up-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.heads-up-line .night-name {
+  flex-shrink: 0;
+}
+
+.heads-up-role {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heads-up-note {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-style: italic;
+}
+
+.heads-up-empty {
+  margin: 0;
+}
+
+.role-columns {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+  gap: 10px;
+}
+
+.role-column {
+  overflow: hidden;
+}
+
+.role-title {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  padding: 10px var(--space-3);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.role-title .num {
+  font-weight: 500;
+}
+
+.night-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.night-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.night-rows-apart .night-row:last-child,
+.role-column > .night-rows:last-child .night-row:last-child {
+  border-bottom: 0;
+}
+
+.night-row .night-name {
+  flex: 1;
+}
+
+.night-row-apart .night-name {
+  font-weight: 500;
+}
+
+.night-status {
+  display: inline-flex;
+  align-items: center;
+}
+
+.edit-button {
+  border: 1px solid var(--border-strong);
+}
+
+.edit-button {
+  flex-shrink: 0;
+}
+
+.rotator-week {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+}
+
+.rotator-week p {
+  margin: 0;
+}
+
+.officer-answer .answer-choices-stacked .answer-choice {
+  min-height: 36px;
+}
+
+.officer-current {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-2) 10px;
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  color: var(--text-muted);
+}
+
+.officer-answer .field {
+  margin-top: var(--space-3);
+}
+
+/* Four role columns need room for a name, a status and a pencil each. */
+@container (max-width: 820px) {
+  .role-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 440px) {
+  .role-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .night-layout {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .night-rail {
+    width: auto;
+  }
+
+  .heads-up-groups {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* A phone: the month becomes a list, and controls grow to thumb size. */
+@media (max-width: 720px) {
+  .month-grid-card {
+    display: none;
+  }
+
+  .month-list {
+    display: block;
+  }
+
+  .night-step-date {
+    display: none;
+  }
+
+  .calendar-page .button,
+  .answer-choice {
+    min-height: 44px;
+  }
+
+  .button.icon-only {
+    width: 44px;
+  }
+
+  .own-answer .answer-choices {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

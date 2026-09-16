@@ -2,7 +2,7 @@ import { readAll, useSupabaseQuery } from '../data/query';
 import type { SeasonWindow } from '../profile/profile';
 import type { FeedLootRow } from './home';
 import type { ProgressRow, SettingsRaid } from './progression';
-import { monthRange, type ExceptionRow, type RsvpRow, type ScheduleRow } from './calendar';
+import { monthRange, type ExceptionRow, type RsvpRow, type ScheduleRow } from '../calendar/nights';
 
 // The team's awards for the season, for the stats row and the recent loot
 // feed. Paged, since a season's loot for a whole team runs past the 1000 rows

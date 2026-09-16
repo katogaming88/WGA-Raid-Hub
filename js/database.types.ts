@@ -3307,6 +3307,10 @@ export type Database = {
       is_any_team_officer: { Args: never; Returns: boolean }
       is_boe_manager: { Args: never; Returns: boolean }
       is_guild_officer: { Args: never; Returns: boolean }
+      is_optional_raid_night: {
+        Args: { p_raid_date: string; p_team_id: number }
+        Returns: boolean
+      }
       is_own_player: { Args: { p_player_id: number }; Returns: boolean }
       is_site_admin: { Args: never; Returns: boolean }
       is_team_leader_anywhere: { Args: never; Returns: boolean }
@@ -3326,6 +3330,25 @@ export type Database = {
       notify_player: {
         Args: { p_message: string; p_player_id: number }
         Returns: number
+      }
+      officer_set_rotator_week: {
+        Args: {
+          p_in: boolean
+          p_player_id: number
+          p_team_id: number
+          p_week_start: string
+        }
+        Returns: undefined
+      }
+      officer_set_rsvp: {
+        Args: {
+          p_note: string
+          p_player_id: number
+          p_raid_date: string
+          p_status: string
+          p_team_id: number
+        }
+        Returns: undefined
       }
       only_guild_id: { Args: never; Returns: number }
       remove_player_priority_order: {
@@ -3409,6 +3432,15 @@ export type Database = {
         Returns: undefined
       }
       set_guild_officer_bios: { Args: { p_bios: Json }; Returns: Json }
+      set_own_rsvp: {
+        Args: {
+          p_note?: string
+          p_raid_date: string
+          p_status: string
+          p_team_id: number
+        }
+        Returns: undefined
+      }
       set_team_officer_bios: {
         Args: { p_bios: Json; p_team_id: number }
         Returns: Json
@@ -3479,6 +3511,15 @@ export type Database = {
         Args: { p_team_id: number }
         Returns: {
           team_member_id: number
+        }[]
+      }
+      team_rsvp_answers: {
+        Args: { p_from: string; p_team_id: number; p_to: string }
+        Returns: {
+          player_id: number
+          raid_date: string
+          status: string
+          updated_at: string
         }[]
       }
       unarchive_season: {

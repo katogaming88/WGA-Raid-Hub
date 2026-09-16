@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |      1 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     10 h 17 m |
-| **All revamp work**                | **19 h 02 m** |
+| Revamp 2: public pages             |     11 h 22 m |
+| **All revamp work**                | **20 h 07 m** |
 
 ## Log
 
@@ -70,6 +70,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | 2:08-2:30 AM | #1102 team Home, first half: stats row and recent loot | Revamp 2 (#1102) |    22 m | ~19 m build, ~3 m Kat deciding | Kat chose two PRs (stats and loot now, progression and streams next) and to keep the calendar widget but drop the character picker. Built the #1102 way: the current page's behavior recorded as browser tests first, then the new page checked against the same expectations. One deliberate rename, Items This Tier -> Items this season |
 | 12:51-1:40 PM | #1102 team Home, second half: raid progression, calendar, live streams | Revamp 2 (#1102) |    45 m | ~30 m build, ~15 m Kat testing locally and two layout asks | Recorded the current site's three blocks first, then built them. The stream widget went into the app's frame, since today it floats on every page. Kat tested on the local snapshot (one local Supabase port fix), kept the stream panel open by default, and asked for bosses to read down columns, four to a column, and a wider calendar. PR #1215 |
 | 1:40-2:35 PM | #1102 Calendar: design options and the raider answers read | Revamp 2 (#1102) |    55 m | ~30 m build, ~25 m Kat choosing designs | Six mockups on a design canvas; Kat picked the night-chips month and the answer-panel night page, added a Heads up section for who is out or late, an officer change dialog, phone and light mode. Per-boss lineups filed as #1216 for later. Building showed raiders could only read their own answers, so Kat chose answers-without-notes for raiders and schedule-only when signed out: a new database read, in its own PR for Rex |
+| 2:40-3:45 PM | #1102 Calendar page build | Revamp 2 (#1102) |    65 m | build, plus one Kat snapshot question | Recorded today's calendar first (the month, a night's roster, saving an answer, officer changes, rotator weeks, the bench), then built the chosen design on top of the answers read in PR #1217. Screenshots moved the rotator's week button into the officer dialog and let the role columns pick two or four by the room they have. Officer changes stay off on phones |
 
 ### 2026-09-15
 

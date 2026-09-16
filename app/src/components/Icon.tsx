@@ -17,6 +17,8 @@ const PATHS = {
   search: '<circle cx="7" cy="7" r="4.2"/><path d="m10.2 10.2 3.3 3.3"/>',
   chevronDown: '<path d="m5 6.5 3 3 3-3"/>',
   chevronRight: '<path d="m6.5 4.5 3 3.5-3 3.5"/>',
+  chevronLeft: '<path d="m9.5 4.5-3 3.5 3 3.5"/>',
+  edit: '<path d="M10.5 2.5l3 3L6 13H3v-3z"/>',
   sun: '<circle cx="8" cy="8" r="2.8"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/>',
   moon: '<path d="M13.2 9.6A5.5 5.5 0 0 1 6.4 2.8a5.5 5.5 0 1 0 6.8 6.8z"/>',
   menu: '<path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>',

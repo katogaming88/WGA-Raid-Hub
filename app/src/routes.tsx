@@ -4,6 +4,7 @@ import { RosterPage } from './roster/RosterPage';
 import { MyProfilePage, PlayerProfilePage } from './profile/ProfilePage';
 import { AppShell } from './layout/AppShell';
 import { HomePage } from './home/HomePage';
+import { CalendarPage } from './calendar/CalendarPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { RequireAbility } from './auth/RequireAbility';
@@ -16,6 +17,7 @@ export type RouteHandle = { title: string };
 // placeholder.
 const BUILT_PAGES: Record<string, ReactElement> = {
   roster: <RosterPage />,
+  calendar: <CalendarPage />,
   me: <MyProfilePage />
 };
 
