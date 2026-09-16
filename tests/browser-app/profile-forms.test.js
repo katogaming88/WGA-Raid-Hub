@@ -167,6 +167,31 @@ describe('Mark Received (new app), checked against the current site', () => {
     }
   });
 
+  // #1195: the buttons used to sit after the status text, which is a different
+  // length on every row, so they started in a different place on each one.
+  it('puts every button in its own column, lined up, and leaves the column out for a viewer', async () => {
+    const opened = await openOwnProfile('torbjorn');
+    try {
+      await opened.page.waitForSelector('main .priority-table .mark-received');
+      const layout = await opened.page.evaluate(() => {
+        const table = document.querySelector('main .priority-table');
+        return {
+          headers: [...table.querySelectorAll('thead th')].map((th) => th.textContent.trim()),
+          // Each button's own cell, and where that cell starts.
+          inOwnCell: [...table.querySelectorAll('.mark-received')].every(
+            (b) => b.closest('td')?.className === 'priority-action'
+          ),
+          lefts: [...table.querySelectorAll('.mark-received')].map((b) => Math.round(b.getBoundingClientRect().left))
+        };
+      });
+      expect(layout.headers).toEqual(['Item', 'Heroic', 'Mythic', 'Status', 'Mark received']);
+      expect(layout.inOwnCell).toBe(true);
+      expect(new Set(layout.lefts).size).toBe(1);
+    } finally {
+      await opened.context.close();
+    }
+  });
+
   it('offers the sources, with Weekly quest and Pug raid added', async () => {
     const opened = await openOwnProfile('torbjorn');
     try {

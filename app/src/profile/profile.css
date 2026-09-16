@@ -684,11 +684,20 @@
   align-self: flex-start;
 }
 
-.priority-status .mark-received {
+/* A real width rather than a shrink-to-fit one, and a label that may wrap:
+   the table is 100% wide, so a column that refuses to shrink pushes the
+   button off a phone screen instead of narrowing with everything else
+   (#1195). At full width the column is wider than the button, so the label
+   only wraps where the room has actually run out. */
+.priority-action {
+  width: 7.5rem;
+}
+
+.priority-action .mark-received {
   min-height: 26px;
-  margin-left: var(--space-2);
-  padding: 0 var(--space-2);
+  padding: 2px var(--space-2);
   font-size: var(--text-xs);
+  text-align: left;
 }
 
 .report-item {
