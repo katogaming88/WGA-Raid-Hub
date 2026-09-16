@@ -109,7 +109,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.132.0';
+var VERSION = '3.132.1';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
@@ -348,7 +348,8 @@ function withTimeoutMs(promise, ms) {
  * ("Members read own team_members") returns, rather than from a yes/no RPC,
  * because the buttons are decided per row and need the ids themselves.
  * is_any_team_officer() is no longer asked here; it stays for the
- * boe_managers read policy, which has no team to scope by.
+ * "Officers read BoE manager grants" rule on guild_grants (#942 step 2),
+ * which has no team to scope by.
  *
  * Signed out short-circuits: every answer is empty for anon, so asking is
  * round-trips to learn nothing on the most common visit. `session` is what
