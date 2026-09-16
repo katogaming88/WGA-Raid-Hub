@@ -9,6 +9,8 @@ import {
   listCommand,
   plan,
   run,
+  historyArgs,
+  DEFAULT_BRANCH,
   EMPTY_CHECK_TABLES
 } from '../../scripts/dev/db-snapshot.js';
 import { PERSONAS_SQL } from '../../scripts/dev/snapshot-personas.js';
@@ -410,5 +412,72 @@ describe('the printed counts follow the backup workflow (#1056)', () => {
     const line = workflow.match(/EMPTY_CHECK="([^"]+)"/);
     expect(line, 'db-backup.yml no longer declares EMPTY_CHECK').not.toBeNull();
     expect(EMPTY_CHECK_TABLES).toEqual(line[1].trim().split(/\s+/));
+  });
+});
+
+describe('the history walk (#1198)', () => {
+  // A branch's own migration is not on production, whatever its commit time.
+  // The walk that decides the starting schema therefore begins at the merge
+  // base with origin/main, never at the branch tip: a file that exists only on
+  // the branch is applied on top by `migration up`, and is never the reset
+  // target. Seen on feat/942-guild-grants (committed 13:52Z, dump captured
+  // 14:37Z): the script reset to the branch's own migration and the restore
+  // failed on a view the dump still held as a table.
+  const CAPTURE = '2026-09-15T14:37:15Z';
+  const MERGE_BASE = '5833c6b0000000000000000000000000000000000';
+  // What git prints when asked from the trunk: main's files only.
+  const MAIN_LOG = ['2026-09-15T12:10:00Z', 'supabase/migrations/20260915003743_on_main.sql', ''].join('\n');
+  // What it prints when asked from the branch tip: the branch's own migration
+  // first, committed the morning before the capture.
+  const BRANCH_LOG = [
+    '2026-09-15T13:52:00Z',
+    'supabase/migrations/20260915092357_only_on_branch.sql',
+    '',
+    MAIN_LOG
+  ].join('\n');
+
+  const gitExec = (calls) => (cmd, args) => {
+    calls.push([cmd, ...args]);
+    if (cmd === 'aws' && args[0] === 's3api') {
+      return {
+        status: 0,
+        stdout: JSON.stringify({
+          IsTruncated: false,
+          Contents: [{ Key: 'pg/wga-2026-09-15.dump', LastModified: CAPTURE }]
+        })
+      };
+    }
+    if (cmd === 'git' && args[0] === 'merge-base') return { status: 0, stdout: `${MERGE_BASE}\n` };
+    if (cmd === 'git' && args[0] === 'log') {
+      return { status: 0, stdout: args.includes(MERGE_BASE) ? MAIN_LOG : BRANCH_LOG };
+    }
+    return { status: 0, stdout: '' };
+  };
+
+  it('asks git for the log from a named revision, with the flags parseMergeTimes documents', () => {
+    const args = historyArgs('abc123');
+    expect(args[0]).toBe('log');
+    expect(args[1]).toBe('abc123');
+    for (const flag of ['--first-parent', '--no-renames', '--diff-filter=A', '--format=%cI', '--name-only']) {
+      expect(args).toContain(flag);
+    }
+    expect(args.slice(-2)).toEqual(['--', 'supabase/migrations/']);
+  });
+
+  it('fetches main, finds the merge base, and walks from there', () => {
+    const calls = [];
+    run({}, { exec: gitExec(calls), rm: () => {} });
+    const git = calls.filter(([cmd]) => cmd === 'git').map((c) => c.slice(1));
+    expect(git[0]).toEqual(['fetch', 'origin', 'main']);
+    expect(git[1]).toEqual(['merge-base', 'HEAD', DEFAULT_BRANCH]);
+    expect(git[2].slice(0, 2)).toEqual(['log', MERGE_BASE]);
+  });
+
+  it('never resets to a migration that exists only on the branch', () => {
+    const calls = [];
+    const steps = run({}, { exec: gitExec(calls), rm: () => {} });
+    const reset = steps.find((s) => s.label === 'reset');
+    expect(reset.args).toContain('20260915003743');
+    expect(reset.args).not.toContain('20260915092357');
   });
 });
