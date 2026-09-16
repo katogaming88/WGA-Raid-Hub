@@ -371,8 +371,16 @@ function qaSubmitLoot() {
       time: String(ent.time || '').trim(),
       itemID: ent.itemID != null ? ent.itemID : null,
       itemName: String(ent.itemName || '').trim(),
+      // itemString and response have to be carried here too, not just in
+      // js/tabs/tab-loot-import.js: import_rclc_loot() reads the item's bonus
+      // IDs out of itemString for the gear track (20260829200033) and stores
+      // response for the OS/M+ priority exclusion (#856). Dropping them here
+      // meant a Quick Actions paste imported rows with a blank response, so
+      // generate_priority_order() counted an OS/M+ roll as a real award.
+      itemString: String(ent.itemString || '').trim(),
       instance: instance,
-      boss: String(ent.boss || '').trim()
+      boss: String(ent.boss || '').trim(),
+      response: String(ent.response || '').trim()
     });
   }
 

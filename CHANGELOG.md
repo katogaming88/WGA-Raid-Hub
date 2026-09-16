@@ -12,6 +12,25 @@ answers to.
 
 ---
 
+## [3.128.2] - 2026-09-16
+
+### Frontend
+
+- **Quick Actions loot import dropped the RCLC response label and the item
+  string.** The officer dashboard's Quick Actions panel has its own paste box
+  for the RCLootCouncil export, separate from the Import sub-tab, and it was
+  only ever sending eight of the ten fields the import needs. The two it left
+  behind are the ones that matter most after the paste: `response`, the label
+  the council actually picked (OS/M+, Upgrade, 4 Set), and `itemString`, which
+  carries the item's bonus IDs. Without the response, priority generation had
+  nothing to exclude on, so an OS or M+ roll counted as a real award and
+  suppressed that raider's priority on the item for the rest of the season.
+  Without the item string, the gear track fell back to reading the difficulty
+  out of the instance name, which drifts when loot is handed out a pull or two
+  late. Both fields are now carried through, matching the Import sub-tab.
+  Entries imported through Quick Actions before this fix keep their blank
+  response and need re-importing to pick the labels up.
+
 ## [3.128.1] - 2026-09-15
 
 ### Project
