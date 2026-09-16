@@ -12,7 +12,6 @@ declare
   v_request public.main_swap_requests%rowtype;
   v_from public.players%rowtype;
   v_player_id integer;
-  v_today date := (now() at time zone 'America/New_York')::date;
   v_live_season text;
   v_spec_label text;
   v_note text := nullif(btrim(p_note), '');
