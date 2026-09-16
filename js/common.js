@@ -109,7 +109,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.129.0';
+var VERSION = '3.129.1';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
@@ -2674,7 +2674,7 @@ function fetchSupabaseRaidProgress() {
   var query = supabaseClient
     .from('team_raid_progress')
     .select(
-      'mythic_pulls, mythic_best_pct, mythic_report_code, mythic_fight_id, ' +
+      'mythic_date, mythic_pulls, mythic_best_pct, mythic_report_code, mythic_fight_id, ' +
         'heroic_date, heroic_pulls, heroic_best_pct, heroic_report_code, heroic_fight_id, ' +
         'raid_encounters(name, wcl_encounter_id, raid_zones(wcl_zone_id))'
     )
@@ -2717,6 +2717,7 @@ function mapSupabaseRaidProgress(rows) {
     var name = normalise(encounter.name || '');
     if (!zone.wcl_zone_id) return;
     var progress = {
+      mythicDate: row.mythic_date,
       pulls: row.mythic_pulls,
       bestPct: row.mythic_best_pct,
       reportCode: row.mythic_report_code,

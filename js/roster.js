@@ -510,19 +510,19 @@ function buildProgression() {
     var raid = raids[i];
     var bosses = raid.bosses || [];
     var total = bosses.length;
-    var mythicKilled = bosses.filter(function (b) {
-      return !!b.mythicDate;
-    }).length;
 
     // A first pass purely to know each boss's live progress before the
-    // header renders (heroicKilled count, and the last boss's heroic date
-    // for AOTC) -- the per-boss loop below looks each of these up again,
-    // which is a cheap map read, not worth threading through as state.
+    // header renders (heroic/mythic killed counts, and the last boss's
+    // heroic date for AOTC) -- the per-boss loop below looks each of these
+    // up again, which is a cheap map read, not worth threading through as
+    // state.
     var heroicKilled = 0;
+    var mythicKilled = 0;
     var lastProgress = null;
     for (var h = 0; h < bosses.length; h++) {
       var p = _raidProgressFor(raid, bosses[h]);
       if (p && p.heroicDate) heroicKilled++;
+      if (_bossMythicKillDate(bosses[h], p)) mythicKilled++;
       if (h === bosses.length - 1) lastProgress = p;
     }
     // Prefers the live-synced Heroic kill date on the last boss (#629) over
@@ -572,13 +572,14 @@ function buildProgression() {
       html += '<div class="prog-bosses">';
       for (var j = 0; j < bosses.length; j++) {
         var boss = bosses[j];
-        var killed_ = !!boss.mythicDate;
         var progress = _raidProgressFor(raid, boss);
+        var mythicKillDate = _bossMythicKillDate(boss, progress);
+        var killed_ = !!mythicKillDate;
         html += '<div class="prog-boss-item">';
         html += '<div class="prog-boss' + (killed_ ? ' prog-boss-killed' : '') + '">';
         html += '<span class="prog-boss-num">' + (j + 1) + '</span>';
         html += '<span class="prog-boss-name">' + _esc(boss.name || 'Unknown') + '</span>';
-        if (killed_) html += '<span class="prog-boss-date">' + boss.mythicDate + '</span>';
+        if (killed_) html += '<span class="prog-boss-date">' + _esc(mythicKillDate) + '</span>';
         html += _renderPullsBadge(progress, killed_);
         html += '</div>';
         html += _renderHeroicRow(progress);
@@ -788,6 +789,24 @@ function _raidProgressFor(raid, boss) {
   return map[zoneId + '|' + normalise(boss.name)] || null;
 }
 
+// A boss's Mythic kill date, preferring wcl-progression-sync's own
+// team_raid_progress.mythic_date over the officer-typed Season Settings
+// field -- the same order aotcDate already uses for the Heroic side (#629).
+//
+// Until now only boss.mythicDate was consulted, so Mythic kills never
+// appeared on their own: the sync had been recording mythic_date all along,
+// but fetchSupabaseRaidProgress() didn't select the column and
+// mapSupabaseRaidProgress() didn't map it, so the date never reached the
+// browser. The panel sat at "0/8 M" while showing that boss's Mythic pull
+// count from the very same synced row.
+//
+// The officer-typed value stays as the fallback, so a kill entered by hand
+// (a raid WCL never saw, or a season predating the sync) still shows.
+function _bossMythicKillDate(boss, progress) {
+  if (progress && progress.mythicDate) return progress.mythicDate;
+  return (boss && boss.mythicDate) || '';
+}
+
 function _wclReportUrl(reportCode, fightId) {
   if (!reportCode) return '';
   var url = 'https://www.warcraftlogs.com/reports/' + encodeURIComponent(reportCode);
@@ -819,11 +838,12 @@ function _renderPullsBadge(progress, killed) {
 }
 
 // Heroic counterpart to _renderPullsBadge() (#629) -- same pulls/best-%/
-// report-link shape, plus its own kill date (Heroic isn't gated behind the
-// officer-confirmed boss.mythicDate the Mythic row uses; it's shown purely
-// from the live sync since there's no equivalent manually-saved field to
-// prefer). Renders as its own line below the Mythic row rather than inside
-// it -- see the .prog-boss-item wrapper in buildProgression().
+// report-link shape, plus its own kill date, shown straight from the live
+// sync. The Mythic side now reads the sync first too (see
+// _bossMythicKillDate()); it differs only in still falling back to the
+// officer-typed Season Settings date, which Heroic has no equivalent of.
+// Renders as its own line below the Mythic row rather than inside it -- see
+// the .prog-boss-item wrapper in buildProgression().
 function _renderHeroicRow(progress) {
   if (!progress || (progress.heroicPulls == null && !progress.heroicDate)) return '';
   var killed = !!progress.heroicDate;

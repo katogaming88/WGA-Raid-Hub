@@ -12,6 +12,24 @@ answers to.
 
 ---
 
+## [3.129.1] - 2026-09-16
+
+### Frontend
+
+- **The progression panel now counts Mythic kills.** Phoenix sat at "0/8 M"
+  with two Mythic bosses down. The nightly WCL sync had been recording those
+  kills in `team_raid_progress.mythic_date` the whole time -- the panel just
+  never saw the column: the loot-style query that feeds it selected
+  `heroic_date` but not `mythic_date`, and the mapper didn't carry it either.
+  So the only Mythic kill date the browser had was the one an officer types
+  by hand in Season Settings, which nobody had filled in for this raid. The
+  giveaway was the panel showing a boss's synced Mythic _pull count_ while
+  insisting it wasn't killed -- both numbers come from the same row.
+- The Mythic kill date now comes from the sync first, falling back to the
+  officer-typed Season Settings date, the same order AOTC already used for
+  Heroic. A kill entered by hand -- a raid WCL never saw, or a season from
+  before the sync existed -- still shows.
+
 ## [3.129.0] - 2026-09-16
 
 ### Frontend
