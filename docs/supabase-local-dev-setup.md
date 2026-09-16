@@ -729,7 +729,10 @@ there was nothing stored before, rather than keeping an old value.
 2. Works out the schema that dump belongs to: the newest migration **merged**
    before the dump was captured. Merged, not stamped, because since #1050 the
    merge is what applies a migration to production, and a PR that sits open for
-   a day is normal here. `supabase db reset --version <that> --no-seed`.
+   a day is normal here. Counted on `origin/main` (fetched first) up to this
+   branch's merge base with it, so a migration that exists only on your branch
+   is never the starting schema, whatever its commit time (#1198); it runs in
+   step 8 instead. `supabase db reset --version <that> --no-seed`.
 3. Switches the cron jobs off. The seed normally does that (section 10) and
    `--no-seed` skipped it.
 4. Empties every table in `public`. 46 migrations insert rows of their own, and
@@ -818,8 +821,9 @@ downloaded dump is kept on a failure and deleted on success.
   schema disagree. Usually the checkout is behind: `git pull` on `main` (or
   rebase the branch) and run it again. Otherwise pass an older `--dump` or an
   explicit `--version`.
-- **`No migration on this branch was merged before ...`.** The dump predates
-  the history you have, or the clone is shallow. Pass `--version <stamp>`.
+- **`No migration on main (up to this branch's merge base) was merged before ...`.**
+  The dump predates the history you have, or the clone is shallow. Pass
+  `--version <stamp>`.
 - **`Credential access key has length 0, should be 32`.** The profile exists
   with empty keys, which is what `aws configure` leaves when you press Enter
   through its prompts. Run it again and paste both values.
