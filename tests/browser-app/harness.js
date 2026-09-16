@@ -105,7 +105,8 @@ function json(body, headers = {}) {
  *           reducedMotion?: 'reduce'|'no-preference', colorScheme?: 'light'|'dark', sentinel?: string,
  *           tables?: Record<string, unknown[]>, person?: { discordId: string|null, person: object|null },
  *           click?: string, touch?: boolean, rpc?: Record<string, unknown>, functions?: string[],
- *           functionAnswers?: Record<string, unknown>, sessionStorage?: Record<string, string> }} state
+ *           functionAnswers?: Record<string, unknown>, sessionStorage?: Record<string, string>,
+ *           clock?: string }} state
  */
 export async function openApp(browser, port, state) {
   const host = supabaseHost();
@@ -116,6 +117,8 @@ export async function openApp(browser, port, state) {
     // A phone: a touch screen as the main pointer, so (pointer: coarse) matches.
     ...(state.touch ? { hasTouch: true, isMobile: true } : {})
   });
+  // A page that reads "today", like Home's calendar, sees this date instead.
+  if (state.clock) await context.clock.setFixedTime(new Date(state.clock));
   const page = await context.newPage();
   const unexpected = [];
   const pageErrors = [];
@@ -147,8 +150,14 @@ export async function openApp(browser, port, state) {
     // unless a state lists them.
     main_swap_requests: [],
     classes_specs: [],
-    // Home's stats row and loot feed (#1102).
+    // Home (#1102): the loot feed, raid progression, the calendar, and the
+    // stream widget every team page carries.
     rclc_loot: [],
+    team_raid_progress: [],
+    raid_schedule: [],
+    raid_schedule_exceptions: [],
+    raid_rsvps: [],
+    streamers: [],
     ...state.tables
   };
 
@@ -156,6 +165,11 @@ export async function openApp(browser, port, state) {
     const request = route.request();
     const url = new URL(request.url());
     if (url.hostname === '127.0.0.1' && url.port === String(port)) return route.continue();
+    // The stream widget's Twitch players. axe does not look inside a
+    // cross-origin frame, so the document only has to exist.
+    if (url.hostname.endsWith('twitch.tv') || url.hostname.endsWith('ttvnw.net')) {
+      return route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>stream</title>' });
+    }
 
     if (url.host === host.host) {
       if (request.method() === 'OPTIONS') return route.fulfill({ status: 204 });

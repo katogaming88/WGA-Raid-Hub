@@ -1608,6 +1608,166 @@ export type Database = {
           },
         ]
       }
+      raid_rsvps: {
+        Row: {
+          created_at: string
+          id: number
+          note: string | null
+          player_id: number
+          raid_date: string
+          status: string
+          team_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          note?: string | null
+          player_id: number
+          raid_date: string
+          status: string
+          team_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          note?: string | null
+          player_id?: number
+          raid_date?: string
+          status?: string
+          team_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raid_rsvps_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raid_rsvps_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "priority_order_gaps"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "raid_rsvps_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "rnlsi"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "raid_rsvps_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      raid_schedule: {
+        Row: {
+          active: boolean
+          created_at: string
+          duration_minutes: number
+          id: number
+          is_optional: boolean
+          start_time: string
+          team_id: number
+          timezone: string
+          weekday: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          duration_minutes?: number
+          id?: number
+          is_optional?: boolean
+          start_time: string
+          team_id: number
+          timezone?: string
+          weekday: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          duration_minutes?: number
+          id?: number
+          is_optional?: boolean
+          start_time?: string
+          team_id?: number
+          timezone?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raid_schedule_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      raid_schedule_exceptions: {
+        Row: {
+          created_at: string
+          created_by: number | null
+          duration_minutes: number | null
+          exception_type: string
+          id: number
+          is_optional: boolean
+          note: string | null
+          raid_date: string
+          start_time: string | null
+          team_id: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: number | null
+          duration_minutes?: number | null
+          exception_type: string
+          id?: number
+          is_optional?: boolean
+          note?: string | null
+          raid_date: string
+          start_time?: string | null
+          team_id: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: number | null
+          duration_minutes?: number | null
+          exception_type?: string
+          id?: number
+          is_optional?: boolean
+          note?: string | null
+          raid_date?: string
+          start_time?: string | null
+          team_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raid_schedule_exceptions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raid_schedule_exceptions_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       raid_zones: {
         Row: {
           id: number

@@ -12,6 +12,41 @@ answers to.
 
 ---
 
+## [3.132.0] - 2026-09-16
+
+### Project
+
+- The new app's team **Home** page, second half
+  ([#1102](https://github.com/katogaming88/WGA-Raid-Hub/issues/1102)). Home now
+  has everything the current site's landing view has, except the character
+  picker, which was dropped on purpose.
+  - **Raid progression**: each raid the officers listed in Season Settings,
+    with its Heroic and Mythic score in words, a progress bar, and every boss's
+    kill dates, pulls and best pull, linked to Warcraft Logs. A boss is matched
+    to the Warcraft Logs sync by its encounter id, or by name when it has none.
+    Until Ahead of the Curve the card follows Heroic, then it switches to
+    Mythic. A mini-raid is always Mythic. These are the current site's rules.
+  - **Calendar**: this month's raid nights from the team's weekly schedule and
+    its one-off changes. Each raid day links to that day on the Calendar page
+    and shows how many raiders are expected, bench left out. Signed in, it
+    shows your own answer instead. Each status has its own marker shape as well
+    as its own colour.
+  - **Live streams**: the floating panel of whoever is live, on every team
+    page. It shows this team's streamers and other teams' who have not opted
+    out, and remembers whether you closed it.
+  - Deliberate differences from the current site: kill dates are written out
+    ("Apr 2, 2026"), and the "X is live!" line is the widget's button instead
+    of a banner across the top. On a phone the panel starts closed. Stream cards
+    have no "View profile" link, since profiles in the new app are only open to
+    the raider and their officers.
+  - As with the first half, the current page's behaviour is recorded first
+    (`tests/behavior/home.js`, `tests/browser/home-recorded.test.js`) and the
+    new page is checked against the same expectations
+    (`tests/browser-app/home.test.js`).
+- `js/database.types.ts` gains the three calendar tables (`raid_schedule`,
+  `raid_schedule_exceptions`, `raid_rsvps`), which the shared types file was
+  missing.
+
 ## [3.131.0] - 2026-09-16
 
 ### Project

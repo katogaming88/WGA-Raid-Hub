@@ -17,7 +17,7 @@ import {
   WISHLIST
 } from '../behavior/profile.js';
 import * as WISHLIST_EDITOR from '../behavior/wishlist.js';
-import { SCENARIO as HOME, SEASON as HOME_SEASON } from '../behavior/home.js';
+import { SCENARIO as HOME, SEASON as HOME_SEASON, PROGRESSION, CALENDAR, STREAMS, TODAY } from '../behavior/home.js';
 
 // The new app in a real browser (#1101 part 4): the shell's accessibility
 // checklist, measured rather than trusted. Unlike tests/browser/, there is no
@@ -221,22 +221,36 @@ const pickerState = (label, extra = {}) =>
 const BATTLENET_ONLY = storedSession({ battlenet: 'Aeglos#1234' });
 
 // Every screen the shell has today, in both themes where color matters.
-// Home's reads (tests/behavior/home.js): a roster and a season of loot, so
-// the stats row and the loot feed are both on the page axe measures.
+// Home's reads (tests/behavior/home.js): a roster, a season of loot, raids,
+// a schedule and live streamers, so every block is on the page axe measures.
+// The calendar reads today's date, so Home states fix the clock.
 const HOME_TABLES = {
   players: HOME.players,
   rclc_loot: HOME.loot,
-  team_settings: [{ name: HOME_SEASON.name, start: null, end: null }]
+  team_settings: [{ name: HOME_SEASON.name, start: null, end: null, raids: PROGRESSION.raids }],
+  team_raid_progress: PROGRESSION.rows,
+  raid_schedule: CALENDAR.schedule,
+  raid_schedule_exceptions: CALENDAR.exceptions,
+  streamers: STREAMS
 };
-const HOME_SENTINEL = '.home-loot-table tbody tr';
+// Every block has landed, not just the first.
+const HOME_SENTINEL =
+  'main:has(.home-loot-table):has(.home-progression .raid):has(.home-calendar a):has(.stream-widget)';
 
 const STATES = [
-  { label: 'home, signed out', path: '/g/wga/t/phoenix', sentinel: HOME_SENTINEL, tables: HOME_TABLES },
+  {
+    label: 'home, signed out',
+    path: '/g/wga/t/phoenix',
+    sentinel: HOME_SENTINEL,
+    tables: HOME_TABLES,
+    clock: TODAY
+  },
   {
     label: 'home, signed out, light',
     path: '/g/wga/t/phoenix',
     sentinel: HOME_SENTINEL,
     tables: HOME_TABLES,
+    clock: TODAY,
     colorScheme: 'light'
   },
   {
@@ -431,6 +445,7 @@ describe('narrow-screen drawer', () => {
       path: '/g/wga/t/phoenix',
       sentinel: HOME_SENTINEL,
       tables: HOME_TABLES,
+      clock: TODAY,
       viewport: NARROW
     });
     try {
