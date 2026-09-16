@@ -78,17 +78,19 @@ function SwapReview({ row, teamId }: { row: ReviewRow; teamId: number }) {
           onChange={(e) => setNote(e.target.value)}
           disabled={review.isPending}
         />
-        <button
-          type="button"
-          className="button button-primary"
-          onClick={() => decide(true)}
-          disabled={review.isPending}
-        >
-          Approve
-        </button>
-        <button type="button" className="button" onClick={() => decide(false)} disabled={review.isPending}>
-          Decline
-        </button>
+        <span className="main-swap-buttons">
+          <button
+            type="button"
+            className="button button-primary"
+            onClick={() => decide(true)}
+            disabled={review.isPending}
+          >
+            Approve
+          </button>
+          <button type="button" className="button" onClick={() => decide(false)} disabled={review.isPending}>
+            Decline
+          </button>
+        </span>
       </div>
       {review.isError && (
         <p className="form-error" role="alert">

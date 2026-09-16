@@ -143,7 +143,7 @@ function AltRow({
           ask?.kind === 'waiting' ? 'status-tag character-tag character-tag-waiting' : 'status-tag character-tag'
         }
       >
-        {ask?.kind === 'waiting' ? 'Waiting for an officer' : 'Alt'}
+        {ask?.kind === 'waiting' ? 'Waiting' : 'Alt'}
       </span>
       <span className="num character-level">{alt.item_level ?? '–'}</span>
       {ask?.kind === 'ask' && (
@@ -163,6 +163,7 @@ function CancelAsk({ request }: { request: SwapRequest }) {
   const cancel = useCancelMainSwap(team.id);
   return (
     <span className="character-ask characters-cancel">
+      <span className="text-muted">Waiting for an officer</span>
       <button
         type="button"
         className="button button-small"
