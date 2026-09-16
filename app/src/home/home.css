@@ -122,7 +122,7 @@
 /* Progression beside the calendar; stacked on a narrow screen. */
 .home-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
   gap: var(--space-4);
   align-items: start;
 }
@@ -199,10 +199,14 @@
   font-weight: 500;
 }
 
-/* Bosses read down each column, then across: 1-3 in the first column, 4-6 in
-   the next. At most three columns, each at least 230px wide. */
+/* Bosses read down each column, then across: four to a column (1-4, then
+   5-8), with as many columns as the raid needs. One column on a narrow
+   screen, below. */
 .boss-list {
-  columns: 230px 3;
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(4, auto);
+  grid-auto-columns: minmax(0, 1fr);
   column-gap: var(--space-4);
   margin: var(--space-3) 0 0;
   padding: 0;
@@ -213,7 +217,6 @@
   display: flex;
   gap: var(--space-2);
   padding: 6px 0;
-  break-inside: avoid;
 }
 
 .boss-number {
@@ -383,6 +386,13 @@ a.cal-day-raid:hover {
 @media (max-width: 1000px) {
   .home-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .boss-list {
+    grid-auto-flow: row;
+    grid-template-rows: none;
   }
 }
 
