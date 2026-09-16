@@ -41,6 +41,35 @@ const PUBLIC_DUMP = /^pg\/wga-(\d{4}-\d{2}-\d{2})\.dump$/;
 
 const MIGRATION_PATH = /^supabase\/migrations\/(\d{14})_.*\.sql$/;
 
+// The trunk the starting schema is read from. A migration reaches production
+// by merging here (#1050), so a file that exists only on the current branch has
+// never been applied, whatever its commit time, and must never be the reset
+// target (#1198).
+export const DEFAULT_BRANCH = 'origin/main';
+
+/**
+ * The `git log` that lists every migration added on the trunk up to `base`,
+ * newest first, each under the instant its commit landed. Asked from the merge
+ * base with the trunk rather than from HEAD, so the branch's own files are not
+ * in it; they are applied on top by `migration up` instead.
+ *
+ * --no-renames matters: a re-stamped migration (`migration:new -- --rename`) is
+ * a rename to git, and rename detection would hide the commit that added it.
+ */
+export function historyArgs(base) {
+  return [
+    'log',
+    base,
+    '--first-parent',
+    '--no-renames',
+    '--diff-filter=A',
+    '--format=%cI',
+    '--name-only',
+    '--',
+    'supabase/migrations/'
+  ];
+}
+
 // Emptying by catalog rather than by a written-down list. 46 migrations insert
 // rows into a dozen public tables, so a data-only restore on top of a fresh
 // reset would stop at the first duplicate key, and a hand-maintained list goes
@@ -166,11 +195,8 @@ export function newestDump(listing) {
 }
 
 /**
- * Migration versions and the instant each was merged, newest first, from
- * `git log --first-parent --no-renames --diff-filter=A --format=%cI --name-only`.
- *
- * --no-renames matters: a re-stamped migration (`migration:new -- --rename`) is
- * a rename to git, and rename detection would hide the commit that added it.
+ * Migration versions and the instant each was merged, newest first, from the
+ * `git log` historyArgs() builds.
  */
 export function parseMergeTimes(output) {
   const entries = [];
@@ -208,7 +234,7 @@ export function resetVersionFor(captureIso, entries) {
   const newest = before.at(-1);
   if (!newest) {
     throw new Error(
-      `No migration on this branch was merged before ${captureIso}. ` +
+      `No migration on main (up to this branch's merge base) was merged before ${captureIso}. ` +
         'The dump may predate the repo history you have, or the clone may be shallow. Pass --version <stamp>.'
     );
   }
@@ -332,22 +358,15 @@ export function run(options = {}, deps = {}) {
     );
 
     if (!version) {
+      // The trunk has to be current for the merge base to mean anything: a
+      // stale origin/main puts the base further back than it is.
+      runStep({ label: 'fetch-main', command: 'git', args: ['fetch', 'origin', 'main'] }, exec);
+      const base = runStep(
+        { label: 'merge-base', capture: true, command: 'git', args: ['merge-base', 'HEAD', DEFAULT_BRANCH] },
+        exec
+      );
       const log_ = runStep(
-        {
-          label: 'history',
-          capture: true,
-          command: 'git',
-          args: [
-            'log',
-            '--first-parent',
-            '--no-renames',
-            '--diff-filter=A',
-            '--format=%cI',
-            '--name-only',
-            '--',
-            'supabase/migrations/'
-          ]
-        },
+        { label: 'history', capture: true, command: 'git', args: historyArgs(base.stdout.trim()) },
         exec
       );
       version = resetVersionFor(chosen.lastModified, parseMergeTimes(log_.stdout));

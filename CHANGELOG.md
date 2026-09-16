@@ -66,6 +66,20 @@ answers to.
 
 ---
 
+## [3.127.1] - 2026-09-16
+
+### Project
+
+- `npm run db:snapshot` on a branch no longer treats the branch's own migration
+  as already on production when the dump is newer than the commit
+  ([#1198](https://github.com/katogaming88/WGA-Raid-Hub/issues/1198)). The
+  starting schema is now read from `origin/main` (fetched first) up to the
+  branch's merge base with it, so the rehearsal resets to what production had
+  when the dump was taken and runs the branch's migrations on top, whatever
+  their commit time. Section 12 of the local dev setup says which ref decides.
+
+---
+
 ## [3.127.0] - 2026-09-15
 
 ### Backend
