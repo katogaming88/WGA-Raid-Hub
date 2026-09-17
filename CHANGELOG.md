@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.137.2] - 2026-09-17
+
+### Project
+
+- The file that tells both the current site and the new app what the database
+  looks like (`js/database.types.ts`) is now generated from the migrations
+  by `npm run db:types`, and the Schema docs check fails a pull request that
+  changed the schema without regenerating it
+  ([#1181](https://github.com/katogaming88/WGA-Raid-Hub/issues/1181)). It had
+  been edited by hand since July and was four tables and seven database
+  functions behind; this release carries the first full regeneration. The
+  generator is pinned by image so every machine and CI write the same file,
+  and nothing is written unless the output is a complete types file.
+
 ## [3.137.1] - 2026-09-17
 
 ### Project

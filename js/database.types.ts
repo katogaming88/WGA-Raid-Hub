@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   public: {
     Tables: {
       account_preferences: {
@@ -298,7 +293,6 @@ export type Database = {
           item_name: string
           note: string | null
           payout_donated: boolean
-          upgrade_rank: string | null
           payout_floor: number | null
           payout_paid_at: string | null
           payout_pivot: number | null
@@ -311,6 +305,7 @@ export type Database = {
           team_id: number
           track: string | null
           updated_at: string | null
+          upgrade_rank: string | null
         }
         Insert: {
           ah_fee?: number | null
@@ -326,7 +321,6 @@ export type Database = {
           item_name: string
           note?: string | null
           payout_donated?: boolean
-          upgrade_rank?: string | null
           payout_floor?: number | null
           payout_paid_at?: string | null
           payout_pivot?: number | null
@@ -339,6 +333,7 @@ export type Database = {
           team_id: number
           track?: string | null
           updated_at?: string | null
+          upgrade_rank?: string | null
         }
         Update: {
           ah_fee?: number | null
@@ -354,7 +349,6 @@ export type Database = {
           item_name?: string
           note?: string | null
           payout_donated?: boolean
-          upgrade_rank?: string | null
           payout_floor?: number | null
           payout_paid_at?: string | null
           payout_pivot?: number | null
@@ -367,6 +361,7 @@ export type Database = {
           team_id?: number
           track?: string | null
           updated_at?: string | null
+          upgrade_rank?: string | null
         }
         Relationships: [
           {
@@ -1036,6 +1031,7 @@ export type Database = {
       }
       player_equipped_gear: {
         Row: {
+          bonus_list: number[] | null
           equipment_slot: string
           id: number
           item_id: number | null
@@ -1045,6 +1041,7 @@ export type Database = {
           track: string | null
         }
         Insert: {
+          bonus_list?: number[] | null
           equipment_slot: string
           id?: number
           item_id?: number | null
@@ -1054,6 +1051,7 @@ export type Database = {
           track?: string | null
         }
         Update: {
+          bonus_list?: number[] | null
           equipment_slot?: string
           id?: number
           item_id?: number | null
@@ -1213,6 +1211,7 @@ export type Database = {
           archived_at: string | null
           bis_allowed: boolean
           bis_link: string | null
+          bis_link_updated_at: string | null
           bonus_roll_encounter_id: number | null
           class_spec_id: number | null
           id: number
@@ -1239,6 +1238,7 @@ export type Database = {
           archived_at?: string | null
           bis_allowed?: boolean
           bis_link?: string | null
+          bis_link_updated_at?: string | null
           bonus_roll_encounter_id?: number | null
           class_spec_id?: number | null
           id?: number
@@ -1251,7 +1251,7 @@ export type Database = {
           m_plus_excluded?: boolean
           m_plus_note?: string | null
           name_realm: string
-          name_realm_key?: never
+          name_realm_key?: string | null
           nickname?: string | null
           team_id: number
           team_member_id?: number | null
@@ -1265,6 +1265,7 @@ export type Database = {
           archived_at?: string | null
           bis_allowed?: boolean
           bis_link?: string | null
+          bis_link_updated_at?: string | null
           bonus_roll_encounter_id?: number | null
           class_spec_id?: number | null
           id?: number
@@ -1277,7 +1278,7 @@ export type Database = {
           m_plus_excluded?: boolean
           m_plus_note?: string | null
           name_realm?: string
-          name_realm_key?: never
+          name_realm_key?: string | null
           nickname?: string | null
           team_id?: number
           team_member_id?: number | null
@@ -1614,6 +1615,62 @@ export type Database = {
           },
         ]
       }
+      raid_rsvp_reminders_sent: {
+        Row: {
+          checkpoint: string
+          id: number
+          player_id: number
+          raid_date: string
+          sent_at: string
+          team_id: number
+        }
+        Insert: {
+          checkpoint: string
+          id?: number
+          player_id: number
+          raid_date: string
+          sent_at?: string
+          team_id: number
+        }
+        Update: {
+          checkpoint?: string
+          id?: number
+          player_id?: number
+          raid_date?: string
+          sent_at?: string
+          team_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raid_rsvp_reminders_sent_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raid_rsvp_reminders_sent_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "priority_order_gaps"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "raid_rsvp_reminders_sent_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "rnlsi"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "raid_rsvp_reminders_sent_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       raid_rsvps: {
         Row: {
           created_at: string
@@ -1767,6 +1824,41 @@ export type Database = {
           },
           {
             foreignKeyName: "raid_schedule_exceptions_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      raid_signup_sheets: {
+        Row: {
+          channel_id: string | null
+          id: number
+          message_id: string | null
+          raid_date: string
+          team_id: number
+          updated_at: string
+        }
+        Insert: {
+          channel_id?: string | null
+          id?: number
+          message_id?: string | null
+          raid_date: string
+          team_id: number
+          updated_at?: string
+        }
+        Update: {
+          channel_id?: string | null
+          id?: number
+          message_id?: string | null
+          raid_date?: string
+          team_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raid_signup_sheets_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
@@ -2149,6 +2241,7 @@ export type Database = {
         Row: {
           id: number
           note: string | null
+          officer_notes: string | null
           player_id: number | null
           self_item_id: number
           slot: string | null
@@ -2157,10 +2250,12 @@ export type Database = {
           submitted_at: string
           team_id: number
           track: string | null
+          updated_at: string | null
         }
         Insert: {
           id?: number
           note?: string | null
+          officer_notes?: string | null
           player_id?: number | null
           self_item_id: number
           slot?: string | null
@@ -2169,10 +2264,12 @@ export type Database = {
           submitted_at?: string
           team_id: number
           track?: string | null
+          updated_at?: string | null
         }
         Update: {
           id?: number
           note?: string | null
+          officer_notes?: string | null
           player_id?: number | null
           self_item_id?: number
           slot?: string | null
@@ -2181,6 +2278,7 @@ export type Database = {
           submitted_at?: string
           team_id?: number
           track?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -2319,6 +2417,59 @@ export type Database = {
             foreignKeyName: "streamers_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_discord_config: {
+        Row: {
+          apps_script_url: string | null
+          attendance_channel_id: string | null
+          created_at: string
+          guild_id: string
+          mplus_ping_role_id: string | null
+          officer_channel_id: string
+          roster_ping_role_id: string | null
+          roster_script_url: string | null
+          rsvp_ping_role_id: string | null
+          signup_channel_id: string | null
+          team_id: number
+          updated_at: string
+        }
+        Insert: {
+          apps_script_url?: string | null
+          attendance_channel_id?: string | null
+          created_at?: string
+          guild_id: string
+          mplus_ping_role_id?: string | null
+          officer_channel_id: string
+          roster_ping_role_id?: string | null
+          roster_script_url?: string | null
+          rsvp_ping_role_id?: string | null
+          signup_channel_id?: string | null
+          team_id: number
+          updated_at?: string
+        }
+        Update: {
+          apps_script_url?: string | null
+          attendance_channel_id?: string | null
+          created_at?: string
+          guild_id?: string
+          mplus_ping_role_id?: string | null
+          officer_channel_id?: string
+          roster_ping_role_id?: string | null
+          roster_script_url?: string | null
+          rsvp_ping_role_id?: string | null
+          signup_channel_id?: string | null
+          team_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_discord_config_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: true
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
@@ -2545,6 +2696,38 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      track_bonus_ids: {
+        Row: {
+          bonus_id: number
+          created_at: string
+          rank: number
+          season: string
+          track: string
+        }
+        Insert: {
+          bonus_id: number
+          created_at?: string
+          rank: number
+          season: string
+          track: string
+        }
+        Update: {
+          bonus_id?: number
+          created_at?: string
+          rank?: number
+          season?: string
+          track?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "track_bonus_ids_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
           },
         ]
       }
@@ -3163,6 +3346,10 @@ export type Database = {
         Args: { p_detail: string; p_player_id: number; p_reason: string }
         Returns: string
       }
+      auth_user_for_discord_id: {
+        Args: { p_discord_id: string }
+        Returns: string
+      }
       battlenet_account_id: {
         Args: { p_auth_user_id: string }
         Returns: string
@@ -3218,6 +3405,12 @@ export type Database = {
         Returns: {
           name_realm: string
           role: string
+        }[]
+      }
+      claim_raid_signup_sheet: {
+        Args: { p_channel_id: string; p_raid_date: string; p_team_id: number }
+        Returns: {
+          message_id: string
         }[]
       }
       current_discord_id: { Args: never; Returns: string }
@@ -3329,6 +3522,9 @@ export type Database = {
           team_id: number
         }[]
       }
+      my_active_player_ids: { Args: never; Returns: number[] }
+      my_leader_team_ids: { Args: never; Returns: number[] }
+      my_officer_team_ids: { Args: never; Returns: number[] }
       my_person_id: { Args: never; Returns: number }
       my_player_ids: { Args: never; Returns: number[] }
       my_team_role: { Args: { p_team_id: number }; Returns: string }
@@ -3357,6 +3553,16 @@ export type Database = {
         Returns: undefined
       }
       only_guild_id: { Args: never; Returns: number }
+      person_for_discord_id: { Args: { p_discord_id: string }; Returns: number }
+      raid_night_info: {
+        Args: { p_raid_date: string; p_team_id: number }
+        Returns: {
+          exists: boolean
+          is_optional: boolean
+          start_time: string
+          timezone: string
+        }[]
+      }
       remove_player_priority_order: {
         Args: { p_player_id: number; p_season: string; p_team_id: number }
         Returns: number
@@ -3375,7 +3581,11 @@ export type Database = {
         Returns: string
       }
       resolve_address: {
-        Args: { p_guild_key: string; p_player_code?: string; p_team_key?: string }
+        Args: {
+          p_guild_key: string
+          p_player_code?: string
+          p_team_key?: string
+        }
         Returns: {
           guild_id: number
           guild_key: string
@@ -3584,12 +3794,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3613,11 +3823,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3638,11 +3848,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3663,11 +3873,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3680,11 +3890,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3698,3 +3908,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
