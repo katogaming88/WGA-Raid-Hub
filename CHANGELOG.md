@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.134.1] - 2026-09-17
+
+### Project
+
+- The RLS test helper that lets a test act as a signed-in raider now forgets
+  who that was the moment the call returns
+  ([#1131](https://github.com/katogaming88/WGA-Raid-Hub/issues/1131)).
+  Before, the caller's identity stayed set for the rest of the test, so a
+  fixture written or a row read back afterwards was still done as that person,
+  and each call also left behind a bookmark (a Postgres savepoint) it never
+  cleaned up. Both are gone on the success path and the error path, pinned by
+  five new cases in `tests/rls/with-txn.test.js`; CONTRIBUTING states the
+  guarantee.
+
 ## [3.134.0] - 2026-09-16
 
 ### Project

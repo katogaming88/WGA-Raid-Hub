@@ -690,7 +690,11 @@ connection, runs everything in one transaction and always rolls back. It hands
 the test a postgres-role `q` for fixtures and assertions, and `asRole`,
 `asUser` and `asAnon` for calls made as a PostgREST role on that same
 connection. Same connection is the point: a role-scoped read can then see the
-rows the test just wrote without any of them being committed.
+rows the test just wrote without any of them being committed. An impersonated
+call leaves nothing behind when it returns, whether it succeeded or raised: the
+role, the caller's claims and the savepoint it rode on are all gone, so a `q`
+after it runs as postgres with no caller, and a fixture written or a row read
+back there is never done as the person the previous call played (#1131).
 
 ```js
 await withTxn(async ({ q, asRole }) => {
