@@ -11,6 +11,7 @@ import {
   normalise,
   parseArgs,
   readProjectId,
+  stabilise,
   validate
 } from '../../scripts/ci/gen-types.js';
 
@@ -57,6 +58,35 @@ describe('parseArgs', () => {
 describe('normalise', () => {
   it('strips carriage returns so a Windows-generated file compares equal to the LF one committed', () => {
     expect(normalise('a\r\nb\r\n')).toBe('a\nb\n');
+  });
+});
+
+const rel = (key, columns, relation = 'items', referenced = '["id"]') =>
+  `          {\n            foreignKeyName: "${key}"\n            columns: ["${columns}"]\n            isOneToOne: false\n            referencedRelation: "${relation}"\n            referencedColumns: ${referenced}\n          },\n`;
+const block = (...entries) => `        Relationships: [\n${entries.join('')}        ]\n`;
+const around = (inner) => `      priority_order: {\n        Row: {\n          id: number\n        }\n${inner}      }\n`;
+
+describe('stabilise', () => {
+  it('orders two relationships on one foreign key by their columns, which the generator leaves to the catalog', () => {
+    const unstable = around(
+      block(rel('priority_order_item_id_fkey', 'other_item_id'), rel('priority_order_item_id_fkey', 'item_id'))
+    );
+    const stable = around(
+      block(rel('priority_order_item_id_fkey', 'item_id'), rel('priority_order_item_id_fkey', 'other_item_id'))
+    );
+    expect(stabilise(unstable)).toBe(stable);
+  });
+
+  it('keeps the generator order where the keys already differ, and leaves everything else alone', () => {
+    const text = around(
+      block(
+        rel('priority_order_item_id_fkey', 'item_id'),
+        rel('priority_order_player_id_fkey', 'player_id', 'players'),
+        rel('priority_order_player_id_fkey', 'player_id', 'priority_order_gaps', '["player_id"]')
+      )
+    );
+    expect(stabilise(text)).toBe(text);
+    expect(stabilise(around('        Relationships: []\n'))).toBe(around('        Relationships: []\n'));
   });
 });
 
