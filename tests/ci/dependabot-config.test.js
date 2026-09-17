@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const config = readFileSync(join(ROOT, '.github', 'dependabot.yml'), 'utf8');
+const testsWorkflow = readFileSync(join(ROOT, '.github', 'workflows', 'changelog-check-tests.yml'), 'utf8');
 
 // The text of one `updates:` entry, from its `- package-ecosystem:` line to
 // the next one. Throws rather than returning '' so a missing entry fails the
@@ -52,5 +53,13 @@ describe('the Dependabot entry for app/ (#1180)', () => {
     const bot = entryFor('/bot');
     expect(groupNames(bot)).toEqual(['bot-dev-dependencies']);
     expect(bot).toMatch(/^\s+bot-dev-dependencies:\n\s+dependency-type: development$/m);
+  });
+
+  // The only workflow that runs this file is keyed on scripts/ci and tests/ci,
+  // so without this line a PR that edits only dependabot.yml would merge
+  // without the cases above ever running (the gap #1128 records for
+  // deploy.yml and config.toml).
+  it('runs on a pull request that edits only dependabot.yml', () => {
+    expect(testsWorkflow).toMatch(/^\s+- '\.github\/dependabot\.yml'$/m);
   });
 });
