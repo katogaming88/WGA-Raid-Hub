@@ -17,18 +17,19 @@ answers to.
 ### Project
 
 - The new app's **Boss lineup**
-  ([#1216](https://github.com/katogaming88/WGA-Raid-Hub/issues/1216)): on a
-  raid night's page, officers on a computer get a second tab next to "Who's
-  coming". It lists everyone coming that night by role, with a cell per boss
-  from Season Settings; a click puts a raider in or takes them out for that
-  boss. Each boss shows how many are in against the cap (20 for Mythic, 25
-  for a mini raid) as Full, open spots or over, the tank/healer/damage mix,
-  and how many buffs are missing. Below it, a buff check shows who brings each
-  raid buff, boss debuff, Heroism and combat res for every boss. Officers can
-  copy last week's lineup, put everyone back in, undo, and save the raid's
+  ([#1216](https://github.com/katogaming88/WGA-Raid-Hub/issues/1216)), the
+  calmer grid officers picked (board A2): on a raid night's page, officers on
+  a computer get a second tab next to "Who's coming". It lists everyone coming
+  that night by role, with a cell per boss from Season Settings; a click puts
+  a raider in or takes them out for that boss. Each boss's column shows how
+  many are in against the cap (20 for Mythic, 25 for a mini raid) and one
+  short warning. A **Needs a look** panel beside the grid lists each boss with
+  a problem: open spots or too many, a missing second tank, fewer than four
+  healers, or buffs nobody brings. **Show all buffs** opens a square per boss
+  for every buff. Officers can copy last week's lineup and save the raid's
   lineup in one go. Raiders who are out, on the bench or not rotating in that
-  night are listed under the grid instead of in it. Nothing on the current
-  site changes.
+  night are listed under the grid. Greying out bosses already killed this week
+  comes later. Nothing on the current site changes.
 
 ## [3.138.0] - 2026-09-17
 

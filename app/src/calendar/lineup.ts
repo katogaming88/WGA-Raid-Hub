@@ -85,7 +85,6 @@ export function capStatus(count: number, cap: number): CapStatus {
 // them (js/common.js RAID_BUFFS, BOSS_DEBUFFS and RAID_UTILITY).
 export type Buff = { name: string; kind: BuffKind; classes: string[] };
 export type BuffKind = 'Raid buffs' | 'Boss debuffs' | 'Must-haves';
-export const BUFF_KINDS: BuffKind[] = ['Raid buffs', 'Boss debuffs', 'Must-haves'];
 
 export const BUFFS: Buff[] = [
   { name: 'Mark of the Wild', kind: 'Raid buffs', classes: ['Druid'] },
@@ -117,16 +116,26 @@ export type BossTotal = {
   status: CapStatus;
   tanks: number;
   healers: number;
-  dps: number;
-  missingBuffs: number;
+  melee: number;
+  ranged: number;
+  // Buffs nobody in brings.
+  missing: string[];
+  // The one warning under the boss's count: the cap first, then buffs.
+  warn: string;
+  // Everything "Needs a look" lists for the boss.
+  problems: string[];
 };
+
+// A Mythic boss wants two tanks and four healers (the A2 mockup's check).
+export const TANKS_WANTED = 2;
+export const HEALERS_WANTED = 4;
 
 export type BuffCell = { boss: LineupBoss; providers: string[] };
 
 export type LineupView = {
   groups: { role: Role; label: string; rows: LineupRow[] }[];
   totals: BossTotal[];
-  buffs: { kind: BuffKind; rows: { buff: Buff; cells: BuffCell[] }[] }[];
+  buffs: { buff: Buff; cells: BuffCell[] }[];
   // Raiders not coming tonight, who are left out of the grid.
   notComing: NightRow[];
 };
@@ -169,22 +178,31 @@ export function lineupView(
     totals: raid.bosses.map((boss) => {
       const inn = bossIn(boss);
       const n = (role: Role) => inn.filter((r) => r.role === role).length;
+      const status = capStatus(inn.length, raid.cap);
+      const full = inn.length === raid.cap;
+      const missing = BUFFS.filter((b) => !providers(b, boss).length).map((b) => b.name);
+      const problems = [
+        ...(full ? [] : [status.text]),
+        ...(n('Tank') < TANKS_WANTED ? ['needs a second tank'] : []),
+        ...(n('Heal') < HEALERS_WANTED ? [`${n('Heal')} healer${n('Heal') === 1 ? '' : 's'}`] : []),
+        ...(missing.length ? [`no ${missing.join(', no ')}`] : [])
+      ];
       return {
         boss,
         count: inn.length,
-        status: capStatus(inn.length, raid.cap),
+        status,
         tanks: n('Tank'),
         healers: n('Heal'),
-        dps: n('Melee') + n('Ranged'),
-        missingBuffs: BUFFS.filter((b) => !providers(b, boss).length).length
+        melee: n('Melee'),
+        ranged: n('Ranged'),
+        missing,
+        warn: !full ? status.text : missing.length ? `${missing.length} buff${missing.length === 1 ? '' : 's'}` : '',
+        problems
       };
     }),
-    buffs: BUFF_KINDS.map((kind) => ({
-      kind,
-      rows: BUFFS.filter((b) => b.kind === kind).map((buff) => ({
-        buff,
-        cells: raid.bosses.map((boss) => ({ boss, providers: providers(buff, boss) }))
-      }))
+    buffs: BUFFS.map((buff) => ({
+      buff,
+      cells: raid.bosses.map((boss) => ({ boss, providers: providers(buff, boss) }))
     })),
     notComing: all.filter((r) => !coming(r)).sort((a, b) => a.name.localeCompare(b.name))
   };

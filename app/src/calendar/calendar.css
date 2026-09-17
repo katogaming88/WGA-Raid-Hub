@@ -842,7 +842,8 @@ a.night-chip:hover {
   font-weight: 600;
 }
 
-/* The boss lineup (#1216): raiders down the side, bosses across. */
+/* The boss lineup (#1216), board A2: raiders down the side, bosses across,
+   with the checks in a side panel. */
 .lineup {
   display: flex;
   flex-direction: column;
@@ -870,13 +871,8 @@ a.night-chip:hover {
 }
 
 .lineup-help {
-  max-width: 640px;
   margin: 0;
   font-size: var(--text-sm);
-}
-
-.lineup-help strong {
-  color: var(--text);
 }
 
 .lineup-actions {
@@ -890,20 +886,25 @@ a.night-chip:hover {
   font-size: var(--text-sm);
 }
 
+.button.button-quiet {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.button.button-quiet:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.lineup-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  align-items: start;
+  gap: 20px;
+}
+
 .lineup-card {
   overflow-x: auto;
   padding: 0;
-}
-
-.lineup-section-title {
-  margin: 0;
-  padding: var(--space-4) var(--space-4) var(--space-1);
-  font-size: var(--text-lg);
-  font-weight: 600;
-}
-
-.lineup-card > .lineup-help {
-  padding: 0 var(--space-4) var(--space-3);
 }
 
 .lineup-grid {
@@ -913,46 +914,66 @@ a.night-chip:hover {
 }
 
 .lineup-grid thead th {
-  padding: var(--space-2) var(--space-1);
+  padding: 10px 2px var(--space-2);
   border-bottom: 1px solid var(--border);
   color: var(--text-muted);
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: 500;
   vertical-align: bottom;
 }
 
 .lineup-grid .lineup-name-col {
   padding-left: var(--space-4);
+  color: var(--text-dim);
   text-align: left;
 }
 
 .lineup-boss {
-  width: 88px;
-  min-width: 88px;
+  width: 64px;
+  min-width: 64px;
   text-align: center;
-}
-
-.lineup-boss-number {
-  display: block;
-  color: var(--text-dim);
 }
 
 .lineup-boss-name {
   display: block;
-  margin-bottom: var(--space-2);
+}
+
+.lineup-total {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--tone);
+  font-size: var(--text-md);
+  font-weight: 700;
+}
+
+.lineup-total[data-tone='good'] {
+  --tone: var(--good);
+}
+
+.lineup-total[data-tone='warn'] {
+  --tone: var(--warn);
+}
+
+.lineup-total[data-tone='bad'] {
+  --tone: var(--bad);
+}
+
+.lineup-warn {
+  display: block;
+  min-height: 15px;
+  color: var(--bad);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .lineup-count-col {
-  width: 60px;
-  padding-right: var(--space-4) !important;
-  text-align: right;
+  width: 44px;
 }
 
 .lineup-group th {
-  padding: 7px var(--space-4) 3px;
-  background: var(--sidebar);
+  padding: var(--space-3) var(--space-4) var(--space-1);
   color: var(--text-dim);
-  font-size: var(--text-xs);
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-align: left;
@@ -1024,94 +1045,138 @@ a.night-chip:hover {
 }
 
 .lineup-count {
-  padding: var(--space-1) var(--space-4);
+  padding: var(--space-1) var(--space-3) var(--space-1) 0;
   text-align: right;
-}
-
-.lineup-total {
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-1) 2px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--sidebar);
-  font-weight: 600;
-}
-
-.lineup-total[data-tone='good'] {
-  --tone: var(--good);
-}
-
-.lineup-total[data-tone='warn'] {
-  --tone: var(--warn);
-}
-
-.lineup-total[data-tone='bad'] {
-  --tone: var(--bad);
-}
-
-.lineup-total-count {
-  color: var(--tone);
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.lineup-total-status {
-  color: var(--tone);
-}
-
-.lineup-total-mix {
-  font-weight: 400;
-}
-
-.lineup-total-buffs {
-  margin-top: 3px;
-  color: var(--good);
-}
-
-.lineup-total-buffs[data-missing='true'] {
-  color: var(--bad);
-}
-
-.lineup-grid tfoot tr {
-  border-top: 1px solid var(--border-strong);
-  background: var(--sidebar);
-}
-
-.lineup-grid tfoot .lineup-raider {
-  font-size: var(--text-xs);
-}
-
-.lineup-foot {
-  padding: 6px var(--space-1);
-  text-align: center;
-  font-size: var(--text-xs);
-}
-
-.lineup-foot .lineup-total {
-  border: 0;
-  background: none;
 }
 
 .lineup-not-coming {
   margin: 0;
   padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--border);
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
 }
 
-.lineup-buff {
-  width: 88px;
-  min-width: 88px;
-  padding: 5px var(--space-1);
-  font-weight: 700;
-  text-align: center;
+.lineup-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-.lineup-buff.is-covered {
+.lineup-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: var(--space-4);
+}
+
+.lineup-panel h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.lineup-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.lineup-gap-summary {
+  color: var(--warn);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.lineup-gap-summary[data-clear='true'] {
   color: var(--good);
 }
 
-.lineup-buff.is-missing {
+.lineup-gaps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lineup-gaps li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+  border-top: 1px solid var(--raised);
+}
+
+.lineup-gap-boss {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.lineup-gap-text {
   color: var(--bad);
+  font-size: var(--text-xs);
+}
+
+.lineup-all-clear {
+  margin: 0;
+  color: var(--good);
+  font-size: var(--text-sm);
+}
+
+.lineup-link {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.lineup-link:hover {
+  text-decoration: underline;
+}
+
+.lineup-buff-key {
+  margin: 0;
+  font-size: var(--text-xs);
+}
+
+.lineup-buff-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lineup-buff-rows li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.lineup-squares {
+  display: flex;
+  gap: 3px;
+}
+
+.lineup-square {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--good) 55%, var(--panel));
+}
+
+.lineup-square.is-missing {
+  background: var(--bad);
+}
+
+@media (max-width: 1100px) {
+  .lineup-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

@@ -388,9 +388,9 @@ describe('Calendar (new app): the boss lineup', () => {
     expect(rows).toEqual(['Aur', 'Brightmoor', 'Dawnthistle', 'Zed']);
     expect(await opened.page.getByRole('button', { name: 'Zed, Sszorak: sitting out' }).count()).toBe(1);
     expect(await opened.page.locator('.lineup-not-coming').textContent()).toBe(
-      'Not coming tonight, so not in the grid: Em (bench), Frostvale (absent), Glim (rotator).'
+      'Not coming tonight: Em (bench), Frostvale (absent), Glim (rotator)'
     );
-    expect(await opened.page.locator('tfoot .lineup-total-count').allTextContents()).toEqual(['4/20', '3/20']);
+    expect(await opened.page.locator('thead .lineup-total').allTextContents()).toEqual(['4/20', '3/20']);
     expect(opened.unexpected).toEqual([]);
     expect(opened.pageErrors).toEqual([]);
   });

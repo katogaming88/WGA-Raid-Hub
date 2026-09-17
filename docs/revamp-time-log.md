@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |      1 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     15 h 52 m |
-| **All revamp work**                | **24 h 37 m** |
+| Revamp 2: public pages             |     16 h 12 m |
+| **All revamp work**                | **24 h 57 m** |
 
 ## Log
 
@@ -65,7 +65,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 
 | Time (ET)    | Item                                                   | Phase            | Elapsed | Build / Kat | Notes |
 | ------------ | ------------------------------------------------------ | ---------------- | ------: | ----------- | ----- |
-| 1:10-1:30 PM | #1216 boss lineup: the sit-outs table and officer grid | Revamp 2 (#1102) |    20 m | build       | Kat and the officers picked the grid (board A). Two stacked PRs: the database step for Rex (#1231), then the night page's Boss lineup tab with counts against the 20 (Mythic) or 25 (mini raid) cap and the buff check. Only sit-outs are stored, so a night starts with everyone in and last week's lineup can be copied. Greying out bosses already killed this week (board A2) is left for later |
+| 1:10-1:50 PM | #1216 boss lineup: the sit-outs table and officer grid | Revamp 2 (#1102) |    40 m | build, then a rebuild | First built board A; Kat meant the calmer A2, so the page was rebuilt as A2 (Needs a look panel, Show all buffs) with killed-boss greying split out as follow-up work. Two stacked PRs: the database step for Rex (#1231), then the night page's Boss lineup tab with counts against the 20 (Mythic) or 25 (mini raid) cap and the buff check. Only sit-outs are stored, so a night starts with everyone in and last week's lineup can be copied. |
 
 ### 2026-09-16
 

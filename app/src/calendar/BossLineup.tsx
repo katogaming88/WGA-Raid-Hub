@@ -12,7 +12,6 @@ import {
   sitoutsFor,
   sitoutsToSave,
   toggleSitout,
-  type BossTotal,
   type LineupRaid,
   type SitoutRow,
   type Sitouts
@@ -102,6 +101,7 @@ function RaidLineups({
         players={players}
         answers={answers}
         lastWeek={lastWeek}
+        raids={raids.length}
       />
     </div>
   );
@@ -113,7 +113,8 @@ function RaidLineup({
   night,
   players,
   answers,
-  lastWeek
+  lastWeek,
+  raids
 }: {
   raid: LineupRaid;
   rows: SitoutRow[];
@@ -121,6 +122,7 @@ function RaidLineup({
   players: PlayerRow[];
   answers: Answer[];
   lastWeek: string | null;
+  raids: number;
 }) {
   const team = useTeam();
   const { announce } = useStatus();
@@ -132,6 +134,8 @@ function RaidLineup({
   const lastWeeks = lastWeek ? sitoutsFor(rows, lastWeek, raid.name) : null;
   const inGrid = view.groups.flatMap((g) => g.rows.map((r) => r.row.player.id));
   const columns = raid.bosses.length + 2;
+  const [showBuffs, setShowBuffs] = useState(false);
+  const gaps = view.totals.filter((t) => t.problems.length);
 
   const onSave = () =>
     save.mutate(
@@ -143,34 +147,18 @@ function RaidLineup({
     <>
       <div className="lineup-bar">
         <p className="lineup-help text-muted">
-          <strong>
-            {raid.name}: up to {raid.cap} raiders per boss.
-          </strong>{' '}
-          Click a cell to put a raider in or take them out for that boss. Sitting out a boss still counts as coming.
+          {raids > 1 ? `${raid.name}: up` : 'Up'} to {raid.cap} per boss. Click a cell to swap someone in or out.
         </p>
         <div className="lineup-actions">
           {changed && <span className="text-muted lineup-unsaved">Unsaved changes</span>}
           {lastWeeks && (
             <button
               type="button"
-              className="button"
+              className="button button-quiet"
               disabled={save.isPending || sameSitouts(draft, lastWeeks)}
               onClick={() => setDraft(lastWeeks)}
             >
-              Copy last {weekdayName(lastWeek!)}’s lineup
-            </button>
-          )}
-          <button
-            type="button"
-            className="button"
-            disabled={save.isPending || draft.size === 0}
-            onClick={() => setDraft(new Set())}
-          >
-            Everyone in
-          </button>
-          {changed && (
-            <button type="button" className="button" disabled={save.isPending} onClick={() => setDraft(saved)}>
-              Undo changes
+              Copy last {weekdayName(lastWeek!)}
             </button>
           )}
           <button
@@ -189,193 +177,159 @@ function RaidLineup({
         </p>
       )}
 
-      <div className="card lineup-card">
-        <table className="lineup-grid">
-          <caption className="visually-hidden">
-            {raid.name} lineup for {shortDay(night.date)}
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col" className="lineup-name-col">
-                Raider
-              </th>
-              {view.totals.map((t, i) => (
-                <th key={t.boss.name} scope="col" className="lineup-boss">
-                  <span className="lineup-boss-number num" aria-hidden="true">
-                    {i + 1}
-                  </span>
-                  <span className="lineup-boss-name" title={t.boss.name}>
-                    <span aria-hidden="true">{t.boss.short}</span>
+      <div className="lineup-layout">
+        <div className="card lineup-card">
+          <table className="lineup-grid">
+            <caption className="visually-hidden">
+              {raid.name} lineup for {shortDay(night.date)}
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col" className="lineup-name-col">
+                  Raider
+                </th>
+                {view.totals.map((t) => (
+                  <th
+                    key={t.boss.name}
+                    scope="col"
+                    className="lineup-boss"
+                    title={`${t.boss.name}: ${t.tanks} tanks, ${t.healers} healers, ${t.melee} melee, ${t.ranged} ranged`}
+                  >
+                    <span className="lineup-boss-name" aria-hidden="true">
+                      {t.boss.short}
+                    </span>
                     <span className="visually-hidden">{t.boss.name}</span>
-                  </span>
-                  <BossCount total={t} cap={raid.cap} header />
-                </th>
-              ))}
-              <th scope="col" className="lineup-count-col">
-                Bosses
-              </th>
-            </tr>
-          </thead>
-          {view.groups.map((g) => (
-            <tbody key={g.role}>
-              <tr className="lineup-group">
-                <th colSpan={columns} scope="colgroup">
-                  {g.label}
-                </th>
-              </tr>
-              {g.rows.map((r) => {
-                const name = r.row.name;
-                return (
-                  <tr key={r.row.player.id}>
-                    <th scope="row" className="lineup-raider">
-                      <span
-                        className="lineup-raider-name"
-                        style={{ color: classColor(r.row.player.classes_specs?.class ?? '') }}
-                      >
-                        {name}
-                      </span>{' '}
-                      <span className="text-dim lineup-spec">{r.row.player.classes_specs?.spec}</span>
-                      {r.tag && <span className="lineup-tag">{r.tag}</span>}
-                    </th>
-                    {r.cells.map((c) => (
-                      <td key={c.boss.name} className="lineup-cell">
-                        <button
-                          type="button"
-                          className={`lineup-toggle${c.in ? ' is-in' : ''}`}
-                          aria-pressed={c.in}
-                          aria-label={`${name}, ${c.boss.name}: ${c.in ? 'in' : 'sitting out'}`}
-                          disabled={save.isPending}
-                          onClick={() => setDraft((d) => toggleSitout(d, c.boss.name, r.row.player.id))}
-                        >
-                          <span aria-hidden="true">{c.in ? '✓' : '–'}</span>
-                        </button>
-                      </td>
-                    ))}
-                    <td className="lineup-count num text-muted">
-                      {r.count}/{raid.bosses.length}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          ))}
-          <tfoot>
-            <tr>
-              <th scope="row" className="lineup-raider text-muted">
-                In for the boss
-              </th>
-              {view.totals.map((t) => (
-                <td key={t.boss.name} className="lineup-foot">
-                  <BossCount total={t} cap={raid.cap} />
-                </td>
-              ))}
-              <td />
-            </tr>
-          </tfoot>
-        </table>
-        {view.notComing.length > 0 && (
-          <p className="lineup-not-coming text-muted">
-            Not coming tonight, so not in the grid:{' '}
-            {view.notComing.map((r, i) => (
-              <span key={r.player.id}>
-                {i > 0 && ', '}
-                {r.name} ({r.status.label.toLowerCase()})
-              </span>
-            ))}
-            .
-          </p>
-        )}
-      </div>
-
-      <section className="card lineup-card" aria-labelledby="buff-check-title">
-        <h2 id="buff-check-title" className="lineup-section-title">
-          Buff check
-        </h2>
-        <p className="lineup-help text-muted">
-          Who brings each raid buff, boss debuff and must-have for every boss, from the lineup above. A cross is a gap;
-          hover a tick to see who brings it.
-        </p>
-        <table className="lineup-grid lineup-buffs">
-          <caption className="visually-hidden">Buff check for {raid.name}</caption>
-          <thead className="visually-hidden">
-            <tr>
-              <th scope="col">Buff</th>
-              {raid.bosses.map((b) => (
-                <th key={b.name} scope="col">
-                  {b.name}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          {view.buffs.map((group) => (
-            <tbody key={group.kind}>
-              <tr className="lineup-group">
-                <th colSpan={columns} scope="colgroup">
-                  {group.kind}
-                </th>
-              </tr>
-              {group.rows.map(({ buff, cells }) => (
-                <tr key={buff.name}>
-                  <th scope="row" className="lineup-raider">
-                    {buff.name} <span className="text-dim lineup-spec">{buff.classes.join(', ')}</span>
+                    <span className="lineup-total num" data-tone={t.status.tone} aria-hidden="true">
+                      {t.count}/{raid.cap}
+                    </span>
+                    <span className="lineup-warn" aria-hidden="true">
+                      {t.warn}
+                    </span>
                   </th>
-                  {cells.map((c) => (
-                    <td
-                      key={c.boss.name}
-                      className={`lineup-buff ${c.providers.length ? 'is-covered' : 'is-missing'}`}
-                      title={
-                        c.providers.length
-                          ? `${c.boss.short}: ${c.providers.join(', ')}`
-                          : `${c.boss.short}: nobody brings ${buff.name}`
-                      }
-                    >
-                      {c.providers.length ? (
-                        <>
-                          <span aria-hidden="true">✓ </span>
-                          <span className="num">{c.providers.length}</span>
-                          <span className="visually-hidden"> ({c.providers.join(', ')})</span>
-                        </>
-                      ) : (
-                        <>
-                          <span aria-hidden="true">✗</span>
-                          <span className="visually-hidden">Missing</span>
-                        </>
-                      )}
-                    </td>
-                  ))}
-                  <td className="lineup-count-col" />
+                ))}
+                <th scope="col" className="lineup-count-col">
+                  <span className="visually-hidden">Bosses in</span>
+                </th>
+              </tr>
+            </thead>
+            {view.groups.map((g) => (
+              <tbody key={g.role}>
+                <tr className="lineup-group">
+                  <th colSpan={columns} scope="colgroup">
+                    {g.label}
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          ))}
-        </table>
-      </section>
+                {g.rows.map((r) => {
+                  const name = r.row.name;
+                  return (
+                    <tr key={r.row.player.id}>
+                      <th scope="row" className="lineup-raider">
+                        <span
+                          className="lineup-raider-name"
+                          style={{ color: classColor(r.row.player.classes_specs?.class ?? '') }}
+                        >
+                          {name}
+                        </span>{' '}
+                        <span className="text-dim lineup-spec">{r.row.player.classes_specs?.spec}</span>
+                        {r.tag && <span className="lineup-tag">{r.tag}</span>}
+                      </th>
+                      {r.cells.map((c) => (
+                        <td key={c.boss.name} className="lineup-cell">
+                          <button
+                            type="button"
+                            className={`lineup-toggle${c.in ? ' is-in' : ''}`}
+                            aria-pressed={c.in}
+                            aria-label={`${name}, ${c.boss.name}: ${c.in ? 'in' : 'sitting out'}`}
+                            disabled={save.isPending}
+                            onClick={() => setDraft((d) => toggleSitout(d, c.boss.name, r.row.player.id))}
+                          >
+                            <span aria-hidden="true">{c.in ? '✓' : '–'}</span>
+                          </button>
+                        </td>
+                      ))}
+                      <td className="lineup-count num text-muted">
+                        {r.count}/{raid.bosses.length}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            ))}
+          </table>
+          {view.notComing.length > 0 && (
+            <p className="lineup-not-coming text-dim">
+              Not coming tonight: {view.notComing.map((r) => `${r.name} (${r.status.label.toLowerCase()})`).join(', ')}
+            </p>
+          )}
+        </div>
+
+        <aside className="lineup-side" aria-label="Lineup checks">
+          <section className="card lineup-panel" aria-labelledby="needs-look-title">
+            <div className="lineup-panel-head">
+              <h2 id="needs-look-title">Needs a look</h2>
+              <span className="lineup-gap-summary" data-clear={gaps.length === 0}>
+                {gaps.length ? `${gaps.length} of ${raid.bosses.length} bosses` : 'All clear'}
+              </span>
+            </div>
+            {gaps.length ? (
+              <ul className="lineup-gaps">
+                {gaps.map((t) => (
+                  <li key={t.boss.name}>
+                    <span className="lineup-gap-boss">
+                      {raid.bosses.indexOf(t.boss) + 1}. {t.boss.name}
+                    </span>
+                    <span className="lineup-gap-text">{t.problems.join(' · ')}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="lineup-all-clear">Every boss is full and every buff is covered.</p>
+            )}
+            <button
+              type="button"
+              className="lineup-link"
+              aria-expanded={showBuffs}
+              aria-controls="all-buffs"
+              onClick={() => setShowBuffs((v) => !v)}
+            >
+              {showBuffs ? 'Hide all buffs' : 'Show all buffs'}
+            </button>
+          </section>
+          {showBuffs && (
+            <section id="all-buffs" className="card lineup-panel" aria-labelledby="all-buffs-title">
+              <h2 id="all-buffs-title">All buffs, by boss</h2>
+              <p className="text-dim lineup-buff-key">
+                One square per boss, left to right: {raid.bosses.map((b) => b.short).join(', ')}.
+              </p>
+              <ul className="lineup-buff-rows">
+                {view.buffs.map(({ buff, cells }) => (
+                  <li key={buff.name}>
+                    <span className="text-muted">{buff.name}</span>
+                    <span className="lineup-squares">
+                      {cells.map((c) => {
+                        const text = c.providers.length
+                          ? `${c.boss.short}: ${c.providers.join(', ')}`
+                          : `${c.boss.short}: missing`;
+                        return (
+                          <span
+                            key={c.boss.name}
+                            className={`lineup-square${c.providers.length ? '' : ' is-missing'}`}
+                            title={text}
+                          >
+                            <span className="visually-hidden">{text}</span>
+                          </span>
+                        );
+                      })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </aside>
+      </div>
     </>
   );
 }
 
 const weekdayName = (date: string) => new Date(`${date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long' });
-
-// A boss's count against the cap, its role mix and, in the header, how many
-// buffs it is missing. Screen readers get the counts from the footer row, so
-// each column's name stays the boss's name.
-function BossCount({ total, cap, header = false }: { total: BossTotal; cap: number; header?: boolean }) {
-  return (
-    <span className="lineup-total" data-tone={total.status.tone} aria-hidden={header || undefined}>
-      <span className="lineup-total-count num">
-        {total.count}/{cap}
-      </span>
-      <span className="lineup-total-status">{total.status.text}</span>
-      <span className="lineup-total-mix text-dim num">
-        {total.tanks}T {total.healers}H {total.dps}D
-      </span>
-      {header && (
-        <span className="lineup-total-buffs" data-missing={total.missingBuffs > 0}>
-          {total.missingBuffs
-            ? `${total.missingBuffs} buff${total.missingBuffs === 1 ? '' : 's'} missing`
-            : 'All buffs'}
-        </span>
-      )}
-    </span>
-  );
-}

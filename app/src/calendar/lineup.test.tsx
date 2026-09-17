@@ -113,15 +113,33 @@ describe('the lineup rules', () => {
     ]);
 
     const [nekzali, sszorak] = view.totals;
-    expect([nekzali!.count, nekzali!.tanks, nekzali!.healers, nekzali!.dps]).toEqual([3, 1, 1, 1]);
+    expect([nekzali!.count, nekzali!.tanks, nekzali!.healers, nekzali!.melee, nekzali!.ranged]).toEqual([
+      3, 1, 1, 0, 1
+    ]);
     expect(nekzali!.status.text).toBe('17 open spots');
     expect(sszorak!.count).toBe(1);
 
-    const battleShout = view.buffs[0]!.rows.find((r) => r.buff.name === 'Battle Shout')!;
+    const battleShout = view.buffs.find((r) => r.buff.name === 'Battle Shout')!;
     expect(battleShout.cells.map((c) => c.providers)).toEqual([['Ana'], []]);
     // The first boss has the warrior, priest and mage buffs and Heroism; the rest are missing.
-    expect(nekzali!.missingBuffs).toBe(9);
-    expect(sszorak!.missingBuffs).toBe(12);
+    expect(nekzali!.missing).toHaveLength(9);
+    expect(sszorak!.missing).toHaveLength(12);
+
+    // Under the count: the cap first. "Needs a look" lists everything.
+    expect(nekzali!.warn).toBe('17 open spots');
+    expect(nekzali!.problems[0]).toBe('17 open spots');
+    expect(nekzali!.problems[1]).toBe('needs a second tank');
+    expect(nekzali!.problems[2]).toBe('1 healer');
+    expect(nekzali!.problems[3]).toMatch(/^no Mark of the Wild, no Blessing of the Bronze, /);
+    expect(sszorak!.problems.slice(0, 2)).toEqual(['19 open spots', 'needs a second tank']);
+  });
+
+  it('warns about buffs only once a boss is full', () => {
+    const full = { name: 'R', cap: 2, bosses: [{ name: 'B', short: 'B' }] };
+    const two = [player(1, 'Ana', 'Warrior', 'Tank'), player(2, 'Bo', 'Warrior', 'Tank')];
+    const total = lineupView(two, NIGHT, [], full, new Set()).totals[0]!;
+    expect(total.warn).toBe('12 buffs');
+    expect(total.problems).toEqual(['0 healers', expect.stringMatching(/^no Mark of the Wild/)]);
   });
 
   it('saves only sit-outs for raiders in the grid and bosses in the raid', () => {
@@ -244,26 +262,35 @@ describe('the boss lineup tab', () => {
     ]);
   });
 
-  it('copies last week’s lineup and puts everyone back in', async () => {
+  it('copies last week’s lineup, and lists what needs a look', async () => {
     const user = userEvent.setup();
     const { client } = renderApp('/g/wga/t/phoenix/calendar?date=2026-05-14&view=lineup', handlers(who('officer')));
     const grid = within(await screen.findByRole('table', { name: /lineup for/ }));
 
-    await user.click(screen.getByRole('button', { name: 'Copy last Thursday’s lineup' }));
+    await user.click(screen.getByRole('button', { name: 'Copy last Thursday' }));
     expect(grid.getByRole('button', { name: 'Cy, Sszorak: sitting out' })).toBeInTheDocument();
     expect(grid.getByRole('button', { name: 'Ana, Sszorak: in' })).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Everyone in' }));
-    expect(grid.queryAllByRole('button', { name: /sitting out/ })).toHaveLength(0);
     await user.click(screen.getByRole('button', { name: 'Save lineup' }));
-    expect(client.rpcs.find(([name]) => name === 'set_boss_lineup')?.[1]).toMatchObject({ p_sitouts: [] });
+    expect(client.rpcs.find(([name]) => name === 'set_boss_lineup')?.[1]).toMatchObject({
+      p_sitouts: [{ boss: 'Sszorak', player_id: 3 }]
+    });
+
+    const look = within(screen.getByRole('region', { name: 'Needs a look' }));
+    expect(look.getByText('2 of 2 bosses')).toBeInTheDocument();
+    expect(look.getByText("1. Nek'zali the Soulcoiler")).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'All buffs, by boss' })).not.toBeInTheDocument();
+    await user.click(look.getByRole('button', { name: 'Show all buffs' }));
+    const buffs = within(screen.getByRole('region', { name: 'All buffs, by boss' }));
+    expect(buffs.getByText("Nek'zali: Ana")).toBeInTheDocument();
   });
 
   it('switches between the season’s raids', async () => {
     const user = userEvent.setup();
     renderApp('/g/wga/t/phoenix/calendar?date=2026-05-14&view=lineup', handlers(who('officer')));
     await user.click(await screen.findByRole('button', { name: 'Tidebound Grotto' }));
-    expect(await screen.findByText('Tidebound Grotto: up to 25 raiders per boss.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Tidebound Grotto: up to 25 per boss. Click a cell to swap someone in or out.')
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ana, Nymrissa Wavecaller: in' })).toBeInTheDocument();
   });
 });
