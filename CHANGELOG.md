@@ -30,8 +30,6 @@ answers to.
 - Recorded the current site's Streamers tab as browser tests before rebuilding
   it, and added the new page's states to the accessibility suite
 
----
-
 ## [3.137.1] - 2026-09-17
 
 ### Project
