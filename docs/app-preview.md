@@ -41,7 +41,7 @@ Removing someone from the list stops new sign-ins right away. A session they alr
 | The lock | Cloudflare One → Access controls → Applications → **WGA Raid Hub preview** | A self-hosted application covering two addresses: `wga-raid-hub-app.pages.dev` and `*.wga-raid-hub-app.pages.dev`. The wildcard matters: every deploy also gets its own address (`<hash>.wga-raid-hub-app.pages.dev`), and without it those would be open. Login method: One-time PIN. Plan: Zero Trust Free. |
 | Sign-in return | Supabase dashboard → Authentication → URL Configuration → Redirect URLs | `https://wga-raid-hub-app.pages.dev/**`, so Battle.net and Discord sign-in come back to the preview. |
 | Battle.net sign-in | Supabase (hosted), custom provider `custom:battlenet` | Added through the auth admin API, type `oauth2` (not `oidc`: Blizzard's signing key format breaks Supabase's OIDC check). Manual identity linking is switched on. See the 2026-09-14 entry in `docs/database-decisions.md`. |
-| Tests | `tests/browser-app/`, run by the App workflow | Accessibility, reflow, focus and reduced motion on the built app. `npm run test:app-browser` after `cd app && npm run build`. |
+| Tests | `tests/browser-app/`, run by the App workflow on every PR and every merge to `main` | Accessibility, reflow, focus and reduced motion on the built app. `npm run test:app-browser` after `cd app && npm run build`. |
 
 No Battle.net or Discord app setting is tied to the preview: both send people back to Supabase, and Supabase sends them on to the preview.
 
