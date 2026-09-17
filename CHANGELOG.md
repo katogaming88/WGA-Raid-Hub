@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.137.3] - 2026-09-17
+
+### Project
+
+- The new app's checks (typecheck, lint, format, unit tests, the build and
+  the browser suite) now also run after every merge to `main`, not only on
+  the pull request, so a merge that lands broken is seen within minutes
+  instead of at the next pull request
+  ([#1182](https://github.com/katogaming88/WGA-Raid-Hub/issues/1182)). Each
+  merge gets its own run; a later merge no longer cancels the one before it.
+
 ## [3.137.2] - 2026-09-17
 
 ### Project
