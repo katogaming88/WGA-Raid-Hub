@@ -49,8 +49,10 @@
 // Needs docker and a running local stack (`supabase start`). Exit codes: 0
 // written or up to date, 1 stale, 2 usage, generator or validation error.
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export const IMAGE = 'public.ecr.aws/supabase/postgres-meta:v0.99.0';
@@ -148,6 +150,20 @@ export function compare(generated, committed) {
   return { stale: generated !== committed, added, removed };
 }
 
+// The first lines of a unified diff between the committed file and the
+// generator's output, so a stale report in a CI log says what differs. git is
+// on every machine and runner this runs on; `--no-index` diffs two files
+// outside the index and exits 1 when they differ, which is not an error here.
+const DIFF_LINES = 120;
+function describeDifference(generated) {
+  const scratch = join(tmpdir(), 'database.types.generated.ts');
+  writeFileSync(scratch, generated);
+  const diff = spawnSync('git', ['diff', '--no-index', '--', TYPES_PATH, scratch], { encoding: 'utf8' });
+  const lines = (diff.stdout || '').split('\n');
+  const shown = lines.slice(0, DIFF_LINES).join('\n');
+  return lines.length > DIFF_LINES ? `${shown}\n... (${lines.length - DIFF_LINES} more lines)` : shown;
+}
+
 function generate() {
   const projectId = readProjectId(readFileSync(CONFIG_PATH, 'utf8'));
   return execFileSync('docker', generatorArgs(projectId), {
@@ -191,7 +207,9 @@ function main(argv) {
       console.log(`${TYPES_PATH} is up to date (${tables} tables).`);
       return 0;
     }
-    console.error(`${TYPES_PATH} does not match the database the migrations build (+${added} / -${removed} lines).`);
+    const shape = added || removed ? `+${added} / -${removed} lines` : 'the same lines in a different order';
+    console.error(`${TYPES_PATH} does not match the database the migrations build (${shape}).`);
+    console.error(describeDifference(generated));
     console.error(
       'Run `npm run db:types` against the local stack (`supabase db reset` first if it is behind), and commit the result.'
     );
