@@ -55,7 +55,7 @@ release is named by that number, and a change to any piece moves it:
 |-------|-------|-------------------|
 | Frontend | `js/`, `css/`, the root HTML pages | `### Frontend` |
 | Database | `supabase/migrations/`, `scripts/import/` | `### Backend` |
-| Edge Functions | `supabase/functions/`, except a dotfile at its top level (`.env.example` is read by `supabase functions serve` and never deployed) | `### Functions` |
+| Edge Functions | `supabase/functions/`, except a dot-prefixed entry at its top level (`.env.example` is read by `supabase functions serve` and never deployed; a dot-directory there counts the same way) | `### Functions` |
 | Bot | `bot/` | `### Bot` |
 | Project | everything else | `### Project` |
 
