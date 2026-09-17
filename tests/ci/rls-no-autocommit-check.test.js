@@ -44,6 +44,53 @@ describe('findAutocommitQueries', () => {
     expect(findAutocommitQueries(src)).toHaveLength(1);
   });
 
+  // One annotation covers one call (#1132). The reach exists for a wrapped
+  // call or a reason on its own line; it is not a licence for the next call.
+  it('does not let one annotation reach the bare call directly beneath the one it was written for', () => {
+    const src = `
+      // rls-pool-read-only: catalog read.
+      await pool.query('select proname from pg_proc');
+      await pool.query("insert into public.raid_schedule (team_id) values (1)");
+    `;
+    const found = findAutocommitQueries(src);
+    expect(found).toHaveLength(1);
+    expect(found[0].line).toBe(4);
+  });
+
+  it('spends the annotated call on its own nearest annotation, not a farther one, leaving none for the bare call beneath', () => {
+    const src = `
+      // rls-pool-read-only: left over, its call moved into withTxn.
+      const x = 1;
+      // rls-pool-read-only: catalog read.
+      await pool.query('select proname from pg_proc');
+      await pool.query("insert into public.raid_schedule (team_id) values (1)");
+    `;
+    const found = findAutocommitQueries(src);
+    expect(found).toHaveLength(1);
+    expect(found[0].line).toBe(6);
+  });
+
+  it('passes two annotated calls back to back', () => {
+    const src = `
+      // rls-pool-read-only: catalog read.
+      await pool.query('select proname from pg_proc');
+      // rls-pool-read-only: catalog read, again.
+      await pool.query('select polname from pg_policies');
+    `;
+    expect(findAutocommitQueries(src)).toEqual([]);
+  });
+
+  it('passes a call wrapped over several lines under its annotation', () => {
+    const src = `
+      // rls-pool-read-only: catalog read.
+      const { rows } = await pool.query(
+        'select proname from pg_proc where pronamespace = $1',
+        [ns]
+      );
+    `;
+    expect(findAutocommitQueries(src)).toEqual([]);
+  });
+
   it('ignores the same call shape written inside a comment or a string', () => {
     const src = `
       // await pool.query('insert into public.raid_schedule values (1)');

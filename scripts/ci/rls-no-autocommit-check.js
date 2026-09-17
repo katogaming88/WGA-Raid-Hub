@@ -21,7 +21,8 @@
 // A call is exempt when it writes nothing and says so:
 //   - a `// rls-pool-read-only: <reason>` comment on the call or just above it
 // tests/rls/function-invariants.test.js reads the pg_proc catalog that way on
-// purpose, and is the case the hatch exists for.
+// purpose, and is the case the hatch exists for. One annotation covers one
+// call, the nearest one on or below it; a second call needs its own (#1132).
 //
 // What this cannot see: a hand-rolled `pool.connect()` that commits rather than
 // rolling back. Twenty-two files legitimately call `pool.connect()` for their
@@ -40,7 +41,8 @@ const POOL = 'pool';
 const METHOD = 'query';
 const ANNOTATION = /rls-pool-read-only:/;
 // How far above a call its annotation may sit. Enough for a wrapped call or a
-// short reason, not so far that it silently covers the next call too.
+// short reason. The reach alone would let one comment cover the next call
+// too, so each annotation is spent by the first call that claims it.
 const ANNOTATION_REACH = 3;
 
 function isChildNode(value) {
@@ -77,25 +79,12 @@ export function findAutocommitQueries(source, filename = '<source>') {
     if (ANNOTATION.test(c.value)) annotationLines.add(c.loc.start.line);
   }
 
-  const findings = [];
+  const calls = [];
 
   function visit(node) {
     if (!isChildNode(node)) return;
 
-    if (isPoolQuery(node)) {
-      const startLine = node.loc.start.line;
-      const endLine = node.loc.end.line;
-      let annotated = false;
-      for (let line = startLine - ANNOTATION_REACH; line <= endLine; line++) {
-        if (annotationLines.has(line)) annotated = true;
-      }
-      if (!annotated) {
-        findings.push({
-          line: startLine,
-          reason: 'pool.query commits immediately, so every other worker can read it'
-        });
-      }
-    }
+    if (isPoolQuery(node)) calls.push(node.loc);
 
     for (const key of Object.keys(node)) {
       if (key === 'loc' || key === 'start' || key === 'end') continue;
@@ -109,7 +98,31 @@ export function findAutocommitQueries(source, filename = '<source>') {
   }
 
   visit(ast);
-  findings.sort((a, b) => a.line - b.line);
+
+  // Calls in source order, each claiming the nearest annotation above or on
+  // it that no earlier call has spent. Nearest first, so a leftover comment
+  // higher up is not the one an annotated call uses, which would leave its own
+  // annotation free for a bare call beneath it.
+  calls.sort((a, b) => a.start.line - b.start.line || a.start.column - b.start.column);
+  const spent = new Set();
+  const findings = [];
+  for (const { start, end } of calls) {
+    let claimed = null;
+    for (let line = end.line; line >= start.line - ANNOTATION_REACH; line--) {
+      if (annotationLines.has(line) && !spent.has(line)) {
+        claimed = line;
+        break;
+      }
+    }
+    if (claimed === null) {
+      findings.push({
+        line: start.line,
+        reason: 'pool.query commits immediately, so every other worker can read it'
+      });
+    } else {
+      spent.add(claimed);
+    }
+  }
   return findings;
 }
 
