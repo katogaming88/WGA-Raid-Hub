@@ -42,9 +42,11 @@ jobs:
       # only when its diff goes beyond the VERSION line, so complying with
       # "bump VERSION" cannot itself mark a PR functional. backend = the db
       # class, supabase/migrations/ and scripts/import/. functions =
-      # supabase/functions/. bot = bot/. Everything else (supabase/config.toml,
-      # seed.sql, roles.sql, docs, tests, scripts/ci, news.json) ships to no
-      # product piece and is the project class (#1019).
+      # supabase/functions/, except a dot-prefixed entry at its top level such
+      # as .env.example, which the deploy never uploads (#1223). bot = bot/.
+      # Everything else (supabase/config.toml, seed.sql, roles.sql, docs,
+      # tests, scripts/ci, news.json) ships to no product piece and is the
+      # project class (#1019).
       #
       # shipped = any of the four changed. missing_entry lists the classes
       # that changed without gaining their CHANGELOG section, and names

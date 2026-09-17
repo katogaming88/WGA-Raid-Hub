@@ -55,7 +55,7 @@ release is named by that number, and a change to any piece moves it:
 |-------|-------|-------------------|
 | Frontend | `js/`, `css/`, the root HTML pages | `### Frontend` |
 | Database | `supabase/migrations/`, `scripts/import/` | `### Backend` |
-| Edge Functions | `supabase/functions/` | `### Functions` |
+| Edge Functions | `supabase/functions/`, except a dot-prefixed entry at its top level (`.env.example` is read by `supabase functions serve` and never deployed; a dot-directory there counts the same way) | `### Functions` |
 | Bot | `bot/` | `### Bot` |
 | Project | everything else | `### Project` |
 
@@ -107,8 +107,10 @@ platform identity says which artifact is actually live. Both are needed, because
 only the second one can show that a piece was merged and never deployed. Since
 #1050 the database is the one piece that cannot drift that way: its migrations
 apply from the Deploy workflow before the site ships, so the ledger head and
-`REQUIRED_SCHEMA` agree after every successful deploy. The Edge Functions still
-deploy by hand and the counter is still the only thing that says so.
+`REQUIRED_SCHEMA` agree after every successful deploy. Since #1083 the same
+workflow deploys the Edge Functions a merge changed, and since #971 it reads
+the stamped version back out of each one it deployed, so a function that
+answers the wrong `X-WGA-Version` fails the deploy rather than drifting.
 
 Bumping the version means more than one file: every local `css/`/`js/` tag on
 every page carries a `?v=<VERSION>` cache-bust query string (#431), 56 of them
@@ -238,8 +240,9 @@ are unsure.
 
 - Use the pull request template (`.github/pull_request_template.md`) and
   follow "Writing issues and pull requests" above
-- Update `CHANGELOG.md` under `### Frontend` / `### Backend` per the
-  versioning section above
+- Update `CHANGELOG.md` under the section for each piece the PR touches
+  (`### Frontend`, `### Backend`, `### Functions`, `### Bot`, or `### Project`
+  for everything else) per the versioning section above
 - `js/common.js` is type-checked (`// @ts-check` plus JSDoc annotations, no
   build step). If you touch a checked file, run `npm run typecheck`; CI runs
   the same check on every `js/` change. Add `// @ts-check` to more `js/`

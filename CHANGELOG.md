@@ -12,6 +12,26 @@ answers to.
 
 ---
 
+## [3.137.4] - 2026-09-17
+
+### Project
+
+- A change to `supabase/functions/.env.example` no longer has to be written up
+  as an Edge Functions release
+  ([#1223](https://github.com/katogaming88/WGA-Raid-Hub/issues/1223)). That
+  file is a template of local settings read only by `supabase functions serve`;
+  the deploy never uploads it and no function's version moves, but the
+  changelog check counted every path under the directory and demanded a
+  `### Functions` entry for it (3.101.3 carries one saying nothing shipped).
+  It is now project territory, like `config.toml`. A new test reads six
+  representative paths through the changelog rule, the version stamp and the
+  deploy selector at once and fails if any one of them disagrees with the
+  other two, and it runs on any pull request that touches the functions
+  directory. CONTRIBUTING's piece table says so; its drift paragraph no
+  longer claims the functions deploy by hand (a merge has deployed them since
+  #1083, and the deploy reads the version back since #971), and the PR
+  checklist names all five CHANGELOG sections instead of two.
+
 ## [3.137.3] - 2026-09-17
 
 ### Project
