@@ -67,6 +67,13 @@ function makeSandbox({ row = null } = {}) {
     escHtml: (s) => String(s),
     // common.js's relative-age label, pinned to NOW so the text is exact.
     timeAgoLabel: (iso) => Math.floor((NOW - Date.parse(iso)) / HOUR) + 'h ago',
+    // renderGearSyncStatus passes Date.now() for the 36-hour check; without
+    // this pin the fixed sweep goes stale once the real clock passes NOW.
+    Date: class extends Date {
+      static now() {
+        return NOW;
+      }
+    },
     setTimeout,
     clearTimeout
   };
