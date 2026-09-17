@@ -17,24 +17,24 @@ const workflow = readFileSync(join(ROOT, '.github', 'workflows', 'app.yml'), 'ut
 
 function pathsUnder(event) {
   const block = workflow.match(new RegExp(`^  ${event}:\\n((?:    .*\\n)+)`, 'm'));
-  return block ? [...block[1].matchAll(/^      - '([^']+)'$/gm)].map((m) => m[1]) : null;
+  return block ? [...block[1].matchAll(/^ {6}- '([^']+)'$/gm)].map((m) => m[1]) : null;
 }
 
 describe('the App workflow (#1182)', () => {
   it('runs on a push to main with the pull request path list', () => {
-    expect(workflow).toMatch(/^  push:\n    branches:\n      - main\n    paths:\n/m);
+    expect(workflow).toMatch(/^ {2}push:\n {4}branches:\n {6}- main\n {4}paths:\n/m);
     expect(pathsUnder('push')).toEqual(pathsUnder('pull_request'));
   });
 
   it("gives a merge's run its own concurrency group, keyed on the commit, so one merge never cancels the one before it", () => {
     expect(workflow).toMatch(
-      /^  group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.event\.pull_request\.number \|\| github\.sha \}\}$/m
+      /^ {2}group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.event\.pull_request\.number \|\| github\.sha \}\}$/m
     );
   });
 
   it('control: a pull request still groups by its number, and the types file is still in the path list', () => {
-    expect(workflow).toMatch(/^  group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.event\.pull_request\.number/m);
-    expect(workflow).toMatch(/^  cancel-in-progress: true$/m);
+    expect(workflow).toMatch(/^ {2}group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.event\.pull_request\.number/m);
+    expect(workflow).toMatch(/^ {2}cancel-in-progress: true$/m);
     expect(pathsUnder('pull_request')).toContain('js/database.types.ts');
     expect(pathsUnder('pull_request')).toContain('app/**');
   });
