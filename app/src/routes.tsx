@@ -6,6 +6,7 @@ import { AppShell } from './layout/AppShell';
 import { HomePage } from './home/HomePage';
 import { CalendarPage } from './calendar/CalendarPage';
 import { GuildHomePage } from './guild/GuildHomePage';
+import { NewsPage } from './news/NewsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { RequireAbility } from './auth/RequireAbility';
@@ -22,6 +23,11 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   me: <MyProfilePage />
 };
 
+// Guild pages rebuilt so far (#1102), beside Guild home itself.
+const BUILT_GUILD_PAGES: Record<string, ReactElement> = {
+  news: <NewsPage />
+};
+
 // Addresses from #1100: /g/<guild key>/t/<team key>/... for team pages,
 // /g/<guild key>/... for guild-wide ones. The keys are not looked up yet; that
 // arrives with the data layer (resolve_address(), #1114), along with the
@@ -35,7 +41,7 @@ export const routes: RouteObject[] = [
       { index: true, element: <GuildHomePage />, handle: { title: 'Guild home' } satisfies RouteHandle },
       ...Object.entries(GUILD_PAGES).map(([path, title]) => ({
         path,
-        element: <PlaceholderPage title={title} />,
+        element: BUILT_GUILD_PAGES[path] ?? <PlaceholderPage title={title} />,
         handle: { title } satisfies RouteHandle
       })),
       {

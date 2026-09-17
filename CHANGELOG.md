@@ -12,6 +12,29 @@ answers to.
 
 ---
 
+## [3.137.0] - 2026-09-17
+
+### Project
+
+- The new app's **News** page
+  ([#1102](https://github.com/katogaming88/WGA-Raid-Hub/issues/1102)): every
+  entry in `news.json`, pinned ones first and then newest first, each with its
+  date, category and version. Pinned entries and the newest one start open,
+  and any entry opens or closes from its header, the body sliding open with
+  its arrow unless the reader has asked for less motion
+  ([#1041](https://github.com/katogaming88/WGA-Raid-Hub/issues/1041)). The
+  sidebar's News item shows a dot until the reader has opened News since the
+  newest entry, remembered under the same browser key as the current site so
+  it carries over at cutover. Checked against the current News tab's recorded
+  behavior (`tests/behavior/news.js`). On purpose: dates read "Sep 7, 2026".
+  Nothing on the current site changes.
+- The app build now copies `news.json` beside the app, and News and Guild home
+  both read it from there the way the current site does, instead of Guild
+  home bundling it.
+- The revamp time log covers the News page.
+
+---
+
 ## [3.136.0] - 2026-09-17
 
 ### Project

@@ -177,28 +177,6 @@ export function guildLive(rows: StreamerRow[], teamNames: Map<number, string>): 
 }
 
 // ---------------------------------------------------------------------------
-// News
-
-export type NewsEntry = { date: string; title: string; version?: string; pinned?: boolean };
-
-// Pinned entries first, then newest first: the News page's order.
-export function latestNews(entries: NewsEntry[], count = 3): NewsEntry[] {
-  return entries
-    .slice()
-    .sort((a, b) => {
-      if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
-      if (a.date === b.date) return 0;
-      return a.date < b.date ? 1 : -1;
-    })
-    .slice(0, count);
-}
-
-const NEWS_DATE = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' });
-
-export const newsDate = (date: string) =>
-  /^\d{4}-\d{2}-\d{2}$/.test(date) ? NEWS_DATE.format(new Date(`${date}T00:00:00Z`)) : date;
-
-// ---------------------------------------------------------------------------
 // Guild officers
 
 // site_settings.guild_officer_bios, as the site admin editor writes it.

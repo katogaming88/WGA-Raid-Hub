@@ -179,6 +179,17 @@
   color: var(--text);
 }
 
+/* Something new behind the item: the solid badge colour as a dot. The link's
+   name says it for screen readers. */
+.nav-mark {
+  width: 8px;
+  height: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--badge);
+}
+
 /* The current page needs more than a background tint: in light mode the tint
    is close to the sidebar itself (Kat, 2026-09-13). The brand bar on the left
    carries the state at 3:1 or better in both modes. */

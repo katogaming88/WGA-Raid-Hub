@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |      1 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     15 h 17 m |
-| **All revamp work**                | **24 h 02 m** |
+| Revamp 2: public pages             |     15 h 32 m |
+| **All revamp work**                | **24 h 17 m** |
 
 ## Log
 
@@ -72,6 +72,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | 1:40-2:35 PM | #1102 Calendar: design options and the raider answers read | Revamp 2 (#1102) |    55 m | ~30 m build, ~25 m Kat choosing designs | Six mockups on a design canvas; Kat picked the night-chips month and the answer-panel night page, added a Heads up section for who is out or late, an officer change dialog, phone and light mode. Per-boss lineups filed as #1216 for later. Building showed raiders could only read their own answers, so Kat chose answers-without-notes for raiders and schedule-only when signed out: a new database read, in its own PR for Rex |
 | 2:40-3:45 PM | #1102 Calendar page build | Revamp 2 (#1102) |    65 m | build, plus one Kat snapshot question | Recorded today's calendar first (the month, a night's roster, saving an answer, officer changes, rotator weeks, the bench), then built the chosen design on top of the answers read in PR #1217. Screenshots moved the rotator's week button into the officer dialog and let the role columns pick two or four by the room they have. Officer changes stay off on phones |
 | 10:10 PM-2:05 AM | #1102 Guild home: design options, the region and realm column, the page build | Revamp 2 (#1102) | 3 h 55 m | build and Kat's design rounds interleaved, not split | Two layouts on a design canvas, then an officer version; Kat picked teams first with live streams under them, the officers' Needs your attention panel, officers under the news, and sign-in at the bottom of the sidebar. Kat chose to show Wrathless rather than add a hidden flag. The guild's Raider.IO and Armory links needed the guild's region and realm, so a small database PR for Rex (#1225) comes first. Mid-build Kat asked for a site front page for new guilds instead of Guild home at the site address: filed as #1226, with `/` opening Guild home until then |
+| 2:20-2:35 AM | #1102 News page | Revamp 2 (#1102) | 15 m | build | Recorded today's News tab first (order, which entries start open, opening and closing, the new-news dot and when it clears), then built it. The body slides open with its arrow and stays still with reduced motion (#1041). Guild home now reads news.json the same way, so tests can hand both pages their own entries |
 
 ### 2026-09-15
 
