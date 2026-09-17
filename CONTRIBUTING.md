@@ -455,6 +455,7 @@ so a case about the stack names only what it changes.
 | `scripts/ci/` | CI checks that need more than a workflow step (changelog classification, the team-wide read guard, the RLS autocommit guard, the security advisor allowlist), plus the version stamper (`npm run stamp`), which owns the page registry the asset-version check reads |
 | `app/` | The new app being built alongside this site for the January cutover ([#1109](https://github.com/katogaming88/WGA-Raid-Hub/issues/1109), [#1101](https://github.com/katogaming88/WGA-Raid-Hub/issues/1101)): Vite, React and TypeScript with its own `package.json`. Run `npm install` then `npm run dev` inside `app/`. Checked by the App workflow; takes weekly Dependabot bumps like the root and `bot/` (#1180); nothing in it ships to the current site |
 | `dbdoc/` | Generated schema docs (tbls). Never edit by hand; regenerate with `npm run db:docs` |
+| `js/database.types.ts` | Generated Supabase types for the public schema, read by the current site's `@ts-check` files and imported by `app/` (#1181). Never edit by hand; regenerate with `npm run db:types` |
 | `supabase/definitions/` | Generated current definition of every database function and view, one file each (#1107). Never edit by hand; regenerate with `npm run db:definitions` |
 | `docs/RLS.md` | Hand-maintained RLS policy reference (tbls cannot generate this) |
 
@@ -653,6 +654,11 @@ PRs that change `supabase/migrations/` must also:
   function and view has one file there holding its current definition, so a
   migration that rewrites a function shows only the lines that changed. Never
   edit those files by hand; the migration is still what changes the database
+- Regenerate the Supabase types: `npm run db:types`, and commit
+  `js/database.types.ts` (CI fails it stale). Both sites typecheck against this
+  file, so a table the app reads that changed without it is a type error
+  nothing catches. Never edit it by hand; the generator is pinned in
+  `scripts/ci/gen-types.js` so it writes the same file on every machine
 - Update [docs/RLS.md](docs/RLS.md) if the migration adds, alters, or drops an
   RLS policy (CI checks this too)
 - Regenerate the policy export if policies changed: `npm run db:rls`, and
