@@ -32,6 +32,8 @@ answers to.
 - The decision is logged in `docs/database-decisions.md`, the new read is
   described in `docs/RLS.md`, and the revamp time log covers the Calendar
   design work.
+- The Admin tab's gear sweep test pins the clock it checks staleness against,
+  so it no longer starts failing once the real date passes its fixed one.
 
 ---
 
