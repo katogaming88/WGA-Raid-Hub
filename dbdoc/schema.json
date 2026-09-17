@@ -9245,6 +9245,12 @@
       "return_type": "int4",
       "arguments": "p_request_id integer, p_approve boolean, p_note text DEFAULT NULL::text",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_rsvp_answers",
+      "return_type": "record",
+      "arguments": "p_team_id integer, p_from date, p_to date",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

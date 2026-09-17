@@ -10,6 +10,22 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-16 -- Raiders see their teammates' raid-night answers, but not the notes (#1102)
+
+Shipped: 20260916142703_team_rsvp_answers.sql
+
+The new app's Calendar page shows who is out and who is late for a raid night, with counts. `raid_rsvps` only let a raider read their own row, so on the current site a raider sees every teammate as Present even after one has said they are absent.
+
+**Kat's call: answers yes, notes no.** A raider sees that Voljin is Absent and Kat is Late, and the real counts. The note ("Out of town") stays with officers, since the note box has always said it is for officers. Someone signed out sees the schedule only: no names, answers or counts.
+
+**A function, not a wider read on the table.** Row-level rules pick rows, not columns, so letting raiders read teammates' rows would hand over the note too. `team_rsvp_answers(team, from, to)` returns player, night, status and when it changed, and nothing else. Officers keep reading `raid_rsvps` directly.
+
+**Who counts as "on the team": an active character there.** A membership row can outlive a raider's last character, and a raider who has left should not keep watching the team's attendance. The team's officers and leader, guild officers and site admins are also answered.
+
+**It refuses rather than returning nothing.** A signed-out or outside caller gets an error, so the page can tell "nobody has answered" from "you can't see this". The range is capped at 62 days because the page reads a month at a time.
+
+[Full discussion -> #1102](https://github.com/katogaming88/WGA-Raid-Hub/issues/1102).
+
 ## 2026-09-16 -- A raider can ask for a main swap any day, and an officer approves it on the roster (#631, #942 step 5c)
 
 Shipped: `20260916010611_main_swap_requests.sql`.

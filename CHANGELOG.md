@@ -12,6 +12,31 @@ answers to.
 
 ---
 
+## [3.133.0] - 2026-09-16
+
+### Backend
+
+- Raiders can see their teammates' raid-night answers, without the notes
+  ([#1102](https://github.com/katogaming88/WGA-Raid-Hub/issues/1102)). A new
+  read, `team_rsvp_answers(team, from, to)`, returns who answered what for
+  which night and when. It answers anyone with an active character on that
+  team, the team's officers and leader, guild officers and site admins, and
+  refuses everyone else, including signed-out visitors. Notes stay
+  officer-only: officers still read them from `raid_rsvps`. Until now a raider
+  could only read their own answer, so the calendar showed every teammate as
+  Present. This is for the new app's Calendar page, which comes next; nothing
+  on the current site changes.
+
+### Project
+
+- The decision is logged in `docs/database-decisions.md`, the new read is
+  described in `docs/RLS.md`, and the revamp time log covers the Calendar
+  design work.
+- The Admin tab's gear sweep test pins the clock it checks staleness against,
+  so it no longer starts failing once the real date passes its fixed one.
+
+---
+
 ## [3.132.1] - 2026-09-16
 
 ### Frontend
