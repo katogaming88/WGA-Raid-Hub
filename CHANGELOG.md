@@ -32,6 +32,22 @@ answers to.
 
 ---
 
+## [3.137.1] - 2026-09-17
+
+### Project
+
+- The packages the new app in `app/` is built from now get weekly update pull
+  requests from Dependabot, the way the site's and the bot's already do
+  ([#1180](https://github.com/katogaming88/WGA-Raid-Hub/issues/1180)). Its
+  build and test tools arrive grouped in one pull request; the libraries the
+  app runs on (React, React Router, TanStack Query, supabase-js) each arrive
+  alone so a change to what the app does can be read on its own. TypeScript
+  major versions are held back until the lint plugin supports them. Until now
+  nothing bumped these packages, so the whole set would have arrived at once
+  in the cutover week. A new test in `tests/ci/` pins the entry's shape, and
+  the workflow that runs it now also runs on a pull request that edits only
+  `.github/dependabot.yml`, so the pin fires on the file it reads.
+
 ## [3.137.0] - 2026-09-17
 
 ### Project
