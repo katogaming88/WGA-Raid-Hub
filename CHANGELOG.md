@@ -12,6 +12,26 @@ answers to.
 
 ---
 
+## [3.138.0] - 2026-09-17
+
+### Project
+
+- The new app's **Streams** page
+  ([#1102](https://github.com/katogaming88/WGA-Raid-Hub/issues/1102)): every
+  streamer in the guild, leading with whoever is live. Live streamers get a
+  muted Twitch player, a channel link, their team and their schedule; everyone
+  else is listed below them without a player, so the page no longer builds an
+  embed per streamer whether they are streaming or not
+  ([#797](https://github.com/katogaming88/WGA-Raid-Hub/issues/797),
+  [#811](https://github.com/katogaming88/WGA-Raid-Hub/issues/811)). Anyone who
+  asked to be shown only on their own team's pages stays off it. "Live" is
+  written out beside the dot, and each player is named for its streamer
+  ([#796](https://github.com/katogaming88/WGA-Raid-Hub/issues/796))
+- Recorded the current site's Streamers tab as browser tests before rebuilding
+  it, and added the new page's states to the accessibility suite
+
+---
+
 ## [3.137.0] - 2026-09-17
 
 ### Project

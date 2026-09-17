@@ -43,6 +43,11 @@ export function liveText(names: string[]): string {
   return `${names[0]}, ${names[1]}, and ${names.length - 2} more are live!`;
 }
 
+// Twitch refuses to play an embed unless the page names its own host, so every
+// caller pairs embedSrc() with this. 'localhost' covers a dev server reached
+// by a name the browser reports as empty.
+export const embedParent = () => window.location.hostname || 'localhost';
+
 // Twitch only plays an embed on a page that names itself as the parent.
 export const embedSrc = (channel: string, parent: string) =>
   `https://player.twitch.tv/?channel=${encodeURIComponent(channel)}&parent=${encodeURIComponent(parent)}&muted=true`;

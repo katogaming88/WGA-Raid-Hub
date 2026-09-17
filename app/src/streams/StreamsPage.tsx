@@ -2,6 +2,7 @@ import { useId, useMemo } from 'react';
 import { DataState } from '../components/DataState';
 import { useAddress } from '../data/address';
 import { streamDirectory, type Directory, type DirectoryStream } from './directory';
+import { embedParent, embedSrc } from './streams';
 import { useGuildStreamers } from './StreamWidget';
 import './streams.css';
 
@@ -48,43 +49,82 @@ function StreamDirectory({ directory }: { directory: Directory }) {
   );
 }
 
-// TODO(kat): whoever is live, each in a Twitch player.
-//
-// Shape it like Guild home's live section (guild/GuildHomePage.tsx, LiveNow +
-// LiveCard) so the two pages match: a <section> labelled by its heading, a
-// <ul> of cards, and in each card an .stream-embed wrapping the iframe.
-//
-// The iframe's src comes from embedSrc(channel, parent) in streams.ts, and it
-// needs a `title` naming the streamer, plus `allowFullScreen` and
-// `loading="lazy"`. #796 also asks that "Live" be written out next to the dot,
-// not colour alone -- the .stream-live and .live-dot classes in streams.css
-// already do that.
-//
-// The heading needs an id for aria-labelledby; useId() is imported for it.
-//
-// The tests read the markup by class, so these are the names they expect:
-// the section is .streams-live, each card is an <li>, and inside it
-// .stream-name, .stream-channel (the twitch.tv link), .stream-team and
-// .stream-note.
+// Whoever is live, each in a Twitch player. Shaped like Guild home's live
+// section (guild/GuildHomePage.tsx) so the two read as the same thing, with
+// the channel and team a directory needs and Guild home leaves out.
 function LiveSection({ streams }: { streams: DirectoryStream[] }) {
   const titleId = useId();
-  void titleId;
-  void streams;
-  return null;
+
+  return (
+    <section className="streams-live" aria-labelledby={titleId}>
+      <h2 id={titleId} className="section-title">
+        Live now
+      </h2>
+      <ul className="stream-grid">
+        {streams.map((stream) => (
+          <li key={stream.id} className="card stream-card">
+            <div className="stream-embed">
+              {/* Muted, so opening the page does not start talking (#286). */}
+              <iframe
+                src={embedSrc(stream.channel, embedParent())}
+                title={`${stream.name}’s stream on Twitch`}
+                allowFullScreen
+                loading="lazy"
+              />
+            </div>
+            <div className="stream-card-body">
+              <div className="stream-card-header">
+                <span className="stream-name">{stream.name}</span>
+                {/* "Live" is written out, so the dot is not colour alone (#796). */}
+                <span className="stream-live">
+                  <span className="live-dot" aria-hidden="true" />
+                  Live
+                </span>
+              </div>
+              <a
+                className="stream-channel"
+                href={`https://twitch.tv/${encodeURIComponent(stream.channel)}`}
+                target="_blank"
+                rel="noopener"
+              >
+                twitch.tv/{stream.channel}
+              </a>
+              <span className="stream-team">{stream.team}</span>
+              {stream.note && <p className="stream-note">{stream.note}</p>}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }
 
-// TODO(kat): everyone else, as a compact list -- no players, since they are
-// not streaming anything right now.
-//
-// Each row wants: their name, a link to twitch.tv/<channel> (target="_blank"
-// rel="noopener", and run the channel through encodeURIComponent like the live
-// card does), their team, and their schedule note when they have written one.
-// The tests expect .streams-offline on the section, an <li> per person, and
-// the same .stream-name / .stream-channel / .stream-team / .stream-note names
-// inside. All but .stream-team are already styled in streams.css.
+// Everyone else, as a compact list: no players, since they are not streaming
+// anything right now.
 function OfflineSection({ streams }: { streams: DirectoryStream[] }) {
   const titleId = useId();
-  void titleId;
-  void streams;
-  return null;
+  return (
+    <section className="streams-offline" aria-labelledby={titleId}>
+      <h2 id={titleId} className="section-title">
+        Also streaming
+      </h2>
+      <ul className="stream-directory">
+        {streams.map((stream) => (
+          <li key={stream.id}>
+            <span className="stream-name">{stream.name}</span>
+            <a
+              className="stream-channel"
+              href={`https://twitch.tv/${encodeURIComponent(stream.channel)}`}
+              target="_blank"
+              rel="noopener"
+            >
+              twitch.tv/{stream.channel}
+            </a>
+            <span className="stream-team">{stream.team}</span>
+            {stream.note && <p className="stream-note">{stream.note}</p>}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }

@@ -4,7 +4,7 @@ import { DataState } from '../components/DataState';
 import { can, teamRole, useAccess, type Access } from '../auth/access';
 import { useAddress, useGuildDetails } from '../data/address';
 import { useGuildStreamers } from '../streams/StreamWidget';
-import { embedSrc } from '../streams/streams';
+import { embedParent, embedSrc } from '../streams/streams';
 import { classColor } from '../roster/roster';
 import { newsShortDate, sortNews } from '../news/news';
 import { useNews } from '../news/useNews';
@@ -186,7 +186,7 @@ function LiveCard({ stream }: { stream: GuildStream }) {
     <li className="card guild-live-card">
       <div className="guild-live-embed">
         <iframe
-          src={embedSrc(stream.channel, window.location.hostname || 'localhost')}
+          src={embedSrc(stream.channel, embedParent())}
           title={`${stream.name}’s stream on Twitch`}
           allowFullScreen
           loading="lazy"

@@ -2,7 +2,7 @@
 // live and who is not. Recorded behavior lives in tests/behavior/streams.js;
 // directory.test.ts checks this against it.
 
-import type { StreamerRow } from './streams';
+import { displayName, type StreamerRow } from './streams';
 
 // One person in the directory. `team` is the team's display name, `note` is
 // their schedule in their own words, or '' when they have not written one.
@@ -29,10 +29,23 @@ export type Directory = { live: DirectoryStream[]; offline: DirectoryStream[] };
 //    works this out for the widget.
 //  - Both lists keep the order the rows arrived in, which the read has
 //    already put in id order.
-//
-// TODO(kat): build the two lists.
 export function streamDirectory(rows: StreamerRow[], teamNames: Map<number, string>): Directory {
-  void rows;
-  void teamNames;
-  return { live: [], offline: [] };
+  const live: DirectoryStream[] = [];
+  const offline: DirectoryStream[] = [];
+
+  for (const row of rows) {
+    const name = displayName(row.players);
+    if (name === null) continue;
+    if (row.guild_wide_opt_out) continue;
+    const stream: DirectoryStream = {
+      id: row.id,
+      name,
+      channel: row.twitch_channel,
+      team: teamNames.get(row.team_id) ?? '',
+      note: row.schedule_note ?? ''
+    };
+    if (row.is_live) live.push(stream);
+    else offline.push(stream);
+  }
+  return { live, offline };
 }
