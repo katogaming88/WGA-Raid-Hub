@@ -12,6 +12,26 @@ answers to.
 
 ---
 
+## [3.138.0] - 2026-09-17
+
+### Backend
+
+- Officers can plan who is in for each boss on a raid night
+  ([#1216](https://github.com/katogaming88/WGA-Raid-Hub/issues/1216)). A new
+  table, `boss_lineup_sitouts`, holds one row per raider sitting out one boss;
+  anyone without a row is in, so a night starts with everyone in. Officers
+  save a raid's whole lineup for a night at once through
+  `set_boss_lineup(team, date, raid, sit-outs)`, which refuses raiders from
+  other teams and writes one audit entry per save. The team's raiders,
+  officers, guild officers and site admins can read it; signed-out visitors
+  and other teams cannot. This is for the new app's Calendar page, which comes
+  next; nothing on the current site changes.
+
+### Project
+
+- The decision is logged in `docs/database-decisions.md`, and the new table
+  and function are described in `docs/RLS.md`.
+
 ## [3.137.0] - 2026-09-17
 
 ### Project

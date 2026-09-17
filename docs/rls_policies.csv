@@ -28,6 +28,11 @@ boe_listings,Officers read boe_listings,public,SELECT,PERMISSIVE,((team_id = ANY
 boe_listings,Raiders read own boe_listings,public,SELECT,PERMISSIVE,"(EXISTS ( SELECT 1
    FROM boe_items b
   WHERE ((b.id = boe_listings.boe_item_id) AND ((b.player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])) OR ((b.finder_discord_id IS NOT NULL) AND (b.finder_discord_id = ( SELECT current_discord_id() AS current_discord_id)))))))",
+boss_lineup_sitouts,Claude readers read boss_lineup_sitouts,claude_readers,SELECT,PERMISSIVE,true,
+boss_lineup_sitouts,Officers read boss_lineup_sitouts,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_guild_officer() AS is_guild_officer) OR ( SELECT is_site_admin() AS is_site_admin)),
+boss_lineup_sitouts,Team raiders read boss_lineup_sitouts,public,SELECT,PERMISSIVE,"(team_id IN ( SELECT p.team_id
+   FROM players p
+  WHERE (p.id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))))",
 characters,Claude readers read characters,claude_readers,SELECT,PERMISSIVE,true,
 characters,Officers read characters on their teams,public,SELECT,PERMISSIVE,"((person_id IN ( SELECT tm.person_id
    FROM team_members tm

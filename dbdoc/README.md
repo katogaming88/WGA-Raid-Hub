@@ -66,6 +66,7 @@
 | [public.boe_managers](public.boe_managers.md) | 5 | Read-only view of guild_grants (#942), dropped at cutover (#1105). | VIEW |
 | [public.characters](public.characters.md) | 13 | Characters a person chose to show from their Battle.net account (#942 step 5, #1162). Written only by save_battlenet_characters() from the battlenet-characters Edge Function. A character here is an alt unless the same name_realm_key is a roster row linked to the person. | BASE TABLE |
 | [public.main_swap_requests](public.main_swap_requests.md) | 14 | A raider's request to make one of their alts their roster character, outside a signup window (#631, #942 step 5c). Written only by request_main_swap(), cancel_main_swap_request() and review_main_swap_request(). name_realm and class_spec_id are what they asked for, kept here so the request still reads right after the character row changes. | BASE TABLE |
+| [public.boss_lineup_sitouts](public.boss_lineup_sitouts.md) | 7 | Per-boss lineups for a raid night (#1216): one row per raider an officer sat out for one boss. A raider with no row is in. Raid and boss are named as Season Settings (team_settings.config.raidProgression) spells them. Written only through set_boss_lineup(). | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -184,6 +185,7 @@
 | public.cancel_main_swap_request | void | p_request_id integer | FUNCTION |
 | public.review_main_swap_request | int4 | p_request_id integer, p_approve boolean, p_note text DEFAULT NULL::text | FUNCTION |
 | public.team_rsvp_answers | record | p_team_id integer, p_from date, p_to date | FUNCTION |
+| public.set_boss_lineup | int4 | p_team_id integer, p_raid_date date, p_raid_name text, p_sitouts jsonb | FUNCTION |
 
 ## Enums
 
@@ -306,6 +308,8 @@ erDiagram
 "public.main_swap_requests" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
 "public.main_swap_requests" }o--o| "public.people" : "FOREIGN KEY (reviewed_by) REFERENCES people(id)"
 "public.main_swap_requests" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
+"public.boss_lineup_sitouts" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.boss_lineup_sitouts" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -949,6 +953,15 @@ erDiagram
   integer reviewed_by FK
   text officer_note
   integer approved_player_id FK
+}
+"public.boss_lineup_sitouts" {
+  integer id
+  integer team_id FK
+  date raid_date
+  text raid_name
+  text boss_name
+  integer player_id FK
+  timestamp_with_time_zone created_at
 }
 ```
 

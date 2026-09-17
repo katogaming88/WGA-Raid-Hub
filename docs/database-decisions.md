@@ -1904,3 +1904,21 @@ A frontend release deployed the moment it merged, because GitHub Pages built fro
 **Jekyll stays in the loop deliberately.** `build.json` carries empty front matter so that the deployed commit and build time are rendered into it, and that file is the only record of which commit is live. The workflow runs the same build container Pages ran, so switching the publishing source changed who invokes Jekyll rather than what it produces.
 
 [Full discussion -> #1050](https://github.com/katogaming88/WGA-Raid-Hub/issues/1050).
+
+## #1216 -- boss_lineup_sitouts: per-boss lineups store only who sits out
+
+Shipped: 20260917131222_boss_lineup_sitouts.sql
+
+Phoenix plans to swap raiders boss by boss instead of benching or rotating them for a whole night. Kat and the officers picked the grid layout on 2026-09-17: raiders down the side, the season's bosses across, a click puts a raider in or takes them out for that boss.
+
+**Only the sit-outs are stored.** A night starts with everyone in, and the page offers "Copy last week's lineup" to bring the previous night's sit-outs forward. Storing the "out" cells alone means a raider who joins the roster mid-week is in by default, a night nobody planned needs no rows, and "Everyone in" is an empty save. Storing every cell would have needed a row per raider per boss per night and a rule for raiders added after the lineup was written.
+
+**Bosses by name, not by id.** The page takes its bosses from Season Settings (`team_settings.config.raidProgression`), a hand-edited list with no ids, so a row names its raid and boss as that list spells them. Renaming a boss there orphans earlier nights' rows under the old name, which only affects nights already played. `raid_encounters` has ids, but only for bosses the progression sync has seen, and a lineup is planned before the first pull.
+
+**One replace-all function, no table write grant.** `set_boss_lineup(team, date, raid, sitouts)` deletes that raid's rows for the night and inserts the new set in one statement pair, so a save never leaves half a lineup behind and an officer never needs a row-by-row diff. Gated like `officer_set_rsvp()`, it refuses a raider from another team and writes one audit entry per save rather than one per cell.
+
+**The team's raiders read it.** Each raider will see "your bosses tonight" on the night page, so the read covers anyone with an active character on the team, plus officers, guild officers and site admins. A sit-out is not guild-wide news, so there is no public read. Unlike RSVP notes there is nothing in a row to hide from teammates.
+
+**Not decided here:** whether the bot tells a raider when they are swapped out, and whether bosses already killed this week grey out (that needs the progression sync to keep weekly kills, a separate change).
+
+[Full discussion -> #1216](https://github.com/katogaming88/WGA-Raid-Hub/issues/1216).

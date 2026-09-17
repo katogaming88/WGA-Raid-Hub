@@ -7327,6 +7327,132 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.boss_lineup_sitouts",
+      "type": "BASE TABLE",
+      "comment": "Per-boss lineups for a raid night (#1216): one row per raider an officer sat out for one boss. A raider with no row is in. Raid and boss are named as Season Settings (team_settings.config.raidProgression) spells them. Written only through set_boss_lineup().",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('boss_lineup_sitouts_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "raid_date",
+          "type": "date",
+          "nullable": false
+        },
+        {
+          "name": "raid_name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "boss_name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "boss_lineup_sitouts_pkey",
+          "def": "CREATE UNIQUE INDEX boss_lineup_sitouts_pkey ON public.boss_lineup_sitouts USING btree (id)",
+          "table": "public.boss_lineup_sitouts",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "boss_lineup_sitouts_team_id_raid_date_raid_name_boss_name_p_key",
+          "def": "CREATE UNIQUE INDEX boss_lineup_sitouts_team_id_raid_date_raid_name_boss_name_p_key ON public.boss_lineup_sitouts USING btree (team_id, raid_date, raid_name, boss_name, player_id)",
+          "table": "public.boss_lineup_sitouts",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "raid_name",
+            "boss_name",
+            "player_id"
+          ]
+        },
+        {
+          "name": "boss_lineup_sitouts_player_id_idx",
+          "def": "CREATE INDEX boss_lineup_sitouts_player_id_idx ON public.boss_lineup_sitouts USING btree (player_id)",
+          "table": "public.boss_lineup_sitouts",
+          "columns": [
+            "player_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "boss_lineup_sitouts_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.boss_lineup_sitouts",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "boss_lineup_sitouts_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.boss_lineup_sitouts",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "boss_lineup_sitouts_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.boss_lineup_sitouts",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "boss_lineup_sitouts_team_id_raid_date_raid_name_boss_name_p_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, raid_date, raid_name, boss_name, player_id)",
+          "table": "public.boss_lineup_sitouts",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "raid_name",
+            "boss_name",
+            "player_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -8603,6 +8729,32 @@
       ],
       "parent_cardinality": "zero_or_one",
       "def": "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.boss_lineup_sitouts",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.boss_lineup_sitouts",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -9282,6 +9434,12 @@
       "name": "public.team_rsvp_answers",
       "return_type": "record",
       "arguments": "p_team_id integer, p_from date, p_to date",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_boss_lineup",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_raid_date date, p_raid_name text, p_sitouts jsonb",
       "type": "FUNCTION"
     }
   ],

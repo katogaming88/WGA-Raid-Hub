@@ -461,6 +461,65 @@ export type Database = {
           },
         ]
       }
+      boss_lineup_sitouts: {
+        Row: {
+          boss_name: string
+          created_at: string
+          id: number
+          player_id: number
+          raid_date: string
+          raid_name: string
+          team_id: number
+        }
+        Insert: {
+          boss_name: string
+          created_at?: string
+          id?: number
+          player_id: number
+          raid_date: string
+          raid_name: string
+          team_id: number
+        }
+        Update: {
+          boss_name?: string
+          created_at?: string
+          id?: number
+          player_id?: number
+          raid_date?: string
+          raid_name?: string
+          team_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boss_lineup_sitouts_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boss_lineup_sitouts_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "priority_order_gaps"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "boss_lineup_sitouts_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "rnlsi"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "boss_lineup_sitouts_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       characters: {
         Row: {
           blizzard_id: number
@@ -3436,6 +3495,15 @@ export type Database = {
       set_boe_payout_settings: {
         Args: { p_floor: number; p_pivot: number }
         Returns: undefined
+      }
+      set_boss_lineup: {
+        Args: {
+          p_raid_date: string
+          p_raid_name: string
+          p_sitouts: Json
+          p_team_id: number
+        }
+        Returns: number
       }
       set_guild_officer_bios: { Args: { p_bios: Json }; Returns: Json }
       set_own_rsvp: {
