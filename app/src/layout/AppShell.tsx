@@ -21,6 +21,8 @@ import { can, useAccess } from '../auth/access';
 import { navGroups } from './nav';
 import { TeamSwitcher } from './TeamSwitcher';
 import { StreamWidget } from '../streams/StreamWidget';
+import { hasUnread } from '../news/news';
+import { useNews, useNewsSeen } from '../news/useNews';
 import type { RouteHandle } from '../routes';
 import './layout.css';
 
@@ -49,13 +51,19 @@ export function AppShell() {
   const matches = useMatches();
   const pageTitle = (matches.at(-1)?.handle as RouteHandle | undefined)?.title ?? '';
   const access = useAccess();
+  const news = useNews();
+  const [newsSeen] = useNewsSeen();
   const navTeamKey = teamKey ?? defaultTeamKey();
   // A guild page has no team of its own, so its team links and Officer group
   // follow the team those links go to.
   const navTeam = currentTeam ?? teams.find((t) => t.key === navTeamKey);
   const groups = navGroups(
     { team: `/g/${guildKey}/t/${navTeamKey}`, guild: `/g/${guildKey}` },
-    { officer: can(access.data, 'viewOfficerTools', navTeam?.id), guildFirst: !teamKey }
+    {
+      officer: can(access.data, 'viewOfficerTools', navTeam?.id),
+      guildFirst: !teamKey,
+      newsUnread: news.isSuccess && hasUnread(news.data, newsSeen)
+    }
   );
 
   // Following a link closes the drawer.
@@ -166,9 +174,15 @@ export function AppShell() {
               <ul>
                 {group.items.map((item) => (
                   <li key={item.to}>
-                    <NavLink to={item.to} end={item.end ?? false} className="nav-item">
+                    <NavLink
+                      to={item.to}
+                      end={item.end ?? false}
+                      className="nav-item"
+                      aria-label={item.mark ? `${item.label}, new` : undefined}
+                    >
                       <Icon name={item.icon} />
                       <span>{item.label}</span>
+                      {item.mark && <span className="nav-mark" aria-hidden="true" />}
                     </NavLink>
                   </li>
                 ))}

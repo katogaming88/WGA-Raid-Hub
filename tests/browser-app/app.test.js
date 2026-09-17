@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { AxeBuilder } from '@axe-core/playwright';
 import { launchBrowser, openApp, startApp, storedSession, NARROW } from './harness.js';
 import { GUILD_TABLES, GUILD_TEAMS, WAITING } from './guild-fixtures.js';
+import { ENTRIES as NEWS_ENTRIES } from '../behavior/news.js';
 import { SCENARIO } from '../behavior/roster.js';
 import {
   ATTENDANCE,
@@ -270,7 +271,11 @@ const GUILD_OFFICER = {
   tables: { ...GUILD_TABLES, ...WAITING }
 };
 
+const NEWS = { path: '/g/wga/news', sentinel: 'main:has(.news-entry)', news: NEWS_ENTRIES };
+
 const STATES = [
+  { label: 'news', ...NEWS },
+  { label: 'news, light', ...NEWS, colorScheme: 'light' },
   { label: 'guild home, signed out', ...GUILD },
   { label: 'guild home, signed out, light', ...GUILD, colorScheme: 'light' },
   { label: 'guild home, officer', ...GUILD_OFFICER },

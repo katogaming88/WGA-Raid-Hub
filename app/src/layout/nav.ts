@@ -2,7 +2,8 @@ import type { IconName } from '../components/Icon';
 
 // `end`: current only on its exact address. Home needs it, since every team
 // page sits below it; My profile must not have it, so its tabs keep it current.
-export type NavItem = { label: string; icon: IconName; to: string; end?: boolean };
+// `mark`: a dot saying there is something new behind the item (News).
+export type NavItem = { label: string; icon: IconName; to: string; end?: boolean; mark?: boolean };
 export type NavGroup = { heading: string; items: NavItem[] };
 
 // Sidebar groups from the 2026-09-13 mockups. Team pages hang off
@@ -10,7 +11,7 @@ export type NavGroup = { heading: string; items: NavItem[] };
 // under /officer/ (#1100).
 export function navGroups(
   base: { team: string; guild: string },
-  show: { officer: boolean; guildFirst?: boolean }
+  show: { officer: boolean; guildFirst?: boolean; newsUnread?: boolean }
 ): NavGroup[] {
   const groups: NavGroup[] = [
     {
@@ -39,7 +40,7 @@ export function navGroups(
         { label: 'Guild home', icon: 'home', to: base.guild, end: true },
         { label: 'BoE sales', icon: 'coin', to: `${base.guild}/boe` },
         { label: 'Streams', icon: 'tv', to: `${base.guild}/streams` },
-        { label: 'News', icon: 'news', to: `${base.guild}/news` }
+        { label: 'News', icon: 'news', to: `${base.guild}/news`, mark: show.newsUnread ?? false }
       ]
     }
   ];

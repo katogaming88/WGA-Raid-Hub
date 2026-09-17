@@ -106,7 +106,7 @@ function json(body, headers = {}) {
  *           tables?: Record<string, unknown[]>, person?: { discordId: string|null, person: object|null },
  *           click?: string, touch?: boolean, rpc?: Record<string, unknown>, functions?: string[],
  *           functionAnswers?: Record<string, unknown>, sessionStorage?: Record<string, string>,
- *           clock?: string, teams?: object[] }} state
+ *           clock?: string, teams?: object[], news?: object[], newsSeen?: string }} state
  */
 export async function openApp(browser, port, state) {
   const host = supabaseHost();
@@ -129,6 +129,10 @@ export async function openApp(browser, port, state) {
     await context.addInitScript((entries) => {
       for (const [key, value] of entries) window.sessionStorage.setItem(key, value);
     }, Object.entries(state.sessionStorage));
+  }
+  // The newest news entry this browser has seen (#1102).
+  if (state.newsSeen) {
+    await context.addInitScript((v) => window.localStorage.setItem('wga_news_last_seen', v), state.newsSeen);
   }
   if (state.session) {
     const key = `sb-${host.hostname.split('.')[0]}-auth-token`;
@@ -169,7 +173,12 @@ export async function openApp(browser, port, state) {
   await page.route('**/*', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
-    if (url.hostname === '127.0.0.1' && url.port === String(port)) return route.continue();
+    if (url.hostname === '127.0.0.1' && url.port === String(port)) {
+      // The build copies the repo's news.json beside the app; a state can
+      // answer its own entries instead.
+      if (url.pathname === '/news.json' && state.news) return route.fulfill(json(state.news));
+      return route.continue();
+    }
     // The stream widget's Twitch players. axe does not look inside a
     // cross-origin frame, so the document only has to exist.
     if (url.hostname.endsWith('twitch.tv') || url.hostname.endsWith('ttvnw.net')) {

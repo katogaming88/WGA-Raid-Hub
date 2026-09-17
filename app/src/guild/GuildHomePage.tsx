@@ -6,18 +6,16 @@ import { useAddress, useGuildDetails } from '../data/address';
 import { useGuildStreamers } from '../streams/StreamWidget';
 import { embedSrc } from '../streams/streams';
 import { classColor } from '../roster/roster';
-import newsJson from '../../../news.json';
+import { newsShortDate, sortNews } from '../news/news';
+import { useNews } from '../news/useNews';
 import {
   attentionRows,
   guildIntro,
   guildLinks,
   guildLive,
-  latestNews,
-  newsDate,
   officers,
   teamCards,
   type GuildStream,
-  type NewsEntry,
   type Officer,
   type TeamCard,
   type TeamInput
@@ -280,7 +278,7 @@ function Attention({ teams }: { teams: TeamInput[] }) {
 function News() {
   const { guild } = useAddress();
   const titleId = useId();
-  const entries = latestNews(newsJson as NewsEntry[]);
+  const news = useNews();
   return (
     <section className="card guild-side-card" aria-labelledby={titleId}>
       <div className="guild-section-head">
@@ -289,20 +287,24 @@ function News() {
         </h2>
         <Link to={`/g/${guild.key}/news`}>All news</Link>
       </div>
-      {entries.length ? (
-        <ul className="guild-news">
-          {entries.map((entry) => (
-            <li key={entry.version ?? `${entry.date}-${entry.title}`}>
-              <span className="guild-news-title">{entry.title}</span>
-              <time className="text-dim guild-news-date" dateTime={entry.date}>
-                {newsDate(entry.date)}
-              </time>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-muted guild-empty">No news yet.</p>
-      )}
+      <DataState query={news} label="the news">
+        {(all) => {
+          const entries = sortNews(all).slice(0, 3);
+          if (!entries.length) return <p className="text-muted guild-empty">No news yet.</p>;
+          return (
+            <ul className="guild-news">
+              {entries.map((entry) => (
+                <li key={entry.version}>
+                  <span className="guild-news-title">{entry.title}</span>
+                  <time className="text-dim guild-news-date" dateTime={entry.date}>
+                    {newsShortDate(entry.date)}
+                  </time>
+                </li>
+              ))}
+            </ul>
+          );
+        }}
+      </DataState>
     </section>
   );
 }

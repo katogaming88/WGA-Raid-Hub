@@ -4,7 +4,6 @@ import {
   guildIntro,
   guildLinks,
   guildLive,
-  latestNews,
   nextRaid,
   officers,
   realmSlug,
@@ -181,18 +180,6 @@ describe('live streams', () => {
       ['Aur', 'Hellfire Rollers'],
       ['Name4', 'Hellfire Rollers']
     ]);
-  });
-});
-
-describe('news', () => {
-  it('puts pinned entries first, then the newest', () => {
-    const entries = [
-      { date: '2026-09-01', title: 'Old' },
-      { date: '2026-01-01', title: 'Pinned', pinned: true },
-      { date: '2026-09-10', title: 'Newest' },
-      { date: '2026-09-05', title: 'Middle' }
-    ];
-    expect(latestNews(entries).map((e) => e.title)).toEqual(['Pinned', 'Newest', 'Middle']);
   });
 });
 

@@ -1,0 +1,136 @@
+/* News (#1102): one card per entry, the header a button that opens the body.
+   The body slides open with the arrow (#1041); with reduced motion the
+   duration token is 0 and it simply appears. */
+
+.news-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: 820px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.news-entry {
+  overflow: hidden;
+}
+
+.news-entry-pinned {
+  border-color: var(--brand);
+}
+
+.news-entry-heading {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.news-entry-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'meta chevron'
+    'title chevron';
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.news-entry-header:hover {
+  background: var(--hover);
+}
+
+.news-entry-header > svg {
+  grid-area: chevron;
+  color: var(--text-dim);
+  transition: transform calc(var(--duration) * 2) var(--ease);
+}
+
+.news-entry[data-open='true'] .news-entry-header > svg {
+  transform: rotate(180deg);
+}
+
+.news-entry-meta {
+  grid-area: meta;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.news-entry-date {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.news-entry-title {
+  grid-area: title;
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.news-pinned,
+.news-category {
+  padding: 0 7px;
+  border: 1px solid currentColor;
+  border-radius: 10px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.news-pinned {
+  color: var(--brand);
+}
+
+.news-category-feature {
+  color: var(--good);
+}
+
+.news-category-fix {
+  color: var(--warn);
+}
+
+.news-category-change,
+.news-category-other {
+  color: var(--text-muted);
+}
+
+/* Rows 0fr -> 1fr slides the body to its own height. */
+.news-entry-body-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows calc(var(--duration) * 2) var(--ease),
+    visibility 0s linear calc(var(--duration) * 2);
+}
+
+.news-entry[data-open='true'] .news-entry-body-wrap {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition:
+    grid-template-rows calc(var(--duration) * 2) var(--ease),
+    visibility 0s;
+}
+
+.news-entry-body-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.news-entry-body {
+  margin: 0;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  line-height: 1.55;
+}

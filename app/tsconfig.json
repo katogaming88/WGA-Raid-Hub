@@ -14,7 +14,6 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true,
     "noEmit": true,
     "types": ["vite/client", "node", "@testing-library/jest-dom"]
   },
