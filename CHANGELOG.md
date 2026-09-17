@@ -12,6 +12,26 @@ answers to.
 
 ---
 
+## [3.135.0] - 2026-09-17
+
+### Backend
+
+- A guild now records its Battle.net region and home realm
+  ([#1102](https://github.com/katogaming88/WGA-Raid-Hub/issues/1102)): two
+  optional columns on `guilds`, set to US and Tichondrius for We Go Again. The
+  new app's Guild home builds the guild's Raider.IO and Armory links from them
+  and the guild's name, instead of the two WGA links written into the current
+  site's code, and leaves the links out for a guild without them. Anyone can
+  read them, the same as the rest of the guild row. Nothing on the current
+  site changes.
+
+### Project
+
+- The decision is logged in `docs/database-decisions.md`, and the app's
+  database types include the two columns.
+
+---
+
 ## [3.134.3] - 2026-09-17
 
 ### Project

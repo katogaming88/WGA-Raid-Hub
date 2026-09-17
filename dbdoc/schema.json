@@ -6309,6 +6309,18 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "region",
+          "type": "text",
+          "nullable": true,
+          "comment": "Battle.net region, lower case (us, eu, kr, tw). With realm, builds the guild's Raider.IO and Armory links (#1102)."
+        },
+        {
+          "name": "realm",
+          "type": "text",
+          "nullable": true,
+          "comment": "Home realm as the game spells it (Tichondrius). Null when not set; the links are then left out (#1102)."
         }
       ],
       "indexes": [
@@ -6338,6 +6350,26 @@
         }
       ],
       "constraints": [
+        {
+          "name": "guilds_realm_not_blank",
+          "type": "CHECK",
+          "def": "CHECK ((length(btrim(realm)) \u003e 0))",
+          "table": "public.guilds",
+          "referenced_table": "",
+          "columns": [
+            "realm"
+          ]
+        },
+        {
+          "name": "guilds_region_format",
+          "type": "CHECK",
+          "def": "CHECK ((region = ANY (ARRAY['us'::text, 'eu'::text, 'kr'::text, 'tw'::text])))",
+          "table": "public.guilds",
+          "referenced_table": "",
+          "columns": [
+            "region"
+          ]
+        },
         {
           "name": "guilds_url_key_format",
           "type": "CHECK",

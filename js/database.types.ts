@@ -582,18 +582,24 @@ export type Database = {
           created_at: string
           id: number
           name: string
+          realm: string | null
+          region: string | null
           url_key: string
         }
         Insert: {
           created_at?: string
           id?: never
           name: string
+          realm?: string | null
+          region?: string | null
           url_key?: string
         }
         Update: {
           created_at?: string
           id?: never
           name?: string
+          realm?: string | null
+          region?: string | null
           url_key?: string
         }
         Relationships: []

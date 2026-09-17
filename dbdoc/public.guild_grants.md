@@ -58,6 +58,8 @@ erDiagram
   text name
   text url_key
   timestamp_with_time_zone created_at
+  text region
+  text realm
 }
 ```
 
