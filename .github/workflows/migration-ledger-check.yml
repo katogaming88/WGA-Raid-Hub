@@ -12,11 +12,13 @@ name: Migration ledger check
 # This check compares supabase/migrations/ filenames against the ledger. Since
 # #1050 the Deploy workflow applies migrations when a PR merges, so a committed
 # and unapplied migration is what every migration PR looks like on purpose and
-# this run passes --pending-ok, which reports those without failing. What it
-# still fails on is the drift that describes a push which would refuse: a
-# pending file sorting below the newest applied version, and a ledger row with
-# no file behind it. The strict form, where being unapplied fails, runs inside
-# the Deploy workflow straight after the push, and in the weekly sweep.
+# the pull_request run passes --pending-ok, which reports those without
+# failing. What it still fails on is the drift that describes a push which
+# would refuse: a pending file sorting below the newest applied version, and a
+# ledger row with no file behind it. The strict form, where being unapplied
+# fails, runs inside the Deploy workflow straight after the push, in the weekly
+# sweep and on a manual run: on main, a migration still pending is one the
+# deploy did not apply (#1130).
 #
 # Known limit: SQL run in the editor with no committed file is invisible here
 # (that is `supabase db diff` territory, not wired up).
@@ -116,9 +118,17 @@ jobs:
         env:
           DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           NEW_ARGS: ${{ steps.new_files.outputs.args }}
+          # --pending-ok on a pull request only: a committed, unapplied
+          # migration is what every migration PR looks like before its merge
+          # (#1050). The weekly sweep and a manual run are strict, because on
+          # main a migration still pending is one the deploy did not apply
+          # (#1130). The Mode line is for the run log, since the script prints
+          # the same summary in both modes when nothing is pending.
+          PENDING_OK: ${{ github.event_name == 'pull_request' && '--pending-ok' || '' }}
         run: |
+          echo "Mode: ${PENDING_OK:-strict}"
           psql "$DB_URL" -tAc "select version from supabase_migrations.schema_migrations" > ledger.txt
-          node scripts/ci/migration-ledger-check.js --pending-ok $NEW_ARGS < ledger.txt
+          node scripts/ci/migration-ledger-check.js $PENDING_OK $NEW_ARGS < ledger.txt
 
       - name: Notify Discord on scheduled failure
         if: failure() && github.event_name == 'schedule'
