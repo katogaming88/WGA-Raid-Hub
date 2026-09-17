@@ -43,10 +43,18 @@ import { pathToFileURL } from 'node:url';
 // CSS-only fix. gs/ was dropped in #966: kat deleted that directory on
 // 2026-09-04 (#912, #913), so the rule only stood to misclassify anything
 // later recreated at the path.
+//
+// A dotfile directly under supabase/functions/ (.env.example, read only by
+// `supabase functions serve`) is developer configuration the deploy never
+// uploads, so it falls to the project class like config.toml does (#1223).
+// The rule is deliberately wider than the deploy's per-directory match: a
+// non-dotfile at that level (a future deno.json or import map) is a deploy
+// input, and here over-claiming a release beats inheriting the selector's
+// blind spot (#1126).
 export const SHIPPED_CLASSES = [
   { name: 'frontend', section: 'Frontend', pattern: /^js\/.+\.(js|html)$|^css\/.+\.css$|^[^/]+\.html$/ },
   { name: 'db', section: 'Backend', pattern: /^(supabase\/migrations|scripts\/import)\// },
-  { name: 'functions', section: 'Functions', pattern: /^supabase\/functions\// },
+  { name: 'functions', section: 'Functions', pattern: /^supabase\/functions\/(?!\.)/ },
   { name: 'bot', section: 'Bot', pattern: /^bot\// }
 ];
 
