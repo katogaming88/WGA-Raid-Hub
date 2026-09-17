@@ -68,7 +68,9 @@ export function queryAs(role, uid, text, params) {
 //
 // Each impersonated call rides its own savepoint. A call that raises aborts
 // the transaction, so the `reset role` that follows would raise its own error
-// and replace the one the test is asserting on (2026-07-06).
+// and replace the one the test is asserting on (2026-07-06). Either way the
+// call leaves nothing behind: the role, the claims and the savepoint are gone
+// when it returns, so a `q` after it runs as postgres with no caller (#1131).
 export async function withTxn(fn) {
   const client = await pool.connect();
   try {
@@ -83,9 +85,12 @@ export async function withTxn(fn) {
       try {
         const res = await q(text, params);
         await q('reset role');
+        await q("select set_config('request.jwt.claims', NULL, true)");
+        await q('release savepoint impersonated_call');
         return res;
       } catch (err) {
         await q('rollback to savepoint impersonated_call');
+        await q('release savepoint impersonated_call');
         throw err;
       }
     };
