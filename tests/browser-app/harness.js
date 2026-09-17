@@ -106,7 +106,7 @@ function json(body, headers = {}) {
  *           tables?: Record<string, unknown[]>, person?: { discordId: string|null, person: object|null },
  *           click?: string, touch?: boolean, rpc?: Record<string, unknown>, functions?: string[],
  *           functionAnswers?: Record<string, unknown>, sessionStorage?: Record<string, string>,
- *           clock?: string }} state
+ *           clock?: string, teams?: object[] }} state
  */
 export async function openApp(browser, port, state) {
   const host = supabaseHost();
@@ -158,6 +158,11 @@ export async function openApp(browser, port, state) {
     raid_schedule_exceptions: [],
     raid_rsvps: [],
     streamers: [],
+    // Guild home (#1102): the guild officers, and what waits on an officer.
+    site_settings: [],
+    self_received_requests: [],
+    season_signups: [],
+    boe_items: [],
     ...state.tables
   };
 
@@ -175,13 +180,15 @@ export async function openApp(browser, port, state) {
       if (request.method() === 'OPTIONS') return route.fulfill({ status: 204 });
       const rest = url.pathname.split('/rest/v1/')[1];
       if (rest === 'rpc/resolve_address') {
+        // A guild page's address names no team, so none comes back.
+        const teamKey = request.postDataJSON()?.p_team_key ?? null;
         return route.fulfill(
           json([
             {
               guild_id: 1,
               guild_key: 'wga',
-              team_id: 1,
-              team_key: 'phoenix',
+              team_id: teamKey ? 1 : null,
+              team_key: teamKey ? 'phoenix' : null,
               player_id: null,
               player_code: null,
               is_canonical: true
@@ -204,11 +211,26 @@ export async function openApp(browser, port, state) {
         return route.fulfill(json(state.functionAnswers[fn]));
       }
       if (fn && state.functions?.includes(fn)) return route.fulfill(json({ ok: true }));
-      if (rest === 'guilds') return route.fulfill(json({ id: 1, name: 'We Go Again', url_key: 'wga' }));
-      if (rest === 'teams') return route.fulfill(json(TEAMS));
+      if (rest === 'guilds') {
+        return route.fulfill(json({ id: 1, name: 'We Go Again', url_key: 'wga', region: 'us', realm: 'Tichondrius' }));
+      }
+      if (rest === 'teams') return route.fulfill(json(state.teams ?? TEAMS));
       if (rest === 'account_preferences') return route.fulfill(json(null));
       if (rest in tables) {
         const rows = tables[rest];
+        // A count with no rows (Guild home's officer panel): the total is in
+        // the Content-Range header.
+        if (request.method() === 'HEAD') {
+          return route.fulfill({
+            status: 200,
+            headers: {
+              'content-range': `*/${rows.length}`,
+              'access-control-allow-origin': '*',
+              'access-control-expose-headers': 'Content-Range'
+            },
+            body: ''
+          });
+        }
         const single = /vnd\.pgrst\.object/.test(request.headers()['accept'] ?? '');
         return route.fulfill(json(single ? (rows[0] ?? null) : rows));
       }

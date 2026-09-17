@@ -33,6 +33,7 @@ export function navGroups(base: { team: string; guild: string }, show: { officer
     {
       heading: 'Guild',
       items: [
+        { label: 'Guild home', icon: 'home', to: base.guild, end: true },
         { label: 'BoE sales', icon: 'coin', to: `${base.guild}/boe` },
         { label: 'Streams', icon: 'tv', to: `${base.guild}/streams` },
         { label: 'News', icon: 'news', to: `${base.guild}/news` }
@@ -50,6 +51,8 @@ export const TEAM_PAGES: Record<string, string> = {
   calendar: 'Calendar',
   loot: 'Loot history',
   me: 'My profile',
+  // Linked from Guild home's team cards; the page itself is still to come.
+  signup: 'Sign up',
   'officer/priority': 'Loot priority',
   'officer/import': 'Import loot',
   'officer/reviews': 'Reviews',

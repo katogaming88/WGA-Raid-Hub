@@ -1,0 +1,335 @@
+/* Guild home (#1102), option B from the 2026-09-17 canvas: team cards and
+   live streams in the wide column, the officers' panel, news and guild
+   officers beside them. */
+
+.guild-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.guild-main,
+.guild-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.guild-side {
+  gap: var(--space-4);
+}
+
+.guild-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.guild-section-head a {
+  font-size: var(--text-sm);
+}
+
+.guild-empty {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+/* Team cards */
+
+.guild-teams {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guild-team {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: var(--space-5);
+  padding: var(--space-5);
+}
+
+.guild-team-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.guild-team-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+}
+
+.guild-team-name {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 700;
+}
+
+.guild-tag {
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.guild-tag-mine {
+  background: var(--badge);
+  color: var(--badge-text);
+}
+
+.guild-tag-recruiting {
+  border: 1px solid var(--good);
+  color: var(--good);
+}
+
+.guild-team-schedule,
+.guild-team-progress {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.guild-pips {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guild-pip {
+  flex: 1 1 0;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--raised);
+}
+
+.guild-pip-heroic {
+  background: var(--heroic);
+}
+
+.guild-pip-mythic {
+  background: var(--mythic);
+}
+
+.guild-team-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.guild-team-actions .button {
+  justify-content: center;
+  text-decoration: none;
+}
+
+.guild-team-actions > .button {
+  font-weight: 600;
+}
+
+.guild-team-more {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.guild-team-more .button {
+  flex: 1 1 0;
+}
+
+/* Live now */
+
+.guild-live {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.guild-live-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guild-live-card {
+  overflow: hidden;
+}
+
+.guild-live-embed {
+  aspect-ratio: 16 / 9;
+  background: var(--raised);
+}
+
+.guild-live-embed iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.guild-live-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+
+.guild-live-team {
+  margin: 2px 0 0;
+  font-size: var(--text-xs);
+}
+
+.guild-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+/* Side column */
+
+.guild-side-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.guild-side-note {
+  font-size: var(--text-xs);
+}
+
+.guild-attention {
+  border-color: var(--border-strong);
+}
+
+.guild-attention-list,
+.guild-news,
+.guild-officers {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guild-attention-list {
+  gap: var(--space-2);
+}
+
+.guild-attention-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.guild-attention-item:hover {
+  border-color: var(--brand);
+}
+
+.guild-attention-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.guild-attention-label {
+  font-weight: 600;
+}
+
+.guild-attention-teams {
+  font-size: var(--text-xs);
+}
+
+.guild-news li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--border);
+}
+
+.guild-news-date {
+  font-size: var(--text-xs);
+}
+
+.guild-officers {
+  gap: var(--space-3);
+}
+
+.guild-officer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.guild-officer-photo {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.guild-officer-initials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--raised);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.guild-officer-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.guild-officer-name {
+  font-weight: 600;
+}
+
+.guild-officer-title {
+  font-size: var(--text-xs);
+}
+
+/* One column on a narrower screen: the side cards follow the teams. */
+@media (max-width: 1080px) {
+  .guild-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .guild-team {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--space-4);
+  }
+}

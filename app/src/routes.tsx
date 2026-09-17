@@ -5,11 +5,12 @@ import { MyProfilePage, PlayerProfilePage } from './profile/ProfilePage';
 import { AppShell } from './layout/AppShell';
 import { HomePage } from './home/HomePage';
 import { CalendarPage } from './calendar/CalendarPage';
+import { GuildHomePage } from './guild/GuildHomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { RequireAbility } from './auth/RequireAbility';
 import { GUILD_PAGES, TEAM_PAGES } from './layout/nav';
-import { defaultPath } from './config';
+import { defaultGuildPath } from './config';
 
 export type RouteHandle = { title: string };
 
@@ -26,11 +27,12 @@ const BUILT_PAGES: Record<string, ReactElement> = {
 // arrives with the data layer (resolve_address(), #1114), along with the
 // redirect for retired keys.
 export const routes: RouteObject[] = [
-  { path: '/', element: <Navigate to={defaultPath()} replace /> },
+  { path: '/', element: <Navigate to={defaultGuildPath()} replace /> },
   {
     path: '/g/:guildKey',
     element: <AppShell />,
     children: [
+      { index: true, element: <GuildHomePage />, handle: { title: 'Guild home' } satisfies RouteHandle },
       ...Object.entries(GUILD_PAGES).map(([path, title]) => ({
         path,
         element: <PlaceholderPage title={title} />,

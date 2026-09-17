@@ -48,6 +48,14 @@ export function useGuild(guildId: number | undefined) {
   );
 }
 
+// Where the guild plays (#1102): the region and home realm its Raider.IO and
+// Armory links are built from. Null for a guild that has not set them.
+export function useGuildDetails(guildId: number) {
+  return useSupabaseQuery<{ region: string | null; realm: string | null }>(['guild-details', guildId], (client) =>
+    client.from('guilds').select('region, realm').eq('id', guildId).single()
+  );
+}
+
 // In team id order, the order the guild created them (Kat, 2026-09-13), not
 // alphabetical.
 export function useGuildTeams(guildId: number | undefined) {

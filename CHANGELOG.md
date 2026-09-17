@@ -12,6 +12,33 @@ answers to.
 
 ---
 
+## [3.136.0] - 2026-09-17
+
+### Project
+
+- The new app's **Guild home**
+  ([#1102](https://github.com/katogaming88/WGA-Raid-Hub/issues/1102)), in the
+  layout Kat picked from the design canvas. A card per team, with its raid
+  nights, next raid, a boss-by-boss progress bar, its size, "Your team" for a
+  signed-in raider with a character there, and Sign up and Logs links when the
+  team has them. Under the teams, a full player for each guild streamer who is
+  live; beside them the latest news and the guild officers, plus a "Needs your
+  attention" panel for officers counting their team's waiting received-item
+  reviews, season signups and BoE finds with no price. The app's front
+  address now opens Guild home, which has its own sidebar item. Checked
+  against the current guild page's recorded behavior
+  (`tests/behavior/guild.js`). On purpose: offline streamers stay on the
+  Streams page, Wrathless gets a card like any team that is not archived, and
+  a raider on two teams sees both marked. Nothing on the current site
+  changes.
+- A site front page that belongs to no guild, where a new guild can create
+  itself, is planned in
+  [#1226](https://github.com/katogaming88/WGA-Raid-Hub/issues/1226); until
+  then the front address opens WGA's Guild home.
+- The revamp time log covers the Guild home design and build.
+
+---
+
 ## [3.135.0] - 2026-09-17
 
 ### Backend

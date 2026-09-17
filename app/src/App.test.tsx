@@ -4,11 +4,13 @@ import userEvent from '@testing-library/user-event';
 import { renderApp as renderAt } from './test/renderApp';
 
 describe('routing', () => {
-  it('sends / to the default team home', async () => {
+  // Guild home until the site front page exists (#1226).
+  it('sends / to the default guild’s home', async () => {
     const { router } = renderAt('/');
-    // Home's title is the team's own name.
-    expect(await screen.findByRole('heading', { level: 1, name: 'Phoenix' })).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe('/g/wga/t/phoenix');
+    // Guild home's title is the guild's own name.
+    expect(await screen.findByRole('heading', { level: 1, name: 'We Go Again' })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/g/wga');
+    expect(screen.getByRole('link', { name: 'Guild home' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('marks the current page in the sidebar and the breadcrumb', async () => {
@@ -39,7 +41,7 @@ describe('routing', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument();
   });
 
-  it.each(['/g/wga/t/phoenix', '/g/wga/t/phoenix/me', '/g/wga/news', '/g/wga/t/phoenix/nope'])(
+  it.each(['/g/wga', '/g/wga/t/phoenix', '/g/wga/t/phoenix/me', '/g/wga/news', '/g/wga/t/phoenix/nope'])(
     'has exactly one h1 at %s',
     async (path) => {
       renderAt(path);
