@@ -248,10 +248,11 @@ different verdicts on one case:
   listed. A file sorting below the newest applied version still fails, because
   the push would refuse the whole run and the merge would deploy nothing. So
   does a ledger row with no file behind it.
-- **At merge and in the weekly sweep**, the same script runs strict, where a
-  migration in the tree and not in the ledger is a failure. In the Deploy
-  workflow it runs immediately after the push, so what it catches is a push
-  that silently did not take.
+- **At merge, in the weekly sweep and on a manual run**, the same script runs
+  strict, where a migration in the tree and not in the ledger is a failure. In
+  the Deploy workflow it runs immediately after the push, so what it catches
+  is a push that silently did not take. On `main` a week later, a migration
+  still pending is one the deploy did not apply (#1130).
 
 When the push fails, the site does not deploy and the run posts to Discord.
 Fix forward in a new PR: never edit a merged migration, and never reach for
