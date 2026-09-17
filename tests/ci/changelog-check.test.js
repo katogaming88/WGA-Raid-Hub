@@ -68,9 +68,14 @@ describe('path classification', () => {
     expect(classifyPath('scripts/import/tables/players.js')).toBe('db');
   });
 
-  it('counts supabase/functions/ as the functions class', () => {
+  it('counts supabase/functions/ as the functions class, except a dotfile at its top level', () => {
     expect(classifyPath('supabase/functions/boe-webhook/index.ts')).toBe('functions');
     expect(classifyPath('supabase/functions/_shared/cors.ts')).toBe('functions');
+    // The env template is read by `supabase functions serve` and never
+    // deployed, so a change to it is project territory (#1223). A dotfile
+    // inside a function's own directory still counts.
+    expect(classifyPath('supabase/functions/.env.example')).toBe(null);
+    expect(classifyPath('supabase/functions/boe-webhook/.env')).toBe('functions');
   });
 
   it('counts bot/ as the bot class', () => {
