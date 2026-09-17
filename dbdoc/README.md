@@ -56,7 +56,7 @@
 | [public.team_discord_config](public.team_discord_config.md) | 12 | Per-team Discord infra config for the consolidated multi-tenant bot (#991): guild/channel/role ids and script URLs the bot needs to route a relayed action to the right place. Written and read only by the bot's service-role client; no read use case for an officer or end user. Mirrors raid_signup_sheets' locked-down shape (#900). | BASE TABLE |
 | [public.track_bonus_ids](public.track_bonus_ids.md) | 5 | Maps a WoW item bonus ID to its gear upgrade track and rank (e.g. 12853 -> Myth 5/6). Read by blizzard-gear-sync when syncing equipped gear, and the intended future home of the constants currently inlined in import_rclc_loot(). Seeded by hand per tier -- append the new block, never edit or delete old rows, since older gear keeps its original bonus IDs. | BASE TABLE |
 | [public.account_preferences](public.account_preferences.md) | 6 | Per-account preferences, one row per (account, team, key); team_id is null for guild-wide keys. The account_preferences_known_key CHECK lists every allowed key. Replaced no_character_dismissals (#940). | BASE TABLE |
-| [public.guilds](public.guilds.md) | 4 | One row per guild. url_key is the /g/<key> segment of an address: readable for WGA, a random code for any other guild (#1100, #1114). | BASE TABLE |
+| [public.guilds](public.guilds.md) | 6 | One row per guild. url_key is the /g/<key> segment of an address: readable for WGA, a random code for any other guild (#1100, #1114). | BASE TABLE |
 | [public.retired_url_keys](public.retired_url_keys.md) | 5 | Keys a guild (team_id null) or team used to have, so old addresses still resolve. Written only by the key-change triggers on guilds and teams (#1114). guild_id is the guild the key lived under. | BASE TABLE |
 | [public.people](public.people.md) | 4 | One row per human (#942). auth_user_id is their sign-in account, null for a Discord id listed on a grant before its owner signed in. discord_id is null for an account with no Discord linked. Grant tables point here through person_id. | BASE TABLE |
 | [public.seasons](public.seasons.md) | 5 | One row per raid tier (#932). code is the short form the priority, loot and scoring tables hold (MID2); display_name is what officers see and type (Midnight Season 2). Every season column references one of the two. A tier is added by a migration that closes the outgoing row and inserts the new one. | BASE TABLE |
@@ -868,6 +868,8 @@ erDiagram
   text name
   text url_key
   timestamp_with_time_zone created_at
+  text region
+  text realm
 }
 "public.retired_url_keys" {
   bigint id

@@ -12,11 +12,15 @@ One row per guild. url_key is the /g/<key> segment of an address: readable for W
 | name | text |  | false |  |  |  |
 | url_key | text | new_url_code() | false |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
+| region | text |  | true |  |  | Battle.net region, lower case (us, eu, kr, tw). With realm, builds the guild's Raider.IO and Armory links (#1102). |
+| realm | text |  | true |  |  | Home realm as the game spells it (Tichondrius). Null when not set; the links are then left out (#1102). |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| guilds_realm_not_blank | CHECK | CHECK ((length(btrim(realm)) > 0)) |
+| guilds_region_format | CHECK | CHECK ((region = ANY (ARRAY['us'::text, 'eu'::text, 'kr'::text, 'tw'::text]))) |
 | guilds_url_key_format | CHECK | CHECK (((url_key ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text) AND ((length(url_key) >= 2) AND (length(url_key) <= 32)))) |
 | guilds_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | guilds_name_key | UNIQUE | UNIQUE (name) |
@@ -50,6 +54,8 @@ erDiagram
   text name
   text url_key
   timestamp_with_time_zone created_at
+  text region
+  text realm
 }
 "public.teams" {
   integer id

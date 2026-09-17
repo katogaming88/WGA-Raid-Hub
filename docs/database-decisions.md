@@ -10,6 +10,20 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-17 -- A guild records its region and home realm (#1102)
+
+Shipped: 20260917014626_guild_region_realm.sql
+
+The new app's Guild home links to the guild on Raider.IO and the Armory. On the current site those are two WGA addresses written into `js/common.js`, which would send every other guild's visitors to WGA.
+
+**Region and realm on the guild row, not the two links.** Both addresses are built from the region, the realm and the guild's name, so storing the three pieces keeps them from disagreeing, and the realm is also what the page's one-line intro names ("Three raid teams on Tichondrius"). A stored link would have to be edited by hand whenever the guild is renamed.
+
+**Optional, and no new write path.** A guild with no region or realm shows no links. Nobody edits them from the app yet; WGA's are set by this migration, and a future guild settings page is where they would be written. The existing public read on `guilds` already covers the columns, so a signed-out visitor sees the links too.
+
+**The realm is stored as the game spells it.** "Tichondrius", not "tichondrius": the page shows it. The app lowers it and replaces spaces with hyphens for the Armory address, and drops apostrophes, the way Blizzard's realm slugs do.
+
+[Full discussion -> #1102](https://github.com/katogaming88/WGA-Raid-Hub/issues/1102).
+
 ## 2026-09-16 -- Raiders see their teammates' raid-night answers, but not the notes (#1102)
 
 Shipped: 20260916142703_team_rsvp_answers.sql
