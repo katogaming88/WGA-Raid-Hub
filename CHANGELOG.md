@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.134.3] - 2026-09-17
+
+### Project
+
+- The weekly check that compares the migration files in the repo against the
+  record of what production has applied now treats a merged migration that
+  was never applied as the failure it is, instead of listing it as pending
+  ([#1130](https://github.com/katogaming88/WGA-Raid-Hub/issues/1130)). Only
+  a pull request keeps the pending allowance, because there the merge is
+  what applies the migration; the weekly sweep and a manual run are strict,
+  like the check the deploy already runs after its push. Each run now logs
+  which mode it took. A new test in `tests/ci/` pins the flag to the event.
+
 ## [3.134.2] - 2026-09-17
 
 ### Project
