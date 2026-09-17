@@ -74,6 +74,20 @@ answers to.
   described in `docs/RLS.md`, and the revamp time log covers the Calendar
   design work.
 
+---
+
+## [3.132.1] - 2026-09-16
+
+### Frontend
+
+- A code comment on the BoE access check now names the rule that still asks
+  whether the caller is an officer of any team: the "Officers read BoE manager
+  grants" rule on the guild_grants table, which replaced the old boe_managers
+  table in [#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942)
+  step 2. Nothing behaves differently.
+
+---
+
 ## [3.132.0] - 2026-09-16
 
 ### Project
