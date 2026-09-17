@@ -262,6 +262,26 @@ const CAL_NIGHT_PAGE = {
   sentinel: 'main:has(.heads-up-item)'
 };
 
+// The boss lineup (#1216): two raids, a boss with a sit-out, so both cell
+// states and every count tone are on the page.
+const CAL_LINEUP = {
+  ...CAL_OFFICER,
+  path: `/g/wga/t/phoenix/calendar?date=${CAL_NIGHT}&view=lineup`,
+  sentinel: 'main:has(.lineup-toggle)',
+  tables: {
+    ...CAL_TABLES,
+    team_settings: [
+      {
+        raids: [
+          { name: 'The Venomous Abyss', bosses: [{ name: "Nek'zali the Soulcoiler" }, { name: 'Sszorak' }] },
+          { name: 'Tidebound Grotto', isMiniRaid: true, bosses: [{ name: 'Nymrissa Wavecaller' }] }
+        ]
+      }
+    ],
+    boss_lineup_sitouts: [{ raid_date: CAL_NIGHT, raid_name: 'The Venomous Abyss', boss_name: 'Sszorak', player_id: 3 }]
+  }
+};
+
 const GUILD = { path: '/g/wga', sentinel: 'main:has(.guild-officer)', teams: GUILD_TEAMS, tables: GUILD_TABLES };
 const GUILD_OFFICER = {
   ...GUILD,
@@ -291,6 +311,8 @@ const STATES = [
   },
   { label: 'calendar night, officer', ...CAL_NIGHT_PAGE },
   { label: 'calendar night, officer, light', ...CAL_NIGHT_PAGE, colorScheme: 'light' },
+  { label: 'calendar boss lineup, officer', ...CAL_LINEUP },
+  { label: 'calendar boss lineup, officer, light', ...CAL_LINEUP, colorScheme: 'light' },
   {
     label: 'calendar night, officer changing an answer',
     ...CAL_NIGHT_PAGE,

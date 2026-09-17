@@ -161,6 +161,8 @@ export async function openApp(browser, port, state) {
     raid_schedule: [],
     raid_schedule_exceptions: [],
     raid_rsvps: [],
+    // The boss lineup on a night (#1216).
+    boss_lineup_sitouts: [],
     streamers: [],
     // Guild home (#1102): the guild officers, and what waits on an officer.
     site_settings: [],

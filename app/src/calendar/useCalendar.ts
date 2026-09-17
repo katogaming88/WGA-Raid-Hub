@@ -1,6 +1,8 @@
 import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
+import type { SettingsRaid } from '../home/progression';
 import type { Answer, ScheduleChange, ScheduleRule } from './calendar';
+import type { SitoutRow } from './lineup';
 
 // The Calendar page's reads and writes (#1102).
 
@@ -166,5 +168,55 @@ export function useRotatorWeek(teamId: number) {
       return { data: null, error: null };
     },
     { key: ['rotator-week', teamId], refreshes: refreshes(teamId) }
+  );
+}
+
+// Boss lineups (#1216)
+
+// The season's raids as officers list them in Season Settings.
+export function useLineupRaids(teamId: number) {
+  return useSupabaseQuery<SettingsRaid[]>(['lineup-raids', teamId], async (client) => {
+    const { data, error } = await client
+      .from('team_settings')
+      .select('raids:config->raidProgression')
+      .eq('team_id', teamId)
+      .maybeSingle();
+    if (error) return { data: null, error };
+    const raids = (data as { raids?: unknown } | null)?.raids;
+    return { data: Array.isArray(raids) ? (raids as SettingsRaid[]) : [], error: null };
+  });
+}
+
+export const lineupKey = (teamId: number) => ['boss-lineup', teamId] as const;
+
+// Who sits out which boss on the given nights (tonight, and last week's for
+// the copy button). A few hundred rows at most.
+export function useSitouts(teamId: number, dates: string[], enabled = true) {
+  return useSupabaseQuery<SitoutRow[]>(
+    [...lineupKey(teamId), dates],
+    (client) =>
+      client
+        .from('boss_lineup_sitouts')
+        .select('raid_date, raid_name, boss_name, player_id')
+        .eq('team_id', teamId)
+        .in('raid_date', dates)
+        .order('id'),
+    { enabled }
+  );
+}
+
+export type LineupSave = { date: string; raid: string; sitouts: { boss: string; player_id: number }[] };
+
+// Replaces one raid's lineup for a night.
+export function useSaveLineup(teamId: number) {
+  return useSupabaseMutation<number, LineupSave>(
+    (client, s) =>
+      client.rpc('set_boss_lineup', {
+        p_team_id: teamId,
+        p_raid_date: s.date,
+        p_raid_name: s.raid,
+        p_sitouts: s.sitouts
+      }),
+    { key: ['save-lineup', teamId], refreshes: [lineupKey(teamId)] }
   );
 }

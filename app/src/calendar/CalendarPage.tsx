@@ -43,6 +43,8 @@ import {
   type RaidNight,
   type ScheduleRule
 } from './calendar';
+import { BossLineup } from './BossLineup';
+import { lastWeeksNight } from './lineup';
 import {
   useAnswers,
   useOfficerSetAnswer,
@@ -60,7 +62,11 @@ import './calendar.css';
 export function CalendarPage() {
   const [params] = useSearchParams();
   const date = params.get('date');
-  return isDateParam(date) ? <NightPage key={date} date={date} /> : <MonthPage month={params.get('month')} />;
+  return isDateParam(date) ? (
+    <NightPage key={date} date={date} lineup={params.get('view') === 'lineup'} />
+  ) : (
+    <MonthPage month={params.get('month')} />
+  );
 }
 
 // Who is reading, and what they may see and do.
@@ -410,7 +416,7 @@ function Month({
 
 // A raid night
 
-function NightPage({ date }: { date: string }) {
+function NightPage({ date, lineup }: { date: string; lineup: boolean }) {
   const team = useTeam();
   const base = useCalendarBase();
   const day = new Date(`${date}T00:00:00`);
@@ -466,7 +472,16 @@ function NightPage({ date }: { date: string }) {
               </p>
             );
           }
-          return <Night night={night} viewer={viewer} players={players} answers={rows} />;
+          return (
+            <Night
+              night={night}
+              viewer={viewer}
+              players={players}
+              answers={rows}
+              lineup={lineup}
+              lastWeek={lastWeeksNight(found?.nights ?? [], date)}
+            />
+          );
         }}
       </DataState>
     </section>
@@ -504,19 +519,61 @@ function Night({
   night,
   viewer,
   players,
-  answers
+  answers,
+  lineup,
+  lastWeek
 }: {
   night: RaidNight;
   viewer: Viewer;
   players: PlayerRow[];
   answers: Answer[];
+  lineup: boolean;
+  lastWeek: string | null;
 }) {
   const touch = useTouchScreen();
+  const base = useCalendarBase();
+  // Officer changes need a computer (Kat, 2026-09-16).
+  const officerTools = viewer.officer && !touch;
+
+  // The boss lineup is an officer tool (#1216), so it needs a computer too.
+  if (officerTools) {
+    return (
+      <>
+        <nav className="night-tabs" aria-label="Night views">
+          <Link to={`${base}?date=${night.date}`} aria-current={lineup ? undefined : 'page'}>
+            Who’s coming
+          </Link>
+          <Link to={`${base}?date=${night.date}&view=lineup`} aria-current={lineup ? 'page' : undefined}>
+            Boss lineup
+          </Link>
+        </nav>
+        {lineup ? (
+          <BossLineup night={night} players={players} answers={answers} lastWeek={lastWeek} />
+        ) : (
+          <Coming night={night} viewer={viewer} players={players} answers={answers} officerTools />
+        )}
+      </>
+    );
+  }
+  return <Coming night={night} viewer={viewer} players={players} answers={answers} officerTools={false} />;
+}
+
+function Coming({
+  night,
+  viewer,
+  players,
+  answers,
+  officerTools
+}: {
+  night: RaidNight;
+  viewer: Viewer;
+  players: PlayerRow[];
+  answers: Answer[];
+  officerTools: boolean;
+}) {
   const view = nightView(players, night, answers);
   const [now] = useState(() => new Date());
   const [editing, setEditing] = useState<NightRow | null>(null);
-  // Officer changes need a computer (Kat, 2026-09-16).
-  const officerTools = viewer.officer && !touch;
   const mine = viewer.me
     ? {
         player: viewer.me,

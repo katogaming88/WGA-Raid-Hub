@@ -344,6 +344,73 @@ describe('Calendar (new app): moving between nights', () => {
   });
 });
 
+// The boss lineup (#1216), new to this app: officers pick who sits out each
+// boss. Zed is late and still in the grid; the bench, the rotator and
+// Frostvale (out) are not.
+const LINEUP_RAIDS = [
+  { name: 'The Venomous Abyss', bosses: [{ name: "Nek'zali the Soulcoiler" }, { name: 'Sszorak' }] }
+];
+
+describe('Calendar (new app): the boss lineup', () => {
+  let opened;
+  const calls = [];
+
+  beforeAll(async () => {
+    opened = await openApp(
+      browser,
+      server.port,
+      asOfficer(`${BASE}?date=${NIGHT}&view=lineup`, 'main:has(.lineup-toggle)', {
+        tables: {
+          ...tables(),
+          team_settings: [{ raids: LINEUP_RAIDS }],
+          boss_lineup_sitouts: [
+            { raid_date: NIGHT, raid_name: 'The Venomous Abyss', boss_name: 'Sszorak', player_id: 3 }
+          ]
+        },
+        rpc: { ...signedIn(VIEWER, 'officer').rpc, set_boss_lineup: 2 }
+      })
+    );
+    opened.page.on('request', (request) => {
+      if (new URL(request.url()).pathname.endsWith('/rpc/set_boss_lineup')) {
+        calls.push(JSON.parse(request.postData()));
+      }
+    });
+  });
+
+  afterAll(async () => {
+    if (opened) await opened.context.close();
+  });
+
+  it('lists who is coming, with the saved sit-out and the counts', async () => {
+    const rows = await opened.page
+      .locator('.lineup-grid:not(.lineup-buffs) tbody .lineup-raider-name')
+      .allTextContents();
+    expect(rows).toEqual(['Aur', 'Brightmoor', 'Dawnthistle', 'Zed']);
+    expect(await opened.page.getByRole('button', { name: 'Zed, Sszorak: sitting out' }).count()).toBe(1);
+    expect(await opened.page.locator('.lineup-not-coming').textContent()).toBe(
+      'Not coming tonight, so not in the grid: Em (bench), Frostvale (absent), Glim (rotator).'
+    );
+    expect(await opened.page.locator('tfoot .lineup-total-count').allTextContents()).toEqual(['4/20', '3/20']);
+    expect(opened.unexpected).toEqual([]);
+    expect(opened.pageErrors).toEqual([]);
+  });
+
+  it('saves the whole raid’s sit-outs in one call', async () => {
+    await opened.page.getByRole('button', { name: 'Aur, Sszorak: in' }).click();
+    await opened.page.getByRole('button', { name: 'Save lineup' }).click();
+    await expect.poll(() => calls.length).toBe(1);
+    expect(calls[0]).toEqual({
+      p_team_id: TEAM_ID,
+      p_raid_date: NIGHT,
+      p_raid_name: 'The Venomous Abyss',
+      p_sitouts: [
+        { boss: 'Sszorak', player_id: 1 },
+        { boss: 'Sszorak', player_id: 3 }
+      ]
+    });
+  });
+});
+
 describe('Calendar (new app): on a phone', () => {
   it('lists the month’s nights, and leaves officer changes to a computer', async () => {
     const month = await openApp(
@@ -369,6 +436,8 @@ describe('Calendar (new app): on a phone', () => {
       expect(await night.page.locator('.own-answer').isVisible()).toBe(true);
       expect(await night.page.locator('.edit-button').count()).toBe(0);
       expect(await night.page.getByRole('button', { name: 'In for the week' }).count()).toBe(0);
+      // So is the boss lineup (#1216).
+      expect(await night.page.getByRole('link', { name: 'Boss lineup' }).count()).toBe(0);
     } finally {
       await night.context.close();
     }
