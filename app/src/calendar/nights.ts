@@ -1,4 +1,4 @@
-// The calendar widget on the team Home page (#1102): this month's raid nights,
+// Raid nights for a month (#1102), used by the Calendar page and Home's widget:
 // ported from the current site's computeRaidNights() and _renderCalGrid()
 // (js/calendar.js) and recorded against them in tests/behavior/home.js.
 //

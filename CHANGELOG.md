@@ -12,6 +12,47 @@ answers to.
 
 ---
 
+## [3.134.0] - 2026-09-16
+
+### Project
+
+- The new app's **Calendar** page
+  ([#1102](https://github.com/katogaming88/WGA-Raid-Hub/issues/1102)), built
+  to the design Kat chose on 2026-09-16. It is a big change from
+  `calendar.html`.
+  - **The month**: a full-width grid where each raid night is a card with its
+    time, how many are coming or out, and your own answer. Past nights step
+    back, today is circled, optional nights have a dashed edge, extra nights a
+    green one, and a cancelled night stays visible, crossed out. "Your next
+    raid" sits above the month. On a phone the month becomes a list of its
+    nights, with a line where today falls.
+  - **A raid night** (`?date=`): your answer on the left, with the night's
+    numbers and the latest answers. **Heads up** at the top lists who is out
+    and who is late, leaving early or tentative, with their notes. The roster
+    sits below in role columns, with the bench and rotators at the bottom of
+    each. The arrows move to the previous or next raid night.
+  - **Officers** get a pencil beside each raider to change their answer, with
+    a required reason the raider sees, or to clear it. A rotator's pencil also
+    puts them in (or back out) for the whole week. Officer changes are
+    computer-only; your own answer works on a phone.
+  - **Who sees what**: officers see everyone's answers and notes. Raiders on
+    the team see everyone's answers, but only their own notes, through the
+    notes-free read from 3.133.0. Signed out, the calendar shows the schedule
+    only.
+  - Saving still tells the Discord bot, as today: your answer is posted, and
+    the signup sheet refreshes after any change.
+  - Deliberate differences from the current site: rotators are counted with
+    the bench rather than as coming; choosing **Present** is how you go back
+    to the default; and the arrows step between raid nights, not days.
+  - The current page's behaviour is recorded first
+    (`tests/behavior/calendar.js`, `tests/browser/calendar-recorded.test.js`)
+    and the new page is checked against the same expectations
+    (`tests/browser-app/calendar.test.js`). Home's calendar widget now shares
+    the Calendar page's night rules (`app/src/calendar/nights.ts`).
+- `js/database.types.ts` gains the calendar functions (`set_own_rsvp`,
+  `officer_set_rsvp`, `officer_set_rotator_week`, `is_optional_raid_night`,
+  `team_rsvp_answers`), which the shared types file was missing.
+
 ## [3.133.0] - 2026-09-16
 
 ### Backend

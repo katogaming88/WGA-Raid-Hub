@@ -10,7 +10,7 @@ import type { PlayerRow } from '../roster/roster';
 import type { SeasonWindow } from '../profile/profile';
 import { lootFeed, mainSpecCount, raiderCount, searchFeed, type FeedRow } from './home';
 import { killDate, pullsText, raidCards, type DifficultyLine, type RaidCard } from './progression';
-import { calendarMonth, raidNights, WEEKDAYS, type CalendarMonth } from './calendar';
+import { calendarMonth, raidNights, WEEKDAYS, type CalendarMonth } from '../calendar/nights';
 import { useCalendarMonth, useRaidProgression, useSeasonLoot } from './useHome';
 import './home.css';
 

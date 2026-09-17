@@ -17,6 +17,13 @@ import {
   WISHLIST
 } from '../behavior/profile.js';
 import * as WISHLIST_EDITOR from '../behavior/wishlist.js';
+import {
+  PLAYERS as CAL_PLAYERS,
+  SCHEDULE as CAL_SCHEDULE,
+  RSVPS as CAL_RSVPS,
+  NIGHT as CAL_NIGHT,
+  TODAY as CAL_TODAY
+} from '../behavior/calendar.js';
 import { SCENARIO as HOME, SEASON as HOME_SEASON, PROGRESSION, CALENDAR, STREAMS, TODAY } from '../behavior/home.js';
 
 // The new app in a real browser (#1101 part 4): the shell's accessibility
@@ -237,7 +244,39 @@ const HOME_TABLES = {
 const HOME_SENTINEL =
   'main:has(.home-loot-table):has(.home-progression .raid):has(.home-calendar a):has(.stream-widget)';
 
+// The Calendar (tests/behavior/calendar.js): a month with answers, and a
+// night with someone out and someone late, seen by an officer.
+const CAL_TABLES = {
+  players: CAL_PLAYERS,
+  raid_schedule: CAL_SCHEDULE,
+  raid_schedule_exceptions: [],
+  raid_rsvps: CAL_RSVPS
+};
+const CAL_OFFICER = { session: OFFICER, who: 'officer', clock: CAL_TODAY, tables: CAL_TABLES };
+const CAL_MONTH = { ...CAL_OFFICER, path: '/g/wga/t/phoenix/calendar', sentinel: 'main:has(.night-chip[data-date])' };
+const CAL_NIGHT_PAGE = {
+  ...CAL_OFFICER,
+  path: `/g/wga/t/phoenix/calendar?date=${CAL_NIGHT}`,
+  sentinel: 'main:has(.heads-up-item)'
+};
+
 const STATES = [
+  { label: 'calendar month, officer', ...CAL_MONTH },
+  { label: 'calendar month, officer, light', ...CAL_MONTH, colorScheme: 'light' },
+  {
+    label: 'calendar month, signed out',
+    path: '/g/wga/t/phoenix/calendar',
+    sentinel: 'main:has(.night-chip[data-date])',
+    clock: CAL_TODAY,
+    tables: CAL_TABLES
+  },
+  { label: 'calendar night, officer', ...CAL_NIGHT_PAGE },
+  { label: 'calendar night, officer, light', ...CAL_NIGHT_PAGE, colorScheme: 'light' },
+  {
+    label: 'calendar night, officer changing an answer',
+    ...CAL_NIGHT_PAGE,
+    click: '.night-row .edit-button'
+  },
   {
     label: 'home, signed out',
     path: '/g/wga/t/phoenix',

@@ -3,7 +3,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { seededHandlers, type FakeHandlers, type Read } from '../test/fakeSupabase';
-import { calendarMonth, raidNights, type RsvpRow } from './calendar';
+import { calendarMonth, raidNights, type RsvpRow } from '../calendar/nights';
 import { killDate, raidCards, type ProgressRow } from './progression';
 import { liveStreams, liveText, type StreamerRow } from '../streams/streams';
 
