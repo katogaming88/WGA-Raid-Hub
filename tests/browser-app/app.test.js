@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { AxeBuilder } from '@axe-core/playwright';
 import { launchBrowser, openApp, startApp, storedSession, NARROW } from './harness.js';
+import { GUILD_TABLES, GUILD_TEAMS, WAITING } from './guild-fixtures.js';
 import { SCENARIO } from '../behavior/roster.js';
 import {
   ATTENDANCE,
@@ -260,7 +261,20 @@ const CAL_NIGHT_PAGE = {
   sentinel: 'main:has(.heads-up-item)'
 };
 
+const GUILD = { path: '/g/wga', sentinel: 'main:has(.guild-officer)', teams: GUILD_TEAMS, tables: GUILD_TABLES };
+const GUILD_OFFICER = {
+  ...GUILD,
+  session: OFFICER,
+  who: 'officer',
+  sentinel: 'main:has(.guild-attention-item)',
+  tables: { ...GUILD_TABLES, ...WAITING }
+};
+
 const STATES = [
+  { label: 'guild home, signed out', ...GUILD },
+  { label: 'guild home, signed out, light', ...GUILD, colorScheme: 'light' },
+  { label: 'guild home, officer', ...GUILD_OFFICER },
+  { label: 'guild home, officer, light', ...GUILD_OFFICER, colorScheme: 'light' },
   { label: 'calendar month, officer', ...CAL_MONTH },
   { label: 'calendar month, officer, light', ...CAL_MONTH, colorScheme: 'light' },
   {

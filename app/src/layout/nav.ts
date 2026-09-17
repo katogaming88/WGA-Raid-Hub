@@ -8,7 +8,10 @@ export type NavGroup = { heading: string; items: NavItem[] };
 // Sidebar groups from the 2026-09-13 mockups. Team pages hang off
 // /g/<guild>/t/<team>, guild-wide ones off /g/<guild>, and officer tools sit
 // under /officer/ (#1100).
-export function navGroups(base: { team: string; guild: string }, show: { officer: boolean }): NavGroup[] {
+export function navGroups(
+  base: { team: string; guild: string },
+  show: { officer: boolean; guildFirst?: boolean }
+): NavGroup[] {
   const groups: NavGroup[] = [
     {
       heading: 'Team',
@@ -33,6 +36,7 @@ export function navGroups(base: { team: string; guild: string }, show: { officer
     {
       heading: 'Guild',
       items: [
+        { label: 'Guild home', icon: 'home', to: base.guild, end: true },
         { label: 'BoE sales', icon: 'coin', to: `${base.guild}/boe` },
         { label: 'Streams', icon: 'tv', to: `${base.guild}/streams` },
         { label: 'News', icon: 'news', to: `${base.guild}/news` }
@@ -40,7 +44,11 @@ export function navGroups(base: { team: string; guild: string }, show: { officer
     }
   ];
   // The Officer group is only for people who can open those pages.
-  return show.officer ? groups : groups.filter((g) => g.heading !== 'Officer');
+  const shown = show.officer ? groups : groups.filter((g) => g.heading !== 'Officer');
+  // On a guild page the Guild group leads (the 2026-09-17 Guild home mockup).
+  return show.guildFirst
+    ? [...shown.filter((g) => g.heading === 'Guild'), ...shown.filter((g) => g.heading !== 'Guild')]
+    : shown;
 }
 
 // Every page the shell knows about, by path below its base, so the routes and
@@ -50,6 +58,8 @@ export const TEAM_PAGES: Record<string, string> = {
   calendar: 'Calendar',
   loot: 'Loot history',
   me: 'My profile',
+  // Linked from Guild home's team cards; the page itself is still to come.
+  signup: 'Sign up',
   'officer/priority': 'Loot priority',
   'officer/import': 'Import loot',
   'officer/reviews': 'Reviews',
