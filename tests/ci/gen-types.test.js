@@ -9,6 +9,7 @@ import {
   countTables,
   generatorArgs,
   normalise,
+  parseArgs,
   readProjectId,
   validate
 } from '../../scripts/ci/gen-types.js';
@@ -37,6 +38,19 @@ describe('readProjectId', () => {
 
   it('refuses a config with no project_id rather than guessing a network name', () => {
     expect(() => readProjectId('[api]\nport = 54321\n')).toThrow(/project_id/);
+  });
+});
+
+describe('parseArgs', () => {
+  it('reads the two flags', () => {
+    expect(parseArgs([])).toEqual({ check: false, allowFewer: false });
+    expect(parseArgs(['--check'])).toEqual({ check: true, allowFewer: false });
+    expect(parseArgs(['--allow-fewer-tables'])).toEqual({ check: false, allowFewer: true });
+  });
+
+  it('refuses anything else, so a mistyped --check cannot become a write', () => {
+    expect(() => parseArgs(['--chekc'])).toThrow(/unknown argument --chekc/);
+    expect(() => parseArgs(['--help'])).toThrow(/usage/);
   });
 });
 
@@ -69,10 +83,19 @@ describe('validate', () => {
     expect(result.reason).toMatch(/export type Json/);
   });
 
-  it('refuses an output with fewer tables than the committed file', () => {
+  it('refuses an output with fewer tables than the floor, and names the way through for a real drop', () => {
     const result = validate(file('players'), 2);
     expect(result.ok).toBe(false);
-    expect(result.reason).toMatch(/1 table/);
+    expect(result.reason).toMatch(/1 table where the committed file has 2/);
+    expect(result.reason).toMatch(/--allow-fewer-tables/);
+  });
+
+  it('applies no floor when none is given, so a check and an allowed drop still refuse an empty schema only', () => {
+    expect(validate(file('players'))).toEqual({ ok: true });
+    expect(validate(file('players'), 0)).toEqual({ ok: true });
+    const empty = validate(file(), 0);
+    expect(empty.ok).toBe(false);
+    expect(empty.reason).toMatch(/no tables/);
   });
 });
 

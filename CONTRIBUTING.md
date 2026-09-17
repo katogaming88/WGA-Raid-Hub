@@ -658,7 +658,8 @@ PRs that change `supabase/migrations/` must also:
   `js/database.types.ts` (CI fails it stale). Both sites typecheck against this
   file, so a table the app reads that changed without it is a type error
   nothing catches. Never edit it by hand; the generator is pinned in
-  `scripts/ci/gen-types.js` so it writes the same file on every machine
+  `scripts/ci/gen-types.js` so it writes the same file on every machine (a
+  migration that drops a table regenerates with `--allow-fewer-tables`)
 - Update [docs/RLS.md](docs/RLS.md) if the migration adds, alters, or drops an
   RLS policy (CI checks this too)
 - Regenerate the policy export if policies changed: `npm run db:rls`, and

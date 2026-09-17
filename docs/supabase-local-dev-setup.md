@@ -215,7 +215,13 @@ own `gen types --local` uses whatever generator that CLI release carries, and
 two releases can differ). Commit its changes with the migration;
 `npm run db:types:check` runs the same staleness check CI runs. Nothing is
 written unless the output is a types file with no fewer tables than the
-committed one, so a failed image pull leaves the file alone.
+committed one, so a failed image pull or a stack behind the migrations leaves
+the file alone; a migration that drops a table regenerates with
+`npm run db:types -- --allow-fewer-tables`. One limit of the pinned generator:
+a stored generated column (`players.name_realm_key`, `characters.name_realm`
+and `name_realm_key`) is typed as writable in `Insert` and `Update`, so a write
+naming one typechecks and is refused by Postgres; the generator only marks
+identity columns as never writable.
 
 Use the latest tbls release: the schema-docs workflow installs latest, and since tbls 1.96.0
 trigger listings are in creation order on every platform, so an older local tbls can produce a

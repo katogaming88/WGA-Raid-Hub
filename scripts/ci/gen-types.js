@@ -27,13 +27,24 @@
 // tracked file, because the shell truncates the target before the tool fails.
 // The generator here runs through execFileSync (a bash line would let MSYS
 // rewrite the connection URL), its output is held in memory, checked for shape
-// and for a table count no lower than the committed file's, and only then
-// replaces the file. The CLI emits CRLF on Windows and the repo pins eol=lf,
-// so carriage returns are stripped on the way in.
+// and, when writing, for a table count no lower than the committed file's
+// (the sign of a local stack behind the migrations), and only then replaces
+// the file. A migration that drops a table passes --allow-fewer-tables. The
+// CLI emits CRLF on Windows and the repo pins eol=lf, so carriage returns are
+// stripped on the way in.
+//
+// One thing the pinned generator does not know: a stored generated column
+// (players.name_realm_key, characters.name_realm and name_realm_key) is typed
+// as writable in Insert and Update, because postgrest-typegen 0.2.0 writes
+// `never` only for an identity column. A write naming one of those columns
+// typechecks and is refused by Postgres. The hand-edited file carried `never`
+// for one of them; the generated file cannot, so a pin bump is the place to
+// check whether the generator has learned the difference.
 //
 // Usage:
-//   node scripts/ci/gen-types.js            write js/database.types.ts
-//   node scripts/ci/gen-types.js --check    exit 1 if it differs
+//   node scripts/ci/gen-types.js                       write js/database.types.ts
+//   node scripts/ci/gen-types.js --allow-fewer-tables  write it although a table went away
+//   node scripts/ci/gen-types.js --check               exit 1 if it differs
 //
 // Needs docker and a running local stack (`supabase start`). Exit codes: 0
 // written or up to date, 1 stale, 2 usage, generator or validation error.
@@ -78,6 +89,19 @@ export function normalise(text) {
   return text.replace(/\r\n/g, '\n');
 }
 
+const FLAGS = ['--check', '--allow-fewer-tables'];
+
+// Anything but the two flags is refused, so a mistyped --check cannot fall
+// through to a write.
+export function parseArgs(argv) {
+  const unknown = argv.filter((arg) => !FLAGS.includes(arg));
+  if (unknown.length)
+    throw new Error(
+      `unknown argument ${unknown[0]}; usage: node scripts/ci/gen-types.js [--check | --allow-fewer-tables]`
+    );
+  return { check: argv.includes('--check'), allowFewer: argv.includes('--allow-fewer-tables') };
+}
+
 // Tables in the public schema: the entries nested directly under `Tables: {`.
 export function countTables(text) {
   const section = text.match(/^ {4}Tables: \{\n([\s\S]*?)^ {4}\}\n/m);
@@ -87,19 +111,23 @@ export function countTables(text) {
 
 // What has to be true of the generator's output before it may replace the
 // tracked file. A pull failure or a database error arrives on stdout as JSON
-// or as nothing, and a schema with fewer tables than the file already has is
-// not the schema the migrations build.
-export function validate(text, committedTableCount) {
+// or as nothing, and a schema with no tables, or with fewer than the file
+// already has (`floor`, 0 to skip), is a stack that is not the one the
+// migrations build.
+export function validate(text, floor = 0) {
   if (!text.trim()) return { ok: false, reason: 'the generator produced no output' };
   if (!text.startsWith('export type Json')) {
     return { ok: false, reason: 'the output does not begin with `export type Json`, so it is not a types file' };
   }
   if (!/^ {2}public: \{$/m.test(text)) return { ok: false, reason: 'the output has no public schema' };
   const tables = countTables(text);
-  if (tables < committedTableCount) {
+  if (tables === 0) return { ok: false, reason: 'the output has no tables' };
+  if (tables < floor) {
     return {
       ok: false,
-      reason: `the output has ${tables} table${tables === 1 ? '' : 's'} where the committed file has ${committedTableCount}`
+      reason:
+        `the output has ${tables} table${tables === 1 ? '' : 's'} where the committed file has ${floor}. ` +
+        'If a migration drops a table, run with --allow-fewer-tables; otherwise the local stack is behind the migrations (`supabase db reset`)'
     };
   }
   return { ok: true };
@@ -130,7 +158,14 @@ function generate() {
 }
 
 function main(argv) {
-  const check = argv.includes('--check');
+  let check;
+  let allowFewer;
+  try {
+    ({ check, allowFewer } = parseArgs(argv));
+  } catch (err) {
+    console.error(err.message);
+    return 2;
+  }
   const committed = existsSync(TYPES_PATH) ? normalise(readFileSync(TYPES_PATH, 'utf8')) : '';
 
   let generated;
@@ -141,7 +176,9 @@ function main(argv) {
     return 2;
   }
 
-  const verdict = validate(generated, countTables(committed));
+  // The floor guards a write against a stack that is behind; a check writes
+  // nothing and reports staleness on its own.
+  const verdict = validate(generated, check || allowFewer ? 0 : countTables(committed));
   if (!verdict.ok) {
     console.error(`Refusing to use the generator's output: ${verdict.reason}. ${TYPES_PATH} is unchanged.`);
     return 2;
