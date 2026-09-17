@@ -18,11 +18,15 @@ const workflow = readFileSync(join(ROOT, '.github', 'workflows', 'migration-ledg
 
 describe('the Migration ledger check workflow (#1130)', () => {
   it('passes --pending-ok on a pull request only', () => {
-    expect(workflow).toMatch(/^\s+PENDING_OK: \$\{\{ github\.event_name == 'pull_request' && '--pending-ok' \|\| '' \}\}$/m);
+    expect(workflow).toMatch(
+      /^\s+PENDING_OK: \$\{\{ github\.event_name == 'pull_request' && '--pending-ok' \|\| '' \}\}$/m
+    );
   });
 
   it('takes the flag from that variable and never as a literal on the run line', () => {
-    expect(workflow).toMatch(/^\s+node scripts\/ci\/migration-ledger-check\.js \$PENDING_OK \$NEW_ARGS < ledger\.txt$/m);
+    expect(workflow).toMatch(
+      /^\s+node scripts\/ci\/migration-ledger-check\.js \$PENDING_OK \$NEW_ARGS < ledger\.txt$/m
+    );
     expect(workflow).not.toMatch(/migration-ledger-check\.js[^\n]*--pending-ok/);
   });
 
