@@ -12,6 +12,18 @@ answers to.
 
 ---
 
+## [3.134.2] - 2026-09-17
+
+### Project
+
+- The CI check that lets a database test read through the shared connection
+  pool only when it says it writes nothing now takes that note as covering
+  one read, not everything starting within the next three lines
+  ([#1132](https://github.com/katogaming88/WGA-Raid-Hub/issues/1132)). A
+  bare write placed directly under an annotated read used to pass; it is
+  reported now. Measured before the change: every annotation in the suite
+  already sat on its own single call, so nothing in `tests/rls/` changes.
+
 ## [3.134.1] - 2026-09-17
 
 ### Project
