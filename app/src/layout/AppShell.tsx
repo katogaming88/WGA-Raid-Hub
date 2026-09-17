@@ -50,9 +50,12 @@ export function AppShell() {
   const pageTitle = (matches.at(-1)?.handle as RouteHandle | undefined)?.title ?? '';
   const access = useAccess();
   const navTeamKey = teamKey ?? defaultTeamKey();
+  // A guild page has no team of its own, so its team links and Officer group
+  // follow the team those links go to.
+  const navTeam = currentTeam ?? teams.find((t) => t.key === navTeamKey);
   const groups = navGroups(
     { team: `/g/${guildKey}/t/${navTeamKey}`, guild: `/g/${guildKey}` },
-    { officer: can(access.data, 'viewOfficerTools', currentTeam?.id) }
+    { officer: can(access.data, 'viewOfficerTools', navTeam?.id), guildFirst: !teamKey }
   );
 
   // Following a link closes the drawer.

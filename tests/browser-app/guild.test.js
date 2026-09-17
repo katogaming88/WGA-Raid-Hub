@@ -256,6 +256,10 @@ describe('Guild home (new app), other states', () => {
         ['Received-item reviews', '3', '/g/wga/t/phoenix/officer/reviews'],
         ['BoE finds to price', '1', '/g/wga/boe']
       ]);
+      // The sidebar leads with the Guild group here, and keeps the officer's
+      // tools for the team its links go to.
+      const headings = await page.locator('.nav-heading').allTextContents();
+      expect(headings).toEqual(['Guild', 'Team', 'You', 'Officer']);
     } finally {
       await context.close();
     }

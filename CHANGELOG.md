@@ -25,7 +25,9 @@ answers to.
   live; beside them the latest news and the guild officers, plus a "Needs your
   attention" panel for officers counting their team's waiting received-item
   reviews, season signups and BoE finds with no price. The app's front
-  address now opens Guild home, which has its own sidebar item. Checked
+  address now opens Guild home. On guild pages the sidebar leads with the
+  Guild group, which gains a Guild home item, and an officer keeps the
+  Officer group for the team the sidebar's team links open. Checked
   against the current guild page's recorded behavior
   (`tests/behavior/guild.js`). On purpose: offline streamers stay on the
   Streams page, Wrathless gets a card like any team that is not archived, and

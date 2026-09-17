@@ -8,7 +8,10 @@ export type NavGroup = { heading: string; items: NavItem[] };
 // Sidebar groups from the 2026-09-13 mockups. Team pages hang off
 // /g/<guild>/t/<team>, guild-wide ones off /g/<guild>, and officer tools sit
 // under /officer/ (#1100).
-export function navGroups(base: { team: string; guild: string }, show: { officer: boolean }): NavGroup[] {
+export function navGroups(
+  base: { team: string; guild: string },
+  show: { officer: boolean; guildFirst?: boolean }
+): NavGroup[] {
   const groups: NavGroup[] = [
     {
       heading: 'Team',
@@ -41,7 +44,11 @@ export function navGroups(base: { team: string; guild: string }, show: { officer
     }
   ];
   // The Officer group is only for people who can open those pages.
-  return show.officer ? groups : groups.filter((g) => g.heading !== 'Officer');
+  const shown = show.officer ? groups : groups.filter((g) => g.heading !== 'Officer');
+  // On a guild page the Guild group leads (the 2026-09-17 Guild home mockup).
+  return show.guildFirst
+    ? [...shown.filter((g) => g.heading === 'Guild'), ...shown.filter((g) => g.heading !== 'Guild')]
+    : shown;
 }
 
 // Every page the shell knows about, by path below its base, so the routes and
