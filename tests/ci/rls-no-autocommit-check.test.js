@@ -57,7 +57,7 @@ describe('findAutocommitQueries', () => {
     expect(found[0].line).toBe(4);
   });
 
-  it('binds an annotation to the nearest call, so a stray one above is not spent on a bare call further down', () => {
+  it('spends the annotated call on its own nearest annotation, not a farther one, leaving none for the bare call beneath', () => {
     const src = `
       // rls-pool-read-only: left over, its call moved into withTxn.
       const x = 1;

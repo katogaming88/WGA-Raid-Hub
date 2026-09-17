@@ -712,9 +712,9 @@ problem above.
 `scripts/ci/rls-no-autocommit-check.js` enforces this and runs in the Lint
 workflow. It parses each file rather than grepping it. A call that writes
 nothing declares so on or just above itself, and one annotation covers exactly
-one call, the one on or directly under it, so a second call needs its own
-(#1132). This is how the pg_proc catalog read in `function-invariants.test.js`
-passes:
+one call, the nearest one within three lines below it, so a second call needs
+its own (#1132). This is how the pg_proc catalog read in
+`function-invariants.test.js` passes:
 
 ```js
 // rls-pool-read-only: reads the pg_proc catalog, writes nothing.
