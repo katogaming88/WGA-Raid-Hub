@@ -294,6 +294,14 @@ const CAL_LINEUP = {
   }
 };
 
+// The Boss groups page (#1216): the same raids and groups, with one cell
+// changed and not saved yet in the clicked state.
+const BOSS_GROUPS = {
+  ...CAL_LINEUP,
+  path: '/g/wga/t/phoenix/officer/groups',
+  sentinel: 'main:has(.lineup-toggle)'
+};
+
 const GUILD = { path: '/g/wga', sentinel: 'main:has(.guild-officer)', teams: GUILD_TEAMS, tables: GUILD_TABLES };
 const GUILD_OFFICER = {
   ...GUILD,
@@ -342,6 +350,15 @@ const STATES = [
   { label: 'calendar night, officer, light', ...CAL_NIGHT_PAGE, colorScheme: 'light' },
   { label: 'calendar boss lineup, officer', ...CAL_LINEUP },
   { label: 'calendar boss lineup, officer, light', ...CAL_LINEUP, colorScheme: 'light' },
+  { label: 'boss groups, officer', ...BOSS_GROUPS },
+  { label: 'boss groups, officer, light', ...BOSS_GROUPS, colorScheme: 'light' },
+  { label: 'boss groups, officer, a change not saved yet', ...BOSS_GROUPS, click: '.lineup-toggle:not(.is-in)' },
+  {
+    label: 'boss groups, officer, none set yet',
+    ...BOSS_GROUPS,
+    sentinel: 'main:has(.lineup-empty)',
+    tables: { ...BOSS_GROUPS.tables, boss_groups: [] }
+  },
   {
     label: 'calendar night, officer changing an answer',
     ...CAL_NIGHT_PAGE,

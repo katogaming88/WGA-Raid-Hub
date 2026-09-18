@@ -13,6 +13,7 @@ import {
   everyoneIn,
   lineupRaids,
   lineupView,
+  onRoster,
   placesFor,
   placesOf,
   sameSet,
@@ -113,7 +114,9 @@ function Lineup({
   const offGroup = live.filter((b) => !sameSet(placesFor(places, b.id), placesFor(usual, b.id)));
   const names = (ids: number[]) => ids.map((id) => bosses.find((b) => b.id === id)?.name ?? 'A boss').join(', ');
 
-  const leaveDialog = useLeaveGuard(dirty, changed.cells);
+  const leaveDialog = useLeaveGuard(dirty, changed.cells, 'this night’s boss lineup');
+  // What a save sends: nobody who has left the roster since the night was filled.
+  const toSave = onRoster(places, players);
 
   if (!raids.length) {
     const seasonBosses = encounters.filter((e) => e.zone.season === season);
@@ -188,7 +191,7 @@ function Lineup({
 
   const nightSaves: BossSave[] = changed.bosses.map((id) => ({
     encounterId: id,
-    players: toList(places.get(id)!),
+    players: toList(placesFor(toSave, id)),
     expected: toList(placesFor(saved, id))
   }));
 
@@ -201,7 +204,7 @@ function Lineup({
         night: nightSaves,
         groups: offGroup.map((b) => ({
           encounterId: b.id,
-          players: toList(placesFor(places, b.id)),
+          players: toList(placesFor(toSave, b.id)),
           expected: toList(placesFor(usual, b.id))
         }))
       },
@@ -356,8 +359,9 @@ function Lineup({
 }
 
 // Leaving with unsaved changes asks first: another tab, another night, or any
-// other page. Closing the browser tab gets the browser's own question.
-function useLeaveGuard(dirty: boolean, count: number): ReactNode {
+// other page. Closing the browser tab gets the browser's own question. `what`
+// names what the changes are to, as in "unsaved changes to <what>".
+export function useLeaveGuard(dirty: boolean, count: number, what: string): ReactNode {
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       dirty && (currentLocation.pathname !== nextLocation.pathname || currentLocation.search !== nextLocation.search)
@@ -374,8 +378,7 @@ function useLeaveGuard(dirty: boolean, count: number): ReactNode {
   return (
     <Dialog title="Leave without saving?" onClose={() => blocker.reset()}>
       <p className="text-muted">
-        You have {plural(count, 'unsaved change')} to this night’s boss lineup. If you leave now,{' '}
-        {count === 1 ? 'it’s' : 'they’re'} lost.
+        You have {plural(count, 'unsaved change')} to {what}. If you leave now, {count === 1 ? 'it’s' : 'they’re'} lost.
       </p>
       <div className="dialog-actions">
         <span className="grow" />

@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |      1 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     19 h 37 m |
-| **All revamp work**                | **28 h 22 m** |
+| Revamp 2: public pages             |     20 h 32 m |
+| **All revamp work**                | **29 h 17 m** |
 
 ## Log
 
@@ -67,6 +67,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ----------------- | --------------------------------------------------------------------- | ---------------- | ------: | ---------------------------------------- | ----- |
 | 12:40-2:00 AM     | #1216 boss lineup: rework after Rex's review (groups + nightly plans) | Revamp 2 (#1102) |    80 m | ~50 m build, ~30 m Kat on mockup rounds | Rex's review of #1231/#1232 asked for a standing group per boss copied into each night instead of a sit-out list; Kat chose it. Rewrote #1231 (three tables, an hourly fill, stale-save refusal, bench out by default), then mockup rounds on the canvas (boards E-I: Skip button, dots explained, always-visible save bar so the grid never moves, full-page states, a Boss groups page for later), then rebuilt #1232 on the new tables with Rex's page fixes. |
 | 1:50-2:05 PM      | #1228 sidebar keeps one order on every page                           | Revamp 2 (#1102) |    15 m | ~14 m build, ~1 m Kat choosing the order | Kat picked Guild, You, Team, Officer. The browser test that clicks from Guild home to a team page also caught the Officer group vanishing for a moment while the new address loaded, so the sidebar now remembers the guild meanwhile. |
+| 2:35-3:30 PM      | #1216 Boss groups page (board I)                                       | Revamp 2 (#1102) |    55 m | build; Kat review not yet counted        | The officer page for each boss's usual group, on the tables #1231 added. Checked on the 2026-09-18 production backup: first use had every raider flagged "in no group", so it got a Start with everyone in prompt. Found Phoenix has no raid schedule on production, so the nightly fill has no Phoenix nights yet. Also fixed a save on either page failing when the group or night still held someone who has since left the roster. |
 
 ### 2026-09-17
 

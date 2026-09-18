@@ -8,16 +8,21 @@ import type { Answer, RaidNight } from './calendar';
 import {
   capStatus,
   changes,
+  comingNights,
   current,
   everyoneIn,
   lineupRaids,
   lineupView,
+  groupsView,
+  onRoster,
   placesOf,
   seasonOn,
   shortBossName,
   toggle,
   wholeNight,
+  type ComingBossRow,
   type EncounterRow,
+  type LeaverRow,
   type NightBossRow,
   type PlaceRow
 } from './lineup';
@@ -518,5 +523,201 @@ describe('the boss lineup tab', () => {
       p_player_ids: [1, 2, 3, 4],
       p_expected_player_ids: []
     });
+  });
+});
+
+// The Boss groups page (#1216, board I)
+
+const abyss = () => lineupRaids(ENCOUNTERS, [], { fresh: true, season: 'Season One' })[0]!;
+
+describe('the boss groups rules', () => {
+  it('keeps only raiders still on the roster', () => {
+    const kept = onRoster(placesOf(places([[101, [1, 2, 99]]])), ROSTER);
+    expect([...kept.get(101)!]).toEqual([1, 2]);
+  });
+
+  it('marks unsaved cells, the bench, and raiders in no group of the raid', () => {
+    const saved = placesOf(
+      places([
+        [101, [1, 2, 3]],
+        [102, [1, 2]]
+      ])
+    );
+    const view = groupsView(ROSTER, abyss(), current(saved, toggle(saved, new Map(), 102, 3)), saved, []);
+    const row = (name: string) => view.groups.flatMap((g) => g.rows).find((r) => r.raider.name === name)!;
+    expect(row('Cy').cells.map((c) => [c.in, c.changed])).toEqual([
+      [true, false],
+      [true, true]
+    ]);
+    expect(row('Di').tag).toBe('In no group');
+    expect(row('Ed').tag).toBe('Bench');
+    expect(view.unplaced).toEqual(['Di']);
+    expect(view.bench).toEqual(['Ed']);
+    expect(view.totals.map((t) => t.count)).toEqual([3, 3]);
+  });
+
+  it('names someone who left the roster but is still in a group', () => {
+    const flame = { name_realm: 'Flame-Illidan', nickname: null };
+    const rows: LeaverRow[] = [
+      { encounter_id: 101, player_id: 99, player: flame },
+      { encounter_id: 102, player_id: 99, player: flame },
+      { encounter_id: 103, player_id: 99, player: flame },
+      { encounter_id: 101, player_id: 1, player: { name_realm: 'Ana-Illidan', nickname: null } }
+    ];
+    const view = groupsView(ROSTER, abyss(), new Map(), new Map(), rows);
+    // Only this raid's groups count: 103 is in the Grotto.
+    expect(view.leavers).toEqual([{ name: 'Flame', bosses: 2 }]);
+  });
+
+  it('says what a save changes on coming nights already filled', () => {
+    const bosses = abyss().bosses;
+    const coming: ComingBossRow[] = [
+      { raid_date: '2026-05-19', encounter_id: 101, skipped: false, confirmed_at: null },
+      { raid_date: '2026-05-19', encounter_id: 102, skipped: false, confirmed_at: null },
+      { raid_date: '2026-05-21', encounter_id: 101, skipped: false, confirmed_at: '2026-05-18T10:00:00Z' },
+      { raid_date: '2026-05-21', encounter_id: 102, skipped: true, confirmed_at: null },
+      { raid_date: '2026-05-21', encounter_id: 103, skipped: false, confirmed_at: null }
+    ];
+    expect(comingNights(coming, bosses, [])).toEqual([
+      { date: '2026-05-19', text: 'Filled from the groups; nobody has changed it yet.' },
+      { date: '2026-05-21', text: "Nek'zali saved for that night; Sszorak skipped. The rest follows the groups." }
+    ]);
+    expect(comingNights(coming, bosses, [101, 102])).toEqual([
+      { date: '2026-05-19', text: "Will follow for Nek'zali and Sszorak." },
+      { date: '2026-05-21', text: "Nek'zali stays as saved for that night. Sszorak is skipped that night." }
+    ]);
+  });
+});
+
+const GROUPS = '/g/wga/t/phoenix/officer/groups';
+const groupsGrid = async () =>
+  within(await screen.findByRole('table', { name: /The Venomous Abyss boss groups, up to 20 per boss/ }));
+
+const GROUPED: Setup = {
+  bosses: [nightBoss(101, 1), nightBoss(102, 2, { confirmed_at: '2026-05-13T10:00:00Z' })],
+  groups: [
+    ...places([
+      [101, [1, 2, 3]],
+      [102, [1, 2]]
+    ]),
+    { encounter_id: 101, player_id: 99 }
+  ]
+};
+
+const STALE_GROUP = 'Someone else changed this group since you opened it. Reload to see their change.';
+
+describe('the boss groups page', () => {
+  it('is in the Officer menu, and only for officers', async () => {
+    renderApp(GROUPS, handlers(who('raider'), GROUPED));
+    expect(await screen.findByText('This page is for officers of Phoenix.')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Boss groups' })).not.toBeInTheDocument();
+  });
+
+  it('shows the usual groups with the checks and what saving changes', async () => {
+    renderApp(GROUPS, handlers(who('officer'), GROUPED));
+    const g = await groupsGrid();
+    expect(screen.getByRole('link', { name: 'Boss groups' })).toHaveAttribute('aria-current', 'page');
+    expect(g.getByRole('button', { name: "Ana, Nek'zali the Soulcoiler: in the group" })).toBeInTheDocument();
+    expect(g.getByRole('button', { name: 'Cy, Sszorak: not in the group' })).toBeInTheDocument();
+    expect(g.getByText('In no group')).toBeInTheDocument();
+    const look = within(screen.getByRole('region', { name: 'Needs a look' }));
+    expect(look.getByText('Di is in no group yet.')).toBeInTheDocument();
+    expect(look.getByText(/Ed is on the bench/)).toBeInTheDocument();
+    const nights = within(screen.getByRole('region', { name: 'Coming nights' }));
+    expect(nights.getByText('Sszorak saved for that night. The rest follows the groups.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Thursday’s lineup ›' })).toHaveAttribute(
+      'href',
+      '/g/wga/t/phoenix/calendar?date=2026-05-14&view=lineup'
+    );
+  });
+
+  it('saves the changed groups, leaving out anyone who left the roster', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(GROUPS, handlers(who('officer'), GROUPED));
+    const g = await groupsGrid();
+    const save = screen.getByRole('button', { name: 'Save groups' });
+    expect(save).toBeDisabled();
+    await user.click(g.getByRole('button', { name: 'Di, Sszorak: not in the group' }));
+    expect(g.getByRole('button', { name: 'Di, Sszorak: in the group, not saved yet' })).toBeInTheDocument();
+    expect(screen.getByText('1 unsaved change.')).toBeInTheDocument();
+    const nights = within(screen.getByRole('region', { name: 'Coming nights' }));
+    expect(nights.getByText('Sszorak stays as saved for that night.')).toBeInTheDocument();
+    await user.click(g.getByRole('button', { name: "Bo, Nek'zali the Soulcoiler: in the group" }));
+    await user.click(save);
+
+    expect(rpcs(client, 'set_boss_group')).toEqual([
+      { p_team_id: 1, p_encounter_id: 102, p_player_ids: [1, 2, 4], p_expected_player_ids: [1, 2] },
+      { p_team_id: 1, p_encounter_id: 101, p_player_ids: [1, 3], p_expected_player_ids: [1, 2, 3, 99] }
+    ]);
+    expect((await screen.findAllByText(/^Saved the boss groups\./)).length).toBeGreaterThan(0);
+  });
+
+  it('says which group was held back when someone else saved it first', async () => {
+    const user = userEvent.setup();
+    renderApp(
+      GROUPS,
+      handlers(who('officer'), {
+        ...GROUPED,
+        rpc: (name) => (name === 'set_boss_group' ? { error: { message: STALE_GROUP } } : undefined)
+      })
+    );
+    const g = await groupsGrid();
+    await user.click(g.getByRole('button', { name: 'Di, Sszorak: not in the group' }));
+    await user.click(screen.getByRole('button', { name: 'Save groups' }));
+    expect(await screen.findByText('Sszorak wasn’t saved.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Show their version' }));
+    expect(g.getByRole('button', { name: 'Di, Sszorak: not in the group' })).toBeInTheDocument();
+  });
+
+  it('asks before leaving with unsaved changes', async () => {
+    const user = userEvent.setup();
+    renderApp(GROUPS, handlers(who('officer'), GROUPED));
+    const g = await groupsGrid();
+    await user.click(g.getByRole('button', { name: 'Di, Sszorak: not in the group' }));
+    await user.click(screen.getByRole('link', { name: 'Roster' }));
+    expect(await screen.findByRole('dialog', { name: 'Leave without saving?' })).toHaveTextContent(
+      'You have 1 unsaved change to the boss groups.'
+    );
+  });
+});
+
+describe('the boss lineup, after someone leaves the roster', () => {
+  it('leaves them out of a night’s save', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(
+      LINEUP,
+      handlers(who('officer'), { ...PLANNED, tonight: [...PLANNED.tonight!, { encounter_id: 101, player_id: 99 }] })
+    );
+    const g = await grid();
+    await user.click(g.getByRole('button', { name: "Bo, Nek'zali the Soulcoiler: in" }));
+    await user.click(screen.getByRole('button', { name: 'Save tonight' }));
+    expect(rpcs(client, 'set_raid_night_lineup')).toEqual([
+      {
+        p_team_id: 1,
+        p_raid_date: '2026-05-14',
+        p_encounter_id: 101,
+        p_player_ids: [1, 3],
+        p_expected_player_ids: [1, 2, 3, 99]
+      }
+    ]);
+  });
+});
+
+describe('the boss groups page, before any group is set', () => {
+  it('starts with everyone in but the bench, and saves every boss', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(GROUPS, handlers(who('officer'), {}));
+    expect(
+      await screen.findByRole('heading', { name: 'No boss in The Venomous Abyss has a usual group yet.' })
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Start with everyone in' }));
+    const g = await groupsGrid();
+    expect(g.getByRole('button', { name: 'Di, Sszorak: in the group, not saved yet' })).toBeInTheDocument();
+    expect(g.getByRole('button', { name: 'Ed, Sszorak: not in the group' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save groups' }));
+    expect(rpcs(client, 'set_boss_group')).toEqual([
+      { p_team_id: 1, p_encounter_id: 101, p_player_ids: [1, 2, 3, 4], p_expected_player_ids: [] },
+      { p_team_id: 1, p_encounter_id: 102, p_player_ids: [1, 2, 3, 4], p_expected_player_ids: [] }
+    ]);
   });
 });

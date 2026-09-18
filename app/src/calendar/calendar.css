@@ -1293,3 +1293,35 @@ a.night-chip:hover {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* The Boss groups page (#1216, board I): the lineup grid for the usual
+   groups. A cell changed but not saved yet has an ember ring. */
+.boss-groups-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.boss-groups-raid {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.boss-groups-next {
+  font-size: var(--text-sm);
+}
+
+.lineup-toggle.is-changed {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--button) 55%, transparent);
+}
+
+.lineup-tag[data-tone='warn'] {
+  border-color: color-mix(in srgb, var(--warn) 50%, transparent);
+  color: var(--warn);
+}
+
+.lineup-gap-text[data-tone='warn'] {
+  color: var(--warn);
+}
