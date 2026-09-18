@@ -28,7 +28,8 @@ import { pool, withTxn, grantGuild, OFFICER_T1, OFFICER_T2, SITE_ADMIN } from '.
 //   team_members 1 = discord-officer-1 (OFFICER_T1, team 1, holds a
 //     boe_managers grant, as does BOE_MANAGER with no team row), 3 = discord-raider-1 (RAIDER_T1, team 1),
 //     4 = discord-officer-2 (OFFICER_T2, team 2, no manager grant)
-//   players 1 = Seedraider-Illidan, team 1, team_member_id null
+//   players 1 = Seedraider-Illidan, team 1, team_member_id null (read only:
+//     a case that needs a linked character mints one, #1123)
 //   boe_items 1 = found, team 1, player_id 1, finder_name Seedraider-Illidan
 const TEAM_1 = 1;
 const TEAM_2 = 2;
@@ -77,9 +78,17 @@ describe('resolve_boe_finder_discord_id: the stamped id wins', () => {
 describe('resolve_boe_finder_discord_id: the player_id path', () => {
   it('resolves through players.team_member_id when nothing was stamped', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await q('update public.players set team_member_id = $1 where id = 1', [TM_RAIDER_1]);
+      // A find whose player_id is a character of the raider's, under a
+      // finder_name no character carries, so only the link can answer.
+      const pid = await newPlayer(q, TEAM_1, 'Linkedfinder-Illidan', TM_RAIDER_1, false);
+      const id = (
+        await q(
+          "insert into public.boe_items (team_id, player_id, item_name, finder_name) values ($1, $2, 'Test Find', 'Nobodynamed-Illidan') returning id",
+          [TEAM_1, pid]
+        )
+      ).rows[0].id;
 
-      expect(await resolve(asUser, OFFICER_T1, 1)).toBe(DISCORD_RAIDER_1);
+      expect(await resolve(asUser, OFFICER_T1, id)).toBe(DISCORD_RAIDER_1);
     });
   });
 
