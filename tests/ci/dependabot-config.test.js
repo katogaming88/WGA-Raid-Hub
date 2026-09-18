@@ -49,6 +49,15 @@ describe('the Dependabot entry for app/ (#1180)', () => {
     expect(app).toMatch(/^\s+- dependency-name: typescript\n\s+update-types: \['version-update:semver-major'\]$/m);
   });
 
+  // The first weekly run (#1233) bundled eslint 9 to 10 into the dev group and
+  // npm ci refused the tree: eslint-plugin-jsx-a11y, the newest release on the
+  // registry, declares a peer of eslint up to ^9. Same shape as the typescript
+  // ignore above, lifted when the plugin takes 10 (#1238).
+  it('eslint majors are ignored there, since eslint-plugin-jsx-a11y caps eslint at 9', () => {
+    const app = entryFor('/app');
+    expect(app).toMatch(/^\s+- dependency-name: eslint\n\s+update-types: \['version-update:semver-major'\]$/m);
+  });
+
   it('control: the bot/ entry keeps its bot-dev-dependencies group', () => {
     const bot = entryFor('/bot');
     expect(groupNames(bot)).toEqual(['bot-dev-dependencies']);
