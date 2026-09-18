@@ -674,19 +674,24 @@ PRs that change `supabase/migrations/` must also:
   supabase/ or tests/ change. If a policy legitimately changed, update the
   matching assertions in `tests/rls/` and the matrix in docs/RLS.md together
 
-**The `test:rls` script carries `--no-file-parallelism` on purpose, and removing
-it brings back a flake ([#1115](https://github.com/katogaming88/WGA-Raid-Hub/issues/1115)).**
-The suite runs one worker per file against a single Postgres, and most files
-write the same handful of seeded rows: `players` id 1 alone is written by 17 of
-them. Run those files at once and transactions take the same rows in different
-orders, so Postgres breaks the cycle by killing one, which surfaces as
-`deadlock detected` in whichever file lost. It scales with core count, so a
-16-core machine failed several tests on most runs while CI's 4-core runner
-stayed green, which meant a green check there did not mean the suite passed
-here. Serial costs about 11 seconds and makes the result the same everywhere.
-Note it lives on the npm script, so `npx vitest run tests/rls` invoked directly
-is still parallel and can still deadlock. The durable fix is for those files to
-create their own rows instead of writing seeded ones; until then, keep the flag.
+**The `test:rls` script runs the files in parallel, and that holds only while
+every file writes rows it minted
+([#1123](https://github.com/katogaming88/WGA-Raid-Hub/issues/1123)).** Vitest
+runs up to one file per core (minus one) at a time against a single Postgres,
+so a test that writes a seeded row holds a lock another file may be waiting on
+in the opposite order; Postgres breaks that by killing one transaction, which
+surfaces as `deadlock detected` in whichever file lost, on a different case each
+run, and it scales with core count: a 16-core machine failed on every cold run
+while CI's 4-core runner stayed green. From #1115 to #1123 the script carried
+`--no-file-parallelism` to make the result the same everywhere, at about 23
+seconds against 7. What replaced the flag is the rule in "Writing RLS tests"
+below (a test never writes a seeded row), a season day allocated per
+transaction, and one exception the script keeps: `snapshot-personas.test.js`
+empties `auth.users`, which takes every seeded account and grant row, so it runs
+as a second invocation after the others. CI runs the suite cold after a
+`supabase db reset`, which is exactly the run that shows a contended row, so a
+green check there is the check; a new file that writes a seeded row is how the
+flake comes back.
 
 ### Writing RLS tests
 
