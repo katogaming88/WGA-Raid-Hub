@@ -313,6 +313,7 @@ function executeCommitPerformance() {
   var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
   var rows = committable.map(function (s) {
     return {
+      team_id: _teamCfg.supabaseTeamId,
       player_id: s.playerId,
       season: season,
       recent_score: s.recent,

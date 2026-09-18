@@ -591,6 +591,7 @@ function executeCommitScores() {
         var agg = byPlayer[playerId];
         var ratio = agg.sum / agg.nights;
         return {
+          team_id: _teamCfg.supabaseTeamId,
           player_id: parseInt(playerId, 10),
           season: season,
           attendance_score: Math.min(Math.round(ratio * 10 * 100) / 100, 10),
