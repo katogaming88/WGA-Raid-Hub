@@ -5,16 +5,29 @@
 // every character their person holds, archived ones included (#942 step 4).
 // Uses the shared withTxn from helpers.js.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, OFFICER_T1, TEAM_LEADER_T1, RAIDER_T1, SITE_ADMIN, OFFICER_T2, RLS_DENIED } from './helpers.js';
+import {
+  pool,
+  withTxn,
+  seedPlayer,
+  OFFICER_T1,
+  TEAM_LEADER_T1,
+  RAIDER_T1,
+  SITE_ADMIN,
+  OFFICER_T2,
+  RLS_DENIED
+} from './helpers.js';
 
 const notify = (asUser, uid, playerId, message) =>
   asUser(uid, 'select public.notify_player($1, $2) as id', [playerId, message]);
 
 // Seed player 1 (Seedraider-Illidan, team 1) has no team_member_id link
-// (supabase/seed.sql) -- claim.test.js relies on that same starting state, so
-// this links it ephemerally within the test's own rolled-back transaction
-// rather than touching the seed data.
-const linkPlayer1ToRaider = (q) => q('update public.players set team_member_id = 3 where id = 1');
+// (supabase/seed.sql) and is only ever notified here, never written. A case
+// that needs the raider to hold a character mints one linked to
+// team_members 3 (RAIDER_T1's row), archived where the case is about an old
+// main (#1123).
+const RAIDER_T1_MEMBER = 3;
+const ownPlayer = (q, { archived = false } = {}) =>
+  seedPlayer(q, { memberId: RAIDER_T1_MEMBER, archivedAt: archived ? new Date().toISOString() : null });
 
 describe('notify_player rejects unauthorized callers', () => {
   it('anon cannot execute the function', async () => {
@@ -96,9 +109,9 @@ describe('a raider can only read/mark-read their own notifications', () => {
 
   it('a raider sees and can mark read their own notification once linked', async () => {
     await withTxn(async ({ q, asUser }) => {
-      const inserted = await notify(asUser, OFFICER_T1, 1, 'Your self-received item was approved.');
+      const pid = await ownPlayer(q);
+      const inserted = await notify(asUser, OFFICER_T1, pid, 'Your self-received item was approved.');
       const id = inserted.rows[0].id;
-      await linkPlayer1ToRaider(q);
 
       const seen = await asUser(RAIDER_T1, 'select id, read from public.notifications where id = $1', [id]);
       expect(seen.rows.length).toBe(1);
@@ -112,9 +125,10 @@ describe('a raider can only read/mark-read their own notifications', () => {
 
   it("a raider cannot mark another player's notification read", async () => {
     await withTxn(async ({ q, asUser }) => {
-      const inserted = await notify(asUser, OFFICER_T1, 2, 'not yours');
+      const other = await seedPlayer(q);
+      const inserted = await notify(asUser, OFFICER_T1, other, 'not yours');
       const id = inserted.rows[0].id;
-      await linkPlayer1ToRaider(q);
+      await ownPlayer(q);
 
       await asUser(RAIDER_T1, 'update public.notifications set read = true where id = $1', [id]);
       const after = (await q('select read from public.notifications where id = $1', [id])).rows[0];
@@ -127,15 +141,10 @@ describe('a raider can only read/mark-read their own notifications', () => {
 // character but keeps it linked (#941), and its notifications stay in the
 // raider's inbox; before this they vanished with the character.
 describe("a raider's inbox includes their archived characters", () => {
-  const archivedCharacter = async (q) => {
-    await linkPlayer1ToRaider(q);
-    await q('update public.players set archived_at = now() where id = 1');
-  };
-
   it('a notification on an archived character of theirs is seen and can be marked read', async () => {
     await withTxn(async ({ q, asUser }) => {
-      const id = (await notify(asUser, OFFICER_T1, 1, 'On the old main.')).rows[0].id;
-      await archivedCharacter(q);
+      const pid = await ownPlayer(q, { archived: true });
+      const id = (await notify(asUser, OFFICER_T1, pid, 'On the old main.')).rows[0].id;
 
       const seen = await asUser(RAIDER_T1, 'select id from public.notifications where id = $1', [id]);
       expect(seen.rows.length).toBe(1);
@@ -147,8 +156,8 @@ describe("a raider's inbox includes their archived characters", () => {
 
   it("someone else's archived character stays out of the inbox", async () => {
     await withTxn(async ({ q, asUser }) => {
-      const id = (await notify(asUser, OFFICER_T1, 1, 'Not yours.')).rows[0].id;
-      await archivedCharacter(q);
+      const pid = await ownPlayer(q, { archived: true });
+      const id = (await notify(asUser, OFFICER_T1, pid, 'Not yours.')).rows[0].id;
 
       expect((await asUser(OFFICER_T1, 'select id from public.notifications where id = $1', [id])).rows.length).toBe(0);
     });
@@ -156,13 +165,13 @@ describe("a raider's inbox includes their archived characters", () => {
 
   it("an archived character's own rows stay read-only: my_active_player_ids still excludes it", async () => {
     await withTxn(async ({ q, asUser }) => {
-      await archivedCharacter(q);
+      const pid = await ownPlayer(q, { archived: true });
       const { rows } = await asUser(
         RAIDER_T1,
         'select public.my_player_ids() as all_ids, public.my_active_player_ids() as active_ids'
       );
-      expect(rows[0].all_ids).toContain(1);
-      expect(rows[0].active_ids).not.toContain(1);
+      expect(rows[0].all_ids).toContain(pid);
+      expect(rows[0].active_ids).not.toContain(pid);
     });
   });
 });
