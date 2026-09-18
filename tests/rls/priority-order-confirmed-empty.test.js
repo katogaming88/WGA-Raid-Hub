@@ -2,40 +2,19 @@
 // upserts a marker row when an officer saves a priority list with nobody
 // ranked -- a legitimate outcome ("nobody wants this item"), not an
 // unfinished one -- and clears any leftover marker the next time that same
-// item/track is saved with a real roster. Same withTxn/savepoint harness as
-// tests/rls/priority-order-drift-check.test.js.
+// item/track is saved with a real roster. Uses the shared withTxn from
+// helpers.js, wrapped to stamp the season.
 import { describe, it, expect } from 'vitest';
-import { pool, OFFICER_T1, RAIDER_T1, seedSeason } from './helpers.js';
+import { withTxn as withSharedTxn, OFFICER_T1, RAIDER_T1, seedSeason } from './helpers.js';
 
+// The season this file stamps (#932): every season column is a foreign
+// key to seasons, so the fixture row comes first in every transaction.
+// Wraps the shared harness.
 async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    // The season this file stamps (#932): every season column is a foreign
-    // key to seasons, so the fixture row comes first in every transaction.
-    await seedSeason(q, SEASON);
-    const asRole = (role, uid) => async (text, params) => {
-      await q('savepoint poce_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify(uid ? { sub: uid, role } : { role })
-      ]);
-      await q(`set local role ${role}`);
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint poce_call');
-        throw err;
-      }
-    };
-    const asUser = (uid, text, params) => asRole('authenticated', uid)(text, params);
-    return await fn({ q, asUser });
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
+  return withSharedTxn(async (t) => {
+    await seedSeason(t.q, SEASON);
+    return fn(t);
+  });
 }
 
 const SEASON = 'confirmed-empty-test';
