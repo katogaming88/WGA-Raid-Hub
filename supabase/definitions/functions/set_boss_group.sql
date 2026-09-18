@@ -50,7 +50,9 @@ begin
   delete from raid_night_lineups
   where team_id = p_team_id and encounter_id = p_encounter_id and raid_date = any (v_nights);
   insert into raid_night_lineups (team_id, raid_date, encounter_id, player_id)
-  select p_team_id, d, p_encounter_id, x from unnest(v_nights) d, unnest(p_player_ids) x;
+  select p_team_id, d, p_encounter_id, x
+  from unnest(v_nights) d, unnest(p_player_ids) x
+  join players p on p.id = x and not p.is_bench;
 
   perform public.write_audit_log(
     p_team_id,

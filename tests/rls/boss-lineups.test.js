@@ -175,6 +175,29 @@ describe('plan_raid_night()', () => {
     });
   });
 
+  it('starts bench raiders out on every boss, even when they are in the group', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await seed(q);
+      await setGroup(asUser, OFFICER_T1, FIRST, [1, 2]);
+      await q('update public.players set is_bench = true where id = 2');
+      await plan(asUser, OFFICER_T1, '2026-09-17');
+      expect((await night(q, '2026-09-17'))[0].players).toEqual([1]);
+
+      // A group edit reaching the night, and a boss put back, leave them out too.
+      const tomorrow = await today(q, 1);
+      await plan(asUser, OFFICER_T1, tomorrow);
+      await setGroup(asUser, OFFICER_T1, FIRST, [2, 1], [1, 2]);
+      expect((await night(q, tomorrow))[0].players).toEqual([1]);
+      await skip(asUser, OFFICER_T1, '2026-09-17', FIRST, true);
+      await skip(asUser, OFFICER_T1, '2026-09-17', FIRST, false);
+      expect((await night(q, '2026-09-17'))[0].players).toEqual([1]);
+
+      // An officer can still put them in for the night.
+      await setNight(asUser, OFFICER_T1, '2026-09-17', FIRST, [1, 2], [1]);
+      expect((await night(q, '2026-09-17'))[0].players).toEqual([1, 2]);
+    });
+  });
+
   it('leaves a planned night alone', async () => {
     await withTxn(async ({ q, asUser }) => {
       await seed(q);

@@ -21,8 +21,9 @@ answers to.
   boss keeps a standing group (`boss_groups`), the raiders who normally kill it.
   Every raid night in the coming week is filled from those groups
   automatically (an hourly pg_cron job), into `raid_night_bosses` and
-  `raid_night_lineups`, and officers change a night for that night only with
-  `set_raid_night_lineup()`, or change the group itself with
+  `raid_night_lineups`. Bench raiders start out on every boss, even when they
+  are in a group, until an officer puts them in. Officers change a night for
+  that night only with `set_raid_night_lineup()`, or change the group itself with
   `set_boss_group()`, which also updates the coming nights nobody has saved
   yet. `plan_raid_night()` fills a night by hand, and
   `set_raid_night_boss_skipped()` marks a boss "not tonight". Every night's

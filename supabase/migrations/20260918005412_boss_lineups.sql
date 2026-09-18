@@ -20,6 +20,9 @@
 --
 -- A night is filled from the groups ahead of time (fill_raid_night(), run by
 -- pg_cron for the coming week), then an officer edits it for that night only.
+-- Bench raiders are left out of every fill, even when they are in a group:
+-- Kat's rule (2026-09-18) is that a bench raider is out on every boss until an
+-- officer puts them in for a fight or the whole night.
 -- Until an officer saves a boss for the night (confirmed_at), that boss keeps
 -- following its group, so a group edited on Tuesday reaches Thursday's plan.
 -- Once saved, the night's plan is the record and stays as written.
@@ -186,7 +189,8 @@ revoke all on function "public"."raid_today"() from public, anon, authenticated;
 
 -- Fills one raid night from the standing groups, if the night has no plan yet:
 -- every boss of that night's season with a group goes on the list in pull
--- order, and each boss's lineup is its group minus archived raiders. A night
+-- order, and each boss's lineup is its group minus archived and bench
+-- raiders (a bench raider starts out and an officer puts them in). A night
 -- that already has any boss row (planned, edited or all skipped) is left
 -- alone. Returns how many bosses it put on the list. Internal: the cron job
 -- and plan_raid_night() call it; nobody else can.
@@ -217,7 +221,7 @@ begin
   select p_team_id, p_raid_date, b.encounter_id, g.player_id
   from raid_night_bosses b
   join boss_groups g on g.team_id = b.team_id and g.encounter_id = b.encounter_id
-  join players p on p.id = g.player_id and p.archived_at is null
+  join players p on p.id = g.player_id and p.archived_at is null and not p.is_bench
   where b.team_id = p_team_id and b.raid_date = p_raid_date;
 
   return v_count;
@@ -319,7 +323,9 @@ begin
   delete from raid_night_lineups
   where team_id = p_team_id and encounter_id = p_encounter_id and raid_date = any (v_nights);
   insert into raid_night_lineups (team_id, raid_date, encounter_id, player_id)
-  select p_team_id, d, p_encounter_id, x from unnest(v_nights) d, unnest(p_player_ids) x;
+  select p_team_id, d, p_encounter_id, x
+  from unnest(v_nights) d, unnest(p_player_ids) x
+  join players p on p.id = x and not p.is_bench;
 
   perform public.write_audit_log(
     p_team_id,
@@ -535,7 +541,7 @@ begin
     insert into raid_night_lineups (team_id, raid_date, encounter_id, player_id)
     select p_team_id, p_raid_date, p_encounter_id, g.player_id
     from boss_groups g
-    join players p on p.id = g.player_id and p.archived_at is null
+    join players p on p.id = g.player_id and p.archived_at is null and not p.is_bench
     where g.team_id = p_team_id and g.encounter_id = p_encounter_id;
   end if;
 

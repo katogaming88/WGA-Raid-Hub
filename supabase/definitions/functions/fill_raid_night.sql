@@ -29,7 +29,7 @@ begin
   select p_team_id, p_raid_date, b.encounter_id, g.player_id
   from raid_night_bosses b
   join boss_groups g on g.team_id = b.team_id and g.encounter_id = b.encounter_id
-  join players p on p.id = g.player_id and p.archived_at is null
+  join players p on p.id = g.player_id and p.archived_at is null and not p.is_bench
   where b.team_id = p_team_id and b.raid_date = p_raid_date;
 
   return v_count;

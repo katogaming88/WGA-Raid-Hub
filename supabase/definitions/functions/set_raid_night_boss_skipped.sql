@@ -42,7 +42,7 @@ begin
     insert into raid_night_lineups (team_id, raid_date, encounter_id, player_id)
     select p_team_id, p_raid_date, p_encounter_id, g.player_id
     from boss_groups g
-    join players p on p.id = g.player_id and p.archived_at is null
+    join players p on p.id = g.player_id and p.archived_at is null and not p.is_bench
     where g.team_id = p_team_id and g.encounter_id = p_encounter_id;
   end if;
 
