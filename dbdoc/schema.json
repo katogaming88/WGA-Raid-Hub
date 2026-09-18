@@ -7329,15 +7329,14 @@
       ]
     },
     {
-      "name": "public.boss_lineup_sitouts",
+      "name": "public.boss_groups",
       "type": "BASE TABLE",
-      "comment": "Per-boss lineups for a raid night (#1216): one row per raider an officer sat out for one boss. A raider with no row is in. Raid and boss are named as Season Settings (team_settings.config.raidProgression) spells them. Written only through set_boss_lineup().",
+      "comment": "The standing group per boss for a team (#1216): one row per raider in the group that kills that boss. A new raid night is filled from these. Written only through set_boss_group().",
       "columns": [
         {
           "name": "id",
           "type": "integer",
-          "nullable": false,
-          "default": "nextval('boss_lineup_sitouts_id_seq'::regclass)"
+          "nullable": false
         },
         {
           "name": "team_id",
@@ -7345,18 +7344,8 @@
           "nullable": false
         },
         {
-          "name": "raid_date",
-          "type": "date",
-          "nullable": false
-        },
-        {
-          "name": "raid_name",
-          "type": "text",
-          "nullable": false
-        },
-        {
-          "name": "boss_name",
-          "type": "text",
+          "name": "encounter_id",
+          "type": "integer",
           "nullable": false
         },
         {
@@ -7373,29 +7362,35 @@
       ],
       "indexes": [
         {
-          "name": "boss_lineup_sitouts_pkey",
-          "def": "CREATE UNIQUE INDEX boss_lineup_sitouts_pkey ON public.boss_lineup_sitouts USING btree (id)",
-          "table": "public.boss_lineup_sitouts",
+          "name": "boss_groups_pkey",
+          "def": "CREATE UNIQUE INDEX boss_groups_pkey ON public.boss_groups USING btree (id)",
+          "table": "public.boss_groups",
           "columns": [
             "id"
           ]
         },
         {
-          "name": "boss_lineup_sitouts_team_id_raid_date_raid_name_boss_name_p_key",
-          "def": "CREATE UNIQUE INDEX boss_lineup_sitouts_team_id_raid_date_raid_name_boss_name_p_key ON public.boss_lineup_sitouts USING btree (team_id, raid_date, raid_name, boss_name, player_id)",
-          "table": "public.boss_lineup_sitouts",
+          "name": "boss_groups_team_id_encounter_id_player_id_key",
+          "def": "CREATE UNIQUE INDEX boss_groups_team_id_encounter_id_player_id_key ON public.boss_groups USING btree (team_id, encounter_id, player_id)",
+          "table": "public.boss_groups",
           "columns": [
             "team_id",
-            "raid_date",
-            "raid_name",
-            "boss_name",
+            "encounter_id",
             "player_id"
           ]
         },
         {
-          "name": "boss_lineup_sitouts_player_id_idx",
-          "def": "CREATE INDEX boss_lineup_sitouts_player_id_idx ON public.boss_lineup_sitouts USING btree (player_id)",
-          "table": "public.boss_lineup_sitouts",
+          "name": "boss_groups_encounter_id_idx",
+          "def": "CREATE INDEX boss_groups_encounter_id_idx ON public.boss_groups USING btree (encounter_id)",
+          "table": "public.boss_groups",
+          "columns": [
+            "encounter_id"
+          ]
+        },
+        {
+          "name": "boss_groups_player_id_idx",
+          "def": "CREATE INDEX boss_groups_player_id_idx ON public.boss_groups USING btree (player_id)",
+          "table": "public.boss_groups",
           "columns": [
             "player_id"
           ]
@@ -7403,10 +7398,10 @@
       ],
       "constraints": [
         {
-          "name": "boss_lineup_sitouts_player_id_fkey",
+          "name": "boss_groups_player_id_fkey",
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
-          "table": "public.boss_lineup_sitouts",
+          "table": "public.boss_groups",
           "referenced_table": "public.players",
           "columns": [
             "player_id"
@@ -7416,10 +7411,10 @@
           ]
         },
         {
-          "name": "boss_lineup_sitouts_team_id_fkey",
+          "name": "boss_groups_team_id_fkey",
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
-          "table": "public.boss_lineup_sitouts",
+          "table": "public.boss_groups",
           "referenced_table": "public.teams",
           "columns": [
             "team_id"
@@ -7429,28 +7424,327 @@
           ]
         },
         {
-          "name": "boss_lineup_sitouts_pkey",
+          "name": "boss_groups_encounter_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE",
+          "table": "public.boss_groups",
+          "referenced_table": "public.raid_encounters",
+          "columns": [
+            "encounter_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "boss_groups_pkey",
           "type": "PRIMARY KEY",
           "def": "PRIMARY KEY (id)",
-          "table": "public.boss_lineup_sitouts",
+          "table": "public.boss_groups",
           "referenced_table": "",
           "columns": [
             "id"
           ]
         },
         {
-          "name": "boss_lineup_sitouts_team_id_raid_date_raid_name_boss_name_p_key",
+          "name": "boss_groups_team_id_encounter_id_player_id_key",
           "type": "UNIQUE",
-          "def": "UNIQUE (team_id, raid_date, raid_name, boss_name, player_id)",
-          "table": "public.boss_lineup_sitouts",
+          "def": "UNIQUE (team_id, encounter_id, player_id)",
+          "table": "public.boss_groups",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "encounter_id",
+            "player_id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_boss_groups_team_id_check",
+          "def": "CREATE TRIGGER trg_boss_groups_team_id_check BEFORE INSERT OR UPDATE ON public.boss_groups FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        }
+      ]
+    },
+    {
+      "name": "public.raid_night_bosses",
+      "type": "BASE TABLE",
+      "comment": "The bosses on one raid night's list for a team (#1216), in pull order. skipped keeps a boss the team is not pulling that night on the list. confirmed_at and confirmed_by say an officer saved that boss's lineup for the night; until then it follows the boss's standing group. No rows for a night means it is not planned yet.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "raid_date",
+          "type": "date",
+          "nullable": false
+        },
+        {
+          "name": "encounter_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "position",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "skipped",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "confirmed_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "comment": "When an officer last saved this boss's lineup for the night. Null while the lineup is the automatic copy of the standing group."
+        },
+        {
+          "name": "confirmed_by",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "raid_night_bosses_pkey",
+          "def": "CREATE UNIQUE INDEX raid_night_bosses_pkey ON public.raid_night_bosses USING btree (id)",
+          "table": "public.raid_night_bosses",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_night_bosses_team_id_raid_date_encounter_id_key",
+          "def": "CREATE UNIQUE INDEX raid_night_bosses_team_id_raid_date_encounter_id_key ON public.raid_night_bosses USING btree (team_id, raid_date, encounter_id)",
+          "table": "public.raid_night_bosses",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "encounter_id"
+          ]
+        },
+        {
+          "name": "raid_night_bosses_encounter_id_idx",
+          "def": "CREATE INDEX raid_night_bosses_encounter_id_idx ON public.raid_night_bosses USING btree (encounter_id)",
+          "table": "public.raid_night_bosses",
+          "columns": [
+            "encounter_id"
+          ]
+        },
+        {
+          "name": "raid_night_bosses_confirmed_by_idx",
+          "def": "CREATE INDEX raid_night_bosses_confirmed_by_idx ON public.raid_night_bosses USING btree (confirmed_by)",
+          "table": "public.raid_night_bosses",
+          "columns": [
+            "confirmed_by"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "raid_night_bosses_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.raid_night_bosses",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_night_bosses_encounter_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE",
+          "table": "public.raid_night_bosses",
+          "referenced_table": "public.raid_encounters",
+          "columns": [
+            "encounter_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_night_bosses_confirmed_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (confirmed_by) REFERENCES people(id) ON DELETE SET NULL",
+          "table": "public.raid_night_bosses",
+          "referenced_table": "public.people",
+          "columns": [
+            "confirmed_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_night_bosses_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.raid_night_bosses",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_night_bosses_team_id_raid_date_encounter_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, raid_date, encounter_id)",
+          "table": "public.raid_night_bosses",
           "referenced_table": "",
           "columns": [
             "team_id",
             "raid_date",
-            "raid_name",
-            "boss_name",
+            "encounter_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.raid_night_lineups",
+      "type": "BASE TABLE",
+      "comment": "The plan for one raid night (#1216): one row per raider in for one boss. Filled from boss_groups ahead of the night, then edited through set_raid_night_lineup(). Kept after the night, so it still says who was planned in.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "raid_date",
+          "type": "date",
+          "nullable": false
+        },
+        {
+          "name": "encounter_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "raid_night_lineups_pkey",
+          "def": "CREATE UNIQUE INDEX raid_night_lineups_pkey ON public.raid_night_lineups USING btree (id)",
+          "table": "public.raid_night_lineups",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_night_lineups_team_id_raid_date_encounter_id_player_id_key",
+          "def": "CREATE UNIQUE INDEX raid_night_lineups_team_id_raid_date_encounter_id_player_id_key ON public.raid_night_lineups USING btree (team_id, raid_date, encounter_id, player_id)",
+          "table": "public.raid_night_lineups",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "encounter_id",
             "player_id"
           ]
+        },
+        {
+          "name": "raid_night_lineups_player_id_idx",
+          "def": "CREATE INDEX raid_night_lineups_player_id_idx ON public.raid_night_lineups USING btree (player_id)",
+          "table": "public.raid_night_lineups",
+          "columns": [
+            "player_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "raid_night_lineups_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.raid_night_lineups",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_night_lineups_team_id_raid_date_encounter_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE",
+          "table": "public.raid_night_lineups",
+          "referenced_table": "public.raid_night_bosses",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "encounter_id"
+          ],
+          "referenced_columns": [
+            "team_id",
+            "raid_date",
+            "encounter_id"
+          ]
+        },
+        {
+          "name": "raid_night_lineups_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.raid_night_lineups",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_night_lineups_team_id_raid_date_encounter_id_player_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, raid_date, encounter_id, player_id)",
+          "table": "public.raid_night_lineups",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "encounter_id",
+            "player_id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_raid_night_lineups_team_id_check",
+          "def": "CREATE TRIGGER trg_raid_night_lineups_team_id_check BEFORE INSERT OR UPDATE ON public.raid_night_lineups FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         }
       ]
     }
@@ -8731,7 +9025,7 @@
       "def": "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
     },
     {
-      "table": "public.boss_lineup_sitouts",
+      "table": "public.boss_groups",
       "columns": [
         "player_id"
       ],
@@ -8744,7 +9038,7 @@
       "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
     },
     {
-      "table": "public.boss_lineup_sitouts",
+      "table": "public.boss_groups",
       "columns": [
         "team_id"
       ],
@@ -8755,6 +9049,88 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.boss_groups",
+      "columns": [
+        "encounter_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.raid_encounters",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_night_bosses",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_night_bosses",
+      "columns": [
+        "encounter_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.raid_encounters",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_night_bosses",
+      "columns": [
+        "confirmed_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (confirmed_by) REFERENCES people(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.raid_night_lineups",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_night_lineups",
+      "columns": [
+        "team_id",
+        "raid_date",
+        "encounter_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.raid_night_bosses",
+      "parent_columns": [
+        "team_id",
+        "raid_date",
+        "encounter_id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -9437,9 +9813,57 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.set_boss_lineup",
+      "name": "public.check_lineup_players",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_player_ids integer[]",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.same_player_set",
+      "return_type": "bool",
+      "arguments": "a integer[], b integer[]",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.raid_today",
+      "return_type": "date",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.fill_raid_night",
       "return_type": "int4",
-      "arguments": "p_team_id integer, p_raid_date date, p_raid_name text, p_sitouts jsonb",
+      "arguments": "p_team_id integer, p_raid_date date",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.fill_upcoming_raid_nights",
+      "return_type": "int4",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_boss_group",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[]",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.plan_raid_night",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_raid_date date",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_raid_night_lineup",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[]",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_raid_night_boss_skipped",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_raid_date date, p_encounter_id integer, p_skipped boolean",
       "type": "FUNCTION"
     }
   ],

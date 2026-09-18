@@ -19,7 +19,17 @@ import { pool } from './helpers.js';
 
 afterAll(() => pool.end());
 
-const SCHEDULED = ['blizzard-gear-sync', 'optional-rsvp-reminders', 'twitch-live-check', 'wcl-progression-sync'];
+const SCHEDULED = [
+  'blizzard-gear-sync',
+  'fill-raid-night-lineups',
+  'optional-rsvp-reminders',
+  'twitch-live-check',
+  'wcl-progression-sync'
+];
+
+// Jobs that run SQL in the database and call nothing outside it (#1216 fills
+// the coming week's raid nights). The seed switches them off with the rest.
+const IN_DATABASE = ['fill-raid-night-lineups'];
 
 const PROD_FUNCTIONS = 'kxgjqnpwfklbgrxdgmmv.supabase.co/functions/v1/';
 
@@ -42,6 +52,8 @@ describe('cron is quiet on a local stack (#1055)', () => {
     // from prod's in a way no check compares.
     // rls-pool-read-only: reads the cron catalog, writes nothing.
     const { rows } = await pool.query('select jobname, command from cron.job');
-    expect(rows.filter((r) => !r.command.includes(PROD_FUNCTIONS)).map((r) => r.jobname)).toEqual([]);
+    const calling = rows.filter((r) => !IN_DATABASE.includes(r.jobname));
+    expect(calling.filter((r) => !r.command.includes(PROD_FUNCTIONS)).map((r) => r.jobname)).toEqual([]);
+    expect(rows.filter((r) => IN_DATABASE.includes(r.jobname) && r.command.includes('http'))).toEqual([]);
   });
 });
