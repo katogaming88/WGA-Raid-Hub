@@ -1946,3 +1946,19 @@ The lineup grid (#1231/#1232) checked every boss against numbers typed into `app
 **Not in this migration:** unifying the buff list `js/common.js` (RAID_BUFFS/BOSS_DEBUFFS/RAID_UTILITY) and the app's own curated 13-buff subset read -- the third piece #1244 named. That is a bigger, cross-codebase change (one data source both the current site and the new app fetch from, and a decision about which buffs the lineup check itself cares about versus the roster page's fuller coverage widget) than the two schema pieces here, so it stays open on the issue rather than riding along.
 
 [Full discussion -> #1244](https://github.com/katogaming88/WGA-Raid-Hub/issues/1244).
+
+## #944 -- team_id on scoring and player_equipped_gear; the guard on every two-key table
+
+Shipped: 20260918165131_team_id_on_scoring_and_equipped_gear.sql
+
+Every table that files a row against a player also names the player's team, so a team's rows are read by filtering on the row and the RLS policy can scope on the row. `scoring` and `player_equipped_gear` were the last two keyed by player alone: a team-wide read of either joined through `players`, the shape the #694 row-cap sweep came from, and `scripts/ci/team-wide-read-check.js` cannot see a `players.team_id` join at all, so the equipped-gear read on the current site sat outside the check with no paging. Three two-key tables (`player_wcl_season_perf`, `raid_rsvps`, `raid_rsvp_reminders_sent`) carried both columns with no trigger. Measured on prod 2026-09-05: zero rows disagreed across every table that had both columns.
+
+**The column, backfilled and `not null`, with the trigger on all twenty.** `team_id integer not null references teams(id) on delete cascade` on both tables, filled from `players.team_id` (itself `not null`, so the backfill leaves no gap), and `check_team_id_matches_player()` on the five tables that lacked it. The acceptance query (triggers whose function names both columns) answers 20; the eighteen two-key tables at the time of the build had fifteen guarded. No index on `team_id`: both unique keys lead with `player_id`, the tables are one row per player per season and per equipped slot, and half the two-key tables carry none.
+
+**A write to either table names the team.** With `not null`, every writer sends `team_id`: the three score commits on the current site (attendance scores, performance scores, the season-perf seed), the `blizzard-gear-sync` Edge Function's upsert, the #320 import generator and the seed. The team is in scope at every one already, so nothing looks it up. A row filed under the wrong team is refused where it is written rather than found later.
+
+**The team-wide reads filter on the column and page.** The current site's equipped-gear read and the new app's roster gear read filter on `team_id` and page (`fetchAllPaged`, `readAll`), which puts the first in front of the read check. Reads keyed by one player, and the database functions that join `scoring` per player (`generate_priority_order()` and its kin), are unchanged: they were never team-wide.
+
+**Not decided here:** the write policies on both tables still resolve the team through the `players` subquery (`Officers write scoring`, `Officers write player_equipped_gear`); every other two-key table's policy reads `team_id` directly, and moving these two is a separate RLS change with its own cases. `bis_items` stays keyed by player alone until [#935](https://github.com/katogaming88/WGA-Raid-Hub/issues/935) retires it.
+
+[Full discussion -> #944](https://github.com/katogaming88/WGA-Raid-Hub/issues/944).

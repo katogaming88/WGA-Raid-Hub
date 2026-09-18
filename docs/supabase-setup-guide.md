@@ -622,7 +622,8 @@ create policy "Officers write players"
   with check (my_team_role(team_id) in ('officer', 'team_leader'));
 
 -- Scoring: public read, officers write
--- No team_id on scoring rows, so follow the foreign key to players to find the team
+-- The policy resolves the team through the foreign key to players (scoring carries
+-- its own team_id since #944, kept equal to the player's by trigger)
 create policy "Public read scoring"
   on scoring for select using (true);
 create policy "Officers write scoring"
