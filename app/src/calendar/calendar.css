@@ -974,10 +974,32 @@ a.night-chip:hover {
 }
 
 .lineup-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  align-items: start;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: 20px;
+}
+
+/* No sideways scroll (Kat, 2026-09-18). A page with a boss grid is as wide as
+   the grid needs, past the usual page width, and the side panel sits beside
+   the grid when both fit and moves under it when they don't. */
+.page.boss-groups-page,
+.night-page:has(.lineup-layout) {
+  max-width: none;
+}
+
+.boss-groups-page .page-header {
+  max-width: 1200px;
+}
+
+.lineup-layout > .lineup-card {
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+
+.lineup-side {
+  flex: 1 1 300px;
+  max-width: 420px;
 }
 
 .lineup-card {
@@ -1006,24 +1028,34 @@ a.night-chip:hover {
   text-align: left;
 }
 
+/* Every boss column is the same width (Kat, 2026-09-18), set by the longest
+   word in any boss name through ColumnSizer, 60px at the least so the count
+   and the Skip button fit. The visible name takes no part in sizing, so it
+   wraps between words to that width and never splits one. */
 .lineup-boss {
-  width: 64px;
-  min-width: 64px;
   text-align: center;
+}
+
+.lineup-boss-sizer {
+  display: block;
+  overflow: hidden;
+  min-width: 60px;
+  height: 0;
+  visibility: hidden;
+}
+
+.lineup-boss-sizer > span {
+  display: block;
+  white-space: nowrap;
 }
 
 .lineup-boss-name {
   display: block;
+  contain: inline-size;
 }
 
 .lineup-boss[data-skipped='true'] .lineup-boss-name {
   color: var(--text-dim);
-}
-
-.lineup-mix {
-  display: block;
-  color: var(--text-dim);
-  font-size: 11px;
 }
 
 .lineup-skipped {
@@ -1033,7 +1065,8 @@ a.night-chip:hover {
 .button.lineup-skip {
   min-height: 0;
   margin-top: 6px;
-  padding: 2px 8px;
+  padding: 2px 6px;
+  white-space: nowrap;
   font-size: 11px;
 }
 
@@ -1292,4 +1325,36 @@ a.night-chip:hover {
   .lineup-layout {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* The Boss groups page (#1216, board I): the lineup grid for the usual
+   groups. A cell changed but not saved yet has an ember ring. */
+.boss-groups-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.boss-groups-raid {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.boss-groups-next {
+  font-size: var(--text-sm);
+}
+
+.lineup-toggle.is-changed {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--button) 55%, transparent);
+}
+
+.lineup-tag[data-tone='warn'] {
+  border-color: color-mix(in srgb, var(--warn) 50%, transparent);
+  color: var(--warn);
+}
+
+.lineup-gap-text[data-tone='warn'] {
+  color: var(--warn);
 }

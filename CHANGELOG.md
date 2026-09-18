@@ -12,6 +12,35 @@ answers to.
 
 ---
 
+## [3.141.0] - 2026-09-18
+
+### Project
+
+- The new app's **Boss groups** page
+  ([#1216](https://github.com/katogaming88/WGA-Raid-Hub/issues/1216)), under
+  Officer: the usual group for each boss of the season, the groups every raid
+  night starts from. It is the Boss lineup's grid for the groups: everyone on
+  the roster by role, a cell per boss to put someone in or take them out, the
+  count against the 20 (Mythic) or 25 (mini raid) cap, and the same "Needs a
+  look" checks. A cell changed but not saved yet has a ring, the save bar is
+  always there at one height, and **Save groups** saves each changed boss on
+  its own, holding back one another officer saved first. "Needs a look" also
+  names raiders in no group yet and anyone who left the roster but is still
+  in a group, and "Coming nights" says what a save changes on nights already
+  filled: which bosses follow, which stay as an officer saved them, and which
+  are skipped. A raid with no groups yet starts from **Start with everyone
+  in**. Leaving with unsaved changes asks first. Nothing on the current site
+  changes.
+- Saving a boss on the Boss lineup no longer fails when the night still lists
+  someone who has left the roster since it was filled; they are left out of
+  the save.
+- Both boss grids fit without scrolling sideways: every boss column is the
+  same width, set by the longest word in a boss name, so a name wraps only
+  between words; the page grows past its usual width when the grid needs it,
+  and the side panel moves under the grid when both don't fit. Each boss's
+  header shows its name, count and warning; the role mix is read to screen
+  readers only.
+
 ## [3.140.3] - 2026-09-18
 
 ### Project

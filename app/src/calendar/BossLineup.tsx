@@ -1,18 +1,19 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { useBlocker } from 'react-router';
+import { useState } from 'react';
 import { DataState } from '../components/DataState';
-import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
 import { useTeam } from '../data/address';
 import { bothQueries } from '../data/query';
 import { classColor, type PlayerRow } from '../roster/roster';
 import { shortDay, type Answer, type RaidNight } from './calendar';
+import { ColumnSizer } from './ColumnSizer';
+import { useLeaveGuard } from './leaveGuard';
 import {
   changes,
   current,
   everyoneIn,
   lineupRaids,
   lineupView,
+  onRoster,
   placesFor,
   placesOf,
   sameSet,
@@ -113,7 +114,9 @@ function Lineup({
   const offGroup = live.filter((b) => !sameSet(placesFor(places, b.id), placesFor(usual, b.id)));
   const names = (ids: number[]) => ids.map((id) => bosses.find((b) => b.id === id)?.name ?? 'A boss').join(', ');
 
-  const leaveDialog = useLeaveGuard(dirty, changed.cells);
+  const leaveDialog = useLeaveGuard(dirty, changed.cells, 'this night’s boss lineup');
+  // What a save sends: nobody who has left the roster since the night was filled.
+  const toSave = onRoster(places, players);
 
   if (!raids.length) {
     const seasonBosses = encounters.filter((e) => e.zone.season === season);
@@ -188,7 +191,7 @@ function Lineup({
 
   const nightSaves: BossSave[] = changed.bosses.map((id) => ({
     encounterId: id,
-    players: toList(places.get(id)!),
+    players: toList(placesFor(toSave, id)),
     expected: toList(placesFor(saved, id))
   }));
 
@@ -201,7 +204,7 @@ function Lineup({
         night: nightSaves,
         groups: offGroup.map((b) => ({
           encounterId: b.id,
-          players: toList(placesFor(places, b.id)),
+          players: toList(placesFor(toSave, b.id)),
           expected: toList(placesFor(usual, b.id))
         }))
       },
@@ -355,41 +358,6 @@ function Lineup({
   );
 }
 
-// Leaving with unsaved changes asks first: another tab, another night, or any
-// other page. Closing the browser tab gets the browser's own question.
-function useLeaveGuard(dirty: boolean, count: number): ReactNode {
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      dirty && (currentLocation.pathname !== nextLocation.pathname || currentLocation.search !== nextLocation.search)
-  );
-
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
-
-  if (blocker.state !== 'blocked') return null;
-  return (
-    <Dialog title="Leave without saving?" onClose={() => blocker.reset()}>
-      <p className="text-muted">
-        You have {plural(count, 'unsaved change')} to this night’s boss lineup. If you leave now,{' '}
-        {count === 1 ? 'it’s' : 'they’re'} lost.
-      </p>
-      <div className="dialog-actions">
-        <span className="grow" />
-        <button type="button" className="button button-quiet" onClick={() => blocker.proceed()}>
-          Leave and discard
-        </button>
-        <button type="button" className="button button-primary" onClick={() => blocker.reset()}>
-          Keep editing
-        </button>
-      </div>
-    </Dialog>
-  );
-}
-
 function RaidGrid({
   raid,
   night,
@@ -437,6 +405,7 @@ function RaidGrid({
                 const t = totals.get(boss.id);
                 return (
                   <th key={boss.id} scope="col" className="lineup-boss" data-skipped={boss.skipped}>
+                    <ColumnSizer bosses={raid.bosses} />
                     <span className="lineup-boss-name" aria-hidden="true">
                       {boss.short}
                     </span>
@@ -447,9 +416,6 @@ function RaidGrid({
                           {t.count}/{raid.cap}
                         </span>
                         <span className="lineup-warn">{t.warn}</span>
-                        <span className="lineup-mix" aria-hidden="true">
-                          {t.tanks}T {t.healers}H {t.damage}D
-                        </span>
                         <span className="visually-hidden">
                           {plural(t.tanks, 'tank')}, {plural(t.healers, 'healer')}, {t.damage} damage
                         </span>

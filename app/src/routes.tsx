@@ -5,6 +5,7 @@ import { MyProfilePage, PlayerProfilePage } from './profile/ProfilePage';
 import { AppShell } from './layout/AppShell';
 import { HomePage } from './home/HomePage';
 import { CalendarPage } from './calendar/CalendarPage';
+import { BossGroupsPage } from './calendar/BossGroupsPage';
 import { GuildHomePage } from './guild/GuildHomePage';
 import { NewsPage } from './news/NewsPage';
 import { StreamsPage } from './streams/StreamsPage';
@@ -21,7 +22,8 @@ export type RouteHandle = { title: string };
 const BUILT_PAGES: Record<string, ReactElement> = {
   roster: <RosterPage />,
   calendar: <CalendarPage />,
-  me: <MyProfilePage />
+  me: <MyProfilePage />,
+  'officer/groups': <BossGroupsPage />
 };
 
 // Guild pages rebuilt so far (#1102), beside Guild home itself.
@@ -56,7 +58,7 @@ export const routes: RouteObject[] = [
             // Officer tools open only for the people who may use them (#1100: they sit under /officer/).
             element: path.startsWith('officer/') ? (
               <RequireAbility ability="viewOfficerTools" title={title}>
-                <PlaceholderPage title={title} />
+                {BUILT_PAGES[path] ?? <PlaceholderPage title={title} />}
               </RequireAbility>
             ) : (
               (BUILT_PAGES[path] ?? <PlaceholderPage title={title} />)

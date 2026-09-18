@@ -1,7 +1,15 @@
 import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import type { Answer, ScheduleChange, ScheduleRule } from './calendar';
-import { isStaleSave, type EncounterRow, type NightBossRow, type PlaceRow, type SeasonRow } from './lineup';
+import {
+  isStaleSave,
+  type ComingBossRow,
+  type EncounterRow,
+  type LeaverRow,
+  type NightBossRow,
+  type PlaceRow,
+  type SeasonRow
+} from './lineup';
 
 // The Calendar page's reads and writes (#1102).
 
@@ -219,10 +227,28 @@ export function useNightPlan(teamId: number, date: string) {
   });
 }
 
-// The team's usual group for every boss.
+// The team's usual group for every boss, with each raider's name so the Boss
+// groups page can name someone who left the roster but is still in a group.
 export function useBossGroups(teamId: number) {
-  return useSupabaseQuery<PlaceRow[]>([...lineupKey(teamId), 'groups'], (client) =>
-    client.from('boss_groups').select('encounter_id, player_id').eq('team_id', teamId).order('id')
+  return useSupabaseQuery<LeaverRow[]>([...lineupKey(teamId), 'groups'], (client) =>
+    client
+      .from('boss_groups')
+      .select('encounter_id, player_id, player:players(name_realm, nickname)')
+      .eq('team_id', teamId)
+      .order('id')
+  );
+}
+
+// Every boss on the team's coming raid nights, for what a group save changes.
+export function useComingNights(teamId: number, today: string) {
+  return useSupabaseQuery<ComingBossRow[]>([...lineupKey(teamId), 'coming', today], (client) =>
+    client
+      .from('raid_night_bosses')
+      .select('raid_date, encounter_id, skipped, confirmed_at')
+      .eq('team_id', teamId)
+      .gte('raid_date', today)
+      .order('raid_date')
+      .order('position')
   );
 }
 
@@ -312,6 +338,23 @@ export function useSaveGroups(teamId: number, date: string) {
       };
     },
     { key: ['save-groups', teamId], refreshes: [lineupKey(teamId)] }
+  );
+}
+
+// "Save groups" on the Boss groups page: each changed boss's usual group, one
+// boss at a time, like a night's save.
+export function useSaveBossGroups(teamId: number) {
+  return useSupabaseMutation<SaveResult, BossSave[]>(
+    (client, saves) =>
+      saveEach(saves, (s) =>
+        client.rpc('set_boss_group', {
+          p_team_id: teamId,
+          p_encounter_id: s.encounterId,
+          p_player_ids: s.players,
+          p_expected_player_ids: s.expected
+        })
+      ),
+    { key: ['save-boss-groups', teamId], refreshes: [lineupKey(teamId)] }
   );
 }
 

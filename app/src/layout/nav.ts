@@ -41,6 +41,7 @@ export function navGroups(
         { label: 'Import loot', icon: 'import', to: `${base.team}/officer/import` },
         { label: 'Reviews', icon: 'check', to: `${base.team}/officer/reviews` },
         { label: 'Attendance', icon: 'chart', to: `${base.team}/officer/attendance` },
+        { label: 'Boss groups', icon: 'grid', to: `${base.team}/officer/groups` },
         { label: 'Season settings', icon: 'gear', to: `${base.team}/officer/season` }
       ]
     }
@@ -62,6 +63,7 @@ export const TEAM_PAGES: Record<string, string> = {
   'officer/import': 'Import loot',
   'officer/reviews': 'Reviews',
   'officer/attendance': 'Attendance',
+  'officer/groups': 'Boss groups',
   'officer/season': 'Season settings'
 };
 

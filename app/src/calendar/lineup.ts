@@ -265,6 +265,41 @@ export type LineupView = {
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
+// A raider as the grids list them.
+type Raider = { player: PlayerRow; name: string; role: Role };
+
+const providersOf = (buff: Buff, inn: Raider[]) =>
+  inn.filter((r) => buff.classes.includes(r.player.classes_specs?.class ?? '')).map((r) => r.name);
+
+// One boss's count, role mix, missing buffs and warnings, for whoever is in.
+// `out` names raiders in who said they are not coming (a night only).
+function totalOf(boss: LineupBoss, inn: Raider[], cap: number, out: string[] = []): BossTotal {
+  const n = (role: Role) => inn.filter((r) => r.role === role).length;
+  const tanks = n('Tank');
+  const healers = n('Heal');
+  const status = capStatus(inn.length, cap);
+  const full = inn.length === cap;
+  const missing = BUFFS.filter((b) => !providersOf(b, inn).length).map((b) => b.name);
+  const problems = [
+    ...(full ? [] : [status.text]),
+    ...(tanks === 0 ? ['no tanks'] : tanks < TANKS_WANTED ? ['needs a second tank'] : []),
+    ...(healers < HEALERS_WANTED ? [plural(healers, 'healer')] : []),
+    ...(missing.length ? [`no ${missing.join(', no ')}`] : []),
+    ...(out.length ? [`${out.join(', ')} said they’re not coming`] : [])
+  ];
+  return {
+    boss,
+    count: inn.length,
+    status,
+    tanks,
+    healers,
+    damage: n('Melee') + n('Ranged'),
+    missing,
+    warn: !full ? status.text : missing.length ? plural(missing.length, 'buff') : '',
+    problems
+  };
+}
+
 // The grid for one raid: everyone on the roster by role, with a cell per boss.
 // A raider who said they are not coming stays in the grid, so a planned-in
 // raider who then answered Absent shows as a conflict rather than vanishing.
@@ -324,10 +359,6 @@ export function lineupView(
   };
 
   const inFor = (boss: LineupBoss) => rows.filter((r) => isIn(boss, r.player.id));
-  const providers = (buff: Buff, boss: LineupBoss) =>
-    inFor(boss)
-      .filter((r) => buff.classes.includes(r.player.classes_specs?.class ?? ''))
-      .map((r) => r.name);
 
   return {
     groups: ROLE_ORDER.map((role) => ({
@@ -338,36 +369,165 @@ export function lineupView(
     live,
     totals: live.map((boss) => {
       const inn = inFor(boss);
-      const n = (role: Role) => inn.filter((r) => r.role === role).length;
-      const tanks = n('Tank');
-      const healers = n('Heal');
-      const status = capStatus(inn.length, raid.cap);
-      const full = inn.length === raid.cap;
-      const missing = BUFFS.filter((b) => !providers(b, boss).length).map((b) => b.name);
-      const out = inn.filter(saidOut).map((r) => r.name);
-      const problems = [
-        ...(full ? [] : [status.text]),
-        ...(tanks === 0 ? ['no tanks'] : tanks < TANKS_WANTED ? ['needs a second tank'] : []),
-        ...(healers < HEALERS_WANTED ? [plural(healers, 'healer')] : []),
-        ...(missing.length ? [`no ${missing.join(', no ')}`] : []),
-        ...(out.length ? [`${out.join(', ')} said they’re not coming`] : [])
-      ];
-      return {
+      return totalOf(
         boss,
-        count: inn.length,
-        status,
-        tanks,
-        healers,
-        damage: n('Melee') + n('Ranged'),
-        missing,
-        warn: !full ? status.text : missing.length ? plural(missing.length, 'buff') : '',
-        problems
-      };
+        inn,
+        raid.cap,
+        inn.filter(saidOut).map((r) => r.name)
+      );
     }),
-    buffs: BUFFS.map((buff) => ({ buff, cells: live.map((boss) => ({ boss, providers: providers(buff, boss) })) })),
+    buffs: BUFFS.map((buff) => ({
+      buff,
+      cells: live.map((boss) => ({ boss, providers: providersOf(buff, inFor(boss)) }))
+    })),
     benchOut: rows.filter((r) => r.player.is_bench && live.every((b) => !isIn(b, r.player.id))).map((r) => r.name)
   };
 }
 
 // The message a refused save gives when someone else saved first.
 export const isStaleSave = (message: string) => /Someone else changed/i.test(message);
+
+// Only raiders still on the roster: a group or a night can still hold someone
+// archived since (a main swap, someone leaving), and the database refuses a
+// save that names them.
+export function onRoster(places: Places, players: PlayerRow[]): Map<number, ReadonlySet<number>> {
+  const ids = new Set(rosterOf(players).map((p) => p.id));
+  return new Map([...places].map(([boss, set]) => [boss, new Set([...set].filter((id) => ids.has(id)))]));
+}
+
+// The Boss groups page (#1216, board I of the mockups): the usual group for
+// each boss of one raid, with the same checks as a night's lineup.
+
+export type GroupCell = { boss: LineupBoss; in: boolean; changed: boolean };
+
+export type GroupRow = {
+  raider: Raider;
+  tag: string | null;
+  tagTone: 'warn' | 'plain';
+  cells: GroupCell[];
+  count: number;
+};
+
+// A raider who left the roster but is still in some of this raid's groups.
+export type Leaver = { name: string; bosses: number };
+
+export type GroupsView = {
+  groups: { role: Role; label: string; rows: GroupRow[] }[];
+  totals: BossTotal[];
+  // Raiders off the bench who are in none of this raid's groups.
+  unplaced: string[];
+  bench: string[];
+  leavers: Leaver[];
+};
+
+export type LeaverRow = PlaceRow & { player: { name_realm: string; nickname: string | null } | null };
+
+export function groupsView(
+  players: PlayerRow[],
+  raid: LineupRaid,
+  places: Places,
+  saved: Places,
+  savedRows: LeaverRow[]
+): GroupsView {
+  const roster = rosterOf(players);
+  const rows: Raider[] = roster
+    .map((player) => ({ player, name: displayName(player), role: player.classes_specs!.role as Role }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const isIn = (boss: LineupBoss, id: number) => placesFor(places, boss.id).has(id);
+
+  const rowOf = (r: Raider): GroupRow => {
+    const cells = raid.bosses.map((boss) => {
+      const inn = isIn(boss, r.player.id);
+      return { boss, in: inn, changed: inn !== placesFor(saved, boss.id).has(r.player.id) };
+    });
+    const count = cells.filter((c) => c.in).length;
+    const unplaced = count === 0 && !r.player.is_bench;
+    const tag = r.player.is_bench
+      ? 'Bench'
+      : unplaced
+        ? 'In no group'
+        : r.player.is_rotator
+          ? 'Rotator'
+          : r.player.is_trial
+            ? 'Trial'
+            : null;
+    return { raider: r, tag, tagTone: unplaced ? 'warn' : 'plain', cells, count };
+  };
+
+  const rosterIds = new Set(roster.map((p) => p.id));
+  const bossIds = new Set(raid.bosses.map((b) => b.id));
+  const leavers = new Map<number, Leaver>();
+  for (const row of savedRows) {
+    if (rosterIds.has(row.player_id) || !bossIds.has(row.encounter_id)) continue;
+    const name = row.player ? displayName(row.player) : 'A raider';
+    const leaver = leavers.get(row.player_id) ?? { name, bosses: 0 };
+    leaver.bosses += 1;
+    leavers.set(row.player_id, leaver);
+  }
+
+  const grouped = ROLE_ORDER.map((role) => ({
+    role,
+    label: ROLE_LABELS[role],
+    rows: rows.filter((r) => r.role === role).map(rowOf)
+  })).filter((g) => g.rows.length);
+  const all = grouped.flatMap((g) => g.rows);
+
+  return {
+    groups: grouped,
+    totals: raid.bosses.map((boss) =>
+      totalOf(
+        boss,
+        rows.filter((r) => isIn(boss, r.player.id)),
+        raid.cap
+      )
+    ),
+    unplaced: all.filter((r) => r.tagTone === 'warn').map((r) => r.raider.name),
+    bench: all.filter((r) => r.raider.player.is_bench).map((r) => r.raider.name),
+    leavers: [...leavers.values()].sort((a, b) => a.name.localeCompare(b.name))
+  };
+}
+
+// What saving the groups changes on coming nights already filled. A group save
+// rewrites a boss on every coming night unless an officer saved that boss for
+// the night or skipped it there (set_boss_group()).
+export type ComingBossRow = { raid_date: string; encounter_id: number; skipped: boolean; confirmed_at: string | null };
+export type ComingNight = { date: string; text: string };
+
+// "Ana", "Ana and Bo", "Ana, Bo and Cy".
+export const joinNames = (names: string[]) =>
+  names.length < 3 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
+
+export function comingNights(rows: ComingBossRow[], bosses: LineupBoss[], changed: number[]): ComingNight[] {
+  const byId = new Map(bosses.map((b) => [b.id, b]));
+  const dates = [...new Set(rows.filter((r) => byId.has(r.encounter_id)).map((r) => r.raid_date))].sort();
+  return dates.map((date) => {
+    const night = rows.filter((r) => r.raid_date === date && byId.has(r.encounter_id));
+    const short = (list: ComingBossRow[]) => list.map((r) => byId.get(r.encounter_id)!.short);
+    const savedThere = night.filter((r) => r.confirmed_at && !r.skipped);
+    const skipped = night.filter((r) => r.skipped);
+    if (!changed.length) {
+      const parts = [
+        ...(savedThere.length ? [`${joinNames(short(savedThere))} saved for that night`] : []),
+        ...(skipped.length ? [`${joinNames(short(skipped))} skipped`] : [])
+      ];
+      return {
+        date,
+        text: parts.length
+          ? `${parts.join('; ')}. The rest follows the groups.`
+          : 'Filled from the groups; nobody has changed it yet.'
+      };
+    }
+    const touched = night.filter((r) => changed.includes(r.encounter_id));
+    const follows = touched.filter((r) => !r.confirmed_at && !r.skipped);
+    const keeps = touched.filter((r) => r.confirmed_at && !r.skipped);
+    const skips = touched.filter((r) => r.skipped);
+    const parts = [
+      ...(follows.length ? [`Will follow for ${joinNames(short(follows))}.`] : []),
+      ...(keeps.length
+        ? [`${joinNames(short(keeps))} ${keeps.length === 1 ? 'stays' : 'stay'} as saved for that night.`]
+        : []),
+      ...(skips.length ? [`${joinNames(short(skips))} ${skips.length === 1 ? 'is' : 'are'} skipped that night.`] : [])
+    ];
+    return { date, text: parts.length ? parts.join(' ') : 'Your changes don’t reach this night.' };
+  });
+}
