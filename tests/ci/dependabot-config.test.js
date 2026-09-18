@@ -168,11 +168,14 @@ describe('the Dependabot entry for app/ (#1180)', () => {
   });
 
   // The only workflow that runs this file is keyed on scripts/ci and tests/ci,
-  // so without this line a PR that edits only dependabot.yml would merge
-  // without the cases above ever running (the gap #1128 records for
+  // so without these lines a PR that edits only dependabot.yml, or only the
+  // app's manifests (which is every Dependabot /app bump, #1240), would merge
+  // without the cases in this file ever running (the gap #1128 records for
   // deploy.yml and config.toml).
-  it('runs on a pull request that edits only dependabot.yml', () => {
+  it('runs on a pull request that edits only dependabot.yml, or only the app manifests', () => {
     expect(testsWorkflow).toMatch(/^\s+- '\.github\/dependabot\.yml'$/m);
+    expect(testsWorkflow).toMatch(/^\s+- 'app\/package\.json'$/m);
+    expect(testsWorkflow).toMatch(/^\s+- 'app\/package-lock\.json'$/m);
   });
 });
 
