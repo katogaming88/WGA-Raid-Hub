@@ -55,7 +55,7 @@ release is named by that number, and a change to any piece moves it:
 |-------|-------|-------------------|
 | Frontend | `js/`, `css/`, the root HTML pages | `### Frontend` |
 | Database | `supabase/migrations/`, `scripts/import/` | `### Backend` |
-| Edge Functions | `supabase/functions/` | `### Functions` |
+| Edge Functions | `supabase/functions/`, except a dot-prefixed entry at its top level (`.env.example` is read by `supabase functions serve` and never deployed; a dot-directory there counts the same way) | `### Functions` |
 | Bot | `bot/` | `### Bot` |
 | Project | everything else | `### Project` |
 
@@ -107,8 +107,10 @@ platform identity says which artifact is actually live. Both are needed, because
 only the second one can show that a piece was merged and never deployed. Since
 #1050 the database is the one piece that cannot drift that way: its migrations
 apply from the Deploy workflow before the site ships, so the ledger head and
-`REQUIRED_SCHEMA` agree after every successful deploy. The Edge Functions still
-deploy by hand and the counter is still the only thing that says so.
+`REQUIRED_SCHEMA` agree after every successful deploy. Since #1083 the same
+workflow deploys the Edge Functions a merge changed, and since #971 it reads
+the stamped version back out of each one it deployed, so a function that
+answers the wrong `X-WGA-Version` fails the deploy rather than drifting.
 
 Bumping the version means more than one file: every local `css/`/`js/` tag on
 every page carries a `?v=<VERSION>` cache-bust query string (#431), 56 of them
@@ -238,8 +240,9 @@ are unsure.
 
 - Use the pull request template (`.github/pull_request_template.md`) and
   follow "Writing issues and pull requests" above
-- Update `CHANGELOG.md` under `### Frontend` / `### Backend` per the
-  versioning section above
+- Update `CHANGELOG.md` under the section for each piece the PR touches
+  (`### Frontend`, `### Backend`, `### Functions`, `### Bot`, or `### Project`
+  for everything else) per the versioning section above
 - `js/common.js` is type-checked (`// @ts-check` plus JSDoc annotations, no
   build step). If you touch a checked file, run `npm run typecheck`; CI runs
   the same check on every `js/` change. Add `// @ts-check` to more `js/`
@@ -291,9 +294,11 @@ are unsure.
   saying so; `tests/ci/date-format-check.test.js` enforces both
 - Structural checks over the HTML and the CI tooling live in `tests/ci/`
   (`npm run test:ci`): landmarks, heading order, resolvable anchors, the
-  `?v=` asset tags, the changelog classifier, the RLS autocommit guard and the
-  security advisor allowlist. These read the pages and the source as text, so
-  they judge markup and never behaviour
+  `?v=` asset tags, the changelog classifier, the RLS autocommit guard, the
+  security advisor allowlist and the majors Dependabot holds back for `app/`
+  (read against the peer ranges in its lockfile, so a hold whose reason has
+  gone fails the bump that removed it, #1241). These read the pages and the
+  source as text, so they judge markup and never behaviour
 - Accessibility runs in a real browser under `tests/browser/`
   (`npm run test:a11y`), which needs a one-time
   `npx playwright install chromium`. It serves the site locally and answers
@@ -453,8 +458,9 @@ so a case about the stack names only what it changes.
 | `bot/` | The Discord bot (#954): a discord.js gateway process running on kat's VM under pm2. Ten slash commands, an express endpoint the `discord-bot-webhook` relay posts to, and a 15-minute sweep for the signup sheet. Keeps its own `package.json`, `tsconfig.json` and lockfile, and its own workflow (`.github/workflows/bot.yml`), which runs the format check, its tests and the build on Node 20 to match the VM. It formats with the root prettier config rather than one of its own, and is outside every root script: lint, typecheck, format and the test suites all read `js/`, `scripts/` and `tests/` only |
 | `scripts/import/` | One-off/recurring data import tooling (loot, attendance, etc.) |
 | `scripts/ci/` | CI checks that need more than a workflow step (changelog classification, the team-wide read guard, the RLS autocommit guard, the security advisor allowlist), plus the version stamper (`npm run stamp`), which owns the page registry the asset-version check reads |
-| `app/` | The new app being built alongside this site for the January cutover ([#1109](https://github.com/katogaming88/WGA-Raid-Hub/issues/1109), [#1101](https://github.com/katogaming88/WGA-Raid-Hub/issues/1101)): Vite, React and TypeScript with its own `package.json`. Run `npm install` then `npm run dev` inside `app/`. Checked by the App workflow; takes weekly Dependabot bumps like the root and `bot/` (#1180); nothing in it ships to the current site |
+| `app/` | The new app being built alongside this site for the January cutover ([#1109](https://github.com/katogaming88/WGA-Raid-Hub/issues/1109), [#1101](https://github.com/katogaming88/WGA-Raid-Hub/issues/1101)): Vite, React and TypeScript with its own `package.json`. Run `npm install` then `npm run dev` inside `app/`. Checked by the App workflow on every pull request and every merge to `main`; takes weekly Dependabot bumps like the root and `bot/` (#1180), with the majors a peer range excludes held back and a test in `tests/ci/` saying when to lift them (#1241); nothing in it ships to the current site |
 | `dbdoc/` | Generated schema docs (tbls). Never edit by hand; regenerate with `npm run db:docs` |
+| `js/database.types.ts` | Generated Supabase types for the public schema, read by the current site's `@ts-check` files and imported by `app/` (#1181). Never edit by hand; regenerate with `npm run db:types` |
 | `supabase/definitions/` | Generated current definition of every database function and view, one file each (#1107). Never edit by hand; regenerate with `npm run db:definitions` |
 | `docs/RLS.md` | Hand-maintained RLS policy reference (tbls cannot generate this) |
 
@@ -653,6 +659,12 @@ PRs that change `supabase/migrations/` must also:
   function and view has one file there holding its current definition, so a
   migration that rewrites a function shows only the lines that changed. Never
   edit those files by hand; the migration is still what changes the database
+- Regenerate the Supabase types: `npm run db:types`, and commit
+  `js/database.types.ts` (CI fails it stale). Both sites typecheck against this
+  file, so a table the app reads that changed without it is a type error
+  nothing catches. Never edit it by hand; the generator is pinned in
+  `scripts/ci/gen-types.js` so it writes the same file on every machine (a
+  migration that drops a table regenerates with `--allow-fewer-tables`)
 - Update [docs/RLS.md](docs/RLS.md) if the migration adds, alters, or drops an
   RLS policy (CI checks this too)
 - Regenerate the policy export if policies changed: `npm run db:rls`, and

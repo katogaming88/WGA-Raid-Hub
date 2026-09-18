@@ -52,9 +52,7 @@ updates:
   # The new app (#1109) keeps its own package.json and lockfile under app/,
   # so it needs its own entry (#1180). Same shape as bot/'s: dev tools grouped
   # into one PR, runtime dependencies (react, react-router, TanStack Query,
-  # supabase-js) left ungrouped so each bump arrives alone to be read. The
-  # root entry's eslint ignore does not carry over: app/eslint.config.js is
-  # already flat config on eslint 9.
+  # supabase-js) left ungrouped so each bump arrives alone to be read.
   - package-ecosystem: npm
     directory: /app
     schedule:
@@ -69,5 +67,17 @@ updates:
     ignore:
       # typescript-eslint has no TypeScript 7 support yet, which is why #1147
       # scaffolded the app on 6; take that major on deliberately.
+      # tests/ci/dependabot-config.test.js reads the peer range that holds
+      # each ignore below and goes red when it no longer does (#1241).
       - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      # eslint-plugin-jsx-a11y declares a peer of eslint up to ^9, so a bundled
+      # eslint major fails npm ci (#1233). The root carries this ignore for
+      # its .eslintrc.json; app/ is flat config already and carries it for
+      # the plugin. @eslint/js moves in lockstep and its 10 peers on eslint
+      # 10, so it is held with it. Both lift when an eslint-plugin-jsx-a11y
+      # release takes eslint 10 (#1238), which the same test says out loud.
+      - dependency-name: eslint
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@eslint/js'
         update-types: ['version-update:semver-major']

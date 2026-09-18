@@ -12,25 +12,76 @@ answers to.
 
 ---
 
-## [3.138.0] - 2026-09-17
-
-### Backend
-
-- Officers can plan who is in for each boss on a raid night
-  ([#1216](https://github.com/katogaming88/WGA-Raid-Hub/issues/1216)). A new
-  table, `boss_lineup_sitouts`, holds one row per raider sitting out one boss;
-  anyone without a row is in, so a night starts with everyone in. Officers
-  save a raid's whole lineup for a night at once through
-  `set_boss_lineup(team, date, raid, sit-outs)`, which refuses raiders from
-  other teams and writes one audit entry per save. The team's raiders,
-  officers, guild officers and site admins can read it; signed-out visitors
-  and other teams cannot. This is for the new app's Calendar page, which comes
-  next; nothing on the current site changes.
+## [3.137.6] - 2026-09-18
 
 ### Project
 
-- The decision is logged in `docs/database-decisions.md`, and the new table
-  and function are described in `docs/RLS.md`.
+- The three build tools Dependabot holds back for the new app (TypeScript,
+  eslint and its rule set) now say when the hold can be lifted. A test reads
+  the reason for each hold out of the app's lockfile every time that lockfile
+  changes and fails the pull request that makes a hold stale, naming the one to
+  remove ([#1241](https://github.com/katogaming88/WGA-Raid-Hub/issues/1241)).
+  Until now a hold outlived its reason quietly, since Dependabot obeys it and
+  never offers the newer version. The check runs on every Dependabot bump for
+  `app/`, which no `tests/ci` guard did before.
+
+## [3.137.5] - 2026-09-17
+
+### Project
+
+- Dependabot's weekly pull request for the new app's build and test tools now
+  holds eslint major versions back (eslint itself and its `@eslint/js`
+  companion, which moves with it), the way it already holds TypeScript
+  majors, until the app's accessibility lint plugin can run on them
+  ([#1238](https://github.com/katogaming88/WGA-Raid-Hub/issues/1238)). The
+  first run bundled eslint 10 into the group and the pull request could not
+  install its packages, which would have repeated every week. The test that
+  pins the entry's shape pins all three held majors.
+
+## [3.137.4] - 2026-09-17
+
+### Project
+
+- A change to `supabase/functions/.env.example` no longer has to be written up
+  as an Edge Functions release
+  ([#1223](https://github.com/katogaming88/WGA-Raid-Hub/issues/1223)). That
+  file is a template of local settings read only by `supabase functions serve`;
+  the deploy never uploads it and no function's version moves, but the
+  changelog check counted every path under the directory and demanded a
+  `### Functions` entry for it (3.101.3 carries one saying nothing shipped).
+  It is now project territory, like `config.toml`. A new test reads six
+  representative paths through the changelog rule, the version stamp and the
+  deploy selector at once and fails if any one of them disagrees with the
+  other two, and it runs on any pull request that touches the functions
+  directory. CONTRIBUTING's piece table says so; its drift paragraph no
+  longer claims the functions deploy by hand (a merge has deployed them since
+  #1083, and the deploy reads the version back since #971), and the PR
+  checklist names all five CHANGELOG sections instead of two.
+
+## [3.137.3] - 2026-09-17
+
+### Project
+
+- The new app's checks (typecheck, lint, format, unit tests, the build and
+  the browser suite) now also run after every merge to `main`, not only on
+  the pull request, so a merge that lands broken is seen within minutes
+  instead of at the next pull request
+  ([#1182](https://github.com/katogaming88/WGA-Raid-Hub/issues/1182)). Each
+  merge gets its own run; a later merge no longer cancels the one before it.
+
+## [3.137.2] - 2026-09-17
+
+### Project
+
+- The file that tells both the current site and the new app what the database
+  looks like (`js/database.types.ts`) is now generated from the migrations
+  by `npm run db:types`, and the Schema docs check fails a pull request that
+  changed the schema without regenerating it
+  ([#1181](https://github.com/katogaming88/WGA-Raid-Hub/issues/1181)). It had
+  been edited by hand since July and was four tables and seven database
+  functions behind; this release carries the first full regeneration. The
+  generator is pinned by image so every machine and CI write the same file,
+  and nothing is written unless the output is a complete types file.
 
 ## [3.137.1] - 2026-09-17
 

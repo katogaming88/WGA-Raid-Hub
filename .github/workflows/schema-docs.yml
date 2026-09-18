@@ -12,6 +12,8 @@ on:
       - 'scripts/ci/advisor-check.js'
       - 'supabase/definitions/**'
       - 'scripts/ci/export-definitions.js'
+      - 'js/database.types.ts'
+      - 'scripts/ci/gen-types.js'
       - '.github/workflows/schema-docs.yml'
 
 # A new push to the PR supersedes any still-running check on the old commit,
@@ -125,3 +127,12 @@ jobs:
           node-version: '20'
       - name: Fail if supabase/definitions/ is stale
         run: node scripts/ci/export-definitions.js --check
+      # The Supabase types both sites typecheck against (#1181). Same contract
+      # as the definitions: generated from the database the migrations build,
+      # and the PR fails when the committed file was not regenerated. The
+      # generator is a pinned postgres-meta image run through docker, not the
+      # CLI above: different CLI releases carry different generators and their
+      # output differs, so the pin lives in the script rather than in this
+      # workflow's CLI version.
+      - name: Fail if js/database.types.ts is stale
+        run: node scripts/ci/gen-types.js --check

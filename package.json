@@ -25,6 +25,8 @@
     "db:docs:check": "tbls diff",
     "db:definitions": "node scripts/ci/export-definitions.js",
     "db:definitions:check": "node scripts/ci/export-definitions.js --check",
+    "db:types": "node scripts/ci/gen-types.js",
+    "db:types:check": "node scripts/ci/gen-types.js --check",
     "db:rls": "psql \"postgres://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable\" -f docs/rls_policies.sql"
   },
   "devDependencies": {
