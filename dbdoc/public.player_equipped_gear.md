@@ -16,12 +16,14 @@ One row per player per physical gear slot (Blizzard API slot keys: HEAD, FINGER_
 | track | text |  | true |  |  | Gear upgrade track (Explorer/Adventurer/Veteran/Champion/Hero/Myth), derived from bonus_list via track_bonus_ids. Falls back to the item_level-vs-trackIlvlThresholds guess only when no bonus ID matches (crafted, Timewarped and similar gear carries no track bonus ID) -- that fallback cannot distinguish overlapping tracks and is a last resort, not the primary source. |
 | synced_at | timestamp with time zone | now() | false |  |  |  |
 | bonus_list | integer[] |  | true |  |  | The item's bonus IDs exactly as the Blizzard Character Equipment Summary returned them. track is derived from these via track_bonus_ids; kept raw so it can be re-derived without a re-sync. |
+| team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | player_equipped_gear_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
+| player_equipped_gear_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | player_equipped_gear_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | player_equipped_gear_player_id_equipment_slot_key | UNIQUE | UNIQUE (player_id, equipment_slot) |
 
@@ -32,12 +34,19 @@ One row per player per physical gear slot (Blizzard API slot keys: HEAD, FINGER_
 | player_equipped_gear_pkey | CREATE UNIQUE INDEX player_equipped_gear_pkey ON public.player_equipped_gear USING btree (id) |
 | player_equipped_gear_player_id_equipment_slot_key | CREATE UNIQUE INDEX player_equipped_gear_player_id_equipment_slot_key ON public.player_equipped_gear USING btree (player_id, equipment_slot) |
 
+## Triggers
+
+| Name | Definition |
+| ---- | ---------- |
+| trg_player_equipped_gear_team_id_check | CREATE TRIGGER trg_player_equipped_gear_team_id_check BEFORE INSERT OR UPDATE ON public.player_equipped_gear FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player() |
+
 ## Relations
 
 ```mermaid
 erDiagram
 
 "public.player_equipped_gear" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.player_equipped_gear" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.player_equipped_gear" {
   integer id
@@ -48,6 +57,7 @@ erDiagram
   text track
   timestamp_with_time_zone synced_at
   integer__ bonus_list
+  integer team_id FK
 }
 "public.players" {
   integer id
@@ -75,6 +85,14 @@ erDiagram
   timestamp_with_time_zone bis_link_updated_at
   text url_code
   text name_realm_key
+}
+"public.teams" {
+  integer id
+  text name
+  text slug
+  timestamp_with_time_zone archived_at
+  integer wcl_guild_id
+  integer guild_id FK
 }
 ```
 

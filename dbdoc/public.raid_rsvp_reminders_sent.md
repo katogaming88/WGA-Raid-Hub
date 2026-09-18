@@ -32,6 +32,12 @@ Dedup log for the optional-night DM reminder sweep (#895, part of #640) -- recor
 | raid_rsvp_reminders_sent_pkey | CREATE UNIQUE INDEX raid_rsvp_reminders_sent_pkey ON public.raid_rsvp_reminders_sent USING btree (id) |
 | raid_rsvp_reminders_sent_team_id_player_id_raid_date_checkp_key | CREATE UNIQUE INDEX raid_rsvp_reminders_sent_team_id_player_id_raid_date_checkp_key ON public.raid_rsvp_reminders_sent USING btree (team_id, player_id, raid_date, checkpoint) |
 
+## Triggers
+
+| Name | Definition |
+| ---- | ---------- |
+| trg_raid_rsvp_reminders_sent_team_id_check | CREATE TRIGGER trg_raid_rsvp_reminders_sent_team_id_check BEFORE INSERT OR UPDATE ON public.raid_rsvp_reminders_sent FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player() |
+
 ## Relations
 
 ```mermaid

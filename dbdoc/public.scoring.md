@@ -14,6 +14,7 @@
 | attendance_pct | numeric |  | true |  |  |  |
 | season | text |  | false |  | [public.seasons](public.seasons.md) |  |
 | updated_at | timestamp with time zone |  | true |  |  |  |
+| team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
 
 ## Constraints
 
@@ -22,6 +23,7 @@
 | scoring_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
 | scoring_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | scoring_player_id_season_key | UNIQUE | UNIQUE (player_id, season) |
+| scoring_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | scoring_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(code) |
 
 ## Indexes
@@ -36,6 +38,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | trg_scoring_updated_at | CREATE TRIGGER trg_scoring_updated_at BEFORE UPDATE ON public.scoring FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
+| trg_scoring_team_id_check | CREATE TRIGGER trg_scoring_team_id_check BEFORE INSERT OR UPDATE ON public.scoring FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player() |
 
 ## Relations
 
@@ -44,6 +47,7 @@ erDiagram
 
 "public.scoring" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.scoring" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.scoring" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.scoring" {
   integer id
@@ -56,6 +60,7 @@ erDiagram
   numeric attendance_pct
   text season FK
   timestamp_with_time_zone updated_at
+  integer team_id FK
 }
 "public.players" {
   integer id
@@ -90,6 +95,14 @@ erDiagram
   date starts_at
   date ends_at
   timestamp_with_time_zone created_at
+}
+"public.teams" {
+  integer id
+  text name
+  text slug
+  timestamp_with_time_zone archived_at
+  integer wcl_guild_id
+  integer guild_id FK
 }
 ```
 

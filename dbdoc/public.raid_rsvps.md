@@ -39,6 +39,7 @@ A raider's self-declared override for one raid night (#893, part of #640) -- abs
 | Name | Definition |
 | ---- | ---------- |
 | trg_raid_rsvps_updated_at | CREATE TRIGGER trg_raid_rsvps_updated_at BEFORE UPDATE ON public.raid_rsvps FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
+| trg_raid_rsvps_team_id_check | CREATE TRIGGER trg_raid_rsvps_team_id_check BEFORE INSERT OR UPDATE ON public.raid_rsvps FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player() |
 
 ## Relations
 

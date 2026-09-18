@@ -1098,6 +1098,7 @@ export type Database = {
           item_level: number | null
           player_id: number
           synced_at: string
+          team_id: number
           track: string | null
         }
         Insert: {
@@ -1108,6 +1109,7 @@ export type Database = {
           item_level?: number | null
           player_id: number
           synced_at?: string
+          team_id: number
           track?: string | null
         }
         Update: {
@@ -1118,6 +1120,7 @@ export type Database = {
           item_level?: number | null
           player_id?: number
           synced_at?: string
+          team_id?: number
           track?: string | null
         }
         Relationships: [
@@ -1141,6 +1144,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "rnlsi"
             referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "player_equipped_gear_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2212,6 +2222,7 @@ export type Database = {
           player_id: number
           recent_score: number | null
           season: string
+          team_id: number
           trend_score: number | null
           updated_at: string | null
         }
@@ -2224,6 +2235,7 @@ export type Database = {
           player_id: number
           recent_score?: number | null
           season: string
+          team_id: number
           trend_score?: number | null
           updated_at?: string | null
         }
@@ -2236,6 +2248,7 @@ export type Database = {
           player_id?: number
           recent_score?: number | null
           season?: string
+          team_id?: number
           trend_score?: number | null
           updated_at?: string | null
         }
@@ -2267,6 +2280,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "seasons"
             referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "scoring_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
           },
         ]
       }
