@@ -51,7 +51,7 @@ async function seedRingItem(q) {
 
 async function seedScoring(q, playerId, performance, attendance) {
   await q(
-    'insert into public.scoring (player_id, season, performance_score, attendance_score) values ($1, $2, $3, $4)',
+    'insert into public.scoring (player_id, team_id, season, performance_score, attendance_score) values ($1, 1, $2, $3, $4)',
     [playerId, SEASON, performance, attendance]
   );
 }
@@ -77,8 +77,8 @@ describe('generate_priority_order equipped-item exclusion', () => {
       await seedScoring(q, 2, 100, 100);
       await seedBoth1And2Bis(q, RING_ITEM_ID);
       await q(
-        `insert into public.player_equipped_gear (player_id, equipment_slot, item_id, item_level, track)
-         values (1, 'FINGER_1', $1, 700, 'Myth')`,
+        `insert into public.player_equipped_gear (player_id, team_id, equipment_slot, item_id, item_level, track)
+         values (1, 1, 'FINGER_1', $1, 700, 'Myth')`,
         [RING_WOW_ITEM_ID]
       );
 
@@ -96,8 +96,8 @@ describe('generate_priority_order equipped-item exclusion', () => {
       await seedScoring(q, 2, 100, 100);
       await seedBoth1And2Bis(q, RING_ITEM_ID);
       await q(
-        `insert into public.player_equipped_gear (player_id, equipment_slot, item_id, item_level, track)
-         values (1, 'FINGER_1', $1, 660, 'Hero')`,
+        `insert into public.player_equipped_gear (player_id, team_id, equipment_slot, item_id, item_level, track)
+         values (1, 1, 'FINGER_1', $1, 660, 'Hero')`,
         [RING_WOW_ITEM_ID]
       );
 
@@ -121,8 +121,8 @@ describe('generate_priority_order equipped-item exclusion', () => {
       await seedScoring(q, 2, 100, 100);
       await seedBoth1And2Bis(q, RING_ITEM_ID);
       await q(
-        `insert into public.player_equipped_gear (player_id, equipment_slot, item_id, item_level, track)
-         values (1, 'FINGER_1', 999999, 700, 'Myth')`
+        `insert into public.player_equipped_gear (player_id, team_id, equipment_slot, item_id, item_level, track)
+         values (1, 1, 'FINGER_1', 999999, 700, 'Myth')`
       );
 
       const res = await generate(asUser, RING_ITEM_ID, 'Myth');
@@ -142,8 +142,8 @@ describe('generate_priority_order equipped-item exclusion', () => {
       // item_id numerically matches the internal items.id (not the real
       // wow_item_id) must NOT be treated as owning the item.
       await q(
-        `insert into public.player_equipped_gear (player_id, equipment_slot, item_id, item_level, track)
-         values (1, 'FINGER_1', $1, 700, 'Myth')`,
+        `insert into public.player_equipped_gear (player_id, team_id, equipment_slot, item_id, item_level, track)
+         values (1, 1, 'FINGER_1', $1, 700, 'Myth')`,
         [RING_ITEM_ID]
       );
 
@@ -175,8 +175,8 @@ describe('generate_priority_order equipped-item exclusion', () => {
       // never the generic token -- wishlist/BiS stay keyed to the token, and
       // the synced row carries the resolved item's real wow_item_id.
       await q(
-        `insert into public.player_equipped_gear (player_id, equipment_slot, item_id, item_level, track)
-         values (1, 'CHEST', $1, 700, 'Myth')`,
+        `insert into public.player_equipped_gear (player_id, team_id, equipment_slot, item_id, item_level, track)
+         values (1, 1, 'CHEST', $1, 700, 'Myth')`,
         [RESOLVED_WOW_ITEM_ID]
       );
 

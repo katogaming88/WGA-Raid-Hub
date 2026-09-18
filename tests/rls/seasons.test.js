@@ -24,7 +24,7 @@ const CODE_INSERTS = {
   priority_stale_dismissals:
     'insert into public.priority_stale_dismissals (team_id, player_id, season, item_id) values (1, 1, $1, 2)',
   rclc_loot: "insert into public.rclc_loot (team_id, player_id, item_id, track, season) values (1, 1, 2, 'Hero', $1)",
-  scoring: 'insert into public.scoring (player_id, season) values (2, $1)',
+  scoring: 'insert into public.scoring (player_id, team_id, season) values (2, 1, $1)',
   tier_token_map:
     "insert into public.tier_token_map (season, token_item_id, class, resolved_item_id) values ($1, 1, 'TestClass', 2)",
   track_bonus_ids: "insert into public.track_bonus_ids (bonus_id, track, rank, season) values (999001, 'Hero', 1, $1)"
