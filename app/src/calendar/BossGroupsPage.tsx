@@ -7,7 +7,8 @@ import { bothQueries } from '../data/query';
 import { useTouchScreen } from '../lib/device';
 import { classColor, type PlayerRow } from '../roster/roster';
 import { useRosterPlayers } from '../roster/useRoster';
-import { useLeaveGuard } from './BossLineup';
+import { ColumnSizer } from './ColumnSizer';
+import { useLeaveGuard } from './leaveGuard';
 import { shortDay } from './calendar';
 import {
   changes,
@@ -322,6 +323,7 @@ function GroupsGrid({
               </th>
               {view.totals.map((t) => (
                 <th key={t.boss.id} scope="col" className="lineup-boss">
+                  <ColumnSizer bosses={raid.bosses} />
                   <span className="lineup-boss-name" aria-hidden="true">
                     {t.boss.short}
                   </span>
@@ -330,9 +332,6 @@ function GroupsGrid({
                     {t.count}/{raid.cap}
                   </span>
                   <span className="lineup-warn">{t.warn}</span>
-                  <span className="lineup-mix" aria-hidden="true">
-                    {t.tanks}T {t.healers}H {t.damage}D
-                  </span>
                   <span className="visually-hidden">
                     {plural(t.tanks, 'tank')}, {plural(t.healers, 'healer')}, {t.damage} damage
                   </span>

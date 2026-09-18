@@ -34,6 +34,12 @@ answers to.
 - Saving a boss on the Boss lineup no longer fails when the night still lists
   someone who has left the roster since it was filled; they are left out of
   the save.
+- Both boss grids fit without scrolling sideways: every boss column is the
+  same width, set by the longest word in a boss name, so a name wraps only
+  between words; the page grows past its usual width when the grid needs it,
+  and the side panel moves under the grid when both don't fit. Each boss's
+  header shows its name, count and warning; the role mix is read to screen
+  readers only.
 
 ## [3.140.3] - 2026-09-18
 
