@@ -6,12 +6,12 @@
 // Each test runs in one rolled-back transaction (helpers.js withTxn):
 // fixtures as postgres, impersonated calls as the caller.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, RAIDER_T1, OFFICER_T1, SITE_ADMIN } from './helpers.js';
+import { pool, withTxn, seedPlayer, RAIDER_T1, OFFICER_T1, SITE_ADMIN } from './helpers.js';
 
 afterAll(() => pool.end());
 
 // Seeded: guild 'wga' (made by the migration), teams 1 phoenix, 2 hellfire,
-// 3 immolation, 4 wrathless; player 1 is on team 1, player 3 on team 2.
+// 3 immolation, 4 wrathless; player 1 is on team 1 and is only ever read.
 const resolve = (run, guild, team = null, player = null) =>
   run('select * from public.resolve_address($1, $2, $3)', [guild, team, player]).then((r) => r.rows);
 
@@ -114,11 +114,14 @@ describe('who can read and change keys', () => {
 
   it('a player code cannot change, even for an officer who can edit the row', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await expect(asUser(OFFICER_T1, "update public.players set url_code = 'aaaaaaaa' where id = 1")).rejects.toThrow(
-        /url_code cannot change/
+      const pid = await seedPlayer(q, { teamId: 1 });
+      await expect(
+        asUser(OFFICER_T1, "update public.players set url_code = 'aaaaaaaa' where id = $1", [pid])
+      ).rejects.toThrow(/url_code cannot change/);
+      await asUser(OFFICER_T1, "update public.players set nickname = 'Still editable' where id = $1", [pid]);
+      expect((await q('select nickname from public.players where id = $1', [pid])).rows[0].nickname).toBe(
+        'Still editable'
       );
-      await asUser(OFFICER_T1, "update public.players set nickname = 'Still editable' where id = 1");
-      expect((await q('select nickname from public.players where id = 1')).rows[0].nickname).toBe('Still editable');
     });
   });
 
