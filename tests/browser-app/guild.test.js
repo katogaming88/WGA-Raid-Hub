@@ -260,8 +260,8 @@ describe('Guild home (new app), other states', () => {
       // and its groups stay in one order on a team page too (#1228).
       const headings = await page.locator('.nav-heading').allTextContents();
       expect(headings).toEqual(['Guild', 'You', 'Team', 'Officer']);
-      await page.locator('#sidebar').getByRole('link', { name: 'Roster' }).click();
-      await page.waitForURL('**/t/phoenix/roster');
+      await page.locator('#sidebar').getByRole('link', { name: 'Calendar' }).click();
+      await page.getByRole('heading', { name: 'Calendar', level: 1 }).waitFor();
       expect(await page.locator('.nav-heading').allTextContents()).toEqual(headings);
     } finally {
       await context.close();
