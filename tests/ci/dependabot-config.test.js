@@ -33,23 +33,39 @@ function groupNames(entry) {
   return [...block[1].matchAll(/^\s{6}([a-z-]+):$/gm)].map((m) => m[1]);
 }
 
-// The names an entry ignores at their major: every dependency-name whose
-// update-types names semver-major, or that has no update-types line at all,
-// which ignores every update.
+// The names an entry ignores at their major, read entry by entry from its
+// ignore block: an entry holds the major when its update-types names
+// semver-major, inline or as a block list, or when it has no update-types at
+// all, which ignores every update. An entry that pins `versions:` ignores
+// those versions and holds nothing. A trailing comment is not the name.
 function heldNames(entry) {
-  return [...entry.matchAll(/^\s+- dependency-name: (.+)$(?:\n\s+update-types: \[(.*)\])?/gm)]
-    .filter((m) => m[2] === undefined || m[2].includes('version-update:semver-major'))
-    .map((m) => unquote(m[1]));
+  const block = entry.match(/^\s+ignore:\n((?:\s{6,}.*\n?)+)/m);
+  if (!block) return [];
+  return block[1]
+    .split(/^\s+- dependency-name: /m)
+    .slice(1)
+    .filter((item) => !/^\s+versions:/m.test(item))
+    .filter((item) => !/^\s+update-types:/m.test(item) || item.includes('version-update:semver-major'))
+    .map((item) =>
+      unquote(
+        item
+          .split('\n')[0]
+          .replace(/\s+#.*$/, '')
+          .trim()
+      )
+    );
 }
 
 // A version as [major, minor, patch, release], where release is 1 for a bare
 // version and 0 for one carrying a prerelease tag, so a tagged bound sorts
-// just below the release it names and every operator compares the same way.
-// `parts` says how many segments were written, which ^ and ~ need.
+// just below the release it names. `parts` is how many segments were
+// written: a partial version is an x-range in node-semver, and only the
+// forms where that means the same as zero-filling (^, ~, >=, <) are read.
 function parseVersion(text) {
-  const m = /^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(-[0-9A-Za-z.-]+)?$/.exec(text);
+  const m = /^v?(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?(?:\.(0|[1-9]\d*))?(-[0-9A-Za-z.-]+)?$/.exec(text);
   if (!m) throw new Error(`cannot read version: ${text}`);
   const parts = m[3] !== undefined ? 3 : m[2] !== undefined ? 2 : 1;
+  if (parts < 3 && m[4]) throw new Error(`cannot read version: ${text} (a prerelease tag on a partial)`);
   return { tuple: [Number(m[1]), Number(m[2] ?? 0), Number(m[3] ?? 0), m[4] ? 0 : 1], parts };
 }
 
@@ -69,59 +85,104 @@ function upperBound(op, { tuple: [major, minor, patch], parts }) {
   return [0, 0, patch + 1, 0];
 }
 
-// One comparator (`^9`, `>=4.8.4`, `<6.1.0`, `5.0.0`, `*`) as a predicate on
-// a parsed version. A bare partial version is an x-range in node-semver, and
-// x-ranges and hyphen ranges are not read here: nothing in app/ uses them,
-// and a throw is a red test that says so rather than a silent pass.
-function comparator(token) {
-  if (token === '*' || token === '') return () => true;
+// One comparator (`^9`, `>=4.8.4`, `<6.1.0`, `5.0.0`, `*`) as the interval
+// it admits: `lo` and `hi` are tuples or null for open, each with an
+// inclusive flag. Refused, with a throw: an x-range, a partial version after
+// any operator but ^ ~ >= <, and anything parseVersion cannot read.
+function interval(token) {
+  if (token === '*' || token === '') return { lo: null, hi: null };
   const m = /^(\^|~|>=|<=|>|<|=)?(.+)$/.exec(token);
   const op = m[1] ?? '';
   if (/^[^-]*[xX*]/.test(m[2])) throw new Error(`cannot read range: ${token} (an x-range)`);
   const bound = parseVersion(m[2]);
-  if (op === '' && bound.parts < 3)
-    throw new Error(`cannot read range: ${token} (a bare partial version is an x-range)`);
-  const lower = bound.tuple;
-  if (op === '^' || op === '~') {
-    const upper = upperBound(op, bound);
-    return (v) => compare(v, lower) >= 0 && compare(v, upper) < 0;
-  }
-  if (op === '>=') return (v) => compare(v, lower) >= 0;
-  if (op === '>') return (v) => compare(v, lower) > 0;
-  if (op === '<') return (v) => compare(v, lower) < 0;
-  if (op === '<=') return (v) => compare(v, lower) <= 0;
-  return (v) => compare(v, lower) === 0;
+  if (bound.parts < 3 && !['^', '~', '>=', '<'].includes(op))
+    throw new Error(`cannot read range: ${token} (a partial version is an x-range)`);
+  const v = bound.tuple;
+  if (op === '^' || op === '~') return { lo: v, loIn: true, hi: upperBound(op, bound), hiIn: false };
+  if (op === '>=') return { lo: v, loIn: true, hi: null };
+  if (op === '>') return { lo: v, loIn: false, hi: null };
+  if (op === '<') return { lo: null, hi: v, hiIn: false };
+  if (op === '<=') return { lo: null, hi: v, hiIn: true };
+  return { lo: v, loIn: true, hi: v, hiIn: true };
 }
 
-// Whether a peer range admits a version: any `||` alternative whose
-// comparators all pass. An operator may be followed by a space in the wild
-// (`>= 4.21.0`), so that is folded before the split on whitespace.
-function admits(range, version) {
-  const v = parseVersion(version).tuple;
+// Whether a set of intervals has a common point: the tightest lower bound
+// against the tightest upper, where at equal tuples an exclusive end wins.
+function overlap(intervals) {
+  let lo = null;
+  let loIn = true;
+  let hi = null;
+  let hiIn = true;
+  for (const i of intervals) {
+    if (i.lo && (!lo || compare(i.lo, lo) > 0 || (compare(i.lo, lo) === 0 && !i.loIn))) [lo, loIn] = [i.lo, i.loIn];
+    if (i.hi && (!hi || compare(i.hi, hi) < 0 || (compare(i.hi, hi) === 0 && !i.hiIn))) [hi, hiIn] = [i.hi, i.hiIn];
+  }
+  if (!lo || !hi) return true;
+  const c = compare(lo, hi);
+  return c < 0 || (c === 0 && loIn && hiIn);
+}
+
+// Whether any `||` alternative of a range overlaps the probe. An operator
+// may be followed by a space in the wild (`>= 4.21.0`), so that is folded
+// when a digit follows; a hyphen range is refused.
+function overlaps(range, probe) {
   return range.split('||').some((alternative) => {
-    const text = alternative.trim().replace(/(\^|~|>=|<=|>|<|=)\s+/g, '$1');
+    const text = alternative.trim().replace(/(\^|~|>=|<=|>|<|=)\s+(?=v?\d)/g, '$1');
     if (/\s-\s/.test(text)) throw new Error(`cannot read range: ${text} (a hyphen range)`);
-    return text.split(/\s+/).every((token) => comparator(token)(v));
+    return overlap([probe, ...text.split(/\s+/).map(interval)]);
   });
 }
 
-// Every package in a lockfile that declares a peer range on `name`, by the
-// name of the package (the segment after its last node_modules/), with the
-// range. Nested copies count: npm resolves them against the tree above.
+// Whether a range admits one release version. A prerelease is refused:
+// node-semver admits one only when the range names its tuple, which this
+// reader does not model, and the tripwire never asks.
+function admits(range, version) {
+  const v = parseVersion(version);
+  if (v.tuple[3] === 0) throw new Error(`cannot read version: ${version} (only a release is probed)`);
+  return overlaps(range, { lo: v.tuple, loIn: true, hi: v.tuple, hiIn: true });
+}
+
+// Whether a range admits any release in a major: from N.0.0 up to, and not
+// including, the first prerelease of N+1. This is the hold question, since
+// Dependabot proposes the latest release of the major, not its first.
+function admitsAnyIn(range, major) {
+  return overlaps(range, { lo: [major, 0, 0, 1], loIn: true, hi: [major + 1, 0, 0, 0], hiIn: false });
+}
+
+// The copy of `name` a package at `key` reaches before the top level: its
+// own node_modules, then each enclosing one. Null when there is none, so the
+// package binds the top-level copy, which is the one a Dependabot bump moves.
+function nestedCopy(lock, key, name) {
+  let dir = key;
+  while (dir) {
+    const candidate = `${dir}/node_modules/${name}`;
+    if (lock.packages[candidate]) return candidate;
+    const i = dir.lastIndexOf('node_modules/');
+    dir = i > 0 ? dir.slice(0, i - 1) : '';
+  }
+  return null;
+}
+
+// Every package whose peer range on `name` binds its top-level copy, by the
+// package's name (the segment after its last node_modules/; a linked package
+// keeps its key), with the range. An optional peer counts: npm enforces it
+// once the peer is installed, which is how #1233's successor probe failed.
 function peersOn(lock, name) {
   return Object.entries(lock.packages)
     .filter(([key, pkg]) => key !== '' && pkg.peerDependencies?.[name] !== undefined)
+    .filter(([key]) => nestedCopy(lock, key, name) === null)
     .map(([key, pkg]) => ({
-      name: key.slice(key.lastIndexOf('node_modules/') + 'node_modules/'.length),
+      name: key.includes('node_modules/') ? key.slice(key.lastIndexOf('node_modules/') + 'node_modules/'.length) : key,
       version: pkg.version,
       range: pkg.peerDependencies[name]
     }));
 }
 
-// The names of the packages whose peer range on `name` excludes `version`.
-function holders(lock, name, version) {
+// The names of the packages whose peer range on `name` admits nothing in
+// `major`: while any exist, the hold on `name` still stands.
+function holders(lock, name, major) {
   return peersOn(lock, name)
-    .filter((peer) => !admits(peer.range, version))
+    .filter((peer) => !admitsAnyIn(peer.range, major))
     .map((peer) => peer.name);
 }
 
@@ -131,8 +192,7 @@ function holders(lock, name, version) {
 // the eslint pair that way. `yamlName` is the token as it sits in the file
 // (an @-scoped name is quoted in YAML); `judgedBy` is the name whose peer
 // ranges say whether the hold still stands, which for @eslint/js is eslint,
-// since the two move in lockstep. A hold with a reason that is not a peer
-// range would carry null there and the tripwire would leave it alone.
+// since the two move in lockstep.
 const heldMajors = [
   { yamlName: 'typescript', reason: 'typescript-eslint has no 7', judgedBy: 'typescript' },
   { yamlName: 'eslint', reason: 'eslint-plugin-jsx-a11y caps eslint at 9 (#1238)', judgedBy: 'eslint' },
