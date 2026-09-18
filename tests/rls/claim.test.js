@@ -11,17 +11,28 @@
 // transaction (and does not mask the real error when the role reset runs
 // inside an aborted transaction).
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, insertDiscordUser, grantGuild, RAIDER_T1 } from './helpers.js';
+import {
+  pool,
+  withTxn,
+  insertDiscordUser,
+  grantGuild,
+  seedPlayer,
+  seedMember,
+  seedTeam,
+  RAIDER_T1,
+  TEAM_LEADER_T1
+} from './helpers.js';
 
-// Seeded rows this file leans on (supabase/seed.sql): player 1 is team 1
-// 'Seedraider-Illidan', player 2 is team 1 'Seedplayertwo-Illidan', player 3
-// is team 2. team_members 3 is the team 1 raider (auth_user_id = RAIDER_T1,
-// name_realm 'Seedraider-Illidan'). The migration's one-time name_realm
-// backfill is a no-op on a fresh DB (it runs before seed.sql loads), so every
-// seeded player starts unlinked.
+// Seeded rows this file leans on (supabase/seed.sql): team_members 3 is the
+// team 1 raider (auth_user_id = RAIDER_T1), 1 is the team 1 officer, 4 is the
+// hellfire (team 2) officer. Every character a case claims is one it minted
+// unlinked on that team (#1123), so no case writes a seeded players row.
 
 const claim = (asUser, uid, teamId, nameRealm) =>
   asUser(uid, 'select * from public.claim_character($1, $2)', [teamId, nameRealm]);
+
+const linkOf = async (q, playerId) =>
+  (await q('select team_member_id from public.players where id = $1', [playerId])).rows[0].team_member_id;
 
 // An account and the Discord identity behind it, which is what fires the link
 // trigger since #1135; callers pass a distinct uuid and Discord id per test.
@@ -54,7 +65,7 @@ describe('team_members self-read policy', () => {
 describe('claim_character rejects invalid claims', () => {
   it('anon cannot execute the function', async () => {
     await withTxn(async ({ asAnon }) => {
-      await expect(asAnon('select * from public.claim_character(1, $1)', ['Seedplayertwo-Illidan'])).rejects.toThrow();
+      await expect(asAnon('select * from public.claim_character(1, $1)', ['Anonclaim-Illidan'])).rejects.toThrow();
     });
   });
 
@@ -75,8 +86,9 @@ describe('claim_character rejects invalid claims', () => {
 
   it('an already-claimed character is rejected', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await q('update public.players set team_member_id = 1 where id = 2');
-      await expect(claim(asUser, RAIDER_T1, 1, 'Seedplayertwo-Illidan')).rejects.toThrow(/already claimed/);
+      // Linked to the team 1 officer's row.
+      await seedPlayer(q, { memberId: 1, nameRealm: 'Alreadyclaimed-Illidan' });
+      await expect(claim(asUser, RAIDER_T1, 1, 'Alreadyclaimed-Illidan')).rejects.toThrow(/already claimed/);
     });
   });
 });
@@ -86,9 +98,10 @@ describe('claim_character links a character to the caller', () => {
     await withTxn(async ({ q, asUser }) => {
       const uid = '00000000-0000-0000-0000-0000000000aa';
       await addAuthUser(q, uid, 'discord-brandnew');
+      const playerId = await seedPlayer(q, { teamId: 1, nameRealm: 'Brandnew-Illidan' });
 
-      const res = await claim(asUser, uid, 1, 'Seedplayertwo-Illidan');
-      expect(res.rows[0].name_realm).toBe('Seedplayertwo-Illidan');
+      const res = await claim(asUser, uid, 1, 'Brandnew-Illidan');
+      expect(res.rows[0].name_realm).toBe('Brandnew-Illidan');
       expect(res.rows[0].role).toBe('raider');
 
       const members = (await q('select * from public.team_members where auth_user_id = $1', [uid])).rows;
@@ -97,10 +110,7 @@ describe('claim_character links a character to the caller', () => {
       expect(members[0].role).toBe('raider');
       expect(members[0].team_id).toBe(1);
 
-      const player = (
-        await q("select team_member_id from public.players where name_realm = 'Seedplayertwo-Illidan' and team_id = 1")
-      ).rows[0];
-      expect(player.team_member_id).toBe(members[0].id);
+      expect(await linkOf(q, playerId)).toBe(members[0].id);
     });
   });
 
@@ -116,30 +126,27 @@ describe('claim_character links a character to the caller', () => {
         "insert into public.team_members (team_id, discord_id, role, name_realm) values (1, 'discord-late', 'raider', 'Latecomer-Illidan')"
       );
 
-      await claim(asUser, uid, 1, 'Seedplayertwo-Illidan');
+      const playerId = await seedPlayer(q, { teamId: 1, nameRealm: 'Lateclaim-Illidan' });
+
+      await claim(asUser, uid, 1, 'Lateclaim-Illidan');
 
       const rows = (await q("select id, auth_user_id from public.team_members where discord_id = 'discord-late'")).rows;
       expect(rows).toHaveLength(1);
       expect(rows[0].auth_user_id).toBe(uid);
-      const player = (
-        await q("select team_member_id from public.players where name_realm = 'Seedplayertwo-Illidan' and team_id = 1")
-      ).rows[0];
-      expect(player.team_member_id).toBe(rows[0].id);
+      expect(await linkOf(q, playerId)).toBe(rows[0].id);
     });
   });
 
   it('an existing member claiming a second character reuses their row (alts)', async () => {
     await withTxn(async ({ q, asUser }) => {
+      const playerId = await seedPlayer(q, { teamId: 1, nameRealm: 'Altclaim-Illidan' });
       const before = (await q('select count(*)::int as n from public.team_members')).rows[0].n;
-      await claim(asUser, RAIDER_T1, 1, 'Seedplayertwo-Illidan');
+      await claim(asUser, RAIDER_T1, 1, 'Altclaim-Illidan');
       const after = (await q('select count(*)::int as n from public.team_members')).rows[0].n;
       expect(after).toBe(before);
 
       const memberId = (await q('select id from public.team_members where auth_user_id = $1', [RAIDER_T1])).rows[0].id;
-      const player = (
-        await q("select team_member_id from public.players where name_realm = 'Seedplayertwo-Illidan' and team_id = 1")
-      ).rows[0];
-      expect(player.team_member_id).toBe(memberId);
+      expect(await linkOf(q, playerId)).toBe(memberId);
     });
   });
 });
@@ -156,12 +163,13 @@ describe('claim_character links a character to the caller', () => {
 describe('a forged Discord id in metadata reaches nobody else row', () => {
   const IMPOSTOR = '00000000-0000-0000-0000-0000000000c1';
   // team_members 4 is the hellfire officer (discord-officer-2), linked to user
-  // 5, and hellfire has an unclaimed seeded character.
+  // 5; the character claimed on hellfire is minted per case.
   const OFFICER_DISCORD = 'discord-officer-2';
   const OFFICER_UID = '00000000-0000-0000-0000-000000000005';
   const IMPOSTOR_DISCORD = 'discord-impostor-claim';
   const HELLFIRE = 2;
-  const TARGET = 'Seedhellfire-Illidan';
+  const TARGET = 'Forgedclaim-Illidan';
+  const target = (q) => seedPlayer(q, { teamId: HELLFIRE, nameRealm: TARGET });
 
   // Metadata claiming the officer Discord id, over an identity row that says
   // otherwise. The metadata is exactly what the account itself can write.
@@ -169,6 +177,7 @@ describe('a forged Discord id in metadata reaches nobody else row', () => {
 
   it('leaves the officer row with its owner', async () => {
     await withTxn(async ({ q, asUser }) => {
+      await target(q);
       await addImpostor(q);
       await claim(asUser, IMPOSTOR, HELLFIRE, TARGET);
 
@@ -179,6 +188,7 @@ describe('a forged Discord id in metadata reaches nobody else row', () => {
 
   it('gives the impostor a raider row on their own Discord id, not the officer role', async () => {
     await withTxn(async ({ q, asUser }) => {
+      await target(q);
       await addImpostor(q);
       const res = await claim(asUser, IMPOSTOR, HELLFIRE, TARGET);
       expect(res.rows[0].role).toBe('raider');
@@ -191,13 +201,10 @@ describe('a forged Discord id in metadata reaches nobody else row', () => {
 
   it('still lets the rightful owner claim on that team', async () => {
     await withTxn(async ({ q, asUser }) => {
+      const playerId = await target(q);
       const res = await claim(asUser, OFFICER_UID, HELLFIRE, TARGET);
       expect(res.rows[0].role).toBe('officer');
-
-      const player = (
-        await q('select team_member_id from public.players where name_realm = $1 and team_id = $2', [TARGET, HELLFIRE])
-      ).rows[0];
-      expect(player.team_member_id).toBe(4);
+      expect(await linkOf(q, playerId)).toBe(4);
     });
   });
 });
@@ -207,7 +214,7 @@ describe("a team_members row's account is always its person's (#942 step 3)", ()
   const OTHER = '00000000-0000-0000-0000-000000000005';
   const SHARED_DISCORD = 'discord-legacy-collision';
   const HELLFIRE = 2;
-  const TARGET = 'Seedhellfire-Illidan';
+  const TARGET = 'Legacyclaim-Illidan';
 
   // Until step 3, claim_character refused a row carrying the caller's own
   // Discord id but linked to somebody else (#1117). That row can no longer be
@@ -215,6 +222,7 @@ describe("a team_members row's account is always its person's (#942 step 3)", ()
   // the person its Discord id belongs to.
   it('a row written with another account gets the Discord id owner instead, and the owner can claim', async () => {
     await withTxn(async ({ q, asUser }) => {
+      const playerId = await seedPlayer(q, { teamId: HELLFIRE, nameRealm: TARGET });
       await insertDiscordUser(q, CALLER, SHARED_DISCORD);
       const memberId = (
         await q(
@@ -228,50 +236,55 @@ describe("a team_members row's account is always its person's (#942 step 3)", ()
       ).toBe(CALLER);
 
       await claim(asUser, CALLER, HELLFIRE, TARGET);
-      const player = (
-        await q('select team_member_id from public.players where name_realm = $1 and team_id = $2', [TARGET, HELLFIRE])
-      ).rows[0];
-      expect(player.team_member_id).toBe(memberId);
+      expect(await linkOf(q, playerId)).toBe(memberId);
     });
   });
 
   it('a team leader cannot point a membership on their team at another account', async () => {
     await withTxn(async ({ q, asUser }) => {
-      // team_members id 3 is the seeded team 1 raider (RAIDER_T1).
-      await asUser(
-        '00000000-0000-0000-0000-000000000002',
-        'update public.team_members set auth_user_id = $1 where id = 3',
-        [OTHER]
-      );
-      expect((await q('select auth_user_id from public.team_members where id = 3')).rows[0].auth_user_id).toBe(
-        RAIDER_T1
-      );
+      // A raider of team 1's own, so the leader's update hits a row this
+      // transaction minted rather than the seeded raider's.
+      const raider = await seedMember(q, { teamId: 1 });
+      await asUser(TEAM_LEADER_T1, 'update public.team_members set auth_user_id = $1 where id = $2', [
+        OTHER,
+        raider.memberId
+      ]);
+      expect(
+        (await q('select auth_user_id from public.team_members where id = $1', [raider.memberId])).rows[0].auth_user_id
+      ).toBe(raider.uid);
     });
   });
 });
 
-describe('the one-time name_realm backfill links matching players', () => {
+describe("the name_realm backfill's matching rule links a player to the member with its name", () => {
   it('sets team_member_id where a team_members.name_realm matches a player', async () => {
     await withTxn(async ({ q }) => {
-      // player 1 matches team_members 3 by name_realm but starts unlinked (the
-      // migration backfill ran before seed.sql loaded this row).
-      const before = (
-        await q("select team_member_id from public.players where name_realm = 'Seedraider-Illidan' and team_id = 1")
-      ).rows[0];
-      expect(before.team_member_id).toBeNull();
+      // The migration's join (team, name_realm, unlinked) on a team of its
+      // own: the statement here adds a team_id predicate, so this covers the
+      // matching rule and not the one-time statement itself, which ran over
+      // every unlinked player and would here take every seeded one the rest
+      // of the suite is writing. The raider carries a name_realm and the
+      // player with that name starts unlinked.
+      const team = await seedTeam(q);
+      await q('update public.team_members set name_realm = $1 where id = $2', [
+        'Backfilled-Illidan',
+        team.raider.memberId
+      ]);
+      const playerId = await seedPlayer(q, { teamId: team.teamId, nameRealm: 'Backfilled-Illidan' });
+      expect(await linkOf(q, playerId)).toBeNull();
 
-      await q(`update public.players p
-                  set team_member_id = tm.id
-                 from public.team_members tm
-                where p.team_id = tm.team_id
-                  and p.name_realm = tm.name_realm
-                  and p.team_member_id is null`);
+      await q(
+        `update public.players p
+            set team_member_id = tm.id
+           from public.team_members tm
+          where p.team_id = tm.team_id
+            and p.name_realm = tm.name_realm
+            and p.team_member_id is null
+            and p.team_id = $1`,
+        [team.teamId]
+      );
 
-      const after = (
-        await q("select team_member_id from public.players where name_realm = 'Seedraider-Illidan' and team_id = 1")
-      ).rows[0];
-      const member3 = (await q("select id from public.team_members where discord_id = 'discord-raider-1'")).rows[0].id;
-      expect(after.team_member_id).toBe(member3);
+      expect(await linkOf(q, playerId)).toBe(team.raider.memberId);
     });
   });
 });

@@ -17,6 +17,8 @@ import {
   pool,
   withTxn as withSharedTxn,
   insertDiscordUser,
+  seedPlayer,
+  seedTeam,
   grantGuild,
   OFFICER_T1,
   TEAM_LEADER_T1,
@@ -27,7 +29,8 @@ import {
 //   team 1 'Team Phoenix', team 2 'Hellfire Rollers' (supabase/seed.sql)
 //   team 4 'Wrathless' (20260826220829), seeded with an officer, a team leader,
 //   a raider and one player since #1065
-//   player 1 'Seedraider-Illidan' on team 1, team_member_id null
+// A case that needs a character pointing at a member mints one, and the
+// archived-team case mints its team; no seeded row is written here (#1123).
 const TEAM_1 = 1;
 const TEAM_2 = 2;
 const WRATHLESS = 4;
@@ -265,8 +268,10 @@ describe('admin_grant_team_role() authorization', () => {
 
   it('refuses an archived team', async () => {
     await withTxn(async (q, asUser) => {
-      await q('update public.teams set archived_at = now() where id = $1', [WRATHLESS]);
-      await expect(grant(asUser, SITE_ADMIN, WRATHLESS, NO_ACCOUNT, 'officer')).rejects.toThrow(/archived/i);
+      // A team of the test's own, so archiving it touches no seeded row.
+      const { teamId } = await seedTeam(q);
+      await q('update public.teams set archived_at = now() where id = $1', [teamId]);
+      await expect(grant(asUser, SITE_ADMIN, teamId, NO_ACCOUNT, 'officer')).rejects.toThrow(/archived/i);
     });
   });
 });
@@ -297,12 +302,12 @@ describe('admin_revoke_team_role() never unclaims a character', () => {
     // member would silently unclaim the character with no error anywhere.
     await withTxn(async (q, asUser) => {
       const memberId = await newMember(q, TEAM_1, NO_ACCOUNT, 'officer');
-      await q('update public.players set team_member_id = $1 where id = 1', [memberId]);
+      const pid = await seedPlayer(q, { memberId });
 
       await revoke(asUser, SITE_ADMIN, TEAM_1, NO_ACCOUNT);
 
       expect((await memberRow(q, TEAM_1, NO_ACCOUNT)).role).toBe('raider');
-      const player = (await q('select team_member_id from public.players where id = 1')).rows[0];
+      const player = (await q('select team_member_id from public.players where id = $1', [pid])).rows[0];
       expect(player.team_member_id).toBe(memberId);
     });
   });
@@ -319,7 +324,7 @@ describe('admin_revoke_team_role() never unclaims a character', () => {
   it('logs a demote and a delete under different actions', async () => {
     await withTxn(async (q, asUser) => {
       const memberId = await newMember(q, TEAM_1, NO_ACCOUNT, 'officer');
-      await q('update public.players set team_member_id = $1 where id = 1', [memberId]);
+      await seedPlayer(q, { memberId });
       await revoke(asUser, SITE_ADMIN, TEAM_1, NO_ACCOUNT);
       const demote = await lastLog(q);
 

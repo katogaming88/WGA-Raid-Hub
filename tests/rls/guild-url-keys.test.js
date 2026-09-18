@@ -6,17 +6,37 @@
 // Each test runs in one rolled-back transaction (helpers.js withTxn):
 // fixtures as postgres, impersonated calls as the caller.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, RAIDER_T1, OFFICER_T1, SITE_ADMIN } from './helpers.js';
+import { pool, withTxn, seedPlayer, RAIDER_T1, OFFICER_T1, SITE_ADMIN } from './helpers.js';
 
 afterAll(() => pool.end());
 
 // Seeded: guild 'wga' (made by the migration), teams 1 phoenix, 2 hellfire,
-// 3 immolation, 4 wrathless; player 1 is on team 1, player 3 on team 2.
+// 3 immolation, 4 wrathless; player 1 is on team 1. The seeded rows are only
+// ever read: a key is in a unique index, so changing one locks the row
+// against every worker holding a reference to it (#1123), and every case
+// that changes a key does so on a team or guild it minted.
 const resolve = (run, guild, team = null, player = null) =>
   run('select * from public.resolve_address($1, $2, $3)', [guild, team, player]).then((r) => r.rows);
 
 const codeOf = async (q, playerId) =>
   (await q('select url_code from public.players where id = $1', [playerId])).rows[0].url_code;
+
+// A team of the file's own, born with the key it is given, in WGA unless a
+// guild is given. Returns the id.
+const mintTeam = async (q, name, slug, guildId = null) =>
+  (
+    await q(
+      `insert into public.teams (name, slug, guild_id)
+       values ($1, $2, coalesce($3, (select id from public.guilds where url_key = 'wga'))) returning id`,
+      [name, slug, guildId]
+    )
+  ).rows[0].id;
+
+// A second guild of the file's own. Returns the id.
+const mintGuild = async (q, name = 'Other Guild', urlKey = 'other') =>
+  (await q('insert into public.guilds (name, url_key) values ($1, $2) returning id', [name, urlKey])).rows[0].id;
+
+const rename = (q, teamId, slug) => q('update public.teams set slug = $1 where id = $2', [slug, teamId]);
 
 describe('guild and key data', () => {
   it('every team belongs to WGA, and WGA keeps its readable keys', async () => {
@@ -47,25 +67,33 @@ describe('guild and key data', () => {
 
   it('keys must be lowercase letters, digits and single hyphens', async () => {
     await withTxn(async ({ q, asRole }) => {
+      const team = await mintTeam(q, 'Fixture Phoenix', 'fixture-phoenix');
+      const guild = await mintGuild(q);
       const asPostgres = asRole('postgres', null);
-      await expect(asPostgres("update public.teams set slug = 'Team Phoenix' where id = 1")).rejects.toThrow(
+      await expect(asPostgres("update public.teams set slug = 'Team Phoenix' where id = $1", [team])).rejects.toThrow(
         /teams_slug_format/
       );
-      await expect(asPostgres("update public.guilds set url_key = 'wga--x'")).rejects.toThrow(/guilds_url_key_format/);
-      await expect(asPostgres("update public.teams set slug = 'x' where id = 1")).rejects.toThrow(/teams_slug_format/);
-      await q("update public.teams set slug = 'team-phoenix' where id = 1");
+      await expect(asPostgres("update public.guilds set url_key = 'wga--x' where id = $1", [guild])).rejects.toThrow(
+        /guilds_url_key_format/
+      );
+      await expect(asPostgres("update public.teams set slug = 'x' where id = $1", [team])).rejects.toThrow(
+        /teams_slug_format/
+      );
+      await rename(q, team, 'fixture-team-phoenix');
     });
   });
 
   it('a team key is unique within its guild, not across guilds', async () => {
     await withTxn(async ({ q, asRole }) => {
-      const other = (await q("insert into public.guilds (name, url_key) values ('Other Guild', 'other') returning id"))
-        .rows[0].id;
-      await q("insert into public.teams (name, slug, guild_id) values ('Other Phoenix', 'phoenix', $1)", [other]);
+      await mintTeam(q, 'Fixture Phoenix', 'fixture-phoenix');
+      const other = await mintGuild(q);
+      await q("insert into public.teams (name, slug, guild_id) values ('Other Phoenix', 'fixture-phoenix', $1)", [
+        other
+      ]);
       const wga = (await q("select id from public.guilds where url_key = 'wga'")).rows[0].id;
       await expect(
         asRole('postgres', null)(
-          "insert into public.teams (name, slug, guild_id) values ('Second Phoenix', 'phoenix', $1)",
+          "insert into public.teams (name, slug, guild_id) values ('Second Phoenix', 'fixture-phoenix', $1)",
           [wga]
         )
       ).rejects.toThrow(/teams_guild_id_slug_key/);
@@ -76,13 +104,16 @@ describe('guild and key data', () => {
 describe('who can read and change keys', () => {
   it('anon reads guilds, retired keys and player codes, and can resolve an address', async () => {
     await withTxn(async ({ q, asAnon }) => {
-      await q("update public.teams set slug = 'team-phoenix' where id = 1");
+      const team = await mintTeam(q, 'Fixture Phoenix', 'fixture-phoenix');
+      await rename(q, team, 'fixture-team-phoenix');
       expect((await asAnon('select url_key from public.guilds')).rows).toEqual([{ url_key: 'wga' }]);
-      expect((await asAnon('select url_key from public.retired_url_keys')).rows).toEqual([{ url_key: 'phoenix' }]);
+      expect((await asAnon('select url_key from public.retired_url_keys')).rows).toEqual([
+        { url_key: 'fixture-phoenix' }
+      ]);
       expect((await asAnon('select url_code from public.players where id = 1')).rows[0].url_code).toMatch(
         /^[a-z0-9]{8}$/
       );
-      expect(await resolve(asAnon, 'wga', 'phoenix')).toHaveLength(1);
+      expect(await resolve(asAnon, 'wga', 'fixture-phoenix')).toHaveLength(1);
     });
   });
 
@@ -114,19 +145,25 @@ describe('who can read and change keys', () => {
 
   it('a player code cannot change, even for an officer who can edit the row', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await expect(asUser(OFFICER_T1, "update public.players set url_code = 'aaaaaaaa' where id = 1")).rejects.toThrow(
-        /url_code cannot change/
+      const pid = await seedPlayer(q, { teamId: 1 });
+      await expect(
+        asUser(OFFICER_T1, "update public.players set url_code = 'aaaaaaaa' where id = $1", [pid])
+      ).rejects.toThrow(/url_code cannot change/);
+      await asUser(OFFICER_T1, "update public.players set nickname = 'Still editable' where id = $1", [pid]);
+      expect((await q('select nickname from public.players where id = $1', [pid])).rows[0].nickname).toBe(
+        'Still editable'
       );
-      await asUser(OFFICER_T1, "update public.players set nickname = 'Still editable' where id = 1");
-      expect((await q('select nickname from public.players where id = 1')).rows[0].nickname).toBe('Still editable');
     });
   });
 
   it('a site admin changes a team key through admin_update_team, and the old key is retired', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await asUser(SITE_ADMIN, "select public.admin_update_team(1, 'Team Phoenix', 'team-phoenix')");
+      const team = await mintTeam(q, 'Fixture Phoenix', 'fixture-phoenix');
+      await asUser(SITE_ADMIN, "select public.admin_update_team($1, 'Fixture Phoenix', 'fixture-team-phoenix')", [
+        team
+      ]);
       const retired = await q('select team_id, url_key from public.retired_url_keys');
-      expect(retired.rows).toEqual([{ team_id: 1, url_key: 'phoenix' }]);
+      expect(retired.rows).toEqual([{ team_id: team, url_key: 'fixture-phoenix' }]);
     });
   });
 
@@ -151,7 +188,7 @@ describe('who can read and change keys', () => {
 
   it('admin_create_team refuses to guess once there is a second guild', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await q("insert into public.guilds (name, url_key) values ('Other Guild', 'other')");
+      await mintGuild(q);
       await expect(asUser(SITE_ADMIN, "select public.admin_create_team('New Team', 'new-team')")).rejects.toThrow(
         /more than one/
       );
@@ -200,49 +237,66 @@ describe('resolve_address', () => {
 
   it('resolves a retired team key to the current one', async () => {
     await withTxn(async ({ q }) => {
-      await q("update public.teams set slug = 'team-phoenix' where id = 1");
-      const code = await codeOf(q, 1);
-      const rows = await resolve(q, 'wga', 'phoenix', code);
-      expect(rows[0]).toMatchObject({ team_id: 1, team_key: 'team-phoenix', player_id: 1, is_canonical: false });
-      expect((await resolve(q, 'wga', 'team-phoenix'))[0].is_canonical).toBe(true);
+      const team = await mintTeam(q, 'Fixture Phoenix', 'fixture-phoenix');
+      const player = await seedPlayer(q, { teamId: team });
+      await rename(q, team, 'fixture-team-phoenix');
+      const code = await codeOf(q, player);
+      const rows = await resolve(q, 'wga', 'fixture-phoenix', code);
+      expect(rows[0]).toMatchObject({
+        team_id: team,
+        team_key: 'fixture-team-phoenix',
+        player_id: player,
+        is_canonical: false
+      });
+      expect((await resolve(q, 'wga', 'fixture-team-phoenix'))[0].is_canonical).toBe(true);
     });
   });
 
   it('resolves a retired guild key to the current one', async () => {
     await withTxn(async ({ q }) => {
-      await q("update public.guilds set url_key = 'we-go-again'");
-      const rows = await resolve(q, 'wga', 'hellfire');
-      expect(rows[0]).toMatchObject({ guild_key: 'we-go-again', team_id: 2, is_canonical: false });
+      const guild = await mintGuild(q, 'Fixture Guild', 'fixture-guild');
+      const team = await mintTeam(q, 'Fixture Hellfire', 'fixture-hellfire', guild);
+      await q("update public.guilds set url_key = 'we-go-again' where id = $1", [guild]);
+      const rows = await resolve(q, 'fixture-guild', 'fixture-hellfire');
+      expect(rows[0]).toMatchObject({ guild_key: 'we-go-again', team_id: team, is_canonical: false });
     });
   });
 
   it('a key changed back is no longer listed as retired', async () => {
     await withTxn(async ({ q }) => {
-      await q("update public.teams set slug = 'team-phoenix' where id = 1");
-      await q("update public.teams set slug = 'phoenix' where id = 1");
+      const team = await mintTeam(q, 'Fixture Phoenix', 'fixture-phoenix');
+      await rename(q, team, 'fixture-team-phoenix');
+      await rename(q, team, 'fixture-phoenix');
       const res = await q('select url_key from public.retired_url_keys');
-      expect(res.rows).toEqual([{ url_key: 'team-phoenix' }]);
-      expect((await resolve(q, 'wga', 'phoenix'))[0].is_canonical).toBe(true);
+      expect(res.rows).toEqual([{ url_key: 'fixture-team-phoenix' }]);
+      expect((await resolve(q, 'wga', 'fixture-phoenix'))[0].is_canonical).toBe(true);
     });
   });
 
   it("a current key wins over another team's retired one", async () => {
     await withTxn(async ({ q }) => {
-      await q("update public.teams set slug = 'old-hellfire' where id = 2");
-      await q("update public.teams set slug = 'hellfire' where id = 3");
-      // team 2 used to be 'hellfire'; team 3 is 'hellfire' now.
-      const rows = await resolve(q, 'wga', 'hellfire');
-      expect(rows[0]).toMatchObject({ team_id: 3, is_canonical: true });
+      const first = await mintTeam(q, 'Fixture Hellfire', 'fixture-hellfire');
+      const second = await mintTeam(q, 'Fixture Immolation', 'fixture-immolation');
+      await rename(q, first, 'fixture-old-hellfire');
+      await rename(q, second, 'fixture-hellfire');
+      // The first team used to be 'fixture-hellfire'; the second is 'fixture-hellfire' now.
+      const rows = await resolve(q, 'wga', 'fixture-hellfire');
+      expect(rows[0]).toMatchObject({ team_id: second, is_canonical: true });
     });
   });
 
   it("a team that moved guilds is found through its old guild's address", async () => {
     await withTxn(async ({ q }) => {
-      const other = (await q("insert into public.guilds (name, url_key) values ('Other Guild', 'other') returning id"))
-        .rows[0].id;
-      await q('update public.teams set guild_id = $1 where id = 4', [other]);
-      const rows = await resolve(q, 'wga', 'wrathless');
-      expect(rows[0]).toMatchObject({ guild_key: 'other', team_id: 4, team_key: 'wrathless', is_canonical: false });
+      const team = await mintTeam(q, 'Fixture Wrathless', 'fixture-wrathless');
+      const other = await mintGuild(q);
+      await q('update public.teams set guild_id = $1 where id = $2', [other, team]);
+      const rows = await resolve(q, 'wga', 'fixture-wrathless');
+      expect(rows[0]).toMatchObject({
+        guild_key: 'other',
+        team_id: team,
+        team_key: 'fixture-wrathless',
+        is_canonical: false
+      });
     });
   });
 

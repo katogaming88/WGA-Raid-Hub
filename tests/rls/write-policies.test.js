@@ -8,6 +8,8 @@ import {
   pool,
   queryAs,
   withRole,
+  withTxn,
+  seedSignup,
   RLS_DENIED,
   OFFICER_T1,
   TEAM_LEADER_T1,
@@ -179,24 +181,45 @@ describe('request tables allow officer review updates', () => {
 });
 
 describe('add_signup_to_roster is officer-gated through RLS', () => {
-  // SECURITY INVOKER function; seeded signup 2 is team 1, status approved.
-  const sql = 'select public.add_signup_to_roster(2) as player_id';
-  it('team 1 officer can promote a team 1 signup', async () => {
-    const res = await queryAs('authenticated', OFFICER_T1, sql);
-    expect(res.rows[0].player_id).toBeGreaterThan(0);
-  });
-  it('team 1 team leader can promote a team 1 signup', async () => {
-    const res = await queryAs('authenticated', TEAM_LEADER_T1, sql);
-    expect(res.rows[0].player_id).toBeGreaterThan(0);
-  });
+  // SECURITY INVOKER function, so the caller's own read of season_signups
+  // decides. The approved team 1 signup is minted inside each transaction
+  // (#1123) and the call rides the same connection; a refusal reads the row
+  // as postgres first, so "not found" is the rule and not a missing fixture.
+  const sql = 'select public.add_signup_to_roster($1) as player_id';
+  const exists = async (q, signup) =>
+    (await q('select count(*)::int as n from public.season_signups where id = $1', [signup])).rows[0].n;
+
+  for (const [who, uid] of [
+    ['team 1 officer', OFFICER_T1],
+    ['team 1 team leader', TEAM_LEADER_T1]
+  ]) {
+    it(`${who} can promote a team 1 signup`, async () => {
+      await withTxn(async ({ q, asUser }) => {
+        const signup = await seedSignup(q, { teamId: 1 });
+        const res = await asUser(uid, sql, [signup]);
+        expect(res.rows[0].player_id).toBeGreaterThan(0);
+      });
+    });
+  }
   it('anon has no execute grant', async () => {
-    await expectDenied('anon', null, sql);
+    await withTxn(async ({ q, asAnon }) => {
+      const signup = await seedSignup(q, { teamId: 1 });
+      await expect(asAnon(sql, [signup])).rejects.toMatchObject({ code: RLS_DENIED });
+    });
   });
   it('raider cannot promote (signup invisible under RLS)', async () => {
-    await expect(queryAs('authenticated', RAIDER_T1, sql)).rejects.toThrow(/not found/);
+    await withTxn(async ({ q, asUser }) => {
+      const signup = await seedSignup(q, { teamId: 1 });
+      expect(await exists(q, signup)).toBe(1);
+      await expect(asUser(RAIDER_T1, sql, [signup])).rejects.toThrow(/not found/);
+    });
   });
   it('team 2 officer cannot promote a team 1 signup', async () => {
-    await expect(queryAs('authenticated', OFFICER_T2, sql)).rejects.toThrow(/not found/);
+    await withTxn(async ({ q, asUser }) => {
+      const signup = await seedSignup(q, { teamId: 1 });
+      expect(await exists(q, signup)).toBe(1);
+      await expect(asUser(OFFICER_T2, sql, [signup])).rejects.toThrow(/not found/);
+    });
   });
 });
 

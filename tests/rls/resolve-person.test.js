@@ -4,17 +4,27 @@
 //
 // Each test runs in one rolled-back transaction (helpers.js withTxn).
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, RAIDER_T1, OFFICER_T1, OFFICER_T2, SITE_ADMIN, GUILD_OFFICER } from './helpers.js';
+import {
+  pool,
+  withTxn,
+  seedPlayer,
+  seedSignup,
+  RAIDER_T1,
+  OFFICER_T1,
+  OFFICER_T2,
+  SITE_ADMIN,
+  GUILD_OFFICER
+} from './helpers.js';
 
 afterAll(() => pool.end());
 
 // Seeded (supabase/seed.sql): team 1 members 1 officer, 3 raider
 // ('discord-raider-1', RAIDER_T1), 5 the guild officer's raider row; team 2
-// member 4 is its officer. Players 1 and 2 are unlinked team 1 characters.
-// Signup 2 is team 1 'Seedapproved-Illidan', approved, with no account.
+// member 4 is its officer. The characters and signups are minted per case.
 const RAIDER_T1_MEMBER = 3;
 const OTHER_T1_MEMBER = 5;
-const APPROVED_SIGNUP = 2;
+// The name a revived character and the signup that revives it share.
+const REVIVED = 'Fixturerevive-Illidan';
 
 const player = async (q, id) =>
   (await q('select name_realm, archived_at, team_member_id from public.players where id = $1', [id])).rows[0];
@@ -22,18 +32,21 @@ const player = async (q, id) =>
 describe('is_own_player() and archived characters', () => {
   it('matches a live linked character and not an archived one', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await q('update public.players set team_member_id = $1 where id = 1', [RAIDER_T1_MEMBER]);
-      const own = async () => (await asUser(RAIDER_T1, 'select public.is_own_player(1) as own')).rows[0].own;
+      const pid = await seedPlayer(q, { memberId: RAIDER_T1_MEMBER });
+      const own = async () => (await asUser(RAIDER_T1, 'select public.is_own_player($1) as own', [pid])).rows[0].own;
       expect(await own()).toBe(true);
-      await q('update public.players set archived_at = now() where id = 1');
+      await q('update public.players set archived_at = now() where id = $1', [pid]);
       expect(await own()).toBe(false);
     });
   });
 
   it("an archived character is not writable through a raider's own-row rule", async () => {
     await withTxn(async ({ q, asUser }) => {
-      await q('update public.players set team_member_id = $1, archived_at = now() where id = 1', [RAIDER_T1_MEMBER]);
-      const res = await asUser(RAIDER_T1, 'update public.players set bonus_roll_encounter_id = null where id = 1');
+      const pid = await seedPlayer(q, { memberId: RAIDER_T1_MEMBER, archivedAt: new Date() });
+      expect(await player(q, pid)).not.toBeUndefined();
+      const res = await asUser(RAIDER_T1, 'update public.players set bonus_roll_encounter_id = null where id = $1', [
+        pid
+      ]);
       expect(res.rowCount).toBe(0);
     });
   });
@@ -69,11 +82,12 @@ describe('name_realm_key', () => {
 describe('add_signup_to_roster()', () => {
   it('a main swap keeps the link on the archived character and carries it to the new one', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await q('update public.players set team_member_id = $1 where id = 2', [RAIDER_T1_MEMBER]);
+      const from = await seedPlayer(q, { memberId: RAIDER_T1_MEMBER });
+      const signup = await seedSignup(q, { teamId: 1 });
       const newId = (
-        await asUser(OFFICER_T1, 'select public.add_signup_to_roster($1, $2, $3) as id', [APPROVED_SIGNUP, true, 2])
+        await asUser(OFFICER_T1, 'select public.add_signup_to_roster($1, $2, $3) as id', [signup, true, from])
       ).rows[0].id;
-      const old = await player(q, 2);
+      const old = await player(q, from);
       expect(old.archived_at).not.toBeNull();
       expect(old.team_member_id).toBe(RAIDER_T1_MEMBER);
       expect((await player(q, newId)).team_member_id).toBe(RAIDER_T1_MEMBER);
@@ -82,15 +96,10 @@ describe('add_signup_to_roster()', () => {
 
   it('reviving a reused character name moves the link to the person signing up', async () => {
     await withTxn(async ({ q, asUser }) => {
-      const prior = (
-        await q(
-          "insert into public.players (team_id, name_realm, archived_at, team_member_id) values (1, 'Seedapproved-Illidan', now(), $1) returning id",
-          [OTHER_T1_MEMBER]
-        )
-      ).rows[0].id;
-      await q('update public.season_signups set auth_user_id = $1 where id = $2', [RAIDER_T1, APPROVED_SIGNUP]);
-      const id = (await asUser(OFFICER_T1, 'select public.add_signup_to_roster($1) as id', [APPROVED_SIGNUP])).rows[0]
-        .id;
+      const prior = await seedPlayer(q, { memberId: OTHER_T1_MEMBER, nameRealm: REVIVED, archivedAt: new Date() });
+      const signup = await seedSignup(q, { teamId: 1, nameRealm: REVIVED });
+      await q('update public.season_signups set auth_user_id = $1 where id = $2', [RAIDER_T1, signup]);
+      const id = (await asUser(OFFICER_T1, 'select public.add_signup_to_roster($1) as id', [signup])).rows[0].id;
       expect(id).toBe(prior);
       const row = await player(q, id);
       expect(row.archived_at).toBeNull();
@@ -100,45 +109,32 @@ describe('add_signup_to_roster()', () => {
 
   it('reviving keeps the link when the same person signs up again', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await q(
-        "insert into public.players (team_id, name_realm, archived_at, team_member_id) values (1, 'Seedapproved-Illidan', now(), $1)",
-        [RAIDER_T1_MEMBER]
-      );
-      await q('update public.season_signups set auth_user_id = $1 where id = $2', [RAIDER_T1, APPROVED_SIGNUP]);
-      const id = (await asUser(OFFICER_T1, 'select public.add_signup_to_roster($1) as id', [APPROVED_SIGNUP])).rows[0]
-        .id;
+      await seedPlayer(q, { memberId: RAIDER_T1_MEMBER, nameRealm: REVIVED, archivedAt: new Date() });
+      const signup = await seedSignup(q, { teamId: 1, nameRealm: REVIVED });
+      await q('update public.season_signups set auth_user_id = $1 where id = $2', [RAIDER_T1, signup]);
+      const id = (await asUser(OFFICER_T1, 'select public.add_signup_to_roster($1) as id', [signup])).rows[0].id;
       expect((await player(q, id)).team_member_id).toBe(RAIDER_T1_MEMBER);
     });
   });
 
   it('reviving keeps the link when the signup has no account to compare', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await q(
-        "insert into public.players (team_id, name_realm, archived_at, team_member_id) values (1, 'Seedapproved-Illidan', now(), $1)",
-        [OTHER_T1_MEMBER]
-      );
-      const id = (await asUser(OFFICER_T1, 'select public.add_signup_to_roster($1) as id', [APPROVED_SIGNUP])).rows[0]
-        .id;
+      await seedPlayer(q, { memberId: OTHER_T1_MEMBER, nameRealm: REVIVED, archivedAt: new Date() });
+      const signup = await seedSignup(q, { teamId: 1, nameRealm: REVIVED });
+      const id = (await asUser(OFFICER_T1, 'select public.add_signup_to_roster($1) as id', [signup])).rows[0].id;
       expect((await player(q, id)).team_member_id).toBe(OTHER_T1_MEMBER);
     });
   });
 
   it('a signup spelled without the realm space revives the archived row instead of failing', async () => {
     await withTxn(async ({ q, asUser }) => {
-      const prior = (
-        await q(
-          "insert into public.players (team_id, name_realm, archived_at) values (1, 'Seedapproved-Area 52', now()) returning id"
-        )
-      ).rows[0].id;
-      await q("update public.season_signups set signup_name_realm = 'Seedapproved-Area52' where id = $1", [
-        APPROVED_SIGNUP
-      ]);
-      const id = (await asUser(OFFICER_T1, 'select public.add_signup_to_roster($1) as id', [APPROVED_SIGNUP])).rows[0]
-        .id;
+      const prior = await seedPlayer(q, { teamId: 1, nameRealm: 'Fixturerevive-Area 52', archivedAt: new Date() });
+      const signup = await seedSignup(q, { teamId: 1, nameRealm: 'Fixturerevive-Area52' });
+      const id = (await asUser(OFFICER_T1, 'select public.add_signup_to_roster($1) as id', [signup])).rows[0].id;
       expect(id).toBe(prior);
       const row = await player(q, id);
       expect(row.archived_at).toBeNull();
-      expect(row.name_realm).toBe('Seedapproved-Area 52');
+      expect(row.name_realm).toBe('Fixturerevive-Area 52');
     });
   });
 });
@@ -149,8 +145,8 @@ describe('resolve_person()', () => {
 
   it('a raider sees themself, with their characters, archived ones included', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await q('update public.players set team_member_id = $1 where id in (1, 2)', [RAIDER_T1_MEMBER]);
-      await q('update public.players set archived_at = now() where id = 2');
+      const live = await seedPlayer(q, { memberId: RAIDER_T1_MEMBER });
+      const archived = await seedPlayer(q, { memberId: RAIDER_T1_MEMBER, archivedAt: new Date() });
       const person = await resolve(asUser, RAIDER_T1, 'discord-raider-1');
       expect(person).toMatchObject({
         discord_id: 'discord-raider-1',
@@ -161,8 +157,9 @@ describe('resolve_person()', () => {
       });
       expect(person.teams).toHaveLength(1);
       expect(person.teams[0]).toMatchObject({ team_id: 1, team_member_id: RAIDER_T1_MEMBER, role: 'raider' });
+      // Live characters first, then archived ones.
       const chars = person.teams[0].characters;
-      expect(chars.map((c) => c.player_id)).toEqual([1, 2]);
+      expect(chars.map((c) => c.player_id)).toEqual([live, archived]);
       expect(chars[0].archived_at).toBeNull();
       expect(chars[1].archived_at).not.toBeNull();
     });

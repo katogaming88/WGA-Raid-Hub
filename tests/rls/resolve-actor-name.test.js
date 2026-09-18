@@ -4,7 +4,13 @@
 // resolve call share one transaction so setup is visible before the whole
 // thing rolls back.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, OFFICER_T1, RAIDER_T1, SITE_ADMIN, OFFICER_T2 } from './helpers.js';
+import { pool, withTxn, seedPlayer, OFFICER_T1, RAIDER_T1, SITE_ADMIN, OFFICER_T2 } from './helpers.js';
+
+// Seeded rows this file leans on (supabase/seed.sql): team_members 3 is the
+// team 1 raider (auth_user_id = RAIDER_T1, name_realm 'Seedraider-Illidan').
+// A case that needs RAIDER_T1 to hold a character mints one linked to that
+// row; the seeded players stay untouched (#1123).
+const RAIDER_T1_MEMBER = 3;
 
 const resolve = (asUser, callerUid, actorId, teamId) =>
   asUser(callerUid, 'select public.resolve_actor_name($1, $2) as name', [actorId, teamId]);
@@ -32,7 +38,8 @@ describe('resolve_actor_name rejects unauthorized callers', () => {
 describe('resolve_actor_name resolves the linked character', () => {
   it('prefers the nickname when set', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await q("update public.players set team_member_id = 3, nickname = 'Kato' where id = 1");
+      const pid = await seedPlayer(q, { memberId: RAIDER_T1_MEMBER });
+      await q("update public.players set nickname = 'Kato' where id = $1", [pid]);
       const res = await resolve(asUser, OFFICER_T1, RAIDER_T1, 1);
       expect(res.rows[0].name).toBe('Kato');
     });
@@ -40,9 +47,9 @@ describe('resolve_actor_name resolves the linked character', () => {
 
   it('falls back to the character-name part of name_realm when no nickname is set', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await q('update public.players set team_member_id = 3 where id = 1');
+      await seedPlayer(q, { memberId: RAIDER_T1_MEMBER, nameRealm: 'Resolveraider-Illidan' });
       const res = await resolve(asUser, OFFICER_T1, RAIDER_T1, 1);
-      expect(res.rows[0].name).toBe('Seedraider');
+      expect(res.rows[0].name).toBe('Resolveraider');
     });
   });
 
@@ -55,7 +62,8 @@ describe('resolve_actor_name resolves the linked character', () => {
 
   it("a site admin can resolve a normal member's name too", async () => {
     await withTxn(async ({ q, asUser }) => {
-      await q("update public.players set team_member_id = 3, nickname = 'Kato' where id = 1");
+      const pid = await seedPlayer(q, { memberId: RAIDER_T1_MEMBER });
+      await q("update public.players set nickname = 'Kato' where id = $1", [pid]);
       const res = await resolve(asUser, SITE_ADMIN, RAIDER_T1, 1);
       expect(res.rows[0].name).toBe('Kato');
     });
