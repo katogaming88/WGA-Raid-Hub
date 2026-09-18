@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |      1 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     17 h 32 m |
-| **All revamp work**                | **26 h 17 m** |
+| Revamp 2: public pages             |     19 h 22 m |
+| **All revamp work**                | **28 h  7 m** |
 
 ## Log
 
@@ -97,6 +97,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | 6:35–7:20 PM | #942 step 5b: the alts picker, Characters card and combined loot totals | Revamp 2 (Identity prerequisite, #1162) |    45 m | ~30 m build, ~15 m Kat deciding on mockups                              | Kat approved the mockups and settled the rest: alts show only to the raider and their team's officers, the picker is computer-only, officer alt rows start hidden, and a character claimed by mistake points the raider at their own officers. Loot follows the raider: an old main's items this season count toward their total, and so do items from a team they left, marked "on <character>" or "on <team>". One new read function, because which characters belong to one person is not public |
 | 10:20–10:32 PM | #942 step 5b: Rex's review of PR #1204 | Revamp 2 (Identity prerequisite, #1162) |    12 m | build; Rex review not counted separately | One fix: the alts picker opened without the keyboard inside it, because it aimed at a Save button that is greyed out until the characters load. Any dialog whose first control starts disabled is fixed by the same change, with a test that fails without it. Also paged the earlier-characters loot read, so a season past 1000 such rows keeps counting |
 
+
+### 2026-09-17
+
+| Time (ET)     | Item                    | Phase            | Elapsed | Build / Kat                                                          | Notes                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------- | ----------------------- | ---------------- | ------: | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2:05-3:55 PM  | #1102 Streams directory | Revamp 2 (#1102) | 1 h 50 m | ~40 m build, ~70 m Kat writing code with line-by-line guidance | Picked as the smallest page left: the widget (#286) already had the data hook, the name rules and most of the CSS. Kat chose live-first with players only for the live, which closes #797 and #811. Recorded the current Streamers tab first, then Kat wrote `streamDirectory` and the offline list by hand and Claude finished the live section and the styles. Slower than a build-only page on purpose; the point was Kat authoring part of the new app |
 
 ## Not counted (same sessions, not revamp)
 

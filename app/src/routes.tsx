@@ -7,6 +7,7 @@ import { HomePage } from './home/HomePage';
 import { CalendarPage } from './calendar/CalendarPage';
 import { GuildHomePage } from './guild/GuildHomePage';
 import { NewsPage } from './news/NewsPage';
+import { StreamsPage } from './streams/StreamsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { RequireAbility } from './auth/RequireAbility';
@@ -25,7 +26,8 @@ const BUILT_PAGES: Record<string, ReactElement> = {
 
 // Guild pages rebuilt so far (#1102), beside Guild home itself.
 const BUILT_GUILD_PAGES: Record<string, ReactElement> = {
-  news: <NewsPage />
+  news: <NewsPage />,
+  streams: <StreamsPage />
 };
 
 // Addresses from #1100: /g/<guild key>/t/<team key>/... for team pages,

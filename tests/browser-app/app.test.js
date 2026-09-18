@@ -27,6 +27,7 @@ import {
   TODAY as CAL_TODAY
 } from '../behavior/calendar.js';
 import { SCENARIO as HOME, SEASON as HOME_SEASON, PROGRESSION, CALENDAR, STREAMS, TODAY } from '../behavior/home.js';
+import { TEAMS as STREAM_TEAMS, STREAMS as DIRECTORY, NOBODY_LIVE as DIRECTORY_OFFLINE } from '../behavior/streams.js';
 
 // The new app in a real browser (#1101 part 4): the shell's accessibility
 // checklist, measured rather than trusted. Unlike tests/browser/, there is no
@@ -304,9 +305,26 @@ const GUILD_OFFICER = {
 
 const NEWS = { path: '/g/wga/news', sentinel: 'main:has(.news-entry)', news: NEWS_ENTRIES };
 
+// The Streams page (#1102): the live players and the offline directory, which
+// between them carry every stream card state axe should measure (#796).
+const STREAMS_PAGE = {
+  path: '/g/wga/streams',
+  sentinel: 'main:has(.stream-card)',
+  teams: STREAM_TEAMS,
+  tables: { streamers: DIRECTORY }
+};
+
 const STATES = [
   { label: 'news', ...NEWS },
   { label: 'news, light', ...NEWS, colorScheme: 'light' },
+  { label: 'streams', ...STREAMS_PAGE },
+  { label: 'streams, light', ...STREAMS_PAGE, colorScheme: 'light' },
+  {
+    label: 'streams, nobody live',
+    ...STREAMS_PAGE,
+    sentinel: 'main:has(.stream-directory)',
+    tables: { streamers: DIRECTORY_OFFLINE }
+  },
   { label: 'guild home, signed out', ...GUILD },
   { label: 'guild home, signed out, light', ...GUILD, colorScheme: 'light' },
   { label: 'guild home, officer', ...GUILD_OFFICER },

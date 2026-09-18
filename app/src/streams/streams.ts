@@ -14,7 +14,9 @@ export type StreamerRow = {
 export type Stream = { id: number; name: string; channel: string; note: string };
 
 // The name a streamer goes by: their nickname, or their character's first name.
-function displayName(player: StreamerRow['players']): string | null {
+// Null when the character has no name, which is every caller's signal to leave
+// the row out. Shared with the Streams page (directory.ts).
+export function displayName(player: StreamerRow['players']): string | null {
   const nameRealm = (player?.name_realm ?? '').trim();
   if (!nameRealm) return null;
   return player?.nickname?.trim() || (nameRealm.split('-')[0] ?? '').trim();
@@ -40,6 +42,11 @@ export function liveText(names: string[]): string {
   if (names.length === 2) return `${names[0]} and ${names[1]} are live!`;
   return `${names[0]}, ${names[1]}, and ${names.length - 2} more are live!`;
 }
+
+// Twitch refuses to play an embed unless the page names its own host, so every
+// caller pairs embedSrc() with this. 'localhost' covers a dev server reached
+// by a name the browser reports as empty.
+export const embedParent = () => window.location.hostname || 'localhost';
 
 // Twitch only plays an embed on a page that names itself as the parent.
 export const embedSrc = (channel: string, parent: string) =>

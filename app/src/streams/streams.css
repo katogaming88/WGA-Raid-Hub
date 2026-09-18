@@ -119,3 +119,73 @@
   margin: 0;
   font-size: var(--text-xs);
 }
+
+/* The Streams page (#1102): whoever is live in players, everyone else in a
+   compact list below them. */
+
+.streams-live,
+.streams-offline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Live cards: as wide as they can be without a player getting too small to
+   watch, so a guild with one live streamer does not get a lonely column. */
+.stream-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stream-card {
+  overflow: hidden;
+}
+
+.stream-card .stream-card-body {
+  gap: 2px;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+/* The offline list is a directory, not a gallery: one row each, no players. */
+.stream-directory {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: 820px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stream-directory li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+}
+
+/* The name leads, the team sits at the right edge, and the channel and note
+   sit under the name. */
+.stream-directory .stream-team {
+  grid-column: 2;
+  grid-row: 1;
+  text-align: right;
+}
+
+.stream-directory .stream-channel,
+.stream-directory .stream-note {
+  grid-column: 1;
+}
+
+.stream-team {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
