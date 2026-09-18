@@ -12,6 +12,35 @@ answers to.
 
 ---
 
+## [3.139.0] - 2026-09-18
+
+### Project
+
+- The new app's **Boss lineup**
+  ([#1216](https://github.com/katogaming88/WGA-Raid-Hub/issues/1216)): on a
+  raid night's page, officers on a computer get a second tab next to "Who's
+  coming". Everyone on the roster is listed by role, with a cell per boss on
+  that night's plan; a click puts a raider in or takes them out for that boss.
+  The night arrives already filled from each boss's usual group, with bench
+  raiders out (an "In all night" button puts one in for every boss). A yellow
+  dot marks a cell changed for tonight only, and a red "!" marks a raider
+  planned in who said they are not coming. The save bar above the grid is
+  always there at one height, so nothing moves while cells are clicked: **Save
+  tonight** changes this night only, **Save to the group** also makes it the
+  usual group for coming nights. Each boss saves on its own, and a boss another
+  officer saved first is held back with a "Show their version" button instead
+  of being overwritten. A **Skip** button takes a boss off the night. Leaving
+  with unsaved changes asks first, and stepping to the previous or next night
+  stays on the Boss lineup. A night not planned yet offers **Fill from the
+  groups**, and the very first night offers **Start with everyone in**. Each
+  boss's column reads its count, warning and role mix to screen readers, and
+  the buff squares carry a check or a cross as well as their colour. Nothing on
+  the current site changes.
+- A button that can't be used yet now looks faded across the new app; until
+  now a disabled button looked exactly like a working one.
+- The local stack guide notes that the Boss lineup needs raid bosses, which the
+  seed does not carry.
+
 ## [3.138.0] - 2026-09-18
 
 ### Backend

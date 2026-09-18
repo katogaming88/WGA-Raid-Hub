@@ -344,6 +344,88 @@ describe('Calendar (new app): moving between nights', () => {
   });
 });
 
+// The boss lineup (#1216), new to this app: each boss has a usual group, and
+// the night starts as a copy of it. Everyone on the roster is in the grid:
+// Frostvale said they are out but is still planned in for Nek'zali, Em is on
+// the bench and out on every boss, and Aur is usually in for Sszorak but out
+// tonight.
+const ZONE = { id: 10, name: 'The Venomous Abyss', season: 'Season One', is_mini_raid: false, sort_index: 0 };
+const LINEUP_TABLES = {
+  seasons: [{ display_name: 'Season One', starts_at: '2026-01-01', ends_at: null }],
+  raid_encounters: [
+    { id: 101, name: "Nek'zali the Soulcoiler", sort_index: 1, zone: ZONE },
+    { id: 102, name: 'Sszorak', sort_index: 2, zone: ZONE }
+  ],
+  raid_night_bosses: [
+    { raid_date: NIGHT, encounter_id: 101, position: 1, skipped: false, confirmed_at: null },
+    { raid_date: NIGHT, encounter_id: 102, position: 2, skipped: false, confirmed_at: null }
+  ],
+  raid_night_lineups: [
+    ...[1, 2, 3, 4, 6].map((player_id) => ({ encounter_id: 101, player_id })),
+    ...[2, 3, 4].map((player_id) => ({ encounter_id: 102, player_id }))
+  ],
+  boss_groups: [
+    ...[1, 2, 3, 4, 6].map((player_id) => ({ encounter_id: 101, player_id })),
+    ...[1, 2, 3, 4].map((player_id) => ({ encounter_id: 102, player_id }))
+  ]
+};
+
+describe('Calendar (new app): the boss lineup', () => {
+  let opened;
+  const calls = [];
+
+  beforeAll(async () => {
+    opened = await openApp(
+      browser,
+      server.port,
+      asOfficer(`${BASE}?date=${NIGHT}&view=lineup`, 'main:has(.lineup-toggle)', {
+        tables: { ...tables(), ...LINEUP_TABLES },
+        rpc: { ...signedIn(VIEWER, 'officer').rpc, set_raid_night_lineup: 4 }
+      })
+    );
+    opened.page.on('request', (request) => {
+      if (new URL(request.url()).pathname.endsWith('/rpc/set_raid_night_lineup')) {
+        calls.push(JSON.parse(request.postData()));
+      }
+    });
+  });
+
+  afterAll(async () => {
+    if (opened) await opened.context.close();
+  });
+
+  it('lists everyone on the roster by role, with the plan, the counts and the changes', async () => {
+    const rows = await opened.page.locator('.lineup-grid tbody .lineup-raider-name').allTextContents();
+    expect(rows).toEqual(['Aur', 'Brightmoor', 'Frostvale', 'Glim', 'Dawnthistle', 'Em', 'Zed']);
+    expect(await opened.page.getByRole('button', { name: 'Zed, Sszorak: in' }).count()).toBe(1);
+    expect(
+      await opened.page.getByRole('button', { name: 'Aur, Sszorak: out, changed for tonight only, usually in' }).count()
+    ).toBe(1);
+    expect(
+      await opened.page
+        .getByRole('button', { name: "Frostvale, Nek'zali the Soulcoiler: in, but said they’re not coming" })
+        .count()
+    ).toBe(1);
+    expect(await opened.page.getByRole('button', { name: "Em, Nek'zali the Soulcoiler: out" }).count()).toBe(1);
+    expect(await opened.page.locator('thead .lineup-total').allTextContents()).toEqual(['5/20', '3/20']);
+    expect(opened.unexpected).toEqual([]);
+    expect(opened.pageErrors).toEqual([]);
+  });
+
+  it('saves one boss for tonight, with the lineup it replaces', async () => {
+    await opened.page.getByRole('button', { name: 'Aur, Sszorak: out, changed for tonight only, usually in' }).click();
+    await opened.page.getByRole('button', { name: 'Save tonight' }).click();
+    await expect.poll(() => calls.length).toBe(1);
+    expect(calls[0]).toEqual({
+      p_team_id: TEAM_ID,
+      p_raid_date: NIGHT,
+      p_encounter_id: 102,
+      p_player_ids: [1, 2, 3, 4],
+      p_expected_player_ids: [2, 3, 4]
+    });
+  });
+});
+
 describe('Calendar (new app): on a phone', () => {
   it('lists the month’s nights, and leaves officer changes to a computer', async () => {
     const month = await openApp(
@@ -369,6 +451,8 @@ describe('Calendar (new app): on a phone', () => {
       expect(await night.page.locator('.own-answer').isVisible()).toBe(true);
       expect(await night.page.locator('.edit-button').count()).toBe(0);
       expect(await night.page.getByRole('button', { name: 'In for the week' }).count()).toBe(0);
+      // So is the boss lineup (#1216).
+      expect(await night.page.getByRole('link', { name: 'Boss lineup' }).count()).toBe(0);
     } finally {
       await night.context.close();
     }
