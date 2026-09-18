@@ -12,6 +12,24 @@ answers to.
 
 ---
 
+## [3.140.3] - 2026-09-18
+
+### Project
+
+- The RLS test suite runs its files in parallel again, in about four seconds
+  instead of twenty-three
+  ([#1123](https://github.com/katogaming88/WGA-Raid-Hub/issues/1123), second
+  half). Every test that wrote one of the seed's rows (the same raider by 17
+  files, the same member by 11, the same team's settings by 8) now mints its
+  own player, member, team or signup with the helpers from the first half, so
+  two files running at once can no longer take the same row in opposite orders
+  and deadlock, which is what `--no-file-parallelism` had been hiding since
+  [#1115](https://github.com/katogaming88/WGA-Raid-Hub/issues/1115). 27 files
+  converted; `snapshot-personas`, which empties every account to model a fresh
+  restore, runs after the others on its own. Measured cold on a 16-core
+  machine: five runs in a row with no deadlock, from five in a row with 12 or
+  13. Nothing on the site changes
+
 ## [3.140.2] - 2026-09-18
 
 ### Project
