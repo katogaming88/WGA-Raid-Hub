@@ -1,39 +1,10 @@
 // Behavior tests for write_audit_log() (#214, Phase 4): the only insert path
 // onto audit_log (tests/rls/write-policies.test.js asserts a raw insert is
-// denied to every role). Same single-transaction-plus-savepoint harness as
-// tests/rls/claim.test.js: the write and its verification must share one
-// transaction so the insert is visible before the whole thing rolls back.
+// denied to every role). Uses the shared withTxn from helpers.js: the write
+// and its verification must share one transaction so the insert is visible
+// before the whole thing rolls back.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, OFFICER_T1, TEAM_LEADER_T1, RAIDER_T1, SITE_ADMIN, OFFICER_T2 } from './helpers.js';
-
-async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asRole = (role, uid) => async (text, params) => {
-      await q('savepoint audit_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify(uid ? { sub: uid, role } : { role })
-      ]);
-      await q(`set local role ${role}`);
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint audit_call');
-        throw err;
-      }
-    };
-    const asUser = (uid, text, params) => asRole('authenticated', uid)(text, params);
-    const asAnon = (text, params) => asRole('anon', null)(text, params);
-    return await fn({ q, asUser, asAnon });
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
-}
+import { pool, withTxn, OFFICER_T1, TEAM_LEADER_T1, RAIDER_T1, SITE_ADMIN, OFFICER_T2 } from './helpers.js';
 
 const write = (asUser, uid, teamId, action, targetType, targetId, detail) =>
   asUser(uid, 'select public.write_audit_log($1, $2, $3, $4, $5) as id', [

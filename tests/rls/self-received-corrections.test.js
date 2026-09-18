@@ -11,15 +11,15 @@
 // approval never unticks bis_items.obtained (the one-way decision in
 // 20260725100000) while a later re-approve re-fires the sync.
 //
-// Same withTxn harness as tests/rls/boe.test.js (unique savepoint name),
-// since these tests mix privileged fixture writes with impersonated calls
-// and expected raises. Each test opens its own transaction, so seed rows
-// (supabase/seed.sql: requests 1 pending, 2 approved, 3 rejected on team 1,
-// 4 approved on team 2; bis_items 1 = player 1 / item 1 / unobtained) are
-// pristine per test.
+// Uses the shared withTxn from helpers.js, since these tests mix privileged
+// fixture writes with impersonated calls and expected raises. Each test opens
+// its own transaction, so seed rows (supabase/seed.sql: requests 1 pending,
+// 2 approved, 3 rejected on team 1, 4 approved on team 2; bis_items 1 =
+// player 1 / item 1 / unobtained) are pristine per test.
 import { describe, it, expect, afterAll } from 'vitest';
 import {
   pool,
+  withTxn,
   OFFICER_T1,
   TEAM_LEADER_T1,
   RAIDER_T1,
@@ -28,35 +28,6 @@ import {
   GUILD_OFFICER,
   RLS_DENIED
 } from './helpers.js';
-
-async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asRole = (role, uid) => async (text, params) => {
-      await q('savepoint src_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify(uid ? { sub: uid, role } : { role })
-      ]);
-      await q(`set local role ${role}`);
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint src_call');
-        throw err;
-      }
-    };
-    const asUser = (uid, text, params) => asRole('authenticated', uid)(text, params);
-    const asAnon = (text, params) => asRole('anon', null)(text, params);
-    return await fn({ q, asUser, asAnon });
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
-}
 
 const del = (id) => `select public.delete_self_received_request(${id})`;
 

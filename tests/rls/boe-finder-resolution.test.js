@@ -18,40 +18,11 @@
 // because a person with two character rows pointing at one member is the
 // common shape and refusing it would help nobody.
 //
-// Same withTxn harness as tests/rls/boe.test.js with its own savepoint name:
-// the gate cases assert a raise, and without a savepoint per call an expected
-// failure aborts the shared transaction and masks the real error.
+// Uses the shared withTxn from helpers.js: the gate cases assert a raise, and
+// without a savepoint per call an expected failure aborts the shared
+// transaction and masks the real error.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, grantGuild, OFFICER_T1, OFFICER_T2, SITE_ADMIN } from './helpers.js';
-
-async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asRole = (role, uid) => async (text, params) => {
-      await q('savepoint finder_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify(uid ? { sub: uid, role } : { role })
-      ]);
-      await q(`set local role ${role}`);
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint finder_call');
-        throw err;
-      }
-    };
-    const asUser = (uid, text, params) => asRole('authenticated', uid)(text, params);
-    const asAnon = (text, params) => asRole('anon', null)(text, params);
-    return await fn({ q, asUser, asAnon });
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
-}
+import { pool, withTxn, grantGuild, OFFICER_T1, OFFICER_T2, SITE_ADMIN } from './helpers.js';
 
 // Seeded rows this file leans on (supabase/seed.sql):
 //   team_members 1 = discord-officer-1 (OFFICER_T1, team 1, holds a

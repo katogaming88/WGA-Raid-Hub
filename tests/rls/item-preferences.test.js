@@ -1,39 +1,9 @@
 // RLS assertions for item_preferences (#515 Phase 1, the raider wishlist):
 // no public read (unlike bis_items), a raider manages only their own rows
-// via is_own_player(), and officers can read but not write directly. Same
-// withTxn harness as tests/rls/notifications.test.js, since both tables
-// share the is_own_player() self-service predicate.
+// via is_own_player(), and officers can read but not write directly. Uses the
+// shared withTxn from helpers.js.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, OFFICER_T1, RAIDER_T1, OFFICER_T2, SITE_ADMIN, GUILD_OFFICER, RLS_DENIED } from './helpers.js';
-
-async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asRole = (role, uid) => async (text, params) => {
-      await q('savepoint ip_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify(uid ? { sub: uid, role } : { role })
-      ]);
-      await q(`set local role ${role}`);
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint ip_call');
-        throw err;
-      }
-    };
-    const asUser = (uid, text, params) => asRole('authenticated', uid)(text, params);
-    const asAnon = (text, params) => asRole('anon', null)(text, params);
-    return await fn({ q, asUser, asAnon });
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
-}
+import { pool, withTxn, OFFICER_T1, RAIDER_T1, OFFICER_T2, SITE_ADMIN, GUILD_OFFICER, RLS_DENIED } from './helpers.js';
 
 // Seed player 1 (Seedraider-Illidan, team 1) has no team_member_id link
 // (supabase/seed.sql) -- same starting state notifications.test.js relies

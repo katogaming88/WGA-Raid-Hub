@@ -5,12 +5,12 @@
 // clears the "no character" dismissal once the account claims a character,
 // through both claim_character() and add_signup_to_roster()'s main swap.
 //
-// Each test runs in one rolled-back transaction: fixture writes happen as
-// postgres (bypasses RLS), impersonated calls happen as the caller, and
-// assertions happen back as postgres. A savepoint wraps each impersonated
-// call so an expected raise does not abort the whole transaction.
+// Each test runs in one rolled-back transaction (helpers.js withTxn): fixture
+// writes happen as postgres (bypasses RLS), impersonated calls happen as the
+// caller, and assertions happen back as postgres. A savepoint wraps each
+// impersonated call so an expected raise does not abort the whole transaction.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, RAIDER_T1, OFFICER_T1 } from './helpers.js';
+import { pool, withTxn, RAIDER_T1, OFFICER_T1 } from './helpers.js';
 
 // Seeded rows this file leans on (supabase/seed.sql): team_members 3 is the
 // team 1 raider (auth_user_id = RAIDER_T1, name_realm 'Seedraider-Illidan');
@@ -19,35 +19,6 @@ import { pool, RAIDER_T1, OFFICER_T1 } from './helpers.js';
 const RAIDER_T1_MEMBER = 3;
 const APPROVED_SIGNUP = 2;
 const OTHER = '00000000-0000-0000-0000-0000000000ef';
-
-async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asRole = (role, uid) => async (text, params) => {
-      await q('savepoint pref_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify(uid ? { sub: uid, role } : { role })
-      ]);
-      await q(`set local role ${role}`);
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint pref_call');
-        throw err;
-      }
-    };
-    const asUser = (uid, text, params) => asRole('authenticated', uid)(text, params);
-    const asAnon = (text, params) => asRole('anon', null)(text, params);
-    return await fn({ q, asUser, asAnon });
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
-}
 
 const addAuthUser = (q, uid, providerId) =>
   q('insert into auth.users (id, raw_user_meta_data) values ($1, $2)', [
