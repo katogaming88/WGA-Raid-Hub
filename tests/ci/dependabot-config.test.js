@@ -77,3 +77,82 @@ describe('the Dependabot entry for app/ (#1180)', () => {
     expect(testsWorkflow).toMatch(/^\s+- '\.github\/dependabot\.yml'$/m);
   });
 });
+
+// Each held major above is held because some package in app/ declares a peer
+// range the next major falls outside of. Those ranges sit in the lockfile,
+// and nothing read them back: when the holding package takes the next major
+// its bump merges green and the ignore stays (#1241). The reader below is
+// hand-rolled over the range shapes the lockfile actually uses, the way
+// deploy-workflow.test.js splits YAML on indentation rather than taking a
+// dependency, and it throws on a shape it does not know rather than guessing.
+describe('the held majors tripwire (#1241)', () => {
+  const jsxA11y = '^3 || ^4 || ^5 || ^6 || ^7 || ^8 || ^9';
+
+  // One row per comparator shape in app/package-lock.json today, plus the
+  // ranges that hold the three majors against the version that lifts them.
+  it.each([
+    [jsxA11y, '9.0.0', true],
+    [jsxA11y, '10.0.0', false],
+    ['>=4.8.4 <6.1.0', '6.0.0', true],
+    ['>=4.8.4 <6.1.0', '7.0.0', false],
+    ['^8.57.0 || ^9.0.0 || ^10.0.0', '10.0.0', true],
+    ['^8.0.0-0', '8.0.0', true],
+    ['^8.0.0-0', '9.0.0', false],
+    ['^7.0.0', '7.0.0', true],
+    ['^7.0.0', '8.0.0', false],
+    ['^0.2.0', '0.2.5', true],
+    ['^0.2.0', '1.0.0', false],
+    ['~6.0.3', '6.0.3', true],
+    ['~6.0.3', '7.0.0', false],
+    ['5.0.0', '5.0.0', true],
+    ['5.0.0', '6.0.0', false],
+    ['*', '99.0.0', true],
+    ['>=10 <11', '10.0.0', true],
+    ['>=10 <11', '11.0.0', false],
+    ['>= 4.21.0', '5.0.0', true],
+    ['>= 0.32', '1.0.0', true],
+    ['>1.0.0', '1.0.0', false],
+    ['<=1.0.0', '1.0.0', true],
+    ['=1.0.0', '1.0.0', true]
+  ])('admits(%j, %s) is %s', (range, version, expected) => {
+    expect(admits(range, version)).toBe(expected);
+  });
+
+  it.each([['1.x'], ['1.2.3 - 2.3.4'], ['1.2'], ['latest']])('admits(%j) throws rather than guessing', (range) => {
+    expect(() => admits(range, '1.0.0')).toThrow(/cannot read/);
+  });
+
+  // A lockfile shape: the root entry, the held package, one holder, one peer
+  // that already admits the next major, and optionally a nested optional peer
+  // (npm enforces an optional peer once the peer is installed, and a nested
+  // copy is resolved against the tree above it, so both count).
+  const lock = (jsxRange, extra = {}) => ({
+    packages: {
+      '': { devDependencies: { eslint: '^9.39.5' } },
+      'node_modules/eslint': { version: '9.39.5' },
+      'node_modules/eslint-plugin-jsx-a11y': { version: '6.10.2', peerDependencies: { eslint: jsxRange } },
+      'node_modules/typescript-eslint': {
+        version: '8.70.0',
+        peerDependencies: { eslint: '^8.57.0 || ^9.0.0 || ^10.0.0', typescript: '>=4.8.4 <6.1.0' }
+      },
+      ...extra
+    }
+  });
+  const nested = {
+    'node_modules/a/node_modules/old-plugin': {
+      version: '1.0.0',
+      peerDependencies: { eslint: '^9', jiti: '*' },
+      peerDependenciesMeta: { eslint: { optional: true } }
+    }
+  };
+
+  it('holders() names the packages whose peer range excludes the version, nested and optional included', () => {
+    expect(holders(lock(jsxA11y), 'eslint', '10.0.0')).toEqual(['eslint-plugin-jsx-a11y']);
+    expect(holders(lock(jsxA11y, nested), 'eslint', '10.0.0')).toEqual(['eslint-plugin-jsx-a11y', 'old-plugin']);
+    expect(holders(lock(jsxA11y), 'typescript', '7.0.0')).toEqual(['typescript-eslint']);
+  });
+
+  it('holders() is empty once the last holder widens, which is the red the tripwire fires on', () => {
+    expect(holders(lock(`${jsxA11y} || ^10`), 'eslint', '10.0.0')).toEqual([]);
+  });
+});
