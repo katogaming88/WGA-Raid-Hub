@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('teams_id_seq'::regclass) | false | [public.attendance](public.attendance.md) [public.audit_log](public.audit_log.md) [public.bis_requests](public.bis_requests.md) [public.rclc_loot](public.rclc_loot.md) [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.players](public.players.md) [public.priority_order](public.priority_order.md) [public.season_signups](public.season_signups.md) [public.self_received_requests](public.self_received_requests.md) [public.team_members](public.team_members.md) [public.team_settings](public.team_settings.md) [public.streamers](public.streamers.md) [public.notifications](public.notifications.md) [public.team_raid_progress](public.team_raid_progress.md) [public.item_preferences](public.item_preferences.md) [public.boe_items](public.boe_items.md) [public.boe_listings](public.boe_listings.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.raid_schedule](public.raid_schedule.md) [public.raid_schedule_exceptions](public.raid_schedule_exceptions.md) [public.raid_rsvps](public.raid_rsvps.md) [public.raid_rsvp_reminders_sent](public.raid_rsvp_reminders_sent.md) [public.raid_signup_sheets](public.raid_signup_sheets.md) [public.player_officer_notes](public.player_officer_notes.md) [public.team_discord_config](public.team_discord_config.md) [public.account_preferences](public.account_preferences.md) [public.retired_url_keys](public.retired_url_keys.md) [public.main_swap_requests](public.main_swap_requests.md) [public.boss_lineup_sitouts](public.boss_lineup_sitouts.md) |  |  |
+| id | integer | nextval('teams_id_seq'::regclass) | false | [public.attendance](public.attendance.md) [public.audit_log](public.audit_log.md) [public.bis_requests](public.bis_requests.md) [public.rclc_loot](public.rclc_loot.md) [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.players](public.players.md) [public.priority_order](public.priority_order.md) [public.season_signups](public.season_signups.md) [public.self_received_requests](public.self_received_requests.md) [public.team_members](public.team_members.md) [public.team_settings](public.team_settings.md) [public.streamers](public.streamers.md) [public.notifications](public.notifications.md) [public.team_raid_progress](public.team_raid_progress.md) [public.item_preferences](public.item_preferences.md) [public.boe_items](public.boe_items.md) [public.boe_listings](public.boe_listings.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.raid_schedule](public.raid_schedule.md) [public.raid_schedule_exceptions](public.raid_schedule_exceptions.md) [public.raid_rsvps](public.raid_rsvps.md) [public.raid_rsvp_reminders_sent](public.raid_rsvp_reminders_sent.md) [public.raid_signup_sheets](public.raid_signup_sheets.md) [public.player_officer_notes](public.player_officer_notes.md) [public.team_discord_config](public.team_discord_config.md) [public.account_preferences](public.account_preferences.md) [public.retired_url_keys](public.retired_url_keys.md) [public.main_swap_requests](public.main_swap_requests.md) [public.boss_groups](public.boss_groups.md) [public.raid_night_bosses](public.raid_night_bosses.md) |  |  |
 | name | text |  | false |  |  |  |
 | slug | text | new_url_code() | false |  |  | The team's URL key: the /t/\<key\> segment of an address, unique within its guild (#1114). The current site's ?team= parameter reads it too. |
 | archived_at | timestamp with time zone |  | true |  |  |  |
@@ -71,7 +71,8 @@ erDiagram
 "public.account_preferences" }o--o| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.retired_url_keys" }o--o| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.main_swap_requests" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
-"public.boss_lineup_sitouts" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.boss_groups" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.raid_night_bosses" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.teams" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id)"
 
 "public.teams" {
@@ -447,13 +448,22 @@ erDiagram
   text officer_note
   integer approved_player_id FK
 }
-"public.boss_lineup_sitouts" {
+"public.boss_groups" {
+  integer id
+  integer team_id FK
+  integer encounter_id FK
+  integer player_id FK
+  timestamp_with_time_zone created_at
+}
+"public.raid_night_bosses" {
   integer id
   integer team_id FK
   date raid_date
-  text raid_name
-  text boss_name
-  integer player_id FK
+  integer encounter_id FK
+  integer position
+  boolean skipped
+  timestamp_with_time_zone confirmed_at
+  integer confirmed_by FK
   timestamp_with_time_zone created_at
 }
 "public.guilds" {

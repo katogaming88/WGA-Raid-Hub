@@ -1,0 +1,424 @@
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// app/ keeps its own package.json and lockfile, so Dependabot only sees it
+// through an entry of its own (#1180). Nothing here runs Dependabot; this
+// reads .github/dependabot.yml as text, the way migration-ledger-workflow
+// .test.js reads its workflow, because js-yaml is only a transitive module
+// and the shape under test is a handful of lines.
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const config = readFileSync(join(ROOT, '.github', 'dependabot.yml'), 'utf8');
+const testsWorkflow = readFileSync(join(ROOT, '.github', 'workflows', 'changelog-check-tests.yml'), 'utf8');
+const appLock = JSON.parse(readFileSync(join(ROOT, 'app', 'package-lock.json'), 'utf8'));
+
+const unquote = (token) => token.replace(/^['"]|['"]$/g, '');
+
+// The text of one `updates:` entry, from its `- package-ecosystem:` line to
+// the next one. Throws rather than returning '' so a missing entry fails the
+// case that asked for it instead of passing every `not.toMatch` vacuously.
+function entryFor(directory) {
+  const entries = config.split(/^\s+- package-ecosystem:/m).slice(1);
+  const hit = entries.find((entry) => new RegExp(`^\\s+directory: ${directory}$`, 'm').test(entry));
+  if (!hit) throw new Error(`no updates entry with directory: ${directory}`);
+  return hit;
+}
+
+// The group names declared under an entry's `groups:` key, in order.
+function groupNames(entry) {
+  const block = entry.match(/^\s+groups:\n((?:\s{6,}.*\n?)+)/m);
+  if (!block) return [];
+  return [...block[1].matchAll(/^\s{6}([a-z-]+):$/gm)].map((m) => m[1]);
+}
+
+// The names an entry ignores at their major, read entry by entry from its
+// ignore block: an entry holds the major when its update-types names
+// semver-major, inline or as a block list, or when it has no update-types at
+// all, which ignores every update. An entry that pins `versions:` ignores
+// those versions and holds nothing. A trailing comment is not the name.
+function heldNames(entry) {
+  const block = entry.match(/^\s+ignore:\n((?:\s{6,}.*\n?)+)/m);
+  if (!block) return [];
+  return block[1]
+    .split(/^\s+- dependency-name: /m)
+    .slice(1)
+    .filter((item) => !/^\s+versions:/m.test(item))
+    .filter((item) => !/^\s+update-types:/m.test(item) || item.includes('version-update:semver-major'))
+    .map((item) =>
+      unquote(
+        item
+          .split('\n')[0]
+          .replace(/\s+#.*$/, '')
+          .trim()
+      )
+    );
+}
+
+// A version as [major, minor, patch, release], where release is 1 for a bare
+// version and 0 for one carrying a prerelease tag, so a tagged bound sorts
+// just below the release it names. `parts` is how many segments were
+// written: a partial version is an x-range in node-semver, and only the
+// forms where that means the same as zero-filling (^, ~, >=, <) are read.
+function parseVersion(text) {
+  const m = /^v?(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?(?:\.(0|[1-9]\d*))?(-[0-9A-Za-z.-]+)?$/.exec(text);
+  if (!m) throw new Error(`cannot read version: ${text}`);
+  const parts = m[3] !== undefined ? 3 : m[2] !== undefined ? 2 : 1;
+  if (parts < 3 && m[4]) throw new Error(`cannot read version: ${text} (a prerelease tag on a partial)`);
+  return { tuple: [Number(m[1]), Number(m[2] ?? 0), Number(m[3] ?? 0), m[4] ? 0 : 1], parts };
+}
+
+function compare(a, b) {
+  for (let i = 0; i < 4; i++) if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
+  return 0;
+}
+
+// The exclusive upper bound of a ^ or ~ range, as node-semver draws it:
+// ^ bumps the leftmost non-zero segment that was written, ~ bumps the minor
+// when one was written and the major otherwise. The bound carries release 0
+// so the prerelease of the next version is out as well.
+function upperBound(op, { tuple: [major, minor, patch], parts }) {
+  if (op === '~') return parts >= 2 ? [major, minor + 1, 0, 0] : [major + 1, 0, 0, 0];
+  if (major > 0 || parts === 1) return [major + 1, 0, 0, 0];
+  if (minor > 0 || parts === 2) return [0, minor + 1, 0, 0];
+  return [0, 0, patch + 1, 0];
+}
+
+// One comparator (`^9`, `>=4.8.4`, `<6.1.0`, `5.0.0`, `*`) as the interval
+// it admits: `lo` and `hi` are tuples or null for open, each with an
+// inclusive flag. Refused, with a throw: an x-range, a partial version after
+// any operator but ^ ~ >= <, and anything parseVersion cannot read.
+function interval(token) {
+  if (token === '*' || token === '') return { lo: null, hi: null };
+  const m = /^(\^|~|>=|<=|>|<|=)?(.+)$/.exec(token);
+  const op = m[1] ?? '';
+  if (/^[^-]*[xX*]/.test(m[2])) throw new Error(`cannot read range: ${token} (an x-range)`);
+  const bound = parseVersion(m[2]);
+  if (bound.parts < 3 && !['^', '~', '>=', '<'].includes(op))
+    throw new Error(`cannot read range: ${token} (a partial version is an x-range)`);
+  const v = bound.tuple;
+  if (op === '^' || op === '~') return { lo: v, loIn: true, hi: upperBound(op, bound), hiIn: false };
+  if (op === '>=') return { lo: v, loIn: true, hi: null };
+  if (op === '>') return { lo: v, loIn: false, hi: null };
+  if (op === '<') return { lo: null, hi: v, hiIn: false };
+  if (op === '<=') return { lo: null, hi: v, hiIn: true };
+  return { lo: v, loIn: true, hi: v, hiIn: true };
+}
+
+// Whether a set of intervals has a common point: the tightest lower bound
+// against the tightest upper, where at equal tuples an exclusive end wins.
+function overlap(intervals) {
+  let lo = null;
+  let loIn = true;
+  let hi = null;
+  let hiIn = true;
+  for (const i of intervals) {
+    if (i.lo && (!lo || compare(i.lo, lo) > 0 || (compare(i.lo, lo) === 0 && !i.loIn))) [lo, loIn] = [i.lo, i.loIn];
+    if (i.hi && (!hi || compare(i.hi, hi) < 0 || (compare(i.hi, hi) === 0 && !i.hiIn))) [hi, hiIn] = [i.hi, i.hiIn];
+  }
+  if (!lo || !hi) return true;
+  const c = compare(lo, hi);
+  return c < 0 || (c === 0 && loIn && hiIn);
+}
+
+// Whether any `||` alternative of a range overlaps the probe. An operator
+// may be followed by a space in the wild (`>= 4.21.0`), so that is folded
+// when a digit follows; a hyphen range is refused.
+function overlaps(range, probe) {
+  return range.split('||').some((alternative) => {
+    const text = alternative.trim().replace(/(\^|~|>=|<=|>|<|=)\s+(?=v?\d)/g, '$1');
+    if (/\s-\s/.test(text)) throw new Error(`cannot read range: ${text} (a hyphen range)`);
+    return overlap([probe, ...text.split(/\s+/).map(interval)]);
+  });
+}
+
+// Whether a range admits one release version. A prerelease is refused:
+// node-semver admits one only when the range names its tuple, which this
+// reader does not model, and the tripwire never asks.
+function admits(range, version) {
+  const v = parseVersion(version);
+  if (v.tuple[3] === 0) throw new Error(`cannot read version: ${version} (only a release is probed)`);
+  return overlaps(range, { lo: v.tuple, loIn: true, hi: v.tuple, hiIn: true });
+}
+
+// Whether a range admits any release in a major: from N.0.0 up to, and not
+// including, the first prerelease of N+1. This is the hold question, since
+// Dependabot proposes the latest release of the major, not its first.
+function admitsAnyIn(range, major) {
+  return overlaps(range, { lo: [major, 0, 0, 1], loIn: true, hi: [major + 1, 0, 0, 0], hiIn: false });
+}
+
+// The copy of `name` a package at `key` reaches before the top level: its
+// own node_modules, then each enclosing one. Null when there is none, so the
+// package binds the top-level copy, which is the one a Dependabot bump moves.
+function nestedCopy(lock, key, name) {
+  let dir = key;
+  while (dir) {
+    const candidate = `${dir}/node_modules/${name}`;
+    if (lock.packages[candidate]) return candidate;
+    const i = dir.lastIndexOf('node_modules/');
+    dir = i > 0 ? dir.slice(0, i - 1) : '';
+  }
+  return null;
+}
+
+// Every package whose peer range on `name` binds its top-level copy, by the
+// package's name (the segment after its last node_modules/; a linked package
+// keeps its key), with the range. An optional peer counts: npm enforces it
+// once the peer is installed, which is how #1233's successor probe failed.
+function peersOn(lock, name) {
+  return Object.entries(lock.packages)
+    .filter(([key, pkg]) => key !== '' && pkg.peerDependencies?.[name] !== undefined)
+    .filter(([key]) => nestedCopy(lock, key, name) === null)
+    .map(([key, pkg]) => ({
+      name: key.includes('node_modules/') ? key.slice(key.lastIndexOf('node_modules/') + 'node_modules/'.length) : key,
+      version: pkg.version,
+      range: pkg.peerDependencies[name]
+    }));
+}
+
+// The names of the packages whose peer range on `name` admits nothing in
+// `major`: while any exist, the hold on `name` still stands.
+function holders(lock, name, major) {
+  return peersOn(lock, name)
+    .filter((peer) => !admitsAnyIn(peer.range, major))
+    .map((peer) => peer.name);
+}
+
+// The majors the /app entry holds back, each because a package beside it in
+// app/ declares a peer range the major falls outside of, so a bundled bump
+// fails npm ci rather than installing. The first weekly run (#1233) found
+// the eslint pair that way. `yamlName` is the token as it sits in the file
+// (an @-scoped name is quoted in YAML); `judgedBy` is the name whose peer
+// ranges say whether the hold still stands, which for @eslint/js is eslint,
+// since the two move in lockstep.
+const heldMajors = [
+  { yamlName: 'typescript', reason: 'typescript-eslint has no 7', judgedBy: 'typescript' },
+  { yamlName: 'eslint', reason: 'eslint-plugin-jsx-a11y caps eslint at 9 (#1238)', judgedBy: 'eslint' },
+  { yamlName: "'@eslint/js'", reason: 'its 10 peers on eslint 10, which is held (#1238)', judgedBy: 'eslint' }
+];
+
+describe('the Dependabot entry for app/ (#1180)', () => {
+  it('app/ has its own weekly npm entry labelled chore', () => {
+    const app = entryFor('/app');
+    expect(app).toMatch(/^ npm$/m);
+    expect(app).toMatch(/^\s+interval: weekly$/m);
+    expect(app).toMatch(/^\s+labels:\n\s+- chore$/m);
+  });
+
+  it('its dev dependencies are grouped and its runtime dependencies are not', () => {
+    const app = entryFor('/app');
+    expect(groupNames(app)).toEqual(['app-dev-dependencies']);
+    expect(app).toMatch(/^\s+app-dev-dependencies:\n\s+dependency-type: development\n\s+patterns:\n\s+- '\*'$/m);
+  });
+
+  it.each(heldMajors)('$yamlName majors are ignored there, since $reason', ({ yamlName }) => {
+    const app = entryFor('/app');
+    const name = yamlName.replace(/[/.]/g, '\\$&');
+    expect(app).toMatch(
+      new RegExp(`^\\s+- dependency-name: ${name}\\n\\s+update-types: \\['version-update:semver-major'\\]$`, 'm')
+    );
+  });
+
+  it('control: the bot/ entry keeps its bot-dev-dependencies group', () => {
+    const bot = entryFor('/bot');
+    expect(groupNames(bot)).toEqual(['bot-dev-dependencies']);
+    expect(bot).toMatch(/^\s+bot-dev-dependencies:\n\s+dependency-type: development$/m);
+  });
+
+  // The only workflow that runs this file is keyed on scripts/ci and tests/ci,
+  // so without these lines a PR that edits only dependabot.yml, or only the
+  // app's manifests (which is every Dependabot /app bump, #1240), would merge
+  // without the cases in this file ever running (the gap #1128 records for
+  // deploy.yml and config.toml).
+  it('runs on a pull request that edits only dependabot.yml, or only the app manifests', () => {
+    expect(testsWorkflow).toMatch(/^\s+- '\.github\/dependabot\.yml'$/m);
+    expect(testsWorkflow).toMatch(/^\s+- 'app\/package\.json'$/m);
+    expect(testsWorkflow).toMatch(/^\s+- 'app\/package-lock\.json'$/m);
+  });
+});
+
+// Each held major above is held because some package in app/ declares a peer
+// range the next major falls outside of. Those ranges sit in the lockfile,
+// and nothing read them back: when the holding package takes the next major
+// its bump merges green and the ignore stays (#1241). The reader below is
+// hand-rolled over the range shapes the lockfile actually uses, the way
+// deploy-workflow.test.js splits YAML on indentation rather than taking a
+// dependency, and it throws on a shape it does not know rather than guessing.
+describe('the held majors tripwire (#1241)', () => {
+  const jsxA11y = '^3 || ^4 || ^5 || ^6 || ^7 || ^8 || ^9';
+
+  // One row per comparator shape in app/package-lock.json today, plus the
+  // ranges that hold the three majors against the version that lifts them.
+  it.each([
+    [jsxA11y, '9.0.0', true],
+    [jsxA11y, '10.0.0', false],
+    ['>=4.8.4 <6.1.0', '6.0.0', true],
+    ['>=4.8.4 <6.1.0', '7.0.0', false],
+    ['^8.57.0 || ^9.0.0 || ^10.0.0', '10.0.0', true],
+    ['^8.0.0-0', '8.0.0', true],
+    ['^8.0.0-0', '9.0.0', false],
+    ['^7.0.0', '7.0.0', true],
+    ['^7.0.0', '8.0.0', false],
+    ['^0.2.0', '0.2.5', true],
+    ['^0.2.0', '1.0.0', false],
+    ['~6.0.3', '6.0.3', true],
+    ['~6.0.3', '7.0.0', false],
+    ['5.0.0', '5.0.0', true],
+    ['5.0.0', '6.0.0', false],
+    ['*', '99.0.0', true],
+    ['>=10 <11', '10.0.0', true],
+    ['>=10 <11', '11.0.0', false],
+    ['>= 4.21.0', '5.0.0', true],
+    ['>= 0.32', '1.0.0', true],
+    ['>1.0.0', '1.0.0', false],
+    ['<=1.0.0', '1.0.0', true],
+    ['=1.0.0', '1.0.0', true]
+  ])('admits(%j, %s) is %s', (range, version, expected) => {
+    expect(admits(range, version)).toBe(expected);
+  });
+
+  // Shapes the reader refuses: x-ranges, hyphen ranges, a partial version
+  // (an x-range in node-semver) anywhere but after >= or <, where it means
+  // the same thing, a prerelease tag on a partial, an operator split by a
+  // space, a leading zero, and words.
+  it.each([
+    ['1.x'],
+    ['1.2.3 - 2.3.4'],
+    ['1.2'],
+    ['>1'],
+    ['<=1'],
+    ['=1.2'],
+    ['^1.2-beta'],
+    ['> = 1.2.3'],
+    ['^01.2.3'],
+    ['latest']
+  ])('admits(%j) throws rather than guessing', (range) => {
+    expect(() => admits(range, '1.0.0')).toThrow(/cannot read/);
+  });
+
+  // The probe is always a release: node-semver excludes prereleases from a
+  // range unless the range names that tuple, which this reader does not model.
+  it('admits() takes only a release version', () => {
+    expect(() => admits('*', '1.0.0-beta')).toThrow(/release/);
+  });
+
+  // The hold is stale when the peer range admits anything in the next major,
+  // not only its first release: a lower bound inside the major (vite's
+  // `^20.19.0 || >=22.12.0` on @types/node is that shape) would let
+  // Dependabot's bump install while `N.0.0` alone still reads as excluded.
+  it.each([
+    ['^6.0.0 || >=7.5.0', 7, true],
+    ['>=7.5.0 <7.6.0', 7, true],
+    ['>=4.8.4 <6.1.0', 7, false],
+    ['>=4.8.4 <6.1.0', 6, true],
+    [jsxA11y, 10, false],
+    [jsxA11y, 9, true],
+    ['<7.0.0-0', 7, false],
+    ['^8.0.0-0', 8, true],
+    ['*', 42, true]
+  ])('admitsAnyIn(%j, %s) is %s', (range, major, expected) => {
+    expect(admitsAnyIn(range, major)).toBe(expected);
+  });
+
+  // A lockfile shape: the root entry, the held package, one holder, one peer
+  // that already admits the next major, and optionally more. A nested peer
+  // counts when it resolves to the top-level copy (npm walks up the tree, and
+  // an optional peer is enforced once the peer is installed), and does not
+  // when a copy sits beside it, since the top-level bump never reaches it.
+  const lock = (jsxRange, extra = {}) => ({
+    packages: {
+      '': { devDependencies: { eslint: '^9.39.5' } },
+      'node_modules/eslint': { version: '9.39.5' },
+      'node_modules/eslint-plugin-jsx-a11y': { version: '6.10.2', peerDependencies: { eslint: jsxRange } },
+      'node_modules/typescript-eslint': {
+        version: '8.70.0',
+        peerDependencies: { eslint: '^8.57.0 || ^9.0.0 || ^10.0.0', typescript: '>=4.8.4 <6.1.0' }
+      },
+      ...extra
+    }
+  });
+  const oldPlugin = {
+    version: '1.0.0',
+    peerDependencies: { eslint: '^9', jiti: '*' },
+    peerDependenciesMeta: { eslint: { optional: true } }
+  };
+  const nested = { 'node_modules/a/node_modules/old-plugin': oldPlugin };
+  const nestedWithOwnCopy = { ...nested, 'node_modules/a/node_modules/eslint': { version: '9.0.0' } };
+  const linked = { 'packages/tool': { version: '1.0.0', peerDependencies: { eslint: '^9' } } };
+
+  it('holders() names the packages whose peer range admits nothing in the major', () => {
+    expect(holders(lock(jsxA11y), 'eslint', 10)).toEqual(['eslint-plugin-jsx-a11y']);
+    expect(holders(lock(jsxA11y), 'typescript', 7)).toEqual(['typescript-eslint']);
+    expect(holders(lock(`${jsxA11y} || >=10.5.0`), 'eslint', 10)).toEqual([]);
+  });
+
+  it('holders() resolves a nested peer to the nearest copy and keeps a linked package by its key', () => {
+    expect(holders(lock(jsxA11y, nested), 'eslint', 10)).toEqual(['eslint-plugin-jsx-a11y', 'old-plugin']);
+    expect(holders(lock(jsxA11y, nestedWithOwnCopy), 'eslint', 10)).toEqual(['eslint-plugin-jsx-a11y']);
+    expect(holders(lock(jsxA11y, linked), 'eslint', 10)).toEqual(['eslint-plugin-jsx-a11y', 'packages/tool']);
+  });
+
+  it('holders() is empty once the last holder widens, which is the red the tripwire fires on', () => {
+    expect(holders(lock(`${jsxA11y} || ^10`), 'eslint', 10)).toEqual([]);
+  });
+
+  // The ignore block as Dependabot reads it: an entry holds the major when its
+  // update-types names semver-major (inline or as a block list) or when it
+  // has no update-types at all, which ignores every update; an entry pinning
+  // `versions:` ignores those versions and holds nothing. A trailing comment
+  // is not part of the name.
+  it('heldNames() reads each ignore entry as a block', () => {
+    const entry = [
+      '    ignore:',
+      '      - dependency-name: a # held',
+      "        update-types: ['version-update:semver-major']",
+      '      - dependency-name: b',
+      "        versions: ['1.2.3']",
+      '      - dependency-name: c',
+      "      - dependency-name: '@d/e'",
+      '        update-types:',
+      "          - 'version-update:semver-major'",
+      '      - dependency-name: f',
+      "        update-types: ['version-update:semver-minor']",
+      ''
+    ].join('\n');
+    expect(heldNames(entry)).toEqual(['a', 'c', '@d/e']);
+  });
+
+  // Lifting a hold is two edits, the config line and the table row, and this
+  // is what keeps them from drifting apart in either direction.
+  it('the config holds exactly the names the table judges', () => {
+    expect(heldNames(entryFor('/app')).sort()).toEqual(heldMajors.map((row) => unquote(row.yamlName)).sort());
+  });
+
+  // The tripwire itself, against the real lockfile. The major comes from the
+  // held package's own installed version, not the judging name's, so a hold
+  // left on @eslint/js after eslint has moved to 10 still reads as stale.
+  it.each(heldMajors)(
+    '$yamlName is still held by a peer range in app/ (judged on $judgedBy)',
+    ({ yamlName, judgedBy }) => {
+      const name = unquote(yamlName);
+      const installed = appLock.packages[`node_modules/${name}`];
+      if (!installed) throw new Error(`${name} is ignored in dependabot.yml but is not in app/package-lock.json`);
+      const next = parseVersion(installed.version).tuple[0] + 1;
+      const peers = peersOn(appLock, judgedBy);
+      const holding = peers.filter((peer) => !admitsAnyIn(peer.range, next));
+      const why = () =>
+        peers.length === 0
+          ? `nothing in app/package-lock.json peers on ${judgedBy}`
+          : `every package peering on ${judgedBy} admits ${next}: ` +
+            peers.map((peer) => `${peer.name}@${peer.version} (${peer.range})`).join(', ');
+      expect(
+        holding,
+        holding.length ? '' : `lift the ${name} ignore in .github/dependabot.yml and its heldMajors row: ${why()}`
+      ).not.toHaveLength(0);
+    }
+  );
+
+  it('control: today jsx-a11y holds eslint at 9 and typescript-eslint holds typescript at 6', () => {
+    expect(holders(appLock, 'eslint', 10)).toContain('eslint-plugin-jsx-a11y');
+    expect(holders(appLock, 'typescript', 7)).toContain('typescript-eslint');
+  });
+});

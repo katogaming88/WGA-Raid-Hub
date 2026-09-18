@@ -173,6 +173,7 @@ Link state is written to `supabase/.temp/`, which is gitignored. Verify with
 | `supabase db reset` | Rebuild the local database from `supabase/migrations/` + seed |
 | `npm run db:docs` | Regenerate the schema docs in `dbdoc/` (see section 6) |
 | `npm run db:definitions` | Regenerate `supabase/definitions/`, one file per function and view (see section 6) |
+| `npm run db:types` | Regenerate `js/database.types.ts`, the Supabase types both sites typecheck against (see section 6) |
 
 Docker Desktop must be running before `supabase start`.
 
@@ -194,6 +195,7 @@ Then, whenever migrations change:
 supabase db reset   # make the local DB match the migration files
 npm run db:docs     # regenerate dbdoc/
 npm run db:definitions   # regenerate supabase/definitions/
+npm run db:types         # regenerate js/database.types.ts
 ```
 
 `supabase/definitions/` holds the current definition of every function and view,
@@ -202,6 +204,24 @@ It needs only `psql` on PATH. Commit its changes with the migration: a function
 rewrite then shows the lines that changed next to the full migration copy, and
 `git log` on one file is that function's history. `npm run db:definitions:check`
 runs the same staleness check CI runs.
+
+`js/database.types.ts` is the Supabase types file both the current site (through
+`tsconfig.json`) and the new app (`app/src/lib/supabase.ts`) typecheck against
+([#1181](https://github.com/katogaming88/WGA-Raid-Hub/issues/1181)). It is generated,
+never edited by hand: `npm run db:types` runs the postgres-meta image pinned in
+`scripts/ci/gen-types.js` against the local stack through docker, so the output
+is the same on every machine and in CI whichever Supabase CLI each runs (the CLI's
+own `gen types --local` uses whatever generator that CLI release carries, and
+two releases can differ). Commit its changes with the migration;
+`npm run db:types:check` runs the same staleness check CI runs. Nothing is
+written unless the output is a types file with no fewer tables than the
+committed one, so a failed image pull or a stack behind the migrations leaves
+the file alone; a migration that drops a table regenerates with
+`npm run db:types -- --allow-fewer-tables`. One limit of the pinned generator:
+a stored generated column (`players.name_realm_key`, `characters.name_realm`
+and `name_realm_key`) is typed as writable in `Insert` and `Update`, so a write
+naming one typechecks and is refused by Postgres; the generator only marks
+identity columns as never writable.
 
 Use the latest tbls release: the schema-docs workflow installs latest, and since tbls 1.96.0
 trigger listings are in creation order on every platform, so an older local tbls can produce a
@@ -468,6 +488,7 @@ whose generated docs are stale and cannot regenerate them for you:
 ```sh
 npm run db:docs     # dbdoc/, after any schema change
 npm run db:definitions   # supabase/definitions/, after any function or view change
+npm run db:types         # js/database.types.ts, after any schema change
 npm run db:rls      # docs/rls_policies.csv, only if a policy changed
 ```
 
