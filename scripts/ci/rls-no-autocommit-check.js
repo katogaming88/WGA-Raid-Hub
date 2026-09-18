@@ -26,9 +26,10 @@
 //
 // What this cannot see: a hand-rolled `pool.connect()` that commits rather than
 // rolling back. Since #1123 no file keeps its own withTxn copy (the one in
-// helpers.js is the harness), so a new `pool.connect()` under tests/rls/ is
-// worth reading, but the call itself carries no signal and only the missing
-// rollback would, which needs dataflow this check does not do.
+// helpers.js is the harness), but a few still open a client of their own for
+// a role switch with no savepoint (five when this was written), so the call
+// itself carries no signal and only the missing rollback would, which needs
+// dataflow this check does not do.
 //
 // Usage: node scripts/ci/rls-no-autocommit-check.js [file ...]
 // With no arguments it walks tests/rls/. Prints one line per finding, exits 1.

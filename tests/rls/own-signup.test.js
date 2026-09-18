@@ -92,7 +92,7 @@ describe('get_own_signup', () => {
 
   it("does not return a different season's signup", async () => {
     await withTxn(async ({ q, asUser }) => {
-      await insertSignup(q, { season: 'not-the-active-season' });
+      await insertSignup(q, { season: 'own-signup-other-season' });
       const res = await getOwn(asUser, SIGNUP_OWNER_T1, 1);
       expect(res.rows).toHaveLength(0);
     });
@@ -207,7 +207,7 @@ describe('update_own_signup', () => {
       const { rows } = await insertSignup(q, {
         status: 'added',
         approved_player_id: player.rows[0].id,
-        season: 'not-the-active-season'
+        season: 'own-signup-other-season'
       });
       await expect(updateOwn(asUser, SIGNUP_OWNER_T1, rows[0].id)).rejects.toThrow(/already been added to the roster/);
     });
