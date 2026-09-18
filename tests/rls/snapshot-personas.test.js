@@ -15,6 +15,11 @@
 // precondition is asserted rather than assumed, because the link trigger fires
 // on auth.users inserts and a fixture in the wrong order would quietly change
 // what is under test (2026-09-04).
+//
+// This file runs after the rest of the suite, on its own (the test:rls
+// script, #1123): emptying auth.users takes every seeded account row and,
+// through ON DELETE SET NULL, every seeded grant row, which is the one
+// fixture no other file can be asked to stay away from.
 import { describe, it, expect, afterAll } from 'vitest';
 import { pool, withTxn } from './helpers.js';
 import { PERSONAS_SQL } from '../../scripts/dev/snapshot-personas.js';
