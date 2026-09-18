@@ -6,6 +6,7 @@ import {
   pool,
   withTxn,
   seedPlayer,
+  seedTeam,
   OFFICER_T1,
   OFFICER_T2,
   RAIDER_T1,
@@ -16,7 +17,8 @@ import {
 afterAll(() => pool.end());
 
 // Seeded: membership 3 is discord-raider-1 on Phoenix (team 1), and
-// classes_specs 1 is Mage Frost. Their roster character is minted per case.
+// classes_specs 1 is Mage Frost. Their roster character is minted per case,
+// and the one case that sets a team's live season runs on a team it mints.
 const PHOENIX_RAIDER_MEMBER = 3;
 const FROST_MAGE = 1;
 
@@ -24,10 +26,10 @@ const personOf = async (q, memberId) =>
   (await q('select person_id from public.team_members where id = $1', [memberId])).rows[0].person_id;
 
 // The raider's roster character, and an alt of theirs from Battle.net.
-async function fixture(q, { characterClass = 'Mage', name = 'Swapalt' } = {}) {
-  const raiderPlayer = await seedPlayer(q, { memberId: PHOENIX_RAIDER_MEMBER });
+async function fixture(q, { characterClass = 'Mage', name = 'Swapalt', memberId = PHOENIX_RAIDER_MEMBER } = {}) {
+  const raiderPlayer = await seedPlayer(q, { memberId });
   await q('update public.players set join_date = $1 where id = $2', ['2026-02-01', raiderPlayer]);
-  const personId = await personOf(q, PHOENIX_RAIDER_MEMBER);
+  const personId = await personOf(q, memberId);
   const character = await q(
     `insert into public.characters (person_id, blizzard_id, name, realm, realm_slug, class_name, spec_name, level)
      values ($1, $2, $3, 'Illidan', 'illidan', $4, 'Frost', 90) returning id`,
@@ -36,8 +38,8 @@ async function fixture(q, { characterClass = 'Mage', name = 'Swapalt' } = {}) {
   return { personId, raiderPlayer, characterId: character.rows[0].id, nameRealm: `${name}-Illidan` };
 }
 
-const ask = (asUser, uid, characterId, specId = FROST_MAGE, note = null) =>
-  asUser(uid, 'select public.request_main_swap(1, $1, $2, $3) as id', [characterId, specId, note]);
+const ask = (asUser, uid, characterId, specId = FROST_MAGE, note = null, teamId = 1) =>
+  asUser(uid, 'select public.request_main_swap($4, $1, $2, $3) as id', [characterId, specId, note, teamId]);
 
 const review = (asUser, uid, requestId, approve, note = null) =>
   asUser(uid, 'select public.review_main_swap_request($1, $2, $3) as player_id', [requestId, approve, note]);
@@ -183,17 +185,20 @@ describe('review_main_swap_request()', () => {
 
   it("clears the old character's standing priority rows for the live season", async () => {
     await withTxn(async ({ q, asUser }) => {
-      const { characterId, raiderPlayer } = await fixture(q);
+      // A team of its own, since the live season is a team_settings write.
+      const team = await seedTeam(q);
+      const { characterId, raiderPlayer } = await fixture(q, { memberId: team.raider.memberId });
       await q(
-        `update public.team_settings set config = config || '{"seasonName":"Midnight Season 2"}' where team_id = 1`
+        `update public.team_settings set config = config || '{"seasonName":"Midnight Season 2"}' where team_id = $1`,
+        [team.teamId]
       );
       await q(
         `insert into public.priority_order (team_id, season, item_id, track, rank, player_id)
-         values (1, 'seed-season', 1, 'Myth', 2, $1), (1, 'MID2', 1, 'Myth', 1, $1)`,
-        [raiderPlayer]
+         values ($1, 'seed-season', 1, 'Myth', 2, $2), ($1, 'MID2', 1, 'Myth', 1, $2)`,
+        [team.teamId, raiderPlayer]
       );
-      const id = (await ask(asUser, RAIDER_T1, characterId)).rows[0].id;
-      await review(asUser, OFFICER_T1, id, true);
+      const id = (await ask(asUser, team.raider.uid, characterId, FROST_MAGE, null, team.teamId)).rows[0].id;
+      await review(asUser, team.officer.uid, id, true);
       // Only the live season goes. The row on an older season stays, the
       // same as removing a player from the roster leaves it.
       const left = await q('select season from public.priority_order where player_id = $1', [raiderPlayer]);

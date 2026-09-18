@@ -675,7 +675,7 @@ PRs that change `supabase/migrations/` must also:
   matching assertions in `tests/rls/` and the matrix in docs/RLS.md together
 
 **The `test:rls` script runs the files in parallel, and that holds only while
-every file writes rows it minted
+no two files write the same row
 ([#1123](https://github.com/katogaming88/WGA-Raid-Hub/issues/1123)).** Vitest
 runs up to one file per core (minus one) at a time against a single Postgres,
 so a test that writes a seeded row holds a lock another file may be waiting on
@@ -685,13 +685,19 @@ run, and it scales with core count: a 16-core machine failed on every cold run
 while CI's 4-core runner stayed green. From #1115 to #1123 the script carried
 `--no-file-parallelism` to make the result the same everywhere, at about 23
 seconds against 7. What replaced the flag is the rule in "Writing RLS tests"
-below (a test never writes a seeded row), a season day allocated per
-transaction, and one exception the script keeps: `snapshot-personas.test.js`
-empties `auth.users`, which takes every seeded account and grant row, so it runs
-as a second invocation after the others. CI runs the suite cold after a
-`supabase db reset`, which is exactly the run that shows a contended row, so a
-green check there is the check; a new file that writes a seeded row is how the
-flake comes back.
+below (a test writes rows it minted, never a seeded `players` or
+`team_members` row), a season day allocated per transaction, and one exception
+the script keeps: `snapshot-personas.test.js` empties `auth.users`, which takes
+every seeded account and grant row, so it runs as a second invocation after
+the others. That split lives only on the npm script: `npx vitest run tests/rls`
+invoked directly runs that file beside the rest and can still deadlock. A few
+seeded rows are still written today (team 1's `team_settings` row by five files,
+two seeded `boe_items` rows by `boe.test.js`, a seeded `bis_requests` row by
+`submit-bis-link.test.js`), each a wait behind whichever file holds the row and
+never part of a measured cycle; nothing in CI enforces the rule. CI runs the
+suite cold after a `supabase db reset`, which is exactly the run that shows a
+contended row, so a green check there is the check, and a new write to a seeded
+row is how the flake comes back.
 
 ### Writing RLS tests
 

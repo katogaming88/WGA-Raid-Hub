@@ -256,13 +256,15 @@ describe("a team_members row's account is always its person's (#942 step 3)", ()
   });
 });
 
-describe('the one-time name_realm backfill links matching players', () => {
+describe("the name_realm backfill's matching rule links a player to the member with its name", () => {
   it('sets team_member_id where a team_members.name_realm matches a player', async () => {
     await withTxn(async ({ q }) => {
-      // A team of its own: the backfill's join runs over every unlinked
-      // player, so it is scoped to the minted team rather than to the whole
-      // table the rest of the suite is writing. Its raider carries a
-      // name_realm and the player with that name starts unlinked.
+      // The migration's join (team, name_realm, unlinked) on a team of its
+      // own: the statement here adds a team_id predicate, so this covers the
+      // matching rule and not the one-time statement itself, which ran over
+      // every unlinked player and would here take every seeded one the rest
+      // of the suite is writing. The raider carries a name_realm and the
+      // player with that name starts unlinked.
       const team = await seedTeam(q);
       await q('update public.team_members set name_realm = $1 where id = $2', [
         'Backfilled-Illidan',
