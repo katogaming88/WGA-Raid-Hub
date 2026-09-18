@@ -12,6 +12,9 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const config = readFileSync(join(ROOT, '.github', 'dependabot.yml'), 'utf8');
 const testsWorkflow = readFileSync(join(ROOT, '.github', 'workflows', 'changelog-check-tests.yml'), 'utf8');
+const appLock = JSON.parse(readFileSync(join(ROOT, 'app', 'package-lock.json'), 'utf8'));
+
+const unquote = (token) => token.replace(/^['"]|['"]$/g, '');
 
 // The text of one `updates:` entry, from its `- package-ecosystem:` line to
 // the next one. Throws rather than returning '' so a missing entry fails the
@@ -28,6 +31,15 @@ function groupNames(entry) {
   const block = entry.match(/^\s+groups:\n((?:\s{6,}.*\n?)+)/m);
   if (!block) return [];
   return [...block[1].matchAll(/^\s{6}([a-z-]+):$/gm)].map((m) => m[1]);
+}
+
+// The names an entry ignores at their major: every dependency-name whose
+// update-types names semver-major, or that has no update-types line at all,
+// which ignores every update.
+function heldNames(entry) {
+  return [...entry.matchAll(/^\s+- dependency-name: (.+)$(?:\n\s+update-types: \[(.*)\])?/gm)]
+    .filter((m) => m[2] === undefined || m[2].includes('version-update:semver-major'))
+    .map((m) => unquote(m[1]));
 }
 
 // A version as [major, minor, patch, release], where release is 1 for a bare
