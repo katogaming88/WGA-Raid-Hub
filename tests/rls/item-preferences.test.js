@@ -3,17 +3,32 @@
 // via is_own_player(), and officers can read but not write directly. Uses the
 // shared withTxn from helpers.js.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, OFFICER_T1, RAIDER_T1, OFFICER_T2, SITE_ADMIN, GUILD_OFFICER, RLS_DENIED } from './helpers.js';
+import {
+  pool,
+  withTxn,
+  seedPlayer,
+  OFFICER_T1,
+  RAIDER_T1,
+  OFFICER_T2,
+  SITE_ADMIN,
+  GUILD_OFFICER,
+  RLS_DENIED
+} from './helpers.js';
 
-// Seed player 1 (Seedraider-Illidan, team 1) has no team_member_id link
-// (supabase/seed.sql) -- same starting state notifications.test.js relies
-// on, linked ephemerally within each test's own rolled-back transaction.
-const linkPlayer1ToRaider = (q) => q('update public.players set team_member_id = 3 where id = 1');
+// Every case mints the player its rows belong to (#1123): ownPlayer is a
+// character of RAIDER_T1's (linked to team_members 3, the team 1 raider),
+// otherPlayer one nobody has claimed. The seeded players are never written.
+const RAIDER_T1_MEMBER = 3;
+const ownPlayer = (q) => seedPlayer(q, { memberId: RAIDER_T1_MEMBER });
+const otherPlayer = (q) => seedPlayer(q);
 
 describe('anon has no read access to item_preferences', () => {
   it('anon sees no rows even once one exists', async () => {
     await withTxn(async ({ q, asAnon }) => {
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'bis')");
+      const pid = await otherPlayer(q);
+      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, $1, 1, 'bis')", [
+        pid
+      ]);
       const res = await asAnon('select id from public.item_preferences');
       expect(res.rows.length).toBe(0);
     });
@@ -23,19 +38,23 @@ describe('anon has no read access to item_preferences', () => {
 describe('a raider manages only their own item_preferences', () => {
   it('an unlinked raider cannot see a row for a player they have not claimed', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'bis')");
-      const res = await asUser(RAIDER_T1, 'select id from public.item_preferences where player_id = 1');
+      const pid = await otherPlayer(q);
+      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, $1, 1, 'bis')", [
+        pid
+      ]);
+      const res = await asUser(RAIDER_T1, 'select id from public.item_preferences where player_id = $1', [pid]);
       expect(res.rows.length).toBe(0);
     });
   });
 
   it('a linked raider can insert, read, update, and delete their own row', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await linkPlayer1ToRaider(q);
+      const pid = await ownPlayer(q);
 
       const inserted = await asUser(
         RAIDER_T1,
-        "insert into public.item_preferences (team_id, player_id, item_id, status, note) values (1, 1, 1, 'bis', 'my first pick') returning id"
+        "insert into public.item_preferences (team_id, player_id, item_id, status, note) values (1, $1, 1, 'bis', 'my first pick') returning id",
+        [pid]
       );
       const id = inserted.rows[0].id;
 
@@ -54,10 +73,12 @@ describe('a raider manages only their own item_preferences', () => {
 
   it('a raider cannot insert a row for a player they have not claimed', async () => {
     await withTxn(async ({ q, asUser }) => {
+      const pid = await otherPlayer(q);
       await expect(
         asUser(
           RAIDER_T1,
-          "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, 1, 'bis')"
+          "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, $1, 1, 'bis')",
+          [pid]
         )
       ).rejects.toMatchObject({ code: RLS_DENIED });
     });
@@ -65,11 +86,12 @@ describe('a raider manages only their own item_preferences', () => {
 
   it('the status CHECK constraint rejects an unrecognised tier', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await linkPlayer1ToRaider(q);
+      const pid = await ownPlayer(q);
       await expect(
         asUser(
           RAIDER_T1,
-          "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'major_upgrade')"
+          "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, $1, 1, 'major_upgrade')",
+          [pid]
         )
       ).rejects.toThrow();
     });
@@ -79,34 +101,38 @@ describe('a raider manages only their own item_preferences', () => {
 describe('officers can read but not directly write item_preferences', () => {
   it('a team 1 officer sees a row a raider owns', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await linkPlayer1ToRaider(q);
+      const pid = await ownPlayer(q);
       await asUser(
         RAIDER_T1,
-        "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'bis')"
+        "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, $1, 1, 'bis')",
+        [pid]
       );
-      const res = await asUser(OFFICER_T1, 'select id from public.item_preferences where player_id = 1');
+      const res = await asUser(OFFICER_T1, 'select id from public.item_preferences where player_id = $1', [pid]);
       expect(res.rows.length).toBe(1);
     });
   });
 
   it("a team 2 officer cannot see a team 1 raider's row", async () => {
     await withTxn(async ({ q, asUser }) => {
-      await linkPlayer1ToRaider(q);
+      const pid = await ownPlayer(q);
       await asUser(
         RAIDER_T1,
-        "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'bis')"
+        "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, $1, 1, 'bis')",
+        [pid]
       );
-      const res = await asUser(OFFICER_T2, 'select id from public.item_preferences where player_id = 1');
+      const res = await asUser(OFFICER_T2, 'select id from public.item_preferences where player_id = $1', [pid]);
       expect(res.rows.length).toBe(0);
     });
   });
 
   it('an officer cannot insert a row for a raider directly (no officer write policy)', async () => {
-    await withTxn(async ({ asUser }) => {
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await ownPlayer(q);
       await expect(
         asUser(
           OFFICER_T1,
-          "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'bis')"
+          "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, $1, 1, 'bis')",
+          [pid]
         )
       ).rejects.toMatchObject({ code: RLS_DENIED });
     });
@@ -114,24 +140,26 @@ describe('officers can read but not directly write item_preferences', () => {
 
   it("a site admin sees a team 1 raider's row (cross-team view access)", async () => {
     await withTxn(async ({ q, asUser }) => {
-      await linkPlayer1ToRaider(q);
+      const pid = await ownPlayer(q);
       await asUser(
         RAIDER_T1,
-        "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'bis')"
+        "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, $1, 1, 'bis')",
+        [pid]
       );
-      const res = await asUser(SITE_ADMIN, 'select id from public.item_preferences where player_id = 1');
+      const res = await asUser(SITE_ADMIN, 'select id from public.item_preferences where player_id = $1', [pid]);
       expect(res.rows.length).toBe(1);
     });
   });
 
   it("a guild officer sees a team 1 raider's row (cross-team view access)", async () => {
     await withTxn(async ({ q, asUser }) => {
-      await linkPlayer1ToRaider(q);
+      const pid = await ownPlayer(q);
       await asUser(
         RAIDER_T1,
-        "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'bis')"
+        "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, $1, 1, 'bis')",
+        [pid]
       );
-      const res = await asUser(GUILD_OFFICER, 'select id from public.item_preferences where player_id = 1');
+      const res = await asUser(GUILD_OFFICER, 'select id from public.item_preferences where player_id = $1', [pid]);
       expect(res.rows.length).toBe(1);
     });
   });
@@ -140,10 +168,11 @@ describe('officers can read but not directly write item_preferences', () => {
 describe('officers can clear (but not otherwise edit) a raider note', () => {
   it('a team 1 officer can null out a note on a team 1 raider row', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await linkPlayer1ToRaider(q);
+      const pid = await ownPlayer(q);
       const inserted = await asUser(
         RAIDER_T1,
-        "insert into public.item_preferences (team_id, player_id, item_id, status, note) values (1, 1, 1, 'bis', 'redundant note') returning id"
+        "insert into public.item_preferences (team_id, player_id, item_id, status, note) values (1, $1, 1, 'bis', 'redundant note') returning id",
+        [pid]
       );
       const id = inserted.rows[0].id;
 
@@ -155,10 +184,11 @@ describe('officers can clear (but not otherwise edit) a raider note', () => {
 
   it('an officer cannot set a note to a non-null value', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await linkPlayer1ToRaider(q);
+      const pid = await ownPlayer(q);
       const inserted = await asUser(
         RAIDER_T1,
-        "insert into public.item_preferences (team_id, player_id, item_id, status, note) values (1, 1, 1, 'bis', 'original note') returning id"
+        "insert into public.item_preferences (team_id, player_id, item_id, status, note) values (1, $1, 1, 'bis', 'original note') returning id",
+        [pid]
       );
       const id = inserted.rows[0].id;
 
@@ -170,10 +200,11 @@ describe('officers can clear (but not otherwise edit) a raider note', () => {
 
   it('an officer cannot change status/item_id/slot via this path', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await linkPlayer1ToRaider(q);
+      const pid = await ownPlayer(q);
       const inserted = await asUser(
         RAIDER_T1,
-        "insert into public.item_preferences (team_id, player_id, item_id, status, note) values (1, 1, 1, 'bis', 'a note') returning id"
+        "insert into public.item_preferences (team_id, player_id, item_id, status, note) values (1, $1, 1, 'bis', 'a note') returning id",
+        [pid]
       );
       const id = inserted.rows[0].id;
 
@@ -188,10 +219,11 @@ describe('officers can clear (but not otherwise edit) a raider note', () => {
 
   it("a team 2 officer cannot clear a team 1 raider's note", async () => {
     await withTxn(async ({ q, asUser }) => {
-      await linkPlayer1ToRaider(q);
+      const pid = await ownPlayer(q);
       const inserted = await asUser(
         RAIDER_T1,
-        "insert into public.item_preferences (team_id, player_id, item_id, status, note) values (1, 1, 1, 'bis', 'a note') returning id"
+        "insert into public.item_preferences (team_id, player_id, item_id, status, note) values (1, $1, 1, 'bis', 'a note') returning id",
+        [pid]
       );
       const id = inserted.rows[0].id;
 
@@ -208,10 +240,11 @@ describe('officers can clear (but not otherwise edit) a raider note', () => {
 
   it("a raider's own unrestricted self-update still works (owner exemption regression guard)", async () => {
     await withTxn(async ({ q, asUser }) => {
-      await linkPlayer1ToRaider(q);
+      const pid = await ownPlayer(q);
       const inserted = await asUser(
         RAIDER_T1,
-        "insert into public.item_preferences (team_id, player_id, item_id, status, note) values (1, 1, 1, 'bis', 'a note') returning id"
+        "insert into public.item_preferences (team_id, player_id, item_id, status, note) values (1, $1, 1, 'bis', 'a note') returning id",
+        [pid]
       );
       const id = inserted.rows[0].id;
 
@@ -229,16 +262,20 @@ describe('officers can clear (but not otherwise edit) a raider note', () => {
 describe('the slot-override unique index allows the same placeholder item once per slot', () => {
   it('a raider can tag the same item_id with two different slots but not the same slot twice', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await linkPlayer1ToRaider(q);
+      const pid = await ownPlayer(q);
       await asUser(
         RAIDER_T1,
-        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 1, 1, 'bis', 'Neck')"
+        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, $1, 1, 'bis', 'Neck')",
+        [pid]
       );
       await asUser(
         RAIDER_T1,
-        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 1, 1, 'good', 'Ring')"
+        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, $1, 1, 'good', 'Ring')",
+        [pid]
       );
-      const rows = (await q('select slot, status from public.item_preferences where player_id = 1 order by slot')).rows;
+      const rows = (
+        await q('select slot, status from public.item_preferences where player_id = $1 order by slot', [pid])
+      ).rows;
       expect(rows).toEqual([
         { slot: 'Neck', status: 'bis' },
         { slot: 'Ring', status: 'good' }
@@ -247,7 +284,8 @@ describe('the slot-override unique index allows the same placeholder item once p
       await expect(
         asUser(
           RAIDER_T1,
-          "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 1, 1, 'ok', 'Neck')"
+          "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, $1, 1, 'ok', 'Neck')",
+          [pid]
         )
       ).rejects.toThrow();
     });
