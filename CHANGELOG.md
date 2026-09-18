@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.137.5] - 2026-09-17
+
+### Project
+
+- Dependabot's weekly pull request for the new app's build and test tools now
+  holds eslint major versions back (eslint itself and its `@eslint/js`
+  companion, which moves with it), the way it already holds TypeScript
+  majors, until the app's accessibility lint plugin can run on them
+  ([#1238](https://github.com/katogaming88/WGA-Raid-Hub/issues/1238)). The
+  first run bundled eslint 10 into the group and the pull request could not
+  install its packages, which would have repeated every week. The test that
+  pins the entry's shape pins all three held majors.
+
 ## [3.137.4] - 2026-09-17
 
 ### Project

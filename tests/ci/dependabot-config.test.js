@@ -44,9 +44,23 @@ describe('the Dependabot entry for app/ (#1180)', () => {
     expect(app).toMatch(/^\s+app-dev-dependencies:\n\s+dependency-type: development\n\s+patterns:\n\s+- '\*'$/m);
   });
 
-  it('typescript majors are ignored there, since the lint plugin has no 7', () => {
+  // The majors the entry holds back, each because a package beside it in
+  // app/ declares a peer range the major falls outside of, so a bundled
+  // bump fails npm ci rather than installing. The first weekly run (#1233)
+  // found the eslint pair that way. The name is the token as it sits in the
+  // file: an @-scoped name is quoted in YAML.
+  const heldMajors = [
+    ['typescript', 'typescript-eslint has no 7'],
+    ['eslint', 'eslint-plugin-jsx-a11y caps eslint at 9 (#1238)'],
+    ["'@eslint/js'", 'its 10 peers on eslint 10, which is held (#1238)']
+  ];
+
+  it.each(heldMajors)('%s majors are ignored there, since %s', (yamlName) => {
     const app = entryFor('/app');
-    expect(app).toMatch(/^\s+- dependency-name: typescript\n\s+update-types: \['version-update:semver-major'\]$/m);
+    const name = yamlName.replace(/[/.]/g, '\\$&');
+    expect(app).toMatch(
+      new RegExp(`^\\s+- dependency-name: ${name}\\n\\s+update-types: \\['version-update:semver-major'\\]$`, 'm')
+    );
   });
 
   it('control: the bot/ entry keeps its bot-dev-dependencies group', () => {
