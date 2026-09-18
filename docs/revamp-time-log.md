@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |      1 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     20 h 32 m |
-| **All revamp work**                | **29 h 17 m** |
+| Revamp 2: public pages             |     21 h 27 m |
+| **All revamp work**                | **30 h 12 m** |
 
 ## Log
 
@@ -68,6 +68,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | 12:40-2:00 AM     | #1216 boss lineup: rework after Rex's review (groups + nightly plans) | Revamp 2 (#1102) |    80 m | ~50 m build, ~30 m Kat on mockup rounds | Rex's review of #1231/#1232 asked for a standing group per boss copied into each night instead of a sit-out list; Kat chose it. Rewrote #1231 (three tables, an hourly fill, stale-save refusal, bench out by default), then mockup rounds on the canvas (boards E-I: Skip button, dots explained, always-visible save bar so the grid never moves, full-page states, a Boss groups page for later), then rebuilt #1232 on the new tables with Rex's page fixes. |
 | 1:50-2:05 PM      | #1228 sidebar keeps one order on every page                           | Revamp 2 (#1102) |    15 m | ~14 m build, ~1 m Kat choosing the order | Kat picked Guild, You, Team, Officer. The browser test that clicks from Guild home to a team page also caught the Officer group vanishing for a moment while the new address loaded, so the sidebar now remembers the guild meanwhile. |
 | 2:35-3:30 PM      | #1216 Boss groups page (board I)                                       | Revamp 2 (#1102) |    55 m | build; Kat review not yet counted        | The officer page for each boss's usual group, on the tables #1231 added. Checked on the 2026-09-18 production backup: first use had every raider flagged "in no group", so it got a Start with everyone in prompt. Found Phoenix has no raid schedule on production, so the nightly fill has no Phoenix nights yet. Also fixed a save on either page failing when the group or night still held someone who has since left the roster. |
+| 3:35-4:05 PM      | #1252 review round: grid fits, equal columns                           | Revamp 2 (#1102) |    30 m | ~20 m build, ~10 m Kat reviewing         | Kat's review on the page: no sideways scroll, quieter boss headers (role mix dropped), every column one width with names wrapping only between words. Kat also noted Wavecaller and Kith'ix are flex bosses (25 on Mythic), recorded on #1244. |
+| 4:05-4:30 PM      | #1216 raiders see their own bosses (boards C and D)                    | Revamp 2 (#1102) |    25 m | ~20 m build, ~5 m Kat deciding           | Kat settled the open questions: a sit-out still counts as coming and stays out of Heads up, an unsaved night shows marked not final, raiders see only their own bosses. The rest of #1216 is ordered on the issue. |
 
 ### 2026-09-17
 

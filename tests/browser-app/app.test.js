@@ -294,6 +294,14 @@ const CAL_LINEUP = {
   }
 };
 
+// A raider's own bosses on the night page (#1216, boards C and D): the same
+// planned night, on the Who's coming tab.
+const CAL_OWN_BOSSES = {
+  ...CAL_LINEUP,
+  path: `/g/wga/t/phoenix/calendar?date=${CAL_NIGHT}`,
+  sentinel: 'main:has(.your-boss)'
+};
+
 // The Boss groups page (#1216): the same raids and groups, with one cell
 // changed and not saved yet in the clicked state.
 const BOSS_GROUPS = {
@@ -350,6 +358,8 @@ const STATES = [
   { label: 'calendar night, officer, light', ...CAL_NIGHT_PAGE, colorScheme: 'light' },
   { label: 'calendar boss lineup, officer', ...CAL_LINEUP },
   { label: 'calendar boss lineup, officer, light', ...CAL_LINEUP, colorScheme: 'light' },
+  { label: 'calendar night, your bosses', ...CAL_OWN_BOSSES },
+  { label: 'calendar night, your bosses, light', ...CAL_OWN_BOSSES, colorScheme: 'light' },
   { label: 'boss groups, officer', ...BOSS_GROUPS },
   { label: 'boss groups, officer, light', ...BOSS_GROUPS, colorScheme: 'light' },
   { label: 'boss groups, officer, a change not saved yet', ...BOSS_GROUPS, click: '.lineup-toggle:not(.is-in)' },

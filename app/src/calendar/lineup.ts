@@ -531,3 +531,44 @@ export function comingNights(rows: ComingBossRow[], bosses: LineupBoss[], change
     return { date, text: parts.length ? parts.join(' ') : 'Your changes don’t reach this night.' };
   });
 }
+
+// A raider's own bosses for a night (#1216, boards C and D): what the "Your
+// bosses tonight" card says. Kat, 2026-09-18: sitting out a boss is not
+// missing the night, a night filled from the groups but not saved by an
+// officer still shows (marked not final), and raiders see only their own.
+export type YourBossTile = { n: number; name: string; in: boolean };
+export type YourBosses = {
+  tiles: YourBossTile[];
+  summary: string;
+  // Null once an officer has saved every boss on the night.
+  notFinal: string | null;
+};
+
+export function yourBosses(raids: LineupRaid[], places: Places, me: PlayerRow): YourBosses | null {
+  const live = raids.flatMap((r) => r.bosses).filter((b) => !b.skipped);
+  if (!live.length) return null;
+  const tiles = live.map((b, i) => ({ n: i + 1, name: b.name, in: placesFor(places, b.id).has(me.id) }));
+  const count = tiles.filter((t) => t.in).length;
+  const out = live.filter((b) => !placesFor(places, b.id).has(me.id)).map((b) => b.short);
+  const summary =
+    count === live.length
+      ? live.length === 1
+        ? 'In for tonight’s boss.'
+        : `In for all ${live.length} bosses.`
+      : count === 0
+        ? me.is_bench
+          ? 'You’re on the bench, so you’re out for every boss unless your officers put you in.'
+          : 'You sit out every boss tonight.'
+        : `In for ${count} of ${live.length} bosses. You sit out ${joinNames(out)}.`;
+  const unsaved = live.filter((b) => !b.confirmed);
+  const done = live.filter((b) => b.confirmed);
+  // Whichever list is shorter is the one named.
+  const notFinal = !unsaved.length
+    ? null
+    : !done.length
+      ? 'From the usual groups; your officers haven’t finalized it yet.'
+      : unsaved.length <= done.length
+        ? `${joinNames(unsaved.map((b) => b.short))} ${unsaved.length === 1 ? 'is' : 'are'} from the usual groups and not final yet.`
+        : `${joinNames(done.map((b) => b.short))} ${done.length === 1 ? 'is' : 'are'} final; the rest are from the usual groups and not final yet.`;
+  return { tiles, summary, notFinal };
+}

@@ -44,6 +44,7 @@ import {
   type ScheduleRule
 } from './calendar';
 import { BossLineup } from './BossLineup';
+import { YourBosses } from './YourBosses';
 import {
   useAnswers,
   useOfficerSetAnswer,
@@ -603,90 +604,94 @@ function Coming({
   );
 
   return (
-    <div className="night-layout">
-      <aside className="card night-rail" aria-label="Your answer and tonight’s numbers">
-        {canAnswer && mine && <OwnAnswer night={night} player={mine.player} answer={mine.answer} />}
-        <section aria-labelledby="tonight-title" className="rail-section">
-          <h2 id="tonight-title" className="eyebrow">
-            Tonight
-          </h2>
-          <dl className="night-counts">
-            <Count kind="in" label="Coming" value={view.counts.in} />
-            <Count kind="flag" label="…of them late, leaving early or tentative" value={view.counts.flagged} sub />
-            <Count kind="out" label="Out" value={view.counts.out} />
-            <Count kind="apart" label="Bench and rotators" value={view.counts.apart} />
-          </dl>
-        </section>
-        {view.latest.length > 0 && (
-          <section aria-labelledby="latest-title" className="rail-section">
-            <h2 id="latest-title" className="eyebrow">
-              Latest answers
+    <>
+      {viewer.me && <YourBosses night={night} me={viewer.me} className="your-bosses-narrow" />}
+      <div className="night-layout">
+        <aside className="card night-rail" aria-label="Your answer and tonight’s numbers">
+          {canAnswer && mine && <OwnAnswer night={night} player={mine.player} answer={mine.answer} />}
+          <section aria-labelledby="tonight-title" className="rail-section">
+            <h2 id="tonight-title" className="eyebrow">
+              Tonight
             </h2>
-            <ul className="latest-list">
-              {view.latest.map((r) => (
-                <li key={r.player.id}>
-                  <span className="latest-row">
-                    <span className="night-name" style={{ color: classColor(r.player.classes_specs?.class ?? '') }}>
-                      {r.name}
-                    </span>
-                    <Pill kind={r.status.kind}>{r.status.label}</Pill>
-                  </span>
-                  <time className="text-dim" dateTime={r.updatedAt!} title={new Date(r.updatedAt!).toLocaleString()}>
-                    {ago(r.updatedAt!, now)}
-                  </time>
-                </li>
-              ))}
-            </ul>
+            <dl className="night-counts">
+              <Count kind="in" label="Coming" value={view.counts.in} />
+              <Count kind="flag" label="…of them late, leaving early or tentative" value={view.counts.flagged} sub />
+              <Count kind="out" label="Out" value={view.counts.out} />
+              <Count kind="apart" label="Bench and rotators" value={view.counts.apart} />
+            </dl>
           </section>
-        )}
-      </aside>
-
-      <div className="night-main">
-        <section className="card heads-up" aria-labelledby="heads-up-title">
-          <h2 id="heads-up-title" className="eyebrow">
-            Heads up
-          </h2>
-          <div className="heads-up-groups">
-            <HeadsUpGroup
-              title="Out"
-              kind="out"
-              rows={view.headsUp.out}
-              officerTools={officerTools}
-              onEdit={setEditing}
-            />
-            <HeadsUpGroup
-              title="Late, leaving early or tentative"
-              kind="flag"
-              rows={view.headsUp.flagged}
-              officerTools={officerTools}
-              onEdit={setEditing}
-            />
-          </div>
-        </section>
-
-        <div className="role-columns">
-          {view.groups.map((g) => (
-            <section key={g.role} className="card role-column" aria-labelledby={`role-${g.role}`}>
-              <h2 id={`role-${g.role}`} className="role-title">
-                {g.label}
-                <span className="text-muted num" aria-label={`${g.coming} of ${g.total} coming`}>
-                  {g.coming}/{g.total}
-                </span>
+          {view.latest.length > 0 && (
+            <section aria-labelledby="latest-title" className="rail-section">
+              <h2 id="latest-title" className="eyebrow">
+                Latest answers
               </h2>
-              <ul className="night-rows">{g.rows.map(row)}</ul>
-              {g.apart.length > 0 && (
-                <>
-                  <h3 className="visually-hidden">{g.label}: bench and rotators</h3>
-                  <ul className="night-rows night-rows-apart">{g.apart.map(row)}</ul>
-                </>
-              )}
+              <ul className="latest-list">
+                {view.latest.map((r) => (
+                  <li key={r.player.id}>
+                    <span className="latest-row">
+                      <span className="night-name" style={{ color: classColor(r.player.classes_specs?.class ?? '') }}>
+                        {r.name}
+                      </span>
+                      <Pill kind={r.status.kind}>{r.status.label}</Pill>
+                    </span>
+                    <time className="text-dim" dateTime={r.updatedAt!} title={new Date(r.updatedAt!).toLocaleString()}>
+                      {ago(r.updatedAt!, now)}
+                    </time>
+                  </li>
+                ))}
+              </ul>
             </section>
-          ))}
-        </div>
-      </div>
+          )}
+        </aside>
 
-      {editing && <OfficerDialog row={editing} night={night} onClose={() => setEditing(null)} />}
-    </div>
+        <div className="night-main">
+          {viewer.me && <YourBosses night={night} me={viewer.me} className="your-bosses-wide" />}
+          <section className="card heads-up" aria-labelledby="heads-up-title">
+            <h2 id="heads-up-title" className="eyebrow">
+              Heads up
+            </h2>
+            <div className="heads-up-groups">
+              <HeadsUpGroup
+                title="Out"
+                kind="out"
+                rows={view.headsUp.out}
+                officerTools={officerTools}
+                onEdit={setEditing}
+              />
+              <HeadsUpGroup
+                title="Late, leaving early or tentative"
+                kind="flag"
+                rows={view.headsUp.flagged}
+                officerTools={officerTools}
+                onEdit={setEditing}
+              />
+            </div>
+          </section>
+
+          <div className="role-columns">
+            {view.groups.map((g) => (
+              <section key={g.role} className="card role-column" aria-labelledby={`role-${g.role}`}>
+                <h2 id={`role-${g.role}`} className="role-title">
+                  {g.label}
+                  <span className="text-muted num" aria-label={`${g.coming} of ${g.total} coming`}>
+                    {g.coming}/{g.total}
+                  </span>
+                </h2>
+                <ul className="night-rows">{g.rows.map(row)}</ul>
+                {g.apart.length > 0 && (
+                  <>
+                    <h3 className="visually-hidden">{g.label}: bench and rotators</h3>
+                    <ul className="night-rows night-rows-apart">{g.apart.map(row)}</ul>
+                  </>
+                )}
+              </section>
+            ))}
+          </div>
+        </div>
+
+        {editing && <OfficerDialog row={editing} night={night} onClose={() => setEditing(null)} />}
+      </div>
+    </>
   );
 }
 

@@ -20,6 +20,7 @@ import {
   shortBossName,
   toggle,
   wholeNight,
+  yourBosses,
   type ComingBossRow,
   type EncounterRow,
   type LeaverRow,
@@ -719,5 +720,91 @@ describe('the boss groups page, before any group is set', () => {
       { p_team_id: 1, p_encounter_id: 101, p_player_ids: [1, 2, 3, 4], p_expected_player_ids: [] },
       { p_team_id: 1, p_encounter_id: 102, p_player_ids: [1, 2, 3, 4], p_expected_player_ids: [] }
     ]);
+  });
+});
+
+// A raider's own bosses (#1216, boards C and D)
+
+describe('your bosses tonight', () => {
+  const raids = (bosses: NightBossRow[]) => lineupRaids(ENCOUNTERS, bosses, { fresh: false, season: null });
+  const saved = { confirmed_at: '2026-05-13T10:00:00Z' };
+
+  it('says which bosses a raider sits out', () => {
+    const card = yourBosses(
+      raids([nightBoss(101, 1, saved), nightBoss(102, 2, saved), nightBoss(103, 3, saved)]),
+      placesOf(
+        places([
+          [101, [1, 2]],
+          [102, [2]],
+          [103, [1, 2]]
+        ])
+      ),
+      ROSTER[0]!
+    )!;
+    expect(card.summary).toBe('In for 2 of 3 bosses. You sit out Sszorak.');
+    expect(card.tiles.map((t) => [t.n, t.in])).toEqual([
+      [1, true],
+      [2, false],
+      [3, true]
+    ]);
+    expect(card.notFinal).toBeNull();
+  });
+
+  it('marks a night filled from the groups as not final, boss by boss', () => {
+    const all = places([
+      [101, [1]],
+      [102, [1]]
+    ]);
+    expect(yourBosses(raids([nightBoss(101, 1), nightBoss(102, 2)]), placesOf(all), ROSTER[0]!)!.notFinal).toBe(
+      'From the usual groups; your officers haven’t finalized it yet.'
+    );
+    const card = yourBosses(raids([nightBoss(101, 1, saved), nightBoss(102, 2)]), placesOf(all), ROSTER[0]!)!;
+    expect(card.summary).toBe('In for all 2 bosses.');
+    expect(card.notFinal).toBe('Sszorak is from the usual groups and not final yet.');
+    const mostlyUnsaved = yourBosses(
+      raids([nightBoss(101, 1, saved), nightBoss(102, 2), nightBoss(103, 3)]),
+      placesOf(all),
+      ROSTER[0]!
+    )!;
+    expect(mostlyUnsaved.notFinal).toBe("Nek'zali is final; the rest are from the usual groups and not final yet.");
+  });
+
+  it('leaves skipped bosses off, tells the bench, and shows nothing on a night with no lineup', () => {
+    const bench = ROSTER[4]!;
+    const card = yourBosses(raids([nightBoss(101, 1, saved), nightBoss(102, 2, { skipped: true })]), new Map(), bench)!;
+    expect(card.tiles.map((t) => t.name)).toEqual(["Nek'zali the Soulcoiler"]);
+    expect(card.summary).toBe('You’re on the bench, so you’re out for every boss unless your officers put you in.');
+    expect(yourBosses(raids([]), new Map(), bench)).toBeNull();
+  });
+});
+
+describe('the night page for a raider', () => {
+  const NIGHT_PAGE = '/g/wga/t/phoenix/calendar?date=2026-05-14';
+
+  it('shows their bosses, and a sit-out is not in Heads up', async () => {
+    renderApp(
+      NIGHT_PAGE,
+      handlers(who('raider'), {
+        ...PLANNED,
+        tonight: places([
+          [101, [1, 2, 3]],
+          [102, [2]],
+          [103, [1, 2, 3, 4]]
+        ])
+      })
+    );
+    const cards = await screen.findAllByRole('region', { name: 'Your bosses tonight' });
+    const card = within(cards[0]!);
+    expect(card.getByText('In for 2 of 3 bosses. You sit out Sszorak.')).toBeInTheDocument();
+    expect(card.getByText('Not final yet')).toBeInTheDocument();
+    expect(card.getByText('From the usual groups; your officers haven’t finalized it yet.')).toBeInTheDocument();
+    const headsUp = within(screen.getByRole('region', { name: 'Heads up' }));
+    expect(headsUp.queryByText('Ana')).not.toBeInTheDocument();
+  });
+
+  it('shows no card on a night with no boss lineup', async () => {
+    renderApp(NIGHT_PAGE, handlers(who('raider'), {}));
+    expect(await screen.findByRole('region', { name: 'Heads up' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Your bosses tonight' })).not.toBeInTheDocument();
   });
 });
