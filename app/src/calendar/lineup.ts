@@ -559,7 +559,7 @@ export function yourBosses(raids: LineupRaid[], places: Places, me: PlayerRow): 
         ? me.is_bench
           ? 'You’re on the bench, so you’re out for every boss unless your officers put you in.'
           : 'You sit out every boss tonight.'
-        : `In for ${count} of ${live.length} bosses. You sit out ${joinNames(out)}, and still count as coming.`;
+        : `In for ${count} of ${live.length} bosses. You sit out ${joinNames(out)}.`;
   const unsaved = live.filter((b) => !b.confirmed);
   const done = live.filter((b) => b.confirmed);
   // Whichever list is shorter is the one named.

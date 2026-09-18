@@ -729,7 +729,7 @@ describe('your bosses tonight', () => {
   const raids = (bosses: NightBossRow[]) => lineupRaids(ENCOUNTERS, bosses, { fresh: false, season: null });
   const saved = { confirmed_at: '2026-05-13T10:00:00Z' };
 
-  it('says which bosses a raider sits out, and that they still count as coming', () => {
+  it('says which bosses a raider sits out', () => {
     const card = yourBosses(
       raids([nightBoss(101, 1, saved), nightBoss(102, 2, saved), nightBoss(103, 3, saved)]),
       placesOf(
@@ -741,7 +741,7 @@ describe('your bosses tonight', () => {
       ),
       ROSTER[0]!
     )!;
-    expect(card.summary).toBe('In for 2 of 3 bosses. You sit out Sszorak, and still count as coming.');
+    expect(card.summary).toBe('In for 2 of 3 bosses. You sit out Sszorak.');
     expect(card.tiles.map((t) => [t.n, t.in])).toEqual([
       [1, true],
       [2, false],
@@ -795,7 +795,7 @@ describe('the night page for a raider', () => {
     );
     const cards = await screen.findAllByRole('region', { name: 'Your bosses tonight' });
     const card = within(cards[0]!);
-    expect(card.getByText('In for 2 of 3 bosses. You sit out Sszorak, and still count as coming.')).toBeInTheDocument();
+    expect(card.getByText('In for 2 of 3 bosses. You sit out Sszorak.')).toBeInTheDocument();
     expect(card.getByText('Not final yet')).toBeInTheDocument();
     expect(card.getByText('From the usual groups; your officers haven’t finalized it yet.')).toBeInTheDocument();
     const headsUp = within(screen.getByRole('region', { name: 'Heads up' }));

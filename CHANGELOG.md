@@ -20,13 +20,13 @@ answers to.
   ([#1216](https://github.com/katogaming88/WGA-Raid-Hub/issues/1216)): a "Your
   bosses tonight" card, above Heads up on a computer and at the top on a phone,
   with one tile per boss on the night saying In or Sitting out, and a line such
-  as "In for 7 of 9 bosses. You sit out Vashnik and Coiled Altar, and still
-  count as coming." Bosses skipped for the night are left off. A night filled
-  from the usual groups that an officer hasn't saved yet is marked "Not final
-  yet". Sitting out a boss is not missing the night: the raider still counts as
-  coming and isn't listed in Heads up. Raiders see only their own bosses, and a
-  night with no boss lineup shows no card, so teams that don't plan by boss see
-  no change.
+  as "In for 7 of 9 bosses. You sit out Vashnik and Coiled Altar." Bosses
+  skipped for the night are left off. A night filled from the usual groups that
+  an officer hasn't saved yet is marked "Not final yet". Sitting out a boss is
+  not missing the night: the raider is still in the night's Coming count and
+  isn't listed in Heads up. Raiders see only their own bosses, and a night with
+  no boss lineup shows no card, so teams that don't plan by boss see no
+  change.
 
 ## [3.141.0] - 2026-09-18
 
