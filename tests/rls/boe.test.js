@@ -24,12 +24,15 @@ import {
   OFFICER_T2,
   GUILD_OFFICER,
   RLS_DENIED,
-  seedSeason
+  seedSeason,
+  seedPlayer,
+  seedTeam
 } from './helpers.js';
 
-// Seed player 1 (Seedraider-Illidan, team 1) ships unlinked (supabase/seed.sql);
-// tests link it ephemerally inside their own rolled-back transaction.
-const linkPlayer1ToRaider = (q) => q('update public.players set team_member_id = 3 where id = 1');
+// Seed player 1 (Seedraider-Illidan, team 1) ships unlinked (supabase/seed.sql)
+// and stays that way: a case that needs RAIDER_T1 to own a find mints a
+// player linked to team_members 3 and a find for it (#1123).
+const RAIDER_T1_MEMBER = 3;
 
 // Seeded BoE fixtures (supabase/seed.sql): boe_items 1 = found, player 1,
 // team 1; boe_items 2 = sold, unresolved finder, team 1, split 150000 ->
@@ -116,9 +119,13 @@ describe('no public read; officer reads are team-scoped unless granted', () => {
   it('an unlinked raider sees nothing; a linked raider sees only their own rows', async () => {
     await withTxn(async ({ q, asUser }) => {
       expect((await asUser(RAIDER_T1, 'select id from public.boe_items')).rows.length).toBe(0);
-      await linkPlayer1ToRaider(q);
+      const pid = await seedPlayer(q, { memberId: RAIDER_T1_MEMBER });
+      const own = await q(
+        "insert into public.boe_items (team_id, player_id, item_name, finder_name) values (1, $1, 'Own Find', 'Own-Illidan') returning id",
+        [pid]
+      );
       const res = await asUser(RAIDER_T1, 'select id from public.boe_items');
-      expect(res.rows.map((r) => r.id)).toEqual([1]);
+      expect(res.rows.map((r) => r.id)).toEqual([own.rows[0].id]);
     });
   });
 });
@@ -230,11 +237,19 @@ describe('submit_boe_found', () => {
     });
   });
 
+  // The season comes from the submitting team's settings row, so the case
+  // mints a team and sets its season rather than writing team 1's row.
   it('the submit snapshots the seasonName in force', async () => {
     await withTxn(async ({ q, asAnon }) => {
+      const { teamId } = await seedTeam(q);
       await seedSeason(q, 'Test Season 3');
-      await q(`update public.team_settings set config = config || '{"seasonName": "Test Season 3"}' where team_id = 1`);
-      const res = await asAnon(submit("1, 'Seedraider-Illidan', 'Season Snapshot Blade', 'Myth', null, false, '6/6'"));
+      await q(
+        `update public.team_settings set config = config || '{"seasonName": "Test Season 3"}' where team_id = $1`,
+        [teamId]
+      );
+      const res = await asAnon(
+        submit(`${teamId}, 'Snapshot-Illidan', 'Season Snapshot Blade', 'Myth', null, false, '6/6'`)
+      );
       const row = (await q('select season from public.boe_items where id = $1', [res.rows[0].id])).rows[0];
       expect(row.season).toBe('Test Season 3');
     });
