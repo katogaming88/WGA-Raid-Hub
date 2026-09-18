@@ -10,14 +10,14 @@
 // caller, and assertions happen back as postgres. A savepoint wraps each
 // impersonated call so an expected raise does not abort the whole transaction.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, RAIDER_T1, OFFICER_T1 } from './helpers.js';
+import { pool, withTxn, seedPlayer, seedSignup, RAIDER_T1, OFFICER_T1 } from './helpers.js';
 
 // Seeded rows this file leans on (supabase/seed.sql): team_members 3 is the
-// team 1 raider (auth_user_id = RAIDER_T1, name_realm 'Seedraider-Illidan');
-// player 1 is team 1 'Seedraider-Illidan', player 2 is team 1
-// 'Seedplayertwo-Illidan', both unlinked; signup 2 is team 1 approved.
+// team 1 raider (auth_user_id = RAIDER_T1) and 1 is the team 1 officer. The
+// characters and the signup the trigger cases link are minted per case
+// (#1123), so no case writes a seeded players row.
 const RAIDER_T1_MEMBER = 3;
-const APPROVED_SIGNUP = 2;
+const OFFICER_T1_MEMBER = 1;
 const OTHER = '00000000-0000-0000-0000-0000000000ef';
 
 const addAuthUser = (q, uid, providerId) =>
@@ -168,34 +168,37 @@ describe('account_preferences shape', () => {
 describe('claiming a character clears the no-character dismissal', () => {
   it('through claim_character()', async () => {
     await withTxn(async ({ q, asUser }) => {
+      await seedPlayer(q, { teamId: 1, nameRealm: 'Dismissclaim-Illidan' });
       await dismiss(q, RAIDER_T1);
-      await asUser(RAIDER_T1, 'select * from public.claim_character($1, $2)', [1, 'Seedraider-Illidan']);
+      await asUser(RAIDER_T1, 'select * from public.claim_character($1, $2)', [1, 'Dismissclaim-Illidan']);
       expect(await dismissalCount(q, RAIDER_T1)).toBe(0);
     });
   });
 
   it("through add_signup_to_roster()'s main swap, which carries the link to the new character", async () => {
     await withTxn(async ({ q, asUser }) => {
-      await q('update public.players set team_member_id = $1 where id = 2', [RAIDER_T1_MEMBER]);
+      const oldCharacter = await seedPlayer(q, { memberId: RAIDER_T1_MEMBER });
+      const signup = await seedSignup(q, { teamId: 1 });
       await dismiss(q, RAIDER_T1);
-      await asUser(OFFICER_T1, 'select public.add_signup_to_roster($1, $2, $3)', [APPROVED_SIGNUP, true, 2]);
+      await asUser(OFFICER_T1, 'select public.add_signup_to_roster($1, $2, $3)', [signup, true, oldCharacter]);
       expect(await dismissalCount(q, RAIDER_T1)).toBe(0);
     });
   });
 
   it('unlinking a character does not touch the dismissal', async () => {
     await withTxn(async ({ q }) => {
-      await q('update public.players set team_member_id = $1 where id = 1', [RAIDER_T1_MEMBER]);
+      const mine = await seedPlayer(q, { memberId: RAIDER_T1_MEMBER });
       await dismiss(q, RAIDER_T1);
-      await q('update public.players set team_member_id = null where id = 1');
+      await q('update public.players set team_member_id = null where id = $1', [mine]);
       expect(await dismissalCount(q, RAIDER_T1)).toBe(1);
     });
   });
 
   it("linking someone else's character leaves this account's dismissal alone", async () => {
     await withTxn(async ({ q }) => {
+      const theirs = await seedPlayer(q, { teamId: 1 });
       await dismiss(q, RAIDER_T1);
-      await q('update public.players set team_member_id = 1 where id = 2');
+      await q('update public.players set team_member_id = $1 where id = $2', [OFFICER_T1_MEMBER, theirs]);
       expect(await dismissalCount(q, RAIDER_T1)).toBe(1);
     });
   });
