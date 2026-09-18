@@ -113,6 +113,20 @@ function holders(lock, name, version) {
     .map((peer) => peer.name);
 }
 
+// The majors the /app entry holds back, each because a package beside it in
+// app/ declares a peer range the major falls outside of, so a bundled bump
+// fails npm ci rather than installing. The first weekly run (#1233) found
+// the eslint pair that way. `yamlName` is the token as it sits in the file
+// (an @-scoped name is quoted in YAML); `judgedBy` is the name whose peer
+// ranges say whether the hold still stands, which for @eslint/js is eslint,
+// since the two move in lockstep. A hold with a reason that is not a peer
+// range would carry null there and the tripwire would leave it alone.
+const heldMajors = [
+  { yamlName: 'typescript', reason: 'typescript-eslint has no 7', judgedBy: 'typescript' },
+  { yamlName: 'eslint', reason: 'eslint-plugin-jsx-a11y caps eslint at 9 (#1238)', judgedBy: 'eslint' },
+  { yamlName: "'@eslint/js'", reason: 'its 10 peers on eslint 10, which is held (#1238)', judgedBy: 'eslint' }
+];
+
 describe('the Dependabot entry for app/ (#1180)', () => {
   it('app/ has its own weekly npm entry labelled chore', () => {
     const app = entryFor('/app');
@@ -127,18 +141,7 @@ describe('the Dependabot entry for app/ (#1180)', () => {
     expect(app).toMatch(/^\s+app-dev-dependencies:\n\s+dependency-type: development\n\s+patterns:\n\s+- '\*'$/m);
   });
 
-  // The majors the entry holds back, each because a package beside it in
-  // app/ declares a peer range the major falls outside of, so a bundled
-  // bump fails npm ci rather than installing. The first weekly run (#1233)
-  // found the eslint pair that way. The name is the token as it sits in the
-  // file: an @-scoped name is quoted in YAML.
-  const heldMajors = [
-    ['typescript', 'typescript-eslint has no 7'],
-    ['eslint', 'eslint-plugin-jsx-a11y caps eslint at 9 (#1238)'],
-    ["'@eslint/js'", 'its 10 peers on eslint 10, which is held (#1238)']
-  ];
-
-  it.each(heldMajors)('%s majors are ignored there, since %s', (yamlName) => {
+  it.each(heldMajors)('$yamlName majors are ignored there, since $reason', ({ yamlName }) => {
     const app = entryFor('/app');
     const name = yamlName.replace(/[/.]/g, '\\$&');
     expect(app).toMatch(
@@ -237,5 +240,39 @@ describe('the held majors tripwire (#1241)', () => {
 
   it('holders() is empty once the last holder widens, which is the red the tripwire fires on', () => {
     expect(holders(lock(`${jsxA11y} || ^10`), 'eslint', '10.0.0')).toEqual([]);
+  });
+
+  // Lifting a hold is two edits, the config line and the table row, and this
+  // is what keeps them from drifting apart in either direction.
+  it('the config holds exactly the names the table judges', () => {
+    expect(heldNames(entryFor('/app')).sort()).toEqual(heldMajors.map((row) => unquote(row.yamlName)).sort());
+  });
+
+  // The tripwire itself, against the real lockfile. The major comes from the
+  // held package's own installed version, not the judging name's, so a hold
+  // left on @eslint/js after eslint has moved to 10 still reads as stale.
+  it.each(heldMajors.filter((row) => row.judgedBy !== null))(
+    '$yamlName is still held by a peer range in app/ (judged on $judgedBy)',
+    ({ yamlName, judgedBy }) => {
+      const name = unquote(yamlName);
+      const installed = appLock.packages[`node_modules/${name}`];
+      if (!installed) throw new Error(`${name} is ignored in dependabot.yml but is not in app/package-lock.json`);
+      const next = parseVersion(installed.version).tuple[0] + 1;
+      const peers = peersOn(appLock, judgedBy);
+      const why =
+        peers.length === 0
+          ? `nothing in app/package-lock.json peers on ${judgedBy}`
+          : `every package peering on ${judgedBy} admits ${next}: ` +
+            peers.map((peer) => `${peer.name}@${peer.version} (${peer.range})`).join(', ');
+      expect(
+        holders(appLock, judgedBy, `${next}.0.0`),
+        `lift the ${name} ignore in .github/dependabot.yml and its heldMajors row: ${why}`
+      ).not.toHaveLength(0);
+    }
+  );
+
+  it('control: today jsx-a11y is the one holder of eslint and typescript-eslint holds typescript', () => {
+    expect(holders(appLock, 'eslint', '10.0.0')).toEqual(['eslint-plugin-jsx-a11y']);
+    expect(holders(appLock, 'typescript', '7.0.0')).toContain('typescript-eslint');
   });
 });
