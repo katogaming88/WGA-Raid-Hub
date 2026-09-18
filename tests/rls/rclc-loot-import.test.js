@@ -11,16 +11,18 @@
 // tests/rls/promotion.test.js uses, since writes never commit across
 // separate pool connections here.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, OFFICER_T1, TEAM_LEADER_T1, RAIDER_T1 } from './helpers.js';
+import { pool, withTxn as withSharedTxn, seedPlayer, OFFICER_T1, TEAM_LEADER_T1, RAIDER_T1 } from './helpers.js';
 
 // Seeded rows this file leans on (supabase/seed.sql): item 1 is
-// 'Seed Test Staff' (wow_item_id 100001); player 1 is team 1 'Seedraider-Illidan'.
+// 'Seed Test Staff' (wow_item_id 100001). The player the rows name is the
+// file's own: every case mints it on team 1 before importing (#1123), so
+// the loot rows reference no seeded character.
 const SEED_ITEM_WOW_ID = 100001;
-const SEED_PLAYER_NAME = 'Seedraider-Illidan';
+const IMPORT_PLAYER_NAME = 'Fixtureloot-Illidan';
 
 function row(overrides) {
   return {
-    player: SEED_PLAYER_NAME,
+    player: IMPORT_PLAYER_NAME,
     id: 'test-' + Math.random().toString(36).slice(2),
     itemID: SEED_ITEM_WOW_ID,
     itemName: 'Seed Test Staff',
@@ -32,31 +34,14 @@ function row(overrides) {
   };
 }
 
+// Wraps the shared harness: asRole runs one statement as the given uid
+// (authenticated), then restores postgres. The character the rows name is
+// minted first, as postgres, so the import resolves it by name.
 async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asRole = async (uid, text, params) => {
-      await q('savepoint role_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify({ sub: uid, role: 'authenticated' })
-      ]);
-      await q('set local role authenticated');
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint role_call');
-        throw err;
-      }
-    };
-    return await fn(q, asRole);
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
+  return withSharedTxn(async ({ q, asUser }) => {
+    await seedPlayer(q, { teamId: 1, nameRealm: IMPORT_PLAYER_NAME });
+    return fn(q, asUser);
+  });
 }
 
 const importAs = (asRole, uid, rows) =>
@@ -216,7 +201,9 @@ describe('import_rclc_loot general behavior', () => {
       expect(res.rows[0].result.unresolved_item).toBe(0);
 
       const inserted = await q(`select item_id, player_id from public.rclc_loot where rclc_id = 'resolve-1'`);
-      const player = await q(`select id from public.players where team_id = 1 and name_realm = $1`, [SEED_PLAYER_NAME]);
+      const player = await q(`select id from public.players where team_id = 1 and name_realm = $1`, [
+        IMPORT_PLAYER_NAME
+      ]);
       const item = await q(`select id from public.items where wow_item_id = $1`, [SEED_ITEM_WOW_ID]);
       expect(inserted.rows[0].item_id).toBe(item.rows[0].id);
       expect(inserted.rows[0].player_id).toBe(player.rows[0].id);

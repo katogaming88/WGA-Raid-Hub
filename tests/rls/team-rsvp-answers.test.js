@@ -2,19 +2,32 @@
 // notes. Raiders on the team see who is out and who is late; the notes stay
 // with officers, who read raid_rsvps directly.
 import { describe, it, expect } from 'vitest';
-import { withTxn, RAIDER_T1, RAIDER_T2, OFFICER_T1, OFFICER_T2, GUILD_OFFICER, SITE_ADMIN } from './helpers.js';
+import {
+  withTxn,
+  seedPlayer,
+  RAIDER_T1,
+  RAIDER_T2,
+  OFFICER_T1,
+  OFFICER_T2,
+  GUILD_OFFICER,
+  SITE_ADMIN
+} from './helpers.js';
 
-// RAIDER_T1's membership (team_members 3) holds player 1 on team 1. Player 2
-// is a teammate who has answered for two nights; player 3 is on team 2.
+// Three characters of the test's own: me is RAIDER_T1's (team_members 3) on
+// team 1, mate a teammate who has answered for two nights, other on team 2.
 async function seedAnswers(q) {
-  await q('update public.players set team_member_id = 3 where id = 1');
+  const me = await seedPlayer(q, { memberId: 3 });
+  const mate = await seedPlayer(q, { teamId: 1 });
+  const other = await seedPlayer(q, { teamId: 2 });
   await q(
     `insert into public.raid_rsvps (team_id, player_id, raid_date, status, note) values
-       (1, 2, '2026-09-17', 'Absent', 'Out of town'),
-       (1, 2, '2026-09-22', 'Late', 'Work runs late'),
-       (1, 1, '2026-10-20', 'Tentative', 'Maybe'),
-       (2, 3, '2026-09-17', 'Absent', 'Other team')`
+       (1, $2, '2026-09-17', 'Absent', 'Out of town'),
+       (1, $2, '2026-09-22', 'Late', 'Work runs late'),
+       (1, $1, '2026-10-20', 'Tentative', 'Maybe'),
+       (2, $3, '2026-09-17', 'Absent', 'Other team')`,
+    [me, mate, other]
   );
+  return { me, mate, other };
 }
 
 const read = (asUser, uid, teamId = 1, from = '2026-09-01', to = '2026-09-30') =>
@@ -23,12 +36,12 @@ const read = (asUser, uid, teamId = 1, from = '2026-09-01', to = '2026-09-30') =
 describe('team_rsvp_answers()', () => {
   it('shows a raider their teammates’ answers for the range, without the notes', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await seedAnswers(q);
+      const { mate } = await seedAnswers(q);
       const res = await read(asUser, RAIDER_T1);
       expect(res.fields.map((f) => f.name)).toEqual(['player_id', 'raid_date', 'status', 'updated_at']);
       expect(res.rows.map((r) => [r.player_id, r.status])).toEqual([
-        [2, 'Absent'],
-        [2, 'Late']
+        [mate, 'Absent'],
+        [mate, 'Late']
       ]);
       expect(res.rows.every((r) => r.updated_at instanceof Date)).toBe(true);
     });
@@ -36,10 +49,10 @@ describe('team_rsvp_answers()', () => {
 
   it('keeps each team’s answers to that team', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await seedAnswers(q);
+      const { other } = await seedAnswers(q);
       await expect(read(asUser, RAIDER_T1, 2)).rejects.toThrow(/Not authorized/);
       // Team 2's officer sees team 2 and not team 1.
-      expect((await read(asUser, OFFICER_T2, 2)).rows.map((r) => r.player_id)).toEqual([3]);
+      expect((await read(asUser, OFFICER_T2, 2)).rows.map((r) => r.player_id)).toEqual([other]);
       await expect(read(asUser, OFFICER_T2, 1)).rejects.toThrow(/Not authorized/);
     });
   });
@@ -55,11 +68,11 @@ describe('team_rsvp_answers()', () => {
 
   it('refuses someone with no active character on the team', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await seedAnswers(q);
+      const { me } = await seedAnswers(q);
       // RAIDER_T2 holds no team-1 character.
       await expect(read(asUser, RAIDER_T2)).rejects.toThrow(/Not authorized/);
       // A raider whose only character on the team is archived has left it.
-      await q('update public.players set archived_at = now() where id = 1');
+      await q('update public.players set archived_at = now() where id = $1', [me]);
       await expect(read(asUser, RAIDER_T1)).rejects.toThrow(/Not authorized/);
     });
   });

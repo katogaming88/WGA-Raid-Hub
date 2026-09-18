@@ -18,39 +18,18 @@
 // performance score, so it only breaks ties among candidates who are
 // already equally deserving.
 //
-// Same withTxn/savepoint harness as tests/rls/priority-tier-bis-match.test.js.
+// Uses the shared withTxn from helpers.js, wrapped to stamp the season.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, OFFICER_T1, seedSeason } from './helpers.js';
+import { pool, withTxn as withSharedTxn, OFFICER_T1, seedSeason } from './helpers.js';
 
+// The season this file stamps (#932): every season column is a foreign
+// key to seasons, so the fixture row comes first in every transaction.
+// Wraps the shared harness.
 async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    // The season this file stamps (#932): every season column is a foreign
-    // key to seasons, so the fixture row comes first in every transaction.
-    await seedSeason(q, SEASON);
-    const asRole = (role, uid) => async (text, params) => {
-      await q('savepoint pel_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify(uid ? { sub: uid, role } : { role })
-      ]);
-      await q(`set local role ${role}`);
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint pel_call');
-        throw err;
-      }
-    };
-    const asUser = (uid, text, params) => asRole('authenticated', uid)(text, params);
-    return await fn({ q, asUser });
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
+  return withSharedTxn(async (t) => {
+    await seedSeason(t.q, SEASON);
+    return fn(t);
+  });
 }
 
 const SEASON = 'existing-load-test';

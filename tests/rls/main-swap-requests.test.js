@@ -2,37 +2,44 @@
 // one of their alts their roster character, an officer approves, and the swap
 // runs the same steps a main swap through a season signup does.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, OFFICER_T1, OFFICER_T2, RAIDER_T1, TEAM_LEADER_T1, GUILD_OFFICER } from './helpers.js';
+import {
+  pool,
+  withTxn,
+  seedPlayer,
+  seedTeam,
+  OFFICER_T1,
+  OFFICER_T2,
+  RAIDER_T1,
+  TEAM_LEADER_T1,
+  GUILD_OFFICER
+} from './helpers.js';
 
 afterAll(() => pool.end());
 
-// Seeded: membership 3 is discord-raider-1 on Phoenix (team 1), player 1 is
-// their character, and classes_specs 1 is Mage Frost.
+// Seeded: membership 3 is discord-raider-1 on Phoenix (team 1), and
+// classes_specs 1 is Mage Frost. Their roster character is minted per case,
+// and the one case that sets a team's live season runs on a team it mints.
 const PHOENIX_RAIDER_MEMBER = 3;
-const RAIDER_PLAYER = 1;
 const FROST_MAGE = 1;
 
 const personOf = async (q, memberId) =>
   (await q('select person_id from public.team_members where id = $1', [memberId])).rows[0].person_id;
 
 // The raider's roster character, and an alt of theirs from Battle.net.
-async function fixture(q, { characterClass = 'Mage', name = 'Swapalt' } = {}) {
-  await q('update public.players set team_member_id = $1, join_date = $2 where id = $3', [
-    PHOENIX_RAIDER_MEMBER,
-    '2026-02-01',
-    RAIDER_PLAYER
-  ]);
-  const personId = await personOf(q, PHOENIX_RAIDER_MEMBER);
+async function fixture(q, { characterClass = 'Mage', name = 'Swapalt', memberId = PHOENIX_RAIDER_MEMBER } = {}) {
+  const raiderPlayer = await seedPlayer(q, { memberId });
+  await q('update public.players set join_date = $1 where id = $2', ['2026-02-01', raiderPlayer]);
+  const personId = await personOf(q, memberId);
   const character = await q(
     `insert into public.characters (person_id, blizzard_id, name, realm, realm_slug, class_name, spec_name, level)
      values ($1, $2, $3, 'Illidan', 'illidan', $4, 'Frost', 90) returning id`,
     [personId, Math.floor(Math.random() * 1e9), name, characterClass]
   );
-  return { personId, characterId: character.rows[0].id, nameRealm: `${name}-Illidan` };
+  return { personId, raiderPlayer, characterId: character.rows[0].id, nameRealm: `${name}-Illidan` };
 }
 
-const ask = (asUser, uid, characterId, specId = FROST_MAGE, note = null) =>
-  asUser(uid, 'select public.request_main_swap(1, $1, $2, $3) as id', [characterId, specId, note]);
+const ask = (asUser, uid, characterId, specId = FROST_MAGE, note = null, teamId = 1) =>
+  asUser(uid, 'select public.request_main_swap($4, $1, $2, $3) as id', [characterId, specId, note, teamId]);
 
 const review = (asUser, uid, requestId, approve, note = null) =>
   asUser(uid, 'select public.review_main_swap_request($1, $2, $3) as player_id', [requestId, approve, note]);
@@ -43,13 +50,13 @@ const statusOf = async (q, id) =>
 describe('request_main_swap()', () => {
   it('records the ask against the raider and their roster character', async () => {
     await withTxn(async ({ q, asUser }) => {
-      const { characterId, nameRealm, personId } = await fixture(q);
+      const { characterId, nameRealm, personId, raiderPlayer } = await fixture(q);
       const id = (await ask(asUser, RAIDER_T1, characterId)).rows[0].id;
       const row = (await q('select * from public.main_swap_requests where id = $1', [id])).rows[0];
       expect(row).toMatchObject({
         team_id: 1,
         person_id: personId,
-        from_player_id: RAIDER_PLAYER,
+        from_player_id: raiderPlayer,
         name_realm: nameRealm,
         status: 'pending'
       });
@@ -96,8 +103,8 @@ describe('request_main_swap()', () => {
 
   it('refuses someone with no character on the team', async () => {
     await withTxn(async ({ q, asUser }) => {
-      const { characterId } = await fixture(q);
-      await q('update public.players set team_member_id = null where id = $1', [RAIDER_PLAYER]);
+      const { characterId, raiderPlayer } = await fixture(q);
+      await q('update public.players set team_member_id = null where id = $1', [raiderPlayer]);
       await expect(ask(asUser, RAIDER_T1, characterId)).rejects.toThrow(/no character on this team/);
     });
   });
@@ -121,11 +128,11 @@ describe('who reads a main swap request', () => {
 describe('review_main_swap_request()', () => {
   it('moves the raider onto the new character, keeping the join date and attendance', async () => {
     await withTxn(async ({ q, asUser }) => {
-      const { characterId, nameRealm } = await fixture(q);
+      const { characterId, nameRealm, raiderPlayer } = await fixture(q);
       await q(
         `insert into public.attendance (team_id, player_id, raid_date, status)
          values (1, $1, '2026-03-04', 'Present')`,
-        [RAIDER_PLAYER]
+        [raiderPlayer]
       );
       const id = (await ask(asUser, RAIDER_T1, characterId)).rows[0].id;
       const playerId = (await review(asUser, OFFICER_T1, id, true)).rows[0].player_id;
@@ -140,7 +147,7 @@ describe('review_main_swap_request()', () => {
       });
       expect(added.join_date.toISOString().slice(0, 10)).toBe('2026-02-01');
 
-      const old = (await q('select * from public.players where id = $1', [RAIDER_PLAYER])).rows[0];
+      const old = (await q('select * from public.players where id = $1', [raiderPlayer])).rows[0];
       expect(old.archived_at).not.toBeNull();
       // The link stays on the archived character (#941), so its loot still
       // counts toward the raider's season total (step 5b).
@@ -178,27 +185,30 @@ describe('review_main_swap_request()', () => {
 
   it("clears the old character's standing priority rows for the live season", async () => {
     await withTxn(async ({ q, asUser }) => {
-      const { characterId } = await fixture(q);
+      // A team of its own, since the live season is a team_settings write.
+      const team = await seedTeam(q);
+      const { characterId, raiderPlayer } = await fixture(q, { memberId: team.raider.memberId });
       await q(
-        `update public.team_settings set config = config || '{"seasonName":"Midnight Season 2"}' where team_id = 1`
+        `update public.team_settings set config = config || '{"seasonName":"Midnight Season 2"}' where team_id = $1`,
+        [team.teamId]
       );
       await q(
         `insert into public.priority_order (team_id, season, item_id, track, rank, player_id)
-         values (1, 'MID2', 1, 'Myth', 1, $1)`,
-        [RAIDER_PLAYER]
+         values ($1, 'seed-season', 1, 'Myth', 2, $2), ($1, 'MID2', 1, 'Myth', 1, $2)`,
+        [team.teamId, raiderPlayer]
       );
-      const id = (await ask(asUser, RAIDER_T1, characterId)).rows[0].id;
-      await review(asUser, OFFICER_T1, id, true);
-      // Only the live season goes. The seeded row on an older season stays,
-      // the same as removing a player from the roster leaves it.
-      const left = await q('select season from public.priority_order where player_id = $1', [RAIDER_PLAYER]);
+      const id = (await ask(asUser, team.raider.uid, characterId, FROST_MAGE, null, team.teamId)).rows[0].id;
+      await review(asUser, team.officer.uid, id, true);
+      // Only the live season goes. The row on an older season stays, the
+      // same as removing a player from the roster leaves it.
+      const left = await q('select season from public.priority_order where player_id = $1', [raiderPlayer]);
       expect(left.rows.map((r) => r.season)).toEqual(['seed-season']);
     });
   });
 
   it('writes the two audit lines and tells the raider', async () => {
     await withTxn(async ({ q, asUser }) => {
-      const { characterId, nameRealm } = await fixture(q);
+      const { characterId, nameRealm, raiderPlayer } = await fixture(q);
       const id = (await ask(asUser, RAIDER_T1, characterId)).rows[0].id;
       const playerId = (await review(asUser, OFFICER_T1, id, true)).rows[0].player_id;
 
@@ -207,7 +217,7 @@ describe('review_main_swap_request()', () => {
       ).rows;
       expect(actions).toEqual([
         { action: 'Player Added', target_id: playerId },
-        { action: 'Main Swap: Old Character Removed', target_id: RAIDER_PLAYER }
+        { action: 'Main Swap: Old Character Removed', target_id: raiderPlayer }
       ]);
 
       const notice = (await q('select player_id, message from public.notifications order by id desc limit 1')).rows[0];
@@ -218,17 +228,17 @@ describe('review_main_swap_request()', () => {
 
   it('declining leaves the roster alone and passes on the officer note', async () => {
     await withTxn(async ({ q, asUser }) => {
-      const { characterId } = await fixture(q);
+      const { characterId, raiderPlayer } = await fixture(q);
       const id = (await ask(asUser, RAIDER_T1, characterId)).rows[0].id;
       const answer = await review(asUser, OFFICER_T1, id, false, 'Finish the tier on your Mage first.');
       expect(answer.rows[0].player_id).toBeNull();
 
-      const old = (await q('select archived_at from public.players where id = $1', [RAIDER_PLAYER])).rows[0];
+      const old = (await q('select archived_at from public.players where id = $1', [raiderPlayer])).rows[0];
       expect(old.archived_at).toBeNull();
       expect((await statusOf(q, id)).status).toBe('declined');
 
       const notice = (await q('select player_id, message from public.notifications order by id desc limit 1')).rows[0];
-      expect(notice.player_id).toBe(RAIDER_PLAYER);
+      expect(notice.player_id).toBe(raiderPlayer);
       expect(notice.message).toContain('Finish the tier on your Mage first.');
     });
   });
@@ -254,9 +264,9 @@ describe('review_main_swap_request()', () => {
 
   it('refuses a swap away from a character that has since left the roster', async () => {
     await withTxn(async ({ q, asUser }) => {
-      const { characterId } = await fixture(q);
+      const { characterId, raiderPlayer } = await fixture(q);
       const id = (await ask(asUser, RAIDER_T1, characterId)).rows[0].id;
-      await q('update public.players set archived_at = now() where id = $1', [RAIDER_PLAYER]);
+      await q('update public.players set archived_at = now() where id = $1', [raiderPlayer]);
       await expect(review(asUser, OFFICER_T1, id, true)).rejects.toThrow(/no longer on the roster/);
     });
   });

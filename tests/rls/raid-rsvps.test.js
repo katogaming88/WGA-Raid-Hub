@@ -1,44 +1,23 @@
 // Behavior tests for set_own_rsvp() and raid_rsvps' RLS (#893, part of
-// #640): a raider's self-service override for one raid night. Mirrors
-// own-signup.test.js's withTxn shape -- fixture writes as postgres (bypasses
-// RLS), the call happens as the impersonated caller, assertions happen back
-// as postgres, everything rolled back at the end.
+// #640): a raider's self-service override for one raid night. Uses the shared
+// withTxn from helpers.js: fixture writes as postgres (bypasses RLS), the call
+// happens as the impersonated caller, assertions happen back as postgres,
+// everything rolled back at the end.
 import { describe, it, expect } from 'vitest';
-import { pool, RAIDER_T1, OFFICER_T1, OFFICER_T2 } from './helpers.js';
+import { withTxn, seedPlayer, RAIDER_T1, OFFICER_T1, OFFICER_T2 } from './helpers.js';
 
-async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asRole = (role, uid) => async (text, params) => {
-      await q('savepoint rsvp_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify(uid ? { sub: uid, role } : { role })
-      ]);
-      await q(`set local role ${role}`);
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint rsvp_call');
-        throw err;
-      }
-    };
-    const asUser = (uid, text, params) => asRole('authenticated', uid)(text, params);
-    return await fn({ q, asUser });
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
-}
-
-// Links RAIDER_T1's existing team_members row (id 3, seed.sql) to a
-// team-1 players row so is_own_player()/set_own_rsvp() can resolve it.
-// isBench toggles public.players.is_bench on that same row.
-async function linkRaiderT1ToPlayer(q, { isBench = false } = {}) {
-  await q('update public.players set team_member_id = 3, is_bench = $1 where id = 1', [isBench]);
+// Links RAIDER_T1's existing team_members row (id 3, seed.sql) to a minted
+// team-1 players row so is_own_player()/set_own_rsvp() can resolve it; the
+// seeded players are never written (#1123). isBench and archived set
+// public.players.is_bench and archived_at on that same row. Returns the id.
+const RAIDER_T1_MEMBER = 3;
+async function linkRaiderT1ToPlayer(q, { isBench = false, archived = false } = {}) {
+  const pid = await seedPlayer(q, {
+    memberId: RAIDER_T1_MEMBER,
+    archivedAt: archived ? new Date().toISOString() : null
+  });
+  if (isBench) await q('update public.players set is_bench = true where id = $1', [pid]);
+  return pid;
 }
 
 // No raid_schedule/raid_schedule_exceptions rows are seeded for team 1, so
@@ -57,12 +36,12 @@ const setOwn = (asUser, uid, teamId, raidDate, status, note = null) =>
 describe('set_own_rsvp()', () => {
   it("inserts a new RSVP for the caller's own linked player", async () => {
     await withTxn(async ({ q, asUser }) => {
-      await linkRaiderT1ToPlayer(q);
+      const pid = await linkRaiderT1ToPlayer(q);
       await setOwn(asUser, RAIDER_T1, 1, '2026-09-10', 'Late', 'traffic');
       const rows = (await q('select * from public.raid_rsvps where team_id = 1 and raid_date = $1', ['2026-09-10']))
         .rows;
       expect(rows).toHaveLength(1);
-      expect(rows[0].player_id).toBe(1);
+      expect(rows[0].player_id).toBe(pid);
       expect(rows[0].status).toBe('Late');
       expect(rows[0].note).toBe('traffic');
     });
@@ -115,8 +94,7 @@ describe('set_own_rsvp()', () => {
 
   it('rejects an archived player as having no active roster character', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await linkRaiderT1ToPlayer(q);
-      await q('update public.players set archived_at = now() where id = 1');
+      await linkRaiderT1ToPlayer(q, { archived: true });
       await expect(setOwn(asUser, RAIDER_T1, 1, '2026-09-10', 'Late')).rejects.toThrow(/No active roster character/);
     });
   });
@@ -228,11 +206,12 @@ describe('raid_rsvps RLS', () => {
 
   it('has no direct INSERT policy -- even an officer cannot write around set_own_rsvp()', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await linkRaiderT1ToPlayer(q);
+      const pid = await linkRaiderT1ToPlayer(q);
       await expect(
         asUser(
           OFFICER_T1,
-          "insert into public.raid_rsvps (team_id, player_id, raid_date, status) values (1, 1, '2026-09-10', 'Absent')"
+          "insert into public.raid_rsvps (team_id, player_id, raid_date, status) values (1, $1, '2026-09-10', 'Absent')",
+          [pid]
         )
       ).rejects.toThrow();
     });

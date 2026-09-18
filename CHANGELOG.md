@@ -35,6 +35,42 @@ answers to.
   someone who has left the roster since it was filled; they are left out of
   the save.
 
+## [3.140.3] - 2026-09-18
+
+### Project
+
+- The RLS test suite runs its files in parallel again, in about four seconds
+  instead of twenty-three
+  ([#1123](https://github.com/katogaming88/WGA-Raid-Hub/issues/1123), second
+  half). Every test that wrote one of the seed's rows (the same raider by 17
+  files, the same member by 11, the same team's settings by 8) now mints its
+  own player, member, team or signup with the helpers from the first half, so
+  two files running at once can no longer take the same row in opposite orders
+  and deadlock, which is what `--no-file-parallelism` had been hiding since
+  [#1115](https://github.com/katogaming88/WGA-Raid-Hub/issues/1115). 27 files
+  converted; `snapshot-personas`, which empties every account to model a fresh
+  restore, runs after the others on its own. Measured cold on a 16-core
+  machine: five runs in a row with no deadlock, from five in a row with 12 or
+  13. Nothing on the site changes
+
+## [3.140.2] - 2026-09-18
+
+### Project
+
+- The RLS test suite has one harness and four helpers for rows a test makes for
+  itself ([#1123](https://github.com/katogaming88/WGA-Raid-Hub/issues/1123),
+  first half). The 27 files that carried their own copy of `withTxn` now use the
+  one in `tests/rls/helpers.js`, so every impersonated call in the suite leaves
+  nothing behind when it returns
+  ([#1131](https://github.com/katogaming88/WGA-Raid-Hub/issues/1131) reached
+  only the shared copy before). `seedPlayer`, `seedMember`, `seedTeam` and
+  `seedSignup` mint a player, a member with an account, a team with its own
+  people, or an approved signup inside the test's transaction; `seedSeason`
+  takes its day from the transaction instead of a counter each worker started
+  at zero, which is what made two files wait on each other over the same day
+  (120 of the 122 deadlocked statements when the suite ran in parallel); and
+  each worker's connection pool is capped at 4. Nothing on the site changes
+
 ## [3.140.1] - 2026-09-18
 
 ### Project

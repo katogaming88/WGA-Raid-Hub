@@ -40,10 +40,10 @@ describe('incoming_roster respects season scoping', () => {
     try {
       await client.query('begin');
       // The season this case stamps (#932): season_signups.season is a foreign key to seasons.
-      await seedSeason((text, params) => client.query(text, params), 'not-the-active-season');
+      await seedSeason((text, params) => client.query(text, params), 'incoming-roster-other-season');
       await client.query(
         `insert into public.season_signups (team_id, signup_name_realm, class_spec_id, season, status)
-         values (1, 'Otherseason-Illidan', 1, 'not-the-active-season', 'approved')`
+         values (1, 'Otherseason-Illidan', 1, 'incoming-roster-other-season', 'approved')`
       );
       const res = await client.query(
         `select count(*)::int as n from public.incoming_roster where signup_name_realm = 'Otherseason-Illidan'`

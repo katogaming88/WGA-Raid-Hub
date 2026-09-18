@@ -6,45 +6,23 @@
 //
 // Each test runs in one rolled-back transaction: fixture writes happen as
 // postgres (bypasses RLS), the function call happens as the team 1 officer,
-// assertions happen back as postgres.
+// assertions happen back as postgres. Every case mints the signup it
+// promotes and any character it swaps out (#1123); the seeded signups and
+// players are never written.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, OFFICER_T1 } from './helpers.js';
+import { pool, withTxn as withSharedTxn, seedPlayer, seedSignup, seedTeam, OFFICER_T1 } from './helpers.js';
 
-// Seeded rows this file leans on (supabase/seed.sql): signup 1 is team 1
-// status pending; signup 2 is team 1 'Seedapproved-Illidan' status approved;
-// player 2 is team 1 'Seedplayertwo-Illidan'; player 3 is team 2.
-const APPROVED_SIGNUP = 2;
-const APPROVED_NAME = 'Seedapproved-Illidan';
+// The signup every case promotes: approved, class_spec 1, minted per case
+// under a name this file alone uses, so the upsert cases can plant a
+// same-name character first.
+const APPROVED_NAME = 'Promoted-Illidan';
+const approvedSignup = (q, teamId = 1) => seedSignup(q, { teamId, nameRealm: APPROVED_NAME });
 
+// Wraps the shared harness: asOfficer runs one statement as the team 1
+// officer, then restores postgres. asUser is the shared caller, for the one
+// case that acts on a minted team as that team's officer.
 async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    // Runs one statement as the team 1 officer, then restores postgres.
-    // A savepoint per call keeps an expected failure from aborting the
-    // whole test transaction (and from masking the real error when the
-    // role reset itself fails inside an aborted transaction).
-    const asOfficer = async (text, params) => {
-      await q('savepoint officer_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify({ sub: OFFICER_T1, role: 'authenticated' })
-      ]);
-      await q('set local role authenticated');
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint officer_call');
-        throw err;
-      }
-    };
-    return await fn(q, asOfficer);
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
+  return withSharedTxn(({ q, asUser }) => fn(q, (text, params) => asUser(OFFICER_T1, text, params), asUser));
 }
 
 const promote = (asOfficer, signupId, isTrial = true, archiveId = null) =>
@@ -53,7 +31,8 @@ const promote = (asOfficer, signupId, isTrial = true, archiveId = null) =>
 describe('promotion of an approved signup', () => {
   it('creates the player and completes the signup', async () => {
     await withTxn(async (q, asOfficer) => {
-      const res = await promote(asOfficer, APPROVED_SIGNUP);
+      const signupId = await approvedSignup(q);
+      const res = await promote(asOfficer, signupId);
       const playerId = res.rows[0].player_id;
 
       const player = (await q('select * from public.players where id = $1', [playerId])).rows[0];
@@ -63,7 +42,7 @@ describe('promotion of an approved signup', () => {
       expect(player.class_spec_id).toBe(1);
       expect(player.archived_at).toBeNull();
 
-      const signup = (await q('select * from public.season_signups where id = $1', [APPROVED_SIGNUP])).rows[0];
+      const signup = (await q('select * from public.season_signups where id = $1', [signupId])).rows[0];
       expect(signup.status).toBe('added');
       expect(signup.approved_player_id).toBe(playerId);
     });
@@ -71,7 +50,8 @@ describe('promotion of an approved signup', () => {
 
   it("sets a new character's join_date to today in America/New_York, not the session's UTC current_date (20260806230556)", async () => {
     await withTxn(async (q, asOfficer) => {
-      const res = await promote(asOfficer, APPROVED_SIGNUP);
+      const signupId = await approvedSignup(q);
+      const res = await promote(asOfficer, signupId);
       const playerId = res.rows[0].player_id;
 
       const player = (await q('select join_date::text as join_date_text from public.players where id = $1', [playerId]))
@@ -83,23 +63,24 @@ describe('promotion of an approved signup', () => {
 
   it('removes the signup from pending_roster and incoming_roster', async () => {
     await withTxn(async (q, asOfficer) => {
+      const signupId = await approvedSignup(q);
       const before = await asOfficer('select count(*)::int as n from public.pending_roster where signup_id = $1', [
-        APPROVED_SIGNUP
+        signupId
       ]);
       expect(before.rows[0].n).toBe(1);
       const beforeIncoming = await q('select count(*)::int as n from public.incoming_roster where signup_id = $1', [
-        APPROVED_SIGNUP
+        signupId
       ]);
       expect(beforeIncoming.rows[0].n).toBe(1);
 
-      await promote(asOfficer, APPROVED_SIGNUP);
+      await promote(asOfficer, signupId);
 
       const after = await asOfficer('select count(*)::int as n from public.pending_roster where signup_id = $1', [
-        APPROVED_SIGNUP
+        signupId
       ]);
       expect(after.rows[0].n).toBe(0);
       const afterIncoming = await q('select count(*)::int as n from public.incoming_roster where signup_id = $1', [
-        APPROVED_SIGNUP
+        signupId
       ]);
       expect(afterIncoming.rows[0].n).toBe(0);
     });
@@ -107,14 +88,16 @@ describe('promotion of an approved signup', () => {
 
   it('rejects signups that are not approved', async () => {
     await withTxn(async (q, asOfficer) => {
-      await expect(promote(asOfficer, 1)).rejects.toThrow(/not in approved status/);
+      const pending = await seedSignup(q, { teamId: 1, nameRealm: 'Stillpending-Illidan', status: 'pending' });
+      await expect(promote(asOfficer, pending)).rejects.toThrow(/not in approved status/);
     });
   });
 
   it('rejects a second promotion of the same signup', async () => {
     await withTxn(async (q, asOfficer) => {
-      await promote(asOfficer, APPROVED_SIGNUP);
-      await expect(promote(asOfficer, APPROVED_SIGNUP)).rejects.toThrow(/not in approved status/);
+      const signupId = await approvedSignup(q);
+      await promote(asOfficer, signupId);
+      await expect(promote(asOfficer, signupId)).rejects.toThrow(/not in approved status/);
     });
   });
 });
@@ -122,6 +105,7 @@ describe('promotion of an approved signup', () => {
 describe('upsert cases on (team_id, name_realm)', () => {
   it('returning archived character: unarchives and refreshes trial/join_date', async () => {
     await withTxn(async (q, asOfficer) => {
+      const signupId = await approvedSignup(q);
       const old = await q(
         `insert into public.players (team_id, name_realm, class_spec_id, is_trial, join_date, archived_at)
          values (1, $1, 1, false, '2025-01-01', now()) returning id`,
@@ -129,7 +113,7 @@ describe('upsert cases on (team_id, name_realm)', () => {
       );
       const oldId = old.rows[0].id;
 
-      const res = await promote(asOfficer, APPROVED_SIGNUP);
+      const res = await promote(asOfficer, signupId);
       expect(res.rows[0].player_id).toBe(oldId);
 
       const player = (await q('select *, join_date::text as join_date_text from public.players where id = $1', [oldId]))
@@ -142,6 +126,7 @@ describe('upsert cases on (team_id, name_realm)', () => {
 
   it('already-active member: links without resetting trial or join_date', async () => {
     await withTxn(async (q, asOfficer) => {
+      const signupId = await approvedSignup(q);
       const active = await q(
         `insert into public.players (team_id, name_realm, class_spec_id, is_trial, join_date)
          values (1, $1, 1, false, '2025-01-01') returning id`,
@@ -149,7 +134,7 @@ describe('upsert cases on (team_id, name_realm)', () => {
       );
       const activeId = active.rows[0].id;
 
-      const res = await promote(asOfficer, APPROVED_SIGNUP);
+      const res = await promote(asOfficer, signupId);
       expect(res.rows[0].player_id).toBe(activeId);
 
       const player = (
@@ -159,7 +144,7 @@ describe('upsert cases on (team_id, name_realm)', () => {
       expect(player.join_date_text).toBe('2025-01-01');
       expect(player.archived_at).toBeNull();
 
-      const signup = (await q('select approved_player_id from public.season_signups where id = $1', [APPROVED_SIGNUP]))
+      const signup = (await q('select approved_player_id from public.season_signups where id = $1', [signupId]))
         .rows[0];
       expect(signup.approved_player_id).toBe(activeId);
     });
@@ -169,29 +154,34 @@ describe('upsert cases on (team_id, name_realm)', () => {
 describe('main swap archiving', () => {
   it('archives the old character on the same team', async () => {
     await withTxn(async (q, asOfficer) => {
-      await promote(asOfficer, APPROVED_SIGNUP, true, 2);
-      const old = (await q('select archived_at from public.players where id = 2')).rows[0];
+      const signupId = await approvedSignup(q);
+      const oldId = await seedPlayer(q, { teamId: 1 });
+      await promote(asOfficer, signupId, true, oldId);
+      const old = (await q('select archived_at from public.players where id = $1', [oldId])).rows[0];
       expect(old.archived_at).not.toBeNull();
     });
   });
 
   it("cannot archive another team's player", async () => {
     await withTxn(async (q, asOfficer) => {
-      await promote(asOfficer, APPROVED_SIGNUP, true, 3);
-      const other = (await q('select archived_at from public.players where id = 3')).rows[0];
+      const signupId = await approvedSignup(q);
+      const otherId = await seedPlayer(q, { teamId: 2 });
+      await promote(asOfficer, signupId, true, otherId);
+      const other = (await q('select archived_at from public.players where id = $1', [otherId])).rows[0];
       expect(other.archived_at).toBeNull();
     });
   });
 
   it("carries the old character's join_date to the new one instead of resetting to today", async () => {
     await withTxn(async (q, asOfficer) => {
+      const signupId = await approvedSignup(q);
       const old = await q(
         `insert into public.players (team_id, name_realm, class_spec_id, join_date)
          values (1, 'Oldmain-Illidan', 1, '2024-03-15') returning id`
       );
       const oldId = old.rows[0].id;
 
-      const res = await promote(asOfficer, APPROVED_SIGNUP, true, oldId);
+      const res = await promote(asOfficer, signupId, true, oldId);
       const newId = res.rows[0].player_id;
 
       const newPlayer = (await q('select join_date::text as join_date_text from public.players where id = $1', [newId]))
@@ -209,6 +199,7 @@ describe('main swap archiving', () => {
     // same as the plain-insert case, keeping "main swap = continuation of
     // tenure" true even when the destination happens to be a known alt.
     await withTxn(async (q, asOfficer) => {
+      const signupId = await approvedSignup(q);
       const old = await q(
         `insert into public.players (team_id, name_realm, class_spec_id, join_date)
          values (1, 'Oldmain2-Illidan', 1, '2024-03-15') returning id`
@@ -220,7 +211,7 @@ describe('main swap archiving', () => {
         [APPROVED_NAME]
       );
 
-      const res = await promote(asOfficer, APPROVED_SIGNUP, true, oldId);
+      const res = await promote(asOfficer, signupId, true, oldId);
       const newId = res.rows[0].player_id;
 
       const newPlayer = (await q('select join_date::text as join_date_text from public.players where id = $1', [newId]))
@@ -231,6 +222,7 @@ describe('main swap archiving', () => {
 
   it("carries the old character's attendance rows to the new one (20260828122750)", async () => {
     await withTxn(async (q, asOfficer) => {
+      const signupId = await approvedSignup(q);
       const old = await q(
         `insert into public.players (team_id, name_realm, class_spec_id, join_date)
          values (1, 'Oldmain3-Illidan', 1, '2024-03-15') returning id`
@@ -242,7 +234,7 @@ describe('main swap archiving', () => {
         [oldId]
       );
 
-      const res = await promote(asOfficer, APPROVED_SIGNUP, true, oldId);
+      const res = await promote(asOfficer, signupId, true, oldId);
       const newId = res.rows[0].player_id;
 
       const oldRows = await q('select count(*)::int as n from public.attendance where player_id = $1', [oldId]);
@@ -257,6 +249,7 @@ describe('main swap archiving', () => {
 
   it('swap onto a reactivated alt with its own attendance keeps the alt row on colliding raid dates', async () => {
     await withTxn(async (q, asOfficer) => {
+      const signupId = await approvedSignup(q);
       const old = await q(
         `insert into public.players (team_id, name_realm, class_spec_id, join_date)
          values (1, 'Oldmain4-Illidan', 1, '2024-03-15') returning id`
@@ -279,7 +272,7 @@ describe('main swap archiving', () => {
         [oldId]
       );
 
-      const res = await promote(asOfficer, APPROVED_SIGNUP, true, oldId);
+      const res = await promote(asOfficer, signupId, true, oldId);
       const newId = res.rows[0].player_id;
       expect(newId).toBe(altId);
 
@@ -297,33 +290,39 @@ describe('main swap archiving', () => {
   });
 
   it("clears the old character's live-season priority_order rows, but leaves past seasons and other players alone (20260828124142)", async () => {
-    await withTxn(async (q, asOfficer) => {
-      await q(`update public.team_settings set config = '{"seasonName":"Midnight Season 2"}' where team_id = 1`);
+    // The live season is read from the team's settings row, so the swap
+    // happens on a minted team whose season the case sets, as that team's
+    // officer, rather than writing team 1's row.
+    await withTxn(async (q, asOfficer, asUser) => {
+      const { teamId, officer } = await seedTeam(q);
+      await q(`update public.team_settings set config = '{"seasonName":"Midnight Season 2"}' where team_id = $1`, [
+        teamId
+      ]);
+      const signupId = await approvedSignup(q, teamId);
 
-      const old = await q(
-        `insert into public.players (team_id, name_realm, class_spec_id, join_date)
-         values (1, 'Oldmain5-Illidan', 1, '2024-03-15') returning id`
-      );
-      const oldId = old.rows[0].id;
+      const oldId = await seedPlayer(q, { teamId, nameRealm: 'Oldmain5-Illidan' });
       await q(
         `insert into public.priority_order (team_id, season, item_id, track, rank, player_id)
-         values (1, 'MID2', 1, 'Hero', 1, $1), (1, 'MID1', 1, 'Hero', 1, $1)`,
-        [oldId]
+         values ($1, 'MID2', 1, 'Hero', 1, $2), ($1, 'MID1', 1, 'Hero', 1, $2)`,
+        [teamId, oldId]
       );
-      // player 2 (Seedplayertwo-Illidan) is a different, non-swapped player
-      // on the same team -- their live-season row must survive untouched.
+      // A different, non-swapped player on the same team -- their live-season
+      // row must survive untouched.
+      const otherId = await seedPlayer(q, { teamId });
       await q(
         `insert into public.priority_order (team_id, season, item_id, track, rank, player_id)
-         values (1, 'MID2', 1, 'Hero', 2, 2)`
+         values ($1, 'MID2', 1, 'Hero', 2, $2)`,
+        [teamId, otherId]
       );
 
-      await promote(asOfficer, APPROVED_SIGNUP, true, oldId);
+      await asUser(officer.uid, 'select public.add_signup_to_roster($1, $2, $3)', [signupId, true, oldId]);
 
       const rows = await q('select season from public.priority_order where player_id = $1 order by season', [oldId]);
       expect(rows.rows.map((r) => r.season)).toEqual(['MID1']);
 
       const otherPlayer = await q(
-        "select count(*)::int as n from public.priority_order where player_id = 2 and season = 'MID2'"
+        "select count(*)::int as n from public.priority_order where player_id = $1 and season = 'MID2'",
+        [otherId]
       );
       expect(otherPlayer.rows[0].n).toBe(1);
     });
@@ -333,8 +332,12 @@ describe('main swap archiving', () => {
 describe('season_signups_player_only_when_added CHECK', () => {
   it('rejects a player link on a non-added signup', async () => {
     await withTxn(async (q) => {
+      const pending = await seedSignup(q, { teamId: 1, nameRealm: 'Stillpending-Illidan', status: 'pending' });
+      const playerId = await seedPlayer(q, { teamId: 1 });
       // 23514 = check_violation
-      await expect(q('update public.season_signups set approved_player_id = 1 where id = 1')).rejects.toMatchObject({
+      await expect(
+        q('update public.season_signups set approved_player_id = $2 where id = $1', [pending, playerId])
+      ).rejects.toMatchObject({
         code: '23514'
       });
     });

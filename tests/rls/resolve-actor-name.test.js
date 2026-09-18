@@ -1,40 +1,16 @@
 // Behavior tests for resolve_actor_name() (#376, split from #215): resolves
 // audit_log.actor_id to a display name for the Audit Log tab's CHANGED BY
-// column. Same single-transaction-plus-savepoint harness as
-// tests/rls/write-audit-log.test.js -- fixture writes and the resolve call
-// share one transaction so setup is visible before the whole thing rolls
-// back.
+// column. Uses the shared withTxn from helpers.js: fixture writes and the
+// resolve call share one transaction so setup is visible before the whole
+// thing rolls back.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, OFFICER_T1, RAIDER_T1, SITE_ADMIN, OFFICER_T2 } from './helpers.js';
+import { pool, withTxn, seedPlayer, OFFICER_T1, RAIDER_T1, SITE_ADMIN, OFFICER_T2 } from './helpers.js';
 
-async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asRole = (role, uid) => async (text, params) => {
-      await q('savepoint resolve_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify(uid ? { sub: uid, role } : { role })
-      ]);
-      await q(`set local role ${role}`);
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint resolve_call');
-        throw err;
-      }
-    };
-    const asUser = (uid, text, params) => asRole('authenticated', uid)(text, params);
-    const asAnon = (text, params) => asRole('anon', null)(text, params);
-    return await fn({ q, asUser, asAnon });
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
-}
+// Seeded rows this file leans on (supabase/seed.sql): team_members 3 is the
+// team 1 raider (auth_user_id = RAIDER_T1, name_realm 'Seedraider-Illidan').
+// A case that needs RAIDER_T1 to hold a character mints one linked to that
+// row; the seeded players stay untouched (#1123).
+const RAIDER_T1_MEMBER = 3;
 
 const resolve = (asUser, callerUid, actorId, teamId) =>
   asUser(callerUid, 'select public.resolve_actor_name($1, $2) as name', [actorId, teamId]);
@@ -62,7 +38,8 @@ describe('resolve_actor_name rejects unauthorized callers', () => {
 describe('resolve_actor_name resolves the linked character', () => {
   it('prefers the nickname when set', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await q("update public.players set team_member_id = 3, nickname = 'Kato' where id = 1");
+      const pid = await seedPlayer(q, { memberId: RAIDER_T1_MEMBER });
+      await q("update public.players set nickname = 'Kato' where id = $1", [pid]);
       const res = await resolve(asUser, OFFICER_T1, RAIDER_T1, 1);
       expect(res.rows[0].name).toBe('Kato');
     });
@@ -70,9 +47,9 @@ describe('resolve_actor_name resolves the linked character', () => {
 
   it('falls back to the character-name part of name_realm when no nickname is set', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await q('update public.players set team_member_id = 3 where id = 1');
+      await seedPlayer(q, { memberId: RAIDER_T1_MEMBER, nameRealm: 'Resolveraider-Illidan' });
       const res = await resolve(asUser, OFFICER_T1, RAIDER_T1, 1);
-      expect(res.rows[0].name).toBe('Seedraider');
+      expect(res.rows[0].name).toBe('Resolveraider');
     });
   });
 
@@ -85,7 +62,8 @@ describe('resolve_actor_name resolves the linked character', () => {
 
   it("a site admin can resolve a normal member's name too", async () => {
     await withTxn(async ({ q, asUser }) => {
-      await q("update public.players set team_member_id = 3, nickname = 'Kato' where id = 1");
+      const pid = await seedPlayer(q, { memberId: RAIDER_T1_MEMBER });
+      await q("update public.players set nickname = 'Kato' where id = $1", [pid]);
       const res = await resolve(asUser, SITE_ADMIN, RAIDER_T1, 1);
       expect(res.rows[0].name).toBe('Kato');
     });

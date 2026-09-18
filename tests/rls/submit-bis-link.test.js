@@ -6,32 +6,7 @@
 // unauthenticated on the public roster page), so these run as anon,
 // matching real usage.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool } from './helpers.js';
-
-async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asAnon = async (text, params) => {
-      await q('savepoint sbl_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ role: 'anon' })]);
-      await q('set local role anon');
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint sbl_call');
-        throw err;
-      }
-    };
-    return await fn({ q, asAnon });
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
-}
+import { pool, withTxn } from './helpers.js';
 
 // Seed team 1 has no bisSubmissionsOpen set (defaults closed) -- open it for
 // these tests so the pending-request check is what's actually exercised,
