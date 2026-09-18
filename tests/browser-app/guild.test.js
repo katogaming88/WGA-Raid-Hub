@@ -256,10 +256,13 @@ describe('Guild home (new app), other states', () => {
         ['Received-item reviews', '3', '/g/wga/t/phoenix/officer/reviews'],
         ['BoE finds to price', '1', '/g/wga/boe']
       ]);
-      // The sidebar leads with the Guild group here, and keeps the officer's
-      // tools for the team its links go to.
+      // The sidebar keeps the officer's tools for the team its links go to,
+      // and its groups stay in one order on a team page too (#1228).
       const headings = await page.locator('.nav-heading').allTextContents();
-      expect(headings).toEqual(['Guild', 'Team', 'You', 'Officer']);
+      expect(headings).toEqual(['Guild', 'You', 'Team', 'Officer']);
+      await page.locator('#sidebar').getByRole('link', { name: 'Roster' }).click();
+      await page.waitForURL('**/t/phoenix/roster');
+      expect(await page.locator('.nav-heading').allTextContents()).toEqual(headings);
     } finally {
       await context.close();
     }

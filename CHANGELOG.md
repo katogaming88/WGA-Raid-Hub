@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.140.1] - 2026-09-18
+
+### Project
+
+- The new app's sidebar keeps one order on every page: Guild, You, Team, then
+  Officer ([#1228](https://github.com/katogaming88/WGA-Raid-Hub/issues/1228)).
+  Opening Guild home used to move the Guild group from the bottom to the top,
+  so everything shifted under the pointer. The Officer group also no longer
+  disappears for a moment while a new page loads.
+
 ## [3.140.0] - 2026-09-18
 
 ### Project
