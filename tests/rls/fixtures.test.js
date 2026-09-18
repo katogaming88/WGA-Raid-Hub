@@ -79,12 +79,13 @@ describe('fixture factories mint rows the test owns (#1123)', () => {
       expect(own.rowCount).toBe(1);
       const seeded = await asUser(team.leader.uid, write, [1]);
       expect(seeded.rowCount).toBe(0);
-      const roles = await Promise.all(
-        [team.officer, team.leader, team.raider].map(async (p) => {
-          const { rows } = await asUser(p.uid, 'select public.my_team_role($1) as role', [team.teamId]);
-          return rows[0].role;
-        })
-      );
+      // One connection, so the impersonated calls run one after another;
+      // three in flight at once would interleave their claims.
+      const roles = [];
+      for (const p of [team.officer, team.leader, team.raider]) {
+        const { rows } = await asUser(p.uid, 'select public.my_team_role($1) as role', [team.teamId]);
+        roles.push(rows[0].role);
+      }
       expect(roles).toEqual(['officer', 'team_leader', 'raider']);
     });
   });
@@ -107,7 +108,9 @@ describe('fixture factories mint rows the test owns (#1123)', () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const signupId = await seedSignup(q, { teamId: team.teamId });
-      const { rows } = await asUser(team.officer.uid, 'select public.add_signup_to_roster($1) as player_id', [signupId]);
+      const { rows } = await asUser(team.officer.uid, 'select public.add_signup_to_roster($1) as player_id', [
+        signupId
+      ]);
       const player = await q('select team_id from public.players where id = $1', [rows[0].player_id]);
       expect(player.rows[0].team_id).toBe(team.teamId);
       const signup = await q('select status from public.season_signups where id = $1', [signupId]);

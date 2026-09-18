@@ -15,13 +15,13 @@ import { pool, withTxn, seedSeason, OFFICER_T1, RAIDER_T1, OFFICER_T2 } from './
 // postgres before the role drops. Wraps the shared harness.
 async function withSeasons(role, uid, fn) {
   return withTxn(async ({ q, asRole }) => {
-    await seedSeason(q, 'export-test');
-    await seedSeason(q, 'some-other-season');
+    await seedSeason(q, 'remove-player-test');
+    await seedSeason(q, 'remove-player-other');
     return fn(asRole(role, uid));
   });
 }
 
-const SEASON = 'export-test';
+const SEASON = 'remove-player-test';
 
 async function seedPriority(q) {
   await q(
@@ -54,13 +54,13 @@ describe('remove_player_priority_order', () => {
       await seedPriority(q);
       await q(
         `insert into public.priority_order (team_id, season, item_id, track, rank, player_id) values
-           (1, 'some-other-season', 2, 'Hero', 1, 1)`
+           (1, 'remove-player-other', 2, 'Hero', 1, 1)`
       );
 
       await q('select public.remove_player_priority_order(1, $1, 1)', [SEASON]);
 
       const otherSeason = await q(
-        "select player_id from public.priority_order where team_id = 1 and season = 'some-other-season'"
+        "select player_id from public.priority_order where team_id = 1 and season = 'remove-player-other'"
       );
       expect(otherSeason.rows).toEqual([{ player_id: 1 }]);
     });
