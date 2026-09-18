@@ -6,7 +6,17 @@
 // shape test below fails when a new rule brings that form back, and the
 // helper tests pin what the array helpers return for each kind of caller.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, OFFICER_T1, TEAM_LEADER_T1, RAIDER_T1, OFFICER_T2, SITE_ADMIN } from './helpers.js';
+import {
+  pool,
+  withTxn,
+  seedPlayer,
+  seedMember,
+  OFFICER_T1,
+  TEAM_LEADER_T1,
+  RAIDER_T1,
+  OFFICER_T2,
+  SITE_ADMIN
+} from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -73,21 +83,25 @@ describe('once-per-query helpers', () => {
 
   it('my_active_player_ids matches is_own_player(): linked and not archived', async () => {
     await withTxn(async ({ q, asUser }) => {
-      // Seeded team_members 3 is RAIDER_T1; players 1 and 2 are unlinked team 1 characters.
-      await q('update public.players set team_member_id = 3 where id in (1, 2)');
-      await q('update public.players set archived_at = now() where id = 2');
-      expect(await call((t) => asUser(RAIDER_T1, t), 'my_active_player_ids')).toEqual([1]);
-      const own = await asUser(RAIDER_T1, 'select public.is_own_player(1) as a, public.is_own_player(2) as b');
+      // Seeded team_members 3 is RAIDER_T1, with no character of its own in the seed.
+      const live = await seedPlayer(q, { memberId: 3 });
+      const archived = await seedPlayer(q, { memberId: 3, archivedAt: new Date() });
+      expect(await call((t) => asUser(RAIDER_T1, t), 'my_active_player_ids')).toEqual([live]);
+      const own = await asUser(RAIDER_T1, 'select public.is_own_player($1) as a, public.is_own_player($2) as b', [
+        live,
+        archived
+      ]);
       expect(own.rows[0]).toEqual({ a: true, b: false });
     });
   });
 
   it('a role removed mid-session applies to the next query', async () => {
     await withTxn(async ({ q, asUser }) => {
+      const { uid, memberId } = await seedMember(q, { teamId: 1, role: 'officer' });
       const visible = async () =>
-        (await asUser(OFFICER_T1, 'select count(*)::int as n from public.audit_log where team_id = 1')).rows[0].n;
+        (await asUser(uid, 'select count(*)::int as n from public.audit_log where team_id = 1')).rows[0].n;
       expect(await visible()).toBeGreaterThan(0);
-      await q("update public.team_members set role = 'raider' where auth_user_id = $1 and team_id = 1", [OFFICER_T1]);
+      await q("update public.team_members set role = 'raider' where id = $1", [memberId]);
       expect(await visible()).toBe(0);
     });
   });
