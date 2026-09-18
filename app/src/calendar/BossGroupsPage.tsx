@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
+import { can, useAccess } from '../auth/access';
+import { Dialog } from '../components/Dialog';
 import { DataState } from '../components/DataState';
 import { useStatus } from '../components/Status';
 import { useAddress, useTeam } from '../data/address';
@@ -11,6 +13,7 @@ import { ColumnSizer } from './ColumnSizer';
 import { useLeaveGuard } from './leaveGuard';
 import { shortDay } from './calendar';
 import {
+  capLabel,
   changes,
   comingNights,
   current,
@@ -26,8 +29,10 @@ import {
   type ComingBossRow,
   type EncounterRow,
   type LeaverRow,
+  type LineupBoss,
   type LineupRaid,
   type Places,
+  type RoleTargets,
   type SeasonRow
 } from './lineup';
 import { isoDate } from './nights';
@@ -35,8 +40,11 @@ import {
   useBossGroups,
   useComingNights,
   useEncounters,
+  useLineupRoleTargets,
   useSaveBossGroups,
   useSeasons,
+  useSetEncounterCap,
+  useSetLineupRoleTargets,
   type BossSave,
   type SaveResult
 } from './useCalendar';
@@ -50,7 +58,10 @@ export function BossGroupsPage() {
   const [today] = useState(() => isoDate(new Date()));
   const lookups = bothQueries(useSeasons(), useEncounters());
   const saved = bothQueries(useBossGroups(team.id), useComingNights(team.id, today));
-  const page = bothQueries(bothQueries(lookups, useRosterPlayers(team.id)), saved);
+  const page = bothQueries(
+    bothQueries(bothQueries(lookups, useRosterPlayers(team.id)), saved),
+    useLineupRoleTargets(team.id)
+  );
 
   return (
     <section className="page boss-groups-page" aria-labelledby="page-title">
@@ -66,7 +77,7 @@ export function BossGroupsPage() {
         <p className="card calendar-note">The boss groups can be changed on a computer.</p>
       ) : (
         <DataState query={page} label="the boss groups">
-          {([[[seasons, encounters], players], [groups, coming]]) => (
+          {([[[[seasons, encounters], players], [groups, coming]], targets]) => (
             <Groups
               today={today}
               seasons={seasons}
@@ -74,6 +85,7 @@ export function BossGroupsPage() {
               players={players}
               groups={groups}
               coming={coming}
+              targets={targets}
             />
           )}
         </DataState>
@@ -92,7 +104,8 @@ function Groups({
   encounters,
   players,
   groups,
-  coming
+  coming,
+  targets
 }: {
   today: string;
   seasons: SeasonRow[];
@@ -100,11 +113,15 @@ function Groups({
   players: PlayerRow[];
   groups: LeaverRow[];
   coming: ComingBossRow[];
+  targets: RoleTargets;
 }) {
   const team = useTeam();
   const { guild } = useAddress();
+  const access = useAccess();
   const { announce } = useStatus();
   const [edits, setEdits] = useState<ReadonlyMap<number, ReadonlySet<number>>>(new Map());
+  const [editingTargets, setEditingTargets] = useState(false);
+  const [capBoss, setCapBoss] = useState<LineupBoss | null>(null);
   const [shown, setShown] = useState<number | null>(null);
   const [stale, setStale] = useState<number[]>([]);
   const [message, setMessage] = useState('');
@@ -187,13 +204,13 @@ function Groups({
                 aria-pressed={r.zoneId === raid.zoneId}
                 onClick={() => setShown(r.zoneId)}
               >
-                {r.name} · {r.cap} per boss
+                {r.name} · {capLabel(r.bosses)}
               </button>
             ))}
           </div>
         ) : (
           <p className="text-muted boss-groups-raid">
-            {raid.name} · {raid.cap} per boss
+            {raid.name} · {capLabel(raid.bosses)}
           </p>
         )}
         {next && (
@@ -202,6 +219,15 @@ function Groups({
           </Link>
         )}
       </div>
+
+      <p className="boss-groups-targets text-muted">
+        Role targets: {plural(targets.tanks, 'tank')} · {plural(targets.healers, 'healer')}{' '}
+        <button type="button" className="link-button" onClick={() => setEditingTargets(true)}>
+          Edit
+        </button>
+      </p>
+      {editingTargets && <RoleTargetsDialog targets={targets} onClose={() => setEditingTargets(false)} />}
+      {capBoss && <CapDialog boss={capBoss} raidCap={raid.cap} onClose={() => setCapBoss(null)} />}
 
       <div className="lineup-savebar" data-state={barState} role="status">
         <p>
@@ -264,12 +290,15 @@ function Groups({
           groups={groups}
           coming={coming}
           changedBosses={changed.bosses}
+          targets={targets}
+          canEditCap={can(access.data, 'manageRaidReference')}
           busy={save.isPending}
           onToggle={(boss, id) => {
             setEdits((e) => toggle(saved, e, boss, id));
             setMessage('');
             setStale([]);
           }}
+          onEditCap={setCapBoss}
         />
       )}
       {leaveDialog}
@@ -285,8 +314,11 @@ function GroupsGrid({
   groups,
   coming,
   changedBosses,
+  targets,
+  canEditCap,
   busy,
-  onToggle
+  onToggle,
+  onEditCap
 }: {
   raid: LineupRaid;
   players: PlayerRow[];
@@ -295,10 +327,13 @@ function GroupsGrid({
   groups: LeaverRow[];
   coming: ComingBossRow[];
   changedBosses: number[];
+  targets: RoleTargets;
+  canEditCap: boolean;
   busy: boolean;
   onToggle: (boss: number, player: number) => void;
+  onEditCap: (boss: LineupBoss) => void;
 }) {
-  const view = groupsView(players, raid, places, saved, groups);
+  const view = groupsView(players, raid, places, saved, groups, targets);
   const columns = raid.bosses.length + 2;
   const gaps = view.totals.filter((t) => t.problems.length);
   const nights = comingNights(coming, raid.bosses, changedBosses);
@@ -314,7 +349,7 @@ function GroupsGrid({
       <div className="card lineup-card">
         <table className="lineup-grid">
           <caption className="visually-hidden">
-            {raid.name} boss groups, up to {raid.cap} per boss
+            {raid.name} boss groups, up to {capLabel(raid.bosses)}
           </caption>
           <thead>
             <tr>
@@ -329,12 +364,17 @@ function GroupsGrid({
                   </span>
                   <span className="visually-hidden">{t.boss.name}</span>
                   <span className="lineup-total num" data-tone={t.status.tone}>
-                    {t.count}/{raid.cap}
+                    {t.count}/{t.boss.cap}
                   </span>
                   <span className="lineup-warn">{t.warn}</span>
                   <span className="visually-hidden">
                     {plural(t.tanks, 'tank')}, {plural(t.healers, 'healer')}, {t.damage} damage
                   </span>
+                  {canEditCap && (
+                    <button type="button" className="button lineup-skip" onClick={() => onEditCap(t.boss)}>
+                      Edit cap
+                    </button>
+                  )}
                 </th>
               ))}
               <th scope="col" className="lineup-count-col">
@@ -460,5 +500,160 @@ function GroupsGrid({
         </section>
       </aside>
     </div>
+  );
+}
+
+// The "Role targets" editor: how many tanks and healers a boss's "Needs a
+// look" check wants (#1244), a team's own call, defaulting to 2 and 4.
+function RoleTargetsDialog({ targets, onClose }: { targets: RoleTargets; onClose: () => void }) {
+  const team = useTeam();
+  const { announce } = useStatus();
+  const id = useId();
+  const [tanks, setTanks] = useState(String(targets.tanks));
+  const [healers, setHealers] = useState(String(targets.healers));
+  const save = useSetLineupRoleTargets(team.id);
+
+  const onSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    const t = Number(tanks);
+    const h = Number(healers);
+    if (!Number.isInteger(t) || !Number.isInteger(h) || t < 0 || h < 0 || t > 20 || h > 20) return;
+    save.mutate(
+      { tanks: t, healers: h },
+      {
+        onSuccess: () => {
+          announce('success', `Role targets saved: ${plural(t, 'tank')} and ${plural(h, 'healer')}.`);
+          onClose();
+        }
+      }
+    );
+  };
+
+  return (
+    <Dialog title="Role targets" onClose={onClose} busy={save.isPending}>
+      <form onSubmit={onSubmit} noValidate>
+        <p className="text-muted">
+          How many tanks and healers a boss's "Needs a look" check wants. This is your team's own call, not a rule the
+          raid enforces.
+        </p>
+        <div className="field">
+          <label className="field-label" htmlFor={`${id}-tanks`}>
+            Tanks wanted
+          </label>
+          <input
+            id={`${id}-tanks`}
+            className="input"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={20}
+            value={tanks}
+            onChange={(e) => setTanks(e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label className="field-label" htmlFor={`${id}-healers`}>
+            Healers wanted
+          </label>
+          <input
+            id={`${id}-healers`}
+            className="input"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={20}
+            value={healers}
+            onChange={(e) => setHealers(e.target.value)}
+          />
+        </div>
+        {save.isError && (
+          <p className="form-error" role="alert">
+            That did not save: {save.error.message}
+          </p>
+        )}
+        <div className="dialog-actions">
+          <span className="grow" />
+          <button type="button" className="button" onClick={onClose} disabled={save.isPending}>
+            Cancel
+          </button>
+          <button type="submit" className="button button-primary" disabled={save.isPending}>
+            {save.isPending ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+// The "Edit cap" editor, guild officers and site admins only: raid_encounters
+// is shared across every team, so this changes what every team sees for that
+// boss, not just this one. Clearing it (blank) goes back to the raid's own
+// cap.
+function CapDialog({ boss, raidCap, onClose }: { boss: LineupBoss; raidCap: number; onClose: () => void }) {
+  const { announce } = useStatus();
+  const id = useId();
+  const [cap, setCap] = useState(boss.cap === raidCap ? '' : String(boss.cap));
+  const save = useSetEncounterCap();
+
+  const onSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    const trimmed = cap.trim();
+    const n = trimmed === '' ? null : Number(trimmed);
+    if (n !== null && (!Number.isInteger(n) || n <= 0 || n > 30)) return;
+    save.mutate(
+      { encounterId: boss.id, cap: n },
+      {
+        onSuccess: () => {
+          announce(
+            'success',
+            n === null
+              ? `${boss.name}’s cap is back to the raid’s own.`
+              : `${boss.name}’s cap is set to ${n}, for every team.`
+          );
+          onClose();
+        }
+      }
+    );
+  };
+
+  return (
+    <Dialog title={`${boss.name}’s cap`} onClose={onClose} busy={save.isPending}>
+      <form onSubmit={onSubmit} noValidate>
+        <p className="text-muted">
+          Overrides the raid’s own cap for this one boss, for every team -- a flex fight like Nymrissa Wavecaller or
+          Kith’ix that allows more raiders than the rest of the raid. Leave it blank to use the raid’s cap.
+        </p>
+        <div className="field">
+          <label className="field-label" htmlFor={`${id}-cap`}>
+            Cap for this boss
+          </label>
+          <input
+            id={`${id}-cap`}
+            className="input"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={30}
+            placeholder="Raid's own cap"
+            value={cap}
+            onChange={(e) => setCap(e.target.value)}
+          />
+        </div>
+        {save.isError && (
+          <p className="form-error" role="alert">
+            That did not save: {save.error.message}
+          </p>
+        )}
+        <div className="dialog-actions">
+          <span className="grow" />
+          <button type="button" className="button" onClick={onClose} disabled={save.isPending}>
+            Cancel
+          </button>
+          <button type="submit" className="button button-primary" disabled={save.isPending}>
+            {save.isPending ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </form>
+    </Dialog>
   );
 }

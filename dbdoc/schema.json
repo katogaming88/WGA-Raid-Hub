@@ -3288,6 +3288,12 @@
           "type": "integer",
           "nullable": false,
           "default": "0"
+        },
+        {
+          "name": "cap",
+          "type": "integer",
+          "nullable": true,
+          "comment": "A raider cap for this one boss, overriding the raid's own (20 Mythic, 25 mini raid via raid_zones.is_mini_raid). Null for every boss except a flex fight like Nymrissa Wavecaller or Kith'ix (#1244). Set by set_encounter_cap(); wcl-progression-sync's upsert never includes this column, so a sync run cannot clear it."
         }
       ],
       "indexes": [
@@ -3310,6 +3316,16 @@
         }
       ],
       "constraints": [
+        {
+          "name": "raid_encounters_cap_check",
+          "type": "CHECK",
+          "def": "CHECK (((cap IS NULL) OR ((cap \u003e 0) AND (cap \u003c= 30))))",
+          "table": "public.raid_encounters",
+          "referenced_table": "",
+          "columns": [
+            "cap"
+          ]
+        },
         {
           "name": "raid_encounters_zone_id_fkey",
           "type": "FOREIGN KEY",
@@ -7747,6 +7763,91 @@
           "def": "CREATE TRIGGER trg_raid_night_lineups_team_id_check BEFORE INSERT OR UPDATE ON public.raid_night_lineups FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         }
       ]
+    },
+    {
+      "name": "public.team_lineup_settings",
+      "type": "BASE TABLE",
+      "comment": "A team's own tanks-wanted and healers-wanted counts for the boss lineup's \"Needs a look\" check (#1244), defaulting to 2 and 4 when a team has no row. Written only by set_lineup_role_targets().",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "tanks_wanted",
+          "type": "integer",
+          "nullable": false,
+          "default": "2"
+        },
+        {
+          "name": "healers_wanted",
+          "type": "integer",
+          "nullable": false,
+          "default": "4"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_lineup_settings_pkey",
+          "def": "CREATE UNIQUE INDEX team_lineup_settings_pkey ON public.team_lineup_settings USING btree (team_id)",
+          "table": "public.team_lineup_settings",
+          "columns": [
+            "team_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_lineup_settings_healers_wanted_check",
+          "type": "CHECK",
+          "def": "CHECK (((healers_wanted \u003e= 0) AND (healers_wanted \u003c= 20)))",
+          "table": "public.team_lineup_settings",
+          "referenced_table": "",
+          "columns": [
+            "healers_wanted"
+          ]
+        },
+        {
+          "name": "team_lineup_settings_tanks_wanted_check",
+          "type": "CHECK",
+          "def": "CHECK (((tanks_wanted \u003e= 0) AND (tanks_wanted \u003c= 20)))",
+          "table": "public.team_lineup_settings",
+          "referenced_table": "",
+          "columns": [
+            "tanks_wanted"
+          ]
+        },
+        {
+          "name": "team_lineup_settings_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.team_lineup_settings",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_lineup_settings_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (team_id)",
+          "table": "public.team_lineup_settings",
+          "referenced_table": "",
+          "columns": [
+            "team_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -9131,6 +9232,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_lineup_settings",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -9864,6 +9978,18 @@
       "name": "public.set_raid_night_boss_skipped",
       "return_type": "void",
       "arguments": "p_team_id integer, p_raid_date date, p_encounter_id integer, p_skipped boolean",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_encounter_cap",
+      "return_type": "void",
+      "arguments": "p_encounter_id integer, p_cap integer DEFAULT NULL::integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_lineup_role_targets",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_tanks integer, p_healers integer",
       "type": "FUNCTION"
     }
   ],

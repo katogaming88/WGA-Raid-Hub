@@ -69,6 +69,7 @@ erDiagram
   integer wcl_encounter_id
   text name
   integer sort_index
+  integer cap
 }
 "public.players" {
   integer id

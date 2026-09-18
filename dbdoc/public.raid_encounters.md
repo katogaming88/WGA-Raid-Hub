@@ -9,11 +9,13 @@
 | wcl_encounter_id | integer |  | false |  |  |  |
 | name | text |  | false |  |  |  |
 | sort_index | integer | 0 | false |  |  |  |
+| cap | integer |  | true |  |  | A raider cap for this one boss, overriding the raid's own (20 Mythic, 25 mini raid via raid_zones.is_mini_raid). Null for every boss except a flex fight like Nymrissa Wavecaller or Kith'ix (#1244). Set by set_encounter_cap(); wcl-progression-sync's upsert never includes this column, so a sync run cannot clear it. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| raid_encounters_cap_check | CHECK | CHECK (((cap IS NULL) OR ((cap > 0) AND (cap <= 30)))) |
 | raid_encounters_zone_id_fkey | FOREIGN KEY | FOREIGN KEY (zone_id) REFERENCES raid_zones(id) ON DELETE CASCADE |
 | raid_encounters_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | raid_encounters_zone_id_wcl_encounter_id_key | UNIQUE | UNIQUE (zone_id, wcl_encounter_id) |
@@ -42,6 +44,7 @@ erDiagram
   integer wcl_encounter_id
   text name
   integer sort_index
+  integer cap
 }
 "public.players" {
   integer id

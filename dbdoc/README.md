@@ -31,7 +31,7 @@
 | [public.streamers](public.streamers.md) | 10 |  | BASE TABLE |
 | [public.notifications](public.notifications.md) | 6 |  | BASE TABLE |
 | [public.raid_zones](public.raid_zones.md) | 6 |  | BASE TABLE |
-| [public.raid_encounters](public.raid_encounters.md) | 5 |  | BASE TABLE |
+| [public.raid_encounters](public.raid_encounters.md) | 6 |  | BASE TABLE |
 | [public.team_raid_progress](public.team_raid_progress.md) | 14 |  | BASE TABLE |
 | [public.priority_order_live_first_prios](public.priority_order_live_first_prios.md) | 9 |  | VIEW |
 | [public.priority_order_first_prio_counts](public.priority_order_first_prio_counts.md) | 5 |  | VIEW |
@@ -69,6 +69,7 @@
 | [public.boss_groups](public.boss_groups.md) | 5 | The standing group per boss for a team (#1216): one row per raider in the group that kills that boss. A new raid night is filled from these. Written only through set_boss_group(). | BASE TABLE |
 | [public.raid_night_bosses](public.raid_night_bosses.md) | 9 | The bosses on one raid night's list for a team (#1216), in pull order. skipped keeps a boss the team is not pulling that night on the list. confirmed_at and confirmed_by say an officer saved that boss's lineup for the night; until then it follows the boss's standing group. No rows for a night means it is not planned yet. | BASE TABLE |
 | [public.raid_night_lineups](public.raid_night_lineups.md) | 6 | The plan for one raid night (#1216): one row per raider in for one boss. Filled from boss_groups ahead of the night, then edited through set_raid_night_lineup(). Kept after the night, so it still says who was planned in. | BASE TABLE |
+| [public.team_lineup_settings](public.team_lineup_settings.md) | 4 | A team's own tanks-wanted and healers-wanted counts for the boss lineup's "Needs a look" check (#1244), defaulting to 2 and 4 when a team has no row. Written only by set_lineup_role_targets(). | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -196,6 +197,8 @@
 | public.plan_raid_night | int4 | p_team_id integer, p_raid_date date | FUNCTION |
 | public.set_raid_night_lineup | int4 | p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[] | FUNCTION |
 | public.set_raid_night_boss_skipped | void | p_team_id integer, p_raid_date date, p_encounter_id integer, p_skipped boolean | FUNCTION |
+| public.set_encounter_cap | void | p_encounter_id integer, p_cap integer DEFAULT NULL::integer | FUNCTION |
+| public.set_lineup_role_targets | void | p_team_id integer, p_tanks integer, p_healers integer | FUNCTION |
 
 ## Enums
 
@@ -326,6 +329,7 @@ erDiagram
 "public.raid_night_bosses" }o--o| "public.people" : "FOREIGN KEY (confirmed_by) REFERENCES people(id) ON DELETE SET NULL"
 "public.raid_night_lineups" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.raid_night_lineups" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
+"public.team_lineup_settings" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -626,6 +630,7 @@ erDiagram
   integer wcl_encounter_id
   text name
   integer sort_index
+  integer cap
 }
 "public.team_raid_progress" {
   integer id
@@ -995,6 +1000,12 @@ erDiagram
   integer encounter_id FK
   integer player_id FK
   timestamp_with_time_zone created_at
+}
+"public.team_lineup_settings" {
+  integer team_id FK
+  integer tanks_wanted
+  integer healers_wanted
+  timestamp_with_time_zone updated_at
 }
 ```
 

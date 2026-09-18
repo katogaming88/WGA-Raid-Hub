@@ -100,7 +100,10 @@ export type Ability =
   | 'actAsOfficer'
   | 'leadTeam'
   | 'adminSite'
-  | 'manageBoe';
+  | 'manageBoe'
+  // Editing a raid boss's own data (its cap, #1244): raid_encounters is
+  // shared across every team, so this is guild-wide, not scoped to a team.
+  | 'manageRaidReference';
 
 export function teamRole(access: Access, teamId: number | null | undefined): TeamRole | null {
   if (teamId == null) return null;
@@ -122,6 +125,8 @@ export function can(access: Access | null | undefined, ability: Ability, teamId?
       return access.siteAdmin;
     case 'manageBoe':
       return access.boeManager || access.siteAdmin;
+    case 'manageRaidReference':
+      return access.guildOfficer || access.siteAdmin;
   }
 }
 

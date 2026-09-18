@@ -310,6 +310,20 @@ const BOSS_GROUPS = {
   sentinel: 'main:has(.lineup-toggle)'
 };
 
+// A guild officer, for the Boss groups page's guild-wide "Edit cap" control
+// (#1244): raid_encounters has no team of its own, so this is not a plain
+// team officer ability.
+const GUILD_OFFICER_PERSON = {
+  discordId: 'discord-officer-1',
+  person: {
+    site_admin: false,
+    guild_officer: true,
+    boe_manager: false,
+    teams: [{ team_id: 1, team_member_id: 1, role: 'officer', characters: [] }]
+  }
+};
+const BOSS_GROUPS_GUILD_OFFICER = { ...BOSS_GROUPS, person: GUILD_OFFICER_PERSON };
+
 const GUILD = { path: '/g/wga', sentinel: 'main:has(.guild-officer)', teams: GUILD_TEAMS, tables: GUILD_TABLES };
 const GUILD_OFFICER = {
   ...GUILD,
@@ -368,6 +382,16 @@ const STATES = [
     ...BOSS_GROUPS,
     sentinel: 'main:has(.lineup-empty)',
     tables: { ...BOSS_GROUPS.tables, boss_groups: [] }
+  },
+  {
+    label: 'boss groups, officer, editing role targets',
+    ...BOSS_GROUPS,
+    click: 'role=button[name="Edit"]'
+  },
+  {
+    label: 'boss groups, guild officer, editing a boss cap',
+    ...BOSS_GROUPS_GUILD_OFFICER,
+    click: 'role=button[name="Edit cap"]'
   },
   {
     label: 'calendar night, officer changing an answer',

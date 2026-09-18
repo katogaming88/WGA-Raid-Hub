@@ -1340,6 +1340,17 @@ a.night-chip:hover {
   font-size: var(--text-sm);
 }
 
+/* Role targets and the per-boss cap editor (#1244). */
+.boss-groups-targets {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.boss-groups-targets .link-button {
+  margin-left: 4px;
+  font-size: inherit;
+}
+
 .lineup-toggle.is-changed {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--button) 55%, transparent);
 }

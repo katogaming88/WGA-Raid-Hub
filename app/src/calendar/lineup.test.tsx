@@ -6,6 +6,7 @@ import { fakeSession, seededHandlers, type FakeHandlers, type Read } from '../te
 import type { PlayerRow } from '../roster/roster';
 import type { Answer, RaidNight } from './calendar';
 import {
+  capLabel,
   capStatus,
   changes,
   comingNights,
@@ -21,6 +22,7 @@ import {
   toggle,
   wholeNight,
   yourBosses,
+  DEFAULT_ROLE_TARGETS,
   type ComingBossRow,
   type EncounterRow,
   type LeaverRow,
@@ -57,10 +59,17 @@ const GROTTO = { id: 11, name: 'Tidebound Grotto', season: 'Season One', is_mini
 const OLD = { id: 9, name: 'Old Raid', season: 'Season Zero', is_mini_raid: false, sort_index: 0 };
 
 const ENCOUNTERS: EncounterRow[] = [
-  { id: 101, name: "Nek'zali the Soulcoiler", sort_index: 1, zone: ABYSS },
-  { id: 102, name: 'Sszorak', sort_index: 2, zone: ABYSS },
-  { id: 103, name: 'Nymrissa Wavecaller', sort_index: 1, zone: GROTTO },
-  { id: 90, name: 'Old Boss', sort_index: 1, zone: OLD }
+  { id: 101, name: "Nek'zali the Soulcoiler", sort_index: 1, zone: ABYSS, cap: null },
+  { id: 102, name: 'Sszorak', sort_index: 2, zone: ABYSS, cap: null },
+  { id: 103, name: 'Nymrissa Wavecaller', sort_index: 1, zone: GROTTO, cap: null },
+  { id: 90, name: 'Old Boss', sort_index: 1, zone: OLD, cap: null }
+];
+
+// A flex boss inside a Mythic raid: 25 allowed against the raid's own 20
+// (#1244, Nymrissa Wavecaller and Kith'ix on production).
+const FLEX_ENCOUNTERS: EncounterRow[] = [
+  ...ENCOUNTERS,
+  { id: 104, name: "Kith'ix", sort_index: 3, zone: ABYSS, cap: 25 }
 ];
 
 const SEASONS = [
@@ -119,8 +128,8 @@ describe('the lineup rules', () => {
         name: 'The Venomous Abyss',
         cap: 20,
         bosses: [
-          { id: 101, name: "Nek'zali the Soulcoiler", short: "Nek'zali", skipped: false, confirmed: false },
-          { id: 102, name: 'Sszorak', short: 'Sszorak', skipped: false, confirmed: true }
+          { id: 101, name: "Nek'zali the Soulcoiler", short: "Nek'zali", skipped: false, confirmed: false, cap: 20 },
+          { id: 102, name: 'Sszorak', short: 'Sszorak', skipped: false, confirmed: true, cap: 20 }
         ]
       },
       {
@@ -128,7 +137,14 @@ describe('the lineup rules', () => {
         name: 'Tidebound Grotto',
         cap: 25,
         bosses: [
-          { id: 103, name: 'Nymrissa Wavecaller', short: 'Nymrissa Wavecaller', skipped: false, confirmed: false }
+          {
+            id: 103,
+            name: 'Nymrissa Wavecaller',
+            short: 'Nymrissa Wavecaller',
+            skipped: false,
+            confirmed: false,
+            cap: 25
+          }
         ]
       }
     ]);
@@ -136,6 +152,20 @@ describe('the lineup rules', () => {
     expect(lineupRaids(ENCOUNTERS, [], { fresh: false, season: 'Season One' })).toEqual([]);
     const fresh = lineupRaids(ENCOUNTERS, [], { fresh: true, season: 'Season One' });
     expect(fresh.flatMap((r) => r.bosses.map((b) => b.id))).toEqual([101, 102, 103]);
+  });
+
+  it('gives a boss its own cap when one is set, over the raid’s (#1244, a flex boss)', () => {
+    const raids = lineupRaids(FLEX_ENCOUNTERS, [], { fresh: true, season: 'Season One' });
+    const abyss = raids.find((r) => r.zoneId === 10)!;
+    expect(abyss.cap).toBe(20);
+    expect(abyss.bosses.map((b) => [b.short, b.cap])).toEqual([
+      ["Nek'zali", 20],
+      ['Sszorak', 20],
+      ["Kith'ix", 25]
+    ]);
+    expect(capLabel(abyss.bosses)).toBe('20-25 per boss');
+    const grotto = raids.find((r) => r.zoneId === 11)!;
+    expect(capLabel(grotto.bosses)).toBe('25 per boss');
   });
 
   it('keeps edits only where they differ from what is saved', () => {
@@ -232,6 +262,20 @@ describe('the lineup rules', () => {
     expect(battleShout.cells.map((c) => c.providers)).toEqual([['Ana'], []]);
   });
 
+  it('checks a boss against the team’s own role targets, not the default (#1244)', () => {
+    const raid = lineupRaids(ENCOUNTERS, [nightBoss(101, 1)], { fresh: false, season: 'Season One' })[0]!;
+    // One tank (Ana), one healer (Bo): short of the default's 2 tanks / 4
+    // healers, but enough for a team that wants only one of each.
+    const tonight = placesOf(places([[101, [1, 2, 3, 4]]]));
+    const asDefault = lineupView(ROSTER, NIGHT, [], raid, tonight, tonight);
+    expect(asDefault.totals[0]!.problems).toEqual(expect.arrayContaining(['needs a second tank', '1 healer']));
+    const wantsLess = lineupView(ROSTER, NIGHT, [], raid, tonight, tonight, { tanks: 1, healers: 1 });
+    expect(wantsLess.totals[0]!.problems).not.toContain('needs a second tank');
+    expect(wantsLess.totals[0]!.problems).not.toContain('1 healer');
+    // Explicit DEFAULT_ROLE_TARGETS matches the no-argument call.
+    expect(lineupView(ROSTER, NIGHT, [], raid, tonight, tonight, DEFAULT_ROLE_TARGETS)).toEqual(asDefault);
+  });
+
   it('leaves a skipped boss out of the counts and checks', () => {
     const raid = lineupRaids(ENCOUNTERS, [nightBoss(101, 1), nightBoss(102, 2, { skipped: true })], {
       fresh: false,
@@ -251,7 +295,7 @@ describe('the lineup rules', () => {
       zoneId: 1,
       name: 'R',
       cap: 2,
-      bosses: [{ id: 1, name: 'B', short: 'B', skipped: false, confirmed: false }]
+      bosses: [{ id: 1, name: 'B', short: 'B', skipped: false, confirmed: false, cap: 2 }]
     };
     const two = [player(1, 'Ana', 'Warrior', 'Tank'), player(2, 'Bo', 'Warrior', 'Tank')];
     const total = lineupView(two, NIGHT, [], full, placesOf(places([[1, [1, 2]]])), new Map()).totals[0]!;
@@ -281,6 +325,7 @@ type Setup = {
   tonight?: PlaceRow[];
   groups?: PlaceRow[];
   answers?: Answer[];
+  targets?: { tanks_wanted: number; healers_wanted: number };
   rpc?: (name: string, args: Record<string, unknown>) => { data?: unknown; error?: { message: string } } | undefined;
 };
 
@@ -310,7 +355,8 @@ function handlers(person: ReturnType<typeof who>, setup: Setup = PLANNED): FakeH
     raid_encounters: () => ENCOUNTERS,
     raid_night_bosses: () => setup.bosses ?? [],
     raid_night_lineups: () => setup.tonight ?? [],
-    boss_groups: () => setup.groups ?? []
+    boss_groups: () => setup.groups ?? [],
+    team_lineup_settings: (read) => (read.single ? (setup.targets ?? null) : setup.targets ? [setup.targets] : [])
   };
   return seededHandlers({
     session: fakeSession({ battlenet: 'A#1', discord: { id: 'd', name: 'Ana' } }),
@@ -679,6 +725,49 @@ describe('the boss groups page', () => {
     expect(await screen.findByRole('dialog', { name: 'Leave without saving?' })).toHaveTextContent(
       'You have 1 unsaved change to the boss groups.'
     );
+  });
+
+  it('shows the team’s own role targets, defaulting to 2 tanks and 4 healers, and lets an officer change them', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(GROUPS, handlers(who('officer'), GROUPED));
+    await groupsGrid();
+    expect(screen.getByText('Role targets: 2 tanks · 4 healers')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    const dialog = within(await screen.findByRole('dialog', { name: 'Role targets' }));
+    await user.clear(dialog.getByLabelText('Tanks wanted'));
+    await user.type(dialog.getByLabelText('Tanks wanted'), '3');
+    await user.clear(dialog.getByLabelText('Healers wanted'));
+    await user.type(dialog.getByLabelText('Healers wanted'), '5');
+    await user.click(dialog.getByRole('button', { name: 'Save' }));
+    expect(rpcs(client, 'set_lineup_role_targets')).toEqual([{ p_team_id: 1, p_tanks: 3, p_healers: 5 }]);
+    expect(await screen.findByText('Role targets saved: 3 tanks and 5 healers.')).toBeInTheDocument();
+  });
+
+  it('reads a team’s own saved role targets', async () => {
+    renderApp(GROUPS, handlers(who('officer'), { ...GROUPED, targets: { tanks_wanted: 3, healers_wanted: 6 } }));
+    await groupsGrid();
+    expect(await screen.findByText('Role targets: 3 tanks · 6 healers')).toBeInTheDocument();
+  });
+
+  it('offers no cap edit to a team officer, only to a guild officer or site admin', async () => {
+    renderApp(GROUPS, handlers(who('officer'), GROUPED));
+    await groupsGrid();
+    expect(screen.queryByRole('button', { name: 'Edit cap' })).not.toBeInTheDocument();
+  });
+
+  it('lets a guild officer set a boss’s cap, for every team', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(GROUPS, handlers({ ...who('officer'), guild_officer: true }, GROUPED));
+    const g = await groupsGrid();
+    await user.click(
+      within(g.getByRole('columnheader', { name: /Sszorak/ })).getByRole('button', { name: 'Edit cap' })
+    );
+    const dialog = within(await screen.findByRole('dialog', { name: 'Sszorak’s cap' }));
+    expect(dialog.getByLabelText('Cap for this boss')).toHaveValue(null);
+    await user.type(dialog.getByLabelText('Cap for this boss'), '25');
+    await user.click(dialog.getByRole('button', { name: 'Save' }));
+    expect(rpcs(client, 'set_encounter_cap')).toEqual([{ p_encounter_id: 102, p_cap: 25 }]);
+    expect(await screen.findByText('Sszorak’s cap is set to 25, for every team.')).toBeInTheDocument();
   });
 });
 

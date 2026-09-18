@@ -16,6 +16,10 @@ export type EncounterRow = {
   id: number;
   name: string;
   sort_index: number;
+  // A per-boss cap override (#1244), e.g. a flex fight like Nymrissa
+  // Wavecaller or Kith'ix that allows more than the raid's own cap. Null for
+  // every other boss, which falls back to the raid's cap.
+  cap: number | null;
   zone: { id: number; name: string; season: string; is_mini_raid: boolean; sort_index: number };
 };
 export type NightBossRow = {
@@ -66,8 +70,15 @@ export function seasonOn(seasons: SeasonRow[], date: string): string | null {
   return seasons.find((s) => s.starts_at <= date && (s.ends_at === null || date <= s.ends_at))?.display_name ?? null;
 }
 
-export type LineupBoss = { id: number; name: string; short: string; skipped: boolean; confirmed: boolean };
+export type LineupBoss = { id: number; name: string; short: string; skipped: boolean; confirmed: boolean; cap: number };
 export type LineupRaid = { zoneId: number; name: string; cap: number; bosses: LineupBoss[] };
+
+// "20 per boss", or "20-25 per boss" when a flex fight inside the raid (a
+// Nymrissa Wavecaller, a Kith'ix) allows more than the rest (#1244).
+export function capLabel(bosses: LineupBoss[]): string {
+  const caps = [...new Set(bosses.map((b) => b.cap))].sort((a, b) => a - b);
+  return caps.length === 1 ? `${caps[0]} per boss` : `${caps[0]}-${caps.at(-1)} per boss`;
+}
 
 const byZone = (a: EncounterRow, b: EncounterRow) =>
   a.zone.sort_index - b.zone.sort_index || a.zone.id - b.zone.id || a.sort_index - b.sort_index || a.id - b.id;
@@ -107,7 +118,8 @@ export function lineupRaids(
       name: e.name,
       short: shortBossName(e.name),
       skipped: boss?.skipped ?? false,
-      confirmed: !!boss?.confirmed_at
+      confirmed: !!boss?.confirmed_at,
+      cap: e.cap ?? raid.cap
     });
   }
   return raids;
@@ -214,9 +226,10 @@ export const BUFFS: Buff[] = [
   { name: 'Combat Res', classes: ['Druid', 'Warlock', 'Paladin', 'Death Knight'] }
 ];
 
-// A Mythic boss wants two tanks and four healers (the A2 mockup's check).
-export const TANKS_WANTED = 2;
-export const HEALERS_WANTED = 4;
+// A Mythic boss wants two tanks and four healers by default (the A2 mockup's
+// check); a team can say otherwise (#1244, team_lineup_settings).
+export type RoleTargets = { tanks: number; healers: number };
+export const DEFAULT_ROLE_TARGETS: RoleTargets = { tanks: 2, healers: 4 };
 
 export type LineupCell = {
   boss: LineupBoss;
@@ -273,17 +286,17 @@ const providersOf = (buff: Buff, inn: Raider[]) =>
 
 // One boss's count, role mix, missing buffs and warnings, for whoever is in.
 // `out` names raiders in who said they are not coming (a night only).
-function totalOf(boss: LineupBoss, inn: Raider[], cap: number, out: string[] = []): BossTotal {
+function totalOf(boss: LineupBoss, inn: Raider[], targets: RoleTargets, out: string[] = []): BossTotal {
   const n = (role: Role) => inn.filter((r) => r.role === role).length;
   const tanks = n('Tank');
   const healers = n('Heal');
-  const status = capStatus(inn.length, cap);
-  const full = inn.length === cap;
+  const status = capStatus(inn.length, boss.cap);
+  const full = inn.length === boss.cap;
   const missing = BUFFS.filter((b) => !providersOf(b, inn).length).map((b) => b.name);
   const problems = [
     ...(full ? [] : [status.text]),
-    ...(tanks === 0 ? ['no tanks'] : tanks < TANKS_WANTED ? ['needs a second tank'] : []),
-    ...(healers < HEALERS_WANTED ? [plural(healers, 'healer')] : []),
+    ...(tanks === 0 ? ['no tanks'] : tanks < targets.tanks ? ['needs a second tank'] : []),
+    ...(healers < targets.healers ? [plural(healers, 'healer')] : []),
     ...(missing.length ? [`no ${missing.join(', no ')}`] : []),
     ...(out.length ? [`${out.join(', ')} said they’re not coming`] : [])
   ];
@@ -309,7 +322,8 @@ export function lineupView(
   answers: Answer[],
   raid: LineupRaid,
   places: Places,
-  groups: Places
+  groups: Places,
+  targets: RoleTargets = DEFAULT_ROLE_TARGETS
 ): LineupView {
   const byPlayer = new Map(answers.filter((a) => a.raid_date === night.date).map((a) => [a.player_id, a]));
   const rows: NightRow[] = rosterOf(players)
@@ -372,7 +386,7 @@ export function lineupView(
       return totalOf(
         boss,
         inn,
-        raid.cap,
+        targets,
         inn.filter(saidOut).map((r) => r.name)
       );
     }),
@@ -427,7 +441,8 @@ export function groupsView(
   raid: LineupRaid,
   places: Places,
   saved: Places,
-  savedRows: LeaverRow[]
+  savedRows: LeaverRow[],
+  targets: RoleTargets = DEFAULT_ROLE_TARGETS
 ): GroupsView {
   const roster = rosterOf(players);
   const rows: Raider[] = roster
@@ -478,7 +493,7 @@ export function groupsView(
       totalOf(
         boss,
         rows.filter((r) => isIn(boss, r.player.id)),
-        raid.cap
+        targets
       )
     ),
     unplaced: all.filter((r) => r.tagTone === 'warn').map((r) => r.raider.name),
