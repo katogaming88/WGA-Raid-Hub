@@ -4,13 +4,14 @@
 // is SECURITY DEFINER, its authorization is RLS-shaped, and the trigger fires
 // on auth.users.
 //
-// Each test runs in one rolled-back transaction: fixture writes happen as
-// postgres (bypasses RLS), the claim happens as the impersonated caller, and
-// assertions happen back as postgres. A savepoint wraps each impersonated call
-// so an expected raise does not abort the whole transaction (and does not mask
-// the real error when the role reset runs inside an aborted transaction).
+// Each test runs in one rolled-back transaction (helpers.js withTxn): fixture
+// writes happen as postgres (bypasses RLS), the claim happens as the
+// impersonated caller, and assertions happen back as postgres. A savepoint
+// wraps each impersonated call so an expected raise does not abort the whole
+// transaction (and does not mask the real error when the role reset runs
+// inside an aborted transaction).
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, insertDiscordUser, grantGuild, RAIDER_T1 } from './helpers.js';
+import { pool, withTxn, insertDiscordUser, grantGuild, RAIDER_T1 } from './helpers.js';
 
 // Seeded rows this file leans on (supabase/seed.sql): player 1 is team 1
 // 'Seedraider-Illidan', player 2 is team 1 'Seedplayertwo-Illidan', player 3
@@ -18,34 +19,6 @@ import { pool, insertDiscordUser, grantGuild, RAIDER_T1 } from './helpers.js';
 // name_realm 'Seedraider-Illidan'). The migration's one-time name_realm
 // backfill is a no-op on a fresh DB (it runs before seed.sql loads), so every
 // seeded player starts unlinked.
-async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asRole = (role, uid) => async (text, params) => {
-      await q('savepoint claim_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify(uid ? { sub: uid, role } : { role })
-      ]);
-      await q(`set local role ${role}`);
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint claim_call');
-        throw err;
-      }
-    };
-    const asUser = (uid, text, params) => asRole('authenticated', uid)(text, params);
-    const asAnon = (text, params) => asRole('anon', null)(text, params);
-    return await fn({ q, asUser, asAnon });
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
-}
 
 const claim = (asUser, uid, teamId, nameRealm) =>
   asUser(uid, 'select * from public.claim_character($1, $2)', [teamId, nameRealm]);

@@ -13,7 +13,15 @@
 // postgres (bypasses RLS), the call happens as the named identity, assertions
 // happen back as postgres.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, insertDiscordUser, grantGuild, OFFICER_T1, TEAM_LEADER_T1, SITE_ADMIN } from './helpers.js';
+import {
+  pool,
+  withTxn as withSharedTxn,
+  insertDiscordUser,
+  grantGuild,
+  OFFICER_T1,
+  TEAM_LEADER_T1,
+  SITE_ADMIN
+} from './helpers.js';
 
 // Seeded and migration-created rows this file leans on:
 //   team 1 'Team Phoenix', team 2 'Hellfire Rollers' (supabase/seed.sql)
@@ -38,37 +46,13 @@ const STRANGER_UID = '00000000-0000-0000-0000-0000000000a4';
 const NEW_BOE_MANAGER = 'discord-new-boe-manager-1';
 const NEW_BOE_MANAGER_UID = '00000000-0000-0000-0000-0000000000a5';
 
+// Wraps the shared harness: asUser runs one statement as `uid` (null means
+// anon), then restores postgres. Half this file asserts a raise, so the
+// savepoint per call is load-bearing, not defensive.
 async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    // Runs one statement as `uid` (null means anon), then restores postgres.
-    // A savepoint per call keeps an expected failure from aborting the whole
-    // test transaction, and from masking the real error when the role reset
-    // itself fails inside an aborted transaction. Half this file asserts a
-    // raise, so the savepoint is load-bearing, not defensive.
-    const asUser = async (uid, text, params) => {
-      await q('savepoint rpc_call');
-      const role = uid ? 'authenticated' : 'anon';
-      if (uid) {
-        await q("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: uid, role })]);
-      }
-      await q(`set local role ${role}`);
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint rpc_call');
-        throw err;
-      }
-    };
-    return await fn(q, asUser);
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
+  return withSharedTxn(({ q, asUser, asAnon }) =>
+    fn(q, (uid, text, params) => (uid ? asUser(uid, text, params) : asAnon(text, params)))
+  );
 }
 
 const grant = (asUser, uid, teamId, discordId, role) =>

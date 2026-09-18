@@ -735,3 +735,29 @@ its own (#1132). This is how the pg_proc catalog read in
 Run it locally with `node scripts/ci/rls-no-autocommit-check.js`. It cannot see
 a hand-rolled `pool.connect()` that commits instead of rolling back, so a new
 harness of your own is on you rather than on the check.
+
+**Rows a test writes are rows it minted.** A write to a seeded row (`players`
+id 1, `team_members` id 3, the approved signup) is a lock another file may be
+waiting on in the opposite order, which is where `deadlock detected` comes from
+(#1123). `tests/rls/helpers.js` has four factories for rows of the test's own,
+each taking the transaction's `q` and returning what the test needs to name the
+row: `seedPlayer(q, { memberId })` (a character on a team, linked to a member
+when the case needs a raider to own one), `seedMember(q, { teamId, role })` (a
+member with an account, so `asUser(uid, ...)` acts as them), `seedTeam(q)` (a
+team with its settings row and its own officer, leader and raider, for a case
+that changes team-wide state such as `archive_current_season()`) and
+`seedSignup(q, { teamId })` (an approved signup for `add_signup_to_roster()`).
+Think of a shared workshop: the seed is the demonstration bench everyone can
+look at, and a test that wants to drill something brings its own board. Seeded
+rows are read, never written. A season code is a primary key, so two files
+seeding the same code wait on each other too: name it after the file.
+`seedSeason(q, code)` returns the single day it gave the season, taken from the
+transaction id so no two workers hold the same one.
+
+```js
+await withTxn(async ({ q, asUser }) => {
+  const mine = await seedPlayer(q, { memberId: RAIDER_T1_MEMBER });
+  const res = await asUser(RAIDER_T1, 'select public.is_own_player($1) as own', [mine]);
+  expect(res.rows[0].own).toBe(true);
+});
+```

@@ -3,38 +3,10 @@
 // status. Recomputes the raid nights in the target week the same way
 // js/calendar.js's computeRaidNights() does client-side (raid_schedule's
 // active weekday rule, minus a 'cancelled' exception, plus an 'added' one)
-// and fans out into one 'Rotator-In' raid_rsvps row per night. Same
-// withTxn/savepoint harness as tests/rls/raid-rsvps.test.js.
+// and fans out into one 'Rotator-In' raid_rsvps row per night. Uses the
+// shared withTxn from helpers.js.
 import { describe, it, expect } from 'vitest';
-import { pool, RAIDER_T1, OFFICER_T1, OFFICER_T2 } from './helpers.js';
-
-async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asRole = (role, uid) => async (text, params) => {
-      await q('savepoint rotator_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify(uid ? { sub: uid, role } : { role })
-      ]);
-      await q(`set local role ${role}`);
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint rotator_call');
-        throw err;
-      }
-    };
-    const asUser = (uid, text, params) => asRole('authenticated', uid)(text, params);
-    return await fn({ q, asUser });
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
-}
+import { withTxn, RAIDER_T1, OFFICER_T1, OFFICER_T2 } from './helpers.js';
 
 async function seedRotator(q, { id, isRotator = true } = {}) {
   const specId = await q(

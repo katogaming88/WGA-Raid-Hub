@@ -1,38 +1,10 @@
 // Behavior tests for set_own_rsvp() and raid_rsvps' RLS (#893, part of
-// #640): a raider's self-service override for one raid night. Mirrors
-// own-signup.test.js's withTxn shape -- fixture writes as postgres (bypasses
-// RLS), the call happens as the impersonated caller, assertions happen back
-// as postgres, everything rolled back at the end.
+// #640): a raider's self-service override for one raid night. Uses the shared
+// withTxn from helpers.js: fixture writes as postgres (bypasses RLS), the call
+// happens as the impersonated caller, assertions happen back as postgres,
+// everything rolled back at the end.
 import { describe, it, expect } from 'vitest';
-import { pool, RAIDER_T1, OFFICER_T1, OFFICER_T2 } from './helpers.js';
-
-async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asRole = (role, uid) => async (text, params) => {
-      await q('savepoint rsvp_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify(uid ? { sub: uid, role } : { role })
-      ]);
-      await q(`set local role ${role}`);
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint rsvp_call');
-        throw err;
-      }
-    };
-    const asUser = (uid, text, params) => asRole('authenticated', uid)(text, params);
-    return await fn({ q, asUser });
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
-}
+import { withTxn, RAIDER_T1, OFFICER_T1, OFFICER_T2 } from './helpers.js';
 
 // Links RAIDER_T1's existing team_members row (id 3, seed.sql) to a
 // team-1 players row so is_own_player()/set_own_rsvp() can resolve it.

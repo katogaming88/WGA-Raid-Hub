@@ -15,44 +15,19 @@
 // statement matches no row and succeeds with rowCount 0 rather than raising.
 // Both shapes are asserted below, because they are different denials.
 //
-// Same withTxn harness as tests/rls/boe.test.js (unique savepoint name): a
-// case here asserts a raise, and without a savepoint per call an expected
-// failure aborts the shared transaction and masks the real error.
+// Uses the shared withTxn from helpers.js: a case here asserts a raise, and
+// without a savepoint per call an expected failure aborts the shared
+// transaction and masks the real error.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, OFFICER_T1, RAIDER_T1 } from './helpers.js';
+import { pool, withTxn as withSharedTxn, OFFICER_T1, RAIDER_T1 } from './helpers.js';
 
+// Wraps the shared harness to add asService: the real role, not the bare
+// postgres connection the older bot-table tests use. Both bypass RLS, but
+// only this one is what the Edge Function actually connects as, and the
+// transition trigger branches on current_user, so the role under test has
+// to be the role in production.
 async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asRole = (role, uid) => async (text, params) => {
-      await q('savepoint found_posted_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify(uid ? { sub: uid, role } : { role })
-      ]);
-      await q(`set local role ${role}`);
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint found_posted_call');
-        throw err;
-      }
-    };
-    const asUser = (uid, text, params) => asRole('authenticated', uid)(text, params);
-    const asAnon = (text, params) => asRole('anon', null)(text, params);
-    // The real role, not the bare postgres connection the older bot-table
-    // tests use. Both bypass RLS, but only this one is what the Edge Function
-    // actually connects as, and the transition trigger branches on
-    // current_user, so the role under test has to be the role in production.
-    const asService = (text, params) => asRole('service_role', null)(text, params);
-    return await fn({ q, asUser, asAnon, asService });
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
+  return withSharedTxn((t) => fn({ ...t, asService: t.asRole('service_role', null) }));
 }
 
 // The claim exactly as the function issues it: an id, and the column still

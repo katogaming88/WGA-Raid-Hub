@@ -1,9 +1,15 @@
+import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 
 // Supabase CLI local stack default. CI and local dev both use it.
 export const DSN = process.env.SUPABASE_DB_URL || 'postgres://postgres:postgres@127.0.0.1:54322/postgres';
 
-export const pool = new Pool({ connectionString: DSN });
+// One pool per worker process. vitest runs up to one file per core (minus
+// one) at a time, so a 16-core machine holds 15 pools against the stack's
+// max_connections of 100; pg's default of 10 per pool would let that reach
+// 150. A file holds a withTxn client plus a countAs or queryAs connection or
+// two at once, so 4 is room, never a queue (#1123).
+export const pool = new Pool({ connectionString: DSN, max: 4 });
 
 // Must stay in sync with supabase/seed.sql.
 export const OFFICER_T1 = '00000000-0000-0000-0000-000000000001';
@@ -149,14 +155,105 @@ export async function countAs(role, uid, table, where = 'true') {
 // (rather than the seed's 'seed-season' or a real tier) inserts the row
 // first, inside its transaction. One value serves as both the code and the
 // display name, so the same constant works on a code column and a name
-// column. Tiers cannot overlap (seasons_no_overlap), so each call takes the
-// next single day from 2000-01-01: two seasons seeded in one transaction
-// never collide with each other, the seed's row or a real tier.
-let seededSeasonDays = 0;
+// column. Tiers cannot overlap (seasons_no_overlap), so each season is a
+// single day, and the day has to be one no other worker is holding: the
+// exclusion constraint makes a second transaction on the same day wait for
+// the first, which is a deadlock as soon as two files seed two seasons in
+// opposite orders. A counter in this process cannot give that (every worker
+// starts it at zero), so the day comes from the transaction id instead:
+// no two open transactions share one, and a block of 32 days per
+// transaction keeps a file's own seasons apart. The blocks tile the years
+// 1000 to 2018, below the seed's row and every real tier. Returns the day.
+const SEASON_DAY_BASE = Date.UTC(1000, 0, 1);
+const SEASON_DAYS_PER_TXN = 32;
+const SEASON_DAY_BLOCKS = 11625; // 11625 * 32 = 372000 days, into mid 2018
+export function seasonDayFor(xid, n) {
+  const block = Number(BigInt(xid) % BigInt(SEASON_DAY_BLOCKS));
+  const day = block * SEASON_DAYS_PER_TXN + (n % SEASON_DAYS_PER_TXN);
+  return new Date(SEASON_DAY_BASE + day * 86400000).toISOString().slice(0, 10);
+}
+const seededSeasonsByTxn = new Map();
 export async function seedSeason(q, season) {
-  const day = new Date(Date.UTC(2000, 0, 1 + seededSeasonDays++)).toISOString().slice(0, 10);
+  const { rows } = await q('select pg_current_xact_id()::text as xid');
+  const n = seededSeasonsByTxn.get(rows[0].xid) ?? 0;
+  seededSeasonsByTxn.set(rows[0].xid, n + 1);
+  const day = seasonDayFor(rows[0].xid, n);
   await q('insert into public.seasons (code, display_name, starts_at, ends_at) values ($1, $1, $2::date, $2::date)', [
     season,
     day
   ]);
+  return day;
+}
+
+// Rows a test mints for itself (#1123). Every file in the suite runs beside
+// the others against one database, and a write to a seeded row (players id
+// 1, team_members id 3, the approved signup) is a lock another file may be
+// waiting on in the opposite order. A row minted inside the test's
+// transaction is held by nobody else and seen by nobody else: ids come from
+// the sequences, and every value that has to be unique across workers (the
+// account, the Discord id, the character name) comes from randomUUID().
+const tag = () => randomUUID().replace(/-/g, '').slice(0, 8);
+
+// A player on a team, optionally linked to a member. With a member and no
+// team the player joins the member's team, so the pair never trips
+// check_team_id_matches_player() on a table keyed by both. Returns the id.
+export async function seedPlayer(q, { teamId, memberId = null, nameRealm, classSpecId = 1, archivedAt = null } = {}) {
+  if (teamId == null) {
+    teamId =
+      memberId == null
+        ? 1
+        : (await q('select team_id from public.team_members where id = $1', [memberId])).rows[0].team_id;
+  }
+  const { rows } = await q(
+    `insert into public.players (team_id, name_realm, class_spec_id, team_member_id, archived_at)
+     values ($1, $2, $3, $4, $5) returning id`,
+    [teamId, nameRealm ?? `Fixture${tag()}-Illidan`, classSpecId, memberId, archivedAt]
+  );
+  return rows[0].id;
+}
+
+// A member of a team with an account that signs in as them: the row first,
+// then the account and its Discord identity, which is the order the link
+// trigger expects (insertDiscordUser). Returns { memberId, uid, discordId };
+// pass uid to asUser to act as this person.
+export async function seedMember(q, { teamId = 1, role = 'raider', discordId, uid } = {}) {
+  const discord = discordId ?? `fixture-${randomUUID()}`;
+  const user = uid ?? randomUUID();
+  const { rows } = await q(
+    'insert into public.team_members (team_id, discord_id, role) values ($1, $2, $3) returning id',
+    [teamId, discord, role]
+  );
+  await insertDiscordUser(q, user, discord);
+  return { memberId: rows[0].id, uid: user, discordId: discord };
+}
+
+// A team of the test's own, with its settings row and the three people
+// every seeded team has. Returns { teamId, officer, leader, raider }, each
+// person as seedMember returns them.
+export async function seedTeam(q, { name } = {}) {
+  const { rows } = await q(
+    `insert into public.teams (name, guild_id)
+     values ($1, (select id from public.guilds where url_key = 'wga')) returning id`,
+    [name ?? `Fixture ${tag()}`]
+  );
+  const teamId = rows[0].id;
+  await q("insert into public.team_settings (team_id, config) values ($1, '{}'::jsonb)", [teamId]);
+  const officer = await seedMember(q, { teamId, role: 'officer' });
+  const leader = await seedMember(q, { teamId, role: 'team_leader' });
+  const raider = await seedMember(q, { teamId, role: 'raider' });
+  return { teamId, officer, leader, raider };
+}
+
+// A season signup on a team, approved unless told otherwise, so
+// add_signup_to_roster() has a row of the test's own. Returns the id.
+export async function seedSignup(
+  q,
+  { teamId = 1, nameRealm, classSpecId = 1, status = 'approved', season = 'seed-season' } = {}
+) {
+  const { rows } = await q(
+    `insert into public.season_signups (team_id, signup_name_realm, class_spec_id, season, status)
+     values ($1, $2, $3, $4, $5) returning id`,
+    [teamId, nameRealm ?? `Fixture${tag()}-Illidan`, classSpecId, season, status]
+  );
+  return rows[0].id;
 }

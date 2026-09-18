@@ -12,6 +12,24 @@ answers to.
 
 ---
 
+## [3.140.2] - 2026-09-18
+
+### Project
+
+- The RLS test suite has one harness and four helpers for rows a test makes for
+  itself ([#1123](https://github.com/katogaming88/WGA-Raid-Hub/issues/1123),
+  first half). The 27 files that carried their own copy of `withTxn` now use the
+  one in `tests/rls/helpers.js`, so every impersonated call in the suite leaves
+  nothing behind when it returns
+  ([#1131](https://github.com/katogaming88/WGA-Raid-Hub/issues/1131) reached
+  only the shared copy before). `seedPlayer`, `seedMember`, `seedTeam` and
+  `seedSignup` mint a player, a member with an account, a team with its own
+  people, or an approved signup inside the test's transaction; `seedSeason`
+  takes its day from the transaction instead of a counter each worker started
+  at zero, which is what made two files wait on each other over the same day
+  (120 of the 122 deadlocked statements when the suite ran in parallel); and
+  each worker's connection pool is capped at 4. Nothing on the site changes
+
 ## [3.140.1] - 2026-09-18
 
 ### Project

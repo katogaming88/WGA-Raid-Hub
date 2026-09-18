@@ -8,7 +8,7 @@
 // postgres (bypasses RLS), the function call happens as the team 1 officer,
 // assertions happen back as postgres.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, OFFICER_T1 } from './helpers.js';
+import { pool, withTxn as withSharedTxn, OFFICER_T1 } from './helpers.js';
 
 // Seeded rows this file leans on (supabase/seed.sql): signup 1 is team 1
 // status pending; signup 2 is team 1 'Seedapproved-Illidan' status approved;
@@ -16,35 +16,10 @@ import { pool, OFFICER_T1 } from './helpers.js';
 const APPROVED_SIGNUP = 2;
 const APPROVED_NAME = 'Seedapproved-Illidan';
 
+// Wraps the shared harness: asOfficer runs one statement as the team 1
+// officer, then restores postgres.
 async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    // Runs one statement as the team 1 officer, then restores postgres.
-    // A savepoint per call keeps an expected failure from aborting the
-    // whole test transaction (and from masking the real error when the
-    // role reset itself fails inside an aborted transaction).
-    const asOfficer = async (text, params) => {
-      await q('savepoint officer_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify({ sub: OFFICER_T1, role: 'authenticated' })
-      ]);
-      await q('set local role authenticated');
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint officer_call');
-        throw err;
-      }
-    };
-    return await fn(q, asOfficer);
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
+  return withSharedTxn(({ q, asUser }) => fn(q, (text, params) => asUser(OFFICER_T1, text, params)));
 }
 
 const promote = (asOfficer, signupId, isTrial = true, archiveId = null) =>

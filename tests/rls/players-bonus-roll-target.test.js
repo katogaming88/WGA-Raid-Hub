@@ -4,38 +4,9 @@
 // but the restrict_players_self_update_to_bonus_roll trigger blocks them
 // from touching any other column through that same policy -- an officer
 // updating other columns (via the pre-existing "Officers write players"
-// policy) is unaffected. Same withTxn/savepoint harness as
-// tests/rls/item-preferences.test.js, since both share is_own_player().
+// policy) is unaffected. Uses the shared withTxn from helpers.js.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, OFFICER_T1, RAIDER_T1 } from './helpers.js';
-
-async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asRole = (role, uid) => async (text, params) => {
-      await q('savepoint pbrt_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify(uid ? { sub: uid, role } : { role })
-      ]);
-      await q(`set local role ${role}`);
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint pbrt_call');
-        throw err;
-      }
-    };
-    const asUser = (uid, text, params) => asRole('authenticated', uid)(text, params);
-    return await fn({ q, asUser });
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
-}
+import { pool, withTxn, OFFICER_T1, RAIDER_T1 } from './helpers.js';
 
 // Player 1 (Seedraider-Illidan, team 1, seed.sql) has no team_member_id link
 // by default -- same "link ephemerally within the test's own rolled-back

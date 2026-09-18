@@ -3,42 +3,12 @@
 // RLS suite because both are SECURITY DEFINER and their authorization is
 // RLS-shaped (auth.uid()-scoped, not table-policy-scoped).
 //
-// Each test runs in one rolled-back transaction: fixture writes happen as
-// postgres (bypasses RLS), the RPC call happens as the impersonated caller,
-// and assertions happen back as postgres. Mirrors claim.test.js's withTxn
-// shape (parameterized uid, since callers here vary -- the owner, a
-// different raider, an officer, anon).
+// Each test runs in one rolled-back transaction (helpers.js withTxn): fixture
+// writes happen as postgres (bypasses RLS), the RPC call happens as the
+// impersonated caller (the owner, a different raider, an officer, anon), and
+// assertions happen back as postgres.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, RAIDER_T1, OFFICER_T1, SIGNUP_OWNER_T1, seedSeason } from './helpers.js';
-
-async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asRole = (role, uid) => async (text, params) => {
-      await q('savepoint own_signup_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify(uid ? { sub: uid, role } : { role })
-      ]);
-      await q(`set local role ${role}`);
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint own_signup_call');
-        throw err;
-      }
-    };
-    const asUser = (uid, text, params) => asRole('authenticated', uid)(text, params);
-    const asAnon = (text, params) => asRole('anon', null)(text, params);
-    return await fn({ q, asUser, asAnon });
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
-}
+import { pool, withTxn, RAIDER_T1, OFFICER_T1, SIGNUP_OWNER_T1, seedSeason } from './helpers.js';
 
 // Inserts a season_signups row as postgres (bypasses RLS), owned by
 // SIGNUP_OWNER_T1 unless overridden. team 1's active season is 'seed-season'
@@ -122,7 +92,7 @@ describe('get_own_signup', () => {
 
   it("does not return a different season's signup", async () => {
     await withTxn(async ({ q, asUser }) => {
-      await insertSignup(q, { season: 'not-the-active-season' });
+      await insertSignup(q, { season: 'own-signup-other-season' });
       const res = await getOwn(asUser, SIGNUP_OWNER_T1, 1);
       expect(res.rows).toHaveLength(0);
     });
@@ -237,7 +207,7 @@ describe('update_own_signup', () => {
       const { rows } = await insertSignup(q, {
         status: 'added',
         approved_player_id: player.rows[0].id,
-        season: 'not-the-active-season'
+        season: 'own-signup-other-season'
       });
       await expect(updateOwn(asUser, SIGNUP_OWNER_T1, rows[0].id)).rejects.toThrow(/already been added to the roster/);
     });

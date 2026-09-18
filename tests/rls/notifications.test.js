@@ -2,39 +2,10 @@
 // no direct INSERT policy for anyone (tests/rls/write-policies.test.js doesn't
 // cover this new table, so that's asserted here instead), notify_player() is
 // the only insert path, and a raider can only read/mark-read their own rows:
-// every character their person holds, archived ones included (#942 step 4). Same single-transaction-plus-savepoint harness as
-// tests/rls/write-audit-log.test.js.
+// every character their person holds, archived ones included (#942 step 4).
+// Uses the shared withTxn from helpers.js.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, OFFICER_T1, TEAM_LEADER_T1, RAIDER_T1, SITE_ADMIN, OFFICER_T2, RLS_DENIED } from './helpers.js';
-
-async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asRole = (role, uid) => async (text, params) => {
-      await q('savepoint notif_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify(uid ? { sub: uid, role } : { role })
-      ]);
-      await q(`set local role ${role}`);
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint notif_call');
-        throw err;
-      }
-    };
-    const asUser = (uid, text, params) => asRole('authenticated', uid)(text, params);
-    const asAnon = (text, params) => asRole('anon', null)(text, params);
-    return await fn({ q, asUser, asAnon });
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
-}
+import { pool, withTxn, OFFICER_T1, TEAM_LEADER_T1, RAIDER_T1, SITE_ADMIN, OFFICER_T2, RLS_DENIED } from './helpers.js';
 
 const notify = (asUser, uid, playerId, message) =>
   asUser(uid, 'select public.notify_player($1, $2) as id', [playerId, message]);

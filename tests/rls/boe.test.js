@@ -8,12 +8,13 @@
 // team officer or leader for the row's own team via can_settle_boe(). The split formula
 // tests encode the guild policy pinned in the #745 comment (floor 20000,
 // pivot 100000, gross sale) as amended by #861: the game's 5% auction house
-// fee comes off the top and the finder is capped at the net. Same withTxn harness as
-// tests/rls/item-preferences.test.js (unique savepoint name), since these
-// tests mix privileged setup with impersonated RPC calls and expected raises.
+// fee comes off the top and the finder is capped at the net. Uses the shared
+// withTxn from helpers.js, since these tests mix privileged setup with
+// impersonated RPC calls and expected raises.
 import { describe, it, expect, afterAll } from 'vitest';
 import {
   pool,
+  withTxn,
   insertDiscordUser,
   grantGuild,
   OFFICER_T1,
@@ -25,35 +26,6 @@ import {
   RLS_DENIED,
   seedSeason
 } from './helpers.js';
-
-async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asRole = (role, uid) => async (text, params) => {
-      await q('savepoint boe_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify(uid ? { sub: uid, role } : { role })
-      ]);
-      await q(`set local role ${role}`);
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint boe_call');
-        throw err;
-      }
-    };
-    const asUser = (uid, text, params) => asRole('authenticated', uid)(text, params);
-    const asAnon = (text, params) => asRole('anon', null)(text, params);
-    return await fn({ q, asUser, asAnon });
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
-}
 
 // Seed player 1 (Seedraider-Illidan, team 1) ships unlinked (supabase/seed.sql);
 // tests link it ephemerally inside their own rolled-back transaction.
