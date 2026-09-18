@@ -219,14 +219,54 @@ describe('the held majors tripwire (#1241)', () => {
     expect(admits(range, version)).toBe(expected);
   });
 
-  it.each([['1.x'], ['1.2.3 - 2.3.4'], ['1.2'], ['latest']])('admits(%j) throws rather than guessing', (range) => {
+  // Shapes the reader refuses: x-ranges, hyphen ranges, a partial version
+  // (an x-range in node-semver) anywhere but after >= or <, where it means
+  // the same thing, a prerelease tag on a partial, an operator split by a
+  // space, a leading zero, and words.
+  it.each([
+    ['1.x'],
+    ['1.2.3 - 2.3.4'],
+    ['1.2'],
+    ['>1'],
+    ['<=1'],
+    ['=1.2'],
+    ['^1.2-beta'],
+    ['> = 1.2.3'],
+    ['^01.2.3'],
+    ['latest']
+  ])('admits(%j) throws rather than guessing', (range) => {
     expect(() => admits(range, '1.0.0')).toThrow(/cannot read/);
   });
 
+  // The probe is always a release: node-semver excludes prereleases from a
+  // range unless the range names that tuple, which this reader does not model.
+  it('admits() takes only a release version', () => {
+    expect(() => admits('*', '1.0.0-beta')).toThrow(/release/);
+  });
+
+  // The hold is stale when the peer range admits anything in the next major,
+  // not only its first release: a lower bound inside the major (vite's
+  // `^20.19.0 || >=22.12.0` on @types/node is that shape) would let
+  // Dependabot's bump install while `N.0.0` alone still reads as excluded.
+  it.each([
+    ['^6.0.0 || >=7.5.0', 7, true],
+    ['>=7.5.0 <7.6.0', 7, true],
+    ['>=4.8.4 <6.1.0', 7, false],
+    ['>=4.8.4 <6.1.0', 6, true],
+    [jsxA11y, 10, false],
+    [jsxA11y, 9, true],
+    ['<7.0.0-0', 7, false],
+    ['^8.0.0-0', 8, true],
+    ['*', 42, true]
+  ])('admitsAnyIn(%j, %s) is %s', (range, major, expected) => {
+    expect(admitsAnyIn(range, major)).toBe(expected);
+  });
+
   // A lockfile shape: the root entry, the held package, one holder, one peer
-  // that already admits the next major, and optionally a nested optional peer
-  // (npm enforces an optional peer once the peer is installed, and a nested
-  // copy is resolved against the tree above it, so both count).
+  // that already admits the next major, and optionally more. A nested peer
+  // counts when it resolves to the top-level copy (npm walks up the tree, and
+  // an optional peer is enforced once the peer is installed), and does not
+  // when a copy sits beside it, since the top-level bump never reaches it.
   const lock = (jsxRange, extra = {}) => ({
     packages: {
       '': { devDependencies: { eslint: '^9.39.5' } },
@@ -239,22 +279,52 @@ describe('the held majors tripwire (#1241)', () => {
       ...extra
     }
   });
-  const nested = {
-    'node_modules/a/node_modules/old-plugin': {
-      version: '1.0.0',
-      peerDependencies: { eslint: '^9', jiti: '*' },
-      peerDependenciesMeta: { eslint: { optional: true } }
-    }
+  const oldPlugin = {
+    version: '1.0.0',
+    peerDependencies: { eslint: '^9', jiti: '*' },
+    peerDependenciesMeta: { eslint: { optional: true } }
   };
+  const nested = { 'node_modules/a/node_modules/old-plugin': oldPlugin };
+  const nestedWithOwnCopy = { ...nested, 'node_modules/a/node_modules/eslint': { version: '9.0.0' } };
+  const linked = { 'packages/tool': { version: '1.0.0', peerDependencies: { eslint: '^9' } } };
 
-  it('holders() names the packages whose peer range excludes the version, nested and optional included', () => {
-    expect(holders(lock(jsxA11y), 'eslint', '10.0.0')).toEqual(['eslint-plugin-jsx-a11y']);
-    expect(holders(lock(jsxA11y, nested), 'eslint', '10.0.0')).toEqual(['eslint-plugin-jsx-a11y', 'old-plugin']);
-    expect(holders(lock(jsxA11y), 'typescript', '7.0.0')).toEqual(['typescript-eslint']);
+  it('holders() names the packages whose peer range admits nothing in the major', () => {
+    expect(holders(lock(jsxA11y), 'eslint', 10)).toEqual(['eslint-plugin-jsx-a11y']);
+    expect(holders(lock(jsxA11y), 'typescript', 7)).toEqual(['typescript-eslint']);
+    expect(holders(lock(`${jsxA11y} || >=10.5.0`), 'eslint', 10)).toEqual([]);
+  });
+
+  it('holders() resolves a nested peer to the nearest copy and keeps a linked package by its key', () => {
+    expect(holders(lock(jsxA11y, nested), 'eslint', 10)).toEqual(['eslint-plugin-jsx-a11y', 'old-plugin']);
+    expect(holders(lock(jsxA11y, nestedWithOwnCopy), 'eslint', 10)).toEqual(['eslint-plugin-jsx-a11y']);
+    expect(holders(lock(jsxA11y, linked), 'eslint', 10)).toEqual(['eslint-plugin-jsx-a11y', 'packages/tool']);
   });
 
   it('holders() is empty once the last holder widens, which is the red the tripwire fires on', () => {
-    expect(holders(lock(`${jsxA11y} || ^10`), 'eslint', '10.0.0')).toEqual([]);
+    expect(holders(lock(`${jsxA11y} || ^10`), 'eslint', 10)).toEqual([]);
+  });
+
+  // The ignore block as Dependabot reads it: an entry holds the major when its
+  // update-types names semver-major (inline or as a block list) or when it
+  // has no update-types at all, which ignores every update; an entry pinning
+  // `versions:` ignores those versions and holds nothing. A trailing comment
+  // is not part of the name.
+  it('heldNames() reads each ignore entry as a block', () => {
+    const entry = [
+      '    ignore:',
+      '      - dependency-name: a # held',
+      "        update-types: ['version-update:semver-major']",
+      '      - dependency-name: b',
+      "        versions: ['1.2.3']",
+      '      - dependency-name: c',
+      "      - dependency-name: '@d/e'",
+      '        update-types:',
+      "          - 'version-update:semver-major'",
+      '      - dependency-name: f',
+      "        update-types: ['version-update:semver-minor']",
+      ''
+    ].join('\n');
+    expect(heldNames(entry)).toEqual(['a', 'c', '@d/e']);
   });
 
   // Lifting a hold is two edits, the config line and the table row, and this
@@ -266,7 +336,7 @@ describe('the held majors tripwire (#1241)', () => {
   // The tripwire itself, against the real lockfile. The major comes from the
   // held package's own installed version, not the judging name's, so a hold
   // left on @eslint/js after eslint has moved to 10 still reads as stale.
-  it.each(heldMajors.filter((row) => row.judgedBy !== null))(
+  it.each(heldMajors)(
     '$yamlName is still held by a peer range in app/ (judged on $judgedBy)',
     ({ yamlName, judgedBy }) => {
       const name = unquote(yamlName);
@@ -274,20 +344,21 @@ describe('the held majors tripwire (#1241)', () => {
       if (!installed) throw new Error(`${name} is ignored in dependabot.yml but is not in app/package-lock.json`);
       const next = parseVersion(installed.version).tuple[0] + 1;
       const peers = peersOn(appLock, judgedBy);
-      const why =
+      const holding = peers.filter((peer) => !admitsAnyIn(peer.range, next));
+      const why = () =>
         peers.length === 0
           ? `nothing in app/package-lock.json peers on ${judgedBy}`
           : `every package peering on ${judgedBy} admits ${next}: ` +
             peers.map((peer) => `${peer.name}@${peer.version} (${peer.range})`).join(', ');
       expect(
-        holders(appLock, judgedBy, `${next}.0.0`),
-        `lift the ${name} ignore in .github/dependabot.yml and its heldMajors row: ${why}`
+        holding,
+        holding.length ? '' : `lift the ${name} ignore in .github/dependabot.yml and its heldMajors row: ${why()}`
       ).not.toHaveLength(0);
     }
   );
 
-  it('control: today jsx-a11y is the one holder of eslint and typescript-eslint holds typescript', () => {
-    expect(holders(appLock, 'eslint', '10.0.0')).toEqual(['eslint-plugin-jsx-a11y']);
-    expect(holders(appLock, 'typescript', '7.0.0')).toContain('typescript-eslint');
+  it('control: today jsx-a11y holds eslint at 9 and typescript-eslint holds typescript at 6', () => {
+    expect(holders(appLock, 'eslint', 10)).toContain('eslint-plugin-jsx-a11y');
+    expect(holders(appLock, 'typescript', 7)).toContain('typescript-eslint');
   });
 });
