@@ -30,6 +30,89 @@ function groupNames(entry) {
   return [...block[1].matchAll(/^\s{6}([a-z-]+):$/gm)].map((m) => m[1]);
 }
 
+// A version as [major, minor, patch, release], where release is 1 for a bare
+// version and 0 for one carrying a prerelease tag, so a tagged bound sorts
+// just below the release it names and every operator compares the same way.
+// `parts` says how many segments were written, which ^ and ~ need.
+function parseVersion(text) {
+  const m = /^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(-[0-9A-Za-z.-]+)?$/.exec(text);
+  if (!m) throw new Error(`cannot read version: ${text}`);
+  const parts = m[3] !== undefined ? 3 : m[2] !== undefined ? 2 : 1;
+  return { tuple: [Number(m[1]), Number(m[2] ?? 0), Number(m[3] ?? 0), m[4] ? 0 : 1], parts };
+}
+
+function compare(a, b) {
+  for (let i = 0; i < 4; i++) if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
+  return 0;
+}
+
+// The exclusive upper bound of a ^ or ~ range, as node-semver draws it:
+// ^ bumps the leftmost non-zero segment that was written, ~ bumps the minor
+// when one was written and the major otherwise. The bound carries release 0
+// so the prerelease of the next version is out as well.
+function upperBound(op, { tuple: [major, minor, patch], parts }) {
+  if (op === '~') return parts >= 2 ? [major, minor + 1, 0, 0] : [major + 1, 0, 0, 0];
+  if (major > 0 || parts === 1) return [major + 1, 0, 0, 0];
+  if (minor > 0 || parts === 2) return [0, minor + 1, 0, 0];
+  return [0, 0, patch + 1, 0];
+}
+
+// One comparator (`^9`, `>=4.8.4`, `<6.1.0`, `5.0.0`, `*`) as a predicate on
+// a parsed version. A bare partial version is an x-range in node-semver, and
+// x-ranges and hyphen ranges are not read here: nothing in app/ uses them,
+// and a throw is a red test that says so rather than a silent pass.
+function comparator(token) {
+  if (token === '*' || token === '') return () => true;
+  const m = /^(\^|~|>=|<=|>|<|=)?(.+)$/.exec(token);
+  const op = m[1] ?? '';
+  if (/^[^-]*[xX*]/.test(m[2])) throw new Error(`cannot read range: ${token} (an x-range)`);
+  const bound = parseVersion(m[2]);
+  if (op === '' && bound.parts < 3)
+    throw new Error(`cannot read range: ${token} (a bare partial version is an x-range)`);
+  const lower = bound.tuple;
+  if (op === '^' || op === '~') {
+    const upper = upperBound(op, bound);
+    return (v) => compare(v, lower) >= 0 && compare(v, upper) < 0;
+  }
+  if (op === '>=') return (v) => compare(v, lower) >= 0;
+  if (op === '>') return (v) => compare(v, lower) > 0;
+  if (op === '<') return (v) => compare(v, lower) < 0;
+  if (op === '<=') return (v) => compare(v, lower) <= 0;
+  return (v) => compare(v, lower) === 0;
+}
+
+// Whether a peer range admits a version: any `||` alternative whose
+// comparators all pass. An operator may be followed by a space in the wild
+// (`>= 4.21.0`), so that is folded before the split on whitespace.
+function admits(range, version) {
+  const v = parseVersion(version).tuple;
+  return range.split('||').some((alternative) => {
+    const text = alternative.trim().replace(/(\^|~|>=|<=|>|<|=)\s+/g, '$1');
+    if (/\s-\s/.test(text)) throw new Error(`cannot read range: ${text} (a hyphen range)`);
+    return text.split(/\s+/).every((token) => comparator(token)(v));
+  });
+}
+
+// Every package in a lockfile that declares a peer range on `name`, by the
+// name of the package (the segment after its last node_modules/), with the
+// range. Nested copies count: npm resolves them against the tree above.
+function peersOn(lock, name) {
+  return Object.entries(lock.packages)
+    .filter(([key, pkg]) => key !== '' && pkg.peerDependencies?.[name] !== undefined)
+    .map(([key, pkg]) => ({
+      name: key.slice(key.lastIndexOf('node_modules/') + 'node_modules/'.length),
+      version: pkg.version,
+      range: pkg.peerDependencies[name]
+    }));
+}
+
+// The names of the packages whose peer range on `name` excludes `version`.
+function holders(lock, name, version) {
+  return peersOn(lock, name)
+    .filter((peer) => !admits(peer.range, version))
+    .map((peer) => peer.name);
+}
+
 describe('the Dependabot entry for app/ (#1180)', () => {
   it('app/ has its own weekly npm entry labelled chore', () => {
     const app = entryFor('/app');
