@@ -151,6 +151,22 @@ button {
   filter: brightness(1.06);
 }
 
+/* A button that can't be used yet looks it (#1216: the boss lineup's Save
+   tonight sat bright orange with nothing to save). */
+.button:disabled,
+.button:disabled:hover {
+  background: var(--raised);
+  filter: none;
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.button-primary:disabled,
+.button-primary:disabled:hover {
+  background: var(--button);
+}
+
 .card {
   background: var(--panel);
   border: 1px solid var(--border);

@@ -36,6 +36,8 @@ answers to.
   boss's column reads its count, warning and role mix to screen readers, and
   the buff squares carry a check or a cross as well as their colour. Nothing on
   the current site changes.
+- A button that can't be used yet now looks faded across the new app; until
+  now a disabled button looked exactly like a working one.
 - The local stack guide notes that the Boss lineup needs raid bosses, which the
   seed does not carry.
 
