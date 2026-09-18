@@ -72,6 +72,10 @@ updates:
       # eslint-plugin-jsx-a11y declares a peer of eslint up to ^9, so a bundled
       # eslint major fails npm ci (#1233). The root carries this ignore for
       # its .eslintrc.json; app/ is flat config already and carries it for
-      # the plugin, until a release takes 10 (#1238).
+      # the plugin. @eslint/js moves in lockstep and its 10 peers on eslint
+      # 10, so it is held with it. Both lift when an eslint-plugin-jsx-a11y
+      # release takes eslint 10 (#1238).
       - dependency-name: eslint
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@eslint/js'
         update-types: ['version-update:semver-major']
