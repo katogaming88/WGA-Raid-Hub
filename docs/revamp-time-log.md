@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |      1 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     19 h 22 m |
-| **All revamp work**                | **28 h  7 m** |
+| Revamp 2: public pages             |     19 h 37 m |
+| **All revamp work**                | **28 h 22 m** |
 
 ## Log
 
@@ -66,6 +66,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Time (ET)         | Item                                                                  | Phase            | Elapsed | Build / Kat                              | Notes |
 | ----------------- | --------------------------------------------------------------------- | ---------------- | ------: | ---------------------------------------- | ----- |
 | 12:40-2:00 AM     | #1216 boss lineup: rework after Rex's review (groups + nightly plans) | Revamp 2 (#1102) |    80 m | ~50 m build, ~30 m Kat on mockup rounds | Rex's review of #1231/#1232 asked for a standing group per boss copied into each night instead of a sit-out list; Kat chose it. Rewrote #1231 (three tables, an hourly fill, stale-save refusal, bench out by default), then mockup rounds on the canvas (boards E-I: Skip button, dots explained, always-visible save bar so the grid never moves, full-page states, a Boss groups page for later), then rebuilt #1232 on the new tables with Rex's page fixes. |
+| 1:50-2:05 PM      | #1228 sidebar keeps one order on every page                           | Revamp 2 (#1102) |    15 m | ~14 m build, ~1 m Kat choosing the order | Kat picked Guild, You, Team, Officer. The browser test that clicks from Guild home to a team page also caught the Officer group vanishing for a moment while the new address loaded, so the sidebar now remembers the guild meanwhile. |
 
 ### 2026-09-17
 

@@ -37,8 +37,16 @@ export function AppShell() {
 
   const resolvedQuery = useResolvedAddress(guildKey, teamKey);
   const resolved = resolvedQuery.data ?? null;
-  const guildQuery = useGuild(resolved?.guildId);
-  const teamsQuery = useGuildTeams(resolved?.guildId);
+  // A new address is looked up again, so remember the guild meanwhile: without
+  // it the sidebar lost its Officer group for a moment on every page change
+  // (#1228).
+  const [knownGuild, setKnownGuild] = useState<{ key: string; id: number } | null>(null);
+  if (resolved && (knownGuild?.key !== guildKey || knownGuild.id !== resolved.guildId)) {
+    setKnownGuild({ key: guildKey, id: resolved.guildId });
+  }
+  const guildId = resolved?.guildId ?? (knownGuild?.key === guildKey ? knownGuild.id : undefined);
+  const guildQuery = useGuild(guildId);
+  const teamsQuery = useGuildTeams(guildId);
 
   const teams = (teamsQuery.data ?? []).map((t) => ({
     id: t.id,
@@ -61,7 +69,6 @@ export function AppShell() {
     { team: `/g/${guildKey}/t/${navTeamKey}`, guild: `/g/${guildKey}` },
     {
       officer: can(access.data, 'viewOfficerTools', navTeam?.id),
-      guildFirst: !teamKey,
       newsUnread: news.isSuccess && hasUnread(news.data, newsSeen)
     }
   );
