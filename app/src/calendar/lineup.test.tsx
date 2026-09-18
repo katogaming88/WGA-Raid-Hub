@@ -7,15 +7,19 @@ import type { PlayerRow } from '../roster/roster';
 import type { Answer, RaidNight } from './calendar';
 import {
   capStatus,
-  lastWeeksNight,
+  changes,
+  current,
+  everyoneIn,
   lineupRaids,
   lineupView,
+  placesOf,
+  seasonOn,
   shortBossName,
-  sitoutKey,
-  sitoutsFor,
-  sitoutsToSave,
-  toggleSitout,
-  type SitoutRow
+  toggle,
+  wholeNight,
+  type EncounterRow,
+  type NightBossRow,
+  type PlaceRow
 } from './lineup';
 
 // The boss lineup on a raid night (#1216): the grid's rules, and the officer
@@ -42,14 +46,30 @@ const NIGHT: RaidNight = {
   note: ''
 };
 
-const RAIDS = [
-  {
-    name: 'The Venomous Abyss',
-    bosses: [{ name: "Nek'zali the Soulcoiler" }, { name: 'Sszorak' }, { name: '' }]
-  },
-  { name: 'Tidebound Grotto', isMiniRaid: true, bosses: [{ name: 'Nymrissa Wavecaller' }] },
-  { name: 'Empty', bosses: [] }
+const ABYSS = { id: 10, name: 'The Venomous Abyss', season: 'Season One', is_mini_raid: false, sort_index: 0 };
+const GROTTO = { id: 11, name: 'Tidebound Grotto', season: 'Season One', is_mini_raid: true, sort_index: 1 };
+const OLD = { id: 9, name: 'Old Raid', season: 'Season Zero', is_mini_raid: false, sort_index: 0 };
+
+const ENCOUNTERS: EncounterRow[] = [
+  { id: 101, name: "Nek'zali the Soulcoiler", sort_index: 1, zone: ABYSS },
+  { id: 102, name: 'Sszorak', sort_index: 2, zone: ABYSS },
+  { id: 103, name: 'Nymrissa Wavecaller', sort_index: 1, zone: GROTTO },
+  { id: 90, name: 'Old Boss', sort_index: 1, zone: OLD }
 ];
+
+const SEASONS = [
+  { display_name: 'Season Zero', starts_at: '2026-01-01', ends_at: '2026-03-31' },
+  { display_name: 'Season One', starts_at: '2026-04-01', ends_at: null }
+];
+
+const nightBoss = (encounter_id: number, position: number, extra: Partial<NightBossRow> = {}): NightBossRow => ({
+  raid_date: NIGHT.date,
+  encounter_id,
+  position,
+  skipped: false,
+  confirmed_at: null,
+  ...extra
+});
 
 const ROSTER = [
   player(1, 'Ana', 'Warrior', 'Tank'),
@@ -66,26 +86,77 @@ const answer = (player_id: number, status: string): Answer => ({
   updated_at: '2026-05-14T12:00:00Z'
 });
 
+const places = (rows: [number, number[]][]): PlaceRow[] =>
+  rows.flatMap(([encounter_id, ids]) => ids.map((player_id) => ({ encounter_id, player_id })));
+
 describe('the lineup rules', () => {
-  it('shortens boss names for a grid column', () => {
+  it('shortens boss names for a grid column, and only a one-word name', () => {
     expect(shortBossName("Nek'zali the Soulcoiler")).toBe("Nek'zali");
     expect(shortBossName('The Lost Explorers')).toBe('Lost Explorers');
     expect(shortBossName('Vashnik, the Malignant')).toBe('Vashnik');
     expect(shortBossName('Sszorak')).toBe('Sszorak');
+    expect(shortBossName('Vexie and the Geargrinders')).toBe('Vexie and the Geargrinders');
+    expect(shortBossName('Assault of the Zaqali')).toBe('Assault of the Zaqali');
   });
 
-  it('takes the raids with bosses from Season Settings, 25 a boss for a mini raid and 20 otherwise', () => {
-    expect(lineupRaids(RAIDS)).toEqual([
+  it('finds the season a night falls in', () => {
+    expect(seasonOn(SEASONS, '2026-02-01')).toBe('Season Zero');
+    expect(seasonOn(SEASONS, NIGHT.date)).toBe('Season One');
+    expect(seasonOn(SEASONS, '2025-12-31')).toBeNull();
+  });
+
+  it('lists the night’s bosses as raids in pull order, 25 a boss for a mini raid and 20 otherwise', () => {
+    const bosses = [nightBoss(103, 3), nightBoss(102, 2, { confirmed_at: '2026-05-13T00:00:00Z' }), nightBoss(101, 1)];
+    expect(lineupRaids(ENCOUNTERS, bosses, { fresh: false, season: 'Season One' })).toEqual([
       {
+        zoneId: 10,
         name: 'The Venomous Abyss',
         cap: 20,
         bosses: [
-          { name: "Nek'zali the Soulcoiler", short: "Nek'zali" },
-          { name: 'Sszorak', short: 'Sszorak' }
+          { id: 101, name: "Nek'zali the Soulcoiler", short: "Nek'zali", skipped: false, confirmed: false },
+          { id: 102, name: 'Sszorak', short: 'Sszorak', skipped: false, confirmed: true }
         ]
       },
-      { name: 'Tidebound Grotto', cap: 25, bosses: [{ name: 'Nymrissa Wavecaller', short: 'Nymrissa Wavecaller' }] }
+      {
+        zoneId: 11,
+        name: 'Tidebound Grotto',
+        cap: 25,
+        bosses: [
+          { id: 103, name: 'Nymrissa Wavecaller', short: 'Nymrissa Wavecaller', skipped: false, confirmed: false }
+        ]
+      }
     ]);
+    // Nothing planned yet: nothing, unless starting the very first night.
+    expect(lineupRaids(ENCOUNTERS, [], { fresh: false, season: 'Season One' })).toEqual([]);
+    const fresh = lineupRaids(ENCOUNTERS, [], { fresh: true, season: 'Season One' });
+    expect(fresh.flatMap((r) => r.bosses.map((b) => b.id))).toEqual([101, 102, 103]);
+  });
+
+  it('keeps edits only where they differ from what is saved', () => {
+    const saved = placesOf(places([[101, [1, 2]]]));
+    let edits = toggle(saved, new Map(), 101, 2);
+    expect([...current(saved, edits).get(101)!]).toEqual([1]);
+    expect(changes(saved, edits)).toEqual({ bosses: [101], cells: 1 });
+    // Clicking back leaves no edit behind.
+    edits = toggle(saved, edits, 101, 2);
+    expect(edits.size).toBe(0);
+    expect(changes(saved, edits)).toEqual({ bosses: [], cells: 0 });
+  });
+
+  it('puts a bench raider in, or out, for every boss still on the night', () => {
+    const raid = lineupRaids(ENCOUNTERS, [nightBoss(101, 1), nightBoss(102, 2, { skipped: true })], {
+      fresh: false,
+      season: 'Season One'
+    })[0]!;
+    const edits = wholeNight(new Map(), new Map(), raid.bosses, 5, true);
+    expect([...edits.keys()]).toEqual([101]);
+    expect(wholeNight(new Map(), edits, raid.bosses, 5, false).size).toBe(0);
+  });
+
+  it('starts the very first night with everyone in but the bench', () => {
+    const raid = lineupRaids(ENCOUNTERS, [], { fresh: true, season: 'Season One' })[0]!;
+    const edits = everyoneIn(ROSTER, raid.bosses);
+    expect([...edits.get(101)!].sort()).toEqual([1, 2, 3, 4]);
   });
 
   it('says how full a boss is', () => {
@@ -95,80 +166,91 @@ describe('the lineup rules', () => {
     expect(capStatus(22, 20)).toEqual({ text: '2 over', tone: 'bad' });
   });
 
-  it('lists who is coming by role, with a cell per boss, counts and buffs', () => {
-    const raid = lineupRaids(RAIDS)[0]!;
-    const sitouts = new Set([sitoutKey('Sszorak', 1), sitoutKey('Sszorak', 3)]);
-    // Bo is late; Di is out; Ed is on the bench.
-    const view = lineupView(ROSTER, NIGHT, [answer(2, 'Late'), answer(4, 'Absent')], raid, sitouts);
+  it('lists everyone on the roster, marks changes from the group and raiders in who said they’re out', () => {
+    const raid = lineupRaids(ENCOUNTERS, [nightBoss(101, 1), nightBoss(102, 2)], {
+      fresh: false,
+      season: 'Season One'
+    })[0]!;
+    const tonight = placesOf(
+      places([
+        [101, [1, 2, 3, 4]],
+        [102, [2, 3]]
+      ])
+    );
+    const usual = placesOf(
+      places([
+        [101, [1, 2, 3]],
+        [102, [1, 2, 3]]
+      ])
+    );
+    // Bo is late; Di answered Absent after being planned in; Ed is on the bench.
+    const view = lineupView(ROSTER, NIGHT, [answer(2, 'Late'), answer(4, 'Absent')], raid, tonight, usual);
 
     expect(view.groups.map((g) => [g.label, g.rows.map((r) => [r.row.name, r.tag, r.count])])).toEqual([
       ['Tanks', [['Ana', null, 1]]],
       ['Healers', [['Bo', 'Late', 2]]],
-      ['Ranged', [['Cy', 'Trial', 1]]]
+      ['Melee', [['Di', 'Absent', 1]]],
+      [
+        'Ranged',
+        [
+          ['Cy', 'Trial', 2],
+          ['Ed', 'Bench', 0]
+        ]
+      ]
     ]);
-    expect(view.groups[0]!.rows[0]!.cells.map((c) => c.in)).toEqual([true, false]);
-    expect(view.notComing.map((r) => [r.name, r.status.label])).toEqual([
-      ['Di', 'Absent'],
-      ['Ed', 'Bench']
+    const ana = view.groups[0]!.rows[0]!;
+    // Ana is usually in on Sszorak, out tonight.
+    expect(ana.cells.map((c) => [c.in, c.differs])).toEqual([
+      [true, false],
+      [false, true]
     ]);
+    const di = view.groups[2]!.rows[0]!;
+    expect(di.tagTone).toBe('out');
+    expect(di.cells.map((c) => [c.in, c.conflict, c.differs])).toEqual([
+      [true, true, true],
+      [false, false, false]
+    ]);
+    expect(view.benchOut).toEqual(['Ed']);
 
     const [nekzali, sszorak] = view.totals;
-    expect([nekzali!.count, nekzali!.tanks, nekzali!.healers, nekzali!.melee, nekzali!.ranged]).toEqual([
-      3, 1, 1, 0, 1
+    expect([nekzali!.count, nekzali!.tanks, nekzali!.healers, nekzali!.damage]).toEqual([4, 1, 1, 2]);
+    expect(nekzali!.problems).toEqual([
+      '16 open spots',
+      'needs a second tank',
+      '1 healer',
+      expect.stringMatching(/^no Mark of the Wild, /),
+      'Di said they’re not coming'
     ]);
-    expect(nekzali!.status.text).toBe('17 open spots');
-    expect(sszorak!.count).toBe(1);
-
+    expect(sszorak!.problems.slice(0, 2)).toEqual(['18 open spots', 'no tanks']);
     const battleShout = view.buffs.find((r) => r.buff.name === 'Battle Shout')!;
     expect(battleShout.cells.map((c) => c.providers)).toEqual([['Ana'], []]);
-    // The first boss has the warrior, priest and mage buffs and Heroism; the rest are missing.
-    expect(nekzali!.missing).toHaveLength(9);
-    expect(sszorak!.missing).toHaveLength(12);
+  });
 
-    // Under the count: the cap first. "Needs a look" lists everything.
-    expect(nekzali!.warn).toBe('17 open spots');
-    expect(nekzali!.problems[0]).toBe('17 open spots');
-    expect(nekzali!.problems[1]).toBe('needs a second tank');
-    expect(nekzali!.problems[2]).toBe('1 healer');
-    expect(nekzali!.problems[3]).toMatch(/^no Mark of the Wild, no Blessing of the Bronze, /);
-    expect(sszorak!.problems.slice(0, 2)).toEqual(['19 open spots', 'needs a second tank']);
+  it('leaves a skipped boss out of the counts and checks', () => {
+    const raid = lineupRaids(ENCOUNTERS, [nightBoss(101, 1), nightBoss(102, 2, { skipped: true })], {
+      fresh: false,
+      season: 'Season One'
+    })[0]!;
+    const view = lineupView(ROSTER, NIGHT, [], raid, placesOf(places([[101, [1]]])), new Map());
+    expect(view.live.map((b) => b.id)).toEqual([101]);
+    expect(view.totals.map((t) => t.boss.id)).toEqual([101]);
+    expect(view.groups[0]!.rows[0]!.cells.map((c) => [c.in, c.differs])).toEqual([
+      [true, true],
+      [false, false]
+    ]);
   });
 
   it('warns about buffs only once a boss is full', () => {
-    const full = { name: 'R', cap: 2, bosses: [{ name: 'B', short: 'B' }] };
+    const full = {
+      zoneId: 1,
+      name: 'R',
+      cap: 2,
+      bosses: [{ id: 1, name: 'B', short: 'B', skipped: false, confirmed: false }]
+    };
     const two = [player(1, 'Ana', 'Warrior', 'Tank'), player(2, 'Bo', 'Warrior', 'Tank')];
-    const total = lineupView(two, NIGHT, [], full, new Set()).totals[0]!;
+    const total = lineupView(two, NIGHT, [], full, placesOf(places([[1, [1, 2]]])), new Map()).totals[0]!;
     expect(total.warn).toBe('12 buffs');
     expect(total.problems).toEqual(['0 healers', expect.stringMatching(/^no Mark of the Wild/)]);
-  });
-
-  it('saves only sit-outs for raiders in the grid and bosses in the raid', () => {
-    const raid = lineupRaids(RAIDS)[0]!;
-    const sitouts = toggleSitout(
-      new Set([sitoutKey('Sszorak', 1), sitoutKey('Old name', 1), sitoutKey('Sszorak', 4)]),
-      "Nek'zali the Soulcoiler",
-      2
-    );
-    expect(sitoutsToSave(sitouts, raid, [1, 2, 3])).toEqual([
-      { boss: "Nek'zali the Soulcoiler", player_id: 2 },
-      { boss: 'Sszorak', player_id: 1 }
-    ]);
-    expect(toggleSitout(sitouts, 'Sszorak', 1).has(sitoutKey('Sszorak', 1))).toBe(false);
-  });
-
-  it('reads one raid and night from the saved rows', () => {
-    const rows: SitoutRow[] = [
-      { raid_date: '2026-05-14', raid_name: 'A', boss_name: 'X', player_id: 1 },
-      { raid_date: '2026-05-07', raid_name: 'A', boss_name: 'X', player_id: 2 },
-      { raid_date: '2026-05-14', raid_name: 'B', boss_name: 'X', player_id: 3 }
-    ];
-    expect([...sitoutsFor(rows, '2026-05-14', 'A')]).toEqual(['X|1']);
-  });
-
-  it('finds last week’s night on the same weekday', () => {
-    const nights = [{ date: '2026-05-05' }, { date: '2026-05-07' }, { date: '2026-05-12' }];
-    expect(lastWeeksNight(nights, '2026-05-14')).toBe('2026-05-07');
-    expect(lastWeeksNight(nights, '2026-05-21')).toBeNull();
   });
 });
 
@@ -188,29 +270,53 @@ const who = (role: string) => ({
   ]
 });
 
-const SAVED: SitoutRow[] = [
-  { raid_date: '2026-05-07', raid_name: 'The Venomous Abyss', boss_name: 'Sszorak', player_id: 3 },
-  { raid_date: '2026-05-14', raid_name: 'The Venomous Abyss', boss_name: 'Sszorak', player_id: 1 }
-];
+type Setup = {
+  bosses?: NightBossRow[];
+  tonight?: PlaceRow[];
+  groups?: PlaceRow[];
+  answers?: Answer[];
+  rpc?: (name: string, args: Record<string, unknown>) => { data?: unknown; error?: { message: string } } | undefined;
+};
 
-function handlers(person: ReturnType<typeof who>, saved = SAVED): FakeHandlers {
+const PLANNED: Setup = {
+  bosses: [nightBoss(101, 1), nightBoss(102, 2), nightBoss(103, 3)],
+  tonight: places([
+    [101, [1, 2, 3]],
+    [102, [1, 2]],
+    [103, [1, 2, 3, 4]]
+  ]),
+  groups: places([
+    [101, [1, 2, 3]],
+    [102, [1, 2, 3]],
+    [103, [1, 2, 3, 4]]
+  ])
+};
+
+function handlers(person: ReturnType<typeof who>, setup: Setup = PLANNED): FakeHandlers {
   const base = seededHandlers();
   const tables: Record<string, (read: Read) => unknown> = {
     raid_schedule: () =>
       [2, 4].map((weekday) => ({ weekday, start_time: '21:00:00', duration_minutes: 180, is_optional: false })),
     raid_schedule_exceptions: () => [],
     players: () => ROSTER,
-    raid_rsvps: () => [],
-    boss_lineup_sitouts: () => saved,
-    team_settings: () => ({ raids: RAIDS })
+    raid_rsvps: () => setup.answers ?? [],
+    seasons: () => SEASONS,
+    raid_encounters: () => ENCOUNTERS,
+    raid_night_bosses: () => setup.bosses ?? [],
+    raid_night_lineups: () => setup.tonight ?? [],
+    boss_groups: () => setup.groups ?? []
   };
   return seededHandlers({
     session: fakeSession({ battlenet: 'A#1', discord: { id: 'd', name: 'Ana' } }),
     rpc(name, args) {
+      const custom = setup.rpc?.(name, args);
+      if (custom) return custom;
       if (name === 'current_discord_id') return { data: 'discord-ana' };
       if (name === 'resolve_person') return { data: person };
       if (name === 'team_rsvp_answers') return { data: [] };
-      if (name === 'set_boss_lineup') return { data: 1 };
+      if (name === 'set_raid_night_lineup' || name === 'set_boss_group') return { data: 1 };
+      if (name === 'plan_raid_night') return { data: 3 };
+      if (name === 'set_raid_night_boss_skipped') return { data: null };
       return base.rpc!(name, args);
     },
     from(read) {
@@ -220,77 +326,197 @@ function handlers(person: ReturnType<typeof who>, saved = SAVED): FakeHandlers {
   });
 }
 
+const LINEUP = '/g/wga/t/phoenix/calendar?date=2026-05-14&view=lineup';
+const grid = async () =>
+  within(await screen.findByRole('table', { name: /The Venomous Abyss lineup for Thu, May 14/ }));
+const rpcs = (client: { rpcs: [string, unknown][] }, name: string) =>
+  client.rpcs.filter(([n]) => n === name).map(([, args]) => args);
+
 describe('the boss lineup tab', () => {
   it('is not offered to a raider', async () => {
-    renderApp('/g/wga/t/phoenix/calendar?date=2026-05-14&view=lineup', handlers(who('raider')));
+    renderApp(LINEUP, handlers(who('raider')));
     expect(await screen.findByRole('region', { name: 'Heads up' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Boss lineup' })).not.toBeInTheDocument();
   });
 
-  it('opens from the night page for an officer', async () => {
+  it('opens from the night page for an officer, and stepping nights keeps it open', async () => {
     renderApp('/g/wga/t/phoenix/calendar?date=2026-05-14', handlers(who('officer')));
     const tab = await screen.findByRole('link', { name: 'Boss lineup' });
     expect(tab).toHaveAttribute('href', '/g/wga/t/phoenix/calendar?date=2026-05-14&view=lineup');
     expect(screen.getByRole('link', { name: 'Who’s coming' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: /^Next raid night/ })).toHaveAttribute(
+      'href',
+      '/g/wga/t/phoenix/calendar?date=2026-05-19'
+    );
   });
 
-  it('lets an officer change the lineup and save it', async () => {
+  it('keeps the boss lineup open when stepping to the next night', async () => {
+    renderApp(LINEUP, handlers(who('officer')));
+    await grid();
+    expect(screen.getByRole('link', { name: /^Next raid night/ })).toHaveAttribute(
+      'href',
+      '/g/wga/t/phoenix/calendar?date=2026-05-19&view=lineup'
+    );
+  });
+
+  it('shows everyone on the roster, with the bench out and changes from the group marked', async () => {
+    renderApp(LINEUP, handlers(who('officer'), { ...PLANNED, answers: [answer(3, 'Absent')] }));
+    const g = await grid();
+    expect(g.getByRole('button', { name: "Ed, Nek'zali the Soulcoiler: out" })).toBeInTheDocument();
+    expect(
+      g.getByRole('button', { name: 'Cy, Sszorak: out, changed for tonight only, usually in' })
+    ).toBeInTheDocument();
+    expect(
+      g.getByRole('button', { name: "Cy, Nek'zali the Soulcoiler: in, but said they’re not coming" })
+    ).toBeInTheDocument();
+    // The count against the cap is read out, not only shown.
+    expect(
+      g.getByRole('columnheader', { name: /^Sszorak\s*2\/20\s*18 open spots\s*1 tank, 1 healer, 0 damage/ })
+    ).toBeInTheDocument();
+    const look = within(screen.getByRole('region', { name: 'Needs a look' }));
+    expect(look.getByText('Ed is out on every boss unless you put them in.')).toBeInTheDocument();
+  });
+
+  it('saves a change for tonight only', async () => {
     const user = userEvent.setup();
-    const { client } = renderApp('/g/wga/t/phoenix/calendar?date=2026-05-14&view=lineup', handlers(who('officer')));
-    const grid = within(await screen.findByRole('table', { name: 'The Venomous Abyss lineup for Thu, May 14' }));
+    const { client } = renderApp(LINEUP, handlers(who('officer')));
+    const g = await grid();
+    const tonight = screen.getByRole('button', { name: 'Save tonight' });
+    expect(tonight).toBeDisabled();
+    expect(screen.getByText('No unsaved changes. Click a cell to swap someone in or out.')).toBeInTheDocument();
 
-    const anaSszorak = grid.getByRole('button', { name: 'Ana, Sszorak: sitting out' });
-    expect(anaSszorak).toHaveAttribute('aria-pressed', 'false');
-    const save = screen.getByRole('button', { name: 'Save lineup' });
-    expect(save).toBeDisabled();
+    await user.click(g.getByRole('button', { name: "Bo, Nek'zali the Soulcoiler: in" }));
+    expect(screen.getByText('1 unsaved change.')).toBeInTheDocument();
+    await user.click(tonight);
 
-    await user.click(grid.getByRole('button', { name: "Bo, Nek'zali the Soulcoiler: in" }));
-    expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
-    await user.click(save);
-
-    expect(client.rpcs).toContainEqual([
-      'set_boss_lineup',
+    expect(rpcs(client, 'set_raid_night_lineup')).toEqual([
       {
         p_team_id: 1,
         p_raid_date: '2026-05-14',
-        p_raid_name: 'The Venomous Abyss',
-        p_sitouts: [
-          { boss: "Nek'zali the Soulcoiler", player_id: 2 },
-          { boss: 'Sszorak', player_id: 1 }
-        ]
+        p_encounter_id: 101,
+        p_player_ids: [1, 3],
+        p_expected_player_ids: [1, 2, 3]
       }
+    ]);
+    expect(rpcs(client, 'set_boss_group')).toEqual([]);
+    expect((await screen.findAllByText('Saved the lineup for Thu, May 14.')).length).toBeGreaterThan(0);
+    // The editor stays put, so keyboard focus is not thrown to the top.
+    expect(tonight).toBeInTheDocument();
+  });
+
+  it('saves to the group: tonight first, then the usual group', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(LINEUP, handlers(who('officer')));
+    const g = await grid();
+    await user.click(g.getByRole('button', { name: 'Ana, Sszorak: in' }));
+    await user.click(screen.getByRole('button', { name: 'Save to the group' }));
+
+    const order = client.rpcs.map(([n]) => n).filter((n) => n.startsWith('set_'));
+    expect(order).toEqual(['set_raid_night_lineup', 'set_boss_group']);
+    // Sszorak's group had Cy too; what is on screen becomes the group.
+    expect(rpcs(client, 'set_boss_group')).toEqual([
+      { p_team_id: 1, p_encounter_id: 102, p_player_ids: [2], p_expected_player_ids: [1, 2, 3] }
     ]);
   });
 
-  it('copies last week’s lineup, and lists what needs a look', async () => {
+  it('says which boss was held back when someone else saved it first', async () => {
     const user = userEvent.setup();
-    const { client } = renderApp('/g/wga/t/phoenix/calendar?date=2026-05-14&view=lineup', handlers(who('officer')));
-    const grid = within(await screen.findByRole('table', { name: /lineup for/ }));
-
-    await user.click(screen.getByRole('button', { name: 'Copy last Thursday' }));
-    expect(grid.getByRole('button', { name: 'Cy, Sszorak: sitting out' })).toBeInTheDocument();
-    expect(grid.getByRole('button', { name: 'Ana, Sszorak: in' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Save lineup' }));
-    expect(client.rpcs.find(([name]) => name === 'set_boss_lineup')?.[1]).toMatchObject({
-      p_sitouts: [{ boss: 'Sszorak', player_id: 3 }]
-    });
-
-    const look = within(screen.getByRole('region', { name: 'Needs a look' }));
-    expect(look.getByText('2 of 2 bosses')).toBeInTheDocument();
-    expect(look.getByText("1. Nek'zali the Soulcoiler")).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: 'All buffs, by boss' })).not.toBeInTheDocument();
-    await user.click(look.getByRole('button', { name: 'Show all buffs' }));
-    const buffs = within(screen.getByRole('region', { name: 'All buffs, by boss' }));
-    expect(buffs.getByText("Nek'zali: Ana")).toBeInTheDocument();
+    renderApp(
+      LINEUP,
+      handlers(who('officer'), {
+        ...PLANNED,
+        rpc: (name) =>
+          name === 'set_raid_night_lineup'
+            ? {
+                error: {
+                  message: 'Someone else changed this boss’s lineup since you opened it. Reload to see their change.'
+                }
+              }
+            : undefined
+      })
+    );
+    const g = await grid();
+    await user.click(g.getByRole('button', { name: 'Ana, Sszorak: in' }));
+    await user.click(screen.getByRole('button', { name: 'Save tonight' }));
+    expect(await screen.findByText('Sszorak wasn’t saved.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Show their version' }));
+    expect(g.getByRole('button', { name: 'Ana, Sszorak: in' })).toBeInTheDocument();
+    expect(screen.getByText('No unsaved changes. Click a cell to swap someone in or out.')).toBeInTheDocument();
   });
 
-  it('switches between the season’s raids', async () => {
+  it('puts a bench raider in for the whole night', async () => {
     const user = userEvent.setup();
-    renderApp('/g/wga/t/phoenix/calendar?date=2026-05-14&view=lineup', handlers(who('officer')));
-    await user.click(await screen.findByRole('button', { name: 'Tidebound Grotto' }));
+    renderApp(LINEUP, handlers(who('officer')));
+    const g = await grid();
+    await user.click(g.getByRole('button', { name: 'Ed in all night' }));
     expect(
-      await screen.findByText('Tidebound Grotto: up to 25 per boss. Click a cell to swap someone in or out.')
+      g.getByRole('button', { name: 'Ed, Sszorak: in, changed for tonight only, usually out' })
     ).toBeInTheDocument();
+    expect(screen.getByText('2 unsaved changes.')).toBeInTheDocument();
+  });
+
+  it('skips a boss for the night', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(LINEUP, handlers(who('officer')));
+    await grid();
+    await user.click(screen.getByRole('button', { name: 'Skip Sszorak tonight' }));
+    expect(rpcs(client, 'set_raid_night_boss_skipped')).toEqual([
+      { p_team_id: 1, p_raid_date: '2026-05-14', p_encounter_id: 102, p_skipped: true }
+    ]);
+  });
+
+  it('keeps unsaved changes while switching raids, and asks before leaving the night', async () => {
+    const user = userEvent.setup();
+    renderApp(LINEUP, handlers(who('officer')));
+    const g = await grid();
+    await user.click(g.getByRole('button', { name: 'Ana, Sszorak: in' }));
+
+    await user.click(screen.getByRole('button', { name: /Tidebound Grotto/ }));
     expect(screen.getByRole('button', { name: 'Ana, Nymrissa Wavecaller: in' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /The Venomous Abyss/ }));
+    expect(
+      screen.getByRole('button', { name: 'Ana, Sszorak: out, changed for tonight only, usually in' })
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('link', { name: 'Who’s coming' }));
+    const dialog = within(await screen.findByRole('dialog', { name: 'Leave without saving?' }));
+    expect(dialog.getByText(/You have 1 unsaved change to this night’s boss lineup/)).toBeInTheDocument();
+    await user.click(dialog.getByRole('button', { name: 'Keep editing' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('1 unsaved change.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('link', { name: 'Who’s coming' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Leave and discard' }));
+    expect(await screen.findByRole('region', { name: 'Heads up' })).toBeInTheDocument();
+  });
+
+  it('fills a night that is not planned yet from the groups', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(LINEUP, handlers(who('officer'), { groups: PLANNED.groups! }));
+    expect(await screen.findByRole('heading', { name: 'This night isn’t planned yet.' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Fill from the groups' }));
+    expect(rpcs(client, 'plan_raid_night')).toEqual([{ p_team_id: 1, p_raid_date: '2026-05-14' }]);
+  });
+
+  it('starts the very first night with everyone in but the bench', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(LINEUP, handlers(who('officer'), {}));
+    expect(await screen.findByRole('heading', { name: 'No boss has a usual group yet.' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Start with everyone in' }));
+    const g = await grid();
+    expect(
+      g.getByRole('button', { name: "Ana, Nek'zali the Soulcoiler: in, changed for tonight only, usually out" })
+    ).toBeInTheDocument();
+    expect(g.getByRole('button', { name: "Ed, Nek'zali the Soulcoiler: out" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Save to the group' }));
+    expect(rpcs(client, 'set_raid_night_lineup')).toHaveLength(3);
+    expect(rpcs(client, 'set_boss_group')).toHaveLength(3);
+    expect(rpcs(client, 'set_boss_group')[0]).toEqual({
+      p_team_id: 1,
+      p_encounter_id: 101,
+      p_player_ids: [1, 2, 3, 4],
+      p_expected_player_ids: []
+    });
   });
 });

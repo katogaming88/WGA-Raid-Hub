@@ -44,7 +44,6 @@ import {
   type ScheduleRule
 } from './calendar';
 import { BossLineup } from './BossLineup';
-import { lastWeeksNight } from './lineup';
 import {
   useAnswers,
   useOfficerSetAnswer,
@@ -448,8 +447,8 @@ function NightPage({ date, lineup }: { date: string; lineup: boolean }) {
           </p>
         </div>
         <nav className="night-nav" aria-label="Raid nights">
-          <NightStep base={base} date={previous} direction="previous" />
-          <NightStep base={base} date={next} direction="next" />
+          <NightStep base={base} date={previous} direction="previous" lineup={lineup} />
+          <NightStep base={base} date={next} direction="next" lineup={lineup} />
         </nav>
       </div>
 
@@ -472,23 +471,26 @@ function NightPage({ date, lineup }: { date: string; lineup: boolean }) {
               </p>
             );
           }
-          return (
-            <Night
-              night={night}
-              viewer={viewer}
-              players={players}
-              answers={rows}
-              lineup={lineup}
-              lastWeek={lastWeeksNight(found?.nights ?? [], date)}
-            />
-          );
+          return <Night night={night} viewer={viewer} players={players} answers={rows} lineup={lineup} />;
         }}
       </DataState>
     </section>
   );
 }
 
-function NightStep({ base, date, direction }: { base: string; date: string | null; direction: 'previous' | 'next' }) {
+// Stepping to another night keeps the view: from the boss lineup, the next
+// night's boss lineup.
+function NightStep({
+  base,
+  date,
+  direction,
+  lineup
+}: {
+  base: string;
+  date: string | null;
+  direction: 'previous' | 'next';
+  lineup: boolean;
+}) {
   const icon = <Icon name={direction === 'previous' ? 'chevronLeft' : 'chevronRight'} />;
   const word = direction === 'previous' ? 'Previous' : 'Next';
   if (!date) {
@@ -505,7 +507,7 @@ function NightStep({ base, date, direction }: { base: string; date: string | nul
       {direction === 'previous' && <span className="night-step-date">{shortDay(date)}</span>}
       <Link
         className="button icon-only"
-        to={`${base}?date=${date}`}
+        to={`${base}?date=${date}${lineup ? '&view=lineup' : ''}`}
         aria-label={`${word} raid night: ${shortDay(date)}`}
       >
         {icon}
@@ -520,15 +522,13 @@ function Night({
   viewer,
   players,
   answers,
-  lineup,
-  lastWeek
+  lineup
 }: {
   night: RaidNight;
   viewer: Viewer;
   players: PlayerRow[];
   answers: Answer[];
   lineup: boolean;
-  lastWeek: string | null;
 }) {
   const touch = useTouchScreen();
   const base = useCalendarBase();
@@ -548,7 +548,7 @@ function Night({
           </Link>
         </nav>
         {lineup ? (
-          <BossLineup night={night} players={players} answers={answers} lastWeek={lastWeek} />
+          <BossLineup night={night} players={players} answers={answers} />
         ) : (
           <Coming night={night} viewer={viewer} players={players} answers={answers} officerTools />
         )}

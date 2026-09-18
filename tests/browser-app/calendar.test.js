@@ -344,12 +344,31 @@ describe('Calendar (new app): moving between nights', () => {
   });
 });
 
-// The boss lineup (#1216), new to this app: officers pick who sits out each
-// boss. Zed is late and still in the grid; the bench, the rotator and
-// Frostvale (out) are not.
-const LINEUP_RAIDS = [
-  { name: 'The Venomous Abyss', bosses: [{ name: "Nek'zali the Soulcoiler" }, { name: 'Sszorak' }] }
-];
+// The boss lineup (#1216), new to this app: each boss has a usual group, and
+// the night starts as a copy of it. Everyone on the roster is in the grid:
+// Frostvale said they are out but is still planned in for Nek'zali, Em is on
+// the bench and out on every boss, and Aur is usually in for Sszorak but out
+// tonight.
+const ZONE = { id: 10, name: 'The Venomous Abyss', season: 'Season One', is_mini_raid: false, sort_index: 0 };
+const LINEUP_TABLES = {
+  seasons: [{ display_name: 'Season One', starts_at: '2026-01-01', ends_at: null }],
+  raid_encounters: [
+    { id: 101, name: "Nek'zali the Soulcoiler", sort_index: 1, zone: ZONE },
+    { id: 102, name: 'Sszorak', sort_index: 2, zone: ZONE }
+  ],
+  raid_night_bosses: [
+    { raid_date: NIGHT, encounter_id: 101, position: 1, skipped: false, confirmed_at: null },
+    { raid_date: NIGHT, encounter_id: 102, position: 2, skipped: false, confirmed_at: null }
+  ],
+  raid_night_lineups: [
+    ...[1, 2, 3, 4, 6].map((player_id) => ({ encounter_id: 101, player_id })),
+    ...[2, 3, 4].map((player_id) => ({ encounter_id: 102, player_id }))
+  ],
+  boss_groups: [
+    ...[1, 2, 3, 4, 6].map((player_id) => ({ encounter_id: 101, player_id })),
+    ...[1, 2, 3, 4].map((player_id) => ({ encounter_id: 102, player_id }))
+  ]
+};
 
 describe('Calendar (new app): the boss lineup', () => {
   let opened;
@@ -360,18 +379,12 @@ describe('Calendar (new app): the boss lineup', () => {
       browser,
       server.port,
       asOfficer(`${BASE}?date=${NIGHT}&view=lineup`, 'main:has(.lineup-toggle)', {
-        tables: {
-          ...tables(),
-          team_settings: [{ raids: LINEUP_RAIDS }],
-          boss_lineup_sitouts: [
-            { raid_date: NIGHT, raid_name: 'The Venomous Abyss', boss_name: 'Sszorak', player_id: 3 }
-          ]
-        },
-        rpc: { ...signedIn(VIEWER, 'officer').rpc, set_boss_lineup: 2 }
+        tables: { ...tables(), ...LINEUP_TABLES },
+        rpc: { ...signedIn(VIEWER, 'officer').rpc, set_raid_night_lineup: 4 }
       })
     );
     opened.page.on('request', (request) => {
-      if (new URL(request.url()).pathname.endsWith('/rpc/set_boss_lineup')) {
+      if (new URL(request.url()).pathname.endsWith('/rpc/set_raid_night_lineup')) {
         calls.push(JSON.parse(request.postData()));
       }
     });
@@ -381,32 +394,34 @@ describe('Calendar (new app): the boss lineup', () => {
     if (opened) await opened.context.close();
   });
 
-  it('lists who is coming, with the saved sit-out and the counts', async () => {
-    const rows = await opened.page
-      .locator('.lineup-grid:not(.lineup-buffs) tbody .lineup-raider-name')
-      .allTextContents();
-    expect(rows).toEqual(['Aur', 'Brightmoor', 'Dawnthistle', 'Zed']);
-    expect(await opened.page.getByRole('button', { name: 'Zed, Sszorak: sitting out' }).count()).toBe(1);
-    expect(await opened.page.locator('.lineup-not-coming').textContent()).toBe(
-      'Not coming tonight: Em (bench), Frostvale (absent), Glim (rotator)'
-    );
-    expect(await opened.page.locator('thead .lineup-total').allTextContents()).toEqual(['4/20', '3/20']);
+  it('lists everyone on the roster by role, with the plan, the counts and the changes', async () => {
+    const rows = await opened.page.locator('.lineup-grid tbody .lineup-raider-name').allTextContents();
+    expect(rows).toEqual(['Aur', 'Brightmoor', 'Frostvale', 'Glim', 'Dawnthistle', 'Em', 'Zed']);
+    expect(await opened.page.getByRole('button', { name: 'Zed, Sszorak: in' }).count()).toBe(1);
+    expect(
+      await opened.page.getByRole('button', { name: 'Aur, Sszorak: out, changed for tonight only, usually in' }).count()
+    ).toBe(1);
+    expect(
+      await opened.page
+        .getByRole('button', { name: "Frostvale, Nek'zali the Soulcoiler: in, but said they’re not coming" })
+        .count()
+    ).toBe(1);
+    expect(await opened.page.getByRole('button', { name: "Em, Nek'zali the Soulcoiler: out" }).count()).toBe(1);
+    expect(await opened.page.locator('thead .lineup-total').allTextContents()).toEqual(['5/20', '3/20']);
     expect(opened.unexpected).toEqual([]);
     expect(opened.pageErrors).toEqual([]);
   });
 
-  it('saves the whole raid’s sit-outs in one call', async () => {
-    await opened.page.getByRole('button', { name: 'Aur, Sszorak: in' }).click();
-    await opened.page.getByRole('button', { name: 'Save lineup' }).click();
+  it('saves one boss for tonight, with the lineup it replaces', async () => {
+    await opened.page.getByRole('button', { name: 'Aur, Sszorak: out, changed for tonight only, usually in' }).click();
+    await opened.page.getByRole('button', { name: 'Save tonight' }).click();
     await expect.poll(() => calls.length).toBe(1);
     expect(calls[0]).toEqual({
       p_team_id: TEAM_ID,
       p_raid_date: NIGHT,
-      p_raid_name: 'The Venomous Abyss',
-      p_sitouts: [
-        { boss: 'Sszorak', player_id: 1 },
-        { boss: 'Sszorak', player_id: 3 }
-      ]
+      p_encounter_id: 102,
+      p_player_ids: [1, 2, 3, 4],
+      p_expected_player_ids: [2, 3, 4]
     });
   });
 });

@@ -328,6 +328,10 @@ Three things are worth knowing before something looks broken:
   network; only the database and the API are local.
 - **`build.json` reads as unrendered Liquid**, because Jekyll runs at deploy
   rather than here. Nothing on the site reads it.
+- **The new app's Boss lineup has no bosses on the seed.** Its columns are
+  `raid_encounters` rows, which the progression sync loads from Warcraft Logs,
+  and the seed carries none. Rehearse it against last night's production data
+  (section 12), which has them ([#1216](https://github.com/katogaming88/WGA-Raid-Hub/issues/1216)).
 
 To point a browser at production deliberately, open the deployed site. There is
 no switch for pointing a local page at production, on purpose.

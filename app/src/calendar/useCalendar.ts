@@ -1,8 +1,7 @@
 import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
-import type { SettingsRaid } from '../home/progression';
 import type { Answer, ScheduleChange, ScheduleRule } from './calendar';
-import type { SitoutRow } from './lineup';
+import { isStaleSave, type EncounterRow, type NightBossRow, type PlaceRow, type SeasonRow } from './lineup';
 
 // The Calendar page's reads and writes (#1102).
 
@@ -173,50 +172,167 @@ export function useRotatorWeek(teamId: number) {
 
 // Boss lineups (#1216)
 
-// The season's raids as officers list them in Season Settings.
-export function useLineupRaids(teamId: number) {
-  return useSupabaseQuery<SettingsRaid[]>(['lineup-raids', teamId], async (client) => {
-    const { data, error } = await client
-      .from('team_settings')
-      .select('raids:config->raidProgression')
-      .eq('team_id', teamId)
-      .maybeSingle();
-    if (error) return { data: null, error };
-    const raids = (data as { raids?: unknown } | null)?.raids;
-    return { data: Array.isArray(raids) ? (raids as SettingsRaid[]) : [], error: null };
-  });
-}
-
 export const lineupKey = (teamId: number) => ['boss-lineup', teamId] as const;
 
-// Who sits out which boss on the given nights (tonight, and last week's for
-// the copy button). A few hundred rows at most.
-export function useSitouts(teamId: number, dates: string[], enabled = true) {
-  return useSupabaseQuery<SitoutRow[]>(
-    [...lineupKey(teamId), dates],
-    (client) =>
-      client
-        .from('boss_lineup_sitouts')
-        .select('raid_date, raid_name, boss_name, player_id')
-        .eq('team_id', teamId)
-        .in('raid_date', dates)
-        .order('id'),
-    { enabled }
+// Every season's dates, and every boss the progression sync has loaded. Both
+// are small lookups every visitor can read.
+export function useSeasons() {
+  return useSupabaseQuery<SeasonRow[]>(['seasons'], (client) =>
+    client.from('seasons').select('display_name, starts_at, ends_at').order('starts_at')
   );
 }
 
-export type LineupSave = { date: string; raid: string; sitouts: { boss: string; player_id: number }[] };
+export function useEncounters() {
+  return useSupabaseQuery<EncounterRow[]>(['raid-encounters'], (client) =>
+    client
+      .from('raid_encounters')
+      .select('id, name, sort_index, zone:raid_zones!inner(id, name, season, is_mini_raid, sort_index)')
+      .order('id')
+  );
+}
 
-// Replaces one raid's lineup for a night.
-export function useSaveLineup(teamId: number) {
-  return useSupabaseMutation<number, LineupSave>(
+// One night's plan: its bosses and who is in for each.
+export type NightPlan = { bosses: NightBossRow[]; places: PlaceRow[] };
+
+export function useNightPlan(teamId: number, date: string) {
+  return useSupabaseQuery<NightPlan>([...lineupKey(teamId), 'night', date], async (client) => {
+    const [bosses, places] = await Promise.all([
+      client
+        .from('raid_night_bosses')
+        .select('raid_date, encounter_id, position, skipped, confirmed_at')
+        .eq('team_id', teamId)
+        .eq('raid_date', date)
+        .order('position'),
+      client
+        .from('raid_night_lineups')
+        .select('encounter_id, player_id')
+        .eq('team_id', teamId)
+        .eq('raid_date', date)
+        .order('id')
+    ]);
+    const error = bosses.error ?? places.error;
+    if (error) return { data: null, error };
+    return {
+      data: { bosses: (bosses.data ?? []) as NightBossRow[], places: (places.data ?? []) as PlaceRow[] },
+      error: null
+    };
+  });
+}
+
+// The team's usual group for every boss.
+export function useBossGroups(teamId: number) {
+  return useSupabaseQuery<PlaceRow[]>([...lineupKey(teamId), 'groups'], (client) =>
+    client.from('boss_groups').select('encounter_id, player_id').eq('team_id', teamId).order('id')
+  );
+}
+
+export type BossSave = {
+  encounterId: number;
+  players: number[];
+  // What the page last read, so a save made after someone else's is refused.
+  expected: number[];
+};
+
+// The outcome of saving several bosses one after another: which went through
+// and which were refused because someone else saved that boss first. Any
+// other failure stops the run and throws.
+export type SaveResult = { saved: number[]; stale: number[] };
+
+async function saveEach(
+  saves: BossSave[],
+  one: (s: BossSave) => PromiseLike<{ error: { message: string } | null }>
+): Promise<{ data: SaveResult | null; error: { message: string } | null }> {
+  const result: SaveResult = { saved: [], stale: [] };
+  for (const s of saves) {
+    const { error } = await one(s);
+    if (error && isStaleSave(error.message)) result.stale.push(s.encounterId);
+    else if (error) return { data: null, error };
+    else result.saved.push(s.encounterId);
+  }
+  return { data: result, error: null };
+}
+
+// "Save tonight": each changed boss's lineup for the night, one boss at a time,
+// so two officers on different bosses never get in each other's way.
+export function useSaveNight(teamId: number, date: string) {
+  return useSupabaseMutation<SaveResult, BossSave[]>(
+    (client, saves) =>
+      saveEach(saves, (s) =>
+        client.rpc('set_raid_night_lineup', {
+          p_team_id: teamId,
+          p_raid_date: date,
+          p_encounter_id: s.encounterId,
+          p_player_ids: s.players,
+          p_expected_player_ids: s.expected
+        })
+      ),
+    { key: ['save-night', teamId], refreshes: [lineupKey(teamId)] }
+  );
+}
+
+// "Save to the group": tonight first, for each boss changed tonight, then the
+// usual groups. That order matters: a group save also rewrites coming nights
+// nobody has saved for that boss, and tonight is saved by then, so it keeps
+// what the officer set.
+export type GroupSave = { night: BossSave[]; groups: BossSave[] };
+
+export function useSaveGroups(teamId: number, date: string) {
+  return useSupabaseMutation<SaveResult, GroupSave>(
+    async (client, s) => {
+      const night = await saveEach(s.night, (b) =>
+        client.rpc('set_raid_night_lineup', {
+          p_team_id: teamId,
+          p_raid_date: date,
+          p_encounter_id: b.encounterId,
+          p_player_ids: b.players,
+          p_expected_player_ids: b.expected
+        })
+      );
+      if (night.error) return night;
+      const refused = new Set(night.data!.stale);
+      const groups = await saveEach(
+        s.groups.filter((g) => !refused.has(g.encounterId)),
+        (b) =>
+          client.rpc('set_boss_group', {
+            p_team_id: teamId,
+            p_encounter_id: b.encounterId,
+            p_player_ids: b.players,
+            p_expected_player_ids: b.expected
+          })
+      );
+      if (groups.error) return groups;
+      return {
+        data: {
+          saved: [...new Set([...night.data!.saved, ...groups.data!.saved])].filter(
+            (id) => !groups.data!.stale.includes(id) && !refused.has(id)
+          ),
+          stale: [...refused, ...groups.data!.stale]
+        },
+        error: null
+      };
+    },
+    { key: ['save-groups', teamId], refreshes: [lineupKey(teamId)] }
+  );
+}
+
+// Fills a night from the groups now rather than waiting for the nightly job.
+export function usePlanNight(teamId: number, date: string) {
+  return useSupabaseMutation<number, null>(
+    (client) => client.rpc('plan_raid_night', { p_team_id: teamId, p_raid_date: date }),
+    { key: ['plan-night', teamId], refreshes: [lineupKey(teamId)] }
+  );
+}
+
+// "Skip" takes a boss off the night; "Put back" refills it from its group.
+export function useSkipBoss(teamId: number, date: string) {
+  return useSupabaseMutation<undefined, { encounterId: number; skipped: boolean }>(
     (client, s) =>
-      client.rpc('set_boss_lineup', {
+      client.rpc('set_raid_night_boss_skipped', {
         p_team_id: teamId,
-        p_raid_date: s.date,
-        p_raid_name: s.raid,
-        p_sitouts: s.sitouts
+        p_raid_date: date,
+        p_encounter_id: s.encounterId,
+        p_skipped: s.skipped
       }),
-    { key: ['save-lineup', teamId], refreshes: [lineupKey(teamId)] }
+    { key: ['skip-boss', teamId], refreshes: [lineupKey(teamId)] }
   );
 }
