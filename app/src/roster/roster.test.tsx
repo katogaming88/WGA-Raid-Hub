@@ -223,6 +223,43 @@ describe('Roster page', () => {
     expect(screen.getByRole('table', { name: 'Next season’s tentative roster' })).toHaveTextContent('Gloamwing');
   });
 
+  it('reads the team’s gear on its own team column, a page at a time', async () => {
+    // Sixteen slots each, so 63 raiders overflow the 1000-row page and the
+    // 64th raider's gear sits entirely on the second. A read that stopped at
+    // the first page would show that raider as not synced.
+    const others = Array.from({ length: 63 }, (_, i) =>
+      player(i + 10, `Raider${i}-Illidan`, 'Warrior', 'Arms', 'Melee')
+    );
+    const gear = [...others.flatMap((p) => gearAt(p.id, 300, SIXTEEN)), ...gearAt(1, 321, SIXTEEN)];
+    const { client } = renderApp(
+      '/g/wga/t/phoenix/roster',
+      rosterHandlers({
+        players: [player(1, 'Torbjorn-Illidan', 'Death Knight', 'Frost', 'Melee'), ...others],
+        player_equipped_gear: (read: Read) => {
+          const from = Number(read.filters.find(([op]) => op === 'range')?.[1] ?? 0);
+          return { data: gear.slice(from, from + 1000) };
+        }
+      })
+    );
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const torbjorn = within(table)
+      .getByRole('rowheader', { name: /Torbjorn/ })
+      .closest('tr')!;
+    expect(torbjorn).toHaveTextContent('321.0');
+    const reads = client.reads.filter((r) => r.table === 'player_equipped_gear');
+    expect(reads.map((r) => r.filters)).toEqual([
+      [
+        ['eq', 'team_id', 1],
+        ['range', '0', 999]
+      ],
+      [
+        ['eq', 'team_id', 1],
+        ['range', '1000', 1999]
+      ]
+    ]);
+    expect(reads.every((r) => r.order === 'id')).toBe(true);
+  });
+
   it('shows a failed read with a way to retry', async () => {
     renderApp(
       '/g/wga/t/phoenix/roster',

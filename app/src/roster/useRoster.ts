@@ -17,14 +17,18 @@ export function useRosterPlayers(teamId: number) {
   );
 }
 
-// Equipped gear synced from Blizzard (#845). It has no team column, so the
-// team comes through the player.
+// Equipped gear synced from Blizzard (#845), read on its own team column
+// (#944). Sixteen slots per raider outgrow one page at 63 raiders.
 export function useRosterGear(teamId: number) {
   return useSupabaseQuery<GearRow[]>(['roster-gear', teamId], (client) =>
-    client
-      .from('player_equipped_gear')
-      .select('player_id, equipment_slot, item_level, players!inner(team_id)')
-      .eq('players.team_id', teamId)
+    readAll<GearRow>((from, to) =>
+      client
+        .from('player_equipped_gear')
+        .select('player_id, equipment_slot, item_level')
+        .eq('team_id', teamId)
+        .order('id')
+        .range(from, to)
+    )
   );
 }
 
