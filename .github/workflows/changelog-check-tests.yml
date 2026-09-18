@@ -14,6 +14,10 @@ on:
       # it here is what makes that guard run on the PR that edits it. #1128
       # asks the same of deploy.yml and config.toml.
       - '.github/dependabot.yml'
+      # The same test reads the app lockfile for the peer ranges that hold the
+      # /app majors (#1241), and a Dependabot /app bump changes only these two.
+      - 'app/package.json'
+      - 'app/package-lock.json'
 
 # A new push to the PR supersedes any still-running check on the old commit.
 concurrency:

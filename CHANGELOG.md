@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.137.6] - 2026-09-18
+
+### Project
+
+- The three build tools Dependabot holds back for the new app (TypeScript,
+  eslint and its rule set) now say when the hold can be lifted. A test reads
+  the reason for each hold out of the app's lockfile every time that lockfile
+  changes and fails the pull request that makes a hold stale, naming the one to
+  remove ([#1241](https://github.com/katogaming88/WGA-Raid-Hub/issues/1241)).
+  Until now a hold outlived its reason quietly, since Dependabot obeys it and
+  never offers the newer version. The check runs on every Dependabot bump for
+  `app/`, which no `tests/ci` guard did before.
+
 ## [3.137.5] - 2026-09-17
 
 ### Project
