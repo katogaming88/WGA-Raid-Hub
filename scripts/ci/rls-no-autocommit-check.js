@@ -25,8 +25,9 @@
 // call, the nearest one on or below it; a second call needs its own (#1132).
 //
 // What this cannot see: a hand-rolled `pool.connect()` that commits rather than
-// rolling back. Twenty-two files legitimately call `pool.connect()` for their
-// own withTxn copy, so the call itself carries no signal and only the missing
+// rolling back. Since #1123 no file keeps its own withTxn copy (the one in
+// helpers.js is the harness), so a new `pool.connect()` under tests/rls/ is
+// worth reading, but the call itself carries no signal and only the missing
 // rollback would, which needs dataflow this check does not do.
 //
 // Usage: node scripts/ci/rls-no-autocommit-check.js [file ...]
