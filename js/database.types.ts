@@ -456,6 +456,66 @@ export type Database = {
           },
         ]
       }
+      boss_groups: {
+        Row: {
+          created_at: string
+          encounter_id: number
+          id: number
+          player_id: number
+          team_id: number
+        }
+        Insert: {
+          created_at?: string
+          encounter_id: number
+          id?: never
+          player_id: number
+          team_id: number
+        }
+        Update: {
+          created_at?: string
+          encounter_id?: number
+          id?: never
+          player_id?: number
+          team_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boss_groups_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "raid_encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boss_groups_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boss_groups_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "priority_order_gaps"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "boss_groups_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "rnlsi"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "boss_groups_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       characters: {
         Row: {
           blizzard_id: number
@@ -1612,6 +1672,120 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "raid_zones"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      raid_night_bosses: {
+        Row: {
+          confirmed_at: string | null
+          confirmed_by: number | null
+          created_at: string
+          encounter_id: number
+          id: number
+          position: number
+          raid_date: string
+          skipped: boolean
+          team_id: number
+        }
+        Insert: {
+          confirmed_at?: string | null
+          confirmed_by?: number | null
+          created_at?: string
+          encounter_id: number
+          id?: never
+          position: number
+          raid_date: string
+          skipped?: boolean
+          team_id: number
+        }
+        Update: {
+          confirmed_at?: string | null
+          confirmed_by?: number | null
+          created_at?: string
+          encounter_id?: number
+          id?: never
+          position?: number
+          raid_date?: string
+          skipped?: boolean
+          team_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raid_night_bosses_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raid_night_bosses_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "raid_encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raid_night_bosses_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      raid_night_lineups: {
+        Row: {
+          created_at: string
+          encounter_id: number
+          id: number
+          player_id: number
+          raid_date: string
+          team_id: number
+        }
+        Insert: {
+          created_at?: string
+          encounter_id: number
+          id?: never
+          player_id: number
+          raid_date: string
+          team_id: number
+        }
+        Update: {
+          created_at?: string
+          encounter_id?: number
+          id?: never
+          player_id?: number
+          raid_date?: string
+          team_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raid_night_lineups_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raid_night_lineups_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "priority_order_gaps"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "raid_night_lineups_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "rnlsi"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "raid_night_lineups_team_id_raid_date_encounter_id_fkey"
+            columns: ["team_id", "raid_date", "encounter_id"]
+            isOneToOne: false
+            referencedRelation: "raid_night_bosses"
+            referencedColumns: ["team_id", "raid_date", "encounter_id"]
           },
         ]
       }
@@ -3390,6 +3564,10 @@ export type Database = {
         Args: { p_request_id: number }
         Returns: undefined
       }
+      check_lineup_players: {
+        Args: { p_player_ids: number[]; p_team_id: number }
+        Returns: undefined
+      }
       check_priority_order_drift: {
         Args: { p_season: string; p_team_id: number }
         Returns: {
@@ -3457,6 +3635,11 @@ export type Database = {
           player_id: number
         }[]
       }
+      fill_raid_night: {
+        Args: { p_raid_date: string; p_team_id: number }
+        Returns: number
+      }
+      fill_upcoming_raid_nights: { Args: never; Returns: number }
       flag_bis_list_changed: {
         Args: {
           p_name_realm: string
@@ -3554,6 +3737,10 @@ export type Database = {
       }
       only_guild_id: { Args: never; Returns: number }
       person_for_discord_id: { Args: { p_discord_id: string }; Returns: number }
+      plan_raid_night: {
+        Args: { p_raid_date: string; p_team_id: number }
+        Returns: number
+      }
       raid_night_info: {
         Args: { p_raid_date: string; p_team_id: number }
         Returns: {
@@ -3563,6 +3750,7 @@ export type Database = {
           timezone: string
         }[]
       }
+      raid_today: { Args: never; Returns: string }
       remove_player_priority_order: {
         Args: { p_player_id: number; p_season: string; p_team_id: number }
         Returns: number
@@ -3609,6 +3797,7 @@ export type Database = {
         Args: { p_approve: boolean; p_note?: string; p_request_id: number }
         Returns: number
       }
+      same_player_set: { Args: { a: number[]; b: number[] }; Returns: boolean }
       save_battlenet_characters: {
         Args: { p_characters: Json; p_person_id: number }
         Returns: {
@@ -3647,6 +3836,15 @@ export type Database = {
         Args: { p_floor: number; p_pivot: number }
         Returns: undefined
       }
+      set_boss_group: {
+        Args: {
+          p_encounter_id: number
+          p_expected_player_ids?: number[]
+          p_player_ids: number[]
+          p_team_id: number
+        }
+        Returns: number
+      }
       set_guild_officer_bios: { Args: { p_bios: Json }; Returns: Json }
       set_own_rsvp: {
         Args: {
@@ -3656,6 +3854,25 @@ export type Database = {
           p_team_id: number
         }
         Returns: undefined
+      }
+      set_raid_night_boss_skipped: {
+        Args: {
+          p_encounter_id: number
+          p_raid_date: string
+          p_skipped: boolean
+          p_team_id: number
+        }
+        Returns: undefined
+      }
+      set_raid_night_lineup: {
+        Args: {
+          p_encounter_id: number
+          p_expected_player_ids?: number[]
+          p_player_ids: number[]
+          p_raid_date: string
+          p_team_id: number
+        }
+        Returns: number
       }
       set_team_officer_bios: {
         Args: { p_bios: Json; p_team_id: number }

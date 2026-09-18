@@ -66,6 +66,9 @@
 | [public.boe_managers](public.boe_managers.md) | 5 | Read-only view of guild_grants (#942), dropped at cutover (#1105). | VIEW |
 | [public.characters](public.characters.md) | 13 | Characters a person chose to show from their Battle.net account (#942 step 5, #1162). Written only by save_battlenet_characters() from the battlenet-characters Edge Function. A character here is an alt unless the same name_realm_key is a roster row linked to the person. | BASE TABLE |
 | [public.main_swap_requests](public.main_swap_requests.md) | 14 | A raider's request to make one of their alts their roster character, outside a signup window (#631, #942 step 5c). Written only by request_main_swap(), cancel_main_swap_request() and review_main_swap_request(). name_realm and class_spec_id are what they asked for, kept here so the request still reads right after the character row changes. | BASE TABLE |
+| [public.boss_groups](public.boss_groups.md) | 5 | The standing group per boss for a team (#1216): one row per raider in the group that kills that boss. A new raid night is filled from these. Written only through set_boss_group(). | BASE TABLE |
+| [public.raid_night_bosses](public.raid_night_bosses.md) | 9 | The bosses on one raid night's list for a team (#1216), in pull order. skipped keeps a boss the team is not pulling that night on the list. confirmed_at and confirmed_by say an officer saved that boss's lineup for the night; until then it follows the boss's standing group. No rows for a night means it is not planned yet. | BASE TABLE |
+| [public.raid_night_lineups](public.raid_night_lineups.md) | 6 | The plan for one raid night (#1216): one row per raider in for one boss. Filled from boss_groups ahead of the night, then edited through set_raid_night_lineup(). Kept after the night, so it still says who was planned in. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -184,6 +187,15 @@
 | public.cancel_main_swap_request | void | p_request_id integer | FUNCTION |
 | public.review_main_swap_request | int4 | p_request_id integer, p_approve boolean, p_note text DEFAULT NULL::text | FUNCTION |
 | public.team_rsvp_answers | record | p_team_id integer, p_from date, p_to date | FUNCTION |
+| public.check_lineup_players | void | p_team_id integer, p_player_ids integer[] | FUNCTION |
+| public.same_player_set | bool | a integer[], b integer[] | FUNCTION |
+| public.raid_today | date |  | FUNCTION |
+| public.fill_raid_night | int4 | p_team_id integer, p_raid_date date | FUNCTION |
+| public.fill_upcoming_raid_nights | int4 |  | FUNCTION |
+| public.set_boss_group | int4 | p_team_id integer, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[] | FUNCTION |
+| public.plan_raid_night | int4 | p_team_id integer, p_raid_date date | FUNCTION |
+| public.set_raid_night_lineup | int4 | p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[] | FUNCTION |
+| public.set_raid_night_boss_skipped | void | p_team_id integer, p_raid_date date, p_encounter_id integer, p_skipped boolean | FUNCTION |
 
 ## Enums
 
@@ -306,6 +318,14 @@ erDiagram
 "public.main_swap_requests" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
 "public.main_swap_requests" }o--o| "public.people" : "FOREIGN KEY (reviewed_by) REFERENCES people(id)"
 "public.main_swap_requests" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
+"public.boss_groups" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.boss_groups" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.boss_groups" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
+"public.raid_night_bosses" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.raid_night_bosses" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
+"public.raid_night_bosses" }o--o| "public.people" : "FOREIGN KEY (confirmed_by) REFERENCES people(id) ON DELETE SET NULL"
+"public.raid_night_lineups" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.raid_night_lineups" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -949,6 +969,32 @@ erDiagram
   integer reviewed_by FK
   text officer_note
   integer approved_player_id FK
+}
+"public.boss_groups" {
+  integer id
+  integer team_id FK
+  integer encounter_id FK
+  integer player_id FK
+  timestamp_with_time_zone created_at
+}
+"public.raid_night_bosses" {
+  integer id
+  integer team_id FK
+  date raid_date
+  integer encounter_id FK
+  integer position
+  boolean skipped
+  timestamp_with_time_zone confirmed_at
+  integer confirmed_by FK
+  timestamp_with_time_zone created_at
+}
+"public.raid_night_lineups" {
+  integer id
+  integer team_id FK
+  date raid_date FK
+  integer encounter_id FK
+  integer player_id FK
+  timestamp_with_time_zone created_at
 }
 ```
 

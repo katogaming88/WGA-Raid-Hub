@@ -12,6 +12,35 @@ answers to.
 
 ---
 
+## [3.138.0] - 2026-09-18
+
+### Backend
+
+- Officers can plan who is in for each boss on a raid night
+  ([#1216](https://github.com/katogaming88/WGA-Raid-Hub/issues/1216)). Each
+  boss keeps a standing group (`boss_groups`), the raiders who normally kill it.
+  Every raid night in the coming week is filled from those groups
+  automatically (an hourly pg_cron job), into `raid_night_bosses` and
+  `raid_night_lineups`. Bench raiders start out on every boss, even when they
+  are in a group, until an officer puts them in. Officers change a night for
+  that night only with `set_raid_night_lineup()`, or change the group itself with
+  `set_boss_group()`, which also updates the coming nights nobody has saved
+  yet. `plan_raid_night()` fills a night by hand, and
+  `set_raid_night_boss_skipped()` marks a boss "not tonight". Every night's
+  plan is kept, so it still says who was planned in after the night is over.
+  The functions refuse raiders who are archived or on another team, and refuse
+  a save made after someone else changed the same lineup, so two officers
+  cannot quietly undo each other. The team's raiders, officers, guild officers
+  and site admins can read the plan; signed-out visitors and other teams
+  cannot. This is for the new app's Calendar page, which comes next; nothing on
+  the current site changes.
+
+### Project
+
+- The decision is logged in `docs/database-decisions.md`, the new tables and
+  functions are described in `docs/RLS.md`, and `docs/backup-restore.md`
+  lists the three tables and the new table count.
+
 ## [3.137.6] - 2026-09-18
 
 ### Project
