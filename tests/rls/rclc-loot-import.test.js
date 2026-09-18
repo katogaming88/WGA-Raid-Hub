@@ -11,7 +11,7 @@
 // tests/rls/promotion.test.js uses, since writes never commit across
 // separate pool connections here.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, OFFICER_T1, TEAM_LEADER_T1, RAIDER_T1 } from './helpers.js';
+import { pool, withTxn as withSharedTxn, OFFICER_T1, TEAM_LEADER_T1, RAIDER_T1 } from './helpers.js';
 
 // Seeded rows this file leans on (supabase/seed.sql): item 1 is
 // 'Seed Test Staff' (wow_item_id 100001); player 1 is team 1 'Seedraider-Illidan'.
@@ -32,31 +32,10 @@ function row(overrides) {
   };
 }
 
+// Wraps the shared harness: asRole runs one statement as the given uid
+// (authenticated), then restores postgres.
 async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asRole = async (uid, text, params) => {
-      await q('savepoint role_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify({ sub: uid, role: 'authenticated' })
-      ]);
-      await q('set local role authenticated');
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint role_call');
-        throw err;
-      }
-    };
-    return await fn(q, asRole);
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
+  return withSharedTxn(({ q, asUser }) => fn(q, asUser));
 }
 
 const importAs = (asRole, uid, rows) =>

@@ -11,40 +11,19 @@
 // to officer review instead of rejecting means a genuine report can still
 // get through -- an officer decides case by case.
 //
-// Same withTxn harness as tests/rls/self-received-corrections.test.js.
+// Uses the shared withTxn from helpers.js.
 // Seed player 1 is team 1 'Seedraider-Illidan'; item 1 is 'Seed Test Staff'.
 // Player 1 has no team_member_id in the seed, so auto-approval is never
 // otherwise reachable -- the "would auto-approve" tests below link it to
 // team_members id 3 (RAIDER_T1's row) inside the transaction so it rolls
 // back with everything else.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, RAIDER_T1 } from './helpers.js';
+import { withTxn as withSharedTxn, RAIDER_T1 } from './helpers.js';
 
+// Wraps the shared harness: asRaider runs one statement as the team 1
+// raider, then restores postgres.
 async function withTxn(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const q = (text, params) => client.query(text, params);
-    const asRaider = async (text, params) => {
-      await q('savepoint raid_note_call');
-      await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify({ sub: RAIDER_T1, role: 'authenticated' })
-      ]);
-      await q('set local role authenticated');
-      try {
-        const res = await q(text, params);
-        await q('reset role');
-        return res;
-      } catch (err) {
-        await q('rollback to savepoint raid_note_call');
-        throw err;
-      }
-    };
-    return await fn(q, asRaider);
-  } finally {
-    await client.query('rollback');
-    client.release();
-  }
+  return withSharedTxn(({ q, asUser }) => fn(q, (text, params) => asUser(RAIDER_T1, text, params)));
 }
 
 const submit = (asRaider, note, source = 'Other') =>
