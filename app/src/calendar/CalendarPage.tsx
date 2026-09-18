@@ -43,6 +43,7 @@ import {
   type RaidNight,
   type ScheduleRule
 } from './calendar';
+import { BossLineup } from './BossLineup';
 import {
   useAnswers,
   useOfficerSetAnswer,
@@ -60,7 +61,11 @@ import './calendar.css';
 export function CalendarPage() {
   const [params] = useSearchParams();
   const date = params.get('date');
-  return isDateParam(date) ? <NightPage key={date} date={date} /> : <MonthPage month={params.get('month')} />;
+  return isDateParam(date) ? (
+    <NightPage key={date} date={date} lineup={params.get('view') === 'lineup'} />
+  ) : (
+    <MonthPage month={params.get('month')} />
+  );
 }
 
 // Who is reading, and what they may see and do.
@@ -410,7 +415,7 @@ function Month({
 
 // A raid night
 
-function NightPage({ date }: { date: string }) {
+function NightPage({ date, lineup }: { date: string; lineup: boolean }) {
   const team = useTeam();
   const base = useCalendarBase();
   const day = new Date(`${date}T00:00:00`);
@@ -442,8 +447,8 @@ function NightPage({ date }: { date: string }) {
           </p>
         </div>
         <nav className="night-nav" aria-label="Raid nights">
-          <NightStep base={base} date={previous} direction="previous" />
-          <NightStep base={base} date={next} direction="next" />
+          <NightStep base={base} date={previous} direction="previous" lineup={lineup} />
+          <NightStep base={base} date={next} direction="next" lineup={lineup} />
         </nav>
       </div>
 
@@ -466,14 +471,26 @@ function NightPage({ date }: { date: string }) {
               </p>
             );
           }
-          return <Night night={night} viewer={viewer} players={players} answers={rows} />;
+          return <Night night={night} viewer={viewer} players={players} answers={rows} lineup={lineup} />;
         }}
       </DataState>
     </section>
   );
 }
 
-function NightStep({ base, date, direction }: { base: string; date: string | null; direction: 'previous' | 'next' }) {
+// Stepping to another night keeps the view: from the boss lineup, the next
+// night's boss lineup.
+function NightStep({
+  base,
+  date,
+  direction,
+  lineup
+}: {
+  base: string;
+  date: string | null;
+  direction: 'previous' | 'next';
+  lineup: boolean;
+}) {
   const icon = <Icon name={direction === 'previous' ? 'chevronLeft' : 'chevronRight'} />;
   const word = direction === 'previous' ? 'Previous' : 'Next';
   if (!date) {
@@ -490,7 +507,7 @@ function NightStep({ base, date, direction }: { base: string; date: string | nul
       {direction === 'previous' && <span className="night-step-date">{shortDay(date)}</span>}
       <Link
         className="button icon-only"
-        to={`${base}?date=${date}`}
+        to={`${base}?date=${date}${lineup ? '&view=lineup' : ''}`}
         aria-label={`${word} raid night: ${shortDay(date)}`}
       >
         {icon}
@@ -504,19 +521,59 @@ function Night({
   night,
   viewer,
   players,
-  answers
+  answers,
+  lineup
 }: {
   night: RaidNight;
   viewer: Viewer;
   players: PlayerRow[];
   answers: Answer[];
+  lineup: boolean;
 }) {
   const touch = useTouchScreen();
+  const base = useCalendarBase();
+  // Officer changes need a computer (Kat, 2026-09-16).
+  const officerTools = viewer.officer && !touch;
+
+  // The boss lineup is an officer tool (#1216), so it needs a computer too.
+  if (officerTools) {
+    return (
+      <>
+        <nav className="night-tabs" aria-label="Night views">
+          <Link to={`${base}?date=${night.date}`} aria-current={lineup ? undefined : 'page'}>
+            Who’s coming
+          </Link>
+          <Link to={`${base}?date=${night.date}&view=lineup`} aria-current={lineup ? 'page' : undefined}>
+            Boss lineup
+          </Link>
+        </nav>
+        {lineup ? (
+          <BossLineup night={night} players={players} answers={answers} />
+        ) : (
+          <Coming night={night} viewer={viewer} players={players} answers={answers} officerTools />
+        )}
+      </>
+    );
+  }
+  return <Coming night={night} viewer={viewer} players={players} answers={answers} officerTools={false} />;
+}
+
+function Coming({
+  night,
+  viewer,
+  players,
+  answers,
+  officerTools
+}: {
+  night: RaidNight;
+  viewer: Viewer;
+  players: PlayerRow[];
+  answers: Answer[];
+  officerTools: boolean;
+}) {
   const view = nightView(players, night, answers);
   const [now] = useState(() => new Date());
   const [editing, setEditing] = useState<NightRow | null>(null);
-  // Officer changes need a computer (Kat, 2026-09-16).
-  const officerTools = viewer.officer && !touch;
   const mine = viewer.me
     ? {
         player: viewer.me,

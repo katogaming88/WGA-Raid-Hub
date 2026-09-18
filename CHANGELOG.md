@@ -12,7 +12,7 @@ answers to.
 
 ---
 
-## [3.138.0] - 2026-09-17
+## [3.140.0] - 2026-09-18
 
 ### Project
 
@@ -29,6 +29,135 @@ answers to.
   ([#796](https://github.com/katogaming88/WGA-Raid-Hub/issues/796))
 - Recorded the current site's Streamers tab as browser tests before rebuilding
   it, and added the new page's states to the accessibility suite
+
+## [3.139.0] - 2026-09-18
+
+### Project
+
+- The new app's **Boss lineup**
+  ([#1216](https://github.com/katogaming88/WGA-Raid-Hub/issues/1216)): on a
+  raid night's page, officers on a computer get a second tab next to "Who's
+  coming". Everyone on the roster is listed by role, with a cell per boss on
+  that night's plan; a click puts a raider in or takes them out for that boss.
+  The night arrives already filled from each boss's usual group, with bench
+  raiders out (an "In all night" button puts one in for every boss). A yellow
+  dot marks a cell changed for tonight only, and a red "!" marks a raider
+  planned in who said they are not coming. The save bar above the grid is
+  always there at one height, so nothing moves while cells are clicked: **Save
+  tonight** changes this night only, **Save to the group** also makes it the
+  usual group for coming nights. Each boss saves on its own, and a boss another
+  officer saved first is held back with a "Show their version" button instead
+  of being overwritten. A **Skip** button takes a boss off the night. Leaving
+  with unsaved changes asks first, and stepping to the previous or next night
+  stays on the Boss lineup. A night not planned yet offers **Fill from the
+  groups**, and the very first night offers **Start with everyone in**. Each
+  boss's column reads its count, warning and role mix to screen readers, and
+  the buff squares carry a check or a cross as well as their colour. Nothing on
+  the current site changes.
+- A button that can't be used yet now looks faded across the new app; until
+  now a disabled button looked exactly like a working one.
+- The local stack guide notes that the Boss lineup needs raid bosses, which the
+  seed does not carry.
+
+## [3.138.0] - 2026-09-18
+
+### Backend
+
+- Officers can plan who is in for each boss on a raid night
+  ([#1216](https://github.com/katogaming88/WGA-Raid-Hub/issues/1216)). Each
+  boss keeps a standing group (`boss_groups`), the raiders who normally kill it.
+  Every raid night in the coming week is filled from those groups
+  automatically (an hourly pg_cron job), into `raid_night_bosses` and
+  `raid_night_lineups`. Bench raiders start out on every boss, even when they
+  are in a group, until an officer puts them in. Officers change a night for
+  that night only with `set_raid_night_lineup()`, or change the group itself with
+  `set_boss_group()`, which also updates the coming nights nobody has saved
+  yet. `plan_raid_night()` fills a night by hand, and
+  `set_raid_night_boss_skipped()` marks a boss "not tonight". Every night's
+  plan is kept, so it still says who was planned in after the night is over.
+  The functions refuse raiders who are archived or on another team, and refuse
+  a save made after someone else changed the same lineup, so two officers
+  cannot quietly undo each other. The team's raiders, officers, guild officers
+  and site admins can read the plan; signed-out visitors and other teams
+  cannot. This is for the new app's Calendar page, which comes next; nothing on
+  the current site changes.
+
+### Project
+
+- The decision is logged in `docs/database-decisions.md`, the new tables and
+  functions are described in `docs/RLS.md`, and `docs/backup-restore.md`
+  lists the three tables and the new table count.
+
+## [3.137.6] - 2026-09-18
+
+### Project
+
+- The three build tools Dependabot holds back for the new app (TypeScript,
+  eslint and its rule set) now say when the hold can be lifted. A test reads
+  the reason for each hold out of the app's lockfile every time that lockfile
+  changes and fails the pull request that makes a hold stale, naming the one to
+  remove ([#1241](https://github.com/katogaming88/WGA-Raid-Hub/issues/1241)).
+  Until now a hold outlived its reason quietly, since Dependabot obeys it and
+  never offers the newer version. The check runs on every Dependabot bump for
+  `app/`, which no `tests/ci` guard did before.
+
+## [3.137.5] - 2026-09-17
+
+### Project
+
+- Dependabot's weekly pull request for the new app's build and test tools now
+  holds eslint major versions back (eslint itself and its `@eslint/js`
+  companion, which moves with it), the way it already holds TypeScript
+  majors, until the app's accessibility lint plugin can run on them
+  ([#1238](https://github.com/katogaming88/WGA-Raid-Hub/issues/1238)). The
+  first run bundled eslint 10 into the group and the pull request could not
+  install its packages, which would have repeated every week. The test that
+  pins the entry's shape pins all three held majors.
+
+## [3.137.4] - 2026-09-17
+
+### Project
+
+- A change to `supabase/functions/.env.example` no longer has to be written up
+  as an Edge Functions release
+  ([#1223](https://github.com/katogaming88/WGA-Raid-Hub/issues/1223)). That
+  file is a template of local settings read only by `supabase functions serve`;
+  the deploy never uploads it and no function's version moves, but the
+  changelog check counted every path under the directory and demanded a
+  `### Functions` entry for it (3.101.3 carries one saying nothing shipped).
+  It is now project territory, like `config.toml`. A new test reads six
+  representative paths through the changelog rule, the version stamp and the
+  deploy selector at once and fails if any one of them disagrees with the
+  other two, and it runs on any pull request that touches the functions
+  directory. CONTRIBUTING's piece table says so; its drift paragraph no
+  longer claims the functions deploy by hand (a merge has deployed them since
+  #1083, and the deploy reads the version back since #971), and the PR
+  checklist names all five CHANGELOG sections instead of two.
+
+## [3.137.3] - 2026-09-17
+
+### Project
+
+- The new app's checks (typecheck, lint, format, unit tests, the build and
+  the browser suite) now also run after every merge to `main`, not only on
+  the pull request, so a merge that lands broken is seen within minutes
+  instead of at the next pull request
+  ([#1182](https://github.com/katogaming88/WGA-Raid-Hub/issues/1182)). Each
+  merge gets its own run; a later merge no longer cancels the one before it.
+
+## [3.137.2] - 2026-09-17
+
+### Project
+
+- The file that tells both the current site and the new app what the database
+  looks like (`js/database.types.ts`) is now generated from the migrations
+  by `npm run db:types`, and the Schema docs check fails a pull request that
+  changed the schema without regenerating it
+  ([#1181](https://github.com/katogaming88/WGA-Raid-Hub/issues/1181)). It had
+  been edited by hand since July and was four tables and seven database
+  functions behind; this release carries the first full regeneration. The
+  generator is pinned by image so every machine and CI write the same file,
+  and nothing is written unless the output is a complete types file.
 
 ## [3.137.1] - 2026-09-17
 

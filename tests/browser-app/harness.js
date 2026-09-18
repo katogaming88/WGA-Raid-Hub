@@ -161,6 +161,13 @@ export async function openApp(browser, port, state) {
     raid_schedule: [],
     raid_schedule_exceptions: [],
     raid_rsvps: [],
+    // The boss lineup on a night (#1216): the season's bosses, each boss's
+    // usual group, and the night's plan.
+    seasons: [],
+    raid_encounters: [],
+    boss_groups: [],
+    raid_night_bosses: [],
+    raid_night_lineups: [],
     streamers: [],
     // Guild home (#1102): the guild officers, and what waits on an officer.
     site_settings: [],

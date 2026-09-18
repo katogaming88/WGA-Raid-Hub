@@ -263,6 +263,37 @@ const CAL_NIGHT_PAGE = {
   sentinel: 'main:has(.heads-up-item)'
 };
 
+// The boss lineup (#1216): two raids, a planned night with a change from the
+// group, a raider in who said they are out, and the bench, so every cell state
+// and count tone is on the page.
+const LINEUP_ZONE = { id: 10, name: 'The Venomous Abyss', season: 'Season One', is_mini_raid: false, sort_index: 0 };
+const LINEUP_MINI = { id: 11, name: 'Tidebound Grotto', season: 'Season One', is_mini_raid: true, sort_index: 1 };
+const lineupBoss = (encounter_id, position) => ({
+  raid_date: CAL_NIGHT,
+  encounter_id,
+  position,
+  skipped: false,
+  confirmed_at: null
+});
+const placed = (encounter_id, ids) => ids.map((player_id) => ({ encounter_id, player_id }));
+const CAL_LINEUP = {
+  ...CAL_OFFICER,
+  path: `/g/wga/t/phoenix/calendar?date=${CAL_NIGHT}&view=lineup`,
+  sentinel: 'main:has(.lineup-toggle)',
+  tables: {
+    ...CAL_TABLES,
+    seasons: [{ display_name: 'Season One', starts_at: '2026-01-01', ends_at: null }],
+    raid_encounters: [
+      { id: 101, name: "Nek'zali the Soulcoiler", sort_index: 1, zone: LINEUP_ZONE },
+      { id: 102, name: 'Sszorak', sort_index: 2, zone: LINEUP_ZONE },
+      { id: 103, name: 'Nymrissa Wavecaller', sort_index: 1, zone: LINEUP_MINI }
+    ],
+    raid_night_bosses: [lineupBoss(101, 1), lineupBoss(102, 2), lineupBoss(103, 3)],
+    raid_night_lineups: [...placed(101, [1, 2, 3, 4, 6]), ...placed(102, [2, 3, 4]), ...placed(103, [1, 2, 3, 4])],
+    boss_groups: [...placed(101, [1, 2, 3, 4, 6]), ...placed(102, [1, 2, 3, 4]), ...placed(103, [1, 2, 3, 4])]
+  }
+};
+
 const GUILD = { path: '/g/wga', sentinel: 'main:has(.guild-officer)', teams: GUILD_TEAMS, tables: GUILD_TABLES };
 const GUILD_OFFICER = {
   ...GUILD,
@@ -309,6 +340,8 @@ const STATES = [
   },
   { label: 'calendar night, officer', ...CAL_NIGHT_PAGE },
   { label: 'calendar night, officer, light', ...CAL_NIGHT_PAGE, colorScheme: 'light' },
+  { label: 'calendar boss lineup, officer', ...CAL_LINEUP },
+  { label: 'calendar boss lineup, officer, light', ...CAL_LINEUP, colorScheme: 'light' },
   {
     label: 'calendar night, officer changing an answer',
     ...CAL_NIGHT_PAGE,

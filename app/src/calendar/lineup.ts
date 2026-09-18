@@ -1,0 +1,373 @@
+// The boss lineup on a raid night (#1216). Each boss has a usual group
+// (boss_groups), every raid night starts as a copy of those groups
+// (raid_night_bosses and raid_night_lineups, filled by the database a week
+// ahead), and officers change a night for that night only or save the change
+// to the group. Kat chose this on 2026-09-18 from Rex's review of the first
+// draft, which stored only who sat out; the grid is board E of the boss lineup
+// mockups.
+
+import { ROLE_LABELS, ROLE_ORDER, type PlayerRow, type Role } from '../roster/roster';
+import { displayName, rosterOf, statusFor, type Answer, type NightRow, type RaidNight } from './calendar';
+
+// Rows as read
+
+export type SeasonRow = { display_name: string; starts_at: string; ends_at: string | null };
+export type EncounterRow = {
+  id: number;
+  name: string;
+  sort_index: number;
+  zone: { id: number; name: string; season: string; is_mini_raid: boolean; sort_index: number };
+};
+export type NightBossRow = {
+  raid_date: string;
+  encounter_id: number;
+  position: number;
+  skipped: boolean;
+  confirmed_at: string | null;
+};
+// One raider in one boss's group, or in one boss's lineup for the night.
+export type PlaceRow = { encounter_id: number; player_id: number };
+
+// Who is in, boss by boss.
+export type Places = ReadonlyMap<number, ReadonlySet<number>>;
+
+export function placesOf(rows: PlaceRow[]): Map<number, Set<number>> {
+  const places = new Map<number, Set<number>>();
+  for (const r of rows) {
+    if (!places.has(r.encounter_id)) places.set(r.encounter_id, new Set());
+    places.get(r.encounter_id)!.add(r.player_id);
+  }
+  return places;
+}
+
+const EMPTY: ReadonlySet<number> = new Set();
+export const placesFor = (places: Places, encounterId: number) => places.get(encounterId) ?? EMPTY;
+
+export const sameSet = (a: ReadonlySet<number>, b: ReadonlySet<number>) =>
+  a.size === b.size && [...a].every((x) => b.has(x));
+
+// Mythic allows 20 raiders per boss; a lair or mini raid allows 25 (Kat).
+export const MYTHIC_CAP = 20;
+export const MINI_RAID_CAP = 25;
+
+// A boss's name short enough for a grid column: "Nek'zali the Soulcoiler" is
+// "Nek'zali" and "The Lost Explorers" is "Lost Explorers". Only a one-word
+// name before " the " or a comma is cut, so "Vexie and the Geargrinders" and
+// "Assault of the Zaqali" stay whole. The full name stays on the column for
+// screen readers.
+export function shortBossName(name: string): string {
+  const trimmed = name.trim().replace(/^the\s+/i, '');
+  const cut = /^([^\s,]+)(?:,|\s+the\s+)/i.exec(trimmed);
+  return cut ? cut[1]! : trimmed;
+}
+
+// The season a night falls in, by its dates.
+export function seasonOn(seasons: SeasonRow[], date: string): string | null {
+  return seasons.find((s) => s.starts_at <= date && (s.ends_at === null || date <= s.ends_at))?.display_name ?? null;
+}
+
+export type LineupBoss = { id: number; name: string; short: string; skipped: boolean; confirmed: boolean };
+export type LineupRaid = { zoneId: number; name: string; cap: number; bosses: LineupBoss[] };
+
+const byZone = (a: EncounterRow, b: EncounterRow) =>
+  a.zone.sort_index - b.zone.sort_index || a.zone.id - b.zone.id || a.sort_index - b.sort_index || a.id - b.id;
+
+// The night's bosses as raids, in pull order. With no plan for the night yet,
+// `fresh` lists every boss of the night's season instead, for the very first
+// night a team plans before any group exists.
+export function lineupRaids(
+  encounters: EncounterRow[],
+  nightBosses: NightBossRow[],
+  opts: { fresh: boolean; season: string | null }
+): LineupRaid[] {
+  const byId = new Map(encounters.map((e) => [e.id, e]));
+  const listed: { e: EncounterRow; boss: NightBossRow | null }[] = opts.fresh
+    ? encounters
+        .filter((e) => e.zone.season === opts.season)
+        .sort(byZone)
+        .map((e) => ({ e, boss: null }))
+    : [...nightBosses]
+        .sort((a, b) => a.position - b.position)
+        .flatMap((b) => (byId.has(b.encounter_id) ? [{ e: byId.get(b.encounter_id)!, boss: b }] : []));
+
+  const raids: LineupRaid[] = [];
+  for (const { e, boss } of listed) {
+    let raid = raids.find((r) => r.zoneId === e.zone.id);
+    if (!raid) {
+      raid = {
+        zoneId: e.zone.id,
+        name: e.zone.name,
+        cap: e.zone.is_mini_raid ? MINI_RAID_CAP : MYTHIC_CAP,
+        bosses: []
+      };
+      raids.push(raid);
+    }
+    raid.bosses.push({
+      id: e.id,
+      name: e.name,
+      short: shortBossName(e.name),
+      skipped: boss?.skipped ?? false,
+      confirmed: !!boss?.confirmed_at
+    });
+  }
+  return raids;
+}
+
+// Edits: the officer's unsaved lineup for each boss they touched. A boss with
+// no edit shows what is saved, so a refetch after someone else's save lands
+// on every boss this officer has not touched.
+export type Edits = ReadonlyMap<number, ReadonlySet<number>>;
+
+export function current(saved: Places, edits: Edits): Map<number, ReadonlySet<number>> {
+  const out = new Map<number, ReadonlySet<number>>(saved);
+  for (const [id, set] of edits) out.set(id, set);
+  return out;
+}
+
+export function toggle(
+  saved: Places,
+  edits: Edits,
+  encounterId: number,
+  playerId: number
+): Map<number, ReadonlySet<number>> {
+  const next = new Map(edits);
+  const set = new Set(edits.get(encounterId) ?? placesFor(saved, encounterId));
+  if (set.has(playerId)) set.delete(playerId);
+  else set.add(playerId);
+  if (sameSet(set, placesFor(saved, encounterId))) next.delete(encounterId);
+  else next.set(encounterId, set);
+  return next;
+}
+
+// A bench raider in, or out, for every boss still on the night.
+export function wholeNight(
+  saved: Places,
+  edits: Edits,
+  bosses: LineupBoss[],
+  playerId: number,
+  putIn: boolean
+): Map<number, ReadonlySet<number>> {
+  const next = new Map(edits);
+  for (const boss of bosses.filter((b) => !b.skipped)) {
+    const set = new Set(edits.get(boss.id) ?? placesFor(saved, boss.id));
+    if (putIn) set.add(playerId);
+    else set.delete(playerId);
+    if (sameSet(set, placesFor(saved, boss.id))) next.delete(boss.id);
+    else next.set(boss.id, set);
+  }
+  return next;
+}
+
+// Every boss the officer changed, and how many cells.
+export function changes(saved: Places, edits: Edits): { bosses: number[]; cells: number } {
+  let cells = 0;
+  const bosses: number[] = [];
+  for (const [id, set] of edits) {
+    const was = placesFor(saved, id);
+    const diff = [...set].filter((x) => !was.has(x)).length + [...was].filter((x) => !set.has(x)).length;
+    if (diff) {
+      bosses.push(id);
+      cells += diff;
+    }
+  }
+  return { bosses, cells };
+}
+
+// Every "first boss night" edit: everyone on the roster in except the bench,
+// for each boss listed.
+export function everyoneIn(players: PlayerRow[], bosses: LineupBoss[]): Map<number, ReadonlySet<number>> {
+  const ids = new Set(
+    rosterOf(players)
+      .filter((p) => !p.is_bench)
+      .map((p) => p.id)
+  );
+  return new Map(bosses.map((b) => [b.id, ids]));
+}
+
+export type CapStatus = { text: string; tone: 'good' | 'warn' | 'bad' };
+
+export function capStatus(count: number, cap: number): CapStatus {
+  if (count === cap) return { text: 'Full', tone: 'good' };
+  if (count > cap) return { text: `${count - cap} over`, tone: 'bad' };
+  const open = cap - count;
+  return { text: `${open} open spot${open === 1 ? '' : 's'}`, tone: 'warn' };
+}
+
+// Raid buffs, boss debuffs and the two must-haves, as the current site lists
+// them (js/common.js RAID_BUFFS, BOSS_DEBUFFS and RAID_UTILITY; #1244 is
+// about keeping one list).
+export type Buff = { name: string; classes: string[] };
+
+export const BUFFS: Buff[] = [
+  { name: 'Mark of the Wild', classes: ['Druid'] },
+  { name: 'Arcane Intellect', classes: ['Mage'] },
+  { name: 'Battle Shout', classes: ['Warrior'] },
+  { name: 'Power Word: Fortitude', classes: ['Priest'] },
+  { name: 'Blessing of the Bronze', classes: ['Evoker'] },
+  { name: 'Skyfury', classes: ['Shaman'] },
+  { name: 'Devotion Aura', classes: ['Paladin'] },
+  { name: "Hunter's Mark", classes: ['Hunter'] },
+  { name: 'Mystic Touch', classes: ['Monk'] },
+  { name: 'Chaos Brand', classes: ['Demon Hunter'] },
+  { name: 'Atrophic Poison', classes: ['Rogue'] },
+  { name: 'Heroism / Bloodlust', classes: ['Shaman', 'Mage', 'Hunter', 'Evoker'] },
+  { name: 'Combat Res', classes: ['Druid', 'Warlock', 'Paladin', 'Death Knight'] }
+];
+
+// A Mythic boss wants two tanks and four healers (the A2 mockup's check).
+export const TANKS_WANTED = 2;
+export const HEALERS_WANTED = 4;
+
+export type LineupCell = {
+  boss: LineupBoss;
+  in: boolean;
+  // Changed for tonight only: the boss's usual group has it the other way.
+  differs: boolean;
+  // In, but they said they are not coming.
+  conflict: boolean;
+};
+
+export type LineupRow = {
+  row: NightRow;
+  // A word beside the name: their answer (Absent, Late...), else Bench or Trial.
+  tag: string | null;
+  tagTone: 'out' | 'plain';
+  cells: LineupCell[];
+  count: number;
+};
+
+export type BossTotal = {
+  boss: LineupBoss;
+  count: number;
+  status: CapStatus;
+  tanks: number;
+  healers: number;
+  damage: number;
+  // Buffs nobody in brings.
+  missing: string[];
+  // The one warning under the boss's count: the cap first, then buffs.
+  warn: string;
+  // Everything "Needs a look" lists for the boss.
+  problems: string[];
+};
+
+export type BuffCell = { boss: LineupBoss; providers: string[] };
+
+export type LineupView = {
+  groups: { role: Role; label: string; rows: LineupRow[] }[];
+  // Bosses on the plan tonight (not skipped).
+  live: LineupBoss[];
+  totals: BossTotal[];
+  buffs: { buff: Buff; cells: BuffCell[] }[];
+  // Bench raiders out on every boss, for "Needs a look".
+  benchOut: string[];
+};
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+// The grid for one raid: everyone on the roster by role, with a cell per boss.
+// A raider who said they are not coming stays in the grid, so a planned-in
+// raider who then answered Absent shows as a conflict rather than vanishing.
+export function lineupView(
+  players: PlayerRow[],
+  night: RaidNight,
+  answers: Answer[],
+  raid: LineupRaid,
+  places: Places,
+  groups: Places
+): LineupView {
+  const byPlayer = new Map(answers.filter((a) => a.raid_date === night.date).map((a) => [a.player_id, a]));
+  const rows: NightRow[] = rosterOf(players)
+    .map((player) => {
+      const answer = byPlayer.get(player.id);
+      return {
+        player,
+        name: displayName(player),
+        character: player.name_realm.split('-')[0]!.trim(),
+        role: player.classes_specs!.role as Role,
+        status: statusFor(player, night, answer),
+        note: answer?.note?.trim() ?? '',
+        updatedAt: answer?.updated_at ?? null
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const live = raid.bosses.filter((b) => !b.skipped);
+  const isIn = (boss: LineupBoss, id: number) => placesFor(places, boss.id).has(id);
+  const saidOut = (r: NightRow) => r.status.answered && r.status.kind === 'out';
+
+  const rowOf = (r: NightRow): LineupRow => {
+    const cells = raid.bosses.map((boss) => {
+      const inn = !boss.skipped && isIn(boss, r.player.id);
+      return {
+        boss,
+        in: inn,
+        differs: !boss.skipped && inn !== placesFor(groups, boss.id).has(r.player.id),
+        conflict: inn && saidOut(r)
+      };
+    });
+    const tag = r.status.answered
+      ? r.status.label
+      : r.player.is_bench
+        ? 'Bench'
+        : r.player.is_rotator
+          ? 'Rotator'
+          : r.player.is_trial
+            ? 'Trial'
+            : null;
+    return {
+      row: r,
+      tag,
+      tagTone: saidOut(r) ? 'out' : 'plain',
+      cells,
+      count: cells.filter((c) => c.in).length
+    };
+  };
+
+  const inFor = (boss: LineupBoss) => rows.filter((r) => isIn(boss, r.player.id));
+  const providers = (buff: Buff, boss: LineupBoss) =>
+    inFor(boss)
+      .filter((r) => buff.classes.includes(r.player.classes_specs?.class ?? ''))
+      .map((r) => r.name);
+
+  return {
+    groups: ROLE_ORDER.map((role) => ({
+      role,
+      label: ROLE_LABELS[role],
+      rows: rows.filter((r) => r.role === role).map(rowOf)
+    })).filter((g) => g.rows.length),
+    live,
+    totals: live.map((boss) => {
+      const inn = inFor(boss);
+      const n = (role: Role) => inn.filter((r) => r.role === role).length;
+      const tanks = n('Tank');
+      const healers = n('Heal');
+      const status = capStatus(inn.length, raid.cap);
+      const full = inn.length === raid.cap;
+      const missing = BUFFS.filter((b) => !providers(b, boss).length).map((b) => b.name);
+      const out = inn.filter(saidOut).map((r) => r.name);
+      const problems = [
+        ...(full ? [] : [status.text]),
+        ...(tanks === 0 ? ['no tanks'] : tanks < TANKS_WANTED ? ['needs a second tank'] : []),
+        ...(healers < HEALERS_WANTED ? [plural(healers, 'healer')] : []),
+        ...(missing.length ? [`no ${missing.join(', no ')}`] : []),
+        ...(out.length ? [`${out.join(', ')} said they’re not coming`] : [])
+      ];
+      return {
+        boss,
+        count: inn.length,
+        status,
+        tanks,
+        healers,
+        damage: n('Melee') + n('Ranged'),
+        missing,
+        warn: !full ? status.text : missing.length ? plural(missing.length, 'buff') : '',
+        problems
+      };
+    }),
+    buffs: BUFFS.map((buff) => ({ buff, cells: live.map((boss) => ({ boss, providers: providers(buff, boss) })) })),
+    benchOut: rows.filter((r) => r.player.is_bench && live.every((b) => !isIn(b, r.player.id))).map((r) => r.name)
+  };
+}
+
+// The message a refused save gives when someone else saved first.
+export const isStaleSave = (message: string) => /Someone else changed/i.test(message);

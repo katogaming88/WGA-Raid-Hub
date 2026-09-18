@@ -1,8 +1,15 @@
 name: App
 
 # The new app in app/ (#1101): typecheck, lint, format, unit tests and a
-# production build on every PR that touches it. The current site's checks
-# never look inside app/, and this job never looks outside it.
+# production build on every PR that touches it, and on every merge to main
+# (#1182). The current site's checks never look inside app/, and this job
+# never looks outside it.
+#
+# The merge run exists because main has no required check and no up-to-date
+# rule, so two PRs each green against their own base can land a broken main
+# between them, and until this ran on main nothing looked at the app after a
+# merge except the deploy's build. The two path lists are the same on
+# purpose; a test pins them equal.
 on:
   pull_request:
     paths:
@@ -14,9 +21,23 @@ on:
       - 'tests/behavior/**'
       - 'tests/browser/static-server.js'
       - '.github/workflows/app.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'js/database.types.ts'
+      - 'tests/browser-app/**'
+      - 'tests/behavior/**'
+      - 'tests/browser/static-server.js'
+      - '.github/workflows/app.yml'
 
+# A PR's pushes supersede each other: the group is the PR number and the
+# newer run cancels the older. A merge's run is keyed on its commit instead,
+# so every merge runs to the end; keyed on the ref, every push to main would
+# share one group and each merge would cancel the run before it.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 jobs:

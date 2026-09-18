@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |      1 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     17 h 22 m |
-| **All revamp work**                | **26 h  7 m** |
+| Revamp 2: public pages             |     19 h 22 m |
+| **All revamp work**                | **28 h  7 m** |
 
 ## Log
 
@@ -60,6 +60,18 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | 8:08–9:00 PM                  | #868 player profile, part 4: Mark Received and M+ request              | Revamp 2                         |    50 m | ~45 m build, ~5 m Kat deciding                                                                           | Both forms in dialogs, recorded from the current site first. Kat kept both usable on phones and let raiders see their own rejected M+ request (a new read rule). Recording showed the current site saves raid item receipts with their catalog slot, which the new loot priority list had been ignoring (43 of 73 live receipts). Kat then made the note required for Other, on both sites and in the database                                |
 | 9:05–9:40 PM                  | #870 Roster page, part 2: spec icons, officer columns                  | Revamp 2                         |    35 m | ~28 m build, ~7 m Kat deciding                                                                           | Spec icons bundled (Kat), all 40 checked by eye; Devourer uses the Void icon. Kat kept attendance and items awarded officer-only to avoid loot drama, and dropped BiS obtained from the roster. Tightened cells so the officer columns fit without scrolling                                                                                                                                                                                  |
 | 9:57–10:22 PM, 11:28–11:35 PM | #942 people table: re-plan, then step 1                                | Revamp 2 (Identity prerequisite) |    30 m | ~25 m build, ~5 m Kat deciding and merging                                                               | Audit against production, six-step plan posted on #942. Kat chose alts listed on the person rather than as roster rows, kept the never-signed-in Immolation officer, and let officers see a two-team raider's other team name only. Step 1 (PR #1191) adds the table with nothing reading it yet. Rex checked the migration's guard against production before merge; from his review Kat ruled that Discord is never unlinked from an account |
+
+### 2026-09-18
+
+| Time (ET)         | Item                                                                  | Phase            | Elapsed | Build / Kat                              | Notes |
+| ----------------- | --------------------------------------------------------------------- | ---------------- | ------: | ---------------------------------------- | ----- |
+| 12:40-2:00 AM     | #1216 boss lineup: rework after Rex's review (groups + nightly plans) | Revamp 2 (#1102) |    80 m | ~50 m build, ~30 m Kat on mockup rounds | Rex's review of #1231/#1232 asked for a standing group per boss copied into each night instead of a sit-out list; Kat chose it. Rewrote #1231 (three tables, an hourly fill, stale-save refusal, bench out by default), then mockup rounds on the canvas (boards E-I: Skip button, dots explained, always-visible save bar so the grid never moves, full-page states, a Boss groups page for later), then rebuilt #1232 on the new tables with Rex's page fixes. |
+
+### 2026-09-17
+
+| Time (ET)    | Item                                                   | Phase            | Elapsed | Build / Kat | Notes |
+| ------------ | ------------------------------------------------------ | ---------------- | ------: | ----------- | ----- |
+| 1:10-1:50 PM | #1216 boss lineup: the sit-outs table and officer grid | Revamp 2 (#1102) |    40 m | build, then a rebuild | First built board A; Kat meant the calmer A2, so the page was rebuilt as A2 (Needs a look panel, Show all buffs) with killed-boss greying split out as follow-up work. Two stacked PRs: the database step for Rex (#1231), then the night page's Boss lineup tab with counts against the 20 (Mythic) or 25 (mini raid) cap and the buff check. Only sit-outs are stored, so a night starts with everyone in and last week's lineup can be copied. |
 
 ### 2026-09-16
 
