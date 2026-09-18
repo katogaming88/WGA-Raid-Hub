@@ -35,4 +35,15 @@ describe('parseScoring + scoringSql', () => {
   it('requires the season argument', () => {
     expect(() => scoringSql(1, [], registry(), '')).toThrow(/--season/);
   });
+
+  // scoring carries team_id (#944), checked against the player's team by a
+  // trigger, so the generator names the team on every row it emits.
+  it('names the team in the column list and on every row', () => {
+    const { sql } = scoringSql(2, parseScoring(scoringRows()), registry(), 'Season 3');
+    expect(sql).toContain('insert into scoring (team_id, player_id, season, performance_score');
+    const hinda = sql.split('\n').find((l) => l.includes('Hinda-Thrall'));
+    expect(hinda).toContain(
+      "(2, (select id from players where team_id = 2 and name_realm = 'Hinda-Thrall'), 'Season 3'"
+    );
+  });
 });
