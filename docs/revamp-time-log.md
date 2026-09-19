@@ -10,10 +10,10 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 
 | Phase                              |   Time so far |
 | ---------------------------------- | ------------: |
-| Planning and design                |      2 h 30 m |
+| Planning and design                |      4 h 05 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     22 h 54 m |
-| **All revamp work**                | **32 h 19 m** |
+| **All revamp work**                | **33 h 54 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -106,6 +106,14 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 4:30-5:30 PM      | #1244 per-boss cap and role targets from data                          | Revamp 2 (#1102) |    60 m | build; Kat review not yet counted        | Kat's flex-boss comment on #1244 plus the role-target constants. New `raid_encounters.cap` (guild-officer/site-admin gated, since the table has no team of its own) and `team_lineup_settings` (officer gated like set_boss_group). Both boss grids read them, with a Role targets editor and an Edit cap control on the Boss groups page. Buff list unification (the third piece #1244 named) stayed out, as a separate cross-codebase issue. |
 | 8:50-9:05 PM      | #1244 Rex's review of #1256: the tanks line                           | Revamp 2 (#1102) |    15 m | ~10 m build, ~5 m Kat merging            | Rex found "needs a second tank" was a fixed phrase that ignored a team's own target, and a target of 0 still said "no tanks". Now counted against the target like healers. Merged 9:05 PM. |
 | 9:05-9:45 PM      | Revamp triage and the completion estimate                             | Planning         |    40 m | ~20 m build, ~20 m Kat deciding          | Closed #479 and #870, brought #1102's checklist up to date, moved eight Officer Tooling issues and #814 (new `new-page` label) into Revamp 3 and #1205 into Revamp 2, wrote up #756's remaining cleanup, and the estimate below. |
+| 10:15-10:45 PM    | Team plan: paid features instead of an hourly rate (#1259)             | Planning         |    30 m | ~15 m build, ~15 m Kat deciding          | Kat is stepping back from Phoenix and wants new work paid for, without billing her own guild by the hour. Settled a flat monthly plan per raid team: everything today stays free for WGA; adjustable scoring, Discord notices, faster syncs and team branding go in the plan; the loot lookup stays free. Filed #1259 in Revamp 3. |
+
+### 2026-09-19
+
+| Time (ET)       | Item                                                                  | Phase    | Elapsed | Build / Kat                     | Notes |
+| --------------- | --------------------------------------------------------------------- | -------- | ------: | ------------------------------- | ----- |
+| 12:25-12:35 AM  | Team plan: Rex's loot-systems spike                                    | Planning |    10 m | ~5 m build, ~5 m Kat            | Read Rex's "One Hub, Several Loot Systems" and proposed which systems are free and which are paid. |
+| 1:40-2:35 AM    | Team plan: loot systems, sync levels, roster audit, chip-in (#1259, #1261) | Planning |    55 m | ~30 m build, ~25 m Kat deciding | Base loot systems free (council, sims shown, wishlist ranking, priority), custom values and sims in the priority math paid, non-council systems not supported for now. Sync levels drafted against Viserio's and WoWAudit's (free gear daily; frequent syncs don't need a paid Supabase plan). Loot history caps set aside for season-depth limits. Roster audit filed as #1261 in Revamp 3. Raiders can chip in, support tied to the team, prepaid time lasts if the supporter leaves. Price and one-plan-or-tiers still open. |
 
 ## Not counted (same sessions, not revamp)
 
@@ -114,26 +122,28 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2026-09-13 | 9:17–9:36 PM   | Glizzygary wishlist lookup, then the missing Pending Roster audit entries (#1136, PR #1137)                                  |    20 m |
 | 2026-09-14 | 10:56–11:07 PM | Season dates decision on #1189: one start date for every team, from Blizzard's launch, no early rollovers (Season milestone) |    10 m |
 | 2026-09-14 | 11:15–11:28 PM | Issue and pull request writing rules, new PR and issue templates (PR #1192)                                                  |    15 m |
+| 2026-09-18 | 10:45–11:10 PM | Support Discord advice and logo directions (Kat picked the Go Again ring; artist brief on the design canvas)                     |    25 m |
+| 2026-09-18 | 11:50 PM–12:10 AM | Review of Rex's PR #1260 (duplicate Mark Received guard, old site): a Heroic copy on file does not block marking Mythic        |    20 m |
 
 ## Remaining in Revamp 1
 
 None. Revamp 1 finished 2026-09-14, all 11 issues closed, against a due date of 2026-10-31.
 
-## Remaining work and estimate (as of 2026-09-18)
+## Remaining work and estimate (as of 2026-09-19)
 
 The estimate uses the pace in this log: 32 hours of revamp work over six working days (2026-09-13 to 09-18), about 5.4 hours a day. Hours are logged time, the same way the rows above are counted.
 
 | Phase | What is left | Estimate | Done around, at this pace | Due |
 | --- | --- | --: | --- | --- |
-| Revamp 2: public pages | BoE Sales with #1205, Sign Up, History, About, Help, the Streams sidebar badge, #1162 (Battle.net characters), #1166 (M+ and crafted items), #1161 (Sentry) | ~15 h | Wed 2026-09-23 | 2026-11-30 |
-| Revamp 3: officer dashboard | 19 officer tabs and the site admin page (about 600 KB of current-site code; the Priority tab alone is 129 KB), the #869 rework, #871, #1247 lineup reports, the eight Officer Tooling issues folded in on 2026-09-18 (#687 with #659 is the largest), and #814's new Loot lookup page | ~45-60 h | 2026-10-06 to 10-09 | 2026-12-31 |
-| Revamp 4: cutover | #1105 (switch production, old-link redirects, a way back), #1212, #1152 | ~8 h, then a settling-in period | 2026-10-08 to 10-13 | 2027-01-31 |
+| Revamp 2: public pages | BoE Sales with #1205, Sign Up, History, About, Help, the Streams sidebar badge, #1162 (Battle.net characters), #1166 (M+ and crafted items), #1161 (Sentry) | ~15 h | Wed 2026-09-23 | 2026-09-26 |
+| Revamp 3: officer dashboard | 19 officer tabs and the site admin page (about 600 KB of current-site code; the Priority tab alone is 129 KB), the #869 rework, #871, #1247 lineup reports, the eight Officer Tooling issues folded in on 2026-09-18 (#687 with #659 is the largest), #814's new Loot lookup page, the #1259 team plan (the plan switch and its features, adjustable scoring the largest) and the #1261 roster audit | ~60-80 h | 2026-10-09 to 10-15 | 2026-10-17 |
+| Revamp 4: cutover | #1105 (switch production, old-link redirects, a way back), #1212, #1152 | ~8 h, then a settling-in period | 2026-10-13 to 10-19 | 2026-10-24 |
 
-**Build complete: about 2026-10-08 to 10-13 at this pace**, counting five working days a week from Monday 2026-09-21. Two things make that the early end:
+**Build complete: about 2026-10-13 to 10-19 at this pace**, counting five working days a week from Monday 2026-09-21. Two things make that the early end:
 
 - **Time this log does not count.** Waiting on Rex's reviews, and some of Kat's review time ("not yet counted" on several rows). Allowing about a fifth more puts it at **mid-October**.
 - **A slower pace.** At about 3.5 hours a day instead of 5.4, it lands in **late October**.
 
-Either way the build finishes well before the planned January cutover. When to switch production stays Kat's call; the soak between a finished build and the switch is not estimated here.
+Kat moved the milestone due dates in on 2026-09-18 to match (Revamp 2 to 09-26, Revamp 3 to 10-17, Revamp 4 to 10-24, from 11-30, 12-31 and 2027-01-31), so the build is due well before the planned January cutover. When to switch production stays Kat's call; the soak between a finished build and the switch is not estimated here.
 
-Revamp 3 grew on 2026-09-18 (the folded-in Officer Tooling issues and #814 added about 10 hours), which is why its range is higher than the 35-50 hours first given. Heroic Sale Runs (due 2026-12-31) and the rest of #1244 outside the Roster tab are not part of the new app being complete and are not counted.
+Revamp 3 grew twice: on 2026-09-18 the folded-in Officer Tooling issues and #814 added about 10 hours, and on 2026-09-19 the team plan (#1259, about 8-12 hours) and roster audit (#1261, about 6-8 hours) added 15-20 more, which is why its range is higher than the 35-50 hours first given. With them, Revamp 3 finishes close to its 2026-10-17 due date rather than a week ahead of it. Heroic Sale Runs (due 2026-12-31) and the rest of #1244 outside the Roster tab are not part of the new app being complete and are not counted.
