@@ -209,6 +209,7 @@ erDiagram
   numeric attendance_pct
   text season FK
   timestamp_with_time_zone updated_at
+  integer team_id FK
 }
 "public.season_signups" {
   integer id
@@ -324,6 +325,7 @@ erDiagram
   text track
   timestamp_with_time_zone synced_at
   integer__ bonus_list
+  integer team_id FK
 }
 "public.priority_stale_dismissals" {
   integer id

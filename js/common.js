@@ -109,14 +109,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.143.0';
+var VERSION = '3.144.0';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20260918164633';
+var REQUIRED_SCHEMA = '20260918165131';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -2490,34 +2490,27 @@ function mapSupabaseBisItems(rows) {
 }
 
 // Equipped gear (#845), synced by the blizzard-gear-sync Edge Function --
-// team-scoped through the same players!inner join fetchSupabaseBisItems
-// above uses, since player_equipped_gear (like bis_items) carries no
-// team_id column of its own.
+// team-scoped on the table's own team_id column (#944) and paged past
+// PostgREST's 1000-row cap, which sixteen slots per player crosses at 63
+// players. Resolves to the rows, [] for a team with nothing synced, or null
+// on any failure; mapSupabaseEquippedGear takes null and [] alike.
 function fetchSupabaseEquippedGear() {
   if (!supabaseClient) return Promise.resolve(null);
-  var query = supabaseClient
-    .from('player_equipped_gear')
-    .select('player_id, equipment_slot, item_id, item_level, track, players!inner(team_id)')
-    .eq('players.team_id', _teamCfg.supabaseTeamId)
-    .then(
-      function (result) {
-        if (result.error) {
-          console.warn('Supabase equipped gear query failed.', result.error.message);
-          return null;
-        }
-        return result.data && result.data.length ? result.data : null;
-      },
-      function (err) {
-        console.warn('Supabase equipped gear query failed.', err);
-        return null;
-      }
-    );
-  var timeout = new Promise(function (resolve) {
-    setTimeout(function () {
-      resolve(null);
-    }, 10000);
-  });
-  return Promise.race([query, timeout]);
+  return fetchAllPaged(
+    function (afterId, limit) {
+      var q = supabaseClient
+        .from('player_equipped_gear')
+        .select(
+          'id, player_id, equipment_slot, item_id, item_level, track',
+          afterId === null ? { count: 'exact' } : undefined
+        )
+        .eq('team_id', _teamCfg.supabaseTeamId)
+        .order('id', { ascending: true })
+        .limit(limit);
+      return afterId === null ? q : q.gt('id', afterId);
+    },
+    { label: 'equipped gear query' }
+  );
 }
 
 // Every Blizzard API equipment slot key, in display order, mapped to a

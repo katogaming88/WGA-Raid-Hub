@@ -16,7 +16,7 @@
 | [public.player_wcl_season_perf](public.player_wcl_season_perf.md) | 7 |  | BASE TABLE |
 | [public.players](public.players.md) | 25 |  | BASE TABLE |
 | [public.priority_order](public.priority_order.md) | 8 |  | BASE TABLE |
-| [public.scoring](public.scoring.md) | 10 |  | BASE TABLE |
+| [public.scoring](public.scoring.md) | 11 |  | BASE TABLE |
 | [public.season_signups](public.season_signups.md) | 18 |  | BASE TABLE |
 | [public.self_received_requests](public.self_received_requests.md) | 12 |  | BASE TABLE |
 | [public.team_members](public.team_members.md) | 8 |  | BASE TABLE |
@@ -44,7 +44,7 @@
 | [public.boe_items](public.boe_items.md) | 26 |  | BASE TABLE |
 | [public.boe_listings](public.boe_listings.md) | 8 |  | BASE TABLE |
 | [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) | 8 | Officer-acknowledged Priority List same-boss conflicts (a player holding #1 on 2+ items behind one boss+track kill), so buildPriorityConflictsBannerHtml() (js/tabs/tab-priority.js) stops re-flagging a reviewed one. | BASE TABLE |
-| [public.player_equipped_gear](public.player_equipped_gear.md) | 8 | One row per player per physical gear slot (Blizzard API slot keys: HEAD, FINGER_1, FINGER_2, ...), synced from the Blizzard Character Equipment Summary endpoint. Feeds generate_priority_order()'s equipped-item-level fairness factor. | BASE TABLE |
+| [public.player_equipped_gear](public.player_equipped_gear.md) | 9 | One row per player per physical gear slot (Blizzard API slot keys: HEAD, FINGER_1, FINGER_2, ...), synced from the Blizzard Character Equipment Summary endpoint. Feeds generate_priority_order()'s equipped-item-level fairness factor. | BASE TABLE |
 | [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) | 5 | Marks a team/season/item/track priority list as deliberately saved empty (no one wants the item) -- keeps it out of the Unmanaged Items list without a placeholder priority_order row. Cleared automatically the next time that item/track is saved with a non-empty roster. | BASE TABLE |
 | [public.priority_stale_dismissals](public.priority_stale_dismissals.md) | 7 | Officer-acknowledged "stale-after-Heroic" Priority List conflicts (a Mythic #1 who already has the Heroic version of the same item), so buildPriorityConflictsBannerHtml() (js/tabs/tab-priority.js) stops re-flagging a reviewed one. Sibling to priority_conflict_dismissals, kept separate since this is keyed by player+item rather than player+boss+track. | BASE TABLE |
 | [public.raid_schedule](public.raid_schedule.md) | 9 | The raid calendar's officer-owned recurring weekly rule (#892, part of #640): one row per weekday/time this team normally raids. is_optional flags a night with no automatic default-Present (#895) -- every non-bench roster player must explicitly RSVP. Raid nights are computed on the fly from this table plus raid_schedule_exceptions (js/calendar.js, computeRaidNights()), not materialized as rows. | BASE TABLE |
@@ -250,6 +250,7 @@ erDiagram
 "public.priority_order" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.priority_order" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.scoring" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.scoring" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.scoring" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.season_signups" }o--o| "public.classes_specs" : "FOREIGN KEY (swap_class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
 "public.season_signups" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
@@ -289,6 +290,7 @@ erDiagram
 "public.priority_conflict_dismissals" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.priority_conflict_dismissals" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.player_equipped_gear" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.player_equipped_gear" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.priority_order_confirmed_empty" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.priority_order_confirmed_empty" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.priority_order_confirmed_empty" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
@@ -478,6 +480,7 @@ erDiagram
   numeric attendance_pct
   text season FK
   timestamp_with_time_zone updated_at
+  integer team_id FK
 }
 "public.season_signups" {
   integer id
@@ -785,6 +788,7 @@ erDiagram
   text track
   timestamp_with_time_zone synced_at
   integer__ bonus_list
+  integer team_id FK
 }
 "public.priority_order_confirmed_empty" {
   integer team_id FK

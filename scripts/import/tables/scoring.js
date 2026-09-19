@@ -49,6 +49,7 @@ export function scoringSql(teamId, entries, registry, season) {
   const valueRows = entries.map((e) => {
     const nameRealm = registry.resolveOrStub(e.name);
     return [
+      String(teamId),
       playerIdSql(teamId, nameRealm),
       sqlString(season),
       scoreOrNull(e.performance),
@@ -60,7 +61,16 @@ export function scoringSql(teamId, entries, registry, season) {
   });
   const sql = insertStatement(
     'scoring',
-    ['player_id', 'season', 'performance_score', 'attendance_score', 'attendance_pct', 'recent_score', 'trend_score'],
+    [
+      'team_id',
+      'player_id',
+      'season',
+      'performance_score',
+      'attendance_score',
+      'attendance_pct',
+      'recent_score',
+      'trend_score'
+    ],
     valueRows,
     'on conflict (player_id, season) do nothing'
   );

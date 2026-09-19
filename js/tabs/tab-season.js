@@ -311,6 +311,7 @@ function _seedScoringFromSeasonPerf(players) {
 
   var rows = players.map(function (p) {
     return {
+      team_id: _teamCfg.supabaseTeamId,
       player_id: p.playerId,
       season: currentSeasonCode,
       performance_score: p.bestPerfAvg

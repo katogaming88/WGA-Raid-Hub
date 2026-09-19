@@ -125,9 +125,9 @@ export const LOOT = [
 ];
 
 export const GEAR = [
-  { player_id: 11, equipment_slot: 'TRINKET_1', item_id: 212002, item_level: 318, track: 'Hero' },
-  { player_id: 11, equipment_slot: 'HEAD', item_id: 212001, item_level: 321, track: 'Myth' },
-  { player_id: 11, equipment_slot: 'NECK', item_id: 999999, item_level: 300, track: null }
+  { id: 1, player_id: 11, equipment_slot: 'TRINKET_1', item_id: 212002, item_level: 318, track: 'Hero' },
+  { id: 2, player_id: 11, equipment_slot: 'HEAD', item_id: 212001, item_level: 321, track: 'Myth' },
+  { id: 3, player_id: 11, equipment_slot: 'NECK', item_id: 999999, item_level: 300, track: null }
 ];
 
 export const MPLUS_REJECTIONS = [

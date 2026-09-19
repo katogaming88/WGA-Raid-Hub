@@ -297,6 +297,7 @@ Cached computed scores per player per season. Denormalized for fast UI rendering
 | ------------------- | ------- | ----------------------------------------------------------------- |
 | `id`                | int4    | PK                                                                |
 | `player_id`         | int4    | FK -> `players.id`                                                |
+| `team_id`           | int4    | FK -> `teams.id`; matches the player's team (#944)                |
 | `season`            | text    | Season this score applies to (e.g. "MN1")                         |
 | `recent_score`      | numeric | Score based on recent raid performance (recency-weighted)         |
 | `trend_score`       | numeric | Score trajectory -- whether performance is improving or declining |
@@ -464,9 +465,9 @@ Tables: `players`, `season_signups`, `bis_items`, `scoring`, `mplus_exclusion_re
 
 A `BEFORE INSERT OR UPDATE` trigger on every table that carries a denormalized `team_id` alongside a `player_id` FK. Raises an exception if the two disagree -- i.e. if the row's `team_id` does not match `players.team_id` for the given `player_id`. Skips the check when `player_id` is null (allowed on `rclc_loot` after a player is deleted).
 
-Tables: `attendance`, `rclc_loot`, `bis_requests`, `self_received_requests`, `mplus_exclusion_requests`, `priority_order`.
+Tables: every table in `public` that carries `team_id` beside `player_id`, twenty as of #944 (`scoring` and `player_equipped_gear` gained the column then, and the three two-key tables without a trigger got one). The list is the trigger catalog itself: triggers on `check_team_id_matches_player()`, one per table, named `trg_<table>_team_id_check`.
 
-Note: `bis_items` is excluded -- it has no denormalized `team_id` and derives team through `player_id` by design.
+Note: `bis_items` is excluded -- it has no denormalized `team_id` and derives team through `player_id` by design (#935 retires it).
 
 ---
 
@@ -482,7 +483,7 @@ Both exist for deduplication on re-import but handle different failure modes. `r
 
 ### 3. `team_id` denormalized across many tables
 
-`attendance`, `rclc_loot`, `self_received_requests`, `bis_requests`, `mplus_exclusion_requests`, `season_signups`, and `priority_order` all carry `team_id` even though `player_id` already implies a team via `players.team_id`. This is intentional denormalization for two reasons: (1) it avoids joining through `players` on every query, and (2) it allows Supabase Row-Level Security policies to filter by team directly on these tables. The tradeoff is that `team_id` could drift out of sync with `players.team_id` if a player is transferred between teams. The `check_team_id_matches_player()` trigger guards against this on write.
+Every table that carries `player_id` also carries `team_id` (twenty tables as of #944; `bis_items` is the one exception until #935 retires it) even though `player_id` already implies a team via `players.team_id`. This is intentional denormalization for two reasons: (1) it avoids joining through `players` on every query, and (2) it allows Supabase Row-Level Security policies to filter by team directly on these tables. The tradeoff is that `team_id` could drift out of sync with `players.team_id` if a player is transferred between teams. The `check_team_id_matches_player()` trigger guards against this on write.
 
 ### 4. `players.name_realm` vs `team_members.name_realm`
 

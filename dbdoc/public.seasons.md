@@ -101,6 +101,7 @@ erDiagram
   numeric attendance_pct
   text season FK
   timestamp_with_time_zone updated_at
+  integer team_id FK
 }
 "public.tier_token_map" {
   integer id

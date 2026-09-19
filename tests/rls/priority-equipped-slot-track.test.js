@@ -62,7 +62,7 @@ async function seedItems(q) {
 
 async function seedScoring(q, playerId, performance, attendance) {
   await q(
-    'insert into public.scoring (player_id, season, performance_score, attendance_score) values ($1, $2, $3, $4)',
+    'insert into public.scoring (player_id, team_id, season, performance_score, attendance_score) values ($1, 1, $2, $3, $4)',
     [playerId, SEASON, performance, attendance]
   );
 }
@@ -80,8 +80,8 @@ async function seedBoth1And2Bis(q, itemId) {
 // so only the slot factor is in play and never the same-item exclusion.
 async function equip(q, playerId, slot, { track, ilvl = 300, itemId = 999901 }) {
   await q(
-    `insert into public.player_equipped_gear (player_id, equipment_slot, item_id, item_level, track)
-     values ($1, $2, $3, $4, $5)`,
+    `insert into public.player_equipped_gear (player_id, team_id, equipment_slot, item_id, item_level, track)
+     values ($1, 1, $2, $3, $4, $5)`,
     [playerId, slot, itemId, ilvl, track]
   );
 }

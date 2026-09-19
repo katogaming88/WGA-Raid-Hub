@@ -28,7 +28,7 @@ function drift(asUser) {
 
 async function seedScoring(q, playerId, performance, attendance) {
   await q(
-    'insert into public.scoring (player_id, season, performance_score, attendance_score) values ($1, $2, $3, $4)',
+    'insert into public.scoring (player_id, team_id, season, performance_score, attendance_score) values ($1, 1, $2, $3, $4)',
     [playerId, SEASON, performance, attendance]
   );
 }

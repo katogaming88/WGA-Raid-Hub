@@ -55,7 +55,7 @@ function loadSandbox(client) {
     document: { getElementById: (id) => els[id] || null },
     window: { DATA: { seasonName: 'Midnight Season 2' } },
     DATA: { seasonName: 'Midnight Season 2' },
-    _teamCfg: { supabaseTeamId: 1 },
+    _teamCfg: { supabaseTeamId: 3 },
     ATTENDANCE_WEIGHTS_JS: { Present: 1, Bench: 1, 'No Show': 0 },
     seasonCodeForDisplay: () => 'MID2',
     writeAuditLog: () => Promise.resolve(),
@@ -101,6 +101,8 @@ describe('executeCommitScores pages the attendance it scores from (#707)', () =>
     expect(upserts).toHaveLength(1);
     expect(upserts[0]).toHaveLength(1);
     expect(upserts[0][0].player_id).toBe(7);
+    // scoring carries its own team_id since #944, so the row names the team.
+    expect(upserts[0][0].team_id).toBe(3);
     // 1000 Present out of 1160 nights. Truncated at the cap this reads 100.
     expect(upserts[0][0].attendance_pct).toBeCloseTo(86.2, 1);
   });

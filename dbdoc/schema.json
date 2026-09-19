@@ -1187,6 +1187,12 @@
             "code"
           ]
         }
+      ],
+      "triggers": [
+        {
+          "name": "trg_player_wcl_season_perf_team_id_check",
+          "def": "CREATE TRIGGER trg_player_wcl_season_perf_team_id_check BEFORE INSERT OR UPDATE ON public.player_wcl_season_perf FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        }
       ]
     },
     {
@@ -1752,6 +1758,11 @@
           "name": "updated_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
         }
       ],
       "indexes": [
@@ -1809,6 +1820,19 @@
           ]
         },
         {
+          "name": "scoring_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.scoring",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
           "name": "scoring_season_fkey",
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
@@ -1826,6 +1850,10 @@
         {
           "name": "trg_scoring_updated_at",
           "def": "CREATE TRIGGER trg_scoring_updated_at BEFORE UPDATE ON public.scoring FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_scoring_team_id_check",
+          "def": "CREATE TRIGGER trg_scoring_team_id_check BEFORE INSERT OR UPDATE ON public.scoring FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         }
       ]
     },
@@ -4896,6 +4924,11 @@
           "type": "integer[]",
           "nullable": true,
           "comment": "The item's bonus IDs exactly as the Blizzard Character Equipment Summary returned them. track is derived from these via track_bonus_ids; kept raw so it can be re-derived without a re-sync."
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
         }
       ],
       "indexes": [
@@ -4932,6 +4965,19 @@
           ]
         },
         {
+          "name": "player_equipped_gear_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.player_equipped_gear",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
           "name": "player_equipped_gear_pkey",
           "type": "PRIMARY KEY",
           "def": "PRIMARY KEY (id)",
@@ -4951,6 +4997,12 @@
             "player_id",
             "equipment_slot"
           ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_player_equipped_gear_team_id_check",
+          "def": "CREATE TRIGGER trg_player_equipped_gear_team_id_check BEFORE INSERT OR UPDATE ON public.player_equipped_gear FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         }
       ]
     },
@@ -5623,6 +5675,10 @@
         {
           "name": "trg_raid_rsvps_updated_at",
           "def": "CREATE TRIGGER trg_raid_rsvps_updated_at BEFORE UPDATE ON public.raid_rsvps FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_raid_rsvps_team_id_check",
+          "def": "CREATE TRIGGER trg_raid_rsvps_team_id_check BEFORE INSERT OR UPDATE ON public.raid_rsvps FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         }
       ]
     },
@@ -5744,6 +5800,12 @@
             "raid_date",
             "checkpoint"
           ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_raid_rsvp_reminders_sent_team_id_check",
+          "def": "CREATE TRIGGER trg_raid_rsvp_reminders_sent_team_id_check BEFORE INSERT OR UPDATE ON public.raid_rsvp_reminders_sent FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         }
       ]
     },
@@ -8205,6 +8267,19 @@
     {
       "table": "public.scoring",
       "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.scoring",
+      "columns": [
         "season"
       ],
       "cardinality": "zero_or_more",
@@ -8708,6 +8783,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.player_equipped_gear",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     },
     {
       "table": "public.priority_order_confirmed_empty",

@@ -29,6 +29,12 @@
 | player_wcl_season_perf_pkey | CREATE UNIQUE INDEX player_wcl_season_perf_pkey ON public.player_wcl_season_perf USING btree (id) |
 | player_wcl_season_perf_player_id_season_key | CREATE UNIQUE INDEX player_wcl_season_perf_player_id_season_key ON public.player_wcl_season_perf USING btree (player_id, season) |
 
+## Triggers
+
+| Name | Definition |
+| ---- | ---------- |
+| trg_player_wcl_season_perf_team_id_check | CREATE TRIGGER trg_player_wcl_season_perf_team_id_check BEFORE INSERT OR UPDATE ON public.player_wcl_season_perf FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player() |
+
 ## Relations
 
 ```mermaid

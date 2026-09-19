@@ -12,6 +12,36 @@ answers to.
 
 ---
 
+## [3.144.0] - 2026-09-18
+
+### Frontend
+
+- Officer score commits (attendance scores, performance scores and the
+  season-perf seed) name the team on every scoring row they write, and the
+  roster's equipped-gear read filters on the team column and pages, so a
+  team's gear never comes back cut off at the 1000-row cap
+  ([#944](https://github.com/katogaming88/WGA-Raid-Hub/issues/944)).
+
+### Backend
+
+- `scoring` and `player_equipped_gear` carry `team_id`, filled from each
+  player's team and required from now on, and every table that files a row
+  against a player runs the same team check before a write, `raid_rsvps`,
+  `raid_rsvp_reminders_sent` and `player_wcl_season_perf` included: a row
+  filed under the wrong team is refused where it is written
+  ([#944](https://github.com/katogaming88/WGA-Raid-Hub/issues/944)). The
+  scoring import names the team on every row it generates.
+
+### Functions
+
+- `blizzard-gear-sync` stamps every equipped-gear row with the team it read
+  the roster for ([#944](https://github.com/katogaming88/WGA-Raid-Hub/issues/944)).
+
+### Project
+
+- The new app's roster reads a team's gear by its team column, a page at a
+  time ([#944](https://github.com/katogaming88/WGA-Raid-Hub/issues/944)).
+
 ## [3.143.0] - 2026-09-18
 
 ### Backend
