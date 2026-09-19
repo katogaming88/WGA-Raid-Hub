@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.144.4] - 2026-09-19
+
+### Project
+
+- The revamp time log counts the rest of 2026-09-19's planning (team and
+  guild plans, invite links, the guild bank ledger and the revamp triage),
+  and its estimate takes in the 27 issues from other milestones now dated to
+  Revamp 3 and 4, which moves the build's finish to about 2026-10-22 to 10-31
+  ([#1109](https://github.com/katogaming88/WGA-Raid-Hub/issues/1109)).
+
 ## [3.144.3] - 2026-09-19
 
 ### Project
