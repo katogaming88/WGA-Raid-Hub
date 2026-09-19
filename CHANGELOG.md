@@ -20,7 +20,7 @@ answers to.
   by 2026-09-26, Revamp 3 by 10-17 and Revamp 4 by 10-24, moved in from
   11-30, 12-31 and 2027-01-31 to match the estimate
   ([#1109](https://github.com/katogaming88/WGA-Raid-Hub/issues/1109)).
-- The time log counts the team plan planning (1 h 30 m) and folds the team
+- The time log counts the team plan planning (1 h 35 m) and folds the team
   plan and the roster audit into Revamp 3's estimate, which moves the build's
   finish to about 2026-10-13 to 10-19
   ([#1259](https://github.com/katogaming88/WGA-Raid-Hub/issues/1259),

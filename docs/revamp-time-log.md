@@ -10,10 +10,10 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 
 | Phase                              |   Time so far |
 | ---------------------------------- | ------------: |
-| Planning and design                |      4 h 00 m |
+| Planning and design                |      4 h 05 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     22 h 54 m |
-| **All revamp work**                | **33 h 49 m** |
+| **All revamp work**                | **33 h 54 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
