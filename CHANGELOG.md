@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.144.1] - 2026-09-18
+
+### Project
+
+- The revamp time log (`docs/revamp-time-log.md`) now lists its days in date
+  order, adds its totals up from the rows (they had drifted 12 minutes short),
+  and ends with the remaining work in Revamps 2, 3 and 4 and an estimate of
+  when the new app's build is complete: about 2026-10-08 to 10-13 at the
+  logged pace, mid-to-late October allowing for review waits or a slower pace
+  ([#1109](https://github.com/katogaming88/WGA-Raid-Hub/issues/1109)).
+
 ## [3.144.0] - 2026-09-18
 
 ### Frontend
