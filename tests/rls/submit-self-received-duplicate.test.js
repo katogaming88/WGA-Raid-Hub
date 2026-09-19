@@ -30,12 +30,17 @@ const ITEM = 'Seed Test Staff';
 const NAME = 'Duplicate-Illidan';
 const OTHER_NAME = 'Duplicateother-Illidan';
 
-// The sentences the functions raise; the frontend shows them verbatim.
-const RAIDER_PENDING = 'You already reported this item. It is waiting for an officer to review it.';
-const RAIDER_APPROVED = 'This item is already marked received for this character.';
+// The sentences the functions raise; the frontend shows them verbatim. Each
+// names the difficulty of the row it found (the cases report at Hero), so a
+// row that still offers the button for another difficulty does not read as
+// "you cannot mark this at all".
+const RAIDER_PENDING = 'You already reported this item at Heroic. It is waiting for an officer to review it.';
+const RAIDER_APPROVED = 'This item is already marked received at Heroic for this character.';
 const OFFICER_PENDING =
-  'A report for this item is already waiting for review. Approve or reject that one instead of marking it again.';
-const OFFICER_APPROVED = 'This item is already marked received for this character.';
+  'A report for this item at Heroic is already waiting for review. Approve or reject that one instead of marking it again.';
+const OFFICER_APPROVED = 'This item is already marked received at Heroic for this character.';
+// A row with no track (the column allows null) gets the sentence without it.
+const RAIDER_PENDING_NO_TRACK = 'You already reported this item. It is waiting for an officer to review it.';
 
 const linked = (q) => seedPlayer(q, { memberId: RAIDER_T1_MEMBER, nameRealm: NAME });
 const unlinked = (q, nameRealm = NAME) => seedPlayer(q, { teamId: TEAM_1, nameRealm });
@@ -125,6 +130,14 @@ describe('submit_self_received refuses a second identical report', () => {
     });
   });
 
+  it('a row with no track is refused with the sentence that names none', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await unlinked(q);
+      await submit(asUser, { track: null });
+      await expect(submit(asUser, { track: null })).rejects.toThrow(RAIDER_PENDING_NO_TRACK);
+    });
+  });
+
   // Rows predating #386 carry no slot, and the form sends '' for a row that
   // never had one; the two read as the same key.
   it('a legacy row with no slot refuses a report sent with no slot', async () => {
@@ -187,6 +200,15 @@ describe('direct_mark_received carries the same guard', () => {
       await q('update public.self_received_requests set status = $2 where id = $1', [first.rows[0].id, 'rejected']);
       await mark(asUser);
       expect(await rowsFor(q, playerId)).toEqual(['rejected', 'approved']);
+    });
+  });
+
+  it('marks the same item and slot on another track (an approved Heroic row, then Mythic)', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const playerId = await linked(q);
+      await submit(asUser, { track: 'Hero' });
+      await mark(asUser, { track: 'Myth' });
+      expect(await rowsFor(q, playerId)).toEqual(['approved', 'approved']);
     });
   });
 });
