@@ -168,6 +168,7 @@ export async function openApp(browser, port, state) {
     boss_groups: [],
     raid_night_bosses: [],
     raid_night_lineups: [],
+    team_lineup_settings: [],
     streamers: [],
     // Guild home (#1102): the guild officers, and what waits on an officer.
     site_settings: [],

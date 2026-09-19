@@ -8,6 +8,7 @@ import { shortDay, type Answer, type RaidNight } from './calendar';
 import { ColumnSizer } from './ColumnSizer';
 import { useLeaveGuard } from './leaveGuard';
 import {
+  capLabel,
   changes,
   current,
   everyoneIn,
@@ -24,11 +25,13 @@ import {
   type LineupBoss,
   type LineupRaid,
   type PlaceRow,
+  type RoleTargets,
   type SeasonRow
 } from './lineup';
 import {
   useBossGroups,
   useEncounters,
+  useLineupRoleTargets,
   useNightPlan,
   usePlanNight,
   useSaveGroups,
@@ -50,10 +53,11 @@ export function BossLineup({ night, players, answers }: { night: RaidNight; play
   const team = useTeam();
   const lookups = bothQueries(useSeasons(), useEncounters());
   const plan = bothQueries(useNightPlan(team.id, night.date), useBossGroups(team.id));
+  const targets = useLineupRoleTargets(team.id);
 
   return (
-    <DataState query={bothQueries(lookups, plan)} label="the boss lineup">
-      {([[seasons, encounters], [nightPlan, groups]]) => (
+    <DataState query={bothQueries(bothQueries(lookups, plan), targets)} label="the boss lineup">
+      {([[[seasons, encounters], [nightPlan, groups]], roleTargets]) => (
         <Lineup
           night={night}
           players={players}
@@ -62,6 +66,7 @@ export function BossLineup({ night, players, answers }: { night: RaidNight; play
           encounters={encounters}
           plan={nightPlan}
           groups={groups}
+          targets={roleTargets}
         />
       )}
     </DataState>
@@ -78,7 +83,8 @@ function Lineup({
   seasons,
   encounters,
   plan,
-  groups
+  groups,
+  targets
 }: {
   night: RaidNight;
   players: PlayerRow[];
@@ -87,6 +93,7 @@ function Lineup({
   encounters: EncounterRow[];
   plan: NightPlan;
   groups: PlaceRow[];
+  targets: RoleTargets;
 }) {
   const team = useTeam();
   const { announce } = useStatus();
@@ -328,7 +335,7 @@ function Lineup({
               aria-pressed={r.zoneId === raid.zoneId}
               onClick={() => setShown(r.zoneId)}
             >
-              {r.name} · {r.cap} per boss
+              {r.name} · {capLabel(r.bosses)}
             </button>
           ))}
         </div>
@@ -341,6 +348,7 @@ function Lineup({
         answers={answers}
         places={places}
         usual={usual}
+        targets={targets}
         busy={busy}
         onToggle={(boss, id) => {
           setEdits((e) => toggle(saved, e, boss, id));
@@ -365,6 +373,7 @@ function RaidGrid({
   answers,
   places,
   usual,
+  targets,
   busy,
   onToggle,
   onWholeNight,
@@ -376,6 +385,7 @@ function RaidGrid({
   answers: Answer[];
   places: ReadonlyMap<number, ReadonlySet<number>>;
   usual: ReadonlyMap<number, ReadonlySet<number>>;
+  targets: RoleTargets;
   busy: boolean;
   onToggle: (boss: number, player: number) => void;
   onWholeNight: (player: number, putIn: boolean) => void;
@@ -383,7 +393,7 @@ function RaidGrid({
   onSkip: ((boss: LineupBoss) => void) | null;
 }) {
   const [showBuffs, setShowBuffs] = useState(false);
-  const view = lineupView(players, night, answers, raid, places, usual);
+  const view = lineupView(players, night, answers, raid, places, usual, targets);
   const columns = raid.bosses.length + 2;
   const totals = new Map(view.totals.map((t) => [t.boss.id, t]));
   const gaps = view.totals.filter((t) => t.problems.length);
@@ -394,7 +404,7 @@ function RaidGrid({
       <div className="card lineup-card">
         <table className="lineup-grid">
           <caption className="visually-hidden">
-            {raid.name} lineup for {shortDay(night.date)}, up to {raid.cap} per boss
+            {raid.name} lineup for {shortDay(night.date)}, up to {capLabel(raid.bosses)}
           </caption>
           <thead>
             <tr>
@@ -413,7 +423,7 @@ function RaidGrid({
                     {t ? (
                       <>
                         <span className="lineup-total num" data-tone={t.status.tone}>
-                          {t.count}/{raid.cap}
+                          {t.count}/{t.boss.cap}
                         </span>
                         <span className="lineup-warn">{t.warn}</span>
                         <span className="visually-hidden">

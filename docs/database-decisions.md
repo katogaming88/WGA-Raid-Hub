@@ -1928,3 +1928,21 @@ Phoenix runs 24 raiders into 20 seats per boss, and the seats rotate boss by bos
 **Not decided here:** whether the bot tells a raider when they are swapped out; whether bosses already killed this week grey out (that needs the progression sync to keep weekly kills, a separate change); and attendance taking the lineup as its reference, so a planned sit-out on the first boss is not flagged as late ([#1242](https://github.com/katogaming88/WGA-Raid-Hub/issues/1242)).
 
 [Full discussion -> #1216](https://github.com/katogaming88/WGA-Raid-Hub/issues/1216).
+
+## #1244 -- the boss lineup's per-boss cap and role targets come from data
+
+Shipped: 20260918164633_boss_lineup_role_targets_and_caps.sql
+
+The lineup grid (#1231/#1232) checked every boss against numbers typed into `app/src/calendar/lineup.ts`: 20 for a Mythic raid, 25 for a mini raid, from `raid_zones.is_mini_raid`, plus two tanks and four healers wanted. Kat's comment on the issue found the gap that forced this: Nymrissa Wavecaller and Kith'ix are flex bosses inside The Venomous Abyss that allow 25 on Mythic while the raid's other eight allow 20, and WCL lists all ten under one zone, so a cap that lives on the zone can never say that -- both grids read a 24-raider group on those two bosses as "4 over" when it is fine.
+
+**The cap moves to the boss.** A nullable `cap` on `raid_encounters`, null meaning "use the raid's own cap" (today's `is_mini_raid` rule, unchanged). `set_encounter_cap()` sets or clears it.
+
+**Role targets get their own table, not a column on anything shared.** Unlike the cap, tanks-wanted and healers-wanted are a team's own call, not reference data every team reads the same way, so they live in a new `team_lineup_settings`, one row per team, keyed by `team_id`. A team with no row uses today's 2 tanks / 4 healers -- nothing is seeded for the four teams that already exist, matching how the app already treats a missing `team_settings` key. `set_lineup_role_targets()` upserts.
+
+**Two different gates, because the two writes are not the same shape of thing.** `raid_encounters` is shared across every team -- one row per zone and season, upserted by whichever team's `wcl-progression-sync` run reaches it first -- so there is no team to check a plain officer against; `set_encounter_cap()` is gated on `is_guild_officer()` or `is_site_admin()` alone, the same way other guild-wide reference writes are. `team_lineup_settings` is per-team, so `set_lineup_role_targets()` takes the same gate `set_boss_group()` does: the team's own officers and leader, a guild officer, or a site admin.
+
+**The sync cannot clear a cap by accident.** `wcl-progression-sync`'s `upsertEncounters()` sends only `zone_id, wcl_encounter_id, name, sort_index` in its upsert payload; Postgres only overwrites the columns a caller actually sends, so a nightly sync run leaves a hand-set `cap` alone.
+
+**Not in this migration:** unifying the buff list `js/common.js` (RAID_BUFFS/BOSS_DEBUFFS/RAID_UTILITY) and the app's own curated 13-buff subset read -- the third piece #1244 named. That is a bigger, cross-codebase change (one data source both the current site and the new app fetch from, and a decision about which buffs the lineup check itself cares about versus the roster page's fuller coverage widget) than the two schema pieces here, so it stays open on the issue rather than riding along.
+
+[Full discussion -> #1244](https://github.com/katogaming88/WGA-Raid-Hub/issues/1244).

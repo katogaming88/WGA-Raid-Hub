@@ -12,6 +12,35 @@ answers to.
 
 ---
 
+## [3.143.0] - 2026-09-18
+
+### Backend
+
+- A boss can override the raid's own cap
+  ([#1244](https://github.com/katogaming88/WGA-Raid-Hub/issues/1244)): a
+  nullable `cap` on `raid_encounters`, for a flex fight like Nymrissa
+  Wavecaller or Kith'ix that allows more raiders than the rest of its raid.
+  `set_encounter_cap()` sets or clears it, for guild officers and site admins
+  only -- the table is shared across every team, so there is no team to check
+  a plain officer against.
+- A team keeps its own tanks-wanted and healers-wanted counts for the boss
+  lineup's "Needs a look" check
+  ([#1244](https://github.com/katogaming88/WGA-Raid-Hub/issues/1244)), in a
+  new `team_lineup_settings`, defaulting to 2 and 4 when a team has no row.
+  `set_lineup_role_targets()` sets it, gated like `set_boss_group()`.
+
+### Project
+
+- Both boss grids read the per-boss cap and the role targets from data
+  instead of the numbers typed into `app/src/calendar/lineup.ts`. The Boss
+  groups page gets a **Role targets** line with an Edit button for any
+  officer, and an **Edit cap** button on each boss's column, guild officers
+  and site admins only. A raid with a flex boss inside it now reads "20-25 per
+  boss" instead of one number that was wrong for two of its bosses. The tanks
+  line in "Needs a look" reports the count against the target, the same shape
+  as healers, instead of a fixed "needs a second tank" that assumed every team
+  wants two; a team wanting none is never told it has none.
+
 ## [3.142.0] - 2026-09-18
 
 ### Project

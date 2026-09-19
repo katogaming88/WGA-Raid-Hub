@@ -1645,6 +1645,7 @@ export type Database = {
       }
       raid_encounters: {
         Row: {
+          cap: number | null
           id: number
           name: string
           sort_index: number
@@ -1652,6 +1653,7 @@ export type Database = {
           zone_id: number
         }
         Insert: {
+          cap?: number | null
           id?: number
           name: string
           sort_index?: number
@@ -1659,6 +1661,7 @@ export type Database = {
           zone_id: number
         }
         Update: {
+          cap?: number | null
           id?: number
           name?: string
           sort_index?: number
@@ -2642,6 +2645,35 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "team_discord_config_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: true
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_lineup_settings: {
+        Row: {
+          healers_wanted: number
+          tanks_wanted: number
+          team_id: number
+          updated_at: string
+        }
+        Insert: {
+          healers_wanted?: number
+          tanks_wanted?: number
+          team_id: number
+          updated_at?: string
+        }
+        Update: {
+          healers_wanted?: number
+          tanks_wanted?: number
+          team_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_lineup_settings_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: true
             referencedRelation: "teams"
@@ -3845,7 +3877,15 @@ export type Database = {
         }
         Returns: number
       }
+      set_encounter_cap: {
+        Args: { p_cap?: number; p_encounter_id: number }
+        Returns: undefined
+      }
       set_guild_officer_bios: { Args: { p_bios: Json }; Returns: Json }
+      set_lineup_role_targets: {
+        Args: { p_healers: number; p_tanks: number; p_team_id: number }
+        Returns: undefined
+      }
       set_own_rsvp: {
         Args: {
           p_note?: string

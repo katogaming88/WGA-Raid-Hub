@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |      1 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     21 h 27 m |
-| **All revamp work**                | **30 h 12 m** |
+| Revamp 2: public pages             |     22 h 27 m |
+| **All revamp work**                | **31 h 12 m** |
 
 ## Log
 
@@ -70,6 +70,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | 2:35-3:30 PM      | #1216 Boss groups page (board I)                                       | Revamp 2 (#1102) |    55 m | build; Kat review not yet counted        | The officer page for each boss's usual group, on the tables #1231 added. Checked on the 2026-09-18 production backup: first use had every raider flagged "in no group", so it got a Start with everyone in prompt. Found Phoenix has no raid schedule on production, so the nightly fill has no Phoenix nights yet. Also fixed a save on either page failing when the group or night still held someone who has since left the roster. |
 | 3:35-4:05 PM      | #1252 review round: grid fits, equal columns                           | Revamp 2 (#1102) |    30 m | ~20 m build, ~10 m Kat reviewing         | Kat's review on the page: no sideways scroll, quieter boss headers (role mix dropped), every column one width with names wrapping only between words. Kat also noted Wavecaller and Kith'ix are flex bosses (25 on Mythic), recorded on #1244. |
 | 4:05-4:30 PM      | #1216 raiders see their own bosses (boards C and D)                    | Revamp 2 (#1102) |    25 m | ~20 m build, ~5 m Kat deciding           | Kat settled the open questions: a sit-out still counts as coming and stays out of Heads up, an unsaved night shows marked not final, raiders see only their own bosses. The rest of #1216 is ordered on the issue. |
+| 4:30-5:30 PM      | #1244 per-boss cap and role targets from data                          | Revamp 2 (#1102) |    60 m | build; Kat review not yet counted        | Kat's flex-boss comment on #1244 plus the role-target constants. New `raid_encounters.cap` (guild-officer/site-admin gated, since the table has no team of its own) and `team_lineup_settings` (officer gated like set_boss_group). Both boss grids read them, with a Role targets editor and an Edit cap control on the Boss groups page. Buff list unification (the third piece #1244 named) stayed out, as a separate cross-codebase issue. |
 
 ### 2026-09-17
 

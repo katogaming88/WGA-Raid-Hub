@@ -2,12 +2,14 @@ import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import type { Answer, ScheduleChange, ScheduleRule } from './calendar';
 import {
+  DEFAULT_ROLE_TARGETS,
   isStaleSave,
   type ComingBossRow,
   type EncounterRow,
   type LeaverRow,
   type NightBossRow,
   type PlaceRow,
+  type RoleTargets,
   type SeasonRow
 } from './lineup';
 
@@ -194,7 +196,7 @@ export function useEncounters() {
   return useSupabaseQuery<EncounterRow[]>(['raid-encounters'], (client) =>
     client
       .from('raid_encounters')
-      .select('id, name, sort_index, zone:raid_zones!inner(id, name, season, is_mini_raid, sort_index)')
+      .select('id, name, sort_index, cap, zone:raid_zones!inner(id, name, season, is_mini_raid, sort_index)')
       .order('id')
   );
 }
@@ -377,5 +379,48 @@ export function useSkipBoss(teamId: number, date: string) {
         p_skipped: s.skipped
       }),
     { key: ['skip-boss', teamId], refreshes: [lineupKey(teamId)] }
+  );
+}
+
+// A team's tanks-wanted and healers-wanted counts for the lineup's "Needs a
+// look" check (#1244). A team with no row yet uses today's default.
+export function useLineupRoleTargets(teamId: number) {
+  return useSupabaseQuery<RoleTargets>([...lineupKey(teamId), 'role-targets'], async (client) => {
+    const { data, error } = await client
+      .from('team_lineup_settings')
+      .select('tanks_wanted, healers_wanted')
+      .eq('team_id', teamId)
+      .maybeSingle();
+    if (error) return { data: null, error };
+    return {
+      data: data ? { tanks: data.tanks_wanted, healers: data.healers_wanted } : DEFAULT_ROLE_TARGETS,
+      error: null
+    };
+  });
+}
+
+// The Boss groups page's "Role targets" editor.
+export function useSetLineupRoleTargets(teamId: number) {
+  return useSupabaseMutation<void, RoleTargets>(
+    (client, targets) =>
+      client.rpc('set_lineup_role_targets', { p_team_id: teamId, p_tanks: targets.tanks, p_healers: targets.healers }),
+    { key: ['save-role-targets', teamId], refreshes: [lineupKey(teamId)] }
+  );
+}
+
+// A boss's cap override (#1244): a flex fight like Nymrissa Wavecaller or
+// Kith'ix that allows more than the raid's own cap. Guild-wide, so it is not
+// scoped by team; null clears the override back to the raid's cap.
+export function useSetEncounterCap() {
+  return useSupabaseMutation<void, { encounterId: number; cap: number | null }>(
+    // p_cap is optional (default null): omitting it, rather than sending a
+    // literal null, is how a clear reaches the same place through Postgrest's
+    // generated arg type.
+    (client, s) =>
+      client.rpc('set_encounter_cap', {
+        p_encounter_id: s.encounterId,
+        ...(s.cap !== null && { p_cap: s.cap })
+      }),
+    { key: ['set-encounter-cap'], refreshes: [['raid-encounters']] }
   );
 }
