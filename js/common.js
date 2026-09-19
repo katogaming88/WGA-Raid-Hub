@@ -6269,7 +6269,13 @@ function submitDirectMarkReceived(firstName, nameRealm, item, slot, rowId, dbSlo
       .then(function (result) {
         if (!formEl) return;
         if (result.error) {
-          formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed. Try again.</p>';
+          // direct_mark_received() refuses a second report of the same item
+          // with a sentence saying so (#757); shown as it is, escaped like the
+          // raider path's, so a refusal does not read as an outage.
+          formEl.innerHTML =
+            '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">' +
+            _esc(result.error.message || 'Failed. Try again.') +
+            '</p>';
           return;
         }
         formEl.style.display = 'none';
