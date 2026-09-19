@@ -10,10 +10,10 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 
 | Phase                              |   Time so far |
 | ---------------------------------- | ------------: |
-| Planning and design                |      4 h 05 m |
+| Planning and design                |      6 h 55 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     22 h 54 m |
-| **All revamp work**                | **33 h 54 m** |
+| **All revamp work**                | **36 h 44 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -114,6 +114,12 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | --------------- | --------------------------------------------------------------------- | -------- | ------: | ------------------------------- | ----- |
 | 12:25-12:35 AM  | Team plan: Rex's loot-systems spike                                    | Planning |    10 m | ~5 m build, ~5 m Kat            | Read Rex's "One Hub, Several Loot Systems" and proposed which systems are free and which are paid. |
 | 1:40-2:35 AM    | Team plan: loot systems, sync levels, roster audit, chip-in (#1259, #1261) | Planning |    55 m | ~30 m build, ~25 m Kat deciding | Base loot systems free (council, sims shown, wishlist ranking, priority), custom values and sims in the priority math paid, non-council systems not supported for now. Sync levels drafted against Viserio's and WoWAudit's (free gear daily; frequent syncs don't need a paid Supabase plan). Loot history caps set aside for season-depth limits. Roster audit filed as #1261 in Revamp 3. Raiders can chip in, support tied to the team, prepaid time lasts if the supporter leaves. Price and one-plan-or-tiers still open. |
+| 2:35-2:55 AM    | Team plan: WoWAudit's tiers, and the time log update (#1258)          | Planning |    20 m | ~12 m build, ~8 m Kat           | Renumbered #1258 after #1260 took 3.144.2 and logged the team plan planning. Added WoWAudit's Patreon tiers and boosts to #1259, and corrected that only Viserio is confirmed to add several supporters together. |
+| 11:20 AM-12:15 PM | Team plan: tiers, guild plans, Patreon, audit log history (#1259)    | Planning |    55 m | ~35 m build, ~20 m Kat deciding | Drafted $3 / $5 / $10 team tiers (and $15 later) on a tiers page. Guild add-on and guild plans (first team full price, each extra active team half); how guild pledges add up through Patreon. Viserio's boosting rules compared. Audit log history limited by tier, hidden not deleted (2,800 entries, 544 KB on production). Twitch moves to EventSub, filed as #1262. |
+| 12:15-12:35 PM  | Character limits, invite links, the front page (#1264, #1226)         | Planning |    20 m | ~12 m build, ~8 m Kat deciding  | Active characters per team (50 / 75 / 100 / 150), archived never count, and a team at its limit holds new joiners off the roster. Team invite links filed as #1264: the link is the approval, officers reset it and set how long it lasts. Anyone without a team sees the site's front page (#1226), so guild pages become members-only. |
+| 12:35-12:45 PM  | Guild bank ledger and Rex's addon export (#1263)                      | Planning |    10 m | ~8 m build, ~2 m Kat            | Guild-level gold and sales free, per-team gold in and out a plan feature. Read Guild Bank Ledger v0.39.14 for what an upload needs and filed the export request on Rex's repo (guild-bank-ledger#186). |
+| 12:45-1:05 PM   | Plan names and guild tiers on Patreon                                 | Planning |    20 m | ~12 m build, ~8 m Kat           | Suggested raid-difficulty names (Normal, Heroic, Mythic, Cutting Edge) and "plans" rather than "tiers" on the site. Kat set up the team tiers on Patreon; guild plans need no matching tier, only round guild amounts, since the hub adds pledges up. |
+| 2:40-3:25 PM    | Revamp triage: closed issues, linked milestones, this log             | Planning |    45 m | ~30 m build, ~15 m Kat deciding | Closed #1017 and #1057 (the new app replaces them), #290 (shipped; leftovers to #1046 and #1102) and #1045 (answered by #1114, #1225, #1226, #1264, #1259). Closed the old Website Revamp milestone. Linked 27 issues from Season, Discord notifications, Identity, App delivery and CI and two officer milestones to the revamp with `revamp-3` / `revamp-4` labels, due dates and a comment on each, without moving them. |
 
 ## Not counted (same sessions, not revamp)
 
@@ -131,19 +137,33 @@ None. Revamp 1 finished 2026-09-14, all 11 issues closed, against a due date of 
 
 ## Remaining work and estimate (as of 2026-09-19)
 
-The estimate uses the pace in this log: 32 hours of revamp work over six working days (2026-09-13 to 09-18), about 5.4 hours a day. Hours are logged time, the same way the rows above are counted.
+The estimate uses the pace in this log: about 37 hours of revamp work over seven working days (2026-09-13 to 09-19), about 5.3 hours a day. Hours are logged time, the same way the rows above are counted.
 
 | Phase | What is left | Estimate | Done around, at this pace | Due |
 | --- | --- | --: | --- | --- |
-| Revamp 2: public pages | BoE Sales with #1205, Sign Up, History, About, Help, the Streams sidebar badge, #1162 (Battle.net characters), #1166 (M+ and crafted items), #1161 (Sentry) | ~15 h | Wed 2026-09-23 | 2026-09-26 |
-| Revamp 3: officer dashboard | 19 officer tabs and the site admin page (about 600 KB of current-site code; the Priority tab alone is 129 KB), the #869 rework, #871, #1247 lineup reports, the eight Officer Tooling issues folded in on 2026-09-18 (#687 with #659 is the largest), #814's new Loot lookup page, the #1259 team plan (the plan switch and its features, adjustable scoring the largest) and the #1261 roster audit | ~60-80 h | 2026-10-09 to 10-15 | 2026-10-17 |
-| Revamp 4: cutover | #1105 (switch production, old-link redirects, a way back), #1212, #1152 | ~8 h, then a settling-in period | 2026-10-13 to 10-19 | 2026-10-24 |
+| Revamp 2: public pages | BoE Sales with #1205, Sign Up, History, About, Help, the Streams sidebar badge, #1166 (M+ and crafted items), #1161 (Sentry) | ~15 h | Wed 2026-09-23 | 2026-09-26 |
+| Revamp 3: officer dashboard | 19 officer tabs and the site admin page (about 600 KB of current-site code; the Priority tab alone is 129 KB), the #869 rework, #871, #1247 lineup reports, the eight Officer Tooling issues folded in on 2026-09-18 (#687 with #659 is the largest), #814's new Loot lookup page, the #1259 team plan (the plan switch and its features, adjustable scoring the largest) and the #1261 roster audit. Plus 21 issues tracked in other milestones and labelled `revamp-3` (below) | ~90-120 h | 2026-10-16 to 10-24 | 2026-10-17 |
+| Revamp 4: cutover | #1105 (switch production, old-link redirects, a way back), #1212, #1152, plus 6 issues labelled `revamp-4` and the invite links and members-only reads (#1264) | ~20-25 h, then a settling-in period | 2026-10-22 to 10-31 | 2026-10-24 |
 
-**Build complete: about 2026-10-13 to 10-19 at this pace**, counting five working days a week from Monday 2026-09-21. Two things make that the early end:
+**Build complete: about 2026-10-22 to 10-31 at this pace**, counting five working days a week from Monday 2026-09-21. Two things make that the early end:
 
-- **Time this log does not count.** Waiting on Rex's reviews, and some of Kat's review time ("not yet counted" on several rows). Allowing about a fifth more puts it at **mid-October**.
-- **A slower pace.** At about 3.5 hours a day instead of 5.4, it lands in **late October**.
+- **Time this log does not count.** Waiting on Rex's reviews, and some of Kat's review time ("not yet counted" on several rows). Allowing about a fifth more puts it at **early November**.
+- **A slower pace.** At about 3.5 hours a day instead of 5.3, it lands in **mid-November**.
 
 Kat moved the milestone due dates in on 2026-09-18 to match (Revamp 2 to 09-26, Revamp 3 to 10-17, Revamp 4 to 10-24, from 11-30, 12-31 and 2027-01-31), so the build is due well before the planned January cutover. When to switch production stays Kat's call; the soak between a finished build and the switch is not estimated here.
 
 Revamp 3 grew twice: on 2026-09-18 the folded-in Officer Tooling issues and #814 added about 10 hours, and on 2026-09-19 the team plan (#1259, about 8-12 hours) and roster audit (#1261, about 6-8 hours) added 15-20 more, which is why its range is higher than the 35-50 hours first given. With them, Revamp 3 finishes close to its 2026-10-17 due date rather than a week ahead of it. Heroic Sale Runs (due 2026-12-31) and the rest of #1244 outside the Roster tab are not part of the new app being complete and are not counted.
+
+**Linked from other milestones (2026-09-19).** Kat kept these issues in their own milestones but dated them to the revamp, with `revamp-3` (due 2026-10-17) and `revamp-4` (due 2026-10-24) labels and a comment on each. They add about 40-55 hours:
+
+| Work | Phase | Estimate |
+| --- | --- | --: |
+| Season: season codes and per-team cycles (#933, #934, #938, #939, #923, #922, #937) and tier dates from the Admin tab (#1189); much of it database work that Rex could write | Revamp 3 | ~12-18 h |
+| Identity: people table (#942), characters from Battle.net (#1162) | Revamp 3 | ~6-8 h |
+| Discord settings in the new app (#994, #993, #1087) | Revamp 3 | ~4-6 h |
+| App plumbing (#1183, #1184, #1185, #1186) | Revamp 3 | ~4-6 h |
+| Attendance from the lineup and weekly kills (#1242, #1246), bench and rotator decision (#1243), self-received corrections (#756) | Revamp 3 | ~4-6 h |
+| Invite links (#1264), front page (#1226), members-only reads | Revamp 4 | ~8-10 h |
+| bis_items retired and wishlist tier (#935, #936), the bot contract (#955, #964), workflows at cutover (#1187) | Revamp 4 | ~4-6 h |
+
+**At this pace both due dates slip by about a week.** Revamp 3 lands around its 10-17 due date or a week after it, and Revamp 4 around 10-22 to 10-31 against 10-24. The ways to hold the dates: Rex writing the Season database work in parallel (it is the largest block and his design), and moving the invite links and front page to just after cutover.
