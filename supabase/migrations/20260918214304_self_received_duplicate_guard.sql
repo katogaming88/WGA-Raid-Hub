@@ -29,9 +29,12 @@
 --
 -- direct_mark_received() carries the same guard: an officer misclick makes
 -- the same pair. Its sentences point the officer at the pending report
--- instead of a second row. Both functions keep their grants; create or
--- replace preserves them, and tests/rls/function-invariants.test.js pins
--- the anon allowlist.
+-- instead of a second row. Every sentence names the difficulty of the row it
+-- found (at Mythic, at Heroic, on the Champion track): the row keeps its Mark
+-- received button until the higher track is on file, so a refusal that named
+-- no difficulty read as "you cannot mark this at all". Both functions keep
+-- their grants; create or replace preserves them, and
+-- tests/rls/function-invariants.test.js pins the anon allowlist.
 create or replace function public.submit_self_received(
   p_team_id integer,
   p_name_realm text,
@@ -50,6 +53,9 @@ declare
   v_player_id integer;
   v_item_id integer;
   v_existing_status text;
+  v_track_label text := case p_track
+    when 'Myth' then ' at Mythic' when 'Hero' then ' at Heroic' when 'Champion' then ' on the Champion track'
+    else '' end;
   v_auto_approved boolean := false;
   v_request_id integer;
 begin
@@ -80,9 +86,9 @@ begin
   order by r.status
   limit 1;
   if v_existing_status = 'approved' then
-    raise exception 'This item is already marked received for this character.';
+    raise exception 'This item is already marked received% for this character.', v_track_label;
   elsif v_existing_status = 'pending' then
-    raise exception 'You already reported this item. It is waiting for an officer to review it.';
+    raise exception 'You already reported this item%. It is waiting for an officer to review it.', v_track_label;
   end if;
 
   if auth.uid() is not null
@@ -135,6 +141,9 @@ declare
   v_player_id integer;
   v_item_id integer;
   v_existing_status text;
+  v_track_label text := case p_track
+    when 'Myth' then ' at Mythic' when 'Hero' then ' at Heroic' when 'Champion' then ' on the Champion track'
+    else '' end;
   v_request_id integer;
 begin
   if not (coalesce(public.my_team_role(p_team_id) = any (array['officer', 'team_leader']), false) or public.is_site_admin()) then
@@ -164,9 +173,9 @@ begin
   order by r.status
   limit 1;
   if v_existing_status = 'approved' then
-    raise exception 'This item is already marked received for this character.';
+    raise exception 'This item is already marked received% for this character.', v_track_label;
   elsif v_existing_status = 'pending' then
-    raise exception 'A report for this item is already waiting for review. Approve or reject that one instead of marking it again.';
+    raise exception 'A report for this item% is already waiting for review. Approve or reject that one instead of marking it again.', v_track_label;
   end if;
 
   insert into public.self_received_requests

@@ -12,6 +12,9 @@ declare
   v_player_id integer;
   v_item_id integer;
   v_existing_status text;
+  v_track_label text := case p_track
+    when 'Myth' then ' at Mythic' when 'Hero' then ' at Heroic' when 'Champion' then ' on the Champion track'
+    else '' end;
   v_auto_approved boolean := false;
   v_request_id integer;
 begin
@@ -42,9 +45,9 @@ begin
   order by r.status
   limit 1;
   if v_existing_status = 'approved' then
-    raise exception 'This item is already marked received for this character.';
+    raise exception 'This item is already marked received% for this character.', v_track_label;
   elsif v_existing_status = 'pending' then
-    raise exception 'You already reported this item. It is waiting for an officer to review it.';
+    raise exception 'You already reported this item%. It is waiting for an officer to review it.', v_track_label;
   end if;
 
   if auth.uid() is not null
