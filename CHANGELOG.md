@@ -12,6 +12,15 @@ answers to.
 
 ---
 
+## [3.144.2] - 2026-09-18
+
+### Project
+
+- The revamp time log's estimate carries the new milestone due dates: Revamp 2
+  by 2026-09-26, Revamp 3 by 10-17 and Revamp 4 by 10-24, moved in from
+  11-30, 12-31 and 2027-01-31 to match the estimate
+  ([#1109](https://github.com/katogaming88/WGA-Raid-Hub/issues/1109)).
+
 ## [3.144.1] - 2026-09-18
 
 ### Project

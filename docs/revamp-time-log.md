@@ -125,15 +125,15 @@ The estimate uses the pace in this log: 32 hours of revamp work over six working
 
 | Phase | What is left | Estimate | Done around, at this pace | Due |
 | --- | --- | --: | --- | --- |
-| Revamp 2: public pages | BoE Sales with #1205, Sign Up, History, About, Help, the Streams sidebar badge, #1162 (Battle.net characters), #1166 (M+ and crafted items), #1161 (Sentry) | ~15 h | Wed 2026-09-23 | 2026-11-30 |
-| Revamp 3: officer dashboard | 19 officer tabs and the site admin page (about 600 KB of current-site code; the Priority tab alone is 129 KB), the #869 rework, #871, #1247 lineup reports, the eight Officer Tooling issues folded in on 2026-09-18 (#687 with #659 is the largest), and #814's new Loot lookup page | ~45-60 h | 2026-10-06 to 10-09 | 2026-12-31 |
-| Revamp 4: cutover | #1105 (switch production, old-link redirects, a way back), #1212, #1152 | ~8 h, then a settling-in period | 2026-10-08 to 10-13 | 2027-01-31 |
+| Revamp 2: public pages | BoE Sales with #1205, Sign Up, History, About, Help, the Streams sidebar badge, #1162 (Battle.net characters), #1166 (M+ and crafted items), #1161 (Sentry) | ~15 h | Wed 2026-09-23 | 2026-09-26 |
+| Revamp 3: officer dashboard | 19 officer tabs and the site admin page (about 600 KB of current-site code; the Priority tab alone is 129 KB), the #869 rework, #871, #1247 lineup reports, the eight Officer Tooling issues folded in on 2026-09-18 (#687 with #659 is the largest), and #814's new Loot lookup page | ~45-60 h | 2026-10-06 to 10-09 | 2026-10-17 |
+| Revamp 4: cutover | #1105 (switch production, old-link redirects, a way back), #1212, #1152 | ~8 h, then a settling-in period | 2026-10-08 to 10-13 | 2026-10-24 |
 
 **Build complete: about 2026-10-08 to 10-13 at this pace**, counting five working days a week from Monday 2026-09-21. Two things make that the early end:
 
 - **Time this log does not count.** Waiting on Rex's reviews, and some of Kat's review time ("not yet counted" on several rows). Allowing about a fifth more puts it at **mid-October**.
 - **A slower pace.** At about 3.5 hours a day instead of 5.4, it lands in **late October**.
 
-Either way the build finishes well before the planned January cutover. When to switch production stays Kat's call; the soak between a finished build and the switch is not estimated here.
+Kat moved the milestone due dates in on 2026-09-18 to match (Revamp 2 to 09-26, Revamp 3 to 10-17, Revamp 4 to 10-24, from 11-30, 12-31 and 2027-01-31), so the build is due well before the planned January cutover. When to switch production stays Kat's call; the soak between a finished build and the switch is not estimated here.
 
 Revamp 3 grew on 2026-09-18 (the folded-in Officer Tooling issues and #814 added about 10 hours), which is why its range is higher than the 35-50 hours first given. Heroic Sale Runs (due 2026-12-31) and the rest of #1244 outside the Roster tab are not part of the new app being complete and are not counted.
