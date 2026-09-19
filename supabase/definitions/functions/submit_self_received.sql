@@ -11,12 +11,17 @@ AS $function$
 declare
   v_player_id integer;
   v_item_id integer;
+  v_existing_status text;
+  v_track_label text := case p_track
+    when 'Myth' then ' at Mythic' when 'Hero' then ' at Heroic' when 'Champion' then ' on the Champion track'
+    else '' end;
   v_auto_approved boolean := false;
   v_request_id integer;
 begin
   select p.id into v_player_id
   from public.players p
-  where p.team_id = p_team_id and p.name_realm = p_name_realm and p.archived_at is null;
+  where p.team_id = p_team_id and p.name_realm = p_name_realm and p.archived_at is null
+  for update;
   if not found then
     raise exception 'Character not found on roster';
   end if;
@@ -28,6 +33,21 @@ begin
   select i.id into v_item_id from public.items i where i.name = p_item_name;
   if not found then
     raise exception 'Unknown item: %', p_item_name;
+  end if;
+
+  select r.status into v_existing_status
+  from public.self_received_requests r
+  where r.player_id = v_player_id
+    and r.self_item_id = v_item_id
+    and r.slot is not distinct from nullif(p_slot, '')
+    and r.track is not distinct from p_track
+    and r.status in ('pending', 'approved')
+  order by r.status
+  limit 1;
+  if v_existing_status = 'approved' then
+    raise exception 'This item is already marked received% for this character.', v_track_label;
+  elsif v_existing_status = 'pending' then
+    raise exception 'You already reported this item%. It is waiting for an officer to review it.', v_track_label;
   end if;
 
   if auth.uid() is not null

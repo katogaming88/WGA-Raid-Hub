@@ -109,14 +109,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.144.2';
+var VERSION = '3.144.3';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20260918165131';
+var REQUIRED_SCHEMA = '20260918214304';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -6269,7 +6269,13 @@ function submitDirectMarkReceived(firstName, nameRealm, item, slot, rowId, dbSlo
       .then(function (result) {
         if (!formEl) return;
         if (result.error) {
-          formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed. Try again.</p>';
+          // direct_mark_received() refuses a second report of the same item
+          // with a sentence saying so (#757); shown as it is, escaped like the
+          // raider path's, so a refusal does not read as an outage.
+          formEl.innerHTML =
+            '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">' +
+            _esc(result.error.message || 'Failed. Try again.') +
+            '</p>';
           return;
         }
         formEl.style.display = 'none';
