@@ -32,7 +32,7 @@ const OTHER_NAME = 'Duplicateother-Illidan';
 
 // The sentences the functions raise; the frontend shows them verbatim.
 const RAIDER_PENDING = 'You already reported this item. It is waiting for an officer to review it.';
-const RAIDER_APPROVED = 'You already reported this item, and it is already approved.';
+const RAIDER_APPROVED = 'This item is already marked received for this character.';
 const OFFICER_PENDING =
   'A report for this item is already waiting for review. Approve or reject that one instead of marking it again.';
 const OFFICER_APPROVED = 'This item is already marked received for this character.';

@@ -42,7 +42,7 @@ begin
   order by r.status
   limit 1;
   if v_existing_status = 'approved' then
-    raise exception 'You already reported this item, and it is already approved.';
+    raise exception 'This item is already marked received for this character.';
   elsif v_existing_status = 'pending' then
     raise exception 'You already reported this item. It is waiting for an officer to review it.';
   end if;
