@@ -14,15 +14,17 @@
 // reason nobody wrote down (the 2026-09-10 fixture lesson).
 //
 // Seeded rows: player 1 'Seedraider-Illidan' on team 1, item 1 'Seed Test
-// Staff' (supabase/seed.sql). Each test runs in one rolled-back transaction.
+// Staff' (supabase/seed.sql). The refusals name the seeded character and never
+// reach the insert; the accepted case marks a character it mints, since the
+// seed already holds this exact report for player 1 (row 2) and #757 refuses
+// a second one. Each test runs in one rolled-back transaction.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, insertDiscordUser } from './helpers.js';
+import { pool, withTxn, insertDiscordUser, seedPlayer } from './helpers.js';
 
 afterAll(() => pool.end());
 
 const TEAM_1 = 1;
 const TEAM_2 = 2;
-const PLAYER_1 = 1;
 const ITEM_1 = 1;
 
 // Accounts invented here. None collide with the seed.
@@ -42,12 +44,11 @@ async function addMember(q, uid, discordId, teamId, role) {
   ]);
 }
 
-const markReceived = (asUser, uid) =>
-  asUser(
-    uid,
-    "select public.direct_mark_received($1, 'Seedraider-Illidan', 'Seed Test Staff', 'Hero', null, null, null) as id",
-    [TEAM_1]
-  );
+const markReceived = (asUser, uid, nameRealm = 'Seedraider-Illidan') =>
+  asUser(uid, "select public.direct_mark_received($1, $2, 'Seed Test Staff', 'Hero', null, null, null) as id", [
+    TEAM_1,
+    nameRealm
+  ]);
 
 describe('direct_mark_received() refuses a caller with no row on the team (#752)', () => {
   it('an officer on another team is refused', async () => {
@@ -75,13 +76,14 @@ describe('direct_mark_received() refuses a caller with no row on the team (#752)
   it('an officer on the team marks the item received as approved', async () => {
     await withTxn(async ({ q, asUser }) => {
       await addMember(q, SAME_TEAM_OFFICER, 'discord-752-officer-t1', TEAM_1, 'officer');
-      const res = await markReceived(asUser, SAME_TEAM_OFFICER);
+      const playerId = await seedPlayer(q, { teamId: TEAM_1, nameRealm: 'Marked-Illidan' });
+      const res = await markReceived(asUser, SAME_TEAM_OFFICER, 'Marked-Illidan');
       const row = (
         await q('select team_id, player_id, self_item_id, status from public.self_received_requests where id = $1', [
           res.rows[0].id
         ])
       ).rows[0];
-      expect(row).toEqual({ team_id: TEAM_1, player_id: PLAYER_1, self_item_id: ITEM_1, status: 'approved' });
+      expect(row).toEqual({ team_id: TEAM_1, player_id: playerId, self_item_id: ITEM_1, status: 'approved' });
     });
   });
 
