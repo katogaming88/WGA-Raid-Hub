@@ -252,7 +252,7 @@ describe('the lineup rules', () => {
     expect([nekzali!.count, nekzali!.tanks, nekzali!.healers, nekzali!.damage]).toEqual([4, 1, 1, 2]);
     expect(nekzali!.problems).toEqual([
       '16 open spots',
-      'needs a second tank',
+      '1 tank',
       '1 healer',
       expect.stringMatching(/^no Mark of the Wild, /),
       'Di said they’re not coming'
@@ -268,12 +268,32 @@ describe('the lineup rules', () => {
     // healers, but enough for a team that wants only one of each.
     const tonight = placesOf(places([[101, [1, 2, 3, 4]]]));
     const asDefault = lineupView(ROSTER, NIGHT, [], raid, tonight, tonight);
-    expect(asDefault.totals[0]!.problems).toEqual(expect.arrayContaining(['needs a second tank', '1 healer']));
+    expect(asDefault.totals[0]!.problems).toEqual(expect.arrayContaining(['1 tank', '1 healer']));
     const wantsLess = lineupView(ROSTER, NIGHT, [], raid, tonight, tonight, { tanks: 1, healers: 1 });
-    expect(wantsLess.totals[0]!.problems).not.toContain('needs a second tank');
+    expect(wantsLess.totals[0]!.problems).not.toContain('1 tank');
     expect(wantsLess.totals[0]!.problems).not.toContain('1 healer');
     // Explicit DEFAULT_ROLE_TARGETS matches the no-argument call.
     expect(lineupView(ROSTER, NIGHT, [], raid, tonight, tonight, DEFAULT_ROLE_TARGETS)).toEqual(asDefault);
+  });
+
+  it('reports tanks by count against the target, not a fixed "needs a second tank" (Rex’s review of #1256)', () => {
+    const raid = lineupRaids(ENCOUNTERS, [nightBoss(101, 1)], { fresh: false, season: 'Season One' })[0]!;
+    // Two tanks in (Ana and a second), short of a team that wants three.
+    const secondTank = player(6, 'Az', 'Paladin', 'Tank');
+    const tonight = placesOf(places([[101, [1, 6]]]));
+    const wantsThree = lineupView([...ROSTER, secondTank], NIGHT, [], raid, tonight, tonight, {
+      tanks: 3,
+      healers: 0
+    });
+    expect(wantsThree.totals[0]!.problems).toContain('2 tanks');
+    expect(wantsThree.totals[0]!.problems).not.toContain('needs a second tank');
+
+    // A team that wants no tanks at all is never told it has none.
+    const noTanksWanted = lineupView(ROSTER, NIGHT, [], raid, placesOf(places([[101, [2]]])), tonight, {
+      tanks: 0,
+      healers: 0
+    });
+    expect(noTanksWanted.totals[0]!.problems.some((p) => p.includes('tank'))).toBe(false);
   });
 
   it('leaves a skipped boss out of the counts and checks', () => {

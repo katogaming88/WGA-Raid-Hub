@@ -295,7 +295,7 @@ function totalOf(boss: LineupBoss, inn: Raider[], targets: RoleTargets, out: str
   const missing = BUFFS.filter((b) => !providersOf(b, inn).length).map((b) => b.name);
   const problems = [
     ...(full ? [] : [status.text]),
-    ...(tanks === 0 ? ['no tanks'] : tanks < targets.tanks ? ['needs a second tank'] : []),
+    ...(targets.tanks === 0 ? [] : tanks === 0 ? ['no tanks'] : tanks < targets.tanks ? [plural(tanks, 'tank')] : []),
     ...(healers < targets.healers ? [plural(healers, 'healer')] : []),
     ...(missing.length ? [`no ${missing.join(', no ')}`] : []),
     ...(out.length ? [`${out.join(', ')} said they’re not coming`] : [])

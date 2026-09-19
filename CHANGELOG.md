@@ -36,7 +36,10 @@ answers to.
   groups page gets a **Role targets** line with an Edit button for any
   officer, and an **Edit cap** button on each boss's column, guild officers
   and site admins only. A raid with a flex boss inside it now reads "20-25 per
-  boss" instead of one number that was wrong for two of its bosses.
+  boss" instead of one number that was wrong for two of its bosses. The tanks
+  line in "Needs a look" reports the count against the target, the same shape
+  as healers, instead of a fixed "needs a second tank" that assumed every team
+  wants two; a team wanting none is never told it has none.
 
 ## [3.142.0] - 2026-09-18
 
