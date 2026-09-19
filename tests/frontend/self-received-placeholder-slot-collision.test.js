@@ -230,4 +230,20 @@ describe('submit failures surface an error instead of hanging silently', () => {
     await flush();
     expect(els['form-row1'].innerHTML).toContain('Failed');
   });
+
+  // #757: direct_mark_received() refuses a second report of the same item,
+  // slot and track with a sentence saying so. Shown as it is, like the raider
+  // path shows its own, so a refusal does not read as an outage and invite
+  // the retry it exists to stop.
+  it('submitDirectMarkReceived shows the reason when the RPC answers an error', async () => {
+    const { sandbox, els } = makeSandbox();
+    const message = 'A report for this item is already waiting for review. Approve or reject that one instead.';
+    sandbox.supabaseClient = {
+      rpc: () => Promise.resolve({ data: null, error: { message } }),
+      functions: { invoke: () => Promise.resolve({}) }
+    };
+    sandbox.submitDirectMarkReceived('Kat', 'Kat-Stormrage', 'Crafted', 'Crafted', 'row1', 'Off Hand');
+    await flush();
+    expect(els['form-row1'].innerHTML).toContain(message);
+  });
 });

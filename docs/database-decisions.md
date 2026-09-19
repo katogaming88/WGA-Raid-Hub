@@ -1962,3 +1962,19 @@ Every table that files a row against a player also names the player's team, so a
 **Not decided here:** the write policies on both tables still resolve the team through the `players` subquery (`Officers write scoring`, `Officers write player_equipped_gear`); every other two-key table's policy reads `team_id` directly, and moving these two is a separate RLS change with its own cases. `bis_items` stays keyed by player alone until [#935](https://github.com/katogaming88/WGA-Raid-Hub/issues/935) retires it.
 
 [Full discussion -> #944](https://github.com/katogaming88/WGA-Raid-Hub/issues/944).
+
+## #757 -- submit_self_received() and direct_mark_received(): one live report per character, item, slot and track
+
+Shipped: 20260918214304_self_received_duplicate_guard.sql
+
+A raider who did not see the confirmation clicked Mark Received again and both rows landed; with auto-approval both were approved with no officer in between (8 exact duplicate approved rows across 4 players on prod, measured 2026-08-25, cleaned up by hand through #756's Delete). `submit_bis_link()` had the same hole until `20260810224022` added its pending check.
+
+**The key is character, item, slot and track.** Character and item alone would refuse legitimate reports: a placeholder item (M+, Crafted, Catalyst) repeats across several slots for one character, and a dual-slot item sits in both sibling slots. Slot and track compare with `is not distinct from`, so a row from before #386 with no slot matches a report sent with none and not one sent with a slot. Source and note are outside the key: a resubmit that changes the note is still the same report, and the officer reads the pending row's note.
+
+**Pending and approved block; rejected and deleted do not.** Rejection means "not this one, try again if things change", and a deleted row is gone, so `delete_self_received_request()` is also the way to a second row when an officer truly wants one. The sentence names the state of the row found: waiting for an officer, or already marked received for the character (the approved row may be the officer's own, so the raider's sentence does not say who reported it), and the difficulty of that row (at Mythic, at Heroic, on the Champion track; left out when the row carries no track). The difficulty is there because the row keeps its Mark received button until the higher track is on file, so a refusal that named none read as "you cannot mark this at all" when picking Mythic would have worked. Both forms on the current site show the sentence as it is; the new app's form already did.
+
+**The officer path carries the same guard.** An officer misclick makes the same pair, and the corrections UI deletes the survivor when a second row is wanted. `direct_mark_received()`'s sentences point at the pending report ("approve or reject that one") rather than a second row.
+
+**A row lock rather than a partial unique index.** The character lookup in both functions takes the `players` row `for update` (the lock `delete_self_received_request()` and `add_signup_to_roster()` already use), so two submissions for one character serialise and the second's check runs on a fresh snapshot that holds the first's committed row. A partial unique index over the live statuses would say the same thing, and `main_swap_requests` has one, but prod still carries duplicate pairs the index would refuse to build over, and deleting them belongs to the audit-logged Delete rather than a migration. The index is the follow-up shape once the table reads clean; the existing duplicates are left where they are.
+
+[Full discussion -> #757](https://github.com/katogaming88/WGA-Raid-Hub/issues/757).

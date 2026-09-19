@@ -12,6 +12,24 @@ answers to.
 
 ---
 
+## [3.144.2] - 2026-09-18
+
+### Frontend
+
+- The officer's Mark Received form says why a report was refused, in the
+  database's own words, instead of "Failed. Try again."
+  ([#757](https://github.com/katogaming88/WGA-Raid-Hub/issues/757)).
+
+### Backend
+
+- A second Mark Received of the same item, slot and track is refused while
+  the first is waiting for review or already approved, with a sentence that
+  says which and names the difficulty of the row it found, so a Heroic copy
+  on file does not read as blocking the Mythic one; a rejected or deleted one
+  can be reported again, and the same rule holds when an officer marks an item
+  received by hand
+  ([#757](https://github.com/katogaming88/WGA-Raid-Hub/issues/757)).
+
 ## [3.144.1] - 2026-09-18
 
 ### Project

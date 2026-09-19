@@ -342,7 +342,7 @@ Lookup table of every valid WoW class/spec combination.
 
 ## `self_received_requests`
 
-Player-submitted claims that they received a drop (self-reported loot tracking, pending officer approval). Inserts arrive only through `submit_self_received()`/`direct_mark_received()`, and single-row deletes only through `delete_self_received_request()` (#756) -- the table has no INSERT or DELETE policy for any role.
+Player-submitted claims that they received a drop (self-reported loot tracking, pending officer approval). Inserts arrive only through `submit_self_received()`/`direct_mark_received()`, and single-row deletes only through `delete_self_received_request()` (#756) -- the table has no INSERT or DELETE policy for any role. Both inserters refuse a row while a `pending` or `approved` one exists for the same `player_id`, `self_item_id`, `slot` and `track` (#757); a `rejected` row does not block.
 
 | Column         | Type        | Purpose                                              |
 | -------------- | ----------- | ---------------------------------------------------- |
