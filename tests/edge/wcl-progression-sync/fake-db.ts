@@ -13,6 +13,10 @@ import type {
 export type FakeDbState = {
   teams?: TeamRow[];
   configs?: Record<number, Record<string, unknown>>;
+  // The tier current_season() answers with; MID2 unless a test says otherwise.
+  currentSeason?: string | null;
+  // Zones already in raid_zones, by wcl_zone_id, with the season each is filed under.
+  zones?: Record<number, string>;
 };
 
 export type DbCall = { method: keyof ProgressDb; args: unknown[] };
@@ -34,6 +38,14 @@ export function fakeDb(state: FakeDbState = {}): FakeDb {
     teamConfig(teamId) {
       record('teamConfig', teamId);
       return Promise.resolve(state.configs?.[teamId] ?? {});
+    },
+    currentSeason() {
+      record('currentSeason');
+      return Promise.resolve(state.currentSeason === undefined ? 'MID2' : state.currentSeason);
+    },
+    raidZoneSeason(wclZoneId: number) {
+      record('raidZoneSeason', wclZoneId);
+      return Promise.resolve(state.zones?.[wclZoneId] ?? null);
     },
     upsertRaidZone(row: RaidZoneRow) {
       record('upsertRaidZone', row);

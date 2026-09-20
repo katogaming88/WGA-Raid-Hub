@@ -12,6 +12,37 @@ answers to.
 
 ---
 
+## [3.145.0] - 2026-09-20
+
+### Frontend
+
+- Season View stores the season's code and shows its name, so a Season View
+  an officer sets now scopes the Priority, BiS and wishlist views and tags
+  their saves the way the live season does, instead of writing a season the
+  priority tables do not recognise
+  ([#933](https://github.com/katogaming88/WGA-Raid-Hub/issues/933),
+  [#923](https://github.com/katogaming88/WGA-Raid-Hub/issues/923)). The new
+  app's wishlist editor, loot priority card and boss lineup read the same
+  codes.
+
+### Backend
+
+- `raid_zones.season` holds the season code (`MID2`) rather than the name,
+  matching every other season column the site queries, and a stored Season
+  View converts with it. `current_season()` names the tier a date falls in,
+  the definition the rest of the Season milestone reads now that the season is
+  app-wide ([#1189](https://github.com/katogaming88/WGA-Raid-Hub/issues/1189)).
+  `fill_raid_night()` finds a night's season by the code
+  ([#933](https://github.com/katogaming88/WGA-Raid-Hub/issues/933)).
+
+### Functions
+
+- `wcl-progression-sync` stamps a raid it meets for the first time with the
+  current tier rather than the syncing team's own season name, keeps a raid
+  already on file under its tier, syncs a team that never named a season, and
+  writes nothing on a day with no tier
+  ([#933](https://github.com/katogaming88/WGA-Raid-Hub/issues/933)).
+
 ## [3.144.5] - 2026-09-19
 
 ### Project

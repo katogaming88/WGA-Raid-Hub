@@ -8,8 +8,8 @@ One row per raid tier (#932). code is the short form the priority, loot and scor
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| code | text |  | false | [public.rclc_loot](public.rclc_loot.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.tier_token_map](public.tier_token_map.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.track_bonus_ids](public.track_bonus_ids.md) |  |  |
-| display_name | text |  | false | [public.bis_items](public.bis_items.md) [public.season_signups](public.season_signups.md) [public.raid_zones](public.raid_zones.md) [public.item_preferences](public.item_preferences.md) [public.boe_items](public.boe_items.md) |  |  |
+| code | text |  | false | [public.rclc_loot](public.rclc_loot.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.raid_zones](public.raid_zones.md) [public.tier_token_map](public.tier_token_map.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.track_bonus_ids](public.track_bonus_ids.md) |  |  |
+| display_name | text |  | false | [public.bis_items](public.bis_items.md) [public.season_signups](public.season_signups.md) [public.item_preferences](public.item_preferences.md) [public.boe_items](public.boe_items.md) |  |  |
 | starts_at | date |  | false |  |  | The day the tier launched. |
 | ends_at | date |  | true |  |  | Null while the tier is open-ended; the next tier's migration sets it. Tiers do not overlap (seasons_no_overlap), so at most one row is null. |
 | created_at | timestamp with time zone | now() | false |  |  |  |
@@ -40,6 +40,7 @@ erDiagram
 "public.player_wcl_season_perf" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.priority_order" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.scoring" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.raid_zones" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.tier_token_map" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.priority_conflict_dismissals" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.priority_order_confirmed_empty" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
@@ -47,7 +48,6 @@ erDiagram
 "public.track_bonus_ids" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.bis_items" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
 "public.season_signups" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
-"public.raid_zones" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
 "public.item_preferences" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
 "public.boe_items" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
 
@@ -102,6 +102,14 @@ erDiagram
   text season FK
   timestamp_with_time_zone updated_at
   integer team_id FK
+}
+"public.raid_zones" {
+  integer id
+  integer wcl_zone_id
+  text name
+  text season FK
+  boolean is_mini_raid
+  integer sort_index
 }
 "public.tier_token_map" {
   integer id
@@ -172,14 +180,6 @@ erDiagram
   timestamp_with_time_zone updated_at
   text swap_from_name_realm
   uuid auth_user_id FK
-}
-"public.raid_zones" {
-  integer id
-  integer wcl_zone_id
-  text name
-  text season FK
-  boolean is_mini_raid
-  integer sort_index
 }
 "public.item_preferences" {
   integer id

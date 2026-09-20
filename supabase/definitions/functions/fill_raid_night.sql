@@ -19,7 +19,7 @@ begin
   select p_team_id, p_raid_date, e.id, row_number() over (order by z.sort_index, z.id, e.sort_index, e.id)
   from raid_encounters e
   join raid_zones z on z.id = e.zone_id
-  join seasons s on s.display_name = z.season
+  join seasons s on s.code = z.season
   where p_raid_date between s.starts_at and coalesce(s.ends_at, 'infinity'::date)
     and exists (select 1 from boss_groups g where g.team_id = p_team_id and g.encounter_id = e.id);
 

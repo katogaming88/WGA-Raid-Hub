@@ -2084,7 +2084,7 @@ export type Database = {
             columns: ["season"]
             isOneToOne: false
             referencedRelation: "seasons"
-            referencedColumns: ["display_name"]
+            referencedColumns: ["code"]
           },
         ]
       }
@@ -3644,6 +3644,7 @@ export type Database = {
         }[]
       }
       current_discord_id: { Args: never; Returns: string }
+      current_season: { Args: { p_on?: string }; Returns: string }
       danger_clear_bis_requests: {
         Args: { p_team_id: number }
         Returns: number

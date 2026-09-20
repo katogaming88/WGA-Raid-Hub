@@ -17,7 +17,7 @@
 | ---- | ---- | ---------- |
 | raid_zones_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | raid_zones_wcl_zone_id_season_key | UNIQUE | UNIQUE (wcl_zone_id, season) |
-| raid_zones_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(display_name) |
+| raid_zones_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(code) |
 
 ## Indexes
 
@@ -32,7 +32,7 @@
 erDiagram
 
 "public.raid_encounters" }o--|| "public.raid_zones" : "FOREIGN KEY (zone_id) REFERENCES raid_zones(id) ON DELETE CASCADE"
-"public.raid_zones" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
+"public.raid_zones" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 
 "public.raid_zones" {
   integer id

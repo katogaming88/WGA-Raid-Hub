@@ -572,6 +572,30 @@ describe('item picker (#875, #891)', () => {
     expect(html).not.toContain('Visage of Unseen Truths');
   });
 
+  // raid_zones.season holds codes (#933) while a team's live season is still
+  // its name, so the name is converted before it meets the zones. Without the
+  // conversion a team with no Season View matched nothing and fell open to
+  // every tier's BoEs.
+  it("scopes by the team's live season name against zones stamped with codes", async () => {
+    const { sandbox, el } = makeSandbox({ search: '?team=phoenix' });
+    sandbox.supabaseClient = withCatalog({
+      teamSettings: [
+        { team_id: 1, config: { seasonName: 'Midnight Season 2' } },
+        { team_id: 2, config: {} },
+        { team_id: 3, config: {} },
+        { team_id: 4, config: {} }
+      ],
+      raidZones: [
+        { wcl_zone_id: 46, season: 'MID1' },
+        { wcl_zone_id: 53, season: 'MID2' }
+      ]
+    }).client;
+    await sandbox.initBoeCard();
+    const html = el('boeItemName').innerHTML;
+    expect(html).toContain('Crushing Coiler Coif');
+    expect(html).not.toContain('Visage of Unseen Truths');
+  });
+
   it('offers every BoE when no team has a season with zones', async () => {
     const { sandbox, el } = makeSandbox();
     sandbox.supabaseClient = withCatalog({ teamSettings: ALL_ENABLED }).client;

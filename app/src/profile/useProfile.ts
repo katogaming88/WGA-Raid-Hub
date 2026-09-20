@@ -181,7 +181,8 @@ export function useSelfReceived(playerId: number) {
 // Wishlist editor reads and writes (#868 part 3).
 
 // Whether the team's wishlist is open for editing, and the season an officer
-// is planning for, if they set one.
+// is planning for, if they set one: a season code, the form raid_zones.season
+// holds (#933).
 export function useWishlistSettings(teamId: number) {
   return useSupabaseQuery<{ open: boolean; view: string | null }>(['wishlist-settings', teamId], async (client) => {
     const { data, error } = await client

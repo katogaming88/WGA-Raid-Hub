@@ -11,7 +11,7 @@ import { displayName, rosterOf, statusFor, type Answer, type NightRow, type Raid
 
 // Rows as read
 
-export type SeasonRow = { display_name: string; starts_at: string; ends_at: string | null };
+export type SeasonRow = { code: string; display_name: string; starts_at: string; ends_at: string | null };
 export type EncounterRow = {
   id: number;
   name: string;
@@ -65,9 +65,10 @@ export function shortBossName(name: string): string {
   return cut ? cut[1]! : trimmed;
 }
 
-// The season a night falls in, by its dates.
+// The season a night falls in, by its dates, as the code raid_zones.season
+// holds (#933).
 export function seasonOn(seasons: SeasonRow[], date: string): string | null {
-  return seasons.find((s) => s.starts_at <= date && (s.ends_at === null || date <= s.ends_at))?.display_name ?? null;
+  return seasons.find((s) => s.starts_at <= date && (s.ends_at === null || date <= s.ends_at))?.code ?? null;
 }
 
 export type LineupBoss = { id: number; name: string; short: string; skipped: boolean; confirmed: boolean; cap: number };

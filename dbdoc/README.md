@@ -199,6 +199,7 @@
 | public.set_raid_night_boss_skipped | void | p_team_id integer, p_raid_date date, p_encounter_id integer, p_skipped boolean | FUNCTION |
 | public.set_encounter_cap | void | p_encounter_id integer, p_cap integer DEFAULT NULL::integer | FUNCTION |
 | public.set_lineup_role_targets | void | p_team_id integer, p_tanks integer, p_healers integer | FUNCTION |
+| public.current_season | text | p_on date DEFAULT ((now() AT TIME ZONE 'America/New_York'::text))::date | FUNCTION |
 
 ## Enums
 
@@ -269,7 +270,7 @@ erDiagram
 "public.streamers" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.notifications" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.notifications" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
-"public.raid_zones" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
+"public.raid_zones" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.raid_encounters" }o--|| "public.raid_zones" : "FOREIGN KEY (zone_id) REFERENCES raid_zones(id) ON DELETE CASCADE"
 "public.team_raid_progress" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_raid_progress" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"

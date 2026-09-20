@@ -40,10 +40,10 @@ describe('mapSupabaseRaidEncounters', () => {
   it('carries the embedded raid_zones.season through onto each encounter', () => {
     const sandbox = makeSandbox({});
     const rows = [
-      { id: 1, name: 'Boss A', sort_index: 0, raid_zones: { name: 'Zone', season: 'Midnight Season 2', sort_index: 0 } }
+      { id: 1, name: 'Boss A', sort_index: 0, raid_zones: { name: 'Zone', season: 'MID2', sort_index: 0 } }
     ];
     expect(sandbox.mapSupabaseRaidEncounters(rows)).toEqual([
-      { id: 1, name: 'Boss A', sortIndex: 0, season: 'Midnight Season 2', zoneName: 'Zone', zoneSortIndex: 0 }
+      { id: 1, name: 'Boss A', sortIndex: 0, season: 'MID2', zoneName: 'Zone', zoneSortIndex: 0 }
     ]);
   });
 
@@ -64,13 +64,13 @@ describe('mapSupabaseRaidEncounters', () => {
         id: 1,
         name: 'Old Boss',
         sort_index: 0,
-        raid_zones: { name: 'Old Zone', season: 'Midnight Season 1', sort_index: 0 }
+        raid_zones: { name: 'Old Zone', season: 'MID1', sort_index: 0 }
       },
       {
         id: 2,
         name: 'New Boss',
         sort_index: 0,
-        raid_zones: { name: 'New Zone', season: 'Midnight Season 2', sort_index: 1 }
+        raid_zones: { name: 'New Zone', season: 'MID2', sort_index: 1 }
       }
     ];
     expect(sandbox.mapSupabaseRaidEncounters(rows)).toHaveLength(2);
@@ -88,10 +88,10 @@ describe('ownBonusRollSectionHTML -- season filtering at render time', () => {
   it('only lists encounters matching the resolved season view', () => {
     const sandbox = withSession(
       makeSandbox({
-        seasonView: 'Midnight Season 2',
+        seasonView: 'MID2',
         raidEncounters: [
-          { id: 1, name: 'S1 Boss', season: 'Midnight Season 1' },
-          { id: 2, name: 'S2 Boss', season: 'Midnight Season 2' }
+          { id: 1, name: 'S1 Boss', season: 'MID1' },
+          { id: 2, name: 'S2 Boss', season: 'MID2' }
         ]
       })
     );
@@ -105,8 +105,8 @@ describe('ownBonusRollSectionHTML -- season filtering at render time', () => {
       makeSandbox({
         seasonName: '',
         raidEncounters: [
-          { id: 1, name: 'S1 Boss', season: 'Midnight Season 1' },
-          { id: 2, name: 'S2 Boss', season: 'Midnight Season 2' }
+          { id: 1, name: 'S1 Boss', season: 'MID1' },
+          { id: 2, name: 'S2 Boss', season: 'MID2' }
         ]
       })
     );

@@ -26,8 +26,8 @@ function sandboxWithCatalog() {
     // currentZoneIdsForSeason reads wclZoneId, the camelCase name the
     // raid_zones fetch maps to -- not the raw column name.
     raidZones: [
-      { wclZoneId: 10, season: 'Midnight Season 1' },
-      { wclZoneId: 20, season: 'Midnight Season 2' }
+      { wclZoneId: 10, season: 'MID1' },
+      { wclZoneId: 20, season: 'MID2' }
     ],
     seasonName: 'Midnight Season 2'
   };

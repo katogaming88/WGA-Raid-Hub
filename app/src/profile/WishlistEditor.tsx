@@ -4,7 +4,6 @@ import { DataState } from '../components/DataState';
 import { useTouchScreen } from '../lib/device';
 import { bothQueries } from '../data/query';
 import type { SeasonWindow } from './profile';
-import { seasonCode } from './profile';
 import {
   useCatalog,
   useMarkWishlist,
@@ -14,7 +13,7 @@ import {
   useWishlistSettings,
   type ProfilePlayer
 } from './useProfile';
-import { editorSlots, planMark, type EditorInput, type EditorSlot, type Mark } from './wishlist';
+import { editorSeason, editorSlots, planMark, type EditorInput, type EditorSlot, type Mark } from './wishlist';
 
 // The wishlist editor (#868 part 3): each slot's raid items, marked BiS or Pass.
 // The raider edits their own while the team's wishlist is open, or when an
@@ -34,8 +33,8 @@ export function WishlistEditor({
   const picks = useWishlist(player.id);
   const catalog = useCatalog();
   const zones = useRaidZones();
-  const seasonName = season.isSuccess && settings.isSuccess ? settings.data.view || season.data.name : null;
-  const tokens = useSeasonTierTokens(seasonName ? seasonCode(seasonName) : null);
+  const planned = season.isSuccess && settings.isSuccess ? editorSeason(settings.data.view, season.data) : null;
+  const tokens = useSeasonTierTokens(planned?.code ?? null);
   // Not on a phone or tablet, where a stray tap marks the wrong item.
   const touch = useTouchScreen();
 
@@ -53,7 +52,8 @@ export function WishlistEditor({
                   picks: p,
                   catalog: c,
                   zones: z,
-                  seasonName: seasonName ?? '',
+                  seasonCode: planned?.code ?? null,
+                  seasonName: planned?.name ?? '',
                   tokens: t,
                   wearer: {
                     className: player.classes_specs?.class ?? null,

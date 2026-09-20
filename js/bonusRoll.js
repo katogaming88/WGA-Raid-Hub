@@ -21,11 +21,11 @@ function ownBonusRollSectionHTML(player, backTo) {
   if (!session || !session.nameRealm || normalise(session.nameRealm) !== normalise(player.nameRealm)) return '';
 
   // Fetched unfiltered (see fetchSupabaseRaidEncounters()'s comment) --
-  // filtered here to the team's actual live/planning season, same
-  // fail-open-when-unset convention isItemInSeasonScope() uses (an
-  // unconfigured season shows every seeded boss rather than an empty
-  // dropdown).
-  var seasonView = typeof resolveSeasonView === 'function' ? resolveSeasonView() : '';
+  // filtered here to the team's actual live/planning season by its code, the
+  // form raid_zones.season holds (#933), same fail-open-when-unset convention
+  // isItemInSeasonScope() uses (an unconfigured season shows every seeded
+  // boss rather than an empty dropdown).
+  var seasonView = typeof resolveSeasonViewCode === 'function' ? resolveSeasonViewCode() : '';
   var encounters = ((DATA && DATA.raidEncounters) || []).filter(function (e) {
     return !seasonView || e.season === seasonView;
   });

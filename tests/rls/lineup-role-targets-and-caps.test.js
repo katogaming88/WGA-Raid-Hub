@@ -11,7 +11,7 @@ const FIRST = 9102;
 
 async function seed(q) {
   await q(`insert into public.raid_zones (id, wcl_zone_id, name, season, sort_index)
-           values (9001, 99001, 'Test Raid', 'Midnight Season 2', 0)`);
+           values (9001, 99001, 'Test Raid', 'MID2', 0)`);
   await q(`insert into public.raid_encounters (id, zone_id, wcl_encounter_id, name, sort_index)
            values (${FIRST}, 9001, 99102, 'First Boss', 1)`);
 }

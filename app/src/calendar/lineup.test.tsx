@@ -54,9 +54,9 @@ const NIGHT: RaidNight = {
   note: ''
 };
 
-const ABYSS = { id: 10, name: 'The Venomous Abyss', season: 'Season One', is_mini_raid: false, sort_index: 0 };
-const GROTTO = { id: 11, name: 'Tidebound Grotto', season: 'Season One', is_mini_raid: true, sort_index: 1 };
-const OLD = { id: 9, name: 'Old Raid', season: 'Season Zero', is_mini_raid: false, sort_index: 0 };
+const ABYSS = { id: 10, name: 'The Venomous Abyss', season: 'S1', is_mini_raid: false, sort_index: 0 };
+const GROTTO = { id: 11, name: 'Tidebound Grotto', season: 'S1', is_mini_raid: true, sort_index: 1 };
+const OLD = { id: 9, name: 'Old Raid', season: 'S0', is_mini_raid: false, sort_index: 0 };
 
 const ENCOUNTERS: EncounterRow[] = [
   { id: 101, name: "Nek'zali the Soulcoiler", sort_index: 1, zone: ABYSS, cap: null },
@@ -73,8 +73,8 @@ const FLEX_ENCOUNTERS: EncounterRow[] = [
 ];
 
 const SEASONS = [
-  { display_name: 'Season Zero', starts_at: '2026-01-01', ends_at: '2026-03-31' },
-  { display_name: 'Season One', starts_at: '2026-04-01', ends_at: null }
+  { code: 'S0', display_name: 'Season Zero', starts_at: '2026-01-01', ends_at: '2026-03-31' },
+  { code: 'S1', display_name: 'Season One', starts_at: '2026-04-01', ends_at: null }
 ];
 
 const nightBoss = (encounter_id: number, position: number, extra: Partial<NightBossRow> = {}): NightBossRow => ({
@@ -115,14 +115,14 @@ describe('the lineup rules', () => {
   });
 
   it('finds the season a night falls in', () => {
-    expect(seasonOn(SEASONS, '2026-02-01')).toBe('Season Zero');
-    expect(seasonOn(SEASONS, NIGHT.date)).toBe('Season One');
+    expect(seasonOn(SEASONS, '2026-02-01')).toBe('S0');
+    expect(seasonOn(SEASONS, NIGHT.date)).toBe('S1');
     expect(seasonOn(SEASONS, '2025-12-31')).toBeNull();
   });
 
   it('lists the night’s bosses as raids in pull order, 25 a boss for a mini raid and 20 otherwise', () => {
     const bosses = [nightBoss(103, 3), nightBoss(102, 2, { confirmed_at: '2026-05-13T00:00:00Z' }), nightBoss(101, 1)];
-    expect(lineupRaids(ENCOUNTERS, bosses, { fresh: false, season: 'Season One' })).toEqual([
+    expect(lineupRaids(ENCOUNTERS, bosses, { fresh: false, season: 'S1' })).toEqual([
       {
         zoneId: 10,
         name: 'The Venomous Abyss',
@@ -149,13 +149,13 @@ describe('the lineup rules', () => {
       }
     ]);
     // Nothing planned yet: nothing, unless starting the very first night.
-    expect(lineupRaids(ENCOUNTERS, [], { fresh: false, season: 'Season One' })).toEqual([]);
-    const fresh = lineupRaids(ENCOUNTERS, [], { fresh: true, season: 'Season One' });
+    expect(lineupRaids(ENCOUNTERS, [], { fresh: false, season: 'S1' })).toEqual([]);
+    const fresh = lineupRaids(ENCOUNTERS, [], { fresh: true, season: 'S1' });
     expect(fresh.flatMap((r) => r.bosses.map((b) => b.id))).toEqual([101, 102, 103]);
   });
 
   it('gives a boss its own cap when one is set, over the raid’s (#1244, a flex boss)', () => {
-    const raids = lineupRaids(FLEX_ENCOUNTERS, [], { fresh: true, season: 'Season One' });
+    const raids = lineupRaids(FLEX_ENCOUNTERS, [], { fresh: true, season: 'S1' });
     const abyss = raids.find((r) => r.zoneId === 10)!;
     expect(abyss.cap).toBe(20);
     expect(abyss.bosses.map((b) => [b.short, b.cap])).toEqual([
@@ -182,7 +182,7 @@ describe('the lineup rules', () => {
   it('puts a bench raider in, or out, for every boss still on the night', () => {
     const raid = lineupRaids(ENCOUNTERS, [nightBoss(101, 1), nightBoss(102, 2, { skipped: true })], {
       fresh: false,
-      season: 'Season One'
+      season: 'S1'
     })[0]!;
     const edits = wholeNight(new Map(), new Map(), raid.bosses, 5, true);
     expect([...edits.keys()]).toEqual([101]);
@@ -190,7 +190,7 @@ describe('the lineup rules', () => {
   });
 
   it('starts the very first night with everyone in but the bench', () => {
-    const raid = lineupRaids(ENCOUNTERS, [], { fresh: true, season: 'Season One' })[0]!;
+    const raid = lineupRaids(ENCOUNTERS, [], { fresh: true, season: 'S1' })[0]!;
     const edits = everyoneIn(ROSTER, raid.bosses);
     expect([...edits.get(101)!].sort()).toEqual([1, 2, 3, 4]);
   });
@@ -205,7 +205,7 @@ describe('the lineup rules', () => {
   it('lists everyone on the roster, marks changes from the group and raiders in who said they’re out', () => {
     const raid = lineupRaids(ENCOUNTERS, [nightBoss(101, 1), nightBoss(102, 2)], {
       fresh: false,
-      season: 'Season One'
+      season: 'S1'
     })[0]!;
     const tonight = placesOf(
       places([
@@ -263,7 +263,7 @@ describe('the lineup rules', () => {
   });
 
   it('checks a boss against the team’s own role targets, not the default (#1244)', () => {
-    const raid = lineupRaids(ENCOUNTERS, [nightBoss(101, 1)], { fresh: false, season: 'Season One' })[0]!;
+    const raid = lineupRaids(ENCOUNTERS, [nightBoss(101, 1)], { fresh: false, season: 'S1' })[0]!;
     // One tank (Ana), one healer (Bo): short of the default's 2 tanks / 4
     // healers, but enough for a team that wants only one of each.
     const tonight = placesOf(places([[101, [1, 2, 3, 4]]]));
@@ -277,7 +277,7 @@ describe('the lineup rules', () => {
   });
 
   it('reports tanks by count against the target, not a fixed "needs a second tank" (Rex’s review of #1256)', () => {
-    const raid = lineupRaids(ENCOUNTERS, [nightBoss(101, 1)], { fresh: false, season: 'Season One' })[0]!;
+    const raid = lineupRaids(ENCOUNTERS, [nightBoss(101, 1)], { fresh: false, season: 'S1' })[0]!;
     // Two tanks in (Ana and a second), short of a team that wants three.
     const secondTank = player(6, 'Az', 'Paladin', 'Tank');
     const tonight = placesOf(places([[101, [1, 6]]]));
@@ -299,7 +299,7 @@ describe('the lineup rules', () => {
   it('leaves a skipped boss out of the counts and checks', () => {
     const raid = lineupRaids(ENCOUNTERS, [nightBoss(101, 1), nightBoss(102, 2, { skipped: true })], {
       fresh: false,
-      season: 'Season One'
+      season: 'S1'
     })[0]!;
     const view = lineupView(ROSTER, NIGHT, [], raid, placesOf(places([[101, [1]]])), new Map());
     expect(view.live.map((b) => b.id)).toEqual([101]);
@@ -595,7 +595,7 @@ describe('the boss lineup tab', () => {
 
 // The Boss groups page (#1216, board I)
 
-const abyss = () => lineupRaids(ENCOUNTERS, [], { fresh: true, season: 'Season One' })[0]!;
+const abyss = () => lineupRaids(ENCOUNTERS, [], { fresh: true, season: 'S1' })[0]!;
 
 describe('the boss groups rules', () => {
   it('keeps only raiders still on the roster', () => {
