@@ -28,6 +28,11 @@ export function supabaseDb(): ProgressDb {
       if (error) throw new Error(error.message);
       return ((data as any)?.config as Record<string, unknown>) || {};
     },
+    async currentSeason() {
+      const { data, error } = await db().rpc('current_season');
+      if (error) throw new Error(error.message);
+      return (data as string | null) ?? null;
+    },
     async upsertRaidZone(row) {
       const { data, error } = await db()
         .from('raid_zones')

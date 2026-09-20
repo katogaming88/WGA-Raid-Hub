@@ -3274,14 +3274,14 @@
         {
           "name": "raid_zones_season_fkey",
           "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
           "table": "public.raid_zones",
           "referenced_table": "public.seasons",
           "columns": [
             "season"
           ],
           "referenced_columns": [
-            "display_name"
+            "code"
           ]
         }
       ]
@@ -8519,10 +8519,10 @@
       "cardinality": "zero_or_more",
       "parent_table": "public.seasons",
       "parent_columns": [
-        "display_name"
+        "code"
       ],
       "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)"
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
     },
     {
       "table": "public.raid_encounters",
@@ -10078,6 +10078,12 @@
       "name": "public.set_lineup_role_targets",
       "return_type": "void",
       "arguments": "p_team_id integer, p_tanks integer, p_healers integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.current_season",
+      "return_type": "text",
+      "arguments": "p_on date DEFAULT ((now() AT TIME ZONE 'America/New_York'::text))::date",
       "type": "FUNCTION"
     }
   ],

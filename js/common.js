@@ -4249,20 +4249,27 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
 // instead of DATA.raidProgression, which is WCL progress-tracking config
 // (which raids to pull kill/attendance data for), not a season-view concept,
 // and gets wiped to [] by every archive_current_season() call (#537).
+//
+// Always the display name (#933): DATA.seasonView is stored as a code since
+// raid_zones.season became one, and this is what stamps item_preferences and
+// bis_items rows, whose season columns still hold names. seasonDisplayName()
+// passes a name through unchanged, so a value stored before the conversion
+// still reads.
 function resolveSeasonView() {
-  return (DATA && (DATA.seasonView || DATA.seasonName)) || '';
+  if (!DATA) return '';
+  return seasonDisplayName(DATA.seasonView || '') || DATA.seasonName || '';
 }
 
 // The season code to tag/query priority_order (and its fairness-warning
-// views) with: DATA.seasonView when explicitly set -- already a raid_zones-
-// style code, see populateSeasonViewOptions() -- else seasonCodeForDisplay()
-// of the live DATA.seasonName. Deliberately not resolveSeasonView() itself:
-// that helper's raw seasonName fallback is left unconverted on purpose, so
-// isItemInSeasonScope()'s zone-id lookup fails open when seasonView is unset
-// (#549); priority_order.season always needs a real code, live season or not,
-// so a team without a seasonView override still gets one.
+// views) with, and the code the zone scope check compares raid_zones.season
+// against (#933): DATA.seasonView when explicitly set, else the live
+// DATA.seasonName. Always a code, on both branches (#923: the explicit branch
+// used to return the dropdown's raw value, a name until #933 converted the
+// table, and every priority query tagged with it matched nothing).
+// seasonCodeForDisplay() leaves a code alone, so a stored code and a value
+// stored as a name before the conversion both come out as the code.
 function resolveSeasonViewCode() {
-  return (DATA && DATA.seasonView) || seasonCodeForDisplay((DATA && DATA.seasonName) || '');
+  return seasonCodeForDisplay((DATA && (DATA.seasonView || DATA.seasonName)) || '');
 }
 
 // Re-derives DATA.priorityOrder/priorityStaleAfterHeroic/priorityLiveFirstPrios
@@ -4308,15 +4315,16 @@ function currentZoneIdsForSeason(season) {
   return ids;
 }
 
-// Whether item `name` belongs to the team's viewed season (resolveSeasonView(),
-// #549), per items.wcl_zone_id (#535) -- shared by the Priority tab, BiS grid
+// Whether item `name` belongs to the team's viewed season, per
+// items.wcl_zone_id (#535) against raid_zones.season, compared as codes
+// (resolveSeasonViewCode(), #933) -- shared by the Priority tab, BiS grid
 // editor, and Raider Wishlist so the "current tier only" scoping rule lives in
 // one place. Placeholder items (M+/Crafted/Catalyst) aren't tied to a raid
 // zone, so they can't be scoped this way at all -- pass the row's own
 // `rowSeason` (bis_items.season / item_preferences.season, stamped at tag
-// time) for those instead. Rows tagged before that column existed have
-// rowSeason null/undefined and fail open (shown regardless of season)
-// rather than silently disappearing.
+// time with the name resolveSeasonView() returns) for those instead. Rows
+// tagged before that column existed have rowSeason null/undefined and fail
+// open (shown regardless of season) rather than silently disappearing.
 //
 // Fail-open only applies to the default (seasonView unset) case: no
 // raid_zones rows for the live season yet still shows everything, so an
@@ -4330,7 +4338,7 @@ function isItemInSeasonScope(name, rowSeason) {
   var zone = (DATA.itemZones || {})[name];
   if (!zone) return true;
   var explicit = !!(DATA && DATA.seasonView);
-  var ids = currentZoneIdsForSeason(resolveSeasonView());
+  var ids = currentZoneIdsForSeason(resolveSeasonViewCode());
   if (!Object.keys(ids).length) return !explicit;
   return !!ids[zone];
 }

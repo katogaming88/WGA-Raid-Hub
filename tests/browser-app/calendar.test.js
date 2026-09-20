@@ -349,9 +349,9 @@ describe('Calendar (new app): moving between nights', () => {
 // Frostvale said they are out but is still planned in for Nek'zali, Em is on
 // the bench and out on every boss, and Aur is usually in for Sszorak but out
 // tonight.
-const ZONE = { id: 10, name: 'The Venomous Abyss', season: 'Season One', is_mini_raid: false, sort_index: 0 };
+const ZONE = { id: 10, name: 'The Venomous Abyss', season: 'S1', is_mini_raid: false, sort_index: 0 };
 const LINEUP_TABLES = {
-  seasons: [{ display_name: 'Season One', starts_at: '2026-01-01', ends_at: null }],
+  seasons: [{ code: 'S1', display_name: 'Season One', starts_at: '2026-01-01', ends_at: null }],
   raid_encounters: [
     { id: 101, name: "Nek'zali the Soulcoiler", sort_index: 1, zone: ZONE },
     { id: 102, name: 'Sszorak', sort_index: 2, zone: ZONE }

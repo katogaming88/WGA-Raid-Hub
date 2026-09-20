@@ -141,8 +141,11 @@ function refreshBoeTeamOptions() {
         var cfg = row.config || {};
         if (!featureEnabledIn(cfg.features, 'boe')) disabled[row.team_id] = true;
         // seasonView when a team has pinned one, else the live season name --
-        // the same precedence resolveSeasonView() uses on the team pages.
-        seasonByTeamId[row.team_id] = cfg.seasonView || cfg.seasonName || '';
+        // the same precedence resolveSeasonView() uses on the team pages --
+        // as the code raid_zones.season holds (#933): the pin is stored as a
+        // code, the name converts, and either way the zone filter below
+        // compares like with like.
+        seasonByTeamId[row.team_id] = seasonCodeForDisplay(cfg.seasonView || cfg.seasonName || '');
       });
       Object.keys(TEAMS).forEach(function (slug) {
         _boeTeamSeasons[slug] = seasonByTeamId[TEAMS[slug].supabaseTeamId] || '';

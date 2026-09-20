@@ -8,6 +8,7 @@
 
 import type { CatalogItem, WishlistRow, ZoneRow } from './lootPriority';
 import type { SeasonWindow } from './profile';
+import { seasonName as seasonNameOf } from './profile';
 import { WISHLIST_SLOTS } from './lootPriority';
 
 export type Mark = 'bis' | 'pass';
@@ -159,10 +160,21 @@ const MAIN_STAT_SLOTS = new Set(['Trinket 1', 'Trinket 2', 'Weapon', 'Off Hand']
 export const mainStatFor = (className: string | null, spec: string | null) =>
   (spec && SPEC_MAIN_STAT[spec]) || (className && CLASS_MAIN_STAT[className]) || null;
 
-export function inSeasonZone(item: CatalogItem, seasonName: string, zones: ZoneRow[]): boolean {
+// Whether a raid item drops in the season, by its raid: raid_zones.season
+// holds the season code (#933). With no raids set up for the season yet,
+// every raid item counts.
+export function inSeasonZone(item: CatalogItem, seasonCode: string | null, zones: ZoneRow[]): boolean {
   if (item.wcl_zone_id == null) return true;
-  const seasonZones = zones.filter((z) => z.season === seasonName).map((z) => z.wcl_zone_id);
+  const seasonZones = zones.filter((z) => z.season === seasonCode).map((z) => z.wcl_zone_id);
   return seasonZones.length === 0 || seasonZones.includes(item.wcl_zone_id);
+}
+
+// The season the editor plans for: the Season View an officer pinned (a code
+// since #933) or the team's own. The code scopes the raid items by zone; the
+// name is what a wishlist row is stamped with, since item_preferences.season
+// still holds names (#936 converts it).
+export function editorSeason(view: string | null, season: SeasonWindow): { code: string | null; name: string } {
+  return view ? { code: view, name: seasonNameOf(view) } : { code: season.code, name: season.name };
 }
 
 // Whether the wearer can use `item` in `row`. Anything the catalog does not
@@ -205,7 +217,13 @@ function picksFor(picks: Pick[], byId: Map<number, CatalogItem>, row: string, it
   });
 }
 
-type Context = { picks: Pick[]; byId: Map<number, CatalogItem>; seasonName: string; zones: ZoneRow[] };
+type Context = {
+  picks: Pick[];
+  byId: Map<number, CatalogItem>;
+  seasonCode: string | null;
+  seasonName: string;
+  zones: ZoneRow[];
+};
 
 // The items holding BiS in each slot of a ring or trinket pair, by item id.
 // A copy the current site saves into the other slot (synced_bis) is not a pick
@@ -223,7 +241,7 @@ function pairHolders(ctx: Context, row: string): Record<string, number[]> {
           p.status === 'bis' &&
           !!item &&
           !item.is_placeholder &&
-          inSeasonZone(item, ctx.seasonName, ctx.zones) &&
+          inSeasonZone(item, ctx.seasonCode, ctx.zones) &&
           picksFor(ctx.picks, ctx.byId, slot, p.item_id).includes(p)
         );
       })
@@ -261,15 +279,17 @@ export type EditorInput = {
   picks: Pick[];
   catalog: CatalogItem[];
   zones: ZoneRow[];
-  // The season being planned: Season View when an officer set one, else the
-  // team's season, as on the current site.
+  // The season being planned (editorSeason()): Season View when an officer set
+  // one, else the team's season, as on the current site. The code scopes the
+  // zones, the name stamps the row.
+  seasonCode: string | null;
   seasonName: string;
   tokens: TokenRow[];
   wearer: Wearer;
 };
 
 export function editorSlots(input: EditorInput): EditorSlot[] {
-  const { picks, catalog, zones, seasonName, tokens, wearer } = input;
+  const { picks, catalog, zones, seasonCode, seasonName, tokens, wearer } = input;
   const byId = new Map(catalog.map((i) => [i.id, i]));
   // A tier piece is offered as its token, named for the wearer's class, since
   // the token is what drops and what priority is kept for.
@@ -280,7 +300,7 @@ export function editorSlots(input: EditorInput): EditorSlot[] {
 
   const offered = new Map<string, { itemId: number; name: string }[]>(WISHLIST_SLOTS.map((s) => [s, []]));
   for (const item of catalog) {
-    if (item.is_placeholder || resolvedIds.has(item.id) || !inSeasonZone(item, seasonName, zones)) continue;
+    if (item.is_placeholder || resolvedIds.has(item.id) || !inSeasonZone(item, seasonCode, zones)) continue;
     for (const row of rowsFor(item, wearer.className)) {
       if (!usable(item, row, wearer)) continue;
       offered.get(row)?.push({ itemId: item.id, name: tokenName.get(item.id) ?? item.name });
@@ -297,7 +317,10 @@ export function editorSlots(input: EditorInput): EditorSlot[] {
     return [
       {
         slot,
-        items: items.map((i) => ({ ...i, ...markFor({ picks, byId, seasonName, zones }, slot, i.itemId) })),
+        items: items.map((i) => ({
+          ...i,
+          ...markFor({ picks, byId, seasonCode, seasonName, zones }, slot, i.itemId)
+        })),
         notFromRaid: notFromRaid ? (byId.get(notFromRaid.item_id)?.name ?? null) : null
       }
     ];
@@ -329,9 +352,9 @@ export function planMark(
   itemId: number,
   next: Mark | null
 ): WritePlan {
-  const { picks, catalog, zones, seasonName } = input;
+  const { picks, catalog, zones, seasonCode, seasonName } = input;
   const byId = new Map(catalog.map((i) => [i.id, i]));
-  const ctx = { picks, byId, seasonName, zones };
+  const ctx = { picks, byId, seasonCode, seasonName, zones };
   const pair = PAIR[row];
   const own = picksFor(picks, byId, row, itemId);
   const other = pair ? picksFor(picks, byId, pair, itemId) : [];
@@ -361,7 +384,7 @@ export function planMark(
       for (const p of picks) {
         const item = byId.get(p.item_id);
         if (!item || item.is_placeholder || p.item_id === itemId || p.status !== 'bis') continue;
-        if (inSeasonZone(item, seasonName, zones) && picksFor(picks, byId, row, p.item_id).includes(p)) drop(p);
+        if (inSeasonZone(item, seasonCode, zones) && picksFor(picks, byId, row, p.item_id).includes(p)) drop(p);
       }
     }
     for (const p of picks) {
@@ -407,10 +430,10 @@ export function wishlistSummary(
     id: (r as Partial<Pick>).id ?? i,
     synced_bis: r.synced_bis ?? false
   }));
-  const ctx = { picks, byId, seasonName: season.name, zones };
+  const ctx = { picks, byId, seasonCode: season.code, seasonName: season.name, zones };
   const raid = picks.filter((p) => {
     const item = byId.get(p.item_id);
-    return !!item && !item.is_placeholder && inSeasonZone(item, season.name, zones);
+    return !!item && !item.is_placeholder && inSeasonZone(item, season.code, zones);
   });
   const marks = (slot: string, status: string) =>
     raid.some((p) => p.status === status && picksFor(picks, byId, slot, p.item_id).includes(p));

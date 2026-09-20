@@ -10,6 +10,19 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-20 -- raid_zones holds the tier code, and the current tier has a definition (#933)
+
+Shipped: 20260920130020_raid_zones_season_codes.sql
+
+The Season View dropdown read `raid_zones.season` and stored what it found, a display name, while every table the picked value went on to query holds the code; `generate_priority_order()`'s LEFT JOIN on `scoring` turned the mismatch into every player scoring null rather than an error (#923, latent because no team had set one). First of the conversions #932 left for #933 to #938.
+
+- **`raid_zones.season` holds the code and references `seasons(code)`.** Three rows converted; the unique key `(wcl_zone_id, season)` stands. A Season View stored on `team_settings.config` converts with it, so the key holds a code by construction (no team had one set). The dropdown stores the code and shows `display_name`; `resolveSeasonViewCode()` returns a code on both branches and `resolveSeasonView()` a name on both, since it stamps `item_preferences.season` and `bis_items.season`, which keep names until #936 and #935. The scope check compares zones by code whether or not a Season View is set: with codes in the table, a team with none would otherwise have compared its season name, matched nothing and fallen open to every tier's items.
+- **`current_season(p_on date)` is the latest tier whose start has passed on that day, by start date alone.** Decision 13 on #1189 (2026-09-20) made the season app-wide with one set of dates, no early rollover and dates by migration, so a tier stays current until the next one's migration lands and `ends_at` is not read. The default is today in Eastern; the argument is what makes it testable. Security invoker over the public read on `seasons`, executable by anon, authenticated and the service role. It ships here rather than with #937 because its first reader is now the progression sync.
+- **`wcl-progression-sync` stamps every team's rows with `current_season()`, read once per run.** This supersedes the #932 paragraph that kept the syncing team's `seasonName` as the stamp: that reason was two teams on different cycles, which decision 13 retires. A team with raids and no `seasonName` syncs; a day with no tier row writes nothing and says so in the response, since the key would refuse the row. The app-wide stamp #932's first build tried is now the right one.
+- **`fill_raid_night()` joins `seasons` on the code.** Body otherwise as #1216 left it.
+
+[Full discussion -> #933](https://github.com/katogaming88/WGA-Raid-Hub/issues/933), Season milestone; the model decision is [#1189](https://github.com/katogaming88/WGA-Raid-Hub/issues/1189).
+
 ## 2026-09-17 -- A guild records its region and home realm (#1102)
 
 Shipped: 20260917014626_guild_region_realm.sql

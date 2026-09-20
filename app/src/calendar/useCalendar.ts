@@ -188,7 +188,7 @@ export const lineupKey = (teamId: number) => ['boss-lineup', teamId] as const;
 // are small lookups every visitor can read.
 export function useSeasons() {
   return useSupabaseQuery<SeasonRow[]>(['seasons'], (client) =>
-    client.from('seasons').select('display_name, starts_at, ends_at').order('starts_at')
+    client.from('seasons').select('code, display_name, starts_at, ends_at').order('starts_at')
   );
 }
 

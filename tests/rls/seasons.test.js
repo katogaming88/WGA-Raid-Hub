@@ -78,6 +78,8 @@ describe('every season column is a foreign key to seasons', () => {
       await expect(q(CODE_INSERTS.raid_zones, ['Midnight Season 2'])).rejects.toMatchObject({
         constraint: 'raid_zones_season_fkey'
       });
+    });
+    await withTxn(async ({ q }) => {
       await q(CODE_INSERTS.raid_zones, ['MID2']);
       const res = await q('select season from public.raid_zones where wcl_zone_id = 999');
       expect(res.rows).toEqual([{ season: 'MID2' }]);

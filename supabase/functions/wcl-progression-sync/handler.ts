@@ -39,12 +39,16 @@
 // zone(id).encounters for the canonical id list every run, same query
 // wcl-sync's getZoneEncounters action already uses.
 //
-// The season a raid_zones row is filed under is the syncing team's own
-// seasonName: raid_zones is one row per (wcl_zone_id, season) shared by
-// every team, and the site scopes a team's progress by that same name, so
-// two teams on different cycles stay apart through it. Since #932 the
-// column is a foreign key to seasons, so a team with no name is skipped
-// rather than stamped Unknown.
+// The season a raid_zones row is filed under is the current tier's code,
+// current_season(), read once per run and the same for every team: since
+// #1189 (2026-09-20) the season is app-wide, so a raid belongs to the tier
+// that is live, whatever a team's own settings say (#933). raid_zones is one
+// row per (wcl_zone_id, season) shared by every team. Until #933 the stamp
+// was the syncing team's seasonName, to keep two teams on different cycles
+// apart, and a team with no name was skipped; the cycle is gone, so a team
+// with raids syncs whatever it has named, and a day with no tier row (before
+// the first tier's migration, or after a slipped date) writes nothing, since
+// the column is a foreign key to seasons.
 //
 // handle() takes its reads and writes, its fetch and its environment as an
 // argument (#1006), so tests/edge/ runs it against plain objects; deps.ts
@@ -74,6 +78,8 @@ export interface ProgressDb {
   teams(): Promise<TeamRow[]>;
   // The team's team_settings.config, {} when it has no row.
   teamConfig(teamId: number): Promise<Record<string, unknown>>;
+  // current_season(): the tier's code, null when no tier has started.
+  currentSeason(): Promise<string | null>;
   // Upserts on (wcl_zone_id, season); returns the row id.
   upsertRaidZone(row: RaidZoneRow): Promise<number>;
   // Upserts on (zone_id, wcl_encounter_id); returns the ids.
@@ -406,6 +412,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const token = await getAccessToken(deps);
     if (!token) return jsonResponse({ success: false, error: 'Failed to get WCL access token' }, 500);
 
+    // The stamp on every team's raid_zones rows; no tier, no rows.
+    const season = await deps.db.currentSeason();
+    if (!season)
+      return jsonResponse({ success: true, teams: teams.length, synced: 0, errors: [], note: 'no current tier' });
+
     let synced = 0;
     const errors: Array<{ teamId: number; error: string }> = [];
 
@@ -414,9 +425,6 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         const config: any = await deps.db.teamConfig(team.id);
         const raids: RaidConfigEntry[] = Array.isArray(config.raidProgression) ? config.raidProgression : [];
         if (raids.length === 0) continue;
-        // The stamp on the team's raid_zones rows; no name, no rows.
-        const season: string = typeof config.seasonName === 'string' ? config.seasonName : '';
-        if (!season) continue;
 
         for (let i = 0; i < raids.length; i++) {
           const outcome = await syncTeamZone(deps, token, team.id, team.wcl_guild_id, season, raids[i], i);

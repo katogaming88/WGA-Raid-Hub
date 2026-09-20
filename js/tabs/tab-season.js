@@ -675,8 +675,11 @@ function executeArchiveSeason() {
 // Options come from raid_zones.season (DATA.raidZones, #285/#549), not a
 // free-typed value -- making a season selectable here is just adding its
 // raid_zones row, a step already required for that tier eventually anyway.
-// Preserves the current DATA.seasonView selection (even if it's since fallen
-// out of DATA.raidZones) so the dropdown doesn't silently reset it.
+// The stored value is the season code, the label its display name (#933):
+// the code is what every priority query is tagged with, so the dropdown
+// stores what those queries compare against. Preserves the current
+// DATA.seasonView selection (even if it's since fallen out of
+// DATA.raidZones) so the dropdown doesn't silently reset it.
 function populateSeasonViewOptions() {
   var select = document.getElementById('seasonViewInput');
   if (!select) return;
@@ -695,7 +698,7 @@ function populateSeasonViewOptions() {
     '<option value="">Live season (current)</option>' +
     seasons
       .map(function (s) {
-        return '<option value="' + _esc(s) + '">' + _esc(s) + '</option>';
+        return '<option value="' + _esc(s) + '">' + _esc(seasonDisplayName(s)) + '</option>';
       })
       .join('');
   select.value = current;

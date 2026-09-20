@@ -266,8 +266,8 @@ const CAL_NIGHT_PAGE = {
 // The boss lineup (#1216): two raids, a planned night with a change from the
 // group, a raider in who said they are out, and the bench, so every cell state
 // and count tone is on the page.
-const LINEUP_ZONE = { id: 10, name: 'The Venomous Abyss', season: 'Season One', is_mini_raid: false, sort_index: 0 };
-const LINEUP_MINI = { id: 11, name: 'Tidebound Grotto', season: 'Season One', is_mini_raid: true, sort_index: 1 };
+const LINEUP_ZONE = { id: 10, name: 'The Venomous Abyss', season: 'S1', is_mini_raid: false, sort_index: 0 };
+const LINEUP_MINI = { id: 11, name: 'Tidebound Grotto', season: 'S1', is_mini_raid: true, sort_index: 1 };
 const lineupBoss = (encounter_id, position) => ({
   raid_date: CAL_NIGHT,
   encounter_id,
@@ -282,7 +282,7 @@ const CAL_LINEUP = {
   sentinel: 'main:has(.lineup-toggle)',
   tables: {
     ...CAL_TABLES,
-    seasons: [{ display_name: 'Season One', starts_at: '2026-01-01', ends_at: null }],
+    seasons: [{ code: 'S1', display_name: 'Season One', starts_at: '2026-01-01', ends_at: null }],
     raid_encounters: [
       { id: 101, name: "Nek'zali the Soulcoiler", sort_index: 1, zone: LINEUP_ZONE },
       { id: 102, name: 'Sszorak', sort_index: 2, zone: LINEUP_ZONE },
