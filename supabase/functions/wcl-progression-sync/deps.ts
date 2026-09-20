@@ -33,6 +33,19 @@ export function supabaseDb(): ProgressDb {
       if (error) throw new Error(error.message);
       return (data as string | null) ?? null;
     },
+    async raidZoneSeason(wclZoneId) {
+      // One row per zone under the app-wide season; the order covers a
+      // second row left from the cycle era, taking the later tier's.
+      const { data, error } = await db()
+        .from('raid_zones')
+        .select('season')
+        .eq('wcl_zone_id', wclZoneId)
+        .order('season', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return ((data as { season: string } | null)?.season as string | undefined) ?? null;
+    },
     async upsertRaidZone(row) {
       const { data, error } = await db()
         .from('raid_zones')

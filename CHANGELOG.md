@@ -37,9 +37,10 @@ answers to.
 
 ### Functions
 
-- `wcl-progression-sync` stamps every team's raids with the current tier
-  rather than each team's own season name, syncs a team that never named a
-  season, and writes nothing on a day with no tier
+- `wcl-progression-sync` stamps a raid it meets for the first time with the
+  current tier rather than the syncing team's own season name, keeps a raid
+  already on file under its tier, syncs a team that never named a season, and
+  writes nothing on a day with no tier
   ([#933](https://github.com/katogaming88/WGA-Raid-Hub/issues/933)).
 
 ## [3.144.5] - 2026-09-19

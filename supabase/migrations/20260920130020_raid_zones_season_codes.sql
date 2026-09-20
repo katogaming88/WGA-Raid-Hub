@@ -19,9 +19,12 @@
 -- migration lands. The date argument is what makes it testable; the default
 -- is today in Eastern, the guild's clock. It reads seasons under the
 -- caller's own rights (public read), so anon may call it. Its first reader is
--- wcl-progression-sync, which stamps every team's raid_zones rows with it;
--- #932 kept the syncing team's seasonName as the stamp because a team could
--- roll over early, and that reason is gone with #1189's decision.
+-- wcl-progression-sync, which stamps a raid it has not filed before with it,
+-- for every team; a raid already on file keeps the tier it was filed under,
+-- so the outgoing raid still on a team's list on launch day is not re-filed
+-- under the new tier. #932 kept the syncing team's seasonName as the stamp
+-- because a team could roll over early, and that reason is gone with #1189's
+-- decision.
 --
 -- fill_raid_night() joined seasons on the display name to find the season a
 -- night falls in; it joins on the code now. Body otherwise unchanged from

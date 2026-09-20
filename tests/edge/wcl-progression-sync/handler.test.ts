@@ -1,7 +1,8 @@
 // wcl-progression-sync's handler (#932, #933): the cron gate, the raid_zones
 // stamp taken from the current tier (current_season(), read once per run and
-// the same for every team since the season went app-wide on #1189), and a day
-// with no tier row writing nothing, which the foreign key would refuse. The
+// the same for every team since the season went app-wide on #1189) for a zone
+// the table does not hold yet, a zone already filed keeping its tier, and a
+// day with no tier row writing nothing, which the foreign key would refuse. The
 // progress rows are the ones the pre-split aggregation produced over this corpus,
 // recorded before the split, so the move is measured against what was
 // deployed. The runner grants no permission: a path that reached the
@@ -170,11 +171,39 @@ Deno.test('a team with raids and no seasonName syncs, stamped with the current t
   assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 1, errors: [] } });
   assertEquals(
     db.calls.map((c) => c.method),
-    ['teams', 'currentSeason', 'teamConfig', 'upsertRaidZone', 'upsertEncounters', 'upsertProgress']
+    ['teams', 'currentSeason', 'teamConfig', 'raidZoneSeason', 'upsertRaidZone', 'upsertEncounters', 'upsertProgress']
   );
-  assertEquals(db.calls[3].args, [
+  assertEquals(db.calls[4].args, [
     { wcl_zone_id: 44, name: 'Test Raid', season: SEASON_CODE, is_mini_raid: false, sort_index: 0 }
   ]);
+});
+
+// The tier boundary: the next tier's row has landed and no officer has yet
+// replaced the outgoing raid in the team's list. The raid keeps the tier it
+// was filed under, so it is neither duplicated under the new tier nor pulled
+// into the new tier's scope; the new raid takes the new tier when it is added.
+Deno.test('a zone already filed under an earlier tier keeps that tier; a new zone takes the current one', async () => {
+  const { deps, db } = testDeps({
+    state: {
+      teams: [TEAM],
+      configs: { 1: { raidProgression: TWO_RAIDS.raidProgression } },
+      currentSeason: 'MID3',
+      zones: { 44: 'MID2' }
+    },
+    responses: [
+      tokenResponse(),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
+      reportsResponse(REPORTS),
+      zoneResponse('Mini Raid Zone', [{ id: 3003, name: 'Mini Boss' }]),
+      reportsResponse([])
+    ]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 2, errors: [] } });
+  const stamps = db.calls
+    .filter((c) => c.method === 'upsertRaidZone')
+    .map((c) => (c.args[0] as { season: string }).season);
+  assertEquals(stamps, ['MID2', 'MID3']);
 });
 
 Deno.test('a day with no current tier makes no zone call and writes nothing', async () => {
@@ -225,19 +254,19 @@ Deno.test("stamps raid_zones with the current tier's code and writes the pinned 
 
   assertEquals(
     db.calls.map((c) => c.method),
-    ['teams', 'currentSeason', 'teamConfig', 'upsertRaidZone', 'upsertEncounters', 'upsertProgress']
+    ['teams', 'currentSeason', 'teamConfig', 'raidZoneSeason', 'upsertRaidZone', 'upsertEncounters', 'upsertProgress']
   );
-  assertEquals(db.calls[3].args, [
+  assertEquals(db.calls[4].args, [
     { wcl_zone_id: 44, name: 'Test Raid', season: SEASON_CODE, is_mini_raid: false, sort_index: 0 }
   ]);
-  assertEquals(db.calls[4].args, [
+  assertEquals(db.calls[5].args, [
     [
       { zone_id: 900, wcl_encounter_id: 3001, name: 'Boss One', sort_index: 0 },
       { zone_id: 900, wcl_encounter_id: 3002, name: 'Boss Two', sort_index: 1 }
     ]
   ]);
 
-  const rows = (db.calls[5].args[0] as Array<Record<string, unknown>>).map((row) => {
+  const rows = (db.calls[6].args[0] as Array<Record<string, unknown>>).map((row) => {
     const { updated_at, ...rest } = row;
     assertMatch(String(updated_at), /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     return rest;

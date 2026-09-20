@@ -42,13 +42,17 @@
 // The season a raid_zones row is filed under is the current tier's code,
 // current_season(), read once per run and the same for every team: since
 // #1189 (2026-09-20) the season is app-wide, so a raid belongs to the tier
-// that is live, whatever a team's own settings say (#933). raid_zones is one
-// row per (wcl_zone_id, season) shared by every team. Until #933 the stamp
-// was the syncing team's seasonName, to keep two teams on different cycles
-// apart, and a team with no name was skipped; the cycle is gone, so a team
-// with raids syncs whatever it has named, and a day with no tier row (before
-// the first tier's migration, or after a slipped date) writes nothing, since
-// the column is a foreign key to seasons.
+// that is live when it is first seen, whatever a team's own settings say
+// (#933). A zone the table already holds keeps the tier it was filed under:
+// on the new tier's launch day every team's raid list still names the
+// outgoing raid until an officer replaces it, and re-filing that raid under
+// the new tier would duplicate its rows and pull it into the new tier's
+// scope. raid_zones is one row per (wcl_zone_id, season) shared by every
+// team. Until #933 the stamp was the syncing team's seasonName, to keep two
+// teams on different cycles apart, and a team with no name was skipped; the
+// cycle is gone, so a team with raids syncs whatever it has named, and a day
+// with no tier row (before the first tier's migration, or after a slipped
+// date) writes nothing, since the column is a foreign key to seasons.
 //
 // handle() takes its reads and writes, its fetch and its environment as an
 // argument (#1006), so tests/edge/ runs it against plain objects; deps.ts
@@ -80,6 +84,8 @@ export interface ProgressDb {
   teamConfig(teamId: number): Promise<Record<string, unknown>>;
   // current_season(): the tier's code, null when no tier has started.
   currentSeason(): Promise<string | null>;
+  // The season a zone is already filed under, null when raid_zones has no row for it.
+  raidZoneSeason(wclZoneId: number): Promise<string | null>;
   // Upserts on (wcl_zone_id, season); returns the row id.
   upsertRaidZone(row: RaidZoneRow): Promise<number>;
   // Upserts on (zone_id, wcl_encounter_id); returns the ids.
@@ -292,10 +298,13 @@ async function syncTeamZone(
     page++;
   }
 
+  // A zone already on file keeps its tier (see the header); a new one takes
+  // the current tier.
+  const filedSeason = await deps.db.raidZoneSeason(zoneId);
   const zoneRowId = await deps.db.upsertRaidZone({
     wcl_zone_id: zoneId,
     name: raid.name || zone.name || 'Unnamed Raid',
-    season,
+    season: filedSeason ?? season,
     is_mini_raid: !!raid.isMiniRaid,
     sort_index: sortIndex
   });
