@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="css/styles.css?v=3.146.0">
   <link rel="stylesheet" href="css/officer.css?v=3.146.0">
   <!-- Hover tooltips for Buff Coverage's spell links (#491) and item links
-       (Priority tab/BiS grid, itemNameBlockHtml(), #567). Auto-attaches to
+       (Priority tab/BiS Lists, itemNameBlockHtml(), #567). Auto-attaches to
        any <a class="wowhead">. whTooltips must be set before power.js loads
        (mirrors index.html) -- was missing here entirely until now, an
        oversight from #567 that left this page running the widget's
@@ -520,13 +520,11 @@
               <div id="help-requests" class="help-tip">
                 Raiders submit requests for items received outside of raid (M+, Great Vault, Crafted, Catalyst, Bonus
                 Roll).<br>
-                <strong>Approve</strong> records the item on the raider's profile, ticks the matching BiS Manager entry
-                as obtained, and removes them from priority fairness warnings for that item.<br>
+                <strong>Approve</strong> records the item on the raider's profile and removes them from priority
+                fairness warnings for that item.<br>
                 <strong>Reject</strong> dismisses the request with no change to their record.<br>
                 <strong>Recent decisions</strong> below the queue lists approved and rejected requests. Revert sends
-                one back to the pending queue; Delete removes it (the usual fix for a duplicate submission). Neither
-                unticks the BiS Manager obtained box -- do that in BiS Manager if the approval itself was the
-                mistake.<br>
+                one back to the pending queue; Delete removes it (the usual fix for a duplicate submission).<br>
                 Officers can also mark items received directly from a player's profile card on the Roster tab -- this
                 bypasses the approval queue and takes effect immediately.
               </div>
@@ -700,7 +698,7 @@
               <div class="help-ref-card">
                 <h3 class="help-ref-title">Season View<button class="help-btn" onclick="toggleHelp('help-season-view')" title="Show help">?</button></h3>
                 <div id="help-season-view" class="help-tip">
-                  The season your team is planning items/BiS/Wishlist for. Leave on "Live season" and the Priority tab, BiS grid, and Wishlist reflect the current raiding season automatically. Pick a specific season here to prep its item catalog, wishlist, and BiS ahead of time without touching the live raid -- useful once that season's raid zone has been added in Season Settings > Raid Progression for a future tier, or to audit an old season's data. A season with no items imported yet will show up empty here -- that's expected until the import for it is finished. This does not affect signups; see Signup Season below for that.
+                  The season your team is planning items/BiS/Wishlist for. Leave on "Live season" and the Priority tab, BiS Lists, and Wishlist reflect the current raiding season automatically. Pick a specific season here to prep its item catalog, wishlist, and BiS ahead of time without touching the live raid -- useful once that season's raid zone has been added in Season Settings > Raid Progression for a future tier, or to audit an old season's data. A season with no items imported yet will show up empty here -- that's expected until the import for it is finished. This does not affect signups; see Signup Season below for that.
                 </div>
                 <p class="signup-officer-note" style="margin-top:0.25rem;">Controls item/BiS/Wishlist scope only -- independent of the live raid and of Signup Season.</p>
                 <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
