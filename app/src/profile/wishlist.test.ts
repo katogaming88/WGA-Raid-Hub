@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CatalogItem } from './lootPriority';
-import { editorSlots, planMark, type EditorInput, type Pick, type Wearer } from './wishlist';
+import { editorSeason, editorSlots, planMark, type EditorInput, type Pick, type Wearer } from './wishlist';
 
 const item = (id: number, name: string, slot: string, extra: Partial<CatalogItem> = {}): CatalogItem => ({
   id,
@@ -45,9 +45,10 @@ const input = (picks: Pick[], wearer: Wearer = DEATH_KNIGHT): EditorInput => ({
   picks,
   catalog,
   zones: [
-    { wcl_zone_id: 53, season: 'Midnight Season 2' },
-    { wcl_zone_id: 46, season: 'Midnight Season 1' }
+    { wcl_zone_id: 53, season: 'MID2' },
+    { wcl_zone_id: 46, season: 'MID1' }
   ],
+  seasonCode: 'MID2',
   seasonName: 'Midnight Season 2',
   tokens: [
     { token_item_id: 12, resolved_item_id: 13, class: 'Death Knight' },
@@ -58,6 +59,21 @@ const input = (picks: Pick[], wearer: Wearer = DEATH_KNIGHT): EditorInput => ({
 
 const names = (slots: ReturnType<typeof editorSlots>, slot: string) =>
   slots.find((s) => s.slot === slot)?.items.map((i) => i.name) ?? [];
+
+// The season an officer pinned (Season View, a code since #933) or the team's
+// own: the code scopes the raid items by zone, the name is what a wishlist row
+// is stamped with while item_preferences.season still holds names.
+describe('editorSeason', () => {
+  const team = { name: 'Midnight Season 1', code: 'MID1', start: null, end: null };
+
+  it('takes the pinned Season View as the code and names it', () => {
+    expect(editorSeason('MID2', team)).toEqual({ code: 'MID2', name: 'Midnight Season 2' });
+  });
+
+  it('falls back to the team’s season', () => {
+    expect(editorSeason(null, team)).toEqual({ code: 'MID1', name: 'Midnight Season 1' });
+  });
+});
 
 describe('editorSlots', () => {
   it('offers this season’s raid items the wearer can use', () => {

@@ -290,8 +290,8 @@ describe('lootPriority', () => {
     { id: 5, name: 'Caustic Sash', slot: 'Waist', wcl_zone_id: 53, is_placeholder: false }
   ];
   const zones = [
-    { wcl_zone_id: 53, season: 'Midnight Season 2' },
-    { wcl_zone_id: 46, season: 'Midnight Season 1' }
+    { wcl_zone_id: 53, season: 'MID2' },
+    { wcl_zone_id: 46, season: 'MID1' }
   ];
   const pick = (item_id: number, slot: string, status = 'bis') => ({ item_id, status, slot, season: SEASON.name });
   const base = {

@@ -37,7 +37,7 @@ describe('isItemInSeasonScope -- placeholder rowSeason scoping', () => {
   it('shows a placeholder tagged for the currently-viewed season', () => {
     const sandbox = makeSandbox({
       itemPlaceholders: { 'M+': true },
-      seasonView: 'Midnight Season 2'
+      seasonView: 'MID2'
     });
     expect(sandbox.isItemInSeasonScope('M+', 'Midnight Season 2')).toBe(true);
   });
@@ -45,7 +45,7 @@ describe('isItemInSeasonScope -- placeholder rowSeason scoping', () => {
   it('hides a placeholder tagged for a different (older) season than the one being viewed', () => {
     const sandbox = makeSandbox({
       itemPlaceholders: { 'M+': true },
-      seasonView: 'Midnight Season 2'
+      seasonView: 'MID2'
     });
     expect(sandbox.isItemInSeasonScope('M+', 'Midnight Season 1')).toBe(false);
   });
@@ -53,7 +53,7 @@ describe('isItemInSeasonScope -- placeholder rowSeason scoping', () => {
   it('fails open for a legacy placeholder row with no season stamped at all', () => {
     const sandbox = makeSandbox({
       itemPlaceholders: { 'M+': true },
-      seasonView: 'Midnight Season 2'
+      seasonView: 'MID2'
     });
     expect(sandbox.isItemInSeasonScope('M+', null)).toBe(true);
     expect(sandbox.isItemInSeasonScope('M+', undefined)).toBe(true);
@@ -63,8 +63,8 @@ describe('isItemInSeasonScope -- placeholder rowSeason scoping', () => {
     const sandbox = makeSandbox({
       itemPlaceholders: {},
       itemZones: { Helm: 1 },
-      raidZones: [{ wclZoneId: '1', season: 'Midnight Season 1' }],
-      seasonView: 'Midnight Season 2'
+      raidZones: [{ wclZoneId: '1', season: 'MID1' }],
+      seasonView: 'MID2'
     });
     // rowSeason passed in shouldn't matter for real items -- zone-based check wins
     expect(sandbox.isItemInSeasonScope('Helm', 'Midnight Season 2')).toBe(false);

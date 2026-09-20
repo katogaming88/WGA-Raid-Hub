@@ -211,8 +211,8 @@ export function sortedLoot(loot) {
 // with the catalog's placeholder slot rather than the slot it was picked for.
 
 export const RAID_ZONES = [
-  { wcl_zone_id: 53, season: 'Midnight Season 2', name: 'The Venomous Abyss', sort_index: 0 },
-  { wcl_zone_id: 46, season: 'Midnight Season 1', name: 'March on Quel’Danas', sort_index: 1 }
+  { wcl_zone_id: 53, season: 'MID2', name: 'The Venomous Abyss', sort_index: 0 },
+  { wcl_zone_id: 46, season: 'MID1', name: 'March on Quel’Danas', sort_index: 1 }
 ];
 
 const item = (id, name, slot, zone, placeholder = false) => ({

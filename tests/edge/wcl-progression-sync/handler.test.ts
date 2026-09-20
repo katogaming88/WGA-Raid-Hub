@@ -1,7 +1,8 @@
-// wcl-progression-sync's handler (#932): the cron gate, the raid_zones stamp
-// taken from the team's own seasonName, and a team with no name skipped
-// rather than stamped Unknown, which the foreign key refuses. The progress
-// rows are the ones the pre-split aggregation produced over this corpus,
+// wcl-progression-sync's handler (#932, #933): the cron gate, the raid_zones
+// stamp taken from the current tier (current_season(), read once per run and
+// the same for every team since the season went app-wide on #1189), and a day
+// with no tier row writing nothing, which the foreign key would refuse. The
+// progress rows are the ones the pre-split aggregation produced over this corpus,
 // recorded before the split, so the move is measured against what was
 // deployed. The runner grants no permission: a path that reached the
 // platform fetch or Deno.env would throw into the catch-all and fail the
@@ -83,6 +84,7 @@ const ENCOUNTERS = [
 
 const TEAM = { id: 1, wcl_guild_id: 777 };
 const SEASON_NAME = 'Midnight Season 2';
+const SEASON_CODE = 'MID2';
 const TWO_RAIDS = {
   raidProgression: [
     { wclZoneId: 44, name: 'Test Raid' },
@@ -149,23 +151,42 @@ Deno.test('a team with no raid list makes no WarcraftLogs zone call and writes n
   assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 0, errors: [] } });
   assertEquals(
     db.calls.map((c) => c.method),
-    ['teams', 'teamConfig']
+    ['teams', 'currentSeason', 'teamConfig']
   );
   assertEquals(calls.length, 1);
   assertEquals(calls[0].url, 'https://www.warcraftlogs.com/oauth/token');
   assertEquals(calls[0].body, 'grant_type=client_credentials');
 });
 
-Deno.test('a team with raids but no seasonName is skipped: no zone call, no write', async () => {
+Deno.test('a team with raids and no seasonName syncs, stamped with the current tier', async () => {
+  const { deps, db } = testDeps({
+    state: {
+      teams: [TEAM],
+      configs: { 1: { raidProgression: [{ wclZoneId: 44, name: 'Test Raid' }], seasonName: '' } }
+    },
+    responses: [tokenResponse(), zoneResponse('Test Raid Zone', ENCOUNTERS), reportsResponse(REPORTS)]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 1, errors: [] } });
+  assertEquals(
+    db.calls.map((c) => c.method),
+    ['teams', 'currentSeason', 'teamConfig', 'upsertRaidZone', 'upsertEncounters', 'upsertProgress']
+  );
+  assertEquals(db.calls[3].args, [
+    { wcl_zone_id: 44, name: 'Test Raid', season: SEASON_CODE, is_mini_raid: false, sort_index: 0 }
+  ]);
+});
+
+Deno.test('a day with no current tier makes no zone call and writes nothing', async () => {
   const { deps, calls, db } = testDeps({
-    state: { teams: [TEAM], configs: { 1: { raidProgression: TWO_RAIDS.raidProgression, seasonName: '' } } },
+    state: { teams: [TEAM], configs: { 1: TWO_RAIDS }, currentSeason: null },
     responses: [tokenResponse()]
   });
   const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
-  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 0, errors: [] } });
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 0, errors: [], note: 'no current tier' } });
   assertEquals(
     db.calls.map((c) => c.method),
-    ['teams', 'teamConfig']
+    ['teams', 'currentSeason']
   );
   assertEquals(calls.length, 1);
 });
@@ -183,7 +204,7 @@ Deno.test('a failed token answers 500 after the teams read', async () => {
   );
 });
 
-Deno.test("stamps raid_zones with the team's seasonName and writes the pinned progress rows", async () => {
+Deno.test("stamps raid_zones with the current tier's code and writes the pinned progress rows", async () => {
   const { deps, calls, db } = testDeps({
     state: { teams: [TEAM], configs: { 1: TWO_RAIDS } },
     responses: [
@@ -204,19 +225,19 @@ Deno.test("stamps raid_zones with the team's seasonName and writes the pinned pr
 
   assertEquals(
     db.calls.map((c) => c.method),
-    ['teams', 'teamConfig', 'upsertRaidZone', 'upsertEncounters', 'upsertProgress']
+    ['teams', 'currentSeason', 'teamConfig', 'upsertRaidZone', 'upsertEncounters', 'upsertProgress']
   );
-  assertEquals(db.calls[2].args, [
-    { wcl_zone_id: 44, name: 'Test Raid', season: SEASON_NAME, is_mini_raid: false, sort_index: 0 }
-  ]);
   assertEquals(db.calls[3].args, [
+    { wcl_zone_id: 44, name: 'Test Raid', season: SEASON_CODE, is_mini_raid: false, sort_index: 0 }
+  ]);
+  assertEquals(db.calls[4].args, [
     [
       { zone_id: 900, wcl_encounter_id: 3001, name: 'Boss One', sort_index: 0 },
       { zone_id: 900, wcl_encounter_id: 3002, name: 'Boss Two', sort_index: 1 }
     ]
   ]);
 
-  const rows = (db.calls[4].args[0] as Array<Record<string, unknown>>).map((row) => {
+  const rows = (db.calls[5].args[0] as Array<Record<string, unknown>>).map((row) => {
     const { updated_at, ...rest } = row;
     assertMatch(String(updated_at), /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     return rest;
@@ -265,7 +286,7 @@ Deno.test('a zone WarcraftLogs does not know is skipped and counted as not synce
   assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 0, errors: [] } });
   assertEquals(
     db.calls.map((c) => c.method),
-    ['teams', 'teamConfig']
+    ['teams', 'currentSeason', 'teamConfig']
   );
 });
 

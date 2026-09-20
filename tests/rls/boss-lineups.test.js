@@ -28,7 +28,7 @@ async function seed(q) {
   const p3 = await seedPlayer(q, { teamId: 2 });
   const p6 = await seedPlayer(q, { memberId: 13 });
   await q(`insert into public.raid_zones (id, wcl_zone_id, name, season, sort_index)
-           values (9001, 99001, 'Test Raid', 'Midnight Season 2', 0)`);
+           values (9001, 99001, 'Test Raid', 'MID2', 0)`);
   await q(`insert into public.raid_encounters (id, zone_id, wcl_encounter_id, name, sort_index)
            values (9101, 9001, 99101, 'Second Boss', 2), (9102, 9001, 99102, 'First Boss', 1)`);
   await q(`insert into public.raid_schedule (team_id, weekday, start_time)
