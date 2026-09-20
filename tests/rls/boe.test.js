@@ -237,9 +237,25 @@ describe('submit_boe_found', () => {
     });
   });
 
-  // The season comes from the submitting team's settings row, so the case
-  // mints a team and sets its season rather than writing team 1's row.
-  it('the submit snapshots the seasonName in force', async () => {
+  // The season is the current tier (#937): current_season() whatever the
+  // team's settings say, since the season is app-wide (#1189). A minted team
+  // has no seasonName, which is the case #922 found stamping null.
+  it('the submit stamps the current tier for a team with no seasonName', async () => {
+    await withTxn(async ({ q, asAnon }) => {
+      const { teamId } = await seedTeam(q);
+      const res = await asAnon(
+        submit(`${teamId}, 'Snapshot-Illidan', 'Season Snapshot Blade', 'Myth', null, false, '6/6'`)
+      );
+      const row = (await q('select season from public.boe_items where id = $1', [res.rows[0].id])).rows[0];
+      const tier = (await q('select public.current_season() as code')).rows[0].code;
+      expect(tier).toMatch(/^MID\d$/);
+      expect(row.season).toBe(tier);
+    });
+  });
+
+  // A seasonName naming some other season does not move the stamp: seedSeason
+  // dates its row centuries back, so current_season() can never be it.
+  it("the submit stamps the current tier over the team's own seasonName", async () => {
     await withTxn(async ({ q, asAnon }) => {
       const { teamId } = await seedTeam(q);
       await seedSeason(q, 'Test Season 3');
@@ -251,7 +267,8 @@ describe('submit_boe_found', () => {
         submit(`${teamId}, 'Snapshot-Illidan', 'Season Snapshot Blade', 'Myth', null, false, '6/6'`)
       );
       const row = (await q('select season from public.boe_items where id = $1', [res.rows[0].id])).rows[0];
-      expect(row.season).toBe('Test Season 3');
+      const tier = (await q('select public.current_season() as code')).rows[0].code;
+      expect(row.season).toBe(tier);
     });
   });
 

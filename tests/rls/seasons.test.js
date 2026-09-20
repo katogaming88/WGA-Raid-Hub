@@ -1,6 +1,7 @@
 // #932: the seasons table and a foreign key on every season column.
 // #933: raid_zones.season holds the code, and current_season() names the tier
 // a date falls in.
+// #937: boe_items.season holds the code.
 //
 // Each test runs in one rolled-back transaction (helpers.js withTxn). The
 // inserts below ride the seed's rows: team 1, players 1 and 2, items 1 and 2.
@@ -12,11 +13,13 @@ afterAll(() => pool.end());
 const BAD_CODE = 'MIDX';
 const BAD_NAME = 'Midnight Season 9';
 
-// One insert per season column, the season left to the case. The ten code
-// columns reference seasons(code); the four name columns reference
-// seasons(display_name) until #934 to #937 convert them.
+// One insert per season column, the season left to the case. The eleven code
+// columns reference seasons(code); the three name columns reference
+// seasons(display_name) until #934 to #936 convert them.
 const CODE_INSERTS = {
   raid_zones: "insert into public.raid_zones (wcl_zone_id, name, season) values (999, 'Season Test Zone', $1)",
+  boe_items:
+    "insert into public.boe_items (team_id, item_name, track, season) values (1, 'Season Test Belt', 'Hero', $1)",
   player_wcl_season_perf: 'insert into public.player_wcl_season_perf (player_id, team_id, season) values (2, 1, $1)',
   priority_conflict_dismissals:
     "insert into public.priority_conflict_dismissals (team_id, player_id, season, boss, track) values (1, 1, $1, 'Season Test Boss', 'Hero')",
@@ -35,8 +38,6 @@ const CODE_INSERTS = {
 
 const NAME_INSERTS = {
   bis_items: 'insert into public.bis_items (player_id, item_id, season) values (2, 2, $1)',
-  boe_items:
-    "insert into public.boe_items (team_id, item_name, track, season) values (1, 'Season Test Belt', 'Hero', $1)",
   item_preferences:
     "insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 2, 2, 'bis', $1)",
   season_signups:
@@ -66,7 +67,7 @@ describe('every season column is a foreign key to seasons', () => {
     await withTxn(async ({ q }) => {
       await q(CODE_INSERTS.scoring, ['MID2']);
       await q(NAME_INSERTS.item_preferences, ['Midnight Season 2']);
-      await q(NAME_INSERTS.boe_items, [null]);
+      await q(CODE_INSERTS.boe_items, [null]);
       await q(CODE_INSERTS.rclc_loot, [null]);
     });
   });
@@ -82,6 +83,19 @@ describe('every season column is a foreign key to seasons', () => {
     await withTxn(async ({ q }) => {
       await q(CODE_INSERTS.raid_zones, ['MID2']);
       const res = await q('select season from public.raid_zones where wcl_zone_id = 999');
+      expect(res.rows).toEqual([{ season: 'MID2' }]);
+    });
+  });
+
+  // #937 did the same for boe_items.
+  it('boe_items.season takes the code and refuses the name', async () => {
+    await withTxn(async ({ q }) => {
+      await expect(q(CODE_INSERTS.boe_items, ['Midnight Season 2'])).rejects.toMatchObject({
+        constraint: 'boe_items_season_fkey'
+      });
+    });
+    await withTxn(async ({ q }) => {
+      const res = await q(CODE_INSERTS.boe_items + ' returning season', ['MID2']);
       expect(res.rows).toEqual([{ season: 'MID2' }]);
     });
   });
