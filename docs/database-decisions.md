@@ -10,6 +10,18 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-20 -- boe_items holds the tier code, and a find is stamped with the current tier (#937)
+
+Shipped: 20260920160630_boe_items_season_codes.sql
+
+`submit_boe_found()` stamped `boe_items.season` with the reporting team's `config->>'seasonName'` and nothing else, so a team that never ran Start New Season filed every find with no season (#922: eleven rows on production by 2026-09-20, all live submissions from the two teams with no `seasonName`). The picker on `boe.html` answered the same question a different way (that team's `seasonView` or `seasonName`, else the first listed team's), so what a raider was offered and what got stored disagreed. Second of the conversions #932 left for #933 to #938.
+
+- **A find is stamped with `current_season()`, whatever the team's settings say.** Decision 13 on #1189 (2026-09-20) made the season app-wide with no team cycle, so the two-step rule this issue was filed with (the team's open cycle's tier, else the guild's) is one step, and the definition #933 minted is the one value. The picker reads the same function at page load (`rpc('current_season')`, callable by anon) and offers that tier's BoEs for every team; it no longer reads `team_settings` for a season or changes with the team picked, since a BoE is guild property and which team is reporting decides only where the row files. From 00:00 Eastern on a tier's start every find is the new tier's, and the picker offers the whole catalog until the sync files the new raid, the fail-open rule it already had for a tier with no zones.
+- **`boe_items.season` holds the code and references `seasons(code)`.** Seventy-two named rows converted; the rows with no season take `current_season()` on the day each was found, which is the tier that was current when it was submitted. The column stays nullable: the function no longer produces a null on any day with a tier row, nothing else writes the column, and the row fixtures in the RLS suite carry none.
+- **Not moved with this.** The importer (`scripts/import/tables/boe.js`) still stamps whatever name its `--seasons` file carries, so a BoE import would now be refused as a legacy loot import already is; #938 owns it. The sold post's season totals, the column's first reader, are #918's follow-up.
+
+[Full discussion -> #937](https://github.com/katogaming88/WGA-Raid-Hub/issues/937), Season milestone; the bug is [#922](https://github.com/katogaming88/WGA-Raid-Hub/issues/922) and the model decision is [#1189](https://github.com/katogaming88/WGA-Raid-Hub/issues/1189).
+
 ## 2026-09-20 -- raid_zones holds the tier code, and the current tier has a definition (#933)
 
 Shipped: 20260920130020_raid_zones_season_codes.sql

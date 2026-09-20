@@ -14,8 +14,10 @@
 //     so there is a placeholder and the submit refuses without an answer;
 //   - the item catalog and the raid zones its season filter needs are read
 //     here, because there is no loadData() on this page to hang them off;
-//   - the season the picker filters to is the reporting team's, looked up
-//     from the same team_settings read that decides which teams to offer.
+//   - the tier the picker filters to is the current one, current_season(),
+//     the same value submit_boe_found() stamps on the row (#937): a BoE is
+//     guild property and the season is app-wide (#1189), so which team is
+//     reporting decides only where the row files.
 //
 // Loaded before js/boe-page.js so the explicit ?team= is captured before that
 // file nulls the globals it comes from.
@@ -36,17 +38,15 @@ var _boeReportTeam = typeof _hadExplicitTeam !== 'undefined' && _hadExplicitTeam
 var _boeAutoTeam = null;
 var _boeAutoChar = null;
 
-// The teams currently offered, in the order rendered, and the season each one
-// is playing. Both come from the team_settings read below.
-var _boeVisibleSlugs = [];
-var _boeTeamSeasons = {};
-
 // The BoE catalog and the raid zones the season filter needs. index.html got
 // both out of loadData()'s items read (#875); this page reads them itself.
 // Named apart from js/boe-manage.js's own _boeCatalog, which is a different
-// list for a different picker and shares this page's global scope.
+// list for a different picker and shares this page's global scope. The tier
+// is current_season()'s code, read with them; '' when the call fails or there
+// is no tier, which fails the picker open the way a tier with no zones does.
 var _boeFormCatalog = [];
 var _boeFormZones = [];
+var _boeCurrentSeason = '';
 
 // bootBoePage() runs again on every auth change, and re-picking the default
 // team there would throw away a choice the visitor had already made in a tab
@@ -55,9 +55,9 @@ var _boeCardBuilt = false;
 
 /**
  * Builds the card and then fills in everything that needs the network: which
- * teams are offering BoE and what season each is on, the item catalog, and
- * the visitor's own claimed character. Safe to call again; only the first
- * call picks a default team.
+ * teams are offering BoE, the item catalog and the current tier, and the
+ * visitor's own claimed character. Safe to call again; only the first call
+ * picks a default team.
  */
 function initBoeCard() {
   if (!document.getElementById('boeTeamSelect')) return Promise.resolve();
@@ -90,7 +90,6 @@ function initBoeCard() {
 function renderBoeTeamOptions(slugs) {
   var sel = document.getElementById('boeTeamSelect');
   if (!sel) return;
-  _boeVisibleSlugs = slugs.slice();
   sel.innerHTML =
     '<option value="">Select the team you raided with</option>' +
     slugs
@@ -125,30 +124,19 @@ function defaultBoeTeamSlug(claimedSlugs) {
 }
 
 // Drops any team that has switched its own boe flag off, so finds cannot pile
-// up somewhere nobody is watching, and records every team's season for the
-// item picker. One public read of every team's settings; team_settings has a
-// public read policy. Deliberately fails open: if the read errors, every team
-// stays listed, because a raider who cannot report a find at all is the worse
-// outcome.
+// up somewhere nobody is watching. One public read of every team's settings;
+// team_settings has a public read policy. Deliberately fails open: if the read
+// errors, every team stays listed, because a raider who cannot report a find
+// at all is the worse outcome.
 function refreshBoeTeamOptions() {
   if (!supabaseClient) return Promise.resolve();
   return Promise.resolve(supabaseClient.from('team_settings').select('team_id, config'))
     .then(function (res) {
       if (!res || res.error || !res.data) return;
       var disabled = {};
-      var seasonByTeamId = {};
       res.data.forEach(function (row) {
         var cfg = row.config || {};
         if (!featureEnabledIn(cfg.features, 'boe')) disabled[row.team_id] = true;
-        // seasonView when a team has pinned one, else the live season name --
-        // the same precedence resolveSeasonView() uses on the team pages --
-        // as the code raid_zones.season holds (#933): the pin is stored as a
-        // code, the name converts, and either way the zone filter below
-        // compares like with like.
-        seasonByTeamId[row.team_id] = seasonCodeForDisplay(cfg.seasonView || cfg.seasonName || '');
-      });
-      Object.keys(TEAMS).forEach(function (slug) {
-        _boeTeamSeasons[slug] = seasonByTeamId[TEAMS[slug].supabaseTeamId] || '';
       });
 
       var keep = Object.keys(TEAMS).filter(function (slug) {
@@ -177,15 +165,17 @@ function refreshBoeTeamOptions() {
 }
 
 // The BoE catalog and the raid zones, both of which index.html handed over
-// through DATA (#875). Read together so the picker never filters against a
-// half-loaded pair, and fails open to an unfiltered catalog: a raider who
-// cannot find their item in the list cannot report it at all.
+// through DATA (#875), and the current tier (#937). Read together so the
+// picker never filters against a half-loaded set, and fails open to an
+// unfiltered catalog: a raider who cannot find their item in the list cannot
+// report it at all.
 function refreshBoeCatalog() {
   if (!supabaseClient) return Promise.resolve();
   return Promise.all([
     // team-read-guard: the BoE catalog, one row per BoE the guild tracks.
     Promise.resolve(supabaseClient.from('items').select('id, name, wcl_zone_id').eq('is_boe', true)),
-    typeof fetchSupabaseRaidZones === 'function' ? fetchSupabaseRaidZones() : Promise.resolve([])
+    typeof fetchSupabaseRaidZones === 'function' ? fetchSupabaseRaidZones() : Promise.resolve([]),
+    Promise.resolve(supabaseClient.rpc('current_season'))
   ])
     .then(function (r) {
       var res = r[0];
@@ -206,6 +196,8 @@ function refreshBoeCatalog() {
           });
       }
       _boeFormZones = r[1] || [];
+      var tier = r[2];
+      _boeCurrentSeason = tier && !tier.error && typeof tier.data === 'string' ? tier.data : '';
     })
     .catch(function () {});
 }
@@ -267,27 +259,21 @@ function selectedBoeTeamSlug() {
   return slug && TEAMS[slug] ? slug : null;
 }
 
-// The season whose BoEs the picker offers: the reporting team's, or the first
-// listed team that has one when the reporting team has none. That second case
-// is Wrathless, which raids with the guild and configures no season of its
-// own -- without the borrow its picker would offer every BoE the guild has
-// ever tracked, across every tier.
-function boeSeasonForSelectedTeam() {
-  var slug = selectedBoeTeamSlug();
-  if (slug && _boeTeamSeasons[slug]) return _boeTeamSeasons[slug];
-  for (var i = 0; i < _boeVisibleSlugs.length; i++) {
-    if (_boeTeamSeasons[_boeVisibleSlugs[i]]) return _boeTeamSeasons[_boeVisibleSlugs[i]];
-  }
-  return '';
+// The tier whose BoEs the picker offers: the current one, for every team.
+// Before #937 this was the reporting team's own season with a borrow from the
+// first listed team for Wrathless, which configures none, and the row was
+// stamped from a third reading of the same question (#922).
+function boeCurrentSeason() {
+  return _boeCurrentSeason;
 }
 
-// The season's rows by wcl zone, plus any unscoped row. Fails open to the
-// whole catalog when the season has no zones, the same rule
-// isItemInSeasonScope() applies on the team pages: an incompletely onboarded
-// season should not leave a raider with nothing to pick.
+// The tier's rows by wcl zone, plus any unscoped row. Fails open to the whole
+// catalog when the tier has no zones, the same rule isItemInSeasonScope()
+// applies on the team pages: an incompletely onboarded tier should not leave
+// a raider with nothing to pick.
 function boeSeasonCatalogEntries() {
   if (!_boeFormCatalog.length) return [];
-  var season = boeSeasonForSelectedTeam();
+  var season = boeCurrentSeason();
   var zones = {};
   var scoped = false;
   if (season) {
@@ -305,7 +291,7 @@ function boeSeasonCatalogEntries() {
   });
 }
 
-// The item picker (#875, select-only since #877): a select of the season's
+// The item picker (#875, select-only since #877): a select of the tier's
 // BoEs, submitted exactly as chosen. There is no free-text fallback, so an
 // item the catalog does not carry cannot be reported until it gains one.
 function refreshBoeItemOptions() {
@@ -320,12 +306,6 @@ function refreshBoeItemOptions() {
       })
       .join('');
   select.value = current;
-}
-
-// The season filter follows the reporting team, so the picker rebuilds when
-// that changes. Wired from the select's onchange in boe.html.
-function onBoeTeamChange() {
-  refreshBoeItemOptions();
 }
 
 function submitBoeFound() {

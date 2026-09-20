@@ -12,6 +12,27 @@ answers to.
 
 ---
 
+## [3.145.1] - 2026-09-20
+
+### Frontend
+
+- The BoE report form's item list is the current tier's BoEs for every team,
+  including a team that never set a season of its own, and it no longer
+  changes with the team picked
+  ([#937](https://github.com/katogaming88/WGA-Raid-Hub/issues/937),
+  [#922](https://github.com/katogaming88/WGA-Raid-Hub/issues/922)).
+
+### Backend
+
+- A BoE find is stamped with the current tier whatever the reporting team's
+  settings say, so a team that never ran Start New Season no longer files
+  finds with no season; `boe_items.season` holds the season code (`MID2`)
+  rather than the name and references `seasons(code)`, with every row
+  converted and the rows that had no season given the tier current on the
+  day each was found
+  ([#937](https://github.com/katogaming88/WGA-Raid-Hub/issues/937),
+  [#922](https://github.com/katogaming88/WGA-Raid-Hub/issues/922)).
+
 ## [3.145.0] - 2026-09-20
 
 ### Frontend
