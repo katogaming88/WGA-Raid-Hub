@@ -12,7 +12,7 @@ answers to.
 
 ---
 
-## [Unreleased]
+## [3.146.0] - 2026-09-20
 
 ### Frontend
 
