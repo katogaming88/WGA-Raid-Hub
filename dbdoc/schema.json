@@ -4570,14 +4570,14 @@
         {
           "name": "boe_items_season_fkey",
           "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
           "table": "public.boe_items",
           "referenced_table": "public.seasons",
           "columns": [
             "season"
           ],
           "referenced_columns": [
-            "display_name"
+            "code"
           ]
         }
       ],
@@ -8701,10 +8701,10 @@
       "cardinality": "zero_or_more",
       "parent_table": "public.seasons",
       "parent_columns": [
-        "display_name"
+        "code"
       ],
       "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)"
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
     },
     {
       "table": "public.boe_listings",

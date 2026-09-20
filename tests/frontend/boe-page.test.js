@@ -180,6 +180,10 @@ const SESSION = { user: { id: 'auth-1', user_metadata: { full_name: 'Rex' } } };
 // land a few ticks after bootBoePage() resolves.
 const flush = () => new Promise((r) => setTimeout(r, 0)).then(() => new Promise((r) => setTimeout(r, 0)));
 
+// The RPCs that ask who the visitor is. current_season() is the report
+// card's read of the tier (#937) and says nothing about them.
+const visitorRpcs = (calls) => calls.filter((c) => c.kind === 'rpc' && c.name !== 'current_season');
+
 async function settle(sandbox) {
   await sandbox.bootBoePage();
   for (let i = 0; i < 8; i++) await flush();
@@ -207,7 +211,7 @@ describe('boot states', () => {
   it('signed out, offers sign-in and asks nothing about the visitor', async () => {
     const { sandbox, els, calls } = makeSandbox();
     await settle(sandbox);
-    expect(calls.filter((c) => c.kind === 'rpc')).toEqual([]);
+    expect(visitorRpcs(calls)).toEqual([]);
     expect(els.boeAccessNote.innerHTML).toContain('Sign in');
     expect(els.boeAccessNote.innerHTML).toContain('reported under your character');
     expect(els.guildBoeSummary.innerHTML).toBe('');
@@ -226,8 +230,7 @@ describe('boot states', () => {
     });
     await settle(sandbox);
     expect(
-      calls
-        .filter((c) => c.kind === 'rpc')
+      visitorRpcs(calls)
         .map((c) => c.name)
         .sort()
     ).toEqual(['is_boe_manager', 'is_site_admin']);
@@ -324,7 +327,7 @@ describe('boot states', () => {
     });
     await settle(sandbox);
     expect(els.maintenanceBanner.style.display).not.toBe('none');
-    expect(calls.filter((c) => c.kind === 'rpc')).toEqual([]);
+    expect(visitorRpcs(calls)).toEqual([]);
     expect(els.boeLoading.style.display).toBe('none');
   });
 });

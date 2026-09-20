@@ -44,8 +44,7 @@ begin
   from public.items i
   where i.is_boe and lower(i.name) = lower(trim(p_item_name));
 
-  select ts.config ->> 'seasonName' into v_season
-  from public.team_settings ts where ts.team_id = p_team_id;
+  v_season := public.current_season();
 
   insert into public.boe_items (team_id, player_id, finder_name, finder_discord_id, item_id, item_name, track, upgrade_rank, season, note, payout_donated)
   values (p_team_id, v_player_id, trim(p_name_realm), public.current_discord_id(), v_item_id, coalesce(v_item_name, trim(p_item_name)), p_track, v_rank,

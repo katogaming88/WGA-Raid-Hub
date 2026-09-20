@@ -8,12 +8,12 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.145.0">
+<link rel="stylesheet" href="css/styles.css?v=3.145.1">
 <!-- Shares guild.html's layout: the guild-page body class carries the
      wrapping nav and the keyboard and motion baselines, and the guild-*
      classes below are the same section grammar. Nothing here is styled on
      its own. -->
-<link rel="stylesheet" href="css/guild.css?v=3.145.0">
+<link rel="stylesheet" href="css/guild.css?v=3.145.1">
 </head>
 <body class="guild-page">
 <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -74,7 +74,7 @@
     </div>
     <div class="guild-boe-report-form guild-boe-report-block">
       <label for="boeTeamSelect">Reporting for team</label>
-      <select id="boeTeamSelect" class="add-player-input" onchange="onBoeTeamChange()"></select>
+      <select id="boeTeamSelect" class="add-player-input"></select>
       <label for="boeCharName" style="margin-top:0.5rem;">Character (Name-Realm)</label>
       <input type="text" id="boeCharName" class="add-player-input" autocomplete="off" aria-required="true">
       <label for="boeItemName" style="margin-top:0.5rem;">Item</label>
@@ -139,10 +139,10 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/common.js?v=3.145.0"></script>
-<script src="js/boe-manage.js?v=3.145.0"></script>
-<script src="js/boe.js?v=3.145.0"></script>
-<script src="js/boe-page.js?v=3.145.0"></script>
+<script src="js/common.js?v=3.145.1"></script>
+<script src="js/boe-manage.js?v=3.145.1"></script>
+<script src="js/boe.js?v=3.145.1"></script>
+<script src="js/boe-page.js?v=3.145.1"></script>
 <script>
 document.getElementById('boeVersion').textContent = VERSION;
 </script>

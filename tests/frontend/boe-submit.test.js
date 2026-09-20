@@ -17,7 +17,9 @@ import { fileURLToPath } from 'node:url';
 // page team to fall back on: the reporting team comes from an explicit
 // ?team=, else a lone claimed character, else a placeholder the submit
 // refuses. The item catalog and the raid zones its season filter needs used to
-// ride index.html's loadData(); this file reads them itself now.
+// ride index.html's loadData(); this file reads them itself now, with the
+// current tier from current_season() (#937), whose BoEs the picker offers
+// whatever team is reporting.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
@@ -101,14 +103,15 @@ const S1 = { id: 10, name: 'Visage of Unseen Truths', wcl_zone_id: 46 };
 const S2 = { id: 11, name: 'Crushing Coiler Coif', wcl_zone_id: 53 };
 const UNSCOPED = { id: 12, name: 'Seed Test BoE Belt', wcl_zone_id: null };
 const ZONES = [
-  { wcl_zone_id: 46, season: 'midnight-s1' },
-  { wcl_zone_id: 53, season: 'midnight-s2' }
+  { wcl_zone_id: 46, season: 'MID1' },
+  { wcl_zone_id: 53, season: 'MID2' }
 ];
 
 // Records rpc and invoke calls in arrival order so tests can assert both the
 // payloads and that the webhook only ever fires after the RPC settled green.
 function recorderClient({
   rpcResult = { data: 1, error: null },
+  currentSeason = 'MID2',
   teamSettings = ALL_ENABLED,
   memberRows = [],
   items = [],
@@ -120,6 +123,7 @@ function recorderClient({
     client: {
       rpc(name, params) {
         calls.push({ kind: 'rpc', name, params });
+        if (name === 'current_season') return Promise.resolve({ data: currentSeason, error: null });
         return Promise.resolve(rpcResult);
       },
       from(table) {
@@ -415,21 +419,11 @@ describe('the reporting team on a page with none (#891)', () => {
     failed.eq = () => failed;
     sandbox.supabaseClient = {
       from: () => ({ select: () => failed }),
+      rpc: () => Promise.resolve({ data: 'MID2', error: null }),
       auth: { getSession: () => Promise.resolve({ data: { session: null } }) }
     };
     await sandbox.initBoeCard();
     expect(el('boeTeamSelect').innerHTML).toContain('value="hellfire"');
-  });
-
-  it('changing the dropdown does not navigate or rewrite the stored team', async () => {
-    const { sandbox, el, stored } = makeSandbox();
-    sandbox.supabaseClient = recorderClient().client;
-    await sandbox.initBoeCard();
-    el('boeTeamSelect').value = 'wrathless';
-    sandbox.onBoeTeamChange();
-    expect(sandbox.location.pathname).toBe('/boe.html');
-    expect(sandbox.location.href).toBeUndefined();
-    expect(stored.filter(([k]) => k === 'wga_team')).toEqual([]);
   });
 });
 
@@ -443,7 +437,8 @@ describe('identity resolution (#767, #891)', () => {
     const { sandbox, el } = makeSandbox();
     sandbox.supabaseClient = {
       auth: { getSession: () => Promise.resolve({ data: { session: null } }) },
-      from: () => ({ select: () => builder([]) })
+      from: () => ({ select: () => builder([]) }),
+      rpc: () => Promise.resolve({ data: 'MID2', error: null })
     };
     await sandbox.initBoeCard();
     expect(el('boeTeamSelect').value).toBe('');
@@ -507,18 +502,20 @@ describe('identity resolution (#767, #891)', () => {
 });
 
 // The item picker (#875, select-only since #877): a <select> filled from the
-// BoE catalog for the reporting team's season, submitted exactly as chosen --
-// there is no free-text fallback and nothing to reconcile against the catalog.
-// #891 moved the catalog read here, since boe.html has no loadData().
-describe('item picker (#875, #891)', () => {
+// BoE catalog for the current tier, submitted exactly as chosen -- there is no
+// free-text fallback and nothing to reconcile against the catalog. #891 moved
+// the catalog read here, since boe.html has no loadData(). Since #937 the tier
+// is current_season()'s, the same value submit_boe_found() stamps on the row,
+// whatever team is reporting and whatever Season View that team has pinned.
+describe('item picker (#875, #891, #937)', () => {
   const withCatalog = (over) =>
     recorderClient(
       Object.assign(
         {
           items: [S1, S2, UNSCOPED],
           teamSettings: [
-            { team_id: 1, config: { seasonView: 'midnight-s2' } },
-            { team_id: 2, config: { seasonView: 'midnight-s1' } },
+            { team_id: 1, config: { seasonView: 'MID2' } },
+            { team_id: 2, config: { seasonView: 'MID1' } },
             { team_id: 3, config: {} },
             { team_id: 4, config: {} }
           ]
@@ -527,7 +524,7 @@ describe('item picker (#875, #891)', () => {
       )
     );
 
-  it('reads the BoE catalog and the raid zones itself', async () => {
+  it('reads the BoE catalog, the raid zones and the current tier itself', async () => {
     const { sandbox } = makeSandbox();
     const { calls, client } = withCatalog();
     sandbox.supabaseClient = client;
@@ -535,11 +532,22 @@ describe('item picker (#875, #891)', () => {
     const tables = calls.filter((c) => c.kind === 'from').map((c) => c.table);
     expect(tables).toContain('items');
     expect(tables).toContain('raid_zones');
+    expect(calls.filter((c) => c.kind === 'rpc').map((c) => c.name)).toEqual(['current_season']);
   });
 
-  it("offers the reporting team's season plus any unscoped BoE, after a placeholder", async () => {
-    const { sandbox, el } = makeSandbox({ search: '?team=phoenix' });
-    sandbox.supabaseClient = withCatalog().client;
+  // Wrathless configures no season of its own; before #937 its picker
+  // borrowed the first listed team's (here pinned to the older tier), and a
+  // team with none to borrow fell open to every tier's BoEs.
+  it("offers the current tier's BoEs plus any unscoped one, after a placeholder, for a team with no season", async () => {
+    const { sandbox, el } = makeSandbox({ search: '?team=wrathless' });
+    sandbox.supabaseClient = withCatalog({
+      teamSettings: [
+        { team_id: 1, config: { seasonView: 'MID1' } },
+        { team_id: 2, config: {} },
+        { team_id: 3, config: {} },
+        { team_id: 4, config: {} }
+      ]
+    }).client;
     await sandbox.initBoeCard();
     const html = el('boeItemName').innerHTML;
     expect(html).toContain('<option value="">Select item</option>');
@@ -548,57 +556,21 @@ describe('item picker (#875, #891)', () => {
     expect(html).not.toContain('Visage of Unseen Truths');
   });
 
-  it('follows the team the visitor picks', async () => {
-    const { sandbox, el } = makeSandbox({ search: '?team=phoenix' });
+  it("offers the current tier's BoEs for a team with an older Season View pinned, and does not follow the team", async () => {
+    const { sandbox, el } = makeSandbox({ search: '?team=hellfire' });
     sandbox.supabaseClient = withCatalog().client;
     await sandbox.initBoeCard();
+    expect(el('boeItemName').innerHTML).toContain('Crushing Coiler Coif');
     expect(el('boeItemName').innerHTML).not.toContain('Visage of Unseen Truths');
-    el('boeTeamSelect').value = 'hellfire';
-    sandbox.onBoeTeamChange();
-    const html = el('boeItemName').innerHTML;
-    expect(html).toContain('Visage of Unseen Truths');
-    expect(html).not.toContain('Crushing Coiler Coif');
+    el('boeTeamSelect').value = 'phoenix';
+    sandbox.refreshBoeItemOptions();
+    expect(el('boeItemName').innerHTML).toContain('Crushing Coiler Coif');
+    expect(el('boeItemName').innerHTML).not.toContain('Visage of Unseen Truths');
   });
 
-  // Wrathless raids with the guild and configures no season of its own, so
-  // its picker borrows the first listed team that has one rather than
-  // offering every BoE the guild has ever tracked.
-  it('borrows a season for a team that has none configured', async () => {
-    const { sandbox, el } = makeSandbox({ search: '?team=wrathless' });
-    sandbox.supabaseClient = withCatalog().client;
-    await sandbox.initBoeCard();
-    const html = el('boeItemName').innerHTML;
-    expect(html).toContain('Crushing Coiler Coif');
-    expect(html).not.toContain('Visage of Unseen Truths');
-  });
-
-  // raid_zones.season holds codes (#933) while a team's live season is still
-  // its name, so the name is converted before it meets the zones. Without the
-  // conversion a team with no Season View matched nothing and fell open to
-  // every tier's BoEs.
-  it("scopes by the team's live season name against zones stamped with codes", async () => {
-    const { sandbox, el } = makeSandbox({ search: '?team=phoenix' });
-    sandbox.supabaseClient = withCatalog({
-      teamSettings: [
-        { team_id: 1, config: { seasonName: 'Midnight Season 2' } },
-        { team_id: 2, config: {} },
-        { team_id: 3, config: {} },
-        { team_id: 4, config: {} }
-      ],
-      raidZones: [
-        { wcl_zone_id: 46, season: 'MID1' },
-        { wcl_zone_id: 53, season: 'MID2' }
-      ]
-    }).client;
-    await sandbox.initBoeCard();
-    const html = el('boeItemName').innerHTML;
-    expect(html).toContain('Crushing Coiler Coif');
-    expect(html).not.toContain('Visage of Unseen Truths');
-  });
-
-  it('offers every BoE when no team has a season with zones', async () => {
+  it('offers every BoE when there is no current tier', async () => {
     const { sandbox, el } = makeSandbox();
-    sandbox.supabaseClient = withCatalog({ teamSettings: ALL_ENABLED }).client;
+    sandbox.supabaseClient = withCatalog({ currentSeason: null }).client;
     await sandbox.initBoeCard();
     const html = el('boeItemName').innerHTML;
     expect(html).toContain('Visage of Unseen Truths');
@@ -624,6 +596,7 @@ describe('item picker (#875, #891)', () => {
     failed.eq = () => failed;
     sandbox.supabaseClient = {
       from: (table) => ({ select: () => (table === 'items' ? failed : builder(ALL_ENABLED)) }),
+      rpc: () => Promise.resolve({ data: 'MID2', error: null }),
       auth: { getSession: () => Promise.resolve({ data: { session: null } }) }
     };
     await sandbox.initBoeCard();

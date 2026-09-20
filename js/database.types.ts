@@ -397,7 +397,7 @@ export type Database = {
             columns: ["season"]
             isOneToOne: false
             referencedRelation: "seasons"
-            referencedColumns: ["display_name"]
+            referencedColumns: ["code"]
           },
           {
             foreignKeyName: "boe_items_team_id_fkey"
