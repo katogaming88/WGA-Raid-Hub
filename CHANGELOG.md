@@ -12,6 +12,15 @@ answers to.
 
 ---
 
+## [3.144.5] - 2026-09-19
+
+### Project
+
+- `CLAUDE.md`, the orientation notes Claude Code writes for itself about this
+  repo, is ignored by git rather than committed. It sits beside the `.claude/`
+  directory already ignored just above it, so a working copy can carry those
+  notes without the repo carrying them for everyone.
+
 ## [3.144.4] - 2026-09-19
 
 ### Project
