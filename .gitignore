@@ -13,6 +13,9 @@ Thumbs.db
 
 # Claude / local config
 .claude/
+# CLAUDE.md is Claude Code's own orientation notes for this repo, kept on the
+# machine that wrote them rather than shared -- Kat's call, 2026-09-19.
+CLAUDE.md
 
 # Node
 node_modules/
