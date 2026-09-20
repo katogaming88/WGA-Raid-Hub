@@ -89,7 +89,7 @@ describe('bisItemsFromWishlistPrefs (the BiS List rows)', () => {
     const prefs = [{ item_id: 1, status: 'bis', slot: null }];
 
     expect(sandbox.bisItemsFromWishlistPrefs(prefs, 11)).toEqual([
-      { item: 'New Helm', slot: '', dbSlot: '', obtained: false, playerId: 11, itemId: 1, fromWishlist: true }
+      { item: 'New Helm', slot: '', dbSlot: '', playerId: 11, itemId: 1 }
     ]);
   });
 
@@ -130,10 +130,8 @@ describe('bisItemsFromWishlistPrefs (the BiS List rows)', () => {
         item: 'Soulcoiler Ritual Vessel',
         slot: '',
         dbSlot: '',
-        obtained: false,
         playerId: 175,
-        itemId: 320,
-        fromWishlist: true
+        itemId: 320
       }
     ]);
   });

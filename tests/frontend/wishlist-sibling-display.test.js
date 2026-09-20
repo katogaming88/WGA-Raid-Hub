@@ -38,7 +38,7 @@ function makeSandbox(itemSlots, itemIds, prefs, itemPlaceholders) {
   vm.runInContext(COMMON_JS, sandbox, { filename: 'common.js' });
   vm.runInContext(WISHLIST_JS, sandbox, { filename: 'wishlist.js' });
 
-  sandbox.DATA = { itemSlots, itemPlaceholders: itemPlaceholders || {}, itemIds, bisList: {} };
+  sandbox.DATA = { itemSlots, itemPlaceholders: itemPlaceholders || {}, itemIds };
   sandbox._wishlistPrefs = prefs;
   sandbox._wishlistPlayerFirstName = 'Kat';
   sandbox._wishlistExpandedSlots = {};

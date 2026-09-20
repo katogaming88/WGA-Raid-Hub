@@ -25,9 +25,9 @@ Reference notes for walking a raider through the site -- not published to raider
 ## Quick Reference -- What Do They Need to Do When...
 
 - **They got an item outside of raid (M+, vault, crafted, catalyst)** -- mark it received from their profile (see "Mark an item as received" below)
-- **Their BiS plan changed for one item/slot, and Wishlist Editing is currently open (or their own "Allow Wishlist Edit" is on)** -- retag it in My Wishlist as BiS; takes effect immediately, no officer step needed, and supersedes whatever the officer had set for that slot
-- **Their BiS plan changed but they can't self-edit their Wishlist right now** -- their BiS source should already be on file as the reference source, so use **My BiS Changed (Same Source)** to flag it either way: an officer can update the BiS Manager grid directly, or flip their "Allow Wishlist Edit" toggle so they can make the change themselves. Note field is a good place to say which they'd prefer
-- **Their whole BiS plan changed (new sim, new list)** -- submit or update their BiS source from their profile; this feeds the officer's grid, not the live list directly (see "Submit or update their BiS list" below)
+- **Their BiS plan changed for one item/slot, and Wishlist Editing is currently open (or their own "Allow Wishlist Edit" is on)** -- retag it in My Wishlist as BiS; takes effect immediately, no officer step needed
+- **Their BiS plan changed but they can't self-edit their Wishlist right now** -- their BiS source should already be on file as the reference source, so use **My BiS Changed (Same Source)** to flag it: an officer flips their "Allow Wishlist Edit" toggle so they can make the change themselves. The note field is a good place to say what changed
+- **Their whole BiS plan changed (new sim, new list)** -- submit or update their BiS source from their profile; this is the reference link officers read, not the live list (see "Submit or update their BiS list" below)
 - **They want to flag backups/sidegrades, not just their one BiS pick** -- tag items in the My Wishlist section of their profile (see "Fill out their Wishlist" below)
 - **Signups just opened, or they're switching mains this season** -- use the Sign Up button on the main page
 - **Their Great Vault can no longer offer them a Mythic+ upgrade** -- submit an M+ exclusion request from their profile
@@ -41,7 +41,7 @@ Reference notes for walking a raider through the site -- not published to raider
 
 - **Attendance** -- their attendance % for the current season with a colour bar; click to expand and see specific dates where they were excused or a no-show
 - **Items Received** -- how many items they've gotten this tier; click to expand the full list with slot and difficulty
-- **BiS List** -- a live merge, not just their submitted source: the officer's picked item per slot (BiS Manager grid), overridden slot-by-slot by anything the raider has tagged **BiS** in their own Wishlist. Their submitted BiS source is shown here too, but only as the reference an officer reads to decide what to put in their grid -- it doesn't drive this list directly
+- **BiS List** -- one item per slot, whatever the raider has tagged **BiS** in their own Wishlist. Their submitted BiS source is shown here too, but only as a reference link -- it doesn't drive this list
 - **Loot Priority** -- every item on their BiS list with their current priority rank, which slot it is, and which boss drops it
 - **My Wishlist** -- only shown to the raider viewing their own profile; per-slot cards where they tag every item they'd want (BiS/Good/OK/Catalyst Only/Pass), not just their one BiS pick -- see "Fill out their Wishlist" below
 - **M+ Exclusion** -- shows Excluded/Rejected status if they've ever requested one, or the request button if exclusions are open
@@ -57,8 +57,8 @@ Reference notes for walking a raider through the site -- not published to raider
 ### Submit or update their BiS list
 - Their profile shows their current BiS source (if they've submitted one)
 - Hit Submit / Update and paste in the new link
-- An officer reviews and approves it, then manually updates their pick(s) in the BiS Manager grid to match -- unlike Wishlist tags, this doesn't write anywhere automatically, it's the officer's reference source
-- If the source itself hasn't changed but the list behind it has (e.g. they reordered items on the same wowhead/raidbots page), use **My BiS Changed (Same Source)** instead of resubmitting the link -- this is the general "my considered-BiS changed, please act" flag, whether the actual change is one item or the whole list. It queues for an officer either way; how it gets resolved (edit the BiS Manager grid directly, or open Wishlist Editing for just this raider so they can retag it themselves) is the officer's call, and the note field is a good place to say which they'd prefer
+- An officer reviews and approves it -- unlike Wishlist tags, this doesn't write anywhere automatically, it's the officer's reference source; the BiS List itself changes only when the raider retags items in My Wishlist
+- If the source itself hasn't changed but the list behind it has (e.g. they reordered items on the same wowhead/raidbots page), use **My BiS Changed (Same Source)** instead of resubmitting the link -- this is the general "my considered-BiS changed, please act" flag, whether the actual change is one item or the whole list. It queues for an officer either way; the officer resolves it by opening Wishlist Editing for just this raider so they can retag it themselves, and the note field is a good place to say what changed
 - If Wishlist Editing is already open (or their own "Allow Wishlist Edit" is on), tagging a single item/slot BiS directly in **My Wishlist** is faster and needs no officer step at all -- see "Fill out their Wishlist" below
 - Their submitted source is cleared unconditionally every time a new season starts (**Start New Season**), regardless of which site it's on -- a source points at a specific tier's loot table, and there's no way to tell whether the site behind it happens to update in place for a new tier. If a raider asks where their source went, this is why -- they need to resubmit a fresh one.
 

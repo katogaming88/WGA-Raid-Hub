@@ -82,7 +82,7 @@ function buildConflicts() {
     '<div id="help-loot-conflicts" class="help-tip" style="margin-top:0;margin-bottom:0.75rem;">' +
     'Items wanted by ' +
     CONTESTED_ITEMS_MIN_PLAYERS +
-    '+ players (officer BiS picks and raider wishlists combined), sorted by how many players want them. Click an item to see who wants it and their current priority rank.<br>' +
+    '+ players (counted from raider wishlists), sorted by how many players want them. Click an item to see who wants it and their current priority rank.<br>' +
     'Ranks show H (Heroic) or M (Mythic). See the Priority List sub-tab for who currently holds multiple #1 priorities.' +
     '</div>';
 

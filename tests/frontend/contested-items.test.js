@@ -31,10 +31,8 @@ function bisItemsFromWishlistPrefs(prefs, playerId) {
         item: idToName[p.item_id],
         slot: p.slot || '',
         dbSlot: p.slot || '',
-        obtained: false,
         playerId: playerId,
-        itemId: p.item_id,
-        fromWishlist: true
+        itemId: p.item_id
       };
     });
 }

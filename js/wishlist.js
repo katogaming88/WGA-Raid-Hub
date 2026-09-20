@@ -126,7 +126,7 @@ var WISHLIST_SIBLING_SLOT = {
   'Trinket 2': 'Trinket 1'
 };
 
-// Same armor-type scoping as tab-bis.js's search (bisSlotOnInput): rows for
+// Armor-type scoping for the wishlist search: rows for
 // which armor type doesn't apply (jewelry, cloaks, weapons) skip the filter,
 // so a warlock still sees every neck/trinket/weapon option, not just cloth.
 // Wrist is deliberately NOT here -- bracers are real armor (Cloth/Leather/
@@ -198,8 +198,7 @@ function fetchMyItemPreferences(playerId) {
 // synchronously, so a not-yet-loaded fetch shows a loading placeholder and
 // re-invokes renderProfile() itself once the data's in (same "re-render the
 // same entrypoint after an async load" shape buildWishlistTab used before
-// this became a profile section, and the same one bisSlotPickItem's callers
-// use for their own local-state patches).
+// this became a profile section).
 function ownWishlistSectionHTML(player, backTo) {
   if (backTo !== 'landing') return '';
   // Folded into the existing 'bis' flag rather than its own -- a team not
@@ -1041,9 +1040,8 @@ function wishlistSectionBodyHTML(player) {
 
 // Insert-or-update, not .upsert() -- the unique index is on the expression
 // coalesce(slot,''), not the raw slot column, so onConflict:'player_id,
-// item_id,slot' can't match it (same reason tab-bis.js's bisSlotPickItem
-// does a plain insert rather than upserting). Filters an update the same way
-// bisSlotFilter() does: .eq('slot', slot) when set, .is('slot', null) when not.
+// item_id,slot' can't match it. Filters an update on the same expression:
+// .eq('slot', slot) when set, .is('slot', null) when not.
 function wishlistUpsert(itemId, slot, patch) {
   if (!_wishlistPlayerId || !wishlistEditableNow()) return;
   var savingKey = itemId + '|' + (slot || '');
@@ -1144,12 +1142,10 @@ function wishlistCompleteness(buckets) {
     idToName[itemIds[name]] = name;
   });
 
-  var taggedRows = {};
   var bisRows = {};
   var offHandRequired = false;
   _wishlistPrefs.forEach(function (p) {
     wishlistItemRows(p.item_id, p.slot || null).forEach(function (row) {
-      taggedRows[row] = true;
       if (p.status === 'bis') bisRows[row] = true;
     });
     // p.slot is 'Weapon' for anything tagged since WISHLIST_DISAMBIGUATE_SLOTS
@@ -1171,8 +1167,8 @@ function wishlistCompleteness(buckets) {
   // eligible item has *some* status) says nothing about whether any of them
   // is actually the raider's BiS pick for that slot. A row can be "complete"
   // with everything tagged Good/OK and still have no real BiS -- the BiS
-  // List then silently falls back to a "(Wishlist)" pick, which shouldn't
-  // read as 100%. A row counts as covered here once the raider has tagged
+  // List then has no pick for that row, which shouldn't read as 100%. A row
+  // counts as covered here once the raider has tagged
   // one item 'bis' for it.
   var missingBisRows = requiredRows.filter(function (row) {
     return !bisRows[row];

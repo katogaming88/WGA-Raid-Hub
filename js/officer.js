@@ -457,7 +457,7 @@ function applyFeatureFlagVisibility() {
   setVisible('loot-subtab-btn-reassign', lootOn);
   setVisible('attend-subtab-btn-bench', fairnessOn);
   // #651: tier-piece tracking rides on the 'bis' flag, same as the rest of
-  // the tier-substitution feature surface (wishlist/BiS grid) -- a team not
+  // the tier-substitution feature surface (the wishlist) -- a team not
   // using BiS isn't using tier tracking either.
   setVisible('syncRosterTierBtn', bisOn);
 

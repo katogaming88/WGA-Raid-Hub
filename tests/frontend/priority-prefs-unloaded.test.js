@@ -41,8 +41,6 @@ function makeSandbox({ client, roster = [], itemSlots = {}, itemIds = {} } = {})
     escHtml: (s) => String(s),
     BIS_SLOTS: ['Head'],
     BIS_CATALOG_SLOT_TO_ROWS: { Head: ['Head'] },
-    getBisItems: () => [],
-    bisSlotBuckets: () => ({ buckets: {} }),
     bisEligibleRealItemsBySlot: () => ({ Head: [{ itemId: 1, rankName: 'Helm' }] }),
     setTimeout,
     clearTimeout,

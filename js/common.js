@@ -824,7 +824,7 @@ function characterProfileLinks(firstName, realm) {
 // item_id -- e.g. the id for "Damned Necrolyte's Charred Grasps", never the
 // generic token that actually dropped in raid. That's exactly the id side
 // DATA.itemWowIds maps class tier items to, so no token/bonus-ID resolution
-// is needed here; see applyRaiderIoTierSync below.
+// is needed here; countEquippedTierPieces below compares those ids directly.
 function fetchRaiderIoGear(firstName, realm) {
   var realmSlug = _wowRealmSlug(realm);
   var url =
@@ -927,12 +927,13 @@ function syncBlizzardGearForTeam(playerId) {
   });
 }
 
-// Shared write path for both the bulk roster sync (js/tabs/tab-priority.js's
-// syncRosterTierCounts) and every individual Raider.IO sync below -- also
-// patches the in-memory player/roster object so an immediate re-render
-// (profile badge, priority tab) reflects the new count without a full
-// DATA reload. No new RLS needed: "Officers write players" already covers
-// this (officers are the only role that ever calls this).
+// Write path for the bulk roster sync (js/tabs/tab-priority.js's
+// syncRosterTierCounts) -- also patches the in-memory player/roster object
+// so an immediate re-render (profile badge, priority tab) reflects the new
+// count without a full DATA reload. "Officers write players" covers it; a
+// raider's own row refuses every column but bonus_roll_encounter_id
+// (restrict_players_self_update_to_bonus_roll), so no raider-side caller
+// exists.
 function writeTierPiecesEquipped(player, count) {
   var syncedAt = new Date().toISOString();
   return supabaseClient
@@ -944,55 +945,6 @@ function writeTierPiecesEquipped(player, count) {
       player.tierPiecesEquipped = count;
       player.tierPiecesSyncedAt = syncedAt;
     });
-}
-
-// UI-agnostic driver: looks up the player, fetches their gear, writes the
-// tier-piece count, and updates whichever button/message elements the caller
-// points it at.
-function runRaiderIoTierSync(nameRealm, btnId, msgId, onDone) {
-  var player = findRosterPlayerByNameRealm(nameRealm);
-  if (!player || !player.firstName || !player.realm) return;
-  var btn = /** @type {HTMLButtonElement} */ (document.getElementById(btnId));
-  var msgEl = document.getElementById(msgId);
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Syncing...';
-  }
-  if (msgEl) msgEl.textContent = '';
-
-  fetchRaiderIoGear(player.firstName, player.realm)
-    .then(function (gearItems) {
-      var count = countEquippedTierPieces(player, gearItems);
-      return writeTierPiecesEquipped(player, count).then(function () {
-        return count;
-      });
-    })
-    .then(function (count) {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Sync from Raider.IO';
-      }
-      if (msgEl) {
-        msgEl.textContent = 'Synced -- ' + count + ' of 5 tier pieces equipped.';
-      }
-      if (onDone) onDone();
-    })
-    .catch(function (err) {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Sync from Raider.IO';
-      }
-      if (msgEl) msgEl.textContent = 'Raider.IO sync failed: ' + err.message;
-    });
-}
-
-// Thin wrapper for the raider's own profile button (renderProfile below) --
-// re-renders the whole profile on success so the tier-piece count picks up
-// the change immediately.
-function syncOwnBisFromRaiderIo(firstName, nameRealm) {
-  runRaiderIoTierSync(nameRealm, 'bisRaiderIoSyncBtn-' + firstName, 'bisRaiderIoMsg-' + firstName, function () {
-    if (typeof renderProfile === 'function') renderProfile(firstName, 'landing');
-  });
 }
 
 // True when the viewer has asked their OS for less motion (#435). The CSS
@@ -3233,10 +3185,10 @@ function fetchSupabaseTierTokenMap() {
 // in `items` (they need their own name/icon/stats for itemNameBlockHtml to
 // find), so without this they'd independently pass every wishlist/BiS
 // catalog filter and show up a *second* time as their own row, alongside the
-// token row that's been substituted to display the same name. Both
-// wishlistBucketRealItems and tab-bis.js's bisSlotOnInput skip any name in
-// this set when walking the full catalog -- a resolved item should only ever
-// be reachable by substitution through its token, never listed directly.
+// token row that's been substituted to display the same name.
+// wishlistBucketRealItems skips any name in this set when walking the full
+// catalog -- a resolved item should only ever be reachable by substitution
+// through its token, never listed directly.
 //
 // With no seasonCode it is built from every season's rows: token names are new
 // each tier, so a past season's BiS or wishlist row still shows its resolved
@@ -4255,10 +4207,8 @@ function bisItemsFromWishlistPrefs(prefs, playerId) {
       // Crafted-tagged slot received also lit up every other one, because
       // every submission sent p_slot: '').
       dbSlot: isPlaceholder ? p.slot || '' : '',
-      obtained: false,
       playerId: playerId,
-      itemId: p.item_id,
-      fromWishlist: true
+      itemId: p.item_id
     });
   });
 
@@ -4287,9 +4237,14 @@ function mergedBisItemsForNameRealm(nameRealm) {
   } else if (typeof _profileWishlistPrefsCache !== 'undefined' && _profileWishlistPrefsCache[player.id]) {
     prefs = _profileWishlistPrefsCache[player.id];
   } else if (typeof _teamItemPreferences !== 'undefined' && _teamItemPreferences) {
-    prefs = _teamItemPreferences.filter(function (p) {
-      return p.player_id === player.id;
-    });
+    // Grouped once per fetch (tab-priority.js's _teamItemPreferencesByPlayer,
+    // the #829 shape) rather than a filter over every row per roster member.
+    prefs =
+      typeof _teamItemPreferencesByPlayer === 'function'
+        ? _teamItemPreferencesByPlayer()[player.id] || []
+        : _teamItemPreferences.filter(function (p) {
+            return p.player_id === player.id;
+          });
   }
   if (!prefs) return [];
 
@@ -4764,9 +4719,7 @@ function selfReceivedEntryForRow(selfRecItems, item, dbSlot) {
 function refreshBisCompletion(firstName, nameRealm) {
   var el = document.getElementById('bis-completion-' + firstName);
   if (!el) return;
-  var bisItems = mergedBisItemsForNameRealm(nameRealm || firstName).filter(function (e) {
-    return typeof isItemInSeasonScope !== 'function' || isItemInSeasonScope(e.item, e.season);
-  });
+  var bisItems = mergedBisItemsForNameRealm(nameRealm || firstName);
   if (!bisItems.length) return;
   var selfRecItems = getSelfReceivedItems(firstName);
   var lootEntry = getLootEntry(nameRealm || firstName);
@@ -4802,7 +4755,7 @@ function refreshBisCompletion(firstName, nameRealm) {
 
 // Accepts either a full "Name-Realm" identity (preferred -- exact, collision-
 // free, #359) or a bare first name (from callers whose upstream data, like
-// bisList and the priority pool, is still keyed by first name only). A bare
+// the priority pool, is still keyed by first name only). A bare
 // first name falls through to the old ambiguous match against every loot
 // key's own first-name segment -- unchanged behavior for those callers until
 // they're re-keyed by identity too.
@@ -6528,11 +6481,10 @@ function renderProfile(firstName, backTo, container) {
     return bisDisplaySortKey(a, itemSlotsForSort) - bisDisplaySortKey(b, itemSlotsForSort);
   });
   // Tier tokens (Head/Shoulder/Chest/Hands/Legs) drop as a generic
-  // per-armor-type item -- bis_items.item_id/item_preferences.item_id and
-  // this row's own `item` all stay on the token throughout (matches the
-  // token's role in generate_priority_order()'s `bis` CTE and
-  // DATA.priorityOrder, both keyed by the token's own name/id), same as
-  // tab-bis.js's own grid (#393). Only the *displayed* name is substituted
+  // per-armor-type item -- item_preferences.item_id and this row's own
+  // `item` both stay on the token throughout (matches the token's role in
+  // generate_priority_order() and DATA.priorityOrder, both keyed by the
+  // token's own name/id). Only the *displayed* name is substituted
   // here, via `displayItem` -- `item` itself stays the raw token name for
   // every lookup below (getRank/DATA.priorityOrder, receivedMap/selfRecMap,
   // and the Mark Received flow's defaultSrc), so nothing else in this row
@@ -6611,9 +6563,6 @@ function renderProfile(firstName, backTo, container) {
       displayItem +
       '">' +
       displayItem +
-      (entry.fromWishlist
-        ? ' <span style="color:var(--gold-light);font-size:0.85em;font-weight:600;">(Wishlist)</span>'
-        : '') +
       '</span>';
     var defaultSrc = isGen ? item : '';
     var isOfficer = backTo === 'officer';
@@ -6785,7 +6734,7 @@ function renderProfile(firstName, backTo, container) {
 
   // Raw tier-set progress (#651) -- independent of any tagged BiS pick,
   // unlike bisCompletionHTML above. null means never synced (see
-  // runRaiderIoTierSync/syncRosterTierCounts), not 0 -- shown as "--" rather
+  // tab-priority.js's syncRosterTierCounts), not 0 -- shown as "--" rather
   // than claiming a real 0/5.
   var tierProgressHTML =
     player.tierPiecesEquipped != null
@@ -7243,7 +7192,7 @@ function renderProfile(firstName, backTo, container) {
 
   var bisTabIntroHTML =
     backTo !== 'officer'
-      ? '<p style="color:var(--text-muted);font-size:1.02rem;margin:0;padding:0.75rem 1.25rem 0;">This is your Best-in-Slot list -- one target item per slot. The link you provide here is the source of truth for what you\'re considering BiS, and each slot is either set by officers from that list, or tagged as BiS on your Wishlist tab, where you can also mark items Good, OK, Catalyst Only, or Pass.</p>'
+      ? '<p style="color:var(--text-muted);font-size:1.02rem;margin:0;padding:0.75rem 1.25rem 0;">This is your Best-in-Slot list -- one target item per slot. The link you provide here is the source of truth for what you\'re considering BiS, and each slot is filled by the item you tag as BiS on your Wishlist tab, where you can also mark items Good, OK, Catalyst Only, or Pass.</p>'
       : '';
 
   var bisSectionHTML = featureEnabled('bis')
@@ -7273,23 +7222,6 @@ function renderProfile(firstName, backTo, container) {
       "');l.style.display=l.style.display==='none'?'block':'none';\">BiS List" +
       bisCompletionHTML +
       tierProgressHTML +
-      // Self-service (#651): a raider can refresh their own tier-piece count
-      // from Raider.IO's equipped gear directly from their own profile, no
-      // officer needed -- gated on isOwnWishlistView the same way the Wishlist
-      // tab itself is.
-      (isOwnWishlistView && player.firstName && player.realm
-        ? '<button id="bisRaiderIoSyncBtn-' +
-          player.firstName +
-          '" class="btn btn-muted" style="font-size:0.93rem;padding:0.15rem 0.6rem;" ' +
-          'onclick="event.stopPropagation();syncOwnBisFromRaiderIo(\'' +
-          player.firstName.replace(/'/g, "\\'") +
-          "','" +
-          player.nameRealm.replace(/'/g, "\\'") +
-          '\')" title="Count the tier pieces Raider.IO shows equipped">Sync from Raider.IO</button>' +
-          '<span id="bisRaiderIoMsg-' +
-          player.firstName +
-          '" style="font-size:0.95rem;color:var(--text-muted);"></span>'
-        : '') +
       (backTo !== 'officer'
         ? '<button class="help-btn" onclick="event.stopPropagation();toggleHelp(\'help-bislist-' +
           player.firstName +

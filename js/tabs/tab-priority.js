@@ -101,8 +101,8 @@ function _isFullyManaged(entry) {
 // and matched against the token's own item_id (what rclc_loot actually
 // logs), never the resolved class piece, so a resolved item showing up here
 // alongside its token would just be duplicate, unmanageable information --
-// mirrors js/wishlist.js's wishlistBucketRealItems and tab-bis.js's
-// bisSlotOnInput skipping the same set for the same reason.
+// mirrors js/wishlist.js's wishlistBucketRealItems skipping the same set for
+// the same reason.
 function getUnmanagedItems() {
   var prioOrder = DATA.priorityOrder || {};
   var itemSlots = DATA.itemSlots || {};
@@ -898,9 +898,9 @@ function checkPriorityDrift() {
 // weights tier-token candidates by (see the tier_pieces_priority_weighting
 // migration). Sequential with a small delay between requests, polite to
 // Raider.IO's public API across a full roster -- no existing bulk-roster
-// loop pattern to mirror anywhere in js/tabs/, modeled instead on
-// js/common.js's runRaiderIoTierSync (single-player) disable/restore-button
-// idiom. A player with no Raider.IO data (never scanned, stale name_realm)
+// loop pattern to mirror anywhere in js/tabs/; each trigger is disabled
+// while it runs and restored after. A player with no Raider.IO data (never
+// scanned, stale name_realm)
 // is skipped and tallied rather than overwriting their last-known count with
 // a false 0.
 //
@@ -1410,11 +1410,7 @@ var PRIORITY_WISHLIST_SIBLING_SLOT = {
 // js/wishlist.js's wishlistCompleteness()).
 function _priorityWishlistMissingRows(prefs, idToName, itemSlots, eligibleBuckets) {
   var offHandRequired = false;
-  var taggedWeaponRow = false;
   prefs.forEach(function (p) {
-    if (_priorityItemRows(p.item_id, p.slot || null, idToName, itemSlots).indexOf('Weapon') !== -1) {
-      taggedWeaponRow = true;
-    }
     // Mirrors js/wishlist.js's wishlistCompleteness() fix: p.slot is now
     // 'Weapon' (not null) for anything tagged since dual-wield fan-out
     // (DUAL_WIELD_CLASSES) added Weapon/Off Hand to WISHLIST_DISAMBIGUATE_SLOTS.
@@ -1432,10 +1428,9 @@ function _priorityWishlistMissingRows(prefs, idToName, itemSlots, eligibleBucket
   // Distinct from item-tagging completeness below: every eligible item
   // having *some* status says nothing about whether any of them is the
   // raider's actual BiS pick for that slot -- a row can hit 100% tagged with
-  // everything Good/OK and still fall back to a "(Wishlist)" pick on the BiS
-  // List. Mirrors js/wishlist.js's wishlistCompleteness() missingBisRows: a
-  // row counts as covered once the raider has tagged one item 'bis' for it,
-  // or the officer's bis_items grid already has a pick for it.
+  // everything Good/OK and still have no BiS pick on the BiS List. Mirrors
+  // js/wishlist.js's wishlistCompleteness() missingBisRows: a row counts as
+  // covered once the raider has tagged one item 'bis' for it.
   var bisRows = {};
   prefs.forEach(function (p) {
     if (p.status !== 'bis') return;
@@ -2230,8 +2225,8 @@ function openPrioEditModal(item, slot, autoGenerate, difficulty) {
   document.getElementById('prioEditModal').classList.add('active');
   prioEditFetchFairnessWarnings();
   // Wishlist tags feed the BiS Players pool (prioEditGetBisPlayers) so
-  // a raider who just filled out their wishlist shows up here without an
-  // officer first adding them to bis_items -- fetch on demand since not
+  // a raider who just filled out their wishlist shows up here -- fetch on
+  // demand since not
   // every path into this modal has already loaded it (buildPriorityNotesTab
   // is the usual trigger).
   if (_teamItemPreferences === null && !_teamItemPreferencesFailed) {

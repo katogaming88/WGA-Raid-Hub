@@ -88,20 +88,17 @@ function mockSupabase({ lootPages = [], rosterResult } = {}) {
             if (table === 'team_settings') {
               return { data: null, error: { message: 'team_settings not mocked' } };
             }
-            // bis_items, items, item_bosses, and priority_order are separate
+            // items, item_bosses, and priority_order are separate
             // queries loadData() fires alongside the loot pages (#217 item
             // search fix, #220 priority generator); this suite is only
             // exercising lootCounts wiring, so none of them are mocked and
             // all should fall back to the heavy payload's
-            // bisList/itemSlots/itemBosses/priorityOrder untouched, same as
+            // itemSlots/itemBosses/priorityOrder untouched, same as
             // the 'players' default above. Without an explicit branch here,
             // these would fall through to the loot-page queue below and get
             // mistaken for real rows, since lootRow()'s fields
             // (items.name/players.name_realm/track/season) happen to overlap
             // what mapSupabasePriorityOrder() reads.
-            if (table === 'bis_items') {
-              return { data: null, error: { message: 'bis_items not mocked' } };
-            }
             if (table === 'items') {
               return { data: null, error: { message: 'items not mocked' } };
             }
@@ -451,7 +448,7 @@ describe('loadData onLootReady (#837 part 2)', () => {
   }
 
   it('fires before onHeavyReady, with lootCounts already populated, while other heavy tables are still slow', async () => {
-    const supabase = makeSlowClient({ slowTables: ['bis_items', 'attendance', 'item_preferences'] });
+    const supabase = makeSlowClient({ slowTables: ['attendance', 'item_preferences'] });
     const sandbox = loadCommonJs(supabase);
 
     const order = [];
@@ -472,7 +469,7 @@ describe('loadData onLootReady (#837 part 2)', () => {
   });
 
   it('is optional -- loadData still works with only the two original callbacks', async () => {
-    const supabase = makeSlowClient({ slowTables: ['bis_items'] });
+    const supabase = makeSlowClient({ slowTables: ['attendance'] });
     const sandbox = loadCommonJs(supabase);
 
     await new Promise((resolve) => {

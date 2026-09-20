@@ -280,7 +280,7 @@ function buildStatsBar() {
     '<span style="font-size:1.2rem;color:var(--text-muted);">/' +
     roster.length +
     '</span></div><div class="stat-label">BiS List</div></div>' +
-    '<div class="stat-card" data-tip="Roster members (incl. bench) with every wishlist slot tagged (or covered by the officer BiS list)">' +
+    '<div class="stat-card" data-tip="Roster members (incl. bench) with every wishlist slot tagged">' +
     wishlistHtml +
     '<div class="stat-label">Wishlists Completed</div></div>';
 }
@@ -1294,8 +1294,8 @@ function officerSavePlayerSettings(nameRealm, firstName) {
       selectedOfficerPlayer = null;
       var inlineRow = document.getElementById('inlineProfileRow');
       if (inlineRow) inlineRow.remove();
-      // Full reload rather than patching DATA.roster in place: lootCounts,
-      // bisList, and the jsonp-merged attendance field (js/common.js) are all
+      // Full reload rather than patching DATA.roster in place: lootCounts and
+      // the jsonp-merged attendance field (js/common.js) are both
       // keyed by the player's name, not id, so a rename leaves every one of
       // those client-side maps pointing at the old name until they're
       // refetched (#407 follow-up). buildRosterTable() alone only re-renders
