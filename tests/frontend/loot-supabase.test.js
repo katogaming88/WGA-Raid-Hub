@@ -398,13 +398,12 @@ describe('loadData builds DATA from Supabase only', () => {
   it('seeds an empty array roster and empty containers when nothing is mocked', async () => {
     const mock = mockSupabase({ lootPages: [{ data: [], error: null }] });
     const sandbox = await runLoadData(mock);
-    // Empty, not undefined -- the write paths in tab-bis.js/tab-priority.js
-    // index bisList/priorityOrder/selfReceived without their own guard, and
+    // Empty, not undefined -- the write paths in tab-priority.js
+    // index priorityOrder/selfReceived without their own guard, and
     // there is no GAS payload left to have supplied a non-empty fallback.
     expect(Array.isArray(sandbox.DATA.roster)).toBe(true);
     expect(sandbox.DATA.roster).toEqual([]);
     expect(sandbox.DATA.lootCounts).toEqual({});
-    expect(sandbox.DATA.bisList).toEqual({});
     expect(sandbox.DATA.priorityOrder).toEqual({});
     expect(sandbox.DATA.selfReceived).toEqual({});
   });

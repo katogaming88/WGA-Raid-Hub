@@ -4,63 +4,49 @@ import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Contested Items used to read only from the officer's bis_items grid
-// (DATA.bisList via getBisItems()) -- a team relying mainly on raiders
-// tagging their own wishlist instead saw this tab read as almost entirely
-// empty. buildContestedItemMap() now merges both sources per player via
-// bisMergeWishlistPrefs() (same merge renderProfile()'s officer branch
-// already uses), and buildConflicts() only lists items 2+ players actually
-// want, collapsed by default with a click-to-expand player list.
+// Contested Items reads every raider's wishlist BiS tags per player via
+// bisItemsFromWishlistPrefs() (the same read renderProfile()'s officer
+// branch uses), and buildConflicts() only lists items enough players
+// actually want, collapsed by default with a click-to-expand player list.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CONFLICTS_JS = readFileSync(path.join(HERE, '../../js/tabs/tab-conflicts.js'), 'utf8');
 
-// Faithful-enough reimplementation of common.js's bisMergeWishlistPrefs()
+// Faithful-enough reimplementation of common.js's bisItemsFromWishlistPrefs()
 // for this standalone sandbox (same minimal-stub convention other
-// tab-priority.js/tab-conflicts.js tests use) -- real items only, BiS status
-// only, no placeholder handling (unused by these fixtures).
-function bisMergeWishlistPrefs(prefs, officerBisItems, playerId) {
-  var itemIds = { 'Item A': 1, 'Item B': 2, 'Item C': 3 };
+// tab-priority.js/tab-conflicts.js tests use) -- real items and the 'M+'
+// placeholder, BiS status only.
+function bisItemsFromWishlistPrefs(prefs, playerId) {
+  var itemIds = { 'Item A': 1, 'Item B': 2, 'Item C': 3, 'M+': 9 };
   var idToName = {};
   Object.keys(itemIds).forEach(function (name) {
     idToName[itemIds[name]] = name;
   });
-  var fromWishlist = (prefs || [])
+  return (prefs || [])
     .filter(function (p) {
       return p.status === 'bis';
     })
     .map(function (p) {
       return {
         item: idToName[p.item_id],
-        slot: '',
-        dbSlot: '',
+        slot: p.slot || '',
+        dbSlot: p.slot || '',
         obtained: false,
         playerId: playerId,
         itemId: p.item_id,
         fromWishlist: true
       };
     });
-  var wishlistItemNames = fromWishlist.map(function (e) {
-    return e.item;
-  });
-  var officerSet = officerBisItems.filter(function (e) {
-    return wishlistItemNames.indexOf(e.item) === -1;
-  });
-  return { fromWishlist: fromWishlist, officerSet: officerSet };
 }
 
-function makeSandbox({ roster = [], bisList = {}, teamItemPreferences = null, priorityOrder = {} } = {}) {
+function makeSandbox({ roster = [], teamItemPreferences = null, priorityOrder = {} } = {}) {
   const sandbox = {
     console,
     window: {},
     document: { getElementById: () => null },
-    DATA: { roster, bisList, priorityOrder, itemSlots: {}, selfReceived: {} },
+    DATA: { roster, priorityOrder, itemSlots: {}, selfReceived: {} },
     _teamItemPreferences: teamItemPreferences,
-    getBisItems: (nameRealm) => {
-      var player = roster.find((p) => p.nameRealm === nameRealm);
-      return player ? bisList[player.firstName] || [] : [];
-    },
-    bisMergeWishlistPrefs,
+    bisItemsFromWishlistPrefs,
     normalise: (s) =>
       String(s || '')
         .toLowerCase()
@@ -103,8 +89,8 @@ function makeSandbox({ roster = [], bisList = {}, teamItemPreferences = null, pr
   return sandbox;
 }
 
-describe('buildContestedItemMap (wishlist + officer BiS merge)', () => {
-  it('picks up a raider whose only BiS source is their own wishlist tag', () => {
+describe('buildContestedItemMap (wishlist BiS tags)', () => {
+  it('picks up a raider from their own wishlist tag', () => {
     const roster = [{ id: 1, firstName: 'Kat', nameRealm: 'Kat-Illidan' }];
     const teamItemPreferences = [{ player_id: 1, item_id: 1, status: 'bis' }];
     const sandbox = makeSandbox({ roster, teamItemPreferences });
@@ -112,30 +98,25 @@ describe('buildContestedItemMap (wishlist + officer BiS merge)', () => {
     expect(sandbox.buildContestedItemMap()).toEqual({ 'Item A': ['Kat'] });
   });
 
-  it('picks up a raider whose only BiS source is the officer bis_items grid', () => {
-    const roster = [{ id: 1, firstName: 'Kat', nameRealm: 'Kat-Illidan' }];
-    const bisList = { Kat: [{ item: 'Item A', slot: '' }] };
-    const sandbox = makeSandbox({ roster, bisList, teamItemPreferences: [] });
-
-    expect(sandbox.buildContestedItemMap()).toEqual({ 'Item A': ['Kat'] });
-  });
-
-  it('combines both sources across the roster without duplicating a player on the same item', () => {
+  it('lists every player who tagged the item once each, across the roster', () => {
     const roster = [
       { id: 1, firstName: 'Kat', nameRealm: 'Kat-Illidan' },
       { id: 2, firstName: 'Snarge', nameRealm: 'Snarge-Illidan' }
     ];
-    const bisList = { Snarge: [{ item: 'Item A', slot: '' }] };
-    const teamItemPreferences = [{ player_id: 1, item_id: 1, status: 'bis' }];
-    const sandbox = makeSandbox({ roster, bisList, teamItemPreferences });
+    const teamItemPreferences = [
+      { player_id: 1, item_id: 1, status: 'bis' },
+      { player_id: 2, item_id: 1, status: 'bis', slot: 'Finger 1' },
+      { player_id: 2, item_id: 1, status: 'bis', slot: 'Finger 2' }
+    ];
+    const sandbox = makeSandbox({ roster, teamItemPreferences });
 
     expect(sandbox.buildContestedItemMap()).toEqual({ 'Item A': ['Kat', 'Snarge'] });
   });
 
   it('excludes Other Sources placeholders (M+/Crafted/Catalyst)', () => {
     const roster = [{ id: 1, firstName: 'Kat', nameRealm: 'Kat-Illidan' }];
-    const bisList = { Kat: [{ item: 'M+', slot: 'Head' }] };
-    const sandbox = makeSandbox({ roster, bisList, teamItemPreferences: [] });
+    const teamItemPreferences = [{ player_id: 1, item_id: 9, status: 'bis', slot: 'Head' }];
+    const sandbox = makeSandbox({ roster, teamItemPreferences });
 
     expect(sandbox.buildContestedItemMap()).toEqual({});
   });

@@ -54,33 +54,6 @@ const BIS_CATALOG_SLOT_TO_ROWS = {
   'Held In Off-hand': ['Off Hand']
 };
 
-// Faithful-enough reimplementation of tab-bis.js's bisSlotBuckets() for this
-// standalone sandbox (same minimal-stub convention as BIS_SLOTS above) --
-// dbSlot first, then best-effort catalog-slot fallback for legacy rows.
-function bisSlotBuckets(items, itemSlots) {
-  var buckets = {};
-  var unassigned = [];
-  items.forEach(function (entry) {
-    var dbSlot = entry.dbSlot || entry.slot || '';
-    if (dbSlot && BIS_SLOTS.indexOf(dbSlot) !== -1 && !buckets[dbSlot]) {
-      buckets[dbSlot] = entry;
-    } else {
-      unassigned.push(entry);
-    }
-  });
-  unassigned.forEach(function (entry) {
-    var catalogSlot = itemSlots[entry.item] || '';
-    var candidates = BIS_CATALOG_SLOT_TO_ROWS[catalogSlot] || [];
-    for (var c = 0; c < candidates.length; c++) {
-      if (!buckets[candidates[c]]) {
-        buckets[candidates[c]] = entry;
-        return;
-      }
-    }
-  });
-  return { buckets: buckets };
-}
-
 // Own minimal reimplementation of tab-bis.js's bisEligibleRealItemsBySlot()
 // -- no armor/main-stat/role/class filtering (unused by these fixtures),
 // just catalog-slot bucketing, so tests only need to control itemSlots.
@@ -98,14 +71,7 @@ function bisEligibleRealItemsBySlot(itemSlots, itemIds) {
   return buckets;
 }
 
-function makeSandbox({
-  itemSlots = {},
-  itemIds = {},
-  roster = [],
-  prefsRows = [],
-  bisEnabled = true,
-  bisList = {}
-} = {}) {
+function makeSandbox({ itemSlots = {}, itemIds = {}, roster = [], prefsRows = [], bisEnabled = true } = {}) {
   const sandbox = {
     console,
     document: { getElementById: () => ({ innerHTML: '' }) },
@@ -115,8 +81,6 @@ function makeSandbox({
     escHtml: (s) => String(s),
     BIS_SLOTS,
     BIS_CATALOG_SLOT_TO_ROWS,
-    getBisItems: (firstName) => bisList[firstName] || [],
-    bisSlotBuckets: (items) => bisSlotBuckets(items, itemSlots),
     bisEligibleRealItemsBySlot: () => bisEligibleRealItemsBySlot(itemSlots, itemIds),
     // fetchTeamItemPreferences pages by keyset through fetchAllPaged (#707);
     // the mock that honours .gt()/.limit() lives in ./helpers (#695).
@@ -194,21 +158,6 @@ describe('getIncompleteWishlists (#515, item-level)', () => {
 
     expect(sandbox._teamItemPreferences).toEqual([]);
     expect(el.innerHTML).toBe('');
-  });
-
-  it('an officer bis_items pick covers only that one item, not the whole row', () => {
-    const itemSlots = { Helm: 'Head', Circlet: 'Head', Necklace: 'Neck' };
-    const itemIds = { Helm: 1, Circlet: 2, Necklace: 3 };
-    const roster = [{ id: 11, firstName: 'Kat', nameRealm: 'Kat-Illidan' }];
-    const bisList = { 'Kat-Illidan': [{ item: 'Helm', dbSlot: 'Head' }] };
-    const sandbox = makeSandbox({ itemSlots, itemIds, roster, bisList });
-    sandbox._teamItemPreferences = []; // raider never touched their wishlist
-
-    const result = sandbox.getIncompleteWishlists();
-    expect(result.count).toBe(1);
-    expect(result.raiders[0].missingRows).toContain('Head');
-    expect(result.raiders[0].missingCounts.Head).toBe(1); // Circlet still untagged
-    expect(result.raiders[0].missingRows).toContain('Neck');
   });
 
   it('a ring tagged only under Finger 1 also covers Finger 2 for that same item', () => {

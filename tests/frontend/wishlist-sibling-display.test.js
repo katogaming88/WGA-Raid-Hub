@@ -94,7 +94,7 @@ describe('wishlistCollapsibleCardHTML otherSourcesCovered', () => {
       { itemId: 1, slot: 'Neck' },
       { itemId: 2, slot: 'Neck' }
     ]; // neither tagged
-    const html = sandbox.wishlistCollapsibleCardHTML('Neck', 'Neck', summaryItems, '', false, true);
+    const html = sandbox.wishlistCollapsibleCardHTML('Neck', 'Neck', summaryItems, '', true);
 
     expect(html).toContain('var(--heal)'); // green
     expect(html).toContain('0 tagged');
@@ -103,17 +103,8 @@ describe('wishlistCollapsibleCardHTML otherSourcesCovered', () => {
   it('does not force green when otherSourcesCovered is false and items are untagged', () => {
     const sandbox = makeSandbox({}, {}, []);
     const summaryItems = [{ itemId: 1, slot: 'Neck' }];
-    const html = sandbox.wishlistCollapsibleCardHTML('Neck', 'Neck', summaryItems, '', false, false);
+    const html = sandbox.wishlistCollapsibleCardHTML('Neck', 'Neck', summaryItems, '', false);
 
-    expect(html).not.toContain('var(--heal)');
-  });
-
-  it('officerCovered alone does not force green (text-only note)', () => {
-    const sandbox = makeSandbox({}, {}, []);
-    const summaryItems = [{ itemId: 1, slot: 'Neck' }];
-    const html = sandbox.wishlistCollapsibleCardHTML('Neck', 'Neck', summaryItems, '', true, false);
-
-    expect(html).toContain('officer BiS set');
     expect(html).not.toContain('var(--heal)');
   });
 });

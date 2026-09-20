@@ -846,19 +846,10 @@ function fetchRaiderIoGear(firstName, realm) {
 
 // ── Raider.IO tier sync (#651) ───────────────────────────────────────────────
 //
-// Only ever auto-marks the 5 deterministic per-slot tier rows, and only when
-// the player already has a tagged BiS pick sitting in that row -- this never
-// adds a pick on anyone's behalf, just confirms one that's already there. The
+// Counts the 5 deterministic per-slot tier pieces a raider has equipped. The
 // Omni-Curio is out of scope by design (see the tier_token_map migration's
 // header comment): it can become any of a class's 5 slots at the raider's own
 // choice, so there's no deterministic slot to compare it against here.
-//
-// Shared by both write paths bis_items now supports (#651's
-// bis_items_self_obtained migration): the officer's BiS editor
-// (js/tabs/tab-bis.js's syncBisFromRaiderIo, any raider's row) and a raider's
-// own profile (renderProfile below, gated on isOwnWishlistView) -- RLS decides
-// which UPDATE actually succeeds ("Officers write bis_items" vs "Raiders
-// update own bis_items obtained"), this just finds the same 5 rows either way.
 var RAIDERIO_TIER_BIS_SLOTS = {
   Head: 'head',
   Shoulder: 'shoulder',
@@ -866,75 +857,6 @@ var RAIDERIO_TIER_BIS_SLOTS = {
   Hands: 'hands',
   Legs: 'legs'
 };
-
-// Tier tokens' catalog slot (items.slot) is always exactly their BIS_SLOTS row
-// name 1:1 -- unlike Finger/Trinket, a Head/Shoulder/Chest/Hands/Legs item
-// never fans out to more than one row, so this doesn't need tab-bis.js's full
-// bisSlotBuckets() (officer-editor-only, not loaded on index.html) to find the
-// row a raw bis_items entry belongs to.
-function bisTierEntryForCatalogSlot(items, slotName) {
-  var itemSlots = (DATA && DATA.itemSlots) || {};
-  for (var i = 0; i < items.length; i++) {
-    var entry = items[i];
-    var catalogSlot = entry.dbSlot || itemSlots[entry.item] || '';
-    if (catalogSlot === slotName) return entry;
-  }
-  return null;
-}
-
-// Compares each tier row's tagged BiS pick (stored on the token, matching
-// item_preferences/bis_items' existing convention) against Raider.IO's
-// equipped, already-resolved item_id for that slot -- matching purely on
-// DATA.itemWowIds, no bonus-ID or catalyst-token guessing needed (settled in
-// #650/#651). Rows with no tagged pick, an unresolvable class, or already
-// marked obtained are left alone. Returns a promise of how many rows were
-// newly marked.
-function applyRaiderIoTierSync(player, gearItems) {
-  var items = getBisItems(player.nameRealm);
-  var tierTokenMap = (DATA && DATA.tierTokenMap) || {};
-  var itemWowIds = (DATA && DATA.itemWowIds) || {};
-  var playerClass = player.class;
-
-  var toUpdate = [];
-  Object.keys(RAIDERIO_TIER_BIS_SLOTS).forEach(function (bisSlot) {
-    var entry = bisTierEntryForCatalogSlot(items, bisSlot);
-    if (!entry || entry.obtained || entry.itemId == null) return;
-    var tokenName = entry.item;
-    var resolvedName = playerClass && tierTokenMap[tokenName] && tierTokenMap[tokenName][playerClass];
-    if (!resolvedName) return;
-    var resolvedWowId = itemWowIds[resolvedName];
-    if (resolvedWowId == null) return;
-    var equipped = gearItems[RAIDERIO_TIER_BIS_SLOTS[bisSlot]];
-    if (!equipped || equipped.item_id !== resolvedWowId) return;
-    toUpdate.push({ entry: entry, resolvedName: resolvedName });
-  });
-
-  if (!toUpdate.length) return Promise.resolve(0);
-
-  return Promise.all(
-    toUpdate.map(function (u) {
-      var entry = u.entry;
-      var query = supabaseClient
-        .from('bis_items')
-        .update({ obtained: true })
-        .eq('player_id', player.id)
-        .eq('item_id', entry.itemId);
-      query = entry.dbSlot ? query.eq('slot', entry.dbSlot) : query.is('slot', null);
-      return query.then(function (result) {
-        if (result.error) throw new Error(result.error.message);
-        entry.obtained = true;
-        return writeAuditLog(
-          'BiS Item Obtained Changed',
-          'players',
-          player.id,
-          'Marked obtained (Raider.IO sync): ' + [entry.slot, u.resolvedName].filter(Boolean).join(' ')
-        );
-      });
-    })
-  ).then(function () {
-    return toUpdate.length;
-  });
-}
 
 // Inverts DATA.tierTokenMap ({tokenName: {class: resolvedName}}) into
 // {slotName: resolvedName} for one class -- exactly 5 entries (Head/
@@ -961,10 +883,9 @@ function classTierResolvedItemsBySlot(playerClass) {
 }
 
 // Raw "how many of this class's 5 tier pieces are currently equipped" count
-// (0-5) -- unlike applyRaiderIoTierSync above, this is NOT gated on the
-// player having a tagged BiS pick at all. This is the tier-set-progress
-// number #651 asked for: it feeds generate_priority_order()'s tier-token
-// weighting (see the tier_pieces_priority_weighting migration) via
+// (0-5), not gated on the player having tagged any BiS pick. This is the
+// tier-set-progress number #651 asked for: it feeds generate_priority_order()'s
+// tier-token weighting (see the tier_pieces_priority_weighting migration) via
 // players.tier_pieces_equipped, and shows on a raider's own profile.
 function countEquippedTierPieces(player, gearItems) {
   var bySlot = classTierResolvedItemsBySlot(player.class);
@@ -1025,9 +946,9 @@ function writeTierPiecesEquipped(player, count) {
     });
 }
 
-// UI-agnostic driver: looks up the player, fetches their gear, applies the
-// sync, and updates whichever button/message elements the caller points it
-// at -- reused as-is by both call sites (see the block comment above).
+// UI-agnostic driver: looks up the player, fetches their gear, writes the
+// tier-piece count, and updates whichever button/message elements the caller
+// points it at.
 function runRaiderIoTierSync(nameRealm, btnId, msgId, onDone) {
   var player = findRosterPlayerByNameRealm(nameRealm);
   if (!player || !player.firstName || !player.realm) return;
@@ -1039,36 +960,20 @@ function runRaiderIoTierSync(nameRealm, btnId, msgId, onDone) {
   }
   if (msgEl) msgEl.textContent = '';
 
-  var fetchedGear = null;
   fetchRaiderIoGear(player.firstName, player.realm)
     .then(function (gearItems) {
-      fetchedGear = gearItems;
-      return applyRaiderIoTierSync(player, gearItems);
+      var count = countEquippedTierPieces(player, gearItems);
+      return writeTierPiecesEquipped(player, count).then(function () {
+        return count;
+      });
     })
-    .then(function (updatedCount) {
-      // Keep the raw tier-piece count fresh from every individual sync too,
-      // not just the bulk roster action -- same gear fetch already in hand,
-      // one more cheap write. Failing this write shouldn't fail the whole
-      // sync -- the obtained-flag update above already succeeded and is
-      // what the user waiting on this button actually asked for.
-      return writeTierPiecesEquipped(player, countEquippedTierPieces(player, fetchedGear)).then(
-        function () {
-          return updatedCount;
-        },
-        function () {
-          return updatedCount;
-        }
-      );
-    })
-    .then(function (updatedCount) {
+    .then(function (count) {
       if (btn) {
         btn.disabled = false;
         btn.textContent = 'Sync from Raider.IO';
       }
       if (msgEl) {
-        msgEl.textContent = updatedCount
-          ? 'Synced -- ' + updatedCount + ' tier piece' + (updatedCount === 1 ? '' : 's') + ' marked obtained.'
-          : 'Synced -- no new tier pieces to mark.';
+        msgEl.textContent = 'Synced -- ' + count + ' of 5 tier pieces equipped.';
       }
       if (onDone) onDone();
     })
@@ -1082,8 +987,8 @@ function runRaiderIoTierSync(nameRealm, btnId, msgId, onDone) {
 }
 
 // Thin wrapper for the raider's own profile button (renderProfile below) --
-// re-renders the whole profile on success so the BiS List's obtained
-// badges/completion % pick up the change immediately.
+// re-renders the whole profile on success so the tier-piece count picks up
+// the change immediately.
 function syncOwnBisFromRaiderIo(firstName, nameRealm) {
   runRaiderIoTierSync(nameRealm, 'bisRaiderIoSyncBtn-' + firstName, 'bisRaiderIoMsg-' + firstName, function () {
     if (typeof renderProfile === 'function') renderProfile(firstName, 'landing');
@@ -2406,87 +2311,6 @@ function mapSupabaseLoot(rows) {
     });
   });
   return result;
-}
-
-// BiS list reads come from Supabase (#217): bis_items has no team_id column
-// of its own (derives team through the player_id FK, docs/database-decisions.md),
-// so filtering by team requires an inner join through players. Resolves to
-// the raw rows, or null on any failure so the caller falls back to the Apps
-// Script heavy chunk's bisList.
-function fetchSupabaseBisItems() {
-  if (!supabaseClient) return Promise.resolve(null);
-  var query = supabaseClient
-    .from('bis_items')
-    .select(
-      'player_id, item_id, obtained, slot, season, items(name, slot, is_placeholder), players!inner(name_realm, team_id)'
-    )
-    .eq('players.team_id', _teamCfg.supabaseTeamId)
-    .then(
-      function (result) {
-        if (result.error) {
-          console.warn('Supabase BiS items query failed.', result.error.message);
-          return null;
-        }
-        return result.data && result.data.length ? result.data : null;
-      },
-      function (err) {
-        console.warn('Supabase BiS items query failed.', err);
-        return null;
-      }
-    );
-  var timeout = new Promise(function (resolve) {
-    setTimeout(function () {
-      resolve(null);
-    }, 10000);
-  });
-  return Promise.race([query, timeout]);
-}
-
-/**
- * Maps bis_items rows to the DATA.bisList shape the Apps Script heavy chunk
- * emits (character identity -> array of {item, slot} entries), so most
- * render code needs no changes. Keyed by the full name_realm identity (#529,
- * companion to #359's loot re-keying) rather than first name alone, so two
- * characters sharing a first name no longer merge under one key --
- * tab-conflicts.js/tab-priority.js/tab-bis.js index DATA.bisList by identity
- * (or fall back through getBisItems()'s normalised lookup for any remaining
- * bare-first-name caller). Carries obtained/playerId/itemId so the BiS Lists
- * editor (tab-bis.js) can write back without a second lookup.
- * @param {any[]} rows - bis_items rows with embedded items and players
- * @returns {Object<string, {item: string, slot: string, dbSlot: string|null, obtained: boolean, playerId: number, itemId: number, season: string|null}[]>}
- */
-function mapSupabaseBisItems(rows) {
-  /** @type {Object<string, {item: string, slot: string, dbSlot: string|null, obtained: boolean, playerId: number, itemId: number, season: string|null}[]>} */
-  var map = {};
-  (rows || []).forEach(function (row) {
-    var players = row.players || {};
-    var nameRealm = String(players.name_realm || '').trim();
-    if (!nameRealm) return;
-    var itemRow = row.items || {};
-    if (!itemRow.name) return;
-    if (!map[nameRealm]) map[nameRealm] = [];
-    map[nameRealm].push({
-      item: itemRow.name,
-      // bis_items.slot is the canonical BIS_SLOTS row an officer assigned
-      // this entry to (js/tabs/tab-bis.js, #393 follow-up) -- every row added
-      // through that editor carries one now, real items included, since
-      // "Finger"/"Trinket" alone can't say which of the two numbered slots an
-      // item is for. Falls back to the item's own catalog slot only for
-      // legacy real-item rows added before this existed; placeholder rows
-      // (M+/Crafted/Catalyst) never fall back, since items.slot is the
-      // literal 'Placeholder' sentinel for those (items.slot is NOT NULL).
-      slot: row.slot || (itemRow.is_placeholder ? '' : itemRow.slot || ''),
-      // The raw bis_items.slot column value -- tab-bis.js needs this, not the
-      // display slot above, to target the exact row on delete/update now that
-      // more than one row can share an item_id (distinguished by slot).
-      dbSlot: row.slot || null,
-      obtained: !!row.obtained,
-      playerId: row.player_id,
-      itemId: row.item_id,
-      season: row.season || null
-    });
-  });
-  return map;
 }
 
 // Equipped gear (#845), synced by the blizzard-gear-sync Edge Function --
@@ -4024,8 +3848,6 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
   var officerNotesPromise = fetchSupabaseOfficerNotes();
   // Fired alongside; the heavy callback waits for it before setting lootCounts.
   var lootPromise = fetchSupabaseLoot();
-  // Fired alongside; the heavy callback waits for it before setting bisList.
-  var bisItemsPromise = fetchSupabaseBisItems();
   // Fired alongside; the heavy callback waits for it before setting equippedGearByPlayerId.
   var equippedGearPromise = fetchSupabaseEquippedGear();
   // Fired alongside; the heavy callback waits for it before setting itemSlots.
@@ -4102,12 +3924,11 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
   // empty container ({}, or null for rawAttendanceData) rather than
   // undefined when its query fails or returns nothing -- there is no GAS
   // heavy chunk left to fall back to (#225), and a few write paths
-  // (tab-bis.js, tab-priority.js) index bisList/priorityOrder/selfReceived
+  // (tab-priority.js) index priorityOrder/selfReceived
   // without their own guard.
   function applyHeavyData() {
     return Promise.all([
       lootPromise,
-      bisItemsPromise,
       equippedGearPromise,
       itemsPromise,
       itemBossesPromise,
@@ -4128,25 +3949,24 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
       raidEncountersPromise
     ]).then(function (results) {
       var lootRows = results[0];
-      var bisRows = results[1];
-      var equippedGearRows = results[2];
-      var itemRows = results[3];
-      var itemBossRows = results[4];
-      var tierTokenMapRows = results[5];
-      var priorityRows = results[6];
-      var priorityOrderConfirmedEmptyRows = results[7];
-      var priorityStaleAfterHeroicRows = results[8];
-      var priorityLiveFirstPriosRows = results[9];
-      var priorityConflictDismissalsRows = results[10];
-      var priorityStaleDismissalsRows = results[11];
-      var selfReceivedRows = results[12];
-      var attendanceRows = results[13];
-      var streamerRows = results[14];
-      var raidProgressRows = results[15];
-      var incomingRosterRows = results[16];
-      var raidZonesRows = results[17];
-      var guildOfficerBiosRows = results[18];
-      var raidEncountersRows = results[19];
+      var equippedGearRows = results[1];
+      var itemRows = results[2];
+      var itemBossRows = results[3];
+      var tierTokenMapRows = results[4];
+      var priorityRows = results[5];
+      var priorityOrderConfirmedEmptyRows = results[6];
+      var priorityStaleAfterHeroicRows = results[7];
+      var priorityLiveFirstPriosRows = results[8];
+      var priorityConflictDismissalsRows = results[9];
+      var priorityStaleDismissalsRows = results[10];
+      var selfReceivedRows = results[11];
+      var attendanceRows = results[12];
+      var streamerRows = results[13];
+      var raidProgressRows = results[14];
+      var incomingRosterRows = results[15];
+      var raidZonesRows = results[16];
+      var guildOfficerBiosRows = results[17];
+      var raidEncountersRows = results[18];
       DATA.raidZones = raidZonesRows || [];
       DATA.raidEncounters = raidEncountersRows || [];
       var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
@@ -4159,8 +3979,6 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
       DATA._attendanceLoadFailed = attendanceRows === null;
       DATA.attendanceDetails = mappedAttendance ? mapSupabaseAttendanceDetails(mappedAttendance.players) : {};
       DATA.recentAttendanceTrend = mappedAttendance ? mapSupabaseAttendanceTrend(mappedAttendance.players) : {};
-      var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
-      DATA.bisList = mappedBis || {};
       DATA.equippedGearByPlayerId = mapSupabaseEquippedGear(equippedGearRows);
       // Raw rows aren't season-filtered by the query itself (see
       // fetchSupabasePriorityOrder()'s comment) -- cached here so
@@ -4352,7 +4170,7 @@ function isItemInSeasonScope(name, rowSeason) {
 // same underlying bug the Contested Items view had and fixed independently,
 // see CHANGELOG "Rank labels now display in Contested Items"). Accepts
 // either identity (nameRealm, preferred) or a bare first name -- same
-// dual-mode shape as getLootEntry()/getBisItems() (#359/#529).
+// dual-mode shape as getLootEntry() (#359/#529).
 function getRank(nameOrNameRealm, itemName) {
   var entry = (DATA.priorityOrder || {})[itemName];
   if (!entry) return [];
@@ -4371,36 +4189,6 @@ function getRank(nameOrNameRealm, itemName) {
   return ranks;
 }
 
-// Accepts either a full "Name-Realm" identity (preferred -- exact,
-// collision-free, #529) or a bare first name (from any remaining caller that
-// hasn't been updated to carry full identity through). A bare first name
-// falls through to the old ambiguous match against every key's own
-// first-name segment -- same fallback shape as getLootEntry() (#359).
-function getBisItems(nameOrNameRealm) {
-  var bisMap = DATA.bisList || {};
-  var norm = normalise(nameOrNameRealm);
-  var key = null;
-  var keys = Object.keys(bisMap);
-  for (var i = 0; i < keys.length; i++) {
-    if (normalise(keys[i]) === norm) {
-      key = keys[i];
-      break;
-    }
-  }
-  if (!key) {
-    for (var j = 0; j < keys.length; j++) {
-      if (normalise(keys[j].split('-')[0]) === norm) {
-        key = keys[j];
-        break;
-      }
-    }
-  }
-  var entries = key ? bisMap[key] : [];
-  return entries.map(function (e) {
-    return typeof e === 'string' ? { item: e, slot: '' } : e;
-  });
-}
-
 // A real ring/trinket is always unique-equip, so the same item_id showing up
 // on both its numbered rows (Finger 1 + Finger 2, Trinket 1 + Trinket 2) is
 // never two independent opinions -- it's one physical item that can land in
@@ -4413,29 +4201,23 @@ function getBisItems(nameOrNameRealm) {
 // so those two rows must stay separate.
 var DEDUPE_SIBLING_SLOTS = { 'Finger 1': true, 'Finger 2': true, 'Trinket 1': true, 'Trinket 2': true };
 
-// Read-time merge for the BiS List display -- never writes to bis_items. A
-// tagged wishlist "BiS" item supersedes the officer's pick for that same
-// slot category; real items compare by catalog slot (Finger, Trinket, ...),
-// since the wishlist has no notion of "which numbered ring" the way the
-// officer's grid does -- any BiS-tagged ring supersedes both Finger 1 and
-// Finger 2. Placeholders (M+/Crafted/Catalyst) compare by their exact
-// tagged BIS_SLOTS row instead, since that's the only thing that
-// distinguishes them. Shared core used by both wishlist.js's
-// wishlistBisMergeGroups() (raider's own profile, `prefs` from
-// _wishlistPrefs) and renderProfile() below directly (officer's read view
-// of any raider's profile, `prefs` filtered from tab-priority.js's
-// _teamItemPreferences) -- kept here rather than in wishlist.js since only
-// index.html loads that file, and this needs to run from both pages.
-function bisMergeWishlistPrefs(prefs, officerBisItems, playerId) {
+// The BiS List display's rows, read from a raider's wishlist "BiS" tags.
+// Real items dedupe across their numbered ring/trinket rows (the wishlist
+// has no notion of "which numbered ring"); placeholders (M+/Crafted/Catalyst)
+// keep their exact tagged BIS_SLOTS row, since that's the only thing that
+// distinguishes them. Shared by wishlist.js's wishlistBisItems() (raider's
+// own profile, `prefs` from _wishlistPrefs) and renderProfile() below
+// (officer's read view of any raider's profile, `prefs` filtered from
+// tab-priority.js's _teamItemPreferences) -- kept here rather than in
+// wishlist.js since only index.html loads that file, and this needs to run
+// from both pages.
+function bisItemsFromWishlistPrefs(prefs, playerId) {
   var idToName = {};
   Object.keys((DATA && DATA.itemIds) || {}).forEach(function (name) {
     idToName[DATA.itemIds[name]] = name;
   });
-  var itemSlots = (DATA && DATA.itemSlots) || {};
   var itemPlaceholders = (DATA && DATA.itemPlaceholders) || {};
 
-  var coveredCatalogSlots = {};
-  var coveredPlaceholderRows = {};
   var fromWishlist = [];
   // This display has no notion of "which numbered slot" for a real item
   // (`slot` is always '' below), so a real ring/trinket BiS on both its
@@ -4454,20 +4236,12 @@ function bisMergeWishlistPrefs(prefs, officerBisItems, playerId) {
     // way the raider's own view does (js/wishlist.js): real items by zone,
     // placeholders by the row's own season, and a row with no season at all
     // predates the column, so it still counts. Without this an out-of-season
-    // row would both render as a current BiS pick and suppress the officer's
-    // real pick for that slot, since the callers' own season filter runs
-    // before this merge appends to their list.
+    // row would render as a current BiS pick.
     if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(name, p.season)) return;
     var isPlaceholder = !!itemPlaceholders[name];
-    if (isPlaceholder) {
-      if (p.slot) coveredPlaceholderRows[p.slot] = true;
-    } else {
-      if (DEDUPE_SIBLING_SLOTS[p.slot]) {
-        if (seenRealItemIds[p.item_id]) return;
-        seenRealItemIds[p.item_id] = true;
-      }
-      var catalogSlot = itemSlots[name] || '';
-      if (catalogSlot) coveredCatalogSlots[catalogSlot] = true;
+    if (!isPlaceholder && DEDUPE_SIBLING_SLOTS[p.slot]) {
+      if (seenRealItemIds[p.item_id]) return;
+      seenRealItemIds[p.item_id] = true;
     }
     fromWishlist.push({
       item: name,
@@ -4488,35 +4262,21 @@ function bisMergeWishlistPrefs(prefs, officerBisItems, playerId) {
     });
   });
 
-  var officerSet = officerBisItems.filter(function (entry) {
-    var isPlaceholder = !!itemPlaceholders[entry.item];
-    if (isPlaceholder) {
-      var row = entry.dbSlot || entry.slot || '';
-      return !coveredPlaceholderRows[row];
-    }
-    var catalogSlot = itemSlots[entry.item] || '';
-    return !(catalogSlot && coveredCatalogSlots[catalogSlot]);
-  });
-
-  return { fromWishlist: fromWishlist, officerSet: officerSet };
+  return fromWishlist;
 }
 
-// Officer bis_items is effectively a fallback now that raiders tag BiS
-// through their own Wishlist -- most players have zero real bis_items rows,
-// so any caller reading getBisItems() alone silently sees only the rare
-// officer-curated pick and misses every wishlist-tagged item. This is the
-// same three-branch prefs lookup renderProfile() runs inline (own profile ->
-// _wishlistPrefs, another player already fetched on this page ->
-// _profileWishlistPrefsCache, officer.html roster-wide -> _teamItemPreferences),
-// factored out so non-rendering callers (a live completion refresh, a roster
-// search filter) get the same merged view without duplicating that branch.
-// Falls back to plain officer bis_items when no prefs source is available
+// A raider's BiS List rows from whichever wishlist prefs source this page
+// has loaded. This is the same three-branch prefs lookup renderProfile()
+// runs inline (own profile -> _wishlistPrefs, another player already fetched
+// on this page -> _profileWishlistPrefsCache, officer.html roster-wide ->
+// _teamItemPreferences), factored out so non-rendering callers (a live
+// completion refresh, a roster search filter) get the same view without
+// duplicating that branch. Returns [] when no prefs source is available
 // (wishlist.js/tab-priority.js not loaded, or prefs not fetched yet for this
-// player) rather than returning nothing.
+// player).
 function mergedBisItemsForNameRealm(nameRealm) {
-  var officerBisItems = getBisItems(nameRealm);
   var player = typeof findRosterPlayerByNameRealm === 'function' ? findRosterPlayerByNameRealm(nameRealm) : null;
-  if (!player || typeof bisMergeWishlistPrefs !== 'function') return officerBisItems;
+  if (!player) return [];
 
   var session = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
   var isOwn = !!(session && session.nameRealm && normalise(session.nameRealm) === normalise(player.nameRealm));
@@ -4531,16 +4291,14 @@ function mergedBisItemsForNameRealm(nameRealm) {
       return p.player_id === player.id;
     });
   }
-  if (!prefs) return officerBisItems;
+  if (!prefs) return [];
 
-  var merged = bisMergeWishlistPrefs(prefs, officerBisItems, player.id);
-  return merged.fromWishlist.concat(merged.officerSet);
+  return bisItemsFromWishlistPrefs(prefs, player.id);
 }
 
 // Canonical row order for the BiS List display (renderProfile below) --
-// bis_items has no ordering of its own (rows come back in whatever order
-// they were added/fetched, and the wishlist merge appends its own entries
-// on top), so entries need an explicit sort before rendering. Own copy here
+// wishlist rows come back in tag order, so entries need an explicit sort
+// before rendering. Own copy here
 // rather than reusing tab-bis.js's BIS_SLOTS/wishlist.js's WISHLIST_SLOTS --
 // this is common.js, loaded by both index.html and officer.html, neither of
 // which is guaranteed to have loaded either of those page-specific files
@@ -4844,7 +4602,7 @@ function officerWishlistSectionHTML(player, backTo) {
   var itemPlaceholders = DATA.itemPlaceholders || {};
   var labelOverrides = (DATA && DATA.wishlistStatusLabels) || {};
 
-  // Same collapse as bisMergeWishlistPrefs() above -- wishlistSetStatus()
+  // Same collapse as bisItemsFromWishlistPrefs() above -- wishlistSetStatus()
   // mirrors a real ring/trinket's status into its sibling row, so every
   // tagged ring/trinket would otherwise list twice here (once per numbered
   // slot) even though it's one raider opinion about one physical item. Picks
@@ -4976,7 +4734,7 @@ function getSelfReceivedItems(nameOrNameRealm) {
 // slots" caution on the DB side.
 //
 // A row with no dbSlot of its own (every real, non-placeholder item -- see
-// bisMergeWishlistPrefs) has no numbered-slot ambiguity to guess across in
+// bisItemsFromWishlistPrefs) has no numbered-slot ambiguity to guess across in
 // the first place, so *any* slot-less match counts, no matter how many exist.
 // Without this, a raider who accidentally double-submitted the same real
 // item (#745 -- e.g. the first submission's confirmation wasn't seen) ended
@@ -6725,34 +6483,25 @@ function renderProfile(firstName, backTo, container) {
   var ownMissingBisCount =
     isOwnWishlistView && typeof wishlistOwnMissingBisCount === 'function' ? wishlistOwnMissingBisCount(player) : null;
 
-  // Priority list
-  var bisItems = getBisItems(player.nameRealm).filter(function (e) {
-    return typeof isItemInSeasonScope !== 'function' || isItemInSeasonScope(e.item, e.season);
-  });
-  // Read-time merge only -- bis_items itself is never written to. A raider's
-  // own wishlist "BiS" tag supersedes the officer's pick for that slot in
-  // this display; untouched everywhere else (tab-conflicts.js,
-  // tab-priority.js, the officer's own bis_items grid all still read
-  // getBisItems()/bis_items directly, unaffected by this local reassignment).
-  if (backTo === 'landing' && isOwnWishlistView && typeof wishlistBisMergeGroups === 'function') {
-    var bisMerge = wishlistBisMergeGroups(player, bisItems);
-    bisItems = bisMerge.fromWishlist.concat(bisMerge.officerSet);
+  // Priority list: the raider's wishlist "BiS" tags, from whichever prefs
+  // source this page has loaded for them.
+  var bisItems = [];
+  if (backTo === 'landing' && isOwnWishlistView && typeof wishlistBisItems === 'function') {
+    bisItems = wishlistBisItems(player);
   } else if (
     // Someone other than the raider viewing their profile via the public
-    // roster (index.html) -- wishlistBisMergeGroups()/_wishlistPrefs above
-    // only ever get populated for the logged-in raider's own profile
+    // roster (index.html) -- wishlistBisItems()/_wishlistPrefs above only
+    // ever get populated for the logged-in raider's own profile
     // (ownWishlistSectionHTML is the only thing that sets _wishlistPlayerId).
     // officerWishlistSectionHTML() (called just above to build this same
     // view's Wishlist tab) already fetched and cached this player's prefs in
-    // _profileWishlistPrefsCache, so reuse that instead of leaving the merge
+    // _profileWishlistPrefsCache, so reuse that instead of leaving the list
     // silently empty here.
     backTo === 'landing' &&
     !isOwnWishlistView &&
-    typeof bisMergeWishlistPrefs === 'function' &&
     _profileWishlistPrefsCache[player.id]
   ) {
-    var bisMergeLanding = bisMergeWishlistPrefs(_profileWishlistPrefsCache[player.id], bisItems, player.id);
-    bisItems = bisMergeLanding.fromWishlist.concat(bisMergeLanding.officerSet);
+    bisItems = bisItemsFromWishlistPrefs(_profileWishlistPrefsCache[player.id], player.id);
   } else if (
     backTo === 'officer' &&
     (typeof featureEnabled !== 'function' || featureEnabled('bis')) &&
@@ -6760,15 +6509,14 @@ function renderProfile(firstName, backTo, container) {
     _teamItemPreferences !== null
   ) {
     // Officer's read view of a raider's profile (Roster tab) -- index.html's
-    // wishlistBisMergeGroups()/_wishlistPrefs aren't available here (only
-    // loaded on that page), so this reuses tab-priority.js's already-fetched
+    // wishlistBisItems()/_wishlistPrefs aren't available here (only loaded
+    // on that page), so this reuses tab-priority.js's already-fetched
     // _teamItemPreferences (populated once at officer dashboard load for the
     // Incomplete Wishlists banner) instead of a second per-profile fetch.
     var officerPrefs = _teamItemPreferences.filter(function (p) {
       return p.player_id === player.id;
     });
-    var bisMergeOfficer = bisMergeWishlistPrefs(officerPrefs, bisItems, player.id);
-    bisItems = bisMergeOfficer.fromWishlist.concat(bisMergeOfficer.officerSet);
+    bisItems = bisItemsFromWishlistPrefs(officerPrefs, player.id);
   }
   // BiS List section's "updated X ago" signal (#290) -- self-received-marking
   // activity only. Wishlist completeness is already surfaced separately on
@@ -6806,8 +6554,7 @@ function renderProfile(firstName, backTo, container) {
     // approval flips this exact row rather than every row sharing the item
     // (#386). Distinct from `slot` above, which prefers the catalog's name.
     // Falls back to the catalog slot when the row itself carries none (every
-    // wishlist-sourced real item, plus any officer bis_items row that never
-    // got a slot). mapSupabaseSelfReceived() applies this same itemRow.slot
+    // wishlist-sourced real item). mapSupabaseSelfReceived() applies this same itemRow.slot
     // fallback reading self_received_requests.slot back (NULL for these same
     // rows), so without matching it here, dbSlot='' sent on write never lines
     // up with the non-empty slot the read side resolves to, and
@@ -7526,11 +7273,10 @@ function renderProfile(firstName, backTo, container) {
       "');l.style.display=l.style.display==='none'?'block':'none';\">BiS List" +
       bisCompletionHTML +
       tierProgressHTML +
-      // Self-service (#651): a raider can now sync their own tier picks
-      // against Raider.IO's equipped gear directly from their own profile,
-      // no officer needed -- RLS (bis_items_self_obtained migration) only
-      // lets this UPDATE succeed against the viewer's own player_id, so it's
-      // gated on isOwnWishlistView the same way the Wishlist tab itself is.
+      // Self-service (#651): a raider can refresh their own tier-piece count
+      // from Raider.IO's equipped gear directly from their own profile, no
+      // officer needed -- gated on isOwnWishlistView the same way the Wishlist
+      // tab itself is.
       (isOwnWishlistView && player.firstName && player.realm
         ? '<button id="bisRaiderIoSyncBtn-' +
           player.firstName +
@@ -7539,7 +7285,7 @@ function renderProfile(firstName, backTo, container) {
           player.firstName.replace(/'/g, "\\'") +
           "','" +
           player.nameRealm.replace(/'/g, "\\'") +
-          '\')" title="Check Raider.IO\'s equipped gear and mark any matching tagged tier pieces obtained">Sync from Raider.IO</button>' +
+          '\')" title="Count the tier pieces Raider.IO shows equipped">Sync from Raider.IO</button>' +
           '<span id="bisRaiderIoMsg-' +
           player.firstName +
           '" style="font-size:0.95rem;color:var(--text-muted);"></span>'

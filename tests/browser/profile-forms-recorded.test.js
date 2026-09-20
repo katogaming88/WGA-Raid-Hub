@@ -68,7 +68,6 @@ function openOwnProfile(viewerKey, { mplusOpen = true, rejections = true, autoAp
       // A raider reads their own requests (20260914201423).
       mplus_exclusion_requests: rejections ? MPLUS_REJECTIONS.filter((r) => r.player_id === own.id) : [],
       incoming_roster: [],
-      bis_items: [],
       item_preferences: WISHLIST.filter((r) => r.player_id === own.id),
       self_received_requests: SELF_RECEIVED.filter((r) => r.player_id === own.id),
       priority_order: PRIORITY_ORDER,

@@ -1,8 +1,8 @@
 // Name handling shared by the #320 import generators.
 //
 // The exports store player names three ways: Roster holds "First-Realm",
-// Attendance/Priority hold the bare first name, and Scoring plus the BiS List
-// headers hold "First-Realm - Nickname" (older sheets used
+// Attendance/Priority hold the bare first name, and Scoring headers hold
+// "First-Realm - Nickname" (older sheets used
 // "First-Realm (Nickname)"; both forms are stripped). Matching across tabs
 // mirrors the Apps Script behavior: normName (gs/wgaWebApp.gs:1999) and
 // stripNickname (gs/Export.gs:70).

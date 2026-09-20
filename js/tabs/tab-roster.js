@@ -425,10 +425,7 @@ function buildRosterTable() {
     )
       continue;
     if (bisItemTerm) {
-      var bisItems =
-        typeof mergedBisItemsForNameRealm === 'function'
-          ? mergedBisItemsForNameRealm(p.nameRealm)
-          : getBisItems(p.nameRealm);
+      var bisItems = mergedBisItemsForNameRealm(p.nameRealm);
       var hasBisMatch = false;
       for (var bi = 0; bi < bisItems.length; bi++) {
         if (normalise(bisItems[bi].item).indexOf(bisItemTerm) !== -1) {

@@ -15,7 +15,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
 const WISHLIST_JS = readFileSync(path.join(HERE, '../../js/wishlist.js'), 'utf8');
 
-function makeSandbox(itemSlots, itemIds, prefs, bisList) {
+function makeSandbox(itemSlots, itemIds, prefs) {
   const sandbox = {
     window: {},
     location: { search: '', pathname: '/' },
@@ -36,7 +36,7 @@ function makeSandbox(itemSlots, itemIds, prefs, bisList) {
   vm.runInContext(COMMON_JS, sandbox, { filename: 'common.js' });
   vm.runInContext(WISHLIST_JS, sandbox, { filename: 'wishlist.js' });
 
-  sandbox.DATA = { itemSlots, itemPlaceholders: {}, itemIds, bisList: bisList || {} };
+  sandbox.DATA = { itemSlots, itemPlaceholders: {}, itemIds };
   sandbox._wishlistPrefs = prefs;
   sandbox._wishlistPlayerFirstName = 'Kat';
   return sandbox;
@@ -177,31 +177,6 @@ describe('wishlistCompleteness (item-level)', () => {
     const result = completenessFor(sandbox);
     expect(result.missingRows).toContain('Head');
     expect(result.missingCounts.Head).toBe(1);
-  });
-
-  it('an officer bis_items pick covers only that one item, not the whole row', () => {
-    const itemSlots = { Helm: 'Head', Circlet: 'Head', Necklace: 'Neck' };
-    const itemIds = { Helm: 1, Circlet: 2, Necklace: 3 };
-    const prefs = []; // raider never touched their wishlist at all
-    const bisList = { Kat: [{ item: 'Helm', dbSlot: 'Head' }] };
-    const sandbox = makeSandbox(itemSlots, itemIds, prefs, bisList);
-
-    const result = completenessFor(sandbox);
-    expect(result.missingRows).toContain('Head');
-    expect(result.missingCounts.Head).toBe(1); // Circlet still untagged
-    expect(result.missingRows).toContain('Neck');
-  });
-
-  it('officer bis_items Weapon pick determines Off Hand requirement when the raider has no Weapon tag', () => {
-    const itemSlots = { Sword: 'One-Hand' };
-    const itemIds = { Sword: 1 };
-    const prefs = [];
-    const bisList = { Kat: [{ item: 'Sword', dbSlot: 'Weapon' }] };
-    const sandbox = makeSandbox(itemSlots, itemIds, prefs, bisList);
-
-    const result = completenessFor(sandbox);
-    expect(result.requiredRows).toContain('Off Hand');
-    expect(result.missingRows).not.toContain('Weapon'); // officer's pick covers the only eligible Weapon item
   });
 
   it('an item outside the current season view never appears as required', () => {

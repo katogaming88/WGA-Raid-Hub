@@ -647,9 +647,9 @@ function executeArchiveSeason() {
           if (status) status.textContent = '';
         }, 3000);
       }
-      // archive_current_season() also wipes real-item bis_items rows and
-      // resets m_plus_excluded server-side -- the in-memory DATA.bisList and
-      // roster still hold the pre-archive values until refetched, same
+      // archive_current_season() also resets m_plus_excluded server-side --
+      // the in-memory roster still holds the pre-archive values until
+      // refetched, same
       // staleness officerRenamePlayer works around with a full reload rather
       // than patching state in place.
       loadData(

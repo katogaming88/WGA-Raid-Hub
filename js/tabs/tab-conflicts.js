@@ -16,25 +16,19 @@ function toggleContestedItem(item) {
   buildConflicts();
 }
 
-// Who wants each item, merging the officer's bis_items grid with every
-// raider's own wishlist BiS tags -- previously read bis_items only
-// (DATA.bisList straight from getBisItems()), so a team relying mainly on
-// raiders tagging their own wishlist (item_preferences) instead of officers
-// filling out the BiS grid saw this tab read as almost entirely empty. Same
-// per-player merge renderProfile()'s officer branch already uses
-// (bisMergeWishlistPrefs()), just run across the whole roster instead of one
-// player at a time.
+// Who wants each item, from every raider's own wishlist BiS tags. Same
+// per-player read renderProfile()'s officer branch uses
+// (bisItemsFromWishlistPrefs()), just run across the whole roster instead
+// of one player at a time.
 function buildContestedItemMap() {
   var itemMap = {};
   (DATA.roster || []).forEach(function (player) {
-    var officerBis = getBisItems(player.nameRealm);
     // #829: was a full unindexed scan of _teamItemPreferences (3000+ rows)
     // per roster member, and buildConflicts() re-runs this on every
     // item-row expand/collapse click -- _teamItemPreferencesByPlayer()
     // (tab-priority.js) is the same array pre-grouped by player_id once.
     var prefs = (typeof _teamItemPreferencesByPlayer === 'function' && _teamItemPreferencesByPlayer()[player.id]) || [];
-    var merged = bisMergeWishlistPrefs(prefs, officerBis, player.id);
-    var items = merged.fromWishlist.concat(merged.officerSet);
+    var items = bisItemsFromWishlistPrefs(prefs, player.id);
     items.forEach(function (entry) {
       var itemName = entry.item;
       if (itemName === 'M+' || itemName === 'Crafted' || itemName === 'Catalyst') return;

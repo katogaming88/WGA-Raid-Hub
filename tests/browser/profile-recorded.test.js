@@ -54,7 +54,6 @@ function overridesFor(viewer) {
     player_equipped_gear: GEAR,
     mplus_exclusion_requests: viewer?.role === 'officer' ? MPLUS_REJECTIONS : [],
     incoming_roster: [],
-    bis_items: [],
     // A raider reads only their own wishlist and receipts; an officer reads the team's.
     item_preferences: viewer ? WISHLIST : [],
     self_received_requests: viewer ? SELF_RECEIVED : [],
