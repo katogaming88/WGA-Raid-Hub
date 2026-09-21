@@ -15,7 +15,6 @@ declare
   v_approved_player_id integer;
   v_team_id integer;
   v_row_season text;
-  v_active_season text;
   v_class_spec_id integer;
   v_updated_id integer;
   v_old_off_specs text;
@@ -53,9 +52,10 @@ begin
     raise exception 'This signup was not approved and can no longer be edited';
   end if;
   if v_status = 'added' then
-    select config->>'activeSignupSeason' into v_active_season
-    from public.team_settings where team_id = v_team_id;
-    if v_row_season is distinct from v_active_season then
+    if not exists (
+      select 1 from public.team_seasons ts
+      where ts.team_id = v_team_id and ts.season_code = v_row_season and ts.signups_open
+    ) then
       raise exception 'This signup has already been added to the roster and can no longer be edited';
     end if;
   elsif not (v_status = 'pending' or (v_status = 'approved' and v_approved_player_id is null)) then
@@ -113,8 +113,9 @@ begin
       or (s.status = 'approved' and s.approved_player_id is null)
       or (
         s.status = 'added'
-        and s.season is not distinct from (
-          select config->>'activeSignupSeason' from public.team_settings where team_id = s.team_id
+        and exists (
+          select 1 from public.team_seasons ts
+          where ts.team_id = s.team_id and ts.season_code = s.season and ts.signups_open
         )
       )
     )

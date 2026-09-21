@@ -2319,7 +2319,7 @@ export type Database = {
             columns: ["season"]
             isOneToOne: false
             referencedRelation: "seasons"
-            referencedColumns: ["display_name"]
+            referencedColumns: ["code"]
           },
           {
             foreignKeyName: "season_signups_swap_class_spec_id_fkey"
@@ -3056,7 +3056,7 @@ export type Database = {
             columns: ["season"]
             isOneToOne: false
             referencedRelation: "seasons"
-            referencedColumns: ["display_name"]
+            referencedColumns: ["code"]
           },
           {
             foreignKeyName: "signups_team_id_fkey"
@@ -3694,7 +3694,7 @@ export type Database = {
         }[]
       }
       get_own_signup: {
-        Args: { p_team_id: number }
+        Args: { p_season?: string; p_team_id: number }
         Returns: {
           class: string
           id: number
@@ -3978,6 +3978,7 @@ export type Database = {
           p_name_realm: string
           p_off_specs?: string
           p_player_note?: string
+          p_season?: string
           p_spec: string
           p_swap_from_name_realm?: string
           p_team_id: number

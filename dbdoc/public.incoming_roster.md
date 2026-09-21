@@ -15,9 +15,9 @@ CREATE VIEW incoming_roster AS (
     cs.role,
     s.swap_from_name_realm
    FROM ((season_signups s
-     JOIN team_settings ts ON ((ts.team_id = s.team_id)))
+     JOIN team_seasons ts ON (((ts.team_id = s.team_id) AND (ts.season_code = s.season) AND ts.signups_open)))
      LEFT JOIN classes_specs cs ON ((cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id))))
-  WHERE ((s.status = 'approved'::text) AND (s.approved_player_id IS NULL) AND (s.season = (ts.config ->> 'activeSignupSeason'::text)))
+  WHERE ((s.status = 'approved'::text) AND (s.approved_player_id IS NULL))
 )
 ```
 
@@ -40,7 +40,7 @@ CREATE VIEW incoming_roster AS (
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [public.season_signups](public.season_signups.md) | 18 |  | BASE TABLE |
-| [public.team_settings](public.team_settings.md) | 3 |  | BASE TABLE |
+| [public.team_seasons](public.team_seasons.md) | 6 | A team's two switches per tier (#939): whether raiders can sign up and whether they can edit their wishlist. No row means both closed. Written only by set_team_season(). | BASE TABLE |
 | [public.classes_specs](public.classes_specs.md) | 4 |  | BASE TABLE |
 
 ## Relations

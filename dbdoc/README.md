@@ -98,7 +98,6 @@
 | public.notify_player | int4 | p_player_id integer, p_message text | FUNCTION |
 | public.submit_bis_link | int4 | p_team_id integer, p_name_realm text, p_bis_link text, p_player_note text DEFAULT NULL::text | FUNCTION |
 | public.submit_mplus_exclusion | int4 | p_team_id integer, p_name_realm text, p_raiderio_url text DEFAULT NULL::text, p_reason text DEFAULT NULL::text | FUNCTION |
-| public.submit_season_signup | int4 | p_team_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text, p_swap_from_name_realm text DEFAULT NULL::text | FUNCTION |
 | public.admin_create_team | int4 | p_name text, p_slug text | FUNCTION |
 | public.admin_update_team | void | p_team_id integer, p_name text, p_slug text | FUNCTION |
 | public.admin_set_team_archived | void | p_team_id integer, p_archived boolean | FUNCTION |
@@ -110,7 +109,6 @@
 | public.direct_mark_received | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_slot text DEFAULT NULL::text | FUNCTION |
 | public.set_guild_officer_bios | jsonb | p_bios jsonb | FUNCTION |
 | public.flag_bis_list_changed | int4 | p_team_id integer, p_name_realm text, p_player_note text DEFAULT NULL::text | FUNCTION |
-| public.get_own_signup | record | p_team_id integer | FUNCTION |
 | public.update_own_signup | int4 | p_signup_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text, p_swap_from_name_realm text DEFAULT NULL::text | FUNCTION |
 | public.add_signup_to_roster | int4 | p_signup_id integer, p_is_trial boolean DEFAULT true, p_archive_player_id integer DEFAULT NULL::integer, p_is_backup_tank boolean DEFAULT false, p_is_backup_healer boolean DEFAULT false | FUNCTION |
 | public.set_team_setting | jsonb | p_team_id integer, p_updates jsonb, p_skip_audit boolean DEFAULT false | FUNCTION |
@@ -199,6 +197,8 @@
 | public.set_lineup_role_targets | void | p_team_id integer, p_tanks integer, p_healers integer | FUNCTION |
 | public.current_season | text | p_on date DEFAULT ((now() AT TIME ZONE 'America/New_York'::text))::date | FUNCTION |
 | public.set_team_season | team_seasons | p_team_id integer, p_season_code text, p_signups_open boolean DEFAULT NULL::boolean, p_wishlist_open boolean DEFAULT NULL::boolean | FUNCTION |
+| public.submit_season_signup | int4 | p_team_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text, p_swap_from_name_realm text DEFAULT NULL::text, p_season text DEFAULT NULL::text | FUNCTION |
+| public.get_own_signup | record | p_team_id integer, p_season text DEFAULT NULL::text | FUNCTION |
 
 ## Enums
 
@@ -254,7 +254,7 @@ erDiagram
 "public.season_signups" }o--o| "public.players" : "FOREIGN KEY (approved_player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.season_signups" }o--o| "public.team_members" : "FOREIGN KEY (reviewed_by) REFERENCES team_members(id) ON DELETE SET NULL"
 "public.season_signups" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
-"public.season_signups" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
+"public.season_signups" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.self_received_requests" }o--|| "public.items" : "FOREIGN KEY (self_item_id) REFERENCES items(id) ON DELETE SET NULL"
 "public.self_received_requests" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.self_received_requests" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"

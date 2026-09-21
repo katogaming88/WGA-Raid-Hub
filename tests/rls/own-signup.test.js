@@ -283,9 +283,11 @@ describe('update_own_signup', () => {
   // roster as Mage/Arcane) opened their already-added signup and hit Submit
   // without changing anything -- it still bounced back to 'pending' and had
   // to be manually denied since there was nothing to review.
+  // Each case edits an added row, so the team's switch for its tier is on.
   describe('no-op edits (#noop)', () => {
     it('re-submitting an added signup with identical values leaves status/approval untouched', async () => {
       await withTxn(async ({ q, asUser }) => {
+        await openSignups(q);
         const player = await q(
           "insert into public.players (team_id, name_realm, class_spec_id) values (1, 'Ownsignuproster-Illidan', 1) returning id"
         );
@@ -333,6 +335,7 @@ describe('update_own_signup', () => {
 
     it('changing even one field (e.g. the note) still counts as a real edit and resets status', async () => {
       await withTxn(async ({ q, asUser }) => {
+        await openSignups(q);
         const player = await q(
           "insert into public.players (team_id, name_realm, class_spec_id) values (1, 'Ownsignuproster-Illidan', 1) returning id"
         );
@@ -362,6 +365,7 @@ describe('update_own_signup', () => {
     // state IS a no-op.
     it("matching the signup's stale stored snapshot (not the live, officer-edited player) still counts as a real edit", async () => {
       await withTxn(async ({ q, asUser }) => {
+        await openSignups(q);
         const player = await q(
           "insert into public.players (team_id, name_realm, class_spec_id) values (1, 'Ownsignuproster-Illidan', 1) returning id"
         );
@@ -385,6 +389,7 @@ describe('update_own_signup', () => {
 
     it("matching the live, officer-edited player's current name IS treated as a no-op", async () => {
       await withTxn(async ({ q, asUser }) => {
+        await openSignups(q);
         const player = await q(
           "insert into public.players (team_id, name_realm, class_spec_id) values (1, 'Ownsignuproster-Illidan', 1) returning id"
         );
