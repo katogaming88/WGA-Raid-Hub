@@ -7782,6 +7782,117 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.team_seasons",
+      "type": "BASE TABLE",
+      "comment": "A team's two switches per tier (#939): whether raiders can sign up and whether they can edit their wishlist. No row means both closed. Written only by set_team_season().",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "season_code",
+          "type": "text",
+          "nullable": false,
+          "comment": "The tier the switches are for; a seasons.code."
+        },
+        {
+          "name": "signups_open",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "Raiders can submit a season signup for this tier (submit_season_signup checks it)."
+        },
+        {
+          "name": "wishlist_open",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "Raiders can tag and edit their wishlist for this tier (the site and the app check it; the insert path follows in #936)."
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_seasons_pkey",
+          "def": "CREATE UNIQUE INDEX team_seasons_pkey ON public.team_seasons USING btree (id)",
+          "table": "public.team_seasons",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_seasons_team_id_season_code_key",
+          "def": "CREATE UNIQUE INDEX team_seasons_team_id_season_code_key ON public.team_seasons USING btree (team_id, season_code)",
+          "table": "public.team_seasons",
+          "columns": [
+            "team_id",
+            "season_code"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_seasons_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.team_seasons",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_seasons_season_code_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season_code) REFERENCES seasons(code)",
+          "table": "public.team_seasons",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season_code"
+          ],
+          "referenced_columns": [
+            "code"
+          ]
+        },
+        {
+          "name": "team_seasons_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.team_seasons",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_seasons_team_id_season_code_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, season_code)",
+          "table": "public.team_seasons",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "season_code"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -9166,6 +9277,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_seasons",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_seasons",
+      "columns": [
+        "season_code"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season_code) REFERENCES seasons(code)"
     }
   ],
   "functions": [
@@ -9905,6 +10042,12 @@
       "name": "public.current_season",
       "return_type": "text",
       "arguments": "p_on date DEFAULT ((now() AT TIME ZONE 'America/New_York'::text))::date",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_team_season",
+      "return_type": "team_seasons",
+      "arguments": "p_team_id integer, p_season_code text, p_signups_open boolean DEFAULT NULL::boolean, p_wishlist_open boolean DEFAULT NULL::boolean",
       "type": "FUNCTION"
     }
   ],

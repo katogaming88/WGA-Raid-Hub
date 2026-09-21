@@ -20,10 +20,15 @@ begin
   end if;
 
   select config into v_config from public.team_settings where team_id = p_team_id;
-  if v_config is null or coalesce((v_config->>'signupsOpen')::boolean, false) is not true then
+  v_season := v_config->>'activeSignupSeason';
+  if v_season is null or not exists (
+    select 1
+    from public.team_seasons ts
+    join public.seasons s on s.code = ts.season_code
+    where ts.team_id = p_team_id and s.display_name = v_season and ts.signups_open
+  ) then
     raise exception 'signups are not open for this team';
   end if;
-  v_season := v_config->>'activeSignupSeason';
 
   select id into v_class_spec_id from public.classes_specs
    where class = p_class and spec = p_spec;

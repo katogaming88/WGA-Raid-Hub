@@ -149,6 +149,8 @@ team_members,Team leaders write team_members,public,ALL,PERMISSIVE,((team_id = A
 team_raid_progress,Claude readers read team_raid_progress,claude_readers,SELECT,PERMISSIVE,true,
 team_raid_progress,Officers write team_raid_progress,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 team_raid_progress,Public read team_raid_progress,public,SELECT,PERMISSIVE,true,
+team_seasons,Claude readers read team_seasons,claude_readers,SELECT,PERMISSIVE,true,
+team_seasons,Public read team_seasons,public,SELECT,PERMISSIVE,true,
 team_settings,Claude readers read team_settings,claude_readers,SELECT,PERMISSIVE,true,
 team_settings,Public read settings,public,SELECT,PERMISSIVE,true,
 team_settings,Team leaders write settings,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_leader_team_ids() AS my_leader_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_leader_team_ids() AS my_leader_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))

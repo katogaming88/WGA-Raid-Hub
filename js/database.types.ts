@@ -2749,6 +2749,48 @@ export type Database = {
           },
         ]
       }
+      team_seasons: {
+        Row: {
+          id: number
+          season_code: string
+          signups_open: boolean
+          team_id: number
+          updated_at: string
+          wishlist_open: boolean
+        }
+        Insert: {
+          id?: number
+          season_code: string
+          signups_open?: boolean
+          team_id: number
+          updated_at?: string
+          wishlist_open?: boolean
+        }
+        Update: {
+          id?: number
+          season_code?: string
+          signups_open?: boolean
+          team_id?: number
+          updated_at?: string
+          wishlist_open?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_seasons_season_code_fkey"
+            columns: ["season_code"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "team_seasons_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_settings: {
         Row: {
           config: Json
@@ -3872,6 +3914,28 @@ export type Database = {
       set_team_officer_bios: {
         Args: { p_bios: Json; p_team_id: number }
         Returns: Json
+      }
+      set_team_season: {
+        Args: {
+          p_season_code: string
+          p_signups_open?: boolean
+          p_team_id: number
+          p_wishlist_open?: boolean
+        }
+        Returns: {
+          id: number
+          season_code: string
+          signups_open: boolean
+          team_id: number
+          updated_at: string
+          wishlist_open: boolean
+        }
+        SetofOptions: {
+          from: "*"
+          to: "team_seasons"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       set_team_setting: {
         Args: { p_skip_audit?: boolean; p_team_id: number; p_updates: Json }

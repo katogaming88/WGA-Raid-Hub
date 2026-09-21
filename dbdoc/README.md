@@ -69,6 +69,7 @@
 | [public.raid_night_bosses](public.raid_night_bosses.md) | 9 | The bosses on one raid night's list for a team (#1216), in pull order. skipped keeps a boss the team is not pulling that night on the list. confirmed_at and confirmed_by say an officer saved that boss's lineup for the night; until then it follows the boss's standing group. No rows for a night means it is not planned yet. | BASE TABLE |
 | [public.raid_night_lineups](public.raid_night_lineups.md) | 6 | The plan for one raid night (#1216): one row per raider in for one boss. Filled from boss_groups ahead of the night, then edited through set_raid_night_lineup(). Kept after the night, so it still says who was planned in. | BASE TABLE |
 | [public.team_lineup_settings](public.team_lineup_settings.md) | 4 | A team's own tanks-wanted and healers-wanted counts for the boss lineup's "Needs a look" check (#1244), defaulting to 2 and 4 when a team has no row. Written only by set_lineup_role_targets(). | BASE TABLE |
+| [public.team_seasons](public.team_seasons.md) | 6 | A team's two switches per tier (#939): whether raiders can sign up and whether they can edit their wishlist. No row means both closed. Written only by set_team_season(). | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -197,6 +198,7 @@
 | public.set_encounter_cap | void | p_encounter_id integer, p_cap integer DEFAULT NULL::integer | FUNCTION |
 | public.set_lineup_role_targets | void | p_team_id integer, p_tanks integer, p_healers integer | FUNCTION |
 | public.current_season | text | p_on date DEFAULT ((now() AT TIME ZONE 'America/New_York'::text))::date | FUNCTION |
+| public.set_team_season | team_seasons | p_team_id integer, p_season_code text, p_signups_open boolean DEFAULT NULL::boolean, p_wishlist_open boolean DEFAULT NULL::boolean | FUNCTION |
 
 ## Enums
 
@@ -327,6 +329,8 @@ erDiagram
 "public.raid_night_lineups" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.raid_night_lineups" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
 "public.team_lineup_settings" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_seasons" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_seasons" }o--|| "public.seasons" : "FOREIGN KEY (season_code) REFERENCES seasons(code)"
 
 "public.attendance" {
   integer id
@@ -995,6 +999,14 @@ erDiagram
   integer team_id FK
   integer tanks_wanted
   integer healers_wanted
+  timestamp_with_time_zone updated_at
+}
+"public.team_seasons" {
+  bigint id
+  integer team_id FK
+  text season_code FK
+  boolean signups_open
+  boolean wishlist_open
   timestamp_with_time_zone updated_at
 }
 ```
