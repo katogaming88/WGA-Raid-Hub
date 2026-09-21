@@ -42,9 +42,10 @@ describe('check_priority_order_drift', () => {
       // would otherwise drop player 1 as a live candidate here and desync
       // from the saved top 3 this test relies on matching.
       await q('delete from public.self_received_requests where id = 2');
-      // Player 1 has a bis_items row for item 1 from seed.sql; player 2
-      // needs an explicit wishlist tag to be a candidate too.
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, 1, 'bis')");
+      // Both players need a wishlist tag to be candidates.
+      await q(
+        "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'bis'), (1, 2, 1, 'bis')"
+      );
       await seedScoring(q, 1, 100, 100);
       await seedScoring(q, 2, 50, 50);
       // Matches live order: player 1 (100) ranks above player 2 (50).
@@ -60,9 +61,12 @@ describe('check_priority_order_drift', () => {
 
   it('flags a swap within the top 3 after a scoring change', async () => {
     await withTxn(async ({ q, asUser }) => {
-      // See the previous test's comment -- same seed row 2 collision.
+      // See the previous test's comment -- same seed row 2 collision, and
+      // both players need their wishlist tag to be candidates.
       await q('delete from public.self_received_requests where id = 2');
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, 1, 'bis')");
+      await q(
+        "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'bis'), (1, 2, 1, 'bis')"
+      );
       await seedScoring(q, 1, 100, 100);
       await seedScoring(q, 2, 50, 50);
       // Saved order has player 1 first -- but scoring above now ranks
@@ -82,7 +86,7 @@ describe('check_priority_order_drift', () => {
 
   it('flags a player newly entering the top 3 from further down the list, not just an in-place swap', async () => {
     await withTxn(async ({ q, asUser }) => {
-      // Give item 2 three bis_items candidates: 1 and 2 direct, plus a
+      // Give item 2 three wishlist candidates: 1 and 2 direct, plus a
       // third player added purely for this test's roster.
       await q(
         "insert into public.players (id, team_id, name_realm, class_spec_id) values (101, 1, 'Thirdrunner-Illidan', 1)"

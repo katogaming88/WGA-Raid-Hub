@@ -249,130 +249,6 @@
       ]
     },
     {
-      "name": "public.bis_items",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "id",
-          "type": "integer",
-          "nullable": false,
-          "default": "nextval('bis_items_id_seq'::regclass)"
-        },
-        {
-          "name": "player_id",
-          "type": "integer",
-          "nullable": false
-        },
-        {
-          "name": "item_id",
-          "type": "integer",
-          "nullable": false
-        },
-        {
-          "name": "obtained",
-          "type": "boolean",
-          "nullable": false,
-          "default": "false"
-        },
-        {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "nullable": true
-        },
-        {
-          "name": "slot",
-          "type": "text",
-          "nullable": true
-        },
-        {
-          "name": "season",
-          "type": "text",
-          "nullable": true
-        }
-      ],
-      "indexes": [
-        {
-          "name": "bis_items_pkey",
-          "def": "CREATE UNIQUE INDEX bis_items_pkey ON public.bis_items USING btree (id)",
-          "table": "public.bis_items",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "bis_items_no_dupe_item_key",
-          "def": "CREATE UNIQUE INDEX bis_items_no_dupe_item_key ON public.bis_items USING btree (player_id, item_id, COALESCE(slot, ''::text))",
-          "table": "public.bis_items",
-          "columns": [
-            "player_id",
-            "item_id",
-            "coalesce"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "bis_items_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.bis_items",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "bis_items_item_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL",
-          "table": "public.bis_items",
-          "referenced_table": "public.items",
-          "columns": [
-            "item_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "bis_items_player_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
-          "table": "public.bis_items",
-          "referenced_table": "public.players",
-          "columns": [
-            "player_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "bis_items_season_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)",
-          "table": "public.bis_items",
-          "referenced_table": "public.seasons",
-          "columns": [
-            "season"
-          ],
-          "referenced_columns": [
-            "display_name"
-          ]
-        }
-      ],
-      "triggers": [
-        {
-          "name": "trg_bis_items_updated_at",
-          "def": "CREATE TRIGGER trg_bis_items_updated_at BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
-        },
-        {
-          "name": "trg_bis_items_restrict_update",
-          "def": "CREATE TRIGGER trg_bis_items_restrict_update BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION restrict_bis_items_update_to_obtained()"
-        }
-      ]
-    },
-    {
       "name": "public.bis_requests",
       "type": "BASE TABLE",
       "columns": [
@@ -2153,7 +2029,7 @@
           "name": "slot",
           "type": "text",
           "nullable": true,
-          "comment": "BiS slot the request was raised against, mirroring bis_items.slot. Lets an approval target one row when the same item -- notably an is_placeholder source like M+ -- sits in several slots. Null on rows predating #386."
+          "comment": "The slot row the raider reported the item for (#386). Read by the duplicate guard (#757) and the profile's own-row matching. Null on rows predating #386."
         },
         {
           "name": "updated_at",
@@ -2263,10 +2139,6 @@
         {
           "name": "trg_self_received_requests_team_id_check",
           "def": "CREATE TRIGGER trg_self_received_requests_team_id_check BEFORE INSERT OR UPDATE ON public.self_received_requests FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
-        },
-        {
-          "name": "trg_self_received_sync_bis_obtained",
-          "def": "CREATE TRIGGER trg_self_received_sync_bis_obtained AFTER INSERT OR UPDATE OF status ON public.self_received_requests FOR EACH ROW WHEN ((new.status = 'approved'::text)) EXECUTE FUNCTION sync_bis_obtained_from_self_received()"
         },
         {
           "name": "trg_self_received_requests_updated_at",
@@ -7953,45 +7825,6 @@
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     },
     {
-      "table": "public.bis_items",
-      "columns": [
-        "item_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.items",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
-    },
-    {
-      "table": "public.bis_items",
-      "columns": [
-        "player_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.players",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.bis_items",
-      "columns": [
-        "season"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.seasons",
-      "parent_columns": [
-        "display_name"
-      ],
-      "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)"
-    },
-    {
       "table": "public.bis_requests",
       "columns": [
         "player_id"
@@ -9535,12 +9368,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.sync_bis_obtained_from_self_received",
-      "return_type": "trigger",
-      "arguments": "",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.set_guild_officer_bios",
       "return_type": "jsonb",
       "arguments": "p_bios jsonb",
@@ -9604,12 +9431,6 @@
       "name": "public.check_priority_order_drift",
       "return_type": "record",
       "arguments": "p_team_id integer, p_season text",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.restrict_bis_items_update_to_obtained",
-      "return_type": "trigger",
-      "arguments": "",
       "type": "FUNCTION"
     },
     {

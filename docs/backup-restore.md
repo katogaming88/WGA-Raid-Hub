@@ -58,7 +58,6 @@ Note the dependency, because it decides restore order: `priority_order` and `sco
 - `guild_grants` (the site admin, guild officer and BoE manager grants, [#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942) step 2; no site admin row means nobody can administer the site, no BoE manager row only that site admins alone run the BoE workflow). `site_admins`, `guild_officers` and `boe_managers` are views of it until cutover, not tables, so they restore with the schema and hold nothing of their own
 - `characters` (the alts each person picked from their Battle.net account, [#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942) step 5; restores after `people`. Nothing else holds the picks, so a lost row is only rebuilt by that raider choosing again)
 - `item_preferences` (raider wishlists)
-- `bis_items` (BiS lists and their obtained flags)
 - `season_signups`
 - `bis_requests`
 - `self_received_requests`
@@ -223,6 +222,8 @@ As of 2026-09-15, [#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942
 As of 2026-09-18, [#1216](https://github.com/katogaming88/WGA-Raid-Hub/issues/1216) added `boss_groups`, `raid_night_bosses` and `raid_night_lineups` (51 base tables), classified in-app-only above. `raid_night_bosses.confirmed_by` points at `people`, not `auth.users`, so no new `auth.users` FK. Restore order: `raid_night_bosses` before `raid_night_lineups` (a composite FK). No `EMPTY_CHECK` floor: a team that does not plan boss by boss has no rows. The count also caught `main_swap_requests` (#631, 2026-09-16), which landed without a line in the coverage map; left for [#699](https://github.com/katogaming88/WGA-Raid-Hub/issues/699) with the other seven. No re-drill due.
 
 Same day, [#1244](https://github.com/katogaming88/WGA-Raid-Hub/issues/1244) added `team_lineup_settings` (52 base tables), classified in-app-only above: a team's own role-target counts, no other source. Its only FK is `team_id` to `teams`, already a restore root, so no new `auth.users` FK and no ordering change beyond restoring after `teams`. No `EMPTY_CHECK` floor: a team that has never set its targets has no row, which is a legitimate state (the app falls back to the 2/4 default), not data loss. No re-drill due.
+
+As of 2026-09-20, [#935](https://github.com/katogaming88/WGA-Raid-Hub/issues/935) dropped `bis_items` (51 base tables) and removed its line from the coverage map above. Its four rows belonged to archived players and nothing read them; no other table pointed at it.
 
 ## Ops notes
 

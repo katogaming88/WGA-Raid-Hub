@@ -205,12 +205,7 @@ insert into public.self_received_requests (id, team_id, player_id, self_item_id,
 
 -- Corrections fixtures (#756): an approved and a rejected row on team 1 plus
 -- an approved row on team 2, so delete_self_received_request() and the
--- revert-to-pending UPDATE path have per-role targets. Placed before the
--- bis_items block below on purpose: the approved inserts fire
--- trg_self_received_sync_bis_obtained, and with no matching bis_items row
--- existing yet the seed's obtained flags stay false. Row 2 shares
--- (player 1, item 1) with the bis_items seed row so the sync tests can
--- exercise the trigger against it.
+-- revert-to-pending UPDATE path have per-role targets.
 insert into public.self_received_requests (id, team_id, player_id, self_item_id, status, track, source, slot) values
   (2, 1, 1, 1, 'approved', 'Hero', 'M+', null),
   (3, 1, 2, 2, 'rejected', 'Champion', 'Great Vault', null),
@@ -250,9 +245,6 @@ from (values ('discord-officer-1'), ('discord-boe-manager')) as g(discord_id);
 insert into public.attendance (id, team_id, player_id, raid_date, status) values
   (1, 1, 1, '2026-01-01', 'Present');
 
-insert into public.bis_items (id, player_id, item_id, obtained) values
-  (1, 1, 1, false);
-
 insert into public.scoring (id, player_id, team_id, season) values
   (1, 1, 1, 'seed-season');
 
@@ -286,7 +278,6 @@ select setval('public.mplus_exclusion_requests_id_seq', 10);
 select setval('public.signups_id_seq', 10);
 select setval('public.self_received_requests_id_seq', 10);
 select setval('public.attendance_id_seq', 10);
-select setval('public.bis_items_id_seq', 10);
 select setval('public.scoring_id_seq', 10);
 select setval('public.priority_order_id_seq', 10);
 select setval('public.loot_id_seq', 10);

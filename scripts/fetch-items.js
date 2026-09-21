@@ -82,7 +82,7 @@ function classifyWowheadType(item) {
 
 // Blizzard's InventoryType enum, as embedded in the zone loot Listview's
 // numeric `slot` field. Text matches the vocabulary Wowhead's own item XML
-// uses, since that's what's already stored in items.slot/bis_items.slot.
+// uses, since that's what's already stored in items.slot.
 // 0 means "no equip slot" -- tier tokens and class-set trade tokens -- which
 // resolves to null so the caller falls back to parseTokenFromName().
 const INVTYPE_SLOT_NAME = {

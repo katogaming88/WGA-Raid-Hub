@@ -48,7 +48,7 @@ function makeSandbox({ saveTeamSettingImpl, rpcResult, els = {}, data = {}, atte
     populateSeasonSelector: () => {},
     renderRaidProgressionCards: () => {},
     renderSeasonHistory: () => {},
-    // archive_current_season() also resets bis_items/m_plus_excluded
+    // archive_current_season() also resets m_plus_excluded and bench
     // server-side, so executeArchiveSeason() reloads via loadData() rather
     // than only patching season fields -- stubbed no-op here since that
     // reload path isn't what this describe block is testing.

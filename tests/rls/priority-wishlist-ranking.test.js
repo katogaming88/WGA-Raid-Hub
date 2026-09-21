@@ -1,6 +1,6 @@
 // generate_priority_order() wishlist integration (#515, final piece):
-// item_preferences now contributes to the candidate pool and weighted_total
-// alongside bis_items, per 20260720165552_priority_wishlist_ranking.sql.
+// item_preferences is the candidate pool and feeds weighted_total, per
+// 20260720165552_priority_wishlist_ranking.sql.
 // Uses the shared withTxn from helpers.js, wrapped to stamp the season, since
 // these tests need both a direct (RLS-bypassing) seed insert and an
 // officer-role RPC call inside one rolled-back transaction.
@@ -44,7 +44,7 @@ async function seedScoring(q, playerId, performance, attendance) {
 }
 
 describe('generate_priority_order wishlist integration', () => {
-  it('a raider who tagged an item is a candidate even without a bis_items row', async () => {
+  it('a raider who tagged an item is a candidate', async () => {
     await withTxn(async ({ q, asUser }) => {
       await seedScoring(q, 2, 100, 100);
       await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, 2, 'good')");
@@ -57,26 +57,7 @@ describe('generate_priority_order wishlist integration', () => {
     });
   });
 
-  it('a bis_items-only player (no wishlist tag) is unaffected -- same math as before this change', async () => {
-    await withTxn(async ({ q, asUser }) => {
-      // seed.sql's self_received_requests row 2 approves player 1 for item 1
-      // at Hero -- generate_priority_order() now excludes an approved
-      // self-receive the same as an rclc_loot award (see the
-      // 20260831131137 migration), which would otherwise drop player 1 out
-      // of this list entirely and defeat what this test is isolating.
-      await q('delete from public.self_received_requests where id = 2');
-      await seedScoring(q, 1, 100, 100);
-      // Player 1 already has a bis_items row for item 1 from seed.sql --
-      // no item_preferences row inserted here at all.
-      const res = await generate(asUser, 1);
-      const row = res.rows.find((r) => r.player_id === 1);
-      expect(row).toBeTruthy();
-      expect(row.weighted_total).toBe('100.0');
-      expect(row.wishlist_status).toBeNull();
-    });
-  });
-
-  it('a raider tagged BiS via wishlist gets the unchanged 1.0 multiplier, same as bis_items', async () => {
+  it('a raider tagged BiS gets the 1.0 multiplier', async () => {
     await withTxn(async ({ q, asUser }) => {
       await seedScoring(q, 2, 100, 100);
       await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, 2, 'bis')");
@@ -109,18 +90,20 @@ describe('generate_priority_order wishlist integration', () => {
     });
   });
 
-  it('Pass excludes the raider from the suggested order entirely, even overriding an existing bis_items row', async () => {
+  it('Pass excludes the raider from the suggested order entirely', async () => {
     await withTxn(async ({ q, asUser }) => {
+      // seed.sql's self_received_requests row 2 approves player 1 for item 1
+      // at Hero, which drops them from the list on its own; without this
+      // delete the case passes whatever the rule under test does.
+      await q('delete from public.self_received_requests where id = 2');
       await seedScoring(q, 1, 100, 100);
-      // Player 1 has a bis_items row for item 1 (seed.sql) -- tagging Pass
-      // on the same item should still exclude them.
       await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'pass')");
       const res = await generate(asUser, 1);
       expect(res.rows.find((r) => r.player_id === 1)).toBeFalsy();
     });
   });
 
-  it('a raider who never tagged anything and has no bis_items row is not a candidate', async () => {
+  it('a raider who never tagged anything is not a candidate', async () => {
     await withTxn(async ({ q, asUser }) => {
       await seedScoring(q, 2, 100, 100);
       const res = await generate(asUser, 2);
@@ -153,9 +136,12 @@ describe('generate_priority_order slot-aware wishlist matching (#623/#673 follow
 
   it("'pass' tagged on an explicit-slot row still excludes the raider", async () => {
     await withTxn(async ({ q, asUser }) => {
+      // seed.sql's self_received_requests row 2 approves player 1 for item 1
+      // at Hero, which drops them from the list on its own; without this
+      // delete the case passes whatever the rule under test does.
+      await q('delete from public.self_received_requests where id = 2');
       await seedScoring(q, 1, 100, 100);
-      // Player 1 has a bis_items row for item 1 (seed.sql) -- Pass on an
-      // explicit-slot row should still exclude them, same as the legacy
+      // Pass on an explicit-slot row excludes them, same as the legacy
       // slot=null case above.
       await q(
         "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 1, 1, 'pass', 'Off Hand')"
@@ -224,12 +210,20 @@ describe('generate_priority_order slot-aware wishlist matching (#623/#673 follow
 describe('generate_priority_order wishlist status is a hard tier, not just a score multiplier', () => {
   it('a lower-scored BiS raider still outranks a higher-scored Good raider', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await seedScoring(q, 1, 20, 20); // player 1: BiS via seed.sql bis_items row, low score
+      // seed.sql's self_received_requests row 2 approves player 1 for item 1
+      // at Hero, which drops them from the list on its own; without this
+      // delete the case passes whatever the rule under test does.
+      await q('delete from public.self_received_requests where id = 2');
+      await seedScoring(q, 1, 20, 20); // player 1: BiS, low score
       await seedScoring(q, 2, 100, 100); // player 2: Good, high score
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, 1, 'good')");
+      await q(
+        "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'bis'), (1, 2, 1, 'good')"
+      );
 
       const res = await generate(asUser, 1);
       const order = res.rows.map((r) => r.player_id);
+      expect(order).toContain(1);
+      expect(order).toContain(2);
       expect(order.indexOf(1)).toBeLessThan(order.indexOf(2));
     });
   });

@@ -68,7 +68,6 @@ describe('officer-write tables (direct team_id scope)', () => {
 describe('officer-write tables (team resolved through players subquery)', () => {
   // player 2 is on team 1; item 2 avoids the seeded unique pairs.
   const SUBQUERY_INSERTS = {
-    bis_items: 'insert into public.bis_items (player_id, item_id) values (2, 2)',
     scoring: "insert into public.scoring (player_id, team_id, season) values (2, 1, 'seed-season')"
   };
   for (const [table, sql] of Object.entries(SUBQUERY_INSERTS)) {

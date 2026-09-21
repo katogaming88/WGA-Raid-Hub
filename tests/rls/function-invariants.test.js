@@ -25,8 +25,8 @@ const KNOWN_DYNAMIC = ['rls_auto_enable'];
 const BARE_ROLE_COMPARE_OK = ['resolve_person'];
 
 // SECURITY DEFINER functions anon may execute, measured on prod 2026-09-08.
-// Eight RLS predicates and helpers, five public submit paths, one trigger
-// helper and is_own_player. #1106 added the three once-per-query rule helpers
+// Eight RLS predicates and helpers, five public submit paths and
+// is_own_player. #1106 added the three once-per-query rule helpers
 // (my_officer_team_ids, my_leader_team_ids, my_active_player_ids): a
 // signed-out read evaluates the rules too, and each returns an empty array
 // when there is no auth.uid(). Set equality, so an accidental grant fails and so
@@ -51,13 +51,12 @@ const ANON_DEFINER_ALLOWLIST = [
   'submit_bis_link',
   'submit_boe_found',
   'submit_mplus_exclusion',
-  'submit_self_received',
-  'sync_bis_obtained_from_self_received'
+  'submit_self_received'
 ];
 
-// Comments are stripped before the body is searched. wishlist_setup_status
-// explains itself with the word "copy" in a comment, and a match on prose
-// would make this test fail for a reason that has nothing to do with SQL.
+// Comments are stripped before the body is searched: a function that
+// explains itself in prose must not match a pattern meant for SQL, which
+// would fail this test for a reason that has nothing to do with SQL.
 function stripComments(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--[^\n]*/g, ' ');
 }

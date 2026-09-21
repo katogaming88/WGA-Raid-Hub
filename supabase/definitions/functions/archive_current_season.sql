@@ -10,7 +10,6 @@ AS $function$
 declare
   v_config jsonb;
   v_entry jsonb;
-  v_bis_snapshot jsonb;
   v_raids_enriched jsonb;
 begin
   select config into v_config from public.team_settings where team_id = p_team_id for update;
@@ -20,26 +19,6 @@ begin
   if coalesce(v_config->>'seasonName', '') = '' then
     raise exception 'No active season to archive';
   end if;
-
-  select coalesce(
-    jsonb_agg(
-      jsonb_build_object(
-        'nameRealm', p.name_realm,
-        'item', i.name,
-        'slot', coalesce(bi.slot, i.slot),
-        'obtained', bi.obtained,
-        'isPlaceholder', i.is_placeholder
-      )
-      order by p.name_realm, i.name
-    ),
-    '[]'::jsonb
-  )
-  into v_bis_snapshot
-  from public.bis_items bi
-  join public.players p on p.id = bi.player_id
-  join public.items i on i.id = bi.item_id
-  where p.team_id = p_team_id
-    and p.archived_at is null;
 
   -- Rebuilds raidProgression's raid array, folding each boss's current
   -- team_raid_progress row (mythic_pulls, mythic_best_pct) into its object.
@@ -88,8 +67,7 @@ begin
     'start', coalesce(v_config->'seasonStart', '""'::jsonb),
     'end', coalesce(v_config->'seasonEnd', '""'::jsonb),
     'raids', v_raids_enriched,
-    'roster', coalesce(p_roster_snapshot, '[]'::jsonb),
-    'bis', v_bis_snapshot
+    'roster', coalesce(p_roster_snapshot, '[]'::jsonb)
   );
 
   update public.team_settings
@@ -106,14 +84,6 @@ begin
   if not found then
     raise exception 'Not authorized';
   end if;
-
-  -- Wipes every bis_items row for the active roster, placeholders included
-  -- (was `and not i.is_placeholder` -- see comment at top of file).
-  delete from public.bis_items bi
-  using public.players p
-  where bi.player_id = p.id
-    and p.team_id = p_team_id
-    and p.archived_at is null;
 
   update public.players
   set m_plus_excluded = false, m_plus_note = null
