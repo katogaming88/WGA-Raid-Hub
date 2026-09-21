@@ -1,9 +1,7 @@
 // generate_priority_order() tier-token bis_match ranking (#651 follow-up,
 // see docs/database-decisions.md): a raider who has the dropping tier token
-// tagged as their actual BiS (or holds a bis_items pick for it with no
-// wishlist row at all -- same "untagged reads as BiS" treatment the wishlist
-// multiplier already gives that case) now outranks anyone who only tagged it
-// as a sidegrade (Good/OK/Catalyst Only), regardless of tier-piece count.
+// tagged as their actual BiS now outranks anyone who only tagged it as a
+// sidegrade (Good/OK/Catalyst Only), regardless of tier-piece count.
 // tier_rank (piece count, 20260804140751_tier_pieces_priority_weighting.sql)
 // only breaks ties among raiders who are equally "really keeping this."
 // Uses the shared withTxn from helpers.js, wrapped to stamp the season.
@@ -75,26 +73,6 @@ describe('generate_priority_order tier-token bis_match ranking', () => {
       expect(idx(201)).toBeGreaterThanOrEqual(0);
       expect(idx(202)).toBeGreaterThanOrEqual(0);
       expect(idx(201)).toBeLessThan(idx(202));
-    });
-  });
-
-  it('an untagged bis_items pick counts as BiS-match, same as an explicit wishlist bis tag', async () => {
-    await withTxn(async ({ q, asUser }) => {
-      await seedTierToken(q);
-      // Player 211: no wishlist row at all, just a curated bis_items pick,
-      // and a worse tier_rank (2/5 -> 3/5, no bonus).
-      await seedPlayer(q, { id: 211, tierPiecesEquipped: 2 });
-      await q('insert into public.bis_items (player_id, item_id, obtained) values (211, $1, false)', [TOKEN_ITEM_ID]);
-      // Player 212: better tier_rank (1/5 -> 2/5, the 2pc bonus) but only
-      // tagged this token OK on their wishlist.
-      await seedPlayer(q, { id: 212, tierPiecesEquipped: 1 });
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 212, $1, 'ok')", [
-        TOKEN_ITEM_ID
-      ]);
-
-      const res = await generate(asUser, TOKEN_ITEM_ID);
-      const idx = (id) => res.rows.findIndex((r) => r.player_id === id);
-      expect(idx(211)).toBeLessThan(idx(212));
     });
   });
 

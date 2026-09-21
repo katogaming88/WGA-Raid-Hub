@@ -14,8 +14,8 @@ const BAD_CODE = 'MIDX';
 const BAD_NAME = 'Midnight Season 9';
 
 // One insert per season column, the season left to the case. The eleven code
-// columns reference seasons(code); the three name columns reference
-// seasons(display_name) until #934 to #936 convert them.
+// columns reference seasons(code); the two name columns reference
+// seasons(display_name) until #934 and #936 convert them.
 const CODE_INSERTS = {
   raid_zones: "insert into public.raid_zones (wcl_zone_id, name, season) values (999, 'Season Test Zone', $1)",
   boe_items:
@@ -37,7 +37,6 @@ const CODE_INSERTS = {
 };
 
 const NAME_INSERTS = {
-  bis_items: 'insert into public.bis_items (player_id, item_id, season) values (2, 2, $1)',
   item_preferences:
     "insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 2, 2, 'bis', $1)",
   season_signups:

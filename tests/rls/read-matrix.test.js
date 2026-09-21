@@ -16,7 +16,6 @@ import {
 // Matrix: tables with a `using (true)` public SELECT policy.
 const PUBLIC_READ = [
   'attendance',
-  'bis_items',
   'classes_specs',
   'guilds',
   'item_bosses',

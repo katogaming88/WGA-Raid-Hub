@@ -6,8 +6,8 @@
 // existing direct-update assertions in write-policies.test.js.
 //
 // Every scenario runs on a team the test mints (#1123): archive_current_season
-// wipes bis_items and rewrites players for the whole team, so a run on the
-// seeded team 1 held rows every other file writes. seedTeam gives the team,
+// rewrites players for the whole team, so a run on the seeded team 1 held
+// rows every other file writes. seedTeam gives the team,
 // its settings row and a leader, an officer and a raider of its own; the
 // seeded personas appear only as outsiders.
 import { describe, it, expect } from 'vitest';
@@ -109,67 +109,23 @@ describe('archive_current_season', () => {
     });
   });
 
-  // #498: a new tier is almost always a different loot table, so bis_items
-  // rows are dead weight once archived -- snapshot everything (placeholders
-  // included) into history, then wipe the whole table for the active roster.
-  // Placeholders (M+/Crafted/Catalyst "Other Sources" tags) are wiped too,
-  // not just real items (20260806210047) -- every BiS list/wishlist is
-  // per-season, and what a raider wants from M+ or has crafted can change
-  // slot/target entirely next tier, so there's no reason to carry those
-  // forward either. M+ exclusion means "doesn't need gear right now," which
-  // a new tier invalidates, so it resets for the whole active roster too.
-  // Bench resets the same way; trial status is deliberately left alone
-  // (still a Trial Promotions call). A submitted BiS link is cleared
-  // unconditionally too (20260731135713) -- it's effectively per-tier
-  // regardless of which site it points to.
-  it('snapshots bis_items (placeholders included) into history, wipes all of it plus BiS link, and resets m+ exclusion and bench', async () => {
+  // #498: a new tier resets what the roster carries forward. M+ exclusion
+  // means "doesn't need gear right now," which a new tier invalidates, so it
+  // resets for the whole active roster. Bench resets the same way; trial
+  // status is deliberately left alone (still a Trial Promotions call). A
+  // submitted BiS link is cleared unconditionally too (20260731135713) --
+  // it's effectively per-tier regardless of which site it points to.
+  it('clears the BiS link and resets m+ exclusion and bench for the active roster', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const player = await seedPlayer(q, { teamId: team.teamId, nameRealm: 'Archivetest-Illidan' });
-      // items has no authenticated write policy (read-only shared catalog) --
-      // seed as the unrestricted connection before dropping to a PostgREST role.
-      const placeholder = (
-        await q(
-          `insert into public.items (wow_item_id, name, slot, armor_type, is_placeholder) values
-             (null, 'M+', 'Placeholder', null, true) returning id`
-        )
-      ).rows[0].id;
-      // The seed's real item (1, 'Seed Test Staff') and the placeholder.
-      await q(
-        `insert into public.bis_items (player_id, item_id, obtained, slot) values
-           ($1, 1, false, 'weapon'), ($1, $2, true, 'ring1')`,
-        [player, placeholder]
-      );
       await q(
         `update public.players set m_plus_excluded = true, m_plus_note = 'needs a break', is_bench = true, is_trial = true, bis_link = 'https://example.com/old-sim' where id = $1`,
         [player]
       );
 
       await asUser(team.leader.uid, ...setting(team.teamId, '{"seasonName":"Archive Me 2"}'));
-      const res = await asUser(team.leader.uid, ...archive(team.teamId));
-      const config = res.rows[0].config;
-      const entry = config.seasonHistory[config.seasonHistory.length - 1];
-
-      expect(entry.bis).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            nameRealm: 'Archivetest-Illidan',
-            item: 'Seed Test Staff',
-            obtained: false,
-            isPlaceholder: false
-          }),
-          expect.objectContaining({
-            nameRealm: 'Archivetest-Illidan',
-            item: 'M+',
-            obtained: true,
-            isPlaceholder: true
-          })
-        ])
-      );
-
-      // Both the real item and the placeholder are gone.
-      const remaining = await q(`select item_id from public.bis_items where player_id = $1 order by item_id`, [player]);
-      expect(remaining.rows.map((r) => r.item_id)).toEqual([]);
+      await asUser(team.leader.uid, ...archive(team.teamId));
 
       const after = await q(
         `select m_plus_excluded, m_plus_note, is_bench, is_trial, bis_link from public.players where id = $1`,
@@ -185,17 +141,10 @@ describe('archive_current_season', () => {
     });
   });
 
-  it('does not touch bis_items, m+ exclusion, bench, or bis_link for a different team', async () => {
+  it('does not touch m+ exclusion, bench, or bis_link for a different team', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const outsider = await seedPlayer(q, { teamId: 2 });
-      const item = (
-        await q(
-          `insert into public.items (wow_item_id, name, slot, armor_type, is_placeholder) values
-             (null, 'Other Team Item', 'Head', null, false) returning id`
-        )
-      ).rows[0].id;
-      await q(`insert into public.bis_items (player_id, item_id, obtained) values ($1, $2, false)`, [outsider, item]);
       await q(
         `update public.players set m_plus_excluded = true, is_bench = true, bis_link = 'https://example.com/team2-sim' where id = $1`,
         [outsider]
@@ -203,9 +152,6 @@ describe('archive_current_season', () => {
 
       await asUser(team.leader.uid, ...setting(team.teamId, '{"seasonName":"Archive Me 3"}'));
       await asUser(team.leader.uid, ...archive(team.teamId));
-
-      const remaining = await q(`select item_id from public.bis_items where player_id = $1`, [outsider]);
-      expect(remaining.rows.map((r) => r.item_id)).toEqual([item]);
 
       const after = await q(`select m_plus_excluded, is_bench, bis_link from public.players where id = $1`, [outsider]);
       expect(after.rows[0]).toEqual({

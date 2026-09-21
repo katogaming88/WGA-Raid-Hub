@@ -7,14 +7,12 @@
 // policy carries a plain status UPDATE, which is why half of this file
 // asserts behavior that exists before the migration lands. The delete tests
 // also pin the audit entry the RPC writes (action, actor, target, and the
-// #377 summary-string detail), and the sync tests pin that reverting an
-// approval never unticks bis_items.obtained (the one-way decision in
-// 20260725100000) while a later re-approve re-fires the sync.
+// #377 summary-string detail).
 //
 // Uses the shared withTxn from helpers.js, since these tests mix privileged
 // fixture writes with impersonated calls and expected raises. Each test mints
 // the request it acts on, for a player of its own (#1123); the seeded
-// requests, players and bis_items rows are never written here.
+// requests and players are never written here.
 import { describe, it, expect, afterAll } from 'vitest';
 import {
   pool,
@@ -36,8 +34,7 @@ const SEED_ITEM = 1;
 
 // A request in the given status for a freshly minted player (unlinked, like
 // the seed's player 1, unless a member is given). Returns both ids. Inserted
-// as postgres, so an approved row fires the bis sync with no bis_items row
-// to fill, the same order the seed uses.
+// as postgres.
 async function seedRequest(q, { teamId = 1, memberId = null, status = 'approved' } = {}) {
   const playerId = await seedPlayer(q, { teamId, memberId });
   const { rows } = await q(
@@ -47,9 +44,6 @@ async function seedRequest(q, { teamId = 1, memberId = null, status = 'approved'
   );
   return { requestId: rows[0].id, playerId };
 }
-
-const seedBis = (q, playerId, obtained) =>
-  q('insert into public.bis_items (player_id, item_id, obtained) values ($1, $2, $3)', [playerId, SEED_ITEM, obtained]);
 
 const del = (id) => `select public.delete_self_received_request(${id})`;
 
@@ -167,9 +161,6 @@ describe('revert to pending rides the existing officer UPDATE policy', () => {
   const revert = (asUser, uid, requestId) => setStatus(asUser, uid, requestId, 'pending');
   const statusOf = async (q, requestId) =>
     (await q('select status from public.self_received_requests where id = $1', [requestId])).rows[0].status;
-  const obtainedOf = async (q, playerId) =>
-    (await q('select obtained from public.bis_items where player_id = $1 and item_id = $2', [playerId, SEED_ITEM]))
-      .rows[0].obtained;
 
   it('team officer reverts an approved row to pending', async () => {
     await withTxn(async ({ q, asUser }) => {
@@ -194,27 +185,6 @@ describe('revert to pending rides the existing officer UPDATE policy', () => {
       const { requestId, playerId } = await seedRequest(q);
       await q('update public.players set team_id = 2 where id = $1', [playerId]);
       await expect(revert(asUser, OFFICER_T1, requestId)).rejects.toThrow(/does not match players\.team_id/);
-    });
-  });
-
-  it('reverting an approval never unticks bis_items.obtained (one-way sync)', async () => {
-    await withTxn(async ({ q, asUser }) => {
-      const { requestId, playerId } = await seedRequest(q);
-      await seedBis(q, playerId, true);
-      const res = await revert(asUser, OFFICER_T1, requestId);
-      expect(res.rowCount).toBe(1);
-      expect(await obtainedOf(q, playerId)).toBe(true);
-    });
-  });
-
-  it('a later re-approve re-fires the sync and flips an unobtained row', async () => {
-    await withTxn(async ({ q, asUser }) => {
-      const { requestId, playerId } = await seedRequest(q);
-      await seedBis(q, playerId, false);
-      await revert(asUser, OFFICER_T1, requestId);
-      expect(await obtainedOf(q, playerId)).toBe(false);
-      await setStatus(asUser, OFFICER_T1, requestId, 'approved');
-      expect(await obtainedOf(q, playerId)).toBe(true);
     });
   });
 });

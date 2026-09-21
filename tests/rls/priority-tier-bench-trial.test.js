@@ -21,7 +21,7 @@ async function withTxn(fn) {
 }
 
 const SEASON = 'tier-bench-trial-test';
-const ITEM_ID = 2; // Seed Test Robe -- no bis_items rows seeded against it.
+const ITEM_ID = 2; // Seed Test Robe -- no wishlist rows seeded against it.
 
 function generate(asUser, track = 'Hero') {
   return asUser(OFFICER_T1, 'select * from public.generate_priority_order($1, $2, $3, $4)', [
@@ -44,7 +44,10 @@ async function seedPlayer(
     'insert into public.players (id, team_id, name_realm, class_spec_id, is_bench, is_trial, is_rotator) values ($1, 1, $2, $3, $4, $5, $6)',
     [id, `Seedplayer${id}-Illidan`, specId.rows[0].id, isBench, isTrial, isRotator]
   );
-  await q('insert into public.bis_items (player_id, item_id, obtained) values ($1, $2, false)', [id, ITEM_ID]);
+  await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, $1, $2, 'bis')", [
+    id,
+    ITEM_ID
+  ]);
   await q(
     'insert into public.scoring (player_id, team_id, season, performance_score, attendance_score) values ($1, 1, $2, $3, $4)',
     [id, SEASON, performance, attendance]
