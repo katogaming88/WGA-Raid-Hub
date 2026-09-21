@@ -342,7 +342,11 @@ const STREAMS_PAGE = {
   tables: { streamers: DIRECTORY }
 };
 
+const HELP = { path: '/g/wga/help', sentinel: 'main:has(.help-card)' };
+
 const STATES = [
+  { label: 'help', ...HELP },
+  { label: 'help, light', ...HELP, colorScheme: 'light' },
   { label: 'news', ...NEWS },
   { label: 'news, light', ...NEWS, colorScheme: 'light' },
   { label: 'streams', ...STREAMS_PAGE },

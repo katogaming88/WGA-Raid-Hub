@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.148.5] - 2026-09-21
+
+### Project
+
+- The new app's **Help** page
+  ([#1102](https://github.com/katogaming88/WGA-Raid-Hub/issues/1102)), at
+  `/g/wga/help`. It leads with a button to the support Discord, so people ask
+  there instead of messaging Kat or Rex, then a raider guide with one card per
+  task: signing in, setting your wishlist, checking your priority and
+  attendance, marking an item you got outside the raid, and asking to stop
+  running M+. The guide was rewritten for the new app rather than ported: the
+  current site's version described its Discord login, claim prompt and BiS
+  source link. Sign Up, the Twitch link and picking characters are left out
+  until those pages exist. **Help** and **Support Discord** links now sit under
+  the sign-in buttons at the bottom of the sidebar on every page.
+
 ## [3.148.4] - 2026-09-21
 
 ### Backend

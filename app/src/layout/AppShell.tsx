@@ -4,7 +4,7 @@ import { Navigate, NavLink, Outlet, useLocation, useMatches, useParams } from 'r
 import { FlameMark, Icon } from '../components/Icon';
 import { DataState } from '../components/DataState';
 import { useTheme } from '../theme/theme';
-import { defaultTeamKey } from '../config';
+import { defaultTeamKey, SUPPORT_DISCORD_URL } from '../config';
 import {
   AddressProvider,
   canonicalPath,
@@ -212,6 +212,13 @@ export function AppShell() {
         </nav>
 
         <AccountPanel teamId={currentTeam?.id ?? null} />
+
+        <div className="sidebar-links">
+          <NavLink to={`/g/${guildKey}/help`}>Help</NavLink>
+          <a href={SUPPORT_DISCORD_URL} target="_blank" rel="noopener noreferrer">
+            Support Discord<span className="visually-hidden"> (opens in a new tab)</span>
+          </a>
+        </div>
       </aside>
 
       {drawerOpen && <div className="drawer-backdrop" aria-hidden="true" onClick={closeDrawer} />}
