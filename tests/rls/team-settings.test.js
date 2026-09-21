@@ -1,17 +1,18 @@
-// set_team_setting/archive_current_season/unarchive_season (#221, Phase 6) --
-// season config moved off Script Properties onto team_settings.config. All
-// three are SECURITY INVOKER, so the "Team leaders write settings" RLS
-// policy is the only gate: an officer (not team_leader) can call the
-// function, but the underlying UPDATE touches 0 rows, same shape as the
-// existing direct-update assertions in write-policies.test.js.
+// set_team_setting (#221, Phase 6) and close_season (#938): season config
+// lives on team_settings.config. Both are SECURITY INVOKER, so the "Team
+// leaders write settings" RLS policy is the only gate: an officer (not
+// team_leader) can call the function, but the underlying UPDATE touches 0
+// rows, same shape as the existing direct-update assertions in
+// write-policies.test.js.
 //
-// Every scenario runs on a team the test mints (#1123): archive_current_season
+// Every scenario runs on a team the test mints (#1123): close_season
 // rewrites players for the whole team, so a run on the seeded team 1 held
 // rows every other file writes. seedTeam gives the team,
 // its settings row and a leader, an officer and a raider of its own; the
 // seeded personas appear only as outsiders.
 import { describe, it, expect } from 'vitest';
-import { withTxn, seedTeam, seedPlayer, SITE_ADMIN, OFFICER_T2 } from './helpers.js';
+import { randomUUID } from 'node:crypto';
+import { withTxn, seedTeam, seedPlayer, seedSeason, SITE_ADMIN, OFFICER_T2 } from './helpers.js';
 
 const setting = (teamId, json) => [`select public.set_team_setting($1, $2::jsonb) as config`, [teamId, json]];
 
@@ -63,69 +64,105 @@ describe('set_team_setting', () => {
   });
 });
 
-describe('archive_current_season', () => {
-  const archive = (teamId) => [
-    `select public.archive_current_season($1, '[{"nameRealm":"Test-Realm","role":"Melee"}]'::jsonb) as config`,
-    [teamId]
+// close_season (#938): the archive closes a team's books for a tier that has
+// ended, any time after, and starts nothing. SECURITY INVOKER like the
+// function it replaces, so the "Team leaders write settings" policy is the
+// gate. Every tier a case closes is minted by seedSeason (a single day in the
+// years 1000 to 2018, so ended by construction); the current tier is read
+// from current_season() rather than named.
+describe('close_season', () => {
+  const close = (teamId, season) => [
+    `select public.close_season($1, $2, '[{"nameRealm":"Test-Realm","role":"Melee"}]'::jsonb) as config`,
+    [teamId, season]
   ];
+  const tier = () => `T${randomUUID().replace(/-/g, '').slice(0, 6)}`;
 
-  it('moves the active season into seasonHistory and clears the active fields', async () => {
+  // The tier's raids: a zone with two bosses the team has progress rows for,
+  // and a zone the team never entered, which the fold leaves out.
+  async function seedTierRaids(q, teamId, season) {
+    const zone = await q(
+      `insert into public.raid_zones (wcl_zone_id, name, season, sort_index) values (nextval('public.raid_zones_id_seq') + 100000, 'Closed Zone', $1, 1) returning id, wcl_zone_id`,
+      [season]
+    );
+    const zoneId = zone.rows[0].id;
+    const skipped = await q(
+      `insert into public.raid_zones (wcl_zone_id, name, season, is_mini_raid, sort_index) values (nextval('public.raid_zones_id_seq') + 100000, 'Skipped Zone', $1, true, 2) returning id`,
+      [season]
+    );
+    const bosses = await q(
+      `insert into public.raid_encounters (zone_id, wcl_encounter_id, name, sort_index)
+       values ($1, nextval('public.raid_encounters_id_seq') + 100000, 'Second Boss', 2),
+              ($1, nextval('public.raid_encounters_id_seq') + 100000, 'First Boss', 1)
+       returning id, name, wcl_encounter_id`,
+      [zoneId]
+    );
+    await q(
+      `insert into public.raid_encounters (zone_id, wcl_encounter_id, name, sort_index)
+       values ($1, nextval('public.raid_encounters_id_seq') + 100000, 'Skipped Boss', 1)`,
+      [skipped.rows[0].id]
+    );
+    const first = bosses.rows.find((b) => b.name === 'First Boss');
+    const second = bosses.rows.find((b) => b.name === 'Second Boss');
+    await q(
+      `insert into public.team_raid_progress (team_id, encounter_id, mythic_date, mythic_pulls, mythic_best_pct)
+       values ($1, $2, '2020-02-02', 12, null), ($1, $3, null, 40, 12.5)`,
+      [teamId, first.id, second.id]
+    );
+    return { zone: zone.rows[0], first, second };
+  }
+
+  it('the team leader closes an ended tier: the entry, the flags, one audit row', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
-      const leader = (text, params) => asUser(team.leader.uid, text, params);
-      await leader(
-        ...setting(
-          team.teamId,
-          '{"seasonName":"Archive Me","seasonStart":"2026-01-01","raidProgression":[{"name":"Test Raid"}]}'
-        )
-      );
-      const res = await leader(...archive(team.teamId));
-      const config = res.rows[0].config;
-      expect(config.seasonName).toBe('');
-      expect(config.raidProgression).toEqual([]);
-      expect(config.seasonHistory).toHaveLength(1);
-      expect(config.seasonHistory[0]).toMatchObject({
-        name: 'Archive Me',
-        start: '2026-01-01',
-        raids: [{ name: 'Test Raid' }],
-        roster: [{ nameRealm: 'Test-Realm', role: 'Melee' }]
-      });
-    });
-  });
-
-  it('raises when there is no active season name to archive', async () => {
-    await withTxn(async ({ q, asUser }) => {
-      const team = await seedTeam(q);
-      await asUser(team.leader.uid, ...setting(team.teamId, '{"seasonName":""}'));
-      await expect(asUser(team.leader.uid, ...archive(team.teamId))).rejects.toThrow(/no active season/i);
-    });
-  });
-
-  it('the team officer cannot archive (RLS blocks the underlying update)', async () => {
-    await withTxn(async ({ q, asUser }) => {
-      const team = await seedTeam(q);
-      await asUser(team.leader.uid, ...setting(team.teamId, '{"seasonName":"Archive Me"}'));
-      await expect(asUser(team.officer.uid, ...archive(team.teamId))).rejects.toThrow(/not authorized/i);
-    });
-  });
-
-  // #498: a new tier resets what the roster carries forward. M+ exclusion
-  // means "doesn't need gear right now," which a new tier invalidates, so it
-  // resets for the whole active roster. Bench resets the same way; trial
-  // status is deliberately left alone (still a Trial Promotions call). A
-  // submitted BiS link is cleared unconditionally too (20260731135713) --
-  // it's effectively per-tier regardless of which site it points to.
-  it('clears the BiS link and resets m+ exclusion and bench for the active roster', async () => {
-    await withTxn(async ({ q, asUser }) => {
-      const team = await seedTeam(q);
-      const player = await seedPlayer(q, { teamId: team.teamId, nameRealm: 'Archivetest-Illidan' });
+      const season = tier();
+      const day = await seedSeason(q, season, 'Closed Tier');
+      const raids = await seedTierRaids(q, team.teamId, season);
+      const player = await seedPlayer(q, { teamId: team.teamId, nameRealm: 'Closetest-Illidan' });
       await q(
         `update public.players set m_plus_excluded = true, m_plus_note = 'needs a break', is_bench = true, is_trial = true, bis_link = 'https://example.com/old-sim' where id = $1`,
         [player]
       );
+      await asUser(
+        team.leader.uid,
+        ...setting(team.teamId, '{"raidProgression":[{"name":"Next Tier Raid"}],"seasonView":null}')
+      );
 
-      await asUser(team.leader.uid, ...setting(team.teamId, '{"seasonName":"Archive Me 2"}'));
-      await asUser(team.leader.uid, ...archive(team.teamId));
+      const res = await asUser(team.leader.uid, ...close(team.teamId, season));
+      const config = res.rows[0].config;
+      expect(config.seasonHistory).toHaveLength(1);
+      expect(config.seasonHistory[0]).toEqual({
+        code: season,
+        name: 'Closed Tier',
+        start: day,
+        end: day,
+        raids: [
+          {
+            name: 'Closed Zone',
+            wclZoneId: raids.zone.wcl_zone_id,
+            isMiniRaid: false,
+            bosses: [
+              {
+                name: 'First Boss',
+                wclEncounterId: raids.first.wcl_encounter_id,
+                mythicDate: '2020-02-02',
+                mythicPulls: 12,
+                mythicBestPct: null
+              },
+              {
+                name: 'Second Boss',
+                wclEncounterId: raids.second.wcl_encounter_id,
+                mythicDate: null,
+                mythicPulls: 40,
+                mythicBestPct: 12.5
+              }
+            ]
+          }
+        ],
+        roster: [{ nameRealm: 'Test-Realm', role: 'Melee' }]
+      });
+      // The raid list is the next tier's business and is left alone.
+      expect(config.raidProgression).toEqual([{ name: 'Next Tier Raid' }]);
+      expect(config).not.toHaveProperty('seasonName');
 
       const after = await q(
         `select m_plus_excluded, m_plus_note, is_bench, is_trial, bis_link from public.players where id = $1`,
@@ -138,6 +175,58 @@ describe('archive_current_season', () => {
         is_trial: true,
         bis_link: null
       });
+
+      const audit = await q(
+        `select action, target_type, detail from public.audit_log where team_id = $1 and action = 'Season Closed'`,
+        [team.teamId]
+      );
+      expect(audit.rows).toEqual([{ action: 'Season Closed', target_type: 'team_settings', detail: { season } }]);
+    });
+  });
+
+  it('a tier the team has no progress rows for closes with no raids', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const season = tier();
+      await seedSeason(q, season);
+      const res = await asUser(team.leader.uid, ...close(team.teamId, season));
+      expect(res.rows[0].config.seasonHistory[0]).toMatchObject({ code: season, raids: [] });
+    });
+  });
+
+  it('refuses a tier the team has already closed', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const season = tier();
+      await seedSeason(q, season);
+      await asUser(team.leader.uid, ...close(team.teamId, season));
+      await expect(asUser(team.leader.uid, ...close(team.teamId, season))).rejects.toThrow(/already closed/i);
+    });
+  });
+
+  it('refuses the current tier, which has not ended', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const current = (await q('select public.current_season() as code')).rows[0].code;
+      await expect(asUser(team.leader.uid, ...close(team.teamId, current))).rejects.toThrow(/has not ended/i);
+    });
+  });
+
+  it('refuses a tier the seasons table does not hold', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await expect(asUser(team.leader.uid, ...close(team.teamId, 'MID9'))).rejects.toThrow(
+        /not a season this site knows/i
+      );
+    });
+  });
+
+  it('the team officer cannot close (RLS blocks the underlying update)', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const season = tier();
+      await seedSeason(q, season);
+      await expect(asUser(team.officer.uid, ...close(team.teamId, season))).rejects.toThrow(/not authorized/i);
     });
   });
 
@@ -149,9 +238,9 @@ describe('archive_current_season', () => {
         `update public.players set m_plus_excluded = true, is_bench = true, bis_link = 'https://example.com/team2-sim' where id = $1`,
         [outsider]
       );
-
-      await asUser(team.leader.uid, ...setting(team.teamId, '{"seasonName":"Archive Me 3"}'));
-      await asUser(team.leader.uid, ...archive(team.teamId));
+      const season = tier();
+      await seedSeason(q, season);
+      await asUser(team.leader.uid, ...close(team.teamId, season));
 
       const after = await q(`select m_plus_excluded, is_bench, bis_link from public.players where id = $1`, [outsider]);
       expect(after.rows[0]).toEqual({
@@ -159,43 +248,6 @@ describe('archive_current_season', () => {
         is_bench: true,
         bis_link: 'https://example.com/team2-sim'
       });
-    });
-  });
-});
-
-describe('unarchive_season', () => {
-  const history =
-    '{"seasonName":"","seasonHistory":[{"name":"Old Season","start":"2025-01-01","end":"2025-06-01","raids":[],"roster":[]}]}';
-
-  it('restores the season at the given index and removes it from history', async () => {
-    await withTxn(async ({ q, asUser }) => {
-      const team = await seedTeam(q);
-      await asUser(team.leader.uid, ...setting(team.teamId, history));
-      const res = await asUser(team.leader.uid, 'select public.unarchive_season($1, 0) as result', [team.teamId]);
-      const result = res.rows[0].result;
-      expect(result.season.name).toBe('Old Season');
-      expect(result.config.seasonName).toBe('Old Season');
-      expect(result.config.seasonHistory).toEqual([]);
-    });
-  });
-
-  it('raises on an out-of-range index', async () => {
-    await withTxn(async ({ q, asUser }) => {
-      const team = await seedTeam(q);
-      await asUser(team.leader.uid, ...setting(team.teamId, history));
-      await expect(
-        asUser(team.leader.uid, 'select public.unarchive_season($1, 5) as result', [team.teamId])
-      ).rejects.toThrow(/invalid season index/i);
-    });
-  });
-
-  it('the team officer cannot unarchive (RLS blocks the underlying update)', async () => {
-    await withTxn(async ({ q, asUser }) => {
-      const team = await seedTeam(q);
-      await asUser(team.leader.uid, ...setting(team.teamId, history));
-      await expect(
-        asUser(team.officer.uid, 'select public.unarchive_season($1, 0) as result', [team.teamId])
-      ).rejects.toThrow(/not authorized/i);
     });
   });
 });
