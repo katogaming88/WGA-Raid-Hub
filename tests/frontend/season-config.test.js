@@ -136,56 +136,6 @@ describe('saveSeasonName (#221, number-only input as of #341)', () => {
   });
 });
 
-describe('saveSignupSeason (#221, number-only input as of #341)', () => {
-  it('composes the number with the display prefix and saves via activeSignupSeason', async () => {
-    const els = {
-      signupSeasonInput: makeEl({ value: '2' }),
-      signupSeasonSaveBtn: makeEl(),
-      signupSeasonStatus: makeEl()
-    };
-    const { sandbox, saveTeamSettingCalls } = makeSandbox({ els });
-
-    sandbox.saveSignupSeason();
-    await flush();
-
-    expect(saveTeamSettingCalls).toEqual([{ activeSignupSeason: 'Midnight Season 2' }]);
-    expect(sandbox.DATA.signupSeason).toBe('Midnight Season 2');
-    expect(els.signupSeasonInput.value).toBe('2');
-    expect(els.signupSeasonStatus.textContent).toBe('Saved!');
-  });
-
-  it('refuses to save a blank number', async () => {
-    const els = {
-      signupSeasonInput: makeEl({ value: '' }),
-      signupSeasonSaveBtn: makeEl(),
-      signupSeasonStatus: makeEl()
-    };
-    const { sandbox, saveTeamSettingCalls } = makeSandbox({ els });
-
-    sandbox.saveSignupSeason();
-
-    expect(saveTeamSettingCalls).toEqual([]);
-    expect(els.signupSeasonStatus.textContent).toBe('Season number cannot be blank.');
-  });
-
-  it('re-renders the Signups toggle, which controls the tier just named (#939)', async () => {
-    const els = {
-      signupSeasonInput: makeEl({ value: '3' }),
-      signupSeasonSaveBtn: makeEl(),
-      signupSeasonStatus: makeEl()
-    };
-    const { sandbox } = makeSandbox({ els });
-    const renders = [];
-    sandbox.renderSignupToggle = () => renders.push(sandbox.DATA.signupSeason);
-
-    sandbox.saveSignupSeason();
-    await flush();
-
-    // Rendered after DATA.signupSeason moved, so the badge reads the new tier.
-    expect(renders).toEqual(['Midnight Season 3']);
-  });
-});
-
 describe('saveSeasonView (#549)', () => {
   it('re-renders the Wishlist Editing toggle, which controls the tier now shown (#939)', async () => {
     const els = {

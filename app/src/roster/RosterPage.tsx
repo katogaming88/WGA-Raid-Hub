@@ -5,6 +5,7 @@ import { useSession } from '../auth/session';
 import { DataState } from '../components/DataState';
 import { useTeam } from '../data/address';
 import { bothQueries } from '../data/query';
+import { seasonName } from '../profile/profile';
 import { useCurrentSeason } from '../profile/useProfile';
 import {
   ROLE_LABELS,
@@ -26,7 +27,13 @@ import { CharacterIcon } from '../characters/CharacterIcon';
 import { altCountLabel, altsOf, earlierOwners, type SavedCharacter } from '../characters/characters';
 import { useEarlierLoot, useTeamAlts } from '../characters/useCharacters';
 import { MainSwapReviews } from '../characters/MainSwapReviews';
-import { useIncomingRoster, useRosterGear, useRosterOfficerData, useRosterPlayers, useSignupSeason } from './useRoster';
+import {
+  useIncomingRoster,
+  useRosterGear,
+  useRosterOfficerData,
+  useRosterPlayers,
+  useSignupSeasons
+} from './useRoster';
 import './roster.css';
 
 type Filter = Role | 'All';
@@ -34,7 +41,7 @@ type Filter = Role | 'All';
 export function RosterPage() {
   const team = useTeam();
   const current = bothQueries(useRosterPlayers(team.id), useRosterGear(team.id));
-  const incoming = bothQueries(useIncomingRoster(team.id), useSignupSeason(team.id));
+  const incoming = bothQueries(useIncomingRoster(team.id), useSignupSeasons(team.id));
   const [tab, setTab] = useState<'current' | 'incoming'>('current');
 
   const incomingGroups = incoming.isSuccess ? toIncoming(incoming.data[0]) : [];
@@ -55,7 +62,11 @@ export function RosterPage() {
           selected={showing}
           onSelect={setTab}
           incomingLabel={
-            incoming.data![1] ? `${incoming.data![1]} Roster (Tentative)` : 'Next Season Roster (Tentative)'
+            // Named after the tier when exactly one is open (#934); the
+            // season-agnostic label otherwise.
+            incoming.data![1].length === 1
+              ? `${seasonName(incoming.data![1][0]!)} Roster (Tentative)`
+              : 'Next Season Roster (Tentative)'
           }
         />
       )}

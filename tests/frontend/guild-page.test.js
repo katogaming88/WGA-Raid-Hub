@@ -61,13 +61,12 @@ function builder(result) {
 
 // Every team open for signups, matching prod's shape closely enough that a
 // test which cares about one flag does not have to restate the rest. The
-// switch is a team_seasons row for the tier the team's signup season names
-// (#939), so an open team is a config naming the tier plus that tier's row.
-const SIGNUP_SEASON = { activeSignupSeason: 'Midnight Season 2' };
+// switch is a team_seasons row per tier (#939), and a team is open when any
+// of its rows is (#934); config names no tier any more.
 const ALL_OPEN = [
-  { team_id: 1, config: SIGNUP_SEASON },
-  { team_id: 2, config: SIGNUP_SEASON },
-  { team_id: 3, config: SIGNUP_SEASON },
+  { team_id: 1, config: {} },
+  { team_id: 2, config: {} },
+  { team_id: 3, config: {} },
   { team_id: 4, config: {} }
 ];
 const ALL_OPEN_SEASONS = [1, 2, 3].map((team_id) => ({ team_id, season_code: 'MID2', signups_open: true }));
@@ -472,29 +471,24 @@ describe('team settings, read once and shared (#778)', () => {
     expect(Object.keys(sandbox.guildTeamSettings()).length).toBe(4);
   });
 
-  it('reads the signups switch per team from the row for its signup season (#939)', async () => {
+  it('reads the signups switch per team from its rows: open when any tier is (#939, #934)', async () => {
     const { sandbox } = makeSandbox({
-      teamSettings: [
-        { team_id: 1, config: SIGNUP_SEASON },
-        { team_id: 2, config: SIGNUP_SEASON },
-        { team_id: 3, config: SIGNUP_SEASON },
-        { team_id: 4, config: {} }
-      ],
+      teamSettings: ALL_OPEN,
       teamSeasons: [
         { team_id: 1, season_code: 'MID2', signups_open: true },
-        // A row for a tier that is not the team's signup season does not open
-        // the card: the gate reads the same row the card does.
+        // Any open tier opens the card: an older tier still taking signups
+        // is a tier a raider can sign up for, and the gate reads the same row.
         { team_id: 2, season_code: 'MID1', signups_open: true },
-        { team_id: 4, season_code: 'MID2', signups_open: true }
+        { team_id: 4, season_code: 'MID2', signups_open: false }
       ]
     });
     await sandbox.bootGuildPage();
     const s = sandbox.guildTeamSettings();
     expect(s.phoenix.signupsOpen).toBe(true);
-    expect(s.hellfire.signupsOpen).toBe(false);
+    expect(s.hellfire.signupsOpen).toBe(true);
     // No row means closed. Unlike a feature flag, where unset means enabled.
     expect(s.immolation.signupsOpen).toBe(false);
-    // A row with no signup season named to match it is not enough either.
+    // A row with the switch off is closed too.
     expect(s.wrathless.signupsOpen).toBe(false);
   });
 
@@ -538,9 +532,9 @@ describe('team cards (#778)', () => {
   it('shows Sign up only for a team with signups open', async () => {
     const { sandbox, els } = makeSandbox({
       teamSettings: [
-        { team_id: 1, config: SIGNUP_SEASON },
-        { team_id: 2, config: SIGNUP_SEASON },
-        { team_id: 3, config: SIGNUP_SEASON }
+        { team_id: 1, config: {} },
+        { team_id: 2, config: {} },
+        { team_id: 3, config: {} }
       ],
       teamSeasons: [
         { team_id: 1, season_code: 'MID2', signups_open: true },

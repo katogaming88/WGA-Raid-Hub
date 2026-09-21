@@ -19,9 +19,7 @@ export function useTeamCardData(teamIds: number[], today: Date) {
       const [settings, seasons, progress, schedule, changes] = await Promise.all([
         client
           .from('team_settings')
-          .select(
-            'team_id, signup_season:config->>activeSignupSeason, logs:config->externalLinks->>warcraftLogsUrl, raids:config->raidProgression'
-          )
+          .select('team_id, logs:config->externalLinks->>warcraftLogsUrl, raids:config->raidProgression')
           .in('team_id', teamIds),
         // One row per team and tier an officer has touched (#939).
         client.from('team_seasons').select('team_id, season_code, signups_open').in('team_id', teamIds),

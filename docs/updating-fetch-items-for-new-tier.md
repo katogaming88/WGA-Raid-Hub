@@ -137,7 +137,7 @@ The `season` column has no default on purpose: an insert without it fails instea
 
 ## The tier itself: `seasons` (#932)
 
-Every season column is a foreign key to `seasons`, one row per raid tier (`code` such as `MID3`, `display_name` such as `Midnight Season 3`, `starts_at`, `ends_at`). The row for a new tier is a migration, and it lands **before any team names the tier**: from the moment an officer sets Season Name or Signup Season to a name with no row, that team's signups, wishlist picks and BiS placeholders are refused until the row exists. A BoE find takes the tier current on its date (`current_season()`, #937) and needs no name from the team. The tier-token seed above needs the row too.
+Every season column is a foreign key to `seasons`, one row per raid tier (`code` such as `MID3`, `display_name` such as `Midnight Season 3`, `starts_at`, `ends_at`). The row for a new tier is a migration, and it lands **before any team names the tier**: an officer can only open signups for a tier the row exists for (the Signups tab lists the rows, #934), and from the moment an officer sets Season Name to a name with no row, that team's wishlist picks and BiS placeholders are refused until the row exists. A BoE find takes the tier current on its date (`current_season()`, #937) and needs no name from the team. The tier-token seed above needs the row too.
 
 One migration, two statements, in this order:
 

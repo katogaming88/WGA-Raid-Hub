@@ -139,12 +139,13 @@ describe('applyTeamSettingsToData', () => {
       bisSubmissionsOpen: false,
       mPlusExclusionsOpen: true,
       seasonView: 'MID2',
-      signupSeason: 'S2',
       extraField: 'untouched'
     });
-    // The two switches live on team_seasons since #939; a key left behind in
+    // The two switches live on team_seasons since #939, and the signup
+    // season is that table's open rows since #934; a key left behind in
     // config is not a setting any more and is not copied.
     expect(data.signupsOpen).toBeUndefined();
+    expect(data.signupSeason).toBeUndefined();
   });
 
   it('leaves DATA fields untouched when config is null (falls back to Apps Script values)', () => {

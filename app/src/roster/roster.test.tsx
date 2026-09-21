@@ -164,8 +164,7 @@ describe('Roster page', () => {
           player(2, 'Dodgey-Illidan', 'Monk', 'Windwalker', 'Melee', { is_trial: true })
         ],
         player_equipped_gear: gearAt(1, 321, SIXTEEN),
-        incoming_roster: [],
-        team_settings: { signupSeason: '' }
+        incoming_roster: []
       })
     );
     const table = await screen.findByRole('table', { name: 'Current roster' });
@@ -209,14 +208,15 @@ describe('Roster page', () => {
         incoming_roster: [
           { signup_id: 1, signup_name_realm: 'Gloamwing-Illidan', class: 'Shaman', spec: 'Elemental', role: 'Ranged' }
         ],
-        team_settings: { signupSeason: 'MN Season 3' }
+        // One tier open names the tab (#934).
+        team_seasons: [{ season_code: 'MID3', signups_open: true, seasons: { starts_at: '2099-01-01' } }]
       })
     );
     const current = await screen.findByRole('tab', { name: 'Current Roster' });
     expect(current).toHaveAttribute('aria-selected', 'true');
     current.focus();
     await userEvent.keyboard('{ArrowRight}');
-    const next = screen.getByRole('tab', { name: 'MN Season 3 Roster (Tentative)' });
+    const next = screen.getByRole('tab', { name: 'Midnight Season 3 Roster (Tentative)' });
     expect(next).toHaveAttribute('aria-selected', 'true');
     expect(next).toHaveFocus();
     expect(screen.getByRole('heading', { name: '1 Pending Raider' })).toBeInTheDocument();
@@ -357,7 +357,7 @@ describe('Roster page, officer columns', () => {
   const handlers = (role: string) => {
     const base = rosterHandlers({
       players: [player(1, 'Torbjorn-Illidan', 'Death Knight', 'Frost', 'Melee', { join_date: '2026-08-10' })],
-      team_settings: { name: 'Midnight Season 2', start: '2026-08-01', end: '2026-12-31', signupSeason: '' },
+      team_settings: { name: 'Midnight Season 2', start: '2026-08-01', end: '2026-12-31' },
       attendance: [
         { player_id: 1, raid_date: '2026-08-12', status: 'Present', report_excluded: false },
         { player_id: 1, raid_date: '2026-08-14', status: 'Late (no notice)', report_excluded: false }
@@ -411,7 +411,7 @@ describe('Roster page, alts', () => {
         player(1, 'Grihz-Illidan', 'Shaman', 'Restoration', 'Heal', { team_member_id: 7 }),
         player(2, 'Sakonna-Illidan', 'Priest', 'Holy', 'Heal', { team_member_id: 8 })
       ],
-      team_settings: { name: 'Midnight Season 2', start: '2026-08-01', end: '2026-12-31', signupSeason: '' },
+      team_settings: { name: 'Midnight Season 2', start: '2026-08-01', end: '2026-12-31' },
       team_members: [
         { id: 7, person_id: 70 },
         { id: 8, person_id: 80 }

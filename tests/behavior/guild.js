@@ -44,14 +44,12 @@ const LOGS = {
 };
 
 // Phoenix and Immolation are taking signups; Immolation has no logs link.
-// The signups switch is the team_seasons row for the tier a team's signup
-// season names (#939): Hellfire's row is off, and nobody has a row for
-// another tier.
-const SIGNUP_SEASON = 'Midnight Season 2';
+// The signups switch is a team_seasons row per tier (#939), and a team is
+// taking signups when any of its rows is on (#934): Hellfire's is off.
 export const TEAM_SETTINGS = [
-  { team_id: 1, config: { activeSignupSeason: SIGNUP_SEASON, externalLinks: { warcraftLogsUrl: LOGS[1] } } },
-  { team_id: 2, config: { activeSignupSeason: SIGNUP_SEASON, externalLinks: { warcraftLogsUrl: LOGS[2] } } },
-  { team_id: 3, config: { activeSignupSeason: SIGNUP_SEASON, externalLinks: {} } }
+  { team_id: 1, config: { externalLinks: { warcraftLogsUrl: LOGS[1] } } },
+  { team_id: 2, config: { externalLinks: { warcraftLogsUrl: LOGS[2] } } },
+  { team_id: 3, config: { externalLinks: {} } }
 ];
 export const TEAM_SEASONS = [
   { team_id: 1, season_code: 'MID2', signups_open: true },

@@ -2857,6 +2857,33 @@ function fetchSupabaseSettings() {
   return Promise.race([query, timeout]);
 }
 
+// The tiers the site knows (#932), newest first: the officer's tier select
+// on the Signups tab and the order of a team's open tiers read it (#934). A
+// handful of rows, public read; a failed read leaves the select empty and
+// the toggle disabled, which is what a site with no tier shows anyway.
+function fetchSupabaseSeasons() {
+  if (!supabaseClient) return Promise.resolve([]);
+  // team-read-guard: one row per tier, bounded by the seasons table.
+  return Promise.resolve(
+    supabaseClient
+      .from('seasons')
+      .select('code, display_name, starts_at, ends_at')
+      .order('starts_at', { ascending: false })
+  ).then(
+    function (result) {
+      if (result.error) {
+        console.warn('Supabase seasons query failed.', result.error.message);
+        return [];
+      }
+      return result.data || [];
+    },
+    function (err) {
+      console.warn('Supabase seasons query failed.', err);
+      return [];
+    }
+  );
+}
+
 // The team's two switches per tier (#939): one team_seasons row per tier an
 // officer has opened or closed something for. No row for a tier means both
 // switches closed, so a failed read is the same as an empty one. Fires in
@@ -2924,8 +2951,9 @@ var SEASON_CONFIG_KEYS = [
  * Overlays team_settings.config onto DATA, key by key, so a config missing a
  * given key (not backfilled yet, or a brand-new team) keeps whatever the Apps
  * Script core payload already set for it instead of clobbering it with
- * undefined. activeSignupSeason maps to DATA.signupSeason, matching the Apps
- * Script field name tab-season.js already reads/writes.
+ * undefined. The tier a team takes signups for is not a key any more (#934):
+ * it is the team_seasons rows with the switch on, read through
+ * openSignupSeasonCodes().
  * @param {any} data - the DATA object being built from the core chunk
  * @param {Object|null} config - team_settings.config, or null if the query failed/found nothing
  */
@@ -2934,7 +2962,6 @@ function applyTeamSettingsToData(data, config) {
   SEASON_CONFIG_KEYS.forEach(function (key) {
     if (config[key] !== undefined) data[key] = config[key];
   });
-  if (config.activeSignupSeason !== undefined) data.signupSeason = config.activeSignupSeason;
   data.features = config.features || {};
   data.externalLinks = config.externalLinks || {};
   data.discordSignupChannelId = config.discordSignupChannelId || null;
@@ -3819,6 +3846,8 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
   var settingsPromise = fetchSupabaseSettings();
   // Fired alongside; the core callback waits for it before the switches are read (#939).
   var teamSeasonsPromise = fetchSupabaseTeamSeasons();
+  // Fired alongside; the core callback waits for it so the open tiers sort by date (#934).
+  var seasonsPromise = fetchSupabaseSeasons();
   // Fired alongside; the core callback waits for it before mapping the roster's M+ rejection badges.
   var mplusRejectionsPromise = fetchSupabaseMPlusRejections();
   // Fired alongside; the core callback waits for it before mapping officer notes (#925).
@@ -3879,7 +3908,8 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
       settingsPromise,
       mplusRejectionsPromise,
       officerNotesPromise,
-      teamSeasonsPromise
+      teamSeasonsPromise,
+      seasonsPromise
     ]).then(function (results) {
       var rows = results[0];
       var settingsConfig = results[1];
@@ -3890,6 +3920,7 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
       if (mapped && mapped.length) data.roster = mapped;
       applyTeamSettingsToData(data, settingsConfig);
       data.teamSeasons = results[4] || [];
+      data.seasons = results[5] || [];
       DATA = data;
       DATA._loadedAt = new Date();
       try {
@@ -5334,13 +5365,58 @@ function teamSeasonRow(seasonCode) {
   return null;
 }
 
-// The tier signups are for: activeSignupSeason as a code, '' when unset.
-function signupSeasonCode() {
-  return seasonCodeForDisplay((DATA && DATA.signupSeason) || '');
+// Today's date in Eastern as YYYY-MM-DD, the calendar the tiers' dates are
+// on (docs/time-zones: Eastern is canonical).
+function easternToday() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date());
 }
 
-function signupsOpen() {
-  var row = teamSeasonRow(signupSeasonCode());
+// The tier current today, by the same rule as the database's
+// current_season(): the latest tier whose start has passed (#933). '' when
+// no tier has started, or the seasons read failed.
+function currentSeasonCode() {
+  var today = easternToday();
+  var rows = (DATA && DATA.seasons) || [];
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].starts_at && rows[i].starts_at <= today) return rows[i].code;
+  }
+  return '';
+}
+
+// The tiers a team is taking signups for (#934): its team_seasons rows with
+// the switch on, newest first by the tier's start date (DATA.seasons is
+// already in that order; a code the read did not return sorts last). There
+// is no separate key naming one of them any more.
+function openSignupSeasonCodes() {
+  var rows = (DATA && DATA.teamSeasons) || [];
+  var order = {};
+  ((DATA && DATA.seasons) || []).forEach(function (season, i) {
+    order[season.code] = i;
+  });
+  return rows
+    .filter(function (row) {
+      return row.signups_open === true;
+    })
+    .map(function (row) {
+      return row.season_code;
+    })
+    .sort(function (a, b) {
+      var ia = a in order ? order[a] : Infinity;
+      var ib = b in order ? order[b] : Infinity;
+      return ia - ib || (a < b ? -1 : a > b ? 1 : 0);
+    });
+}
+
+// With a tier, whether that tier's switch is on; with none, whether any
+// tier's is, which is what the Sign Up nav item and the form ask.
+function signupsOpen(seasonCode) {
+  if (seasonCode === undefined) return openSignupSeasonCodes().length > 0;
+  var row = teamSeasonRow(seasonCode);
   return !!(row && row.signups_open);
 }
 

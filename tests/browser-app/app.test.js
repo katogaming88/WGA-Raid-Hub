@@ -3,7 +3,7 @@ import { AxeBuilder } from '@axe-core/playwright';
 import { launchBrowser, openApp, startApp, storedSession, NARROW } from './harness.js';
 import { GUILD_TABLES, GUILD_TEAMS, WAITING } from './guild-fixtures.js';
 import { ENTRIES as NEWS_ENTRIES } from '../behavior/news.js';
-import { SCENARIO } from '../behavior/roster.js';
+import { SCENARIO, SIGNUP_SEASON_APP_ROW } from '../behavior/roster.js';
 import {
   ATTENDANCE,
   GEAR,
@@ -44,7 +44,7 @@ const ROSTER = {
     GEAR_SLOTS.map((equipment_slot) => ({ player_id: p.id, equipment_slot, item_level: 318 + p.id }))
   ),
   incoming_roster: SCENARIO.incoming,
-  team_settings: [{ signupSeason: SCENARIO.activeSignupSeason }]
+  team_seasons: [SIGNUP_SEASON_APP_ROW]
 };
 
 // A profile's reads (tests/behavior/profile.js), seen by a viewer.
@@ -149,9 +149,7 @@ const rosterWithAlts = () => {
     players: ROSTER.players.map((p) => ({ ...p, team_member_id: p.id })),
     team_members: ROSTER.players.map((p) => ({ id: p.id, person_id: p.id === first.id ? 70 : 100 + p.id })),
     characters: ALT_CHARACTERS,
-    team_settings: [
-      { name: SEASON.name, start: SEASON.start, end: SEASON.end, signupSeason: SCENARIO.activeSignupSeason }
-    ],
+    team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end }],
     attendance: [],
     rclc_loot: []
   };
@@ -468,9 +466,7 @@ const STATES = [
     who: 'officer',
     tables: {
       ...ROSTER,
-      team_settings: [
-        { name: SEASON.name, start: SEASON.start, end: SEASON.end, signupSeason: SCENARIO.activeSignupSeason }
-      ],
+      team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end }],
       attendance: [],
       rclc_loot: []
     }
@@ -480,7 +476,7 @@ const STATES = [
     path: '/g/wga/t/phoenix/roster',
     sentinel: 'table.roster-table',
     tables: ROSTER,
-    click: 'role=tab[name="Season 4 Roster (Tentative)"]'
+    click: 'role=tab[name="Midnight Season 4 Roster (Tentative)"]'
   },
   {
     label: 'roster, officer, a main swap waiting',

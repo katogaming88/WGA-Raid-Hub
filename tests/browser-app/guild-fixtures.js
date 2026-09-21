@@ -8,7 +8,6 @@ export const GUILD_TEAMS = TEAMS;
 // The app reads each team's settings as named fields, not the whole config.
 const SETTINGS = TEAM_SETTINGS.map((r) => ({
   team_id: r.team_id,
-  signup_season: r.config.activeSignupSeason,
   logs: r.config.externalLinks.warcraftLogsUrl ?? null,
   raids: []
 }));

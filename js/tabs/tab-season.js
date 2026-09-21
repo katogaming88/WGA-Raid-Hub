@@ -19,8 +19,6 @@ function buildSeasonTab() {
   var endInput = document.getElementById('seasonEndInput');
   if (endInput) endInput.value = (DATA && DATA.seasonEnd) || '';
   populateSeasonViewOptions();
-  var signupSeasonInput = document.getElementById('signupSeasonInput');
-  if (signupSeasonInput) signupSeasonInput.value = _seasonNumberFromName((DATA && DATA.signupSeason) || '');
   var trialWeeksInput = document.getElementById('trialWeeksInput');
   var trialAttendInput = document.getElementById('trialAttendInput');
   if (trialWeeksInput) trialWeeksInput.value = DATA && DATA.trialWeeks != null ? DATA.trialWeeks : 4;
@@ -731,52 +729,6 @@ function saveSeasonView() {
       // The Wishlist Editing toggle controls the tier Season View shows
       // (#939), so its badge and caption follow the change.
       if (typeof renderWishlistToggle === 'function') renderWishlistToggle();
-      if (status) {
-        status.textContent = val ? 'Saved!' : 'Cleared.';
-        setTimeout(function () {
-          if (status) status.textContent = '';
-        }, 2000);
-      }
-    })
-    .catch(function (err) {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Save';
-      }
-      if (status) status.textContent = err.message || 'Error saving.';
-    });
-}
-
-function saveSignupSeason() {
-  var input = document.getElementById('signupSeasonInput');
-  var num = input ? input.value.trim() : '';
-  var val = num ? _seasonDisplayPrefix() + ' ' + num : '';
-  var btn = document.getElementById('signupSeasonSaveBtn');
-  var status = document.getElementById('signupSeasonStatus');
-  if (!val) {
-    if (status) {
-      status.textContent = 'Season number cannot be blank.';
-      setTimeout(function () {
-        if (status) status.textContent = '';
-      }, 3000);
-    }
-    return;
-  }
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
-  }
-
-  saveTeamSetting({ activeSignupSeason: val })
-    .then(function () {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Save';
-      }
-      if (DATA) DATA.signupSeason = val;
-      if (input) input.value = num;
-      // The Signups toggle controls this tier (#939), so it follows the change.
-      if (typeof renderSignupToggle === 'function') renderSignupToggle();
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {

@@ -1,19 +1,19 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { startServer } from './static-server.js';
 import { launchBrowser, openState, fixture, REPO_ROOT } from './harness.js';
-import { SCENARIO, EXPECTED_CURRENT, EXPECTED_INCOMING, withoutCounts } from '../behavior/roster.js';
+import { SCENARIO, SIGNUP_SEASON_ROW, EXPECTED_CURRENT, EXPECTED_INCOMING, withoutCounts } from '../behavior/roster.js';
 
 // The Roster tab as the current site shows it, recorded so the new app's
 // Roster page can be checked against the same expectations
 // (tests/behavior/roster.js, #1102 step 1).
 
-const settings = (activeSignupSeason) =>
-  fixture('team_settings', []).map((row) => ({ ...row, config: { ...row.config, activeSignupSeason } }));
-
-const overrides = (incoming, activeSignupSeason = SCENARIO.activeSignupSeason) => ({
+// The tier the team has signups open for is its team_seasons row (#934);
+// none means the tab keeps its season-agnostic name.
+const overrides = (incoming, teamSeasons = [SIGNUP_SEASON_ROW]) => ({
   players: SCENARIO.players,
   incoming_roster: incoming,
-  team_settings: settings(activeSignupSeason)
+  team_settings: fixture('team_settings', []),
+  team_seasons: teamSeasons
 });
 
 const STATE = {
@@ -95,9 +95,9 @@ describe('Roster tab (current site), without approved signups', () => {
   });
 });
 
-describe('Roster tab (current site), before a signup season is named', () => {
+describe('Roster tab (current site), with no tier open for signups', () => {
   it('calls the tab Next Season Roster', async () => {
-    const opened = await openState(browser, server.port, STATE, overrides(SCENARIO.incoming, ''));
+    const opened = await openState(browser, server.port, STATE, overrides(SCENARIO.incoming, []));
     try {
       await expect(opened.page.locator('#rosterSubTabIncoming').textContent()).resolves.toBe(
         'Next Season Roster (Tentative)'

@@ -124,7 +124,8 @@ Reference notes for walking a raider through the site -- not published to raider
 
 - Public, no login needed -- shows who's currently on the roster, grouped by role
 - Just name, class, and spec -- no attendance, loot, or BiS info
-- A second sub-tab, named after the officer-set signup season (e.g. "MN Season 2 Roster (Tentative)"), appears once there's an incoming roster to show -- lists who's approved for next season, tentative until the officer rollover
+- A second sub-tab, named after the season the team is taking signups for (e.g. "Midnight Season 2 Roster (Tentative)"; "Next Season Roster" when none or more than one is open), appears once there's an incoming roster to show -- lists who's approved for next season, tentative until the officer rollover
+- Sign Up shows while the team has signups open for any season; when more than one is open, the form asks which one
 
 ---
 

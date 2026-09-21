@@ -33,7 +33,9 @@ const player = (id, nameRealm, nickname, classSpec, flags = {}) => ({
 
 export const SCENARIO = {
   seasonName: 'Season 3',
-  activeSignupSeason: 'Season 4',
+  // The tier the team has signups open for (#934): a team_seasons row with
+  // the switch on, so the row both sites read is SIGNUP_SEASON_ROW below.
+  signupSeason: 'MID4',
   players: [
     player(1, 'Aurelith-Illidan', 'Aur', cs('Warrior', 'Protection', 'Tank')),
     player(2, 'Brightmoor-Illidan', '', cs('Paladin', 'Holy', 'Heal')),
@@ -83,8 +85,19 @@ export const EXPECTED_CURRENT = {
   ]
 };
 
+// The one team_seasons row for the scenario, as each site reads it: the
+// current site takes the row and orders it by the seasons read; the new app
+// embeds the tier's start.
+export const SIGNUP_SEASON_ROW = {
+  team_id: 1,
+  season_code: SCENARIO.signupSeason,
+  signups_open: true,
+  wishlist_open: false
+};
+export const SIGNUP_SEASON_APP_ROW = { ...SIGNUP_SEASON_ROW, seasons: { starts_at: '2099-01-01' } };
+
 export const EXPECTED_INCOMING = {
-  tabLabel: 'Season 4 Roster (Tentative)',
+  tabLabel: 'Midnight Season 4 Roster (Tentative)',
   title: '2 Pending Raiders',
   groups: [
     { label: 'Healers', count: 1, rows: [{ name: 'Aldersong', character: null, spec: 'Mistweaver' }] },

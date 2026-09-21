@@ -139,13 +139,13 @@ describe('team cards', () => {
   ];
   const data: TeamData = {
     settings: [
-      { team_id: 1, signup_season: 'Midnight Season 2', logs: 'https://www.warcraftlogs.com/guild/id/1', raids: null },
-      // A switch on for a tier that is not the signup season stays closed.
-      { team_id: 4, signup_season: 'Midnight Season 2', logs: null, raids: null }
+      { team_id: 1, logs: 'https://www.warcraftlogs.com/guild/id/1', raids: null },
+      // A row with the switch off, and no other row, stays closed.
+      { team_id: 4, logs: null, raids: null }
     ],
     seasons: [
       { team_id: 1, season_code: 'MID2', signups_open: true },
-      { team_id: 4, season_code: 'MID1', signups_open: true }
+      { team_id: 4, season_code: 'MID1', signups_open: false }
     ],
     progress: [],
     schedule: [{ ...rule(2), team_id: 1 }],
@@ -157,7 +157,7 @@ describe('team cards', () => {
     ]
   };
 
-  it('keeps every team, and opens signups only from the row for the signup season (#939)', () => {
+  it('keeps every team, and opens signups when any tier has the switch on (#939, #934)', () => {
     const cards = teamCards(teams, data, new Set([4]), new Date(2026, 4, 13));
     expect(cards.map((c) => [c.name, c.mine, c.signup, c.logs, c.raiders])).toEqual([
       ['Phoenix', false, true, 'https://www.warcraftlogs.com/guild/id/1', 1],

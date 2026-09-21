@@ -489,8 +489,9 @@
                 </div>
                 <div id="help-signups" class="help-tip">
                   Open signups to show the Sign Up button on the landing page for roster members to declare their
-                  class/spec for the season. Close it when signup collection is done. The switch is per season: it
-                  controls the signup season set on the Season tab, and each season keeps its own setting.<br>
+                  class/spec for the season. Close it when signup collection is done. The switch is per season: pick
+                  the season beside the button, and each season keeps its own setting. Signups for the next tier can
+                  open while the current one is still being raided; a tier is listed once it is on the site.<br>
                   Submitted signups appear in the queue below -- <strong>Approve</strong> moves them to the Pending
                   Roster sub-tab; <strong>Deny</strong> marks them rejected. A player who re-submits will overwrite
                   their existing pending entry.<br>
@@ -498,7 +499,10 @@
                   <strong>Push to Roster</strong> to apply all pending entries to the official roster at once.
                   Optionally remove roster members who did not submit a signup.
                 </div>
-                <div style="margin-top:1rem;">
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:1rem;">
+                  <label for="signupSeasonSelect" class="signup-officer-note" style="margin:0;">Season</label>
+                  <select id="signupSeasonSelect" class="add-player-input" onchange="onSignupTierSelect()"
+                    style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;"></select>
                   <button class="btn btn-muted" id="signupToggleBtn" onclick="toggleSignupsOpen()">Open Signups</button>
                 </div>
                 <p class="signup-officer-note" id="signupToggleTier"></p>
@@ -711,21 +715,6 @@
                   </select>
                   <button class="btn btn-gold" id="seasonViewSaveBtn" onclick="saveSeasonView()">Save</button>
                   <span id="seasonViewStatus" style="font-size:0.92rem;color:var(--heal);"></span>
-                </div>
-              </div>
-
-              <!-- Signup Season -->
-              <div class="help-ref-card">
-                <h3 class="help-ref-title">Signup Season<button class="help-btn" onclick="toggleHelp('help-signup-season')" title="Show help">?</button></h3>
-                <div id="help-signup-season" class="help-tip">
-                  The season label stamped on every signup submission. Set this before opening signups so all responses are tagged correctly. If left blank, signups will be recorded with no season and will not appear in the Missing Signups list once a season is set. Independent of Season View above -- signups for the next tier routinely open while the current tier is still live, so this can point ahead of the live season without changing what raiders see on the Priority tab/BiS/Wishlist.
-                </div>
-                <p class="signup-officer-note" style="margin-top:0.25rem;">The season number applied to incoming signup submissions (e.g. 1).</p>
-                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
-                  <input type="number" id="signupSeasonInput" class="add-player-input" placeholder="1" min="1"
-                    style="max-width:100px;font-size:0.95rem;padding:0.35rem 0.6rem;">
-                  <button class="btn btn-gold" id="signupSeasonSaveBtn" onclick="saveSignupSeason()">Save</button>
-                  <span id="signupSeasonStatus" style="font-size:0.92rem;color:var(--heal);"></span>
                 </div>
               </div>
 
