@@ -154,7 +154,7 @@ export function teamCards(teams: TeamInput[], data: TeamData, myTeamIds: Set<num
     // submit_season_signup() checks, so the link never points at a closed
     // form. Signups fail closed: a Sign up link into a closed form is worse
     // than none (js/guild.js).
-    const signupCode = settings?.signup_season ? seasonCode(settings.signup_season) : null;
+    const signupCode = settings?.signup_season ? (seasonCode(settings.signup_season) ?? settings.signup_season) : null;
     const signupRow = signupCode ? own(data.seasons).find((r) => r.season_code === signupCode) : undefined;
     return {
       id: team.id,

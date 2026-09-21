@@ -73,8 +73,12 @@ function setWishlistOpen(open) {
     function () {
       renderWishlistToggle();
     },
-    function () {
+    function (err) {
+      // Same as the Signups toggle: a tier without a seasons row yet is
+      // refused by the function, and the officer needs to read that.
       renderWishlistToggle();
+      var tierEl = document.getElementById('wishlistToggleTier');
+      if (tierEl && err && err.message) tierEl.textContent = 'Could not save: ' + err.message;
     }
   );
 }

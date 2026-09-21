@@ -35,8 +35,13 @@ function setSignupsOpen(open) {
     .then(function () {
       renderSignupToggle();
     })
-    .catch(function () {
+    .catch(function (err) {
+      // A tier the database does not have yet (its migration has not landed)
+      // is the case worth reading: the function says so, and the same tier
+      // would have refused every signup at the insert anyway.
       renderSignupToggle();
+      var tierEl = document.getElementById('signupToggleTier');
+      if (tierEl && err && err.message) tierEl.textContent = 'Could not save: ' + err.message;
     });
 }
 
