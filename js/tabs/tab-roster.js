@@ -883,7 +883,7 @@ function submitAddPlayer() {
 // Three-case upsert (docs/database-decisions.md roster-promotion pattern):
 // brand-new name_realm -> insert; a previously archived row for the same
 // name_realm -> un-archive it in place (preserves its id, so historical
-// rclc_loot/bis_items/attendance rows stay linked); an already-active row ->
+// rclc_loot/attendance rows stay linked); an already-active row ->
 // reject rather than silently overwrite. Resolves to the written player's id.
 function addPlayerToRosterSupabase(payload) {
   if (!supabaseClient) return Promise.reject(new Error('Not connected to Supabase.'));
@@ -1082,7 +1082,7 @@ function executeRemovePlayer(nameRealm, firstName) {
   }
 
   // Soft-delete via archived_at, not a hard DELETE -- an archived row keeps
-  // its id so rclc_loot/bis_items/attendance rows referencing it stay intact
+  // its id so rclc_loot/attendance rows referencing it stay intact
   // (docs/database-decisions.md). archived_reason (#476) captures why, for
   // spotting retention patterns across seasons; archived_reason_detail is
   // the required freeform specifics behind that category.
@@ -1196,7 +1196,7 @@ function officerUpdateClass(nameRealm, firstName, newClass) {
 }
 
 // Renaming updates players.name_realm in place by id, so the row's id --
-// and every rclc_loot/bis_items/attendance row that references it -- stays
+// and every rclc_loot/attendance row that references it -- stays
 // linked (#407). Guarded by the same players_team_id_name_realm_key unique
 // constraint addPlayerToRosterSupabase relies on: a rename onto a name
 // already in use (active or archived) fails with a constraint-violation

@@ -14,6 +14,12 @@ answers to.
 
 ## [3.146.1] - 2026-09-20
 
+### Frontend
+
+- Start New Season's confirmation and the Season Settings help no longer say
+  a BiS list will be snapshotted and wiped; the archive clears the submitted
+  BiS source and resets M+ exclusion and Bench, as it does.
+
 ### Backend
 
 - The `bis_items` table is gone, with its triggers, its policies and the

@@ -9,8 +9,8 @@ import { fileURLToPath } from 'node:url';
 // zone at all -- they used to be unconditionally always-in-scope regardless
 // of season, so an officer's "M+ - Head" pick made during Season 1 kept
 // showing up forever, even after the team moved on to Season 2. Placeholder
-// rows now carry their own `season` (bis_items.season / item_preferences.season,
-// stamped at tag time), passed in as the second argument.
+// rows now carry their own `season` (item_preferences.season, stamped at
+// tag time), passed in as the second argument.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');

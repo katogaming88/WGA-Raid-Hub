@@ -2315,7 +2315,7 @@ var EQUIPMENT_SLOT_LABELS = [
 // Maps player_equipped_gear rows to {playerId: {slotKey: {itemId, itemLevel, track}}}
 // -- keyed by numeric player_id (not name_realm) since that's what
 // DATA.roster entries carry as player.id, and equipped gear has no natural
-// display-name join the way bis_items' embedded items(name) does.
+// display-name join of its own.
 function mapSupabaseEquippedGear(rows) {
   var map = {};
   (rows || []).forEach(function (row) {
@@ -2331,8 +2331,7 @@ function mapSupabaseEquippedGear(rows) {
 }
 
 // Self-received reads come from Supabase (#406): self_received_requests
-// carries its own team_id (unlike bis_items), so no join-through-players
-// filter is needed. Only 'approved' rows are pulled -- pending/rejected
+// carries its own team_id, so no join-through-players filter is needed. Only 'approved' rows are pulled -- pending/rejected
 // requests are officer-queue-only (js/tabs/tab-requests.js), not shown on a
 // player's profile. Resolves to the raw rows, or null on any failure so the
 // caller falls back to the Apps Script heavy chunk's selfReceived.
@@ -2544,7 +2543,7 @@ function mapSupabaseSelfReceived(rows) {
     if (!map[firstName]) map[firstName] = [];
     map[firstName].push({
       item: itemRow.name,
-      // row.slot is this specific request's own bis_items.slot (#386),
+      // row.slot is this specific request's own slot row (#386),
       // not the catalog's -- itemRow.slot is only a fallback for rows
       // predating that column. Falling back to itemRow.slot here would be
       // wrong for a placeholder source (M+/Crafted/Catalyst): every such
@@ -2559,8 +2558,7 @@ function mapSupabaseSelfReceived(rows) {
 }
 
 // Priority order reads come from Supabase (#220). priority_order carries its
-// own team_id (unlike bis_items), so no join-through-players filter is
-// needed. Not season-filtered here -- same reason fetchSupabaseLoot() isn't:
+// own team_id, so no join-through-players filter is needed. Not season-filtered here -- same reason fetchSupabaseLoot() isn't:
 // this promise fires before DATA.seasonName is known (in parallel with the
 // core chunk), so the season filter is applied downstream in
 // mapSupabasePriorityOrder() once DATA is populated. Resolves to the raw
@@ -4021,8 +4019,8 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
 // and gets wiped to [] by every archive_current_season() call (#537).
 //
 // Always the display name (#933): DATA.seasonView is stored as a code since
-// raid_zones.season became one, and this is what stamps item_preferences and
-// bis_items rows, whose season columns still hold names. seasonDisplayName()
+// raid_zones.season became one, and this is what stamps item_preferences
+// rows, whose season column still holds names. seasonDisplayName()
 // passes a name through unchanged, so a value stored before the conversion
 // still reads.
 function resolveSeasonView() {
@@ -4091,7 +4089,7 @@ function currentZoneIdsForSeason(season) {
 // editor, and Raider Wishlist so the "current tier only" scoping rule lives in
 // one place. Placeholder items (M+/Crafted/Catalyst) aren't tied to a raid
 // zone, so they can't be scoped this way at all -- pass the row's own
-// `rowSeason` (bis_items.season / item_preferences.season, stamped at tag
+// `rowSeason` (item_preferences.season, stamped at tag
 // time with the name resolveSeasonView() returns) for those instead. Rows
 // tagged before that column existed have rowSeason null/undefined and fail
 // open (shown regardless of season) rather than silently disappearing.
@@ -4680,7 +4678,7 @@ function getSelfReceivedItems(nameOrNameRealm) {
 
 // Finds the self-received entry (if any) for one BiS row. A placeholder
 // source (M+/Crafted/Catalyst) can legitimately sit in several slots at once
-// (#386's bis_items uniqueness note), and every such row shares the exact
+// (#386's uniqueness note), and every such row shares the exact
 // same item name -- so a name-only match would light up every slot tagged
 // with that source the moment any one of them got approved. Prefer an entry
 // whose own slot lines up with this row's dbSlot; only fall back to a
@@ -5731,12 +5729,13 @@ function selfReceivedSourceChanged(rowId) {
   noteEl.textContent = selfReceivedNoteText(sourceEl.value);
 }
 
-// dbSlot is the raw bis_items.slot of the row this button was rendered for, as
-// distinct from `slot` (the display slot, which prefers the item catalog's own
-// slot name). They diverge routinely -- the catalog says "Boots"/"Gloves"/
-// "Trinket" where bis_items says "Feet"/"Hands"/"Trinket 1" -- so only dbSlot
-// can identify which BiS row an approval fills (#386). `slot` stays the display
-// value used for the optimistic DATA.selfReceived patch below.
+// dbSlot is the raw slot of the row this button was rendered for, as distinct
+// from `slot` (the display slot, which prefers the item catalog's own slot
+// name). They diverge routinely -- the catalog says "Boots"/"Gloves"/"Trinket"
+// where the row says "Feet"/"Hands"/"Trinket 1" -- so only dbSlot identifies
+// which row the request is about (#386): the duplicate guard (#757) and
+// selfReceivedEntryForRow() both match on it. `slot` stays the display value
+// used for the optimistic DATA.selfReceived patch below.
 function showSelfReceivedForm(firstName, nameRealm, item, slot, rowId, defaultSource, isOfficer, dbSlot) {
   if (event) event.stopPropagation();
   var formEl = document.getElementById('form-' + rowId);
@@ -5878,10 +5877,9 @@ function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId, dbSl
         p_track: _selfReceivedTrackFromDiff(diff),
         p_source: sourceEl.value,
         p_note: notesEl ? notesEl.value : '',
-        // The raw bis_items.slot, not the display slot -- approval flips exactly
-        // this row (#386). Empty for legacy rows that never had a slot, which the
-        // trigger handles by only inferring a target when the item occupies a
-        // single slot for that player.
+        // The raw slot, not the display slot: the duplicate guard (#757) and
+        // selfReceivedEntryForRow() match on it (#386). Empty for legacy rows
+        // that never had a slot.
         p_slot: dbSlot || ''
       })
     )
@@ -5904,7 +5902,7 @@ function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId, dbSl
         if (autoApproved && DATA && DATA.selfReceived) {
           if (!DATA.selfReceived[firstName]) DATA.selfReceived[firstName] = [];
           // dbSlot, not the display `slot` -- selfReceivedEntryForRow() matches
-          // on the raw bis_items.slot, same as the server-side row this mirrors.
+          // on the raw slot, same as the server-side row this mirrors.
           DATA.selfReceived[firstName].push({ item: item, slot: dbSlot || '', source: diff + ': ' + sourceEl.value });
         } else {
           supabaseClient.functions.invoke('discord-bot-webhook', {
@@ -5980,8 +5978,8 @@ function submitDirectMarkReceived(firstName, nameRealm, item, slot, rowId, dbSlo
         p_track: _selfReceivedTrackFromDiff(diff),
         p_source: sourceEl.value,
         p_note: notesEl ? notesEl.value : '',
-        // See submitSelfReceivedRequest: the raw bis_items.slot, targeting the
-        // exact row this button was rendered for (#386).
+        // See submitSelfReceivedRequest: the raw slot of the exact row this
+        // button was rendered for (#386).
         p_slot: dbSlot || ''
       })
     )
@@ -6007,7 +6005,7 @@ function submitDirectMarkReceived(firstName, nameRealm, item, slot, rowId, dbSlo
         if (DATA && DATA.selfReceived) {
           if (!DATA.selfReceived[firstName]) DATA.selfReceived[firstName] = [];
           // dbSlot, not the display `slot` -- selfReceivedEntryForRow() matches
-          // on the raw bis_items.slot, same as the server-side row this mirrors.
+          // on the raw slot, same as the server-side row this mirrors.
           DATA.selfReceived[firstName].push({ item: item, slot: dbSlot || '', source: source });
         }
         var markedPlayer = findRosterPlayerByNameRealm(nameRealm);
@@ -6502,9 +6500,9 @@ function renderProfile(firstName, backTo, container) {
         : item;
     var rank = getRank(player.nameRealm, item);
     var slot = (DATA.itemSlots || {})[item] || bisSlot || '';
-    // The raw bis_items.slot for this row, which "Mark received" sends so the
-    // approval flips this exact row rather than every row sharing the item
-    // (#386). Distinct from `slot` above, which prefers the catalog's name.
+    // The raw slot for this row, which "Mark received" sends so the request
+    // names this exact row rather than every row sharing the item (#386).
+    // Distinct from `slot` above, which prefers the catalog's name.
     // Falls back to the catalog slot when the row itself carries none (every
     // wishlist-sourced real item). mapSupabaseSelfReceived() applies this same itemRow.slot
     // fallback reading self_received_requests.slot back (NULL for these same

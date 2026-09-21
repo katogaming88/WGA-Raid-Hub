@@ -7,8 +7,7 @@ import { fileURLToPath } from 'node:url';
 // Completeness (#515, item-level follow-up): a wishlist is complete once
 // every eligible real catalog item across every required WISHLIST_SLOTS row
 // has a status (any of BiS/Good/OK/Catalyst/Pass) -- not just one item per
-// row. An officer's bis_items pick for a row covers only that one exact
-// item, not the whole row. Off Hand is only required when the raider's BiS
+// row. Off Hand is only required when the raider's BiS
 // Weapon pick is a real One-Hand item.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));

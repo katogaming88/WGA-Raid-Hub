@@ -385,12 +385,10 @@ function toggleSeasonSnapshot(index, btnEl) {
 }
 
 // Same inline-snapshot pattern as toggleSeasonSnapshot above, for the BiS
-// list captured at archive time (history[index].bis, see
-// archive_current_season() in 20260714173649_archive_season_resets_bis_mplus.sql).
-// Placeholder entries (M+/Crafted/Catalyst) are included in the snapshot even
-// though their live bis_items rows survive the archive-time wipe -- this is a
-// point-in-time record of what officers saw then, not a reflection of what's
-// live now.
+// list captured at archive time (history[index].bis). Entries written before
+// #935 retired the grid carry one; newer entries do not, and the button only
+// renders when the key is present. A point-in-time record of what officers
+// saw then.
 function toggleSeasonBisSnapshot(index, btnEl) {
   var panel = document.getElementById('bis-snapshot-' + index);
   if (!panel) return;
@@ -539,7 +537,7 @@ function confirmArchiveSeason() {
       msg.textContent =
         'Archive "' +
         name +
-        '"? The current season name, start date, and end date will be moved to history and cleared. Every player\'s BiS list (including M+/Crafted/Catalyst entries) will be snapshotted into history, then wiped, their submitted BiS source will be cleared, and M+ exclusion and Bench status will reset for the whole roster (Trial status is left alone). The new season name will be applied automatically as "' +
+        '"? The current season name, start date, and end date will be moved to history and cleared. Every player\'s submitted BiS source will be cleared, and M+ exclusion and Bench status will reset for the whole roster (Trial status is left alone). The new season name will be applied automatically as "' +
         CURRENT_SEASON.displayName +
         '". Set a new Season Start Date for it afterward.';
       document.getElementById('seasonArchiveExecBtn').style.display = '';

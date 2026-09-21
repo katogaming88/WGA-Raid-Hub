@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 // A raider reported that marking their crafted Off Hand received also
 // auto-marked an unrelated Crafted-tagged slot as received. Root cause: the
 // placeholder sources ('M+', 'Crafted', 'Catalyst') all share one catalog
-// item name across every slot they're tagged against (#386's bis_items
+// item name across every slot they're tagged against (#386's
 // uniqueness note), so any display-side lookup keyed on item name alone
 // collapses every "Crafted" row into a single entry -- one approval lit up
 // every row with that name, regardless of slot. The fix threads dbSlot
@@ -90,7 +90,7 @@ describe('selfReceivedEntryForRow does not collapse same-name placeholder rows',
 });
 
 describe('mapSupabaseSelfReceived carries the request-level slot, not the catalog slot', () => {
-  it("uses row.slot (bis_items.slot) over the placeholder catalog row's Placeholder sentinel", () => {
+  it("uses row.slot over the placeholder catalog row's Placeholder sentinel", () => {
     const sandbox = loadSandbox();
     const rows = [
       {

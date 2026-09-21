@@ -10,8 +10,8 @@ import { loadCommonJs, quietConsole } from './helpers/common-sandbox.js';
 // code and shows the tier's name; resolveSeasonViewCode() returns a code on
 // both of its branches, where before the explicit branch returned whatever
 // the dropdown had stored; resolveSeasonView() keeps returning a name,
-// because it stamps item_preferences.season and bis_items.season, which are
-// still keyed to seasons(display_name) until #936 and #935; and the scope
+// because it stamps item_preferences.season, which is still keyed to
+// seasons(display_name) until #936; and the scope
 // check compares zones by code whether or not a Season View is set. Before
 // this, a team with no Season View compared its season name against coded
 // zones, matched nothing, and every raid item fell open into scope.

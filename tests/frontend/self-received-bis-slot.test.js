@@ -4,18 +4,17 @@ import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// #386: an approved self-received item flips the matching bis_items row to
-// obtained, via a trigger on self_received_requests. The trigger can only do
-// that if the request records WHICH bis_items row it was raised against, since
-// the same item can occupy several slots for one player -- the placeholder
-// sources ('M+', 'Crafted', 'Catalyst') routinely do.
+// #386: a self-received request records WHICH row it was raised against,
+// since the same item can occupy several slots for one player -- the
+// placeholder sources ('M+', 'Crafted', 'Catalyst') routinely do. The
+// duplicate guard (#757) and selfReceivedEntryForRow() match on that slot.
 //
-// The subtle part: the row's raw bis_items.slot (entry.dbSlot) is NOT the slot
-// the UI displays (entry.slot / DATA.itemSlots), which prefers the item
-// catalog's own name. Live data has catalog "Boots"/"Gloves"/"Trinket" against
-// bis_items "Feet"/"Hands"/"Trinket 1". Sending the display slot would make the
-// trigger match nothing for most real items, so these tests pin that p_slot
-// carries dbSlot specifically.
+// The subtle part: the row's raw slot (entry.dbSlot) is NOT the slot the UI
+// displays (entry.slot / DATA.itemSlots), which prefers the item catalog's own
+// name. Live data has catalog "Boots"/"Gloves"/"Trinket" against row slots
+// "Feet"/"Hands"/"Trinket 1". Sending the display slot would match nothing
+// for most real items, so these tests pin that p_slot carries dbSlot
+// specifically.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
@@ -70,7 +69,7 @@ function makeSandbox() {
   return { sandbox, rpcCalls };
 }
 
-describe('self-received sends the bis_items slot, not the display slot (#386)', () => {
+describe("self-received sends the row's own slot, not the display slot (#386)", () => {
   it('submit_self_received carries dbSlot as p_slot', () => {
     const { sandbox, rpcCalls } = makeSandbox();
     // Display slot "Trinket" (the catalog name) vs the real BiS row "Trinket 1".
