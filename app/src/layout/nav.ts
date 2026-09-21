@@ -3,7 +3,8 @@ import type { IconName } from '../components/Icon';
 // `end`: current only on its exact address. Home needs it, since every team
 // page sits below it; My profile must not have it, so its tabs keep it current.
 // `mark`: a dot saying there is something new behind the item (News).
-export type NavItem = { label: string; icon: IconName; to: string; end?: boolean; mark?: boolean };
+// `live`: a count of who is live behind the item (Streams); nothing when 0.
+export type NavItem = { label: string; icon: IconName; to: string; end?: boolean; mark?: boolean; live?: number };
 export type NavGroup = { heading: string; items: NavItem[] };
 
 // Sidebar groups from the 2026-09-13 mockups, in one order on every page so
@@ -12,7 +13,7 @@ export type NavGroup = { heading: string; items: NavItem[] };
 // officer tools sit under /officer/ (#1100).
 export function navGroups(
   base: { team: string; guild: string },
-  show: { officer: boolean; newsUnread?: boolean }
+  show: { officer: boolean; newsUnread?: boolean; liveCount?: number }
 ): NavGroup[] {
   const groups: NavGroup[] = [
     {
@@ -20,7 +21,7 @@ export function navGroups(
       items: [
         { label: 'Guild home', icon: 'home', to: base.guild, end: true },
         { label: 'BoE sales', icon: 'coin', to: `${base.guild}/boe` },
-        { label: 'Streams', icon: 'tv', to: `${base.guild}/streams` },
+        { label: 'Streams', icon: 'tv', to: `${base.guild}/streams`, live: show.liveCount ?? 0 },
         { label: 'News', icon: 'news', to: `${base.guild}/news`, mark: show.newsUnread ?? false }
       ]
     },

@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |      6 h 55 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     22 h 54 m |
-| **All revamp work**                | **36 h 44 m** |
+| Revamp 2: public pages             |     23 h 24 m |
+| **All revamp work**                | **37 h 14 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -120,6 +120,12 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 12:35-12:45 PM  | Guild bank ledger and Rex's addon export (#1263)                      | Planning |    10 m | ~8 m build, ~2 m Kat            | Guild-level gold and sales free, per-team gold in and out a plan feature. Read Guild Bank Ledger v0.39.14 for what an upload needs and filed the export request on Rex's repo (guild-bank-ledger#186). |
 | 12:45-1:05 PM   | Plan names and guild tiers on Patreon                                 | Planning |    20 m | ~12 m build, ~8 m Kat           | Suggested raid-difficulty names (Normal, Heroic, Mythic, Cutting Edge) and "plans" rather than "tiers" on the site. Kat set up the team tiers on Patreon; guild plans need no matching tier, only round guild amounts, since the hub adds pledges up. |
 | 2:40-3:25 PM    | Revamp triage: closed issues, linked milestones, this log             | Planning |    45 m | ~30 m build, ~15 m Kat deciding | Closed #1017 and #1057 (the new app replaces them), #290 (shipped; leftovers to #1046 and #1102) and #1045 (answered by #1114, #1225, #1226, #1264, #1259). Closed the old Website Revamp milestone. Linked 27 issues from Season, Discord notifications, Identity, App delivery and CI and two officer milestones to the revamp with `revamp-3` / `revamp-4` labels, due dates and a comment on each, without moving them. |
+
+### 2026-09-21
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Notes |
+| --------- | ---- | ----- | ------: | ----------- | ----- |
+| 6:35-7:05 PM | Streams sidebar live-count badge (#1102) | Revamp 2 (#1102) | 30 m | build; Kat review not yet counted | Badge on the Streams nav item, same cached read as the page; times are estimated, no transcript timestamps. |
 
 ## Not counted (same sessions, not revamp)
 

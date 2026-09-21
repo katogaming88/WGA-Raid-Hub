@@ -49,3 +49,7 @@ export function streamDirectory(rows: StreamerRow[], teamNames: Map<number, stri
   }
   return { live, offline };
 }
+
+// How many the Streams page lists as live: the sidebar badge (#1102) says the
+// same number the page's "Live now" section holds.
+export const liveCount = (rows: StreamerRow[]): number => streamDirectory(rows, new Map()).live.length;

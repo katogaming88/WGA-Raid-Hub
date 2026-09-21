@@ -22,6 +22,8 @@ import { navGroups } from './nav';
 import { TeamSwitcher } from './TeamSwitcher';
 import { StreamWidget } from '../streams/StreamWidget';
 import { hasUnread } from '../news/news';
+import { liveCount } from '../streams/directory';
+import { useGuildStreamers } from '../streams/StreamWidget';
 import { useNews, useNewsSeen } from '../news/useNews';
 import type { RouteHandle } from '../routes';
 import './layout.css';
@@ -65,11 +67,15 @@ export function AppShell() {
   // A guild page has no team of its own, so its team links and Officer group
   // follow the team those links go to.
   const navTeam = currentTeam ?? teams.find((t) => t.key === navTeamKey);
+  // The same cached read as the Streams page and the floating panel.
+  const teamIds = teams.map((t) => t.id);
+  const streamers = useGuildStreamers(teamIds);
   const groups = navGroups(
     { team: `/g/${guildKey}/t/${navTeamKey}`, guild: `/g/${guildKey}` },
     {
       officer: can(access.data, 'viewOfficerTools', navTeam?.id),
-      newsUnread: news.isSuccess && hasUnread(news.data, newsSeen)
+      newsUnread: news.isSuccess && hasUnread(news.data, newsSeen),
+      liveCount: streamers.isSuccess ? liveCount(streamers.data) : 0
     }
   );
 
@@ -141,7 +147,7 @@ export function AppShell() {
         <AltsPickerProvider>
           <ConnectPrompt />
           <Outlet />
-          {currentTeam && <StreamWidget teamId={currentTeam.id} teamIds={teams.map((t) => t.id)} />}
+          {currentTeam && <StreamWidget teamId={currentTeam.id} teamIds={teamIds} />}
         </AltsPickerProvider>
       </AddressProvider>
     );
@@ -185,11 +191,18 @@ export function AppShell() {
                       to={item.to}
                       end={item.end ?? false}
                       className="nav-item"
-                      aria-label={item.mark ? `${item.label}, new` : undefined}
+                      aria-label={
+                        item.mark ? `${item.label}, new` : item.live ? `${item.label}, ${item.live} live` : undefined
+                      }
                     >
                       <Icon name={item.icon} />
                       <span>{item.label}</span>
                       {item.mark && <span className="nav-mark" aria-hidden="true" />}
+                      {!!item.live && (
+                        <span className="count-badge" aria-hidden="true">
+                          {item.live}
+                        </span>
+                      )}
                     </NavLink>
                   </li>
                 ))}

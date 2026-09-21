@@ -190,6 +190,11 @@
   background: var(--badge);
 }
 
+/* A count behind the item (Streams): the same badge, pushed to the right. */
+.nav-item .count-badge {
+  margin-left: auto;
+}
+
 /* The current page needs more than a background tint: in light mode the tint
    is close to the sidebar itself (Kat, 2026-09-13). The brand bar on the left
    carries the state at 3:1 or better in both modes. */
