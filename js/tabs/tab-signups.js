@@ -1,33 +1,41 @@
+// The switch is per tier (#939): this toggle controls the tier the signup
+// season names, and has nothing to open until one is set on the Season tab.
 function renderSignupToggle() {
   var badge = document.getElementById('signupStatusBadge');
   var btn = document.getElementById('signupToggleBtn');
+  var tierEl = document.getElementById('signupToggleTier');
   if (!badge || !btn) return;
-  var open = !!(DATA && DATA.signupsOpen);
+  var code = signupSeasonCode();
+  var open = signupsOpen();
   badge.textContent = open ? 'OPEN' : 'CLOSED';
   badge.className = 'signup-status-badge ' + (open ? 'signup-status-open' : 'signup-status-closed');
   btn.textContent = open ? 'Close Signups' : 'Open Signups';
+  btn.disabled = !code;
+  if (tierEl) {
+    tierEl.textContent = code
+      ? 'Controls signups for ' + seasonDisplayName(code) + '.'
+      : 'Set the signup season on the Season tab first.';
+  }
 }
 
 function toggleSignupsOpen() {
-  setSignupsOpen(!(DATA && DATA.signupsOpen));
+  setSignupsOpen(!signupsOpen());
 }
 
 function setSignupsOpen(open) {
   var btn = document.getElementById('signupToggleBtn');
+  var code = signupSeasonCode();
+  if (!code) return;
   if (btn) {
     btn.disabled = true;
     btn.textContent = 'Saving...';
   }
 
-  saveTeamSetting({ signupsOpen: open }, true)
+  setTeamSeasonSwitch(code, { p_signups_open: open })
     .then(function () {
-      if (btn) btn.disabled = false;
-      if (DATA) DATA.signupsOpen = open;
-      writeAuditLog(open ? 'Signups Opened' : 'Signups Closed', null, null, null);
       renderSignupToggle();
     })
     .catch(function () {
-      if (btn) btn.disabled = false;
       renderSignupToggle();
     });
 }

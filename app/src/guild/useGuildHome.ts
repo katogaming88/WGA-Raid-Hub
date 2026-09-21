@@ -1,7 +1,7 @@
 import { readAll, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import { isoDate } from '../calendar/nights';
-import type { AttentionCounts, OfficerBio, TeamData, TeamSettingsRow } from './guild';
+import type { AttentionCounts, OfficerBio, TeamData, TeamSeasonRow, TeamSettingsRow } from './guild';
 
 // Guild home's reads (#1102). Each covers every team in one request rather
 // than one request per team card.
@@ -16,13 +16,15 @@ export function useTeamCardData(teamIds: number[], today: Date) {
   return useSupabaseQuery<TeamData>(
     ['guild-team-cards', teamIds, from],
     async (client) => {
-      const [settings, progress, schedule, changes] = await Promise.all([
+      const [settings, seasons, progress, schedule, changes] = await Promise.all([
         client
           .from('team_settings')
           .select(
-            'team_id, signups_open:config->signupsOpen, logs:config->externalLinks->>warcraftLogsUrl, raids:config->raidProgression'
+            'team_id, signup_season:config->>activeSignupSeason, logs:config->externalLinks->>warcraftLogsUrl, raids:config->raidProgression'
           )
           .in('team_id', teamIds),
+        // One row per team and tier an officer has touched (#939).
+        client.from('team_seasons').select('team_id, season_code, signups_open').in('team_id', teamIds),
         client
           .from('team_raid_progress')
           .select(
@@ -42,7 +44,7 @@ export function useTeamCardData(teamIds: number[], today: Date) {
           .lte('raid_date', to)
           .order('raid_date')
       ]);
-      const error = settings.error ?? progress.error ?? schedule.error ?? changes.error;
+      const error = settings.error ?? seasons.error ?? progress.error ?? schedule.error ?? changes.error;
       if (error) return { data: null, error };
       // A few hundred rows across the guild, paged anyway.
       const roles = await readAll<TeamData['roles'][number]>((start, end) =>
@@ -58,6 +60,7 @@ export function useTeamCardData(teamIds: number[], today: Date) {
       return {
         data: {
           settings: (settings.data ?? []) as unknown as TeamSettingsRow[],
+          seasons: (seasons.data ?? []) as TeamSeasonRow[],
           progress: (progress.data ?? []) as unknown as TeamData['progress'],
           schedule: schedule.data ?? [],
           changes: changes.data ?? [],

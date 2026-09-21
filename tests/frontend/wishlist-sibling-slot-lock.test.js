@@ -46,7 +46,8 @@ function makeSandbox(existingPrefs) {
     itemSlots: { 'Ring A': 'Finger' },
     itemPlaceholders: {},
     itemIds: { 'Ring A': 1 },
-    wishlistOpen: true
+    seasonName: 'Midnight Season 2',
+    teamSeasons: [{ season_code: 'MID2', wishlist_open: true }]
   };
   sandbox._wishlistPlayerId = 11;
   sandbox._wishlistPlayerNameRealm = 'Kat-Illidan';

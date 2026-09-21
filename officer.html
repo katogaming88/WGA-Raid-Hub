@@ -349,12 +349,14 @@
                 <div id="help-wishlist-toggle" class="help-tip">
                   Open to let raiders tag/edit their own wishlist. Close it (e.g. right before generating priority
                   order for the night) so the list can't shift mid-decision -- raiders still see their existing tags,
-                  read-only, while closed.
+                  read-only, while closed. The switch is per season: it controls the season shown in Season View
+                  on the Season tab, else the live season, and each season keeps its own setting.
                 </div>
                 <div style="margin-top:1rem;">
                   <button class="btn btn-muted" id="wishlistToggleBtn" onclick="toggleWishlistOpen()">Open
                     Wishlist Editing</button>
                 </div>
+                <p class="signup-officer-note" id="wishlistToggleTier"></p>
                 <p class="signup-officer-note">Separate from the BiS Lists feature flag -- this only pauses editing, it doesn't hide the tab.</p>
               </div>
               <div id="bisContainer"></div>
@@ -487,7 +489,8 @@
                 </div>
                 <div id="help-signups" class="help-tip">
                   Open signups to show the Sign Up button on the landing page for roster members to declare their
-                  class/spec for the season. Close it when signup collection is done.<br>
+                  class/spec for the season. Close it when signup collection is done. The switch is per season: it
+                  controls the signup season set on the Season tab, and each season keeps its own setting.<br>
                   Submitted signups appear in the queue below -- <strong>Approve</strong> moves them to the Pending
                   Roster sub-tab; <strong>Deny</strong> marks them rejected. A player who re-submits will overwrite
                   their existing pending entry.<br>
@@ -498,6 +501,7 @@
                 <div style="margin-top:1rem;">
                   <button class="btn btn-muted" id="signupToggleBtn" onclick="toggleSignupsOpen()">Open Signups</button>
                 </div>
+                <p class="signup-officer-note" id="signupToggleTier"></p>
                 <p class="signup-officer-note">Toggling signups shows or hides the Sign Up button for applicants.</p>
               </div>
               <div id="signupsResponsesContainer"></div>

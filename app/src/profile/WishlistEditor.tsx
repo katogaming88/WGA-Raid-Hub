@@ -34,6 +34,9 @@ export function WishlistEditor({
   const catalog = useCatalog();
   const zones = useRaidZones();
   const planned = season.isSuccess && settings.isSuccess ? editorSeason(settings.data.view, season.data) : null;
+  // Editing is open per tier (#939): the switch for the tier the editor is
+  // scoped to, which is the tier a pick is stamped with.
+  const open = planned?.code != null && settings.isSuccess && settings.data.openSeasons.includes(planned.code);
   const tokens = useSeasonTierTokens(planned?.code ?? null);
   // Not on a phone or tablet, where a stray tap marks the wrong item.
   const touch = useTouchScreen();
@@ -44,7 +47,7 @@ export function WishlistEditor({
         BiS or Pass by slot
       </h2>
       <DataState query={bothQueries(bothQueries(season, settings), bothQueries(picks, catalog))} label="the wishlist">
-        {([[, s], [p, c]]) => (
+        {([, [p, c]]) => (
           <DataState query={bothQueries(zones, tokens)} label="the wishlist">
             {([z, t]) => (
               <Editor
@@ -63,8 +66,8 @@ export function WishlistEditor({
                 }}
                 teamId={teamId}
                 playerId={player.id}
-                editable={own && (s.open || player.wishlist_allowed) && !touch}
-                closed={own && !s.open && !player.wishlist_allowed}
+                editable={own && (open || player.wishlist_allowed) && !touch}
+                closed={own && !open && !player.wishlist_allowed}
                 touch={own && touch}
               />
             )}

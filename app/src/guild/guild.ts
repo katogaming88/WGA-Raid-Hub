@@ -13,6 +13,7 @@ import {
 } from '../calendar/calendar';
 import { isoDate } from '../calendar/nights';
 import { raidCards, type ProgressRow, type SettingsRaid } from '../home/progression';
+import { seasonCode } from '../profile/profile';
 import type { StreamerRow } from '../streams/streams';
 
 // ---------------------------------------------------------------------------
@@ -53,9 +54,17 @@ export function guildIntro(teamCount: number, realm: string | null): string {
 // What Guild home reads from each team's settings.
 export type TeamSettingsRow = {
   team_id: number;
-  signups_open: boolean | null;
+  signup_season: string | null;
   logs: string | null;
   raids: SettingsRaid[] | null;
+};
+
+// A team's signups switch for one tier (#939): the team_seasons row. No row
+// for a tier means closed.
+export type TeamSeasonRow = {
+  team_id: number;
+  season_code: string;
+  signups_open: boolean;
 };
 
 export type Pip = 'mythic' | 'heroic' | 'none';
@@ -77,6 +86,7 @@ export type TeamInput = { id: number; key: string; name: string };
 
 export type TeamData = {
   settings: TeamSettingsRow[];
+  seasons: TeamSeasonRow[];
   progress: (ProgressRow & { team_id: number })[];
   schedule: (ScheduleRule & { team_id: number })[];
   changes: (ScheduleChange & { team_id: number })[];
@@ -140,14 +150,18 @@ export function teamCards(teams: TeamInput[], data: TeamData, myTeamIds: Set<num
     const own = <T extends { team_id: number }>(rows: T[]) => rows.filter((r) => r.team_id === team.id);
     const settings = own(data.settings)[0];
     const rules = own(data.schedule);
+    // The tier the team is taking signups for, and its switch (#939): the row
+    // submit_season_signup() checks, so the link never points at a closed
+    // form. Signups fail closed: a Sign up link into a closed form is worse
+    // than none (js/guild.js).
+    const signupCode = settings?.signup_season ? seasonCode(settings.signup_season) : null;
+    const signupRow = signupCode ? own(data.seasons).find((r) => r.season_code === signupCode) : undefined;
     return {
       id: team.id,
       key: team.key,
       name: team.name,
       mine: myTeamIds.has(team.id),
-      // Signups fail closed: a Sign up link into a closed form is worse than
-      // none (js/guild.js).
-      signup: settings?.signups_open === true,
+      signup: signupRow?.signups_open === true,
       logs: settings?.logs || null,
       schedule: scheduleLine(rules),
       next: nextRaid(rules, own(data.changes), today),

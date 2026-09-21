@@ -60,13 +60,17 @@ function builder(result) {
 }
 
 // Every team open for signups, matching prod's shape closely enough that a
-// test which cares about one flag does not have to restate the rest.
+// test which cares about one flag does not have to restate the rest. The
+// switch is a team_seasons row for the tier the team's signup season names
+// (#939), so an open team is a config naming the tier plus that tier's row.
+const SIGNUP_SEASON = { activeSignupSeason: 'Midnight Season 2' };
 const ALL_OPEN = [
-  { team_id: 1, config: { signupsOpen: true } },
-  { team_id: 2, config: { signupsOpen: true } },
-  { team_id: 3, config: { signupsOpen: true } },
+  { team_id: 1, config: SIGNUP_SEASON },
+  { team_id: 2, config: SIGNUP_SEASON },
+  { team_id: 3, config: SIGNUP_SEASON },
   { team_id: 4, config: {} }
 ];
+const ALL_OPEN_SEASONS = [1, 2, 3].map((team_id) => ({ team_id, season_code: 'MID2', signups_open: true }));
 
 function makeSandbox({
   session = null,
@@ -75,6 +79,7 @@ function makeSandbox({
   maintenance = null,
   storedTeam = null,
   teamSettings = ALL_OPEN,
+  teamSeasons = ALL_OPEN_SEASONS,
   teamSettingsError = null,
   streamers = null,
   // Which of the three access RPCs answer true (#774).
@@ -151,6 +156,9 @@ function makeSandbox({
       if (table === 'team_settings') {
         if (teamSettingsError) return builder({ data: null, error: teamSettingsError });
         return builder({ data: teamSettings, error: null });
+      }
+      if (table === 'team_seasons') {
+        return builder({ data: teamSeasons, error: null });
       }
       if (memberError) return builder({ data: null, error: memberError });
       return builder({ data: memberRows, error: null });
@@ -464,20 +472,30 @@ describe('team settings, read once and shared (#778)', () => {
     expect(Object.keys(sandbox.guildTeamSettings()).length).toBe(4);
   });
 
-  it('reads signupsOpen per team', async () => {
+  it('reads the signups switch per team from the row for its signup season (#939)', async () => {
     const { sandbox } = makeSandbox({
       teamSettings: [
-        { team_id: 1, config: { signupsOpen: true } },
-        { team_id: 2, config: { signupsOpen: false } },
-        { team_id: 3, config: {} }
+        { team_id: 1, config: SIGNUP_SEASON },
+        { team_id: 2, config: SIGNUP_SEASON },
+        { team_id: 3, config: SIGNUP_SEASON },
+        { team_id: 4, config: {} }
+      ],
+      teamSeasons: [
+        { team_id: 1, season_code: 'MID2', signups_open: true },
+        // A row for a tier that is not the team's signup season does not open
+        // the card: the gate reads the same row the card does.
+        { team_id: 2, season_code: 'MID1', signups_open: true },
+        { team_id: 4, season_code: 'MID2', signups_open: true }
       ]
     });
     await sandbox.bootGuildPage();
     const s = sandbox.guildTeamSettings();
     expect(s.phoenix.signupsOpen).toBe(true);
     expect(s.hellfire.signupsOpen).toBe(false);
-    // Unset means closed. Unlike a feature flag, where unset means enabled.
+    // No row means closed. Unlike a feature flag, where unset means enabled.
     expect(s.immolation.signupsOpen).toBe(false);
+    // A row with no signup season named to match it is not enough either.
+    expect(s.wrathless.signupsOpen).toBe(false);
   });
 
   it('reads the boe flag with the feature-flag rule, where unset means enabled', async () => {
@@ -520,9 +538,13 @@ describe('team cards (#778)', () => {
   it('shows Sign up only for a team with signups open', async () => {
     const { sandbox, els } = makeSandbox({
       teamSettings: [
-        { team_id: 1, config: { signupsOpen: true } },
-        { team_id: 2, config: { signupsOpen: false } },
-        { team_id: 3, config: { signupsOpen: false } }
+        { team_id: 1, config: SIGNUP_SEASON },
+        { team_id: 2, config: SIGNUP_SEASON },
+        { team_id: 3, config: SIGNUP_SEASON }
+      ],
+      teamSeasons: [
+        { team_id: 1, season_code: 'MID2', signups_open: true },
+        { team_id: 2, season_code: 'MID2', signups_open: false }
       ]
     });
     await sandbox.bootGuildPage();

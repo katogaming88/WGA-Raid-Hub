@@ -180,20 +180,30 @@ export function useSelfReceived(playerId: number) {
 
 // Wishlist editor reads and writes (#868 part 3).
 
-// Whether the team's wishlist is open for editing, and the season an officer
-// is planning for, if they set one: a season code, the form raid_zones.season
-// holds (#933).
+// The season an officer is planning for, if they set one (a season code, the
+// form raid_zones.season holds, #933), and the tiers the team has wishlist
+// editing open for (#939: one team_seasons row per tier; no row means closed).
 export function useWishlistSettings(teamId: number) {
-  return useSupabaseQuery<{ open: boolean; view: string | null }>(['wishlist-settings', teamId], async (client) => {
-    const { data, error } = await client
-      .from('team_settings')
-      .select('open:config->>wishlistOpen, view:config->>seasonView')
-      .eq('team_id', teamId)
-      .maybeSingle();
-    if (error) return { data: null, error };
-    const row = (data ?? {}) as { open?: string | null; view?: string | null };
-    return { data: { open: row.open === 'true', view: row.view?.trim() || null }, error: null };
-  });
+  return useSupabaseQuery<{ view: string | null; openSeasons: string[] }>(
+    ['wishlist-settings', teamId],
+    async (client) => {
+      const [settings, seasons] = await Promise.all([
+        client.from('team_settings').select('view:config->>seasonView').eq('team_id', teamId).maybeSingle(),
+        client.from('team_seasons').select('season_code, wishlist_open').eq('team_id', teamId)
+      ]);
+      const error = settings.error ?? seasons.error;
+      if (error) return { data: null, error };
+      const row = (settings.data ?? {}) as { view?: string | null };
+      const rows = (seasons.data ?? []) as { season_code: string; wishlist_open: boolean }[];
+      return {
+        data: {
+          view: row.view?.trim() || null,
+          openSeasons: rows.filter((r) => r.wishlist_open === true).map((r) => r.season_code)
+        },
+        error: null
+      };
+    }
+  );
 }
 
 // Every class's tier pieces for a season: the editor offers the token, not the

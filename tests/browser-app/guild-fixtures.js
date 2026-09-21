@@ -1,4 +1,4 @@
-import { TEAMS, TEAM_SETTINGS, STREAMS, OFFICER_BIOS } from '../behavior/guild.js';
+import { TEAMS, TEAM_SETTINGS, TEAM_SEASONS, STREAMS, OFFICER_BIOS } from '../behavior/guild.js';
 
 // Guild home's reads (#1102) as the new app asks for them, shared by
 // guild.test.js and the accessibility states in app.test.js.
@@ -8,13 +8,14 @@ export const GUILD_TEAMS = TEAMS;
 // The app reads each team's settings as named fields, not the whole config.
 const SETTINGS = TEAM_SETTINGS.map((r) => ({
   team_id: r.team_id,
-  signups_open: r.config.signupsOpen,
+  signup_season: r.config.activeSignupSeason,
   logs: r.config.externalLinks.warcraftLogsUrl ?? null,
   raids: []
 }));
 
 export const GUILD_TABLES = {
   team_settings: SETTINGS,
+  team_seasons: TEAM_SEASONS,
   streamers: STREAMS,
   site_settings: [{ guild_officer_bios: OFFICER_BIOS }],
   players: [

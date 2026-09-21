@@ -287,7 +287,7 @@ function showRosterSubTab(tab) {
 
 function updateSignupNavItem() {
   var el = document.getElementById('navSignup');
-  if (el) el.style.display = DATA && DATA.signupsOpen ? '' : 'none';
+  if (el) el.style.display = signupsOpen() ? '' : 'none';
 }
 
 // Hidden until this team has actually archived a season (#477) -- a brand

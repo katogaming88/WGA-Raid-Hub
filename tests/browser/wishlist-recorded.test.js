@@ -17,7 +17,7 @@ import {
 // app's wishlist editor can be checked against the same expectations
 // (tests/behavior/wishlist.js).
 
-const settings = (open) =>
+const settings = () =>
   fixture('team_settings', []).map((row) => ({
     ...row,
     config: {
@@ -25,10 +25,13 @@ const settings = (open) =>
       seasonName: SEASON.name,
       seasonStart: SEASON.start,
       seasonEnd: SEASON.end,
-      seasonView: null,
-      wishlistOpen: open
+      seasonView: null
     }
   }));
+
+// Wishlist editing is a switch per tier (#939): the team_seasons row for the
+// tier the wishlist is stamped with, here the live season.
+const teamSeasons = (open) => [{ team_id: 1, season_code: SEASON.code, wishlist_open: open }];
 
 function openWishlist({ open = true, allowed = false } = {}) {
   const viewer = VIEWERS.torbjorn;
@@ -45,7 +48,8 @@ function openWishlist({ open = true, allowed = false } = {}) {
     {
       players: [own],
       team_members: [{ id: viewer.teamMember, role: viewer.role, name_realm: own.name_realm }],
-      team_settings: settings(open),
+      team_settings: settings(),
+      team_seasons: teamSeasons(open),
       attendance: [],
       rclc_loot: [],
       items: ITEMS,

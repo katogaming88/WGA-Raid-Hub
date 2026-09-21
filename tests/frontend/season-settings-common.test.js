@@ -136,13 +136,15 @@ describe('applyTeamSettingsToData', () => {
       raidProgression: [{ name: 'Raid' }],
       trialWeeks: 2,
       trialAttend: 95,
-      signupsOpen: true,
       bisSubmissionsOpen: false,
       mPlusExclusionsOpen: true,
       seasonView: 'MID2',
       signupSeason: 'S2',
       extraField: 'untouched'
     });
+    // The two switches live on team_seasons since #939; a key left behind in
+    // config is not a setting any more and is not copied.
+    expect(data.signupsOpen).toBeUndefined();
   });
 
   it('leaves DATA fields untouched when config is null (falls back to Apps Script values)', () => {
