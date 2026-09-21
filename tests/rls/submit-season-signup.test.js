@@ -15,10 +15,11 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import { pool, withTxn, SIGNUP_OWNER_T1, RLS_DENIED } from './helpers.js';
 
-// supabase/seed.sql gives team 1 an activeSignupSeason and no signupsOpen key,
-// so the flag is set per test rather than assumed.
-const openSignups = (q) =>
-  q(`update public.team_settings set config = config || '{"signupsOpen":true}'::jsonb where team_id = 1`);
+// supabase/seed.sql gives team 1 an activeSignupSeason and no team_seasons
+// row (#939: no row means closed), so the switch is set per test rather than
+// assumed. The row is the tier activeSignupSeason names, 'seed-season'.
+const openSignups = (q, open = true) =>
+  q('insert into public.team_seasons (team_id, season_code, signups_open) values (1, $1, $2)', ['seed-season', open]);
 
 // classes_specs id 1 is the only seeded row (Mage/Frost).
 const submit = (asCaller, uid, overrides = {}) => {
@@ -67,8 +68,18 @@ describe('submit_season_signup', () => {
     });
   });
 
-  it("raises when the team's signups are closed", async () => {
-    await withTxn(async ({ asUser }) => {
+  it("raises when the team's signups are closed: no row for the tier, or a row with the switch off", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await expect(submit(asUser, SIGNUP_OWNER_T1)).rejects.toThrow(/signups are not open/);
+      await openSignups(q, false);
+      await expect(submit(asUser, SIGNUP_OWNER_T1)).rejects.toThrow(/signups are not open/);
+    });
+  });
+
+  it('raises when the team has no active signup season, even with a row open for another tier', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await openSignups(q);
+      await q(`update public.team_settings set config = config - 'activeSignupSeason' where team_id = 1`);
       await expect(submit(asUser, SIGNUP_OWNER_T1)).rejects.toThrow(/signups are not open/);
     });
   });
