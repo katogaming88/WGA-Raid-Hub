@@ -92,6 +92,10 @@ describe('generate_priority_order wishlist integration', () => {
 
   it('Pass excludes the raider from the suggested order entirely', async () => {
     await withTxn(async ({ q, asUser }) => {
+      // seed.sql's self_received_requests row 2 approves player 1 for item 1
+      // at Hero, which drops them from the list on its own; without this
+      // delete the case passes whatever the rule under test does.
+      await q('delete from public.self_received_requests where id = 2');
       await seedScoring(q, 1, 100, 100);
       await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'pass')");
       const res = await generate(asUser, 1);
@@ -132,6 +136,10 @@ describe('generate_priority_order slot-aware wishlist matching (#623/#673 follow
 
   it("'pass' tagged on an explicit-slot row still excludes the raider", async () => {
     await withTxn(async ({ q, asUser }) => {
+      // seed.sql's self_received_requests row 2 approves player 1 for item 1
+      // at Hero, which drops them from the list on its own; without this
+      // delete the case passes whatever the rule under test does.
+      await q('delete from public.self_received_requests where id = 2');
       await seedScoring(q, 1, 100, 100);
       // Pass on an explicit-slot row excludes them, same as the legacy
       // slot=null case above.
@@ -202,6 +210,10 @@ describe('generate_priority_order slot-aware wishlist matching (#623/#673 follow
 describe('generate_priority_order wishlist status is a hard tier, not just a score multiplier', () => {
   it('a lower-scored BiS raider still outranks a higher-scored Good raider', async () => {
     await withTxn(async ({ q, asUser }) => {
+      // seed.sql's self_received_requests row 2 approves player 1 for item 1
+      // at Hero, which drops them from the list on its own; without this
+      // delete the case passes whatever the rule under test does.
+      await q('delete from public.self_received_requests where id = 2');
       await seedScoring(q, 1, 20, 20); // player 1: BiS, low score
       await seedScoring(q, 2, 100, 100); // player 2: Good, high score
       await q(
@@ -210,6 +222,8 @@ describe('generate_priority_order wishlist status is a hard tier, not just a sco
 
       const res = await generate(asUser, 1);
       const order = res.rows.map((r) => r.player_id);
+      expect(order).toContain(1);
+      expect(order).toContain(2);
       expect(order.indexOf(1)).toBeLessThan(order.indexOf(2));
     });
   });

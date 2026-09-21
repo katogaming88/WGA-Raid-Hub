@@ -209,7 +209,7 @@ Writes go through `saveTeamSetting()` (`js/common.js`), which calls the `set_tea
 
 ### `seasonHistory`
 
-- **Writers.** `archive_current_season()` appends an entry (`name`, `start`, `end`, `raids` with their progress, the BiS and roster snapshots). `clearSeasonHistorySupabase()` (`js/tabs/tab-admin.js`) resets it to `[]`. `unarchive_season()` reads an entry and leaves the array as it is.
+- **Writers.** `archive_current_season()` appends an entry (`name`, `start`, `end`, `raids` with their progress, the roster snapshot; entries written before #935 also carry a `bis` snapshot). `clearSeasonHistorySupabase()` (`js/tabs/tab-admin.js`) resets it to `[]`. `unarchive_season()` reads an entry and leaves the array as it is.
 - **Readers.** `unarchive_season()`; `renderSeasonHistory()` and `fetchSeasonPerf()` (`js/tabs/tab-season.js`); `buildSeasonRecap()` and `updateHistoryNavItem()` (`js/roster.js`); `populateSeasonSelector()` (`js/officer.js`); `getSeasonDateRange()`; `loadAdminProperties()`.
 - **Meaning.** Cycle: the team's past cycles, one array entry each. **Next tier, nothing changed.** One more entry per team that archives; #939 replaces the array with rows.
 

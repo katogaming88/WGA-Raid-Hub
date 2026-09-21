@@ -64,8 +64,6 @@ begin
   ),
   candidates as (
     select player_id from wishlist where status <> 'pass'
-    except
-    select player_id from wishlist where status = 'pass'
   ),
   -- wow_item_id space, not items.id (20260913004747). Null entries drop out
   -- on their own: an IN-list containing only null matches nothing. The

@@ -346,7 +346,7 @@ Player-submitted claims that they received a drop (self-reported loot tracking, 
 
 ## `bis_requests`
 
-Player requests to be added to the BiS list for a specific item (officer-approval workflow).
+Player requests to change the link to their BiS list (officer-approval workflow).
 
 | Column            | Type        | Purpose                                                  |
 | ----------------- | ----------- | -------------------------------------------------------- |
@@ -481,7 +481,7 @@ Both say what a person may do, but at different scopes. `team_members` is team-s
 
 These two tables are structurally nearly identical (team_id, player_id, item FK, submitted_at, status) but model two distinct officer workflows:
 
-- `self_received_requests`: "I received a drop -- please mark it obtained on my BiS list." The item FK points to `items`.
+- `self_received_requests`: "I received an item outside the guild's raids -- record it." The item FK points to `items`.
 - `bis_requests`: "Please change the link for my BiS list." It carries the new link, not an item.
 
 They are similar enough that they could be merged with a `type` discriminator, but keeping them separate gives each its own RLS, officer queue, and history without conditional logic.

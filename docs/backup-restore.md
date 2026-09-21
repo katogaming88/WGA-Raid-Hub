@@ -223,6 +223,8 @@ As of 2026-09-18, [#1216](https://github.com/katogaming88/WGA-Raid-Hub/issues/12
 
 Same day, [#1244](https://github.com/katogaming88/WGA-Raid-Hub/issues/1244) added `team_lineup_settings` (52 base tables), classified in-app-only above: a team's own role-target counts, no other source. Its only FK is `team_id` to `teams`, already a restore root, so no new `auth.users` FK and no ordering change beyond restoring after `teams`. No `EMPTY_CHECK` floor: a team that has never set its targets has no row, which is a legitimate state (the app falls back to the 2/4 default), not data loss. No re-drill due.
 
+As of 2026-09-20, [#935](https://github.com/katogaming88/WGA-Raid-Hub/issues/935) dropped `bis_items` (51 base tables) and removed its line from the coverage map above. Its four rows belonged to archived players and nothing read them; no other table pointed at it.
+
 ## Ops notes
 
 - GitHub disables `schedule` workflows after 60 days without repo activity; any push re-enables them. Not a realistic risk while the project is active, but worth knowing if it ever goes dormant.

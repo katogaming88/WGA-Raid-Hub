@@ -13,7 +13,7 @@
 | track | text |  | true |  |  |  |
 | source | text |  | true |  |  |  |
 | note | text |  | true |  |  |  |
-| slot | text |  | true |  |  | BiS slot the request was raised against, mirroring bis_items.slot. Lets an approval target one row when the same item -- notably an is_placeholder source like M+ -- sits in several slots. Null on rows predating #386. |
+| slot | text |  | true |  |  | The slot row the raider reported the item for (#386). Read by the duplicate guard (#757) and the profile's own-row matching. Null on rows predating #386. |
 | updated_at | timestamp with time zone |  | true |  |  |  |
 | officer_notes | text |  | true |  |  |  |
 

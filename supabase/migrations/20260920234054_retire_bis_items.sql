@@ -30,10 +30,16 @@ drop table public.bis_items;
 
 drop function public.restrict_bis_items_update_to_obtained();
 
+-- self_received_requests.slot outlives the sync it was added for (#386): the
+-- duplicate guard (#757) and the profile's own-row matching read it.
+comment on column public.self_received_requests.slot is
+  'The slot row the raider reported the item for (#386). Read by the duplicate guard (#757) and the profile''s own-row matching. Null on rows predating #386.';
+
 -- generate_priority_order(): the wishlist is the only candidate source. The
--- bis CTE, its half of the candidate union and the has_bis_pick tier go;
--- every candidate now has a wishlist status, so the null-status branches of
--- wishlist_rank cannot fire and are gone with it.
+-- bis CTE, its half of the candidate union, the except that let a pass tag
+-- override a grid pick, and the has_bis_pick tier go; every candidate now has
+-- a wishlist status, so the null-status branches of wishlist_rank cannot fire
+-- and are gone with it.
 CREATE OR REPLACE FUNCTION public.generate_priority_order(p_team_id integer, p_season text, p_item_id integer, p_track text)
  RETURNS TABLE(player_id integer, name_realm text, role text, weighted_total numeric, status_label text, wishlist_status text)
  LANGUAGE plpgsql
@@ -96,8 +102,6 @@ begin
   ),
   candidates as (
     select player_id from wishlist where status <> 'pass'
-    except
-    select player_id from wishlist where status = 'pass'
   ),
   -- wow_item_id space, not items.id (20260913004747). Null entries drop out
   -- on their own: an IN-list containing only null matches nothing. The
