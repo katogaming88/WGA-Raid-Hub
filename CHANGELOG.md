@@ -12,6 +12,21 @@ answers to.
 
 ---
 
+## [3.148.3] - 2026-09-21
+
+### Project
+
+- The new app can report its errors to Sentry
+  ([#1161](https://github.com/katogaming88/WGA-Raid-Hub/issues/1161)). Every
+  failed read and write, and any error the page itself throws, goes there with
+  the place it happened, so a failure on a raider's browser can be seen without
+  asking them for a screenshot. It reports only where `VITE_SENTRY_DSN` is set
+  (the production and preview builds), never on a local dev server, and it is
+  off until that is set. Reports carry the signed-in account id and nothing
+  else about the person: addresses lose their query and fragment (a sign-in
+  return carries a code there), and no cookies or request headers are sent.
+  Readable stack traces from uploaded source maps are a follow-up.
+
 ## [3.148.2] - 2026-09-21
 
 ### Project
