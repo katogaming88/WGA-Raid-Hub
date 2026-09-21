@@ -174,6 +174,19 @@ describe('the Signups tab tier select (tab-signups.js)', () => {
     expect(els.signupSeasonSelect.value).toBe('MID1');
   });
 
+  it('offers an open tier the seasons read did not return, named from its code, so the toggle never acts on an unseen tier', () => {
+    const els = tabEls();
+    const s = loadSandbox({
+      els,
+      data: { seasons: [], teamSeasons: [{ season_code: 'MID2', signups_open: true, wishlist_open: false }] }
+    });
+    s.renderSignupToggle();
+    expect(els.signupSeasonSelect.innerHTML).toBe('<option value="MID2">Midnight Season 2</option>');
+    expect(els.signupSeasonSelect.value).toBe('MID2');
+    expect(els.signupToggleBtn.disabled).toBe(false);
+    expect(els.signupToggleBtn.textContent).toBe('Close Signups');
+  });
+
   it('disables the toggle and the select when the site has no tier yet', () => {
     const els = tabEls();
     const s = loadSandbox({ els, data: { seasons: [] } });

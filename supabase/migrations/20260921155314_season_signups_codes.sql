@@ -33,11 +33,20 @@
 -- change meant by "while signups for this season are still open": the two
 -- were the same fact by argument then, and are the same row now.
 --
+-- incoming_roster keeps approved rows on the tiers the team has a row for,
+-- open or closed, so the tentative roster stays on the public page between
+-- Close Signups and Push to Roster.
+--
 -- The three keys leave team_settings.config: activeSignupSeason, read by
 -- nothing after this file, and signupsOpen and wishlistOpen, read by nothing
 -- since #939 and left for this file to remove.
 
--- The column: names to codes, the null row to its day's tier, the key to code.
+-- The column: the key off first (it still references display_name, and a
+-- non-deferrable key is checked at the end of each statement, so the rewrite
+-- below would be refused on the production rows), names to codes, the null
+-- row to its day's tier, the key back on code.
+alter table public.season_signups drop constraint season_signups_season_fkey;
+
 update public.season_signups s
 set season = z.code
 from public.seasons z
@@ -47,7 +56,6 @@ update public.season_signups
 set season = public.current_season((submitted_at at time zone 'America/New_York')::date)
 where season is null;
 
-alter table public.season_signups drop constraint season_signups_season_fkey;
 alter table public.season_signups
   add constraint season_signups_season_fkey foreign key (season) references public.seasons(code);
 
@@ -324,9 +332,13 @@ begin
   return v_updated_id;
 end $$;
 
--- The view keeps approved rows on the tiers the team has open. Same columns
--- and the same bypass-RLS shape as 20260726104522 left it (#503 makes it a
--- function after this); only the season join moves.
+-- The view keeps approved rows on the tiers the team has taken signups for:
+-- the tiers it has a team_seasons row for, whichever way the switch is now.
+-- Not the open ones only: officers close signups and then push the approved
+-- rows onto the roster, and the tentative roster stays on the public page
+-- across that gap the way it did while the key named the season. Same
+-- columns and the same bypass-RLS shape as 20260726104522 left it (#503
+-- makes it a function after this); only the season join moves.
 create or replace view public.incoming_roster as
   select s.id as signup_id,
          s.team_id,
@@ -336,7 +348,7 @@ create or replace view public.incoming_roster as
          cs.role,
          s.swap_from_name_realm
   from public.season_signups s
-  join public.team_seasons ts on ts.team_id = s.team_id and ts.season_code = s.season and ts.signups_open
+  join public.team_seasons ts on ts.team_id = s.team_id and ts.season_code = s.season
   left join public.classes_specs cs on cs.id = coalesce(s.swap_class_spec_id, s.class_spec_id)
   where s.status = 'approved' and s.approved_player_id is null;
 

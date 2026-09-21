@@ -5,13 +5,28 @@
 // newest tier the team has open, else the current tier.
 var _signupTierCode = '';
 
-// The tiers the select offers, in DATA.seasons order (newest first).
+// The tiers the select offers, in DATA.seasons order (newest first): the
+// tiers that have not ended, plus any tier this team has open, so the tier
+// the toggle acts on is always one the officer can see, even when the
+// seasons read failed and the open tier has to be named from its code.
 function signupTierOptions() {
   var today = easternToday();
   var open = openSignupSeasonCodes();
-  return ((DATA && DATA.seasons) || []).filter(function (season) {
+  var known = ((DATA && DATA.seasons) || []).filter(function (season) {
     return !season.ends_at || season.ends_at >= today || open.indexOf(season.code) !== -1;
   });
+  var listed = known.map(function (season) {
+    return season.code;
+  });
+  return known.concat(
+    open
+      .filter(function (code) {
+        return listed.indexOf(code) === -1;
+      })
+      .map(function (code) {
+        return { code: code, display_name: seasonDisplayName(code) };
+      })
+  );
 }
 
 function signupTierCode() {

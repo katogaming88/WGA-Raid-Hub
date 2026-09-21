@@ -1,9 +1,11 @@
 // Read-path and column-safety assertions for incoming_roster (#499): a
 // public view over season_signups' approved-unpromoted rows, narrowed to
-// safe columns and scoped to the tiers the team has signups open for. Since
-// #934 that scope is the team's team_seasons row for the row's tier with
-// signups_open (#939): the seed carries no row, so each case opens its own
-// and the seeded approved signups surface only then. Each case runs in one
+// safe columns and scoped to the tiers the team has taken signups for. Since
+// #934 that scope is the team's team_seasons row for the row's tier (#939),
+// whichever way its switch is now: officers close signups and then push the
+// approved rows onto the roster, and the tentative roster stays up across
+// that gap. The seed carries no row, so each case makes its own and the
+// seeded approved signups surface only then. Each case runs in one
 // rolled-back transaction (helpers.js withTxn) so the row and the read share
 // a connection; the column cases keep queryAs, which needs no fixture.
 import { describe, it, expect, afterAll } from 'vitest';
@@ -15,8 +17,8 @@ const openSignups = (q, team = 1, season = 'seed-season', open = true) =>
 const countIncoming = async (asCaller, where) =>
   (await asCaller(`select count(*)::int as n from public.incoming_roster where ${where}`)).rows[0].n;
 
-describe('incoming_roster is visible to everyone, scoped to the tiers the team has open', () => {
-  it("anon sees the seeded approved signup for team 1 once the team's switch for its tier is on, and not before", async () => {
+describe('incoming_roster is visible to everyone, scoped to the tiers the team has taken signups for', () => {
+  it('anon sees the seeded approved signup for team 1 once the team has a row for its tier, and not before', async () => {
     await withTxn(async ({ q, asAnon }) => {
       expect(await countIncoming(asAnon, 'team_id = 1')).toBe(0);
       await openSignups(q);
@@ -56,8 +58,8 @@ describe('incoming_roster excludes officer-only columns', () => {
   });
 });
 
-describe('incoming_roster respects the switch per tier', () => {
-  it('a signup on a tier the team has not opened is excluded, appears when that tier opens, and leaves when it closes', async () => {
+describe('incoming_roster respects the row per tier', () => {
+  it('a signup on a tier the team has no row for is excluded, appears with the row, and stays when the switch turns off', async () => {
     await withTxn(async ({ q, asAnon }) => {
       await openSignups(q);
       // The tier this case stamps (#932): season_signups.season is a foreign key to seasons.
@@ -73,6 +75,8 @@ describe('incoming_roster respects the switch per tier', () => {
       await q(
         "update public.team_seasons set signups_open = false where team_id = 1 and season_code = 'incoming-roster-other-season'"
       );
+      expect(await countIncoming(asAnon, where)).toBe(1);
+      await q("delete from public.team_seasons where team_id = 1 and season_code = 'incoming-roster-other-season'");
       expect(await countIncoming(asAnon, where)).toBe(0);
     });
   });

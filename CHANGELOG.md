@@ -33,7 +33,9 @@ answers to.
   picked and check the team's `team_seasons` row for it (null takes the one
   open season, for browsers still on the previous bundle); an added signup
   stays editable while that switch is on; `incoming_roster` lists approved
-  signups on the seasons the team has open. `activeSignupSeason`,
+  signups on the seasons the team has taken signups for, open or closed, so
+  the tentative roster stays up between Close Signups and Push to Roster.
+  `activeSignupSeason`,
   `signupsOpen` and `wishlistOpen` are gone from `team_settings.config`
   (#934).
 

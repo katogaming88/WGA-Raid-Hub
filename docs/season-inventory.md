@@ -128,7 +128,7 @@ Retired with the table in #935's second PR (2026-09-20, `20260920234054_retire_b
 - **Format.** Name: whatever `activeSignupSeason` holds, which is free text.
 - **Meaning.** Cycle, the team's next one.
 - **Next tier, nothing changed.** Signups keep stamping the old name until an officer changes Signup Season; the roster page's incoming tab keys on the same value. Converts in #934.
-- **Converted in #934 (2026-09-21).** The code, referencing `seasons(code)`; the named rows converted through `seasons` and the one null row took the tier current on its submit date (`MID1`). The stamp is the tier the raider picked (`p_season`), which `submit_season_signup()` accepts only when the team's `team_seasons` row for it has `signups_open`; `get_own_signup()` takes the tier too; `update_own_signup()` keeps an added row editable while that switch is on; `incoming_roster` joins the row. The site and the app read the column through `seasonDisplayName()` / `seasonName()`. The column stays nullable, as `boe_items.season` did.
+- **Converted in #934 (2026-09-21).** The code, referencing `seasons(code)`; the named rows converted through `seasons` and the one null row took the tier current on its submit date (`MID1`). The stamp is the tier the raider picked (`p_season`), which `submit_season_signup()` accepts only when the team's `team_seasons` row for it has `signups_open`; `get_own_signup()` takes the tier too; `update_own_signup()` keeps an added row editable while that switch is on; `incoming_roster` joins the row, open or closed. The site and the app read the column through `seasonDisplayName()` / `seasonName()`. The column stays nullable, as `boe_items.season` did.
 
 ### `tier_token_map.season`
 
@@ -161,7 +161,7 @@ Every view is `security_invoker`; a view column is whatever base column it proje
 | `season_loot_pace.season` | `rclc_loot.season` | no | `loadLootPaceReport()` (`js/tabs/tab-reports.js`) |
 | `season_loot_pace.season_week` | weeks since the team's first award under that `rclc_loot.season` | no | `loadLootPaceReport()` |
 
-`incoming_roster` carries no season column but reads one: since #934 it keeps `season_signups` rows whose `season` is a tier the team has a `team_seasons` row open for (before that, rows whose `season` equalled the team's `activeSignupSeason`).
+`incoming_roster` carries no season column but reads one: since #934 it keeps `season_signups` rows whose `season` is a tier the team has a `team_seasons` row for, open or closed (before that, rows whose `season` equalled the team's `activeSignupSeason`).
 
 ## 4. `team_settings.config` keys (22)
 

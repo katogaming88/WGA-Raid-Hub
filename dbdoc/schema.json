@@ -3930,7 +3930,7 @@
           "nullable": true
         }
       ],
-      "def": "CREATE VIEW incoming_roster AS (\n SELECT s.id AS signup_id,\n    s.team_id,\n    s.signup_name_realm,\n    cs.class,\n    cs.spec,\n    cs.role,\n    s.swap_from_name_realm\n   FROM ((season_signups s\n     JOIN team_seasons ts ON (((ts.team_id = s.team_id) AND (ts.season_code = s.season) AND ts.signups_open)))\n     LEFT JOIN classes_specs cs ON ((cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id))))\n  WHERE ((s.status = 'approved'::text) AND (s.approved_player_id IS NULL))\n)",
+      "def": "CREATE VIEW incoming_roster AS (\n SELECT s.id AS signup_id,\n    s.team_id,\n    s.signup_name_realm,\n    cs.class,\n    cs.spec,\n    cs.role,\n    s.swap_from_name_realm\n   FROM ((season_signups s\n     JOIN team_seasons ts ON (((ts.team_id = s.team_id) AND (ts.season_code = s.season))))\n     LEFT JOIN classes_specs cs ON ((cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id))))\n  WHERE ((s.status = 'approved'::text) AND (s.approved_player_id IS NULL))\n)",
       "referenced_tables": [
         "public.season_signups",
         "public.team_seasons",
