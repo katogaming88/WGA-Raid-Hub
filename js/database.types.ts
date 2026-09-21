@@ -3540,10 +3540,6 @@ export type Database = {
         Returns: undefined
       }
       app_version: { Args: never; Returns: Json }
-      archive_current_season: {
-        Args: { p_roster_snapshot: Json; p_team_id: number }
-        Returns: Json
-      }
       archive_player: {
         Args: { p_detail: string; p_player_id: number; p_reason: string }
         Returns: string
@@ -3618,6 +3614,10 @@ export type Database = {
         Returns: {
           message_id: string
         }[]
+      }
+      close_season: {
+        Args: { p_roster_snapshot: Json; p_season: string; p_team_id: number }
+        Returns: Json
       }
       current_discord_id: { Args: never; Returns: string }
       current_season: { Args: { p_on?: string }; Returns: string }
@@ -4014,10 +4014,6 @@ export type Database = {
           status: string
           updated_at: string
         }[]
-      }
-      unarchive_season: {
-        Args: { p_index: number; p_team_id: number }
-        Returns: Json
       }
       update_own_signup: {
         Args: {

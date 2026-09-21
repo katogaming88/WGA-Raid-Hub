@@ -3699,6 +3699,28 @@ var ATTENDANCE_WEIGHTS_JS = {
   'No Show': 0.0
 };
 
+// Returns { start, end } date strings for one tier, or { start: null, end: null }
+// for a code nothing knows. A closed tier answers from its history entry
+// (its start is what the books were closed on); the live tier answers from
+// the typed Season Start and End (#1269 derives the start instead); any
+// other tier answers from the seasons row. What the roster snapshot a close
+// freezes is counted over (#938).
+function seasonDateRangeFor(seasonCode) {
+  if (!seasonCode) return { start: null, end: null };
+  var history = (DATA && DATA.seasonHistory) || [];
+  for (var i = 0; i < history.length; i++) {
+    if (historyEntryCode(history[i]) === seasonCode) {
+      return { start: history[i].start || null, end: history[i].end || null };
+    }
+  }
+  var tier = seasonRow(seasonCode);
+  if (!tier) return { start: null, end: null };
+  if (seasonCode === currentSeasonCode()) {
+    return { start: (DATA && DATA.seasonStart) || tier.starts_at || null, end: (DATA && DATA.seasonEnd) || null };
+  }
+  return { start: tier.starts_at || null, end: tier.ends_at || null };
+}
+
 // Returns { start, end } date strings for the active season, or { start: null, end: null }
 function getSeasonDateRange() {
   if (!ACTIVE_SEASON) return { start: null, end: null };
@@ -3736,13 +3758,15 @@ function getSeasonDateRange() {
 // wrong to freeze into a season archive -- see buildSeasonArchiveRosterSnapshot().
 /**
  * @param {string} firstName
+ * @param {{start: string|null, end: string|null}} [range] - the window to count in; the
+ *   toolbar's selected season when omitted, one tier's when closing its books (#938)
  * @returns {any[]|null}
  */
-function getEligibleAttendanceRecs(firstName) {
+function getEligibleAttendanceRecs(firstName, range) {
   var raw = DATA && DATA.rawAttendanceData;
   if (!raw) return null;
 
-  var range = getSeasonDateRange();
+  range = range || getSeasonDateRange();
   var start = range.start;
   var end = range.end;
   var playerRecs = (raw.players || {})[firstName] || [];
@@ -5386,6 +5410,22 @@ function currentSeasonCode() {
     if (rows[i].starts_at && rows[i].starts_at <= today) return rows[i].code;
   }
   return '';
+}
+
+// The seasons row for a code, or null.
+function seasonRow(seasonCode) {
+  var rows = (DATA && DATA.seasons) || [];
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].code === seasonCode) return rows[i];
+  }
+  return null;
+}
+
+// A seasonHistory entry's tier code: the code close_season() writes, else
+// the pattern read of the name for an entry written before #938.
+function historyEntryCode(entry) {
+  if (!entry) return '';
+  return entry.code || seasonCodeForDisplay((entry.name || '').trim());
 }
 
 // The tiers a team is taking signups for (#934): its team_seasons rows with

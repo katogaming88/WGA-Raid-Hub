@@ -856,31 +856,34 @@
             </div><!-- /season-sub-progression -->
 
             <div id="season-sub-history" class="season-settings-wrap" style="display:none;">
-              <!-- Archive Season -->
+              <!-- Close Season -->
               <div class="help-ref-card">
-                <h3 class="help-ref-title">Start New Season<button class="help-btn" onclick="toggleHelp('help-season-archive')" title="Show help">?</button></h3>
+                <h3 class="help-ref-title">Close Season<button class="help-btn" onclick="toggleHelp('help-season-archive')" title="Show help">?</button></h3>
                 <div id="help-season-archive" class="help-tip">
-                  Archiving pushes the current Season Name, Start Date, and End Date into the season history list, then applies the next season's name automatically. Once archived, the season appears in the <strong>Season</strong> toolbar dropdown so officers can filter by it at any time.
+                  Closes the books on a tier that has ended: the roster with its attendance and the raids with their progress are recorded in Season History, and every player's submitted BiS source, M+ exclusion and Bench status reset. Nothing here starts a season, so close the old tier whenever you get to it, before or after rebuilding the raid list. Once closed, the tier appears in the <strong>Season</strong> toolbar dropdown so officers can filter by it at any time.
                   <br><br>
-                  <strong>Rollover workflow:</strong>
+                  <strong>New tier checklist:</strong>
                   <ol style="margin:0.35rem 0 0;padding-left:1.25rem;">
-                    <li>Set an <strong>End Date</strong> if the season closes before the next one starts.</li>
-                    <li>Click <strong>Start New Season</strong> below -- this archives the current season and fills in the new Season Name for you.</li>
-                    <li>Set a <strong>Start Date</strong> for the new season.</li>
-                    <li>Re-import this season's loot via <strong>Loot &gt; Import</strong> -- entries are tagged with the new name automatically.</li>
-                    <li>Click <strong>Refresh from WCL</strong> on the Attendance tab to pull the new season's raids.</li>
+                    <li>Click <strong>Close Season</strong> below for the tier that just ended.</li>
+                    <li>Run the closed tier's <strong>WCL Performance Baseline</strong> fetch in Season History.</li>
+                    <li>Set the new tier's <strong>Season Name</strong> and <strong>Start Date</strong> on the Settings sub-tab.</li>
+                    <li>Click <strong>Refresh from WCL</strong> on the Attendance tab to pull the new tier's raids.</li>
                   </ol>
                 </div>
-                <p class="signup-officer-note" style="margin-top:0.25rem;">Move the current season into history and apply the next season's name automatically.</p>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Record a tier that has ended in Season History and reset the roster flags for the new one.</p>
                 <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
-                  <button class="btn btn-danger" onclick="confirmArchiveSeason()">Start New Season</button>
+                  <label for="closeSeasonSelect" class="sr-only">Tier to close</label>
+                  <select id="closeSeasonSelect" class="add-player-input" style="display:none;max-width:240px;font-size:0.95rem;padding:0.35rem 0.6rem;"
+                    onchange="renderCloseSeasonControl()"></select>
+                  <button class="btn btn-danger" id="closeSeasonBtn" onclick="confirmCloseSeason()" disabled>Close Season</button>
+                  <span id="closeSeasonNote" style="font-size:0.92rem;color:var(--text-muted);"></span>
                   <span id="seasonArchiveStatus" style="font-size:0.92rem;color:var(--heal);"></span>
                 </div>
                 <div id="seasonArchiveConfirm"
                   style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
                   <span id="seasonArchiveConfirmMsg" style="font-size:0.92rem;color:var(--melee);"></span>
                   <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
-                    <button class="btn btn-danger" id="seasonArchiveExecBtn" onclick="executeArchiveSeason()">Yes, Archive</button>
+                    <button class="btn btn-danger" id="seasonArchiveExecBtn" onclick="executeCloseSeason()">Yes, Close</button>
                     <button class="btn btn-muted"
                       onclick="document.getElementById('seasonArchiveConfirm').style.display='none'">Cancel</button>
                   </div>
@@ -890,18 +893,8 @@
               <!-- Season History -->
               <div id="seasonHistoryWrap" class="help-ref-card" style="display:none;">
                 <h3 class="help-ref-title">Season History</h3>
-                <p class="signup-officer-note" style="margin-top:0.25rem;">Past archived seasons. Use Unarchive to restore a season as the active one if it was archived by mistake. The most recent entry offers a WCL Performance Baseline fetch -- run once at the start of a new season to seed heroic priority scoring before the new season has raid reports of its own.</p>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">Tiers this team has closed. The most recent entry offers a WCL Performance Baseline fetch -- run once at the start of a new tier to seed heroic priority scoring before it has raid reports of its own.</p>
                 <div id="seasonHistoryList" style="margin-top:0.5rem;font-size:0.92rem;color:var(--text-muted);"></div>
-                <div id="seasonUnarchiveConfirm"
-                  style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
-                  <span id="seasonUnarchiveConfirmMsg" style="font-size:0.92rem;color:var(--melee);"></span>
-                  <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
-                    <button class="btn btn-danger" id="seasonUnarchiveExecBtn" onclick="executeUnarchiveSeason()">Yes, Restore</button>
-                    <button class="btn btn-muted"
-                      onclick="document.getElementById('seasonUnarchiveConfirm').style.display='none'">Cancel</button>
-                  </div>
-                </div>
-                <span id="seasonUnarchiveStatus" style="font-size:0.92rem;color:var(--heal);display:block;margin-top:0.5rem;"></span>
               </div>
             </div><!-- /season-sub-history -->
 
@@ -1006,12 +999,12 @@
               </div>
 
               <div class="help-ref-card">
-                <h4 class="help-ref-title">Season reset workflow</h4>
+                <h4 class="help-ref-title">New tier workflow</h4>
                 <ol class="help-ref-steps">
-                  <li>Go to <a href="#" onclick="switchTab('season');return false;">Season Settings</a> and click <strong>Start New Season</strong> (History sub-tab). This archives the current season, auto-fills the new Season Name, and resets every player's submitted BiS source, M+ exclusion, and Bench status team-wide.</li>
-                  <li>Still in Season History, run the just-archived season's <strong>WCL Performance Baseline</strong> fetch -- the row only appears next to the newest history entry, so do it now or you won't get another chance once another season archives. This seeds the Heroic priority baseline before the new season has raid reports of its own; a status label on the row shows whether it's already been done.</li>
-                  <li>Set the new <strong>Season Start Date</strong> to the new season's first raid day.</li>
-                  <li>Re-import this season's loot via <strong>Loot &gt; Import</strong> -- old loot history doesn't need clearing, it stays tagged by season.</li>
+                  <li>Go to <a href="#" onclick="switchTab('season');return false;">Season Settings</a> and click <strong>Close Season</strong> (History sub-tab) for the tier that ended. This records it in Season History and resets every player's submitted BiS source, M+ exclusion, and Bench status team-wide. It does not change the Season Name, the dates or the raid list.</li>
+                  <li>Still in Season History, run the just-closed tier's <strong>WCL Performance Baseline</strong> fetch -- the row only appears next to the newest history entry, so do it now or you won't get another chance once another tier closes. This seeds the Heroic priority baseline before the new tier has raid reports of its own; a status label on the row shows whether it's already been done.</li>
+                  <li>Set the new tier's <strong>Season Name</strong> and <strong>Season Start Date</strong> (its first raid day) on the Settings sub-tab.</li>
+                  <li>Import this tier's loot via <strong>Loot &gt; Import</strong> -- old loot history doesn't need clearing, it stays tagged by season.</li>
                   <li>On the <strong>Attendance</strong> tab, click <strong>Refresh from WCL</strong> to pull the new season's raid nights.</li>
                   <li>Commit updated scores via <strong>Commit Attendance Scores</strong>.</li>
                 </ol>

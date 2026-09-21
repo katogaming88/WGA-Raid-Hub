@@ -8,7 +8,10 @@ function switchSeasonSubTab(name, btnEl) {
     if (el) el.style.display = sub === name ? '' : 'none';
   });
   if (name === 'progression') renderRaidProgressionCards();
-  if (name === 'history') renderSeasonHistory();
+  if (name === 'history') {
+    renderSeasonHistory();
+    renderCloseSeasonControl();
+  }
 }
 
 function buildSeasonTab() {
@@ -89,10 +92,6 @@ function renderSeasonHistory() {
         i +
         ', this)">View BiS</button>';
     }
-    html +=
-      '<button class="btn btn-muted" style="font-size:0.93rem;padding:2px 10px;white-space:nowrap;" onclick="confirmUnarchiveSeason(' +
-      i +
-      ')">Unarchive</button>';
     html += '</div>';
     html += '</div>';
     if (s.roster) {
@@ -111,13 +110,10 @@ function renderSeasonHistory() {
     html += '</div>';
   }
   list.innerHTML = html;
-  var confirmEl = document.getElementById('seasonUnarchiveConfirm');
-  if (confirmEl) confirmEl.style.display = 'none';
 
   var newest = history[history.length - 1];
   if (newest) {
-    var newestSeasonCode = seasonCodeForDisplay((newest.name || '').trim());
-    _checkSeasonPerfFetchedStatus(history.length - 1, _teamCfg.supabaseTeamId, newestSeasonCode);
+    _checkSeasonPerfFetchedStatus(history.length - 1, _teamCfg.supabaseTeamId, historyEntryCode(newest));
   }
 }
 
@@ -254,7 +250,7 @@ function fetchSeasonPerf(historyIndex) {
   if (!season || !select) return;
 
   var zoneId = parseInt(select.value, 10);
-  var seasonCode = seasonCodeForDisplay((season.name || '').trim());
+  var seasonCode = historyEntryCode(season);
   if (!zoneId || !seasonCode) return;
 
   if (btn) {
@@ -325,8 +321,7 @@ function _seedScoringFromSeasonPerf(players) {
 }
 
 // The roster snapshot lives inline on the seasonHistory entry itself
-// (history[index].roster, see archive_current_season() in
-// 20260712100000_team_settings_season_config.sql) rather than behind a
+// (history[index].roster, see close_season(), #938) rather than behind a
 // separate lookup key, so this just renders what's already in DATA -- no
 // round trip needed (#221 follow-up to the old getRosterSnapshot GAS action).
 function toggleSeasonSnapshot(index, btnEl) {
@@ -439,65 +434,6 @@ function toggleSeasonBisSnapshot(index, btnEl) {
   panel.style.display = '';
 }
 
-var _unarchiveIndex = -1;
-
-function confirmUnarchiveSeason(index) {
-  _unarchiveIndex = index;
-  var history = (DATA && DATA.seasonHistory) || [];
-  var s = history[index] || {};
-  var msg = document.getElementById('seasonUnarchiveConfirmMsg');
-  var confirmEl = document.getElementById('seasonUnarchiveConfirm');
-  if (msg) {
-    var text = 'Restore "' + (s.name || '(unnamed)') + '" as the active season?';
-    if (DATA && DATA.seasonName) {
-      text +=
-        ' The current active season ("' +
-        DATA.seasonName +
-        '") will be overwritten. Archive it first if you want to keep it.';
-    }
-    msg.textContent = text;
-  }
-  if (confirmEl) confirmEl.style.display = '';
-}
-
-function executeUnarchiveSeason() {
-  var confirmEl = document.getElementById('seasonUnarchiveConfirm');
-  var status = document.getElementById('seasonUnarchiveStatus');
-  var btn = document.getElementById('seasonUnarchiveExecBtn');
-  if (confirmEl) confirmEl.style.display = 'none';
-  if (btn) btn.disabled = true;
-  var index = _unarchiveIndex;
-
-  supabaseClient
-    .rpc('unarchive_season', { p_team_id: _teamCfg.supabaseTeamId, p_index: index })
-    .then(function (result) {
-      if (btn) btn.disabled = false;
-      if (result.error) throw new Error(result.error.message);
-      var season = result.data.season;
-      DATA.seasonName = season.name || '';
-      DATA.seasonStart = season.start || '';
-      DATA.seasonEnd = season.end || '';
-      DATA.raidProgression = season.raids || [];
-      DATA.seasonHistory = result.data.config.seasonHistory || [];
-      _unarchiveIndex = -1;
-      buildSeasonTab();
-      populateSeasonSelector();
-      return writeAuditLog('Season Unarchived', null, null, season.name || '');
-    })
-    .then(function () {
-      if (status) {
-        status.textContent = 'Season restored.';
-        setTimeout(function () {
-          if (status) status.textContent = '';
-        }, 3000);
-      }
-    })
-    .catch(function (err) {
-      if (btn) btn.disabled = false;
-      if (status) status.textContent = err.message || 'Error restoring season.';
-    });
-}
-
 function confirmClearSeasonStart() {
   var el = document.getElementById('seasonClearConfirm');
   if (el) el.style.display = '';
@@ -524,21 +460,85 @@ function executeClearSeasonEnd() {
   saveSeasonEnd();
 }
 
-function confirmArchiveSeason() {
-  var name = (DATA && DATA.seasonName) || '';
+// -- Close Season ------------------------------------------------------------
+// The books close per tier (#938): a tier that has ended and this team has
+// not closed yet. Nothing is started by it: the tier that is current is the
+// seasons table's (currentSeasonCode()), and the team's Season Name, dates
+// and raid list are left as they are.
+
+// The tiers this team can close, oldest first: started before the current
+// tier, and not already in seasonHistory.
+function closableSeasonCodes() {
+  var current = seasonRow(currentSeasonCode());
+  if (!current) return [];
+  var closed = {};
+  ((DATA && DATA.seasonHistory) || []).forEach(function (entry) {
+    closed[historyEntryCode(entry)] = true;
+  });
+  return ((DATA && DATA.seasons) || [])
+    .filter(function (tier) {
+      return tier.starts_at && tier.starts_at < current.starts_at && !closed[tier.code];
+    })
+    .map(function (tier) {
+      return tier.code;
+    })
+    .reverse();
+}
+
+// The select shows only when more than one tier can be closed, the same
+// shape as the signup form's tier picker (#934); the button is disabled with
+// a line when there is none.
+function renderCloseSeasonControl() {
+  var select = document.getElementById('closeSeasonSelect');
+  var btn = document.getElementById('closeSeasonBtn');
+  var note = document.getElementById('closeSeasonNote');
+  if (!select || !btn || !note) return;
+  var codes = closableSeasonCodes();
+  var previous = select.value;
+  select.innerHTML = codes
+    .map(function (code) {
+      var tier = seasonRow(code);
+      return '<option value="' + _escAttr(code) + '">' + _esc(tier ? tier.display_name : code) + '</option>';
+    })
+    .join('');
+  if (codes.indexOf(previous) !== -1) select.value = previous;
+  select.style.display = codes.length > 1 ? '' : 'none';
+  btn.disabled = codes.length === 0;
+  if (!codes.length) {
+    note.textContent = currentSeasonCode()
+      ? 'Every tier that has ended is closed for this team.'
+      : 'No tier has started yet.';
+  } else if (codes.length === 1) {
+    var only = seasonRow(codes[0]);
+    note.textContent = 'Closes ' + (only ? only.display_name : codes[0]) + '.';
+  } else {
+    note.textContent = '';
+  }
+}
+
+function _closeSeasonTarget() {
+  var codes = closableSeasonCodes();
+  if (!codes.length) return '';
+  var select = document.getElementById('closeSeasonSelect');
+  var picked = select ? select.value : '';
+  return codes.indexOf(picked) !== -1 ? picked : codes[codes.length - 1];
+}
+
+function confirmCloseSeason() {
+  var code = _closeSeasonTarget();
+  var tier = seasonRow(code);
   var msg = document.getElementById('seasonArchiveConfirmMsg');
+  var exec = document.getElementById('seasonArchiveExecBtn');
   if (msg) {
-    if (!name) {
-      msg.textContent = 'No current season name is set. Please set a Season Name before archiving.';
-      document.getElementById('seasonArchiveExecBtn').style.display = 'none';
+    if (!tier) {
+      msg.textContent = 'There is no tier to close.';
+      if (exec) exec.style.display = 'none';
     } else {
       msg.textContent =
-        'Archive "' +
-        name +
-        '"? The current season name, start date, and end date will be moved to history and cleared. Every player\'s submitted BiS source will be cleared, and M+ exclusion and Bench status will reset for the whole roster (Trial status is left alone). The new season name will be applied automatically as "' +
-        CURRENT_SEASON.displayName +
-        '". Set a new Season Start Date for it afterward.';
-      document.getElementById('seasonArchiveExecBtn').style.display = '';
+        'Close the books on "' +
+        tier.display_name +
+        '"? The roster with its attendance and the raids with their progress are recorded in Season History. Every player\'s submitted BiS source will be cleared, and M+ exclusion and Bench status will reset for the whole roster (Trial status is left alone). Nothing else changes: the Season Name, the dates and the raid list stay as they are.';
+      if (exec) exec.style.display = '';
     }
   }
   var el = document.getElementById('seasonArchiveConfirm');
@@ -548,15 +548,15 @@ function confirmArchiveSeason() {
 // Roster snapshot is computed client-side from the roster already in DATA
 // (nameRealm/role/isTrial/isBench/joinDate/attendance -- the same fields the
 // old GAS archiveSeason() read straight off the sheets) and passed to the
-// archive_current_season RPC, which stores it inline on the new history
-// entry rather than in a separate lookup key (#221).
+// close_season RPC, which stores it inline on the new history entry rather
+// than in a separate lookup key (#221).
 //
 // attendance is computed here rather than copied off the roster object. It
 // used to read p.attendance, a field fed by the Apps Script core payload that
 // has been permanently empty since GAS was retired (#225), so every archive
 // written since froze a blank attendance column into permanent history. Both
 // prod archives are affected; repairing them is #702, and this stops the next
-// one (#694).
+// one (#694). The window is the closing tier's, not the toolbar's selection.
 //
 // It deliberately does not go through getDisplayAttendancePct(), which
 // answers '100.0%' for a player with no eligible nights. That is right on a
@@ -568,10 +568,11 @@ function confirmArchiveSeason() {
 // and renames break it: #702 had to reconstruct nine of them out of
 // audit_log. nameRealm stays because renderSeasonHistory() renders it and the
 // two existing archives have nothing else.
-function buildSeasonArchiveRosterSnapshot() {
+function buildSeasonArchiveRosterSnapshot(seasonCode) {
   var roster = (DATA && DATA.roster) || [];
+  var range = seasonDateRangeFor(seasonCode);
   return roster.map(function (p) {
-    var recs = getEligibleAttendanceRecs(p.firstName);
+    var recs = getEligibleAttendanceRecs(p.firstName, range);
     return {
       playerId: p.id,
       nameRealm: p.nameRealm,
@@ -584,70 +585,46 @@ function buildSeasonArchiveRosterSnapshot() {
   });
 }
 
-function executeArchiveSeason() {
+function executeCloseSeason() {
   var el = document.getElementById('seasonArchiveConfirm');
   var status = document.getElementById('seasonArchiveStatus');
   var btn = document.getElementById('seasonArchiveExecBtn');
   if (el) el.style.display = 'none';
-  if (btn) {
-    btn.disabled = true;
-  }
-  // Archiving is one-way, and the snapshot it writes is the only record of
-  // the season's attendance once the next one starts. Refuse rather than
-  // freeze a guess: a wrong value here is permanent, and unavailable
-  // attendance is exactly how the two blank archives in #702 happened.
+  if (btn) btn.disabled = true;
+  // Closing is one-way, and the snapshot it writes is the only record of
+  // the tier's attendance. Refuse rather than freeze a guess: a wrong value
+  // here is permanent, and unavailable attendance is exactly how the two
+  // blank archives in #702 happened.
   if (!(DATA && DATA.rawAttendanceData)) {
     if (btn) btn.disabled = false;
     if (status)
-      status.textContent = 'Attendance has not loaded, so the season cannot be archived yet. Reload and try again.';
+      status.textContent = 'Attendance has not loaded, so the season cannot be closed yet. Reload and try again.';
     return;
   }
-  var archivedName = DATA.seasonName;
+  var code = _closeSeasonTarget();
 
   supabaseClient
-    .rpc('archive_current_season', {
+    .rpc('close_season', {
       p_team_id: _teamCfg.supabaseTeamId,
-      p_roster_snapshot: buildSeasonArchiveRosterSnapshot()
+      p_season: code,
+      p_roster_snapshot: buildSeasonArchiveRosterSnapshot(code)
     })
     .then(function (result) {
-      if (result.error) throw new Error(result.error.message);
-      var config = result.data;
-      DATA.seasonName = config.seasonName || '';
-      DATA.seasonStart = config.seasonStart || '';
-      DATA.seasonEnd = config.seasonEnd || '';
-      DATA.raidProgression = config.raidProgression || [];
-      DATA.seasonHistory = config.seasonHistory || [];
-      // Combine archive + auto-name into one click (#537): fill the new
-      // season's name straight from CURRENT_SEASON instead of leaving it
-      // blank for an officer to retype. seasonView: null resets any
-      // forward-looking "planning" pointer (#549) back to "default to live"
-      // now that the planned season just became the live one.
-      // skipAudit: true -- this is an incidental follow-up (auto-filling the
-      // new season's name/clearing seasonView), not the archive itself; the
-      // meaningful event is already logged below as "Season Archived".
-      return saveTeamSetting({ seasonName: CURRENT_SEASON.displayName, seasonView: null }, true);
-    })
-    .then(function (config) {
       if (btn) btn.disabled = false;
-      DATA.seasonName = config.seasonName || '';
-      DATA.seasonView = config.seasonView || null;
-      SEASON_RAIDS = [];
-      buildSeasonTab();
-      populateSeasonSelector();
-      return writeAuditLog('Season Archived', null, null, archivedName);
-    })
-    .then(function () {
+      if (result.error) throw new Error(result.error.message);
+      DATA.seasonHistory = result.data.seasonHistory || [];
+      renderSeasonHistory();
+      renderCloseSeasonControl();
       if (status) {
-        status.textContent = 'Season archived.';
+        status.textContent = 'Season closed.';
         setTimeout(function () {
           if (status) status.textContent = '';
         }, 3000);
       }
-      // archive_current_season() also resets m_plus_excluded server-side --
-      // the in-memory roster still holds the pre-archive values until
-      // refetched, same
-      // staleness officerRenamePlayer works around with a full reload rather
-      // than patching state in place.
+      // close_season() also resets m_plus_excluded server-side -- the
+      // in-memory roster still holds the pre-close values until refetched,
+      // same staleness officerRenamePlayer works around with a full reload
+      // rather than patching state in place.
       loadData(
         function () {
           buildOfficerDashboard();
@@ -664,7 +641,7 @@ function executeArchiveSeason() {
     })
     .catch(function (err) {
       if (btn) btn.disabled = false;
-      if (status) status.textContent = err.message || 'Error archiving season.';
+      if (status) status.textContent = 'Could not close: ' + (err.message || 'unknown error');
     });
 }
 

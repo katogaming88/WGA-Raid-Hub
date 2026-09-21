@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 // whole of common.js, same as tests/frontend/priority-export.test.js does
 // for tab-priority.js. toggleSeasonSnapshot() no longer calls out to
 // anything at all -- the roster snapshot is embedded on the history entry.
+// The seasons helpers (#938) are stubbed with three tiers, MID2 current.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SEASON_JS = readFileSync(path.join(HERE, '../../js/tabs/tab-season.js'), 'utf8');
@@ -30,16 +31,38 @@ function makeEl(extra) {
 // tests/frontend/attendance-unknown.test.js -- what matters here is the
 // wiring, i.e. that the snapshot asks for records instead of reading the
 // retired p.attendance field.
+const TIERS = [
+  { code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-08-11', ends_at: null },
+  { code: 'MID1', display_name: 'Midnight Season 1', starts_at: '2026-03-17', ends_at: '2026-08-10' },
+  { code: 'MID0', display_name: 'Midnight Season 0', starts_at: '2025-10-01', ends_at: '2026-03-16' }
+];
+
 function makeSandbox({ saveTeamSettingImpl, rpcResult, els = {}, data = {}, attendance = {} } = {}) {
   var saveTeamSettingCalls = [];
   var auditLogCalls = [];
   var rpcCalls = [];
+  var rangesAsked = [];
 
   var sandbox = {
     console,
     document: { getElementById: (id) => els[id] || null, querySelectorAll: () => [] },
-    DATA: Object.assign({ rawAttendanceData: attendance === null ? null : { players: attendance } }, data),
-    getEligibleAttendanceRecs: (firstName) => (attendance === null ? null : attendance[firstName] || []),
+    DATA: Object.assign(
+      { rawAttendanceData: attendance === null ? null : { players: attendance }, seasons: TIERS },
+      data
+    ),
+    getEligibleAttendanceRecs: (firstName, range) => {
+      if (range && range.code) rangesAsked.push(range.code);
+      return attendance === null ? null : attendance[firstName] || [];
+    },
+    // The seasons helpers live in js/common.js (#938); stubbed over the
+    // sandbox's DATA.seasons. seasonDateRangeFor() answers with the code so
+    // a case can see which tier the snapshot was built for.
+    seasonRow: (code) => (sandbox.DATA.seasons || []).find((t) => t.code === code) || null,
+    currentSeasonCode: () => ((sandbox.DATA.seasons || []).find((t) => t.starts_at <= '2026-09-21') || {}).code || '',
+    historyEntryCode: (entry) =>
+      entry.code || (/^Midnight Season (\d+)$/.exec(entry.name || '') ? 'MID' + RegExp.$1 : ''),
+    seasonDateRangeFor: (code) => ({ code, start: null, end: null }),
+    _esc: (str) => String(str),
     averageAttendancePct: (recs) => {
       var sum = recs.reduce((acc, r) => acc + (r.weight != null ? r.weight : 1), 0);
       return (Math.round((sum / recs.length) * 1000) / 10).toFixed(1) + '%';
@@ -48,10 +71,10 @@ function makeSandbox({ saveTeamSettingImpl, rpcResult, els = {}, data = {}, atte
     populateSeasonSelector: () => {},
     renderRaidProgressionCards: () => {},
     renderSeasonHistory: () => {},
-    // archive_current_season() also resets m_plus_excluded and bench
-    // server-side, so executeArchiveSeason() reloads via loadData() rather
-    // than only patching season fields -- stubbed no-op here since that
-    // reload path isn't what this describe block is testing.
+    // close_season() also resets m_plus_excluded and bench server-side, so
+    // executeCloseSeason() reloads via loadData() rather than only patching
+    // the history -- stubbed no-op here since that reload path isn't what
+    // this describe block is testing.
     loadData: (onCoreReady, onHeavyReady) => {
       if (onCoreReady) onCoreReady();
       if (onHeavyReady) onHeavyReady();
@@ -91,7 +114,7 @@ function makeSandbox({ saveTeamSettingImpl, rpcResult, els = {}, data = {}, atte
   };
   vm.createContext(sandbox);
   vm.runInContext(SEASON_JS, sandbox, { filename: 'tab-season.js' });
-  return { sandbox, saveTeamSettingCalls, auditLogCalls, rpcCalls, els };
+  return { sandbox, saveTeamSettingCalls, auditLogCalls, rpcCalls, rangesAsked, els };
 }
 
 describe('saveSeasonName (#221, number-only input as of #341)', () => {
@@ -174,31 +197,82 @@ describe('saveTrialThresholds (#221)', () => {
   });
 });
 
-describe('executeArchiveSeason (#221)', () => {
-  it('builds a roster snapshot from DATA.roster and applies the returned config', async () => {
-    const els = {
-      seasonArchiveConfirm: makeEl(),
-      seasonArchiveStatus: makeEl(),
-      seasonArchiveExecBtn: makeEl()
-    };
+describe('closableSeasonCodes and renderCloseSeasonControl (#938)', () => {
+  it('offers the tiers that started before the current one and are not yet in history, oldest first', () => {
+    const els = { closeSeasonSelect: makeEl({ value: '' }), closeSeasonBtn: makeEl(), closeSeasonNote: makeEl() };
+    const { sandbox } = makeSandbox({ els, data: { seasonHistory: [{ code: 'MID1', name: 'Midnight Season 1' }] } });
+    expect(sandbox.closableSeasonCodes()).toEqual(['MID0']);
+
+    sandbox.renderCloseSeasonControl();
+    // One closable tier: no select, the note names it, the button is live.
+    expect(els.closeSeasonSelect.style.display).toBe('none');
+    expect(els.closeSeasonBtn.disabled).toBe(false);
+    expect(els.closeSeasonNote.textContent).toBe('Closes Midnight Season 0.');
+  });
+
+  it('shows the select when more than one tier can be closed', () => {
+    const els = { closeSeasonSelect: makeEl({ value: '' }), closeSeasonBtn: makeEl(), closeSeasonNote: makeEl() };
+    const { sandbox } = makeSandbox({ els, data: { seasonHistory: [] } });
+    expect(sandbox.closableSeasonCodes()).toEqual(['MID0', 'MID1']);
+
+    sandbox.renderCloseSeasonControl();
+    expect(els.closeSeasonSelect.style.display).toBe('');
+    expect(els.closeSeasonSelect.innerHTML).toContain('value="MID0"');
+    expect(els.closeSeasonSelect.innerHTML).toContain('value="MID1"');
+    expect(els.closeSeasonBtn.disabled).toBe(false);
+    expect(els.closeSeasonNote.textContent).toBe('');
+  });
+
+  it('disables the button and says so when every ended tier is closed', () => {
+    const els = { closeSeasonSelect: makeEl({ value: '' }), closeSeasonBtn: makeEl(), closeSeasonNote: makeEl() };
+    const { sandbox } = makeSandbox({
+      els,
+      data: { seasonHistory: [{ code: 'MID1' }, { name: 'Midnight Season 0' }] }
+    });
+    // A pre-#938 entry with no code still counts, by the pattern on its name.
+    expect(sandbox.closableSeasonCodes()).toEqual([]);
+
+    sandbox.renderCloseSeasonControl();
+    expect(els.closeSeasonBtn.disabled).toBe(true);
+    expect(els.closeSeasonNote.textContent).toBe('Every tier that has ended is closed for this team.');
+  });
+
+  it('offers nothing before the first tier has started', () => {
+    const els = { closeSeasonSelect: makeEl({ value: '' }), closeSeasonBtn: makeEl(), closeSeasonNote: makeEl() };
+    const { sandbox } = makeSandbox({ els, data: { seasons: [], seasonHistory: [] } });
+    expect(sandbox.closableSeasonCodes()).toEqual([]);
+    sandbox.renderCloseSeasonControl();
+    expect(els.closeSeasonBtn.disabled).toBe(true);
+    expect(els.closeSeasonNote.textContent).toBe('No tier has started yet.');
+  });
+});
+
+describe('executeCloseSeason (#938)', () => {
+  const closeEls = () => ({
+    seasonArchiveConfirm: makeEl(),
+    seasonArchiveStatus: makeEl(),
+    seasonArchiveExecBtn: makeEl(),
+    closeSeasonSelect: makeEl({ value: '' }),
+    closeSeasonBtn: makeEl(),
+    closeSeasonNote: makeEl()
+  });
+
+  it('closes the newest closable tier with a roster snapshot for that tier and applies the returned config', async () => {
+    const els = closeEls();
     const newConfig = {
-      seasonName: '',
-      seasonStart: '',
-      seasonEnd: '',
-      raidProgression: [],
       seasonHistory: [
-        { name: 'Archived', start: '2026-01-01', end: '', raids: [], roster: [{ nameRealm: 'Kato-Illidan' }] }
+        { code: 'MID1', name: 'Midnight Season 1', start: '2026-03-17', end: '2026-08-10', raids: [], roster: [] }
       ]
     };
-    const { sandbox, rpcCalls, saveTeamSettingCalls } = makeSandbox({
+    const { sandbox, rpcCalls, saveTeamSettingCalls, rangesAsked } = makeSandbox({
       els,
       rpcResult: { data: newConfig, error: null },
       // Two eligible nights at full weight and one at half -> 83.3%. The
-      // snapshot computes this at archive time rather than copying a field,
+      // snapshot computes this at close time rather than copying a field,
       // which is what used to freeze a blank column into history (#702).
       attendance: { Kato: [{ weight: 1 }, { weight: 1 }, { weight: 0.5 }] },
       data: {
-        seasonName: 'Archived',
+        seasonHistory: [],
         roster: [
           {
             id: 42,
@@ -213,12 +287,14 @@ describe('executeArchiveSeason (#221)', () => {
       }
     });
 
-    sandbox.executeArchiveSeason();
+    sandbox.executeCloseSeason();
     await flush();
 
     expect(rpcCalls).toHaveLength(1);
-    expect(rpcCalls[0].name).toBe('archive_current_season');
+    expect(rpcCalls[0].name).toBe('close_season');
     expect(rpcCalls[0].params.p_team_id).toBe(1);
+    // With no pick, the newest closable tier (MID1 over MID0).
+    expect(rpcCalls[0].params.p_season).toBe('MID1');
     expect(rpcCalls[0].params.p_roster_snapshot).toEqual([
       {
         playerId: 42,
@@ -230,15 +306,29 @@ describe('executeArchiveSeason (#221)', () => {
         attendance: '83.3%'
       }
     ]);
+    // The snapshot's attendance window is the closing tier's, not the
+    // toolbar's selection.
+    expect(rangesAsked).toEqual(['MID1']);
     expect(sandbox.DATA.seasonHistory).toEqual(newConfig.seasonHistory);
-    // #537: archiving now chains a second saveTeamSetting() call that
-    // immediately fills in the next season's name from CURRENT_SEASON and
-    // resets seasonView, instead of leaving seasonName blank.
-    expect(rpcCalls[0]).toBeTruthy();
-    expect(saveTeamSettingCalls).toEqual([{ seasonName: 'Midnight Season 2', seasonView: null }]);
-    expect(sandbox.DATA.seasonName).toBe('Midnight Season 2');
-    expect(sandbox.DATA.seasonView).toBe(null);
-    expect(els.seasonArchiveStatus.textContent).toBe('Season archived.');
+    // Nothing is started: no settings write follows the close.
+    expect(saveTeamSettingCalls).toEqual([]);
+    expect(els.seasonArchiveStatus.textContent).toBe('Season closed.');
+  });
+
+  it('closes the tier picked in the select', async () => {
+    const els = closeEls();
+    els.closeSeasonSelect.value = 'MID0';
+    const { sandbox, rpcCalls } = makeSandbox({
+      els,
+      rpcResult: { data: { seasonHistory: [] }, error: null },
+      attendance: {},
+      data: { seasonHistory: [], roster: [] }
+    });
+
+    sandbox.executeCloseSeason();
+    await flush();
+
+    expect(rpcCalls[0].params.p_season).toBe('MID0');
   });
 
   // A player with no eligible nights must not inherit the live roster's
@@ -247,22 +337,18 @@ describe('executeArchiveSeason (#221)', () => {
   // wrong frozen into a permanent record, where it makes someone who never
   // raided indistinguishable from a perfect season.
   it('stores an empty attendance rather than 100% for a player with no eligible nights', async () => {
-    const els = {
-      seasonArchiveConfirm: makeEl(),
-      seasonArchiveStatus: makeEl(),
-      seasonArchiveExecBtn: makeEl()
-    };
+    const els = closeEls();
     const { sandbox, rpcCalls } = makeSandbox({
       els,
       rpcResult: { data: { seasonHistory: [] }, error: null },
       attendance: { Kato: [] },
       data: {
-        seasonName: 'Archived',
+        seasonHistory: [],
         roster: [{ id: 42, nameRealm: 'Kato-Illidan', firstName: 'Kato', role: 'Melee', joinDate: '2026-01-01' }]
       }
     });
 
-    sandbox.executeArchiveSeason();
+    sandbox.executeCloseSeason();
     await flush();
 
     expect(rpcCalls).toHaveLength(1);
@@ -271,50 +357,42 @@ describe('executeArchiveSeason (#221)', () => {
 
   // The snapshot's only player key used to be nameRealm, so a rename after
   // the archive was written broke the link back to the roster and #702 had
-  // to reconstruct it from audit_log. playerId makes every future archive
+  // to reconstruct it from audit_log. playerId makes every future entry
   // rename-proof; nameRealm stays because renderSeasonHistory() displays it.
   it('carries playerId through so a later rename cannot orphan the snapshot', async () => {
-    const els = {
-      seasonArchiveConfirm: makeEl(),
-      seasonArchiveStatus: makeEl(),
-      seasonArchiveExecBtn: makeEl()
-    };
+    const els = closeEls();
     const { sandbox, rpcCalls } = makeSandbox({
       els,
       rpcResult: { data: { seasonHistory: [] }, error: null },
       attendance: { Kato: [{ weight: 1 }] },
       data: {
-        seasonName: 'Archived',
+        seasonHistory: [],
         roster: [{ id: 42, nameRealm: 'Kato-Illidan', firstName: 'Kato', role: 'Melee', joinDate: '2026-01-01' }]
       }
     });
 
-    sandbox.executeArchiveSeason();
+    sandbox.executeCloseSeason();
     await flush();
 
     expect(rpcCalls[0].params.p_roster_snapshot[0].playerId).toBe(42);
     expect(rpcCalls[0].params.p_roster_snapshot[0].nameRealm).toBe('Kato-Illidan');
   });
 
-  // Archiving is one-way, so an unknown attendance value must stop it rather
+  // Closing is one-way, so an unknown attendance value must stop it rather
   // than be frozen as a plausible-looking guess (#694).
-  it('refuses to archive, and calls no RPC, while attendance is unknown', async () => {
-    const els = {
-      seasonArchiveConfirm: makeEl(),
-      seasonArchiveStatus: makeEl(),
-      seasonArchiveExecBtn: makeEl()
-    };
+  it('refuses to close, and calls no RPC, while attendance is unknown', async () => {
+    const els = closeEls();
     const { sandbox, rpcCalls } = makeSandbox({
       els,
       rpcResult: { data: { seasonHistory: [] }, error: null },
       attendance: null,
       data: {
-        seasonName: 'Archived',
+        seasonHistory: [],
         roster: [{ id: 42, nameRealm: 'Kato-Illidan', firstName: 'Kato', role: 'Melee', joinDate: '2026-01-01' }]
       }
     });
 
-    sandbox.executeArchiveSeason();
+    sandbox.executeCloseSeason();
     await flush();
 
     expect(rpcCalls).toEqual([]);
@@ -322,51 +400,20 @@ describe('executeArchiveSeason (#221)', () => {
     expect(els.seasonArchiveExecBtn.disabled).toBe(false);
   });
 
-  it('shows the RPC error message on failure', async () => {
-    const els = {
-      seasonArchiveConfirm: makeEl(),
-      seasonArchiveStatus: makeEl(),
-      seasonArchiveExecBtn: makeEl()
-    };
+  it("shows the database function's refusal on failure", async () => {
+    const els = closeEls();
     const { sandbox } = makeSandbox({
       els,
-      rpcResult: { data: null, error: { message: 'No active season to archive' } },
-      data: { seasonName: '', roster: [] }
+      rpcResult: { data: null, error: { message: 'Midnight Season 1 is already closed for this team' } },
+      data: { seasonHistory: [], roster: [] }
     });
 
-    sandbox.executeArchiveSeason();
+    sandbox.executeCloseSeason();
     await flush();
 
-    expect(els.seasonArchiveStatus.textContent).toBe('No active season to archive');
-  });
-});
-
-describe('executeUnarchiveSeason (#221)', () => {
-  it('restores the returned season onto DATA and clears the history entry', async () => {
-    const els = {
-      seasonUnarchiveConfirm: makeEl(),
-      seasonUnarchiveStatus: makeEl(),
-      seasonUnarchiveExecBtn: makeEl()
-    };
-    const rpcData = {
-      season: { name: 'Restored', start: '2025-01-01', end: '2025-06-01', raids: [{ name: 'Old Raid' }] },
-      config: { seasonName: 'Restored', seasonHistory: [] }
-    };
-    const { sandbox, rpcCalls } = makeSandbox({
-      els,
-      rpcResult: { data: rpcData, error: null },
-      data: { seasonHistory: [{ name: 'Restored' }] }
-    });
-    sandbox._unarchiveIndex = 0;
-
-    sandbox.executeUnarchiveSeason();
-    await flush();
-
-    expect(rpcCalls[0]).toEqual({ name: 'unarchive_season', params: { p_team_id: 1, p_index: 0 } });
-    expect(sandbox.DATA.seasonName).toBe('Restored');
-    expect(sandbox.DATA.raidProgression).toEqual([{ name: 'Old Raid' }]);
-    expect(sandbox.DATA.seasonHistory).toEqual([]);
-    expect(els.seasonUnarchiveStatus.textContent).toBe('Season restored.');
+    expect(els.seasonArchiveStatus.textContent).toBe(
+      'Could not close: Midnight Season 1 is already closed for this team'
+    );
   });
 });
 

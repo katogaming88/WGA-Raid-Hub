@@ -756,7 +756,7 @@ row: `seedPlayer(q, { memberId })` (a character on a team, linked to a member
 when the case needs a raider to own one), `seedMember(q, { teamId, role })` (a
 member with an account, so `asUser(uid, ...)` acts as them), `seedTeam(q)` (a
 team with its settings row and its own officer, leader and raider, for a case
-that changes team-wide state such as `archive_current_season()`) and
+that changes team-wide state such as `close_season()`) and
 `seedSignup(q, { teamId })` (an approved signup for `add_signup_to_roster()`).
 Think of a shared workshop: the seed is the demonstration bench everyone can
 look at, and a test that wants to drill something brings its own board. Seeded

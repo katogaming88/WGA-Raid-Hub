@@ -12,6 +12,33 @@ answers to.
 
 ---
 
+## [Unreleased]
+
+### Frontend
+
+- Season Settings > History: **Close Season** replaces Start New Season and
+  Unarchive. It closes the books on a tier that has ended (a select appears
+  when more than one can be closed): the roster with its attendance over that
+  tier's window and the raids the team has progress on are recorded in Season
+  History, every player's submitted BiS source, M+ exclusion and Bench status
+  reset, and nothing else changes. It starts nothing, so the Season Name, the
+  dates and the raid list stay as they are, a tier can be closed before or
+  after the raid list is rebuilt for the next one, and there is no undo. The
+  Season tab's help and the Help tab's workflow card say the same (#938, the
+  third of four pull requests).
+
+### Backend
+
+- `close_season(p_team_id, p_season, p_roster_snapshot)` replaces
+  `archive_current_season()` and `unarchive_season()`
+  (`20260921194720_close_season.sql`). It refuses a tier the site does not
+  know, a tier that has not ended and a tier the team has already closed; the
+  entry carries the tier's code, name and dates, the raids folded from the
+  tier's own rows, and the roster snapshot; the roster flags reset as before
+  and the audit entry is the function's own. The two history entries already
+  on production (both Midnight Season 1) gain the tier's code; nothing else in
+  them changes.
+
 ## [3.148.8] - 2026-09-21
 
 ### Frontend
