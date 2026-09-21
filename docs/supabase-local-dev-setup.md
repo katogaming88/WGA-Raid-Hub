@@ -434,6 +434,15 @@ The auth container reads that file when it starts, so `supabase db reset` leaves
 the old `site_url` in place and links keep redirecting to the previous port.
 `supabase stop && supabase start` applies it.
 
+**The new app's Battle.net button needs `npm run dev:battlenet` after every
+reset.** Battle.net is a custom provider stored in the auth database, not in
+`config.toml`, so `supabase db reset` (and `npm run db:snapshot`, which resets)
+removes it, and the button then fails with "Unsupported provider: custom
+provider custom:battlenet not found". The command puts it back and does nothing
+when it is already there. It needs `BATTLENET_SIGNIN_CLIENT_SECRET=<the "WGA
+Raid Hub sign-in" client's secret>` in `supabase/.env` (git-ignored; the secret
+is on develop.battle.net). The seeded personas above do not need it.
+
 **Signing in as your real Discord self** is possible and not needed for most
 work. It takes a `[auth.external.discord]` block in `supabase/config.toml`
 reading its id and secret through `env()` from a root `.env` (already
