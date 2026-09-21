@@ -10,7 +10,8 @@
 // promotes and any character it swaps out (#1123); the seeded signups and
 // players are never written.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn as withSharedTxn, seedPlayer, seedSignup, seedTeam, OFFICER_T1 } from './helpers.js';
+import { randomUUID } from 'node:crypto';
+import { pool, withTxn as withSharedTxn, seedPlayer, seedSeason, seedSignup, seedTeam, OFFICER_T1 } from './helpers.js';
 
 // The signup every case promotes: approved, class_spec 1, minted per case
 // under a name this file alone uses, so the upsert cases can plant a
@@ -292,39 +293,39 @@ describe('main swap archiving', () => {
   });
 
   it("clears the old character's live-season priority_order rows, but leaves past seasons and other players alone (20260828124142)", async () => {
-    // The live season is read from the team's settings row, so the swap
-    // happens on a minted team whose season the case sets, as that team's
-    // officer, rather than writing team 1's row.
+    // The live season is current_season() (#938), not a key on the team's
+    // settings row, so the swap happens on a minted team with an empty config,
+    // as that team's officer; the past season is a tier the case mints.
     await withTxn(async (q, asOfficer, asUser) => {
       const { teamId, officer } = await seedTeam(q);
-      await q(`update public.team_settings set config = '{"seasonName":"Midnight Season 2"}' where team_id = $1`, [
-        teamId
-      ]);
+      const live = (await q('select public.current_season() as code')).rows[0].code;
+      const past = `P${randomUUID().replace(/-/g, '').slice(0, 6)}`;
+      await seedSeason(q, past);
       const signupId = await approvedSignup(q, teamId);
 
       const oldId = await seedPlayer(q, { teamId, nameRealm: 'Oldmain5-Illidan' });
       await q(
         `insert into public.priority_order (team_id, season, item_id, track, rank, player_id)
-         values ($1, 'MID2', 1, 'Hero', 1, $2), ($1, 'MID1', 1, 'Hero', 1, $2)`,
-        [teamId, oldId]
+         values ($1, $3, 1, 'Hero', 1, $2), ($1, $4, 1, 'Hero', 1, $2)`,
+        [teamId, oldId, live, past]
       );
       // A different, non-swapped player on the same team -- their live-season
       // row must survive untouched.
       const otherId = await seedPlayer(q, { teamId });
       await q(
         `insert into public.priority_order (team_id, season, item_id, track, rank, player_id)
-         values ($1, 'MID2', 1, 'Hero', 2, $2)`,
-        [teamId, otherId]
+         values ($1, $3, 1, 'Hero', 2, $2)`,
+        [teamId, otherId, live]
       );
 
       await asUser(officer.uid, 'select public.add_signup_to_roster($1, $2, $3)', [signupId, true, oldId]);
 
       const rows = await q('select season from public.priority_order where player_id = $1 order by season', [oldId]);
-      expect(rows.rows.map((r) => r.season)).toEqual(['MID1']);
+      expect(rows.rows.map((r) => r.season)).toEqual([past]);
 
       const otherPlayer = await q(
-        "select count(*)::int as n from public.priority_order where player_id = $1 and season = 'MID2'",
-        [otherId]
+        'select count(*)::int as n from public.priority_order where player_id = $1 and season = $2',
+        [otherId, live]
       );
       expect(otherPlayer.rows[0].n).toBe(1);
     });

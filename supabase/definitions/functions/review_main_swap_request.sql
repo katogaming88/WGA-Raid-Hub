@@ -89,11 +89,9 @@ begin
 
   -- The old character's standing priority rows for the live season go, the
   -- same as removing them from the roster would: they no longer hold a slot
-  -- in the Priority List, the RCLootCouncil export or the addon panel.
-  select regexp_replace(ts.config ->> 'seasonName', '^Midnight Season (\d+)$', 'MID\1')
-    into v_live_season
-    from public.team_settings ts
-   where ts.team_id = v_request.team_id;
+  -- in the Priority List, the RCLootCouncil export or the addon panel. The
+  -- live season is the tier (#938); null only on a stack with no tier row.
+  v_live_season := public.current_season();
 
   if v_live_season is not null then
     delete from public.priority_order
