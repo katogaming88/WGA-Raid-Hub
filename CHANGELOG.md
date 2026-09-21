@@ -12,7 +12,7 @@ answers to.
 
 ---
 
-## [3.148.4] - 2026-09-21
+## [3.148.5] - 2026-09-21
 
 ### Project
 
@@ -27,6 +27,19 @@ answers to.
   source link. Sign Up, the Twitch link and picking characters are left out
   until those pages exist. **Help** and **Support Discord** links now sit under
   the sign-in buttons at the bottom of the sidebar on every page.
+
+## [3.148.4] - 2026-09-21
+
+### Backend
+
+- Fixed: a main swap clears the old character's standing priority rows for the
+  current tier on every team. `add_signup_to_roster()` and
+  `review_main_swap_request()` had read the season from the team's typed
+  Season Name by pattern, so a team with no name set (Immolation and Wrathless)
+  kept the swapped-out character's rows in the Priority List, the RCLootCouncil
+  export and the addon panel; both read `current_season()` now
+  (`20260921192826_cleanups_read_current_season.sql`, the first of #938's four
+  pull requests).
 
 ## [3.148.3] - 2026-09-21
 

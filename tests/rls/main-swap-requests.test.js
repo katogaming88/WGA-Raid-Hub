@@ -185,17 +185,15 @@ describe('review_main_swap_request()', () => {
 
   it("clears the old character's standing priority rows for the live season", async () => {
     await withTxn(async ({ q, asUser }) => {
-      // A team of its own, since the live season is a team_settings write.
+      // The live season is current_season() (#938); the team's settings row
+      // carries no season key.
       const team = await seedTeam(q);
       const { characterId, raiderPlayer } = await fixture(q, { memberId: team.raider.memberId });
-      await q(
-        `update public.team_settings set config = config || '{"seasonName":"Midnight Season 2"}' where team_id = $1`,
-        [team.teamId]
-      );
+      const live = (await q('select public.current_season() as code')).rows[0].code;
       await q(
         `insert into public.priority_order (team_id, season, item_id, track, rank, player_id)
-         values ($1, 'seed-season', 1, 'Myth', 2, $2), ($1, 'MID2', 1, 'Myth', 1, $2)`,
-        [team.teamId, raiderPlayer]
+         values ($1, 'seed-season', 1, 'Myth', 2, $2), ($1, $3, 1, 'Myth', 1, $2)`,
+        [team.teamId, raiderPlayer, live]
       );
       const id = (await ask(asUser, team.raider.uid, characterId, FROST_MAGE, null, team.teamId)).rows[0].id;
       await review(asUser, team.officer.uid, id, true);
