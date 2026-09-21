@@ -1,12 +1,66 @@
-// The switch is per tier (#939): this toggle controls the tier the signup
-// season names, and has nothing to open until one is set on the Season tab.
+// The switch is per tier (#939), and the tier is picked here (#934): the
+// select beside the toggle lists the tiers that have not ended, newest
+// first, plus any tier this team still has open, and the toggle, the
+// history and the missing-signups list read the pick. It starts on the
+// newest tier the team has open, else the current tier.
+var _signupTierCode = '';
+
+// The tiers the select offers, in DATA.seasons order (newest first): the
+// tiers that have not ended, plus any tier this team has open, so the tier
+// the toggle acts on is always one the officer can see, even when the
+// seasons read failed and the open tier has to be named from its code.
+function signupTierOptions() {
+  var today = easternToday();
+  var open = openSignupSeasonCodes();
+  var known = ((DATA && DATA.seasons) || []).filter(function (season) {
+    return !season.ends_at || season.ends_at >= today || open.indexOf(season.code) !== -1;
+  });
+  var listed = known.map(function (season) {
+    return season.code;
+  });
+  return known.concat(
+    open
+      .filter(function (code) {
+        return listed.indexOf(code) === -1;
+      })
+      .map(function (code) {
+        return { code: code, display_name: seasonDisplayName(code) };
+      })
+  );
+}
+
+function signupTierCode() {
+  var options = signupTierOptions();
+  var offered = options.some(function (season) {
+    return season.code === _signupTierCode;
+  });
+  if (!offered) _signupTierCode = openSignupSeasonCodes()[0] || currentSeasonCode() || '';
+  return _signupTierCode;
+}
+
+function onSignupTierSelect() {
+  var select = document.getElementById('signupSeasonSelect');
+  if (select) _signupTierCode = select.value;
+  renderSignupToggle();
+}
+
 function renderSignupToggle() {
   var badge = document.getElementById('signupStatusBadge');
   var btn = document.getElementById('signupToggleBtn');
   var tierEl = document.getElementById('signupToggleTier');
+  var select = document.getElementById('signupSeasonSelect');
   if (!badge || !btn) return;
-  var code = signupSeasonCode();
-  var open = signupsOpen();
+  var code = signupTierCode();
+  if (select) {
+    select.innerHTML = signupTierOptions()
+      .map(function (season) {
+        return '<option value="' + escHtml(season.code) + '">' + escHtml(season.display_name) + '</option>';
+      })
+      .join('');
+    select.value = code;
+    select.disabled = !code;
+  }
+  var open = signupsOpen(code);
   badge.textContent = open ? 'OPEN' : 'CLOSED';
   badge.className = 'signup-status-badge ' + (open ? 'signup-status-open' : 'signup-status-closed');
   btn.textContent = open ? 'Close Signups' : 'Open Signups';
@@ -14,17 +68,17 @@ function renderSignupToggle() {
   if (tierEl) {
     tierEl.textContent = code
       ? 'Controls signups for ' + seasonDisplayName(code) + '.'
-      : 'Set the signup season on the Season tab first.';
+      : 'No season to open yet: the next tier is added to the site before its signups can open.';
   }
 }
 
 function toggleSignupsOpen() {
-  setSignupsOpen(!signupsOpen());
+  setSignupsOpen(!signupsOpen(signupTierCode()));
 }
 
 function setSignupsOpen(open) {
   var btn = document.getElementById('signupToggleBtn');
-  var code = signupSeasonCode();
+  var code = signupTierCode();
   if (!code) return;
   if (btn) {
     btn.disabled = true;
@@ -235,14 +289,16 @@ function renderSignupHistory(signups) {
   var container = document.getElementById('signupHistoryContainer');
   if (!container) return;
 
-  var season = DATA && DATA.signupSeason;
+  // The tier picked on the Signups sub-tab (#934); every signup when there
+  // is none to pick.
+  var season = signupTierCode();
   var filtered = season
     ? signups.filter(function (s) {
         return s.season === season;
       })
     : signups;
 
-  var seasonLabel = season ? ' for ' + season : '';
+  var seasonLabel = season ? ' for ' + seasonDisplayName(season) : '';
 
   if (!filtered.length) {
     container.innerHTML =

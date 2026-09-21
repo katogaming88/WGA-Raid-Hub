@@ -4,6 +4,55 @@ var signupData = {};
 // call startSignupEdit() with no args -- simpler and safer than round-
 // tripping the row through the DOM (e.g. a serialized <script> blob).
 var _ownSignupRow = null;
+// The tier this signup is for (#934): one of the tiers the team has signups
+// open for, the newest unless the raider picks another. A team with one
+// open tier shows no picker; the value still rides every call.
+var _signupTier = '';
+
+function signupTier() {
+  var open = openSignupSeasonCodes();
+  if (open.indexOf(_signupTier) === -1) _signupTier = open[0] || '';
+  return _signupTier;
+}
+
+// Shown only when more than one tier is open; picking one reloads the form
+// for that tier, since the raider's existing signup is per tier.
+function renderSignupTierPicker() {
+  var el = document.getElementById('signupTierPicker');
+  if (!el) return;
+  var open = openSignupSeasonCodes();
+  if (open.length < 2) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  var tier = signupTier();
+  el.style.display = '';
+  el.innerHTML =
+    '<div class="signup-field">' +
+    '<label class="signup-label" for="signupTierSelect">Signing up for</label>' +
+    '<select id="signupTierSelect" class="signup-input" onchange="onSignupTierChange(this.value)">' +
+    open
+      .map(function (code) {
+        return (
+          '<option value="' +
+          signupEscHtml(code) +
+          '"' +
+          (code === tier ? ' selected' : '') +
+          '>' +
+          signupEscHtml(seasonDisplayName(code)) +
+          '</option>'
+        );
+      })
+      .join('') +
+    '</select>' +
+    '</div>';
+}
+
+function onSignupTierChange(code) {
+  _signupTier = code;
+  showSignupView();
+}
 
 // Local copy of tab-attendance.js's escHtml() -- that bundle isn't loaded on
 // the public page, and renderSignupSummary() interpolates raider-supplied
@@ -25,6 +74,7 @@ function showSignupView() {
   showView('signup');
   var container = document.getElementById('signupForm');
   container.innerHTML = '<p class="signup-step-desc">Loading...</p>';
+  renderSignupTierPicker();
 
   var session = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
   if (!session) {
@@ -38,16 +88,18 @@ function showSignupView() {
     return;
   }
 
-  supabaseClient.rpc('get_own_signup', { p_team_id: _teamCfg.supabaseTeamId }).then(function (result) {
-    var row = result.error ? null : (result.data && result.data[0]) || null;
-    if (row) {
-      renderSignupSummary(row);
-    } else {
-      signupStep = 1;
-      signupData = {};
-      renderSignupStep();
-    }
-  });
+  supabaseClient
+    .rpc('get_own_signup', { p_team_id: _teamCfg.supabaseTeamId, p_season: signupTier() || null })
+    .then(function (result) {
+      var row = result.error ? null : (result.data && result.data[0]) || null;
+      if (row) {
+        renderSignupSummary(row);
+      } else {
+        signupStep = 1;
+        signupData = {};
+        renderSignupStep();
+      }
+    });
 }
 
 // Signups now require a Discord session so a submission can be tied to a
@@ -90,12 +142,10 @@ function renderSignupSummary(row) {
   if (row.status === 'pending' || row.status === 'approved') {
     actionsHtml = '<button class="btn btn-gold" onclick="startSignupEdit()">Edit Signup</button>';
   } else if (row.status === 'added') {
-    // get_own_signup() only ever returns an 'added' row while its season is
-    // still the team's active signup season -- once an officer moves on,
-    // the row stops coming back and this raider gets a fresh form instead.
-    // So reaching this branch already means signups are still open; editing
-    // sends it back through officer review rather than touching the roster
-    // directly (see update_own_signup()).
+    // The form only asks for a tier the team has open (signupTier()), so an
+    // 'added' row that comes back is one whose tier is still open and
+    // update_own_signup() still accepts an edit; editing sends it back
+    // through officer review rather than touching the roster directly.
     actionsHtml =
       '<p class="signup-step-desc">You\'re on the roster for this season. You can still update your signup while signups are open -- it\'ll go back to an officer for review.</p>' +
       '<button class="btn btn-gold" onclick="startSignupEdit()">Edit Signup</button>';
@@ -424,20 +474,20 @@ function updateOffSpecList() {
 // safe way to name other pending applicants here.
 //
 // The confirmed active roster is included too, but ONLY when the team's
-// live raiding season already equals the season being signed up for
-// (DATA.seasonName === DATA.signupSeason) -- e.g. Hellfire, who push
-// approved signups straight onto the roster instead of leaving them
-// pending, so their roster already IS this season's confirmed membership.
-// When the two differ (e.g. Phoenix, still raiding a prior season while
-// collecting signups for the next one), the roster reflects a stale season
-// and would wrongly count someone who simply hasn't signed up yet --
-// officers already have a separate view for that; the incoming roster alone
-// is the accurate answer there.
+// live raiding season already equals the tier being signed up for -- e.g.
+// Hellfire, who push approved signups straight onto the roster instead of
+// leaving them pending, so their roster already IS this season's confirmed
+// membership. When the two differ (e.g. Phoenix, still raiding a prior
+// season while collecting signups for the next one), the roster reflects a
+// stale season and would wrongly count someone who simply hasn't signed up
+// yet -- officers already have a separate view for that; the incoming
+// roster alone is the accurate answer there. Both sides compare as codes
+// (#934); seasonName is still a name until #938.
 function signupClassmatesPool() {
   var incoming = (window.DATA && DATA.incomingRoster) || [];
-  var seasonName = ((window.DATA && DATA.seasonName) || '').trim().toLowerCase();
-  var signupSeason = ((window.DATA && DATA.signupSeason) || '').trim().toLowerCase();
-  var includeRoster = !!seasonName && !!signupSeason && seasonName === signupSeason;
+  var liveCode = seasonCodeForDisplay(((window.DATA && DATA.seasonName) || '').trim());
+  var signupCode = signupTier();
+  var includeRoster = !!liveCode && !!signupCode && liveCode === signupCode;
   if (!includeRoster) return incoming;
 
   // Same swap-duplicate handling as before: a returning roster member who
@@ -778,6 +828,8 @@ function submitSignup() {
     rpcParams.p_signup_id = signupData.editingSignupId;
   } else {
     rpcParams.p_team_id = _teamCfg.supabaseTeamId;
+    // The tier the raider is signing up for (#934); an edit keeps its row's.
+    rpcParams.p_season = signupTier() || null;
   }
 
   supabaseClient.rpc(rpcName, rpcParams).then(function (result) {

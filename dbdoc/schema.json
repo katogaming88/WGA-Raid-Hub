@@ -1955,14 +1955,14 @@
         {
           "name": "season_signups_season_fkey",
           "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
           "table": "public.season_signups",
           "referenced_table": "public.seasons",
           "columns": [
             "season"
           ],
           "referenced_columns": [
-            "display_name"
+            "code"
           ]
         }
       ],
@@ -3930,10 +3930,10 @@
           "nullable": true
         }
       ],
-      "def": "CREATE VIEW incoming_roster AS (\n SELECT s.id AS signup_id,\n    s.team_id,\n    s.signup_name_realm,\n    cs.class,\n    cs.spec,\n    cs.role,\n    s.swap_from_name_realm\n   FROM ((season_signups s\n     JOIN team_settings ts ON ((ts.team_id = s.team_id)))\n     LEFT JOIN classes_specs cs ON ((cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id))))\n  WHERE ((s.status = 'approved'::text) AND (s.approved_player_id IS NULL) AND (s.season = (ts.config -\u003e\u003e 'activeSignupSeason'::text)))\n)",
+      "def": "CREATE VIEW incoming_roster AS (\n SELECT s.id AS signup_id,\n    s.team_id,\n    s.signup_name_realm,\n    cs.class,\n    cs.spec,\n    cs.role,\n    s.swap_from_name_realm\n   FROM ((season_signups s\n     JOIN team_seasons ts ON (((ts.team_id = s.team_id) AND (ts.season_code = s.season))))\n     LEFT JOIN classes_specs cs ON ((cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id))))\n  WHERE ((s.status = 'approved'::text) AND (s.approved_player_id IS NULL))\n)",
       "referenced_tables": [
         "public.season_signups",
-        "public.team_settings",
+        "public.team_seasons",
         "public.classes_specs"
       ]
     },
@@ -8307,10 +8307,10 @@
       "cardinality": "zero_or_more",
       "parent_table": "public.seasons",
       "parent_columns": [
-        "display_name"
+        "code"
       ],
       "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)"
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
     },
     {
       "table": "public.self_received_requests",
@@ -9445,12 +9445,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.submit_season_signup",
-      "return_type": "int4",
-      "arguments": "p_team_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text, p_swap_from_name_realm text DEFAULT NULL::text",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.admin_create_team",
       "return_type": "int4",
       "arguments": "p_name text, p_slug text",
@@ -9514,12 +9508,6 @@
       "name": "public.flag_bis_list_changed",
       "return_type": "int4",
       "arguments": "p_team_id integer, p_name_realm text, p_player_note text DEFAULT NULL::text",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.get_own_signup",
-      "return_type": "record",
-      "arguments": "p_team_id integer",
       "type": "FUNCTION"
     },
     {
@@ -10048,6 +10036,18 @@
       "name": "public.set_team_season",
       "return_type": "team_seasons",
       "arguments": "p_team_id integer, p_season_code text, p_signups_open boolean DEFAULT NULL::boolean, p_wishlist_open boolean DEFAULT NULL::boolean",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.submit_season_signup",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text, p_swap_from_name_realm text DEFAULT NULL::text, p_season text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.get_own_signup",
+      "return_type": "record",
+      "arguments": "p_team_id integer, p_season text DEFAULT NULL::text",
       "type": "FUNCTION"
     }
   ],

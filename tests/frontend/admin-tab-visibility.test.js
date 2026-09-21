@@ -82,8 +82,9 @@ function makeSandbox({ access, els = {}, saveTeamSettingResult, rpcResult, delet
       querySelectorAll: () => []
     },
     location: { reload },
-    // The Properties table reads the signups switch through common.js (#939).
-    signupsOpen: () => false,
+    // The Properties table names the tiers with signups open through common.js (#939, #934).
+    openSignupSeasonCodes: () => [],
+    seasonDisplayName: (code) => code,
     saveTeamSetting,
     writeAuditLog,
     buildSeasonTab,

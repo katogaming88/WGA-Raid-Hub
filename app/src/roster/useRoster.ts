@@ -40,16 +40,22 @@ export function useIncomingRoster(teamId: number) {
   );
 }
 
-export function useSignupSeason(teamId: number) {
-  return useSupabaseQuery<string>(['signup-season', teamId], async (client) => {
+// The tiers the team has signups open for (#934): its team_seasons rows with
+// the switch on, newest first, as codes. No row means closed (#939).
+export function useSignupSeasons(teamId: number) {
+  return useSupabaseQuery<string[]>(['signup-seasons', teamId], async (client) => {
     const { data, error } = await client
-      .from('team_settings')
-      .select('signupSeason:config->>activeSignupSeason')
+      .from('team_seasons')
+      .select('season_code, seasons(starts_at)')
       .eq('team_id', teamId)
-      .maybeSingle();
+      .eq('signups_open', true);
     if (error) return { data: null, error };
-    const season = (data as { signupSeason?: unknown } | null)?.signupSeason;
-    return { data: typeof season === 'string' ? season.trim() : '', error: null };
+    const rows = (data ?? []) as { season_code: string; seasons: { starts_at: string } | null }[];
+    const startOf = (r: (typeof rows)[number]) => r.seasons?.starts_at ?? '';
+    return {
+      data: [...rows].sort((a, b) => (startOf(a) < startOf(b) ? 1 : -1)).map((r) => r.season_code),
+      error: null
+    };
   });
 }
 

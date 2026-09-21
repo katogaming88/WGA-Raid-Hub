@@ -277,8 +277,10 @@ Three sub-tabs:
 Three sub-tabs: **Signups**, **Pending Roster**, **History**.
 
 - **Signups** -- open/close toggle shows/hides the Sign Up button on the landing page. The switch
-  is per season: it controls the Signup Season set on the Season tab, each season keeps its own
-  setting, and the toggle stays disabled until a Signup Season is set.
+  is per season: pick the season beside the button and each season keeps its own setting, so next
+  tier's signups can open while the current tier is still being raided. The list holds the tiers
+  the site knows that have not ended; a new tier is added to the site by its own migration before
+  its signups can open. The History sub-tab and the Missing Signups panel follow the pick.
   Approving marks the application approved and moves it to Pending Roster; Denying marks it
   rejected. If someone re-submits, it overwrites their existing pending entry rather than
   creating a duplicate. There's no delete action on this sub-tab -- Approve/Deny are the only
@@ -341,9 +343,6 @@ Three sub-tabs: **Settings**, **Raid Progression**, **History**.
   display prefix into the label applied to every loot entry imported through RCLootCouncil while
   it's set; also what the toolbar's Season dropdown filters by. Set before importing each
   season's loot.
-- **Signup Season** -- a *separate* label stamped on signup submissions, distinct from Season
-  Name. If left blank, signups cannot be opened: the Signups toggle controls this season's
-  switch, so set it first.
 - **Season Start Date** -- raids before this date are excluded from attendance scoring;
   players who joined after it use their own join date as the window start instead. Leave blank
   to include all raids.

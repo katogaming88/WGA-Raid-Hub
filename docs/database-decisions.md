@@ -10,6 +10,22 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-21 -- The signup season is the team_seasons row, and season_signups holds the tier code (#934)
+
+Shipped: 20260921155314_season_signups_codes.sql
+
+`season_signups.season` held display names (`Midnight Season 2`) referencing `seasons(display_name)`, and which tier a team took signups for was `activeSignupSeason` on `team_settings.config`, a name an officer typed as a number on the Season tab; since #939 `submit_season_signup()` found the switch row by that name. Decision 13 on #1189 (2026-09-20) made the season app-wide and left a team its two switches per tier and nothing else, so the key goes rather than converts. Third of the conversions #932 left for #933 to #938.
+
+- **A team's signup seasons are its `team_seasons` rows with `signups_open`.** There is no separate key naming one of them: the officer picks the tier beside the Signups toggle (the `seasons` rows that have not ended, plus any the team still has open), the raider picks one of the open tiers on the form (a select only when more than one is open), and the Sign Up item, the guild cards and the app's cards show when any tier is open. The roster page's incoming tab is named after the tier when exactly one is open.
+- **The column holds the code and references `seasons(code)`.** Seventy-eight named rows converted; the one row with no season (team 3, added 2026-07-12, submitted while its switch was on with no tier named) took the tier current on its submit date, `MID1`, the rule #937 used for `boe_items`. The column stays nullable, as #937 left `boe_items.season`: the fixtures insert without one, and a row submitted before the first tier has no tier to take.
+- **`submit_season_signup()` and `get_own_signup()` take `p_season`.** The first refuses unless the team's row for that tier has `signups_open` (a display name matches no row and is refused the same way); the second answers with the caller's latest row on that tier. Passed as null, both mean the team's one open tier (the first refusing on none or several), which is what a browser on the old bundle asks for during the ten-minute window between the migration and the site publish (#1083). The old signatures were dropped before the new ones were created: `create or replace` with an added parameter leaves both, and PostgREST refuses an `rpc()` call it cannot resolve to one candidate.
+- **`update_own_signup()` keeps an added row editable while the team's row for its tier has `signups_open`.** The 2026-08-07 change made an added row editable because "I'm looking at my added signup" and "signups for this season are still open" were the same fact by argument; the row makes them the same fact by construction.
+- **`incoming_roster` joins `team_seasons` on the row's tier**, whichever way the switch is now, instead of `team_settings` on the key: officers close signups and then push the approved rows onto the roster, and the tentative roster stays on the public page across that gap, as it did while the key named the season. Its bypass-RLS shape is unchanged; #503 makes it a function after this.
+- **The three dead keys left `team_settings.config`**: `activeSignupSeason`, read by nothing after this file, and `signupsOpen` and `wishlistOpen`, read by nothing since #939 and left for this file to remove. A missing jsonb key reads as null, not as a failed request, so one PR held (the two-PR rule of #935 is for a drop the live bundle would fail on). The old bundle's cost for the window: its Sign Up item, guild cards and officer toggle read closed, and its Season tab box, if saved, writes the dead key back.
+- **Not moved with this.** `add_signup_to_roster()` reads the team's `seasonName` by regex, not this column (#938). Refusing an ended tier server-side: the select does not offer one, and `set_team_season()` still accepts any `seasons` code. Widening `set_team_season()` to team officers is a decision of its own.
+
+[Full discussion -> #934](https://github.com/katogaming88/WGA-Raid-Hub/issues/934), Season milestone; the model decision is [#1189](https://github.com/katogaming88/WGA-Raid-Hub/issues/1189).
+
 ## 2026-09-21 -- A team's two season switches are a row per team and tier (#939)
 
 Shipped: 20260921135215_team_seasons.sql

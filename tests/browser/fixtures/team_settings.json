@@ -6,13 +6,10 @@
       "seasonStart": "2026-03-04",
       "seasonEnd": "2026-09-30",
       "seasonView": null,
-      "activeSignupSeason": "Season 4",
       "trialWeeks": 4,
       "trialAttend": 75,
-      "signupsOpen": true,
       "bisSubmissionsOpen": true,
       "mPlusExclusionsOpen": true,
-      "wishlistOpen": true,
       "features": {},
       "externalLinks": {
         "warcraftlogs": "https://www.warcraftlogs.com/guild/id/000000",

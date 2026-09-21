@@ -7,12 +7,19 @@
 // writes happen as postgres (bypasses RLS), the RPC call happens as the
 // impersonated caller (the owner, a different raider, an officer, anon), and
 // assertions happen back as postgres.
+//
+// Since #934 get_own_signup() takes the tier (p_season, a seasons.code) and
+// answers with the caller's latest row on it; passed as null, the latest row
+// across the tiers the team has open (a browser on the bundle before #934,
+// during the deploy window). An added row stays editable while the team's
+// team_seasons row for its tier has signups_open (#939): the seed carries no
+// row, so a case that needs the switch on opens it.
 import { describe, it, expect, afterAll } from 'vitest';
 import { pool, withTxn, RAIDER_T1, OFFICER_T1, SIGNUP_OWNER_T1, seedSeason } from './helpers.js';
 
 // Inserts a season_signups row as postgres (bypasses RLS), owned by
-// SIGNUP_OWNER_T1 unless overridden. team 1's active season is 'seed-season'
-// (supabase/seed.sql); classes_specs id 1 is the only seeded row (Mage/Frost).
+// SIGNUP_OWNER_T1 unless overridden, on 'seed-season' (supabase/seed.sql);
+// classes_specs id 1 is the only seeded row (Mage/Frost).
 async function insertSignup(q, overrides) {
   // A season other than the seed's needs its own seasons row first (#932).
   if (overrides?.season && overrides.season !== 'seed-season') await seedSeason(q, overrides.season);
@@ -43,7 +50,11 @@ async function insertSignup(q, overrides) {
   );
 }
 
-const getOwn = (asUser, uid, teamId) => asUser(uid, 'select * from public.get_own_signup($1)', [teamId]);
+const getOwn = (asUser, uid, teamId, season = 'seed-season') =>
+  asUser(uid, 'select * from public.get_own_signup($1, $2)', [teamId, season]);
+
+const openSignups = (q, season = 'seed-season', open = true) =>
+  q('insert into public.team_seasons (team_id, season_code, signups_open) values (1, $1, $2)', [season, open]);
 
 const updateOwn = (asUser, uid, signupId, overrides = {}) => {
   const p = {
@@ -70,7 +81,7 @@ const updateOwn = (asUser, uid, signupId, overrides = {}) => {
 };
 
 describe('get_own_signup', () => {
-  it("returns the caller's pending signup for the active season, with no officer-only columns", async () => {
+  it("returns the caller's pending signup for the tier asked, with no officer-only columns", async () => {
     await withTxn(async ({ q, asUser }) => {
       await insertSignup(q, {});
       const res = await getOwn(asUser, SIGNUP_OWNER_T1, 1);
@@ -90,17 +101,34 @@ describe('get_own_signup', () => {
     });
   });
 
-  it("does not return a different season's signup", async () => {
+  it("does not return a different tier's signup, and does return it when that tier is asked for", async () => {
     await withTxn(async ({ q, asUser }) => {
       await insertSignup(q, { season: 'own-signup-other-season' });
-      const res = await getOwn(asUser, SIGNUP_OWNER_T1, 1);
-      expect(res.rows).toHaveLength(0);
+      expect((await getOwn(asUser, SIGNUP_OWNER_T1, 1)).rows).toHaveLength(0);
+      expect((await getOwn(asUser, SIGNUP_OWNER_T1, 1, 'own-signup-other-season')).rows).toHaveLength(1);
+    });
+  });
+
+  it('with no tier passed, returns the newest row across the tiers the team has open, and nothing when none is', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await insertSignup(q, { season: 'own-signup-other-season' });
+      const { rows } = await insertSignup(q, {});
+      await q("update public.season_signups set submitted_at = now() + interval '1 minute' where id = $1", [
+        rows[0].id
+      ]);
+      expect((await getOwn(asUser, SIGNUP_OWNER_T1, 1, null)).rows).toHaveLength(0);
+      await openSignups(q, 'own-signup-other-season');
+      let res = await getOwn(asUser, SIGNUP_OWNER_T1, 1, null);
+      expect(res.rows.map((r) => r.season)).toEqual(['own-signup-other-season']);
+      await openSignups(q);
+      res = await getOwn(asUser, SIGNUP_OWNER_T1, 1, null);
+      expect(res.rows.map((r) => r.season)).toEqual(['seed-season']);
     });
   });
 
   it('anon cannot execute the function', async () => {
     await withTxn(async ({ asAnon }) => {
-      await expect(asAnon('select * from public.get_own_signup(1)')).rejects.toThrow();
+      await expect(asAnon("select * from public.get_own_signup(1, 'seed-season')")).rejects.toThrow();
     });
   });
 
@@ -170,8 +198,9 @@ describe('update_own_signup', () => {
     });
   });
 
-  it("an added signup can be edited while its season is still the team's active signup season, and reverts to pending for re-review", async () => {
+  it("an added signup can be edited while the team's switch for its tier is on, and reverts to pending for re-review", async () => {
     await withTxn(async ({ q, asUser }) => {
+      await openSignups(q);
       const player = await q(
         "insert into public.players (team_id, name_realm, class_spec_id) values (1, 'Ownsignuproster-Illidan', 1) returning id"
       );
@@ -199,16 +228,14 @@ describe('update_own_signup', () => {
     });
   });
 
-  it("an added signup whose season is no longer the team's active signup season cannot be edited", async () => {
+  it('an added signup whose tier the team has closed, or never opened, cannot be edited', async () => {
     await withTxn(async ({ q, asUser }) => {
       const player = await q(
         "insert into public.players (team_id, name_realm, class_spec_id) values (1, 'Ownsignuproster-Illidan', 1) returning id"
       );
-      const { rows } = await insertSignup(q, {
-        status: 'added',
-        approved_player_id: player.rows[0].id,
-        season: 'own-signup-other-season'
-      });
+      const { rows } = await insertSignup(q, { status: 'added', approved_player_id: player.rows[0].id });
+      await expect(updateOwn(asUser, SIGNUP_OWNER_T1, rows[0].id)).rejects.toThrow(/already been added to the roster/);
+      await openSignups(q, 'seed-season', false);
       await expect(updateOwn(asUser, SIGNUP_OWNER_T1, rows[0].id)).rejects.toThrow(/already been added to the roster/);
     });
   });
@@ -256,9 +283,11 @@ describe('update_own_signup', () => {
   // roster as Mage/Arcane) opened their already-added signup and hit Submit
   // without changing anything -- it still bounced back to 'pending' and had
   // to be manually denied since there was nothing to review.
+  // Each case edits an added row, so the team's switch for its tier is on.
   describe('no-op edits (#noop)', () => {
     it('re-submitting an added signup with identical values leaves status/approval untouched', async () => {
       await withTxn(async ({ q, asUser }) => {
+        await openSignups(q);
         const player = await q(
           "insert into public.players (team_id, name_realm, class_spec_id) values (1, 'Ownsignuproster-Illidan', 1) returning id"
         );
@@ -306,6 +335,7 @@ describe('update_own_signup', () => {
 
     it('changing even one field (e.g. the note) still counts as a real edit and resets status', async () => {
       await withTxn(async ({ q, asUser }) => {
+        await openSignups(q);
         const player = await q(
           "insert into public.players (team_id, name_realm, class_spec_id) values (1, 'Ownsignuproster-Illidan', 1) returning id"
         );
@@ -335,6 +365,7 @@ describe('update_own_signup', () => {
     // state IS a no-op.
     it("matching the signup's stale stored snapshot (not the live, officer-edited player) still counts as a real edit", async () => {
       await withTxn(async ({ q, asUser }) => {
+        await openSignups(q);
         const player = await q(
           "insert into public.players (team_id, name_realm, class_spec_id) values (1, 'Ownsignuproster-Illidan', 1) returning id"
         );
@@ -358,6 +389,7 @@ describe('update_own_signup', () => {
 
     it("matching the live, officer-edited player's current name IS treated as a no-op", async () => {
       await withTxn(async ({ q, asUser }) => {
+        await openSignups(q);
         const player = await q(
           "insert into public.players (team_id, name_realm, class_spec_id) values (1, 'Ownsignuproster-Illidan', 1) returning id"
         );

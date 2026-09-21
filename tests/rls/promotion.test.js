@@ -64,6 +64,8 @@ describe('promotion of an approved signup', () => {
   it('removes the signup from pending_roster and incoming_roster', async () => {
     await withTxn(async (q, asOfficer) => {
       const signupId = await approvedSignup(q);
+      // incoming_roster lists the tiers the team has signups open for (#934).
+      await q("insert into public.team_seasons (team_id, season_code, signups_open) values (1, 'seed-season', true)");
       const before = await asOfficer('select count(*)::int as n from public.pending_roster where signup_id = $1', [
         signupId
       ]);

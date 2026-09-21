@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { launchBrowser, openApp, startApp, storedSession } from './harness.js';
-import { SCENARIO, EXPECTED_CURRENT, EXPECTED_INCOMING, withoutCounts } from '../behavior/roster.js';
+import {
+  SCENARIO,
+  SIGNUP_SEASON_APP_ROW,
+  EXPECTED_CURRENT,
+  EXPECTED_INCOMING,
+  withoutCounts
+} from '../behavior/roster.js';
 
 // The new app's Roster page against the behavior recorded from the current
 // site's Roster tab (tests/browser/roster-recorded.test.js, #1102 step 1).
@@ -8,7 +14,7 @@ import { SCENARIO, EXPECTED_CURRENT, EXPECTED_INCOMING, withoutCounts } from '..
 const ROSTER_TABLES = {
   players: SCENARIO.players,
   incoming_roster: SCENARIO.incoming,
-  team_settings: [{ signupSeason: SCENARIO.activeSignupSeason }]
+  team_seasons: [SIGNUP_SEASON_APP_ROW]
 };
 
 const STATE = {
@@ -108,11 +114,11 @@ describe('Roster page (new app), without approved signups', () => {
   });
 });
 
-describe('Roster page (new app), before a signup season is named', () => {
+describe('Roster page (new app), with no tier open for signups', () => {
   it('calls the tab Next Season Roster', async () => {
     const opened = await openApp(browser, server.port, {
       ...STATE,
-      tables: { ...ROSTER_TABLES, team_settings: [{ signupSeason: '' }] }
+      tables: { ...ROSTER_TABLES, team_seasons: [] }
     });
     try {
       await expect(opened.page.getByRole('tab', { name: 'Next Season Roster (Tentative)' }).count()).resolves.toBe(1);
@@ -146,7 +152,7 @@ describe('Roster page (new app), spec icons', () => {
 describe('Roster page (new app), attendance and items awarded', () => {
   const OFFICER_TABLES = {
     ...ROSTER_TABLES,
-    team_settings: [{ name: 'Midnight Season 2', start: '2026-08-01', end: '2026-12-31', signupSeason: '' }],
+    team_settings: [{ name: 'Midnight Season 2', start: '2026-08-01', end: '2026-12-31' }],
     attendance: SCENARIO.players.slice(0, 1).flatMap((p) => [
       { player_id: p.id, raid_date: '2026-08-12', status: 'Present', report_excluded: false },
       { player_id: p.id, raid_date: '2026-08-14', status: 'No Show', report_excluded: false }

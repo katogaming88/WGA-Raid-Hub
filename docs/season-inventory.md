@@ -128,6 +128,7 @@ Retired with the table in #935's second PR (2026-09-20, `20260920234054_retire_b
 - **Format.** Name: whatever `activeSignupSeason` holds, which is free text.
 - **Meaning.** Cycle, the team's next one.
 - **Next tier, nothing changed.** Signups keep stamping the old name until an officer changes Signup Season; the roster page's incoming tab keys on the same value. Converts in #934.
+- **Converted in #934 (2026-09-21).** The code, referencing `seasons(code)`; the named rows converted through `seasons` and the one null row took the tier current on its submit date (`MID1`). The stamp is the tier the raider picked (`p_season`), which `submit_season_signup()` accepts only when the team's `team_seasons` row for it has `signups_open`; `get_own_signup()` takes the tier too; `update_own_signup()` keeps an added row editable while that switch is on; `incoming_roster` joins the row, open or closed. The site and the app read the column through `seasonDisplayName()` / `seasonName()`. The column stays nullable, as `boe_items.season` did.
 
 ### `tier_token_map.season`
 
@@ -160,13 +161,13 @@ Every view is `security_invoker`; a view column is whatever base column it proje
 | `season_loot_pace.season` | `rclc_loot.season` | no | `loadLootPaceReport()` (`js/tabs/tab-reports.js`) |
 | `season_loot_pace.season_week` | weeks since the team's first award under that `rclc_loot.season` | no | `loadLootPaceReport()` |
 
-`incoming_roster` carries no season column but reads two: it keeps `season_signups` rows whose `season` equals the team's `activeSignupSeason`.
+`incoming_roster` carries no season column but reads one: since #934 it keeps `season_signups` rows whose `season` is a tier the team has a `team_seasons` row for, open or closed (before that, rows whose `season` equalled the team's `activeSignupSeason`).
 
 ## 4. `team_settings.config` keys (22)
 
 `config` is jsonb with no default, so an absent key and an unset key are the same thing and every reader supplies its own fallback. The code names 22 keys; production holds 20 of them across teams (team 1 all 20, team 2 16, team 3 three, team 4 none). `discordSignupChannelId` and `signupSheetLeadHours` are named by the code and set on no team.
 
-Writes go through `saveTeamSetting()` (`js/common.js`), which calls the `set_team_setting` RPC to merge the keys it is given; two SQL functions write keys of their own (`archive_current_season()`, `unarchive_season()`, `set_team_officer_bios()`), and the dashboard's SQL Editor is a known writer that leaves no trace. Reads on the current site go through `applyTeamSettingsToData()` (`js/common.js`), which copies `SEASON_CONFIG_KEYS` onto `DATA` under the same names and maps `activeSignupSeason` to `DATA.signupSeason`; the new app, the bot and the Edge Functions read the column directly. Which of the cycle keys a `team_seasons` row replaces is #939's to decide; "converts in" below names #939 for every key that describes the cycle.
+Writes go through `saveTeamSetting()` (`js/common.js`), which calls the `set_team_setting` RPC to merge the keys it is given; two SQL functions write keys of their own (`archive_current_season()`, `unarchive_season()`, `set_team_officer_bios()`), and the dashboard's SQL Editor is a known writer that leaves no trace. Reads on the current site go through `applyTeamSettingsToData()` (`js/common.js`), which copies `SEASON_CONFIG_KEYS` onto `DATA` under the same names; the new app, the bot and the Edge Functions read the column directly. Which of the cycle keys a `team_seasons` row replaces is #939's to decide; "converts in" below names #939 for every key that describes the cycle.
 
 | Key | Type | Teams holding it | Tier, cycle or neither | Converts in |
 | --- | --- | --- | --- | --- |
@@ -175,13 +176,13 @@ Writes go through `saveTeamSetting()` (`js/common.js`), which calls the `set_tea
 | `seasonEnd` | string, `YYYY-MM-DD` | 1, 2 | cycle | #939 |
 | `seasonHistory` | array of archived cycles | 1, 2 | cycle | #939 |
 | `seasonView` | string (a `raid_zones.season` name) or null | 1, 2 (null) | cycle (a planning override) | #933 |
-| `activeSignupSeason` | string, free text (a name today) | 1, 2 | cycle (the next one) | #934 |
+| `activeSignupSeason` | string, free text (a name today) | 1, 2 | cycle (the next one) | #934 (shipped 2026-09-21: the key is gone; the signup seasons are the `team_seasons` rows with `signups_open`) |
 | `raidProgression` | array of raids with bosses | 1, 2 | cycle (the team's raid list for its season) | #939 |
 | `trackIlvlThresholds` | object, `{Hero, Myth}` floors | 1, 2 | tier in meaning, per team in storage | none filed |
-| `signupsOpen` | boolean | 1, 2, 3 | neither (a gate) | #939 (shipped 2026-09-21: a `team_seasons` row per tier; the key stays until #934 strips it) |
+| `signupsOpen` | boolean | 1, 2, 3 | neither (a gate) | #939 (shipped 2026-09-21: a `team_seasons` row per tier; #934 stripped the key the same day) |
 | `bisSubmissionsOpen` | boolean | 1, 2 | neither (a gate) | none |
 | `mPlusExclusionsOpen` | boolean | 1, 2 | neither (a gate) | none |
-| `wishlistOpen` | boolean | 1, 2 | neither today | #939 (shipped 2026-09-21: a `team_seasons` row per tier; the key stays until #934 strips it); #936 closes the insert path on it |
+| `wishlistOpen` | boolean | 1, 2 | neither today | #939 (shipped 2026-09-21: a `team_seasons` row per tier; #934 stripped the key the same day); #936 closes the insert path on it |
 | `trialWeeks`, `trialAttend` | numbers | 1, 2 | neither | none |
 | `targetTankCount`, `targetHealCount` | numbers | 1 | neither | none |
 | `features` | object of flags | 1, 2, 3 | neither | none |
@@ -225,6 +226,7 @@ Writes go through `saveTeamSetting()` (`js/common.js`), which calls the `set_tea
 - **Writers.** `saveSignupSeason()` (`js/tabs/tab-season.js`), from the number typed.
 - **Readers.** `submit_season_signup()` (the stamp), `update_own_signup()`, `get_own_signup()`, the `incoming_roster` view; on the site as `DATA.signupSeason` in `showRosterSubTab()` (`js/roster.js`, the incoming tab's label), `signupClassmatesPool()` (`js/signup.js`), `fetchMissingSignups()`, `renderSignupHistory()` and `buildSeasonTab()`; the app's `useSignupSeason()` (`app/src/roster/useRoster.ts`).
 - **Meaning.** Cycle, the next one: signups for a tier open while the current tier is still raided. **Next tier, nothing changed.** Signups keep the old name until an officer changes it. Converts in #934.
+- **Retired in #934 (2026-09-21).** The key is gone from every config row: a team's signup seasons are its `team_seasons` rows with `signups_open`, the officer picks the tier beside the Signups toggle (`renderSignupToggle()`, from the `seasons` rows that have not ended), the raider's form picks one of the open tiers (`signupTier()` in `js/signup.js`, a select only when more than one is open), and every reader above reads `openSignupSeasonCodes()` (`js/common.js`) or the app's `useSignupSeasons()`.
 
 ### `raidProgression`
 
@@ -243,7 +245,7 @@ Writes go through `saveTeamSetting()` (`js/common.js`), which calls the `set_tea
 - **Writers.** `setSignupsOpen()` (`js/tabs/tab-signups.js`), `setBisSubmissionsOpen()` and `setWishlistOpen()` (`js/tabs/tab-bis.js`), `toggleMPlusOpen()` (`js/tabs/tab-mplus.js`).
 - **Readers.** `submit_season_signup()` refuses when `signupsOpen` is false; `submit_bis_link()` on `bisSubmissionsOpen`; `submit_mplus_exclusion()` on `mPlusExclusionsOpen`. On the site: `updateSignupNavItem()` (`js/roster.js`), `fetchGuildTeamSettings()` and `renderGuildTeams()` (`js/guild.js`, every team's `signupsOpen`), `renderSignupToggle()`, `bisSubmissionsOpen()`, `wishlistOpen()` and `renderProfile()` (`js/common.js`), `loadAdminProperties()`. The app's `useWishlistSettings()` reads `wishlistOpen`. `wishlistOpen` has no SQL reader: the `Raiders manage own item_preferences` policy (`my_active_player_ids()`) admits an insert whether or not the key is set, so the gate is client-side only.
 - **Meaning.** Neither: gates. **Next tier, nothing changed.** Nothing; #936 closes the wishlist insert path when the team has no open cycle.
-- **Since #939 (2026-09-21).** `signupsOpen` and `wishlistOpen` are rows on `team_seasons`, one per team and tier, written only by `set_team_season()`; the Signups toggle controls the tier `activeSignupSeason` names and the Wishlist Editing toggle the tier `resolveSeasonViewCode()` returns, and every reader above reads the row instead of the key. No row means closed. The two keys are still in `config` on the teams that had them, read by nothing; #934 removes them. `bisSubmissionsOpen` and `mPlusExclusionsOpen` are unchanged.
+- **Since #939 (2026-09-21).** `signupsOpen` and `wishlistOpen` are rows on `team_seasons`, one per team and tier, written only by `set_team_season()`; the Signups toggle controls the tier picked beside it (since #934; the tier `activeSignupSeason` named, for the hours between the two) and the Wishlist Editing toggle the tier `resolveSeasonViewCode()` returns, and every reader above reads the row instead of the key. No row means closed. #934 removed the two keys from `config` the same day. `bisSubmissionsOpen` and `mPlusExclusionsOpen` are unchanged.
 
 ### `trialWeeks`, `trialAttend`, `targetTankCount`, `targetHealCount`
 
@@ -270,8 +272,8 @@ Derived from the entries above, in the order the tier would hit them.
 1. `CURRENT_SEASON` in `js/common.js`, `SEASON` in `scripts/generate-tier-token-map-sql.js` and the two copies of the prefixes are edited by hand, and the token seed is regenerated; until it is, Sync Roster Tier Counts refuses (#1108). #932 makes the tier a row; #939 gives every team a default.
 2. Each team clicks Start New Season, which archives the cycle and writes the constant's name into `seasonName`; a team that does not keeps stamping the old name into `boe_items`, `item_preferences` and `raid_zones`, and its priority, loot and scoring writes stay under the old code. #938 moves that flow to codes; #939 replaces the keys with `team_seasons` rows.
 3. `raid_zones` has no row for the new tier until a team with the new `seasonName` runs `wcl-progression-sync`; a team without one lands the rows under `Unknown`. Until the row exists Season View cannot select the tier and the scope check fails open. #933.
-4. Teams 3 and 4 have no cycle: their BoE finds stamp null (five rows today), and a signup submitted while `activeSignupSeason` is absent stamps null (one row today). #937 borrows the guild's tier for finds; #934 and #936 refuse or scope the rest.
-5. `activeSignupSeason` and `seasonView` are free text and a raid-zone name; both keep working only while an officer types the same name the code derives. #934 and #933.
+4. Teams 3 and 4 have no cycle: their BoE finds stamp null (five rows today), and a signup submitted while `activeSignupSeason` is absent stamps null (one row today). #937 borrows the guild's tier for finds (shipped); #934 stamps the tier the raider picked from the ones the team opened (shipped); #936 scopes the wishlist.
+5. `activeSignupSeason` and `seasonView` are free text and a raid-zone name; both keep working only while an officer types the same name the code derives. #934 retired the first (the tier is picked from `seasons`); #933 converted the second.
 6. `boe_items.season` is written and never read, so nothing surfaces a wrong or missing stamp until #937 gives it a reader.
 7. The wishlist rows follow each team's rollover by name; #936 stamps the tier code of the team's open cycle and closes the form when there is none.
 8. `trackIlvlThresholds` is re-entered per team by hand. No issue files it; it is the one key whose meaning is the tier and whose storage is the cycle.

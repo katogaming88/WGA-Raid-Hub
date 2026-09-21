@@ -58,7 +58,7 @@ function loadAdminProperties() {
     ['Season End', (DATA && DATA.seasonEnd) || '(not set)'],
     ['Archived Seasons', ((DATA && DATA.seasonHistory) || []).length + ' season(s)'],
     ['Raid Progression', ((DATA && DATA.raidProgression) || []).length + ' raid(s)'],
-    ['Signups Open', signupsOpen() ? 'Yes' : 'No'],
+    ['Signups Open', openSignupSeasonCodes().map(seasonDisplayName).join(', ') || 'No'],
     ['BiS Submissions Open', DATA && DATA.bisSubmissionsOpen ? 'Yes' : 'No'],
     ['M+ Exclusions Open', DATA && DATA.mPlusExclusionsOpen ? 'Yes' : 'No']
   ];

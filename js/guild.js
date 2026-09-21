@@ -220,7 +220,7 @@ function fetchGuildTeamSettings() {
     return Promise.resolve(map);
   }
   // The signups switch is per tier (#939): a team's card shows Sign up when
-  // the row for the tier its signup season names has it on, the same row
+  // any of its team_seasons rows has it on (#934), the rows
   // submit_season_signup() checks. Both reads are one row per team (or per
   // team and tier) across the guild.
   return Promise.all([
@@ -235,10 +235,9 @@ function fetchGuildTeamSettings() {
         var slug = _guildSlugForTeamId(row.team_id);
         if (!slug) return;
         var config = row.config || {};
-        var signupCode = seasonCodeForDisplay(config.activeSignupSeason || '');
         map[slug] = {
           signupsOpen: openRows.some(function (r) {
-            return r.team_id === row.team_id && r.season_code === signupCode && r.signups_open === true;
+            return r.team_id === row.team_id && r.signups_open === true;
           }),
           boeEnabled: featureEnabledIn(config.features, 'boe'),
           // Officer-edited per team (js/tabs/tab-season.js), and hidden rather

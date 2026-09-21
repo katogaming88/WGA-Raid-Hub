@@ -12,6 +12,33 @@ answers to.
 
 ---
 
+## [3.148.0] - 2026-09-21
+
+### Frontend
+
+- Signups are per season, picked where they are opened: the Signups tab's
+  toggle has a season select beside it (the seasons the site knows that have
+  not ended, newest first), and the History sub-tab and the Missing Signups
+  panel follow the pick. The Season tab's Signup Season box is gone. Sign Up
+  shows on a team page while any season is open; when more than one is, the
+  form asks which one. The roster's next-season tab, the guild page's cards
+  and the new app's roster and guild pages read the same rows (#934).
+
+### Backend
+
+- `season_signups.season` holds the tier code (`MID2`) and references
+  `seasons(code)`; the existing rows converted, and the one row with no
+  season took the tier current on the day it was submitted.
+  `submit_season_signup()` and `get_own_signup()` take the season the raider
+  picked and check the team's `team_seasons` row for it (null takes the one
+  open season, for browsers still on the previous bundle); an added signup
+  stays editable while that switch is on; `incoming_roster` lists approved
+  signups on the seasons the team has taken signups for, open or closed, so
+  the tentative roster stays up between Close Signups and Push to Roster.
+  `activeSignupSeason`,
+  `signupsOpen` and `wishlistOpen` are gone from `team_settings.config`
+  (#934).
+
 ## [3.147.0] - 2026-09-21
 
 ### Frontend

@@ -97,7 +97,9 @@ function fetchMissingSignups(callback) {
         callback(result.error);
         return;
       }
-      var season = DATA && DATA.signupSeason;
+      // The tier picked on the Signups sub-tab (#934); any tier when there
+      // is none to pick.
+      var season = signupTierCode();
       var submitted = {};
       (result.data || []).forEach(function (row) {
         if (row.status === 'rejected') return;
@@ -642,7 +644,7 @@ function buildPendingCardHtml(e, rosterMap) {
     html +=
       '<span style="font-size:0.85rem;color:var(--text-muted);background:var(--bg-alt);' +
       'border:1px solid var(--border);border-radius:3px;padding:0.1rem 0.4rem;margin-left:0.4rem;">' +
-      escHtml(e.season) +
+      escHtml(seasonDisplayName(e.season)) +
       '</span>';
 
   html += '</div>';

@@ -257,10 +257,13 @@ insert into public.rclc_loot (id, team_id, player_id, item_id, track, season) va
 insert into public.player_wcl_season_perf (player_id, team_id, season) values
   (1, 1, 'seed-season');
 
+-- No season key (#934): the tier a team takes signups for is its team_seasons
+-- row, and the seed carries none (#939: no row means closed), so a case that
+-- needs the switch on opens it.
 insert into public.team_settings (team_id, config) values
-  (1, '{"activeSignupSeason":"seed-season"}'),
-  (2, '{"activeSignupSeason":"seed-season"}'),
-  (3, '{"activeSignupSeason":"seed-season"}');
+  (1, '{}'),
+  (2, '{}'),
+  (3, '{}');
 
 insert into public.item_bosses (item_id, boss) values
   (1, 'Seed Test Boss');
