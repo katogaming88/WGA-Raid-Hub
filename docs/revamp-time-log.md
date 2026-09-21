@@ -126,7 +126,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Notes |
 | --------- | ---- | ----- | ------: | ----------- | ----- |
 | 6:35-7:05 PM | Streams sidebar live-count badge (#1102) | Revamp 2 (#1102) | 30 m | build; Kat review not yet counted | Badge on the Streams nav item, same cached read as the page; times are estimated, no transcript timestamps. |
-| 7:05-7:25 PM | #1161 Sentry error reporting (code; DSN still owed) | Revamp 2 (#1102) | 20 m | build; Kat review not yet counted | Plugs into reportError(), off until VITE_SENTRY_DSN is set; scrubs URLs and headers. Times estimated. Source maps follow once Kat has the project. |
+| 7:05-7:25 PM | #1161 Sentry error reporting (code and DSN; source maps still to do) | Revamp 2 (#1102) | 20 m | build; Kat review not yet counted | Plugs into reportError(), on where VITE_SENTRY_DSN is set; scrubs URLs and headers. Times estimated. Source maps follow once Kat has the project. |
 
 ## Not counted (same sessions, not revamp)
 

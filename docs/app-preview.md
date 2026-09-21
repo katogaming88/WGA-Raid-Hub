@@ -41,6 +41,7 @@ Removing someone from the list stops new sign-ins right away. A session they alr
 | The lock | Cloudflare One → Access controls → Applications → **WGA Raid Hub preview** | A self-hosted application covering two addresses: `wga-raid-hub-app.pages.dev` and `*.wga-raid-hub-app.pages.dev`. The wildcard matters: every deploy also gets its own address (`<hash>.wga-raid-hub-app.pages.dev`), and without it those would be open. Login method: One-time PIN. Plan: Zero Trust Free. |
 | Sign-in return | Supabase dashboard → Authentication → URL Configuration → Redirect URLs | `https://wga-raid-hub-app.pages.dev/**`, so Battle.net and Discord sign-in come back to the preview. |
 | Battle.net sign-in | Supabase (hosted), custom provider `custom:battlenet` | Added through the auth admin API, type `oauth2` (not `oidc`: Blizzard's signing key format breaks Supabase's OIDC check). Manual identity linking is switched on. See the 2026-09-14 entry in `docs/database-decisions.md`. |
+| Error reporting | The app's Sentry project (Kat's account); `VITE_SENTRY_DSN` in `app/.env.production`; code in `app/src/lib/sentry.ts` | Every failed read or write, and any error the page throws, is sent to Sentry with where it happened. It runs on the preview and production builds, never on a local dev server (no DSN there). A report carries the signed-in account id and nothing else about the person: addresses lose their query and fragment, and no cookies or request headers go. The DSN is public by design. Free plan: 5,000 errors a month. Stack traces are minified until source maps are uploaded from the deploy (#1161). |
 | Tests | `tests/browser-app/`, run by the App workflow on every PR and every merge to `main` | Accessibility, reflow, focus and reduced motion on the built app. `npm run test:app-browser` after `cd app && npm run build`. |
 
 No Battle.net or Discord app setting is tied to the preview: both send people back to Supabase, and Supabase sends them on to the preview.
@@ -58,6 +59,9 @@ That Battle.net login is attached to another account on the site, often a second
 
 **The preview opens without asking for an email.**
 Access is not covering that address. Check the application's destinations include both the plain address and the `*.` wildcard.
+
+**Nothing shows up in Sentry.**
+Check that `VITE_SENTRY_DSN` is still in `app/.env.production` (a build without it reports nothing, silently), that the deploy ran, and that the reader is not running an ad blocker, which blocks Sentry's address. A local dev server never reports.
 
 **The preview still shows old code.**
 The `Deploy the new app preview` job in the latest Deploy run shows whether the upload happened. A merge only reaches the preview after its migrations and functions deploy.
