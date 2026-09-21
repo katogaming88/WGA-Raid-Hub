@@ -370,35 +370,17 @@ function checkEmptyBisSubmissions() {
   updateNavBadges();
 }
 
-// ── BiS Lists sub-tab (Supabase, #217) ───────────────────────────────────────
+// ── BiS Lists sub-tab ───────────────────────────────────────────────────
 //
-// Every add/remove/mark-obtained writes straight to bis_items and logs itself
-// via writeAuditLog() (#214) -- no staged "Save" step, since the backend
-// supports true per-row writes now (unlike the old GAS setBisItems, which
-// only rewrote a player's whole BiS column at once). getBisItems(nameRealm)
-// (js/common.js) is the live source of truth; DATA.bisList is patched in
-// place after each successful write instead of re-fetching. Audit entries use
-// target_type 'players' (not 'bis_items') so TARGET still resolves to the
-// character name even after a row is deleted -- a bis_items id would go
-// stale the moment "remove" runs, since resolveAuditTargetNames() (tab-audit.js)
-// only ever looks the row up by a still-existing primary key.
-//
-// The editor is a fixed grid of BIS_SLOTS rows rather than a flat add-list
-// (#393 follow-up): a BiS list only ever has one item per slot, so showing
-// every slot up front and letting an officer fill in the empty ones removes
-// the search-then-guess-the-slot step search previously required, especially
-// for M+/Crafted/Catalyst placeholders which have no catalog slot to search
-// by at all.
-
-var _bisListEditor = null; // { firstName, nameRealm }
-var _bisActiveSlot = null; // canonical BIS_SLOTS row currently showing its inline add-search, or null
-var _bisActiveSlotQuery = '';
+// A per-player count of wishlist BiS tags (item_preferences, the only BiS
+// source since #935) with the Incomplete Wishlists badge from
+// tab-priority.js. The slot vocabulary below is shared with that file's
+// completeness check.
 
 // Every row a BiS list can have an opinion about. Finger/Trinket get two
 // rows each since a player can want a different item in each -- items.slot
 // itself only ever says "Finger" or "Trinket" (fetch-items.js has no notion
-// of which of the two), so bis_items.slot is what actually distinguishes them
-// once an item's assigned to one of these rows (see bisSlotPickItem).
+// of which of the two), so the tagged row is what distinguishes them.
 var BIS_SLOTS = [
   'Head',
   'Neck',
@@ -427,8 +409,8 @@ var BIS_SLOTS = [
 //
 // What remains is the one mapping that is irreducible: an item's slot is a
 // *type* (a ring fits either finger; a trinket either trinket slot), while a
-// BIS_SLOTS row is a *position*. Only the officer's BiS assignment can say
-// which, so Finger/Trinket fan out to both numbered rows.
+// BIS_SLOTS row is a *position*. Only the raider's tag can say which, so
+// Finger/Trinket fan out to both numbered rows.
 //
 // Weapons collapse to the single Weapon row: this app has never modeled 2H vs
 // 1H+OH as different BiS slots. 'Held In Off-hand' is Wowhead's own name for
@@ -480,40 +462,6 @@ var BIS_UNIVERSAL_ROWS = {
 // Neck/Back/Wrist/Finger never roll one in this expansion's itemization.
 var BIS_MAIN_STAT_ROWS = { 'Trinket 1': true, 'Trinket 2': true, Weapon: true, 'Off Hand': true };
 
-// bis_items keys on (player_id, item_id); items aren't looked up by id
-// anywhere on the client yet, so resolve by exact name match (items.name has
-// a unique index) the same way #216 resolved classes_specs.
-function resolveItemId(itemName) {
-  return supabaseClient
-    .from('items')
-    .select('id')
-    .eq('name', itemName)
-    .maybeSingle()
-    .then(function (result) {
-      if (result.error || !result.data) throw new Error('Unknown item: ' + itemName);
-      return result.data.id;
-    });
-}
-
-function bisItemAuditDetail(itemName, slot) {
-  return [slot, itemName].filter(Boolean).join(' ');
-}
-
-// DATA.bisList's key may not be an exact case match for the roster's
-// nameRealm (mirrors the same normalise-based lookup getBisItems() already
-// does); falls back to nameRealm itself for a player's first-ever BiS entry.
-// Keyed by full identity (#529), not first name, so this can never resolve
-// to the wrong twin.
-function bisListKeyFor(nameRealm) {
-  var bisMap = DATA.bisList || {};
-  var norm = normalise(nameRealm);
-  var keys = Object.keys(bisMap);
-  for (var i = 0; i < keys.length; i++) {
-    if (normalise(keys[i]) === norm) return keys[i];
-  }
-  return nameRealm;
-}
-
 function buildBisListsTab() {
   var container = document.getElementById('bis-lists-container');
   if (!container) return;
@@ -544,7 +492,7 @@ function buildBisListsTab() {
 
   var html =
     '<table class="roster-table" style="margin-top:0.25rem;">' +
-    '<thead><tr><th>Player</th><th>Class / Spec</th><th>BiS Items</th><th></th></tr></thead><tbody>';
+    '<thead><tr><th>Player</th><th>Class / Spec</th><th>BiS Items</th></tr></thead><tbody>';
 
   for (var r = 0; r < order.length; r++) {
     var role = order[r];
@@ -553,13 +501,11 @@ function buildBisListsTab() {
     players.sort(function (a, b) {
       return (a.nick || a.firstName).localeCompare(b.nick || b.firstName);
     });
-    html += '<tr class="group-header"><td colspan="4">' + labels[role] + '</td></tr>';
+    html += '<tr class="group-header"><td colspan="3">' + labels[role] + '</td></tr>';
 
     for (var j = 0; j < players.length; j++) {
       var p = players[j];
-      var bisCount = getBisItems(p.nameRealm).filter(function (e) {
-        return typeof isItemInSeasonScope !== 'function' || isItemInSeasonScope(e.item, e.season);
-      }).length;
+      var bisCount = mergedBisItemsForNameRealm(p.nameRealm).length;
       var roleColor =
         p.role === 'Tank'
           ? 'var(--tank)'
@@ -569,9 +515,6 @@ function buildBisListsTab() {
               ? 'var(--ranged)'
               : 'var(--melee)';
       var dispName = p.nick || p.firstName;
-      var isEditing = _bisListEditor && _bisListEditor.nameRealm === p.nameRealm;
-      var fnSafe = p.firstName.replace(/'/g, "\\'");
-      var nrSafe = p.nameRealm.replace(/'/g, "\\'");
       var missingInfo = missingByNameRealm[p.nameRealm];
       var missingRows = missingInfo && missingInfo.missingRows;
       var missingCounts = (missingInfo && missingInfo.missingCounts) || {};
@@ -628,352 +571,21 @@ function buildBisListsTab() {
         ';font-weight:600;">' +
         bisCount +
         '</span></td>' +
-        '<td><button class="btn ' +
-        (isEditing ? 'btn-gold' : 'btn-muted') +
-        '" style="font-size:0.97rem;padding:0.2rem 0.65rem;" ' +
-        'onclick="toggleBisListEditor(\'' +
-        fnSafe +
-        "','" +
-        nrSafe +
-        '\')">' +
-        (isEditing ? 'Close' : 'Edit') +
-        '</button></td>' +
-        '</tr>' +
-        '<tr id="bis-editor-row-' +
-        p.nameRealm +
-        '" style="display:' +
-        (isEditing ? '' : 'none') +
-        ';">' +
-        '<td colspan="4" style="padding:0.75rem 1rem 0.75rem 1.25rem;background:rgba(0,0,0,0.12);border-top:none;">' +
-        '<div id="bis-editor-panel-' +
-        p.nameRealm +
-        '">' +
-        (isEditing ? bisEditorHTML() : '') +
-        '</div>' +
-        '</td>' +
         '</tr>';
     }
   }
 
   html += '</tbody></table>';
   container.innerHTML = html;
-
-  if (_bisListEditor) wireBisSlotSearchInput();
-}
-
-function wireBisSlotSearchInput() {
-  var searchEl = document.getElementById('bisSlotSearchInput');
-  if (!searchEl) return;
-  searchEl.value = _bisActiveSlotQuery;
-  searchEl.focus();
-  searchEl.addEventListener('blur', function () {
-    setTimeout(function () {
-      var dd = document.getElementById('bisSlotDropdown');
-      if (dd) dd.style.display = 'none';
-    }, 150);
-  });
-  bisSlotOnInput();
-}
-
-function toggleBisListEditor(firstName, nameRealm) {
-  if (_bisListEditor && _bisListEditor.nameRealm === nameRealm) {
-    _bisListEditor = null;
-  } else {
-    _bisListEditor = { firstName: firstName, nameRealm: nameRealm };
-  }
-  _bisActiveSlot = null;
-  _bisActiveSlotQuery = '';
-  buildBisListsTab();
-}
-
-// Groups a player's bis_items entries under their canonical BIS_SLOTS row.
-// New rows always carry an explicit dbSlot (set at insert time by
-// bisSlotPickItem); rows added before this feature existed have dbSlot null
-// and fall back to their item's catalog slot, landing in the first open
-// matching row -- Finger/Trinket ambiguity for those legacy rows was never
-// tracked per-slot, so this is a best-effort placement, not a source of
-// truth. Anything that still doesn't land anywhere (unrecognised slot, or
-// every candidate row already taken) surfaces in a separate leftover list
-// so nothing silently disappears from the editor.
-function bisSlotBuckets(items, playerClass) {
-  var buckets = {};
-  BIS_SLOTS.forEach(function (s) {
-    buckets[s] = null;
-  });
-  var leftover = [];
-  var itemSlots = DATA.itemSlots || {};
-  var unassigned = [];
-
-  items.forEach(function (entry, idx) {
-    if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(entry.item, entry.season)) return;
-    if (entry.dbSlot && BIS_SLOTS.indexOf(entry.dbSlot) !== -1 && !buckets[entry.dbSlot]) {
-      buckets[entry.dbSlot] = { entry: entry, index: idx };
-    } else {
-      unassigned.push({ entry: entry, index: idx });
-    }
-  });
-
-  unassigned.forEach(function (u) {
-    var catalogSlot = itemSlots[u.entry.item] || '';
-    var candidates = BIS_CATALOG_SLOT_TO_ROWS[catalogSlot] || [];
-    // Legacy (pre-dbSlot) One-Hand entries: mirrors bisSlotOnInput/
-    // wishlistBucketRealItems' DUAL_WIELD_CLASSES fan-out, so an untagged
-    // second one-hander can still land in Off Hand instead of leftover.
-    if (catalogSlot === 'One-Hand' && playerClass && DUAL_WIELD_CLASSES[playerClass]) {
-      candidates = candidates.concat(['Off Hand']);
-    }
-    for (var c = 0; c < candidates.length; c++) {
-      if (!buckets[candidates[c]]) {
-        buckets[candidates[c]] = { entry: u.entry, index: u.index };
-        return;
-      }
-    }
-    leftover.push({ entry: u.entry, index: u.index });
-  });
-
-  return { buckets: buckets, leftover: leftover };
-}
-
-function bisSlotRowHTML(label, colorSlot, index, entry, isEmpty, isActive, rowPosition) {
-  var html =
-    '<div style="display:flex;align-items:center;gap:0.5rem;font-size:1.07rem;padding:0.3rem 0.5rem;' +
-    'border-radius:4px;border:1px solid var(--border);background:' +
-    (rowPosition % 2 ? 'var(--bg-elevated)' : 'var(--bg-card)') +
-    ';">' +
-    '<span style="min-width:5rem;color:' +
-    getSlotColor(colorSlot) +
-    ';font-size:0.97rem;">' +
-    label +
-    '</span>';
-
-  if (entry) {
-    var obtained = !!entry.obtained;
-    html +=
-      '<span style="flex:1;color:var(--text);' +
-      (obtained ? 'text-decoration:line-through;opacity:0.7;' : '') +
-      '">' +
-      entry.item +
-      '</span>' +
-      '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.95rem;color:var(--text-muted);cursor:pointer;white-space:nowrap;">' +
-      '<input type="checkbox" ' +
-      (obtained ? 'checked' : '') +
-      ' onchange="toggleBisItemObtained(' +
-      index +
-      ', this.checked)">Obtained</label>' +
-      '<button class="btn btn-muted" style="font-size:0.91rem;padding:1px 7px;color:var(--melee);" ' +
-      'onclick="removeBisListItem(' +
-      index +
-      ')">x</button>';
-  } else if (isActive) {
-    html +=
-      '<div style="position:relative;flex:1;">' +
-      '<input type="text" id="bisSlotSearchInput" placeholder="Search items for ' +
-      label +
-      '..." class="self-received-source" style="width:100%;box-sizing:border-box;font-size:1.02rem;" ' +
-      'oninput="bisSlotOnInput()" autocomplete="off">' +
-      '<div id="bisSlotDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;' +
-      'background:var(--bg-card);border:1px solid var(--border);border-radius:4px;z-index:100;' +
-      'max-height:200px;overflow-y:auto;"></div>' +
-      '</div>' +
-      '<button class="btn btn-muted" style="font-size:0.91rem;padding:1px 7px;" ' +
-      'onclick="bisSlotCancelAdd()">Cancel</button>';
-  } else if (isEmpty) {
-    html +=
-      '<span style="flex:1;color:var(--text-dim);font-style:italic;">-- empty --</span>' +
-      '<button class="btn btn-muted" style="font-size:0.91rem;padding:1px 7px;" ' +
-      'onclick="bisSlotStartAdd(\'' +
-      label +
-      '\')">+ Add</button>';
-  }
-
-  html += '</div>';
-  return html;
-}
-
-function bisEditorHTML() {
-  if (!_bisListEditor) return '';
-  var items = getBisItems(_bisListEditor.nameRealm);
-  var player = findRosterPlayerByNameRealm(_bisListEditor.nameRealm);
-  var grouped = bisSlotBuckets(items, player && player.class);
-  var buckets = grouped.buckets;
-  var leftover = grouped.leftover;
-  var html = '<div style="margin-bottom:0.6rem;">';
-
-  var bisLink = player && player.bisLink;
-  html +=
-    '<div style="font-size:1rem;color:var(--text-muted);margin-bottom:0.5rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">' +
-    '<span>BiS Source: ' +
-    (bisLink
-      ? '<a href="' + bisLink + '" target="_blank" rel="noopener" style="color:var(--gold);">' + bisLink + '</a>'
-      : '<span style="color:var(--text-dim);">none</span>') +
-    '</span>' +
-    (player && player.firstName && player.realm
-      ? '<button id="bisRaiderIoSyncBtn" class="btn btn-muted" style="font-size:0.93rem;padding:0.15rem 0.6rem;" ' +
-        'onclick="syncBisFromRaiderIo()" title="Check Raider.IO\'s equipped gear and mark any matching tagged tier pieces obtained">Sync from Raider.IO</button>'
-      : '') +
-    '</div>';
-
-  // Tier tokens (Head/Shoulder/Chest/Hands/Legs) drop as a generic
-  // per-armor-type item -- bis_items.item_id and entry.item both stay on the
-  // token throughout, matching bis's role in generate_priority_order() (its
-  // `bis` CTE also matches bi.item_id = p_item_id, the token's id) same as
-  // item_preferences already does (js/wishlist.js). This only substitutes
-  // the *displayed* name for this row, via a shallow copy -- entry itself,
-  // and everything derived from getBisItems()/DATA.bisList, keeps the raw
-  // token name.
-  var tierTokenMap = (DATA && DATA.tierTokenMap) || {};
-  var playerClass = player && player.class;
-
-  html += '<div style="display:flex;flex-direction:column;gap:2px;margin-bottom:0.6rem;">';
-  for (var s = 0; s < BIS_SLOTS.length; s++) {
-    var slotName = BIS_SLOTS[s];
-    var bucket = buckets[slotName];
-    var displayEntry = bucket && bucket.entry;
-    if (
-      displayEntry &&
-      playerClass &&
-      tierTokenMap[displayEntry.item] &&
-      tierTokenMap[displayEntry.item][playerClass]
-    ) {
-      displayEntry = Object.assign({}, displayEntry, { item: tierTokenMap[displayEntry.item][playerClass] });
-    }
-    html += bisSlotRowHTML(
-      slotName,
-      slotName,
-      bucket ? bucket.index : -1,
-      displayEntry,
-      !bucket,
-      _bisActiveSlot === slotName,
-      s
-    );
-  }
-  html += '</div>';
-
-  if (leftover.length) {
-    html +=
-      '<p style="font-size:0.95rem;color:var(--text-dim);margin:0.3rem 0 0.2rem;">Other (doesn\'t match a standard slot):</p>' +
-      '<div style="display:flex;flex-direction:column;gap:2px;margin-bottom:0.6rem;">';
-    leftover.forEach(function (u, li) {
-      html += bisSlotRowHTML(u.entry.slot || '?', u.entry.slot, u.index, u.entry, false, false, li);
-    });
-    html += '</div>';
-  }
-
-  html +=
-    '<div style="display:flex;gap:0.5rem;align-items:center;">' +
-    '<span id="bisListSaveMsg" style="font-size:1.04rem;color:var(--text-muted);"></span>' +
-    '</div>';
-
-  html += '</div>';
-  return html;
-}
-
-function refreshBisEditorPanel() {
-  if (!_bisListEditor) return;
-  var panel = document.getElementById('bis-editor-panel-' + _bisListEditor.nameRealm);
-  if (!panel) return;
-  panel.innerHTML = bisEditorHTML();
-  wireBisSlotSearchInput();
-}
-
-// A placeholder item (M+/Crafted/Catalyst) or a Finger/Trinket item can now
-// have more than one row per player, distinguished only by bis_items.slot
-// (#393 follow-up) -- .eq('item_id', ...) alone would match every one of
-// them. entry.dbSlot is the raw column value (set for every row added
-// through this editor; null only for legacy rows added before it existed).
-function bisSlotFilter(query, dbSlot) {
-  return dbSlot ? query.eq('slot', dbSlot) : query.is('slot', null);
-}
-
-function removeBisListItem(index) {
-  if (!_bisListEditor) return;
-  var entry = getBisItems(_bisListEditor.nameRealm)[index];
-  var player = findRosterPlayerByNameRealm(_bisListEditor.nameRealm);
-  if (!entry || !player || !player.id || entry.itemId == null) return;
-  var msgEl = document.getElementById('bisListSaveMsg');
-  if (msgEl) msgEl.textContent = 'Removing...';
-  bisSlotFilter(
-    supabaseClient.from('bis_items').delete().eq('player_id', player.id).eq('item_id', entry.itemId),
-    entry.dbSlot
-  )
-    .then(function (result) {
-      if (result.error) throw new Error(result.error.message);
-      return writeAuditLog('BiS Item Removed', 'players', player.id, bisItemAuditDetail(entry.item, entry.slot));
-    })
-    .then(function () {
-      var key = bisListKeyFor(_bisListEditor.nameRealm);
-      if (DATA.bisList && DATA.bisList[key]) {
-        DATA.bisList[key] = DATA.bisList[key].filter(function (e) {
-          return !(e.itemId === entry.itemId && (e.dbSlot || null) === (entry.dbSlot || null));
-        });
-      }
-      // Rebuilds the whole tab, not just refreshBisEditorPanel() -- the row's
-      // own BiS-count badge needs to move too, since this is already committed
-      // state rather than a pending draft.
-      buildBisListsTab();
-    })
-    .catch(function (err) {
-      var msg = document.getElementById('bisListSaveMsg');
-      if (msg) msg.textContent = 'Failed: ' + err.message;
-    });
-}
-
-function toggleBisItemObtained(index, checked) {
-  if (!_bisListEditor) return;
-  var entry = getBisItems(_bisListEditor.nameRealm)[index];
-  var player = findRosterPlayerByNameRealm(_bisListEditor.nameRealm);
-  if (!entry || !player || !player.id || entry.itemId == null) return;
-  var msgEl = document.getElementById('bisListSaveMsg');
-  if (msgEl) msgEl.textContent = 'Saving...';
-  bisSlotFilter(
-    supabaseClient
-      .from('bis_items')
-      .update({ obtained: checked })
-      .eq('player_id', player.id)
-      .eq('item_id', entry.itemId),
-    entry.dbSlot
-  )
-    .then(function (result) {
-      if (result.error) throw new Error(result.error.message);
-      var detail =
-        (checked ? 'Marked obtained: ' : 'Marked not obtained: ') + bisItemAuditDetail(entry.item, entry.slot);
-      return writeAuditLog('BiS Item Obtained Changed', 'players', player.id, detail);
-    })
-    .then(function () {
-      // entry is the same object reference stored in DATA.bisList (getBisItems()
-      // returns object entries as-is, not copies), so this mutation persists.
-      entry.obtained = checked;
-      var msg = document.getElementById('bisListSaveMsg');
-      if (msg) msg.textContent = '';
-    })
-    .catch(function (err) {
-      var msg = document.getElementById('bisListSaveMsg');
-      if (msg) msg.textContent = 'Failed: ' + err.message;
-      refreshBisEditorPanel();
-    });
-}
-
-function bisSlotStartAdd(slotName) {
-  _bisActiveSlot = slotName;
-  _bisActiveSlotQuery = '';
-  refreshBisEditorPanel();
-}
-
-function bisSlotCancelAdd() {
-  _bisActiveSlot = null;
-  _bisActiveSlotQuery = '';
-  refreshBisEditorPanel();
 }
 
 // Own copy of js/wishlist.js's wishlistBucketRealItems() -- officer.html and
 // index.html are separate script bundles (see js/wishlist.js's file-header
 // comment), so this can't be shared directly. Buckets every real
 // (non-placeholder), in-season-scope catalog item into its BIS_SLOTS row(s),
-// scoped to the given player's armor type/main stat/role/class the same way
-// bisSlotOnInput's search dropdown always has. Used both by that dropdown
-// and by tab-priority.js's item-level wishlist completeness check (#515
-// follow-up), which needs every eligible item per row, not just the ones
-// matching a search query.
+// scoped to the given player's armor type/main stat/role/class. Used by
+// tab-priority.js's item-level wishlist completeness check (#515
+// follow-up), which needs every eligible item per row.
 function bisEligibleRealItemsBySlot(playerArmorType, playerMainStat, playerRole, playerClass) {
   var itemSlots = DATA.itemSlots || {};
   var itemArmorTypes = DATA.itemArmorTypes || {};
@@ -1034,8 +646,8 @@ function bisEligibleRealItemsBySlot(playerArmorType, playerMainStat, playerRole,
       }
       if (playerClass && row === 'Off Hand' && weaponSubtype === 'Shield' && !CLASS_SHIELD_USERS[playerClass]) return;
 
-      // Same tier-token substitution as bisEditorHTML's row display -- see
-      // that function's comment for why displayName/itemName stay separate.
+      // Tier-token substitution: the row shows the class piece, rankName keeps
+      // the token, which is what item_preferences stores.
       var displayName = name;
       if (playerClass && tierTokenMap[name] && tierTokenMap[name][playerClass]) {
         displayName = tierTokenMap[name][playerClass];
@@ -1051,157 +663,4 @@ function bisEligibleRealItemsBySlot(playerArmorType, playerMainStat, playerRole,
   });
 
   return buckets;
-}
-
-function bisSlotOnInput() {
-  if (!_bisActiveSlot) return;
-  var slotName = _bisActiveSlot;
-  _bisActiveSlotQuery = (document.getElementById('bisSlotSearchInput') || {}).value || '';
-  var dropdown = document.getElementById('bisSlotDropdown');
-  if (!dropdown) return;
-  var query = normalise(_bisActiveSlotQuery.trim());
-  var itemPlaceholders = DATA.itemPlaceholders || {};
-  var tierResolvedItemNames = DATA.tierResolvedItemNames || {};
-
-  var playerArmorType = null;
-  var playerMainStat = null;
-  var playerRole = null;
-  var playerClass = null;
-  var existingRealItems = {};
-  if (_bisListEditor) {
-    var roster = DATA.roster || [];
-    var edNorm = normalise(_bisListEditor.nameRealm);
-    for (var pi = 0; pi < roster.length; pi++) {
-      if (normalise(roster[pi].nameRealm) === edNorm) {
-        playerArmorType = (CLASS_ARMOR_TYPE || {})[roster[pi].class] || null;
-        playerMainStat = specMainStat(roster[pi].class, roster[pi].spec);
-        playerRole = (SPEC_ROLE || {})[roster[pi].spec] || null;
-        playerClass = roster[pi].class || null;
-        break;
-      }
-    }
-    var currentItems = getBisItems(_bisListEditor.nameRealm);
-    for (var e = 0; e < currentItems.length; e++) {
-      if (!itemPlaceholders[currentItems[e].item]) existingRealItems[normalise(currentItems[e].item)] = true;
-    }
-  }
-
-  // Placeholders (M+/Crafted/Catalyst) fit every row and aren't part of
-  // bisEligibleRealItemsBySlot's real-item buckets, so they're layered back
-  // in here alongside that row's real items.
-  var candidates = (
-    bisEligibleRealItemsBySlot(playerArmorType, playerMainStat, playerRole, playerClass)[slotName] || []
-  ).map(function (item) {
-    return { itemName: item.rankName, displayName: item.name };
-  });
-  Object.keys(itemPlaceholders)
-    .sort()
-    .forEach(function (name) {
-      if (tierResolvedItemNames[name]) return;
-      candidates.push({ itemName: name, displayName: name });
-    });
-
-  var matches = [];
-  for (var i = 0; i < candidates.length; i++) {
-    var c = candidates[i];
-    var isPlaceholder = !!itemPlaceholders[c.itemName];
-
-    // A real item can only occupy one row -- don't re-offer one already
-    // placed elsewhere on this player's list. Placeholders are exempt: the
-    // same one can legitimately fill more than one row.
-    if (!isPlaceholder && existingRealItems[normalise(c.itemName)]) continue;
-
-    if (query && normalise(c.displayName).indexOf(query) === -1) continue;
-
-    matches.push(c);
-    if (matches.length >= 12) break;
-  }
-
-  if (!matches.length) {
-    dropdown.style.display = 'none';
-    return;
-  }
-
-  dropdown.innerHTML = matches
-    .map(function (m) {
-      return (
-        '<div class="realm-option" onmousedown="bisSlotPickItem(\'' +
-        m.itemName.replace(/'/g, "\\'") +
-        "', '" +
-        m.displayName.replace(/'/g, "\\'") +
-        '\')"><span>' +
-        m.displayName +
-        '</span></div>'
-      );
-    })
-    .join('');
-  dropdown.style.display = 'block';
-}
-
-// displayName: only used for the audit-log text, so officers reading the log
-// see the actual resolved gear piece (e.g. "Charred Grasps") rather than the
-// generic token name -- defaults to itemName for every non-tier-token pick,
-// where the two are the same thing. Storage (bis_items.item_id, entry.item)
-// always stays on itemName/the token; see bisEditorHTML's comment on why.
-function bisSlotPickItem(itemName, displayName) {
-  if (!_bisActiveSlot || !_bisListEditor) return;
-  var slotName = _bisActiveSlot;
-  var player = findRosterPlayerByNameRealm(_bisListEditor.nameRealm);
-  if (!player || !player.id) return;
-  var nameRealm = _bisListEditor.nameRealm;
-  _bisActiveSlot = null;
-  _bisActiveSlotQuery = '';
-  var msgEl = document.getElementById('bisListSaveMsg');
-  if (msgEl) msgEl.textContent = 'Adding...';
-  resolveItemId(itemName)
-    .then(function (itemId) {
-      return supabaseClient
-        .from('bis_items')
-        .insert({
-          player_id: player.id,
-          item_id: itemId,
-          slot: slotName,
-          season: typeof resolveSeasonView === 'function' ? resolveSeasonView() : null
-        })
-        .then(function (result) {
-          if (result.error) throw new Error(result.error.message);
-          return writeAuditLog(
-            'BiS Item Added',
-            'players',
-            player.id,
-            bisItemAuditDetail(displayName || itemName, slotName)
-          ).then(function () {
-            return itemId;
-          });
-        });
-    })
-    .then(function (itemId) {
-      var key = bisListKeyFor(nameRealm);
-      if (!DATA.bisList) DATA.bisList = {};
-      if (!DATA.bisList[key]) DATA.bisList[key] = [];
-      DATA.bisList[key].push({
-        item: itemName,
-        slot: slotName,
-        dbSlot: slotName,
-        obtained: false,
-        playerId: player.id,
-        itemId: itemId
-      });
-      buildBisListsTab();
-    })
-    .catch(function (err) {
-      var msg = document.getElementById('bisListSaveMsg');
-      if (msg) msg.textContent = 'Failed: ' + err.message;
-    });
-}
-
-// ── Raider.IO tier sync (#651) ───────────────────────────────────────────────
-//
-// The actual fetch/match/write logic is shared with the raider's own
-// self-service sync button on their profile (js/common.js's
-// runRaiderIoTierSync/applyRaiderIoTierSync) -- this is just the officer BiS
-// editor's thin wiring on top of it.
-function syncBisFromRaiderIo() {
-  if (!_bisListEditor) return;
-  runRaiderIoTierSync(_bisListEditor.nameRealm, 'bisRaiderIoSyncBtn', 'bisListSaveMsg', refreshBisEditorPanel);
 }

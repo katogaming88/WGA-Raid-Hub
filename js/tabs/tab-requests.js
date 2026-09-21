@@ -70,30 +70,6 @@ function buildRequestsTab() {
     });
 }
 
-// The passive BiS Manager hint (#756): an approved request whose matching
-// bis_items row is obtained. Deleting or reverting the request deliberately
-// does NOT untick that box (the one-way sync decision in the
-// 20260725100000 migration: an officer may have ticked it by hand for an
-// unrelated reason), so the card points the officer at BiS Manager instead.
-// Slot rule mirrors the sync trigger's coalesce(b.slot, '') = new.slot
-// match. getBisItems() (js/common.js) absorbs the bisList key-casing
-// caveat; DATA.bisList may not be loaded yet on a very fast first click,
-// which just means no hint on that render.
-function selfReceivedObtainedBisEntry(row) {
-  if (row.status !== 'approved') return null;
-  var nameRealm = row.players && row.players.name_realm;
-  if (!nameRealm || typeof getBisItems !== 'function') return null;
-  var entries = getBisItems(nameRealm) || [];
-  for (var i = 0; i < entries.length; i++) {
-    var e = entries[i];
-    if (!e.obtained) continue;
-    if (e.itemId !== row.self_item_id) continue;
-    if (row.slot && (e.dbSlot || '') !== row.slot) continue;
-    return e;
-  }
-  return null;
-}
-
 function renderRecentDecisions() {
   var container = document.getElementById('requestsDecisions');
   if (!container) return;
@@ -131,7 +107,6 @@ function renderRecentDecisions() {
     var diff = row.track === 'Myth' ? 'Mythic' : row.track === 'Hero' ? 'Heroic' : row.track || '';
     var source = (diff ? diff + ': ' : '') + (row.source || '');
     var approved = row.status === 'approved';
-    var obtainedHint = selfReceivedObtainedBisEntry(row);
     html +=
       '<div class="request-card" data-row="' +
       row.id +
@@ -168,9 +143,6 @@ function renderRecentDecisions() {
         ? '<div style="font-size:1rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' +
           row.note +
           '</div>'
-        : '') +
-      (obtainedHint
-        ? '<div style="font-size:0.98rem;color:var(--text-muted);margin-top:0.5rem;">Also marked obtained in BiS Manager. If this approval was a mistake, untick it there.</div>'
         : '') +
       (!approved && row.officer_notes
         ? '<div style="font-size:1rem;color:var(--text-muted);margin-top:0.5rem;">Rejection reason: <span style="color:var(--text);">' +

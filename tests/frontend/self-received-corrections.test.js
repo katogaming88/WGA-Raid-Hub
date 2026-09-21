@@ -106,7 +106,7 @@ function makeCard(attrs) {
   return { card, revertBtn, deleteBtn };
 }
 
-function loadSandbox({ client, els = {}, bySelector = {}, confirmResult = true, bisEntries = [] } = {}) {
+function loadSandbox({ client, els = {}, bySelector = {}, confirmResult = true } = {}) {
   const spies = {
     audit: [],
     notify: [],
@@ -135,7 +135,6 @@ function loadSandbox({ client, els = {}, bySelector = {}, confirmResult = true, 
       spies.badges += 1;
     },
     findRosterPlayerByNameRealm: (nameRealm) => (nameRealm ? { id: 7, nameRealm } : null),
-    getBisItems: () => bisEntries,
     setTimeout,
     clearTimeout
   };
@@ -357,40 +356,6 @@ describe('revertRequest', () => {
     expect(deleteBtn.disabled).toBe(false);
     expect(spies.audit.length).toBe(0);
     expect(spies.notify.length).toBe(0);
-  });
-});
-
-describe('selfReceivedObtainedBisEntry (the passive BiS Manager hint)', () => {
-  const row = (over) => Object.assign({}, APPROVED_ROW, over);
-
-  it('matches an approved row whose bis entry is obtained', () => {
-    const { sandbox } = loadSandbox({
-      bisEntries: [{ itemId: 354, dbSlot: null, obtained: true }]
-    });
-    expect(sandbox.selfReceivedObtainedBisEntry(row())).toBeTruthy();
-  });
-
-  it('respects the slot rule when the request carries one', () => {
-    const { sandbox } = loadSandbox({
-      bisEntries: [{ itemId: 115, dbSlot: 'Feet', obtained: true }]
-    });
-    expect(sandbox.selfReceivedObtainedBisEntry(row({ self_item_id: 115, slot: 'Wrist' }))).toBeFalsy();
-  });
-
-  it('never matches a rejected row', () => {
-    const { sandbox } = loadSandbox({
-      bisEntries: [{ itemId: 354, dbSlot: null, obtained: true }]
-    });
-    expect(sandbox.selfReceivedObtainedBisEntry(row({ status: 'rejected' }))).toBeFalsy();
-  });
-
-  it('ignores unobtained entries and survives missing bis data', () => {
-    const { sandbox } = loadSandbox({
-      bisEntries: [{ itemId: 354, dbSlot: null, obtained: false }]
-    });
-    expect(sandbox.selfReceivedObtainedBisEntry(row())).toBeFalsy();
-    const bare = loadSandbox({ bisEntries: [] }).sandbox;
-    expect(bare.selfReceivedObtainedBisEntry(row())).toBeFalsy();
   });
 });
 

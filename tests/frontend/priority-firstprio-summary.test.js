@@ -44,7 +44,6 @@ function makeSandbox({
       String(s || '')
         .toLowerCase()
         .trim(),
-    getBisItems: () => [],
     supabaseClient: null,
     setTimeout,
     clearTimeout,

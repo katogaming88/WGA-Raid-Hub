@@ -43,7 +43,7 @@
 // Expected CSV filenames in the data directory (missing tabs are skipped
 // with a note so exports can arrive incrementally):
 //   Roster.csv, Scoring.csv, Item Lookup.csv, M+ Exclusion Requests.csv,
-//   Attendance.csv, BiS List.csv, Priority Order.csv, Pasted Loot.csv,
+//   Attendance.csv, Priority Order.csv, Pasted Loot.csv,
 //   Loot Data.csv (full-width A:V export), Officer Audit Log.csv,
 //   Self Received Requests.csv, Discord Claims.csv
 
@@ -56,7 +56,6 @@ import { parseItems, itemsSql, diffItemRegistries } from './tables/items.js';
 import { parsePlayers, parseApprovedMplus, playersSql } from './tables/players.js';
 import { parseScoring, scoringSql } from './tables/scoring.js';
 import { parseAttendance, attendanceSql } from './tables/attendance.js';
-import { parseBis, bisSql } from './tables/bis.js';
 import { parsePriority, prioritySql } from './tables/priority.js';
 import { parsePastedLoot, parseLegacyLoot, lootSql } from './tables/loot.js';
 import { parseMplusRequests, mplusSql } from './tables/mplus.js';
@@ -143,16 +142,6 @@ if (rosterRows) {
     notes.push('Attendance.csv missing -- attendance section skipped');
   }
 
-  let bisResult = null;
-  const bisRows = loadCsvIfPresent(join(dataDir, 'BiS List.csv'));
-  if (bisRows) {
-    const { cells } = parseBis(bisRows, `${team} BiS List`);
-    bisResult = bisSql(teamId, cells, registry, knownItems);
-    for (const w of bisResult.warnings) notes.push(`bis_items: ${w}`);
-  } else {
-    notes.push('BiS List.csv missing -- bis_items section skipped');
-  }
-
   let priorityResult = null;
   const priorityRows = loadCsvIfPresent(join(dataDir, 'Priority Order.csv'));
   if (priorityRows) {
@@ -232,10 +221,6 @@ if (rosterRows) {
   if (attendanceResult) {
     section('attendance', attendanceResult.sql);
     summary.push(`attendance: ${attendanceResult.count} rows`);
-  }
-  if (bisResult) {
-    section('bis_items', bisResult.sql);
-    summary.push(`bis_items: ${bisResult.count} rows (${bisResult.collapsed} duplicate cells collapsed)`);
   }
   if (priorityResult) {
     section('priority_order', priorityResult.sql);

@@ -53,7 +53,6 @@ function openWishlist({ open = true, allowed = false } = {}) {
       player_equipped_gear: [],
       mplus_exclusion_requests: [],
       incoming_roster: [],
-      bis_items: [],
       item_preferences: WISHLIST,
       self_received_requests: [],
       priority_order: [],

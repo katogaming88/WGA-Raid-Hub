@@ -88,20 +88,17 @@ function mockSupabase({ lootPages = [], rosterResult } = {}) {
             if (table === 'team_settings') {
               return { data: null, error: { message: 'team_settings not mocked' } };
             }
-            // bis_items, items, item_bosses, and priority_order are separate
+            // items, item_bosses, and priority_order are separate
             // queries loadData() fires alongside the loot pages (#217 item
             // search fix, #220 priority generator); this suite is only
             // exercising lootCounts wiring, so none of them are mocked and
             // all should fall back to the heavy payload's
-            // bisList/itemSlots/itemBosses/priorityOrder untouched, same as
+            // itemSlots/itemBosses/priorityOrder untouched, same as
             // the 'players' default above. Without an explicit branch here,
             // these would fall through to the loot-page queue below and get
             // mistaken for real rows, since lootRow()'s fields
             // (items.name/players.name_realm/track/season) happen to overlap
             // what mapSupabasePriorityOrder() reads.
-            if (table === 'bis_items') {
-              return { data: null, error: { message: 'bis_items not mocked' } };
-            }
             if (table === 'items') {
               return { data: null, error: { message: 'items not mocked' } };
             }
@@ -398,13 +395,12 @@ describe('loadData builds DATA from Supabase only', () => {
   it('seeds an empty array roster and empty containers when nothing is mocked', async () => {
     const mock = mockSupabase({ lootPages: [{ data: [], error: null }] });
     const sandbox = await runLoadData(mock);
-    // Empty, not undefined -- the write paths in tab-bis.js/tab-priority.js
-    // index bisList/priorityOrder/selfReceived without their own guard, and
+    // Empty, not undefined -- the write paths in tab-priority.js
+    // index priorityOrder/selfReceived without their own guard, and
     // there is no GAS payload left to have supplied a non-empty fallback.
     expect(Array.isArray(sandbox.DATA.roster)).toBe(true);
     expect(sandbox.DATA.roster).toEqual([]);
     expect(sandbox.DATA.lootCounts).toEqual({});
-    expect(sandbox.DATA.bisList).toEqual({});
     expect(sandbox.DATA.priorityOrder).toEqual({});
     expect(sandbox.DATA.selfReceived).toEqual({});
   });
@@ -452,7 +448,7 @@ describe('loadData onLootReady (#837 part 2)', () => {
   }
 
   it('fires before onHeavyReady, with lootCounts already populated, while other heavy tables are still slow', async () => {
-    const supabase = makeSlowClient({ slowTables: ['bis_items', 'attendance', 'item_preferences'] });
+    const supabase = makeSlowClient({ slowTables: ['attendance', 'item_preferences'] });
     const sandbox = loadCommonJs(supabase);
 
     const order = [];
@@ -473,7 +469,7 @@ describe('loadData onLootReady (#837 part 2)', () => {
   });
 
   it('is optional -- loadData still works with only the two original callbacks', async () => {
-    const supabase = makeSlowClient({ slowTables: ['bis_items'] });
+    const supabase = makeSlowClient({ slowTables: ['attendance'] });
     const sandbox = loadCommonJs(supabase);
 
     await new Promise((resolve) => {

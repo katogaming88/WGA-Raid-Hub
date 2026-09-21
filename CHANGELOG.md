@@ -12,6 +12,34 @@ answers to.
 
 ---
 
+## [3.146.0] - 2026-09-20
+
+### Frontend
+
+- The BiS Manager's per-player grid editor is gone. BiS Lists shows each
+  raider's wishlist BiS count, and every BiS list on the site (a profile's
+  BiS List, Contested Items, the roster's BiS search, the priority editor's
+  player pool) reads the wishlist alone, which has been the only list
+  raiders maintain since the wishlist shipped. The Requests tab's "also
+  marked obtained in BiS Manager" hint and the "(Wishlist)" marker on BiS
+  List rows go with it, since every row is a wishlist row now. The first of
+  two steps that retire the old `bis_items` table; the table itself goes in
+  the second ([#935](https://github.com/katogaming88/WGA-Raid-Hub/issues/935)).
+- The Sync from Raider.IO button on a raider's own profile is gone. Since
+  2026-08-09, when a raider's own player row was locked to the Bonus Roll
+  target, its tier-piece count write has been refused for a raider and
+  the button only ever ticked BiS grid rows for them; with the grid gone it
+  had nothing left to do. Officers still refresh the whole roster's counts
+  from the Priority tab. Giving raiders their own refresh back needs that
+  lock loosened for the two tier-count columns, a database change filed on
+  its own.
+
+### Backend
+
+- The import generator no longer reads `BiS List.csv`; its `bis_items`
+  section is gone with the grid it fed
+  ([#935](https://github.com/katogaming88/WGA-Raid-Hub/issues/935)).
+
 ## [3.145.1] - 2026-09-20
 
 ### Frontend

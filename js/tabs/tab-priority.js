@@ -101,8 +101,8 @@ function _isFullyManaged(entry) {
 // and matched against the token's own item_id (what rclc_loot actually
 // logs), never the resolved class piece, so a resolved item showing up here
 // alongside its token would just be duplicate, unmanageable information --
-// mirrors js/wishlist.js's wishlistBucketRealItems and tab-bis.js's
-// bisSlotOnInput skipping the same set for the same reason.
+// mirrors js/wishlist.js's wishlistBucketRealItems skipping the same set for
+// the same reason.
 function getUnmanagedItems() {
   var prioOrder = DATA.priorityOrder || {};
   var itemSlots = DATA.itemSlots || {};
@@ -898,9 +898,9 @@ function checkPriorityDrift() {
 // weights tier-token candidates by (see the tier_pieces_priority_weighting
 // migration). Sequential with a small delay between requests, polite to
 // Raider.IO's public API across a full roster -- no existing bulk-roster
-// loop pattern to mirror anywhere in js/tabs/, modeled instead on
-// js/common.js's runRaiderIoTierSync (single-player) disable/restore-button
-// idiom. A player with no Raider.IO data (never scanned, stale name_realm)
+// loop pattern to mirror anywhere in js/tabs/; each trigger is disabled
+// while it runs and restored after. A player with no Raider.IO data (never
+// scanned, stale name_realm)
 // is skipped and tallied rather than overwriting their last-known count with
 // a false 0.
 //
@@ -1403,21 +1403,14 @@ var PRIORITY_WISHLIST_SIBLING_SLOT = {
   'Trinket 2': 'Trinket 1'
 };
 
-// officerBuckets (tab-bis.js's bisSlotBuckets().buckets for this player) --
 // eligibleBuckets (tab-bis.js's bisEligibleRealItemsBySlot() for this
 // player) -- every real catalog item the raider could tag per row. Item-level
 // completeness (#515 follow-up): a row is only fully covered once every
-// eligible item in it has either a raider-tagged preference, or is the exact
-// item the officer's bis_items grid already picked for that row (covers just
-// that one item, not the whole row -- mirrors js/wishlist.js's
-// wishlistCompleteness()).
-function _priorityWishlistMissingRows(prefs, idToName, itemSlots, officerBuckets, eligibleBuckets) {
+// eligible item in it has a raider-tagged preference (mirrors
+// js/wishlist.js's wishlistCompleteness()).
+function _priorityWishlistMissingRows(prefs, idToName, itemSlots, eligibleBuckets) {
   var offHandRequired = false;
-  var taggedWeaponRow = false;
   prefs.forEach(function (p) {
-    if (_priorityItemRows(p.item_id, p.slot || null, idToName, itemSlots).indexOf('Weapon') !== -1) {
-      taggedWeaponRow = true;
-    }
     // Mirrors js/wishlist.js's wishlistCompleteness() fix: p.slot is now
     // 'Weapon' (not null) for anything tagged since dual-wield fan-out
     // (DUAL_WIELD_CLASSES) added Weapon/Off Hand to WISHLIST_DISAMBIGUATE_SLOTS.
@@ -1428,9 +1421,6 @@ function _priorityWishlistMissingRows(prefs, idToName, itemSlots, officerBuckets
       if (name && itemSlots[name] === 'One-Hand') offHandRequired = true;
     }
   });
-  if (!taggedWeaponRow && officerBuckets.Weapon && itemSlots[officerBuckets.Weapon.item] === 'One-Hand') {
-    offHandRequired = true;
-  }
   var requiredRows = BIS_SLOTS.filter(function (row) {
     return row !== 'Off Hand' || offHandRequired;
   });
@@ -1438,10 +1428,9 @@ function _priorityWishlistMissingRows(prefs, idToName, itemSlots, officerBuckets
   // Distinct from item-tagging completeness below: every eligible item
   // having *some* status says nothing about whether any of them is the
   // raider's actual BiS pick for that slot -- a row can hit 100% tagged with
-  // everything Good/OK and still fall back to a "(Wishlist)" pick on the BiS
-  // List. Mirrors js/wishlist.js's wishlistCompleteness() missingBisRows: a
-  // row counts as covered once the raider has tagged one item 'bis' for it,
-  // or the officer's bis_items grid already has a pick for it.
+  // everything Good/OK and still have no BiS pick on the BiS List. Mirrors
+  // js/wishlist.js's wishlistCompleteness() missingBisRows: a row counts as
+  // covered once the raider has tagged one item 'bis' for it.
   var bisRows = {};
   prefs.forEach(function (p) {
     if (p.status !== 'bis') return;
@@ -1450,7 +1439,7 @@ function _priorityWishlistMissingRows(prefs, idToName, itemSlots, officerBuckets
     });
   });
   var missingBisRows = requiredRows.filter(function (row) {
-    return !bisRows[row] && !officerBuckets[row];
+    return !bisRows[row];
   });
 
   // Same lookup as _priorityWishlistMissingRows' exact-slot match, with two
@@ -1489,8 +1478,7 @@ function _priorityWishlistMissingRows(prefs, idToName, itemSlots, officerBuckets
     var missing = 0;
     items.forEach(function (item) {
       totalRequired++;
-      var officerCovers = officerBuckets[row] && officerBuckets[row].item === item.rankName;
-      if (!officerCovers && !taggedForRow(item.itemId, row)) {
+      if (!taggedForRow(item.itemId, row)) {
         missing++;
       } else {
         taggedCount++;
@@ -1531,10 +1519,6 @@ function wishlistCompletionForPlayer(player) {
     idToName[itemIds[name]] = name;
   });
   var prefs = _teamItemPreferencesByPlayer()[player.id] || [];
-  var officerBuckets =
-    typeof getBisItems === 'function' && typeof bisSlotBuckets === 'function'
-      ? bisSlotBuckets(getBisItems(player.nameRealm)).buckets
-      : {};
   var playerArmorType = (typeof CLASS_ARMOR_TYPE !== 'undefined' && CLASS_ARMOR_TYPE[player.class]) || null;
   var playerMainStat = typeof specMainStat === 'function' ? specMainStat(player.class, player.spec) : null;
   var playerRole = (typeof SPEC_ROLE !== 'undefined' && SPEC_ROLE[player.spec]) || null;
@@ -1542,7 +1526,7 @@ function wishlistCompletionForPlayer(player) {
     typeof bisEligibleRealItemsBySlot === 'function'
       ? bisEligibleRealItemsBySlot(playerArmorType, playerMainStat, playerRole, player.class || null)
       : {};
-  var result = _priorityWishlistMissingRows(prefs, idToName, itemSlots, officerBuckets, eligibleBuckets);
+  var result = _priorityWishlistMissingRows(prefs, idToName, itemSlots, eligibleBuckets);
   return { tagged: result.taggedCount, total: result.totalRequired, missingBisRows: result.missingBisRows };
 }
 
@@ -1564,10 +1548,6 @@ function getIncompleteWishlists(roster) {
   roster = roster || DATA.roster || [];
   var raiders = [];
   roster.forEach(function (player) {
-    var officerBuckets =
-      typeof getBisItems === 'function' && typeof bisSlotBuckets === 'function'
-        ? bisSlotBuckets(getBisItems(player.nameRealm)).buckets
-        : {};
     var playerArmorType = (typeof CLASS_ARMOR_TYPE !== 'undefined' && CLASS_ARMOR_TYPE[player.class]) || null;
     var playerMainStat = typeof specMainStat === 'function' ? specMainStat(player.class, player.spec) : null;
     var playerRole = (typeof SPEC_ROLE !== 'undefined' && SPEC_ROLE[player.spec]) || null;
@@ -1575,13 +1555,7 @@ function getIncompleteWishlists(roster) {
       typeof bisEligibleRealItemsBySlot === 'function'
         ? bisEligibleRealItemsBySlot(playerArmorType, playerMainStat, playerRole, player.class || null)
         : {};
-    var result = _priorityWishlistMissingRows(
-      prefsByPlayer[player.id] || [],
-      idToName,
-      itemSlots,
-      officerBuckets,
-      eligibleBuckets
-    );
+    var result = _priorityWishlistMissingRows(prefsByPlayer[player.id] || [], idToName, itemSlots, eligibleBuckets);
     if (result.missingRows.length) {
       raiders.push({
         nameRealm: player.nameRealm,
@@ -2251,8 +2225,8 @@ function openPrioEditModal(item, slot, autoGenerate, difficulty) {
   document.getElementById('prioEditModal').classList.add('active');
   prioEditFetchFairnessWarnings();
   // Wishlist tags feed the BiS Players pool (prioEditGetBisPlayers) so
-  // a raider who just filled out their wishlist shows up here without an
-  // officer first adding them to bis_items -- fetch on demand since not
+  // a raider who just filled out their wishlist shows up here -- fetch on
+  // demand since not
   // every path into this modal has already loaded it (buildPriorityNotesTab
   // is the usual trigger).
   if (_teamItemPreferences === null && !_teamItemPreferencesFailed) {
@@ -2303,29 +2277,14 @@ function closePrioEditModal() {
 // for a priority order and are deliberately excluded.
 var PRIO_EDIT_WISHLIST_POOL_STATUSES = { bis: true, good: true, ok: true };
 
-// Returns the full name_realm identity of every player whose BiS list has
-// this item (#529: DATA.bisList is keyed by identity, not first name), plus
-// anyone who has self-tagged the item 'bis', 'good', or 'ok' on their raider
-// wishlist but has no matching officer-curated bis_items row yet --
-// otherwise a raider who just filled out their wishlist is invisible here
-// until an officer also adds them to bis_items, and the only way to
+// Returns the full name_realm identity of everyone who has self-tagged the
+// item 'bis', 'good', or 'ok' on their raider wishlist -- otherwise a raider
+// who just filled out their wishlist is invisible here, and the only way to
 // hand-rank a brand-new team member without regenerating the whole list is
 // the "Show all roster" toggle.
 function prioEditGetBisPlayers() {
-  var bisList = DATA.bisList || {};
-  var itemLower = PRIO_EDIT.item.toLowerCase();
   var result = [];
   var seen = {};
-  Object.keys(bisList).forEach(function (nameRealm) {
-    var items = bisList[nameRealm] || [];
-    for (var i = 0; i < items.length; i++) {
-      if ((items[i].item || '').toLowerCase() === itemLower) {
-        result.push(nameRealm);
-        seen[normalise(nameRealm)] = true;
-        break;
-      }
-    }
-  });
   var itemId = (DATA.itemIds || {})[PRIO_EDIT.item];
   if (itemId && _teamItemPreferences) {
     var rosterById = {};
