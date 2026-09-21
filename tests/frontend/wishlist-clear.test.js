@@ -42,7 +42,13 @@ function makeSandbox({ confirmResult = true } = {}) {
   vm.runInContext(COMMON_JS, sandbox, { filename: 'common.js' });
   vm.runInContext(WISHLIST_JS, sandbox, { filename: 'wishlist.js' });
 
-  sandbox.DATA = { itemSlots: {}, itemPlaceholders: {}, itemIds: {}, wishlistOpen: true };
+  sandbox.DATA = {
+    itemSlots: {},
+    itemPlaceholders: {},
+    itemIds: {},
+    seasonName: 'Midnight Season 2',
+    teamSeasons: [{ season_code: 'MID2', wishlist_open: true }]
+  };
   sandbox._wishlistPlayerId = 11;
   sandbox._wishlistPlayerFirstName = 'Kat';
   sandbox._wishlistPrefs = [
@@ -99,7 +105,7 @@ describe('clearMyWishlist', () => {
 
   it('does nothing when wishlist editing is closed', () => {
     const { sandbox, deletes } = makeSandbox();
-    sandbox.DATA.wishlistOpen = false;
+    sandbox.DATA.teamSeasons = [{ season_code: 'MID2', wishlist_open: false }];
     sandbox.clearMyWishlist('Kat');
     expect(deletes).toHaveLength(0);
   });

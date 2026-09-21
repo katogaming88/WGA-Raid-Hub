@@ -12,6 +12,32 @@ answers to.
 
 ---
 
+## [3.147.0] - 2026-09-21
+
+### Frontend
+
+- Officers open signups and wishlist editing per season rather than for the
+  team as a whole: the Signups toggle controls the Signup Season set on the
+  Season tab, the Wishlist Editing toggle the season shown in Season View (else
+  the live season), and each panel says which season it controls. A team with
+  no season set sees the toggle disabled with a note saying where to set one.
+  The Sign Up button, the guild page's team cards and the new app read the
+  same per-season switch, so a Sign up link never leads to a closed form.
+  Immolation's Sign Up button closes with this release until an officer sets
+  its Signup Season and opens signups, since its switch was on with no season
+  named (#939).
+
+### Backend
+
+- New `team_seasons` table: one row per team and season carrying the two
+  switches, readable by anyone and written only by the new
+  `set_team_season()` database function (the team's leader or a site admin),
+  which writes the audit entries the site used to write itself.
+  `submit_season_signup()` checks the row for the team's signup season
+  instead of the old `signupsOpen` key. Existing switches were carried over
+  onto the current season's row; the old keys stay in `team_settings.config`
+  until #934 removes them (#939).
+
 ## [3.146.1] - 2026-09-20
 
 ### Frontend

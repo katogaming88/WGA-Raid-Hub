@@ -219,15 +219,27 @@ function fetchGuildTeamSettings() {
     _guildTeamSettings = map;
     return Promise.resolve(map);
   }
-  return Promise.resolve(supabaseClient.from('team_settings').select('team_id, config'))
-    .then(function (res) {
+  // The signups switch is per tier (#939): a team's card shows Sign up when
+  // the row for the tier its signup season names has it on, the same row
+  // submit_season_signup() checks. Both reads are one row per team (or per
+  // team and tier) across the guild.
+  return Promise.all([
+    supabaseClient.from('team_settings').select('team_id, config'),
+    supabaseClient.from('team_seasons').select('team_id, season_code, signups_open').eq('signups_open', true)
+  ])
+    .then(function (results) {
+      var res = results[0];
+      var openRows = (results[1] && !results[1].error && results[1].data) || [];
       if (!res || res.error || !res.data) return map;
       res.data.forEach(function (row) {
         var slug = _guildSlugForTeamId(row.team_id);
         if (!slug) return;
         var config = row.config || {};
+        var signupCode = seasonCodeForDisplay(config.activeSignupSeason || '');
         map[slug] = {
-          signupsOpen: !!config.signupsOpen,
+          signupsOpen: openRows.some(function (r) {
+            return r.team_id === row.team_id && r.season_code === signupCode && r.signups_open === true;
+          }),
           boeEnabled: featureEnabledIn(config.features, 'boe'),
           // Officer-edited per team (js/tabs/tab-season.js), and hidden rather
           // than shown broken when unset, same as renderExternalWclLink().

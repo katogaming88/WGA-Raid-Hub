@@ -167,6 +167,42 @@ describe('saveSignupSeason (#221, number-only input as of #341)', () => {
     expect(saveTeamSettingCalls).toEqual([]);
     expect(els.signupSeasonStatus.textContent).toBe('Season number cannot be blank.');
   });
+
+  it('re-renders the Signups toggle, which controls the tier just named (#939)', async () => {
+    const els = {
+      signupSeasonInput: makeEl({ value: '3' }),
+      signupSeasonSaveBtn: makeEl(),
+      signupSeasonStatus: makeEl()
+    };
+    const { sandbox } = makeSandbox({ els });
+    const renders = [];
+    sandbox.renderSignupToggle = () => renders.push(sandbox.DATA.signupSeason);
+
+    sandbox.saveSignupSeason();
+    await flush();
+
+    // Rendered after DATA.signupSeason moved, so the badge reads the new tier.
+    expect(renders).toEqual(['Midnight Season 3']);
+  });
+});
+
+describe('saveSeasonView (#549)', () => {
+  it('re-renders the Wishlist Editing toggle, which controls the tier now shown (#939)', async () => {
+    const els = {
+      seasonViewInput: makeEl({ value: 'MID3' }),
+      seasonViewSaveBtn: makeEl(),
+      seasonViewStatus: makeEl()
+    };
+    const { sandbox, saveTeamSettingCalls } = makeSandbox({ els });
+    const renders = [];
+    sandbox.renderWishlistToggle = () => renders.push(sandbox.DATA.seasonView);
+
+    sandbox.saveSeasonView();
+    await flush();
+
+    expect(saveTeamSettingCalls).toEqual([{ seasonView: 'MID3' }]);
+    expect(renders).toEqual(['MID3']);
+  });
 });
 
 describe('saveTrialThresholds (#221)', () => {

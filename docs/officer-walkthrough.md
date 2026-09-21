@@ -224,7 +224,9 @@ Two sub-tabs:
   Source)** lands in this same queue -- a raider flagging that their source's *contents* changed, not
   the URL. Approving one of those doesn't update anything by itself (the source is already on file);
   it's just an acknowledgment that you've seen it and are about to act: let them retag it
-  themselves via the separate **Wishlist Editing** open/close toggle in this same panel. Same
+  themselves via the separate **Wishlist Editing** open/close toggle in this same panel. That
+  switch is per season too: it controls the season shown in Season View on the Season tab, else
+  the live season, and the panel says which. Same
   per-raider exception shape as BiS Submit:
   "Allow Wishlist Edit" on their profile (officer view) reopens editing for just that one raider
   without reopening it team-wide.
@@ -274,7 +276,9 @@ Three sub-tabs:
 
 Three sub-tabs: **Signups**, **Pending Roster**, **History**.
 
-- **Signups** -- open/close toggle shows/hides the Sign Up button on the landing page.
+- **Signups** -- open/close toggle shows/hides the Sign Up button on the landing page. The switch
+  is per season: it controls the Signup Season set on the Season tab, each season keeps its own
+  setting, and the toggle stays disabled until a Signup Season is set.
   Approving marks the application approved and moves it to Pending Roster; Denying marks it
   rejected. If someone re-submits, it overwrites their existing pending entry rather than
   creating a duplicate. There's no delete action on this sub-tab -- Approve/Deny are the only
@@ -338,8 +342,8 @@ Three sub-tabs: **Settings**, **Raid Progression**, **History**.
   it's set; also what the toolbar's Season dropdown filters by. Set before importing each
   season's loot.
 - **Signup Season** -- a *separate* label stamped on signup submissions, distinct from Season
-  Name. If left blank, signups get no season tag and won't show up in season-filtered views.
-  Set before opening signups.
+  Name. If left blank, signups cannot be opened: the Signups toggle controls this season's
+  switch, so set it first.
 - **Season Start Date** -- raids before this date are excluded from attendance scoring;
   players who joined after it use their own join date as the window start instead. Leave blank
   to include all raids.

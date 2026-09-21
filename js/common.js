@@ -109,14 +109,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.146.1';
+var VERSION = '3.147.0';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20260920234054';
+var REQUIRED_SCHEMA = '20260921135215';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -2824,7 +2824,7 @@ function mapSupabasePriorityOrder(rows, seasonCode, emptyMarkRows) {
 // Season config reads come from Supabase (#221): team_settings.config is the
 // one jsonb blob holding everything that used to be Script Properties keys
 // (season name/dates/history, raid progression, trial thresholds, the
-// signup/BiS/M+ toggles, the active signup season). Fires in parallel with
+// BiS/M+ toggles, the active signup season). Fires in parallel with
 // the core chunk, same as fetchSupabaseRoster(); applyTeamSettingsToData()
 // overlays it onto DATA once both are in, falling back to whatever the Apps
 // Script core payload already put there (still Script Properties, until the
@@ -2857,6 +2857,33 @@ function fetchSupabaseSettings() {
   return Promise.race([query, timeout]);
 }
 
+// The team's two switches per tier (#939): one team_seasons row per tier an
+// officer has opened or closed something for. No row for a tier means both
+// switches closed, so a failed read is the same as an empty one. Fires in
+// parallel with the core chunk, same as fetchSupabaseSettings().
+function fetchSupabaseTeamSeasons() {
+  if (!supabaseClient) return Promise.resolve([]);
+  // team-read-guard: one row per tier for one team, bounded by the seasons table.
+  return Promise.resolve(
+    supabaseClient
+      .from('team_seasons')
+      .select('season_code, signups_open, wishlist_open')
+      .eq('team_id', _teamCfg.supabaseTeamId)
+  ).then(
+    function (result) {
+      if (result.error) {
+        console.warn('Supabase team_seasons query failed.', result.error.message);
+        return [];
+      }
+      return result.data || [];
+    },
+    function (err) {
+      console.warn('Supabase team_seasons query failed.', err);
+      return [];
+    }
+  );
+}
+
 var SEASON_CONFIG_KEYS = [
   'seasonName',
   'seasonStart',
@@ -2865,10 +2892,8 @@ var SEASON_CONFIG_KEYS = [
   'raidProgression',
   'trialWeeks',
   'trialAttend',
-  'signupsOpen',
   'bisSubmissionsOpen',
   'mPlusExclusionsOpen',
-  'wishlistOpen',
   // The season an officer is actively planning/prepping item catalog/BiS/
   // wishlist scope for (#549), separate from seasonName (the live raiding
   // season) and deliberately NOT shared with signups -- signup lead time and
@@ -3792,6 +3817,8 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
   var rosterPromise = fetchSupabaseRoster();
   // Fired alongside; the core callback waits for it before overlaying season config.
   var settingsPromise = fetchSupabaseSettings();
+  // Fired alongside; the core callback waits for it before the switches are read (#939).
+  var teamSeasonsPromise = fetchSupabaseTeamSeasons();
   // Fired alongside; the core callback waits for it before mapping the roster's M+ rejection badges.
   var mplusRejectionsPromise = fetchSupabaseMPlusRejections();
   // Fired alongside; the core callback waits for it before mapping officer notes (#925).
@@ -3847,27 +3874,32 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
   // and onSuccess wired the GAS heavy-chunk callback in the same tick.
   // Neither is needed once GAS calls nothing at all.
   function applyCoreData() {
-    return Promise.all([rosterPromise, settingsPromise, mplusRejectionsPromise, officerNotesPromise]).then(
-      function (results) {
-        var rows = results[0];
-        var settingsConfig = results[1];
-        var mplusRejections = results[2];
-        var officerNotes = results[3];
-        var data = { roster: [] };
-        var mapped = rows ? mapSupabaseRoster(rows, mplusRejections, officerNotes) : null;
-        if (mapped && mapped.length) data.roster = mapped;
-        applyTeamSettingsToData(data, settingsConfig);
-        DATA = data;
-        DATA._loadedAt = new Date();
-        try {
-          onCoreReady();
-        } catch (e) {
-          showError('Could not load roster data. ' + e.message);
-          return false;
-        }
-        return true;
+    return Promise.all([
+      rosterPromise,
+      settingsPromise,
+      mplusRejectionsPromise,
+      officerNotesPromise,
+      teamSeasonsPromise
+    ]).then(function (results) {
+      var rows = results[0];
+      var settingsConfig = results[1];
+      var mplusRejections = results[2];
+      var officerNotes = results[3];
+      var data = { roster: [] };
+      var mapped = rows ? mapSupabaseRoster(rows, mplusRejections, officerNotes) : null;
+      if (mapped && mapped.length) data.roster = mapped;
+      applyTeamSettingsToData(data, settingsConfig);
+      data.teamSeasons = results[4] || [];
+      DATA = data;
+      DATA._loadedAt = new Date();
+      try {
+        onCoreReady();
+      } catch (e) {
+        showError('Could not load roster data. ' + e.message);
+        return false;
       }
-    );
+      return true;
+    });
   }
 
   // Merges the heavy Supabase reads into DATA. Every field defaults to an
@@ -5289,11 +5321,58 @@ function bisSubmissionsOpen() {
   return !!(DATA && DATA.bisSubmissionsOpen);
 }
 
+// The team's switches for one tier (#939): the team_seasons row, or null when
+// no officer has opened or closed anything for that tier, which reads as both
+// switches closed. Read at call time rather than copied onto DATA, since the
+// Season View (and with it the tier the wishlist switch is for) changes
+// without a reload.
+function teamSeasonRow(seasonCode) {
+  var rows = (DATA && DATA.teamSeasons) || [];
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].season_code === seasonCode) return rows[i];
+  }
+  return null;
+}
+
+// The tier signups are for: activeSignupSeason as a code, '' when unset.
+function signupSeasonCode() {
+  return seasonCodeForDisplay((DATA && DATA.signupSeason) || '');
+}
+
+function signupsOpen() {
+  var row = teamSeasonRow(signupSeasonCode());
+  return !!(row && row.signups_open);
+}
+
 // Same "editing gate, not visibility gate" shape as bisSubmissionsOpen() --
 // when closed, the raider's own tags stay visible/read-only rather than the
-// whole Wishlist tab disappearing (that's the 'bis' feature flag's job).
+// whole Wishlist tab disappearing (that's the 'bis' feature flag's job). The
+// tier is the one a wishlist row gets stamped with (resolveSeasonView()), so
+// the gate and the stamp always agree.
 function wishlistOpen() {
-  return !!(DATA && DATA.wishlistOpen);
+  var row = teamSeasonRow(resolveSeasonViewCode());
+  return !!(row && row.wishlist_open);
+}
+
+// Flips one switch for one tier through set_team_season(), which makes the
+// row on the first call and writes the audit entry itself. updates carries
+// p_signups_open or p_wishlist_open; the other is left as it is. The returned
+// row replaces the tier's row on DATA.teamSeasons.
+function setTeamSeasonSwitch(seasonCode, updates) {
+  var params = { p_team_id: _teamCfg.supabaseTeamId, p_season_code: seasonCode };
+  Object.keys(updates).forEach(function (key) {
+    params[key] = updates[key];
+  });
+  return Promise.resolve(supabaseClient.rpc('set_team_season', params)).then(function (result) {
+    if (result.error) throw new Error(result.error.message);
+    if (DATA) {
+      DATA.teamSeasons = (DATA.teamSeasons || []).filter(function (row) {
+        return row.season_code !== seasonCode;
+      });
+      DATA.teamSeasons.push(result.data);
+    }
+    return result.data;
+  });
 }
 
 // bis_allowed lives on players (#404) so the officer-write RLS rule already

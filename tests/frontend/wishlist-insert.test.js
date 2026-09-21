@@ -41,9 +41,16 @@ function makeSandbox() {
   vm.runInContext(COMMON_JS, sandbox, { filename: 'common.js' });
   vm.runInContext(WISHLIST_JS, sandbox, { filename: 'wishlist.js' });
 
-  // wishlistOpen: true -- these tests cover the insert payload shape, not
-  // the open/closed editing gate itself.
-  sandbox.DATA = { itemSlots: {}, itemPlaceholders: {}, itemIds: {}, wishlistOpen: true };
+  // Editing open for the live season (#939: the switch is the team_seasons
+  // row for the tier the row is stamped with) -- these tests cover the insert
+  // payload shape, not the open/closed editing gate itself.
+  sandbox.DATA = {
+    itemSlots: {},
+    itemPlaceholders: {},
+    itemIds: {},
+    seasonName: 'Midnight Season 2',
+    teamSeasons: [{ season_code: 'MID2', wishlist_open: true }]
+  };
   // Simulates a player whose wishlist has already loaded (ownWishlistSectionHTML
   // sets these) with no existing preference row for the item being tagged.
   sandbox._wishlistPlayerId = 11;
@@ -95,9 +102,9 @@ describe('wishlistUpsert insert payload', () => {
     });
   });
 
-  it('does nothing when wishlistOpen is false (editing closed)', () => {
+  it('does nothing when wishlist editing is closed for the tier', () => {
     const { sandbox, inserts } = makeSandbox();
-    sandbox.DATA.wishlistOpen = false;
+    sandbox.DATA.teamSeasons = [{ season_code: 'MID2', wishlist_open: false }];
     sandbox.wishlistSetStatus(42, null, 'bis');
     expect(inserts).toHaveLength(0);
   });

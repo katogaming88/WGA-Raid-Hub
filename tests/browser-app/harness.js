@@ -148,6 +148,8 @@ export async function openApp(browser, port, state) {
     player_equipped_gear: [],
     incoming_roster: [],
     team_settings: [],
+    // The per-tier switches (#939): empty means everything closed.
+    team_seasons: [],
     characters: [],
     team_members: [],
     // Main swap requests and the spec list they are asked with (#631): empty

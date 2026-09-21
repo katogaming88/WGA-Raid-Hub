@@ -35,16 +35,25 @@ function setBisSubmissionsOpen(open) {
 
 // Distinct from the 'bis' feature flag (whole tab hidden vs. just editing
 // paused) and from bisSubmissionsOpen (that gates the BiS Source submit form,
-// this gates the wishlist's own status buttons/notes) -- same toggle shape
-// as both, just its own team_settings.config key.
+// this gates the wishlist's own status buttons/notes). The switch is per tier
+// (#939): this toggle controls the tier the Season View shows, else the live
+// season, the same tier a wishlist row is stamped with.
 function renderWishlistToggle() {
   var badge = document.getElementById('wishlistStatusBadge');
   var btn = document.getElementById('wishlistToggleBtn');
+  var tierEl = document.getElementById('wishlistToggleTier');
   if (!badge || !btn) return;
+  var code = resolveSeasonViewCode();
   var open = wishlistOpen();
   badge.textContent = open ? 'OPEN' : 'CLOSED';
   badge.className = 'signup-status-badge ' + (open ? 'signup-status-open' : 'signup-status-closed');
   btn.textContent = open ? 'Close Wishlist Editing' : 'Open Wishlist Editing';
+  btn.disabled = !code;
+  if (tierEl) {
+    tierEl.textContent = code
+      ? 'Controls wishlist editing for ' + seasonDisplayName(code) + '.'
+      : 'Set the season on the Season tab first.';
+  }
 }
 
 function toggleWishlistOpen() {
@@ -53,21 +62,23 @@ function toggleWishlistOpen() {
 
 function setWishlistOpen(open) {
   var btn = document.getElementById('wishlistToggleBtn');
+  var code = resolveSeasonViewCode();
+  if (!code) return;
   if (btn) {
     btn.disabled = true;
     btn.textContent = 'Saving...';
   }
 
-  saveTeamSetting({ wishlistOpen: open }, true).then(
+  setTeamSeasonSwitch(code, { p_wishlist_open: open }).then(
     function () {
-      if (btn) btn.disabled = false;
-      if (DATA) DATA.wishlistOpen = open;
-      writeAuditLog(open ? 'Wishlist Editing Opened' : 'Wishlist Editing Closed', null, null, null);
       renderWishlistToggle();
     },
-    function () {
-      if (btn) btn.disabled = false;
+    function (err) {
+      // Same as the Signups toggle: a tier without a seasons row yet is
+      // refused by the function, and the officer needs to read that.
       renderWishlistToggle();
+      var tierEl = document.getElementById('wishlistToggleTier');
+      if (tierEl && err && err.message) tierEl.textContent = 'Could not save: ' + err.message;
     }
   );
 }

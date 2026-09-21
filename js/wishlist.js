@@ -517,13 +517,13 @@ function wishlistSlotSummaryDotsHTML(items) {
 }
 
 // Whether the raider currently viewing their own Wishlist can edit it --
-// the team-wide wishlistOpen() toggle, OR their own wishlist_allowed
-// per-raider exception (same shape as bis_allowed's "Allow BiS Submit",
-// #610/#611 follow-up: there was no way to reopen just one raider's
-// Wishlist while it's closed team-wide). Every editing gate in this file
-// should check this instead of wishlistOpen() directly -- tab-bis.js's own
-// wishlistOpen() calls are the team-wide toggle's own display and
-// deliberately stay as-is.
+// the team's wishlistOpen() switch for this tier (#939), OR their own
+// wishlist_allowed per-raider exception (same shape as bis_allowed's "Allow
+// BiS Submit", #610/#611 follow-up: there was no way to reopen just one
+// raider's Wishlist while it's closed for the team). Every editing gate in
+// this file should check this instead of wishlistOpen() directly --
+// tab-bis.js's own wishlistOpen() calls are the team's toggle's own display
+// and deliberately stay as-is.
 function wishlistEditableNow() {
   return wishlistOpen() || (!!_wishlistPlayerNameRealm && wishlistAllowedFor(_wishlistPlayerNameRealm));
 }

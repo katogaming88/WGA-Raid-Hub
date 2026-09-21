@@ -38,7 +38,13 @@ function makeSandbox(prefs) {
   vm.runInContext(COMMON_JS, sandbox, { filename: 'common.js' });
   vm.runInContext(WISHLIST_JS, sandbox, { filename: 'wishlist.js' });
 
-  sandbox.DATA = { itemSlots: {}, itemPlaceholders: {}, itemIds: { 'M+': 1, Helm: 2 }, wishlistOpen: true };
+  sandbox.DATA = {
+    itemSlots: {},
+    itemPlaceholders: {},
+    itemIds: { 'M+': 1, Helm: 2 },
+    seasonName: 'Midnight Season 2',
+    teamSeasons: [{ season_code: 'MID2', wishlist_open: true }]
+  };
   sandbox._wishlistPrefs = prefs;
   return sandbox;
 }

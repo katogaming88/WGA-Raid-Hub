@@ -27,6 +27,7 @@ Includes notes on redundancies and why they exist.
 - [team_members](#team_members)
 - [teams](#teams)
 - [team_settings](#team_settings)
+- [team_seasons](#team_seasons)
 - [audit_log](#audit_log)
 - [guild_grants](#guild_grants)
 - [scoring](#scoring)
@@ -238,6 +239,21 @@ Key-value config blob per team. One row per team.
 | `team_id` | int4  | PK + FK -> `teams.id`                                                      |
 | `config`  | jsonb | Freeform settings (loot rules, scoring weights, display preferences, etc.) |
 | `updated_at` | timestamptz | Auto-set on every UPDATE via trigger                            |
+
+---
+
+## `team_seasons`
+
+A team's two switches per tier (#939): whether raiders can sign up and whether they can edit their wishlist. One row per team and tier; no row means both closed. Written only by `set_team_season()`.
+
+| Column          | Type        | Purpose                                                     |
+| --------------- | ----------- | ----------------------------------------------------------- |
+| `id`            | int8        | PK                                                          |
+| `team_id`       | int4        | FK -> `teams.id`, cascades on delete                        |
+| `season_code`   | text        | FK -> `seasons.code`; unique with `team_id`                 |
+| `signups_open`  | bool        | Raiders can submit a season signup for this tier            |
+| `wishlist_open` | bool        | Raiders can tag and edit their wishlist for this tier       |
+| `updated_at`    | timestamptz | Set by `set_team_season()` on every write                   |
 
 ---
 

@@ -728,6 +728,9 @@ function saveSeasonView() {
       // stale/empty data until a full page reload.
       if (typeof remapPriorityDataForSeasonView === 'function') remapPriorityDataForSeasonView();
       if (typeof refreshVisiblePriorityTab === 'function') refreshVisiblePriorityTab();
+      // The Wishlist Editing toggle controls the tier Season View shows
+      // (#939), so its badge and caption follow the change.
+      if (typeof renderWishlistToggle === 'function') renderWishlistToggle();
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {
@@ -772,6 +775,8 @@ function saveSignupSeason() {
       }
       if (DATA) DATA.signupSeason = val;
       if (input) input.value = num;
+      // The Signups toggle controls this tier (#939), so it follows the change.
+      if (typeof renderSignupToggle === 'function') renderSignupToggle();
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {
