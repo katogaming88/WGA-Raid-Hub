@@ -51,8 +51,7 @@ const ANON_DEFINER_ALLOWLIST = [
   'submit_bis_link',
   'submit_boe_found',
   'submit_mplus_exclusion',
-  'submit_self_received',
-  'sync_bis_obtained_from_self_received'
+  'submit_self_received'
 ];
 
 // Comments are stripped before the body is searched. wishlist_setup_status

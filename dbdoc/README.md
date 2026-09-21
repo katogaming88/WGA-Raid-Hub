@@ -6,7 +6,6 @@
 | ---- | ------- | ------- | ---- |
 | [public.attendance](public.attendance.md) | 9 |  | BASE TABLE |
 | [public.audit_log](public.audit_log.md) | 8 |  | BASE TABLE |
-| [public.bis_items](public.bis_items.md) | 7 |  | BASE TABLE |
 | [public.bis_requests](public.bis_requests.md) | 8 |  | BASE TABLE |
 | [public.classes_specs](public.classes_specs.md) | 4 |  | BASE TABLE |
 | [public.item_bosses](public.item_bosses.md) | 2 |  | BASE TABLE |
@@ -108,7 +107,6 @@
 | public.admin_set_maintenance_mode | void | p_enabled boolean, p_message text DEFAULT NULL::text | FUNCTION |
 | public.submit_self_received | record | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_slot text DEFAULT NULL::text | FUNCTION |
 | public.direct_mark_received | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_slot text DEFAULT NULL::text | FUNCTION |
-| public.sync_bis_obtained_from_self_received | trigger |  | FUNCTION |
 | public.set_guild_officer_bios | jsonb | p_bios jsonb | FUNCTION |
 | public.flag_bis_list_changed | int4 | p_team_id integer, p_name_realm text, p_player_note text DEFAULT NULL::text | FUNCTION |
 | public.get_own_signup | record | p_team_id integer | FUNCTION |
@@ -120,7 +118,6 @@
 | public.admin_grant_guild_officer | int4 | p_discord_id text | FUNCTION |
 | public.admin_revoke_guild_officer | void | p_discord_id text | FUNCTION |
 | public.check_priority_order_drift | record | p_team_id integer, p_season text | FUNCTION |
-| public.restrict_bis_items_update_to_obtained | trigger |  | FUNCTION |
 | public.restrict_players_self_update_to_bonus_roll | trigger |  | FUNCTION |
 | public.restrict_item_preferences_officer_update_to_note_clear | trigger |  | FUNCTION |
 | public.generate_priority_order | record | p_team_id integer, p_season text, p_item_id integer, p_track text | FUNCTION |
@@ -227,9 +224,6 @@ erDiagram
 "public.attendance" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.attendance" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.audit_log" }o--o| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
-"public.bis_items" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
-"public.bis_items" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
-"public.bis_items" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
 "public.bis_requests" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.bis_requests" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.item_bosses" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
@@ -354,15 +348,6 @@ erDiagram
   integer target_id
   jsonb detail
   timestamp_with_time_zone created_at
-}
-"public.bis_items" {
-  integer id
-  integer player_id FK
-  integer item_id FK
-  boolean obtained
-  timestamp_with_time_zone updated_at
-  text slot
-  text season FK
 }
 "public.bis_requests" {
   integer id

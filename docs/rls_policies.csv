@@ -6,14 +6,6 @@ attendance,Officers write attendance,public,ALL,PERMISSIVE,((team_id = ANY (( SE
 attendance,Public read attendance,public,SELECT,PERMISSIVE,true,
 audit_log,Claude readers read audit_log,claude_readers,SELECT,PERMISSIVE,true,
 audit_log,Officers read audit_log,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin) OR ( SELECT is_guild_officer() AS is_guild_officer)),
-bis_items,Claude readers read bis_items,claude_readers,SELECT,PERMISSIVE,true,
-bis_items,Officers write bis_items,public,ALL,PERMISSIVE,"((( SELECT players.team_id
-   FROM players
-  WHERE (players.id = bis_items.player_id)) = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))","((( SELECT players.team_id
-   FROM players
-  WHERE (players.id = bis_items.player_id)) = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))"
-bis_items,Public read bis_items,public,SELECT,PERMISSIVE,true,
-bis_items,Raiders update own bis_items obtained,public,UPDATE,PERMISSIVE,(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])),(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))
 bis_requests,Claude readers read bis_requests,claude_readers,SELECT,PERMISSIVE,true,
 bis_requests,Officers read bis_requests,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 bis_requests,Officers update bis_requests,public,UPDATE,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))

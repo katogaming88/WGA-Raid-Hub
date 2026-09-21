@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('items_id_seq'::regclass) | false | [public.bis_items](public.bis_items.md) [public.item_bosses](public.item_bosses.md) [public.rclc_loot](public.rclc_loot.md) [public.priority_order](public.priority_order.md) [public.self_received_requests](public.self_received_requests.md) [public.item_preferences](public.item_preferences.md) [public.tier_token_map](public.tier_token_map.md) [public.boe_items](public.boe_items.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) |  |  |
+| id | integer | nextval('items_id_seq'::regclass) | false | [public.item_bosses](public.item_bosses.md) [public.rclc_loot](public.rclc_loot.md) [public.priority_order](public.priority_order.md) [public.self_received_requests](public.self_received_requests.md) [public.item_preferences](public.item_preferences.md) [public.tier_token_map](public.tier_token_map.md) [public.boe_items](public.boe_items.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) |  |  |
 | wow_item_id | integer |  | true |  |  |  |
 | name | text |  | false |  |  |  |
 | slot | text |  | false |  |  |  |
@@ -39,7 +39,6 @@
 ```mermaid
 erDiagram
 
-"public.bis_items" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
 "public.item_bosses" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.rclc_loot" }o--o| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
 "public.priority_order" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id)"
@@ -66,15 +65,6 @@ erDiagram
   jsonb main_stats
   text weapon_subtype
   boolean is_boe
-}
-"public.bis_items" {
-  integer id
-  integer player_id FK
-  integer item_id FK
-  boolean obtained
-  timestamp_with_time_zone updated_at
-  text slot
-  text season FK
 }
 "public.item_bosses" {
   integer item_id FK

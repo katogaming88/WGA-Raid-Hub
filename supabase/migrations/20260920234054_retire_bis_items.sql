@@ -1,7 +1,39 @@
--- Function public.generate_priority_order: current definition, generated from the database.
--- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
--- execute (site roles): authenticated
+-- #935: bis_items is gone; the wishlist is the only BiS source.
+--
+-- bis_items was the Sheet-era BiS grid: one row per player per slot, picked
+-- by an officer, with an obtained flag. The wishlist (item_preferences, in
+-- use since 2026-08-07) is where raiders keep their BiS now, and on
+-- 2026-09-05 the table was retired rather than kept empty (decided on #935,
+-- with #1032 and #1033). Production holds four rows, all on three players
+-- archived in July; every active-roster row went with Phoenix's archive on
+-- 2026-08-06.
+--
+-- The site stopped reading and writing the table in PR #1274 (v3.146.0), one
+-- deploy ahead of this file: since #1083 a merge pushes its migration before
+-- it publishes the site, so dropping the table in the same PR would have
+-- handed every browser still on the old bundle a failed read.
+--
+-- This drops the table with its two triggers, four policies, index, sequence
+-- and three foreign keys; the self-received approval trigger and its
+-- function, which only ever ticked a bis_items row; the trigger function that
+-- restricted updates to obtained; and the bis_items branches of the three
+-- functions that read the table. The self-received sync stops rather than
+-- moving to item_preferences: that table has no obtained column, and
+-- rclc_loot and bis_demand_vs_awards already answer whether a want was
+-- awarded. seasonHistory entries already written keep the BiS snapshot they
+-- carry; new archives write none.
 
+drop trigger trg_self_received_sync_bis_obtained on public.self_received_requests;
+drop function public.sync_bis_obtained_from_self_received();
+
+drop table public.bis_items;
+
+drop function public.restrict_bis_items_update_to_obtained();
+
+-- generate_priority_order(): the wishlist is the only candidate source. The
+-- bis CTE, its half of the candidate union and the has_bis_pick tier go;
+-- every candidate now has a wishlist status, so the null-status branches of
+-- wishlist_rank cannot fire and are gone with it.
 CREATE OR REPLACE FUNCTION public.generate_priority_order(p_team_id integer, p_season text, p_item_id integer, p_track text)
  RETURNS TABLE(player_id integer, name_realm text, role text, weighted_total numeric, status_label text, wishlist_status text)
  LANGUAGE plpgsql
@@ -327,5 +359,208 @@ begin
     tier_rank asc,
     avg_existing_rank desc nulls first,
     coalesce(case when raw_score is not null then round(raw_score * final_mult, 1) end, -1) desc;
+end;
+$function$;
+
+-- archive_current_season(): no BiS snapshot and no wipe. The history entry
+-- keeps its other keys; entries already written keep the bis key they carry.
+CREATE OR REPLACE FUNCTION public.archive_current_season(p_team_id integer, p_roster_snapshot jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_config jsonb;
+  v_entry jsonb;
+  v_raids_enriched jsonb;
+begin
+  select config into v_config from public.team_settings where team_id = p_team_id for update;
+  if v_config is null then
+    raise exception 'Not authorized';
+  end if;
+  if coalesce(v_config->>'seasonName', '') = '' then
+    raise exception 'No active season to archive';
+  end if;
+
+  -- Rebuilds raidProgression's raid array, folding each boss's current
+  -- team_raid_progress row (mythic_pulls, mythic_best_pct) into its object.
+  -- `with ordinality` on both levels preserves the original raid/boss array
+  -- order -- jsonb_agg has no inherent ordering of its own otherwise.
+  select coalesce(
+    jsonb_agg(
+      raid_obj || jsonb_build_object(
+        'bosses', (
+          select coalesce(
+            jsonb_agg(
+              boss_obj || jsonb_build_object(
+                'mythicPulls', trp.mythic_pulls,
+                'mythicBestPct', trp.mythic_best_pct
+              )
+              order by boss_ord
+            ),
+            '[]'::jsonb
+          )
+          from jsonb_array_elements(raid_obj->'bosses') with ordinality as b(boss_obj, boss_ord)
+          -- raid_encounters is only unique on (zone_id, wcl_encounter_id), not
+          -- wcl_encounter_id alone -- resolved as a LIMIT 1 scalar subquery
+          -- (not a join) so a theoretical cross-zone id collision can never
+          -- fan this aggregation out into duplicate boss rows.
+          left join public.team_raid_progress trp
+            on trp.team_id = p_team_id
+            and trp.encounter_id = (
+              select re.id
+              from public.raid_encounters re
+              join public.raid_zones rz on rz.id = re.zone_id
+              where rz.wcl_zone_id = (raid_obj->>'wclZoneId')::integer
+                and re.wcl_encounter_id = (boss_obj->>'wclEncounterId')::integer
+              limit 1
+            )
+        )
+      )
+      order by raid_ord
+    ),
+    '[]'::jsonb
+  )
+  into v_raids_enriched
+  from jsonb_array_elements(coalesce(v_config->'raidProgression', '[]'::jsonb)) with ordinality as r(raid_obj, raid_ord);
+
+  v_entry := jsonb_build_object(
+    'name', coalesce(v_config->'seasonName', '""'::jsonb),
+    'start', coalesce(v_config->'seasonStart', '""'::jsonb),
+    'end', coalesce(v_config->'seasonEnd', '""'::jsonb),
+    'raids', v_raids_enriched,
+    'roster', coalesce(p_roster_snapshot, '[]'::jsonb)
+  );
+
+  update public.team_settings
+  set config = config || jsonb_build_object(
+    'seasonName', '""'::jsonb,
+    'seasonStart', '""'::jsonb,
+    'seasonEnd', '""'::jsonb,
+    'raidProgression', '[]'::jsonb,
+    'seasonHistory', coalesce(v_config->'seasonHistory', '[]'::jsonb) || jsonb_build_array(v_entry)
+  )
+  where team_id = p_team_id
+  returning config into v_config;
+
+  if not found then
+    raise exception 'Not authorized';
+  end if;
+
+  update public.players
+  set m_plus_excluded = false, m_plus_note = null
+  where team_id = p_team_id
+    and archived_at is null
+    and m_plus_excluded = true;
+
+  update public.players
+  set is_bench = false
+  where team_id = p_team_id
+    and archived_at is null
+    and is_bench = true;
+
+  -- A new tier's loot table invalidates whatever the link was pointing at.
+  update public.players
+  set bis_link = null
+  where team_id = p_team_id
+    and archived_at is null
+    and bis_link is not null;
+
+  return v_config;
+end;
+$function$;
+
+-- wishlist_setup_status(): the raider's own tags are the only coverage. The
+-- officer-bucket passes go, and with them the locals that fed nothing else.
+CREATE OR REPLACE FUNCTION public.wishlist_setup_status(p_team_id integer)
+ RETURNS TABLE(player_id integer, name_realm text, discord_id text, wishlist_count integer, bis_link text, missing_bis_rows text[])
+ LANGUAGE plpgsql
+ STABLE
+ SET search_path TO 'public'
+AS $function$
+declare
+  wishlist_slots text[] := array[
+    'Head','Neck','Shoulder','Back','Chest','Wrist','Hands','Waist','Legs','Feet',
+    'Finger 1','Finger 2','Trinket 1','Trinket 2','Weapon','Off Hand'
+  ];
+  prec record;
+  bi record;
+  candidates text[];
+  bis_rows text[];
+  off_hand_required boolean;
+  required_rows text[];
+  missing text[];
+begin
+  for prec in
+    select p.id, p.name_realm, p.bis_link, pe.discord_id,
+      (select count(*) from item_preferences ip where ip.player_id = p.id) as wishlist_count
+    from players p
+    join team_members tm on tm.id = p.team_member_id
+    join people pe on pe.id = tm.person_id
+    where p.team_id = p_team_id
+      and p.archived_at is null
+  loop
+    -- Raider's tags: wishlistCompleteness()'s bisRows/offHandRequired pass.
+    -- item_preferences.slot is present for Finger/Trinket/Weapon/Off Hand
+    -- disambiguation and every placeholder row, null (falls back to catalog
+    -- slot) everywhere else.
+    bis_rows := array[]::text[];
+    off_hand_required := false;
+
+    for bi in
+      select ip.status, ip.slot as explicit_slot, i.slot as catalog_slot
+      from item_preferences ip
+      join items i on i.id = ip.item_id
+      where ip.player_id = prec.id
+    loop
+      if bi.explicit_slot is not null then
+        candidates := array[bi.explicit_slot];
+      else
+        candidates := case bi.catalog_slot
+          when 'Finger' then array['Finger 1', 'Finger 2']
+          when 'Trinket' then array['Trinket 1', 'Trinket 2']
+          when 'One-Hand' then array['Weapon']
+          when 'Two-Hand' then array['Weapon']
+          when 'Ranged' then array['Weapon']
+          when 'Off Hand' then array['Off Hand']
+          when 'Held In Off-hand' then array['Off Hand']
+          when 'Head' then array['Head']
+          when 'Neck' then array['Neck']
+          when 'Shoulder' then array['Shoulder']
+          when 'Back' then array['Back']
+          when 'Chest' then array['Chest']
+          when 'Wrist' then array['Wrist']
+          when 'Hands' then array['Hands']
+          when 'Waist' then array['Waist']
+          when 'Legs' then array['Legs']
+          when 'Feet' then array['Feet']
+          else array[]::text[]
+        end;
+      end if;
+
+      if bi.status = 'bis' then
+        bis_rows := bis_rows || candidates;
+        if (bi.explicit_slot = 'Weapon' or bi.explicit_slot is null) and bi.catalog_slot = 'One-Hand' then
+          off_hand_required := true;
+        end if;
+      end if;
+    end loop;
+
+    required_rows := array(
+      select s from unnest(wishlist_slots) s where s <> 'Off Hand' or off_hand_required
+    );
+    missing := array(
+      select r from unnest(required_rows) r
+      where not (bis_rows @> array[r])
+    );
+
+    player_id := prec.id;
+    name_realm := prec.name_realm;
+    discord_id := prec.discord_id;
+    wishlist_count := prec.wishlist_count;
+    bis_link := prec.bis_link;
+    missing_bis_rows := missing;
+    return next;
+  end loop;
 end;
 $function$;
