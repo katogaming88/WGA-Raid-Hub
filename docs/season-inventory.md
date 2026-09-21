@@ -10,6 +10,8 @@ Every place the database and the code hold a season, read at commit `d206bea` (m
 
 **Since #937 (2026-09-20, `20260920160630_boe_items_season_codes.sql`) `boe_items.season` holds the code and references `seasons(code)`, and `submit_boe_found()` stamps `current_season()` whatever the reporting team's settings say**, since a BoE is guild property and the season is app-wide; the null rows took the tier current on the day each was found. The `boe.html` picker reads the same function at page load and offers that tier's BoEs for every team, no longer reading `team_settings` for a season or following the team picked. The importer still writes the name its `--seasons` file carries (#938).
 
+**Since #935 (2026-09-20, `20260920234054_retire_bis_items.sql`) `bis_items` is gone**, and with it the one season column that was never going to convert; section 2 counts thirteen.
+
 Season lives in three places today and none of them is a table.
 
 - **The guild's raid tier.** Which tier is current is `CURRENT_SEASON` in `js/common.js`, a constant edited by hand once per tier. The database holds no guild-level season: `to_regclass('public.seasons')` and `('public.team_seasons')` are both null.
@@ -35,11 +37,10 @@ Entries name files and the function, view, trigger or constant inside them, neve
 
 Production, 2026-09-14: teams 1 and 2 (`phoenix`, `hellfire`) hold `seasonName = Midnight Season 2`, `seasonView` null, `activeSignupSeason = Midnight Season 2`, one archived entry each (`Midnight Season 1`); teams 3 and 4 (`immolation`, `wrathless`) hold no season key.
 
-## 2. Table columns (14)
+## 2. Table columns (13)
 
 | Column | Null | Keys including it | Production rows | Format | Tier or cycle | Converts in |
 | --- | --- | --- | --- | --- | --- | --- |
-| `bis_items.season` | yes | none | 4 `Midnight Season 1` | name | cycle | retired by #935 |
 | `boe_items.season` | yes | none | 48 `Midnight Season 1`, 19 `Midnight Season 2`, 5 null | name | cycle (decided: tier) | #937 |
 | `item_preferences.season` | yes | none | 3,361 `Midnight Season 2`, 9 null | name | cycle | #936 |
 | `player_wcl_season_perf.season` | no | `unique (player_id, season)` | 46 `MID1` | code | cycle, as a tier code | #932 |
@@ -56,10 +57,7 @@ Production, 2026-09-14: teams 1 and 2 (`phoenix`, `hellfire`) hold `seasonName =
 
 ### `bis_items.season`
 
-- **Writers.** None on the site since #935's first PR (2026-09-20): `bisSlotPickItem()`, `removeBisListItem()`, `toggleBisItemObtained()` and `applyRaiderIoTierSync()` left with the BiS Manager grid, and the importer's `bis` module with them. `20260725135340_bis_items_item_preferences_season.sql` added the column and backfilled existing rows from each team's `seasonName`. Until the second PR drops the table, `archive_current_season()` still deletes every row for the active roster at rollover, after snapshotting them into `seasonHistory`, and the `restrict_bis_items_update_to_obtained` trigger still refuses any update that changes `season`.
-- **Readers.** None on the site since the same PR (`fetchSupabaseBisItems()`, `mapSupabaseBisItems()`, `bisSlotBuckets()` and the `isItemInSeasonScope(entry.item, entry.season)` filters over the table's rows left with the grid). No SQL reader: `generate_priority_order()` and `wishlist_setup_status()` join the table without the column, and the archive snapshot carries the item and `obtained`, not the season.
-- **Format.** Name. **Meaning.** Cycle.
-- **Next tier, nothing changed.** The four rows keep `Midnight Season 1` and fall out of scope. The table is retired by #935; nothing converts.
+Retired with the table in #935's second PR (2026-09-20, `20260920234054_retire_bis_items.sql`). The four rows, all `Midnight Season 1` on archived players, went with it.
 
 ### `boe_items.season`
 
@@ -269,7 +267,7 @@ Writes go through `saveTeamSetting()` (`js/common.js`), which calls the `set_tea
 Derived from the entries above, in the order the tier would hit them.
 
 1. `CURRENT_SEASON` in `js/common.js`, `SEASON` in `scripts/generate-tier-token-map-sql.js` and the two copies of the prefixes are edited by hand, and the token seed is regenerated; until it is, Sync Roster Tier Counts refuses (#1108). #932 makes the tier a row; #939 gives every team a default.
-2. Each team clicks Start New Season, which archives the cycle and writes the constant's name into `seasonName`; a team that does not keeps stamping the old name into `boe_items`, `item_preferences`, `bis_items` and `raid_zones`, and its priority, loot and scoring writes stay under the old code. #938 moves that flow to codes; #939 replaces the keys with `team_seasons` rows.
+2. Each team clicks Start New Season, which archives the cycle and writes the constant's name into `seasonName`; a team that does not keeps stamping the old name into `boe_items`, `item_preferences` and `raid_zones`, and its priority, loot and scoring writes stay under the old code. #938 moves that flow to codes; #939 replaces the keys with `team_seasons` rows.
 3. `raid_zones` has no row for the new tier until a team with the new `seasonName` runs `wcl-progression-sync`; a team without one lands the rows under `Unknown`. Until the row exists Season View cannot select the tier and the scope check fails open. #933.
 4. Teams 3 and 4 have no cycle: their BoE finds stamp null (five rows today), and a signup submitted while `activeSignupSeason` is absent stamps null (one row today). #937 borrows the guild's tier for finds; #934 and #936 refuse or scope the rest.
 5. `activeSignupSeason` and `seasonView` are free text and a raid-zone name; both keep working only while an officer types the same name the code derives. #934 and #933.

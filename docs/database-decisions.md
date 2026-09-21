@@ -10,6 +10,22 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-20 -- bis_items is gone; the wishlist is the only BiS source (#935)
+
+Shipped: 20260920234054_retire_bis_items.sql
+
+`bis_items` was the Sheet-era BiS grid: one row per player per slot, picked by an officer, with an `obtained` flag. The wishlist (`item_preferences`) is where raiders have kept their BiS since 2026-08-07, and on 2026-09-05 the grid was retired rather than kept empty (beside #1032 and #1033, which made the wishlist a BiS pick or a Pass). Production held four rows, all on three players archived in July.
+
+- **Two PRs, one deploy apart.** Since #1083 a merge pushes its migration before it publishes the site, and the live bundle read the table on every page load and wrote it on Mark Received, so one PR would have handed every browser still on the old bundle a failed read for up to ten minutes. PR #1274 (v3.146.0) took every read and write out of the site with the table standing; this migration, cut after that build had been live longer than the page cache, drops it. The same shape applies to any drop of a table the live bundle reads.
+- **The drop takes everything that existed only for the table**: its two triggers, four policies, unique index, sequence and three foreign keys (the #932 key on `season` among them); `trg_self_received_sync_bis_obtained` and `sync_bis_obtained_from_self_received()`, which only ever ticked a `bis_items` row on an approval; `restrict_bis_items_update_to_obtained()`; and the `bis_items` branches of `generate_priority_order()` (the `bis` CTE and `has_bis_pick`), `archive_current_season()` (the snapshot and the wipe) and `wishlist_setup_status()` (the officer-bucket passes).
+- **The self-received sync stops rather than moving to `item_preferences`.** That table has no `obtained` column, and whether a wanted item was awarded is already answered by `bis_demand_vs_awards` and `rclc_loot`. Decided on the issue, 2026-09-05.
+- **History stays.** `seasonHistory` entries already written keep the `bis` snapshot they carry (the Season tab renders it when present); new archives write none.
+- **Not moved with this.** `players.bis_link` and the BiS link submissions are unrelated. Who may see a raider's BiS List, now the wishlist's BiS tags and readable by the raider and the team's officers, is #1276; a raider's own tier-count refresh is #1275.
+
+[Full discussion -> #935](https://github.com/katogaming88/WGA-Raid-Hub/issues/935), Season milestone; the first PR is [#1274](https://github.com/katogaming88/WGA-Raid-Hub/pull/1274).
+
+---
+
 ## 2026-09-20 -- boe_items holds the tier code, and a find is stamped with the current tier (#937)
 
 Shipped: 20260920160630_boe_items_season_codes.sql
@@ -1721,6 +1737,7 @@ Shipped: `20260704204411_initial_schema.sql` carries the tables and columns belo
 - **Identity/lifecycle fix:** `players.team_member_id` (FK -> `team_members.id`, nullable) links a character row to the person/Discord account. `players.archived_at` (soft-delete) preserves character history across a main-swap instead of losing it to a hard-delete. `season_signups.approved_player_id` (FK -> `players.id`, `ON DELETE SET NULL`) links a signup to the character it produced.
 - **Season-scoping of wipe-between-seasons tables:** `scoring` gets a `season` column (preserve history). `mplus_exclusion_requests` and `bis_items` do NOT -- both wipe between seasons on purpose (gear/tier resets the exclusion criteria and BiS lists are rebuilt fresh each tier), and that intent is written down here so it isn't mistaken for a bug later.
   - **Correction, 2026-09-14 (#943): `bis_items.season` exists.** `20260725135340_bis_items_item_preferences_season.sql` (PR #579) added it so Other Sources placeholder rows could expire with their season, and production holds 4 rows, all four carrying one season value. The `mplus_exclusion_requests` half stands. #935 retires `bis_items` altogether.
+  - **Retired, 2026-09-20 (#935): the table is gone**, `20260920234054_retire_bis_items.sql`; see that entry.
 
 [Full discussion -> #258](https://github.com/katogaming88/WGA-Raid-Hub/issues/258)
 

@@ -18,7 +18,6 @@ Includes notes on redundancies and why they exist.
 
 - [items](#items)
 - [item_bosses](#item_bosses)
-- [bis_items](#bis_items)
 - [rclc_loot](#rclc_loot)
 - [priority_order](#priority_order)
 - [season_signups](#season_signups)
@@ -75,20 +74,6 @@ Maps each item to the boss(es) that drop it. Multi-row per item when the same it
 | --------- | ---- | -------------------------------- |
 | `item_id` | int4 | FK -> `items.id`                 |
 | `boss`    | text | Boss name string (e.g. "Onyxia") |
-
----
-
-## `bis_items`
-
-A player's current BiS list -- which items they need and whether they have them.
-
-| Column      | Type | Purpose                                 |
-| ----------- | ---- | --------------------------------------- |
-| `id`        | int4 | PK                                      |
-| `player_id` | int4 | FK -> `players.id`                      |
-| `item_id`   | int4 | FK -> `items.id` -- the item they want  |
-| `obtained`   | bool        | Whether they have received it this tier |
-| `updated_at` | timestamptz | Auto-set on every UPDATE via trigger    |
 
 ---
 
@@ -355,7 +340,7 @@ Player-submitted claims that they received a drop (self-reported loot tracking, 
 | `track`        | text        | Item track, CHECK values Champion/Hero/Myth -- split from the sheet's Source cell prefix (#322, renamed per #343) |
 | `source`       | text        | Where the item came from (Bonus Roll, Great Vault, Crafted, ...) -- the other half of the Source split |
 | `note`         | text        | Player note from the request form                    |
-| `slot`         | text        | Raw `bis_items.slot` the approval sync targets (#386); null on rows predating it |
+| `slot`         | text        | The slot row the raider reported the item for (#386); null on rows predating it |
 
 ---
 
@@ -368,7 +353,6 @@ Player requests to be added to the BiS list for a specific item (officer-approva
 | `id`              | int4        | PK                                                       |
 | `team_id`         | int4        | FK -> `teams.id` (denormalized)                          |
 | `player_id`       | int4        | FK -> `players.id`                                       |
-| `bis_req_item_id` | int4        | FK -> `bis_items.id` -- the BiS list link change request |
 | `submitted_at`    | timestamptz | When the request was made                                |
 | `status`          | text        | Pending/approved/denied                                  |
 
@@ -457,7 +441,7 @@ Two shared trigger functions handle cross-cutting DB invariants.
 
 A `BEFORE UPDATE` trigger on each mutable table. Sets `updated_at = now()` automatically on every write so application code never has to pass it explicitly.
 
-Tables: `players`, `season_signups`, `bis_items`, `scoring`, `mplus_exclusion_requests`, `priority_order`, `team_members`, `team_settings`.
+Tables: `players`, `season_signups`, `scoring`, `mplus_exclusion_requests`, `priority_order`, `team_members`, `team_settings`.
 
 `updated_at` is nullable with no default, on purpose (#272): these tables have no separate created-at column, so the value stays NULL until the first real UPDATE. A row with a NULL `updated_at` is a fresh insert; a non-NULL one has actually been edited. Populating it at insert time would erase that distinction.
 
@@ -466,8 +450,6 @@ Tables: `players`, `season_signups`, `bis_items`, `scoring`, `mplus_exclusion_re
 A `BEFORE INSERT OR UPDATE` trigger on every table that carries a denormalized `team_id` alongside a `player_id` FK. Raises an exception if the two disagree -- i.e. if the row's `team_id` does not match `players.team_id` for the given `player_id`. Skips the check when `player_id` is null (allowed on `rclc_loot` after a player is deleted).
 
 Tables: every table in `public` that carries `team_id` beside `player_id`, twenty as of #944 (`scoring` and `player_equipped_gear` gained the column then, and the three two-key tables without a trigger got one). The list is the trigger catalog itself: triggers on `check_team_id_matches_player()`, one per table, named `trg_<table>_team_id_check`.
-
-Note: `bis_items` is excluded -- it has no denormalized `team_id` and derives team through `player_id` by design (#935 retires it).
 
 ---
 
@@ -483,7 +465,7 @@ Both exist for deduplication on re-import but handle different failure modes. `r
 
 ### 3. `team_id` denormalized across many tables
 
-Every table that carries `player_id` also carries `team_id` (twenty tables as of #944; `bis_items` is the one exception until #935 retires it) even though `player_id` already implies a team via `players.team_id`. This is intentional denormalization for two reasons: (1) it avoids joining through `players` on every query, and (2) it allows Supabase Row-Level Security policies to filter by team directly on these tables. The tradeoff is that `team_id` could drift out of sync with `players.team_id` if a player is transferred between teams. The `check_team_id_matches_player()` trigger guards against this on write.
+Every table that carries `player_id` also carries `team_id` (twenty tables as of #944) even though `player_id` already implies a team via `players.team_id`. This is intentional denormalization for two reasons: (1) it avoids joining through `players` on every query, and (2) it allows Supabase Row-Level Security policies to filter by team directly on these tables. The tradeoff is that `team_id` could drift out of sync with `players.team_id` if a player is transferred between teams. The `check_team_id_matches_player()` trigger guards against this on write.
 
 ### 4. `players.name_realm` vs `team_members.name_realm`
 
@@ -500,7 +482,7 @@ Both say what a person may do, but at different scopes. `team_members` is team-s
 These two tables are structurally nearly identical (team_id, player_id, item FK, submitted_at, status) but model two distinct officer workflows:
 
 - `self_received_requests`: "I received a drop -- please mark it obtained on my BiS list." The item FK points to `items`.
-- `bis_requests`: "Please change the link for my bis list & update my bis items." The item FK points to `bis_items` (a BiS list entry, not just an item).
+- `bis_requests`: "Please change the link for my BiS list." It carries the new link, not an item.
 
 They are similar enough that they could be merged with a `type` discriminator, but keeping them separate gives each its own RLS, officer queue, and history without conditional logic.
 

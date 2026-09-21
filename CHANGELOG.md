@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [Unreleased]
+
+### Backend
+
+- The `bis_items` table is gone, with its triggers, its policies and the
+  self-received approval sync that ticked its rows. The priority order and
+  the wishlist nudges read the wishlist alone, and Start New Season no longer
+  snapshots a BiS list into the season's history (past snapshots stay). The
+  second of the two steps that retire the old officer BiS grid
+  ([#935](https://github.com/katogaming88/WGA-Raid-Hub/issues/935)).
+
 ## [3.146.0] - 2026-09-20
 
 ### Frontend

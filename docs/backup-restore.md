@@ -58,7 +58,6 @@ Note the dependency, because it decides restore order: `priority_order` and `sco
 - `guild_grants` (the site admin, guild officer and BoE manager grants, [#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942) step 2; no site admin row means nobody can administer the site, no BoE manager row only that site admins alone run the BoE workflow). `site_admins`, `guild_officers` and `boe_managers` are views of it until cutover, not tables, so they restore with the schema and hold nothing of their own
 - `characters` (the alts each person picked from their Battle.net account, [#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942) step 5; restores after `people`. Nothing else holds the picks, so a lost row is only rebuilt by that raider choosing again)
 - `item_preferences` (raider wishlists)
-- `bis_items` (BiS lists and their obtained flags)
 - `season_signups`
 - `bis_requests`
 - `self_received_requests`

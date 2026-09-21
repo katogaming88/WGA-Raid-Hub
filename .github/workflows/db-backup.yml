@@ -162,12 +162,11 @@ jobs:
           # normally, and a floor tracking real counts would need editing on
           # every roster change and would go flaky between edits.
           #
-          # Deliberately NOT listed: bis_items (archive_current_season()
-          # empties it at every rollover, by design), and the request tables
-          # (bis_requests, self_received_requests, mplus_exclusion_requests,
-          # notifications), which legitimately reach zero once everything
-          # outstanding has been resolved. Asserting on those would train
-          # people to ignore this check.
+          # Deliberately NOT listed: the request tables (bis_requests,
+          # self_received_requests, mplus_exclusion_requests, notifications),
+          # which legitimately reach zero once everything outstanding has
+          # been resolved. Asserting on those would train people to ignore
+          # this check.
           #
           # Adding a table here is a one-line change; see docs/backup-restore.md
           # "When the schema changes" for when that is warranted.
