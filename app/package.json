@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@fontsource-variable/onest": "^5.3.1",
+    "@sentry/browser": "^10.75.1",
     "@supabase/supabase-js": "^2.116.0",
     "@tanstack/react-query": "^5.103.1",
     "react": "^19.3.0",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+    "@sentry/vite-plugin": "^5.4.0",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",

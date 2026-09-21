@@ -546,6 +546,9 @@ jobs:
       - name: Build the app
         if: ${{ steps.secrets.outputs.configured == 'true' }}
         working-directory: app
+        env:
+          # Uploads source maps to Sentry (#1161); empty skips it.
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: |
           npm ci
           npm run build

@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |      6 h 55 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     23 h 24 m |
-| **All revamp work**                | **37 h 14 m** |
+| Revamp 2: public pages             |      24 h 4 m |
+| **All revamp work**                | **37 h 54 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -126,6 +126,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Notes |
 | --------- | ---- | ----- | ------: | ----------- | ----- |
 | 6:35-7:05 PM | Streams sidebar live-count badge (#1102) | Revamp 2 (#1102) | 30 m | build; Kat review not yet counted | Badge on the Streams nav item, same cached read as the page; times are estimated, no transcript timestamps. |
+| 7:05-7:25 PM | #1161 Sentry error reporting (code and DSN; source maps still to do) | Revamp 2 (#1102) | 20 m | build; Kat review not yet counted | Plugs into reportError(), on where VITE_SENTRY_DSN is set; scrubs URLs and headers. Times estimated. Source maps follow once Kat has the project. |
+| 7:35-7:55 PM | #1161 Sentry source maps from the deploy build | Revamp 2 (#1102) | 20 m | ~15 m build, ~5 m Kat (auth token, secret) | Vite plugin uploads maps and deletes them; skipped without SENTRY_AUTH_TOKEN. Times estimated. |
 
 ## Not counted (same sessions, not revamp)
 

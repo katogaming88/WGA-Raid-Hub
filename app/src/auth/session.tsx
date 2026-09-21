@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 import { useSupabase } from '../data/DataProvider';
 import type { Client } from '../lib/supabase';
 import { reportError } from '../lib/errors';
+import { setReportUser } from '../lib/sentry';
 
 // Sign-in (#1101 part 3, decided 2026-09-14): Battle.net is how a person signs
 // in, and Discord is linked to the same account, because roles, the bot and
@@ -206,6 +207,8 @@ export function SessionProvider({
       (initialAuthReturn.intent === 'choose-alts' || initialAuthReturn.intent === 'connect-battlenet')
   );
   const userId = useRef(initialUser?.id ?? null);
+  // Reports name the account by id only (#1161).
+  useEffect(() => setReportUser(user?.id ?? null), [user?.id]);
 
   useEffect(() => {
     const { data } = client.auth.onAuthStateChange((_event, session) => {

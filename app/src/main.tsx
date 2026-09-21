@@ -6,10 +6,14 @@ import { routes } from './routes';
 import { DataProvider } from './data/DataProvider';
 import { createSupabaseClient } from './lib/supabase';
 import { errorMessage, reportError } from './lib/errors';
+import { initSentry } from './lib/sentry';
 import { loadInitialSession, SessionProvider } from './auth/session';
 import { StatusProvider } from './components/Status';
 import './styles/base.css';
 import './pages/pages.css';
+
+// Before anything can fail: reports the errors the page itself throws as well.
+initSentry(import.meta.env.VITE_SENTRY_DSN, window.location.hostname);
 
 const root = document.getElementById('root');
 if (!root) throw new Error('index.html is missing #root');

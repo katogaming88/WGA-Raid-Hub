@@ -1,7 +1,7 @@
 // The one place a failure is reported from (#1101). Every failed read or
 // write passes through here as well as being shown on the page, so nothing
-// fails silently. It logs to the console today; the hosted error tracker
-// (Sentry, #1101) plugs in here once its project and key exist.
+// fails silently. It logs to the console; where a Sentry DSN is set,
+// lib/sentry.ts swaps in a reporter that also sends it there (#1161).
 
 export type ErrorContext = { where: string; key?: readonly unknown[] };
 
