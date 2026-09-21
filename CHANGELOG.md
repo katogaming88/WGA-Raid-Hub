@@ -25,7 +25,9 @@ answers to.
   local dev server. Reports carry the signed-in account id and nothing
   else about the person: addresses lose their query and fragment (a sign-in
   return carries a code there), and no cookies or request headers are sent.
-  Readable stack traces from uploaded source maps are a follow-up.
+  The deploy uploads source maps to Sentry, so the stack traces in a report read
+  as the real files, and deletes them afterwards so they are not published. A
+  failed upload warns and does not stop the deploy.
 
 ## [3.148.2] - 2026-09-21
 
