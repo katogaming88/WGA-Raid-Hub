@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { sqlString, sqlBool, sqlNumber, sqlDate, sqlJsonb, insertStatement } from '../../scripts/import/lib/sql.js';
+import {
+  sqlString,
+  sqlBool,
+  sqlNumber,
+  sqlDate,
+  sqlJsonb,
+  insertStatement,
+  seasonGuardStatement
+} from '../../scripts/import/lib/sql.js';
 
 describe('sqlString', () => {
   it('doubles single quotes', () => {
@@ -75,5 +83,27 @@ describe('insertStatement', () => {
   });
   it('comments out empty inputs', () => {
     expect(insertStatement('t', ['a'], [])).toContain('no rows');
+  });
+});
+
+// The guard the generated file opens with (#938): every season code the file
+// stamps has to be a seasons row where the file is applied, and the check
+// raises before the first insert rather than at the first foreign key.
+describe('seasonGuardStatement', () => {
+  it('raises for a code the seasons table does not hold, naming it', () => {
+    const sql = seasonGuardStatement(['MID2', 'MID1']);
+    expect(sql).toContain("select 1 from public.seasons where code = 'MID1'");
+    expect(sql).toContain("select 1 from public.seasons where code = 'MID2'");
+    expect(sql).toMatch(/raise exception/);
+    expect(sql).toContain('MID1');
+  });
+  it('dedupes and sorts the codes and escapes them as strings', () => {
+    const sql = seasonGuardStatement(['MID2', 'MID2', "O'Neil"]);
+    expect(sql.match(/select 1 from public\.seasons/g)).toHaveLength(2);
+    expect(sql).toContain("code = 'O''Neil'");
+  });
+  it('emits a comment and no check when nothing is stamped', () => {
+    expect(seasonGuardStatement([])).toMatch(/^--/);
+    expect(seasonGuardStatement([])).not.toMatch(/raise exception/);
   });
 });

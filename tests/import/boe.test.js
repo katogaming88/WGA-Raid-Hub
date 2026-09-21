@@ -93,8 +93,8 @@ function soldRows(extra = []) {
 }
 
 const SEASONS = [
-  { name: 'Midnight Season 1', start: '2026-03-17', end: '2026-08-10' },
-  { name: 'Midnight Season 2', start: '2026-08-11' }
+  { code: 'MID1', name: 'Midnight Season 1', start: '2026-03-17', end: '2026-08-10' },
+  { code: 'MID2', name: 'Midnight Season 2', start: '2026-08-11' }
 ];
 const OPTS = { tz: 'America/New_York', seasons: SEASONS, floor: 20000, pivot: 100000 };
 
@@ -943,8 +943,9 @@ describe('boeSql', () => {
       OPTS
     );
     expect(sql).toContain("(select id from items where lower(name) = lower('Widget of Testing'))");
-    expect(sql).toContain("'Midnight Season 1'");
-    expect(sql).toContain("'Midnight Season 2'");
+    expect(sql).toContain("'MID1'");
+    expect(sql).toContain("'MID2'");
+    expect(sql).not.toContain('Midnight Season');
   });
   it('emits a null season with a warning when no ranges are supplied', () => {
     const { sql, warnings } = boeSql(rowsFor(), { ...OPTS, seasons: null });
