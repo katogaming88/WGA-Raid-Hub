@@ -37,8 +37,12 @@
 //                         list; names as First-Realm)
 //   --tz <zone>        spreadsheet timezone for wall-clock timestamps
 //                      (default America/New_York -- confirm on #320)
-//   --seasons <file>   season ranges JSON [{name, start, end?}] used to
-//                      derive legacy loot seasons (default data/seasons.json)
+//   --seasons <file>   season ranges JSON [{code, name, start, end?}] used
+//                      to derive legacy loot seasons (default data/seasons.json)
+//
+// Every season code the file stamps (--season and the legacy loot ranges) has
+// to be a seasons row where the file is applied; the file opens with a check
+// that raises before its first insert otherwise (#938).
 //
 // Expected CSV filenames in the data directory (missing tabs are skipped
 // with a note so exports can arrive incrementally):
@@ -58,6 +62,7 @@ import { parseScoring, scoringSql } from './tables/scoring.js';
 import { parseAttendance, attendanceSql } from './tables/attendance.js';
 import { parsePriority, prioritySql } from './tables/priority.js';
 import { parsePastedLoot, parseLegacyLoot, lootSql } from './tables/loot.js';
+import { seasonGuardStatement } from './lib/sql.js';
 import { parseMplusRequests, mplusSql } from './tables/mplus.js';
 import { parseSelfReceived, selfReceivedSql } from './tables/self-received.js';
 import { parseAudit, auditSql } from './tables/audit.js';
@@ -87,6 +92,7 @@ const seasons = existsSync(seasonsFile) ? JSON.parse(readFileSync(seasonsFile, '
 const sections = [];
 const summary = [];
 const notes = [];
+const stampedSeasons = new Set(season ? [season] : []);
 
 function section(title, sql) {
   sections.push(`-- === ${title} ===\n${sql}`);
@@ -167,6 +173,7 @@ if (rosterRows) {
     ];
     if (legacyRows && !seasons) notes.push(`no ${seasonsFile} -- legacy loot seasons import as null`);
     lootResult = lootSql(teamId, entries, registry, { knownItems, seasons, tz });
+    for (const code of lootResult.seasons) stampedSeasons.add(code);
     for (const w of lootResult.warnings) notes.push(`rclc_loot: ${w}`);
   } else {
     notes.push('Pasted Loot.csv / Loot Data.csv missing -- rclc_loot section skipped');
@@ -269,7 +276,7 @@ const header =
   `-- Source: ${dataDir}  (#320 one-time data migration)\n` +
   `-- Idempotent: re-applying reconciles players to the export and inserts\n` +
   `-- only new rows elsewhere.\n`;
-const sql = `${header}\nbegin;\n\n${sections.join('\n')}\ncommit;\n`;
+const sql = `${header}\nbegin;\n\n${seasonGuardStatement([...stampedSeasons])}\n\n${sections.join('\n')}\ncommit;\n`;
 
 mkdirSync(dirname(outFile), { recursive: true });
 writeFileSync(outFile, sql, 'utf8');
