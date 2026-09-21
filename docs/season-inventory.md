@@ -178,10 +178,10 @@ Writes go through `saveTeamSetting()` (`js/common.js`), which calls the `set_tea
 | `activeSignupSeason` | string, free text (a name today) | 1, 2 | cycle (the next one) | #934 |
 | `raidProgression` | array of raids with bosses | 1, 2 | cycle (the team's raid list for its season) | #939 |
 | `trackIlvlThresholds` | object, `{Hero, Myth}` floors | 1, 2 | tier in meaning, per team in storage | none filed |
-| `signupsOpen` | boolean | 1, 2, 3 | neither (a gate) | none |
+| `signupsOpen` | boolean | 1, 2, 3 | neither (a gate) | #939 (shipped 2026-09-21: a `team_seasons` row per tier; the key stays until #934 strips it) |
 | `bisSubmissionsOpen` | boolean | 1, 2 | neither (a gate) | none |
 | `mPlusExclusionsOpen` | boolean | 1, 2 | neither (a gate) | none |
-| `wishlistOpen` | boolean | 1, 2 | neither today | #936 ties it to the open cycle |
+| `wishlistOpen` | boolean | 1, 2 | neither today | #939 (shipped 2026-09-21: a `team_seasons` row per tier; the key stays until #934 strips it); #936 closes the insert path on it |
 | `trialWeeks`, `trialAttend` | numbers | 1, 2 | neither | none |
 | `targetTankCount`, `targetHealCount` | numbers | 1 | neither | none |
 | `features` | object of flags | 1, 2, 3 | neither | none |
@@ -243,6 +243,7 @@ Writes go through `saveTeamSetting()` (`js/common.js`), which calls the `set_tea
 - **Writers.** `setSignupsOpen()` (`js/tabs/tab-signups.js`), `setBisSubmissionsOpen()` and `setWishlistOpen()` (`js/tabs/tab-bis.js`), `toggleMPlusOpen()` (`js/tabs/tab-mplus.js`).
 - **Readers.** `submit_season_signup()` refuses when `signupsOpen` is false; `submit_bis_link()` on `bisSubmissionsOpen`; `submit_mplus_exclusion()` on `mPlusExclusionsOpen`. On the site: `updateSignupNavItem()` (`js/roster.js`), `fetchGuildTeamSettings()` and `renderGuildTeams()` (`js/guild.js`, every team's `signupsOpen`), `renderSignupToggle()`, `bisSubmissionsOpen()`, `wishlistOpen()` and `renderProfile()` (`js/common.js`), `loadAdminProperties()`. The app's `useWishlistSettings()` reads `wishlistOpen`. `wishlistOpen` has no SQL reader: the `Raiders manage own item_preferences` policy (`my_active_player_ids()`) admits an insert whether or not the key is set, so the gate is client-side only.
 - **Meaning.** Neither: gates. **Next tier, nothing changed.** Nothing; #936 closes the wishlist insert path when the team has no open cycle.
+- **Since #939 (2026-09-21).** `signupsOpen` and `wishlistOpen` are rows on `team_seasons`, one per team and tier, written only by `set_team_season()`; the Signups toggle controls the tier `activeSignupSeason` names and the Wishlist Editing toggle the tier `resolveSeasonViewCode()` returns, and every reader above reads the row instead of the key. No row means closed. The two keys are still in `config` on the teams that had them, read by nothing; #934 removes them. `bisSubmissionsOpen` and `mPlusExclusionsOpen` are unchanged.
 
 ### `trialWeeks`, `trialAttend`, `targetTankCount`, `targetHealCount`
 
