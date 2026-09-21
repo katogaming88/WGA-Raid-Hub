@@ -26,11 +26,11 @@
 // a new archived stub instead of matching their existing row.
 //
 // --- How to run ---
-//   node scripts/import/generate.js --team phoenix --season "Season 3"
+//   node scripts/import/generate.js --team phoenix --season MID2
 //
 // Options:
 //   --team <slug>      phoenix | hellfire (maps to teams.id 1 | 2)
-//   --season <name>    current season string for scoring rows (NOT NULL)
+//   --season <code>    the season code (MID2) stamped on scoring and priority rows
 //   --data <dir>       CSV directory (default data/<team>)
 //   --out <file>       output (default data/sql/import-<team>.sql)
 //   --mplus-manual <a,b>  manual M+ exclusion overrides (Script Properties
@@ -92,7 +92,7 @@ const seasons = existsSync(seasonsFile) ? JSON.parse(readFileSync(seasonsFile, '
 const sections = [];
 const summary = [];
 const notes = [];
-const stampedSeasons = new Set(season ? [season] : []);
+const stampedSeasons = new Set();
 
 function section(title, sql) {
   sections.push(`-- === ${title} ===\n${sql}`);
@@ -134,6 +134,7 @@ if (rosterRows) {
   const scoringRows = loadCsvIfPresent(join(dataDir, 'Scoring.csv'));
   if (scoringRows) {
     scoringResult = scoringSql(teamId, parseScoring(scoringRows, `${team} Scoring`), registry, season);
+    if (season) stampedSeasons.add(season);
   } else {
     notes.push('Scoring.csv missing -- scoring section skipped');
   }
@@ -158,6 +159,7 @@ if (rosterRows) {
       season,
       knownItems
     );
+    if (season) stampedSeasons.add(season);
     for (const w of priorityResult.warnings) notes.push(`priority_order: ${w}`);
   } else {
     notes.push('Priority Order.csv missing -- priority_order section skipped');
