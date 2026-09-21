@@ -12,6 +12,15 @@ answers to.
 
 ---
 
+## [3.148.1] - 2026-09-21
+
+### Project
+
+- The local dev setup guide now says to run `npm run dev:battlenet` after every
+  `supabase db reset` or `db:snapshot`, which remove the Battle.net sign-in
+  provider and leave the new app's button failing with "custom provider
+  custom:battlenet not found".
+
 ## [3.148.0] - 2026-09-21
 
 ### Frontend
