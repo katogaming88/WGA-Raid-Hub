@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.148.2] - 2026-09-21
+
+### Project
+
+- The new app's sidebar shows how many people are live on the **Streams** item
+  ([#1102](https://github.com/katogaming88/WGA-Raid-Hub/issues/1102)): a badge
+  with the count, read aloud as "Streams, 2 live", and no badge when nobody is
+  live. It counts the same people the Streams page lists under "Live now", from
+  the same cached read as the page and the floating panel, so it never adds a
+  request.
+
 ## [3.148.1] - 2026-09-21
 
 ### Project
