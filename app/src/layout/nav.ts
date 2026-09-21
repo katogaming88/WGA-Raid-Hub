@@ -71,5 +71,6 @@ export const TEAM_PAGES: Record<string, string> = {
 export const GUILD_PAGES: Record<string, string> = {
   boe: 'BoE sales',
   streams: 'Streams',
-  news: 'News'
+  news: 'News',
+  help: 'Help'
 };

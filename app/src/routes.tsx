@@ -9,6 +9,7 @@ import { BossGroupsPage } from './calendar/BossGroupsPage';
 import { GuildHomePage } from './guild/GuildHomePage';
 import { NewsPage } from './news/NewsPage';
 import { StreamsPage } from './streams/StreamsPage';
+import { HelpPage } from './help/HelpPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { RequireAbility } from './auth/RequireAbility';
@@ -29,7 +30,8 @@ const BUILT_PAGES: Record<string, ReactElement> = {
 // Guild pages rebuilt so far (#1102), beside Guild home itself.
 const BUILT_GUILD_PAGES: Record<string, ReactElement> = {
   news: <NewsPage />,
-  streams: <StreamsPage />
+  streams: <StreamsPage />,
+  help: <HelpPage />
 };
 
 // Addresses from #1100: /g/<guild key>/t/<team key>/... for team pages,

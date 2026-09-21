@@ -17,3 +17,7 @@ export function defaultTeamKey(): string {
 export function defaultGuildPath(): string {
   return /^\/g\/[^/]+/.exec(defaultPath())?.[0] ?? '/';
 }
+
+// The support Discord, where people ask for help instead of messaging Kat or Rex
+// (Help, and the link at the bottom of the sidebar).
+export const SUPPORT_DISCORD_URL = 'https://discord.gg/ATBC8B4UYz';
