@@ -1,26 +1,48 @@
 // Read-path and column-safety assertions for incoming_roster (#499): a
 // public view over season_signups' approved-unpromoted rows, narrowed to
-// safe columns and scoped to the team's active signup season. Lives
-// alongside promotion.test.js/read-matrix.test.js since it needs the live
-// local stack.
+// safe columns and scoped to the tiers the team has signups open for. Since
+// #934 that scope is the team's team_seasons row for the row's tier with
+// signups_open (#939): the seed carries no row, so each case opens its own
+// and the seeded approved signups surface only then. Each case runs in one
+// rolled-back transaction (helpers.js withTxn) so the row and the read share
+// a connection; the column cases keep queryAs, which needs no fixture.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, countAs, queryAs, seedSeason, RAIDER_T1 } from './helpers.js';
+import { pool, withTxn, queryAs, seedSeason, RAIDER_T1 } from './helpers.js';
 
-describe('incoming_roster is visible to everyone, scoped to the active season', () => {
-  it('anon sees the seeded approved signup for team 1', async () => {
-    expect(await countAs('anon', null, 'incoming_roster', 'team_id = 1')).toBeGreaterThan(0);
+const openSignups = (q, team = 1, season = 'seed-season', open = true) =>
+  q('insert into public.team_seasons (team_id, season_code, signups_open) values ($1, $2, $3)', [team, season, open]);
+
+const countIncoming = async (asCaller, where) =>
+  (await asCaller(`select count(*)::int as n from public.incoming_roster where ${where}`)).rows[0].n;
+
+describe('incoming_roster is visible to everyone, scoped to the tiers the team has open', () => {
+  it("anon sees the seeded approved signup for team 1 once the team's switch for its tier is on, and not before", async () => {
+    await withTxn(async ({ q, asAnon }) => {
+      expect(await countIncoming(asAnon, 'team_id = 1')).toBe(0);
+      await openSignups(q);
+      expect(await countIncoming(asAnon, 'team_id = 1')).toBeGreaterThan(0);
+    });
   });
 
   it('raider sees the seeded approved signup for team 1', async () => {
-    expect(await countAs('authenticated', RAIDER_T1, 'incoming_roster', 'team_id = 1')).toBeGreaterThan(0);
+    await withTxn(async ({ q, asUser }) => {
+      await openSignups(q);
+      expect(await countIncoming((text) => asUser(RAIDER_T1, text), 'team_id = 1')).toBeGreaterThan(0);
+    });
   });
 
   it('does not include the still-pending (not-yet-approved) seeded signup', async () => {
-    expect(await countAs('anon', null, 'incoming_roster', "signup_name_realm = 'Seedsignup-Illidan'")).toBe(0);
+    await withTxn(async ({ q, asAnon }) => {
+      await openSignups(q);
+      expect(await countIncoming(asAnon, "signup_name_realm = 'Seedsignup-Illidan'")).toBe(0);
+    });
   });
 
   it('team 2 rows are visible too (the view has no team scoping of its own -- callers filter client-side)', async () => {
-    expect(await countAs('anon', null, 'incoming_roster', 'team_id = 2')).toBeGreaterThan(0);
+    await withTxn(async ({ q, asAnon }) => {
+      await openSignups(q, 2);
+      expect(await countIncoming(asAnon, 'team_id = 2')).toBeGreaterThan(0);
+    });
   });
 });
 
@@ -34,25 +56,33 @@ describe('incoming_roster excludes officer-only columns', () => {
   });
 });
 
-describe('incoming_roster respects season scoping', () => {
-  it('a signup from a season other than activeSignupSeason is excluded', async () => {
-    const client = await pool.connect();
-    try {
-      await client.query('begin');
-      // The season this case stamps (#932): season_signups.season is a foreign key to seasons.
-      await seedSeason((text, params) => client.query(text, params), 'incoming-roster-other-season');
-      await client.query(
+describe('incoming_roster respects the switch per tier', () => {
+  it('a signup on a tier the team has not opened is excluded, appears when that tier opens, and leaves when it closes', async () => {
+    await withTxn(async ({ q, asAnon }) => {
+      await openSignups(q);
+      // The tier this case stamps (#932): season_signups.season is a foreign key to seasons.
+      await seedSeason(q, 'incoming-roster-other-season');
+      await q(
         `insert into public.season_signups (team_id, signup_name_realm, class_spec_id, season, status)
          values (1, 'Otherseason-Illidan', 1, 'incoming-roster-other-season', 'approved')`
       );
-      const res = await client.query(
-        `select count(*)::int as n from public.incoming_roster where signup_name_realm = 'Otherseason-Illidan'`
+      const where = "signup_name_realm = 'Otherseason-Illidan'";
+      expect(await countIncoming(asAnon, where)).toBe(0);
+      await openSignups(q, 1, 'incoming-roster-other-season');
+      expect(await countIncoming(asAnon, where)).toBe(1);
+      await q(
+        "update public.team_seasons set signups_open = false where team_id = 1 and season_code = 'incoming-roster-other-season'"
       );
-      expect(res.rows[0].n).toBe(0);
-    } finally {
-      await client.query('rollback');
-      client.release();
-    }
+      expect(await countIncoming(asAnon, where)).toBe(0);
+    });
+  });
+
+  it('reads no team_settings key: an empty config with the row open still lists the rows', async () => {
+    await withTxn(async ({ q, asAnon }) => {
+      await openSignups(q);
+      await q("update public.team_settings set config = '{}'::jsonb where team_id = 1");
+      expect(await countIncoming(asAnon, 'team_id = 1')).toBeGreaterThan(0);
+    });
   });
 });
 

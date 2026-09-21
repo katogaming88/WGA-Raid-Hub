@@ -2,6 +2,8 @@
 // #933: raid_zones.season holds the code, and current_season() names the tier
 // a date falls in.
 // #937: boe_items.season holds the code.
+// #934: season_signups.season holds the code, and team_settings.config no
+// longer carries activeSignupSeason, signupsOpen or wishlistOpen.
 //
 // Each test runs in one rolled-back transaction (helpers.js withTxn). The
 // inserts below ride the seed's rows: team 1, players 1 and 2, items 1 and 2.
@@ -13,9 +15,9 @@ afterAll(() => pool.end());
 const BAD_CODE = 'MIDX';
 const BAD_NAME = 'Midnight Season 9';
 
-// One insert per season column, the season left to the case. The eleven code
-// columns reference seasons(code); the two name columns reference
-// seasons(display_name) until #934 and #936 convert them.
+// One insert per season column, the season left to the case. The twelve code
+// columns reference seasons(code); the one name column left references
+// seasons(display_name) until #936 converts it.
 const CODE_INSERTS = {
   raid_zones: "insert into public.raid_zones (wcl_zone_id, name, season) values (999, 'Season Test Zone', $1)",
   boe_items:
@@ -33,14 +35,14 @@ const CODE_INSERTS = {
   scoring: 'insert into public.scoring (player_id, team_id, season) values (2, 1, $1)',
   tier_token_map:
     "insert into public.tier_token_map (season, token_item_id, class, resolved_item_id) values ($1, 1, 'TestClass', 2)",
-  track_bonus_ids: "insert into public.track_bonus_ids (bonus_id, track, rank, season) values (999001, 'Hero', 1, $1)"
+  track_bonus_ids: "insert into public.track_bonus_ids (bonus_id, track, rank, season) values (999001, 'Hero', 1, $1)",
+  season_signups:
+    "insert into public.season_signups (team_id, signup_name_realm, season) values (1, 'Seasontest-Illidan', $1)"
 };
 
 const NAME_INSERTS = {
   item_preferences:
-    "insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 2, 2, 'bis', $1)",
-  season_signups:
-    "insert into public.season_signups (team_id, signup_name_realm, season) values (1, 'Seasontest-Illidan', $1)"
+    "insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 2, 2, 'bis', $1)"
 };
 
 describe('every season column is a foreign key to seasons', () => {
@@ -96,6 +98,49 @@ describe('every season column is a foreign key to seasons', () => {
     await withTxn(async ({ q }) => {
       const res = await q(CODE_INSERTS.boe_items + ' returning season', ['MID2']);
       expect(res.rows).toEqual([{ season: 'MID2' }]);
+    });
+  });
+
+  // #934 did the same for season_signups; null stays allowed, as on boe_items.
+  it('season_signups.season takes the code, refuses the name, and still allows null', async () => {
+    await withTxn(async ({ q }) => {
+      await expect(q(CODE_INSERTS.season_signups, ['Midnight Season 2'])).rejects.toMatchObject({
+        constraint: 'season_signups_season_fkey'
+      });
+    });
+    await withTxn(async ({ q }) => {
+      const res = await q(CODE_INSERTS.season_signups + ' returning season', ['MID2']);
+      expect(res.rows).toEqual([{ season: 'MID2' }]);
+      await q(CODE_INSERTS.season_signups, [null]);
+    });
+  });
+});
+
+// #934: the signup season is the team_seasons row (#939), so the key that
+// named it and the two switch keys #939 moved are gone from the column, on
+// the seed and on production alike. One definition per signup function: the
+// old signatures were dropped, so PostgREST never has two candidates.
+describe('after #934', () => {
+  it('no team_settings.config row carries activeSignupSeason, signupsOpen or wishlistOpen', async () => {
+    await withTxn(async ({ q }) => {
+      const res = await q(
+        "select count(*)::int as n from public.team_settings where config ?| array['activeSignupSeason', 'signupsOpen', 'wishlistOpen']"
+      );
+      expect(res.rows[0].n).toBe(0);
+    });
+  });
+
+  it('submit_season_signup and get_own_signup each have one definition, taking the tier', async () => {
+    await withTxn(async ({ q }) => {
+      const res = await q(
+        `select proname, count(*)::int as n, bool_and(pg_get_function_arguments(oid) like '%p_season text%') as takes_tier
+         from pg_proc where pronamespace = 'public'::regnamespace and proname in ('submit_season_signup', 'get_own_signup')
+         group by proname order by proname`
+      );
+      expect(res.rows).toEqual([
+        { proname: 'get_own_signup', n: 1, takes_tier: true },
+        { proname: 'submit_season_signup', n: 1, takes_tier: true }
+      ]);
     });
   });
 });

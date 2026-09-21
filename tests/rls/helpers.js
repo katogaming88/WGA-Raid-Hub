@@ -155,7 +155,9 @@ export async function countAs(role, uid, table, where = 'true') {
 // (rather than the seed's 'seed-season' or a real tier) inserts the row
 // first, inside its transaction. One value serves as both the code and the
 // display name, so the same constant works on a code column and a name
-// column. Tiers cannot overlap (seasons_no_overlap), so each season is a
+// column; a case that needs the two forms to differ (#934: a name where a
+// code belongs is refused) passes the display name as the third argument.
+// Tiers cannot overlap (seasons_no_overlap), so each season is a
 // single day, and the day has to be one no other worker is holding: the
 // exclusion constraint makes a second transaction on the same day wait for
 // the first, which is a deadlock as soon as two files seed two seasons in
@@ -173,13 +175,14 @@ export function seasonDayFor(xid, n) {
   return new Date(SEASON_DAY_BASE + day * 86400000).toISOString().slice(0, 10);
 }
 const seededSeasonsByTxn = new Map();
-export async function seedSeason(q, season) {
+export async function seedSeason(q, season, displayName = season) {
   const { rows } = await q('select pg_current_xact_id()::text as xid');
   const n = seededSeasonsByTxn.get(rows[0].xid) ?? 0;
   seededSeasonsByTxn.set(rows[0].xid, n + 1);
   const day = seasonDayFor(rows[0].xid, n);
-  await q('insert into public.seasons (code, display_name, starts_at, ends_at) values ($1, $1, $2::date, $2::date)', [
+  await q('insert into public.seasons (code, display_name, starts_at, ends_at) values ($1, $2, $3::date, $3::date)', [
     season,
+    displayName,
     day
   ]);
   return day;
