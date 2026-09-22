@@ -17,7 +17,7 @@ Every place the database and the code hold a season, read at commit `d206bea` (m
 Season lives in three places today and none of them is a table.
 
 - **The guild's raid tier.** Which tier is current is `CURRENT_SEASON` in `js/common.js`, a constant edited by hand once per tier. The database holds no guild-level season: `to_regclass('public.seasons')` and `('public.team_seasons')` are both null.
-- **A team's cycle.** Which season a team is on is a set of keys on `team_settings.config`, written from the Season Settings tab. A team names its cycle after the tier it is raiding, so on today's data every cycle name is also a tier name, but the two move independently: the two teams with a cycle started it a week apart (`seasonStart` 2026-08-11 and 2026-08-18), and two teams have no cycle at all (Immolation, Wrathless).
+- **A team's cycle.** Which season a team is on is a set of keys on `team_settings.config`, written from the Season Settings tab. A team named its cycle after the tier it was raiding and dated it itself, so the two teams with a cycle started it a week apart (`seasonStart` 2026-08-11 and 2026-08-18) and two teams had no cycle at all (Immolation, Wrathless). Since #938 and #1269 neither is true: the season is the tier for every team, and its start is the team's own first raid night in that tier, derived by `team_season_start()` rather than typed.
 - **The stamp on a row.** Fourteen tables carry a `season` column and nine views expose one. Not one column has a CHECK, a foreign key or a default. Eight unique or primary keys include the column, plus `tier_token_map`'s unique index.
 
 Two formats are in use. The **code** (`MID1`, `MID2`) is the join and filter key. The **name** (`Midnight Season 1`, `Midnight Season 2`) is what officers see and type. `seasonCodeForDisplay()` and `seasonDisplayName()` in `js/common.js` convert between them through `SEASON_CODE_PREFIX` and `SEASON_DISPLAY_PREFIX`; `app/src/profile/profile.ts` carries a copy (`seasonCode()`, `seasonName()`); `add_signup_to_roster()` carries a third in SQL (a `regexp_replace` from `Midnight Season N` to `MIDN`).
@@ -174,8 +174,8 @@ Writes go through `saveTeamSetting()` (`js/common.js`), which calls the `set_tea
 | Key | Type | Teams holding it | Tier, cycle or neither | Converts in |
 | --- | --- | --- | --- | --- |
 | `seasonName` | gone since #938 (`20260921201717_retire_season_name.sql`); was a string, a name | none | cycle | #938 |
-| `seasonStart` | string, `YYYY-MM-DD` | 1, 2 | cycle | #939 |
-| `seasonEnd` | string, `YYYY-MM-DD` | 1, 2 | cycle | #939 |
+| `seasonStart` | gone since #1269 (`20260922123711_retire_season_dates.sql`); was a string, `YYYY-MM-DD` | none | cycle | #1269 |
+| `seasonEnd` | gone since #1269 (same migration); was a string, `YYYY-MM-DD` | none | cycle | #1269 |
 | `seasonHistory` | array of archived cycles | 1, 2 | cycle | #939 |
 | `seasonView` | string (a `raid_zones.season` name) or null | 1, 2 (null) | cycle (a planning override) | #933 |
 | `activeSignupSeason` | string, free text (a name today) | 1, 2 | cycle (the next one) | #934 (shipped 2026-09-21: the key is gone; the signup seasons are the `team_seasons` rows with `signups_open`) |
@@ -208,13 +208,14 @@ Retired by #938's fourth pull request (`20260921201717_retire_season_name.sql`, 
 
 ### `seasonStart`, `seasonEnd`
 
-- **Writers.** `saveSeasonStart()`, `saveSeasonEnd()` (`js/tabs/tab-season.js`); until #938's third pull request `archive_current_season()` blanked both and `unarchive_season()` restored them; `close_season()` leaves them alone.
-- **Readers.** `seasonHasStarted()` and `joinedAfterSeasonStart()` (`js/common.js`) read the start; `getSeasonDateRange()` reads both for the active season's window; `buildSeasonTab()` and `loadAdminProperties()` display them. `refreshAttendance` in `wcl-sync` (`supabase/functions/wcl-sync/handler.ts`) fetched reports from the start date until #1269's second pull request; since then it fetches from the tier's `starts_at`, read through `current_season()`. The app's `useCurrentSeason()` reads both.
-- **Meaning.** Cycle. **Next tier, nothing changed.** Stale dates until an officer edits them; attendance keeps counting from the old start.
+- **Writers.** None. `saveSeasonStart()` and `saveSeasonEnd()` (`js/tabs/tab-season.js`) wrote them from the Season Start Date and Season End Date cards until #1269's third pull request, which took the cards, the saves and the keys (`20260922123711_retire_season_dates.sql`); until #938's third pull request `archive_current_season()` blanked both and `unarchive_season()` restored them.
+- **Readers.** None. `seasonHasStarted()` and `joinedAfterSeasonStart()` (`js/common.js`) read the start and `getSeasonDateRange()` read both for the active season's window; `buildSeasonTab()` and `loadAdminProperties()` displayed them; `refreshAttendance` in `wcl-sync` (`supabase/functions/wcl-sync/handler.ts`) fetched reports from the start date; the app's `useCurrentSeason()` read both.
+- **What answers it now.** `team_season_start(p_team_id, p_season)` (`20260922000521`), the earliest night the sync filed from a report for that team inside the tier, else the tier's `starts_at`; the end is the tier's `ends_at`. The site loads the night once per page (`fetchSupabaseSeasonStart()`, into `DATA.seasonStartDate`) and `seasonDateRangeFor()` is the one place that assembles the window; the app's `useCurrentSeason()` calls the same function; the sync fetches from the tier's `starts_at` through `current_season()`.
+- **Meaning.** Cycle, retired. **Next tier, nothing changed:** every team's window moves with the tier, and a team that starts the tier late counts from its own first night with no setting to edit.
 
 ### `seasonHistory`
 
-- **Writers.** `close_season(p_team_id, p_season, p_roster_snapshot)` (#938, `20260921194720_close_season.sql`) appends an entry (`code`, `name`, the tier's `start` and `end` from its `seasons` row, `raids` folded from `raid_zones`, `raid_encounters` and the team's `team_raid_progress` rows, and the roster snapshot the site builds over that tier's window) for a tier that has ended and the team has not closed; the two entries written before it (both Midnight Season 1) gained `code` in the same migration. Before that, `archive_current_season()` appended the team's cycle (`name`, `start`, `end`, `raids` from `raidProgression`, the roster snapshot) and blanked the active keys.
+- **Writers.** `close_season(p_team_id, p_season, p_roster_snapshot)` (#938, `20260921194720_close_season.sql`) appends an entry (`code`, `name`, the team's first raid night in the tier as its `start` from `team_season_start()` (#1269) and the tier's `ends_at` as its `end`, `raids` folded from `raid_zones`, `raid_encounters` and the team's `team_raid_progress` rows, and the roster snapshot the site builds over that tier's window) for a tier that has ended and the team has not closed; the two entries written before it (both Midnight Season 1) gained `code` in the same migration. Before that, `archive_current_season()` appended the team's cycle (`name`, `start`, `end`, `raids` from `raidProgression`, the roster snapshot) and blanked the active keys.
 - **Readers.** `renderSeasonHistory()` and `fetchSeasonPerf()` (`js/tabs/tab-season.js`, by `historyEntryCode()`: the entry's `code`, else the pattern read of its `name`), `closableSeasonCodes()` (the tiers already closed); `buildSeasonRecap()` and `updateHistoryNavItem()` (`js/roster.js`); `populateSeasonSelector()` (`js/officer.js`); `getSeasonDateRange()`; `loadAdminProperties()`.
 - **Meaning.** Cycle: the team's past cycles, one array entry each. **Next tier, nothing changed.** One more entry per team that archives; #939 replaces the array with rows.
 

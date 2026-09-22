@@ -31,9 +31,9 @@ team is first stood up (or whenever the season's progression/rosters need redefi
   existing roster player, a one-time copy, not a live link), pronouns, title, an optional photo
   path under `assets/officers/`, and a short bio. Save Bios writes the whole list back.
 
-Also worth setting early, even though it's covered in its own section below: the **Season
-Start Date** (Season Settings -> Settings), which scopes the attendance percentages. The sync
-itself looks for raid nights from the day the tier went live, whatever the date says.
+Nothing needs setting for the season itself. The tier everyone is on comes from the site, the
+sync looks for raid nights from the day that tier went live, and attendance is scored from
+your team's own first raid night in it.
 
 ---
 
@@ -62,19 +62,18 @@ directly once they've seen it walked through once.
 - **Received Item Requests** -- self-reported items from outside raid
 
 ### Once per season (the app's own "New tier workflow")
-1. Set an **End Date** on the outgoing season if it closes before the next one starts.
-2. **Season Settings -> History -> Close Season** (formerly "Start New Season", before that
+1. **Season Settings -> History -> Close Season** (formerly "Start New Season", before that
    "Archive Current Season") -- records the tier that ended in history (its code, name and dates
    from the site's season table, the raids the team has progress on, and the roster with its
    attendance over that tier's window) so it shows up in the season selector dropdown going
    forward, and does more in the same click: clears every player's submitted BiS link (a link
    is effectively per-tier; cleared unconditionally rather than left for a raider to notice
    it's stale), resets M+ exclusion for the whole active roster, and resets Bench status for the
-   whole active roster (Trial status is left alone). It starts nothing: the dates and the raid
-   list stay as they are, the tier everyone is on is Blizzard's from the day it goes live, and a
-   tier can be closed before or after the raid list is rebuilt for the next one. See the Season
-   Settings section below.
-3. Still in Season History, run the just-closed tier's **WCL Performance Baseline**
+   whole active roster (Trial status is left alone). It starts nothing: the raid list stays as
+   it is, the tier everyone is on is Blizzard's from the day it goes live, and a tier can be
+   closed before or after the raid list is rebuilt for the next one. See the Season Settings
+   section below.
+2. Still in Season History, run the just-closed tier's **WCL Performance Baseline**
    fetch (#264) -- the "Fetch WCL Performance" row only appears next to the *newest* history
    entry, so this is the only chance to run it; once another tier is closed, the entry
    drops off the list with no way back. Seeds the Heroic priority baseline
@@ -82,18 +81,16 @@ directly once they've seen it walked through once.
    `scoring.performance_score` for the new season too (without ever overwriting a real
    Commit Performance Scores). A live status label on the row shows whether it's already
    been done for that season.
-4. Set the new **Start Date** for the upcoming season. There is no season name to set: loot
-   imports, scores and priority lists are tagged with the current tier.
-5. Re-import the new season's loot via **Loot -> Import** (entries auto-tag with the new season
+3. Re-import the new season's loot via **Loot -> Import** (entries auto-tag with the new season
    name). Old loot history doesn't need clearing -- entries stay tagged by season and the
    season selector already filters by it; there is no "Clear All Loot History" action (see the
    Loot tab section below).
-6. Nothing special needed for Attendance -- there's no rollover-specific action here. Once the
+4. Nothing special needed for Attendance -- there's no rollover-specific action here. Once the
    new season's first raid night happens, the normal after-raid-night **Attendance -> Refresh
    from WCL** (see the Weekly Workflow above) picks it up like any other night, since it looks
    for reports from the day the new tier went live. Until then, players will show
    the roster's default "no data yet" 100% for the new season, which is expected, not a bug.
-7. M+ exclusions are already reset team-wide by step 2's Close Season. **M+ Exclusions ->
+5. M+ exclusions are already reset team-wide by step 1's Close Season. **M+ Exclusions ->
    Clear All Exclusions** is still useful mid-season if you need to reset exclusions without a
    full season rollover -- it only flips the live exclusion flag, it does not touch or relabel
    request history. **Do not** use Admin -> Danger Zone -> "Clear M+ Exclusion Requests" for
@@ -344,15 +341,6 @@ Three sub-tabs: **Signups**, **Pending Roster**, **History**.
 
 Three sub-tabs: **Settings**, **Raid Progression**, **History**.
 
-- **Season** -- the season number, entered as a plain number and combined with the (hardcoded)
-  display prefix into the label applied to every loot entry imported through RCLootCouncil while
-  it's set; also what the toolbar's Season dropdown filters by. Set before importing each
-  season's loot.
-- **Season Start Date** -- raids before this date are excluded from attendance scoring;
-  players who joined after it use their own join date as the window start instead. Leave blank
-  to include all raids.
-- **Season End Date** -- optional upper bound, for when a season closes before the next one
-  starts.
 - **Trial Promotion Thresholds** -- weeks-on-roster *and* attendance % a trial needs to hit
   both of before the Roster tab's promotion banner appears for them.
 - **Target Roster Sizes** -- optional Tank/Healer count inputs. Once the confirmed roster plus
@@ -432,8 +420,10 @@ Reads directly from Supabase report views -- no Apps Script fallback. Four sub-t
   and **Mythic #1 Possibly Stale** (a saved Mythic #1 where the player already received the
   Heroic version of that same item -- not necessarily wrong, just worth a second look).
 - **Season Loot Pace** -- items awarded per week of the season vs. the same week last season,
-  filterable by track and slot. "Week 1" is measured from the season's first tracked loot award,
-  not the raid-lockout calendar, since Supabase doesn't store a season start date yet.
+  filterable by track and slot. "Week 1" is measured from this team's first tracked loot award of
+  the season, not from the raid-lockout calendar and not from the first raid night the season is
+  scored against (#1269), so a week here lines up with the two seasons being compared rather than
+  with the attendance window.
 
 ---
 

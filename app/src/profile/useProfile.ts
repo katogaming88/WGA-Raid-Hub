@@ -36,30 +36,27 @@ export function useProfilePlayer(teamId: number, by: { id: number } | { code: st
   });
 }
 
-// The current season, which scopes attendance and loot: the tier every
-// team is on (the latest seasons row whose start has passed, #938), with the
-// team's own start and end dates while those are still typed (#1269 derives
-// the start from the team's first raid night).
+// The current season, which scopes attendance and loot: the tier every team
+// is on (the latest seasons row whose start has passed, #938), starting on
+// this team's own first raid night in it (#1269), which team_season_start()
+// derives from the attendance the sync has filed. A team that has not raided
+// the tier yet gets the tier's own start, which is what the database answers
+// there; the end is the tier's.
 export function useCurrentSeason(teamId: number) {
   return useSupabaseQuery<SeasonWindow>(['current-season', teamId], async (client) => {
-    const [tiers, settings] = await Promise.all([
+    const [tiers, firstNight] = await Promise.all([
       client.from('seasons').select('code, display_name, starts_at, ends_at').order('starts_at'),
-      client
-        .from('team_settings')
-        .select('start:config->>seasonStart, end:config->>seasonEnd')
-        .eq('team_id', teamId)
-        .maybeSingle()
+      client.rpc('team_season_start', { p_team_id: teamId })
     ]);
     if (tiers.error) return { data: null, error: tiers.error };
-    if (settings.error) return { data: null, error: settings.error };
-    const row = (settings.data ?? {}) as { start?: string | null; end?: string | null };
+    if (firstNight.error) return { data: null, error: firstNight.error };
     const tier = currentSeason(tiers.data ?? []);
     return {
       data: {
         name: tier?.display_name ?? '',
         code: tier?.code ?? null,
-        start: row.start || tier?.starts_at || null,
-        end: row.end || null
+        start: firstNight.data || tier?.starts_at || null,
+        end: tier?.ends_at ?? null
       },
       error: null
     };

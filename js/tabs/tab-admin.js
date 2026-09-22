@@ -49,13 +49,26 @@ function switchAdminSubTab(name, btnEl) {
 
 // ── Properties Inspector ──────────────────────────────────────────────────
 
+// The day the season counts from (#1269), as the rest of the page is using
+// it. team_season_start() falls back to the tier's own start itself, so a
+// bare date here is always the database's answer, whether or not this team
+// has a raid night on record. The note is for the other case: the read did
+// not come back (a timeout, an error, no client), the page fell back to the
+// tier's start on its own, and an officer working out why a percentage
+// looks wrong should see that rather than a date presented as derived.
+function _seasonStartProperty() {
+  var start = seasonDateRangeFor(currentSeasonCode()).start;
+  if (!start) return '(no season has started)';
+  if (DATA && DATA.seasonStartDate && DATA.seasonStartSeason === currentSeasonCode()) return start;
+  return start + ' (the tier start; the first raid night did not load)';
+}
+
 function loadAdminProperties() {
   var content = document.getElementById('adminPropsContent');
 
   var rows = [
     ['Current Tier', currentSeasonName() || '(none has started)'],
-    ['Season Start', (DATA && DATA.seasonStart) || '(not set)'],
-    ['Season End', (DATA && DATA.seasonEnd) || '(not set)'],
+    ['Season Start (first raid night)', _seasonStartProperty()],
     ['Archived Seasons', ((DATA && DATA.seasonHistory) || []).length + ' season(s)'],
     ['Raid Progression', ((DATA && DATA.raidProgression) || []).length + ' raid(s)'],
     ['Signups Open', openSignupSeasonCodes().map(seasonDisplayName).join(', ') || 'No'],

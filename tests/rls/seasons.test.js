@@ -118,13 +118,14 @@ describe('every season column is a foreign key to seasons', () => {
 
 // #934: the signup season is the team_seasons row (#939), so the key that
 // named it and the two switch keys #939 moved are gone from the column, on
-// the seed and on production alike; #938 retired seasonName the same way. One definition per signup function: the
+// the seed and on production alike; #938 retired seasonName the same way, and
+// #1269 the two typed dates, whose start the database derives. One definition per signup function: the
 // old signatures were dropped, so PostgREST never has two candidates.
 describe('after #934', () => {
-  it('no team_settings.config row carries activeSignupSeason, signupsOpen, wishlistOpen or seasonName', async () => {
+  it('no team_settings.config row carries a key a season table now holds', async () => {
     await withTxn(async ({ q }) => {
       const res = await q(
-        "select count(*)::int as n from public.team_settings where config ?| array['activeSignupSeason', 'signupsOpen', 'wishlistOpen', 'seasonName']"
+        "select count(*)::int as n from public.team_settings where config ?| array['activeSignupSeason', 'signupsOpen', 'wishlistOpen', 'seasonName', 'seasonStart', 'seasonEnd']"
       );
       expect(res.rows[0].n).toBe(0);
     });

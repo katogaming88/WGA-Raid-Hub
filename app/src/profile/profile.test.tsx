@@ -17,6 +17,10 @@ import { wishlistSummary } from './wishlist';
 
 const SEASON = { name: 'Midnight Season 2', code: 'MID2', start: '2026-08-01', end: '2026-12-31' };
 
+// The tier went live a fortnight before this team first raided it, so a
+// night in that gap counts for nobody.
+const TIER_START = '2026-07-18';
+
 describe('attendance', () => {
   const rows = [
     { raid_date: '2026-07-20', status: 'No Show', report_excluded: false },
@@ -160,20 +164,31 @@ const person = (role: string, playerId: number | null) => ({
   ]
 });
 
-function profileHandlers(who: ReturnType<typeof person> | null, tables: Record<string, (read: Read) => unknown> = {}) {
+// The season window (#1269): the tier from the seasons table, its start
+// overridden by the team's own first raid night, which team_season_start()
+// answers. A null night is a team with no raid night in the tier yet,
+// which reads the tier's own start.
+function profileHandlers(
+  who: ReturnType<typeof person> | null,
+  tables: Record<string, (read: Read) => unknown> = {},
+  firstNight: string | null = SEASON.start
+) {
   const base = seededHandlers();
   return seededHandlers({
     ...(who ? { session: fakeSession({ battlenet: 'X#1', discord: { id: 'd', name: 'X' } }) } : {}),
     rpc(name, args) {
       if (name === 'current_discord_id') return { data: who ? 'discord-x' : null };
       if (name === 'resolve_person') return { data: who };
+      if (name === 'team_season_start') return { data: firstNight };
       return base.rpc!(name, args);
     },
     from(read) {
       if (read.table in tables) return tables[read.table]!(read) as never;
       if (read.table === 'players' && read.single) return { data: TORBJORN };
-      if (read.table === 'team_settings') {
-        return { data: { name: SEASON.name, start: SEASON.start, end: SEASON.end } };
+      if (read.table === 'seasons') {
+        return {
+          data: [{ code: SEASON.code, display_name: SEASON.name, starts_at: TIER_START, ends_at: SEASON.end }]
+        };
       }
       if (read.table === 'mplus_exclusion_requests') return { data: { officer_notes: 'Sockets missing' } };
       return base.from!(read);
@@ -185,6 +200,41 @@ describe('Profile page', () => {
   it('asks a visitor to sign in', async () => {
     renderApp('/g/wga/t/phoenix/me', profileHandlers(null));
     expect(await screen.findByText('Sign in to see your profile.')).toBeInTheDocument();
+  });
+
+  // The summary stat, not the card heading of the same name.
+  const attendanceStat = () => screen.getAllByText('Attendance').find((el) => el.tagName === 'DT')!.parentElement!;
+
+  // #1269 -- the season counts from the team's own first raid night, which
+  // the database answers, so a night in the gap between the tier going live
+  // and this team first raiding it counts against nobody. Torbjorn joined on
+  // 2026-08-10, after the tier went live and before this team's first night,
+  // which is what makes the two windows differ for him.
+  const LATE_NIGHTS = [
+    { raid_date: '2026-08-12', status: 'No Show', report_excluded: false },
+    { raid_date: '2026-08-19', status: 'Present', report_excluded: false }
+  ];
+
+  it('counts attendance from the team’s first raid night, not the tier’s start', async () => {
+    const { client } = renderApp(
+      '/g/wga/t/phoenix/me',
+      profileHandlers(person('raider', 11), { attendance: () => ({ data: LATE_NIGHTS }) }, '2026-08-18')
+    );
+    expect(await screen.findByRole('heading', { level: 1, name: 'Raz' })).toBeInTheDocument();
+    await waitFor(() => expect(attendanceStat()).toHaveTextContent('100.0%'));
+    expect(client.rpcs).toContainEqual(['team_season_start', { p_team_id: 1 }]);
+    expect(client.reads.some((r) => r.table === 'team_settings' && /seasonStart/.test(r.columns ?? ''))).toBe(false);
+  });
+
+  // A team with no raid night in the tier yet reads the tier's own start,
+  // which is the fallback the database applies.
+  it('falls back to the tier’s start for a team with no raid night yet', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/me',
+      profileHandlers(person('raider', 11), { attendance: () => ({ data: LATE_NIGHTS }) }, null)
+    );
+    expect(await screen.findByRole('heading', { level: 1, name: 'Raz' })).toBeInTheDocument();
+    await waitFor(() => expect(attendanceStat()).toHaveTextContent('50.0%'));
   });
 
   it('shows My profile for the raider’s own character', async () => {

@@ -6,24 +6,28 @@
 // today's per-team GAS silos couldn't do -- that's the reason this feature
 // needed Supabase in the first place.
 function getTeamStreamers() {
-  return (DATA.streamers || []).filter(function (s) {
+  return ((DATA && DATA.streamers) || []).filter(function (s) {
     return s.team_slug === TEAM_SLUG;
   });
 }
 
 function getGuildStreamers() {
-  return (DATA.streamers || []).filter(function (s) {
+  return ((DATA && DATA.streamers) || []).filter(function (s) {
     return s.team_slug !== TEAM_SLUG && !s.guild_wide_opt_out;
   });
 }
 
+// Every read above guards DATA itself, not just the field: the streams view
+// is reachable straight from a #streams link, and switchView() renders it
+// from the hash at boot, before loadData() has resolved DATA. Unguarded,
+// that threw and the view stayed empty for the rest of the page's life.
 function getVisibleStreamers() {
   return getTeamStreamers().concat(getGuildStreamers());
 }
 
 function getOwnStreamer(firstName) {
   var norm = normalise(firstName);
-  var streamers = DATA.streamers || [];
+  var streamers = (DATA && DATA.streamers) || [];
   for (var i = 0; i < streamers.length; i++) {
     var s = streamers[i];
     if (s.team_slug === TEAM_SLUG && normalise(s.player_first_name) === norm) return s;

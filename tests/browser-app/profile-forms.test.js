@@ -64,9 +64,7 @@ function openOwnProfile(viewerKey, { mplusOpen = true, rejections = true, autoAp
       players: [own],
       seasons: [{ code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start, ends_at: null }],
       // One row answers every team_settings read the profile makes.
-      team_settings: [
-        { name: SEASON.name, start: SEASON.start, end: SEASON.end, requests: null, mplusOpen: String(mplusOpen) }
-      ],
+      team_settings: [{ requests: null, mplusOpen: String(mplusOpen) }],
       attendance: ATTENDANCE.filter((r) => r.player_id === own.id),
       rclc_loot: LOOT.filter((r) => r.player_id === own.id),
       player_equipped_gear: GEAR.filter((r) => r.player_id === own.id),
@@ -263,7 +261,7 @@ describe('Mark Received (new app), checked against the current site', () => {
       tables: {
         players: [VIEWERS.torbjorn.player],
         seasons: [{ code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start, ends_at: null }],
-        team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end, mplusOpen: 'true' }],
+        team_settings: [{ mplusOpen: 'true' }],
         items: PRIORITY_ITEMS,
         raid_zones: RAID_ZONES,
         item_preferences: WISHLIST,
