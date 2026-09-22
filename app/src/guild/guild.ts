@@ -189,17 +189,23 @@ export function guildLive(rows: StreamerRow[], teamNames: Map<number, string>): 
 // ---------------------------------------------------------------------------
 // Guild officers
 
-// site_settings.guild_officer_bios, as the site admin editor writes it.
+// site_settings.guild_officer_bios and team_settings.config.teamOfficerBios,
+// as the officer editor on the current site writes them -- the same shape for
+// both (js/tabs/tab-bios.js).
 export type OfficerBio = {
   name?: string | null;
-  title?: string | null;
-  imagePath?: string | null;
-  classKey?: string | null;
+  characterName?: string | null;
   pronouns?: string | null;
+  title?: string | null;
+  classKey?: string | null;
+  spec?: string | null;
+  bio?: string | null;
+  imagePath?: string | null;
 };
 
 export type Officer = { name: string; title: string; photo: string | null; initials: string; classKey: string | null };
 
+// Guild home's compact officer list: name, title and photo only.
 export function officers(bios: OfficerBio[] | null | undefined): Officer[] {
   return (bios ?? []).map((b) => {
     const name = b.name?.trim() || 'Unnamed';
@@ -209,6 +215,37 @@ export function officers(bios: OfficerBio[] | null | undefined): Officer[] {
       photo: b.imagePath || null,
       initials: name.slice(0, 2).toUpperCase(),
       classKey: b.classKey || null
+    };
+  });
+}
+
+// The full bio card the Guild officers and Team officers pages show, every
+// field the editor can set.
+export type BioCard = {
+  name: string;
+  characterName: string;
+  pronouns: string;
+  title: string;
+  classKey: string | null;
+  spec: string;
+  bio: string;
+  photo: string | null;
+  initials: string;
+};
+
+export function bioCards(bios: OfficerBio[] | null | undefined): BioCard[] {
+  return (bios ?? []).map((b) => {
+    const name = b.name?.trim() || 'Unnamed';
+    return {
+      name,
+      characterName: b.characterName?.trim() ?? '',
+      pronouns: b.pronouns?.trim() ?? '',
+      title: b.title?.trim() ?? '',
+      classKey: b.classKey || null,
+      spec: b.spec?.trim() ?? '',
+      bio: b.bio?.trim() ?? '',
+      photo: b.imagePath || null,
+      initials: name.slice(0, 2).toUpperCase()
     };
   });
 }

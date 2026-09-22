@@ -1,0 +1,55 @@
+/* Bio cards (#1102): shared by Guild officers and Team officers. */
+
+.bio-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bio-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.bio-photo {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.bio-photo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--raised);
+  color: var(--text-muted);
+  font-weight: 650;
+  font-size: var(--text-lg);
+}
+
+.bio-name {
+  font-weight: 650;
+}
+
+.bio-charname,
+.bio-title {
+  font-size: var(--text-sm);
+}
+
+.bio-class {
+  font-size: var(--text-xs);
+}
+
+.bio-text {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}

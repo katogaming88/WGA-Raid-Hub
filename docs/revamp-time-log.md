@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |      6 h 55 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     24 h 49 m |
-| **All revamp work**                | **38 h 39 m** |
+| Revamp 2: public pages             |     25 h 29 m |
+| **All revamp work**                | **39 h 19 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -130,6 +130,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 7:35-7:55 PM | #1161 Sentry source maps from the deploy build | Revamp 2 (#1102) | 20 m | ~15 m build, ~5 m Kat (auth token, secret) | Vite plugin uploads maps and deletes them; skipped without SENTRY_AUTH_TOKEN. Times estimated. |
 | evening, est. | #1161 Sentry check on the preview | Revamp 2 (#1102) | 15 m | ~10 m build, ~5 m Kat | Kat's browser blocked the reports (Brave Shields); with it off the trace read as `src/data/query.ts`. |
 | evening, est. | Help page (#1102) | Revamp 2 (#1102) | 30 m | ~25 m build, ~5 m Kat deciding | Rewritten for the new app, not ported; support Discord card; Help and Support Discord links in the sidebar footer (Kat's choices). Kat review not yet counted. |
+| evening, est. | Guild/Team officers, About, and the Site nav group (#1102) | Revamp 2 (#1102) | 40 m | ~35 m build, ~5 m Kat deciding | Kat asked to split guild/team bios into their own pages and move About/Help into their own group; then asked whether Contact still earns its place beside the support Discord and said drop it. Times estimated. Kat review not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 

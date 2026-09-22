@@ -22,7 +22,8 @@ export function navGroups(
         { label: 'Guild home', icon: 'home', to: base.guild, end: true },
         { label: 'BoE sales', icon: 'coin', to: `${base.guild}/boe` },
         { label: 'Streams', icon: 'tv', to: `${base.guild}/streams`, live: show.liveCount ?? 0 },
-        { label: 'News', icon: 'news', to: `${base.guild}/news`, mark: show.newsUnread ?? false }
+        { label: 'News', icon: 'news', to: `${base.guild}/news`, mark: show.newsUnread ?? false },
+        { label: 'Guild officers', icon: 'shield', to: `${base.guild}/officers` }
       ]
     },
     { heading: 'You', items: [{ label: 'My profile', icon: 'user', to: `${base.team}/me` }] },
@@ -32,7 +33,8 @@ export function navGroups(
         { label: 'Home', icon: 'home', to: base.team, end: true },
         { label: 'Roster', icon: 'roster', to: `${base.team}/roster` },
         { label: 'Calendar', icon: 'calendar', to: `${base.team}/calendar` },
-        { label: 'Loot history', icon: 'loot', to: `${base.team}/loot` }
+        { label: 'Loot history', icon: 'loot', to: `${base.team}/loot` },
+        { label: 'Team officers', icon: 'shield', to: `${base.team}/officers` }
       ]
     },
     {
@@ -44,6 +46,13 @@ export function navGroups(
         { label: 'Attendance', icon: 'chart', to: `${base.team}/officer/attendance` },
         { label: 'Boss groups', icon: 'grid', to: `${base.team}/officer/groups` },
         { label: 'Season settings', icon: 'gear', to: `${base.team}/officer/season` }
+      ]
+    },
+    {
+      heading: 'Site',
+      items: [
+        { label: 'About', icon: 'info', to: `${base.guild}/about` },
+        { label: 'Help', icon: 'help', to: `${base.guild}/help` }
       ]
     }
   ];
@@ -65,12 +74,15 @@ export const TEAM_PAGES: Record<string, string> = {
   'officer/reviews': 'Reviews',
   'officer/attendance': 'Attendance',
   'officer/groups': 'Boss groups',
-  'officer/season': 'Season settings'
+  'officer/season': 'Season settings',
+  officers: 'Team officers'
 };
 
 export const GUILD_PAGES: Record<string, string> = {
   boe: 'BoE sales',
   streams: 'Streams',
   news: 'News',
+  officers: 'Guild officers',
+  about: 'About',
   help: 'Help'
 };
