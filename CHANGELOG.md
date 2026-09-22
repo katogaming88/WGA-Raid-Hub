@@ -30,6 +30,7 @@ answers to.
   the same steps pre-filled (#500), and the summary shown for one already on
   file reads its status in words. Reachable from Guild home's team cards when
   a team has signups open, and directly by address.
+
 ## [3.150.0] - 2026-09-21
 
 ### Frontend

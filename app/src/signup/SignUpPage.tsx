@@ -5,11 +5,12 @@ import { useSession } from '../auth/session';
 import { useTeam } from '../data/address';
 import { bothQueries } from '../data/query';
 import { seasonName } from '../profile/profile';
+import { useCurrentSeason } from '../profile/useProfile';
 import { useRosterPlayers, useSignupSeasons } from '../roster/useRoster';
 import { SignUpWizard, type WizardEdit } from './SignUpWizard';
 import { SignupSummary } from './SignupSummary';
 import { classmatesPool, type ClassmateRow } from './signup';
-import { useIncomingWithSwap, useLiveSeasonCode, useOwnSignup, useRoleTargets } from './useSignup';
+import { useIncomingWithSwap, useOwnSignup, useRoleTargets } from './useSignup';
 import './signup.css';
 
 // Sign Up (#1102): the multi-step form, ported from js/signup.js. Reachable
@@ -55,7 +56,9 @@ function SignUpForTier({ teamId, codes }: { teamId: number; codes: string[] }) {
   const ownSignup = useOwnSignup(teamId, tier);
   const roster = useRosterPlayers(teamId);
   const incoming = useIncomingWithSwap(teamId);
-  const liveSeason = useLiveSeasonCode(teamId);
+  // The site's live tier (#938: seasonName retired), for classmatesPool()'s
+  // roster-inclusion rule. Same cache entry the profile page reads.
+  const liveSeason = useCurrentSeason(teamId);
   const targets = useRoleTargets(teamId);
 
   const page = bothQueries(
@@ -88,7 +91,8 @@ function SignUpForTier({ teamId, codes }: { teamId: number; codes: string[] }) {
         </div>
       )}
       <DataState query={page} label="your signup">
-        {([[[accessData, own], [rosterRows, incomingRows]], [liveSeasonCode, targetsData]]) => {
+        {([[[accessData, own], [rosterRows, incomingRows]], [liveSeason, targetsData]]) => {
+          const liveSeasonCode = liveSeason.code;
           const claimed = charactersOn(accessData, teamId)[0] ?? null;
           const claimNameRealm = claimed?.nameRealm ?? null;
           const claimedPlayer = claimNameRealm

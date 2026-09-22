@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |      6 h 55 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |      24 h 4 m |
-| **All revamp work**                | **37 h 54 m** |
+| Revamp 2: public pages             |      25 h 5 m |
+| **All revamp work**                | **38 h 55 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -134,9 +134,10 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 
 ### 2026-09-22
 
-| Time (ET) | Item | Phase | Elapsed | Build / Kat | Notes |
-| --------- | ---- | ----- | ------: | ----------- | ----- |
-| 8:42-9:05 PM | Sign Up page (#1102) | Revamp 2 (#1102) | 23 m | build; Kat review not yet counted | Ported the 4-step form; claim/class-mismatch warnings now compare against the new app's own access data (#1162's matching, already shipped) rather than waiting on the rest of #1162. Kat chose full parity over a smaller first pass. Time from this session's transcript directly. |
+| Time (ET)     | Item                                         | Phase            | Elapsed | Build / Kat                       | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------- | -------------------------------------------- | ---------------- | ------: | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 8:42-9:05 PM  | Sign Up page (#1102)                         | Revamp 2 (#1102) |    23 m | build; Kat review not yet counted | Ported the 4-step form; claim/class-mismatch warnings now compare against the new app's own access data (#1162's matching, already shipped) rather than waiting on the rest of #1162. Kat chose full parity over a smaller first pass. Time from this session's transcript directly.                                                                                                                                                                                                                                                                                                                                                                                            |
+| 9:06-10:07 PM | Sign Up realm combobox + #1300 merge (#1102) | Revamp 2 (#1102) |    61 m | build; Kat review not yet counted | Realm field went dropdown-for-accessibility, then native `<datalist>` (Kat: no width/highlight control), then back to a custom combobox with real keyboard nav, a width-matched dropdown, and a `--brand` highlight (`--nav-selected` was invisible, same colour as the dropdown itself in dark mode) that scrolls into view. Dropped the fieldset border box, then fixed the spacing that first fix had collapsed to zero. #1296/#1300 landed on main mid-build (`seasonName` retired from team_settings): merged, and `classmatesPool()`'s live-season check now reuses `useCurrentSeason()` instead of the removed config key. Time from this session's transcript directly. |
 
 ## Not counted (same sessions, not revamp)
 

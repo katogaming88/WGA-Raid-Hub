@@ -1,6 +1,5 @@
 import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
-import { seasonCode } from '../profile/profile';
 import type { IncomingSignupRow, SignupSubmission } from './signup';
 
 export type OwnSignupRow = {
@@ -29,21 +28,6 @@ export function useOwnSignup(teamId: number, seasonCodeArg: string | null) {
     });
     if (error) return { data: null, error };
     return { data: (data?.[0] as OwnSignupRow | undefined) ?? null, error: null };
-  });
-}
-
-// The live season's code, for classmatesPool()'s roster-inclusion rule --
-// converted the same way the profile reads it (config->>seasonName as text).
-export function useLiveSeasonCode(teamId: number) {
-  return useSupabaseQuery<string | null>(['live-season-code', teamId], async (client) => {
-    const { data, error } = await client
-      .from('team_settings')
-      .select('name:config->>seasonName')
-      .eq('team_id', teamId)
-      .maybeSingle();
-    if (error) return { data: null, error };
-    const name = (data as { name: string | null } | null)?.name ?? '';
-    return { data: seasonCode(name), error: null };
   });
 }
 
