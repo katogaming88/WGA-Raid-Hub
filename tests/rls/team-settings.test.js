@@ -194,6 +194,24 @@ describe('close_season', () => {
     });
   });
 
+  it("writes the team's first synced night as the entry's start, the tier's end as its end (#1269)", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const season = tier();
+      const day = await seedSeason(q, season);
+      const plus = (n) => new Date(Date.parse(day) + n * 86400000).toISOString().slice(0, 10);
+      await q('update public.seasons set ends_at = starts_at + 6 where code = $1', [season]);
+      const player = await seedPlayer(q, { teamId: team.teamId });
+      await q(
+        `insert into public.attendance (team_id, player_id, raid_date, status, report_id, source)
+         values ($1, $2, $3::date, 'Present', 'RPT', 'WCL')`,
+        [team.teamId, player, plus(2)]
+      );
+      const res = await asUser(team.leader.uid, ...close(team.teamId, season));
+      expect(res.rows[0].config.seasonHistory[0]).toMatchObject({ code: season, start: plus(2), end: plus(6) });
+    });
+  });
+
   it('refuses a tier the team has already closed', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);

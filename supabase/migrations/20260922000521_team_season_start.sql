@@ -1,6 +1,67 @@
--- Function public.close_season: current definition, generated from the database.
--- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
--- execute (site roles): authenticated
+-- #1269, first of three: the day a team's season starts is derived, not typed.
+--
+-- Each team typed its own season start into Season Settings (seasonStart),
+-- and the attendance sync, the new-raider nudge and the profile's date range
+-- read it. Decision 13 on #1189 (2026-09-20) made the season app-wide with
+-- one set of dates, the tier's own, so the per-team date goes. Read as they
+-- are, those readers would then count a late-starting team's first week
+-- against it, like marking a class absent for a term that started before
+-- the class did.
+--
+-- team_season_start(p_team_id, p_season) answers the team's own first raid
+-- night in the tier: the earliest night the attendance sync filed from a
+-- Warcraft Logs report (a night an officer excluded is skipped, and a row an
+-- officer typed by hand is not a report), else the tier's start date. The
+-- tier defaults to current_season(), so a caller that wants the live season
+-- passes only the team; null when no tier has started. The window is the
+-- tier's own [starts_at, ends_at], open-ended while ends_at is null, which
+-- seasons_no_overlap makes the last tier only. SECURITY INVOKER over two
+-- public-read tables, so anon may call it, the way the public roster page
+-- already reads attendance.
+--
+-- close_season() writes that night as a closed tier's start, so the books a
+-- close freezes and the live page count over the same window. Nothing else
+-- in it changes. The typed keys stay on team_settings.config until the
+-- third pull request, after the sync (the second) stops reading them.
+
+create or replace function public.team_season_start(
+  p_team_id integer,
+  p_season text default public.current_season()
+)
+returns date
+language plpgsql
+stable
+set search_path = public
+as $$
+declare
+  v_tier public.seasons%rowtype;
+  v_night date;
+begin
+  if p_season is null then
+    return null;
+  end if;
+
+  select * into v_tier from public.seasons where code = p_season;
+  if not found then
+    raise exception '% is not a season this site knows', p_season;
+  end if;
+
+  select min(a.raid_date) into v_night
+    from public.attendance a
+   where a.team_id = p_team_id
+     and a.report_id is not null
+     and a.report_excluded = false
+     and a.raid_date >= v_tier.starts_at
+     and (v_tier.ends_at is null or a.raid_date <= v_tier.ends_at);
+
+  return coalesce(v_night, v_tier.starts_at);
+end;
+$$;
+
+revoke all on function public.team_season_start(integer, text) from public;
+grant execute on function public.team_season_start(integer, text) to anon, authenticated;
+
+-- close_season(): the entry's start is the team's first synced night.
 
 CREATE OR REPLACE FUNCTION public.close_season(p_team_id integer, p_season text, p_roster_snapshot jsonb)
  RETURNS jsonb
@@ -115,3 +176,6 @@ begin
   return v_config;
 end;
 $function$;
+
+revoke all on function public.close_season(integer, text, jsonb) from public, anon;
+grant execute on function public.close_season(integer, text, jsonb) to authenticated;
