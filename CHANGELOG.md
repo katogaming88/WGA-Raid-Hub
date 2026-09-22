@@ -12,6 +12,40 @@ answers to.
 
 ---
 
+## [Unreleased]
+
+### Frontend
+
+- **A team's season starts on its first raid night.** Attendance
+  percentages, the season date range, the new-raider nudge and the
+  onboarding checklist all count from the night your team first raided
+  this tier, worked out from the reports the sync has already filed,
+  instead of a date an officer typed into Season Settings. A team that
+  starts a tier a week after it goes live is no longer marked absent for
+  the week before it raided. The **Season Start Date** and **Season End
+  Date** cards are gone from Season Settings, along with the steps in the
+  help tab that asked you to set them for a new tier: there is nothing to
+  set now, and the season's end is the tier's own. The Admin tab's
+  Properties panel shows the derived night in place of the two typed
+  dates, and Close Season records it as the closed tier's start, so the
+  books it freezes and the live page count over the same days. Immolation
+  and Wrathless, which never typed a date, get a season window at all for
+  the first time: the new-raider nudge and the wishlist checklist now
+  work there as they do on the other two teams. The new app's profile and
+  roster pages read the same night
+  ([#1269](https://github.com/katogaming88/WGA-Raid-Hub/issues/1269), the
+  third of three pull requests, closing it).
+
+### Backend
+
+- `seasonStart` and `seasonEnd` are removed from every team's settings
+  (`20260922123711_retire_season_dates.sql`). The attendance sync stopped
+  reading them in the previous release, `close_season()` has recorded the
+  derived night since the first, and nothing on the site or in the app
+  reads them from this release. For up to ten minutes after the deploy a
+  browser still on the old page counts attendance over the whole of
+  history and hides its nudges; a reload picks up the new one.
+
 ## [3.152.4] - 2026-09-22
 
 ### Project
