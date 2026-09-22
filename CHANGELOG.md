@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [Unreleased]
+
+### Backend
+
+- A team's season now starts on its own first raid night, worked out from
+  the attendance the sync has filed rather than typed by an officer
+  ([#1269](https://github.com/katogaming88/WGA-Raid-Hub/issues/1269), first
+  of three). A new database function answers the earliest night the sync
+  recorded from a Warcraft Logs report for that team in the tier, skipping a
+  night an officer excluded and ignoring a row typed by hand, and falls back
+  to the day the tier launched when the team has not raided it yet. Close
+  Season records that night as a closed tier's start, so the books it freezes
+  and the live page count over the same window. Nothing on the Season
+  Settings tab changes yet: the typed dates leave with the third pull request,
+  after the attendance sync stops reading them in the second.
+
 ## [3.150.1] - 2026-09-21
 
 ### Project
