@@ -396,6 +396,49 @@ const HISTORY = {
   tables: { team_settings: [{ team_id: 1, history: [HISTORY_ENTRY] }] }
 };
 
+// Sign Up (#1102): signed in, one season open, no existing signup -- the
+// fresh wizard's step 1. A separate state for the "Your signup" summary,
+// which is the page's other real shape.
+const SIGNUP_PERSON = {
+  discordId: 'discord-signup-1',
+  person: {
+    site_admin: false,
+    guild_officer: false,
+    boe_manager: false,
+    teams: [{ team_id: 1, team_member_id: 1, role: 'raider', characters: [] }]
+  }
+};
+const SIGNUP_BASE = {
+  path: '/g/wga/t/phoenix/signup',
+  session: storedSession({ battlenet: 'Kato#1499', discord: 'Phoenix Raider' }),
+  person: SIGNUP_PERSON,
+  tables: { team_seasons: [{ season_code: 'MID3', signups_open: true, seasons: { starts_at: '2099-01-01' } }] }
+};
+const SIGNUP = { ...SIGNUP_BASE, sentinel: 'main:has(.signup-wizard)', rpc: { get_own_signup: [] } };
+const SIGNUP_SUMMARY = {
+  ...SIGNUP_BASE,
+  sentinel: 'main:has(.signup-summary)',
+  rpc: {
+    get_own_signup: [
+      {
+        id: 1,
+        signup_name_realm: 'Katorri-Stormrage',
+        class: 'Priest',
+        spec: 'Holy',
+        off_specs: null,
+        main_swap: false,
+        swap_class: null,
+        swap_spec: null,
+        swap_from_name_realm: null,
+        player_note: null,
+        status: 'pending',
+        season: 'MID3',
+        submitted_at: '2026-09-01T00:00:00Z'
+      }
+    ]
+  }
+};
+
 const STATES = [
   { label: 'help', ...HELP },
   { label: 'help, light', ...HELP, colorScheme: 'light' },
@@ -406,6 +449,9 @@ const STATES = [
   { label: 'team officers', ...TEAM_OFFICERS },
   { label: 'history', ...HISTORY },
   { label: 'history, light', ...HISTORY, colorScheme: 'light' },
+  { label: 'signup', ...SIGNUP },
+  { label: 'signup, light', ...SIGNUP, colorScheme: 'light' },
+  { label: 'signup summary', ...SIGNUP_SUMMARY },
   { label: 'news', ...NEWS },
   { label: 'news, light', ...NEWS, colorScheme: 'light' },
   { label: 'streams', ...STREAMS_PAGE },

@@ -12,6 +12,7 @@ import { StreamsPage } from './streams/StreamsPage';
 import { HelpPage } from './help/HelpPage';
 import { AboutPage } from './about/AboutPage';
 import { HistoryPage } from './history/HistoryPage';
+import { SignUpPage } from './signup/SignUpPage';
 import { GuildOfficersPage } from './officers/GuildOfficersPage';
 import { TeamOfficersPage } from './officers/TeamOfficersPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -30,7 +31,8 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   me: <MyProfilePage />,
   'officer/groups': <BossGroupsPage />,
   history: <HistoryPage />,
-  officers: <TeamOfficersPage />
+  officers: <TeamOfficersPage />,
+  signup: <SignUpPage />
 };
 
 // Guild pages rebuilt so far (#1102), beside Guild home itself.

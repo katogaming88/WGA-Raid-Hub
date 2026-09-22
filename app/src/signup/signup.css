@@ -1,0 +1,167 @@
+/* Sign Up (#1102): a card holding either the wizard or the summary. */
+
+.signup-page {
+  max-width: 640px;
+}
+
+.signup-card {
+  padding: var(--space-4);
+}
+
+.signup-tier-picker {
+  margin-bottom: var(--space-3);
+}
+
+.signup-step-label {
+  margin: 0 0 var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* <fieldset>/<legend> for Main spec/Off spec/Primary role, without the
+   browser's own default border box around each (Kat, 2026-09-22). More room
+   than a plain .field: a legend reads as a heading over a button group, not
+   a label tight against a single input, so both gaps are opened up a step
+   past .field's label-to-input defaults (Kat, 2026-09-22). */
+.signup-wizard fieldset {
+  border: 0;
+  padding: 0;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.signup-wizard legend {
+  padding: 0;
+}
+
+.signup-wizard h2 {
+  margin: 0 0 var(--space-2);
+}
+
+.signup-warning {
+  margin: var(--space-2) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--warn);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+}
+
+.signup-warning p {
+  margin: 0 0 var(--space-2);
+}
+
+/* Realm combobox (#1102): the dropdown is a sibling in a positioned wrapper,
+   so left/right: 0 makes it exactly the input's width -- a native <datalist>
+   popup can't be styled at all, which is why this is a real element instead. */
+.realm-combobox {
+  position: relative;
+}
+
+.realm-dropdown {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.realm-option {
+  padding: 6px var(--space-3);
+  cursor: pointer;
+  scroll-margin-block: 4px;
+}
+
+/* --nav-selected is the same colour as this dropdown's own background in
+   dark mode, so it made the highlight invisible while arrowing through --
+   solid --brand instead, the same "clearly a selection" fill as today's
+   calendar date and tier pip highlights (Kat, 2026-09-22). */
+.realm-option-active {
+  background: var(--brand);
+  color: var(--page);
+}
+
+.signup-class-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.signup-class-btn {
+  padding: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  color: var(--cls-color, var(--text));
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.signup-class-btn-selected {
+  border-color: var(--cls-color, var(--brand));
+  outline: 2px solid var(--cls-color, var(--brand));
+  outline-offset: -2px;
+}
+
+.signup-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.signup-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--raised);
+  cursor: pointer;
+}
+
+.signup-chip:has(input:checked) {
+  border-color: var(--brand);
+  background: var(--nav-selected);
+  font-weight: 600;
+}
+
+.signup-role-info {
+  margin: var(--space-2) 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.signup-role-info-warn {
+  color: var(--warn);
+}
+
+.signup-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.signup-confirm {
+  text-align: center;
+}
+
+.signup-confirm-check {
+  font-size: 2rem;
+  color: var(--good);
+}
+
+.signup-status-open {
+  color: var(--good);
+}
+
+.signup-status-closed {
+  color: var(--bad);
+}
