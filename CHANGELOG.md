@@ -12,6 +12,21 @@ answers to.
 
 ---
 
+## [3.152.2] - 2026-09-22
+
+### Project
+
+- The new app has a "Report a BoE find" page at `/g/:guildKey/boe`
+  ([#1304](https://github.com/katogaming88/WGA-Raid-Hub/issues/1304)), ported
+  field-for-field from the current site's `js/boe.js`: team, character
+  (Name-Realm), item (from the BoE catalog, select-only), track, upgrade
+  rank, an optional note, and a donate-my-finder's-fee checkbox. No sign-in
+  is required to see or submit it; a visitor signed in with exactly one
+  claimed character prefills the team and character the way the current site
+  does. On submit it calls `submit_boe_found` (already anon-callable) and
+  fires the `boe-webhook` Edge Function with the new row's id, best-effort.
+  The Open/Awaiting Payout/History lifecycle view is a separate issue.
+
 ## [3.152.1] - 2026-09-22
 
 ### Backend

@@ -7,6 +7,7 @@ import { HomePage } from './home/HomePage';
 import { CalendarPage } from './calendar/CalendarPage';
 import { BossGroupsPage } from './calendar/BossGroupsPage';
 import { GuildHomePage } from './guild/GuildHomePage';
+import { BoePage } from './boe/BoePage';
 import { NewsPage } from './news/NewsPage';
 import { StreamsPage } from './streams/StreamsPage';
 import { HelpPage } from './help/HelpPage';
@@ -37,6 +38,7 @@ const BUILT_PAGES: Record<string, ReactElement> = {
 
 // Guild pages rebuilt so far (#1102), beside Guild home itself.
 const BUILT_GUILD_PAGES: Record<string, ReactElement> = {
+  boe: <BoePage />,
   news: <NewsPage />,
   streams: <StreamsPage />,
   officers: <GuildOfficersPage />,
