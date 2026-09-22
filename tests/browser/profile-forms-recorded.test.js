@@ -53,13 +53,14 @@ function openOwnProfile(viewerKey, { mplusOpen = true, rejections = true, autoAp
         ...row,
         config: {
           ...row.config,
-          seasonName: SEASON.name,
           seasonStart: SEASON.start,
           seasonEnd: SEASON.end,
           seasonView: null,
           mPlusExclusionsOpen: mplusOpen
         }
       })),
+      // The live tier is the seasons read (#938): SEASON as the one started tier.
+      seasons: [{ code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start, ends_at: SEASON.end }],
       attendance: ATTENDANCE,
       rclc_loot: LOOT,
       items: PRIORITY_ITEMS,

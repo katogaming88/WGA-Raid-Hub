@@ -95,6 +95,7 @@ function makeSandbox({ access, els = {}, saveTeamSettingResult, rpcResult, delet
     buildRequestsTab,
     TEAM_NAME: 'Phoenix Reborn',
     DATA: { seasonHistory: [{ name: 'Old Season' }] },
+    currentSeasonName: () => 'Midnight Season 2',
     _teamCfg: { supabaseTeamId: 1 },
     supabaseClient,
     setTimeout,

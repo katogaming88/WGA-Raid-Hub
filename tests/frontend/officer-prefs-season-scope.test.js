@@ -3,7 +3,7 @@ import { loadCommonJs, quietConsole } from './helpers/common-sandbox.js';
 
 // Officer-side item_preferences reads and season scope (#707 item 1).
 //
-// archive_current_season() never touches item_preferences, so at a rollover
+// close_season() never touches item_preferences, so at a rollover
 // the previous season's rows stay put and the new season's land beside them. The raider path filters on the row's own season
 // (js/wishlist.js, via isItemInSeasonScope); the officer path never fetched the
 // column, so every officer-side consumer saw season undefined and
@@ -26,7 +26,7 @@ function sandboxWithCatalog() {
       { wclZoneId: 10, season: 'MID1' },
       { wclZoneId: 20, season: 'MID2' }
     ],
-    seasonName: 'Midnight Season 2'
+    seasons: [{ code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-08-11', ends_at: null }]
   };
   return sandbox;
 }

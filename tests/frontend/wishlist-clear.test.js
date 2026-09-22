@@ -46,7 +46,7 @@ function makeSandbox({ confirmResult = true } = {}) {
     itemSlots: {},
     itemPlaceholders: {},
     itemIds: {},
-    seasonName: 'Midnight Season 2',
+    seasons: [{ code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-08-11', ends_at: null }],
     teamSeasons: [{ season_code: 'MID2', wishlist_open: true }]
   };
   sandbox._wishlistPlayerId = 11;
