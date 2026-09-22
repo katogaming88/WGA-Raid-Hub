@@ -167,6 +167,7 @@ export function lootSql(teamId, entries, registry, { knownItems, seasons, tz }) 
     sql += '\n';
   }
 
+  const stampedSeasons = new Set();
   const valueRows = entries.map((e) => {
     const nameRealm = registry.resolveOrStub(e.player);
 
@@ -199,6 +200,7 @@ export function lootSql(teamId, entries, registry, { knownItems, seasons, tz }) 
       itemRef = itemIdByWowId(sqlNumber(e.wowItemId));
       boss = e.boss || null;
     }
+    if (season) stampedSeasons.add(season);
 
     return [
       String(teamId),
@@ -226,5 +228,5 @@ export function lootSql(teamId, entries, registry, { knownItems, seasons, tz }) 
     warnings.push(`${counts.unknownTrack} rows whose instance suffix maps to no track (imported null)`);
   if (newItems.size) warnings.push(`${newItems.size} old-tier items added to items from the legacy export`);
 
-  return { sql, counts, newItemCount: newItems.size, warnings };
+  return { sql, counts, newItemCount: newItems.size, warnings, seasons: [...stampedSeasons] };
 }

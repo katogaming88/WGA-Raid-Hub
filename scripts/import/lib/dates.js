@@ -72,12 +72,17 @@ export function sqlTimestampAtZone(value, tz) {
   return `(${sqlString(local)}::timestamp at time zone ${sqlString(tz)})`;
 }
 
-// Season lookup by date from the ranges config ({name, start, end?}[]).
-// end is inclusive; an open-ended current season omits it.
+// Season lookup by date from the ranges config ({code, name, start, end?}[]).
+// end is inclusive; an open-ended current season omits it. The answer is the
+// code (#938): every season column references seasons(code), so a name would
+// be refused where the file is applied.
 export function seasonForDate(isoDate, seasons) {
   const d = String(isoDate).slice(0, 10);
   for (const s of seasons || []) {
-    if (d >= s.start && (!s.end || d <= s.end)) return s.name;
+    if (d >= s.start && (!s.end || d <= s.end)) {
+      if (!s.code) throw new Error('season range ' + (s.name || s.start) + ' has no code');
+      return s.code;
+    }
   }
   return null;
 }
