@@ -26,7 +26,8 @@ export type SignedInUser = {
 
 // What the person was doing when they left for Battle.net or Discord, so the
 // page can say how it went when they come back.
-export type Intent = 'sign-in' | 'connect-discord' | 'connect-battlenet' | 'switch-to-discord' | 'choose-alts';
+export type Intent =
+  'sign-in' | 'connect-discord' | 'connect-battlenet' | 'switch-to-discord' | 'choose-alts' | 'signup-character';
 
 // How a round trip to Battle.net or Discord ended, read once at startup.
 export type AuthReturn = { intent: Intent | null; error: string | null };
@@ -40,7 +41,7 @@ type SessionValue = {
   authReturn: AuthReturn;
   clearAuthReturn: () => void;
   signIn: (provider: Provider) => Promise<void>;
-  connect: (provider: Provider) => Promise<void>;
+  connect: (provider: Provider, intent?: Intent) => Promise<void>;
   // The Battle.net access token from this page load's Battle.net round trip,
   // for reading the account's characters (#942 step 5b). Held in memory only:
   // a reload, or any other sign-in, drops it.
@@ -52,7 +53,7 @@ type SessionValue = {
   // To Battle.net and back for a fresh token, then the picker opens. Only for
   // an account that already has Battle.net connected: on any other, a
   // Battle.net sign-in would make a new account.
-  refreshBattlenet: () => Promise<void>;
+  refreshBattlenet: (intent?: Intent) => Promise<void>;
   // For a Battle.net sign-in that landed on a new, empty account while the
   // person already has one under Discord: remove the empty one, sign in with
   // Discord, and connect Battle.net there when they come back.
@@ -126,7 +127,8 @@ function takeIntent(): { intent: Intent | null; provider: string | null } {
         intent === 'connect-discord' ||
         intent === 'connect-battlenet' ||
         intent === 'switch-to-discord' ||
-        intent === 'choose-alts'
+        intent === 'choose-alts' ||
+        intent === 'signup-character'
           ? intent
           : null,
       provider
@@ -154,7 +156,12 @@ export function battlenetTokenAfter(
   providerToken: string | null | undefined
 ): string | null {
   if (error || !providerToken || provider !== BATTLENET) return null;
-  return intent === 'sign-in' || intent === 'connect-battlenet' || intent === 'choose-alts' ? providerToken : null;
+  return intent === 'sign-in' ||
+    intent === 'connect-battlenet' ||
+    intent === 'choose-alts' ||
+    intent === 'signup-character'
+    ? providerToken
+    : null;
 }
 
 // Everything startup needs before the first render: the address's error (read
@@ -244,16 +251,16 @@ export function SessionProvider({
       battlenetToken,
       openAltsOnReturn,
       clearOpenAltsOnReturn: () => setOpenAltsOnReturn(false),
-      async refreshBattlenet() {
-        setIntent('choose-alts', BATTLENET);
+      async refreshBattlenet(intent = 'choose-alts') {
+        setIntent(intent, BATTLENET);
         const { error } = await client.auth.signInWithOAuth({
           provider: BATTLENET,
           options: { redirectTo: returnAddress() }
         });
         if (error) throw error;
       },
-      async connect(provider) {
-        setIntent(provider === DISCORD ? 'connect-discord' : 'connect-battlenet', provider);
+      async connect(provider, intent) {
+        setIntent(intent ?? (provider === DISCORD ? 'connect-discord' : 'connect-battlenet'), provider);
         const { error } = await client.auth.linkIdentity({ provider, options: { redirectTo: returnAddress() } });
         if (error) throw error;
       },

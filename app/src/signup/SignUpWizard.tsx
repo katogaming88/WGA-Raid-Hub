@@ -1,4 +1,10 @@
-import { useId, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
+import { BATTLENET, useSession } from '../auth/session';
+import { CharacterIcon } from '../characters/CharacterIcon';
+import { pickerRows, type CharactersAnswer } from '../characters/characters';
+import { useBattlenetCharacters } from '../characters/useCharacters';
+import '../characters/characters.css';
 import { RealmField } from './RealmField';
 import { buildSubmission, classMismatch, claimDiffers, type ClassmateRow, type SignupFields } from './signup';
 import { useSubmitSignup } from './useSignup';
@@ -32,7 +38,8 @@ export function SignUpWizard({
   claimedClass,
   classmates,
   roleTargets,
-  onDone
+  onDone,
+  sideHost
 }: {
   teamId: number;
   season: string;
@@ -42,6 +49,9 @@ export function SignUpWizard({
   classmates: ClassmateRow[];
   roleTargets: { tank: number | null; heal: number | null };
   onDone: () => void;
+  // The card Back/Next/Submit portal into (#1162), owned by the page so it
+  // sits beside the step content as its own box rather than under it.
+  sideHost: HTMLDivElement | null;
 }) {
   const [step, setStep] = useState(1);
   const [fields, setFields] = useState<SignupFields>(edit?.fields ?? EMPTY);
@@ -74,12 +84,18 @@ export function SignUpWizard({
     );
   }
 
+  const canPickFromBattlenet = edit === null;
+
   const next = () => {
     setError('');
     if (step === 1) {
-      const nameError = validateCharName(fields.charName.trim());
-      if (nameError) return setError(nameError);
-      if (!fields.realm) return setError('Please select your realm.');
+      if (canPickFromBattlenet) {
+        if (!fields.charName) return setError('Please pick the character you’re signing up with.');
+      } else {
+        const nameError = validateCharName(fields.charName.trim());
+        if (nameError) return setError(nameError);
+        if (!fields.realm) return setError('Please select your realm.');
+      }
       if (differs && !claimDiffersConfirmed)
         return setError('Please confirm you meant to sign up a different character.');
       setStep(2);
@@ -112,134 +128,270 @@ export function SignUpWizard({
   };
 
   return (
-    <div className="signup-wizard">
-      <p className="signup-step-label">Step {step} of 4</p>
+    <>
       {step === 1 && (
         <Step1
           fields={fields}
           set={set}
-          differs={differs}
-          claimNameRealm={claimNameRealm}
-          claimDiffersConfirmed={claimDiffersConfirmed}
-          setClaimDiffersConfirmed={setClaimDiffersConfirmed}
           resetClaimDiffersConfirmed={() => setClaimDiffersConfirmed(false)}
+          canPickFromBattlenet={canPickFromBattlenet}
           id={id}
         />
       )}
       {step === 2 && <Step2 fields={fields} set={set} />}
-      {step === 3 && (
-        <Step3
-          fields={fields}
-          set={set}
-          mismatch={mismatch}
-          claimedClass={claimedClass}
-          claimNameRealm={claimNameRealm}
-          classMismatchConfirmed={classMismatchConfirmed}
-          setClassMismatchConfirmed={setClassMismatchConfirmed}
-          classmates={classmates}
-          roleTargets={roleTargets}
-          id={id}
-        />
-      )}
+      {step === 3 && <Step3 fields={fields} set={set} classmates={classmates} roleTargets={roleTargets} id={id} />}
       {step === 4 && <Step4 fields={fields} set={set} differs={differs} claimNameRealm={claimNameRealm} id={id} />}
-      {error && (
-        <p className="signup-error form-error" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="signup-actions">
-        {step > 1 && (
-          <button type="button" className="button" onClick={back} disabled={submit.isPending}>
-            Back
-          </button>
+      {/* Its own card, portaled beside the step content (#1162): Step 1's
+          character list can run to dozens of rows, and Next scrolling off
+          with it left no visible way to move on. Same box on every step, so
+          it does not jump around as the step changes. The differs/mismatch
+          confirmations live here too (Kat, 2026-09-22): they block Next the
+          same way the error message does, so they belong next to it. */}
+      {sideHost &&
+        createPortal(
+          <div className="card signup-side-card">
+            <p className="signup-step-label">Step {step} of 4</p>
+            {step === 1 && claimNameRealm && differs && (
+              <div className="signup-warning">
+                <p>
+                  You are signed in with <strong>{claimNameRealm}</strong> claimed, but picked{' '}
+                  <strong>
+                    {fields.charName}-{fields.realm}
+                  </strong>{' '}
+                  above. Double-check that is who you meant.
+                </p>
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={claimDiffersConfirmed}
+                    onChange={(e) => setClaimDiffersConfirmed(e.target.checked)}
+                  />
+                  <span>
+                    Yes, I meant to sign up {fields.charName}-{fields.realm}, not {claimNameRealm}
+                  </span>
+                </label>
+              </div>
+            )}
+            {step === 3 && mismatch && claimedClass && claimNameRealm && (
+              <div className="signup-warning">
+                <p>
+                  Your claimed character <strong>{claimNameRealm}</strong> is on file as a{' '}
+                  <strong>{claimedClass}</strong>, but you selected <strong>{fields.className}</strong>. A
+                  character&#39;s class does not change, so this usually means the wrong class got clicked. If you meant
+                  to sign up a different character instead, go back and check the name/realm.
+                </p>
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={classMismatchConfirmed}
+                    onChange={(e) => setClassMismatchConfirmed(e.target.checked)}
+                  />
+                  <span>
+                    Yes, I meant to pick {fields.className} for {claimNameRealm}
+                  </span>
+                </label>
+              </div>
+            )}
+            {error && (
+              <p className="signup-error form-error" role="alert">
+                {error}
+              </p>
+            )}
+            <div className="signup-actions">
+              {step > 1 && (
+                <button type="button" className="button" onClick={back} disabled={submit.isPending}>
+                  Back
+                </button>
+              )}
+              {step < 4 ? (
+                <button type="button" className="button button-primary" onClick={next}>
+                  Next
+                </button>
+              ) : (
+                <button type="button" className="button button-primary" onClick={onSubmit} disabled={submit.isPending}>
+                  {submit.isPending ? 'Submitting…' : 'Submit'}
+                </button>
+              )}
+            </div>
+          </div>,
+          sideHost
         )}
-        {step < 4 ? (
-          <button type="button" className="button button-primary" onClick={next}>
-            Next
-          </button>
-        ) : (
-          <button type="button" className="button button-primary" onClick={onSubmit} disabled={submit.isPending}>
-            {submit.isPending ? 'Submitting…' : 'Submit'}
-          </button>
-        )}
-      </div>
-    </div>
+    </>
   );
 }
 
 function Step1({
   fields,
   set,
-  differs,
-  claimNameRealm,
-  claimDiffersConfirmed,
-  setClaimDiffersConfirmed,
   resetClaimDiffersConfirmed,
+  canPickFromBattlenet,
   id
 }: {
   fields: SignupFields;
   set: Setter;
-  differs: boolean;
-  claimNameRealm: string | null;
-  claimDiffersConfirmed: boolean;
-  setClaimDiffersConfirmed: (v: boolean) => void;
   resetClaimDiffersConfirmed: () => void;
+  canPickFromBattlenet: boolean;
   id: string;
 }) {
+  const pick: Setter = (key, value) => {
+    set(key, value);
+    resetClaimDiffersConfirmed();
+  };
+
   return (
     <>
       <h2>Sign up for next season</h2>
-      <p className="text-muted">Enter your exact in-game character name and select your realm.</p>
-      <div className="field">
-        <label className="field-label" htmlFor={`${id}-name`}>
-          Character name
-        </label>
-        <input
-          id={`${id}-name`}
-          className="input"
-          type="text"
-          autoComplete="off"
-          value={fields.charName}
-          onChange={(e) => {
-            set('charName', e.target.value);
-            resetClaimDiffersConfirmed();
-          }}
-        />
-      </div>
-      <div className="field">
-        <label className="field-label" htmlFor={`${id}-realm`}>
-          Realm
-        </label>
-        <RealmField
-          id={`${id}-realm`}
-          value={fields.realm}
-          onChange={(realm) => {
-            set('realm', realm);
-            resetClaimDiffersConfirmed();
-          }}
-        />
-      </div>
-      {claimNameRealm && differs && (
-        <div className="signup-warning">
-          <p>
-            You are signed in with <strong>{claimNameRealm}</strong> claimed, but typed{' '}
-            <strong>
-              {fields.charName}-{fields.realm}
-            </strong>{' '}
-            above. Double-check the spelling if that is not what you meant.
-          </p>
-          <label className="checkbox">
+      {canPickFromBattlenet ? (
+        <>
+          <p className="text-muted">Pick the character you’re signing up from your Battle.net account.</p>
+          <BattlenetCharacterPicker fields={fields} set={pick} />
+        </>
+      ) : (
+        <>
+          <p className="text-muted">Enter your exact in-game character name and select your realm.</p>
+          <div className="field">
+            <label className="field-label" htmlFor={`${id}-name`}>
+              Character name
+            </label>
             <input
-              type="checkbox"
-              checked={claimDiffersConfirmed}
-              onChange={(e) => setClaimDiffersConfirmed(e.target.checked)}
+              id={`${id}-name`}
+              className="input"
+              type="text"
+              autoComplete="off"
+              value={fields.charName}
+              onChange={(e) => pick('charName', e.target.value)}
             />
-            <span>
-              Yes, I meant to sign up {fields.charName}-{fields.realm}, not {claimNameRealm}
-            </span>
-          </label>
+          </div>
+          <div className="field">
+            <label className="field-label" htmlFor={`${id}-realm`}>
+              Realm
+            </label>
+            <RealmField id={`${id}-realm`} value={fields.realm} onChange={(realm) => pick('realm', realm)} />
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+// Picks a character straight from the raider's Battle.net account instead of
+// typing name/realm/class by hand (#1162): reuses the alts picker's read
+// (battlenet-characters), matched to the same roster-outcome rows the profile
+// picker shows, but a single pick rather than a multi-select alt list. There
+// is no manual fallback (Kat, 2026-09-21): asks for every level, not just max
+// level, so a character still leveling shows up too.
+function BattlenetCharacterPicker({ fields, set }: { fields: SignupFields; set: Setter }) {
+  const { user, battlenetToken, connect, refreshBattlenet } = useSession();
+  const list = useBattlenetCharacters();
+  const [answer, setAnswer] = useState<CharactersAnswer | null>(null);
+  const started = useRef<string | null>(null);
+
+  const { mutate: read } = list;
+  const load = useCallback((token: string) => read({ token, allLevels: true }, { onSuccess: setAnswer }), [read]);
+
+  useEffect(() => {
+    if (!battlenetToken || started.current === battlenetToken) return;
+    started.current = battlenetToken;
+    load(battlenetToken);
+  }, [battlenetToken, load]);
+
+  if (!user?.hasBattlenet) {
+    return (
+      <div className="signup-bnet-picker">
+        <p className="text-muted">Connect Battle.net to pick your character automatically.</p>
+        <button type="button" className="button" onClick={() => void connect(BATTLENET, 'signup-character')}>
+          Connect Battle.net
+        </button>
+      </div>
+    );
+  }
+  if (!battlenetToken) {
+    return (
+      <div className="signup-bnet-picker">
+        <p className="text-muted">
+          Battle.net needs to confirm it’s you before WGA Raid Hub can read your characters. You’ll come straight back
+          here.
+        </p>
+        <button type="button" className="button" onClick={() => void refreshBattlenet('signup-character')}>
+          Load your characters from Battle.net
+        </button>
+      </div>
+    );
+  }
+  if (list.isError) {
+    return (
+      <p className="form-error" role="alert">
+        Could not read your characters from Battle.net: {list.error.message}
+      </p>
+    );
+  }
+  if (!answer) {
+    return (
+      <p className="text-muted" role="status">
+        Reading your characters from Battle.net…
+      </p>
+    );
+  }
+
+  const rows = pickerRows(answer, new Map());
+  const pickedKey = fields.charName && fields.realm ? `${fields.charName}-${fields.realm}`.toLowerCase() : null;
+
+  return (
+    <>
+      {rows.length === 0 ? (
+        <p className="text-muted">No characters found on this Battle.net account.</p>
+      ) : (
+        <div className="signup-bnet-list" role="radiogroup" aria-label="Your characters">
+          {rows.map((row) => {
+            const { character } = row;
+            const blocked = row.kind === 'claimed';
+            const key = `${character.name}-${character.realm}`.toLowerCase();
+            const picked = pickedKey === key;
+            return (
+              <button
+                key={character.blizzard_id}
+                type="button"
+                role="radio"
+                aria-checked={picked}
+                disabled={blocked}
+                className="signup-bnet-row"
+                onClick={() => {
+                  set('charName', character.name);
+                  set('realm', character.realm);
+                  const specs = character.class_name ? CLASS_SPECS[character.class_name]?.specs : undefined;
+                  set('className', specs ? character.class_name! : '');
+                  set(
+                    'mainSpec',
+                    specs && character.spec_name && specs.includes(character.spec_name) ? character.spec_name : ''
+                  );
+                  set('offSpecs', []);
+                  set('primaryRole', null);
+                }}
+              >
+                <CharacterIcon className={character.class_name} spec={character.spec_name} />
+                <span className="character-text">
+                  <span className="character-name">{character.name}</span>
+                  <span className="character-sub">
+                    {character.realm}
+                    {character.class_name && ` · ${character.class_name}`}
+                    {character.spec_name ? ` (${character.spec_name})` : ` · Level ${character.level}`}
+                  </span>
+                </span>
+                {blocked && <span className="status-tag character-tag">Claimed by another player</span>}
+                {picked && (
+                  <svg className="signup-bnet-check" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M3 8.5 6.5 12 13 4.5" fill="none" stroke="currentColor" strokeWidth="2" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
+      <p className="text-muted signup-bnet-help">
+        Don’t see the character you want to sign up? Make sure you’re connected with the right Battle.net account, then
+        message an officer on Discord if it’s still missing.
+      </p>
     </>
   );
 }
@@ -278,22 +430,12 @@ function Step2({ fields, set }: { fields: SignupFields; set: Setter }) {
 function Step3({
   fields,
   set,
-  mismatch,
-  claimedClass,
-  claimNameRealm,
-  classMismatchConfirmed,
-  setClassMismatchConfirmed,
   classmates,
   roleTargets,
   id
 }: {
   fields: SignupFields;
   set: Setter;
-  mismatch: boolean;
-  claimedClass: string | null;
-  claimNameRealm: string | null;
-  classMismatchConfirmed: boolean;
-  setClassMismatchConfirmed: (v: boolean) => void;
   classmates: ClassmateRow[];
   roleTargets: { tank: number | null; heal: number | null };
   id: string;
@@ -311,26 +453,6 @@ function Step3({
         </p>
       ) : (
         <p className="text-muted">No one else is currently playing {fields.className}.</p>
-      )}
-      {mismatch && claimedClass && claimNameRealm && (
-        <div className="signup-warning">
-          <p>
-            Your claimed character <strong>{claimNameRealm}</strong> is on file as a <strong>{claimedClass}</strong>,
-            but you selected <strong>{fields.className}</strong>. A character&#39;s class does not change, so this
-            usually means the wrong class got clicked. If you meant to sign up a different character instead, go back
-            and check the name/realm.
-          </p>
-          <label className="checkbox">
-            <input
-              type="checkbox"
-              checked={classMismatchConfirmed}
-              onChange={(e) => setClassMismatchConfirmed(e.target.checked)}
-            />
-            <span>
-              Yes, I meant to pick {fields.className} for {claimNameRealm}
-            </span>
-          </label>
-        </div>
       )}
       <fieldset className="field">
         <legend className="field-label">Main spec</legend>

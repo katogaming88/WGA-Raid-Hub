@@ -12,6 +12,37 @@ answers to.
 
 ---
 
+## [3.151.0] - 2026-09-22
+
+### Functions
+
+- `battlenet-characters` takes an `allLevels` request field: without it, the
+  answer is unchanged (max-level characters only, for the profile's alts
+  picker); with it, every character on the account is in the pool, though
+  only a max-level one still costs a Blizzard summary call for its spec and
+  item level ([#1162](https://github.com/katogaming88/WGA-Raid-Hub/issues/1162)).
+
+### Project
+
+- Sign Up's Step 1 picks the character straight from the raider's Battle.net
+  account instead of typing name/realm/class by hand
+  ([#1162](https://github.com/katogaming88/WGA-Raid-Hub/issues/1162)), the
+  piece #1102 shipped without: connecting Battle.net if it is not linked yet,
+  then a list of the account's characters (any level, so a character still
+  leveling shows up too) with what team, if any, already claims each one.
+  Picking one fills in character, realm, class and (when Blizzard knows it)
+  main spec; a character claimed by someone else is shown but not pickable.
+  There is no manual-entry fallback for a fresh signup -- a raider whose
+  character is still missing is pointed at Discord rather than typing it in
+  unverified. Editing an already-submitted signup keeps today's manual
+  fields, since they are already filled in and there is no Battle.net round
+  trip to make. Back/Next/Submit, the step count, and the claim-differs and
+  class-mismatch confirmations now live in their own card beside the step
+  content instead of under it, so they stay in view past a long Battle.net
+  character list; the picked character gets an outline and a checkmark, not
+  just a background tint, to stay visible in a list of near-identical alt
+  names.
+
 ## [3.150.1] - 2026-09-21
 
 ### Project

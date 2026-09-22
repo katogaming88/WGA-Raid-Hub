@@ -215,6 +215,34 @@ Deno.test("saves only picked ids that are on the raider's own max-level list", a
   );
 });
 
+Deno.test('allLevels widens the pool to every character, but only fetches detail for max level (#1162)', async () => {
+  const r = await run({ token: TOKEN, allLevels: true });
+  assertEquals(r.status, 200);
+  assertEquals(
+    r.body.characters.map((c: { blizzard_id: number; level: number; spec_name: string | null }) => [
+      c.blizzard_id,
+      c.level,
+      c.spec_name
+    ]),
+    [
+      [201, 90, null],
+      [101, 90, 'Restoration'],
+      [102, 12, null]
+    ]
+  );
+  // Only the two max-level characters cost a summary call: userinfo, the list,
+  // then one summary each for 101 and 201 -- none for the level-12 Lowbie.
+  assertEquals(r.fetches.length, 4);
+});
+
+Deno.test('without allLevels the pool stays at max level only, same as before #1162', async () => {
+  const r = await run({ token: TOKEN });
+  assertEquals(
+    r.body.characters.map((c: { blizzard_id: number }) => c.blizzard_id),
+    [201, 101]
+  );
+});
+
 Deno.test('a login with no WoW characters answers an empty list, not an error', async () => {
   const r = await run({ token: TOKEN, save: [] }, {}, [jsonOk({ sub: BNET_ID }), status(404)]);
   assertEquals([r.status, r.body.characters, r.body.roster], [200, [], []]);

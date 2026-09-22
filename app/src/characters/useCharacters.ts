@@ -136,7 +136,7 @@ async function refusalOf(error: { message: string; context?: unknown }): Promise
 // links roster matches); with it, the picked ids are saved as alts.
 export function useBattlenetCharacters() {
   const queryClient = useQueryClient();
-  return useSupabaseMutation<CharactersAnswer, { token: string; save?: number[] }>(
+  return useSupabaseMutation<CharactersAnswer, { token: string; save?: number[]; allLevels?: boolean }>(
     async (client, body) => {
       const { data, error } = await client.functions.invoke('battlenet-characters', { body });
       if (error) {
