@@ -112,15 +112,16 @@ describe('team_season_start', () => {
   });
 
   // An open-ended tier is always the last one (seasons_no_overlap), so its
-  // window has no upper bound. The seed's MID2 is that tier; a minted one
-  // opened to null would overlap it.
+  // window has no upper bound. The seed carries one; a minted tier opened
+  // to null would overlap it, so the case reads it rather than minting.
   it('counts every night after the start of the open-ended tier', async () => {
     await withTxn(async ({ q }) => {
+      const open = (await q('select code, starts_at::text as day from public.seasons where ends_at is null')).rows[0];
       const team = await seedTeam(q);
       const player = await seedPlayer(q, { teamId: team.teamId });
-      await night(q, team.teamId, player, '2030-01-01');
-      const res = await q(...start(team.teamId, 'MID2'));
-      expect(res.rows).toEqual([{ day: '2030-01-01' }]);
+      await night(q, team.teamId, player, plus(open.day, 400));
+      const res = await q(...start(team.teamId, open.code));
+      expect(res.rows).toEqual([{ day: plus(open.day, 400) }]);
     });
   });
 
@@ -140,11 +141,14 @@ describe('team_season_start', () => {
 
   it('defaults the tier to the current season, and answers null when none has started', async () => {
     await withTxn(async ({ q }) => {
+      const current = (
+        await q('select starts_at::text as day from public.seasons where code = public.current_season()')
+      ).rows[0];
       const team = await seedTeam(q);
       const player = await seedPlayer(q, { teamId: team.teamId });
-      await night(q, team.teamId, player, '2026-08-20');
+      await night(q, team.teamId, player, plus(current.day, 1));
       const res = await q('select public.team_season_start($1)::text as day', [team.teamId]);
-      expect(res.rows).toEqual([{ day: '2026-08-20' }]);
+      expect(res.rows).toEqual([{ day: plus(current.day, 1) }]);
       const none = await q('select public.team_season_start($1, null)::text as day', [team.teamId]);
       expect(none.rows).toEqual([{ day: null }]);
     });
