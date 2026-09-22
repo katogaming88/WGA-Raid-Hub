@@ -12,8 +12,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |      6 h 55 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     23 h 41 m |
-| **All revamp work**                | **37 h 31 m** |
+| Revamp 2: public pages             |      24 h 4 m |
+| **All revamp work**                | **37 h 54 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -131,6 +131,12 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 7:50-7:58 PM | Help page (#1102, PR #1295)                                          | Revamp 2 (#1102) |       8 m\* | build; Kat review not yet counted | Rewritten for the new app, not ported; support Discord card; Help and Support Discord links in the sidebar footer (Kat's choices). \*PR window only, as above.                                                                                                                         |
 | 8:13-8:22 PM | Guild/Team officers, About, and the Site nav group (#1102, PR #1297) | Revamp 2 (#1102) |       9 m\* | build; Kat review not yet counted | Kat asked to split guild/team bios into their own pages and move About/Help into their own group; then asked whether Contact still earns its place beside the support Discord and said drop it. \*PR window only, as above.                                                            |
 | 8:26-8:34 PM | History page (#1102)                                                 | Revamp 2 (#1102) |     8 m\*\* | build; Kat review not yet counted | Progression recap ported from the current site's History tab; the roster snapshot moves from officer-only to public on purpose. \*\*From this session's transcript directly (`.jsonl` message timestamps), not a PR window: Kat's "yes, move on to History" to this row being written. |
+
+### 2026-09-22
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Notes |
+| --------- | ---- | ----- | ------: | ----------- | ----- |
+| 8:42-9:05 PM | Sign Up page (#1102) | Revamp 2 (#1102) | 23 m | build; Kat review not yet counted | Ported the 4-step form; claim/class-mismatch warnings now compare against the new app's own access data (#1162's matching, already shipped) rather than waiting on the rest of #1162. Kat chose full parity over a smaller first pass. Time from this session's transcript directly. |
 
 ## Not counted (same sessions, not revamp)
 

@@ -1,0 +1,115 @@
+/* Sign Up (#1102): a card holding either the wizard or the summary. */
+
+.signup-page {
+  max-width: 640px;
+}
+
+.signup-card {
+  padding: var(--space-4);
+}
+
+.signup-tier-picker {
+  margin-bottom: var(--space-3);
+}
+
+.signup-step-label {
+  margin: 0 0 var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.signup-wizard h2 {
+  margin: 0 0 var(--space-2);
+}
+
+.signup-warning {
+  margin: var(--space-2) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--warn);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+}
+
+.signup-warning p {
+  margin: 0 0 var(--space-2);
+}
+
+.signup-class-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.signup-class-btn {
+  padding: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  color: var(--cls-color, var(--text));
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.signup-class-btn-selected {
+  border-color: var(--cls-color, var(--brand));
+  outline: 2px solid var(--cls-color, var(--brand));
+  outline-offset: -2px;
+}
+
+.signup-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.signup-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--raised);
+  cursor: pointer;
+}
+
+.signup-chip:has(input:checked) {
+  border-color: var(--brand);
+  background: var(--nav-selected);
+  font-weight: 600;
+}
+
+.signup-role-info {
+  margin: var(--space-2) 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.signup-role-info-warn {
+  color: var(--warn);
+}
+
+.signup-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.signup-confirm {
+  text-align: center;
+}
+
+.signup-confirm-check {
+  font-size: 2rem;
+  color: var(--good);
+}
+
+.signup-status-open {
+  color: var(--good);
+}
+
+.signup-status-closed {
+  color: var(--bad);
+}

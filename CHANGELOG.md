@@ -12,6 +12,25 @@ answers to.
 
 ---
 
+## [3.148.9] - 2026-09-21
+
+### Frontend
+
+- The new app's **Sign Up** page
+  ([#1102](https://github.com/katogaming88/WGA-Raid-Hub/issues/1102)), ported
+  from the current site's four-step form: character name and realm, class,
+  main/off spec and primary role, then any note for officers. The same
+  warnings carry over -- a typed character that does not match the raider's
+  own claimed character asks for confirmation before it is recorded as a main
+  swap, and picking a class that does not match a matching claim's class
+  (since a character's class never changes) asks for confirmation too, using
+  the new app's own access data in place of the old single Discord claim.
+  Shows who else is already playing a class and, for Tank/Heal, how many are
+  signed up against the officer-set target. Editing an existing signup reopens
+  the same steps pre-filled (#500), and the summary shown for one already on
+  file reads its status in words. Reachable from Guild home's team cards when
+  a team has signups open, and directly by address.
+
 ## [3.148.8] - 2026-09-21
 
 ### Frontend
