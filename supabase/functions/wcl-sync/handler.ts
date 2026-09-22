@@ -75,6 +75,40 @@ function formatReportDate(ms: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+// The attendance refresh's report window (#1269): the tier's start date as
+// Eastern midnight, the instant the reports query's startTime takes. One
+// read of the offset is exact at midnight because both US transitions happen
+// at 2 AM local, after it. A report starting between midnight and the cutoff
+// above on launch day is still fetched and dated the night before.
+export function tierStartTimeMs(startsAt: string | null): number | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(startsAt || '');
+  if (!match) return null;
+  const guessUtcMs = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  const parts: Record<string, string> = {};
+  const fields = new Intl.DateTimeFormat('en-US', {
+    timeZone: REPORT_TIME_ZONE,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }).formatToParts(new Date(guessUtcMs));
+  for (const part of fields) {
+    if (part.type !== 'literal') parts[part.type] = part.value;
+  }
+  const wallClockAsUtcMs = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second)
+  );
+  return guessUtcMs - (wallClockAsUtcMs - guessUtcMs);
+}
+
 // ── WCL API helpers (ported from gs/WCL.gs) ─────────────────────────────────
 
 async function getAccessToken(): Promise<string | null> {
@@ -574,6 +608,22 @@ async function getFirstPullParticipants(
   return names;
 }
 
+// The tier every team is on (current_season(), app-wide since #1189) and its
+// start date. Null when no tier has started, which leaves the reports query
+// unbounded the way a blank date did.
+export async function currentTierStartMs(supabase: SupabaseClient<any>): Promise<number | null> {
+  const { data: code, error: codeError } = await supabase.rpc('current_season');
+  if (codeError) throw new Error(codeError.message);
+  if (!code) return null;
+  const { data: tier, error: tierError } = await supabase
+    .from('seasons')
+    .select('starts_at')
+    .eq('code', code)
+    .maybeSingle();
+  if (tierError) throw new Error(tierError.message);
+  return tierStartTimeMs((tier as any)?.starts_at ?? null);
+}
+
 async function refreshAttendance(token: string, guildId: number, teamId: number, supabase: SupabaseClient<any>) {
   const { data: settingsRow } = await supabase
     .from('team_settings')
@@ -581,7 +631,6 @@ async function refreshAttendance(token: string, guildId: number, teamId: number,
     .eq('team_id', teamId)
     .maybeSingle();
   const config: any = (settingsRow as any)?.config || {};
-  const seasonStart: string | null = config.seasonStart || null;
   const raidProgression: any[] = Array.isArray(config.raidProgression) ? config.raidProgression : [];
   const validZoneIds = new Set(raidProgression.map((r) => parseInt(r.wclZoneId, 10)).filter((id) => !Number.isNaN(id)));
   const validEncounterIds = new Set(
@@ -590,7 +639,7 @@ async function refreshAttendance(token: string, guildId: number, teamId: number,
       .map((b: any) => parseInt(b.wclEncounterId, 10))
       .filter((id) => !Number.isNaN(id))
   );
-  const startTimeMs = seasonStart && !Number.isNaN(Date.parse(seasonStart)) ? Date.parse(seasonStart) : null;
+  const startTimeMs = await currentTierStartMs(supabase);
 
   const reports: Array<{ code: string; title: string; startTime: number }> = [];
   let page = 1;
@@ -699,7 +748,7 @@ async function refreshAttendance(token: string, guildId: number, teamId: number,
     const zoneId = await getReportZone(token, report.code);
 
     // Classification, matching gs/Attendance.gs's refreshAttendanceCore:
-    // raid-progression zones take priority; a season-start filter with no
+    // raid-progression zones take priority; a tier-start filter with no
     // progression trusts every report the query already returned; with
     // neither configured, fall back to comparing against the most recent
     // *new* report's zone (a non-persisted stand-in for GAS's script-
