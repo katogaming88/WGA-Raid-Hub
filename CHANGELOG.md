@@ -43,8 +43,10 @@ answers to.
   reading them in the previous release, `close_season()` has recorded the
   derived night since the first, and nothing on the site or in the app
   reads them from this release. For up to ten minutes after the deploy a
-  browser still on the old page counts attendance over the whole of
-  history and hides its nudges; a reload picks up the new one.
+  page still open on the old version counts from the day the tier went live
+  rather than your first night, and hides its new-raider nudges; no
+  percentage actually moves, since no team has an attendance row before its
+  own first night this tier, and a reload picks up the new version.
 
 ## [3.152.4] - 2026-09-22
 

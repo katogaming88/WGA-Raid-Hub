@@ -29,11 +29,14 @@
 -- typed a date, have a season window at all.
 --
 -- A merge pushes this file before it publishes the site (#1083), so for up
--- to ten minutes a browser on the old bundle reads no dates: its attendance
--- counts the whole of history, its nudges hide, and a Save on its Season
--- Start box writes the key back. Every reader in the new bundle ignores the
--- key, so a row that gets it back is inert; the acceptance count is read
--- after the window.
+-- to ten minutes a browser on the old bundle reads no dates. That bundle
+-- already falls back to the tier's own starts_at where the key is missing,
+-- so its windows widen to the tier and, with no attendance row before any
+-- team's first raid night this tier, no percentage moves; its nudges hide,
+-- since the gate there tests the key rather than the window. A Save on its
+-- Season Start box writes the key back, which every reader in the new
+-- bundle ignores, so a row that gets it back is inert; the acceptance count
+-- is read after the window.
 
 update public.team_settings
 set config = config - 'seasonStart' - 'seasonEnd'
