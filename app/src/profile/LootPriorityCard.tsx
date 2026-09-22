@@ -1,10 +1,10 @@
 import type { UseQueryResult } from '@tanstack/react-query';
 import { DataState } from '../components/DataState';
 import { bothQueries } from '../data/query';
-import { lootPriority, type PriorityRow, type Standing } from './lootPriority';
+import { latestSelfReceivedUpdate, lootPriority, type PriorityRow, type Standing } from './lootPriority';
 import { MarkReceivedButton } from './ProfileForms';
 import { wishlistSummary } from './wishlist';
-import type { LootRow, SeasonWindow } from './profile';
+import { timeAgoLabel, type LootRow, type SeasonWindow } from './profile';
 import {
   useCatalog,
   useItemRanks,
@@ -67,6 +67,7 @@ export function LootPriorityCard({
           <PriorityTable
             player={player}
             canReport={canReport}
+            updatedLabel={timeAgoLabel(latestSelfReceivedUpdate(sr))}
             rows={lootPriority({
               playerId: player.id,
               wishlist: w,
@@ -104,17 +105,20 @@ function StandingCell({ standing }: { standing: Standing | undefined }) {
 function PriorityTable({
   rows,
   player,
-  canReport
+  canReport,
+  updatedLabel
 }: {
   rows: PriorityRow[];
   player: ProfilePlayer;
   canReport: boolean;
+  updatedLabel: string;
 }) {
   if (!rows.length) {
     return <p className="text-muted card-note">No BiS picks on the wishlist for this season yet.</p>;
   }
   return (
     <div className="profile-table-wrap">
+      {updatedLabel && <p className="priority-updated">Updated {updatedLabel}</p>}
       <table className="profile-table priority-table">
         <caption className="visually-hidden">Loot priority for each BiS pick</caption>
         <thead>

@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.152.4] - 2026-09-22
+
+### Project
+
+- The new app's Loot priority card shows "Updated X ago" from the latest
+  approved self-received report, the BiS List half of #290's per-section
+  timestamps ([#1311](https://github.com/katogaming88/WGA-Raid-Hub/issues/1311)).
+  The other half, a BiS Source link timestamp, does not apply here -- the new
+  app's Wishlist tab already replaced that flow with per-slot picks, so there
+  is no `bis_link` submission to date.
+
 ## [3.152.3] - 2026-09-22
 
 ### Project

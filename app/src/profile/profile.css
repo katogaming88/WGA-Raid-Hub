@@ -139,6 +139,13 @@
   margin: 0;
 }
 
+.priority-updated {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  color: var(--warn);
+}
+
 .side-subtitle,
 .loot-last-title {
   margin: 0;
