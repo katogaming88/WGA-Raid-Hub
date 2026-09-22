@@ -1918,7 +1918,9 @@ function mapSupabaseIncomingRoster(rows) {
 // helpers are the fallback for a value stored before that (a history entry
 // with no code, a wishlist row stamped with a name until #936).
 //
-// Three layers, checked in order:
+// The seasons row answers first where the site has read the table (#938);
+// the three layers below are the fallback for a value stored before the
+// table carried both forms, and for a stack with no rows. Checked in order:
 //  1. SEASON_LABELS -- an explicit override map for anything that doesn't
 //     fit the pattern below (a renamed season, a one-off historical name).
 //     Empty by design: every season so far matches the pattern layer.
@@ -2006,6 +2008,8 @@ function _latestIso(a, b) {
 
 function seasonDisplayName(code) {
   if (SEASON_LABELS[code]) return SEASON_LABELS[code];
+  var tier = seasonRow(code);
+  if (tier && tier.display_name) return tier.display_name;
   var displayPrefix = _seasonDisplayPrefix();
   var re = new RegExp('^' + _escapeRegExp(_seasonCodePrefix()) + '(\\d+)$');
   var m = re.exec(code || '');
@@ -2015,6 +2019,10 @@ function seasonDisplayName(code) {
 function seasonCodeForDisplay(displayName) {
   for (var code in SEASON_LABELS) {
     if (SEASON_LABELS[code] === displayName) return code;
+  }
+  var rows = (DATA && DATA.seasons) || [];
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].display_name === displayName) return rows[i].code;
   }
   var codePrefix = _seasonCodePrefix();
   var re = new RegExp('^' + _escapeRegExp(_seasonDisplayPrefix()) + ' (\\d+)$');
@@ -3268,7 +3276,7 @@ function tierTokenMapForSeason(seasonCode) {
  */
 function tierTokenSetupStatus(seasonCode) {
   var rows = DATA && DATA._tierTokenMapRawRows;
-  if (!Array.isArray(rows)) return 'unknown';
+  if (!Array.isArray(rows) || !seasonCode) return 'unknown';
   return rows.some(function (row) {
     return row.season === seasonCode;
   })
