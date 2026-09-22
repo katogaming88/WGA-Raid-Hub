@@ -3,8 +3,16 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, filterValue, seededHandlers, type Read } from '../test/fakeSupabase';
-import { attendance, characterLinks, equippedGear, formatJoinDate, seasonCode, seasonLoot } from './profile';
-import { lootPriority } from './lootPriority';
+import {
+  attendance,
+  characterLinks,
+  equippedGear,
+  formatJoinDate,
+  seasonCode,
+  seasonLoot,
+  timeAgoLabel
+} from './profile';
+import { latestSelfReceivedUpdate, lootPriority } from './lootPriority';
 import { wishlistSummary } from './wishlist';
 
 const SEASON = { name: 'Midnight Season 2', code: 'MID2', start: '2026-08-01', end: '2026-12-31' };
@@ -79,6 +87,23 @@ describe('header helpers', () => {
     expect(formatJoinDate('2026-08-10')).toBe('Aug 10, 2026');
     expect(seasonCode('Midnight Season 2')).toBe('MID2');
     expect(seasonCode('Something else')).toBeNull();
+  });
+
+  it("labels a signal's age, blank when it has never fired (#1311)", () => {
+    expect(timeAgoLabel(null)).toBe('');
+    expect(timeAgoLabel(new Date().toISOString())).toBe('just now');
+    expect(timeAgoLabel(new Date(Date.now() - 3 * 86400000).toISOString())).toBe('3d ago');
+  });
+
+  it('takes the latest of approved self-received rows, ignoring never-touched ones', () => {
+    expect(
+      latestSelfReceivedUpdate([
+        { track: 'Hero', source: 'x', slot: null, updated_at: '2026-09-01T00:00:00Z', items: null },
+        { track: 'Myth', source: 'y', slot: null, updated_at: '2026-09-10T00:00:00Z', items: null },
+        { track: 'Myth', source: 'z', slot: null, updated_at: null, items: null }
+      ])
+    ).toBe('2026-09-10T00:00:00Z');
+    expect(latestSelfReceivedUpdate([])).toBeNull();
   });
 
   it('lists equipped gear in gear-panel order, naming unknown items by id', () => {
@@ -307,8 +332,20 @@ describe('lootPriority', () => {
     tierTokens: [{ token_item_id: 1, resolved: { name: 'Grave-Knight Deathgrips' } }],
     loot: [{ track: 'Hero', awarded_at: '2026-08-20T18:00:00Z', items: { name: 'Caustic Sash' } }],
     selfReceived: [
-      { track: 'Myth', source: 'Great Vault', slot: null, items: { name: 'Caustic Sash' } },
-      { track: 'Hero', source: 'Crafted', slot: 'Wrist', items: { name: 'Crafted' } }
+      {
+        track: 'Myth',
+        source: 'Great Vault',
+        slot: null,
+        updated_at: '2026-09-01T00:00:00Z',
+        items: { name: 'Caustic Sash' }
+      },
+      {
+        track: 'Hero',
+        source: 'Crafted',
+        slot: 'Wrist',
+        updated_at: '2026-09-10T00:00:00Z',
+        items: { name: 'Crafted' }
+      }
     ]
   };
 
@@ -348,7 +385,13 @@ describe('lootPriority', () => {
       loot: [],
       wishlist: [pick(2, 'Finger 1')],
       selfReceived: [
-        { track: 'Myth', source: 'Bonus Roll', slot: 'Finger', items: { name: 'Band of the Hollow Choir' } }
+        {
+          track: 'Myth',
+          source: 'Bonus Roll',
+          slot: 'Finger',
+          updated_at: '2026-09-15T00:00:00Z',
+          items: { name: 'Band of the Hollow Choir' }
+        }
       ]
     });
     expect(row!.received).toEqual({ track: 'Mythic', detail: 'Bonus Roll' });

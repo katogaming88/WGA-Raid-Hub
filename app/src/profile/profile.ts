@@ -214,6 +214,27 @@ export function formatJoinDate(date: string): string {
   return `${MONTHS[m - 1]} ${d}, ${y}`;
 }
 
+// Relative-age text ("3d ago", "just now") for a profile-card signal
+// (#1311, same wording as the current site's timeAgoLabel()). null means the
+// signal has never fired, so callers show nothing rather than a label.
+export function timeAgoLabel(iso: string | null): string {
+  if (!iso) return '';
+  const then = new Date(iso).getTime();
+  if (isNaN(then)) return '';
+  const seconds = Math.floor((Date.now() - then) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  const years = Math.floor(days / 365);
+  return `${years}y ago`;
+}
+
 export type ProfileTag = 'Trial' | 'Bench' | 'Rotator' | 'Backup Tank' | 'Backup Healer';
 
 export function profileTags(p: {

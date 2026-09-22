@@ -34,8 +34,18 @@ export type SelfReceivedRow = {
   track: string | null;
   source: string | null;
   slot: string | null;
+  updated_at: string | null;
   items: { name: string } | null;
 };
+
+// Latest of a player's approved self-received rows, for the BiS List "updated
+// X ago" signal (#1311, current site's mapSupabaseSelfReceivedUpdatedAt()).
+export function latestSelfReceivedUpdate(rows: SelfReceivedRow[]): string | null {
+  return rows.reduce<string | null>(
+    (latest, r) => (!r.updated_at ? latest : !latest || r.updated_at > latest ? r.updated_at : latest),
+    null
+  );
+}
 
 export type Track = 'Heroic' | 'Mythic';
 export type Standing = { track: Track; rank: number; of: number };

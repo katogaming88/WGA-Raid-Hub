@@ -184,7 +184,7 @@ export function useSelfReceived(playerId: number) {
   return useSupabaseQuery<SelfReceivedRow[]>(['self-received', playerId], (client) =>
     client
       .from('self_received_requests')
-      .select('track, source, slot, items(name)')
+      .select('track, source, slot, updated_at, items(name)')
       .eq('player_id', playerId)
       .eq('status', 'approved')
   );
