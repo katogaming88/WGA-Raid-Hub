@@ -41,6 +41,13 @@ answers to.
   the page had its data, which threw and left the grid blank until you
   navigated away and back. It now waits for the data like every other view.
 
+- The Reports tab help and the officer walkthrough no longer say the
+  database has no season start date. That stopped being true when the season
+  table shipped, and both now say what Season Loot Pace actually measures a
+  week from: this team's first tracked loot award of the season, which is
+  deliberately not the raid night the season is scored against, so a week
+  lines up with the two seasons being compared.
+
 ### Backend
 
 - `seasonStart` and `seasonEnd` are removed from every team's settings

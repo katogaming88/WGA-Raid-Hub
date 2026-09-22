@@ -420,8 +420,10 @@ Reads directly from Supabase report views -- no Apps Script fallback. Four sub-t
   and **Mythic #1 Possibly Stale** (a saved Mythic #1 where the player already received the
   Heroic version of that same item -- not necessarily wrong, just worth a second look).
 - **Season Loot Pace** -- items awarded per week of the season vs. the same week last season,
-  filterable by track and slot. "Week 1" is measured from the season's first tracked loot award,
-  not the raid-lockout calendar, since Supabase doesn't store a season start date yet.
+  filterable by track and slot. "Week 1" is measured from this team's first tracked loot award of
+  the season, not from the raid-lockout calendar and not from the first raid night the season is
+  scored against (#1269), so a week here lines up with the two seasons being compared rather than
+  with the attendance window.
 
 ---
 
