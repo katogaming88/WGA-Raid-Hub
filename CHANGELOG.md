@@ -45,6 +45,21 @@ answers to.
   checkmark, not just a background tint, to stay visible in a list of
   near-identical alt names.
 
+## [3.151.1] - 2026-09-22
+
+### Functions
+
+- The attendance sync's **Refresh from WCL** looks for raid nights from the
+  day the tier went live rather than from a date each team typed into Season
+  Settings ([#1269](https://github.com/katogaming88/WGA-Raid-Hub/issues/1269),
+  second of three). A team whose typed date was later than the tier's start
+  can now find its earlier nights, and a team with no raid list set counts
+  every report since the tier's start as a raid night, as a team with a typed
+  date already did. Nothing counts before a team's first report, so no
+  percentage moves for the four teams today. The Season Start Date on the
+  Season tab still scopes the site's own attendance window until the third
+  pull request retires it.
+
 ## [3.151.0] - 2026-09-22
 
 ### Backend
