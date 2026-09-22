@@ -154,8 +154,8 @@ export function groupByStatus(items: BoeItemRow[]): BoeSections {
   }
   open.sort((a, b) => String(a.found_at || '').localeCompare(String(b.found_at || '')));
   awaiting.sort((a, b) => String(a.sold_at || '').localeCompare(String(b.sold_at || '')));
-  history.sort(
-    (a, b) => String(b.payout_paid_at || b.retired_at || '').localeCompare(String(a.payout_paid_at || a.retired_at || ''))
+  history.sort((a, b) =>
+    String(b.payout_paid_at || b.retired_at || '').localeCompare(String(a.payout_paid_at || a.retired_at || ''))
   );
   return { open, awaiting, history };
 }

@@ -145,5 +145,7 @@ export function hasAnyCharacter(access: Access): boolean {
 // this wider group; every other BoE action stays behind 'manageBoe'.
 export function canSettleBoe(access: Access | null | undefined, teamId: number): boolean {
   if (!access) return false;
-  return can(access, 'manageBoe') || teamRole(access, teamId) === 'officer' || teamRole(access, teamId) === 'team_leader';
+  return (
+    can(access, 'manageBoe') || teamRole(access, teamId) === 'officer' || teamRole(access, teamId) === 'team_leader'
+  );
 }

@@ -136,7 +136,14 @@ export function useRevertBoe() {
 export function useEditBoeItem() {
   return useSupabaseMutation<
     void,
-    { id: number; itemName: string; track: string | null; note: string | null; itemId: number | null; rank: string | null }
+    {
+      id: number;
+      itemName: string;
+      track: string | null;
+      note: string | null;
+      itemId: number | null;
+      rank: string | null;
+    }
   >(
     // The generated Args type marks these non-nullable text params, but the
     // function accepts null for each (clearing a track, note, catalog link

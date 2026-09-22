@@ -68,7 +68,8 @@ function BoeLifecycleView({ items, listings }: { items: BoeItemRow[]; listings: 
   const revert = useRevertBoe();
 
   const manage = can(access.data, 'manageBoe');
-  const isRaiderView = !manage && !(access.data?.teams.some((t) => t.role === 'officer' || t.role === 'team_leader') ?? false);
+  const isRaiderView =
+    !manage && !(access.data?.teams.some((t) => t.role === 'officer' || t.role === 'team_leader') ?? false);
   const teamName = (teamId: number) => teams.find((t) => t.id === teamId)?.name ?? `Team ${teamId}`;
 
   const sections = useMemo(() => groupByStatus(items), [items]);
@@ -85,7 +86,10 @@ function BoeLifecycleView({ items, listings }: { items: BoeItemRow[]; listings: 
 
   const pageCount = Math.max(1, Math.ceil(sections.history.length / HISTORY_PAGE_SIZE));
   const clampedPage = Math.min(historyPage, pageCount - 1);
-  const historyRows = sections.history.slice(clampedPage * HISTORY_PAGE_SIZE, clampedPage * HISTORY_PAGE_SIZE + HISTORY_PAGE_SIZE);
+  const historyRows = sections.history.slice(
+    clampedPage * HISTORY_PAGE_SIZE,
+    clampedPage * HISTORY_PAGE_SIZE + HISTORY_PAGE_SIZE
+  );
 
   const onUnretire = (item: BoeItemRow) => revert.mutate({ id: item.id });
 
@@ -178,7 +182,12 @@ function BoeLifecycleView({ items, listings }: { items: BoeItemRow[]; listings: 
           />
           {pageCount > 1 && (
             <div className="boe-pager">
-              <button type="button" className="button" disabled={clampedPage <= 0} onClick={() => setHistoryPage(clampedPage - 1)}>
+              <button
+                type="button"
+                className="button"
+                disabled={clampedPage <= 0}
+                onClick={() => setHistoryPage(clampedPage - 1)}
+              >
                 Previous
               </button>
               <button
@@ -190,8 +199,8 @@ function BoeLifecycleView({ items, listings }: { items: BoeItemRow[]; listings: 
                 Next
               </button>
               <span className="text-dim">
-                Showing {clampedPage * HISTORY_PAGE_SIZE + 1} to {clampedPage * HISTORY_PAGE_SIZE + historyRows.length} of{' '}
-                {sections.history.length}
+                Showing {clampedPage * HISTORY_PAGE_SIZE + 1} to {clampedPage * HISTORY_PAGE_SIZE + historyRows.length}{' '}
+                of {sections.history.length}
               </span>
             </div>
           )}
@@ -246,7 +255,13 @@ function itemCell(item: BoeItemRow) {
   );
 }
 
-const STATUS_LABEL: Record<string, string> = { found: 'Found', listed: 'Listed', sold: 'Sold', paid: 'Paid', retired: 'Retired' };
+const STATUS_LABEL: Record<string, string> = {
+  found: 'Found',
+  listed: 'Listed',
+  sold: 'Sold',
+  paid: 'Paid',
+  retired: 'Retired'
+};
 const STATUS_CLASS: Record<string, string> = {
   found: 'boe-status-open',
   listed: 'boe-status-open',
@@ -261,7 +276,9 @@ function statusBadge(item: BoeItemRow) {
   }
   return (
     <>
-      <span className={`boe-status ${STATUS_CLASS[item.status] ?? ''}`}>{STATUS_LABEL[item.status] ?? item.status}</span>
+      <span className={`boe-status ${STATUS_CLASS[item.status] ?? ''}`}>
+        {STATUS_LABEL[item.status] ?? item.status}
+      </span>
       {item.payout_donated && item.status !== 'paid' && item.status !== 'retired' && (
         <span className="text-dim boe-donating"> Donating</span>
       )}
@@ -392,7 +409,11 @@ function HistoryTable({
                   <div className="boe-actions">
                     {item.status === 'paid'
                       ? canSettleBoe(access, item.team_id) && (
-                          <button type="button" className="button" onClick={() => onAction({ type: 'undo-payout', item })}>
+                          <button
+                            type="button"
+                            className="button"
+                            onClick={() => onAction({ type: 'undo-payout', item })}
+                          >
                             Undo Payout
                           </button>
                         )
@@ -462,15 +483,13 @@ function SummaryStrip({
       {summary.byTeam.length >= 2 && (
         <div className="text-muted boe-team-credit">
           Found by team:{' '}
-          {summary.byTeam
-            .map((t) => `${teamName(t.teamId)} ${t.found} (${formatGold(t.gold)}g)`)
-            .join(' · ')}
+          {summary.byTeam.map((t) => `${teamName(t.teamId)} ${t.found} (${formatGold(t.gold)}g)`).join(' · ')}
         </div>
       )}
       {!manage && (
         <p className="text-muted boe-scope-note">
           {isRaiderView
-            ? "These are the BoEs reported under your character, plus anything you reported while signed in. Officers and BoE managers handle listing, sale and payout, and mail you your cut once the item sells."
+            ? 'These are the BoEs reported under your character, plus anything you reported while signed in. Officers and BoE managers handle listing, sale and payout, and mail you your cut once the item sells.'
             : 'You can settle payouts (Mark Paid, Donate to Guild, Undo Payout) on the finds of the teams you staff. Listing, sale, retiring and edits need the BoE manager grant, assigned by a site admin. The totals above cover your own teams; a BoE manager sees the whole guild.'}
         </p>
       )}
@@ -608,8 +627,9 @@ function SaleDialog({ item, items, onClose }: { item: BoeItemRow; items: BoeItem
       {warned && twin ? (
         <>
           <p role="alert">
-            An older {twin.item_name} on {twin.track || 'no track'} is still open: {twin.finder_name || 'unknown finder'},
-            reported {boeDate(twin.found_at)}. Cuts go to the first finder at the same rank. Record this sale anyway?
+            An older {twin.item_name} on {twin.track || 'no track'} is still open:{' '}
+            {twin.finder_name || 'unknown finder'}, reported {boeDate(twin.found_at)}. Cuts go to the first finder at
+            the same rank. Record this sale anyway?
           </p>
           {record.isError && (
             <p className="form-error" role="alert">
@@ -620,7 +640,12 @@ function SaleDialog({ item, items, onClose }: { item: BoeItemRow; items: BoeItem
             <button type="button" className="button" onClick={() => setWarned(false)} disabled={record.isPending}>
               Back
             </button>
-            <button type="button" className="button button-primary" disabled={record.isPending} onClick={() => submit(parsed!)}>
+            <button
+              type="button"
+              className="button button-primary"
+              disabled={record.isPending}
+              onClick={() => submit(parsed!)}
+            >
               {record.isPending ? 'Working…' : 'Record sale anyway'}
             </button>
           </div>
@@ -741,7 +766,13 @@ function EditDialog({ item, onClose }: { item: BoeItemRow; onClose: () => void }
           <label className="field-label" htmlFor={`${id}-note`}>
             Note (optional)
           </label>
-          <textarea id={`${id}-note`} className="textarea" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
+          <textarea
+            id={`${id}-note`}
+            className="textarea"
+            rows={2}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
         </div>
         {error && (
           <p className="form-error" role="alert">
