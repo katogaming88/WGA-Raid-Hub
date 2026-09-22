@@ -12,6 +12,25 @@ answers to.
 
 ---
 
+## [3.152.3] - 2026-09-22
+
+### Project
+
+- The new app's BoE Sales page grows the lifecycle view
+  ([#1305](https://github.com/katogaming88/WGA-Raid-Hub/issues/1305)), ported
+  from the current site's `js/boe-manage.js`: Open, Awaiting Payout and
+  History sections (History paginated 20 rows at a time) plus a summary strip
+  (guild income, outstanding payouts, donated total, per-team credit line),
+  rendered for anyone signed in beneath the report form. Role-gated actions
+  match the old site's split -- a raider sees their own rows read-only, a
+  team officer or leader can settle payouts (Mark Paid, Donate to Guild, Undo
+  Payout) on their own team's rows, and a BoE manager or site admin gets the
+  full set (Record Listing, Record Sale, Retire, Edit, Undo Sale, Un-retire).
+  Record Sale carries the first-come-first-served warning for an older open
+  find of the same item/track/rank, shown in a proper dialog instead of
+  `window.confirm()`. No backend changes: every lifecycle RPC and grant check
+  was already in place from #1304 and #770.
+
 ## [3.152.2] - 2026-09-22
 
 ### Project

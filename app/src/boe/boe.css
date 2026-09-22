@@ -1,11 +1,118 @@
-/* BoE sales (#1304): the report card. */
-
-.boe-page {
-  max-width: 520px;
-}
+/* BoE sales (#1304 report card, #1305 lifecycle view). */
 
 .boe-report-form {
+  max-width: 520px;
   padding: var(--space-4);
   display: flex;
   flex-direction: column;
+}
+
+.boe-lifecycle {
+  margin-top: var(--space-6);
+}
+
+.boe-section-heading {
+  font-size: var(--text-lg);
+  font-weight: 650;
+  margin: var(--space-5) 0 var(--space-2);
+}
+
+.boe-empty {
+  margin: 0;
+}
+
+.boe-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.boe-summary-line {
+  display: flex;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.boe-gold {
+  color: var(--warn);
+}
+
+.boe-team-credit,
+.boe-scope-note {
+  margin: 0;
+}
+
+.boe-table-wrap {
+  overflow-x: auto;
+}
+
+.boe-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.boe-table th {
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: var(--space-1) var(--space-2) var(--space-1) 0;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.boe-table td {
+  padding: var(--space-2) var(--space-2) var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.boe-badge {
+  margin-left: var(--space-1);
+}
+
+.boe-note {
+  font-size: var(--text-xs);
+}
+
+.boe-status {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: var(--text-xs);
+}
+
+.boe-status-open {
+  color: var(--warn);
+}
+
+.boe-status-good {
+  color: var(--good);
+}
+
+.boe-status-muted {
+  color: var(--text-muted);
+}
+
+.boe-status-bad {
+  color: var(--bad);
+}
+
+.boe-donating {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.boe-actions {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.boe-pager {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }

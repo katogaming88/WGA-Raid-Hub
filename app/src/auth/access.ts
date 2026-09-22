@@ -138,3 +138,14 @@ export function charactersOn(access: Access | null | undefined, teamId: number |
 export function hasAnyCharacter(access: Access): boolean {
   return access.teams.some((t) => t.characters.length > 0);
 }
+
+// Mirrors the server's can_settle_boe(p_team_id) exactly (#1305): a BoE
+// manager or site admin anywhere, or the officer/team_leader of that row's
+// own team. Settling (Mark Paid, Donate to Guild, Undo Payout) is open to
+// this wider group; every other BoE action stays behind 'manageBoe'.
+export function canSettleBoe(access: Access | null | undefined, teamId: number): boolean {
+  if (!access) return false;
+  return (
+    can(access, 'manageBoe') || teamRole(access, teamId) === 'officer' || teamRole(access, teamId) === 'team_leader'
+  );
+}
