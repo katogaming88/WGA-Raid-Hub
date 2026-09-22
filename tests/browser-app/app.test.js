@@ -414,7 +414,7 @@ const SIGNUP_BASE = {
   person: SIGNUP_PERSON,
   tables: { team_seasons: [{ season_code: 'MID3', signups_open: true, seasons: { starts_at: '2099-01-01' } }] }
 };
-const SIGNUP = { ...SIGNUP_BASE, sentinel: 'main:has(.signup-wizard)', rpc: { get_own_signup: [] } };
+const SIGNUP = { ...SIGNUP_BASE, sentinel: 'main:has(.signup-card)', rpc: { get_own_signup: [] } };
 const SIGNUP_SUMMARY = {
   ...SIGNUP_BASE,
   sentinel: 'main:has(.signup-summary)',
