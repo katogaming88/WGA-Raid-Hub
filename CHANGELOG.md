@@ -18,11 +18,11 @@ answers to.
 
 - The five BoE lifecycle RPCs (`boe_record_listing`, `boe_record_sale`,
   `boe_mark_paid`, `boe_retire`, `boe_revert`) write their own audit entry
-  inside their own transaction instead of relying on a separate client call;
-  `boe_revert` gets one it never had. A new `boe_edit_item()` RPC replaces
-  the plain-UPDATE edit path (#874) the same way. `write_audit_log()` drops
-  the `is_boe_manager()` OR #766 added, since the RPCs above no longer need
-  it and the OR let a BoE manager log any action on any team
+  inside their own transaction instead of relying on a separate client call.
+  A new `boe_edit_item()` RPC replaces the plain-UPDATE edit path (#874) the
+  same way. `write_audit_log()` drops the `is_boe_manager()` OR #766 added,
+  since the RPCs above no longer need it and the OR let a BoE manager log any
+  action on any team
   ([#770](https://github.com/katogaming88/WGA-Raid-Hub/issues/770)).
 
 ### Frontend

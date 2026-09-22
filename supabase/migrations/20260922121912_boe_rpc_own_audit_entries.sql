@@ -1,5 +1,5 @@
 -- #770: the five BoE lifecycle RPCs write their own audit_log entry inside
--- their own transaction, boe_revert gets an entry it never had, and a new
+-- their own transaction instead of through a separate client call, and a new
 -- boe_edit_item RPC replaces the raw client UPDATE saveBoeEdit() used so it
 -- can do the same. write_audit_log()'s is_boe_manager() OR then comes off.
 --
@@ -29,11 +29,18 @@
 
 -- Internal helper, not a public RPC: mirrors formatGold() in
 -- js/boe-manage.js so the entries below read exactly like the client-built
--- ones did. FM strips the padding to_char would otherwise leave.
+-- ones did. FM strips the padding to_char would otherwise leave. `stable`,
+-- not `immutable`: to_char(bigint, text)'s output depends on lc_numeric, so
+-- Postgres marks the whole to_char family stable and a wrapper cannot claim
+-- more than its ingredients. Seven comma groups (21 nines) rather than five,
+-- so the mask does not run out before bigint's own range does (max
+-- 9,223,372,036,854,775,807, 19 digits) -- to_char renders '#'*19 past the
+-- mask's width instead of the number, and a mistyped 16+ digit sale price is
+-- the one input here big enough to reach a five-group mask's ceiling.
 create or replace function public.format_boe_gold(n bigint) returns text
-language sql immutable
+language sql stable
 set search_path = public
-as $$ select trim(to_char(n, 'FM999,999,999,999,999')); $$;
+as $$ select trim(to_char(n, 'FM999,999,999,999,999,999,999')); $$;
 
 revoke all on function public.format_boe_gold(bigint) from public;
 

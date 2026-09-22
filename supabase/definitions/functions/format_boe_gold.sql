@@ -5,6 +5,6 @@
 CREATE OR REPLACE FUNCTION public.format_boe_gold(n bigint)
  RETURNS text
  LANGUAGE sql
- IMMUTABLE
+ STABLE
  SET search_path TO 'public'
-AS $function$ select trim(to_char(n, 'FM999,999,999,999,999')); $function$;
+AS $function$ select trim(to_char(n, 'FM999,999,999,999,999,999,999')); $function$;

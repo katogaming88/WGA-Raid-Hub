@@ -1088,6 +1088,18 @@ describe('the lifecycle RPCs write their own audit entry (#770)', () => {
     });
   });
 
+  // format_boe_gold's mask must not run out before bigint's own range does:
+  // a five-group mask (15 digits) turns a 16-digit price into '#'*16 instead
+  // of the number once to_char runs past its width.
+  it('boe_record_listing formats a price past a five-group mask', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await grantRaider(q);
+      await asUser(RAIDER_T1, 'select public.boe_record_listing(1, 1234567890123456)');
+      const row = await lastAudit(q, 1);
+      expect(row.detail).toBe('Seed Test Staff listed for 1,234,567,890,123,456g');
+    });
+  });
+
   it('boe_record_sale', async () => {
     await withTxn(async ({ q, asUser }) => {
       await grantRaider(q);
@@ -1148,7 +1160,8 @@ describe('the lifecycle RPCs write their own audit entry (#770)', () => {
     });
   });
 
-  // boe_revert had no client-side entry at all before #770.
+  // boe_revert has written a client-side entry since #806; this pins the same
+  // wording landing server-side instead, inside the mutation's transaction.
   it('boe_revert', async () => {
     await withTxn(async ({ q, asUser }) => {
       await grantRaider(q);
@@ -1174,13 +1187,15 @@ describe('boe_edit_item writes its own audit entry and needs the manager grant (
       await grantRaider(q);
       await asUser(
         RAIDER_T1,
-        "select public.boe_edit_item(1, 'Corrected Staff', 'Myth', 'checked with the bank', 1, '2/6')"
+        "select public.boe_edit_item(1, 'Corrected Staff', 'Myth', 'checked with the bank', 3, '2/6')"
       );
-      const row = (await q('select item_name, track, note, upgrade_rank from public.boe_items where id = 1')).rows[0];
+      const row = (await q('select item_name, track, note, item_id, upgrade_rank from public.boe_items where id = 1'))
+        .rows[0];
       expect(row).toMatchObject({
         item_name: 'Corrected Staff',
         track: 'Myth',
         note: 'checked with the bank',
+        item_id: 3,
         upgrade_rank: '2/6'
       });
       const audit = (
@@ -1189,9 +1204,12 @@ describe('boe_edit_item writes its own audit entry and needs the manager grant (
         )
       ).rows[0];
       expect(audit.actor_id).toBe(RAIDER_T1);
+      // The catalog-link clause is the only one that renders unquoted
+      // (mirroring the number branch of the client's quote()); seed item 1
+      // starts with item_id 1, so moving it to 3 exercises that branch too.
       expect(audit.detail).toBe(
         'item renamed from "Seed Test Staff" to "Corrected Staff"; track was "Hero", now "Myth"; ' +
-          'note was (none), now "checked with the bank"; rank was (none), now "2/6"'
+          'note was (none), now "checked with the bank"; catalog link was 1, now 3; rank was (none), now "2/6"'
       );
     });
   });
