@@ -12,6 +12,18 @@ answers to.
 
 ---
 
+## [3.152.5] - 2026-09-22
+
+### Backend
+
+- Per-team invite links: a `team_invite_links` row per team (code, expiry),
+  `team_invite_link_reset()` for officers to generate or reset one, and a
+  public `team_invite_link_resolve()` for the future `/join/<code>` page to
+  look up a code before sign-in
+  ([#1264](https://github.com/katogaming88/WGA-Raid-Hub/issues/1264)). The
+  officer settings panel, the join page itself, and the character-limit flag
+  are separate follow-up PRs.
+
 ## [3.152.4] - 2026-09-22
 
 ### Project

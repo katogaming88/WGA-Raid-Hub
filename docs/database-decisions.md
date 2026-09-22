@@ -2094,3 +2094,21 @@ A raider who did not see the confirmation clicked Mark Received again and both r
 **A row lock rather than a partial unique index.** The character lookup in both functions takes the `players` row `for update` (the lock `delete_self_received_request()` and `add_signup_to_roster()` already use), so two submissions for one character serialise and the second's check runs on a fresh snapshot that holds the first's committed row. A partial unique index over the live statuses would say the same thing, and `main_swap_requests` has one, but prod still carries duplicate pairs the index would refuse to build over, and deleting them belongs to the audit-logged Delete rather than a migration. The index is the follow-up shape once the table reads clean; the existing duplicates are left where they are.
 
 [Full discussion -> #757](https://github.com/katogaming88/WGA-Raid-Hub/issues/757).
+
+## #1264 -- team invite links: schema, reset, resolve
+
+Shipped: 20260922152211_team_invite_links.sql
+
+First slice of #1264 (join a team, and its guild, straight from a link): the code, its expiry, and reset. The officer panel that surfaces it, the `/join/<code>` page that lets someone act on it, and everything past the character limit and the guild-only front page stay open (#1259, #1226 are both unbuilt, so the over-limit flag and the teamless/front-page states aren't buildable yet either).
+
+**One row per team, not a link history.** `team_invite_links` is keyed on `team_id`: generating or resetting a link is `INSERT ... ON CONFLICT (team_id) DO UPDATE`, which overwrites the code and expiry in place. The issue's decided shape ("officers can reset it, which stops the old one working") never asks for more than one live link per team, so a log table of every code ever issued would be tracking history nobody reads.
+
+**No public read on the table itself.** Every other team-scoped lookup table in this schema (`teams`, `team_settings`, `team_seasons`) is `Public SELECT`, but a code is a bearer credential, not a lookup value -- reading the table would let anyone enumerate every team's current invite code. The officer-only `SELECT` policy (officer/team_leader via `my_officer_team_ids()`, `is_guild_officer()`, `is_site_admin()`) is for team settings to display and copy the link; the public `/join/<code>` page instead calls `team_invite_link_resolve(code)`, a `SECURITY DEFINER` function grantable to `anon` that returns the team and guild a live code belongs to and nothing else -- no code enumeration, no table scan.
+
+**No table INSERT/UPDATE/DELETE policy.** `team_invite_link_reset()` is the only write path (same officer/team_leader/guild-officer/site-admin gate as the read policy), so a code is always the concatenation of the team's slug and `new_url_code()` (added by #1114) rather than something a client could set to an arbitrary or guessable value.
+
+**Expiry is a plain nullable timestamp, not a duration enum.** The issue's four options (1/7/30 days, or none) are a UI concern -- the officer panel computes `now() + interval` and passes the resulting timestamp (or null) to `team_invite_link_reset()`. Storing a duration string in the database would mean re-deriving "still active" against whatever moment the link was last reset from, for no reader that needs it.
+
+**Deferred to the next PR:** everything that turns a resolved code into guild + roster membership -- `/join/<code>`'s Battle.net sign-in and character pick, and the actual `team_members`/`players` writes. There is no `guild_members` table to write to separately: today, joining a team's roster (a `team_members` row) already is the guild membership, since every team belongs to exactly one guild (`teams.guild_id`, #1114) and #1045's multi-guild-per-person question is still open.
+
+[Full discussion -> #1264](https://github.com/katogaming88/WGA-Raid-Hub/issues/1264).

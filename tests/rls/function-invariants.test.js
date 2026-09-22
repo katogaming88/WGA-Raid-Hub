@@ -51,7 +51,8 @@ const ANON_DEFINER_ALLOWLIST = [
   'submit_bis_link',
   'submit_boe_found',
   'submit_mplus_exclusion',
-  'submit_self_received'
+  'submit_self_received',
+  'team_invite_link_resolve'
 ];
 
 // Comments are stripped before the body is searched: a function that

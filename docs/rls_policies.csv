@@ -140,6 +140,8 @@ streamers,Officers write streamers,public,ALL,PERMISSIVE,((team_id = ANY (( SELE
 streamers,Public read streamers,public,SELECT,PERMISSIVE,true,
 streamers,Raiders manage own streamer,public,ALL,PERMISSIVE,(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])),(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))
 team_discord_config,Claude readers read team_discord_config,claude_readers,SELECT,PERMISSIVE,true,
+team_invite_links,Claude readers read team_invite_links,claude_readers,SELECT,PERMISSIVE,true,
+team_invite_links,Officers read team_invite_links,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin) OR ( SELECT is_guild_officer() AS is_guild_officer)),
 team_lineup_settings,Claude readers read team_lineup_settings,claude_readers,SELECT,PERMISSIVE,true,
 team_lineup_settings,Public read team_lineup_settings,public,SELECT,PERMISSIVE,true,
 team_members,Claude readers read team_members,claude_readers,SELECT,PERMISSIVE,true,
