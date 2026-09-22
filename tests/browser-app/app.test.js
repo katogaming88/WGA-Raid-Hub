@@ -360,6 +360,27 @@ const TEAM_OFFICERS = {
   tables: { team_settings: [{ team_id: 1, bios: OFFICER_BIOS }] }
 };
 
+// History (#1102): a season with a roster to show behind the toggle.
+const HISTORY_ENTRY = {
+  name: 'Season One',
+  raids: [{ bosses: [{ name: 'Warden of Ash', mythicDate: '2026-08-01', mythicPulls: 5 }] }],
+  roster: [
+    {
+      nameRealm: 'Aurelith-Illidan',
+      role: 'Tank',
+      isTrial: false,
+      isBench: false,
+      joinDate: '2026-01-01',
+      attendance: '90%'
+    }
+  ]
+};
+const HISTORY = {
+  path: '/g/wga/t/phoenix/history',
+  sentinel: 'main:has(.history-season)',
+  tables: { team_settings: [{ team_id: 1, history: [HISTORY_ENTRY] }] }
+};
+
 const STATES = [
   { label: 'help', ...HELP },
   { label: 'help, light', ...HELP, colorScheme: 'light' },
@@ -368,6 +389,8 @@ const STATES = [
   { label: 'guild officers', ...GUILD_OFFICERS },
   { label: 'guild officers, light', ...GUILD_OFFICERS, colorScheme: 'light' },
   { label: 'team officers', ...TEAM_OFFICERS },
+  { label: 'history', ...HISTORY },
+  { label: 'history, light', ...HISTORY, colorScheme: 'light' },
   { label: 'news', ...NEWS },
   { label: 'news, light', ...NEWS, colorScheme: 'light' },
   { label: 'streams', ...STREAMS_PAGE },

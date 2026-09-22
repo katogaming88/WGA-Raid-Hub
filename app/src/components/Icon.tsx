@@ -27,7 +27,8 @@ const PATHS = {
   shield: '<path d="M8 2 13 4v4c0 3.6-2.2 6-5 7-2.8-1-5-3.4-5-7V4z"/>',
   info: '<circle cx="8" cy="8" r="5.5"/><path d="M8 7.2v3.6"/><circle cx="8" cy="5.1" r="0.9" fill="currentColor" stroke="none"/>',
   help: '<circle cx="8" cy="8" r="5.5"/><path d="M6.1 6.3a2 2 0 1 1 2.9 1.8c-.7.4-1 .8-1 1.5"/><circle cx="8" cy="11.2" r="0.9" fill="currentColor" stroke="none"/>',
-  mail: '<rect x="2" y="4" width="12" height="8.5" rx="1.2"/><path d="M2.5 4.8 8 9l5.5-4.2"/>'
+  mail: '<rect x="2" y="4" width="12" height="8.5" rx="1.2"/><path d="M2.5 4.8 8 9l5.5-4.2"/>',
+  clock: '<circle cx="8" cy="8" r="5.5"/><path d="M8 5v3.2l2.4 1.6"/>'
 } as const;
 
 export type IconName = keyof typeof PATHS;

@@ -34,6 +34,7 @@ export function navGroups(
         { label: 'Roster', icon: 'roster', to: `${base.team}/roster` },
         { label: 'Calendar', icon: 'calendar', to: `${base.team}/calendar` },
         { label: 'Loot history', icon: 'loot', to: `${base.team}/loot` },
+        { label: 'History', icon: 'clock', to: `${base.team}/history` },
         { label: 'Team officers', icon: 'shield', to: `${base.team}/officers` }
       ]
     },
@@ -75,6 +76,7 @@ export const TEAM_PAGES: Record<string, string> = {
   'officer/attendance': 'Attendance',
   'officer/groups': 'Boss groups',
   'officer/season': 'Season settings',
+  history: 'History',
   officers: 'Team officers'
 };
 

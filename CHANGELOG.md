@@ -12,6 +12,28 @@ answers to.
 
 ---
 
+## [3.148.8] - 2026-09-21
+
+### Frontend
+
+- The new app's **History** page
+  ([#1102](https://github.com/katogaming88/WGA-Raid-Hub/issues/1102)), at
+  `/g/wga/t/phoenix/history`: past seasons' progression and rosters, newest
+  first. Each season shows how many bosses are down, the last kill date, and
+  the boss the team was working on when it ended, the same recap the current
+  site's History tab shows. The roster snapshot behind "View roster" is new
+  here: on the current site it was officer-only, on Season Settings; a raider
+  can now see it too.
+
+### Project
+
+- Fixed five rows in `docs/revamp-time-log.md` that showed fabricated
+  clock-time ranges or an unlabeled "evening, est." while their own notes
+  admitted the times were estimated. Replaced with real PR open-to-merge
+  windows from `gh pr view --json createdAt,mergedAt` where a PR exists, and
+  "not tracked" where none does, rather than a guess dressed up as a
+  measurement.
+
 ## [3.148.7] - 2026-09-21
 
 ### Project
@@ -437,8 +459,7 @@ answers to.
   [#1115](https://github.com/katogaming88/WGA-Raid-Hub/issues/1115). 27 files
   converted; `snapshot-personas`, which empties every account to model a fresh
   restore, runs after the others on its own. Measured cold on a 16-core
-  machine: five runs in a row with no deadlock, from five in a row with 12 or
-  13. Nothing on the site changes
+  machine: five runs in a row with no deadlock, from five in a row with 12 or 13. Nothing on the site changes
 
 ## [3.140.2] - 2026-09-18
 
