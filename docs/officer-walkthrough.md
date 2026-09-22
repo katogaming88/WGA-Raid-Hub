@@ -31,9 +31,9 @@ team is first stood up (or whenever the season's progression/rosters need redefi
   existing roster player, a one-time copy, not a live link), pronouns, title, an optional photo
   path under `assets/officers/`, and a short bio. Save Bios writes the whole list back.
 
-Also worth setting early, even though they're covered in their own sections below: **Season
-Name** and **Season Start Date** (Season Settings -> Settings) before the first loot import or
-attendance refresh.
+Also worth setting early, even though it's covered in its own section below: the **Season
+Start Date** (Season Settings -> Settings), which scopes the attendance percentages. The sync
+itself looks for raid nights from the day the tier went live, whatever the date says.
 
 ---
 
@@ -90,8 +90,8 @@ directly once they've seen it walked through once.
    Loot tab section below).
 6. Nothing special needed for Attendance -- there's no rollover-specific action here. Once the
    new season's first raid night happens, the normal after-raid-night **Attendance -> Refresh
-   from WCL** (see the Weekly Workflow above) picks it up like any other night, since it's
-   already scoped to raids on/after the new Season Start Date. Until then, players will show
+   from WCL** (see the Weekly Workflow above) picks it up like any other night, since it looks
+   for reports from the day the new tier went live. Until then, players will show
    the roster's default "no data yet" 100% for the new season, which is expected, not a bug.
 7. M+ exclusions are already reset team-wide by step 2's Close Season. **M+ Exclusions ->
    Clear All Exclusions** is still useful mid-season if you need to reset exclusions without a

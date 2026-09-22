@@ -209,7 +209,7 @@ Retired by #938's fourth pull request (`20260921201717_retire_season_name.sql`, 
 ### `seasonStart`, `seasonEnd`
 
 - **Writers.** `saveSeasonStart()`, `saveSeasonEnd()` (`js/tabs/tab-season.js`); until #938's third pull request `archive_current_season()` blanked both and `unarchive_season()` restored them; `close_season()` leaves them alone.
-- **Readers.** `seasonHasStarted()` and `joinedAfterSeasonStart()` (`js/common.js`) read the start; `getSeasonDateRange()` reads both for the active season's window; `buildSeasonTab()` and `loadAdminProperties()` display them. `refreshAttendance` in `wcl-sync` (`supabase/functions/wcl-sync/handler.ts`) fetches reports from the start date. The app's `useCurrentSeason()` reads both.
+- **Readers.** `seasonHasStarted()` and `joinedAfterSeasonStart()` (`js/common.js`) read the start; `getSeasonDateRange()` reads both for the active season's window; `buildSeasonTab()` and `loadAdminProperties()` display them. `refreshAttendance` in `wcl-sync` (`supabase/functions/wcl-sync/handler.ts`) fetched reports from the start date until #1269's second pull request; since then it fetches from the tier's `starts_at`, read through `current_season()`. The app's `useCurrentSeason()` reads both.
 - **Meaning.** Cycle. **Next tier, nothing changed.** Stale dates until an officer edits them; attendance keeps counting from the old start.
 
 ### `seasonHistory`
