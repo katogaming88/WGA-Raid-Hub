@@ -113,7 +113,7 @@ describe('fetchSupabaseSettings', () => {
 describe('applyTeamSettingsToData', () => {
   it('overlays every config key onto DATA', () => {
     const sandbox = loadCommonJs();
-    const data = { seasonStart: 'Old', extraField: 'untouched' };
+    const data = { trialWeeks: 9, extraField: 'untouched' };
     sandbox.applyTeamSettingsToData(data, {
       seasonName: 'Left behind',
       seasonStart: '2026-01-01',
@@ -129,8 +129,6 @@ describe('applyTeamSettingsToData', () => {
       activeSignupSeason: 'S2'
     });
     expect(data).toMatchObject({
-      seasonStart: '2026-01-01',
-      seasonEnd: '',
       seasonHistory: [{ name: 'Prior' }],
       raidProgression: [{ name: 'Raid' }],
       trialWeeks: 2,
@@ -141,28 +139,31 @@ describe('applyTeamSettingsToData', () => {
       extraField: 'untouched'
     });
     // The two switches live on team_seasons since #939, the signup season
-    // is that table's open rows since #934, and the season a team is on is
-    // the tier since #938; a key left behind in config is not a setting any
-    // more and is not copied.
+    // is that table's open rows since #934, the season a team is on is the
+    // tier since #938, and its start is the team's first raid night since
+    // #1269; a key left behind in config is not a setting any more and is
+    // not copied.
     expect(data.signupsOpen).toBeUndefined();
     expect(data.signupSeason).toBeUndefined();
     expect(data.seasonName).toBeUndefined();
+    expect(data.seasonStart).toBeUndefined();
+    expect(data.seasonEnd).toBeUndefined();
   });
 
   it('leaves DATA fields untouched when config is null (falls back to Apps Script values)', () => {
     const sandbox = loadCommonJs();
-    const data = { seasonStart: 'From GAS', signupsOpen: true };
+    const data = { trialWeeks: 'From GAS', signupsOpen: true };
     sandbox.applyTeamSettingsToData(data, null);
-    expect(data).toEqual({ seasonStart: 'From GAS', signupsOpen: true });
+    expect(data).toEqual({ trialWeeks: 'From GAS', signupsOpen: true });
   });
 
   it('only overlays keys actually present in a partial config, keeping the rest from GAS', () => {
     const sandbox = loadCommonJs();
-    const data = { seasonEnd: 'From GAS', seasonStart: '2026-01-01', signupsOpen: true };
-    sandbox.applyTeamSettingsToData(data, { seasonEnd: 'From Supabase' });
+    const data = { trialAttend: 'From GAS', trialWeeks: 4, signupsOpen: true };
+    sandbox.applyTeamSettingsToData(data, { trialAttend: 'From Supabase' });
     expect(data).toEqual({
-      seasonEnd: 'From Supabase',
-      seasonStart: '2026-01-01',
+      trialAttend: 'From Supabase',
+      trialWeeks: 4,
       signupsOpen: true,
       features: {},
       externalLinks: {},

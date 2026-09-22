@@ -37,11 +37,12 @@ const TIERS = [
   { code: 'MID0', display_name: 'Midnight Season 0', starts_at: '2025-10-01', ends_at: '2026-03-16' }
 ];
 
-function makeSandbox({ saveTeamSettingImpl, rpcResult, els = {}, data = {}, attendance = {} } = {}) {
+function makeSandbox({ saveTeamSettingImpl, rpcResult, seasonStartResult, els = {}, data = {}, attendance = {} } = {}) {
   var saveTeamSettingCalls = [];
   var auditLogCalls = [];
   var rpcCalls = [];
   var rangesAsked = [];
+  var rangesUsed = [];
 
   var sandbox = {
     console,
@@ -52,6 +53,7 @@ function makeSandbox({ saveTeamSettingImpl, rpcResult, els = {}, data = {}, atte
     ),
     getEligibleAttendanceRecs: (firstName, range) => {
       if (range && range.code) rangesAsked.push(range.code);
+      if (range) rangesUsed.push(range);
       return attendance === null ? null : attendance[firstName] || [];
     },
     // The seasons helpers live in js/common.js (#938); stubbed over the
@@ -97,8 +99,13 @@ function makeSandbox({ saveTeamSettingImpl, rpcResult, els = {}, data = {}, atte
       return Promise.resolve();
     },
     supabaseClient: {
+      // Two calls on a close since #1269: the tier's first raid night for
+      // this team, then the close itself.
       rpc: function (name, params) {
         rpcCalls.push({ name, params });
+        if (name === 'team_season_start') {
+          return Promise.resolve(seasonStartResult || { data: null, error: null });
+        }
         return Promise.resolve(rpcResult);
       }
     },
@@ -113,7 +120,7 @@ function makeSandbox({ saveTeamSettingImpl, rpcResult, els = {}, data = {}, atte
   };
   vm.createContext(sandbox);
   vm.runInContext(SEASON_JS, sandbox, { filename: 'tab-season.js' });
-  return { sandbox, saveTeamSettingCalls, auditLogCalls, rpcCalls, rangesAsked, els };
+  return { sandbox, saveTeamSettingCalls, auditLogCalls, rpcCalls, rangesAsked, rangesUsed, els };
 }
 
 describe('saveSeasonView (#549)', () => {
@@ -280,12 +287,13 @@ describe('executeCloseSeason (#938)', () => {
     sandbox.executeCloseSeason();
     await flush();
 
-    expect(rpcCalls).toHaveLength(1);
-    expect(rpcCalls[0].name).toBe('close_season');
-    expect(rpcCalls[0].params.p_team_id).toBe(1);
+    // The tier's first raid night for this team, then the close (#1269).
+    expect(rpcCalls.map((c) => c.name)).toEqual(['team_season_start', 'close_season']);
+    expect(rpcCalls[0].params).toEqual({ p_team_id: 1, p_season: 'MID1' });
+    expect(rpcCalls[1].params.p_team_id).toBe(1);
     // With no pick, the newest closable tier (MID1 over MID0).
-    expect(rpcCalls[0].params.p_season).toBe('MID1');
-    expect(rpcCalls[0].params.p_roster_snapshot).toEqual([
+    expect(rpcCalls[1].params.p_season).toBe('MID1');
+    expect(rpcCalls[1].params.p_roster_snapshot).toEqual([
       {
         playerId: 42,
         nameRealm: 'Kato-Illidan',
@@ -318,7 +326,7 @@ describe('executeCloseSeason (#938)', () => {
     sandbox.executeCloseSeason();
     await flush();
 
-    expect(rpcCalls[0].params.p_season).toBe('MID0');
+    expect(rpcCalls.map((c) => c.params.p_season)).toEqual(['MID0', 'MID0']);
   });
 
   // A player with no eligible nights must not inherit the live roster's
@@ -341,8 +349,8 @@ describe('executeCloseSeason (#938)', () => {
     sandbox.executeCloseSeason();
     await flush();
 
-    expect(rpcCalls).toHaveLength(1);
-    expect(rpcCalls[0].params.p_roster_snapshot[0].attendance).toBe('');
+    expect(rpcCalls).toHaveLength(2);
+    expect(rpcCalls[1].params.p_roster_snapshot[0].attendance).toBe('');
   });
 
   // The snapshot's only player key used to be nameRealm, so a rename after
@@ -364,8 +372,56 @@ describe('executeCloseSeason (#938)', () => {
     sandbox.executeCloseSeason();
     await flush();
 
-    expect(rpcCalls[0].params.p_roster_snapshot[0].playerId).toBe(42);
-    expect(rpcCalls[0].params.p_roster_snapshot[0].nameRealm).toBe('Kato-Illidan');
+    expect(rpcCalls[1].params.p_roster_snapshot[0].playerId).toBe(42);
+    expect(rpcCalls[1].params.p_roster_snapshot[0].nameRealm).toBe('Kato-Illidan');
+  });
+
+  // The window the books are counted over is the one the database writes as
+  // the entry's start (#1269): the team's first raid night in the closing
+  // tier, not the tier's own start. A night before it belongs to no season
+  // this team raided and must not count against anybody.
+  it("counts the snapshot over the team's first raid night in the closing tier", async () => {
+    const els = closeEls();
+    const { sandbox, rpcCalls, rangesUsed } = makeSandbox({
+      els,
+      rpcResult: { data: { seasonHistory: [] }, error: null },
+      seasonStartResult: { data: '2026-03-24', error: null },
+      attendance: { Kato: [{ weight: 1 }] },
+      data: {
+        seasonHistory: [],
+        roster: [{ id: 42, nameRealm: 'Kato-Illidan', firstName: 'Kato', role: 'Melee', joinDate: '2026-01-01' }]
+      }
+    });
+
+    sandbox.executeCloseSeason();
+    await flush();
+
+    expect(rpcCalls[0]).toEqual({ name: 'team_season_start', params: { p_team_id: 1, p_season: 'MID1' } });
+    expect(rangesUsed).toEqual([{ code: 'MID1', start: '2026-03-24', end: null }]);
+    expect(rpcCalls[1].params.p_roster_snapshot[0].attendance).toBe('100.0%');
+  });
+
+  // A read that fails leaves the books unclosed rather than freezing a
+  // window nobody derived.
+  it('closes nothing when the first raid night cannot be read', async () => {
+    const els = closeEls();
+    const { sandbox, rpcCalls } = makeSandbox({
+      els,
+      rpcResult: { data: { seasonHistory: [] }, error: null },
+      seasonStartResult: { data: null, error: { message: 'permission denied' } },
+      attendance: { Kato: [{ weight: 1 }] },
+      data: {
+        seasonHistory: [],
+        roster: [{ id: 42, nameRealm: 'Kato-Illidan', firstName: 'Kato', role: 'Melee', joinDate: '2026-01-01' }]
+      }
+    });
+
+    sandbox.executeCloseSeason();
+    await flush();
+
+    expect(rpcCalls.map((c) => c.name)).toEqual(['team_season_start']);
+    expect(els.seasonArchiveStatus.textContent).toMatch(/could not close/i);
+    expect(els.seasonArchiveExecBtn.disabled).toBe(false);
   });
 
   // Closing is one-way, so an unknown attendance value must stop it rather
