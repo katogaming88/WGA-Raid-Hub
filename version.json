@@ -1,5 +1,5 @@
 {
-  "version": "3.151.0",
+  "version": "3.151.1",
   "pieces": {
     "frontend": "3.150.0",
     "db": "3.151.0",
@@ -15,7 +15,7 @@
       "twitch-live-check": "3.112.13",
       "upload-bio-photo": "3.112.13",
       "wcl-progression-sync": "3.145.0",
-      "wcl-sync": "3.112.13"
+      "wcl-sync": "3.151.1"
     }
   }
 }
