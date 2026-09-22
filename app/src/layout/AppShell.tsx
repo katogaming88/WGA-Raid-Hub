@@ -213,8 +213,9 @@ export function AppShell() {
 
         <AccountPanel teamId={currentTeam?.id ?? null} />
 
+        {/* Help moved into the sidebar's Site group (#1102); this is the one
+            link that stays outside the page list. */}
         <div className="sidebar-links">
-          <NavLink to={`/g/${guildKey}/help`}>Help</NavLink>
           <a href={SUPPORT_DISCORD_URL} target="_blank" rel="noopener noreferrer">
             Support Discord<span className="visually-hidden"> (opens in a new tab)</span>
           </a>

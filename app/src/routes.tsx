@@ -10,6 +10,9 @@ import { GuildHomePage } from './guild/GuildHomePage';
 import { NewsPage } from './news/NewsPage';
 import { StreamsPage } from './streams/StreamsPage';
 import { HelpPage } from './help/HelpPage';
+import { AboutPage } from './about/AboutPage';
+import { GuildOfficersPage } from './officers/GuildOfficersPage';
+import { TeamOfficersPage } from './officers/TeamOfficersPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { RequireAbility } from './auth/RequireAbility';
@@ -24,13 +27,16 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   roster: <RosterPage />,
   calendar: <CalendarPage />,
   me: <MyProfilePage />,
-  'officer/groups': <BossGroupsPage />
+  'officer/groups': <BossGroupsPage />,
+  officers: <TeamOfficersPage />
 };
 
 // Guild pages rebuilt so far (#1102), beside Guild home itself.
 const BUILT_GUILD_PAGES: Record<string, ReactElement> = {
   news: <NewsPage />,
   streams: <StreamsPage />,
+  officers: <GuildOfficersPage />,
+  about: <AboutPage />,
   help: <HelpPage />
 };
 

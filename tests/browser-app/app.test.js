@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { AxeBuilder } from '@axe-core/playwright';
 import { launchBrowser, openApp, startApp, storedSession, NARROW } from './harness.js';
 import { GUILD_TABLES, GUILD_TEAMS, WAITING } from './guild-fixtures.js';
+import { OFFICER_BIOS } from '../behavior/guild.js';
 import { ENTRIES as NEWS_ENTRIES } from '../behavior/news.js';
 import { SCENARIO, SIGNUP_SEASON_APP_ROW } from '../behavior/roster.js';
 import {
@@ -343,10 +344,30 @@ const STREAMS_PAGE = {
 };
 
 const HELP = { path: '/g/wga/help', sentinel: 'main:has(.help-card)' };
+const ABOUT = { path: '/g/wga/about', sentinel: 'main:has(.about-card)' };
+
+// Guild officers and Team officers (#1102): the same OFFICER_BIOS fixture
+// Guild home's compact list uses, which carries both a full card (photo,
+// pronouns, class badge, bio text) and a bare one (initials only, no extras).
+const GUILD_OFFICERS = {
+  path: '/g/wga/officers',
+  sentinel: 'main:has(.bio-card)',
+  tables: { site_settings: [{ guild_officer_bios: OFFICER_BIOS }] }
+};
+const TEAM_OFFICERS = {
+  path: '/g/wga/t/phoenix/officers',
+  sentinel: 'main:has(.bio-card)',
+  tables: { team_settings: [{ team_id: 1, bios: OFFICER_BIOS }] }
+};
 
 const STATES = [
   { label: 'help', ...HELP },
   { label: 'help, light', ...HELP, colorScheme: 'light' },
+  { label: 'about', ...ABOUT },
+  { label: 'about, light', ...ABOUT, colorScheme: 'light' },
+  { label: 'guild officers', ...GUILD_OFFICERS },
+  { label: 'guild officers, light', ...GUILD_OFFICERS, colorScheme: 'light' },
+  { label: 'team officers', ...TEAM_OFFICERS },
   { label: 'news', ...NEWS },
   { label: 'news, light', ...NEWS, colorScheme: 'light' },
   { label: 'streams', ...STREAMS_PAGE },

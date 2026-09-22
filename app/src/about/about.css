@@ -1,0 +1,13 @@
+/* About (#1102): two plain-text cards. */
+
+.about-page {
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.about-card p {
+  margin: 0;
+  line-height: 1.6;
+}

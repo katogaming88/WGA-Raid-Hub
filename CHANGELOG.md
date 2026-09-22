@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.148.6] - 2026-09-21
+
+### Project
+
+- The new app's sidebar splits Guild and Team officer bios out of the About
+  page into their own pages, and moves About, Help and Contact into a new
+  Site group at the bottom of the sidebar
+  ([#1102](https://github.com/katogaming88/WGA-Raid-Hub/issues/1102)).
+  **Guild officers** (under Guild) and **Team officers** (under Team) show
+  the full bio card the current site's officer editor writes: photo,
+  pronouns, character name, title, class and spec, and the bio text. **About**
+  carries the current site's "What is this?" and "About Kat" text, now
+  linking the support Discord instead of a Contact page, which the new app
+  does not build: it would only duplicate the support Discord. Help keeps its
+  place in the Site group.
+
 ## [3.148.5] - 2026-09-21
 
 ### Project

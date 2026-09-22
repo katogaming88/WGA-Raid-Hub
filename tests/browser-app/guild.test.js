@@ -259,7 +259,7 @@ describe('Guild home (new app), other states', () => {
       // The sidebar keeps the officer's tools for the team its links go to,
       // and its groups stay in one order on a team page too (#1228).
       const headings = await page.locator('.nav-heading').allTextContents();
-      expect(headings).toEqual(['Guild', 'You', 'Team', 'Officer']);
+      expect(headings).toEqual(['Guild', 'You', 'Team', 'Officer', 'Site']);
       await page.locator('#sidebar').getByRole('link', { name: 'Calendar' }).click();
       await page.getByRole('heading', { name: 'Calendar', level: 1 }).waitFor();
       expect(await page.locator('.nav-heading').allTextContents()).toEqual(headings);
