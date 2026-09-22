@@ -223,6 +223,39 @@ describe('closableSeasonCodes and renderCloseSeasonControl (#938)', () => {
     expect(els.closeSeasonNote.textContent).toBe('');
   });
 
+  it('closes an open confirm when the select changes, so Yes, Close acts on the tier the confirm named', () => {
+    const els = {
+      closeSeasonSelect: makeEl({ value: 'MID1' }),
+      closeSeasonBtn: makeEl(),
+      closeSeasonNote: makeEl(),
+      seasonArchiveConfirm: makeEl(),
+      seasonArchiveConfirmMsg: makeEl(),
+      seasonArchiveExecBtn: makeEl()
+    };
+    const { sandbox } = makeSandbox({ els, data: { seasonHistory: [] } });
+    sandbox.renderCloseSeasonControl();
+    sandbox.confirmCloseSeason();
+    expect(els.seasonArchiveConfirm.style.display).toBe('');
+    expect(els.seasonArchiveConfirmMsg.textContent).toContain('"Midnight Season 1"');
+
+    els.closeSeasonSelect.value = 'MID0';
+    sandbox.renderCloseSeasonControl();
+    expect(els.seasonArchiveConfirm.style.display).toBe('none');
+  });
+
+  it('offers the WCL baseline row on the tier that started last, whatever order the books were closed in', () => {
+    const { sandbox } = makeSandbox();
+    const history = [
+      { code: 'MID1', name: 'Midnight Season 1', start: '2026-03-17' },
+      { code: 'MID0', name: 'Midnight Season 0', start: '2025-10-01' }
+    ];
+    expect(sandbox._newestHistoryIndex(history)).toBe(0);
+    expect(sandbox._newestHistoryIndex(history.slice().reverse())).toBe(1);
+    // Entries written before the dates were carried fall back to the last one.
+    expect(sandbox._newestHistoryIndex([{ name: 'Old' }, { name: 'Older' }])).toBe(1);
+    expect(sandbox._newestHistoryIndex([])).toBe(-1);
+  });
+
   it('disables the button and says so when every ended tier is closed', () => {
     const els = { closeSeasonSelect: makeEl({ value: '' }), closeSeasonBtn: makeEl(), closeSeasonNote: makeEl() };
     const { sandbox } = makeSandbox({

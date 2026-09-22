@@ -47,6 +47,17 @@ function buildSeasonTab() {
   switchSeasonSubTab('settings', defaultBtn);
 }
 
+// The entry the WCL baseline row belongs to: the tier that started last,
+// whatever order the books were closed in (#938 lets an officer close two
+// ended tiers in either order); the last entry when none carries a start.
+function _newestHistoryIndex(history) {
+  var newest = -1;
+  for (var i = 0; i < history.length; i++) {
+    if (newest === -1 || (history[i].start || '') >= (history[newest].start || '')) newest = i;
+  }
+  return newest;
+}
+
 function renderSeasonHistory() {
   var history = (DATA && DATA.seasonHistory) || [];
   var wrap = document.getElementById('seasonHistoryWrap');
@@ -57,6 +68,7 @@ function renderSeasonHistory() {
     return;
   }
   wrap.style.display = '';
+  var newestIndex = _newestHistoryIndex(history);
   var html = '';
   for (var i = history.length - 1; i >= 0; i--) {
     var s = history[i];
@@ -100,20 +112,19 @@ function renderSeasonHistory() {
     if (s.bis) {
       html += '<div id="bis-snapshot-' + i + '" style="display:none;margin-top:0.5rem;"></div>';
     }
-    // #264: WCL season performance fetch is only offered for the most
-    // recently archived season -- once a new season has started, that's
-    // "the previous season" heroic priority needs a baseline from. Earlier
-    // history entries are old news by the time a new season begins.
-    if (i === history.length - 1) {
+    // #264: WCL season performance fetch is only offered for the latest
+    // closed tier -- once a new season has started, that's "the previous
+    // season" heroic priority needs a baseline from. Earlier history
+    // entries are old news by the time a new season begins.
+    if (i === newestIndex) {
       html += _renderSeasonPerfFetchRow(s, i);
     }
     html += '</div>';
   }
   list.innerHTML = html;
 
-  var newest = history[history.length - 1];
-  if (newest) {
-    _checkSeasonPerfFetchedStatus(history.length - 1, _teamCfg.supabaseTeamId, historyEntryCode(newest));
+  if (newestIndex !== -1) {
+    _checkSeasonPerfFetchedStatus(newestIndex, _teamCfg.supabaseTeamId, historyEntryCode(history[newestIndex]));
   }
 }
 
@@ -493,6 +504,10 @@ function renderCloseSeasonControl() {
   var btn = document.getElementById('closeSeasonBtn');
   var note = document.getElementById('closeSeasonNote');
   if (!select || !btn || !note) return;
+  // The confirm names one tier; a change of the select after it opened
+  // would have Yes, Close act on another, so it closes with the change.
+  var confirmEl = document.getElementById('seasonArchiveConfirm');
+  if (confirmEl) confirmEl.style.display = 'none';
   var codes = closableSeasonCodes();
   var previous = select.value;
   select.innerHTML = codes

@@ -4103,7 +4103,7 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
 // live season -- the default). Everything season-scoped below reads this
 // instead of DATA.raidProgression, which is WCL progress-tracking config
 // (which raids to pull kill/attendance data for), not a season-view concept,
-// and gets wiped to [] by every archive_current_season() call (#537).
+// and is rebuilt by officers for each tier (#537).
 //
 // Always the display name (#933): DATA.seasonView is stored as a code since
 // raid_zones.season became one, and this is what stamps item_preferences
@@ -4268,8 +4268,8 @@ function bisItemsFromWishlistPrefs(prefs, playerId) {
     if (p.status !== 'bis') return;
     var name = idToName[p.item_id];
     if (!name) return;
-    // archive_current_season() never clears item_preferences, so after a
-    // rollover the previous season's rows are still here. Scope them the same
+    // Closing a season never clears item_preferences, so after a rollover
+    // the previous season's rows are still here. Scope them the same
     // way the raider's own view does (js/wishlist.js): real items by zone,
     // placeholders by the row's own season, and a row with no season at all
     // predates the column, so it still counts. Without this an out-of-season
