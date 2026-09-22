@@ -92,8 +92,6 @@
 | public.danger_clear_pending_roster | int4 | p_team_id integer | FUNCTION |
 | public.danger_clear_mplus_exclusion_requests | int4 | p_team_id integer | FUNCTION |
 | public.danger_clear_self_received_requests | int4 | p_team_id integer | FUNCTION |
-| public.archive_current_season | jsonb | p_team_id integer, p_roster_snapshot jsonb | FUNCTION |
-| public.unarchive_season | jsonb | p_team_id integer, p_index integer | FUNCTION |
 | public.is_own_player | bool | p_player_id integer | FUNCTION |
 | public.notify_player | int4 | p_player_id integer, p_message text | FUNCTION |
 | public.submit_bis_link | int4 | p_team_id integer, p_name_realm text, p_bis_link text, p_player_note text DEFAULT NULL::text | FUNCTION |
@@ -199,6 +197,7 @@
 | public.set_team_season | team_seasons | p_team_id integer, p_season_code text, p_signups_open boolean DEFAULT NULL::boolean, p_wishlist_open boolean DEFAULT NULL::boolean | FUNCTION |
 | public.submit_season_signup | int4 | p_team_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text, p_swap_from_name_realm text DEFAULT NULL::text, p_season text DEFAULT NULL::text | FUNCTION |
 | public.get_own_signup | record | p_team_id integer, p_season text DEFAULT NULL::text | FUNCTION |
+| public.close_season | jsonb | p_team_id integer, p_season text, p_roster_snapshot jsonb | FUNCTION |
 
 ## Enums
 

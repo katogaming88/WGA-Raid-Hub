@@ -109,14 +109,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.148.8';
+var VERSION = '3.149.0';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20260921192826';
+var REQUIRED_SCHEMA = '20260921194720';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -3699,6 +3699,28 @@ var ATTENDANCE_WEIGHTS_JS = {
   'No Show': 0.0
 };
 
+// Returns { start, end } date strings for one tier, or { start: null, end: null }
+// for a code nothing knows. A closed tier answers from its history entry
+// (its start is what the books were closed on); the live tier answers from
+// the typed Season Start and End (#1269 derives the start instead); any
+// other tier answers from the seasons row. What the roster snapshot a close
+// freezes is counted over (#938).
+function seasonDateRangeFor(seasonCode) {
+  if (!seasonCode) return { start: null, end: null };
+  var history = (DATA && DATA.seasonHistory) || [];
+  for (var i = 0; i < history.length; i++) {
+    if (historyEntryCode(history[i]) === seasonCode) {
+      return { start: history[i].start || null, end: history[i].end || null };
+    }
+  }
+  var tier = seasonRow(seasonCode);
+  if (!tier) return { start: null, end: null };
+  if (seasonCode === currentSeasonCode()) {
+    return { start: (DATA && DATA.seasonStart) || tier.starts_at || null, end: (DATA && DATA.seasonEnd) || null };
+  }
+  return { start: tier.starts_at || null, end: tier.ends_at || null };
+}
+
 // Returns { start, end } date strings for the active season, or { start: null, end: null }
 function getSeasonDateRange() {
   if (!ACTIVE_SEASON) return { start: null, end: null };
@@ -3736,13 +3758,15 @@ function getSeasonDateRange() {
 // wrong to freeze into a season archive -- see buildSeasonArchiveRosterSnapshot().
 /**
  * @param {string} firstName
+ * @param {{start: string|null, end: string|null}} [range] - the window to count in; the
+ *   toolbar's selected season when omitted, one tier's when closing its books (#938)
  * @returns {any[]|null}
  */
-function getEligibleAttendanceRecs(firstName) {
+function getEligibleAttendanceRecs(firstName, range) {
   var raw = DATA && DATA.rawAttendanceData;
   if (!raw) return null;
 
-  var range = getSeasonDateRange();
+  range = range || getSeasonDateRange();
   var start = range.start;
   var end = range.end;
   var playerRecs = (raw.players || {})[firstName] || [];
@@ -4079,7 +4103,7 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
 // live season -- the default). Everything season-scoped below reads this
 // instead of DATA.raidProgression, which is WCL progress-tracking config
 // (which raids to pull kill/attendance data for), not a season-view concept,
-// and gets wiped to [] by every archive_current_season() call (#537).
+// and is rebuilt by officers for each tier (#537).
 //
 // Always the display name (#933): DATA.seasonView is stored as a code since
 // raid_zones.season became one, and this is what stamps item_preferences
@@ -4244,8 +4268,8 @@ function bisItemsFromWishlistPrefs(prefs, playerId) {
     if (p.status !== 'bis') return;
     var name = idToName[p.item_id];
     if (!name) return;
-    // archive_current_season() never clears item_preferences, so after a
-    // rollover the previous season's rows are still here. Scope them the same
+    // Closing a season never clears item_preferences, so after a rollover
+    // the previous season's rows are still here. Scope them the same
     // way the raider's own view does (js/wishlist.js): real items by zone,
     // placeholders by the row's own season, and a row with no season at all
     // predates the column, so it still counts. Without this an out-of-season
@@ -5386,6 +5410,22 @@ function currentSeasonCode() {
     if (rows[i].starts_at && rows[i].starts_at <= today) return rows[i].code;
   }
   return '';
+}
+
+// The seasons row for a code, or null.
+function seasonRow(seasonCode) {
+  var rows = (DATA && DATA.seasons) || [];
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].code === seasonCode) return rows[i];
+  }
+  return null;
+}
+
+// A seasonHistory entry's tier code: the code close_season() writes, else
+// the pattern read of the name for an entry written before #938.
+function historyEntryCode(entry) {
+  if (!entry) return '';
+  return entry.code || seasonCodeForDisplay((entry.name || '').trim());
 }
 
 // The tiers a team is taking signups for (#934): its team_seasons rows with

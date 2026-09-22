@@ -14,7 +14,7 @@ Reference notes for walking a raider through the site -- not published to raider
 
 - Open the link (share this in Discord)
 - Top nav: **Home**, **Roster**, **Streams**, **Sign Up**, **History**, **About**, **News**, **Help**
-- **History** only appears once the team has archived at least one season; **News** shows a notification dot when there's an unread entry
+- **History** only appears once the team has closed at least one season; **News** shows a notification dot when there's an unread entry
 - Click **Login with Discord** in the top nav and authorize
 - First time logging in, they'll be asked to claim their character from the roster
 - Once claimed, click **View My Profile** (or click their name in the nav) -- this opens their own profile
@@ -60,7 +60,7 @@ Reference notes for walking a raider through the site -- not published to raider
 - An officer reviews and approves it -- unlike Wishlist tags, this doesn't write anywhere automatically, it's the officer's reference source; the BiS List itself changes only when the raider retags items in My Wishlist
 - If the source itself hasn't changed but the list behind it has (e.g. they reordered items on the same wowhead/raidbots page), use **My BiS Changed (Same Source)** instead of resubmitting the link -- this is the general "my considered-BiS changed, please act" flag, whether the actual change is one item or the whole list. It queues for an officer either way; the officer resolves it by opening Wishlist Editing for just this raider so they can retag it themselves, and the note field is a good place to say what changed
 - If Wishlist Editing is already open (or their own "Allow Wishlist Edit" is on), tagging a single item/slot BiS directly in **My Wishlist** is faster and needs no officer step at all -- see "Fill out their Wishlist" below
-- Their submitted source is cleared unconditionally every time a new season starts (**Start New Season**), regardless of which site it's on -- a source points at a specific tier's loot table, and there's no way to tell whether the site behind it happens to update in place for a new tier. If a raider asks where their source went, this is why -- they need to resubmit a fresh one.
+- Their submitted source is cleared unconditionally every time an officer closes a season (**Close Season**), regardless of which site it's on -- a source points at a specific tier's loot table, and there's no way to tell whether the site behind it happens to update in place for a new tier. If a raider asks where their source went, this is why -- they need to resubmit a fresh one.
 
 ### Mark an item as received (self-report)
 - Use this for items received outside of raid -- M+, Great Vault, Crafted, Catalyst, World Drop
@@ -138,7 +138,7 @@ Reference notes for walking a raider through the site -- not published to raider
 
 ## The History tab
 
-- Public, no login needed -- only appears in the nav once the team has archived at least one season
+- Public, no login needed -- only appears in the nav once the team has closed at least one season
 - Past seasons' raid progression and boss kill dates, read-only
 
 ---
