@@ -199,6 +199,8 @@
 | public.get_own_signup | record | p_team_id integer, p_season text DEFAULT NULL::text | FUNCTION |
 | public.close_season | jsonb | p_team_id integer, p_season text, p_roster_snapshot jsonb | FUNCTION |
 | public.team_season_start | date | p_team_id integer, p_season text DEFAULT current_season() | FUNCTION |
+| public.format_boe_gold | text | n bigint | FUNCTION |
+| public.boe_edit_item | void | p_id integer, p_item_name text, p_track text, p_note text, p_item_id integer, p_upgrade_rank text | FUNCTION |
 
 ## Enums
 

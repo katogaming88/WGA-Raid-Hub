@@ -3552,6 +3552,17 @@ export type Database = {
         Args: { p_auth_user_id: string }
         Returns: string
       }
+      boe_edit_item: {
+        Args: {
+          p_id: number
+          p_item_id: number
+          p_item_name: string
+          p_note: string
+          p_track: string
+          p_upgrade_rank: string
+        }
+        Returns: undefined
+      }
       boe_mark_paid: {
         Args: { p_donated?: boolean; p_id: number; p_paid_at?: string }
         Returns: undefined
@@ -3677,6 +3688,7 @@ export type Database = {
         }
         Returns: number
       }
+      format_boe_gold: { Args: { n: number }; Returns: string }
       generate_priority_order: {
         Args: {
           p_item_id: number

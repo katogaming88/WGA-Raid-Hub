@@ -507,11 +507,15 @@ describe('per-row settle for a team officer (#890)', () => {
   });
 });
 
-// The page has no team, so writeAuditLog() cannot take one from _teamCfg
-// (js/guild.js nulls it). It takes the BoE row's own team instead, which is
-// also the right attribution for a read that spans every team since #765.
-describe('audit entries name the BoE team, not the page (#774)', () => {
-  it('logs a sale against the team that found it, not the viewer', async () => {
+// #774 covered this with client-side assertions because writeAuditLog() had
+// to be handed the row's own team explicitly (the page has no team of its
+// own; js/guild.js nulls _teamCfg). #770 moved the write server-side: the
+// RPCs read team_id off the row themselves, so that attribution is now
+// asserted against the database in tests/rls/boe.test.js instead. What is
+// left to guard on the client is that it does not also log a duplicate entry
+// of its own.
+describe('the client writes no audit entry of its own for lifecycle actions (#770)', () => {
+  it('a sale on another team', async () => {
     const els = { 'boe-sale-price-2': makeEl({ value: '250,000' }) };
     const { client } = makeBoeClient({
       items: [LISTED_OTHER_TEAM()],
@@ -527,11 +531,10 @@ describe('audit entries name the BoE team, not the page (#774)', () => {
     loaded.sandbox.confirmBoeSale(2, makeEl());
     await flush();
     await flush();
-    expect(loaded.spies.audit).toHaveLength(1);
-    expect(loaded.spies.audit[0].teamId).toBe(4);
+    expect(loaded.spies.audit).toHaveLength(0);
   });
 
-  it('names the row team on a listing, a payout and a retirement too', async () => {
+  it('a listing, a payout and a retirement either', async () => {
     const { client } = makeBoeClient({ items: [LISTED_OTHER_TEAM()], listings: [] });
     const els = { 'boe-listing-price-2': makeEl({ value: '90000' }) };
     const loaded = await build({ client, els });
@@ -539,7 +542,7 @@ describe('audit entries name the BoE team, not the page (#774)', () => {
     await flush();
     loaded.sandbox.retireBoe(2, makeEl());
     await flush();
-    expect(loaded.spies.audit.map((a) => a.teamId)).toEqual([4, 4]);
+    expect(loaded.spies.audit).toHaveLength(0);
   });
 });
 
@@ -596,8 +599,11 @@ describe('price parsing and recording a sale', () => {
   });
 });
 
+// The audit entry itself is the RPC's doing now (#770; tests/rls/boe.test.js
+// covers its wording), so these only assert what reaches the RPC and how the
+// row re-renders.
 describe('lifecycle actions', () => {
-  it('records a listing with price and note, audits it, and re-renders the row as Listed', async () => {
+  it('records a listing with price and note, and re-renders the row as Listed', async () => {
     const els = { 'boe-listing-price-1': makeEl(), 'boe-listing-note-1': makeEl(), 'boe-status-1': makeEl() };
     const { client, captured } = makeBoeClient({ items: [FOUND()], listings: [], rpc: managerRpc() });
     const loaded = await build({ client, els });
@@ -607,31 +613,24 @@ describe('lifecycle actions', () => {
     await flush();
     const listing = captured.rpcCalls.find((c) => c.name === 'boe_record_listing');
     expect(listing.args).toEqual({ p_id: 1, p_price: 150000, p_note: 'weekend relist' });
-    expect(loaded.spies.audit).toHaveLength(1);
-    expect(loaded.spies.audit[0].action).toBe('BoE Listed');
-    expect(loaded.spies.audit[0].targetType).toBe('boe_items');
-    expect(loaded.spies.audit[0].targetId).toBe(1);
-    expect(loaded.spies.audit[0].detail).toContain('Voidglass Cloak');
-    expect(loaded.spies.audit[0].detail).toContain('150,000');
+    expect(loaded.spies.audit).toHaveLength(0);
     expect(els.guildBoeOpen.innerHTML).toMatch(/>Listed<\/span>/);
     expect(els.guildBoeOpen.innerHTML).toContain('150,000');
   });
 
-  it('marks a payout paid, audits it, and moves the row to History', async () => {
+  it('marks a payout paid and moves the row to History', async () => {
     const els = { 'boe-status-3': makeEl() };
     const { client, captured } = makeBoeClient({ items: [SOLD()], listings: [], rpc: managerRpc() });
     const loaded = await build({ client, els });
     loaded.sandbox.markBoePaid(3, makeEl({ textContent: 'Mark Paid' }));
     await flush();
     expect(captured.rpcCalls.find((c) => c.name === 'boe_mark_paid').args).toEqual({ p_id: 3, p_donated: false });
-    expect(loaded.spies.audit[0].action).toBe('BoE Payout Paid');
-    expect(loaded.spies.audit[0].detail).toContain('50,000');
-    expect(loaded.spies.audit[0].detail).toContain('Ashveil-Tichondrius');
+    expect(loaded.spies.audit).toHaveLength(0);
     expect(els.guildBoeHistory.innerHTML).toContain('Bindings of Depth');
     expect(els.guildBoeAwaiting.innerHTML).toContain('Nothing awaiting payout');
   });
 
-  it('retires an item behind a confirm, audits it, and declines cleanly', async () => {
+  it('retires an item behind a confirm, and declines cleanly', async () => {
     const els = { 'boe-status-1': makeEl() };
     const declined = await build({
       client: makeBoeClient({ items: [FOUND()], listings: [], rpc: managerRpc() }).client,
@@ -648,8 +647,7 @@ describe('lifecycle actions', () => {
     accepted.sandbox.retireBoe(1, makeEl({ textContent: 'Retire' }));
     await flush();
     expect(captured.rpcCalls.find((c) => c.name === 'boe_retire').args).toEqual({ p_id: 1 });
-    expect(accepted.spies.audit[0].action).toBe('BoE Retired');
-    expect(accepted.spies.audit[0].detail).toContain('Voidglass Cloak');
+    expect(accepted.spies.audit).toHaveLength(0);
     expect(accepted.els.guildBoeHistory.innerHTML).toContain('Voidglass Cloak');
   });
 });
@@ -1154,7 +1152,10 @@ describe('undoing a lifecycle step (#802)', () => {
     expect(loaded.sandbox.findBoeItem(5).status).toBe('found');
   });
 
-  it('audits the undo against the team that found it', async () => {
+  // boe_revert() writes its own audit entry now (#770), the row's own team
+  // included; tests/rls/boe.test.js covers its wording. Nothing is left for
+  // the client to log.
+  it('writes no client-side audit entry for the undo', async () => {
     const { client } = makeBoeClient({
       items: [
         boeRow({
@@ -1171,10 +1172,7 @@ describe('undoing a lifecycle step (#802)', () => {
     const loaded = await build({ client });
     loaded.sandbox.revertBoe(9, makeEl());
     await flush();
-    expect(loaded.spies.audit).toHaveLength(1);
-    expect(loaded.spies.audit[0].teamId).toBe(4);
-    expect(loaded.spies.audit[0].action).toBe('BoE Reverted');
-    expect(loaded.spies.audit[0].detail).toContain('found');
+    expect(loaded.spies.audit).toHaveLength(0);
   });
 });
 
@@ -1390,7 +1388,6 @@ describe('manager edit (#874)', () => {
     els['boe-edit-track-' + id].value = track;
     els['boe-edit-note-' + id].value = note;
   };
-  const ZERO_ROWS = 'Nothing was saved. Your BoE manager grant may have been revoked; reload the page.';
 
   it('renders Edit in all three sections for a manager, after the lifecycle buttons and before the forms', async () => {
     const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: managerRpc() });
@@ -1421,110 +1418,104 @@ describe('manager edit (#874)', () => {
     expect(open).toContain('id="boe-edit-note-2" aria-label="Note"');
   });
 
-  it('Save sends one update of the three columns for that id, re-renders the new name and returns focus to Edit', async () => {
+  // Save goes through the boe_edit_item() RPC now, not a raw .update() --
+  // it is the only path that can still write an audit entry for a manager
+  // with no officer role, now that write_audit_log() no longer admits the
+  // grant directly (#770). The audit entry's own wording and team
+  // attribution are the RPC's doing, covered in tests/rls/boe.test.js.
+  const editRpc = (result) => managerRpc({ boe_edit_item: () => result || { data: null, error: null } });
+
+  it('Save calls boe_edit_item with the five columns, re-renders the new name and returns focus to Edit', async () => {
     const els = editEls(1);
-    const { client, captured } = makeBoeClient({ items: [FOUND()], listings: [], rpc: managerRpc() });
+    const { client, captured } = makeBoeClient({ items: [FOUND()], listings: [], rpc: editRpc() });
     const loaded = await build({ client, els });
     typeInto(els, 1, { name: '  Slippers of the Hissing Cult ', track: 'Myth', note: 'Donate' });
     loaded.sandbox.saveBoeEdit(1, makeEl({ textContent: 'Save' }));
     await flush();
     await flush();
-    expect(captured.updates).toEqual([
-      {
-        table: 'boe_items',
-        values: {
-          item_name: 'Slippers of the Hissing Cult',
-          track: 'Myth',
-          note: 'Donate',
-          item_id: null,
-          upgrade_rank: null
-        },
-        eq: [['id', 1]]
-      }
-    ]);
+    expect(captured.rpcCalls.find((c) => c.name === 'boe_edit_item').args).toEqual({
+      p_id: 1,
+      p_item_name: 'Slippers of the Hissing Cult',
+      p_track: 'Myth',
+      p_note: 'Donate',
+      p_item_id: null,
+      p_upgrade_rank: null
+    });
     expect(els.guildBoeOpen.innerHTML).toContain('Slippers of the Hissing Cult');
     expect(els.guildBoeOpen.innerHTML).not.toContain('Voidglass Cloak');
     expect(els.guildBoeOpen.innerHTML).toContain('Myth');
-    // Still exactly one boe_items read: the row was patched in memory.
+    // Still exactly one boe_items read: the row was patched in memory, and
+    // Save never touches .from('boe_items') at all.
     expect(captured.byTable.boe_items.filter((c) => !c.update)).toHaveLength(1);
+    expect(captured.updates).toEqual([]);
     expect(els['boe-edit-btn-1'].focused).toBe(1);
   });
 
-  it('refuses an empty name on the row with no write and no audit entry', async () => {
+  it('refuses an empty name on the row with no RPC call', async () => {
     const els = editEls(1);
-    const { client, captured } = makeBoeClient({ items: [FOUND()], listings: [], rpc: managerRpc() });
+    const { client, captured } = makeBoeClient({ items: [FOUND()], listings: [], rpc: editRpc() });
     const loaded = await build({ client, els });
     typeInto(els, 1, { name: '   ', track: 'Hero', note: '' });
     loaded.sandbox.saveBoeEdit(1, makeEl());
     await flush();
     expect(els['boe-status-1'].textContent).toBe('Enter the item name.');
-    expect(captured.updates).toEqual([]);
-    expect(loaded.spies.audit).toEqual([]);
+    expect(captured.rpcCalls.filter((c) => c.name === 'boe_edit_item')).toEqual([]);
   });
 
-  it('unchanged values write nothing, close the form and return focus to Edit', async () => {
+  it('unchanged values make no RPC call, close the form and return focus to Edit', async () => {
     const els = editEls(1);
     els['boe-edit-form-1'].style.display = '';
-    const { client, captured } = makeBoeClient({ items: [FOUND()], listings: [], rpc: managerRpc() });
+    const { client, captured } = makeBoeClient({ items: [FOUND()], listings: [], rpc: editRpc() });
     const loaded = await build({ client, els });
     typeInto(els, 1, { name: 'Voidglass Cloak ', track: 'Hero', note: '  ' });
     loaded.sandbox.saveBoeEdit(1, makeEl());
     await flush();
-    expect(captured.updates).toEqual([]);
-    expect(loaded.spies.audit).toEqual([]);
+    expect(captured.rpcCalls.filter((c) => c.name === 'boe_edit_item')).toEqual([]);
     expect(els['boe-edit-form-1'].style.display).toBe('none');
     expect(els['boe-edit-btn-1'].focused).toBe(1);
   });
 
-  it('the audit entry names the row team and keeps the old and new values', async () => {
+  it('sends the row id and every column for a row on another team too', async () => {
     const els = editEls(2);
-    const { client } = makeBoeClient({ items: [LISTED_OTHER_TEAM()], listings: [], rpc: managerRpc() });
+    const { client, captured } = makeBoeClient({ items: [LISTED_OTHER_TEAM()], listings: [], rpc: editRpc() });
     const loaded = await build({ client, els });
     typeInto(els, 2, { name: 'Slippers of the Hissing Cult', track: '', note: 'Donate' });
     loaded.sandbox.saveBoeEdit(2, makeEl());
     await flush();
     await flush();
-    expect(loaded.spies.audit).toHaveLength(1);
-    expect(loaded.spies.audit[0]).toMatchObject({
-      action: 'BoE Find Edited',
-      targetType: 'boe_items',
-      targetId: 2,
-      teamId: 4
+    expect(captured.rpcCalls.find((c) => c.name === 'boe_edit_item').args).toMatchObject({
+      p_id: 2,
+      p_item_name: 'Slippers of the Hissing Cult',
+      p_track: null,
+      p_note: 'Donate'
     });
-    const detail = loaded.spies.audit[0].detail;
-    expect(detail).toContain('item renamed from "Wrathless Find" to "Slippers of the Hissing Cult"');
-    expect(detail).toContain('track was "Hero", now (none)');
-    expect(detail).toContain('note was (none), now "Donate"');
   });
 
-  it('a zero-row result surfaces on the row, leaves the row alone and writes no audit entry', async () => {
+  it('an unauthorized manager surfaces the server message and touches nothing locally', async () => {
     const els = editEls(1);
     const { client } = makeBoeClient({
       items: [FOUND()],
       listings: [],
-      rpc: managerRpc(),
-      updates: { boe_items: () => ({ data: [], error: null }) }
+      rpc: editRpc({ data: null, error: { message: 'Not authorized' } })
     });
     const loaded = await build({ client, els });
     typeInto(els, 1, { name: 'Slippers of the Hissing Cult', track: 'Hero', note: '' });
     loaded.sandbox.saveBoeEdit(1, makeEl());
     await flush();
     await flush();
-    expect(els['boe-status-1'].textContent).toBe(ZERO_ROWS);
+    expect(els['boe-status-1'].textContent).toBe('Not authorized');
     expect(loaded.spies.audit).toEqual([]);
     expect(els.guildBoeOpen.innerHTML).toContain('Voidglass Cloak');
     expect(els.guildBoeOpen.innerHTML).not.toContain('Slippers of the Hissing Cult');
   });
 
-  it('a server error surfaces verbatim, restores the button and writes no audit entry', async () => {
-    const message =
-      'Direct updates may only edit note, finder, item, track, or season; lifecycle changes go through the BoE RPCs';
+  it('any other server error surfaces verbatim and restores the button', async () => {
+    const message = 'BoE item not found';
     const els = editEls(1);
     const { client } = makeBoeClient({
       items: [FOUND()],
       listings: [],
-      rpc: managerRpc(),
-      updates: { boe_items: () => ({ data: null, error: { message } }) }
+      rpc: editRpc({ data: null, error: { message } })
     });
     const loaded = await build({ client, els });
     typeInto(els, 1, { name: 'Slippers of the Hissing Cult', track: 'Hero', note: '' });
@@ -1618,7 +1609,11 @@ describe('catalog picker on the edit form (#875)', () => {
     expect(loaded.els.guildBoeOpen.innerHTML).toContain('id="boe-edit-name-1" list="boeItemOptions"');
   });
 
-  it('Save resolves a typed name against the catalog: the catalog spelling and item_id go in the payload and the audit', async () => {
+  // The audit wording (catalog link old/new, item rename, ...) is built by
+  // boe_edit_item() itself now (#770), covered in tests/rls/boe.test.js; what
+  // is left to check here is that the client resolves the typed name against
+  // the catalog before it reaches the RPC.
+  it('Save resolves a typed name against the catalog: the catalog spelling and item_id go in the RPC args', async () => {
     const els = editEls(1);
     const { client, captured } = makeBoeClient({
       items: [FOUND()],
@@ -1631,19 +1626,18 @@ describe('catalog picker on the edit form (#875)', () => {
     loaded.sandbox.saveBoeEdit(1, makeEl());
     await flush();
     await flush();
-    expect(captured.updates).toEqual([
-      {
-        table: 'boe_items',
-        values: { item_name: 'Crushing Coiler Coif', track: 'Hero', note: null, item_id: 7, upgrade_rank: null },
-        eq: [['id', 1]]
-      }
-    ]);
-    expect(loaded.spies.audit[0].detail).toContain('item renamed from "Voidglass Cloak" to "Crushing Coiler Coif"');
-    expect(loaded.spies.audit[0].detail).toContain('catalog link was (none), now 7');
+    expect(captured.rpcCalls.find((c) => c.name === 'boe_edit_item').args).toEqual({
+      p_id: 1,
+      p_item_name: 'Crushing Coiler Coif',
+      p_track: 'Hero',
+      p_note: null,
+      p_item_id: 7,
+      p_upgrade_rank: null
+    });
     expect(els.guildBoeOpen.innerHTML).toContain('Crushing Coiler Coif');
   });
 
-  it('a name outside the catalog writes item_id null and the text as typed', async () => {
+  it('a name outside the catalog sends item_id null and the text as typed', async () => {
     const els = editEls(1);
     const { client, captured } = makeBoeClient({
       items: [boeRow({ id: 1, item_name: 'Crushing Coiler Coif', item_id: 7 })],
@@ -1656,17 +1650,13 @@ describe('catalog picker on the edit form (#875)', () => {
     loaded.sandbox.saveBoeEdit(1, makeEl());
     await flush();
     await flush();
-    expect(captured.updates[0].values).toEqual({
-      item_name: 'Feet - Heroic',
-      track: 'Hero',
-      note: null,
-      item_id: null,
-      upgrade_rank: null
+    expect(captured.rpcCalls.find((c) => c.name === 'boe_edit_item').args).toMatchObject({
+      p_item_name: 'Feet - Heroic',
+      p_item_id: null
     });
-    expect(loaded.spies.audit[0].detail).toContain('catalog link was 7, now (none)');
   });
 
-  it('a Save whose only effect is the link still writes', async () => {
+  it('a Save whose only effect is the link still calls the RPC', async () => {
     const els = editEls(1);
     const { client, captured } = makeBoeClient({
       items: [boeRow({ id: 1, item_name: 'Crushing Coiler Coif', item_id: null })],
@@ -1679,9 +1669,9 @@ describe('catalog picker on the edit form (#875)', () => {
     loaded.sandbox.saveBoeEdit(1, makeEl());
     await flush();
     await flush();
-    expect(captured.updates).toHaveLength(1);
-    expect(captured.updates[0].values.item_id).toBe(7);
-    expect(loaded.spies.audit[0].detail).toBe('catalog link was (none), now 7');
+    const calls = captured.rpcCalls.filter((c) => c.name === 'boe_edit_item');
+    expect(calls).toHaveLength(1);
+    expect(calls[0].args.p_item_id).toBe(7);
   });
 
   it('a failed catalog read costs the picker and nothing else', async () => {
@@ -1716,30 +1706,31 @@ describe('Donate to Guild (#862)', () => {
     expect(html.indexOf('>Donate to Guild</button>')).toBeLessThan(html.indexOf('>Undo Sale</button>'));
   });
 
-  it('Donate to Guild settles through boe_mark_paid with p_donated true, audits it, and History reads Donated', async () => {
+  // boe_mark_paid() writes its own audit entry now, "donate intent cleared"
+  // wording included (#770; tests/rls/boe.test.js covers both, and the RPC
+  // reads the row's own old payout_donated itself -- the client no longer
+  // tracks "hadIntent" at all).
+  it('Donate to Guild settles through boe_mark_paid with p_donated true, and History reads Donated', async () => {
     const els = { 'boe-status-3': makeEl() };
     const { client, captured } = makeBoeClient({ items: [DONATING_SOLD()], listings: [], rpc: managerRpc() });
     const loaded = await build({ client, els });
     loaded.sandbox.donateBoePayout(3, makeEl({ textContent: 'Donate to Guild' }));
     await flush();
     expect(captured.rpcCalls.find((c) => c.name === 'boe_mark_paid').args).toEqual({ p_id: 3, p_donated: true });
-    expect(loaded.spies.audit[0]).toMatchObject({ action: 'BoE Payout Donated', targetId: 3, teamId: 1 });
-    expect(loaded.spies.audit[0].detail).toContain('50,000');
-    expect(loaded.spies.audit[0].detail).toContain('Ashveil-Tichondrius');
+    expect(loaded.spies.audit).toHaveLength(0);
     expect(els.guildBoeHistory.innerHTML).toContain('>Donated</span>');
     expect(els.guildBoeHistory.innerHTML).not.toContain('>Paid</span>');
     expect(els.guildBoeAwaiting.innerHTML).toContain('Nothing awaiting payout');
   });
 
-  it('Mark Paid on a flagged row clears the intent and says so in the audit', async () => {
+  it('Mark Paid on a flagged row clears the intent locally too', async () => {
     const els = { 'boe-status-3': makeEl() };
     const { client, captured } = makeBoeClient({ items: [flagged(SOLD())], listings: [], rpc: managerRpc() });
     const loaded = await build({ client, els });
     loaded.sandbox.markBoePaid(3, makeEl({ textContent: 'Mark Paid' }));
     await flush();
     expect(captured.rpcCalls.find((c) => c.name === 'boe_mark_paid').args).toEqual({ p_id: 3, p_donated: false });
-    expect(loaded.spies.audit[0].action).toBe('BoE Payout Paid');
-    expect(loaded.spies.audit[0].detail).toContain('donate intent cleared');
+    expect(loaded.spies.audit).toHaveLength(0);
     expect(loaded.sandbox.findBoeItem(3).payout_donated).toBe(false);
     expect(els.guildBoeHistory.innerHTML).toContain('>Paid</span>');
     expect(els.guildBoeHistory.innerHTML).not.toContain('Donating');
@@ -1924,7 +1915,7 @@ describe('upgrade rank (#865)', () => {
     expect(second).not.toContain('selected>2/6');
   });
 
-  it('Save sends the selected rank with the other editable columns and audits the change', async () => {
+  it('Save sends the selected rank with the other editable columns', async () => {
     const els = {
       'boe-edit-form-1': makeEl({ style: { display: 'none' } }),
       'boe-edit-btn-1': makeEl({ focus() {} }),
@@ -1943,14 +1934,14 @@ describe('upgrade rank (#865)', () => {
     loaded.sandbox.saveBoeEdit(1, makeEl({ textContent: 'Save' }));
     await flush();
     await flush();
-    expect(captured.updates).toEqual([
-      {
-        table: 'boe_items',
-        values: { item_name: 'Voidglass Cloak', track: 'Hero', note: null, item_id: null, upgrade_rank: '4/6' },
-        eq: [['id', 1]]
-      }
-    ]);
-    expect(loaded.spies.audit[0].detail).toContain('rank was (none), now "4/6"');
+    expect(captured.rpcCalls.find((c) => c.name === 'boe_edit_item').args).toEqual({
+      p_id: 1,
+      p_item_name: 'Voidglass Cloak',
+      p_track: 'Hero',
+      p_note: null,
+      p_item_id: null,
+      p_upgrade_rank: '4/6'
+    });
   });
 });
 

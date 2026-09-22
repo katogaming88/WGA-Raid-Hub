@@ -13,13 +13,15 @@ declare
   -- mails. Not a setting: nothing reads it but this function and the
   -- backfill that introduced the column.
   c_ah_fee_pct constant numeric := 5;
+  v_team_id integer;
   v_status text;
+  v_item_name text;
   v_floor bigint;
   v_pivot bigint;
   v_fee bigint;
   v_payout bigint;
 begin
-  select b.status into v_status
+  select b.team_id, b.status, b.item_name into v_team_id, v_status, v_item_name
   from public.boe_items b where b.id = p_id for update;
   if not found then
     raise exception 'BoE item not found';
@@ -58,6 +60,11 @@ begin
       payout_floor = v_floor,
       payout_pivot = v_pivot
   where b.id = p_id;
+
+  insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
+  values (v_team_id, auth.uid(), 'BoE Sale Recorded', 'boe_items', p_id,
+    to_jsonb(v_item_name || ' sold for ' || public.format_boe_gold(p_sale_price) ||
+      'g; finder payout ' || public.format_boe_gold(v_payout) || 'g'));
 
   return query select p_sale_price, v_payout, p_sale_price - v_fee - v_payout, v_fee;
 end $function$;
