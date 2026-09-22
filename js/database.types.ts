@@ -4015,6 +4015,10 @@ export type Database = {
           updated_at: string
         }[]
       }
+      team_season_start: {
+        Args: { p_season?: string; p_team_id: number }
+        Returns: string
+      }
       update_own_signup: {
         Args: {
           p_class: string

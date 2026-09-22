@@ -198,6 +198,7 @@
 | public.submit_season_signup | int4 | p_team_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text, p_swap_from_name_realm text DEFAULT NULL::text, p_season text DEFAULT NULL::text | FUNCTION |
 | public.get_own_signup | record | p_team_id integer, p_season text DEFAULT NULL::text | FUNCTION |
 | public.close_season | jsonb | p_team_id integer, p_season text, p_roster_snapshot jsonb | FUNCTION |
+| public.team_season_start | date | p_team_id integer, p_season text DEFAULT current_season() | FUNCTION |
 
 ## Enums
 
