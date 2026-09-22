@@ -158,8 +158,8 @@ export function SignUpWizard({
                   <strong>{claimNameRealm}</strong> claimed, but picked{' '}
                   <strong>
                     {fields.charName}-{fields.realm}
-                  </strong>{' '}
-                  above.
+                  </strong>
+                  .
                 </p>
                 <label className="checkbox">
                   <input
