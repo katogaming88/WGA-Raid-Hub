@@ -96,7 +96,7 @@ function AltsPicker({ onClose }: { onClose: () => void }) {
             Cancel
           </button>
           <button type="button" className="button button-primary" onClick={toBattlenet} disabled={leaving}>
-            Continue to Battle.net
+            Load your characters from Battle.net
           </button>
         </div>
       </Dialog>

@@ -2,9 +2,11 @@
 // Blizzard's answers and deciding which characters a raider is shown. No
 // network and no database, so tests/edge runs it on captured shapes.
 
-// Midnight's level cap. The picker lists only characters at it: a raider's
-// account holds dozens of characters (47 on the one tested on 2026-09-14) and
-// the low-level ones are not alts anyone raids on.
+// Midnight's level cap. The alts picker lists only characters at it: a
+// raider's account holds dozens of characters (47 on the one tested on
+// 2026-09-14) and the low-level ones are not alts anyone raids on. Signup's
+// `allLevels` request widens the pool past this cap (#1162), since an
+// applicant may be signing up a character still leveling.
 export const MAX_LEVEL = 90;
 
 export type AccountCharacter = {

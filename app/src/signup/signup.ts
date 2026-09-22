@@ -33,38 +33,12 @@ export function classmatesPool(
   return [...byKey.values()];
 }
 
-// The realm list a click-to-browse, type-to-filter combobox shows: the whole
-// list with nothing typed (so it still works as a plain dropdown), a
-// substring match once there is a query.
-export function realmOptions(realms: string[], query: string): string[] {
-  const q = query.toLowerCase().trim();
-  if (!q) return realms;
-  return realms.filter((r) => r.toLowerCase().includes(q));
-}
-
-// Whether the typed character differs from the one this person already has
+// Whether the picked character differs from the one this person already has
 // on this team's roster (their "claim") -- the only case that can become a
 // main swap. No claim at all means nothing to compare against.
 export function claimDiffers(claimNameRealm: string | null, charName: string, realm: string): boolean {
   if (!claimNameRealm || !charName || !realm) return false;
   return `${charName}-${realm}`.toLowerCase() !== claimNameRealm.toLowerCase();
-}
-
-// A character's class never changes, so picking a class that does not match
-// the claimed character's own class on the roster is usually a wrong click,
-// not an intentional swap (a real swap changes the character, not just the
-// class on the same one) -- only checked when the typed name still matches
-// the claim.
-export function classMismatch(
-  claimedClass: string | null,
-  claimNameRealm: string | null,
-  charName: string,
-  realm: string,
-  pickedClass: string | null
-): boolean {
-  if (!pickedClass || !claimedClass || !claimNameRealm) return false;
-  if (claimDiffers(claimNameRealm, charName, realm)) return false;
-  return claimedClass !== pickedClass;
 }
 
 export type SignupFields = {

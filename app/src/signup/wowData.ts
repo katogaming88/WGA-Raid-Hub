@@ -20,8 +20,6 @@ export const CLASS_SPECS: Record<string, ClassData> = {
   Warrior: { specs: ['Arms', 'Fury', 'Protection'], roles: ['Tank', 'DPS'] }
 };
 
-export const CLASS_NAMES = Object.keys(CLASS_SPECS).sort();
-
 // Maps a hybrid class's spec to its raid role, once "DPS"/"Healer" needs to
 // become "Melee"/"Ranged"/"Heal". Pure classes never consult this (their role
 // is fixed, or, for Hunter, resolved by spec directly below).
@@ -81,18 +79,4 @@ export function resolveRole(
   if (primaryRole === 'DPS' || primaryRole === 'Healer')
     return SPEC_ROLE[mainSpec] ?? (primaryRole === 'Healer' ? 'Heal' : null);
   return primaryRole as 'Tank' | 'Heal' | 'Melee' | 'Ranged';
-}
-
-// An error string, or null when the name is fine. Ported rule for rule from
-// js/common.js's validateCharName().
-export function validateCharName(name: string): string | null {
-  if (!name) return 'Please enter your character name.';
-  if (name.length < 2 || name.length > 12) return 'Character name must be 2-12 characters.';
-  // \p{Lu} (any uppercase letter), not [A-Z]: WoW names can start with an
-  // accented capital like \u00c9leanor.
-  if (!/^\p{Lu}/u.test(name)) return 'Character name must start with a capital letter (e.g. Katorri).';
-  if (/\p{Lu}/u.test(name.slice(1))) {
-    return `Character name can only have one capital letter (the first). Did you mean ${name[0]}${name.slice(1).toLowerCase()}?`;
-  }
-  return null;
 }

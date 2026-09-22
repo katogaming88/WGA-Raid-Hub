@@ -1,11 +1,44 @@
 /* Sign Up (#1102): a card holding either the wizard or the summary. */
 
 .signup-page {
-  max-width: 640px;
+  max-width: 980px;
 }
 
 .signup-card {
   padding: var(--space-4);
+}
+
+/* The wizard's card and its Back/Next/Submit card (Kat, 2026-09-22): Step 1's
+   Battle.net list can run to dozens of rows, and scrolling the actions off
+   with it left no visible way to move on. A separate card beside the step
+   content, not one wide box, so the step card keeps its usual width and the
+   actions stay put (sticky) in the same spot across every step. Wide enough
+   (Kat, 2026-09-22) that the differs warning text doesn't wrap to one word a
+   line. */
+.signup-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 640px) minmax(280px, 320px);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.signup-side-card {
+  position: sticky;
+  top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+@media (max-width: 980px) {
+  .signup-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .signup-side-card {
+    position: static;
+  }
 }
 
 .signup-tier-picker {
@@ -14,8 +47,8 @@
 
 .signup-step-label {
   margin: 0 0 var(--space-2);
-  color: var(--text-muted);
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
+  font-weight: 650;
 }
 
 /* <fieldset>/<legend> for Main spec/Off spec/Primary role, without the
@@ -23,18 +56,18 @@
    than a plain .field: a legend reads as a heading over a button group, not
    a label tight against a single input, so both gaps are opened up a step
    past .field's label-to-input defaults (Kat, 2026-09-22). */
-.signup-wizard fieldset {
+.signup-card fieldset {
   border: 0;
   padding: 0;
   gap: var(--space-2);
   margin-bottom: var(--space-4);
 }
 
-.signup-wizard legend {
+.signup-card legend {
   padding: 0;
 }
 
-.signup-wizard h2 {
+.signup-card h2 {
   margin: 0 0 var(--space-2);
 }
 
@@ -48,65 +81,6 @@
 
 .signup-warning p {
   margin: 0 0 var(--space-2);
-}
-
-/* Realm combobox (#1102): the dropdown is a sibling in a positioned wrapper,
-   so left/right: 0 makes it exactly the input's width -- a native <datalist>
-   popup can't be styled at all, which is why this is a real element instead. */
-.realm-combobox {
-  position: relative;
-}
-
-.realm-dropdown {
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  max-height: 240px;
-  overflow-y: auto;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  background: var(--raised);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-}
-
-.realm-option {
-  padding: 6px var(--space-3);
-  cursor: pointer;
-  scroll-margin-block: 4px;
-}
-
-/* --nav-selected is the same colour as this dropdown's own background in
-   dark mode, so it made the highlight invisible while arrowing through --
-   solid --brand instead, the same "clearly a selection" fill as today's
-   calendar date and tier pip highlights (Kat, 2026-09-22). */
-.realm-option-active {
-  background: var(--brand);
-  color: var(--page);
-}
-
-.signup-class-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-}
-
-.signup-class-btn {
-  padding: var(--space-2);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  background: var(--raised);
-  color: var(--cls-color, var(--text));
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.signup-class-btn-selected {
-  border-color: var(--cls-color, var(--brand));
-  outline: 2px solid var(--cls-color, var(--brand));
-  outline-offset: -2px;
 }
 
 .signup-chip-group {
@@ -144,9 +118,22 @@
 
 .signup-actions {
   display: flex;
-  align-items: center;
+  flex-direction: column-reverse;
   gap: var(--space-2);
-  margin-top: var(--space-3);
+}
+
+.signup-actions .button {
+  width: 100%;
+}
+
+@media (max-width: 980px) {
+  .signup-actions {
+    flex-direction: row;
+  }
+
+  .signup-actions .button {
+    width: auto;
+  }
 }
 
 .signup-confirm {
@@ -164,4 +151,72 @@
 
 .signup-status-closed {
   color: var(--bad);
+}
+
+/* Step 1's Battle.net character picker (#1162): the only way to pick a
+   character for a fresh signup, no manual-entry fallback. Reuses
+   characters.css's character-icon/character-text but its own single-pick row
+   (that grid is built for the profile card's icon/tag/level columns, not a
+   plain radio button). */
+.signup-bnet-picker {
+  margin-bottom: var(--space-3);
+}
+
+.signup-bnet-list {
+  margin-bottom: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.signup-bnet-list button + button {
+  border-top: 1px solid var(--border);
+}
+
+.signup-bnet-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 10px;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.signup-bnet-row:hover:not(:disabled) {
+  background: var(--raised);
+}
+
+/* A plain background-tint match today's other "selected" rows, but a raider
+   scanning a scrollable list of near-identical names (Kat, 2026-09-22: dozens
+   of Katorri-ish alts) needs more than a faint tint to find the one they
+   picked -- an outline ring plus a checkmark at the end of the row. */
+.signup-bnet-row[aria-checked='true'] {
+  background: var(--nav-selected);
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+}
+
+.signup-bnet-row[aria-checked='true'] .character-name {
+  color: var(--brand);
+}
+
+.signup-bnet-check {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-left: auto;
+  color: var(--brand);
+}
+
+.signup-bnet-row:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.signup-bnet-help {
+  font-size: var(--text-xs);
 }

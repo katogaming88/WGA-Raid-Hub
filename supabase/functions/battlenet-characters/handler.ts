@@ -79,7 +79,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) return refuse('Not signed in', 401);
 
-  let body: { token?: unknown; save?: unknown };
+  let body: { token?: unknown; save?: unknown; allLevels?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -87,6 +87,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   }
   if (typeof body?.token !== 'string' || body.token === '') return refuse('Missing token', 400);
   const token = body.token;
+  const allLevels = body.allLevels === true;
 
   const user = await deps.db.getUser(authHeader);
   if (!user) return refuse('Not signed in', 401);
@@ -111,13 +112,26 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (list.ok) everyone = charactersOf(await list.json());
   else if (list.status !== 404) return refuse(BLIZZARD_DOWN, 502);
 
-  const shown: ShownCharacter[] = await Promise.all(
-    atMaxLevel(everyone).map(async (c) => {
-      const res = await deps.fetch(API_BASE + summaryPath(c) + PROFILE_QUERY, bearer);
-      const detail = res.ok ? detailOf(await res.json()) : { spec_name: null, item_level: null };
-      return { ...c, ...detail };
-    })
+  // Gear/spec detail is only worth a Blizzard call for a max-level character;
+  // a leveling alt has neither. Signup's allLevels asks for the pool itself
+  // to go wider (#1162: an applicant may not have hit max level yet) without
+  // multiplying the number of Blizzard calls by every low-level character on
+  // the account.
+  const maxLevel = atMaxLevel(everyone);
+  const detailById = new Map(
+    await Promise.all(
+      maxLevel.map(async (c) => {
+        const res = await deps.fetch(API_BASE + summaryPath(c) + PROFILE_QUERY, bearer);
+        const detail = res.ok ? detailOf(await res.json()) : { spec_name: null, item_level: null };
+        return [c.blizzard_id, detail] as const;
+      })
+    )
   );
+  const pool = allLevels ? everyone : maxLevel;
+  const shown: ShownCharacter[] = pool.map((c) => ({
+    ...c,
+    ...(detailById.get(c.blizzard_id) ?? { spec_name: null, item_level: null })
+  }));
 
   // Every character on the list, not only the max-level ones: a roster row is
   // whatever its team put on the roster.

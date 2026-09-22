@@ -1,13 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  buildSubmission,
-  classMismatch,
-  classmatesPool,
-  claimDiffers,
-  realmOptions,
-  type ClassmateRow,
-  type IncomingSignupRow
-} from './signup';
+import { buildSubmission, classmatesPool, claimDiffers, type ClassmateRow, type IncomingSignupRow } from './signup';
 
 const row = (nameRealm: string, cls: string, spec: string, role: string): ClassmateRow => ({
   nameRealm,
@@ -39,20 +31,6 @@ describe('classmatesPool', () => {
   });
 });
 
-describe('realmOptions', () => {
-  const realms = ['Illidan', 'Area 52', 'Stormrage', "Zul'jin"];
-
-  it('is the whole list with nothing typed, so it still works as a plain dropdown', () => {
-    expect(realmOptions(realms, '')).toEqual(realms);
-    expect(realmOptions(realms, '  ')).toEqual(realms);
-  });
-
-  it('filters to a substring match, case-insensitively', () => {
-    expect(realmOptions(realms, 'rea')).toEqual(['Area 52']);
-    expect(realmOptions(realms, 'storm')).toEqual(['Stormrage']);
-  });
-});
-
 describe('claimDiffers', () => {
   it('is false with no claim', () => {
     expect(claimDiffers(null, 'Katorri', 'Stormrage')).toBe(false);
@@ -64,24 +42,6 @@ describe('claimDiffers', () => {
 
   it('is true when they differ', () => {
     expect(claimDiffers('Katorri-Stormrage', 'Rex', 'Stormrage')).toBe(true);
-  });
-});
-
-describe('classMismatch', () => {
-  it('is false when the claim itself differs (that is its own warning)', () => {
-    expect(classMismatch('Warrior', 'Katorri-Stormrage', 'Rex', 'Stormrage', 'Mage')).toBe(false);
-  });
-
-  it('is true when the typed name matches the claim but the class does not', () => {
-    expect(classMismatch('Warrior', 'Katorri-Stormrage', 'Katorri', 'Stormrage', 'Mage')).toBe(true);
-  });
-
-  it('is false when the class matches', () => {
-    expect(classMismatch('Warrior', 'Katorri-Stormrage', 'Katorri', 'Stormrage', 'Warrior')).toBe(false);
-  });
-
-  it('is false with no claimed character on file', () => {
-    expect(classMismatch(null, 'Katorri-Stormrage', 'Katorri', 'Stormrage', 'Mage')).toBe(false);
   });
 });
 

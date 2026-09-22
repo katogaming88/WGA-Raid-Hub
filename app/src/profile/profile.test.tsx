@@ -529,7 +529,7 @@ describe('Characters card and alts picker', () => {
     });
     const noToken = renderApp('/g/wga/t/phoenix/me', profileHandlers(person('raider', 11), withPerson()));
     await userEvent.click(await screen.findByRole('button', { name: 'Choose alts' }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Continue to Battle.net' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Load your characters from Battle.net' }));
     expect(noToken.client.authCalls).toContainEqual([
       'signInWithOAuth',
       expect.objectContaining({ provider: 'custom:battlenet' })

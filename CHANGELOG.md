@@ -12,6 +12,39 @@ answers to.
 
 ---
 
+## [3.152.0] - 2026-09-22
+
+### Functions
+
+- `battlenet-characters` takes an `allLevels` request field: without it, the
+  answer is unchanged (max-level characters only, for the profile's alts
+  picker); with it, every character on the account is in the pool, though
+  only a max-level one still costs a Blizzard summary call for its spec and
+  item level ([#1162](https://github.com/katogaming88/WGA-Raid-Hub/issues/1162)).
+
+### Project
+
+- Sign Up's Step 1 picks the character straight from the raider's Battle.net
+  account instead of typing name/realm/class by hand
+  ([#1162](https://github.com/katogaming88/WGA-Raid-Hub/issues/1162)), the
+  piece #1102 shipped without: connecting Battle.net if it is not linked yet,
+  then a list of the account's characters (any level, so a character still
+  leveling shows up too) with what team, if any, already claims each one.
+  Picking one fills in character, realm, class and (when Blizzard knows it)
+  main spec; a character claimed by someone else is shown but not pickable.
+  There is no manual-entry fallback anywhere in the wizard, editing an
+  already-submitted signup included -- a raider whose character is still
+  missing is pointed at Discord rather than typing it in unverified. With
+  class always coming from Blizzard, the old "Select your class" step and its
+  class-mismatch check are gone (that check only ever caught a typed class
+  that disagreed with a typed name; a picked character can't disagree with
+  itself), so the wizard is three steps, not four. Back/Next/Submit, the step
+  count, and the claim-differs confirmation now live in their own card beside
+  the step content instead of under it, so they stay in view past a long
+  Battle.net character list; the picked character gets an outline and a
+  checkmark, not just a background tint, to stay visible in a list of
+  near-identical alt names.
+
 ## [3.151.1] - 2026-09-22
 
 ### Functions
