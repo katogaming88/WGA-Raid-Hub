@@ -12,7 +12,7 @@ answers to.
 
 ---
 
-## [3.153.0] - 2026-09-22
+## [3.152.2] - 2026-09-22
 
 ### Project
 
@@ -26,6 +26,25 @@ answers to.
   does. On submit it calls `submit_boe_found` (already anon-callable) and
   fires the `boe-webhook` Edge Function with the new row's id, best-effort.
   The Open/Awaiting Payout/History lifecycle view is a separate issue.
+
+## [3.152.1] - 2026-09-22
+
+### Backend
+
+- The five BoE lifecycle RPCs (`boe_record_listing`, `boe_record_sale`,
+  `boe_mark_paid`, `boe_retire`, `boe_revert`) write their own audit entry
+  inside their own transaction instead of relying on a separate client call.
+  A new `boe_edit_item()` RPC replaces the plain-UPDATE edit path (#874) the
+  same way. `write_audit_log()` drops the `is_boe_manager()` OR #766 added,
+  since the RPCs above no longer need it and the OR let a BoE manager log any
+  action on any team
+  ([#770](https://github.com/katogaming88/WGA-Raid-Hub/issues/770)).
+
+### Frontend
+
+- `js/boe-manage.js` no longer calls `writeAuditLog()` after a lifecycle
+  mutation or a find edit; the database writes those entries itself now
+  ([#770](https://github.com/katogaming88/WGA-Raid-Hub/issues/770)).
 
 ## [3.152.0] - 2026-09-22
 

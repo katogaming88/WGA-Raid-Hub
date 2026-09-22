@@ -10049,6 +10049,18 @@
       "return_type": "date",
       "arguments": "p_team_id integer, p_season text DEFAULT current_season()",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.format_boe_gold",
+      "return_type": "text",
+      "arguments": "n bigint",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.boe_edit_item",
+      "return_type": "void",
+      "arguments": "p_id integer, p_item_name text, p_track text, p_note text, p_item_id integer, p_upgrade_rank text",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

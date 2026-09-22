@@ -827,8 +827,9 @@ function _setBoeRowStatus(id, message) {
 
 // Shared RPC-call plumbing: disable the button for the flight, restore it on
 // every settle path, surface the server's message verbatim (the raises are
-// purpose-written), and only audit or touch the model after a success.
-function _boeAction(id, btnEl, rpcName, params, onSuccess) {
+// purpose-written), and only touch the model after a success. The audit
+// entry is the RPC's own doing now (#770), not this helper's.
+function _boeAction(id, btnEl, rpcName, params, onSuccess, afterRender) {
   var prevLabel = btnEl ? btnEl.textContent : '';
   if (btnEl) {
     btnEl.disabled = true;
@@ -850,6 +851,7 @@ function _boeAction(id, btnEl, rpcName, params, onSuccess) {
       }
       onSuccess(result);
       renderBoeManage();
+      if (afterRender) afterRender();
     })
     .catch(function (err) {
       restore();
@@ -869,13 +871,6 @@ function confirmBoeListing(id, btnEl) {
   }
   var note = noteEl ? String(noteEl.value).trim() : '';
   return _boeAction(id, btnEl, 'boe_record_listing', { p_id: id, p_price: price, p_note: note || null }, function () {
-    writeAuditLog(
-      'BoE Listed',
-      'boe_items',
-      id,
-      item.item_name + ' listed for ' + formatGold(price) + 'g',
-      item.team_id
-    );
     item.status = 'listed';
     _boeListings.push({ boe_item_id: id, listed_at: new Date().toISOString(), price: price, note: note || null });
   });
@@ -920,18 +915,6 @@ function confirmBoeSale(id, btnEl) {
     item.finder_payout = split.finder_payout;
     item.guild_cut = split.guild_cut;
     item.ah_fee = split.ah_fee;
-    writeAuditLog(
-      'BoE Sale Recorded',
-      'boe_items',
-      id,
-      item.item_name +
-        ' sold for ' +
-        formatGold(price) +
-        'g; finder payout ' +
-        formatGold(split.finder_payout || 0) +
-        'g',
-      item.team_id
-    );
     // Tell the finder in Discord (#873). Fire and forget, not gated on its
     // result and not awaited: the row above is the write of record, and a
     // Discord outage must not make a recorded sale look like it failed. The
@@ -966,27 +949,15 @@ function _boeOlderOpenTwin(item) {
 }
 
 // Mark Paid sends p_donated false explicitly: the manager's button decides,
-// so a row the raider flagged loses the intent here, and the audit says so.
+// so a row the raider flagged loses the intent here, and the audit (written
+// by boe_mark_paid itself, #770) says so.
 function markBoePaid(id, btnEl) {
   var item = findBoeItem(id);
   if (!item) return;
-  var hadIntent = !!item.payout_donated;
   return _boeAction(id, btnEl, 'boe_mark_paid', { p_id: id, p_donated: false }, function () {
     item.status = 'paid';
     item.payout_paid_at = new Date().toISOString();
     item.payout_donated = false;
-    writeAuditLog(
-      'BoE Payout Paid',
-      'boe_items',
-      id,
-      item.item_name +
-        ': ' +
-        formatGold(item.finder_payout || 0) +
-        'g to ' +
-        (item.finder_name || 'unknown finder') +
-        (hadIntent ? ' (donate intent cleared)' : ''),
-      item.team_id
-    );
   });
 }
 
@@ -1000,18 +971,6 @@ function donateBoePayout(id, btnEl) {
     item.status = 'paid';
     item.payout_paid_at = new Date().toISOString();
     item.payout_donated = true;
-    writeAuditLog(
-      'BoE Payout Donated',
-      'boe_items',
-      id,
-      item.item_name +
-        ': ' +
-        formatGold(item.finder_payout || 0) +
-        'g finder cut from ' +
-        (item.finder_name || 'unknown finder') +
-        ' kept by the guild',
-      item.team_id
-    );
   });
 }
 
@@ -1022,7 +981,6 @@ function retireBoe(id, btnEl) {
   return _boeAction(id, btnEl, 'boe_retire', { p_id: id }, function () {
     item.status = 'retired';
     item.retired_at = new Date().toISOString();
-    writeAuditLog('BoE Retired', 'boe_items', id, item.item_name, item.team_id);
   });
 }
 
@@ -1075,7 +1033,6 @@ function revertBoe(id, btnEl) {
     } else if (from === 'retired') {
       item.retired_at = null;
     }
-    writeAuditLog('BoE Reverted', 'boe_items', id, item.item_name + ': ' + from + ' back to ' + to, item.team_id);
   });
 }
 
@@ -1115,8 +1072,8 @@ function _boeCatalogHit(name) {
   return null;
 }
 
-// Which editable columns differ between the row and the form, with both values
-// for the audit detail. Null and undefined compare equal to each other here.
+// Whether any editable column differs between the row and the form. The
+// audit detail itself is built server-side now, by boe_edit_item() (#770).
 function _boeEditChanges(item, values) {
   var changes = [];
   BOE_EDIT_COLUMNS.forEach(function (col) {
@@ -1127,33 +1084,16 @@ function _boeEditChanges(item, values) {
   return changes;
 }
 
-// The audit detail quotes the old and new value of every changed column, so a
-// raider's original words survive a rewrite of the note.
-function _boeEditDetail(changes) {
-  var quote = function (v) {
-    if (v == null) return '(none)';
-    return typeof v === 'number' ? String(v) : '"' + v + '"';
-  };
-  return changes
-    .map(function (c) {
-      return c.label === 'item'
-        ? 'item renamed from ' + quote(c.from) + ' to ' + quote(c.to)
-        : c.label + ' was ' + quote(c.from) + ', now ' + quote(c.to);
-    })
-    .join('; ');
-}
-
 function _focusBoeEditButton(id) {
   var btn = document.getElementById('boe-edit-btn-' + id);
   if (btn && btn.focus) btn.focus();
 }
 
-// Save is a plain UPDATE of every editable column by id, not an RPC: the
-// check_boe_status_transition trigger admits exactly these columns from an
-// authenticated caller and raises on anything else, and the update policy is
-// the manager grant. A grant revoked since the page loaded makes RLS filter
-// the row out, which returns no error and zero rows, so the returned row is
-// what turns that into a message rather than a silent no-op.
+// Save goes through boe_edit_item() (#770), not a raw UPDATE: that RPC is
+// the only path that can still write an audit entry for a manager with no
+// officer role, now that write_audit_log() no longer admits the grant
+// directly. Reuses _boeAction, the same button/error plumbing the other
+// lifecycle handlers use.
 function saveBoeEdit(id, btnEl) {
   var item = findBoeItem(id);
   if (!item) return;
@@ -1162,54 +1102,34 @@ function saveBoeEdit(id, btnEl) {
     _setBoeRowStatus(id, 'Enter the item name.');
     return;
   }
-  var changes = _boeEditChanges(item, values);
-  if (!changes.length) {
+  if (!_boeEditChanges(item, values).length) {
     cancelBoeEdit(id);
     return;
   }
-  var payload = {};
-  BOE_EDIT_COLUMNS.forEach(function (col) {
-    payload[col[0]] = values[col[0]];
-  });
-  var prevLabel = btnEl ? btnEl.textContent : '';
-  if (btnEl) {
-    btnEl.disabled = true;
-    btnEl.textContent = '...';
-  }
-  function restore() {
-    if (btnEl) {
-      btnEl.disabled = false;
-      btnEl.textContent = prevLabel;
-    }
-  }
-  return supabaseClient
-    .from('boe_items')
-    .update(payload)
-    .eq('id', id)
-    .select('id')
-    .then(function (result) {
-      restore();
-      if (result.error) {
-        _setBoeRowStatus(id, result.error.message);
-        return;
-      }
-      if (!result.data || !result.data.length) {
-        _setBoeRowStatus(id, 'Nothing was saved. Your BoE manager grant may have been revoked; reload the page.');
-        return;
-      }
+  var params = {
+    p_id: id,
+    p_item_name: values.item_name,
+    p_track: values.track,
+    p_note: values.note,
+    p_item_id: values.item_id,
+    p_upgrade_rank: values.upgrade_rank
+  };
+  return _boeAction(
+    id,
+    btnEl,
+    'boe_edit_item',
+    params,
+    function () {
       BOE_EDIT_COLUMNS.forEach(function (col) {
         item[col[0]] = values[col[0]];
       });
-      writeAuditLog('BoE Find Edited', 'boe_items', id, _boeEditDetail(changes), item.team_id);
-      // The re-render recreates the row's Edit button under the same id; the
-      // row cannot change section, since status and dates are untouched.
-      renderBoeManage();
+    },
+    // The re-render recreates the row's Edit button under the same id, so
+    // focus only makes sense once it exists again.
+    function () {
       _focusBoeEditButton(id);
-    })
-    .catch(function (err) {
-      restore();
-      _setBoeRowStatus(id, err && err.message ? err.message : 'Something went wrong.');
-    });
+    }
+  );
 }
 
 // Cancel puts the fields back to the row's values and hides the form, with no
