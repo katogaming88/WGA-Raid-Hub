@@ -43,8 +43,8 @@ function makeSandbox({ roster, ranked, itemIds }) {
   var sandbox = {
     console,
     document: { getElementById: (id) => els[id] || null },
-    window: { DATA: { seasonName: 'Season 1' } },
-    DATA: { seasonName: 'Season 1', itemIds, roster, itemSlots: {}, itemBosses: {} },
+    window: { DATA: {} },
+    DATA: { itemIds, roster, itemSlots: {}, itemBosses: {} },
     seasonCodeForDisplay: (name) => (name === 'Season 1' ? 'S1' : name),
     resolveSeasonViewCode: () => 'S1',
     normalise: (str) =>

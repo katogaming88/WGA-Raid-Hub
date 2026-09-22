@@ -22,12 +22,14 @@ const settings = () =>
     ...row,
     config: {
       ...row.config,
-      seasonName: SEASON.name,
       seasonStart: SEASON.start,
       seasonEnd: SEASON.end,
       seasonView: null
     }
   }));
+
+// The live tier is the seasons read (#938): SEASON as the one started tier.
+const SEASONS = [{ code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start, ends_at: SEASON.end }];
 
 // Wishlist editing is a switch per tier (#939): the team_seasons row for the
 // tier the wishlist is stamped with, here the live season.
@@ -49,6 +51,7 @@ function openWishlist({ open = true, allowed = false } = {}) {
       players: [own],
       team_members: [{ id: viewer.teamMember, role: viewer.role, name_realm: own.name_realm }],
       team_settings: settings(),
+      seasons: SEASONS,
       team_seasons: teamSeasons(open),
       attendance: [],
       rclc_loot: [],

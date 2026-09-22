@@ -137,7 +137,7 @@ describe('_fetchTeamScoringIfNeeded', () => {
     }));
     const sandbox = makeSandbox(supabase);
     sandbox.DATA = sandbox.window.DATA = {
-      seasonName: 'Midnight Season 1',
+      seasons: [{ code: 'MID1', display_name: 'Midnight Season 1', starts_at: '2026-03-17', ends_at: '2026-08-10' }],
       roster: [{ id: 1 }, { id: 2 }, { id: null }]
     };
     // The real success handler redraws the table; buildRosterTable() itself
@@ -160,7 +160,10 @@ describe('_fetchTeamScoringIfNeeded', () => {
   it('does not query at all when the roster is empty', async () => {
     const { calls, supabase } = mockScoringSupabase(() => ({ data: [], error: null }));
     const sandbox = makeSandbox(supabase);
-    sandbox.DATA = sandbox.window.DATA = { seasonName: 'Midnight Season 1', roster: [] };
+    sandbox.DATA = sandbox.window.DATA = {
+      seasons: [{ code: 'MID1', display_name: 'Midnight Season 1', starts_at: '2026-03-17', ends_at: '2026-08-10' }],
+      roster: []
+    };
 
     sandbox._fetchTeamScoringIfNeeded();
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -172,7 +175,10 @@ describe('_fetchTeamScoringIfNeeded', () => {
   it('does not re-query once the cache already matches the current season', async () => {
     const { calls, supabase } = mockScoringSupabase(() => ({ data: [], error: null }));
     const sandbox = makeSandbox(supabase);
-    sandbox.DATA = sandbox.window.DATA = { seasonName: 'Midnight Season 1', roster: [{ id: 1 }] };
+    sandbox.DATA = sandbox.window.DATA = {
+      seasons: [{ code: 'MID1', display_name: 'Midnight Season 1', starts_at: '2026-03-17', ends_at: '2026-08-10' }],
+      roster: [{ id: 1 }]
+    };
     sandbox._teamScoringCache = { season: 'MID1', byPlayerId: { 1: 5 } };
 
     sandbox._fetchTeamScoringIfNeeded();

@@ -62,6 +62,7 @@ function openOwnProfile(viewerKey, { mplusOpen = true, rejections = true, autoAp
     viewport,
     tables: {
       players: [own],
+      seasons: [{ code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start, ends_at: null }],
       // One row answers every team_settings read the profile makes.
       team_settings: [
         { name: SEASON.name, start: SEASON.start, end: SEASON.end, requests: null, mplusOpen: String(mplusOpen) }
@@ -261,6 +262,7 @@ describe('Mark Received (new app), checked against the current site', () => {
       sentinel: 'main .priority-table tbody tr',
       tables: {
         players: [VIEWERS.torbjorn.player],
+        seasons: [{ code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start, ends_at: null }],
         team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end, mplusOpen: 'true' }],
         items: PRIORITY_ITEMS,
         raid_zones: RAID_ZONES,

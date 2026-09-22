@@ -407,7 +407,7 @@ One row per found Bind-on-Equip, carrying the lifecycle (found -> listed -> sold
 | `item_name`      | text        | The identity, since `item_id` is usually null                          |
 | `track`          | text        | CHECK Champion/Hero/Myth, or null                                       |
 | `upgrade_rank`   | text        | The tooltip's "2/6", CHECK N/N shape; with the track it is the identity of the item in the payout queue (#865). Null on rows imported from the sheets |
-| `season`         | text        | `team_settings.config->>'seasonName'` snapshot at submit                |
+| `season`         | text        | The tier's code, referencing `seasons(code)`; `current_season()` at submit (#937) |
 | `note`           | text        | Free-text note                                                          |
 | `status`         | text        | CHECK found/listed/sold/paid/retired                                    |
 | `found_at`       | timestamptz | When the find was submitted                                             |

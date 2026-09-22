@@ -59,6 +59,24 @@ describe('seasonDisplayName / seasonCodeForDisplay (#341)', () => {
     expect(sandbox.seasonCodeForDisplay('Dragonflight Season 3')).toBe('Dragonflight Season 3');
   });
 
+  it('reads the seasons table before the pattern, so a tier named outside it translates both ways (#938)', () => {
+    const sandbox = loadCommonJs();
+    sandbox.DATA = {
+      seasons: [
+        { code: 'TLT1', display_name: 'The Last Titan Season 1', starts_at: '2027-03-01', ends_at: null },
+        { code: 'MID3', display_name: 'Midnight Season 3', starts_at: '2026-12-01', ends_at: '2027-02-28' }
+      ]
+    };
+    expect(sandbox.seasonDisplayName('TLT1')).toBe('The Last Titan Season 1');
+    expect(sandbox.seasonCodeForDisplay('The Last Titan Season 1')).toBe('TLT1');
+    // A tier the table holds under the pattern's own name still translates.
+    expect(sandbox.seasonDisplayName('MID3')).toBe('Midnight Season 3');
+    expect(sandbox.seasonCodeForDisplay('Midnight Season 3')).toBe('MID3');
+    // A code the table does not hold falls through to the pattern, as before.
+    expect(sandbox.seasonDisplayName('MID4')).toBe('Midnight Season 4');
+    expect(sandbox.seasonCodeForDisplay('MID4')).toBe('MID4');
+  });
+
   it('SEASON_LABELS overrides the pattern when a season needs an exception', () => {
     const sandbox = loadCommonJs();
     sandbox.SEASON_LABELS.MID3 = 'The Renamed Season';

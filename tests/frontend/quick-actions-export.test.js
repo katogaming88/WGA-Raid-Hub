@@ -45,9 +45,10 @@ function makeSandbox({ rpcResult, writeText, invokeResult, teamSlug } = {}) {
   var sandbox = {
     console,
     document: { getElementById: (id) => els[id] || null },
-    window: { DATA: { seasonName: 'Season 1' } },
-    DATA: { seasonName: 'Season 1' },
-    seasonCodeForDisplay: (name) => (name === 'Season 1' ? 'S1' : name),
+    window: { DATA: {} },
+    DATA: {},
+    // The live tier is the seasons read (#938); stubbed as the code alone.
+    currentSeasonCode: () => 'S1',
     _teamCfg: { supabaseTeamId: 1 },
     TEAM_SLUG: teamSlug || 'phoenix',
     supabaseClient,

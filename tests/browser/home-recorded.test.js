@@ -26,10 +26,13 @@ import {
 // widget -- recorded so the new app's Home page can be checked
 // against the same expectations (tests/behavior/home.js, #1102 step 1).
 
+// The live tier is the seasons read (#938): SEASON as the one started tier.
+const SEASONS = [{ code: SEASON.code, display_name: SEASON.name, starts_at: '2026-01-01', ends_at: null }];
+
 const overrides = (loot = SCENARIO.loot) => ({
   players: SCENARIO.players,
   rclc_loot: loot,
-  team_settings: fixture('team_settings', []).map((r) => ({ ...r, config: { ...r.config, seasonName: SEASON.name } }))
+  seasons: SEASONS
 });
 
 const STATE = {
@@ -129,7 +132,7 @@ const blockOverrides = (streamers = STREAMS) => ({
   ...overrides(),
   team_settings: fixture('team_settings', []).map((r) => ({
     ...r,
-    config: { ...r.config, seasonName: SEASON.name, raidProgression: PROGRESSION.raids }
+    config: { ...r.config, raidProgression: PROGRESSION.raids }
   })),
   team_raid_progress: PROGRESSION.rows,
   raid_schedule: CALENDAR.schedule,

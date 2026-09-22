@@ -44,8 +44,8 @@ canonical steps (also built into the dashboard's Officer Guide tab) -- point peo
 directly once they've seen it walked through once.
 
 ### After each raid night
-1. **Loot tab -> Import** -- confirm Season Name is set in Season Settings, paste the
-   RCLootCouncil JSON export, click Import. Duplicates are skipped automatically -- safe to
+1. **Loot tab -> Import** -- paste the RCLootCouncil JSON export, click Import; entries are
+   tagged with the current tier, which the panel names. Duplicates are skipped automatically -- safe to
    paste multiple nights at once or re-paste an old export.
 2. **Attendance tab -> Manage** -- Refresh from WCL (pulls the latest raid nights), review/edit
    any player statuses in the grid, then Commit Attendance Scores (recalculates attendance % for
@@ -70,9 +70,10 @@ directly once they've seen it walked through once.
    forward, and does more in the same click: clears every player's submitted BiS link (a link
    is effectively per-tier; cleared unconditionally rather than left for a raider to notice
    it's stale), resets M+ exclusion for the whole active roster, and resets Bench status for the
-   whole active roster (Trial status is left alone). It starts nothing: the Season Name, the
-   dates and the raid list stay as they are, and a tier can be closed before or after the raid
-   list is rebuilt for the next one. See the Season Settings section below.
+   whole active roster (Trial status is left alone). It starts nothing: the dates and the raid
+   list stay as they are, the tier everyone is on is Blizzard's from the day it goes live, and a
+   tier can be closed before or after the raid list is rebuilt for the next one. See the Season
+   Settings section below.
 3. Still in Season History, run the just-closed tier's **WCL Performance Baseline**
    fetch (#264) -- the "Fetch WCL Performance" row only appears next to the *newest* history
    entry, so this is the only chance to run it; once another tier is closed, the entry
@@ -81,7 +82,8 @@ directly once they've seen it walked through once.
    `scoring.performance_score` for the new season too (without ever overwriting a real
    Commit Performance Scores). A live status label on the row shows whether it's already
    been done for that season.
-4. Set the new **Start Date** for the upcoming season (Season Name is now auto-filled by step 2).
+4. Set the new **Start Date** for the upcoming season. There is no season name to set: loot
+   imports, scores and priority lists are tagged with the current tier.
 5. Re-import the new season's loot via **Loot -> Import** (entries auto-tag with the new season
    name). Old loot history doesn't need clearing -- entries stay tagged by season and the
    season selector already filters by it; there is no "Clear All Loot History" action (see the
@@ -135,7 +137,7 @@ happens in the Admin tab's Officers sub-tab, not here.
 Three sub-tabs:
 
 - **Import** -- paste RCLootCouncil JSON from in-game; entries are tagged with the current
-  Season Name automatically. Set Season Name in Season Settings first.
+  tier automatically, which the panel names. There is nothing to set first.
 - **Import History** -- a table of the most recent RCLootCouncil imports (up to the last 100
   rows: Time/Player/Item), sourced from the audit log so it only ever shows genuine paste-imports.
   There is no "Clear All" here -- it was deliberately left out because `rclc_loot` mixes
@@ -357,7 +359,7 @@ Three sub-tabs: **Settings**, **Raid Progression**, **History**.
   already-approved incoming roster meets or exceeds a target, raiders signing up for that role
   see a nudge to consider DPS/backup instead or talk to an officer. Leave a field blank to skip
   the nudge for that role -- raiders still see the plain count either way.
-- **Season View** -- a forward-looking season picker, separate from the live Season Name, that
+- **Season View** -- a forward-looking season picker, separate from the live tier, that
   scopes the item catalog / BiS lists / Wishlist prep to a season you're preparing for before
   it actually goes live.
 - **WarcraftLogs Guild URL** -- the guild's WCL page, used by the Attendance and Scoring tabs'
@@ -373,7 +375,7 @@ Three sub-tabs: **Settings**, **Raid Progression**, **History**.
   click clears every player's submitted BiS source unconditionally (it's effectively per-tier,
   regardless of which site it points to), resets M+ exclusion for the whole active roster, and
   resets Bench status for the whole active roster (Trial status is untouched). It does not touch
-  the Season Name, the dates or the raid list, and there is no undo because nothing is started.
+  the dates or the raid list, and there is no undo because nothing is started.
   See the New tier workflow above.
 - **Season History** -- the tiers this team has closed. The most recently closed tier also has a
   **WCL Performance Baseline** fetch (#264) -- picks a raid tier from that season, pulls each

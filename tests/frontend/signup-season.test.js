@@ -253,7 +253,6 @@ describe('the signup form tier (signup.js) and the public page (roster.js)', () 
   it('the classmates pool includes the roster only when the live tier is the one being signed up for', () => {
     const s = loadSandbox({
       data: {
-        seasonName: 'Midnight Season 2',
         incomingRoster: [{ nameRealm: 'Incoming-Illidan', className: 'Mage', mainSpec: 'Frost' }],
         roster: [{ nameRealm: 'Rostered-Illidan', className: 'Mage', mainSpec: 'Frost' }],
         teamSeasons: [{ season_code: 'MID3', signups_open: true, wishlist_open: false }]

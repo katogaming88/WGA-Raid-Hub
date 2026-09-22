@@ -103,9 +103,8 @@ function makeSandbox({ saveTeamSettingImpl, rpcResult, els = {}, data = {}, atte
       }
     },
     _teamCfg: { supabaseTeamId: 1 },
-    // Normally defined in js/common.js (#537/#341); stubbed here since this
+    // Normally defined in js/common.js (#341); stubbed here since this
     // sandbox loads only tab-season.js.
-    CURRENT_SEASON: { code: 'MID2', displayName: 'Midnight Season 2' },
     _seasonDisplayPrefix: () => 'Midnight Season',
     _escapeRegExp: (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
     setTimeout,
@@ -116,48 +115,6 @@ function makeSandbox({ saveTeamSettingImpl, rpcResult, els = {}, data = {}, atte
   vm.runInContext(SEASON_JS, sandbox, { filename: 'tab-season.js' });
   return { sandbox, saveTeamSettingCalls, auditLogCalls, rpcCalls, rangesAsked, els };
 }
-
-describe('saveSeasonName (#221, number-only input as of #341)', () => {
-  it('composes the number with the display prefix, saves via saveTeamSetting, updates DATA/audit log', async () => {
-    const els = {
-      seasonNameInput: makeEl({ value: '3' }),
-      seasonNameSaveBtn: makeEl(),
-      seasonNameStatus: makeEl()
-    };
-    const { sandbox, saveTeamSettingCalls, auditLogCalls } = makeSandbox({ els, data: { seasonName: 'Old' } });
-
-    sandbox.saveSeasonName();
-    await flush();
-
-    expect(saveTeamSettingCalls).toEqual([{ seasonName: 'Midnight Season 3' }]);
-    expect(sandbox.DATA.seasonName).toBe('Midnight Season 3');
-    expect(auditLogCalls).toEqual([
-      { action: 'Season Name Set', targetType: null, targetId: null, detail: 'Midnight Season 3' }
-    ]);
-    // The input keeps showing the bare number, not the composed name.
-    expect(els.seasonNameInput.value).toBe('3');
-    expect(els.seasonNameStatus.textContent).toBe('Saved!');
-    expect(els.seasonNameSaveBtn.disabled).toBe(false);
-  });
-
-  it('shows the error message and re-enables the button on failure', async () => {
-    const els = {
-      seasonNameInput: makeEl({ value: '3' }),
-      seasonNameSaveBtn: makeEl(),
-      seasonNameStatus: makeEl()
-    };
-    const { sandbox } = makeSandbox({
-      els,
-      saveTeamSettingImpl: () => Promise.reject(new Error('Not authorized'))
-    });
-
-    sandbox.saveSeasonName();
-    await flush();
-
-    expect(els.seasonNameStatus.textContent).toBe('Not authorized');
-    expect(els.seasonNameSaveBtn.disabled).toBe(false);
-  });
-});
 
 describe('saveSeasonView (#549)', () => {
   it('re-renders the Wishlist Editing toggle, which controls the tier now shown (#939)', async () => {

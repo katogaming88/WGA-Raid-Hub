@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.149.0">
-  <link rel="stylesheet" href="css/officer.css?v=3.149.0">
+  <link rel="stylesheet" href="css/styles.css?v=3.150.0">
+  <link rel="stylesheet" href="css/officer.css?v=3.150.0">
   <!-- Hover tooltips for Buff Coverage's spell links (#491) and item links
        (Priority tab/BiS Lists, itemNameBlockHtml(), #567). Auto-attaches to
        any <a class="wowhead">. whTooltips must be set before power.js loads
@@ -687,21 +687,6 @@
 
             <div id="season-sub-settings" class="season-settings-wrap">
 
-              <!-- Season Name -->
-              <div class="help-ref-card">
-                <h3 class="help-ref-title">Season<button class="help-btn" onclick="toggleHelp('help-season-name')" title="Show help">?</button></h3>
-                <div id="help-season-name" class="help-tip">
-                  The season number, applied to every loot entry imported through RCLootCouncil while it's set. It is used by the <strong>Season</strong> toolbar dropdown to let you filter loot, fairness, and attendance to a specific season. Set this before importing loot at the start of each season.
-                </div>
-                <p class="signup-officer-note" style="margin-top:0.25rem;">The current season number applied to all imported RCLootCouncil loot (e.g. 1).</p>
-                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
-                  <input type="number" id="seasonNameInput" class="add-player-input" placeholder="1" min="1"
-                    style="max-width:100px;font-size:0.95rem;padding:0.35rem 0.6rem;">
-                  <button class="btn btn-gold" id="seasonNameSaveBtn" onclick="saveSeasonName()">Save</button>
-                  <span id="seasonNameStatus" style="font-size:0.92rem;color:var(--heal);"></span>
-                </div>
-              </div>
-
               <!-- Season View -->
               <div class="help-ref-card">
                 <h3 class="help-ref-title">Season View<button class="help-btn" onclick="toggleHelp('help-season-view')" title="Show help">?</button></h3>
@@ -860,13 +845,13 @@
               <div class="help-ref-card">
                 <h3 class="help-ref-title">Close Season<button class="help-btn" onclick="toggleHelp('help-season-archive')" title="Show help">?</button></h3>
                 <div id="help-season-archive" class="help-tip">
-                  Closes the books on a tier that has ended: the roster with its attendance and the raids with their progress are recorded in Season History, and every player's submitted BiS source, M+ exclusion and Bench status reset. Nothing here starts a season, so close the old tier whenever you get to it, before or after rebuilding the raid list. Once closed, the tier appears in the <strong>Season</strong> toolbar dropdown so officers can filter by it at any time.
+                  Closes the books on a tier that has ended: the roster with its attendance and the raids with their progress are recorded in Season History, and every player's submitted BiS source, M+ exclusion and Bench status reset. The season everyone is on is Blizzard's, starting the day the tier goes live, so nothing here starts one; close the old tier whenever you get to it, before or after rebuilding the raid list.
                   <br><br>
                   <strong>New tier checklist:</strong>
                   <ol style="margin:0.35rem 0 0;padding-left:1.25rem;">
                     <li>Click <strong>Close Season</strong> below for the tier that just ended.</li>
                     <li>Run the closed tier's <strong>WCL Performance Baseline</strong> fetch in Season History.</li>
-                    <li>Set the new tier's <strong>Season Name</strong> and <strong>Start Date</strong> on the Settings sub-tab.</li>
+                    <li>Set a <strong>Start Date</strong> for the new tier, and clear the old <strong>End Date</strong>.</li>
                     <li>Click <strong>Refresh from WCL</strong> on the Attendance tab to pull the new tier's raids.</li>
                   </ol>
                 </div>
@@ -955,7 +940,7 @@
               <div class="help-ref-card">
                 <h4 class="help-ref-title">Import RCLootCouncil loot history</h4>
                 <ol class="help-ref-steps">
-                  <li>Confirm <strong>Season Name</strong> is set in <a href="#" onclick="switchTab('season');return false;">Season Settings</a> (e.g. "Season 2"). New entries will be tagged with this label.</li>
+                  <li>Entries are tagged with the current tier, the one the <strong>Loot &gt; Import</strong> panel names; there is nothing to set first.</li>
                   <li>In-game, open RCLootCouncil and use its export feature to copy your loot history JSON.</li>
                   <li>Go to <strong>Loot &gt; Import</strong>, paste the JSON into the text box, and click <strong>Import</strong>.</li>
                   <li>Duplicate entries are skipped automatically -- you can paste multiple nights at once or re-paste old exports safely.</li>
@@ -990,20 +975,20 @@
               </div>
 
               <div class="help-ref-card">
-                <h4 class="help-ref-title">Set season start date and season name</h4>
+                <h4 class="help-ref-title">Set the season start date</h4>
                 <ol class="help-ref-steps">
                   <li>Go to <a href="#" onclick="switchTab('season');return false;">Season Settings</a>.</li>
                   <li>Set the <strong>Season Start Date</strong> to the first day of the current raid season. Raids before this date are excluded from attendance scoring.</li>
-                  <li>Set the <strong>Season Name</strong> (e.g. "Season 2"). This label is applied to all future loot imports -- set it before importing loot.</li>
+                  <li>The season itself is Blizzard's tier and needs no setting: loot imports, scores and priority lists are tagged with the current tier.</li>
                 </ol>
               </div>
 
               <div class="help-ref-card">
                 <h4 class="help-ref-title">New tier workflow</h4>
                 <ol class="help-ref-steps">
-                  <li>Go to <a href="#" onclick="switchTab('season');return false;">Season Settings</a> and click <strong>Close Season</strong> (History sub-tab) for the tier that ended. This records it in Season History and resets every player's submitted BiS source, M+ exclusion, and Bench status team-wide. It does not change the Season Name, the dates or the raid list.</li>
+                  <li>Go to <a href="#" onclick="switchTab('season');return false;">Season Settings</a> and click <strong>Close Season</strong> (History sub-tab) for the tier that ended. This records it in Season History and resets every player's submitted BiS source, M+ exclusion, and Bench status team-wide. The new tier is already the season everyone is on.</li>
                   <li>Still in Season History, run the just-closed tier's <strong>WCL Performance Baseline</strong> fetch -- the row only appears next to the newest history entry, so do it now or you won't get another chance once another tier closes. This seeds the Heroic priority baseline before the new tier has raid reports of its own; a status label on the row shows whether it's already been done.</li>
-                  <li>Set the new tier's <strong>Season Name</strong> and <strong>Season Start Date</strong> (its first raid day) on the Settings sub-tab.</li>
+                  <li>Set the new <strong>Season Start Date</strong> to the new tier's first raid day, and clear the old <strong>Season End Date</strong> (or set the new one).</li>
                   <li>Import this tier's loot via <strong>Loot &gt; Import</strong> -- old loot history doesn't need clearing, it stays tagged by season.</li>
                   <li>On the <strong>Attendance</strong> tab, click <strong>Refresh from WCL</strong> to pull the new season's raid nights.</li>
                   <li>Commit updated scores via <strong>Commit Attendance Scores</strong>.</li>
@@ -1185,7 +1170,7 @@
 
   </main>
 
-  <footer class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNum">3.149.0</span> &middot; <a
+  <footer class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNum">3.150.0</span> &middot; <a
       class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank"
       rel="noopener">Changelog</a></footer>
 
@@ -1301,28 +1286,28 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.149.0"></script>
-  <script src="js/discord.js?v=3.149.0"></script>
-  <script src="js/officer.js?v=3.149.0"></script>
-  <script src="js/tabs/tab-roster.js?v=3.149.0"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.149.0"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.149.0"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.149.0"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.149.0"></script>
-  <script src="js/tabs/tab-signups.js?v=3.149.0"></script>
-  <script src="js/tabs/tab-requests.js?v=3.149.0"></script>
-  <script src="js/tabs/tab-bis.js?v=3.149.0"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.149.0"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.149.0"></script>
-  <script src="js/tabs/tab-priority.js?v=3.149.0"></script>
-  <script src="js/tabs/tab-audit.js?v=3.149.0"></script>
-  <script src="js/tabs/tab-reports.js?v=3.149.0"></script>
-  <script src="js/tabs/tab-season.js?v=3.149.0"></script>
-  <script src="js/tabs/tab-schedule.js?v=3.149.0"></script>
-  <script src="js/tabs/tab-bios.js?v=3.149.0"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.149.0"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.149.0"></script>
-  <script src="js/tabs/tab-admin.js?v=3.149.0"></script>
+  <script src="js/common.js?v=3.150.0"></script>
+  <script src="js/discord.js?v=3.150.0"></script>
+  <script src="js/officer.js?v=3.150.0"></script>
+  <script src="js/tabs/tab-roster.js?v=3.150.0"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.150.0"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.150.0"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.150.0"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.150.0"></script>
+  <script src="js/tabs/tab-signups.js?v=3.150.0"></script>
+  <script src="js/tabs/tab-requests.js?v=3.150.0"></script>
+  <script src="js/tabs/tab-bis.js?v=3.150.0"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.150.0"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.150.0"></script>
+  <script src="js/tabs/tab-priority.js?v=3.150.0"></script>
+  <script src="js/tabs/tab-audit.js?v=3.150.0"></script>
+  <script src="js/tabs/tab-reports.js?v=3.150.0"></script>
+  <script src="js/tabs/tab-season.js?v=3.150.0"></script>
+  <script src="js/tabs/tab-schedule.js?v=3.150.0"></script>
+  <script src="js/tabs/tab-bios.js?v=3.150.0"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.150.0"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.150.0"></script>
+  <script src="js/tabs/tab-admin.js?v=3.150.0"></script>
   <script>
 renderSiteNav('officer');
 document.getElementById('versionNum').textContent = VERSION;

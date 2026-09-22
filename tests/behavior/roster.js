@@ -32,7 +32,6 @@ const player = (id, nameRealm, nickname, classSpec, flags = {}) => ({
 });
 
 export const SCENARIO = {
-  seasonName: 'Season 3',
   // The tier the team has signups open for (#934): a team_seasons row with
   // the switch on, so the row both sites read is SIGNUP_SEASON_ROW below.
   signupSeason: 'MID4',

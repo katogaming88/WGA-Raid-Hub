@@ -53,11 +53,12 @@ function loadSandbox(client) {
   const sandbox = {
     console: { log: () => {}, warn: () => {}, error: () => {} },
     document: { getElementById: (id) => els[id] || null },
-    window: { DATA: { seasonName: 'Midnight Season 2' } },
-    DATA: { seasonName: 'Midnight Season 2' },
+    window: { DATA: {} },
+    DATA: {},
     _teamCfg: { supabaseTeamId: 3 },
     ATTENDANCE_WEIGHTS_JS: { Present: 1, Bench: 1, 'No Show': 0 },
-    seasonCodeForDisplay: () => 'MID2',
+    // The live tier is the seasons read (#938); stubbed as the code alone.
+    currentSeasonCode: () => 'MID2',
     writeAuditLog: () => Promise.resolve(),
     // Unref'd so the success path's 6s status-reset timer never holds the
     // test process open.

@@ -14,42 +14,54 @@ import { loadCommonJs, quietConsole } from './helpers/common-sandbox.js';
 // seasons(display_name) until #936; and the scope
 // check compares zones by code whether or not a Season View is set. Before
 // this, a team with no Season View compared its season name against coded
-// zones, matched nothing, and every raid item fell open into scope.
+// zones, matched nothing, and every raid item fell open into scope. Since
+// #938 the fallback is the live tier from the seasons read, not a key on the
+// team's settings.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SEASON_JS = readFileSync(path.join(HERE, '../../js/tabs/tab-season.js'), 'utf8');
 
+// Two tiers, MID2 current; a fixture that names no tier gets these.
+const TIERS = [
+  { code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-08-11', ends_at: null },
+  { code: 'MID1', display_name: 'Midnight Season 1', starts_at: '2026-03-17', ends_at: '2026-08-10' }
+];
+
 function withData(data) {
   const sandbox = loadCommonJs(quietConsole);
-  sandbox.DATA = data;
+  sandbox.DATA = Object.assign({ seasons: TIERS }, data);
   return sandbox;
 }
 
 describe('resolveSeasonViewCode returns a code on both branches (#923)', () => {
   it('returns the stored code when Season View is set', () => {
-    expect(withData({ seasonView: 'MID2', seasonName: 'Midnight Season 1' }).resolveSeasonViewCode()).toBe('MID2');
+    expect(withData({ seasonView: 'MID1' }).resolveSeasonViewCode()).toBe('MID1');
   });
 
   it('normalises a Season View stored as a name before the conversion', () => {
-    expect(withData({ seasonView: 'Midnight Season 2', seasonName: '' }).resolveSeasonViewCode()).toBe('MID2');
+    expect(withData({ seasonView: 'Midnight Season 1' }).resolveSeasonViewCode()).toBe('MID1');
   });
 
-  it('falls back to the live season name, as a code', () => {
-    expect(withData({ seasonView: null, seasonName: 'Midnight Season 2' }).resolveSeasonViewCode()).toBe('MID2');
+  it('falls back to the live tier (#938)', () => {
+    expect(withData({ seasonView: null }).resolveSeasonViewCode()).toBe('MID2');
+  });
+
+  it('is empty before the first tier has started', () => {
+    expect(withData({ seasonView: null, seasons: [] }).resolveSeasonViewCode()).toBe('');
   });
 });
 
 describe('resolveSeasonView returns a name on both branches', () => {
   it('shows the tier name for a Season View stored as a code', () => {
-    expect(withData({ seasonView: 'MID2', seasonName: 'Midnight Season 1' }).resolveSeasonView()).toBe(
-      'Midnight Season 2'
-    );
+    expect(withData({ seasonView: 'MID1' }).resolveSeasonView()).toBe('Midnight Season 1');
   });
 
-  it('falls back to the live season name', () => {
-    expect(withData({ seasonView: null, seasonName: 'Midnight Season 2' }).resolveSeasonView()).toBe(
-      'Midnight Season 2'
-    );
+  it("falls back to the live tier's name (#938)", () => {
+    expect(withData({ seasonView: null }).resolveSeasonView()).toBe('Midnight Season 2');
+  });
+
+  it('names a Season View the seasons read does not hold by the pattern', () => {
+    expect(withData({ seasonView: 'MID9', seasons: [] }).resolveSeasonView()).toBe('Midnight Season 9');
   });
 });
 
@@ -63,8 +75,7 @@ describe('isItemInSeasonScope compares zones by code', () => {
     const sandbox = withData({
       itemPlaceholders: {},
       itemZones: { 'Old Helm': 46, 'New Helm': 53 },
-      raidZones: zones,
-      seasonName: 'Midnight Season 2'
+      raidZones: zones
     });
     expect(sandbox.isItemInSeasonScope('New Helm')).toBe(true);
     expect(sandbox.isItemInSeasonScope('Old Helm')).toBe(false);
@@ -75,8 +86,7 @@ describe('isItemInSeasonScope compares zones by code', () => {
       itemPlaceholders: {},
       itemZones: { 'Old Helm': 46, 'New Helm': 53 },
       raidZones: zones,
-      seasonView: 'MID1',
-      seasonName: 'Midnight Season 2'
+      seasonView: 'MID1'
     });
     expect(sandbox.isItemInSeasonScope('Old Helm')).toBe(true);
     expect(sandbox.isItemInSeasonScope('New Helm')).toBe(false);
@@ -86,8 +96,7 @@ describe('isItemInSeasonScope compares zones by code', () => {
     const sandbox = withData({
       itemPlaceholders: { 'M+': true },
       raidZones: zones,
-      seasonView: 'MID2',
-      seasonName: 'Midnight Season 1'
+      seasonView: 'MID2'
     });
     expect(sandbox.isItemInSeasonScope('M+', 'Midnight Season 2')).toBe(true);
     expect(sandbox.isItemInSeasonScope('M+', 'Midnight Season 1')).toBe(false);

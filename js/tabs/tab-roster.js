@@ -204,7 +204,7 @@ function buildStatsBar() {
   var totalItems = 0;
   var lootMap = DATA.lootCounts || {};
   var lootKeys = Object.keys(lootMap);
-  var currentSeason = (DATA && DATA.seasonName) || '';
+  var currentSeason = currentSeasonName();
   for (var j = 0; j < lootKeys.length; j++) {
     var lootItems = (lootMap[lootKeys[j]] && lootMap[lootKeys[j]].items) || [];
     for (var m = 0; m < lootItems.length; m++) {
@@ -328,7 +328,7 @@ var _teamScoringCache = null; // { season, byPlayerId: { [player_id]: performanc
 
 function _fetchTeamScoringIfNeeded() {
   if (!supabaseClient) return;
-  var seasonCode = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+  var seasonCode = currentSeasonCode();
   if (!seasonCode || (_teamScoringCache && _teamScoringCache.season === seasonCode)) return;
   // scoring has no team_id column (it's scoped by player_id only, and
   // "Public read scoring" has no team restriction at the RLS level either)

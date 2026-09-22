@@ -1,7 +1,7 @@
 import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import type { AttendanceRow, GearRow, LootRow, SeasonWindow } from './profile';
-import { seasonCode } from './profile';
+import { currentSeason } from './profile';
 import type { CatalogItem, RankRow, SelfReceivedRow, TierTokenRow, ZoneRow } from './lootPriority';
 import type { NewPick, Pick, TokenRow, WritePlan } from './wishlist';
 
@@ -36,19 +36,31 @@ export function useProfilePlayer(teamId: number, by: { id: number } | { code: st
   });
 }
 
-// The team's current season, which scopes attendance and loot.
+// The current season, which scopes attendance and loot: the tier every
+// team is on (the latest seasons row whose start has passed, #938), with the
+// team's own start and end dates while those are still typed (#1269 derives
+// the start from the team's first raid night).
 export function useCurrentSeason(teamId: number) {
   return useSupabaseQuery<SeasonWindow>(['current-season', teamId], async (client) => {
-    const { data, error } = await client
-      .from('team_settings')
-      .select('name:config->>seasonName, start:config->>seasonStart, end:config->>seasonEnd')
-      .eq('team_id', teamId)
-      .maybeSingle();
-    if (error) return { data: null, error };
-    const row = (data ?? {}) as { name?: string | null; start?: string | null; end?: string | null };
-    const name = row.name?.trim() ?? '';
+    const [tiers, settings] = await Promise.all([
+      client.from('seasons').select('code, display_name, starts_at, ends_at').order('starts_at'),
+      client
+        .from('team_settings')
+        .select('start:config->>seasonStart, end:config->>seasonEnd')
+        .eq('team_id', teamId)
+        .maybeSingle()
+    ]);
+    if (tiers.error) return { data: null, error: tiers.error };
+    if (settings.error) return { data: null, error: settings.error };
+    const row = (settings.data ?? {}) as { start?: string | null; end?: string | null };
+    const tier = currentSeason(tiers.data ?? []);
     return {
-      data: { name, code: name ? seasonCode(name) : null, start: row.start || null, end: row.end || null },
+      data: {
+        name: tier?.display_name ?? '',
+        code: tier?.code ?? null,
+        start: row.start || tier?.starts_at || null,
+        end: row.end || null
+      },
       error: null
     };
   });

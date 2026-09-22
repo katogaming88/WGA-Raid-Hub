@@ -24,7 +24,6 @@ import {
   OFFICER_T2,
   GUILD_OFFICER,
   RLS_DENIED,
-  seedSeason,
   seedPlayer,
   seedTeam
 } from './helpers.js';
@@ -237,10 +236,10 @@ describe('submit_boe_found', () => {
     });
   });
 
-  // The season is the current tier (#937): current_season() whatever the
-  // team's settings say, since the season is app-wide (#1189). A minted team
-  // has no seasonName, which is the case #922 found stamping null.
-  it('the submit stamps the current tier for a team with no seasonName', async () => {
+  // The season is the current tier (#937): current_season(), since the
+  // season is app-wide (#1189) and a team names none (#938). The minted
+  // team's empty config is the case #922 found stamping null.
+  it('the submit stamps the current tier', async () => {
     await withTxn(async ({ q, asAnon }) => {
       const { teamId } = await seedTeam(q);
       const res = await asAnon(
@@ -249,25 +248,6 @@ describe('submit_boe_found', () => {
       const row = (await q('select season from public.boe_items where id = $1', [res.rows[0].id])).rows[0];
       const tier = (await q('select public.current_season() as code')).rows[0].code;
       expect(tier).toMatch(/^MID\d$/);
-      expect(row.season).toBe(tier);
-    });
-  });
-
-  // A seasonName naming some other season does not move the stamp: seedSeason
-  // dates its row centuries back, so current_season() can never be it.
-  it("the submit stamps the current tier over the team's own seasonName", async () => {
-    await withTxn(async ({ q, asAnon }) => {
-      const { teamId } = await seedTeam(q);
-      await seedSeason(q, 'Test Season 3');
-      await q(
-        `update public.team_settings set config = config || '{"seasonName": "Test Season 3"}' where team_id = $1`,
-        [teamId]
-      );
-      const res = await asAnon(
-        submit(`${teamId}, 'Snapshot-Illidan', 'Season Snapshot Blade', 'Myth', null, false, '6/6'`)
-      );
-      const row = (await q('select season from public.boe_items where id = $1', [res.rows[0].id])).rows[0];
-      const tier = (await q('select public.current_season() as code')).rows[0].code;
       expect(row.season).toBe(tier);
     });
   });

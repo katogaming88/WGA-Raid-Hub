@@ -310,7 +310,7 @@ function executeCommitPerformance() {
     return s.role !== 'tank' && !s.manual && !s.noData && s.recent !== null && s.recent !== undefined;
   });
 
-  var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+  var season = currentSeasonCode();
   var rows = committable.map(function (s) {
     return {
       team_id: _teamCfg.supabaseTeamId,

@@ -17,8 +17,6 @@ function switchSeasonSubTab(name, btnEl) {
 function buildSeasonTab() {
   var startInput = document.getElementById('seasonStartInput');
   if (startInput) startInput.value = (DATA && DATA.seasonStart) || '';
-  var nameInput = document.getElementById('seasonNameInput');
-  if (nameInput) nameInput.value = _seasonNumberFromName((DATA && DATA.seasonName) || '');
   var endInput = document.getElementById('seasonEndInput');
   if (endInput) endInput.value = (DATA && DATA.seasonEnd) || '';
   populateSeasonViewOptions();
@@ -311,14 +309,14 @@ function fetchSeasonPerf(historyIndex) {
 // itself.
 function _seedScoringFromSeasonPerf(players) {
   if (!players || !players.length || !supabaseClient) return;
-  var currentSeasonCode = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
-  if (!currentSeasonCode) return;
+  var liveCode = currentSeasonCode();
+  if (!liveCode) return;
 
   var rows = players.map(function (p) {
     return {
       team_id: _teamCfg.supabaseTeamId,
       player_id: p.playerId,
-      season: currentSeasonCode,
+      season: liveCode,
       performance_score: p.bestPerfAvg
     };
   });
@@ -473,9 +471,8 @@ function executeClearSeasonEnd() {
 
 // -- Close Season ------------------------------------------------------------
 // The books close per tier (#938): a tier that has ended and this team has
-// not closed yet. Nothing is started by it: the tier that is current is the
-// seasons table's (currentSeasonCode()), and the team's Season Name, dates
-// and raid list are left as they are.
+// not closed yet. Nothing is started by it; the tier every team is on is the
+// seasons table's (currentSeasonCode()).
 
 // The tiers this team can close, oldest first: started before the current
 // tier, and not already in seasonHistory.
@@ -552,7 +549,7 @@ function confirmCloseSeason() {
       msg.textContent =
         'Close the books on "' +
         tier.display_name +
-        '"? The roster with its attendance and the raids with their progress are recorded in Season History. Every player\'s submitted BiS source will be cleared, and M+ exclusion and Bench status will reset for the whole roster (Trial status is left alone). Nothing else changes: the Season Name, the dates and the raid list stay as they are.';
+        '"? The roster with its attendance and the raids with their progress are recorded in Season History. Every player\'s submitted BiS source will be cleared, and M+ exclusion and Bench status will reset for the whole roster (Trial status is left alone). Nothing else changes: the tier everyone is on stays where it is.';
       if (exec) exec.style.display = '';
     }
   }
@@ -721,52 +718,6 @@ function saveSeasonView() {
       // The Wishlist Editing toggle controls the tier Season View shows
       // (#939), so its badge and caption follow the change.
       if (typeof renderWishlistToggle === 'function') renderWishlistToggle();
-      if (status) {
-        status.textContent = val ? 'Saved!' : 'Cleared.';
-        setTimeout(function () {
-          if (status) status.textContent = '';
-        }, 2000);
-      }
-    })
-    .catch(function (err) {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Save';
-      }
-      if (status) status.textContent = err.message || 'Error saving.';
-    });
-}
-
-// Extracts the trailing number from a full season display name (e.g.
-// "Midnight Season 3" -> "3") so the number-only input can round-trip
-// DATA.seasonName without an officer ever typing the prefix (#341).
-function _seasonNumberFromName(name) {
-  var re = new RegExp('^' + _escapeRegExp(_seasonDisplayPrefix()) + ' (\\d+)$');
-  var m = re.exec((name || '').trim());
-  return m ? m[1] : '';
-}
-
-function saveSeasonName() {
-  var input = document.getElementById('seasonNameInput');
-  var num = input ? input.value.trim() : '';
-  var val = num ? _seasonDisplayPrefix() + ' ' + num : '';
-  var btn = document.getElementById('seasonNameSaveBtn');
-  var status = document.getElementById('seasonNameStatus');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
-  }
-
-  saveTeamSetting({ seasonName: val }, true)
-    .then(function () {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Save';
-      }
-      if (DATA) DATA.seasonName = val;
-      if (input) input.value = num;
-      populateSeasonSelector();
-      writeAuditLog('Season Name Set', null, null, val);
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {

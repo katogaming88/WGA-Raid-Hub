@@ -39,9 +39,10 @@ function makeSandbox({ rpcResult, els = {} } = {}) {
   var sandbox = {
     console,
     document: { getElementById: (id) => allEls[id] || null },
-    window: { DATA: { seasonName: 'Season 1' } },
-    DATA: { seasonName: 'Season 1' },
-    seasonCodeForDisplay: (name) => (name === 'Season 1' ? 'S1' : name),
+    window: { DATA: {} },
+    DATA: {},
+    // The live tier is the seasons read (#938); stubbed as the code alone.
+    currentSeasonCode: () => 'S1',
     _teamCfg: { supabaseTeamId: 1 },
     supabaseClient,
     // _utf8ToBase64() moved to js/common.js (#408) so index.html's Quick

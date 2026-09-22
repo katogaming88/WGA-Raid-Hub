@@ -39,10 +39,11 @@ function recordingClient(upserts) {
 function baseSandbox(upserts) {
   return {
     console: { log: () => {}, warn: () => {}, error: () => {} },
-    window: { DATA: { seasonName: 'Midnight Season 2' } },
-    DATA: { seasonName: 'Midnight Season 2' },
+    window: { DATA: {} },
+    DATA: {},
     _teamCfg: { supabaseTeamId: TEAM_ID },
-    seasonCodeForDisplay: () => 'MID2',
+    // The live tier is the seasons read (#938); stubbed as the code alone.
+    currentSeasonCode: () => 'MID2',
     writeAuditLog: () => Promise.resolve(),
     supabaseClient: recordingClient(upserts),
     setTimeout: (fn, ms) => {

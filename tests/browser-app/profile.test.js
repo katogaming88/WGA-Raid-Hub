@@ -54,6 +54,7 @@ function signedIn(viewerKey) {
 function tablesFor(profilePlayer, viewerKey) {
   return {
     players: PLAYERS.filter((p) => p === profilePlayer),
+    seasons: [{ code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null }],
     team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end }],
     attendance: ATTENDANCE.filter((r) => r.player_id === profilePlayer.id),
     rclc_loot: LOOT.filter((r) => r.player_id === profilePlayer.id),

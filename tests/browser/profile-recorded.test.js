@@ -30,12 +30,14 @@ const settings = () =>
     ...row,
     config: {
       ...row.config,
-      seasonName: SEASON.name,
       seasonStart: SEASON.start,
       seasonEnd: SEASON.end,
       seasonView: null
     }
   }));
+
+// The live tier is the seasons read (#938): SEASON as the one started tier.
+const SEASONS = [{ code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start, ends_at: SEASON.end }];
 
 // The reads a page makes, answered as the database would for `viewer` (or for
 // no one): the viewer's own character first, since the session looks it up
@@ -47,6 +49,7 @@ function overridesFor(viewer) {
     players: own ? [own, ...PLAYERS.filter((p) => p !== own)] : PLAYERS,
     team_members: viewer ? [{ id: viewer.teamMember, role: viewer.role, name_realm: viewer.player.name_realm }] : [],
     team_settings: settings(),
+    seasons: SEASONS,
     attendance: ATTENDANCE,
     rclc_loot: LOOT,
     items: PRIORITY_ITEMS,
