@@ -1,0 +1,11 @@
+/* BoE sales (#1304): the report card. */
+
+.boe-page {
+  max-width: 520px;
+}
+
+.boe-report-form {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+}
