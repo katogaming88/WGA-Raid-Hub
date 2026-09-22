@@ -152,7 +152,17 @@ describe('Roster page (new app), spec icons', () => {
 describe('Roster page (new app), attendance and items awarded', () => {
   const OFFICER_TABLES = {
     ...ROSTER_TABLES,
-    team_settings: [{ name: 'Midnight Season 2', start: '2026-08-01', end: '2026-12-31' }],
+    team_settings: [{}],
+    // The window the officer columns count over (#1269): the tier, starting
+    // on this team's first raid night, which the rpc answers below.
+    seasons: [
+      {
+        code: 'MID2',
+        display_name: 'Midnight Season 2',
+        starts_at: '2026-07-18',
+        ends_at: '2026-12-31'
+      }
+    ],
     attendance: SCENARIO.players.slice(0, 1).flatMap((p) => [
       { player_id: p.id, raid_date: '2026-08-12', status: 'Present', report_excluded: false },
       { player_id: p.id, raid_date: '2026-08-14', status: 'No Show', report_excluded: false }

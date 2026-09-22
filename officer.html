@@ -703,58 +703,6 @@
                 </div>
               </div>
 
-              <!-- Season Start Date -->
-              <div class="help-ref-card">
-                <h3 class="help-ref-title">Season Start Date<button class="help-btn" onclick="toggleHelp('help-season-start')" title="Show help">?</button></h3>
-                <div id="help-season-start" class="help-tip">
-                  Raids before this date are excluded from attendance scoring. Players who joined after this date use their own join date as the window start instead, so latecomers are not penalised for raids they were not part of.
-                  Leave blank to include all raids in scoring (no season filter).
-                </div>
-                <p class="signup-officer-note" style="margin-top:0.25rem;">Set the date this raid season began.</p>
-                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
-                  <input type="date" id="seasonStartInput" class="add-player-input"
-                    style="max-width:180px;font-size:0.95rem;padding:0.35rem 0.6rem;">
-                  <button class="btn btn-gold" id="seasonStartSaveBtn" onclick="saveSeasonStart()">Save</button>
-                  <button class="btn btn-danger" onclick="confirmClearSeasonStart()">Clear</button>
-                  <span id="seasonStartStatus" style="font-size:0.92rem;color:var(--heal);"></span>
-                </div>
-                <div id="seasonClearConfirm"
-                  style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
-                  <span style="font-size:0.92rem;color:var(--melee);">This will remove the season start date and include
-                    all raids in attendance scoring.</span>
-                  <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
-                    <button class="btn btn-danger" onclick="executeClearSeasonStart()">Yes, Clear</button>
-                    <button class="btn btn-muted"
-                      onclick="document.getElementById('seasonClearConfirm').style.display='none'">Cancel</button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Season End Date -->
-              <div class="help-ref-card">
-                <h3 class="help-ref-title">Season End Date<button class="help-btn" onclick="toggleHelp('help-season-end')" title="Show help">?</button></h3>
-                <div id="help-season-end" class="help-tip">
-                  Optional. Set this when the current season closes before the next one officially begins -- for example if your guild stops raiding a week before the new patch. When set, it acts as the upper bound for attendance and loot filtering in the season selector. Leave blank if the season is still active.
-                </div>
-                <p class="signup-officer-note" style="margin-top:0.25rem;">Optional close date for the current season. Leave blank if the season is still ongoing.</p>
-                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
-                  <input type="date" id="seasonEndInput" class="add-player-input"
-                    style="max-width:180px;font-size:0.95rem;padding:0.35rem 0.6rem;">
-                  <button class="btn btn-gold" id="seasonEndSaveBtn" onclick="saveSeasonEnd()">Save</button>
-                  <button class="btn btn-danger" onclick="confirmClearSeasonEnd()">Clear</button>
-                  <span id="seasonEndStatus" style="font-size:0.92rem;color:var(--heal);"></span>
-                </div>
-                <div id="seasonEndClearConfirm"
-                  style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(255,124,92,0.08);border:1px solid rgba(255,124,92,0.25);border-radius:4px;">
-                  <span style="font-size:0.92rem;color:var(--melee);">This will remove the season end date.</span>
-                  <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
-                    <button class="btn btn-danger" onclick="executeClearSeasonEnd()">Yes, Clear</button>
-                    <button class="btn btn-muted"
-                      onclick="document.getElementById('seasonEndClearConfirm').style.display='none'">Cancel</button>
-                  </div>
-                </div>
-              </div>
-
               <!-- Trial Promotion Thresholds -->
               <div class="help-ref-card">
                 <h3 class="help-ref-title">Trial Promotion Thresholds</h3>
@@ -851,7 +799,6 @@
                   <ol style="margin:0.35rem 0 0;padding-left:1.25rem;">
                     <li>Click <strong>Close Season</strong> below for the tier that just ended.</li>
                     <li>Run the closed tier's <strong>WCL Performance Baseline</strong> fetch in Season History.</li>
-                    <li>Set a <strong>Start Date</strong> for the new tier, and clear the old <strong>End Date</strong>.</li>
                     <li>Click <strong>Refresh from WCL</strong> on the Attendance tab to pull the new tier's raids.</li>
                   </ol>
                 </div>
@@ -975,20 +922,10 @@
               </div>
 
               <div class="help-ref-card">
-                <h4 class="help-ref-title">Set the season start date</h4>
-                <ol class="help-ref-steps">
-                  <li>Go to <a href="#" onclick="switchTab('season');return false;">Season Settings</a>.</li>
-                  <li>Set the <strong>Season Start Date</strong> to the first day of the current raid season. Raids before this date are excluded from attendance scoring.</li>
-                  <li>The season itself is Blizzard's tier and needs no setting: loot imports, scores and priority lists are tagged with the current tier.</li>
-                </ol>
-              </div>
-
-              <div class="help-ref-card">
                 <h4 class="help-ref-title">New tier workflow</h4>
                 <ol class="help-ref-steps">
                   <li>Go to <a href="#" onclick="switchTab('season');return false;">Season Settings</a> and click <strong>Close Season</strong> (History sub-tab) for the tier that ended. This records it in Season History and resets every player's submitted BiS source, M+ exclusion, and Bench status team-wide. The new tier is already the season everyone is on.</li>
                   <li>Still in Season History, run the just-closed tier's <strong>WCL Performance Baseline</strong> fetch -- the row only appears next to the newest history entry, so do it now or you won't get another chance once another tier closes. This seeds the Heroic priority baseline before the new tier has raid reports of its own; a status label on the row shows whether it's already been done.</li>
-                  <li>Set the new <strong>Season Start Date</strong> to the new tier's first raid day, and clear the old <strong>Season End Date</strong> (or set the new one).</li>
                   <li>Import this tier's loot via <strong>Loot &gt; Import</strong> -- old loot history doesn't need clearing, it stays tagged by season.</li>
                   <li>On the <strong>Attendance</strong> tab, click <strong>Refresh from WCL</strong> to pull the new season's raid nights.</li>
                   <li>Commit updated scores via <strong>Commit Attendance Scores</strong>.</li>

@@ -59,7 +59,7 @@ function open({
       seasons: [
         { code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null }
       ],
-      team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end, view: null }],
+      team_settings: [{ view: null }],
       team_seasons: [{ season_code: SEASON.code, wishlist_open: open }],
       items: ITEMS,
       raid_zones: RAID_ZONES,

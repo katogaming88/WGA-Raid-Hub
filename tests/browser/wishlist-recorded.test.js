@@ -22,8 +22,6 @@ const settings = () =>
     ...row,
     config: {
       ...row.config,
-      seasonStart: SEASON.start,
-      seasonEnd: SEASON.end,
       seasonView: null
     }
   }));
@@ -64,7 +62,7 @@ function openWishlist({ open = true, allowed = false } = {}) {
       self_received_requests: [],
       priority_order: [],
       tier_token_map: TIER_TOKEN_MAP,
-      rpc: { is_site_admin: false, is_guild_officer: false }
+      rpc: { is_site_admin: false, is_guild_officer: false, team_season_start: SEASON.start }
     }
   );
 }

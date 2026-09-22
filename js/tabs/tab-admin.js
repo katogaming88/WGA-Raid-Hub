@@ -54,8 +54,7 @@ function loadAdminProperties() {
 
   var rows = [
     ['Current Tier', currentSeasonName() || '(none has started)'],
-    ['Season Start', (DATA && DATA.seasonStart) || '(not set)'],
-    ['Season End', (DATA && DATA.seasonEnd) || '(not set)'],
+    ['Season Start (first raid night)', (DATA && DATA.seasonStartDate) || '(no raid night yet)'],
     ['Archived Seasons', ((DATA && DATA.seasonHistory) || []).length + ' season(s)'],
     ['Raid Progression', ((DATA && DATA.raidProgression) || []).length + ' raid(s)'],
     ['Signups Open', openSignupSeasonCodes().map(seasonDisplayName).join(', ') || 'No'],

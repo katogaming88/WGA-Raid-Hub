@@ -107,7 +107,7 @@ describe('seasonHasStarted', () => {
   // A team with no report in the tier yet counts from the tier's own start,
   // so the nudge applies there too: every team on a started tier has a
   // window now, where a team that never typed a date had none.
-  it("is true on a started tier the team has no raid night in yet", () => {
+  it('is true on a started tier the team has no raid night in yet', () => {
     const sandbox = makeSandbox(started(null));
     expect(sandbox.seasonHasStarted()).toBe(true);
   });

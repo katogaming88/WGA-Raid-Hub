@@ -202,6 +202,9 @@ describe('Profile page', () => {
     expect(await screen.findByText('Sign in to see your profile.')).toBeInTheDocument();
   });
 
+  // The summary stat, not the card heading of the same name.
+  const attendanceStat = () => screen.getAllByText('Attendance').find((el) => el.tagName === 'DT')!.parentElement!;
+
   // #1269 -- the season counts from the team's own first raid night, which
   // the database answers, so a night in the gap between the tier going live
   // and this team first raiding it counts against nobody. Torbjorn joined on
@@ -218,7 +221,7 @@ describe('Profile page', () => {
       profileHandlers(person('raider', 11), { attendance: () => ({ data: LATE_NIGHTS }) }, '2026-08-18')
     );
     expect(await screen.findByRole('heading', { level: 1, name: 'Raz' })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByText('Attendance').closest('div')).toHaveTextContent('100%'));
+    await waitFor(() => expect(attendanceStat()).toHaveTextContent('100.0%'));
     expect(client.rpcs).toContainEqual(['team_season_start', { p_team_id: 1 }]);
     expect(client.reads.some((r) => r.table === 'team_settings' && /seasonStart/.test(r.columns ?? ''))).toBe(false);
   });
@@ -231,7 +234,7 @@ describe('Profile page', () => {
       profileHandlers(person('raider', 11), { attendance: () => ({ data: LATE_NIGHTS }) }, null)
     );
     expect(await screen.findByRole('heading', { level: 1, name: 'Raz' })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByText('Attendance').closest('div')).toHaveTextContent('50%'));
+    await waitFor(() => expect(attendanceStat()).toHaveTextContent('50.0%'));
   });
 
   it('shows My profile for the raider’s own character', async () => {
