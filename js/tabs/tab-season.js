@@ -593,6 +593,15 @@ function executeCloseSeason() {
   // The books are counted over the window the database records as the
   // entry's start (#1269), so the night is read first and a read that fails
   // closes nothing rather than freezing a window nobody derived.
+  //
+  // close_season() derives the night again on its own side rather than
+  // taking this one, so in principle the two could disagree. They cannot
+  // here: only a tier that has ended can be closed, the sync only ever
+  // files nights into the tier that is current, and nothing else writes
+  // attendance in the milliseconds between the two calls. If closing a live
+  // tier ever becomes possible, this has to become one read, because a
+  // close is one-way and a frozen percentage counted over a different
+  // window than the entry claims cannot be corrected (#702).
   supabaseClient
     .rpc('team_season_start', { p_team_id: _teamCfg.supabaseTeamId, p_season: code })
     .then(function (night) {

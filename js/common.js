@@ -3743,7 +3743,11 @@ function seasonDateRangeFor(seasonCode) {
   var tier = seasonRow(seasonCode);
   if (!tier) return { start: null, end: null };
   if (seasonCode === currentSeasonCode()) {
-    return { start: (DATA && DATA.seasonStartDate) || tier.starts_at || null, end: tier.ends_at || null };
+    // Only for the tier the night was derived for: a tier that rolled over
+    // since the page loaded falls back to its own start, which is what the
+    // database would answer for a tier nobody has raided yet.
+    var derived = DATA && DATA.seasonStartSeason === seasonCode ? DATA.seasonStartDate : null;
+    return { start: derived || tier.starts_at || null, end: tier.ends_at || null };
   }
   return { start: tier.starts_at || null, end: tier.ends_at || null };
 }
@@ -3970,6 +3974,14 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
       data.seasons = results[5] || [];
       data.seasonStartDate = results[6] || null;
       DATA = data;
+      // Which tier the night above was derived for. team_season_start()
+      // defaults to the tier current on the server when the page loaded, and
+      // currentSeasonCode() re-reads the device clock on every call, so a
+      // page left open across midnight on a tier's first day would otherwise
+      // hand the outgoing tier's first night to the incoming tier and count
+      // the whole of the old one. Recorded rather than compared by date so
+      // the mismatch is what decides, not a second clock read.
+      DATA.seasonStartSeason = currentSeasonCode();
       DATA._loadedAt = new Date();
       try {
         onCoreReady();

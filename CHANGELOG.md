@@ -36,6 +36,11 @@ answers to.
   ([#1269](https://github.com/katogaming88/WGA-Raid-Hub/issues/1269), the
   third of three pull requests, closing it).
 
+- **The Streams page no longer comes up empty when it is the first page you
+  open.** Following a link straight to Streams could render the view before
+  the page had its data, which threw and left the grid blank until you
+  navigated away and back. It now waits for the data like every other view.
+
 ### Backend
 
 - `seasonStart` and `seasonEnd` are removed from every team's settings

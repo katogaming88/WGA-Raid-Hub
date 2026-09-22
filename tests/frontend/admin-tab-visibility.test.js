@@ -82,9 +82,12 @@ function makeSandbox({ access, els = {}, saveTeamSettingResult, rpcResult, delet
       querySelectorAll: () => []
     },
     location: { reload },
-    // The Properties table names the tiers with signups open through common.js (#939, #934).
+    // The Properties table names the tiers with signups open through common.js (#939, #934)
+    // and reads the season window from it too (#1269).
     openSignupSeasonCodes: () => [],
     seasonDisplayName: (code) => code,
+    currentSeasonCode: () => 'MID2',
+    seasonDateRangeFor: () => ({ start: '2026-08-18', end: null }),
     saveTeamSetting,
     writeAuditLog,
     buildSeasonTab,
@@ -94,7 +97,7 @@ function makeSandbox({ access, els = {}, saveTeamSettingResult, rpcResult, delet
     buildMPlusTab,
     buildRequestsTab,
     TEAM_NAME: 'Phoenix Reborn',
-    DATA: { seasonHistory: [{ name: 'Old Season' }] },
+    DATA: { seasonHistory: [{ name: 'Old Season' }], seasonStartDate: '2026-08-18', seasonStartSeason: 'MID2' },
     currentSeasonName: () => 'Midnight Season 2',
     _teamCfg: { supabaseTeamId: 1 },
     supabaseClient,

@@ -52,6 +52,7 @@ describe('seasonDateRangeFor (#1269)', () => {
     sandbox.DATA = {
       seasons: TIERS,
       seasonStartDate: '2026-08-18',
+      seasonStartSeason: 'MID2',
       seasonHistory: [{ code: 'MID1', name: 'Midnight Season 1', start: '2026-03-24', end: '2026-08-10' }]
     };
     expect(sandbox.seasonDateRangeFor('MID1')).toEqual({ start: '2026-03-24', end: '2026-08-10' });
@@ -59,13 +60,13 @@ describe('seasonDateRangeFor (#1269)', () => {
 
   it("answers the live tier from the team's derived first raid night", () => {
     const sandbox = loadCommonJs();
-    sandbox.DATA = { seasons: TIERS, seasonStartDate: '2026-08-18', seasonHistory: [] };
+    sandbox.DATA = { seasons: TIERS, seasonStartDate: '2026-08-18', seasonStartSeason: 'MID2', seasonHistory: [] };
     expect(sandbox.seasonDateRangeFor('MID2')).toEqual({ start: '2026-08-18', end: null });
   });
 
   it("falls back to the tier's start when the team has no raid night in it yet", () => {
     const sandbox = loadCommonJs();
-    sandbox.DATA = { seasons: TIERS, seasonStartDate: null, seasonHistory: [] };
+    sandbox.DATA = { seasons: TIERS, seasonStartDate: null, seasonStartSeason: 'MID2', seasonHistory: [] };
     expect(sandbox.seasonDateRangeFor('MID2')).toEqual({ start: '2026-08-11', end: null });
   });
 
@@ -74,6 +75,7 @@ describe('seasonDateRangeFor (#1269)', () => {
     sandbox.DATA = {
       seasons: [{ code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-08-11', ends_at: '2026-12-31' }],
       seasonStartDate: '2026-08-18',
+      seasonStartSeason: 'MID2',
       seasonHistory: []
     };
     expect(sandbox.seasonDateRangeFor('MID2')).toEqual({ start: '2026-08-18', end: '2026-12-31' });
@@ -81,14 +83,30 @@ describe('seasonDateRangeFor (#1269)', () => {
 
   it("answers an ended tier nobody closed from its own dates, not the team's night", () => {
     const sandbox = loadCommonJs();
-    sandbox.DATA = { seasons: TIERS, seasonStartDate: '2026-08-18', seasonHistory: [] };
+    sandbox.DATA = { seasons: TIERS, seasonStartDate: '2026-08-18', seasonStartSeason: 'MID2', seasonHistory: [] };
     expect(sandbox.seasonDateRangeFor('MID1')).toEqual({ start: '2026-03-17', end: '2026-08-10' });
   });
 
   it('answers nothing for a code the seasons table does not hold', () => {
     const sandbox = loadCommonJs();
-    sandbox.DATA = { seasons: TIERS, seasonStartDate: '2026-08-18', seasonHistory: [] };
+    sandbox.DATA = { seasons: TIERS, seasonStartDate: '2026-08-18', seasonStartSeason: 'MID2', seasonHistory: [] };
     expect(sandbox.seasonDateRangeFor('MID9')).toEqual({ start: null, end: null });
+  });
+
+  // The night is fetched once per page load and the tier is read from the
+  // device clock on every call, so a page left open across midnight on a
+  // tier's first day sees the code move under it. The outgoing tier's first
+  // night must not become the incoming tier's window, or that page counts
+  // the whole of the tier before it.
+  it('ignores a night derived for a tier that has since rolled over', () => {
+    const sandbox = loadCommonJs();
+    sandbox.DATA = {
+      seasons: TIERS,
+      seasonStartDate: '2026-03-24',
+      seasonStartSeason: 'MID1',
+      seasonHistory: []
+    };
+    expect(sandbox.seasonDateRangeFor('MID2')).toEqual({ start: '2026-08-11', end: null });
   });
 
   // The issue's Done-when case: a team whose first report is a week into the
@@ -99,6 +117,7 @@ describe('seasonDateRangeFor (#1269)', () => {
     sandbox.DATA = {
       seasons: TIERS,
       seasonStartDate: '2026-08-18',
+      seasonStartSeason: 'MID2',
       seasonHistory: [],
       rawAttendanceData: {
         players: {

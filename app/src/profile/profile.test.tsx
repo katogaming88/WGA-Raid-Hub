@@ -166,12 +166,12 @@ const person = (role: string, playerId: number | null) => ({
 
 // The season window (#1269): the tier from the seasons table, its start
 // overridden by the team's own first raid night, which team_season_start()
-// answers. `seasonStart` null is a team with no raid night in the tier yet,
+// answers. A null night is a team with no raid night in the tier yet,
 // which reads the tier's own start.
 function profileHandlers(
   who: ReturnType<typeof person> | null,
   tables: Record<string, (read: Read) => unknown> = {},
-  seasonStart: string | null = SEASON.start
+  firstNight: string | null = SEASON.start
 ) {
   const base = seededHandlers();
   return seededHandlers({
@@ -179,7 +179,7 @@ function profileHandlers(
     rpc(name, args) {
       if (name === 'current_discord_id') return { data: who ? 'discord-x' : null };
       if (name === 'resolve_person') return { data: who };
-      if (name === 'team_season_start') return { data: seasonStart };
+      if (name === 'team_season_start') return { data: firstNight };
       return base.rpc!(name, args);
     },
     from(read) {

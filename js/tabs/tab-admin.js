@@ -49,12 +49,26 @@ function switchAdminSubTab(name, btnEl) {
 
 // ── Properties Inspector ──────────────────────────────────────────────────
 
+// The day the season counts from (#1269), as the rest of the page is using
+// it: this team's first raid night in the live tier where the database
+// answered one, else the tier's own start. The two are distinguished
+// because the fetch answers nothing for a tier the team has not raided and
+// for a read that failed alike, and an officer looking at this panel to
+// work out why a percentage looks wrong needs the window the page actually
+// used either way.
+function _seasonStartProperty() {
+  var start = seasonDateRangeFor(currentSeasonCode()).start;
+  if (!start) return '(no season has started)';
+  if (DATA && DATA.seasonStartDate && DATA.seasonStartSeason === currentSeasonCode()) return start;
+  return start + ' (the tier start; no raid night of this team is on record)';
+}
+
 function loadAdminProperties() {
   var content = document.getElementById('adminPropsContent');
 
   var rows = [
     ['Current Tier', currentSeasonName() || '(none has started)'],
-    ['Season Start (first raid night)', (DATA && DATA.seasonStartDate) || '(no raid night yet)'],
+    ['Season Start (first raid night)', _seasonStartProperty()],
     ['Archived Seasons', ((DATA && DATA.seasonHistory) || []).length + ' season(s)'],
     ['Raid Progression', ((DATA && DATA.raidProgression) || []).length + ' raid(s)'],
     ['Signups Open', openSignupSeasonCodes().map(seasonDisplayName).join(', ') || 'No'],

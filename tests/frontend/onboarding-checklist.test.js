@@ -72,7 +72,8 @@ function dateOffset(offsetDays) {
 // whatever the runner's time zone; only the night under test moves.
 const started = (seasonStartDate) => ({
   seasons: [{ code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2020-01-01', ends_at: null }],
-  seasonStartDate
+  seasonStartDate,
+  seasonStartSeason: 'MID2'
 });
 
 describe('seasonHasStarted', () => {
