@@ -53,7 +53,7 @@ function loadAdminProperties() {
   var content = document.getElementById('adminPropsContent');
 
   var rows = [
-    ['Season Name', (DATA && DATA.seasonName) || '(not set)'],
+    ['Current Tier', currentSeasonName() || '(none has started)'],
     ['Season Start', (DATA && DATA.seasonStart) || '(not set)'],
     ['Season End', (DATA && DATA.seasonEnd) || '(not set)'],
     ['Archived Seasons', ((DATA && DATA.seasonHistory) || []).length + ' season(s)'],

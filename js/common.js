@@ -1479,7 +1479,7 @@ var DUAL_WIELD_CLASSES = {
 // Int-restricted (Preternatural Antivenom carries no main_stats at all, so
 // today it shows to literally every spec with no filter catching it). No
 // such signal exists in the item catalog -- Kat-curated here by item name,
-// same manual-per-tier-edit workflow as CURRENT_SEASON/TOKEN_SLOT_KEYWORDS.
+// same manual-per-tier-edit workflow as TOKEN_SLOT_KEYWORDS.
 // Not a mechanical rule (e.g. "must trigger off the word healing") --
 // Soulcoiler Ritual Vessel is a plain on-use ability, not gated behind a
 // healing-spell trigger, and still belongs here because its only effect
@@ -1913,9 +1913,10 @@ function mapSupabaseIncomingRoster(rows) {
 // Season code -> display-name translation (#209, formalized as the
 // permanent mechanism on #341): scoring.season/priority_order.season/
 // rclc_loot.season store the compact code ('MID1', decided on #320) as a
-// stable join/filter key, while officers see and type the free-text
-// display name (DATA.seasonName, Season Settings tab -> team_settings.config
-// via saveTeamSetting(), #221) -- translate on read/write.
+// stable join/filter key, while officers see the display name -- translate
+// on read/write. Since #938 the tier is a seasons row with both, and these
+// helpers are the fallback for a value stored before that (a history entry
+// with no code, a wishlist row stamped with a name until #936).
 //
 // Three layers, checked in order:
 //  1. SEASON_LABELS -- an explicit override map for anything that doesn't
@@ -1928,35 +1929,20 @@ function mapSupabaseIncomingRoster(rows) {
 //     MID1 entry, would have silently mis-translated every season after
 //     the first until someone remembered to add it).
 //  3. The prefixes themselves are hardcoded constants (SEASON_CODE_PREFIX/
-//     SEASON_DISPLAY_PREFIX below), Kat-updated in the same commit as
-//     CURRENT_SEASON at an expansion boundary -- previously an
-//     officer-editable per-team setting, but every team plays the same
-//     real-world expansion timeline, so a per-team value only risked two
-//     teams drifting to different prefixes for what's actually the same
-//     expansion.
+//     SEASON_DISPLAY_PREFIX below), Kat-updated at an expansion boundary --
+//     previously an officer-editable per-team setting, but every team plays
+//     the same real-world expansion timeline, so a per-team value only
+//     risked two teams drifting to different prefixes for what's actually
+//     the same expansion.
 // Falls through to the input unchanged if nothing matches.
 /** @type {Object<string, string>} */
 var SEASON_LABELS = {};
 
-// Kat-updated in the same commit as CURRENT_SEASON below, at an expansion
-// boundary -- not for a routine new season within the same expansion (#341).
+// Kat-updated at an expansion boundary -- not for a routine new season
+// within the same expansion (#341). Which tier is current is a seasons row
+// (current_season(), #933), read through currentSeasonCode() below.
 var SEASON_CODE_PREFIX = 'MID';
 var SEASON_DISPLAY_PREFIX = 'Midnight Season';
-
-// The single source of truth for "what's the next season," Kat-updated once
-// per real-world tier (#537) -- same manual-per-tier-edit workflow already
-// used for scripts/fetch-items.js's ZONE_ID/WCL_ZONE_ID. Drives the "Start
-// New Season" button (js/tabs/tab-season.js) so every team applies the same
-// name instead of each officer retyping their own. Deliberately no
-// wclZoneId field here -- #549 supersedes that part of #537's original
-// decision; item/boss season scoping reads DATA.seasonView/raid_zones
-// instead of a JS constant.
-var CURRENT_SEASON = { code: 'MID2', displayName: 'Midnight Season 2' };
-if (seasonCodeForDisplay(CURRENT_SEASON.displayName) !== CURRENT_SEASON.code) {
-  console.warn(
-    'CURRENT_SEASON.code does not match seasonCodeForDisplay(CURRENT_SEASON.displayName) -- check SEASON_CODE_PREFIX/SEASON_DISPLAY_PREFIX against the new season name.'
-  );
-}
 
 function _seasonCodePrefix() {
   return SEASON_CODE_PREFIX;
@@ -2559,7 +2545,7 @@ function mapSupabaseSelfReceived(rows) {
 
 // Priority order reads come from Supabase (#220). priority_order carries its
 // own team_id, so no join-through-players filter is needed. Not season-filtered here -- same reason fetchSupabaseLoot() isn't:
-// this promise fires before DATA.seasonName is known (in parallel with the
+// this promise fires before DATA.seasons is known (in parallel with the
 // core chunk), so the season filter is applied downstream in
 // mapSupabasePriorityOrder() once DATA is populated. Resolves to the raw
 // rows, or null on any failure/empty so the caller falls back to the Apps
@@ -2569,7 +2555,7 @@ function mapSupabaseSelfReceived(rows) {
 // priority_order_stale_after_heroic in
 // 20260713150512_priority_order_fairness_warnings.sql). Not season-filtered
 // here for the same reason fetchSupabasePriorityOrder() isn't -- this
-// promise fires before DATA.seasonName is known, so the season filter is
+// promise fires before DATA.seasons is known, so the season filter is
 // applied downstream in applyHeavyData() once DATA is populated. Resolves
 // to raw rows, or [] on any failure so the nav badge just shows nothing
 // rather than erroring.
@@ -2711,7 +2697,7 @@ function fetchSupabasePriorityOrder() {
 // an empty-but-present heroic/mythic array for it (same "key present" rule
 // _isFullyManaged() already uses), keeping it out of Unmanaged Items instead
 // of it looking untouched. Not season-filtered here, same reason as
-// fetchSupabasePriorityOrder() -- filtered downstream once DATA.seasonName
+// fetchSupabasePriorityOrder() -- filtered downstream once DATA.seasons
 // is known. Resolves to [] on any failure so a fetch hiccup just leaves the
 // affected items looking unmanaged rather than erroring.
 function fetchSupabasePriorityOrderConfirmedEmpty() {
@@ -2775,9 +2761,8 @@ function fetchSupabasePriorityDrift(teamId, season) {
  * and collision-free; this is what makes the frontend's bridge to them
  * (tab-priority.js's ranked list, pool, and save path) collision-free too.
  * @param {any[]} rows - priority_order rows with embedded items and players
- * @param {string} seasonCode - current season's shorthand code (e.g. 'MID1') to filter rows to --
- *   NOT DATA.seasonName directly, which is Apps Script's free-text display label; pass it through
- *   seasonCodeForDisplay() first, same as priority_order.season/scoring.season/rclc_loot.season all store.
+ * @param {string} seasonCode - the season's code (e.g. 'MID1') to filter rows to, the form
+ *   priority_order.season/scoring.season/rclc_loot.season all store (resolveSeasonViewCode()).
  * @param {any[]} [emptyMarkRows] - priority_order_confirmed_empty rows (item_id/track/season with
  *   embedded items), same shape fetchSupabasePriorityOrderConfirmedEmpty() resolves to. Each one seeds
  *   an empty-but-present array for that item/diff -- _isFullyManaged() (tab-priority.js) only checks
@@ -2912,7 +2897,6 @@ function fetchSupabaseTeamSeasons() {
 }
 
 var SEASON_CONFIG_KEYS = [
-  'seasonName',
   'seasonStart',
   'seasonEnd',
   'seasonHistory',
@@ -2922,8 +2906,8 @@ var SEASON_CONFIG_KEYS = [
   'bisSubmissionsOpen',
   'mPlusExclusionsOpen',
   // The season an officer is actively planning/prepping item catalog/BiS/
-  // wishlist scope for (#549), separate from seasonName (the live raiding
-  // season) and deliberately NOT shared with signups -- signup lead time and
+  // wishlist scope for (#549), separate from the live tier (currentSeasonCode())
+  // and deliberately NOT shared with signups -- signup lead time and
   // item-catalog-prep lead time don't move together in practice (signups for
   // the next tier routinely open while the current tier is still being
   // raided; #549 originally bundled the two under one setting, but that
@@ -2953,7 +2937,8 @@ var SEASON_CONFIG_KEYS = [
  * Script core payload already set for it instead of clobbering it with
  * undefined. The tier a team takes signups for is not a key any more (#934):
  * it is the team_seasons rows with the switch on, read through
- * openSignupSeasonCodes().
+ * openSignupSeasonCodes(); nor is the season the team is on (#938): it is
+ * the tier, currentSeasonCode().
  * @param {any} data - the DATA object being built from the core chunk
  * @param {Object|null} config - team_settings.config, or null if the query failed/found nothing
  */
@@ -3072,14 +3057,12 @@ function fetchSupabaseRaidZones() {
 //
 // Deliberately unfiltered by season at fetch time -- this fires in parallel
 // with the rest of the bootstrap's heavy reads, before DATA.seasonView/
-// seasonName exist yet (they're only set once applyCoreData() resolves), so
+// seasons exist yet (they're only set once applyCoreData() resolves), so
 // there is nothing yet to filter by. js/bonusRoll.js filters to
 // resolveSeasonView() itself at render time instead, the same "fetch once,
 // filter at use time against whichever season is live *then*" split
 // currentZoneIdsForSeason()/isItemInSeasonScope() already use for the item
-// catalog -- CURRENT_SEASON (a hardcoded item-catalog-tier constant) is not
-// the right value here, since a team's actual raid_zones.season can be
-// configured independently via Season Settings.
+// catalog.
 function mapSupabaseRaidEncounters(rows) {
   return (rows || [])
     .map(function (row) {
@@ -3261,10 +3244,11 @@ function mapSupabaseTierTokenMap(rows, seasonCode) {
 }
 
 // The season tier pieces are counted for: the same one generate_priority_order()
-// is called with (Season View, else the team's season), falling back to the
-// guild's CURRENT_SEASON before team settings have loaded (#1108).
+// is called with (Season View, else the live tier). Since #938 the live tier
+// comes from the seasons read, which lands with the team settings, so there
+// is no earlier fallback to reach for (#1108).
 function tierSeasonCode() {
-  return resolveSeasonViewCode() || CURRENT_SEASON.code;
+  return resolveSeasonViewCode();
 }
 
 /**
@@ -3721,19 +3705,11 @@ function seasonDateRangeFor(seasonCode) {
   return { start: tier.starts_at || null, end: tier.ends_at || null };
 }
 
-// Returns { start, end } date strings for the active season, or { start: null, end: null }
+// The same for the season the officer toolbar has selected (ACTIVE_SEASON, a
+// display name); { start: null, end: null } for All Seasons.
 function getSeasonDateRange() {
   if (!ACTIVE_SEASON) return { start: null, end: null };
-  var history = (DATA && DATA.seasonHistory) || [];
-  var current = (DATA && DATA.seasonName) || '';
-  var all = history.slice();
-  if (current) all.push({ name: current, start: DATA.seasonStart || '', end: DATA.seasonEnd || '' });
-  for (var i = 0; i < all.length; i++) {
-    if (all[i].name === ACTIVE_SEASON) {
-      return { start: all[i].start || null, end: all[i].end || null };
-    }
-  }
-  return { start: null, end: null };
+  return seasonDateRangeFor(seasonCodeForDisplay(ACTIVE_SEASON));
 }
 
 // Computes attendance % for a player for the active season from rawAttendanceData.
@@ -4099,32 +4075,32 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
 // -- Data helpers -----------------------------------------------------------
 // The season an officer is actively viewing/planning (#549): DATA.seasonView
 // when explicitly set (prepping a future season's catalog/wishlist/BiS/
-// signups without touching the live raid), else DATA.seasonName (today's
-// live season -- the default). Everything season-scoped below reads this
-// instead of DATA.raidProgression, which is WCL progress-tracking config
-// (which raids to pull kill/attendance data for), not a season-view concept,
-// and is rebuilt by officers for each tier (#537).
+// signups without touching the live raid), else the live tier (#938,
+// currentSeasonCode() -- the default). Everything season-scoped below reads
+// this instead of DATA.raidProgression, which is WCL progress-tracking config
+// (which raids to pull kill/attendance data for), not a season-view concept.
 //
-// Always the display name (#933): DATA.seasonView is stored as a code since
-// raid_zones.season became one, and this is what stamps item_preferences
-// rows, whose season column still holds names. seasonDisplayName()
-// passes a name through unchanged, so a value stored before the conversion
-// still reads.
+// Always the display name (#933): the seasons row's, since this is what
+// stamps item_preferences rows, whose season column still holds names
+// (#936). seasonDisplayName() covers a Season View stored before the
+// conversion, and passes a name through unchanged.
 function resolveSeasonView() {
-  if (!DATA) return '';
-  return seasonDisplayName(DATA.seasonView || '') || DATA.seasonName || '';
+  var code = resolveSeasonViewCode();
+  var tier = seasonRow(code);
+  return (tier && tier.display_name) || seasonDisplayName(code) || '';
 }
 
 // The season code to tag/query priority_order (and its fairness-warning
 // views) with, and the code the zone scope check compares raid_zones.season
-// against (#933): DATA.seasonView when explicitly set, else the live
-// DATA.seasonName. Always a code, on both branches (#923: the explicit branch
-// used to return the dropdown's raw value, a name until #933 converted the
-// table, and every priority query tagged with it matched nothing).
-// seasonCodeForDisplay() leaves a code alone, so a stored code and a value
-// stored as a name before the conversion both come out as the code.
+// against (#933): DATA.seasonView when explicitly set, else the live tier.
+// Always a code, on both branches (#923: the explicit branch used to return
+// the dropdown's raw value, a name until #933 converted the table, and every
+// priority query tagged with it matched nothing). seasonCodeForDisplay()
+// leaves a code alone, so a Season View stored as a name before the
+// conversion comes out as the code too.
 function resolveSeasonViewCode() {
-  return seasonCodeForDisplay((DATA && (DATA.seasonView || DATA.seasonName)) || '');
+  if (!DATA) return '';
+  return seasonCodeForDisplay(DATA.seasonView || '') || currentSeasonCode();
 }
 
 // Re-derives DATA.priorityOrder/priorityStaleAfterHeroic/priorityLiveFirstPrios
@@ -5402,7 +5378,8 @@ function easternToday() {
 
 // The tier current today, by the same rule as the database's
 // current_season(): the latest tier whose start has passed (#933). '' when
-// no tier has started, or the seasons read failed.
+// no tier has started, or the seasons read failed. Since #938 this is the
+// season every team is on: nothing per team names one.
 function currentSeasonCode() {
   var today = easternToday();
   var rows = (DATA && DATA.seasons) || [];
@@ -5419,6 +5396,13 @@ function seasonRow(seasonCode) {
     if (rows[i].code === seasonCode) return rows[i];
   }
   return null;
+}
+
+// The current tier's display name, '' when no tier has started. What the
+// roster page and the loot readers compare a row's season name against.
+function currentSeasonName() {
+  var tier = seasonRow(currentSeasonCode());
+  return tier ? tier.display_name : '';
 }
 
 // A seasonHistory entry's tier code: the code close_season() writes, else

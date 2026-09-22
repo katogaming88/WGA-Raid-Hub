@@ -51,7 +51,7 @@ function fetchExportString() {
     btn.textContent = 'Loading...';
   }
 
-  var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+  var season = currentSeasonCode();
   var track = _prioExportTrack === 'mythic' ? 'Myth' : 'Hero';
 
   supabaseClient

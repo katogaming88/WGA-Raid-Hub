@@ -1,0 +1,32 @@
+-- #938, fourth of four: seasonName leaves team_settings.
+--
+-- team_settings.config ->> 'seasonName' named the season a team was on,
+-- typed on the Season tab or written by Start New Season, and it fed every
+-- stamp and scope the site made: loot imports, scores, priority, the item
+-- catalog's scope, the profile card's tier counts and the season selector.
+-- Decision 13 on #1189 (2026-09-20) made the season app-wide: the tier the
+-- guild is raiding is current_season() (#933) in the database and the
+-- seasons read on the site and in the app, so the key goes rather than
+-- converts, and nothing per team names the tier. The last of the
+-- conversions #932 left for #933 to #938.
+--
+-- Nothing in the database reads the key any more: the two stale-priority
+-- cleanups read current_season() since 20260921192826, and close_season()
+-- (20260921194720) names its history entry from the seasons row. On the
+-- site every reader takes the tier from the same bundle this file ships
+-- with (currentSeasonCode() and currentSeasonName() in js/common.js), and
+-- the app's useCurrentSeason() reads the seasons table. seasonStart and
+-- seasonEnd stay for #1269.
+--
+-- Production, 2026-09-21: teams 1 and 2 hold 'Midnight Season 2', which is
+-- the current tier; teams 3 and 4 hold nothing, and their public pages had
+-- read an empty name as no filter, so their tier counts were career totals.
+--
+-- A merge pushes this file before it publishes the site (#1083), so for up
+-- to ten minutes a browser on the old bundle reads no seasonName: its tier
+-- stamps read empty and refuse, its loot import says no season name is
+-- configured, and a Save on its Season Name box writes the key back. Every
+-- reader in the new bundle ignores the key, so a row that gets it back is
+-- inert; the acceptance count is read after the window.
+
+update public.team_settings set config = config - 'seasonName' where config ? 'seasonName';

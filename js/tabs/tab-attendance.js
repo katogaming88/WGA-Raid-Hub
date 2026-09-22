@@ -586,7 +586,7 @@ function executeCommitScores() {
         nightSet[row.raid_date] = true;
       });
 
-      var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+      var season = currentSeasonCode();
       var rows = Object.keys(byPlayer).map(function (playerId) {
         var agg = byPlayer[playerId];
         var ratio = agg.sum / agg.nights;

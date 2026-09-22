@@ -12,6 +12,31 @@ answers to.
 
 ---
 
+## [Unreleased]
+
+### Frontend
+
+- The season is the tier: nothing per team names it any more. The Season
+  Settings tab's Season Name box is gone, and everything that read it takes
+  the current tier from the site's season table instead: loot imports (the
+  Import panel names the tier), scores, priority lists and their exports,
+  the Reports tab, the roster's "Items This Tier" and every profile card, the
+  landing page's loot feed, the Admin tab's Properties ("Current Tier"), and
+  the officer toolbar's season dropdown, which lists the tiers that have
+  started with the current one marked instead of the team's name plus its
+  history. Immolation and Wrathless, which never set a name, had been showing
+  career totals under "Items This Tier" and on every profile card; they show
+  the current tier's from this release. The new app's profile page reads the
+  same table (#938, the fourth of four pull requests, closing it).
+
+### Backend
+
+- `seasonName` is removed from every team's settings
+  (`20260921201717_retire_season_name.sql`). Nothing in the database has read
+  it since the first pull request, and nothing on the site or in the app
+  reads it from this release; the typed Season Start and End stay until
+  #1269.
+
 ## [3.149.0] - 2026-09-21
 
 ### Frontend

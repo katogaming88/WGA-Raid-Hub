@@ -482,10 +482,10 @@ function updateOffSpecList() {
 // stale season and would wrongly count someone who simply hasn't signed up
 // yet -- officers already have a separate view for that; the incoming
 // roster alone is the accurate answer there. Both sides compare as codes
-// (#934); seasonName is still a name until #938.
+// (#934): the live tier and the tier the form is signing up for.
 function signupClassmatesPool() {
   var incoming = (window.DATA && DATA.incomingRoster) || [];
-  var liveCode = seasonCodeForDisplay(((window.DATA && DATA.seasonName) || '').trim());
+  var liveCode = currentSeasonCode();
   var signupCode = signupTier();
   var includeRoster = !!liveCode && !!signupCode && liveCode === signupCode;
   if (!includeRoster) return incoming;

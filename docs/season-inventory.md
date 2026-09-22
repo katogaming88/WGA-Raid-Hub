@@ -12,6 +12,8 @@ Every place the database and the code hold a season, read at commit `d206bea` (m
 
 **Since #935 (2026-09-20, `20260920234054_retire_bis_items.sql`) `bis_items` is gone**, and with it the one season column that was never going to convert; section 2 counts thirteen.
 
+**Since #938 (2026-09-21, four pull requests: `20260921192826_cleanups_read_current_season.sql`, `20260921194720_close_season.sql`, `20260921201717_retire_season_name.sql`) `seasonName` is gone from `team_settings.config`, and nothing per team names the tier.** Every reader takes the tier: `current_season()` in the two stale-priority cleanups, `currentSeasonCode()` and `currentSeasonName()` (`js/common.js`, from the `seasons` read) on the site, and the app's `useCurrentSeason()` from the same table. `CURRENT_SEASON` left `js/common.js` with it. The archive became `close_season()`, which records a tier that has ended and starts nothing; the importer stamps codes. The season a team is on is the tier, so of section 3's per-team keys only the dates (#1269) and the planning override remain to convert. Sections 1, 3 and 4 below describe the state before it, where a line does not say otherwise.
+
 Season lives in three places today and none of them is a table.
 
 - **The guild's raid tier.** Which tier is current is `CURRENT_SEASON` in `js/common.js`, a constant edited by hand once per tier. The database holds no guild-level season: `to_regclass('public.seasons')` and `('public.team_seasons')` are both null.
@@ -28,7 +30,7 @@ Entries name files and the function, view, trigger or constant inside them, neve
 
 | Where | What | Who reads it |
 | --- | --- | --- |
-| `CURRENT_SEASON` (`js/common.js`) | `{ code: 'MID2', displayName: 'Midnight Season 2' }`, edited once per tier; self-checked against `seasonCodeForDisplay()` at parse | until #938's third pull request `executeArchiveSeason()` (`js/tabs/tab-season.js`, the Start New Season button) wrote its `displayName` into that team's `seasonName`, and nothing writes it since; `tierSeasonCode()` (`js/common.js`) falls back to its `code` before team settings load (#1108) |
+| `CURRENT_SEASON` (`js/common.js`) | gone since #938's fourth pull request; was `{ code: 'MID2', displayName: 'Midnight Season 2' }`, edited once per tier | `executeArchiveSeason()` wrote its `displayName` into the team's `seasonName` until the third pull request, and `tierSeasonCode()` fell back to its `code` before team settings loaded (#1108); both read the `seasons` rows now |
 | `SEASON_CODE_PREFIX`, `SEASON_DISPLAY_PREFIX` (`js/common.js`) | `'MID'`, `'Midnight Season'`; edited at an expansion boundary | `seasonCodeForDisplay()`, `seasonDisplayName()`, `_seasonDisplayPrefix()` (`js/tabs/tab-season.js`) |
 | `SEASON_CODE_PREFIX`, `SEASON_DISPLAY_PREFIX` (`app/src/profile/profile.ts`) | the same two values, a second copy | `seasonCode()`, `seasonName()` in the new app |
 | `SEASON` (`scripts/generate-tier-token-map-sql.js`) | `'MID2'`, the code the tier-token seed stamps | `tierTokenMapRows()` when the seed SQL is generated |
@@ -171,7 +173,7 @@ Writes go through `saveTeamSetting()` (`js/common.js`), which calls the `set_tea
 
 | Key | Type | Teams holding it | Tier, cycle or neither | Converts in |
 | --- | --- | --- | --- | --- |
-| `seasonName` | string, a name | 1, 2 | cycle | #938, #939 |
+| `seasonName` | gone since #938 (`20260921201717_retire_season_name.sql`); was a string, a name | none | cycle | #938 |
 | `seasonStart` | string, `YYYY-MM-DD` | 1, 2 | cycle | #939 |
 | `seasonEnd` | string, `YYYY-MM-DD` | 1, 2 | cycle | #939 |
 | `seasonHistory` | array of archived cycles | 1, 2 | cycle | #939 |
@@ -194,11 +196,13 @@ Writes go through `saveTeamSetting()` (`js/common.js`), which calls the `set_tea
 
 ### `seasonName`
 
+Retired by #938's fourth pull request (`20260921201717_retire_season_name.sql`, 2026-09-21): the key left every config row, and every reader below takes the tier from the `seasons` table instead (`currentSeasonCode()` and `currentSeasonName()` in `js/common.js`; `currentSeason()` in `app/src/profile/profile.ts`). The rest of this section is the state before.
+
 - **Writers.** `saveSeasonName()` (`js/tabs/tab-season.js`) builds `Midnight Season N` from the number typed, through `_seasonDisplayPrefix()`. Until #938's third pull request (`20260921194720_close_season.sql`) `executeArchiveSeason()` (the Start New Season button) called `archive_current_season()`, which blanked the key after appending the cycle to `seasonHistory`, then wrote `CURRENT_SEASON.displayName` with `seasonView: null`, and `executeUnarchiveSeason()` called `unarchive_season()`, which restored it from a history entry; `close_season()` leaves the key alone. Teams 3 and 4 have never had it set.
 - **Readers, SQL.** None since #938's third pull request; `archive_current_season()` refused when it was blank and snapshotted it. Since #938's first pull request (`20260921192826_cleanups_read_current_season.sql`) `add_signup_to_roster()` and `review_main_swap_request()` clear the archived character's `priority_order` rows for `current_season()` in place of the regex read of this key, which had skipped the cleanup on every team with no name (teams 3 and 4). `submit_boe_found()` stamps `current_season()` since #937.
 - **Readers, functions.** `wcl-progression-sync` (the `raid_zones` stamp, `Unknown` when blank).
-- **Readers, site.** `resolveSeasonView()` and `resolveSeasonViewCode()` (`js/common.js`), behind every scope check and every Priority write. `seasonCodeForDisplay(DATA.seasonName)` directly in `fetchExportString()`, `qaExportString()`, `qaSubmitLoot()`, `submitLootImport()`, `buildLootHistoryTab()`, `executeCommitScores()`, `executeCommitPerformance()`, `_seedScoringFromSeasonPerf()`, `reportsCurrentSeasonCode()` and `_fetchTeamScoringIfNeeded()`. By name in `populateSeasonSelector()` (`js/officer.js`), `buildPublicStats()`, `buildRecentLoot()` and `bootRosterApp()` (`js/roster.js`, which sets `ACTIVE_SEASON`), `signupClassmatesPool()` (`js/signup.js`), `getSeasonDateRange()`, `buildLootImportForm()`, `buildSeasonTab()`, `loadAdminProperties()`, and `refreshBoeTeamOptions()` (`js/boe.js`, every team's, for the found form).
-- **Readers, app.** `useCurrentSeason()` (`app/src/profile/useProfile.ts`), which derives the code with `seasonCode()`; the wishlist editor and loot priority card scope by it.
+- **Readers, site (before #938).** `resolveSeasonView()` and `resolveSeasonViewCode()` (`js/common.js`), behind every scope check and every Priority write. `seasonCodeForDisplay(DATA.seasonName)` directly in `fetchExportString()`, `qaExportString()`, `qaSubmitLoot()`, `submitLootImport()`, `buildLootHistoryTab()`, `executeCommitScores()`, `executeCommitPerformance()`, `_seedScoringFromSeasonPerf()`, `reportsCurrentSeasonCode()` and `_fetchTeamScoringIfNeeded()`. By name in `populateSeasonSelector()` (`js/officer.js`), `buildPublicStats()`, `buildRecentLoot()` and `bootRosterApp()` (`js/roster.js`, which sets `ACTIVE_SEASON`), `signupClassmatesPool()` (`js/signup.js`), `getSeasonDateRange()`, `buildLootImportForm()`, `buildSeasonTab()`, `loadAdminProperties()`, and `refreshBoeTeamOptions()` (`js/boe.js`, every team's, for the found form).
+- **Readers, app (before #938).** `useCurrentSeason()` (`app/src/profile/useProfile.ts`), which derived the code with `seasonCode()`; the wishlist editor and loot priority card scope by it. Since #938 it reads the `seasons` table and keeps the team's typed dates until #1269.
 - **Bot.** `bot/src/index.ts` declares `seasonName` on the payload it fetched from the retired Apps Script roster endpoint (#225); it does not read this key.
 - **Meaning.** Cycle. **Next tier, nothing changed.** Each team types the number (Start New Season wrote it until #938's third pull request; Close Season does not); until then every stamp above carries the old name, and a team that never does keeps stamping it forever. The key retires in #938's fourth pull request.
 

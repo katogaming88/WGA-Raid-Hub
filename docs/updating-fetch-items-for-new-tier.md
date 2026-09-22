@@ -137,11 +137,11 @@ The `season` column has no default on purpose: an insert without it fails instea
 
 ## The tier itself: `seasons` (#932)
 
-Every season column is a foreign key to `seasons`, one row per raid tier (`code` such as `MID3`, `display_name` such as `Midnight Season 3`, `starts_at`, `ends_at`). The row for a new tier is a migration, and it lands **before any team names the tier**: an officer can only open signups for a tier the row exists for (the Signups tab lists the rows, #934), and from the moment an officer sets Season Name to a name with no row, that team's wishlist picks and BiS placeholders are refused until the row exists. A BoE find takes the tier current on its date (`current_season()`, #937) and needs no name from the team. The tier-token seed above needs the row too.
+Every season column is a foreign key to `seasons`, one row per raid tier (`code` such as `MID3`, `display_name` such as `Midnight Season 3`, `starts_at`, `ends_at`). The row for a new tier is a migration, and it lands **before any team names the tier**: an officer can only open signups for a tier the row exists for (the Signups tab lists the rows, #934), and the tier everyone is on is the newest row whose start has passed (`current_season()`, and the same rule on the site since #938), so the row is what makes the new tier current: nothing per team names it any more. A BoE find takes the tier current on its date (`current_season()`, #937) and needs no name from the team. The tier-token seed above needs the row too.
 
 One migration, two statements, in this order:
 
 1. Close the outgoing tier: `update public.seasons set ends_at = '<the day before launch>' where code = 'MID2';`
 2. Insert the new one: `insert into public.seasons (code, display_name, starts_at) values ('MID3', 'Midnight Season 3', '<launch day>');`
 
-Tiers cannot overlap (`seasons_no_overlap`, inclusive on both ends), so a second open-ended insert before the first update is refused, and so is a start date on or before the outgoing tier's end. The migration can land early with a future date: nothing reads which tier is current, `wcl-progression-sync` stamps each team's own Season Name, and a team that rolls its cycle over ahead of launch can stamp the new name from the day the row exists.
+Tiers cannot overlap (`seasons_no_overlap`, inclusive on both ends), so a second open-ended insert before the first update is refused, and so is a start date on or before the outgoing tier's end. The migration can land early with a future date: which tier is current is the newest row whose start has passed, so a future-dated row changes nothing until its day, and every stamp (the sync's, the loot import's, the scores') moves to the new tier on that day with no click from any team.
