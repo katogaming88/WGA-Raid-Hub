@@ -50,17 +50,17 @@ function switchAdminSubTab(name, btnEl) {
 // ── Properties Inspector ──────────────────────────────────────────────────
 
 // The day the season counts from (#1269), as the rest of the page is using
-// it: this team's first raid night in the live tier where the database
-// answered one, else the tier's own start. The two are distinguished
-// because the fetch answers nothing for a tier the team has not raided and
-// for a read that failed alike, and an officer looking at this panel to
-// work out why a percentage looks wrong needs the window the page actually
-// used either way.
+// it. team_season_start() falls back to the tier's own start itself, so a
+// bare date here is always the database's answer, whether or not this team
+// has a raid night on record. The note is for the other case: the read did
+// not come back (a timeout, an error, no client), the page fell back to the
+// tier's start on its own, and an officer working out why a percentage
+// looks wrong should see that rather than a date presented as derived.
 function _seasonStartProperty() {
   var start = seasonDateRangeFor(currentSeasonCode()).start;
   if (!start) return '(no season has started)';
   if (DATA && DATA.seasonStartDate && DATA.seasonStartSeason === currentSeasonCode()) return start;
-  return start + ' (the tier start; no raid night of this team is on record)';
+  return start + ' (the tier start; the first raid night did not load)';
 }
 
 function loadAdminProperties() {
