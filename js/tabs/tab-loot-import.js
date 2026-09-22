@@ -25,7 +25,7 @@ function buildLootImportForm() {
     return;
   }
 
-  var seasonName = window.DATA && DATA.seasonName ? DATA.seasonName.trim() : '';
+  var seasonName = currentSeasonName();
 
   var html = '<div class="signup-officer-panel">';
   html +=
@@ -38,19 +38,17 @@ function buildLootImportForm() {
   html +=
     '<li>Paste it into the box below. You can paste multiple nights at once -- duplicates are skipped automatically.</li>';
   html +=
-    '<li>Make sure <strong>Season Name</strong> is set correctly in Season Settings before importing so entries are tagged with the right season label.</li>';
+    "<li>Entries are tagged with the current tier, which starts on the day Blizzard's season goes live; past seasons stay in the loot feed under their own label, filterable there.</li>";
   html += '</ul>';
-  html +=
-    '<strong>Season reset:</strong> update Season Name in Season Settings before re-importing so new entries are tagged with the new season -- past seasons stay in the loot feed under their own label, filterable there.';
   html += '</div>';
   if (seasonName) {
     html +=
-      '<p class="signup-officer-note" style="margin-top:0.35rem;">Active season: <strong>' +
+      '<p class="signup-officer-note" style="margin-top:0.35rem;">Current tier: <strong>' +
       seasonName +
-      '</strong>. All imported entries will be tagged with this label. To change it, go to <a href="#" onclick="switchTab(\'season\');return false;">Season Settings</a>.</p>';
+      '</strong>. All imported entries will be tagged with it.</p>';
   } else {
     html +=
-      '<p class="signup-officer-note" style="margin-top:0.35rem;color:var(--melee);">No season name configured. Set one in <a href="#" onclick="switchTab(\'season\');return false;">Season Settings</a> before importing so loot entries are properly labeled.</p>';
+      '<p class="signup-officer-note" style="margin-top:0.35rem;color:var(--melee);">No tier has started yet, so imported loot would carry no season. Wait for the tier before importing.</p>';
   }
   html += '<p class="signup-officer-note" style="margin-top:0.5rem;">In-game: RCLootCouncil &gt; Export &gt; JSON. ';
   html += "Paste one night's export (or multiple nights) below. Duplicate entries are skipped automatically.</p>";
@@ -126,7 +124,7 @@ function submitLootImport() {
   // dropdown showed "Midnight Season 1" twice (once as the correctly-coded
   // "MID1" translated back for display, once as the raw un-translated
   // string sitting in the same column).
-  var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+  var season = currentSeasonCode();
 
   setLootImportStatus('Importing ' + rows.length + ' entries...', 'var(--text-muted)');
 
@@ -207,7 +205,7 @@ function buildLootHistoryTab() {
   }
 
   var teamId = _teamCfg.supabaseTeamId;
-  _lootHistorySeasonFilter = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+  _lootHistorySeasonFilter = currentSeasonCode();
   // Every import ever run, not a capped recent window -- fetchAllPaged
   // (js/common.js, same cursor-by-id pattern as the Audit Log tab) rather
   // than a single limited select, since a season's worth of imports can

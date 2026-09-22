@@ -133,7 +133,11 @@ const handlers = (loot: FeedLootRow[]): FakeHandlers => {
           ]
         };
       }
-      if (read.table === 'team_settings') return { data: { name: SEASON.name, start: SEASON.start, end: SEASON.end } };
+      // The live tier is the seasons read (#938); the dates are still the
+      // team's own keys until #1269.
+      if (read.table === 'seasons')
+        return { data: [{ code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start, ends_at: null }] };
+      if (read.table === 'team_settings') return { data: { start: SEASON.start, end: SEASON.end } };
       if (read.table === 'rclc_loot') return { data: loot };
       return base.from!(read);
     }

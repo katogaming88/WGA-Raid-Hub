@@ -65,7 +65,7 @@ function reportsAllKnownSeasons(rowSeasons) {
 }
 
 function reportsCurrentSeasonCode() {
-  return window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+  return currentSeasonCode();
 }
 
 // -- Raid nights since last item --

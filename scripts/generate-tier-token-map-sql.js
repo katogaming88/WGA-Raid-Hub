@@ -18,8 +18,8 @@ import { pathToFileURL } from 'node:url';
 import { sqlString } from './import/lib/sql.js';
 
 // The season these rows belong to (#1108): the season code, the same form
-// priority_order and CURRENT_SEASON.code in js/common.js use. Changed with the
-// token names below at each tier. The column has no default, so a run that
+// priority_order and the seasons table use. Changed with the token names
+// below at each tier. The column has no default, so a run that
 // leaves it out fails on insert rather than filing the tier under no season.
 export const SEASON = 'MID2';
 

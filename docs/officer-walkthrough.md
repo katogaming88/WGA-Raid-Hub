@@ -44,8 +44,8 @@ canonical steps (also built into the dashboard's Officer Guide tab) -- point peo
 directly once they've seen it walked through once.
 
 ### After each raid night
-1. **Loot tab -> Import** -- confirm Season Name is set in Season Settings, paste the
-   RCLootCouncil JSON export, click Import. Duplicates are skipped automatically -- safe to
+1. **Loot tab -> Import** -- paste the RCLootCouncil JSON export, click Import; entries are
+   tagged with the current tier, which the panel names. Duplicates are skipped automatically -- safe to
    paste multiple nights at once or re-paste an old export.
 2. **Attendance tab -> Manage** -- Refresh from WCL (pulls the latest raid nights), review/edit
    any player statuses in the grid, then Commit Attendance Scores (recalculates attendance % for
@@ -61,24 +61,29 @@ directly once they've seen it walked through once.
 - **M+ Exclusions** -- exclusion requests
 - **Received Item Requests** -- self-reported items from outside raid
 
-### Once per season (the app's own "Rollover workflow")
-1. Set an **End Date** on the current season if it closes before the next one starts.
-2. **Season Settings -> History -> Start New Season** (formerly "Archive Current Season") --
-   pushes the current Season Name/Start/End into history so it shows up in the season selector
-   dropdown going forward, and does a lot more in the same click: clears every player's
-   submitted BiS link (a link is effectively per-tier; cleared unconditionally rather than left
-   for a raider to notice it's stale), resets M+ exclusion for the whole active roster, resets Bench status
-   for the whole active roster (Trial status is left alone), and auto-fills the new Season Name
-   from the current tier constant. See the Season Settings section below for the full behavior.
-3. Still in Season History, run the just-archived season's **WCL Performance Baseline**
+### Once per season (the app's own "New tier workflow")
+1. Set an **End Date** on the outgoing season if it closes before the next one starts.
+2. **Season Settings -> History -> Close Season** (formerly "Start New Season", before that
+   "Archive Current Season") -- records the tier that ended in history (its code, name and dates
+   from the site's season table, the raids the team has progress on, and the roster with its
+   attendance over that tier's window) so it shows up in the season selector dropdown going
+   forward, and does more in the same click: clears every player's submitted BiS link (a link
+   is effectively per-tier; cleared unconditionally rather than left for a raider to notice
+   it's stale), resets M+ exclusion for the whole active roster, and resets Bench status for the
+   whole active roster (Trial status is left alone). It starts nothing: the dates and the raid
+   list stay as they are, the tier everyone is on is Blizzard's from the day it goes live, and a
+   tier can be closed before or after the raid list is rebuilt for the next one. See the Season
+   Settings section below.
+3. Still in Season History, run the just-closed tier's **WCL Performance Baseline**
    fetch (#264) -- the "Fetch WCL Performance" row only appears next to the *newest* history
-   entry, so this is the only chance to run it; once another season is archived, the entry
+   entry, so this is the only chance to run it; once another tier is closed, the entry
    drops off the list with no way back. Seeds the Heroic priority baseline
    (`player_wcl_season_perf`) before the new season has raid reports of its own, and seeds
    `scoring.performance_score` for the new season too (without ever overwriting a real
    Commit Performance Scores). A live status label on the row shows whether it's already
    been done for that season.
-4. Set the new **Start Date** for the upcoming season (Season Name is now auto-filled by step 2).
+4. Set the new **Start Date** for the upcoming season. There is no season name to set: loot
+   imports, scores and priority lists are tagged with the current tier.
 5. Re-import the new season's loot via **Loot -> Import** (entries auto-tag with the new season
    name). Old loot history doesn't need clearing -- entries stay tagged by season and the
    season selector already filters by it; there is no "Clear All Loot History" action (see the
@@ -88,7 +93,7 @@ directly once they've seen it walked through once.
    from WCL** (see the Weekly Workflow above) picks it up like any other night, since it's
    already scoped to raids on/after the new Season Start Date. Until then, players will show
    the roster's default "no data yet" 100% for the new season, which is expected, not a bug.
-7. M+ exclusions are already reset team-wide by step 2's Start New Season. **M+ Exclusions ->
+7. M+ exclusions are already reset team-wide by step 2's Close Season. **M+ Exclusions ->
    Clear All Exclusions** is still useful mid-season if you need to reset exclusions without a
    full season rollover -- it only flips the live exclusion flag, it does not touch or relabel
    request history. **Do not** use Admin -> Danger Zone -> "Clear M+ Exclusion Requests" for
@@ -132,7 +137,7 @@ happens in the Admin tab's Officers sub-tab, not here.
 Three sub-tabs:
 
 - **Import** -- paste RCLootCouncil JSON from in-game; entries are tagged with the current
-  Season Name automatically. Set Season Name in Season Settings first.
+  tier automatically, which the panel names. There is nothing to set first.
 - **Import History** -- a table of the most recent RCLootCouncil imports (up to the last 100
   rows: Time/Player/Item), sourced from the audit log so it only ever shows genuine paste-imports.
   There is no "Clear All" here -- it was deliberately left out because `rclc_loot` mixes
@@ -312,14 +317,14 @@ Three sub-tabs: **Signups**, **Pending Roster**, **History**.
 - **Clear All Exclusions** (on this tab, #405) -- flips every currently-excluded player's live
   `m_plus_excluded` flag back off (nobody stays excluded going into the new season). It only
   touches that flag -- it does **not** relabel or otherwise touch the request rows, the full
-  request history stays intact and unchanged. Note: Season Settings -> **Start New Season**
-  now also resets this flag for the whole active roster as part of archiving, so this button is
+  request history stays intact and unchanged. Note: Season Settings -> **Close Season**
+  also resets this flag for the whole active roster as part of closing a tier, so this button is
   mainly useful for a mid-season reset without a full season rollover.
   This is completely different from Admin -> Danger Zone -> "Clear M+ Exclusion Requests,"
   which does the opposite: it permanently deletes the request history and does **not** touch
   who's currently excluded -- anyone excluded stays excluded. Running the Danger Zone version
   at a season reset would leave stale exclusions in place while destroying the record of why
-  they were granted. Always use this tab's button (or Start New Season) for a reset, never the
+  they were granted. Always use this tab's button (or Close Season) for a reset, never the
   Danger Zone one.
 
 ---
@@ -354,7 +359,7 @@ Three sub-tabs: **Settings**, **Raid Progression**, **History**.
   already-approved incoming roster meets or exceeds a target, raiders signing up for that role
   see a nudge to consider DPS/backup instead or talk to an officer. Leave a field blank to skip
   the nudge for that role -- raiders still see the plain count either way.
-- **Season View** -- a forward-looking season picker, separate from the live Season Name, that
+- **Season View** -- a forward-looking season picker, separate from the live tier, that
   scopes the item catalog / BiS lists / Wishlist prep to a season you're preparing for before
   it actually goes live.
 - **WarcraftLogs Guild URL** -- the guild's WCL page, used by the Attendance and Scoring tabs'
@@ -362,16 +367,17 @@ Three sub-tabs: **Settings**, **Raid Progression**, **History**.
 - **Raid Progression** -- one block per raid in the season; boss kill dates show publicly on
   the landing page. Mini-raids (single/small standalone bosses) have no AOTC date. Archived
   along with the season.
-- **Start New Season** (renamed from "Archive Current Season") -- pushes the current Season
-  Name/Start/End into history so it appears in the season selector going forward, same as
-  before, but now does considerably more in the same click: clears every player's submitted BiS
-  source unconditionally (it's effectively per-tier, regardless of which site it points to), resets M+
-  exclusion for the whole active roster, resets Bench status for the whole active roster (Trial
-  status is untouched), and
-  auto-fills the new Season Name from the current tier constant instead of requiring it typed
-  in manually. See the Rollover workflow above.
-- **Season History** -- past archived seasons, with an **Unarchive** option to restore one as
-  active if it was archived by mistake. The most recently archived season also has a
+- **Close Season** (renamed from "Start New Season", earlier "Archive Current Season") --
+  closes the books on a tier that has ended: only a tier the site's season table holds, that
+  started before the current tier, and that this team has not closed yet (a select appears when
+  more than one qualifies). The entry carries the tier's code, name and dates, the raids the
+  team has progress on and the roster with its attendance over that tier's window; the same
+  click clears every player's submitted BiS source unconditionally (it's effectively per-tier,
+  regardless of which site it points to), resets M+ exclusion for the whole active roster, and
+  resets Bench status for the whole active roster (Trial status is untouched). It does not touch
+  the dates or the raid list, and there is no undo because nothing is started.
+  See the New tier workflow above.
+- **Season History** -- the tiers this team has closed. The most recently closed tier also has a
   **WCL Performance Baseline** fetch (#264) -- picks a raid tier from that season, pulls each
   DPS roster player's best character-page performance average (highest difficulty they logged,
   mythic if any, heroic otherwise) from WCL, and writes it to `player_wcl_season_perf`. Also

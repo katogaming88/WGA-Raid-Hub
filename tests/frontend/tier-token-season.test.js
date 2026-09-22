@@ -74,6 +74,11 @@ describe('tierTokenSetupStatus', () => {
     withData(common, { rows: null });
     expect(common.tierTokenSetupStatus('MID3')).toBe('unknown');
   });
+
+  it('is unknown with no season code, as when the seasons read failed, rather than missing for a blank name (#938)', () => {
+    withData(common);
+    expect(common.tierTokenSetupStatus('')).toBe('unknown');
+  });
 });
 
 function loadPriority() {

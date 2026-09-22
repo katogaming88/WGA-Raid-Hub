@@ -82,6 +82,9 @@ function profileState(label, viewerKey, profileKey, extra = {}) {
     },
     tables: {
       players: [shown],
+      seasons: [
+        { code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null }
+      ],
       team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end }],
       attendance: ATTENDANCE.filter((r) => r.player_id === shown.id),
       rclc_loot: LOOT.filter((r) => r.player_id === shown.id),
@@ -109,6 +112,9 @@ const wishlistEditorState = (label, extra = {}) =>
     ...extra,
     tables: {
       ...profileState('', 'torbjorn', 'torbjorn').tables,
+      seasons: [
+        { code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null }
+      ],
       team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end, open: 'true', view: null }],
       items: WISHLIST_EDITOR.ITEMS,
       raid_zones: WISHLIST_EDITOR.RAID_ZONES,
@@ -150,6 +156,7 @@ const rosterWithAlts = () => {
     players: ROSTER.players.map((p) => ({ ...p, team_member_id: p.id })),
     team_members: ROSTER.players.map((p) => ({ id: p.id, person_id: p.id === first.id ? 70 : 100 + p.id })),
     characters: ALT_CHARACTERS,
+    seasons: [{ code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null }],
     team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end }],
     attendance: [],
     rclc_loot: []
@@ -236,6 +243,14 @@ const BATTLENET_ONLY = storedSession({ battlenet: 'Aeglos#1234' });
 const HOME_TABLES = {
   players: HOME.players,
   rclc_loot: HOME.loot,
+  seasons: [
+    {
+      code: HOME_SEASON.code,
+      display_name: HOME_SEASON.name,
+      starts_at: HOME_SEASON.start || '2026-01-01',
+      ends_at: null
+    }
+  ],
   team_settings: [{ name: HOME_SEASON.name, start: null, end: null, raids: PROGRESSION.raids }],
   team_raid_progress: PROGRESSION.rows,
   raid_schedule: CALENDAR.schedule,
@@ -560,6 +575,9 @@ const STATES = [
     who: 'officer',
     tables: {
       ...ROSTER,
+      seasons: [
+        { code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null }
+      ],
       team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end }],
       attendance: [],
       rclc_loot: []
@@ -635,6 +653,9 @@ const STATES = [
     colorScheme: 'light',
     tables: {
       ...profileState('', 'dodgey', 'dodgey').tables,
+      seasons: [
+        { code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null }
+      ],
       team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end, mplusOpen: 'true' }]
     }
   }),

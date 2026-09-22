@@ -56,6 +56,9 @@ function open({
       players: [{ ...TORBJORN, wishlist_allowed: allowed }],
       // One row answers both of the page's team_settings reads; the editing
       // switch is the team_seasons row for the season (#939).
+      seasons: [
+        { code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null }
+      ],
       team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end, view: null }],
       team_seasons: [{ season_code: SEASON.code, wishlist_open: open }],
       items: ITEMS,

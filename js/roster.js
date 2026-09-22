@@ -371,7 +371,7 @@ function buildPublicStats() {
   var loot = DATA.lootCounts || {};
   var totalItems = 0;
   var keys = Object.keys(loot);
-  var currentSeason = (DATA && DATA.seasonName) || '';
+  var currentSeason = currentSeasonName();
   for (var i = 0; i < keys.length; i++) {
     var items = loot[keys[i]].items || [];
     for (var j = 0; j < items.length; j++) {
@@ -402,7 +402,7 @@ var _lootFeedAll = [];
 function buildRecentLoot() {
   var loot = DATA.lootCounts || {};
   var roster = DATA.roster || [];
-  var currentSeason = (DATA && DATA.seasonName) || '';
+  var currentSeason = currentSeasonName();
 
   var nameMap = {};
   for (var i = 0; i < roster.length; i++) {
@@ -983,13 +983,13 @@ function bootRosterApp() {
     loadData(
       function () {
         // officer.html's ACTIVE_SEASON (js/common.js) is kept in sync with the
-        // live season by officer.js's populateSeasonSelector() -- this page
+        // live tier by officer.js's populateSeasonSelector() -- this page
         // never loads officer.js (no season dropdown here), so without this
         // it stays stuck at its null ("All Seasons") default forever, and
         // every player's profile card silently shows career totals mislabeled
         // "this tier" for Items Received/attendance instead of the current
-        // season's.
-        ACTIVE_SEASON = (DATA && DATA.seasonName) || null;
+        // tier's.
+        ACTIVE_SEASON = currentSeasonName() || null;
         populateDropdown();
         buildPublicStats();
         buildProgression();

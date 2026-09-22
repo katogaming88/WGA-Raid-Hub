@@ -237,7 +237,7 @@ function qaExportString(track) {
     return;
   }
 
-  var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+  var season = currentSeasonCode();
 
   supabaseClient
     .rpc('build_rclc_export', { p_team_id: _teamCfg.supabaseTeamId, p_season: season, p_track: track })
@@ -390,9 +390,8 @@ function qaSubmitLoot() {
   }
 
   // rclc_loot.season stores the compact code ('MID1'), same convention as
-  // priority_order.season/scoring.season -- see js/tabs/tab-loot-import.js's
-  // matching call site for why this needs seasonCodeForDisplay().
-  var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+  // priority_order.season/scoring.season: the live tier's (#938).
+  var season = currentSeasonCode();
   if (importBtn) importBtn.disabled = true;
   setStatus('Importing ' + rows.length + ' entries...', 'var(--text-muted)');
 

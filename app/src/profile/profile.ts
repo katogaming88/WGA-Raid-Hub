@@ -4,9 +4,26 @@
 
 export type SeasonWindow = { name: string; code: string | null; start: string | null; end: string | null };
 
-// Season codes are the stable key (MID2) and teams name seasons for people
-// (Midnight Season 2). Same conversion as the current site's
-// seasonCodeForDisplay(), and like it, updated at an expansion boundary.
+export type SeasonRow = { code: string; display_name: string; starts_at: string; ends_at: string | null };
+
+// Today's date in Eastern, where the raids happen; the same calendar the
+// database's current_season() reads.
+export function easternToday(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+}
+
+// The tier current today, by the same rule as current_season() (#933): the
+// latest seasons row whose start has passed, or null before the first tier.
+export function currentSeason(seasons: SeasonRow[], today = easternToday()): SeasonRow | null {
+  return (
+    [...seasons].filter((s) => s.starts_at <= today).sort((a, b) => (a.starts_at < b.starts_at ? 1 : -1))[0] ?? null
+  );
+}
+
+// Season codes are the stable key (MID2) and the tier's display name is for
+// people (Midnight Season 2). Same conversion as the current site's
+// seasonCodeForDisplay(), and like it, updated at an expansion boundary; the
+// fallback for a value stored before the seasons table carried both (#938).
 const SEASON_CODE_PREFIX = 'MID';
 const SEASON_DISPLAY_PREFIX = 'Midnight Season';
 

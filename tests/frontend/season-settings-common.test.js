@@ -113,9 +113,9 @@ describe('fetchSupabaseSettings', () => {
 describe('applyTeamSettingsToData', () => {
   it('overlays every config key onto DATA', () => {
     const sandbox = loadCommonJs();
-    const data = { seasonName: 'Old', extraField: 'untouched' };
+    const data = { seasonStart: 'Old', extraField: 'untouched' };
     sandbox.applyTeamSettingsToData(data, {
-      seasonName: 'New',
+      seasonName: 'Left behind',
       seasonStart: '2026-01-01',
       seasonEnd: '',
       seasonHistory: [{ name: 'Prior' }],
@@ -129,7 +129,6 @@ describe('applyTeamSettingsToData', () => {
       activeSignupSeason: 'S2'
     });
     expect(data).toMatchObject({
-      seasonName: 'New',
       seasonStart: '2026-01-01',
       seasonEnd: '',
       seasonHistory: [{ name: 'Prior' }],
@@ -141,26 +140,28 @@ describe('applyTeamSettingsToData', () => {
       seasonView: 'MID2',
       extraField: 'untouched'
     });
-    // The two switches live on team_seasons since #939, and the signup
-    // season is that table's open rows since #934; a key left behind in
-    // config is not a setting any more and is not copied.
+    // The two switches live on team_seasons since #939, the signup season
+    // is that table's open rows since #934, and the season a team is on is
+    // the tier since #938; a key left behind in config is not a setting any
+    // more and is not copied.
     expect(data.signupsOpen).toBeUndefined();
     expect(data.signupSeason).toBeUndefined();
+    expect(data.seasonName).toBeUndefined();
   });
 
   it('leaves DATA fields untouched when config is null (falls back to Apps Script values)', () => {
     const sandbox = loadCommonJs();
-    const data = { seasonName: 'From GAS', signupsOpen: true };
+    const data = { seasonStart: 'From GAS', signupsOpen: true };
     sandbox.applyTeamSettingsToData(data, null);
-    expect(data).toEqual({ seasonName: 'From GAS', signupsOpen: true });
+    expect(data).toEqual({ seasonStart: 'From GAS', signupsOpen: true });
   });
 
   it('only overlays keys actually present in a partial config, keeping the rest from GAS', () => {
     const sandbox = loadCommonJs();
-    const data = { seasonName: 'From GAS', seasonStart: '2026-01-01', signupsOpen: true };
-    sandbox.applyTeamSettingsToData(data, { seasonName: 'From Supabase' });
+    const data = { seasonEnd: 'From GAS', seasonStart: '2026-01-01', signupsOpen: true };
+    sandbox.applyTeamSettingsToData(data, { seasonEnd: 'From Supabase' });
     expect(data).toEqual({
-      seasonName: 'From Supabase',
+      seasonEnd: 'From Supabase',
       seasonStart: '2026-01-01',
       signupsOpen: true,
       features: {},

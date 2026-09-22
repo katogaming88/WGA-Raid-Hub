@@ -103,7 +103,6 @@ describe('ownBonusRollSectionHTML -- season filtering at render time', () => {
   it('fails open (shows every seeded boss) when no season is configured at all', () => {
     const sandbox = withSession(
       makeSandbox({
-        seasonName: '',
         raidEncounters: [
           { id: 1, name: 'S1 Boss', season: 'MID1' },
           { id: 2, name: 'S2 Boss', season: 'MID2' }

@@ -476,22 +476,31 @@ function applyFeatureFlagVisibility() {
 // profile card (js/common.js's buildProfileCard-equivalent) needs them too,
 // and common.js is the only file both index.html and officer.html load.
 
+// The tiers that have started, oldest first, the current one marked (#938):
+// the season is app-wide, so the list is the seasons table's rather than
+// this team's name plus its history. A tier the team never raided shows
+// nothing under it. Values are display names, which is what DATA.lootCounts
+// items carry.
 function populateSeasonSelector() {
   var sel = document.getElementById('seasonSelector');
   var wrap = document.getElementById('seasonSelectorWrap');
   if (!sel) return;
 
-  var history = (DATA && DATA.seasonHistory) || [];
-  var current = (DATA && DATA.seasonName) || '';
-  var hasSeasons = history.length > 0 || current;
+  var today = easternToday();
+  var started = ((DATA && DATA.seasons) || [])
+    .filter(function (tier) {
+      return tier.starts_at && tier.starts_at <= today;
+    })
+    .reverse();
+  var current = currentSeasonName();
 
-  if (wrap) wrap.style.display = hasSeasons ? '' : 'none';
+  if (wrap) wrap.style.display = started.length ? '' : 'none';
 
   var options = [{ label: 'All Seasons', value: '' }];
-  for (var i = 0; i < history.length; i++) {
-    options.push({ label: history[i].name, value: history[i].name });
+  for (var i = 0; i < started.length; i++) {
+    var name = started[i].display_name;
+    options.push({ label: name === current ? name + ' (current)' : name, value: name });
   }
-  if (current) options.push({ label: current + ' (current)', value: current });
 
   sel.innerHTML = options
     .map(function (o) {

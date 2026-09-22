@@ -12,7 +12,7 @@ answers to.
 
 ---
 
-## [3.148.9] - 2026-09-21
+## [3.150.1] - 2026-09-21
 
 ### Frontend
 
@@ -30,6 +30,57 @@ answers to.
   the same steps pre-filled (#500), and the summary shown for one already on
   file reads its status in words. Reachable from Guild home's team cards when
   a team has signups open, and directly by address.
+## [3.150.0] - 2026-09-21
+
+### Frontend
+
+- The season is the tier: nothing per team names it any more. The Season
+  Settings tab's Season Name box is gone, and everything that read it takes
+  the current tier from the site's season table instead: loot imports (the
+  Import panel names the tier), scores, priority lists and their exports,
+  the Reports tab, the roster's "Items This Tier" and every profile card, the
+  landing page's loot feed, the Admin tab's Properties ("Current Tier"), and
+  the officer toolbar's season dropdown, which lists the tiers that have
+  started with the current one marked instead of the team's name plus its
+  history. Immolation and Wrathless, which never set a name, had been showing
+  career totals under "Items This Tier" and on every profile card; they show
+  the current tier's from this release. The new app's profile page reads the
+  same table (#938, the fourth of four pull requests, closing it).
+
+### Backend
+
+- `seasonName` is removed from every team's settings
+  (`20260921201717_retire_season_name.sql`). Nothing in the database has read
+  it since the first pull request, and nothing on the site or in the app
+  reads it from this release; the typed Season Start and End stay until
+  #1269.
+
+## [3.149.0] - 2026-09-21
+
+### Frontend
+
+- Season Settings > History: **Close Season** replaces Start New Season and
+  Unarchive. It closes the books on a tier that has ended (a select appears
+  when more than one can be closed): the roster with its attendance over that
+  tier's window and the raids the team has progress on are recorded in Season
+  History, every player's submitted BiS source, M+ exclusion and Bench status
+  reset, and nothing else changes. It starts nothing, so the Season Name, the
+  dates and the raid list stay as they are, a tier can be closed before or
+  after the raid list is rebuilt for the next one, and there is no undo. The
+  Season tab's help and the Help tab's workflow card say the same (#938, the
+  third of four pull requests).
+
+### Backend
+
+- `close_season(p_team_id, p_season, p_roster_snapshot)` replaces
+  `archive_current_season()` and `unarchive_season()`
+  (`20260921194720_close_season.sql`). It refuses a tier the site does not
+  know, a tier that has not ended and a tier the team has already closed; the
+  entry carries the tier's code, name and dates, the raids folded from the
+  tier's own rows, and the roster snapshot; the roster flags reset as before
+  and the audit entry is the function's own. The two history entries already
+  on production (both Midnight Season 1) gain the tier's code; nothing else in
+  them changes.
 
 ## [3.148.8] - 2026-09-21
 
