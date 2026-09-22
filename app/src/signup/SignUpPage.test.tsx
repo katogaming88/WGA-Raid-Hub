@@ -72,7 +72,6 @@ describe('Sign Up, a fresh signup', () => {
 
     await userEvent.type(within1.getByLabelText('Character name'), 'Katorri');
     await userEvent.type(within1.getByLabelText('Realm'), 'Stormrage');
-    await userEvent.click(within1.getByRole('button', { name: 'Stormrage' }));
     await userEvent.click(within1.getByRole('button', { name: 'Next' }));
 
     await userEvent.click(await within1.findByRole('radio', { name: 'Priest' }));
@@ -87,6 +86,33 @@ describe('Sign Up, a fresh signup', () => {
     await userEvent.click(within1.getByRole('button', { name: 'Submit' }));
 
     expect(await within1.findByText('Signup submitted')).toBeInTheDocument();
+  });
+});
+
+describe('Sign Up, realm field', () => {
+  it('browses the whole list on click, and picks with the keyboard', async () => {
+    renderApp('/g/wga/t/phoenix/signup', handlers(person(null)));
+    const field = await screen.findByLabelText('Realm');
+    await userEvent.click(field);
+    const list = screen.getByRole('listbox', { name: 'Realms' });
+    expect(within(list).getAllByRole('option').length).toBeGreaterThan(200);
+
+    await userEvent.keyboard('{ArrowDown}{ArrowDown}{Enter}');
+    expect(field).toHaveValue('Aerie Peak');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  });
+
+  it('filters as it is typed, and still lets a real user just type the realm', async () => {
+    renderApp('/g/wga/t/phoenix/signup', handlers(person(null)));
+    const field = await screen.findByLabelText('Realm');
+    await userEvent.type(field, 'stormrage');
+    const list = screen.getByRole('listbox', { name: 'Realms' });
+    expect(
+      within(list)
+        .getAllByRole('option')
+        .map((o) => o.textContent)
+    ).toEqual(['Stormrage']);
+    expect(field).toHaveValue('stormrage');
   });
 });
 
@@ -107,7 +133,6 @@ describe('Sign Up, claim differs', () => {
     await screen.findByRole('heading', { level: 2, name: 'Sign up for next season' });
     await userEvent.type(screen.getByLabelText('Character name'), 'Katorri');
     await userEvent.type(screen.getByLabelText('Realm'), 'Stormrage');
-    await userEvent.click(screen.getByRole('button', { name: 'Stormrage' }));
     await userEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     expect(await screen.findByText(/confirm you meant to sign up/)).toBeInTheDocument();

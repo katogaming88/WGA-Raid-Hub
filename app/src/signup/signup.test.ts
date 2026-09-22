@@ -4,7 +4,7 @@ import {
   classMismatch,
   classmatesPool,
   claimDiffers,
-  realmMatches,
+  realmOptions,
   type ClassmateRow,
   type IncomingSignupRow
 } from './signup';
@@ -39,16 +39,17 @@ describe('classmatesPool', () => {
   });
 });
 
-describe('realmMatches', () => {
+describe('realmOptions', () => {
   const realms = ['Illidan', 'Area 52', 'Stormrage', "Zul'jin"];
 
-  it('is empty for an empty query', () => {
-    expect(realmMatches(realms, '')).toEqual([]);
+  it('is the whole list with nothing typed, so it still works as a plain dropdown', () => {
+    expect(realmOptions(realms, '')).toEqual(realms);
+    expect(realmOptions(realms, '  ')).toEqual(realms);
   });
 
-  it('matches a substring, case-insensitively', () => {
-    expect(realmMatches(realms, 'rea')).toEqual(['Area 52']);
-    expect(realmMatches(realms, 'storm')).toEqual(['Stormrage']);
+  it('filters to a substring match, case-insensitively', () => {
+    expect(realmOptions(realms, 'rea')).toEqual(['Area 52']);
+    expect(realmOptions(realms, 'storm')).toEqual(['Stormrage']);
   });
 });
 

@@ -33,11 +33,13 @@ export function classmatesPool(
   return [...byKey.values()];
 }
 
-// A realm search: substring match, case-insensitive, first 12.
-export function realmMatches(realms: string[], query: string): string[] {
+// The realm list a click-to-browse, type-to-filter combobox shows: the whole
+// list with nothing typed (so it still works as a plain dropdown), a
+// substring match once there is a query.
+export function realmOptions(realms: string[], query: string): string[] {
   const q = query.toLowerCase().trim();
-  if (!q) return [];
-  return realms.filter((r) => r.toLowerCase().includes(q)).slice(0, 12);
+  if (!q) return realms;
+  return realms.filter((r) => r.toLowerCase().includes(q));
 }
 
 // Whether the typed character differs from the one this person already has
