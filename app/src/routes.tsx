@@ -11,6 +11,7 @@ import { NewsPage } from './news/NewsPage';
 import { StreamsPage } from './streams/StreamsPage';
 import { HelpPage } from './help/HelpPage';
 import { AboutPage } from './about/AboutPage';
+import { HistoryPage } from './history/HistoryPage';
 import { GuildOfficersPage } from './officers/GuildOfficersPage';
 import { TeamOfficersPage } from './officers/TeamOfficersPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -28,6 +29,7 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   calendar: <CalendarPage />,
   me: <MyProfilePage />,
   'officer/groups': <BossGroupsPage />,
+  history: <HistoryPage />,
   officers: <TeamOfficersPage />
 };
 
