@@ -14,7 +14,7 @@ answers to.
 
 ## [3.150.1] - 2026-09-21
 
-### Frontend
+### Project
 
 - The new app's **Sign Up** page
   ([#1102](https://github.com/katogaming88/WGA-Raid-Hub/issues/1102)), ported
