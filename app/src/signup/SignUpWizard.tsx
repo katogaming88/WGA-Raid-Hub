@@ -1,14 +1,13 @@
-import { useCallback, useEffect, useId, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BATTLENET, useSession } from '../auth/session';
 import { CharacterIcon } from '../characters/CharacterIcon';
 import { pickerRows, type CharactersAnswer } from '../characters/characters';
 import { useBattlenetCharacters } from '../characters/useCharacters';
 import '../characters/characters.css';
-import { RealmField } from './RealmField';
-import { buildSubmission, classMismatch, claimDiffers, type ClassmateRow, type SignupFields } from './signup';
+import { buildSubmission, claimDiffers, type ClassmateRow, type SignupFields } from './signup';
 import { useSubmitSignup } from './useSignup';
-import { CLASS_NAMES, CLASS_SPECS, resolveRole, validateCharName } from './wowData';
+import { CLASS_SPECS, resolveRole } from './wowData';
 
 const EMPTY: SignupFields = {
   charName: '',
@@ -27,15 +26,18 @@ type Setter = <K extends keyof SignupFields>(key: K, value: SignupFields[K]) => 
 const classColorVar = (className: string) =>
   `var(--class-${className.toLowerCase().replace(/\s+/g, '-')}, var(--text))`;
 
-// The Sign Up form (#1102): the current site's 4-step wizard, ported rule for
-// rule (js/signup.js), plus editing an existing signup (#500). Step logic
-// lives in ./signup.ts and ./wowData.ts, tested apart from this render.
+// The Sign Up form (#1102): the current site's 3-step wizard, ported rule for
+// rule (js/signup.js), plus editing an existing signup (#500). The character
+// always comes from Battle.net (#1162), never typed, so there is no class
+// step any more -- Blizzard already knows it -- and no class-mismatch check
+// (that only ever caught a typed class that didn't match a typed name; a
+// picked character's class can't disagree with itself). Step logic lives in
+// ./signup.ts and ./wowData.ts, tested apart from this render.
 export function SignUpWizard({
   teamId,
   season,
   edit,
   claimNameRealm,
-  claimedClass,
   classmates,
   roleTargets,
   onDone,
@@ -45,7 +47,6 @@ export function SignUpWizard({
   season: string;
   edit: WizardEdit | null;
   claimNameRealm: string | null;
-  claimedClass: string | null;
   classmates: ClassmateRow[];
   roleTargets: { tank: number | null; heal: number | null };
   onDone: () => void;
@@ -56,16 +57,14 @@ export function SignUpWizard({
   const [step, setStep] = useState(1);
   const [fields, setFields] = useState<SignupFields>(edit?.fields ?? EMPTY);
   const [claimDiffersConfirmed, setClaimDiffersConfirmed] = useState(false);
-  const [classMismatchConfirmed, setClassMismatchConfirmed] = useState(false);
   const [error, setError] = useState('');
   const submit = useSubmitSignup(teamId, season);
   const id = useId();
 
   const set: Setter = (key, value) => setFields((f) => ({ ...f, [key]: value }));
   const differs = claimDiffers(claimNameRealm, fields.charName, fields.realm);
-  const mismatch = classMismatch(claimedClass, claimNameRealm, fields.charName, fields.realm, fields.className || null);
 
-  if (step === 5) {
+  if (step === 4) {
     return (
       <div className="signup-confirm">
         <p className="signup-confirm-check" aria-hidden="true">
@@ -84,44 +83,31 @@ export function SignUpWizard({
     );
   }
 
-  const canPickFromBattlenet = edit === null;
-
   const next = () => {
     setError('');
     if (step === 1) {
-      if (canPickFromBattlenet) {
-        if (!fields.charName) return setError('Please pick the character you’re signing up with.');
-      } else {
-        const nameError = validateCharName(fields.charName.trim());
-        if (nameError) return setError(nameError);
-        if (!fields.realm) return setError('Please select your realm.');
-      }
+      if (!fields.charName) return setError('Please pick the character you’re signing up with.');
       if (differs && !claimDiffersConfirmed)
         return setError('Please confirm you meant to sign up a different character.');
       setStep(2);
     } else if (step === 2) {
-      if (!fields.className) return setError('Please select a class.');
-      setStep(3);
-    } else if (step === 3) {
       const spec = CLASS_SPECS[fields.className];
       if (!fields.mainSpec) return setError('Please select your main spec.');
       if (spec?.roles && !fields.primaryRole) return setError('Please select your primary role.');
-      if (mismatch && !classMismatchConfirmed)
-        return setError('Please confirm the class change, or go back and re-check your character selection.');
-      setStep(4);
+      setStep(3);
     } else {
       setStep(step + 1);
     }
   };
 
-  const back = () => setStep(step === 3 ? 2 : Math.max(1, step - 1));
+  const back = () => setStep(Math.max(1, step - 1));
 
   const onSubmit = () => {
     const submission = buildSubmission(fields, differs, differs ? claimNameRealm : null);
     submit.mutate(
       { isEdit: !!edit, signupId: edit?.signupId ?? null, fields: submission },
       {
-        onSuccess: () => setStep(5),
+        onSuccess: () => setStep(4),
         onError: (e) => setError(e.message || 'Submission failed. Please try again or contact an officer on Discord.')
       }
     );
@@ -130,27 +116,20 @@ export function SignUpWizard({
   return (
     <>
       {step === 1 && (
-        <Step1
-          fields={fields}
-          set={set}
-          resetClaimDiffersConfirmed={() => setClaimDiffersConfirmed(false)}
-          canPickFromBattlenet={canPickFromBattlenet}
-          id={id}
-        />
+        <Step1 fields={fields} set={set} resetClaimDiffersConfirmed={() => setClaimDiffersConfirmed(false)} />
       )}
-      {step === 2 && <Step2 fields={fields} set={set} />}
-      {step === 3 && <Step3 fields={fields} set={set} classmates={classmates} roleTargets={roleTargets} id={id} />}
-      {step === 4 && <Step4 fields={fields} set={set} differs={differs} claimNameRealm={claimNameRealm} id={id} />}
+      {step === 2 && <StepSpec fields={fields} set={set} classmates={classmates} roleTargets={roleTargets} id={id} />}
+      {step === 3 && <StepNotes fields={fields} set={set} differs={differs} claimNameRealm={claimNameRealm} id={id} />}
       {/* Its own card, portaled beside the step content (#1162): Step 1's
           character list can run to dozens of rows, and Next scrolling off
           with it left no visible way to move on. Same box on every step, so
-          it does not jump around as the step changes. The differs/mismatch
-          confirmations live here too (Kat, 2026-09-22): they block Next the
-          same way the error message does, so they belong next to it. */}
+          it does not jump around as the step changes. The differs
+          confirmation lives here too (Kat, 2026-09-22): it blocks Next the
+          same way the error message does, so it belongs next to it. */}
       {sideHost &&
         createPortal(
           <div className="card signup-side-card">
-            <p className="signup-step-label">Step {step} of 4</p>
+            <p className="signup-step-label">Step {step} of 3</p>
             {step === 1 && claimNameRealm && differs && (
               <div className="signup-warning">
                 <p>
@@ -173,26 +152,6 @@ export function SignUpWizard({
                 </label>
               </div>
             )}
-            {step === 3 && mismatch && claimedClass && claimNameRealm && (
-              <div className="signup-warning">
-                <p>
-                  Your claimed character <strong>{claimNameRealm}</strong> is on file as a{' '}
-                  <strong>{claimedClass}</strong>, but you selected <strong>{fields.className}</strong>. A
-                  character&#39;s class does not change, so this usually means the wrong class got clicked. If you meant
-                  to sign up a different character instead, go back and check the name/realm.
-                </p>
-                <label className="checkbox">
-                  <input
-                    type="checkbox"
-                    checked={classMismatchConfirmed}
-                    onChange={(e) => setClassMismatchConfirmed(e.target.checked)}
-                  />
-                  <span>
-                    Yes, I meant to pick {fields.className} for {claimNameRealm}
-                  </span>
-                </label>
-              </div>
-            )}
             {error && (
               <p className="signup-error form-error" role="alert">
                 {error}
@@ -204,7 +163,7 @@ export function SignUpWizard({
                   Back
                 </button>
               )}
-              {step < 4 ? (
+              {step < 3 ? (
                 <button type="button" className="button button-primary" onClick={next}>
                   Next
                 </button>
@@ -224,15 +183,11 @@ export function SignUpWizard({
 function Step1({
   fields,
   set,
-  resetClaimDiffersConfirmed,
-  canPickFromBattlenet,
-  id
+  resetClaimDiffersConfirmed
 }: {
   fields: SignupFields;
   set: Setter;
   resetClaimDiffersConfirmed: () => void;
-  canPickFromBattlenet: boolean;
-  id: string;
 }) {
   const pick: Setter = (key, value) => {
     set(key, value);
@@ -242,35 +197,8 @@ function Step1({
   return (
     <>
       <h2>Sign up for next season</h2>
-      {canPickFromBattlenet ? (
-        <>
-          <p className="text-muted">Pick the character you’re signing up from your Battle.net account.</p>
-          <BattlenetCharacterPicker fields={fields} set={pick} />
-        </>
-      ) : (
-        <>
-          <p className="text-muted">Enter your exact in-game character name and select your realm.</p>
-          <div className="field">
-            <label className="field-label" htmlFor={`${id}-name`}>
-              Character name
-            </label>
-            <input
-              id={`${id}-name`}
-              className="input"
-              type="text"
-              autoComplete="off"
-              value={fields.charName}
-              onChange={(e) => pick('charName', e.target.value)}
-            />
-          </div>
-          <div className="field">
-            <label className="field-label" htmlFor={`${id}-realm`}>
-              Realm
-            </label>
-            <RealmField id={`${id}-realm`} value={fields.realm} onChange={(realm) => pick('realm', realm)} />
-          </div>
-        </>
-      )}
+      <p className="text-muted">Pick the character you’re signing up from your Battle.net account.</p>
+      <BattlenetCharacterPicker fields={fields} set={pick} />
     </>
   );
 }
@@ -397,38 +325,7 @@ function BattlenetCharacterPicker({ fields, set }: { fields: SignupFields; set: 
   );
 }
 
-function Step2({ fields, set }: { fields: SignupFields; set: Setter }) {
-  return (
-    <>
-      <h2>Select your class</h2>
-      <div className="signup-class-grid" role="radiogroup" aria-label="Class">
-        {CLASS_NAMES.map((cls) => (
-          <button
-            key={cls}
-            type="button"
-            role="radio"
-            aria-checked={fields.className === cls}
-            className={`signup-class-btn${fields.className === cls ? ' signup-class-btn-selected' : ''}`}
-            style={{ '--cls-color': classColorVar(cls) } as CSSProperties}
-            onClick={() => {
-              const changed = cls !== fields.className;
-              set('className', cls);
-              if (changed) {
-                set('mainSpec', '');
-                set('offSpecs', []);
-                set('primaryRole', null);
-              }
-            }}
-          >
-            {cls}
-          </button>
-        ))}
-      </div>
-    </>
-  );
-}
-
-function Step3({
+function StepSpec({
   fields,
   set,
   classmates,
@@ -557,7 +454,7 @@ function RoleAdvisory({
   );
 }
 
-function Step4({
+function StepNotes({
   fields,
   set,
   differs,

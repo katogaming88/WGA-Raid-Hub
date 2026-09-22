@@ -32,16 +32,18 @@ answers to.
   leveling shows up too) with what team, if any, already claims each one.
   Picking one fills in character, realm, class and (when Blizzard knows it)
   main spec; a character claimed by someone else is shown but not pickable.
-  There is no manual-entry fallback for a fresh signup -- a raider whose
-  character is still missing is pointed at Discord rather than typing it in
-  unverified. Editing an already-submitted signup keeps today's manual
-  fields, since they are already filled in and there is no Battle.net round
-  trip to make. Back/Next/Submit, the step count, and the claim-differs and
-  class-mismatch confirmations now live in their own card beside the step
-  content instead of under it, so they stay in view past a long Battle.net
-  character list; the picked character gets an outline and a checkmark, not
-  just a background tint, to stay visible in a list of near-identical alt
-  names.
+  There is no manual-entry fallback anywhere in the wizard, editing an
+  already-submitted signup included -- a raider whose character is still
+  missing is pointed at Discord rather than typing it in unverified. With
+  class always coming from Blizzard, the old "Select your class" step and its
+  class-mismatch check are gone (that check only ever caught a typed class
+  that disagreed with a typed name; a picked character can't disagree with
+  itself), so the wizard is three steps, not four. Back/Next/Submit, the step
+  count, and the claim-differs confirmation now live in their own card beside
+  the step content instead of under it, so they stay in view past a long
+  Battle.net character list; the picked character gets an outline and a
+  checkmark, not just a background tint, to stay visible in a list of
+  near-identical alt names.
 
 ## [3.151.0] - 2026-09-22
 

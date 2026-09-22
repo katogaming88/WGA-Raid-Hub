@@ -84,7 +84,7 @@ const bnetHandlers = (who: ReturnType<typeof person> | null, characters = [BNET_
 });
 
 describe('Sign Up, a fresh signup', () => {
-  it('picks the character from Battle.net and walks the rest of the steps', async () => {
+  it('picks the character from Battle.net and walks the rest of the steps, with no class step', async () => {
     renderApp('/g/wga/t/phoenix/signup', bnetHandlers(person(null)), { battlenetToken: 'bnet-token' });
     const card = await screen
       .findByRole('heading', { level: 2, name: 'Sign up for next season' })
@@ -96,10 +96,9 @@ describe('Sign Up, a fresh signup', () => {
     await userEvent.click(await within1.findByRole('radio', { name: /Katorri/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Next' }));
 
-    await within1.findByRole('heading', { level: 2, name: 'Select your class' });
-    expect(within1.getByRole('radio', { name: 'Priest', checked: true })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
-
+    // Straight to the spec step (#1162): Blizzard already said Priest, so
+    // there is no "Select your class" step to click through.
+    await within1.findByRole('heading', { level: 2, name: 'Priest' });
     await userEvent.click(await within1.findByRole('radio', { name: 'Holy' }));
     await userEvent.click(within1.getByRole('radio', { name: 'Healer' }));
     await userEvent.click(screen.getByRole('button', { name: 'Next' }));
@@ -129,7 +128,7 @@ describe('Sign Up, a fresh signup', () => {
   it('shows the step label beside Back/Next, not above the step content', async () => {
     renderApp('/g/wga/t/phoenix/signup', bnetHandlers(person(null)), { battlenetToken: 'bnet-token' });
     const heading = await screen.findByRole('heading', { level: 2, name: 'Sign up for next season' });
-    const stepLabel = await screen.findByText('Step 1 of 4');
+    const stepLabel = await screen.findByText('Step 1 of 3');
     expect(heading.closest('.card')).not.toBe(stepLabel.closest('.card'));
   });
 
@@ -156,60 +155,53 @@ const ownFields = {
   submitted_at: '2026-09-01T00:00:00Z'
 };
 
-// Editing an already-submitted signup still uses the manual fields (#1162):
-// they are already filled in, and there is no Battle.net round trip to make.
-async function openEdit(who: ReturnType<typeof person>) {
-  renderApp('/g/wga/t/phoenix/signup', handlers(who, { ownSignup: [ownFields] }));
-  await screen.findByRole('heading', { level: 2, name: 'Your signup' });
-  await userEvent.click(screen.getByRole('button', { name: 'Edit signup' }));
-  return screen.findByRole('heading', { level: 2, name: 'Sign up for next season' });
-}
+// The claimed roster character, as a Battle.net row -- so editing without
+// picking a different character shows no differs warning (#1162: editing
+// uses the same picker as a fresh signup now, no manual fields anywhere).
+const REX_CHARACTER = {
+  blizzard_id: 202,
+  name: 'Rex',
+  realm: 'Stormrage',
+  realm_slug: 'stormrage',
+  class_name: 'Warrior',
+  spec_name: 'Protection',
+  level: 90,
+  item_level: 640,
+  saved: false,
+  roster: null
+};
 
-describe('Sign Up, realm field', () => {
-  it('browses the whole list on click, and picks with the keyboard', async () => {
-    await openEdit(person('Rex-Stormrage'));
-    const field = screen.getByLabelText('Realm');
-    await userEvent.clear(field);
-    await userEvent.click(field);
-    const list = screen.getByRole('listbox', { name: 'Realms' });
-    expect(within(list).getAllByRole('option').length).toBeGreaterThan(200);
-
-    await userEvent.keyboard('{ArrowDown}{ArrowDown}{Enter}');
-    expect(field).toHaveValue('Aerie Peak');
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+describe('Sign Up, editing an existing signup', () => {
+  it('opens on the same Battle.net picker, no manual fields', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/signup',
+      {
+        ...handlers(person('Rex-Stormrage'), { ownSignup: [ownFields] }),
+        invoke: () => ({ data: { characters: [REX_CHARACTER], roster: [] } })
+      },
+      { battlenetToken: 'bnet-token' }
+    );
+    await screen.findByRole('heading', { level: 2, name: 'Your signup' });
+    await userEvent.click(screen.getByRole('button', { name: 'Edit signup' }));
+    await screen.findByRole('heading', { level: 2, name: 'Sign up for next season' });
+    expect(await screen.findByRole('radio', { name: /Rex/ })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Character name')).not.toBeInTheDocument();
   });
 
-  it('filters as it is typed, and still lets a real user just type the realm', async () => {
-    await openEdit(person('Rex-Stormrage'));
-    const field = screen.getByLabelText('Realm');
-    await userEvent.clear(field);
-    await userEvent.type(field, 'stormrage');
-    const list = screen.getByRole('listbox', { name: 'Realms' });
-    expect(
-      within(list)
-        .getAllByRole('option')
-        .map((o) => o.textContent)
-    ).toEqual(['Stormrage']);
-    expect(field).toHaveValue('stormrage');
-  });
-});
+  it('blocks Next until the raider confirms picking a different character than their claim', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/signup',
+      {
+        ...handlers(person('Rex-Stormrage'), { ownSignup: [ownFields] }),
+        invoke: () => ({ data: { characters: [REX_CHARACTER, BNET_CHARACTER], roster: [] } })
+      },
+      { battlenetToken: 'bnet-token' }
+    );
+    await screen.findByRole('heading', { level: 2, name: 'Your signup' });
+    await userEvent.click(screen.getByRole('button', { name: 'Edit signup' }));
+    await screen.findByRole('heading', { level: 2, name: 'Sign up for next season' });
 
-describe('Sign Up, character name validation', () => {
-  it('rejects a lowercase-led name and blocks Next', async () => {
-    await openEdit(person('Rex-Stormrage'));
-    await userEvent.clear(screen.getByLabelText('Character name'));
-    await userEvent.type(screen.getByLabelText('Character name'), 'katorri');
-    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
-    expect(await screen.findByText(/must start with a capital letter/)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 2, name: 'Sign up for next season' })).toBeInTheDocument();
-  });
-});
-
-describe('Sign Up, claim differs', () => {
-  it('blocks Next until the raider confirms the edited character is not their claim', async () => {
-    await openEdit(person('Rex-Stormrage'));
-    await userEvent.clear(screen.getByLabelText('Character name'));
-    await userEvent.type(screen.getByLabelText('Character name'), 'Katorri');
+    await userEvent.click(await screen.findByRole('radio', { name: /Katorri/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     expect(await screen.findByText(/confirm you meant to sign up/)).toBeInTheDocument();
@@ -217,7 +209,7 @@ describe('Sign Up, claim differs', () => {
 
     await userEvent.click(screen.getByRole('checkbox'));
     await userEvent.click(screen.getByRole('button', { name: 'Next' }));
-    await screen.findByRole('heading', { level: 2, name: 'Select your class' });
+    await screen.findByRole('heading', { level: 2, name: 'Priest' });
   });
 });
 

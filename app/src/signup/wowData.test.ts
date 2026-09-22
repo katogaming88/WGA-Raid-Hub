@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CLASS_SPECS, resolveRole, validateCharName } from './wowData';
+import { CLASS_SPECS, resolveRole } from './wowData';
 
 describe('resolveRole', () => {
   it('is fixed for a pure ranged/melee class', () => {
@@ -32,31 +32,5 @@ describe('CLASS_SPECS', () => {
     expect(Object.keys(CLASS_SPECS)).toHaveLength(13);
     expect(CLASS_SPECS['Hunter']!.roles).toEqual(['Melee', 'Ranged']);
     expect(CLASS_SPECS['Hunter']!.role).toBeUndefined();
-  });
-});
-
-describe('validateCharName', () => {
-  it('accepts a normal name', () => {
-    expect(validateCharName('Katorri')).toBeNull();
-  });
-
-  it('accepts an accented capital', () => {
-    expect(validateCharName('Éleanor')).toBeNull();
-  });
-
-  it('rejects empty, too short, or too long', () => {
-    expect(validateCharName('')).toMatch(/enter your character name/);
-    expect(validateCharName('K')).toMatch(/2-12 characters/);
-    expect(validateCharName('a'.repeat(13))).toMatch(/2-12 characters/);
-  });
-
-  it('requires a leading capital', () => {
-    expect(validateCharName('katorri')).toMatch(/capital letter/);
-  });
-
-  it('rejects more than one capital, and suggests the fix', () => {
-    expect(validateCharName('KaTorri')).toBe(
-      'Character name can only have one capital letter (the first). Did you mean Katorri?'
-    );
   });
 });

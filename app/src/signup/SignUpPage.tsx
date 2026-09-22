@@ -100,10 +100,6 @@ function SignUpForTier({ teamId, codes }: { teamId: number; codes: string[] }) {
         const liveSeasonCode = liveSeason.code;
         const claimed = charactersOn(accessData, teamId)[0] ?? null;
         const claimNameRealm = claimed?.nameRealm ?? null;
-        const claimedPlayer = claimNameRealm
-          ? rosterRows.find((p) => p.name_realm.toLowerCase() === claimNameRealm.toLowerCase())
-          : null;
-        const claimedClass = claimedPlayer?.classes_specs?.class ?? null;
         const rosterAsClassmates: ClassmateRow[] = rosterRows.map((p) => ({
           nameRealm: p.name_realm,
           class: p.classes_specs?.class ?? null,
@@ -148,7 +144,6 @@ function SignUpForTier({ teamId, codes }: { teamId: number; codes: string[] }) {
                 season={tier}
                 edit={edit}
                 claimNameRealm={claimNameRealm}
-                claimedClass={claimedClass}
                 classmates={classmates}
                 roleTargets={targetsData}
                 onDone={() => setEditing(false)}
