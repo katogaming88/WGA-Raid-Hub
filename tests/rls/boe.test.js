@@ -367,14 +367,16 @@ describe('the manager gate on the lifecycle RPCs', () => {
     });
   });
 
-  // A manager with no officer role fails write_audit_log()'s own gate unless
-  // it admits is_boe_manager() too, and js/common.js only console.warns on
-  // that failure -- so the money mutation would land and log nothing (#766).
-  it('a manager with no officer role can still write the audit entry', async () => {
+  // #770 narrowed the gate back: the lifecycle RPCs write their own audit
+  // entry now (below), so write_audit_log() no longer needs to admit
+  // is_boe_manager() at all. A manager with no officer role anywhere can no
+  // longer call it directly, even naming a BoE target.
+  it('a manager with no officer role can no longer write an audit entry directly', async () => {
     await withTxn(async ({ q, asUser }) => {
       await grantRaider(q);
-      const res = await asUser(RAIDER_T1, "select public.write_audit_log(1, 'BoE Listed', 'boe_items', 1, null) as id");
-      expect(res.rows[0].id).toBeGreaterThan(0);
+      await expect(
+        asUser(RAIDER_T1, "select public.write_audit_log(1, 'BoE Listed', 'boe_items', 1, null)")
+      ).rejects.toThrow(/Not authorized/);
     });
   });
 
@@ -1055,6 +1057,155 @@ describe('plain UPDATE is metadata-only and DELETE is manager-gated', () => {
       );
       const del = await asUser(OFFICER_T1, 'delete from public.boe_items where id = $1', [inserted.rows[0].id]);
       expect(del.rowCount).toBe(1);
+    });
+  });
+});
+
+// #770: the lifecycle RPCs write their own audit_log row now, inside the
+// same transaction as the mutation, instead of relying on a client-side
+// write_audit_log() call gated by is_boe_manager(). Exercised by a manager
+// with no officer role anywhere (grantRaider), the exact person write_audit_log()
+// would otherwise have to admit on its own gate.
+describe('the lifecycle RPCs write their own audit entry (#770)', () => {
+  const lastAudit = (q, id) =>
+    q(
+      'select team_id, actor_id, action, target_type, target_id, detail from public.audit_log where target_id = $1 order by id desc limit 1',
+      [id]
+    ).then((res) => res.rows[0]);
+
+  it('boe_record_listing', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await grantRaider(q);
+      await asUser(RAIDER_T1, 'select public.boe_record_listing(1, 180000)');
+      const row = await lastAudit(q, 1);
+      expect(row).toMatchObject({
+        team_id: 1,
+        actor_id: RAIDER_T1,
+        action: 'BoE Listed',
+        target_type: 'boe_items',
+        detail: 'Seed Test Staff listed for 180,000g'
+      });
+    });
+  });
+
+  it('boe_record_sale', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await grantRaider(q);
+      await asUser(RAIDER_T1, 'select public.boe_record_sale(1, 100000)');
+      const row = await lastAudit(q, 1);
+      expect(row).toMatchObject({
+        actor_id: RAIDER_T1,
+        action: 'BoE Sale Recorded',
+        detail: 'Seed Test Staff sold for 100,000g; finder payout 20,000g'
+      });
+    });
+  });
+
+  it('boe_mark_paid, paid and donated wording', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await grantRaider(q);
+      await asUser(RAIDER_T1, 'select public.boe_mark_paid(2)');
+      let row = await lastAudit(q, 2);
+      expect(row).toMatchObject({
+        actor_id: RAIDER_T1,
+        action: 'BoE Payout Paid',
+        detail: 'Seed Sold Sash: 30,000g to Oldfinder-Illidan'
+      });
+
+      // Reverting leaves the donate intent on the row (#862); marking paid
+      // again with p_donated:false is the "clear it" edge the wording flags.
+      // Each mark_paid needs the row back at 'sold' first.
+      await asUser(RAIDER_T1, 'select public.boe_revert(2)');
+      await asUser(RAIDER_T1, 'select public.boe_mark_paid(2, null, true)');
+      await asUser(RAIDER_T1, 'select public.boe_revert(2)');
+      await asUser(RAIDER_T1, 'select public.boe_mark_paid(2)');
+      row = await lastAudit(q, 2);
+      expect(row).toMatchObject({
+        action: 'BoE Payout Paid',
+        detail: 'Seed Sold Sash: 30,000g to Oldfinder-Illidan (donate intent cleared)'
+      });
+    });
+  });
+
+  it('boe_mark_paid donated', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await grantRaider(q);
+      await asUser(RAIDER_T1, 'select public.boe_mark_paid(2, null, true)');
+      const row = await lastAudit(q, 2);
+      expect(row).toMatchObject({
+        action: 'BoE Payout Donated',
+        detail: 'Seed Sold Sash: 30,000g finder cut from Oldfinder-Illidan kept by the guild'
+      });
+    });
+  });
+
+  it('boe_retire', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await grantRaider(q);
+      await asUser(RAIDER_T1, 'select public.boe_retire(1)');
+      const row = await lastAudit(q, 1);
+      expect(row).toMatchObject({ action: 'BoE Retired', detail: 'Seed Test Staff' });
+    });
+  });
+
+  // boe_revert had no client-side entry at all before #770.
+  it('boe_revert', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await grantRaider(q);
+      await asUser(RAIDER_T1, 'select public.boe_mark_paid(2)');
+      await asUser(RAIDER_T1, 'select public.boe_revert(2)');
+      const row = await lastAudit(q, 2);
+      expect(row).toMatchObject({ action: 'BoE Reverted', detail: 'Seed Sold Sash: paid back to sold' });
+    });
+  });
+});
+
+describe('boe_edit_item writes its own audit entry and needs the manager grant (#770)', () => {
+  it('an ungranted officer or leader is refused', async () => {
+    await withTxn(async ({ asUser }) => {
+      await expect(
+        asUser(TEAM_LEADER_T1, "select public.boe_edit_item(1, 'New Name', null, null, null, null)")
+      ).rejects.toThrow(/Not authorized/);
+    });
+  });
+
+  it('a manager with no officer role edits the row and the audit names what changed', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await grantRaider(q);
+      await asUser(
+        RAIDER_T1,
+        "select public.boe_edit_item(1, 'Corrected Staff', 'Myth', 'checked with the bank', 1, '2/6')"
+      );
+      const row = (await q('select item_name, track, note, upgrade_rank from public.boe_items where id = 1')).rows[0];
+      expect(row).toMatchObject({
+        item_name: 'Corrected Staff',
+        track: 'Myth',
+        note: 'checked with the bank',
+        upgrade_rank: '2/6'
+      });
+      const audit = (
+        await q(
+          "select actor_id, action, detail from public.audit_log where target_id = 1 and action = 'BoE Find Edited' order by id desc limit 1"
+        )
+      ).rows[0];
+      expect(audit.actor_id).toBe(RAIDER_T1);
+      expect(audit.detail).toBe(
+        'item renamed from "Seed Test Staff" to "Corrected Staff"; track was "Hero", now "Myth"; ' +
+          'note was (none), now "checked with the bank"; rank was (none), now "2/6"'
+      );
+    });
+  });
+
+  it('no change writes no audit entry', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const before = (
+        await q("select count(*)::int as n from public.audit_log where target_id = 1 and action = 'BoE Find Edited'")
+      ).rows[0].n;
+      await asUser(OFFICER_T1, "select public.boe_edit_item(1, 'Seed Test Staff', 'Hero', null, 1, null)");
+      const after = (
+        await q("select count(*)::int as n from public.audit_log where target_id = 1 and action = 'BoE Find Edited'")
+      ).rows[0].n;
+      expect(after).toBe(before);
     });
   });
 });

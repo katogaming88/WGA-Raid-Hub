@@ -11,8 +11,9 @@ AS $function$
 declare
   v_team_id integer;
   v_status text;
+  v_item_name text;
 begin
-  select b.team_id, b.status into v_team_id, v_status
+  select b.team_id, b.status, b.item_name into v_team_id, v_status, v_item_name
   from public.boe_items b where b.id = p_id for update;
   if not found then
     raise exception 'BoE item not found';
@@ -31,4 +32,8 @@ begin
   values (v_team_id, p_id, p_price, coalesce(p_listed_at, now()), nullif(trim(coalesce(p_note, '')), ''));
 
   update public.boe_items set status = 'listed' where id = p_id;
+
+  insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
+  values (v_team_id, auth.uid(), 'BoE Listed', 'boe_items', p_id,
+    to_jsonb(v_item_name || ' listed for ' || public.format_boe_gold(p_price) || 'g'));
 end $function$;
