@@ -749,10 +749,11 @@ async function refreshAttendance(token: string, guildId: number, teamId: number,
 
     // Classification, matching gs/Attendance.gs's refreshAttendanceCore:
     // raid-progression zones take priority; a tier-start filter with no
-    // progression trusts every report the query already returned; with
-    // neither configured, fall back to comparing against the most recent
-    // *new* report's zone (a non-persisted stand-in for GAS's script-
-    // property-backed "current zone" heuristic).
+    // progression trusts every report the query already returned; with no
+    // progression and no tier started (the window is the tier's since
+    // #1269, so only before the first seasons row), fall back to comparing
+    // against the most recent *new* report's zone (a non-persisted stand-in
+    // for GAS's script-property-backed "current zone" heuristic).
     let isMain: boolean;
     if (validZoneIds.size > 0) {
       isMain = zoneId != null && validZoneIds.has(zoneId);
