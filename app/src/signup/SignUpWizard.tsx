@@ -154,11 +154,12 @@ export function SignUpWizard({
             {step === 1 && claimNameRealm && differs && (
               <div className="signup-warning">
                 <p>
-                  You are signed in with <strong>{claimNameRealm}</strong> claimed, but picked{' '}
+                  Are you sure you want to sign up with a different character? You are signed in with{' '}
+                  <strong>{claimNameRealm}</strong> claimed, but picked{' '}
                   <strong>
                     {fields.charName}-{fields.realm}
                   </strong>{' '}
-                  above. Double-check that is who you meant.
+                  above.
                 </p>
                 <label className="checkbox">
                   <input
