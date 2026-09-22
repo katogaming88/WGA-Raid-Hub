@@ -14,7 +14,7 @@ answers to.
 
 ## [3.148.6] - 2026-09-21
 
-### Project
+### Backend
 
 - The one-time data importer (`scripts/import`) stamps season codes
   (`MID2`) on the BoE and legacy loot rows it writes, instead of display
