@@ -2,7 +2,7 @@
   "version": "3.152.0",
   "pieces": {
     "frontend": "3.150.0",
-    "db": "3.152.0",
+    "db": "3.151.0",
     "bot": "3.94.0",
     "functions": {
       "battlenet-characters": "3.152.0",
