@@ -12,7 +12,7 @@ answers to.
 
 ---
 
-## [3.148.6] - 2026-09-21
+## [3.148.7] - 2026-09-21
 
 ### Project
 
@@ -27,6 +27,18 @@ answers to.
   linking the support Discord instead of a Contact page, which the new app
   does not build: it would only duplicate the support Discord. Help keeps its
   place in the Site group.
+
+## [3.148.6] - 2026-09-21
+
+### Backend
+
+- The one-time data importer (`scripts/import`) stamps season codes
+  (`MID2`) on the BoE and legacy loot rows it writes, instead of display
+  names the database now refuses. Each range in its `--seasons` file carries
+  a `code`, a range without one is refused, and the generated file opens with
+  a check that every code it stamps is a row in `seasons`, so a bad file fails
+  on its first line rather than at the first foreign key a few thousand rows
+  in (#938, the second of four pull requests).
 
 ## [3.148.5] - 2026-09-21
 

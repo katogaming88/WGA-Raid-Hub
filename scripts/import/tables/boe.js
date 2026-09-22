@@ -541,6 +541,7 @@ function playerIdSql(teamId, sqlKey) {
 export function boeSql(rows, opts = {}) {
   const { tz = 'America/New_York', seasons = null, floor = 20000, pivot = 100000 } = opts;
   const warnings = [];
+  const stampedSeasons = new Set();
   if (!seasons) warnings.push('no season ranges supplied (--seasons); season column left null');
   const counts = {
     open: 0,
@@ -574,6 +575,7 @@ export function boeSql(rows, opts = {}) {
       counts.playerLinks++;
     }
     const season = seasons ? seasonForDate(foundLocal, seasons) : null;
+    if (season) stampedSeasons.add(season);
     counts.byTeam[r.teamId] = (counts.byTeam[r.teamId] || 0) + 1;
     counts.total++;
 
@@ -632,7 +634,7 @@ export function boeSql(rows, opts = {}) {
     valueRows,
     't.team_id = v.team_id and t.found_at = v.found_at'
   );
-  return { sql, counts, warnings };
+  return { sql, counts, warnings, seasons: [...stampedSeasons] };
 }
 
 // The data directory holds Google's own export names ("BOE Tracking - Form

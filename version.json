@@ -1,8 +1,8 @@
 {
-  "version": "3.148.6",
+  "version": "3.148.7",
   "pieces": {
     "frontend": "3.148.0",
-    "db": "3.148.4",
+    "db": "3.148.6",
     "bot": "3.94.0",
     "functions": {
       "battlenet-characters": "3.127.0",

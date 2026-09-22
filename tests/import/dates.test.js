@@ -41,14 +41,19 @@ describe('sqlTimestampAtZone', () => {
 });
 
 describe('seasonForDate', () => {
+  // The code is what the stamp holds (#938): every season column references
+  // seasons(code), so a name would be refused where the file is applied.
   const seasons = [
-    { name: 'Season 2', start: '2025-09-01', end: '2026-01-15' },
-    { name: 'Season 3', start: '2026-01-16' }
+    { code: 'S2', name: 'Season 2', start: '2025-09-01', end: '2026-01-15' },
+    { code: 'S3', name: 'Season 3', start: '2026-01-16' }
   ];
-  it('matches closed and open-ended ranges', () => {
-    expect(seasonForDate('2025-12-01', seasons)).toBe('Season 2');
-    expect(seasonForDate('2026-01-16', seasons)).toBe('Season 3');
-    expect(seasonForDate('2026-06-30 20:00:00', seasons)).toBe('Season 3');
+  it('matches closed and open-ended ranges and answers with the code', () => {
+    expect(seasonForDate('2025-12-01', seasons)).toBe('S2');
+    expect(seasonForDate('2026-01-16', seasons)).toBe('S3');
+    expect(seasonForDate('2026-06-30 20:00:00', seasons)).toBe('S3');
+  });
+  it('refuses a range with no code rather than stamping its name', () => {
+    expect(() => seasonForDate('2025-12-01', [{ name: 'Season 2', start: '2025-09-01' }])).toThrow(/code/);
   });
   it('returns null outside every range', () => {
     expect(seasonForDate('2024-01-01', seasons)).toBeNull();

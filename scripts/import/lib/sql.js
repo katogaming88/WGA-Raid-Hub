@@ -74,3 +74,21 @@ export function insertWhereNotExists(table, columns, valueRows, existsCondition)
     `where not exists (\n  select 1 from ${table} t where ${existsCondition}\n);\n`
   );
 }
+
+// The statement a generated file opens with (#938): every season code the
+// file stamps has to be a seasons row where the file is applied, and the
+// check raises before the first insert rather than at the first foreign key
+// a few thousand rows in. Codes are deduped and sorted so the file is stable.
+export function seasonGuardStatement(codes) {
+  const distinct = [...new Set((codes || []).filter((c) => c !== null && c !== undefined && c !== ''))].sort();
+  if (!distinct.length) return '-- no season codes stamped; nothing to check against seasons';
+  const checks = distinct
+    .map(
+      (code) =>
+        `  if not exists (select 1 from public.seasons where code = ${sqlString(code)}) then\n` +
+        `    raise exception 'season % is not a row in public.seasons; add its migration before this import', ${sqlString(code)};\n` +
+        `  end if;`
+    )
+    .join('\n');
+  return `do $guard$\nbegin\n${checks}\nend\n$guard$;`;
+}

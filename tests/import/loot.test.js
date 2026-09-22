@@ -43,7 +43,7 @@ function legacyRows() {
 }
 
 const KNOWN = new Set(['crown of testing', "slayer's band"].map(normName));
-const SEASONS = [{ name: 'Season 2', start: '2025-09-01', end: '2026-01-15' }];
+const SEASONS = [{ code: 'S2', name: 'Season 2', start: '2025-09-01', end: '2026-01-15' }];
 const OPTS = { knownItems: KNOWN, seasons: SEASONS, tz: 'America/New_York' };
 
 describe('parsePastedLoot / parseLegacyLoot', () => {
@@ -72,8 +72,8 @@ describe('lootSql', () => {
     expect(sql).not.toContain("'Normal'");
     expect(sql).not.toContain("'Heroic'");
     expect(sql).not.toContain("'Mythic'");
-    const legacyLine = sql.split('\n').find((l) => l.includes('231234') && l.includes('Season 2'));
-    expect(legacyLine).toBeTruthy(); // 2025-12-01 falls in Season 2
+    const legacyLine = sql.split('\n').find((l) => l.includes('231234') && l.includes("'S2'"));
+    expect(legacyLine).toBeTruthy(); // 2025-12-01 falls in Season 2, stamped by its code
   });
 
   it('creates items rows for old-tier gear missing from the Item Lookup', () => {
