@@ -46,7 +46,8 @@ export function navGroups(
         { label: 'Reviews', icon: 'check', to: `${base.team}/officer/reviews` },
         { label: 'Attendance', icon: 'chart', to: `${base.team}/officer/attendance` },
         { label: 'Boss groups', icon: 'grid', to: `${base.team}/officer/groups` },
-        { label: 'Season settings', icon: 'gear', to: `${base.team}/officer/season` }
+        { label: 'Season settings', icon: 'gear', to: `${base.team}/officer/season` },
+        { label: 'Invite link', icon: 'link', to: `${base.team}/officer/invite` }
       ]
     },
     {
@@ -76,6 +77,7 @@ export const TEAM_PAGES: Record<string, string> = {
   'officer/attendance': 'Attendance',
   'officer/groups': 'Boss groups',
   'officer/season': 'Season settings',
+  'officer/invite': 'Invite link',
   history: 'History',
   officers: 'Team officers'
 };

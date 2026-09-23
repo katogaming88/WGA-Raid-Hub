@@ -4076,6 +4076,10 @@ export type Database = {
           team_slug: string
         }[]
       }
+      team_invite_link_revoke: {
+        Args: { p_team_id: number }
+        Returns: undefined
+      }
       team_rsvp_answers: {
         Args: { p_from: string; p_team_id: number; p_to: string }
         Returns: {

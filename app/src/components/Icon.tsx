@@ -28,7 +28,8 @@ const PATHS = {
   info: '<circle cx="8" cy="8" r="5.5"/><path d="M8 7.2v3.6"/><circle cx="8" cy="5.1" r="0.9" fill="currentColor" stroke="none"/>',
   help: '<circle cx="8" cy="8" r="5.5"/><path d="M6.1 6.3a2 2 0 1 1 2.9 1.8c-.7.4-1 .8-1 1.5"/><circle cx="8" cy="11.2" r="0.9" fill="currentColor" stroke="none"/>',
   mail: '<rect x="2" y="4" width="12" height="8.5" rx="1.2"/><path d="M2.5 4.8 8 9l5.5-4.2"/>',
-  clock: '<circle cx="8" cy="8" r="5.5"/><path d="M8 5v3.2l2.4 1.6"/>'
+  clock: '<circle cx="8" cy="8" r="5.5"/><path d="M8 5v3.2l2.4 1.6"/>',
+  link: '<path d="M6.5 9.5a3 3 0 0 0 4.2 0l1.6-1.6a3 3 0 0 0-4.2-4.2L7 4.8"/><path d="M9.5 6.5a3 3 0 0 0-4.2 0L3.7 8.1a3 3 0 0 0 4.2 4.2L9 11.2"/>'
 } as const;
 
 export type IconName = keyof typeof PATHS;

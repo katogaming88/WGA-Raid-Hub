@@ -75,6 +75,50 @@ describe('team_invite_link_reset()', () => {
   });
 });
 
+describe('team_invite_link_revoke()', () => {
+  it('lets a team officer, leader, guild officer and site admin delete the code', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      for (const [uid, team] of [
+        [OFFICER_T1, 1],
+        [TEAM_LEADER_T1, 1],
+        [GUILD_OFFICER, 2],
+        [SITE_ADMIN, 2]
+      ]) {
+        await reset(asUser, uid, team);
+        await asUser(uid, 'select public.team_invite_link_revoke($1)', [team]);
+        expect(
+          (await q('select count(*) from public.team_invite_links where team_id = $1', [team])).rows[0].count
+        ).toBe('0');
+      }
+    });
+  });
+
+  it('refuses a raider, an officer of another team, and a caller with no session', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      await reset(asUser, OFFICER_T1, 1);
+      await expect(asUser(RAIDER_T1, 'select public.team_invite_link_revoke(1)')).rejects.toThrow(/Not authorized/);
+      await expect(asUser(OFFICER_T2, 'select public.team_invite_link_revoke(1)')).rejects.toThrow(/Not authorized/);
+      await expect(asUser(null, 'select public.team_invite_link_revoke(1)')).rejects.toThrow(/Not authorized/);
+      await expect(asAnon('select public.team_invite_link_revoke(1)')).rejects.toMatchObject({ code: RLS_DENIED });
+      expect((await q('select count(*) from public.team_invite_links')).rows[0].count).toBe('1');
+    });
+  });
+
+  it('does nothing, without error, when there is no link to revoke', async () => {
+    await withTxn(async ({ asUser }) => {
+      await expect(asUser(OFFICER_T1, 'select public.team_invite_link_revoke(1)')).resolves.toBeTruthy();
+    });
+  });
+
+  it('writes one audit entry', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await reset(asUser, OFFICER_T1, 1);
+      await asUser(OFFICER_T1, 'select public.team_invite_link_revoke(1)');
+      expect((await auditOf(q)).rows.map((r) => r.action)).toEqual(['Invite Link Reset', 'Invite Link Revoked']);
+    });
+  });
+});
+
 describe('team_invite_link_resolve()', () => {
   it('resolves a live code to its team and guild, for anon and signed-in alike', async () => {
     await withTxn(async ({ q, asUser, asAnon }) => {
