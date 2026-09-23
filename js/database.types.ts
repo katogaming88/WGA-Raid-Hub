@@ -2606,6 +2606,38 @@ export type Database = {
           },
         ]
       }
+      team_invite_links: {
+        Row: {
+          code: string
+          created_at: string
+          expires_at: string | null
+          team_id: number
+          updated_at: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          expires_at?: string | null
+          team_id: number
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expires_at?: string | null
+          team_id?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_invite_links_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: true
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_lineup_settings: {
         Row: {
           healers_wanted: number
@@ -4016,6 +4048,32 @@ export type Database = {
         Args: { p_team_id: number }
         Returns: {
           team_member_id: number
+        }[]
+      }
+      team_invite_link_reset: {
+        Args: { p_expires_at?: string; p_team_id: number }
+        Returns: {
+          code: string
+          created_at: string
+          expires_at: string | null
+          team_id: number
+          updated_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "team_invite_links"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      team_invite_link_resolve: {
+        Args: { p_code: string }
+        Returns: {
+          guild_id: number
+          guild_name: string
+          team_id: number
+          team_name: string
+          team_slug: string
         }[]
       }
       team_rsvp_answers: {

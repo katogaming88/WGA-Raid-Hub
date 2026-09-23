@@ -12,6 +12,23 @@ answers to.
 
 ---
 
+## [3.153.2] - 2026-09-22
+
+### Backend
+
+- Team invite links: `team_invite_link_reset()` now writes an `audit_log`
+  entry and mints the full 8-character code instead of a 6-character suffix
+  ([#1264](https://github.com/katogaming88/WGA-Raid-Hub/issues/1264)), from
+  review on [#1316](https://github.com/katogaming88/WGA-Raid-Hub/pull/1316).
+
+### Project
+
+- Added `tests/rls/team-invite-links.test.js` covering
+  `team_invite_link_reset()`/`team_invite_link_resolve()` behavior and the
+  `team_invite_links` read policy, and classified the table in
+  `docs/backup-restore.md`'s coverage map
+  ([#1316](https://github.com/katogaming88/WGA-Raid-Hub/pull/1316)).
+
 ## [3.153.0] - 2026-09-22
 
 ### Frontend
@@ -59,6 +76,18 @@ answers to.
   rather than your first night, and hides its new-raider nudges; no
   percentage actually moves, since no team has an attendance row before its
   own first night this tier, and a reload picks up the new version.
+
+## [3.153.1] - 2026-09-22
+
+### Backend
+
+- Per-team invite links: a `team_invite_links` row per team (code, expiry),
+  `team_invite_link_reset()` for officers to generate or reset one, and a
+  public `team_invite_link_resolve()` for the future `/join/<code>` page to
+  look up a code before sign-in
+  ([#1264](https://github.com/katogaming88/WGA-Raid-Hub/issues/1264)). The
+  officer settings panel, the join page itself, and the character-limit flag
+  are separate follow-up PRs.
 
 ## [3.152.4] - 2026-09-22
 
