@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.153.5] - 2026-09-23
+
+### Project
+
+- The new app's `/join/<code>` page (#1264 step 3): opening a team's invite
+  link shows "Join Phoenix (WGA)", signs the visitor in with Battle.net, lets
+  them pick a character from their Battle.net list, and joins them. A reset,
+  expired or unknown link says it doesn't work. It calls
+  `team_invite_link_join()`, which does not exist yet: the database half
+  (roster spot, guild membership, character-limit hold-back) is a separate PR
+  for Rex, so the page cannot complete a join until that lands
+  ([#1264](https://github.com/katogaming88/WGA-Raid-Hub/issues/1264)).
+
 ## [3.153.4] - 2026-09-22
 
 ### Backend
