@@ -16,6 +16,7 @@ import { HistoryPage } from './history/HistoryPage';
 import { SignUpPage } from './signup/SignUpPage';
 import { GuildOfficersPage } from './officers/GuildOfficersPage';
 import { TeamOfficersPage } from './officers/TeamOfficersPage';
+import { InviteLinkPage } from './invite/InviteLinkPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { RequireAbility } from './auth/RequireAbility';
@@ -33,7 +34,8 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   'officer/groups': <BossGroupsPage />,
   history: <HistoryPage />,
   officers: <TeamOfficersPage />,
-  signup: <SignUpPage />
+  signup: <SignUpPage />,
+  'officer/invite': <InviteLinkPage />
 };
 
 // Guild pages rebuilt so far (#1102), beside Guild home itself.

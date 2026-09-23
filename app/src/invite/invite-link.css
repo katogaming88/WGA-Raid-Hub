@@ -1,0 +1,38 @@
+/* Invite link (#1264 step 2): copy, choose an expiry, reset. */
+
+.invite-link-page {
+  max-width: 560px;
+}
+
+.invite-link-card {
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.invite-link-current {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.invite-link-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.invite-link-row .input {
+  flex: 1;
+}
+
+.invite-link-expiry {
+  margin: 0;
+}
+
+.invite-link-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}

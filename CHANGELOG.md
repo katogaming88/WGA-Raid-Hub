@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.153.3] - 2026-09-22
+
+### Project
+
+- The new app's Invite link page (#1264 step 2): an officer's Team page to
+  copy the team's invite link, choose how long a new one lasts (2 weeks, 1
+  month, 6 months, or 1 year -- every link has to run out eventually), and
+  reset it, calling `team_invite_link_reset()` from
+  [#1316](https://github.com/katogaming88/WGA-Raid-Hub/pull/1316). The
+  `/join/<code>` page it points to, and the character-limit flag, are
+  separate follow-up PRs
+  ([#1264](https://github.com/katogaming88/WGA-Raid-Hub/issues/1264)).
+
 ## [3.153.2] - 2026-09-22
 
 ### Backend
