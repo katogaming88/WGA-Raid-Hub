@@ -12,7 +12,7 @@ answers to.
 
 ---
 
-## [3.153.1] - 2026-09-22
+## [3.153.2] - 2026-09-22
 
 ### Backend
 
@@ -77,7 +77,7 @@ answers to.
   percentage actually moves, since no team has an attendance row before its
   own first night this tier, and a reload picks up the new version.
 
-## [3.152.5] - 2026-09-22
+## [3.153.1] - 2026-09-22
 
 ### Backend
 
