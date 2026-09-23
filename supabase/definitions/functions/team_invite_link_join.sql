@@ -76,9 +76,16 @@ begin
     update public.players
        set team_member_id = v_member_id,
            class_spec_id = coalesce(v_spec_id, class_spec_id),
-           -- Back from the archive: a new stint, on trial like any new add.
+           -- Back from the archive: a new stint, on trial and without the flags an
+           -- officer set for the last one, like any new add.
            is_trial = case when archived_at is not null then true else is_trial end,
            join_date = case when archived_at is not null then v_today else join_date end,
+           -- The backup flags add_signup_to_roster() resets, plus the two
+           -- grants an officer made to whoever held the character before.
+           is_backup_tank = case when archived_at is not null then false else is_backup_tank end,
+           is_backup_healer = case when archived_at is not null then false else is_backup_healer end,
+           wishlist_allowed = case when archived_at is not null then false else wishlist_allowed end,
+           bis_allowed = case when archived_at is not null then false else bis_allowed end,
            archived_at = null
      where id = v_player_id;
   end if;

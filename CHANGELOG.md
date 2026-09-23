@@ -20,8 +20,9 @@ answers to.
   signed-in person with Discord connected joins the team behind a live invite
   code. It adds their `team_members` row (their guild membership) and puts the
   picked character on the roster, claiming an unclaimed one or reviving an
-  unlinked archived one, and refuses a dead code or a character someone else
-  holds. Writes its own `audit_log` row. Always lands on the roster until the
+  unlinked archived one (starting it fresh: on trial, with the backup and
+  wishlist/BiS flags an officer set for its last holder cleared), and
+  refuses a dead code or a character someone else holds. Writes its own `audit_log` row. Always lands on the roster until the
   character limit (#1259) exists
   ([#1264](https://github.com/katogaming88/WGA-Raid-Hub/issues/1264)).
 

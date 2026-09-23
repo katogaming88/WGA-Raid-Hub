@@ -138,4 +138,36 @@ describe('team_invite_link_join()', () => {
       ).toBe('1');
     });
   });
+  it('starts a revived character fresh: the flags an officer set for the last holder are cleared', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const code = await mint(asUser);
+      const id = await seedPlayer(q, {
+        teamId: 1,
+        nameRealm: 'Flagged-Stormrage',
+        archivedAt: new Date().toISOString()
+      });
+      await q(
+        `update public.players
+            set is_backup_tank = true, is_backup_healer = true, wishlist_allowed = true, bis_allowed = true
+          where id = $1`,
+        [id]
+      );
+      await join(asUser, await newcomer(q), code, 'Flagged');
+      const { rows } = await q(
+        `select is_trial, is_backup_tank, is_backup_healer, wishlist_allowed, bis_allowed, archived_at
+           from public.players where id = $1`,
+        [id]
+      );
+      expect(rows).toEqual([
+        {
+          is_trial: true,
+          is_backup_tank: false,
+          is_backup_healer: false,
+          wishlist_allowed: false,
+          bis_allowed: false,
+          archived_at: null
+        }
+      ]);
+    });
+  });
 });
