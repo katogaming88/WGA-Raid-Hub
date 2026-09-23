@@ -22,17 +22,12 @@ export type Chosen = { name: string; realm: string; className: string | null; sp
 // is at its active-character limit (#1259), so an officer is flagged.
 export type JoinOutcome = 'joined' | 'waiting';
 
-// Joins through the link (team_invite_link_join, the database half of #1264,
-// still to be written): the link is the approval, so the person lands on the
+// Joins through the link (team_invite_link_join, #1264): the link is the approval, so the person lands on the
 // roster in one step.
 export function useJoinTeam(code: string) {
   return useSupabaseMutation<JoinOutcome, Chosen>(
     async (client, c) => {
-      // Not in database.types.ts until the migration lands (then drop this cast).
-      const untyped = client as unknown as {
-        rpc: (name: string, args: object) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
-      };
-      const { data, error } = await untyped.rpc('team_invite_link_join', {
+      const { data, error } = await client.rpc('team_invite_link_join', {
         p_code: code,
         p_name: c.name,
         p_realm: c.realm,
@@ -40,7 +35,7 @@ export function useJoinTeam(code: string) {
         ...(c.specName ? { p_spec: c.specName } : {})
       });
       if (error) return { data: null, error };
-      return { data: (data as { outcome: JoinOutcome }).outcome, error: null };
+      return { data: data as JoinOutcome, error: null };
     },
     { key: ['join-team', code], refreshes: [['access'], ['roster']] }
   );

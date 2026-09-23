@@ -4050,6 +4050,16 @@ export type Database = {
           team_member_id: number
         }[]
       }
+      team_invite_link_join: {
+        Args: {
+          p_class?: string
+          p_code: string
+          p_name: string
+          p_realm: string
+          p_spec?: string
+        }
+        Returns: string
+      }
       team_invite_link_reset: {
         Args: { p_expires_at?: string; p_team_id: number }
         Returns: {

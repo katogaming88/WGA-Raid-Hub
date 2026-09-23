@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { DataState } from '../components/DataState';
-import { BATTLENET, useSession } from '../auth/session';
+import { BATTLENET, DISCORD, useSession } from '../auth/session';
 import { CharacterIcon } from '../characters/CharacterIcon';
 import { pickerRows, type CharactersAnswer } from '../characters/characters';
 import { useBattlenetCharacters } from '../characters/useCharacters';
@@ -62,6 +62,18 @@ function Join({ code, target }: { code: string; target: InviteTarget }) {
         <p className="text-muted">Connect Battle.net so you can pick your character.</p>
         <button type="button" className="button" onClick={() => void connect(BATTLENET, 'signup-character')}>
           Connect Battle.net
+        </button>
+      </section>
+    );
+  }
+  if (!user.hasDiscord) {
+    // Team membership is keyed on the Discord id, so it has to be on the account.
+    return (
+      <section className="card signup-card">
+        {heading}
+        <p className="text-muted">Connect your Discord too: your team roles and raid notifications come from it.</p>
+        <button type="button" className="button" onClick={() => void connect(DISCORD, 'signup-character')}>
+          Connect Discord
         </button>
       </section>
     );

@@ -14,15 +14,24 @@ answers to.
 
 ## [3.153.5] - 2026-09-23
 
+### Backend
+
+- New `team_invite_link_join(p_code, p_name, p_realm, p_class, p_spec)`: a
+  signed-in person with Discord connected joins the team behind a live invite
+  code. It adds their `team_members` row (their guild membership) and puts the
+  picked character on the roster, claiming an unclaimed one or reviving an
+  unlinked archived one, and refuses a dead code or a character someone else
+  holds. Writes its own `audit_log` row. Always lands on the roster until the
+  character limit (#1259) exists
+  ([#1264](https://github.com/katogaming88/WGA-Raid-Hub/issues/1264)).
+
 ### Project
 
 - The new app's `/join/<code>` page (#1264 step 3): opening a team's invite
-  link shows "Join Phoenix (WGA)", signs the visitor in with Battle.net, lets
-  them pick a character from their Battle.net list, and joins them. A reset,
-  expired or unknown link says it doesn't work. It calls
-  `team_invite_link_join()`, which does not exist yet: the database half
-  (roster spot, guild membership, character-limit hold-back) is a separate PR
-  for Rex, so the page cannot complete a join until that lands
+  link shows "Join Phoenix (WGA)", signs the visitor in with Battle.net,
+  connects Discord if the account has none, lets them pick a character from
+  their Battle.net list, and joins them through `team_invite_link_join()`. A
+  reset, expired or unknown link says it doesn't work
   ([#1264](https://github.com/katogaming88/WGA-Raid-Hub/issues/1264)).
 
 ## [3.153.4] - 2026-09-22

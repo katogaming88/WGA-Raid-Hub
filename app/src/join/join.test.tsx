@@ -4,8 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type FakeHandlers } from '../test/fakeSupabase';
 
-// The /join/<code> page (#1264 step 3). team_invite_link_join is mocked: the
-// database function lands in its own PR.
+// The /join/<code> page (#1264 step 3), against a fake team_invite_link_join.
 
 const TARGET = { team_id: 1, team_name: 'Phoenix', team_slug: 'phoenix', guild_id: 1, guild_name: 'WGA' };
 const CHARACTER = {
@@ -28,7 +27,7 @@ function handlers(opts: { target?: boolean; signedIn?: boolean; outcome?: 'joine
     ...(signedIn ? { session: fakeSession({ battlenet: 'K#1', discord: { id: 'd', name: 'Kat' } }) } : {}),
     rpc(name) {
       if (name === 'team_invite_link_resolve') return { data: target ? [TARGET] : [] };
-      if (name === 'team_invite_link_join') return { data: { outcome } };
+      if (name === 'team_invite_link_join') return { data: outcome };
       return base.rpc!(name, {});
     },
     invoke: () => ({ data: { characters: [CHARACTER], roster: [] } })
@@ -50,6 +49,12 @@ describe('the Join page', () => {
   it('asks a signed-in person without a token to load their characters', async () => {
     renderApp('/join/phoenix-abc', handlers());
     expect(await screen.findByRole('button', { name: 'Load your characters from Battle.net' })).toBeInTheDocument();
+  });
+
+  it('asks for Discord first when the account has none', async () => {
+    const noDiscord = { ...handlers(), session: fakeSession({ battlenet: 'K#1' }) };
+    renderApp('/join/phoenix-abc', noDiscord, { battlenetToken: 'tok' });
+    expect(await screen.findByRole('button', { name: 'Connect Discord' })).toBeInTheDocument();
   });
 
   it('joins with the picked character and links to the team', async () => {
