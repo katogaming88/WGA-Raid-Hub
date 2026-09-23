@@ -53,8 +53,6 @@ function openOwnProfile(viewerKey, { mplusOpen = true, rejections = true, autoAp
         ...row,
         config: {
           ...row.config,
-          seasonStart: SEASON.start,
-          seasonEnd: SEASON.end,
           seasonView: null,
           mPlusExclusionsOpen: mplusOpen
         }
@@ -76,6 +74,7 @@ function openOwnProfile(viewerKey, { mplusOpen = true, rejections = true, autoAp
       rpc: {
         is_site_admin: false,
         is_guild_officer: false,
+        team_season_start: SEASON.start,
         submit_self_received: [{ id: 99, auto_approved: autoApproved }],
         submit_mplus_exclusion: 7
       }

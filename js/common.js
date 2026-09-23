@@ -109,7 +109,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.152.6';
+var VERSION = '3.153.1';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
@@ -2877,6 +2877,41 @@ function fetchSupabaseSeasons() {
   );
 }
 
+// The day this team's season started (#1269): its own first raid night in
+// the live tier, derived by team_season_start() from the attendance the
+// sync has filed, or the tier's start where it has not raided yet. One call
+// per page load, in parallel with the core chunk; null when no tier has
+// started, and null on any failure, which leaves seasonDateRangeFor()
+// falling back to the tier's own start rather than blocking the page.
+//
+// The rpc call is made inside the executor because a client without one
+// throws where a builder is expected, and a 10s bound because this sits on
+// the render-blocking path, same as fetchSupabaseRoster().
+function fetchSupabaseSeasonStart() {
+  if (!supabaseClient) return Promise.resolve(null);
+  return withTimeoutMs(
+    new Promise(function (resolve, reject) {
+      Promise.resolve(supabaseClient.rpc('team_season_start', { p_team_id: _teamCfg.supabaseTeamId })).then(
+        resolve,
+        reject
+      );
+    }),
+    10000
+  ).then(
+    function (result) {
+      if (result && result.error) {
+        console.warn('Supabase team_season_start query failed.', result.error.message);
+        return null;
+      }
+      return (result && result.data) || null;
+    },
+    function (err) {
+      console.warn('Supabase team_season_start query failed.', err);
+      return null;
+    }
+  );
+}
+
 // The team's two switches per tier (#939): one team_seasons row per tier an
 // officer has opened or closed something for. No row for a tier means both
 // switches closed, so a failed read is the same as an empty one. Fires in
@@ -2905,8 +2940,6 @@ function fetchSupabaseTeamSeasons() {
 }
 
 var SEASON_CONFIG_KEYS = [
-  'seasonStart',
-  'seasonEnd',
   'seasonHistory',
   'raidProgression',
   'trialWeeks',
@@ -3694,9 +3727,11 @@ var ATTENDANCE_WEIGHTS_JS = {
 // Returns { start, end } date strings for one tier, or { start: null, end: null }
 // for a code nothing knows. A closed tier answers from its history entry
 // (its start is what the books were closed on); the live tier answers from
-// the typed Season Start and End (#1269 derives the start instead); any
-// other tier answers from the seasons row. What the roster snapshot a close
-// freezes is counted over (#938).
+// this team's own first raid night in it, which team_season_start() derives
+// and fetchSupabaseSeasonStart() loads once per page (#1269), falling back
+// to the tier's start for a team that has not raided it yet; any other tier
+// answers from the seasons row. What the roster snapshot a close freezes is
+// counted over (#938).
 function seasonDateRangeFor(seasonCode) {
   if (!seasonCode) return { start: null, end: null };
   var history = (DATA && DATA.seasonHistory) || [];
@@ -3708,7 +3743,11 @@ function seasonDateRangeFor(seasonCode) {
   var tier = seasonRow(seasonCode);
   if (!tier) return { start: null, end: null };
   if (seasonCode === currentSeasonCode()) {
-    return { start: (DATA && DATA.seasonStart) || tier.starts_at || null, end: (DATA && DATA.seasonEnd) || null };
+    // Only for the tier the night was derived for: a tier that rolled over
+    // since the page loaded falls back to its own start, which is what the
+    // database would answer for a tier nobody has raided yet.
+    var derived = DATA && DATA.seasonStartSeason === seasonCode ? DATA.seasonStartDate : null;
+    return { start: derived || tier.starts_at || null, end: tier.ends_at || null };
   }
   return { start: tier.starts_at || null, end: tier.ends_at || null };
 }
@@ -3856,6 +3895,9 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
   var teamSeasonsPromise = fetchSupabaseTeamSeasons();
   // Fired alongside; the core callback waits for it so the open tiers sort by date (#934).
   var seasonsPromise = fetchSupabaseSeasons();
+  // Fired alongside; the core callback waits for it before any attendance
+  // window is computed (#1269).
+  var seasonStartPromise = fetchSupabaseSeasonStart();
   // Fired alongside; the core callback waits for it before mapping the roster's M+ rejection badges.
   var mplusRejectionsPromise = fetchSupabaseMPlusRejections();
   // Fired alongside; the core callback waits for it before mapping officer notes (#925).
@@ -3917,7 +3959,8 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
       mplusRejectionsPromise,
       officerNotesPromise,
       teamSeasonsPromise,
-      seasonsPromise
+      seasonsPromise,
+      seasonStartPromise
     ]).then(function (results) {
       var rows = results[0];
       var settingsConfig = results[1];
@@ -3929,7 +3972,16 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
       applyTeamSettingsToData(data, settingsConfig);
       data.teamSeasons = results[4] || [];
       data.seasons = results[5] || [];
+      data.seasonStartDate = results[6] || null;
       DATA = data;
+      // Which tier the night above was derived for. team_season_start()
+      // defaults to the tier current on the server when the page loaded, and
+      // currentSeasonCode() re-reads the device clock on every call, so a
+      // page left open across midnight on a tier's first day would otherwise
+      // hand the outgoing tier's first night to the incoming tier and count
+      // the whole of the old one. Recorded rather than compared by date so
+      // the mismatch is what decides, not a second clock read.
+      DATA.seasonStartSeason = currentSeasonCode();
       DATA._loadedAt = new Date();
       try {
         onCoreReady();
@@ -5318,12 +5370,15 @@ function isRecentJoiner(player, days) {
   return ageDays >= 0 && ageDays <= days;
 }
 
-// #478 -- onboarding checklist only applies once the current season has
-// actually started (DATA.seasonStart, set in Season Settings) -- before kickoff
-// there's no wishlist expectation yet to nudge a new raider toward.
+// #478 -- onboarding checklist only applies once this team's season has
+// actually started -- before its first raid night there's no wishlist
+// expectation yet to nudge a new raider toward. The day is the window's own
+// start (#1269): this team's first raid night in the live tier, or the
+// tier's start where it has not raided yet.
 function seasonHasStarted() {
-  if (!DATA || !DATA.seasonStart) return false;
-  var parts = DATA.seasonStart.split('-');
+  var start = seasonDateRangeFor(currentSeasonCode()).start;
+  if (!start) return false;
+  var parts = start.split('-');
   if (parts.length !== 3) return false;
   var startMs = Date.UTC(+parts[0], +parts[1] - 1, +parts[2]);
   if (isNaN(startMs)) return false;
@@ -5337,10 +5392,14 @@ function seasonHasStarted() {
 // #478 -- excludes veterans who joined before the current season kicked off
 // (they're not "new," even if they happen to fall inside the 30-day window
 // right after a season start) -- only raiders who joined during this season
-// get nudged. Plain string comparison is safe since both are YYYY-MM-DD.
+// get nudged. The day is this team's first raid night (#1269), so someone
+// who joined in the gap between the tier going live and this team raiding
+// it is a veteran of the season rather than a mid-season join. Plain string
+// comparison is safe since both are YYYY-MM-DD.
 function joinedAfterSeasonStart(player) {
-  if (!DATA || !DATA.seasonStart || !player || !player.joinDate) return false;
-  return player.joinDate >= DATA.seasonStart;
+  var start = seasonDateRangeFor(currentSeasonCode()).start;
+  if (!start || !player || !player.joinDate) return false;
+  return player.joinDate >= start;
 }
 
 // Shared by both pages (index.html's signup/claim flow and officer.html's

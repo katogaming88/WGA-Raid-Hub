@@ -141,6 +141,13 @@ describe('toIncoming', () => {
 });
 
 // The page against a fake database.
+// The season window the officer columns count over (#1269): the tier from
+// the seasons table, starting on this team's own first raid night.
+const SEASON_START = '2026-08-01';
+const SEASON_ROWS = [
+  { code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-07-18', ends_at: '2026-12-31' }
+];
+
 function rosterHandlers(tables: Record<string, unknown>) {
   return seededHandlers({
     from(read: Read) {
@@ -357,7 +364,7 @@ describe('Roster page, officer columns', () => {
   const handlers = (role: string) => {
     const base = rosterHandlers({
       players: [player(1, 'Torbjorn-Illidan', 'Death Knight', 'Frost', 'Melee', { join_date: '2026-08-10' })],
-      team_settings: { name: 'Midnight Season 2', start: '2026-08-01', end: '2026-12-31' },
+      seasons: SEASON_ROWS,
       attendance: [
         { player_id: 1, raid_date: '2026-08-12', status: 'Present', report_excluded: false },
         { player_id: 1, raid_date: '2026-08-14', status: 'Late (no notice)', report_excluded: false }
@@ -372,6 +379,7 @@ describe('Roster page, officer columns', () => {
       rpc(name: string, args: Record<string, unknown>) {
         if (name === 'current_discord_id') return { data: 'discord-x' };
         if (name === 'resolve_person') return { data: person(role) };
+        if (name === 'team_season_start') return { data: SEASON_START };
         return base.rpc!(name, args);
       }
     };
@@ -411,7 +419,7 @@ describe('Roster page, alts', () => {
         player(1, 'Grihz-Illidan', 'Shaman', 'Restoration', 'Heal', { team_member_id: 7 }),
         player(2, 'Sakonna-Illidan', 'Priest', 'Holy', 'Heal', { team_member_id: 8 })
       ],
-      team_settings: { name: 'Midnight Season 2', start: '2026-08-01', end: '2026-12-31' },
+      seasons: SEASON_ROWS,
       team_members: [
         { id: 7, person_id: 70 },
         { id: 8, person_id: 80 }
@@ -443,6 +451,7 @@ describe('Roster page, alts', () => {
       rpc(name: string, args: Record<string, unknown>) {
         if (name === 'current_discord_id') return { data: 'discord-x' };
         if (name === 'resolve_person') return { data: person(role) };
+        if (name === 'team_season_start') return { data: SEASON_START };
         return base.rpc!(name, args);
       }
     };

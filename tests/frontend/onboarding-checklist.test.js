@@ -65,56 +65,81 @@ function dateOffset(offsetDays) {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
+// #1269 -- both gates read the season's window from seasonDateRangeFor(),
+// whose start for the live tier is the team's own first raid night
+// (DATA.seasonStartDate, from team_season_start()) and falls back to the
+// tier's start. A tier well in the past, so currentSeasonCode() answers it
+// whatever the runner's time zone; only the night under test moves.
+const started = (seasonStartDate) => ({
+  seasons: [{ code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2020-01-01', ends_at: null }],
+  seasonStartDate,
+  seasonStartSeason: 'MID2'
+});
+
 describe('seasonHasStarted', () => {
-  it('is false when DATA.seasonStart is unset', () => {
-    const sandbox = makeSandbox({});
+  it('is false when no tier has started', () => {
+    const sandbox = makeSandbox({ seasons: [], seasonStartDate: null });
     expect(sandbox.seasonHasStarted()).toBe(false);
   });
 
-  it('is true once today is on the season start date', () => {
-    const sandbox = makeSandbox({ seasonStart: dateOffset(0) });
+  it('is true once today is on the first raid night', () => {
+    const sandbox = makeSandbox(started(dateOffset(0)));
     expect(sandbox.seasonHasStarted()).toBe(true);
   });
 
-  it('is true once the season start date is in the past', () => {
-    const sandbox = makeSandbox({ seasonStart: dateOffset(-10) });
+  it('is true once the first raid night is in the past', () => {
+    const sandbox = makeSandbox(started(dateOffset(-10)));
     expect(sandbox.seasonHasStarted()).toBe(true);
   });
 
-  it('is false when the season start date is still in the future', () => {
-    const sandbox = makeSandbox({ seasonStart: dateOffset(1) });
+  // Reachable for a viewer west of Eastern on the day the sync files a
+  // team's first report, and the case that fails if the date math here or in
+  // production flips to UTC getters (#703).
+  it('is false when the first raid night is still in the future', () => {
+    const sandbox = makeSandbox(started(dateOffset(1)));
     expect(sandbox.seasonHasStarted()).toBe(false);
   });
 
-  it('is false for a malformed seasonStart value', () => {
-    const sandbox = makeSandbox({ seasonStart: 'not-a-date' });
+  it('is false for a malformed date', () => {
+    const sandbox = makeSandbox(started('not-a-date'));
     expect(sandbox.seasonHasStarted()).toBe(false);
+  });
+
+  // A team with no report in the tier yet counts from the tier's own start,
+  // so the nudge applies there too: every team on a started tier has a
+  // window now, where a team that never typed a date had none.
+  it('is true on a started tier the team has no raid night in yet', () => {
+    const sandbox = makeSandbox(started(null));
+    expect(sandbox.seasonHasStarted()).toBe(true);
   });
 });
 
 describe('joinedAfterSeasonStart', () => {
-  it('is false when DATA.seasonStart is unset', () => {
-    const sandbox = makeSandbox({});
+  it('is false when no tier has started', () => {
+    const sandbox = makeSandbox({ seasons: [], seasonStartDate: null });
     expect(sandbox.joinedAfterSeasonStart({ joinDate: dateOffset(-1) })).toBe(false);
   });
 
-  it('is true when the player joined on the season start date itself', () => {
-    const sandbox = makeSandbox({ seasonStart: dateOffset(-5) });
+  it('is true when the player joined on the first raid night itself', () => {
+    const sandbox = makeSandbox(started(dateOffset(-5)));
     expect(sandbox.joinedAfterSeasonStart({ joinDate: dateOffset(-5) })).toBe(true);
   });
 
-  it('is true when the player joined after the season started', () => {
-    const sandbox = makeSandbox({ seasonStart: dateOffset(-10) });
+  it('is true when the player joined after the first raid night', () => {
+    const sandbox = makeSandbox(started(dateOffset(-10)));
     expect(sandbox.joinedAfterSeasonStart({ joinDate: dateOffset(-3) })).toBe(true);
   });
 
-  it('is false for a veteran who joined before the season started', () => {
-    const sandbox = makeSandbox({ seasonStart: dateOffset(-5) });
+  // The whole point of the derived night: someone who joined during the
+  // week between the tier going live and this team first raiding it is a
+  // veteran of this season, not a mid-season join.
+  it('is false for a veteran who joined before the first raid night', () => {
+    const sandbox = makeSandbox(started(dateOffset(-5)));
     expect(sandbox.joinedAfterSeasonStart({ joinDate: dateOffset(-10) })).toBe(false);
   });
 
   it('is false when the player has no join date on record', () => {
-    const sandbox = makeSandbox({ seasonStart: dateOffset(-5) });
+    const sandbox = makeSandbox(started(dateOffset(-5)));
     expect(sandbox.joinedAfterSeasonStart({ joinDate: '' })).toBe(false);
     expect(sandbox.joinedAfterSeasonStart({})).toBe(false);
   });

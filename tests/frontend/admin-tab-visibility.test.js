@@ -82,9 +82,12 @@ function makeSandbox({ access, els = {}, saveTeamSettingResult, rpcResult, delet
       querySelectorAll: () => []
     },
     location: { reload },
-    // The Properties table names the tiers with signups open through common.js (#939, #934).
+    // The Properties table names the tiers with signups open through common.js (#939, #934)
+    // and reads the season window from it too (#1269).
     openSignupSeasonCodes: () => [],
     seasonDisplayName: (code) => code,
+    currentSeasonCode: () => 'MID2',
+    seasonDateRangeFor: () => ({ start: '2026-08-18', end: null }),
     saveTeamSetting,
     writeAuditLog,
     buildSeasonTab,
@@ -94,7 +97,7 @@ function makeSandbox({ access, els = {}, saveTeamSettingResult, rpcResult, delet
     buildMPlusTab,
     buildRequestsTab,
     TEAM_NAME: 'Phoenix Reborn',
-    DATA: { seasonHistory: [{ name: 'Old Season' }] },
+    DATA: { seasonHistory: [{ name: 'Old Season' }], seasonStartDate: '2026-08-18', seasonStartSeason: 'MID2' },
     currentSeasonName: () => 'Midnight Season 2',
     _teamCfg: { supabaseTeamId: 1 },
     supabaseClient,
@@ -433,6 +436,37 @@ describe('Clear Season History goes through Supabase, not GAS (#423)', () => {
     const { sandbox, saveTeamSetting } = makeSandbox({ access: 'team_leader', els: {} });
     sandbox.executeDangerOp('clearSeasonHistory');
     expect(saveTeamSetting).not.toHaveBeenCalled();
+  });
+});
+
+// #1269 -- the Properties panel reports the window the page is counting
+// from. team_season_start() falls back to the tier start itself, so a bare
+// date is the database answer either way; the note marks the other case,
+// where the read never came back and the page fell back on its own.
+describe('Properties: the season start row (#1269)', () => {
+  it('shows the night the database answered, with nothing added', () => {
+    const { sandbox, els } = makeSandbox({ access: 'team_leader' });
+    sandbox.loadAdminProperties();
+    expect(els['adminPropsContent'].innerHTML).toContain('Season Start (first raid night)');
+    expect(els['adminPropsContent'].innerHTML).toContain('2026-08-18');
+    expect(els['adminPropsContent'].innerHTML).not.toContain('did not load');
+  });
+
+  it('says so when the read never came back, rather than reading as derived', () => {
+    const { sandbox, els } = makeSandbox({ access: 'team_leader' });
+    sandbox.DATA.seasonStartDate = null;
+    sandbox.seasonDateRangeFor = () => ({ start: '2026-08-11', end: null });
+    sandbox.loadAdminProperties();
+    expect(els['adminPropsContent'].innerHTML).toContain(
+      '2026-08-11 (the tier start; the first raid night did not load)'
+    );
+  });
+
+  it('says no season has started when no tier has', () => {
+    const { sandbox, els } = makeSandbox({ access: 'team_leader' });
+    sandbox.seasonDateRangeFor = () => ({ start: null, end: null });
+    sandbox.loadAdminProperties();
+    expect(els['adminPropsContent'].innerHTML).toContain('(no season has started)');
   });
 });
 

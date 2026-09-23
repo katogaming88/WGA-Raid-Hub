@@ -15,10 +15,6 @@ function switchSeasonSubTab(name, btnEl) {
 }
 
 function buildSeasonTab() {
-  var startInput = document.getElementById('seasonStartInput');
-  if (startInput) startInput.value = (DATA && DATA.seasonStart) || '';
-  var endInput = document.getElementById('seasonEndInput');
-  if (endInput) endInput.value = (DATA && DATA.seasonEnd) || '';
   populateSeasonViewOptions();
   var trialWeeksInput = document.getElementById('trialWeeksInput');
   var trialAttendInput = document.getElementById('trialAttendInput');
@@ -443,32 +439,6 @@ function toggleSeasonBisSnapshot(index, btnEl) {
   panel.style.display = '';
 }
 
-function confirmClearSeasonStart() {
-  var el = document.getElementById('seasonClearConfirm');
-  if (el) el.style.display = '';
-}
-
-function executeClearSeasonStart() {
-  var el = document.getElementById('seasonClearConfirm');
-  if (el) el.style.display = 'none';
-  var input = document.getElementById('seasonStartInput');
-  if (input) input.value = '';
-  saveSeasonStart();
-}
-
-function confirmClearSeasonEnd() {
-  var el = document.getElementById('seasonEndClearConfirm');
-  if (el) el.style.display = '';
-}
-
-function executeClearSeasonEnd() {
-  var el = document.getElementById('seasonEndClearConfirm');
-  if (el) el.style.display = 'none';
-  var input = document.getElementById('seasonEndInput');
-  if (input) input.value = '';
-  saveSeasonEnd();
-}
-
 // -- Close Season ------------------------------------------------------------
 // The books close per tier (#938): a tier that has ended and this team has
 // not closed yet. Nothing is started by it; the tier every team is on is the
@@ -580,9 +550,14 @@ function confirmCloseSeason() {
 // and renames break it: #702 had to reconstruct nine of them out of
 // audit_log. nameRealm stays because renderSeasonHistory() renders it and the
 // two existing archives have nothing else.
-function buildSeasonArchiveRosterSnapshot(seasonCode) {
+// The window is the one close_season() writes as the entry's start (#1269):
+// this team's first raid night in the closing tier, which the caller has
+// just read, over the tier's own end. A tier nobody raided answers the
+// tier's start, so the range is the tier's either way.
+function buildSeasonArchiveRosterSnapshot(seasonCode, firstNight) {
   var roster = (DATA && DATA.roster) || [];
-  var range = seasonDateRangeFor(seasonCode);
+  var tierRange = seasonDateRangeFor(seasonCode);
+  var range = Object.assign({}, tierRange, { start: firstNight || tierRange.start });
   return roster.map(function (p) {
     var recs = getEligibleAttendanceRecs(p.firstName, range);
     return {
@@ -615,11 +590,27 @@ function executeCloseSeason() {
   }
   var code = _closeSeasonTarget();
 
+  // The books are counted over the window the database records as the
+  // entry's start (#1269), so the night is read first and a read that fails
+  // closes nothing rather than freezing a window nobody derived.
+  //
+  // close_season() derives the night again on its own side rather than
+  // taking this one, so in principle the two could disagree. They cannot
+  // here: only a tier that has ended can be closed, the sync only ever
+  // files nights into the tier that is current, and nothing else writes
+  // attendance in the milliseconds between the two calls. If closing a live
+  // tier ever becomes possible, this has to become one read, because a
+  // close is one-way and a frozen percentage counted over a different
+  // window than the entry claims cannot be corrected (#702).
   supabaseClient
-    .rpc('close_season', {
-      p_team_id: _teamCfg.supabaseTeamId,
-      p_season: code,
-      p_roster_snapshot: buildSeasonArchiveRosterSnapshot(code)
+    .rpc('team_season_start', { p_team_id: _teamCfg.supabaseTeamId, p_season: code })
+    .then(function (night) {
+      if (night.error) throw new Error(night.error.message);
+      return supabaseClient.rpc('close_season', {
+        p_team_id: _teamCfg.supabaseTeamId,
+        p_season: code,
+        p_roster_snapshot: buildSeasonArchiveRosterSnapshot(code, night.data)
+      });
     })
     .then(function (result) {
       if (btn) btn.disabled = false;
@@ -869,85 +860,6 @@ function verifyDiscordSignupChannel() {
         status.style.color = 'var(--melee)';
         status.textContent = 'Error checking channel.';
       }
-    });
-}
-
-function saveSeasonStart() {
-  var input = document.getElementById('seasonStartInput');
-  var val = input ? input.value.trim() : '';
-  if (val && !/^\d{4}-\d{2}-\d{2}$/.test(val)) {
-    alert('Enter a date in YYYY-MM-DD format.');
-    return;
-  }
-  var btn = document.getElementById('seasonStartSaveBtn');
-  var status = document.getElementById('seasonStartStatus');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
-  }
-
-  saveTeamSetting({ seasonStart: val }, true)
-    .then(function () {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Save';
-      }
-      if (DATA) DATA.seasonStart = val;
-      if (input) input.value = val;
-      populateSeasonSelector();
-      writeAuditLog('Season Start Set', null, null, val);
-      if (status) {
-        status.textContent = val ? 'Saved!' : 'Cleared.';
-        setTimeout(function () {
-          if (status) status.textContent = '';
-        }, 2000);
-      }
-    })
-    .catch(function (err) {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Save';
-      }
-      if (status) status.textContent = err.message || 'Error saving.';
-    });
-}
-
-function saveSeasonEnd() {
-  var input = document.getElementById('seasonEndInput');
-  var val = input ? input.value.trim() : '';
-  if (val && !/^\d{4}-\d{2}-\d{2}$/.test(val)) {
-    alert('Enter a date in YYYY-MM-DD format.');
-    return;
-  }
-  var btn = document.getElementById('seasonEndSaveBtn');
-  var status = document.getElementById('seasonEndStatus');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
-  }
-
-  saveTeamSetting({ seasonEnd: val }, true)
-    .then(function () {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Save';
-      }
-      if (DATA) DATA.seasonEnd = val;
-      if (input) input.value = val;
-      writeAuditLog('Season End Set', null, null, val);
-      if (status) {
-        status.textContent = val ? 'Saved!' : 'Cleared.';
-        setTimeout(function () {
-          if (status) status.textContent = '';
-        }, 2000);
-      }
-    })
-    .catch(function (err) {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Save';
-      }
-      if (status) status.textContent = err.message || 'Error saving.';
     });
 }
 

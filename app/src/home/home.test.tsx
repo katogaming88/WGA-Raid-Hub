@@ -114,6 +114,9 @@ describe('the recent loot feed', () => {
 const handlers = (loot: FeedLootRow[]): FakeHandlers => {
   const base = seededHandlers();
   return seededHandlers({
+    // The team's first raid night in the tier (#1269); the seeded team has
+    // raided since it went live, so the window is the tier's own.
+    rpc: (name, args) => (name === 'team_season_start' ? { data: SEASON.start } : base.rpc!(name, args)),
     from: (read) => {
       if (read.table === 'players' && !read.single) {
         return {
@@ -133,11 +136,12 @@ const handlers = (loot: FeedLootRow[]): FakeHandlers => {
           ]
         };
       }
-      // The live tier is the seasons read (#938); the dates are still the
-      // team's own keys until #1269.
+      // The live tier is the seasons read (#938) and its start is the team's
+      // own first raid night, which team_season_start() answers (#1269).
       if (read.table === 'seasons')
-        return { data: [{ code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start, ends_at: null }] };
-      if (read.table === 'team_settings') return { data: { start: SEASON.start, end: SEASON.end } };
+        return {
+          data: [{ code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start, ends_at: SEASON.end }]
+        };
       if (read.table === 'rclc_loot') return { data: loot };
       return base.from!(read);
     }

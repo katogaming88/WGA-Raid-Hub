@@ -2,8 +2,6 @@
   {
     "team_id": 1,
     "config": {
-      "seasonStart": "2026-03-04",
-      "seasonEnd": "2026-09-30",
       "seasonView": null,
       "trialWeeks": 4,
       "trialAttend": 75,

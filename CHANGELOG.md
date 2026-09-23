@@ -12,7 +12,7 @@ answers to.
 
 ---
 
-## [3.152.6] - 2026-09-22
+## [3.153.1] - 2026-09-22
 
 ### Backend
 
@@ -28,6 +28,54 @@ answers to.
   `team_invite_links` read policy, and classified the table in
   `docs/backup-restore.md`'s coverage map
   ([#1316](https://github.com/katogaming88/WGA-Raid-Hub/pull/1316)).
+
+## [3.153.0] - 2026-09-22
+
+### Frontend
+
+- **A team's season starts on its first raid night.** Attendance
+  percentages, the season date range, the new-raider nudge and the
+  onboarding checklist all count from the night your team first raided
+  this tier, worked out from the reports the sync has already filed,
+  instead of a date an officer typed into Season Settings. A team that
+  starts a tier a week after it goes live is no longer marked absent for
+  the week before it raided. The **Season Start Date** and **Season End
+  Date** cards are gone from Season Settings, along with the steps in the
+  help tab that asked you to set them for a new tier: there is nothing to
+  set now, and the season's end is the tier's own. The Admin tab's
+  Properties panel shows the derived night in place of the two typed
+  dates, and Close Season records it as the closed tier's start, so the
+  books it freezes and the live page count over the same days. Immolation
+  and Wrathless, which never typed a date, get a season window at all for
+  the first time: the new-raider nudge and the wishlist checklist now
+  work there as they do on the other two teams. The new app's profile and
+  roster pages read the same night
+  ([#1269](https://github.com/katogaming88/WGA-Raid-Hub/issues/1269), the
+  third of three pull requests, closing it).
+
+- **The Streams page no longer comes up empty when it is the first page you
+  open.** Following a link straight to Streams could render the view before
+  the page had its data, which threw and left the grid blank until you
+  navigated away and back. It now waits for the data like every other view.
+
+- The Reports tab help and the officer walkthrough no longer say the
+  database has no season start date. That stopped being true when the season
+  table shipped, and both now say what Season Loot Pace actually measures a
+  week from: this team's first tracked loot award of the season, which is
+  deliberately not the raid night the season is scored against, so a week
+  lines up with the two seasons being compared.
+
+### Backend
+
+- `seasonStart` and `seasonEnd` are removed from every team's settings
+  (`20260922123711_retire_season_dates.sql`). The attendance sync stopped
+  reading them in the previous release, `close_season()` has recorded the
+  derived night since the first, and nothing on the site or in the app
+  reads them from this release. For up to ten minutes after the deploy a
+  page still open on the old version counts from the day the tier went live
+  rather than your first night, and hides its new-raider nudges; no
+  percentage actually moves, since no team has an attendance row before its
+  own first night this tier, and a reload picks up the new version.
 
 ## [3.152.5] - 2026-09-22
 

@@ -32,7 +32,7 @@ const STATE = {
     players: SCENARIO.players,
     rclc_loot: SCENARIO.loot,
     seasons: [{ code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null }],
-    team_settings: [{ name: SEASON.name, start: null, end: null }]
+    team_settings: [{}]
   }
 };
 
@@ -144,7 +144,7 @@ const BLOCKS = {
   tables: {
     ...STATE.tables,
     seasons: [{ code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null }],
-    team_settings: [{ name: SEASON.name, start: null, end: null, raids: PROGRESSION.raids }],
+    team_settings: [{ raids: PROGRESSION.raids }],
     team_raid_progress: PROGRESSION.rows,
     raid_schedule: CALENDAR.schedule,
     raid_schedule_exceptions: CALENDAR.exceptions,

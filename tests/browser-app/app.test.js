@@ -85,7 +85,7 @@ function profileState(label, viewerKey, profileKey, extra = {}) {
       seasons: [
         { code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null }
       ],
-      team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end }],
+      team_settings: [{}],
       attendance: ATTENDANCE.filter((r) => r.player_id === shown.id),
       rclc_loot: LOOT.filter((r) => r.player_id === shown.id),
       player_equipped_gear: GEAR.filter((r) => r.player_id === shown.id),
@@ -115,7 +115,7 @@ const wishlistEditorState = (label, extra = {}) =>
       seasons: [
         { code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null }
       ],
-      team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end, open: 'true', view: null }],
+      team_settings: [{ open: 'true', view: null }],
       items: WISHLIST_EDITOR.ITEMS,
       raid_zones: WISHLIST_EDITOR.RAID_ZONES,
       item_preferences: WISHLIST_EDITOR.WISHLIST,
@@ -157,7 +157,7 @@ const rosterWithAlts = () => {
     team_members: ROSTER.players.map((p) => ({ id: p.id, person_id: p.id === first.id ? 70 : 100 + p.id })),
     characters: ALT_CHARACTERS,
     seasons: [{ code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null }],
-    team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end }],
+    team_settings: [{}],
     attendance: [],
     rclc_loot: []
   };
@@ -251,7 +251,7 @@ const HOME_TABLES = {
       ends_at: null
     }
   ],
-  team_settings: [{ name: HOME_SEASON.name, start: null, end: null, raids: PROGRESSION.raids }],
+  team_settings: [{ raids: PROGRESSION.raids }],
   team_raid_progress: PROGRESSION.rows,
   raid_schedule: CALENDAR.schedule,
   raid_schedule_exceptions: CALENDAR.exceptions,
@@ -578,7 +578,7 @@ const STATES = [
       seasons: [
         { code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null }
       ],
-      team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end }],
+      team_settings: [{}],
       attendance: [],
       rclc_loot: []
     }
@@ -640,7 +640,7 @@ const STATES = [
   wishlistEditorState('my profile, wishlist editor, a slot open, light', { colorScheme: 'light' }),
   wishlistEditorState('my profile, wishlist editor, on a phone', { touch: true, viewport: NARROW }),
   wishlistEditorState('my profile, wishlist editor, closed', {
-    tables: { team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end, open: 'false', view: null }] }
+    tables: { team_settings: [{ open: 'false', view: null }] }
   }),
   // The profile's two forms, open (#868 part 4).
   profileState('my profile, Mark received dialog', 'torbjorn', 'torbjorn', {
@@ -656,7 +656,7 @@ const STATES = [
       seasons: [
         { code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null }
       ],
-      team_settings: [{ name: SEASON.name, start: SEASON.start, end: SEASON.end, mplusOpen: 'true' }]
+      team_settings: [{ mplusOpen: 'true' }]
     }
   }),
   profileState('officer opening a profile with a refused M+ request', 'officer', 'dodgey', {

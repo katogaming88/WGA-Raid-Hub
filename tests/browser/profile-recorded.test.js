@@ -30,8 +30,6 @@ const settings = () =>
     ...row,
     config: {
       ...row.config,
-      seasonStart: SEASON.start,
-      seasonEnd: SEASON.end,
       seasonView: null
     }
   }));
@@ -62,7 +60,7 @@ function overridesFor(viewer) {
     self_received_requests: viewer ? SELF_RECEIVED : [],
     priority_order: PRIORITY_ORDER,
     tier_token_map: TIER_TOKEN_MAP,
-    rpc: { is_site_admin: false, is_guild_officer: false }
+    rpc: { is_site_admin: false, is_guild_officer: false, team_season_start: SEASON.start }
   };
 }
 

@@ -219,6 +219,9 @@ export async function openApp(browser, port, state) {
       // Earlier characters whose loot counts toward a raider's total (#942
       // step 5b): none unless the state says otherwise.
       if (rest === 'rpc/earlier_characters' && !state.rpc?.earlier_characters) return route.fulfill(json([]));
+      // The team's first raid night in the tier (#1269): none unless the
+      // state says otherwise, which reads as the tier's own start.
+      if (rest === 'rpc/team_season_start' && !state.rpc?.team_season_start) return route.fulfill(json(null));
       if (rest === 'rpc/resolve_person') return route.fulfill(json(who?.person ?? null));
       // Other RPCs a state expects, like a form's submit.
       if (rest?.startsWith('rpc/') && state.rpc && rest.slice(4) in state.rpc) {

@@ -191,6 +191,16 @@ describe('getTeamStreamers / getGuildStreamers / getVisibleStreamers / getOwnStr
     expect(sandbox.getVisibleStreamers().map((s) => s.player_first_name)).toEqual(['Kato', 'Brakka']);
   });
 
+  // The streams view renders from the hash at boot, before loadData() has
+  // resolved DATA, so every read has to survive DATA being null rather than
+  // throwing and leaving the view empty for the life of the page.
+  it('answers nothing at all before the page data has loaded', () => {
+    const { sandbox } = loadSandbox({ streamers, search: '' });
+    sandbox.DATA = null;
+    expect(sandbox.getVisibleStreamers()).toEqual([]);
+    expect(sandbox.getOwnStreamer('Kato')).toBeNull();
+  });
+
   it('getOwnStreamer only matches within the current team, case/diacritic-insensitively', () => {
     const { sandbox } = loadSandbox({ streamers, search: '' });
     expect(sandbox.getOwnStreamer('KATO')).toBeTruthy();
