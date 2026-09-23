@@ -12,6 +12,23 @@ answers to.
 
 ---
 
+## [3.152.6] - 2026-09-22
+
+### Backend
+
+- Team invite links: `team_invite_link_reset()` now writes an `audit_log`
+  entry and mints the full 8-character code instead of a 6-character suffix
+  ([#1264](https://github.com/katogaming88/WGA-Raid-Hub/issues/1264)), from
+  review on [#1316](https://github.com/katogaming88/WGA-Raid-Hub/pull/1316).
+
+### Project
+
+- Added `tests/rls/team-invite-links.test.js` covering
+  `team_invite_link_reset()`/`team_invite_link_resolve()` behavior and the
+  `team_invite_links` read policy, and classified the table in
+  `docs/backup-restore.md`'s coverage map
+  ([#1316](https://github.com/katogaming88/WGA-Raid-Hub/pull/1316)).
+
 ## [3.152.5] - 2026-09-22
 
 ### Backend

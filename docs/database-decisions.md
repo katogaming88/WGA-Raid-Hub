@@ -2109,6 +2109,8 @@ First slice of #1264 (join a team, and its guild, straight from a link): the cod
 
 **Expiry is a plain nullable timestamp, not a duration enum.** The issue's four options (1/7/30 days, or none) are a UI concern -- the officer panel computes `now() + interval` and passes the resulting timestamp (or null) to `team_invite_link_reset()`. Storing a duration string in the database would mean re-deriving "still active" against whatever moment the link was last reset from, for no reader that needs it.
 
+**`team_invite_link_reset()` writes an audit entry.** A reset is the moment the old code stops working and a new one starts -- the same shape as `set_team_season()` (#939) and #770's BoE lifecycle writes, both of which call `write_audit_log()` from inside the function rather than leaving it to the caller.
+
 **Deferred to the next PR:** everything that turns a resolved code into guild + roster membership -- `/join/<code>`'s Battle.net sign-in and character pick, and the actual `team_members`/`players` writes. There is no `guild_members` table to write to separately: today, joining a team's roster (a `team_members` row) already is the guild membership, since every team belongs to exactly one guild (`teams.guild_id`, #1114) and #1045's multi-guild-per-person question is still open.
 
 [Full discussion -> #1264](https://github.com/katogaming88/WGA-Raid-Hub/issues/1264).

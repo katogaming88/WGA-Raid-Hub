@@ -61,11 +61,13 @@ begin
   end if;
 
   insert into public.team_invite_links (team_id, code, expires_at)
-  values (p_team_id, v_slug || '-' || substr(public.new_url_code(), 1, 6), p_expires_at)
+  values (p_team_id, v_slug || '-' || public.new_url_code(), p_expires_at)
   on conflict (team_id) do update
     set code = excluded.code,
         expires_at = excluded.expires_at
   returning * into v_row;
+
+  perform public.write_audit_log(p_team_id, 'Invite Link Reset', 'team_invite_links', p_team_id, jsonb_build_object('expires_at', p_expires_at));
 
   return v_row;
 end;
