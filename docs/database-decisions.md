@@ -10,7 +10,16 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
-## 2026-09-22 -- The BoE lifecycle RPCs write their own audit entry; write_audit_log() drops the boe_manager OR (#770)
+## 2026-09-22 -- team_invite_link_revoke() turns a link off outright (#1264)
+
+Shipped: 20260922203449_team_invite_link_revoke.sql
+
+`team_invite_link_reset()` (#1264, shipped on #1316) only ever replaces a team's invite code with a new one -- there was no way to leave a team with no live link short of resetting to one and then letting it expire. Kat asked for an explicit "remove" while building the officer panel that calls both.
+
+- **`team_invite_link_revoke(p_team_id)` deletes the `team_invite_links` row outright**, same gate as `reset()` (officer/team_leader/guild officer/site admin), same `write_audit_log()` call (`'Invite Link Revoked'`, empty detail). Revoking with no row present succeeds silently rather than erroring -- the caller's intent ("no link should exist") is already satisfied.
+- No new RLS policy: the table still has no insert/update/delete grant to any API role, so this stays the only way to remove a row, matching how `reset()` is the only way to write one.
+
+No issue-comment discussion for this one -- it's a small addition inside #1264's own scope, not a separate decision thread.
 
 Shipped: 20260922121912_boe_rpc_own_audit_entries.sql
 

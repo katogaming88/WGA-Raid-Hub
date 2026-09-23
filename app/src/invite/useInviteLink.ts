@@ -37,3 +37,15 @@ export function useResetInviteLink(teamId: number) {
     { key: ['reset-invite-link', teamId], refreshes: [key(teamId)] }
   );
 }
+
+// Deletes the team's code outright via team_invite_link_revoke(), leaving no
+// replacement -- unlike reset(), which always leaves a live one.
+export function useRevokeInviteLink(teamId: number) {
+  return useSupabaseMutation<void, void>(
+    async (client) => {
+      const result = await client.rpc('team_invite_link_revoke', { p_team_id: teamId });
+      return { data: null, error: result.error };
+    },
+    { key: ['revoke-invite-link', teamId], refreshes: [key(teamId)] }
+  );
+}

@@ -204,6 +204,7 @@
 | public.boe_edit_item | void | p_id integer, p_item_name text, p_track text, p_note text, p_item_id integer, p_upgrade_rank text | FUNCTION |
 | public.team_invite_link_reset | team_invite_links | p_team_id integer, p_expires_at timestamp with time zone DEFAULT NULL::timestamp with time zone | FUNCTION |
 | public.team_invite_link_resolve | record | p_code text | FUNCTION |
+| public.team_invite_link_revoke | void | p_team_id integer | FUNCTION |
 
 ## Enums
 

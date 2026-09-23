@@ -1,8 +1,9 @@
 import { useId, useState, type FormEvent } from 'react';
 import { DataState } from '../components/DataState';
+import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
 import { useTeam } from '../data/address';
-import { useInviteLink, useResetInviteLink, type InviteLink } from './useInviteLink';
+import { useInviteLink, useResetInviteLink, useRevokeInviteLink, type InviteLink } from './useInviteLink';
 import './invite-link.css';
 
 // The officer invite-link panel (#1264 step 2): copy the team's link, set how
@@ -61,7 +62,9 @@ function InviteLinkCard({
   const { announce } = useStatus();
   const [days, setDays] = useState<number>(30);
   const [copied, setCopied] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const reset = useResetInviteLink(teamId);
+  const revoke = useRevokeInviteLink(teamId);
 
   const onCopy = async () => {
     if (!current) return;
@@ -97,10 +100,55 @@ function InviteLinkCard({
               {copied ? 'Copied' : 'Copy'}
             </button>
           </div>
-          <p className="text-muted invite-link-expiry">{expiryLabel(current.expiresAt)}</p>
+          <p className="text-muted invite-link-expiry">
+            {expiryLabel(current.expiresAt)} ·{' '}
+            <button type="button" className="link-button" onClick={() => setConfirmRemove(true)}>
+              Remove link
+            </button>
+          </p>
         </div>
       ) : (
         <p className="text-muted">{teamName} has no invite link yet.</p>
+      )}
+      {confirmRemove && current && (
+        <Dialog title="Remove the invite link?" onClose={() => setConfirmRemove(false)} busy={revoke.isPending}>
+          <p className="text-muted">
+            Nobody will be able to join {teamName} from this link once it's removed. You can generate a new one any
+            time.
+          </p>
+          {revoke.isError && (
+            <p className="form-error" role="alert">
+              That did not save: {revoke.error.message}
+            </p>
+          )}
+          <div className="dialog-actions">
+            <span className="grow" />
+            <button
+              type="button"
+              className="button"
+              onClick={() => setConfirmRemove(false)}
+              disabled={revoke.isPending}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="button invite-link-remove-confirm"
+              disabled={revoke.isPending}
+              onClick={() =>
+                revoke.mutate(undefined, {
+                  onSuccess: () => {
+                    setConfirmRemove(false);
+                    setCopied(false);
+                    announce('success', 'Invite link removed.');
+                  }
+                })
+              }
+            >
+              {revoke.isPending ? 'Removing…' : 'Remove link'}
+            </button>
+          </div>
+        </Dialog>
       )}
 
       <form onSubmit={onSubmit} noValidate className="invite-link-form">
