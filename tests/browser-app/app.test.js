@@ -234,6 +234,73 @@ const pickerState = (label, extra = {}) =>
     functionAnswers: { 'battlenet-characters': PICKER_ANSWER },
     ...extra
   });
+// BoE Sales (#1102): finds at every stage of the lifecycle, listings on the
+// open ones, and the audiences the page renders differently for.
+const boeItem = (id, status, extra = {}) => ({
+  id,
+  team_id: 1,
+  finder_name: 'Torbjorn-Illidan',
+  item_name: `Test BoE ${id}`,
+  track: 'Hero',
+  upgrade_rank: '2/6',
+  note: null,
+  status,
+  found_at: '2026-09-01T18:00:00Z',
+  sold_at: null,
+  payout_paid_at: null,
+  retired_at: null,
+  sale_price: null,
+  finder_payout: null,
+  guild_cut: null,
+  ah_fee: null,
+  payout_donated: false,
+  ...extra
+});
+const BOE_SOLD = {
+  sold_at: '2026-09-05T20:00:00Z',
+  sale_price: 250000,
+  ah_fee: 12500,
+  finder_payout: 118750,
+  guild_cut: 118750
+};
+const BOE_TABLES = {
+  boe_items: [
+    boeItem(1, 'found'),
+    boeItem(2, 'listed'),
+    boeItem(3, 'sold', BOE_SOLD),
+    boeItem(4, 'sold', { ...BOE_SOLD, payout_donated: true }),
+    boeItem(5, 'paid', { ...BOE_SOLD, payout_paid_at: '2026-09-07T20:00:00Z' }),
+    boeItem(6, 'retired', { retired_at: '2026-09-08T20:00:00Z' })
+  ],
+  boe_listings: [{ id: 1, boe_item_id: 2, listed_at: '2026-09-02T18:00:00Z', price: 300000, note: null }],
+  items: [],
+  raid_zones: [],
+  team_settings: [{}]
+};
+const boeState = (label, role, boeManager, extra = {}) => ({
+  label,
+  path: '/g/wga/boe',
+  sentinel: '.boe-lifecycle .boe-section-heading',
+  session: OFFICER,
+  person: {
+    discordId: 'discord-boe-1',
+    person: {
+      site_admin: false,
+      guild_officer: false,
+      boe_manager: boeManager,
+      teams: [
+        {
+          team_id: 1,
+          team_member_id: 1,
+          role,
+          characters: [{ player_id: 1, name_realm: 'Torbjorn-Illidan', url_code: 'abcd1234', archived_at: null }]
+        }
+      ]
+    }
+  },
+  tables: BOE_TABLES,
+  ...extra
+});
 const BATTLENET_ONLY = storedSession({ battlenet: 'Aeglos#1234' });
 
 // Every screen the shell has today, in both themes where color matters.
@@ -572,6 +639,15 @@ const STATES = [
     tables: rosterWithAlts(),
     click: 'role=button[name="Show alts"]'
   },
+  {
+    label: 'BoE sales, signed out',
+    path: '/g/wga/boe',
+    sentinel: 'text=Report a BoE',
+    tables: { items: [], raid_zones: [] }
+  },
+  boeState('BoE sales, raider', 'raider', false),
+  boeState('BoE sales, BoE manager', 'officer', true),
+  boeState('BoE sales, BoE manager, light', 'officer', true, { colorScheme: 'light' }),
   pickerState('alts picker'),
   pickerState('alts picker, light', { colorScheme: 'light' }),
   { label: 'roster', path: '/g/wga/t/phoenix/roster', sentinel: 'table.roster-table', tables: ROSTER },
