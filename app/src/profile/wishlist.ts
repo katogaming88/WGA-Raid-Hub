@@ -179,7 +179,13 @@ export function editorSeason(view: string | null, season: SeasonWindow): string 
 // the season since #936, so a raider holds a separate pick for the same item
 // in each tier, and the write gate refuses a row filed under any other. A pick
 // from a tier the editor is not planning is not its to read, replace or clear.
+//
+// No season at all is the editor not knowing which tier it plans, rather than
+// a tier of its own: no tier has started and no officer has pinned one. It
+// narrows nothing there and the editor is read-only, because hiding every
+// pick would show a raider an empty wishlist instead of an unavailable one.
 export function picksInSeason(picks: Pick[], seasonCode: string | null): Pick[] {
+  if (seasonCode === null) return picks;
   return picks.filter((p) => (p.season ?? null) === seasonCode);
 }
 

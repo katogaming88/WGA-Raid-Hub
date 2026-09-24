@@ -128,8 +128,12 @@ const norm = (s: string) =>
 // asked about. That is the question the wishlist write gate asks of such a row,
 // and picksInSeason() in wishlist.ts asks it too, so the editor and this card
 // agree about a row neither can tell apart from a current pick otherwise.
+//
+// Unless no season is known at all, where neither narrows: the same state the
+// editor is read-only in, and a card showing nothing there reads as a profile
+// with no picks rather than one that could not be loaded.
 function inSeason(pick: WishlistRow, item: CatalogItem, season: SeasonWindow, zones: ZoneRow[]): boolean {
-  if (item.is_placeholder) return pick.season === season.code;
+  if (item.is_placeholder) return season.code === null || pick.season === season.code;
   if (item.wcl_zone_id == null) return true;
   const seasonZones = zones.filter((z) => z.season === season.code).map((z) => z.wcl_zone_id);
   return seasonZones.length === 0 || seasonZones.includes(item.wcl_zone_id);

@@ -178,9 +178,18 @@ function wishlistSeasonCode() {
 // the row (#1331). Without this a raider with picks in two tiers reads back
 // the other tier's rows, and an update or a delete reaches one the gate then
 // refuses.
+//
+// With no tier resolving the page does not know which one to ask about, so it
+// narrows nothing and shows every pick the raider holds. The seasons table is
+// app-wide and filled by migration, so an empty DATA.seasons means the read
+// failed rather than that there are no tiers, and asking for the seasonless
+// picks there would show a raider an empty wishlist. Editing is off in that
+// state (wishlistEditableNow below), so nothing writes through an unnarrowed
+// filter.
 function wishlistScopeToSeason(query) {
   var season = wishlistSeasonCode();
-  return season ? query.eq('season', season) : query.is('season', null);
+  if (!season) return query;
+  return query.eq('season', season);
 }
 
 // Guard on client,
@@ -544,6 +553,12 @@ function wishlistSlotSummaryDotsHTML(items) {
 // tab-bis.js's own wishlistOpen() calls are the team's toggle's own display
 // and deliberately stay as-is.
 function wishlistEditableNow() {
+  // Nothing is editable until the page knows which tier it is planning, since
+  // that tier is what a row is stamped with and what the write gate reads back
+  // (#936). The team switch already reads closed without one, so this is only
+  // reachable through the per-raider allowance, and their write would land in
+  // no tier at all beside the pick they already hold.
+  if (!wishlistSeasonCode()) return false;
   return wishlistOpen() || (!!_wishlistPlayerNameRealm && wishlistAllowedFor(_wishlistPlayerNameRealm));
 }
 
