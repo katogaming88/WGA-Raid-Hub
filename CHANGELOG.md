@@ -34,7 +34,10 @@ answers to.
   list (`scripts/season-items/MID2-dungeons.txt`). Wowhead's dungeon pages
   were wrong in both directions, so the game is the source. The yearly item
   refresh guide gains the steps. A second command, `/wgacrafts`, lists the
-  gear the professions craft the same way.
+  gear the professions craft the same way, and the importer keeps only the
+  season's endgame crafted gear (epic, item level 240+). Season 2's 97 crafted
+  items are saved as `scripts/season-items/MID2-crafted.txt`, with Engineering
+  taken from Wowhead because no character had the Midnight skill.
 
 ## [3.154.4] - 2026-09-24
 

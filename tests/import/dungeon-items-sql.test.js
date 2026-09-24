@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { parseDungeonLoot, dungeonItemsSql } from '../../scripts/dungeon-items-sql.js';
+import { parseDungeonLoot, dungeonItemsSql, itemFacts, keepsItem } from '../../scripts/dungeon-items-sql.js';
 
 // #1166: a season's dungeon loot file, made in game, becomes catalog rows.
 
@@ -94,5 +94,34 @@ describe('dungeonItemsSql', () => {
 
   it('writes null for an item whose icon lookup failed', () => {
     expect(dungeonItemsSql(parsed, {})).toContain("'Leather', null)");
+  });
+});
+
+describe('the crafted list filter', () => {
+  it('reads the minimum quality and item level from the file, and none when the lines are absent', () => {
+    const crafted = parseDungeonLoot(readFileSync('scripts/season-items/MID2-crafted.txt', 'utf8'));
+    expect(crafted).toMatchObject({ source: 'crafted', minQuality: 4, minItemLevel: 240 });
+    expect(crafted.items).toHaveLength(203);
+    const dungeon = parseDungeonLoot(readFileSync('scripts/season-items/MID2-dungeons.txt', 'utf8'));
+    expect(dungeon).toMatchObject({ minQuality: null, minItemLevel: null });
+  });
+
+  it('reads quality and item level from the tooltip, in either spelling Wowhead uses', () => {
+    expect(itemFacts({ icon: 'inv_a', quality: 4, tooltip: '<b>Item Level <!--ilvl-->246</b>' })).toEqual({
+      icon: 'inv_a',
+      quality: 4,
+      itemLevel: 246
+    });
+    expect(itemFacts({ icon: 'inv_b', quality: 2, tooltip: 'Item Level 263' }).itemLevel).toBe(263);
+    expect(itemFacts({}).itemLevel).toBeNull();
+  });
+
+  it('keeps an epic at item level 246, drops a green at 263 and a rare at 201, and never guesses', () => {
+    const filters = { minQuality: 4, minItemLevel: 240 };
+    expect(keepsItem({ quality: 4, itemLevel: 246 }, filters)).toBe(true);
+    expect(keepsItem({ quality: 2, itemLevel: 263 }, filters)).toBe(false);
+    expect(keepsItem({ quality: 3, itemLevel: 201 }, filters)).toBe(false);
+    expect(keepsItem({ quality: null, itemLevel: null }, filters)).toBe(false);
+    expect(keepsItem({ quality: 2, itemLevel: 1 }, { minQuality: null, minItemLevel: null })).toBe(true);
   });
 });

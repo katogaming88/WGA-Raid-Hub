@@ -120,7 +120,17 @@ Crafted armor, weapons and jewelry work the same way, with a second command in t
 
 1. In game, open each crafting profession window once (Blacksmithing, Leatherworking, Tailoring, Jewelcrafting, Engineering, Inscription, Enchanting). Each opening notes that profession's recipes filed under the expansion. A character has only two professions, so visit each alt in turn: the notes are saved for the whole account between logins.
 2. Type `/wgacrafts`. The window ends with a count per profession, so a profession you skipped, or one that opened empty (a character without that profession's current skill line), is easy to spot. Open the missing one on a character that has it and run `/wgacrafts` again; it keeps what it has already seen until `/wgacrafts reset`.
-3. Save the text as `scripts/season-items/<SEASON>-crafted.txt` with two first lines, `-- season: <SEASON>` and `-- source: crafted`, then run the importer on it as above.
+3. Save the text as `scripts/season-items/<SEASON>-crafted.txt` with these first lines, then run the importer on it as above:
+
+```
+-- season: <SEASON>
+-- source: crafted
+-- min quality: 4
+-- min item level: 240
+```
+
+   The profession windows also list leveling gear, cosmetic cloaks, fishing hats and the PvP sets. The two `min` lines keep the importer to epic gear at or above the season's crafted item level; raise or lower 240 to the new season's endgame crafted level (the importer prints what it left out, so check that list). The importer reads each item's quality and level from Wowhead, and stops rather than guess if it cannot.
+4. A profession nobody could open (Season 2: Engineering, no character with the Midnight skill) can be filled from Wowhead instead: its skill page (`wowhead.com/skill=202` for Engineering) has a crafted-items list. For the six professions collected in game, that list matched the game item for item in Season 2 (epic quality, item level 240+), so the same filter on it is a safe stand-in. Add those rows by hand in the same format, with a comment saying where they came from.
 
 ## Fetching secondary stats, main stats, and weapon subtype (#560, #609)
 

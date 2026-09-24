@@ -1,0 +1,226 @@
+-- season: MID2
+-- source: crafted
+-- min quality: 4
+-- min item level: 240
+-- Gear the Midnight crafting recipes make, as the game's profession windows list
+-- it. Made in game with scripts/wow/WGA_LootDump (/wgacrafts) on 2026-09-24 and
+-- pasted here unedited, except the Engineering rows (see below). No character had the
+-- Midnight Engineering skill. Each season: run /wgacrafts on each alt, replace this file.
+-- Read by scripts/dungeon-items-sql.js, which keeps the epic, item level 240+ rows:
+-- that drops leveling gear, cosmetic cloaks, fishing hats, the lower rare tier and
+-- the Thalassian Competitor's PvP sets (Kat, 2026-09-24).
+-- Columns: profession | recipe | item id | item name | slot | armor or weapon type
+Blacksmithing | Spellbreaker's March | 237828 | Spellbreaker's March | Feet | Plate
+Blacksmithing | Spellbreaker's Shelter | 237829 | Spellbreaker's Shelter | Chest | Plate
+Blacksmithing | Spellbreaker's Girdle | 237830 | Spellbreaker's Girdle | Waist | Plate
+Blacksmithing | Spellbreaker's Rebuke | 237831 | Spellbreaker's Rebuke | Off Hand | Shields
+Blacksmithing | Spellbreaker's Cover | 237832 | Spellbreaker's Cover | Head | Plate
+Blacksmithing | Spellbreaker's Legguards | 237833 | Spellbreaker's Legguards | Legs | Plate
+Blacksmithing | Spellbreaker's Bracers | 237834 | Spellbreaker's Bracers | Wrist | Plate
+Blacksmithing | Spellbreaker's Mantle | 237835 | Spellbreaker's Mantle | Shoulder | Plate
+Blacksmithing | Spellbreaker's Resolve | 237836 | Spellbreaker's Resolve | Hands | Plate
+Blacksmithing | Farstrider's Mercy | 237837 | Farstrider's Mercy | One-Hand | Daggers
+Blacksmithing | Magister's Ritual Knife | 237838 | Magister's Ritual Knife | One-Hand | Daggers
+Blacksmithing | Spellbreaker's Blade | 237839 | Spellbreaker's Blade | One-Hand | One-Handed Swords
+Blacksmithing | Spellbreaker's Warglaive | 237840 | Spellbreaker's Warglaive | One-Hand | Warglaives
+Blacksmithing | Spellbreaker's Ultimatum | 237841 | Spellbreaker's Ultimatum | One-Hand | One-Handed Maces
+Blacksmithing | Bloomforged Greataxe | 237842 | Bloomforged Greataxe | Two-Hand | Two-Handed Axes
+Blacksmithing | Magister's Mana Sword | 237843 | Magister's Mana Sword | One-Hand | One-Handed Swords
+Blacksmithing | Magister's Cleaver | 237844 | Magister's Cleaver | One-Hand | One-Handed Axes
+Blacksmithing | Bloomforged Claw | 237845 | Bloomforged Claw | One-Hand | Fist Weapons
+Blacksmithing | Blood Knight's Warblade | 237846 | Blood Knight's Warblade | Two-Hand | Two-Handed Swords
+Blacksmithing | Blood Knight's Impetus | 237847 | Blood Knight's Impetus | Two-Hand | Polearms
+Blacksmithing | Blood Knight's Mercy | 237848 | Blood Knight's Mercy | Two-Hand | Two-Handed Maces
+Blacksmithing | Magister's Valediction | 237849 | Magister's Valediction | Two-Hand | Two-Handed Maces
+Blacksmithing | Farstrider's Chopper | 237850 | Farstrider's Chopper | One-Hand | One-Handed Axes
+Blacksmithing | Thalassian Competitor's Plate Breastplate | 237901 | Thalassian Competitor's Plate Breastplate | Chest | Plate
+Blacksmithing | Thalassian Competitor's Plate Sabatons | 237902 | Thalassian Competitor's Plate Sabatons | Feet | Plate
+Blacksmithing | Thalassian Competitor's Plate Gauntlets | 237903 | Thalassian Competitor's Plate Gauntlets | Hands | Plate
+Blacksmithing | Thalassian Competitor's Plate Helm | 237904 | Thalassian Competitor's Plate Helm | Head | Plate
+Blacksmithing | Thalassian Competitor's Plate Greaves | 237905 | Thalassian Competitor's Plate Greaves | Legs | Plate
+Blacksmithing | Thalassian Competitor's Plate Pauldrons | 237906 | Thalassian Competitor's Plate Pauldrons | Shoulder | Plate
+Blacksmithing | Thalassian Competitor's Plate Waistguard | 237907 | Thalassian Competitor's Plate Waistguard | Waist | Plate
+Blacksmithing | Thalassian Competitor's Plate Armguards | 237908 | Thalassian Competitor's Plate Armguards | Wrist | Plate
+Blacksmithing | Thalassian Competitor's Pickaxe | 237909 | Thalassian Competitor's Pickaxe | One-Hand | One-Handed Axes
+Blacksmithing | Thalassian Competitor's Knife | 237910 | Thalassian Competitor's Knife | One-Hand | Daggers
+Blacksmithing | Thalassian Competitor's Maxim | 237911 | Thalassian Competitor's Maxim | One-Hand | One-Handed Maces
+Blacksmithing | Thalassian Competitor's Bulwark | 237912 | Thalassian Competitor's Bulwark | Off Hand | Shields
+Blacksmithing | Thalassian Competitor's Splitter | 237913 | Thalassian Competitor's Splitter | One-Hand | One-Handed Axes
+Blacksmithing | Thalassian Competitor's Skewer | 237914 | Thalassian Competitor's Skewer | One-Hand | Daggers
+Blacksmithing | Thalassian Competitor's Greatsword | 237915 | Thalassian Competitor's Greatsword | Two-Hand | Two-Handed Swords
+Blacksmithing | Thalassian Competitor's Sword | 237916 | Thalassian Competitor's Sword | One-Hand | One-Handed Swords
+Blacksmithing | Blood-Tempered Greaves | 237917 | Blood-Tempered Greaves | Feet | Plate
+Blacksmithing | Blood-Tempered Chestplate | 237918 | Blood-Tempered Chestplate | Chest | Plate
+Blacksmithing | Blood-Tempered Greatbelt | 237919 | Blood-Tempered Greatbelt | Waist | Plate
+Blacksmithing | Blood-Tempered Bulwark | 237920 | Blood-Tempered Bulwark | Off Hand | Shields
+Blacksmithing | Blood-Tempered Basinet | 237921 | Blood-Tempered Basinet | Head | Plate
+Blacksmithing | Blood-Tempered Leggings | 237922 | Blood-Tempered Leggings | Legs | Plate
+Blacksmithing | Blood-Tempered Bracers | 237923 | Blood-Tempered Bracers | Wrist | Plate
+Blacksmithing | Blood-Tempered Pauldrons | 237924 | Blood-Tempered Pauldrons | Shoulder | Plate
+Blacksmithing | Blood-Tempered Gauntlets | 237925 | Blood-Tempered Gauntlets | Hands | Plate
+Blacksmithing | Dawnforged Ritual Knife | 237926 | Dawnforged Ritual Knife | One-Hand | Daggers
+Blacksmithing | Dawnforged Edge | 237927 | Dawnforged Edge | One-Hand | Daggers
+Blacksmithing | Dawnforged Long Blade | 237928 | Dawnforged Long Blade | One-Hand | One-Handed Swords
+Blacksmithing | Primalforged Knuckles | 237929 | Primalforged Knuckles | One-Hand | Fist Weapons
+Blacksmithing | Dawnforged War Mace | 237930 | Dawnforged War Mace | Two-Hand | Two-Handed Maces
+Blacksmithing | Dawnforged Splitter | 237931 | Dawnforged Splitter | One-Hand | One-Handed Axes
+Blacksmithing | Primalforged Heavy Axe | 237932 | Primalforged Heavy Axe | Two-Hand | Two-Handed Axes
+Tailoring | Elegant Artisan's Fishing Hat | 239638 | Elegant Artisan's Fishing Hat | Head | Miscellaneous
+Tailoring | Bright Linen Fishing Hat | 239644 | Bright Linen Fishing Hat | Head | Miscellaneous
+Tailoring | Martyr's Bindings | 239648 | Martyr's Bindings | Wrist | Cloth
+Tailoring | Martyr's Waistwrap | 239649 | Martyr's Waistwrap | Waist | Cloth
+Tailoring | Martyr's Mantle | 239650 | Martyr's Mantle | Shoulder | Cloth
+Tailoring | Martyr's Leggings | 239651 | Martyr's Leggings | Legs | Cloth
+Tailoring | Martyr's Crown | 239652 | Martyr's Crown | Head | Cloth
+Tailoring | Martyr's Gloves | 239653 | Martyr's Gloves | Hands | Cloth
+Tailoring | Martyr's Slippers | 239654 | Martyr's Slippers | Feet | Cloth
+Tailoring | Martyr's Vestments | 239655 | Martyr's Vestments | Chest | Cloth
+Tailoring | Adherent's Silken Shroud | 239656 | Adherent's Silken Shroud | Back | Cloth
+Tailoring | Sunfire Bracers | 239657 | Sunfire Bracers | Wrist | Cloth
+Tailoring | Sunfire Cloak | 239658 | Sunfire Cloak | Back | Cloth
+Tailoring | Sunfire Treads | 239659 | Sunfire Treads | Feet | Cloth
+Tailoring | Arcanoweave Bracers | 239660 | Arcanoweave Bracers | Wrist | Cloth
+Tailoring | Arcanoweave Cloak | 239661 | Arcanoweave Cloak | Back | Cloth
+Tailoring | Arcanoweave Treads | 239662 | Arcanoweave Treads | Feet | Cloth
+Tailoring | Sunfire Sash | 239663 | Sunfire Sash | Waist | Cloth
+Tailoring | Arcanoweave Cord | 239664 | Arcanoweave Cord | Waist | Cloth
+Tailoring | Courtly Helm | 239668 | Courtly Helm | Head | Cloth
+Tailoring | Courtly Gloves | 239669 | Courtly Gloves | Hands | Cloth
+Tailoring | Courtly Belt | 239670 | Courtly Belt | Waist | Cloth
+Tailoring | Courtly Wrists | 239671 | Courtly Wrists | Wrist | Cloth
+Tailoring | Courtly Robes | 239672 | Courtly Robes | Chest | Cloth
+Tailoring | Courtly Slippers | 239673 | Courtly Slippers | Feet | Cloth
+Tailoring | Courtly Cloak | 239674 | Courtly Cloak | Back | Cloth
+Tailoring | Courtly Shoulders | 239675 | Courtly Shoulders | Shoulder | Cloth
+Tailoring | Courtly Pants | 239676 | Courtly Pants | Legs | Cloth
+Tailoring | Thalassian Competitor's Cloth Bands | 239677 | Thalassian Competitor's Cloth Bands | Wrist | Cloth
+Tailoring | Thalassian Competitor's Cloth Cloak | 239678 | Thalassian Competitor's Cloth Cloak | Back | Cloth
+Tailoring | Thalassian Competitor's Cloth Gloves | 239679 | Thalassian Competitor's Cloth Gloves | Hands | Cloth
+Tailoring | Thalassian Competitor's Cloth Hood | 239680 | Thalassian Competitor's Cloth Hood | Head | Cloth
+Tailoring | Thalassian Competitor's Cloth Leggings | 239681 | Thalassian Competitor's Cloth Leggings | Legs | Cloth
+Tailoring | Thalassian Competitor's Cloth Sash | 239682 | Thalassian Competitor's Cloth Sash | Waist | Cloth
+Tailoring | Thalassian Competitor's Cloth Shoulderpads | 239683 | Thalassian Competitor's Cloth Shoulderpads | Shoulder | Cloth
+Tailoring | Thalassian Competitor's Cloth Treads | 239684 | Thalassian Competitor's Cloth Treads | Feet | Cloth
+Tailoring | Thalassian Competitor's Cloth Tunic | 239685 | Thalassian Competitor's Cloth Tunic | Chest | Cloth
+Jewelcrafting | Gleaming Copper Band | 240947 | Gleaming Copper Band | Finger | Miscellaneous
+Jewelcrafting | Nocturnal Charm | 240948 | Nocturnal Charm | Neck | Miscellaneous
+Jewelcrafting | Masterwork Sin'dorei Band | 240949 | Masterwork Sin'dorei Band | Finger | Miscellaneous
+Jewelcrafting | Masterwork Sin'dorei Amulet | 240950 | Masterwork Sin'dorei Amulet | Neck | Miscellaneous
+Jewelcrafting | Thalassian Competitor's Signet | 240951 | Thalassian Competitor's Signet | Finger | Miscellaneous
+Jewelcrafting | Thalassian Competitor's Amulet | 240952 | Thalassian Competitor's Amulet | Neck | Miscellaneous
+Jewelcrafting | Thalassian Phoenix Torque | 241139 | Thalassian Phoenix Torque | Neck | Miscellaneous
+Jewelcrafting | Signet of Azerothian Blessings | 241140 | Signet of Azerothian Blessings | Finger | Miscellaneous
+Enchanting | Thalassian Spellweaver's Wand | 244178 | Thalassian Spellweaver's Wand | Ranged | Wands
+Enchanting | Magister's Grand Focus | 244179 | Magister's Grand Focus | Ranged | Wands
+Blacksmithing | Murder Row Fleet Feet | 244463 | Murder Row Fleet Feet | Feet | Plate
+Blacksmithing | Knight-Commander's Palisade | 244472 | Knight-Commander's Palisade | Off Hand | Shields
+Leatherworking | Thalassian Competitor's Leather Boots | 244553 | Thalassian Competitor's Leather Boots | Feet | Leather
+Leatherworking | Thalassian Competitor's Leather Chestpiece | 244554 | Thalassian Competitor's Leather Chestpiece | Chest | Leather
+Leatherworking | Thalassian Competitor's Leather Mask | 244555 | Thalassian Competitor's Leather Mask | Head | Leather
+Leatherworking | Thalassian Competitor's Leather Shoulderpads | 244556 | Thalassian Competitor's Leather Shoulderpads | Shoulder | Leather
+Leatherworking | Thalassian Competitor's Leather Belt | 244557 | Thalassian Competitor's Leather Belt | Waist | Leather
+Leatherworking | Thalassian Competitor's Leather Trousers | 244558 | Thalassian Competitor's Leather Trousers | Legs | Leather
+Leatherworking | Thalassian Competitor's Leather Gloves | 244559 | Thalassian Competitor's Leather Gloves | Hands | Leather
+Leatherworking | Thalassian Competitor's Leather Wristwraps | 244560 | Thalassian Competitor's Leather Wristwraps | Wrist | Leather
+Leatherworking | Thalassian Competitor's Chain Stompers | 244561 | Thalassian Competitor's Chain Stompers | Feet | Mail
+Leatherworking | Thalassian Competitor's Chain Tunic | 244562 | Thalassian Competitor's Chain Tunic | Chest | Mail
+Leatherworking | Thalassian Competitor's Chain Cowl | 244563 | Thalassian Competitor's Chain Cowl | Head | Mail
+Leatherworking | Thalassian Competitor's Chain Epaulets | 244564 | Thalassian Competitor's Chain Epaulets | Shoulder | Mail
+Leatherworking | Thalassian Competitor's Chain Girdle | 244565 | Thalassian Competitor's Chain Girdle | Waist | Mail
+Leatherworking | Thalassian Competitor's Chain Leggings | 244566 | Thalassian Competitor's Chain Leggings | Legs | Mail
+Leatherworking | Thalassian Competitor's Chain Grips | 244567 | Thalassian Competitor's Chain Grips | Hands | Mail
+Leatherworking | Thalassian Competitor's Chain Cuffs | 244568 | Thalassian Competitor's Chain Cuffs | Wrist | Mail
+Leatherworking | Silvermoon Agent's Sneakers | 244569 | Silvermoon Agent's Sneakers | Feet | Leather
+Leatherworking | Silvermoon Agent's Coat | 244570 | Silvermoon Agent's Coat | Chest | Leather
+Leatherworking | Silvermoon Agent's Cover | 244571 | Silvermoon Agent's Cover | Head | Leather
+Leatherworking | Silvermoon Agent's Mantle | 244572 | Silvermoon Agent's Mantle | Shoulder | Leather
+Leatherworking | Silvermoon Agent's Utility Belt | 244573 | Silvermoon Agent's Utility Belt | Waist | Leather
+Leatherworking | Silvermoon Agent's Leggings | 244574 | Silvermoon Agent's Leggings | Legs | Leather
+Leatherworking | Silvermoon Agent's Handwraps | 244575 | Silvermoon Agent's Handwraps | Hands | Leather
+Leatherworking | Silvermoon Agent's Deflectors | 244576 | Silvermoon Agent's Deflectors | Wrist | Leather
+Leatherworking | Farstrider's Razor Talons | 244577 | Farstrider's Razor Talons | Feet | Mail
+Leatherworking | Farstrider's Scouting Vest | 244578 | Farstrider's Scouting Vest | Chest | Mail
+Leatherworking | Farstrider's Unwavering Visage | 244579 | Farstrider's Unwavering Visage | Head | Mail
+Leatherworking | Farstrider's Brilliant Plumes | 244580 | Farstrider's Brilliant Plumes | Shoulder | Mail
+Leatherworking | Farstrider's Trophy Belt | 244581 | Farstrider's Trophy Belt | Waist | Mail
+Leatherworking | Farstrider's Reinforced Faulds | 244582 | Farstrider's Reinforced Faulds | Legs | Mail
+Leatherworking | Farstrider's Sharpened Claws | 244583 | Farstrider's Sharpened Claws | Hands | Mail
+Leatherworking | Farstrider's Plated Bracers | 244584 | Farstrider's Plated Bracers | Wrist | Mail
+Leatherworking | Smuggler's Leather Footpads | 244585 | Smuggler's Leather Footpads | Feet | Leather
+Leatherworking | Smuggler's Leather Wristbands | 244586 | Smuggler's Leather Wristbands | Wrist | Leather
+Leatherworking | Smuggler's Leather Tunic | 244587 | Smuggler's Leather Tunic | Chest | Leather
+Leatherworking | Scout's Scaled Boots | 244588 | Scout's Scaled Boots | Feet | Mail
+Leatherworking | Scout's Scaled Bracers | 244589 | Scout's Scaled Bracers | Wrist | Mail
+Leatherworking | Scout's Scaled Vest | 244590 | Scout's Scaled Vest | Chest | Mail
+Leatherworking | Smuggler's Reinforced Hood | 244591 | Smuggler's Reinforced Hood | Head | Leather
+Leatherworking | Smuggler's Reinforced Shoulderguards | 244592 | Smuggler's Reinforced Shoulderguards | Shoulder | Leather
+Leatherworking | Smuggler's Reinforced Gloves | 244593 | Smuggler's Reinforced Gloves | Hands | Leather
+Leatherworking | Smuggler's Reinforced Pants | 244594 | Smuggler's Reinforced Pants | Legs | Leather
+Leatherworking | Smuggler's Reinforced Binding | 244595 | Smuggler's Reinforced Binding | Waist | Leather
+Leatherworking | Scout's Polished Skullcap | 244596 | Scout's Polished Skullcap | Head | Mail
+Leatherworking | Scout's Polished Spaulders | 244597 | Scout's Polished Spaulders | Shoulder | Mail
+Leatherworking | Scout's Polished Gauntlets | 244598 | Scout's Polished Gauntlets | Hands | Mail
+Leatherworking | Scout's Polished Legguards | 244599 | Scout's Polished Legguards | Legs | Mail
+Leatherworking | Scout's Polished Wrap | 244600 | Scout's Polished Wrap | Waist | Mail
+Leatherworking | World Tree Rootwraps | 244601 | World Tree Rootwraps | Feet | Leather
+Leatherworking | Ranger-General's Grips | 244602 | Ranger-General's Grips | Hands | Mail
+Leatherworking | Axe-Flingin' Bands | 244605 | Axe-Flingin' Bands | Wrist | Mail
+Leatherworking | Hexwoven Strand | 244606 | Hexwoven Strand | Waist | Leather
+Leatherworking | World Tender's Trunkplate | 244609 | World Tender's Trunkplate | Chest | Mail
+Leatherworking | World Tender's Rootslippers | 244610 | World Tender's Rootslippers | Feet | Mail
+Leatherworking | World Tender's Barkclasp | 244611 | World Tender's Barkclasp | Waist | Mail
+Leatherworking | Row Walker's Deflectors | 244612 | Row Walker's Deflectors | Wrist | Leather
+Leatherworking | Row Walker's Insurance | 244613 | Row Walker's Insurance | Chest | Leather
+Leatherworking | Row Walker's Swiftgrips | 244614 | Row Walker's Swiftgrips | Hands | Leather
+Blacksmithing | Murder Row Fishhook | 244679 | Murder Row Fishhook | One-Hand | Daggers
+Inscription | Thalassian Competitor's Medallion | 245751 | Thalassian Competitor's Medallion | Trinket | Miscellaneous
+Inscription | Thalassian Competitor's Insignia of Alacrity | 245752 | Thalassian Competitor's Insignia of Alacrity | Trinket | Miscellaneous
+Inscription | Thalassian Competitor's Emblem | 245753 | Thalassian Competitor's Emblem | Trinket | Miscellaneous
+Inscription | Rootwarden's Lamp | 245768 | Rootwarden's Lamp | Held In Off-hand | Miscellaneous
+Inscription | Aln'hara Lantern | 245769 | Aln'hara Lantern | Held In Off-hand | Miscellaneous
+Inscription | Aln'hara Cane | 245770 | Aln'hara Cane | Two-Hand | Staves
+Inscription | Aln'hara Pikestaff | 245771 | Aln'hara Pikestaff | Two-Hand | Staves
+Inscription | Floratender's Crutch | 245772 | Floratender's Crutch | Two-Hand | Staves
+Inscription | Faunatender's Baton | 245773 | Faunatender's Baton | Two-Hand | Staves
+Inscription | Thalassian Competitor's Pillar | 245868 | Thalassian Competitor's Pillar | Two-Hand | Polearms
+Inscription | Thalassian Competitor's Bow | 245869 | Thalassian Competitor's Bow | Ranged | Bows
+Inscription | Thalassian Competitor's Lamp | 245870 | Thalassian Competitor's Lamp | Held In Off-hand | Miscellaneous
+Inscription | Darkmoon Dominion: Hunt | 246304 | Darkmoon Dominion: Hunt | Trinket | Miscellaneous
+Inscription | Darkmoon Dominion: Blood | 246305 | Darkmoon Dominion: Blood | Trinket | Miscellaneous
+Inscription | Darkmoon Dominion: Rot | 246306 | Darkmoon Dominion: Rot | Trinket | Miscellaneous
+Inscription | Darkmoon Dominion: Void | 246307 | Darkmoon Dominion: Void | Trinket | Miscellaneous
+Jewelcrafting | Voidstone Shielding Array | 251073 | Voidstone Shielding Array | Neck | Miscellaneous
+Jewelcrafting | Loa Worshiper's Band | 251513 | Loa Worshiper's Band | Finger | Miscellaneous
+Inscription | Faunatender's Trust | 265336 | Faunatender's Trust | Ranged | Bows
+Inscription | Aln'hara Sprigshot | 265337 | Aln'hara Sprigshot | Ranged | Bows
+Tailoring | Smuggler's Cloak | 267444 | Smuggler's Cloak | Back | Cosmetic
+Tailoring | Silvermoon Agent's Drape | 267445 | Silvermoon Agent's Drape | Back | Cosmetic
+Tailoring | Scout's Cape | 267446 | Scout's Cape | Back | Cosmetic
+Tailoring | Farstrider's Embroidered Cover | 267447 | Farstrider's Embroidered Cover | Back | Cosmetic
+Tailoring | Blood-Tempered Cape | 267448 | Blood-Tempered Cape | Back | Cosmetic
+Tailoring | Spellbreaker's Shroud | 267449 | Spellbreaker's Shroud | Back | Cosmetic
+Inscription | Thalassian Competitor's Staff | 268365 | Thalassian Competitor's Staff | Two-Hand | Staves
+-- Blacksmithing: 100 Midnight recipes seen
+-- Enchanting: 53 Midnight recipes seen
+-- Engineering: 0 Midnight recipes seen in game. The 13 rows below come from
+-- Wowhead's Engineering crafted-items list instead (epic, item level 246), added
+-- by hand on 2026-09-24 because no character had the Midnight skill. For the six
+-- other professions that list matched the game exactly (84 of 84).
+Engineering | Aetherlume Eye Wrap | 244743 | Aetherlume Eye Wrap | Head | Cloth
+Engineering | Aetherlume Optics | 244744 | Aetherlume Optics | Head | Leather
+Engineering | Aetherlume Vision Shroud | 244745 | Aetherlume Vision Shroud | Head | Mail
+Engineering | Aetherlume Sun Guard | 244746 | Aetherlume Sun Guard | Head | Plate
+Engineering | Aetherlume Silken Cuffs | 244747 | Aetherlume Silken Cuffs | Wrist | Cloth
+Engineering | Aetherlume Bands | 244748 | Aetherlume Bands | Wrist | Leather
+Engineering | Aetherlume Bracelets | 244749 | Aetherlume Bracelets | Wrist | Mail
+Engineering | Aetherlume Guards | 244750 | Aetherlume Guards | Wrist | Plate
+Engineering | Aetherlume Softsteppers | 244771 | Aetherlume Softsteppers | Feet | Cloth
+Engineering | Aetherlume Runners | 244772 | Aetherlume Runners | Feet | Leather
+Engineering | Aetherlume Clonkers | 244773 | Aetherlume Clonkers | Feet | Mail
+Engineering | Aetherlume Stompers | 244774 | Aetherlume Stompers | Feet | Plate
+Engineering | P.O.W. x3 | 268477 | P.O.W. x3 | Ranged | Guns
+-- Inscription: 90 Midnight recipes seen
+-- Jewelcrafting: 85 Midnight recipes seen
+-- Leatherworking: 105 Midnight recipes seen
+-- Tailoring: 81 Midnight recipes seen
+-- 190 gear items from crafting
