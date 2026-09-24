@@ -1375,9 +1375,10 @@ function wishlistRemovePreference(itemId, slot) {
 // "confirm(), then a direct delete, then update local state and re-render"
 // shape as removeOwnStreamer() (js/streamers.js), the existing precedent
 // for a raider deleting their own data. No item_id/slot filter, unlike
-// wishlistRemovePreference() above, so this removes every row in one call --
-// item_preferences' own "Raiders manage own item_preferences" RLS policy
-// (is_own_player(player_id)) is what actually scopes this to just their rows.
+// wishlistRemovePreference() above, so within one tier it removes every row in
+// one call -- item_preferences' own "Raiders manage own item_preferences" RLS
+// policy (is_own_player(player_id)) is what scopes it to their own rows, and
+// the season filter (#936) is what keeps it to the tier the page is showing.
 function clearMyWishlist(firstName) {
   if (!_wishlistPlayerId || !wishlistEditableNow()) return;
   if (!_wishlistPrefs || !_wishlistPrefs.length) return;
