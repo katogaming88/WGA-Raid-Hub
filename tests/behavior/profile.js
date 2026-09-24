@@ -255,7 +255,8 @@ const pref = (id, itemId, status, slot) => ({
   status,
   note: null,
   slot,
-  season: 'Midnight Season 2',
+  // The code the column holds since #936, which is SEASON.code.
+  season: 'MID2',
   synced_bis: false
 });
 

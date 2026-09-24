@@ -36,8 +36,8 @@ export function WishlistEditor({
   const planned = season.isSuccess && settings.isSuccess ? editorSeason(settings.data.view, season.data) : null;
   // Editing is open per tier (#939): the switch for the tier the editor is
   // scoped to, which is the tier a pick is stamped with.
-  const open = planned?.code != null && settings.isSuccess && settings.data.openSeasons.includes(planned.code);
-  const tokens = useSeasonTierTokens(planned?.code ?? null);
+  const open = planned != null && settings.isSuccess && settings.data.openSeasons.includes(planned);
+  const tokens = useSeasonTierTokens(planned);
   // Not on a phone or tablet, where a stray tap marks the wrong item.
   const touch = useTouchScreen();
 
@@ -55,8 +55,7 @@ export function WishlistEditor({
                   picks: p,
                   catalog: c,
                   zones: z,
-                  seasonCode: planned?.code ?? null,
-                  seasonName: planned?.name ?? '',
+                  seasonCode: planned,
                   tokens: t,
                   wearer: {
                     className: player.classes_specs?.class ?? null,

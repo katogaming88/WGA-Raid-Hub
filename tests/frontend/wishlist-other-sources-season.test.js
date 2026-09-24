@@ -49,7 +49,7 @@ describe('wishlistOtherSourceHTML -- season scoping', () => {
       itemIds: { 'M+': 1 },
       itemPlaceholders: { 'M+': true },
       seasonView: 'Midnight Season 2',
-      prefs: [{ id: 1, item_id: 1, status: 'bis', note: null, slot: 'Head', season: 'Midnight Season 2' }]
+      prefs: [{ id: 1, item_id: 1, status: 'bis', note: null, slot: 'Head', season: 'MID2' }]
     });
 
     const html = sandbox.wishlistOtherSourceHTML('M+', {});
@@ -61,7 +61,7 @@ describe('wishlistOtherSourceHTML -- season scoping', () => {
       itemIds: { 'M+': 1 },
       itemPlaceholders: { 'M+': true },
       seasonView: 'Midnight Season 2',
-      prefs: [{ id: 1, item_id: 1, status: 'bis', note: null, slot: 'Head', season: 'Midnight Season 1' }]
+      prefs: [{ id: 1, item_id: 1, status: 'bis', note: null, slot: 'Head', season: 'MID1' }]
     });
 
     const html = sandbox.wishlistOtherSourceHTML('M+', {});
@@ -88,7 +88,7 @@ describe('wishlistOtherSourcesSectionHTML -- season scoping', () => {
       itemIds: { 'M+': 1, Crafted: 2, Catalyst: 3 },
       itemPlaceholders: { 'M+': true, Crafted: true, Catalyst: true },
       seasonView: 'Midnight Season 2',
-      prefs: [{ id: 1, item_id: 1, status: 'bis', note: null, slot: 'Head', season: 'Midnight Season 1' }]
+      prefs: [{ id: 1, item_id: 1, status: 'bis', note: null, slot: 'Head', season: 'MID1' }]
     });
 
     const html = sandbox.wishlistOtherSourcesSectionHTML();
@@ -106,7 +106,7 @@ describe('wishlistOtherSourcesTaggedSlots', () => {
       itemIds: { Crafted: 2 },
       itemPlaceholders: { Crafted: true },
       seasonView: 'Midnight Season 2',
-      prefs: [{ id: 1, item_id: 2, status: 'bis', note: null, slot: 'Head', season: 'Midnight Season 2' }]
+      prefs: [{ id: 1, item_id: 2, status: 'bis', note: null, slot: 'Head', season: 'MID2' }]
     });
 
     expect(sandbox.wishlistOtherSourcesTaggedSlots()).toEqual({ Head: 'Crafted' });
@@ -117,7 +117,7 @@ describe('wishlistOtherSourcesTaggedSlots', () => {
       itemIds: { Crafted: 2 },
       itemPlaceholders: { Crafted: true },
       seasonView: 'Midnight Season 2',
-      prefs: [{ id: 1, item_id: 2, status: 'bis', note: null, slot: 'Head', season: 'Midnight Season 1' }]
+      prefs: [{ id: 1, item_id: 2, status: 'bis', note: null, slot: 'Head', season: 'MID1' }]
     });
 
     expect(sandbox.wishlistOtherSourcesTaggedSlots()).toEqual({});

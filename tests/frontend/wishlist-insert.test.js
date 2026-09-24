@@ -108,4 +108,31 @@ describe('wishlistUpsert insert payload', () => {
     sandbox.wishlistSetStatus(42, null, 'bis');
     expect(inserts).toHaveLength(0);
   });
+
+  // #936: the column holds a code, so the stamp is the code the gate already
+  // read. It used to be that code converted back to a display name, for this
+  // one column.
+  it('stamps the season code, not the display name', () => {
+    const { sandbox, inserts } = makeSandbox();
+    sandbox.wishlistSetStatus(42, null, 'bis');
+    expect(inserts[0].row.season).toBe('MID2');
+  });
+
+  // With no tier resolving, the code is the empty string. That is not a
+  // seasons row, so writing it fails the foreign key with an opaque error;
+  // null is what a row with no tier is supposed to look like. Reachable
+  // through the per-player allowance, which opens editing without a
+  // team_seasons row to resolve against.
+  it('stamps null rather than an empty string when no tier resolves', () => {
+    const { sandbox, inserts } = makeSandbox();
+    sandbox.DATA.seasons = [];
+    sandbox.DATA.teamSeasons = [];
+    sandbox._wishlistPlayerNameRealm = 'Kat-Stormrage';
+    sandbox.DATA.roster = [{ nameRealm: 'Kat-Stormrage', wishlistAllowed: true }];
+    // findRosterPlayerByNameRealm() reads window.DATA, not the bare global.
+    sandbox.window.DATA = sandbox.DATA;
+    sandbox.wishlistSetStatus(42, null, 'bis');
+    expect(inserts).toHaveLength(1);
+    expect(inserts[0].row.season).toBeNull();
+  });
 });

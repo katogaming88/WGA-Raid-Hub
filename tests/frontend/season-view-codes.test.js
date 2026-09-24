@@ -9,10 +9,10 @@ import { loadCommonJs, quietConsole } from './helpers/common-sandbox.js';
 // column, so the dropdown populateSeasonViewOptions() fills from it stores a
 // code and shows the tier's name; resolveSeasonViewCode() returns a code on
 // both of its branches, where before the explicit branch returned whatever
-// the dropdown had stored; resolveSeasonView() keeps returning a name,
-// because it stamps item_preferences.season, which is still keyed to
-// seasons(display_name) until #936; and the scope
-// check compares zones by code whether or not a Season View is set. Before
+// the dropdown had stored; and the scope check compares zones by code
+// whether or not a Season View is set. resolveSeasonView(), which returned
+// the name that stamped item_preferences.season, went with #936 when that
+// column moved to seasons(code) and left it with no callers. Before
 // this, a team with no Season View compared its season name against coded
 // zones, matched nothing, and every raid item fell open into scope. Since
 // #938 the fallback is the live tier from the seasons read, not a key on the
@@ -51,20 +51,6 @@ describe('resolveSeasonViewCode returns a code on both branches (#923)', () => {
   });
 });
 
-describe('resolveSeasonView returns a name on both branches', () => {
-  it('shows the tier name for a Season View stored as a code', () => {
-    expect(withData({ seasonView: 'MID1' }).resolveSeasonView()).toBe('Midnight Season 1');
-  });
-
-  it("falls back to the live tier's name (#938)", () => {
-    expect(withData({ seasonView: null }).resolveSeasonView()).toBe('Midnight Season 2');
-  });
-
-  it('names a Season View the seasons read does not hold by the pattern', () => {
-    expect(withData({ seasonView: 'MID9', seasons: [] }).resolveSeasonView()).toBe('Midnight Season 9');
-  });
-});
-
 describe('isItemInSeasonScope compares zones by code', () => {
   const zones = [
     { wclZoneId: 46, season: 'MID1' },
@@ -92,14 +78,14 @@ describe('isItemInSeasonScope compares zones by code', () => {
     expect(sandbox.isItemInSeasonScope('New Helm')).toBe(false);
   });
 
-  it('still compares a placeholder row by the name stamped on it', () => {
+  it('compares a placeholder row by the code stamped on it (#936)', () => {
     const sandbox = withData({
       itemPlaceholders: { 'M+': true },
       raidZones: zones,
       seasonView: 'MID2'
     });
-    expect(sandbox.isItemInSeasonScope('M+', 'Midnight Season 2')).toBe(true);
-    expect(sandbox.isItemInSeasonScope('M+', 'Midnight Season 1')).toBe(false);
+    expect(sandbox.isItemInSeasonScope('M+', 'MID2')).toBe(true);
+    expect(sandbox.isItemInSeasonScope('M+', 'MID1')).toBe(false);
   });
 });
 

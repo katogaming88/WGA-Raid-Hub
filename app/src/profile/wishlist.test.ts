@@ -34,7 +34,7 @@ const pick = (item_id: number, status: string, slot: string | null, extra: Parti
   item_id,
   status,
   slot,
-  season: 'Midnight Season 2',
+  season: 'MID2',
   synced_bis: false,
   ...extra
 });
@@ -49,7 +49,6 @@ const input = (picks: Pick[], wearer: Wearer = DEATH_KNIGHT): EditorInput => ({
     { wcl_zone_id: 46, season: 'MID1' }
   ],
   seasonCode: 'MID2',
-  seasonName: 'Midnight Season 2',
   tokens: [
     { token_item_id: 12, resolved_item_id: 13, class: 'Death Knight' },
     { token_item_id: 12, resolved_item_id: 99, class: 'Paladin' }
@@ -61,17 +60,17 @@ const names = (slots: ReturnType<typeof editorSlots>, slot: string) =>
   slots.find((s) => s.slot === slot)?.items.map((i) => i.name) ?? [];
 
 // The season an officer pinned (Season View, a code since #933) or the team's
-// own: the code scopes the raid items by zone, the name is what a wishlist row
-// is stamped with while item_preferences.season still holds names.
+// own. One value does both jobs since #936: it scopes the raid items by zone
+// and it stamps the row.
 describe('editorSeason', () => {
   const team = { name: 'Midnight Season 1', code: 'MID1', start: null, end: null };
 
-  it('takes the pinned Season View as the code and names it', () => {
-    expect(editorSeason('MID2', team)).toEqual({ code: 'MID2', name: 'Midnight Season 2' });
+  it('takes the pinned Season View', () => {
+    expect(editorSeason('MID2', team)).toBe('MID2');
   });
 
   it('falls back to the team’s season', () => {
-    expect(editorSeason(null, team)).toEqual({ code: 'MID1', name: 'Midnight Season 1' });
+    expect(editorSeason(null, team)).toBe('MID1');
   });
 });
 
@@ -153,7 +152,7 @@ describe('planMark', () => {
         slot: null,
         status: 'bis',
         note: null,
-        season: 'Midnight Season 2',
+        season: 'MID2',
         synced_bis: false
       }
     });

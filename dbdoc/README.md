@@ -58,7 +58,7 @@
 | [public.guilds](public.guilds.md) | 6 | One row per guild. url_key is the /g/<key> segment of an address: readable for WGA, a random code for any other guild (#1100, #1114). | BASE TABLE |
 | [public.retired_url_keys](public.retired_url_keys.md) | 5 | Keys a guild (team_id null) or team used to have, so old addresses still resolve. Written only by the key-change triggers on guilds and teams (#1114). guild_id is the guild the key lived under. | BASE TABLE |
 | [public.people](public.people.md) | 4 | One row per human (#942). auth_user_id is their sign-in account, null for a Discord id listed on a grant before its owner signed in. discord_id is null for an account with no Discord linked. Grant tables point here through person_id. | BASE TABLE |
-| [public.seasons](public.seasons.md) | 5 | One row per raid tier (#932). code is the short form the priority, loot and scoring tables hold (MID2); display_name is what officers see and type (Midnight Season 2). Every season column references one of the two. A tier is added by a migration that closes the outgoing row and inserts the new one. | BASE TABLE |
+| [public.seasons](public.seasons.md) | 5 | One row per raid tier (#932). code is the short form every season column references (MID2); display_name is what officers see and type (Midnight Season 2), and nothing keys to it since #936. A tier is added by a migration that closes the outgoing row and inserts the new one. | BASE TABLE |
 | [public.guild_grants](public.guild_grants.md) | 5 | Guild-wide grants, one row per person per grant per guild (#942). Replaced site_admins, guild_officers and boe_managers, which remain as read-only views until cutover. | BASE TABLE |
 | [public.site_admins](public.site_admins.md) | 5 | Read-only view of guild_grants (#942), dropped at cutover (#1105). | VIEW |
 | [public.guild_officers](public.guild_officers.md) | 5 | Read-only view of guild_grants (#942), dropped at cutover (#1105). | VIEW |
@@ -283,7 +283,7 @@ erDiagram
 "public.item_preferences" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.item_preferences" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.item_preferences" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
-"public.item_preferences" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
+"public.item_preferences" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.tier_token_map" }o--|| "public.items" : "FOREIGN KEY (resolved_item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.tier_token_map" }o--|| "public.items" : "FOREIGN KEY (token_item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.tier_token_map" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"

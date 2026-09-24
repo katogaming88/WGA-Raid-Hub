@@ -15,9 +15,9 @@ afterAll(() => pool.end());
 const BAD_CODE = 'MIDX';
 const BAD_NAME = 'Midnight Season 9';
 
-// One insert per season column, the season left to the case. The twelve code
-// columns reference seasons(code); the one name column left references
-// seasons(display_name) until #936 converts it.
+// One insert per season column, the season left to the case. Every one of
+// them references seasons(code); item_preferences was the last to hold a name
+// and converted with #936, so nothing keys to seasons(display_name) now.
 const CODE_INSERTS = {
   raid_zones: "insert into public.raid_zones (wcl_zone_id, name, season) values (999, 'Season Test Zone', $1)",
   boe_items:
@@ -37,10 +37,7 @@ const CODE_INSERTS = {
     "insert into public.tier_token_map (season, token_item_id, class, resolved_item_id) values ($1, 1, 'TestClass', 2)",
   track_bonus_ids: "insert into public.track_bonus_ids (bonus_id, track, rank, season) values (999001, 'Hero', 1, $1)",
   season_signups:
-    "insert into public.season_signups (team_id, signup_name_realm, season) values (1, 'Seasontest-Illidan', $1)"
-};
-
-const NAME_INSERTS = {
+    "insert into public.season_signups (team_id, signup_name_realm, season) values (1, 'Seasontest-Illidan', $1)",
   item_preferences:
     "insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 2, 2, 'bis', $1)"
 };
@@ -54,22 +51,15 @@ describe('every season column is a foreign key to seasons', () => {
     });
   }
 
-  for (const [table, sql] of Object.entries(NAME_INSERTS)) {
-    it(`${table}.season refuses a name that is not a season`, async () => {
-      await withTxn(async ({ q }) => {
-        await expect(q(sql, [BAD_NAME])).rejects.toMatchObject({ constraint: `${table}_season_fkey` });
-      });
-    });
-  }
-
-  // Green on both sides of the migration: the values production holds today
-  // insert before the keys exist and after.
-  it('(control, green both sides) a real code and a real name insert, and null stays allowed where it was', async () => {
+  // The values production holds insert, and null stays allowed on the columns
+  // that allowed it.
+  it('(control) a real code inserts everywhere, and null stays allowed where it was', async () => {
     await withTxn(async ({ q }) => {
       await q(CODE_INSERTS.scoring, ['MID2']);
-      await q(NAME_INSERTS.item_preferences, ['Midnight Season 2']);
+      await q(CODE_INSERTS.item_preferences, ['MID2']);
       await q(CODE_INSERTS.boe_items, [null]);
       await q(CODE_INSERTS.rclc_loot, [null]);
+      await q(CODE_INSERTS.item_preferences.replace('(1, 2, 2,', '(1, 2, 3,'), [null]);
     });
   });
 
@@ -98,6 +88,34 @@ describe('every season column is a foreign key to seasons', () => {
     await withTxn(async ({ q }) => {
       const res = await q(CODE_INSERTS.boe_items + ' returning season', ['MID2']);
       expect(res.rows).toEqual([{ season: 'MID2' }]);
+    });
+  });
+
+  // #936 did the same for item_preferences, the last name column there was.
+  it('item_preferences.season takes the code, refuses the name, and still allows null', async () => {
+    await withTxn(async ({ q }) => {
+      await expect(q(CODE_INSERTS.item_preferences, [BAD_NAME])).rejects.toMatchObject({
+        constraint: 'item_preferences_season_fkey'
+      });
+    });
+    await withTxn(async ({ q }) => {
+      const res = await q(CODE_INSERTS.item_preferences + ' returning season', ['MID2']);
+      expect(res.rows).toEqual([{ season: 'MID2' }]);
+    });
+  });
+
+  // Nothing keys to the name side any more, which is what makes the format
+  // one thing rather than two.
+  it('no foreign key targets seasons(display_name)', async () => {
+    await withTxn(async ({ q }) => {
+      const res = await q(`select count(*)::int as n
+          from pg_constraint c
+          join lateral unnest(c.confkey) k(attnum) on true
+          join pg_attribute a on a.attrelid = c.confrelid and a.attnum = k.attnum
+         where c.contype = 'f'
+           and c.confrelid = 'public.seasons'::regclass
+           and a.attname = 'display_name'`);
+      expect(res.rows[0].n).toBe(0);
     });
   });
 

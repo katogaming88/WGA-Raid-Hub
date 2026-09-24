@@ -2,14 +2,14 @@
 
 ## Description
 
-One row per raid tier (#932). code is the short form the priority, loot and scoring tables hold (MID2); display_name is what officers see and type (Midnight Season 2). Every season column references one of the two. A tier is added by a migration that closes the outgoing row and inserts the new one.
+One row per raid tier (#932). code is the short form every season column references (MID2); display_name is what officers see and type (Midnight Season 2), and nothing keys to it since #936. A tier is added by a migration that closes the outgoing row and inserts the new one.
 
 ## Columns
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| code | text |  | false | [public.rclc_loot](public.rclc_loot.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.raid_zones](public.raid_zones.md) [public.tier_token_map](public.tier_token_map.md) [public.boe_items](public.boe_items.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.track_bonus_ids](public.track_bonus_ids.md) [public.team_seasons](public.team_seasons.md) |  |  |
-| display_name | text |  | false | [public.item_preferences](public.item_preferences.md) |  |  |
+| code | text |  | false | [public.rclc_loot](public.rclc_loot.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.raid_zones](public.raid_zones.md) [public.item_preferences](public.item_preferences.md) [public.tier_token_map](public.tier_token_map.md) [public.boe_items](public.boe_items.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.track_bonus_ids](public.track_bonus_ids.md) [public.team_seasons](public.team_seasons.md) |  |  |
+| display_name | text |  | false |  |  |  |
 | starts_at | date |  | false |  |  | The day the tier launched. |
 | ends_at | date |  | true |  |  | Null while the tier is open-ended; the next tier's migration sets it. Tiers do not overlap (seasons_no_overlap), so at most one row is null. |
 | created_at | timestamp with time zone | now() | false |  |  |  |
@@ -42,6 +42,7 @@ erDiagram
 "public.scoring" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.season_signups" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.raid_zones" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.item_preferences" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.tier_token_map" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.boe_items" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.priority_conflict_dismissals" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
@@ -49,7 +50,6 @@ erDiagram
 "public.priority_stale_dismissals" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.track_bonus_ids" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.team_seasons" }o--|| "public.seasons" : "FOREIGN KEY (season_code) REFERENCES seasons(code)"
-"public.item_preferences" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(display_name)"
 
 "public.seasons" {
   text code
@@ -131,6 +131,19 @@ erDiagram
   boolean is_mini_raid
   integer sort_index
 }
+"public.item_preferences" {
+  integer id
+  integer team_id FK
+  integer player_id FK
+  integer item_id FK
+  text status
+  text note
+  text slot
+  timestamp_with_time_zone updated_at
+  timestamp_with_time_zone created_at
+  text season FK
+  boolean synced_bis
+}
 "public.tier_token_map" {
   integer id
   integer token_item_id FK
@@ -207,19 +220,6 @@ erDiagram
   boolean signups_open
   boolean wishlist_open
   timestamp_with_time_zone updated_at
-}
-"public.item_preferences" {
-  integer id
-  integer team_id FK
-  integer player_id FK
-  integer item_id FK
-  text status
-  text note
-  text slot
-  timestamp_with_time_zone updated_at
-  timestamp_with_time_zone created_at
-  text season FK
-  boolean synced_bis
 }
 ```
 

@@ -35,8 +35,8 @@ describe('officer item_preferences carry season (#707)', () => {
   it('drops a placeholder wishlist row tagged in a previous season', () => {
     const sandbox = sandboxWithCatalog();
     const prefs = [
-      { player_id: 7, item_id: 9001, status: 'bis', slot: 'Trinket 1', season: 'Midnight Season 1' },
-      { player_id: 7, item_id: 9002, status: 'bis', slot: 'Trinket 2', season: 'Midnight Season 2' }
+      { player_id: 7, item_id: 9001, status: 'bis', slot: 'Trinket 1', season: 'MID1' },
+      { player_id: 7, item_id: 9002, status: 'bis', slot: 'Trinket 2', season: 'MID2' }
     ];
     const items = sandbox.bisItemsFromWishlistPrefs(prefs, 7).map((e) => e.item);
     expect(items).toEqual(['Crafted']);
@@ -51,8 +51,8 @@ describe('officer item_preferences carry season (#707)', () => {
   it('drops a real item whose zone belongs to a previous season', () => {
     const sandbox = sandboxWithCatalog();
     const prefs = [
-      { player_id: 7, item_id: 101, status: 'bis', slot: null, season: 'Midnight Season 1' },
-      { player_id: 7, item_id: 202, status: 'bis', slot: null, season: 'Midnight Season 2' }
+      { player_id: 7, item_id: 101, status: 'bis', slot: null, season: 'MID1' },
+      { player_id: 7, item_id: 202, status: 'bis', slot: null, season: 'MID2' }
     ];
     expect(sandbox.bisItemsFromWishlistPrefs(prefs, 7).map((e) => e.item)).toEqual(['New Tier Helm']);
   });

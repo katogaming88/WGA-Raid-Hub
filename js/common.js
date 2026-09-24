@@ -109,14 +109,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.154.2';
+var VERSION = '3.154.3';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20260923220757';
+var REQUIRED_SCHEMA = '20260924003956';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -2955,7 +2955,7 @@ var SEASON_CONFIG_KEYS = [
   // meant opening next-season signups also flipped every raider's Priority
   // tab/BiS/Wishlist to next season's still-incomplete catalog mid-raid --
   // corrected same day, see docs/database-decisions.md). Nullable, resolved
-  // via resolveSeasonView() below.
+  // via resolveSeasonViewCode() below.
   'seasonView',
   // Officer-set target roster sizes, shown as a signup-time advisory
   // (js/signup.js's buildSignupRoleAdvisoryHtml()) once the confirmed
@@ -3100,7 +3100,7 @@ function fetchSupabaseRaidZones() {
 // with the rest of the bootstrap's heavy reads, before DATA.seasonView/
 // seasons exist yet (they're only set once applyCoreData() resolves), so
 // there is nothing yet to filter by. js/bonusRoll.js filters to
-// resolveSeasonView() itself at render time instead, the same "fetch once,
+// resolveSeasonViewCode() itself at render time instead, the same "fetch once,
 // filter at use time against whichever season is live *then*" split
 // currentZoneIdsForSeason()/isItemInSeasonScope() already use for the item
 // catalog.
@@ -4140,15 +4140,11 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
 // this instead of DATA.raidProgression, which is WCL progress-tracking config
 // (which raids to pull kill/attendance data for), not a season-view concept.
 //
-// Always the display name (#933): the seasons row's, since this is what
-// stamps item_preferences rows, whose season column still holds names
-// (#936). seasonDisplayName() covers a Season View stored before the
-// conversion, and passes a name through unchanged.
-function resolveSeasonView() {
-  var code = resolveSeasonViewCode();
-  var tier = seasonRow(code);
-  return (tier && tier.display_name) || seasonDisplayName(code) || '';
-}
+// resolveSeasonView() lived here and returned the display name, for the one
+// consumer that needed one: item_preferences.season, the last column in the
+// schema keyed on seasons(display_name). #936 moved that key to seasons(code),
+// so the conversion had no callers left and the function went with it. Every
+// season-scoped read and write is resolveSeasonViewCode() below.
 
 // The season code to tag/query priority_order (and its fairness-warning
 // views) with, and the code the zone scope check compares raid_zones.season
@@ -4212,10 +4208,10 @@ function currentZoneIdsForSeason(season) {
 // editor, and Raider Wishlist so the "current tier only" scoping rule lives in
 // one place. Placeholder items (M+/Crafted/Catalyst) aren't tied to a raid
 // zone, so they can't be scoped this way at all -- pass the row's own
-// `rowSeason` (item_preferences.season, stamped at tag
-// time with the name resolveSeasonView() returns) for those instead. Rows
-// tagged before that column existed have rowSeason null/undefined and fail
-// open (shown regardless of season) rather than silently disappearing.
+// `rowSeason` (item_preferences.season, stamped at tag time with the code
+// resolveSeasonViewCode() returns, #936) for those instead. Rows tagged
+// before that column existed have rowSeason null/undefined and fail open
+// (shown regardless of season) rather than silently disappearing.
 //
 // Fail-open only applies to the default (seasonView unset) case: no
 // raid_zones rows for the live season yet still shows everything, so an
@@ -4225,7 +4221,7 @@ function currentZoneIdsForSeason(season) {
 // to "show everything" (this doubles as the way to verify a new tier's
 // import actually worked).
 function isItemInSeasonScope(name, rowSeason) {
-  if ((DATA.itemPlaceholders || {})[name]) return !rowSeason || rowSeason === resolveSeasonView();
+  if ((DATA.itemPlaceholders || {})[name]) return !rowSeason || rowSeason === resolveSeasonViewCode();
   var zone = (DATA.itemZones || {})[name];
   if (!zone) return true;
   var explicit = !!(DATA && DATA.seasonView);
@@ -5514,8 +5510,8 @@ function signupsOpen(seasonCode) {
 // Same "editing gate, not visibility gate" shape as bisSubmissionsOpen() --
 // when closed, the raider's own tags stay visible/read-only rather than the
 // whole Wishlist tab disappearing (that's the 'bis' feature flag's job). The
-// tier is the one a wishlist row gets stamped with (resolveSeasonView()), so
-// the gate and the stamp always agree.
+// tier is the one a wishlist row gets stamped with (resolveSeasonViewCode()),
+// so the gate and the stamp always agree.
 function wishlistOpen() {
   var row = teamSeasonRow(resolveSeasonViewCode());
   return !!(row && row.wishlist_open);

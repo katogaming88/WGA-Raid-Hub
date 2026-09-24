@@ -8,7 +8,6 @@
 
 import type { CatalogItem, WishlistRow, ZoneRow } from './lootPriority';
 import type { SeasonWindow } from './profile';
-import { seasonName as seasonNameOf } from './profile';
 import { WISHLIST_SLOTS } from './lootPriority';
 
 export type Mark = 'bis' | 'pass';
@@ -170,11 +169,10 @@ export function inSeasonZone(item: CatalogItem, seasonCode: string | null, zones
 }
 
 // The season the editor plans for: the Season View an officer pinned (a code
-// since #933) or the team's own. The code scopes the raid items by zone; the
-// name is what a wishlist row is stamped with, since item_preferences.season
-// still holds names (#936 converts it).
-export function editorSeason(view: string | null, season: SeasonWindow): { code: string | null; name: string } {
-  return view ? { code: view, name: seasonNameOf(view) } : { code: season.code, name: season.name };
+// since #933) or the team's own. It scopes the raid items by zone and stamps
+// the row, which since #936 is the same value for both.
+export function editorSeason(view: string | null, season: SeasonWindow): string | null {
+  return view || season.code;
 }
 
 // Whether the wearer can use `item` in `row`. Anything the catalog does not
@@ -221,7 +219,6 @@ type Context = {
   picks: Pick[];
   byId: Map<number, CatalogItem>;
   seasonCode: string | null;
-  seasonName: string;
   zones: ZoneRow[];
 };
 
@@ -280,16 +277,15 @@ export type EditorInput = {
   catalog: CatalogItem[];
   zones: ZoneRow[];
   // The season being planned (editorSeason()): Season View when an officer set
-  // one, else the team's season, as on the current site. The code scopes the
-  // zones, the name stamps the row.
+  // one, else the team's season, as on the current site. It scopes the zones
+  // and stamps the row.
   seasonCode: string | null;
-  seasonName: string;
   tokens: TokenRow[];
   wearer: Wearer;
 };
 
 export function editorSlots(input: EditorInput): EditorSlot[] {
-  const { picks, catalog, zones, seasonCode, seasonName, tokens, wearer } = input;
+  const { picks, catalog, zones, seasonCode, tokens, wearer } = input;
   const byId = new Map(catalog.map((i) => [i.id, i]));
   // A tier piece is offered as its token, named for the wearer's class, since
   // the token is what drops and what priority is kept for.
@@ -312,14 +308,14 @@ export function editorSlots(input: EditorInput): EditorSlot[] {
     if (!items.length) return [];
     const notFromRaid = picks.find((p) => {
       const item = byId.get(p.item_id);
-      return item?.is_placeholder && p.slot === slot && p.status === 'bis' && (!p.season || p.season === seasonName);
+      return item?.is_placeholder && p.slot === slot && p.status === 'bis' && (!p.season || p.season === seasonCode);
     });
     return [
       {
         slot,
         items: items.map((i) => ({
           ...i,
-          ...markFor({ picks, byId, seasonCode, seasonName, zones }, slot, i.itemId)
+          ...markFor({ picks, byId, seasonCode, zones }, slot, i.itemId)
         })),
         notFromRaid: notFromRaid ? (byId.get(notFromRaid.item_id)?.name ?? null) : null
       }
@@ -334,7 +330,10 @@ export type NewPick = {
   slot: string | null;
   status: Mark;
   note: null;
-  season: string;
+  // Null when no tier resolves at all, which is what a row with no season
+  // looks like. The column is nullable and the empty string is not a seasons
+  // row, so it would fail the foreign key (#936).
+  season: string | null;
   synced_bis: false;
 };
 
@@ -352,9 +351,9 @@ export function planMark(
   itemId: number,
   next: Mark | null
 ): WritePlan {
-  const { picks, catalog, zones, seasonCode, seasonName } = input;
+  const { picks, catalog, zones, seasonCode } = input;
   const byId = new Map(catalog.map((i) => [i.id, i]));
-  const ctx = { picks, byId, seasonCode, seasonName, zones };
+  const ctx = { picks, byId, seasonCode, zones };
   const pair = PAIR[row];
   const own = picksFor(picks, byId, row, itemId);
   const other = pair ? picksFor(picks, byId, pair, itemId) : [];
@@ -389,7 +388,7 @@ export function planMark(
     }
     for (const p of picks) {
       const item = byId.get(p.item_id);
-      if (item?.is_placeholder && p.status === 'bis' && p.slot === row && (!p.season || p.season === seasonName)) {
+      if (item?.is_placeholder && p.status === 'bis' && p.slot === row && (!p.season || p.season === seasonCode)) {
         drop(p);
       }
     }
@@ -410,7 +409,7 @@ export function planMark(
           slot,
           status: next,
           note: null,
-          season: seasonName,
+          season: seasonCode,
           synced_bis: false
         }
   };
@@ -430,7 +429,7 @@ export function wishlistSummary(
     id: (r as Partial<Pick>).id ?? i,
     synced_bis: r.synced_bis ?? false
   }));
-  const ctx = { picks, byId, seasonCode: season.code, seasonName: season.name, zones };
+  const ctx = { picks, byId, seasonCode: season.code, zones };
   const raid = picks.filter((p) => {
     const item = byId.get(p.item_id);
     return !!item && !item.is_placeholder && inSeasonZone(item, season.code, zones);
@@ -443,7 +442,7 @@ export function wishlistSummary(
         byId.get(p.item_id)?.is_placeholder &&
         p.slot === slot &&
         p.status === status &&
-        (!p.season || p.season === season.name)
+        (!p.season || p.season === season.code)
     );
 
   let bis = 0;

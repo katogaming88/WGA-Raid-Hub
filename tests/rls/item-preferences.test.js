@@ -292,4 +292,38 @@ describe('the slot-override unique index allows the same placeholder item once p
   });
 });
 
+// #936: the last season column holding a display name. Every other season
+// column references seasons(code); this one referenced seasons(display_name),
+// so both writers resolved a code and converted it to a name for this column
+// alone. The foreign key is the assertion: with it on code, a name has nowhere
+// to land and the conversion cannot half-happen.
+describe('item_preferences.season holds a season code', () => {
+  it('a raider can stamp their row with a season code', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await ownPlayer(q);
+      const inserted = await asUser(
+        RAIDER_T1,
+        "insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, $1, 1, 'bis', 'MID2') returning id",
+        [pid]
+      );
+      const after = (await q('select season from public.item_preferences where id = $1', [inserted.rows[0].id]))
+        .rows[0];
+      expect(after.season).toBe('MID2');
+    });
+  });
+
+  it('a display name is refused', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await ownPlayer(q);
+      await expect(
+        asUser(
+          RAIDER_T1,
+          "insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, $1, 1, 'bis', 'Midnight Season 2')",
+          [pid]
+        )
+      ).rejects.toMatchObject({ code: '23503' });
+    });
+  });
+});
+
 afterAll(() => pool.end());
