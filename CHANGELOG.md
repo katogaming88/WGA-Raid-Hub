@@ -12,7 +12,7 @@ answers to.
 
 ---
 
-## [3.153.6] - 2026-09-24
+## [3.153.6] - 2026-09-23
 
 ### Backend
 
@@ -23,6 +23,10 @@ answers to.
   team's leader. While the switch is off only a site admin can create a guild.
   Leave it off until second guilds are supported (#1045)
   ([#1226](https://github.com/katogaming88/WGA-Raid-Hub/issues/1226)).
+- Guild and team names are labels, not identities (#1226): two guilds may now
+  share a name, and a team's name only has to be unique within its own guild
+  (ignoring case), so another guild can have its own "Phoenix". Replaces the
+  two site-wide unique rules on `guilds.name` and `teams.name`.
 
 ### Project
 
@@ -33,6 +37,8 @@ answers to.
   region, home realm, and an optional team name that defaults to the guild's), which shows to everyone signed in
   once the switch is on, and always to a site admin, who also sees the switch
   there ([#1226](https://github.com/katogaming88/WGA-Raid-Hub/issues/1226)).
+- Revamp time log: 2026-09-23 (the /join page, Rex's review of #1318, and
+  the front page and guild creation), with a Revamp 4 line in the totals.
 
 ## [3.153.5] - 2026-09-23
 

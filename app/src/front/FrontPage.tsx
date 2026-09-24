@@ -9,7 +9,7 @@ import './front.css';
 // The site's front address (#1226), for anyone who is not on a team: signed
 // out, or signed in but not joined anywhere. A person on a team skips it and
 // lands on their guild's home. Nobody creates a guild from here yet -- for now
-// only a site admin can (Kat, 2026-09-24), so the page says what the Hub is and
+// only a site admin can (Kat, 2026-09-23), so the page says what the Hub is and
 // where to ask instead of showing a create form.
 export function FrontPage() {
   const { user } = useSession();

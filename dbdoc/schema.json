@@ -2398,7 +2398,8 @@
         {
           "name": "name",
           "type": "text",
-          "nullable": false
+          "nullable": false,
+          "comment": "The team's display name. Unique within its guild, ignoring case, so a guild cannot have two teams with the same name; other guilds may reuse it (#1226)."
         },
         {
           "name": "slug",
@@ -2425,14 +2426,6 @@
       ],
       "indexes": [
         {
-          "name": "teams_name_key",
-          "def": "CREATE UNIQUE INDEX teams_name_key ON public.teams USING btree (name)",
-          "table": "public.teams",
-          "columns": [
-            "name"
-          ]
-        },
-        {
           "name": "teams_pkey",
           "def": "CREATE UNIQUE INDEX teams_pkey ON public.teams USING btree (id)",
           "table": "public.teams",
@@ -2448,6 +2441,15 @@
             "guild_id",
             "slug"
           ]
+        },
+        {
+          "name": "teams_guild_id_lower_name_key",
+          "def": "CREATE UNIQUE INDEX teams_guild_id_lower_name_key ON public.teams USING btree (guild_id, lower(name))",
+          "table": "public.teams",
+          "columns": [
+            "guild_id",
+            "lower"
+          ]
         }
       ],
       "constraints": [
@@ -2459,16 +2461,6 @@
           "referenced_table": "",
           "columns": [
             "slug"
-          ]
-        },
-        {
-          "name": "teams_name_key",
-          "type": "UNIQUE",
-          "def": "UNIQUE (name)",
-          "table": "public.teams",
-          "referenced_table": "",
-          "columns": [
-            "name"
           ]
         },
         {
@@ -6253,7 +6245,8 @@
         {
           "name": "name",
           "type": "text",
-          "nullable": false
+          "nullable": false,
+          "comment": "The guild's display name. A label only: guilds are identified by url_key and id, so two guilds may share a name (#1226)."
         },
         {
           "name": "url_key",
@@ -6287,14 +6280,6 @@
           "table": "public.guilds",
           "columns": [
             "id"
-          ]
-        },
-        {
-          "name": "guilds_name_key",
-          "def": "CREATE UNIQUE INDEX guilds_name_key ON public.guilds USING btree (name)",
-          "table": "public.guilds",
-          "columns": [
-            "name"
           ]
         },
         {
@@ -6345,16 +6330,6 @@
           "referenced_table": "",
           "columns": [
             "id"
-          ]
-        },
-        {
-          "name": "guilds_name_key",
-          "type": "UNIQUE",
-          "def": "UNIQUE (name)",
-          "table": "public.guilds",
-          "referenced_table": "",
-          "columns": [
-            "name"
           ]
         },
         {

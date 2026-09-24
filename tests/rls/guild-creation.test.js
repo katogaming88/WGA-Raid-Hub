@@ -96,20 +96,21 @@ describe('create_guild()', () => {
     });
   });
 
-  it('says why when the guild name, used as the team name, is already a team', async () => {
+  it('lets a guild reuse a name and a team name that another guild already has', async () => {
     await withTxn(async ({ q, asUser }) => {
       await open(asUser);
       const uid = await newcomer(q);
-      await expect(asUser(uid, "select * from public.create_guild('Team Phoenix', 'us', 'R')")).rejects.toThrow(
-        /give the team its own name/
+      const { rows } = await create(asUser, uid, 'We Go Again', 'eu', 'Draenor', 'Team Phoenix');
+      const made = await q(
+        `select g.name as guild, t.name as team, g.id <> 1 as other_guild
+           from public.teams t join public.guilds g on g.id = t.guild_id where t.slug = $1`,
+        [rows[0].team_key]
       );
-      await expect(
-        asUser(uid, "select * from public.create_guild('Fine Guild', 'us', 'R', 'team phoenix')")
-      ).rejects.toThrow(/A team called team phoenix already exists/);
+      expect(made.rows).toEqual([{ guild: 'We Go Again', team: 'Team Phoenix', other_guild: true }]);
     });
   });
 
-  it('refuses a missing session, no Discord, a bad region, blanks and names already taken; anon cannot call it', async () => {
+  it('refuses a missing session, no Discord, a bad region, blanks; anon cannot call it', async () => {
     await withTxn(async ({ q, asUser, asAnon }) => {
       await open(asUser);
       const uid = await newcomer(q);
@@ -120,8 +121,6 @@ describe('create_guild()', () => {
       await expect(create(asUser, uid, '  ')).rejects.toThrow(/name/);
       await expect(create(asUser, uid, 'X', 'na')).rejects.toThrow(/region/);
       await expect(create(asUser, uid, 'X', 'us', ' ')).rejects.toThrow(/realm/);
-      await expect(create(asUser, uid, 'we go again')).rejects.toThrow(/already exists/);
-      await expect(create(asUser, uid, 'X', 'us', 'R', 'team phoenix')).rejects.toThrow(/already exists/);
       await expect(asAnon("select public.create_guild('X', 'us', 'R', 'T')")).rejects.toMatchObject({
         code: RLS_DENIED
       });

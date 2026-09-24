@@ -9,7 +9,7 @@ One row per guild. url_key is the /g/<key> segment of an address: readable for W
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | id | integer |  | false | [public.teams](public.teams.md) [public.retired_url_keys](public.retired_url_keys.md) [public.guild_grants](public.guild_grants.md) |  |  |
-| name | text |  | false |  |  |  |
+| name | text |  | false |  |  | The guild's display name. A label only: guilds are identified by url_key and id, so two guilds may share a name (#1226). |
 | url_key | text | new_url_code() | false |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | region | text |  | true |  |  | Battle.net region, lower case (us, eu, kr, tw). With realm, builds the guild's Raider.IO and Armory links (#1102). |
@@ -23,7 +23,6 @@ One row per guild. url_key is the /g/<key> segment of an address: readable for W
 | guilds_region_format | CHECK | CHECK ((region = ANY (ARRAY['us'::text, 'eu'::text, 'kr'::text, 'tw'::text]))) |
 | guilds_url_key_format | CHECK | CHECK (((url_key ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text) AND ((length(url_key) >= 2) AND (length(url_key) <= 32)))) |
 | guilds_pkey | PRIMARY KEY | PRIMARY KEY (id) |
-| guilds_name_key | UNIQUE | UNIQUE (name) |
 | guilds_url_key_key | UNIQUE | UNIQUE (url_key) |
 
 ## Indexes
@@ -31,7 +30,6 @@ One row per guild. url_key is the /g/<key> segment of an address: readable for W
 | Name | Definition |
 | ---- | ---------- |
 | guilds_pkey | CREATE UNIQUE INDEX guilds_pkey ON public.guilds USING btree (id) |
-| guilds_name_key | CREATE UNIQUE INDEX guilds_name_key ON public.guilds USING btree (name) |
 | guilds_url_key_key | CREATE UNIQUE INDEX guilds_url_key_key ON public.guilds USING btree (url_key) |
 
 ## Triggers

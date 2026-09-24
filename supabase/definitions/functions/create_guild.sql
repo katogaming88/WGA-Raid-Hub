@@ -14,8 +14,6 @@ declare
   v_name text := trim(coalesce(p_name, ''));
   v_realm text := trim(coalesce(p_realm, ''));
   v_team_name text;
-  v_team_named boolean := nullif(trim(coalesce(p_team_name, '')), '') is not null;
-  v_constraint text;
   v_guild_id integer;
   v_guild_key text;
   v_team_id integer;
@@ -49,37 +47,15 @@ begin
     raise exception 'Give the guild''s home realm';
   end if;
 
-  if exists (select 1 from public.guilds g where lower(g.name) = lower(v_name)) then
-    raise exception 'A guild called % already exists', v_name;
-  end if;
-  -- teams.name is unique across every guild until #1045.
-  if exists (select 1 from public.teams t where lower(t.name) = lower(v_team_name)) then
-    if v_team_named then
-      raise exception 'A team called % already exists', v_team_name;
-    end if;
-    raise exception 'The first team would be named % like your guild, but a team with that name already exists: give the team its own name', v_team_name;
-  end if;
+  -- Names are labels, not identities (names_unique_per_guild): two guilds may
+  -- share a name, and a brand-new guild has no other team to clash with.
+  insert into public.guilds (name, region, realm)
+  values (v_name, p_region, v_realm)
+  returning id, url_key into v_guild_id, v_guild_key;
 
-  -- The checks above read, then these insert: two callers with the same name
-  -- at the same instant both pass and the second hits the unique index, so
-  -- that is answered in the same words instead of a raw duplicate-key error.
-  begin
-    insert into public.guilds (name, region, realm)
-    values (v_name, p_region, v_realm)
-    returning id, url_key into v_guild_id, v_guild_key;
-
-    insert into public.teams (name, guild_id)
-    values (v_team_name, v_guild_id)
-    returning id, slug into v_team_id, v_team_key;
-  exception when unique_violation then
-    get stacked diagnostics v_constraint = constraint_name;
-    if v_constraint = 'guilds_name_key' then
-      raise exception 'A guild called % already exists', v_name;
-    elsif v_constraint = 'teams_name_key' then
-      raise exception 'A team called % already exists', v_team_name;
-    end if;
-    raise;
-  end;
+  insert into public.teams (name, guild_id)
+  values (v_team_name, v_guild_id)
+  returning id, slug into v_team_id, v_team_key;
 
   -- Every write path assumes a team_settings row already exists.
   insert into public.team_settings (team_id, config) values (v_team_id, '{}'::jsonb);
