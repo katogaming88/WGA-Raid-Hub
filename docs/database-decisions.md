@@ -12,7 +12,7 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ## 2026-09-23 -- Guild and team names are labels: guilds may share a name, a team's name is unique within its guild (#1226)
 
-Shipped: 20260923215416_names_unique_per_guild.sql
+Shipped: 20260923220757_names_unique_per_guild.sql
 
 Kat's call while reviewing guild creation (2026-09-23): a guild is identified by its random code and a team by its own, so the name is only what people read. Two rules treated it as an identity anyway, `guilds_name_key` (no two guilds share a name) and `teams_name_key` (no two teams share a name anywhere on the site), so a second guild could not have a team called "Phoenix". Supersedes the 2026-09-13 note that `teams.name` stays site-wide until #1045.
 
@@ -23,7 +23,7 @@ Kat's call while reviewing guild creation (2026-09-23): a guild is identified by
 
 ## 2026-09-23 -- Creating a guild and its first team, behind a switch a site admin flips (#1226)
 
-Shipped: 20260923204829_guild_creation.sql
+Shipped: 20260923220749_guild_creation.sql
 
 The site front page (#1226) gets a create-your-guild form. Kat decided (2026-09-23) not to open guild creation yet, but to build it now so opening it later is one switch, not another release.
 
