@@ -20,6 +20,8 @@ answers to.
   raider, and as a BoE manager (dark and light), with finds at every stage of
   the lifecycle, and check each for accessibility problems. Nothing a raider
   or officer sees changes ([#1102](https://github.com/katogaming88/WGA-Raid-Hub/issues/1102)).
+- The revamp time log gets rows for the 2026-09-24 sessions (the Tokens column,
+  the cutover planning, the Battle.net accessibility check and this work).
 
 ## [3.154.3] - 2026-09-24
 
