@@ -23,12 +23,13 @@
 -- confirmed fact about who holds what. The join page saves the picked
 -- character before it joins, and passes its Battle.net id.
 --
--- The new-character path becomes one upsert on (team_id, name_realm_key) with
--- the holder guard in the update's own condition, as add_signup_to_roster()
--- and review_main_swap_request() do. The select-then-insert it replaces locked
--- nothing when no row matched, so two joins racing on the same new name both
--- reached the insert and the second surfaced the unique index as a raw
--- duplicate-key error instead of the refusal.
+-- Both writes stop being select-then-insert. The roster row becomes one upsert
+-- on (team_id, name_realm_key) with the holder guard in the update's own
+-- condition, as add_signup_to_roster() and review_main_swap_request() do, and
+-- the membership insert arbitrates on (team_id, person_id). The old form
+-- locked nothing when no row matched, so two joins racing each other both
+-- reached the insert and the second surfaced a unique index as a raw
+-- duplicate-key error instead of the refusal or the join.
 
 drop function if exists public.team_invite_link_join(text, text, text, text, text);
 
@@ -82,15 +83,22 @@ begin
     from public.classes_specs cs
    where cs.class = v_character.class_name and cs.spec = v_character.spec_name;
 
-  select tm.id into v_member_id
-    from public.team_members tm
-   where tm.team_id = v_team_id and tm.person_id = public.my_person_id();
+  -- The membership goes the same way, for the same reason: a person opening
+  -- the link in two tabs would otherwise have both find no membership and both
+  -- insert, and the second would surface team_members_team_id_person_id_key
+  -- instead of joining. The trigger fills person_id before the conflict is
+  -- checked, so it can arbitrate on it. do nothing rather than do update,
+  -- since there is nothing to change on a membership that already exists and
+  -- an update would touch its updated_at.
+  insert into public.team_members (team_id, discord_id, role)
+  values (v_team_id, v_discord_id, 'raider')
+  on conflict (team_id, person_id) do nothing
+  returning id into v_member_id;
 
   if v_member_id is null then
-    -- The trigger resolves the person and its account from the Discord id.
-    insert into public.team_members (team_id, discord_id, role)
-    values (v_team_id, v_discord_id, 'raider')
-    returning id into v_member_id;
+    select tm.id into v_member_id
+      from public.team_members tm
+     where tm.team_id = v_team_id and tm.person_id = public.my_person_id();
   end if;
 
   -- One statement for the new character and the returning one, so a join

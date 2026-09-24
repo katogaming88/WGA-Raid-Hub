@@ -25,7 +25,19 @@ answers to.
   live link could join as any character name they typed, including a character
   archived when a raider left, which brought it back onto the roster under
   them with its attendance, loot and BoE history. Two people racing to join
-  under the same new name now get the refusal rather than a database error
+  under the same new name now get the refusal rather than a database error,
+  and opening the same link in two tabs no longer fails the second one
+  ([#1319](https://github.com/katogaming88/WGA-Raid-Hub/issues/1319)).
+
+### Functions
+
+- `battlenet-characters` no longer clears your saved characters when Blizzard
+  answers with none. Saving replaces the whole set, and Blizzard returns an
+  empty list both for an account with no characters and for a request that
+  goes wrong, so a hiccup while saving could delete every character you had
+  saved. A save that names characters and matches none of them now says
+  Battle.net did not answer and changes nothing. Clearing them on purpose,
+  which names none, still works
   ([#1319](https://github.com/katogaming88/WGA-Raid-Hub/issues/1319)).
 
 ### Project
