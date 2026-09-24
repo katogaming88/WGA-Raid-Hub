@@ -140,7 +140,8 @@ export function useCatalog() {
       .order('id')
       .then(({ data, error }) => ({
         data:
-          data?.map(({ item_seasons, ...item }) => ({ ...item, seasons: item_seasons.map((s) => s.season) })) ?? null,
+          data?.map(({ item_seasons, ...item }) => ({ ...item, seasons: (item_seasons ?? []).map((s) => s.season) })) ??
+          null,
         error
       }))
   );
