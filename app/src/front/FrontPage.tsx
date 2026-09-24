@@ -1,8 +1,9 @@
-import { Navigate } from 'react-router';
+import { Link, Navigate } from 'react-router';
 import { DataState } from '../components/DataState';
 import { useAccess } from '../auth/access';
 import { BATTLENET, useSession } from '../auth/session';
 import { defaultGuildPath, SUPPORT_DISCORD_URL } from '../config';
+import { useGuildCreationOpen } from './useGuildCreation';
 import './front.css';
 
 // The site's front address (#1226), for anyone who is not on a team: signed
@@ -47,6 +48,9 @@ const FEATURES = [
 
 function FrontContent({ signedIn }: { signedIn: boolean }) {
   const { signIn } = useSession();
+  // Until it loads, or if it fails, the page shows the closed wording: nothing
+  // here depends on it.
+  const canCreate = useGuildCreationOpen().data === true;
   return (
     <main className="content front-page">
       <section className="front-hero" aria-labelledby="front-title">
@@ -61,6 +65,11 @@ function FrontContent({ signedIn }: { signedIn: boolean }) {
             <button type="button" className="button button-primary" onClick={() => void signIn(BATTLENET)}>
               Sign in with Battle.net
             </button>
+          )}
+          {canCreate && (
+            <Link className="button" to="/new-guild">
+              Create your guild
+            </Link>
           )}
           <a className="button" href={SUPPORT_DISCORD_URL} target="_blank" rel="noopener noreferrer">
             Ask on the support Discord<span className="visually-hidden"> (opens in a new tab)</span>
@@ -87,7 +96,9 @@ function FrontContent({ signedIn }: { signedIn: boolean }) {
             : 'Open the invite link your team leader or an officer sent you, or sign in above if you’re already on a team.'}
         </p>
         <p>
-          Want your own guild on the Raid Hub? New guilds are set up by hand for now, so ask on the support Discord.
+          {canCreate
+            ? 'Want your own guild on the Raid Hub? Create it, and its first team, in a minute.'
+            : 'Want your own guild on the Raid Hub? New guilds are set up by hand for now, so ask on the support Discord.'}
         </p>
       </section>
     </main>

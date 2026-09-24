@@ -12,6 +12,28 @@ answers to.
 
 ---
 
+## [3.153.6] - 2026-09-24
+
+### Backend
+
+- Guild creation behind a switch (#1226): `site_settings.guild_creation_open`
+  (starts off), `admin_set_guild_creation_open()` for a site admin to flip it,
+  `guild_creation_open()` so the signed-out front page can read it, and
+  `create_guild()`, which makes a guild, its first team and the caller as that
+  team's leader. While the switch is off only a site admin can create a guild.
+  Leave it off until second guilds are supported (#1045)
+  ([#1226](https://github.com/katogaming88/WGA-Raid-Hub/issues/1226)).
+
+### Project
+
+- The new app's site front page at `/` (#1226): for anyone not on a team, it
+  says what the Raid Hub is and lists what it does, with Battle.net sign-in and
+  the support Discord. A person on a team skips it and lands on their guild's
+  home. A new `/new-guild` page holds the create-your-guild form (guild name,
+  region, home realm, first team's name), which shows to everyone signed in
+  once the switch is on, and always to a site admin, who also sees the switch
+  there ([#1226](https://github.com/katogaming88/WGA-Raid-Hub/issues/1226)).
+
 ## [3.153.5] - 2026-09-23
 
 ### Backend

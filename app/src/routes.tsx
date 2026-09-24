@@ -17,6 +17,7 @@ import { SignUpPage } from './signup/SignUpPage';
 import { GuildOfficersPage } from './officers/GuildOfficersPage';
 import { TeamOfficersPage } from './officers/TeamOfficersPage';
 import { InviteLinkPage } from './invite/InviteLinkPage';
+import { CreateGuildPage } from './front/CreateGuildPage';
 import { FrontPage } from './front/FrontPage';
 import { JoinRoute } from './join/JoinRoute';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -55,6 +56,7 @@ const BUILT_GUILD_PAGES: Record<string, ReactElement> = {
 // redirect for retired keys.
 export const routes: RouteObject[] = [
   { path: '/', element: <FrontPage /> },
+  { path: '/new-guild', element: <CreateGuildPage /> },
   { path: '/join/:code', element: <JoinRoute /> },
   {
     path: '/g/:guildKey',

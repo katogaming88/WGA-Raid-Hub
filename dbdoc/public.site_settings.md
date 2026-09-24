@@ -13,6 +13,7 @@
 | boe_payout_pivot | bigint | 100000 | false |  |  |  |
 | gear_sync_last_cron_run | jsonb |  | true |  |  | Outcome of the last scheduled blizzard-gear-sync sweep, written by the function: trigger, started_at, finished_at, synced, skipped, teams, players, error (first message or null). |
 | gear_sync_last_officer_run | jsonb |  | true |  |  | Outcome of the last officer-triggered whole-team blizzard-gear-sync run (Sync Gear Levels Now), same shape as gear_sync_last_cron_run. A single-raider sync is not recorded. |
+| guild_creation_open | boolean | false | false |  |  | When true, any signed-in person with Discord connected can create a guild and its first team (create_guild()). When false, only a site admin can. Flipped by admin_set_guild_creation_open() (#1226). |
 
 ## Constraints
 
@@ -44,6 +45,7 @@ erDiagram
   bigint boe_payout_pivot
   jsonb gear_sync_last_cron_run
   jsonb gear_sync_last_officer_run
+  boolean guild_creation_open
 }
 ```
 

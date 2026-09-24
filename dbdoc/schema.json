@@ -3845,6 +3845,13 @@
           "type": "jsonb",
           "nullable": true,
           "comment": "Outcome of the last officer-triggered whole-team blizzard-gear-sync run (Sync Gear Levels Now), same shape as gear_sync_last_cron_run. A single-raider sync is not recorded."
+        },
+        {
+          "name": "guild_creation_open",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "When true, any signed-in person with Discord connected can create a guild and its first team (create_guild()). When false, only a site admin can. Flipped by admin_set_guild_creation_open() (#1226)."
         }
       ],
       "indexes": [
@@ -10199,6 +10206,24 @@
       "name": "public.team_invite_link_join",
       "return_type": "text",
       "arguments": "p_code text, p_name text, p_realm text, p_class text DEFAULT NULL::text, p_spec text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.guild_creation_open",
+      "return_type": "bool",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_set_guild_creation_open",
+      "return_type": "void",
+      "arguments": "p_open boolean",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.create_guild",
+      "return_type": "record",
+      "arguments": "p_name text, p_region text, p_realm text, p_team_name text",
       "type": "FUNCTION"
     }
   ],

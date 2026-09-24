@@ -36,6 +36,7 @@ const ANON_DEFINER_ALLOWLIST = [
   'can_settle_boe',
   'current_discord_id',
   'flag_bis_list_changed',
+  'guild_creation_open',
   'is_any_team_officer',
   'is_boe_manager',
   'is_guild_officer',
