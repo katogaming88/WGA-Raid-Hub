@@ -114,6 +114,14 @@ psql service=wga-admin -X -v ON_ERROR_STOP=1 -f data/sql/dungeon-items.sql
 
 The season row must exist first (`item_seasons.season` is a foreign key to `seasons`).
 
+### Crafted gear
+
+Crafted armor, weapons and jewelry work the same way, with a second command in the same addon. Crafted gear carries over between seasons, so a new season mostly adds pairs for items already in the catalog.
+
+1. In game, open each crafting profession window once (Blacksmithing, Leatherworking, Tailoring, Jewelcrafting, Engineering, Inscription). Each opening notes that profession's recipes filed under the expansion.
+2. Type `/wgacrafts`. The window ends with a count per profession, so a profession you skipped, or one that opened empty (a character without that profession's current skill line), is easy to spot. Open the missing one on a character that has it and run `/wgacrafts` again; it keeps what it has already seen until `/wgacrafts reset`.
+3. Save the text as `scripts/season-items/<SEASON>-crafted.txt` with two first lines, `-- season: <SEASON>` and `-- source: crafted`, then run the importer on it as above.
+
 ## Fetching secondary stats, main stats, and weapon subtype (#560, #609)
 
 Once the new tier's rows exist in `items`, run `scripts/fetch-item-stats.js` to backfill `secondary_stats` (which of Crit/Haste/Mastery/Vers the item rolls, used by the Priority tab), `main_stats` (which of Strength/Agility/Intellect the item scales with, used by the Wishlist/BiS-grid Trinket/Weapon/Off Hand filter), and `weapon_subtype` (e.g. 'Sword'/'Staff'/'Shield', used by the same filter's `CLASS_WEAPON_TYPES`/`CLASS_SHIELD_USERS` class-eligibility check, #609) -- all three come from the same Blizzard/Wowhead calls, no extra fetches needed:

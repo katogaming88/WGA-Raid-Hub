@@ -50,6 +50,18 @@ describe('parseDungeonLoot', () => {
     ]);
   });
 
+  it('reads a crafted list: the source line sets the source, and the rows are added as crafted', () => {
+    const parsed = parseDungeonLoot(
+      HEAD + '-- source: crafted\nBlacksmithing | Plate Helm | 7 | Forged Helm | Head | Plate'
+    );
+    expect(parsed.source).toBe('crafted');
+    expect(dungeonItemsSql(parsed, {})).toContain("'crafted' from incoming");
+    expect(parseDungeonLoot(HEAD + 'D | B | 1 | Hood | Head | Leather').source).toBe('dungeon');
+    expect(() => parseDungeonLoot(HEAD + '-- source: vendor\nD | B | 1 | Hood | Head | Leather')).toThrow(
+      /Unknown source/
+    );
+  });
+
   it('refuses a file with no season line or a non-numeric item id', () => {
     expect(() => parseDungeonLoot('D | B | 1 | Hood | Head | Leather')).toThrow(/season/);
     expect(() => parseDungeonLoot(HEAD + 'D | B | 1; drop table items | Hood | Head | Leather')).toThrow(/Bad item id/);

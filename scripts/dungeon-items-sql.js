@@ -1,7 +1,9 @@
 // dungeon-items-sql.js
 // Turns a season's dungeon loot file (scripts/season-items/<season>-dungeons.txt,
 // made in game by scripts/wow/WGA_LootDump) into one SQL file that adds those
-// items to the catalog as source 'dungeon' (#1166), with the season each is offered in. Requires Node 18+.
+// items to the catalog as source 'dungeon' (#1166), with the season each is offered
+// in. A list from /wgacrafts (same addon) works the same with a "-- source: crafted"
+// line under the season line. Requires Node 18+.
 //
 // The game already gives the item id, name, slot and armor or weapon type, so
 // the only lookup is each item's icon, from the tooltip endpoint fetch-items.js
@@ -34,6 +36,9 @@ const NOT_GEAR = '(no slot: not gear)';
 export function parseDungeonLoot(text) {
   const season = text.match(/^-- season: (\S+)/m)?.[1];
   if (!season) throw new Error('No "-- season: CODE" line at the top of the file');
+  // A crafted list (from /wgacrafts) says so on a second line; the default is a dungeon list.
+  const source = text.match(/^-- source: (\S+)/m)?.[1] ?? 'dungeon';
+  if (!['dungeon', 'crafted'].includes(source)) throw new Error(`Unknown source: ${source}`);
 
   const items = new Map();
   for (const line of text.split('\n')) {
@@ -52,16 +57,16 @@ export function parseDungeonLoot(text) {
       boss
     });
   }
-  return { season, items: [...items.values()] };
+  return { season, source, items: [...items.values()] };
 }
 
-export function dungeonItemsSql({ season, items }, icons = {}) {
+export function dungeonItemsSql({ season, source = 'dungeon', items }, icons = {}) {
   const rows = items.map(
     (i) =>
       `  (${sqlNumber(i.id)}, ${sqlString(i.name)}, ${sqlString(i.slot)}, ${sqlString(i.armorType)}, ${sqlString(icons[i.id])})`
   );
   return [
-    `-- Dungeon items for season ${season} (#1166): ${items.length} rows.`,
+    `-- ${source} items for season ${season} (#1166): ${items.length} rows.`,
     '-- Made by scripts/dungeon-items-sql.js. Items already in the catalog are kept and only get the season.',
     'begin;',
     'create temp table incoming (wow_item_id integer primary key, name text, slot text, armor_type text, icon text) on commit drop;',
@@ -70,7 +75,7 @@ export function dungeonItemsSql({ season, items }, icons = {}) {
     // A unique index on wow_item_id and one on lower(name) both guard the
     // catalog, so a clash on either is skipped here and caught below.
     'insert into public.items (wow_item_id, name, slot, armor_type, icon, source)',
-    "select wow_item_id, name, slot, armor_type, icon, 'dungeon' from incoming",
+    `select wow_item_id, name, slot, armor_type, icon, ${sqlString(source)} from incoming`,
     'on conflict do nothing;',
     // Stop, and undo everything, if any listed item is not in the catalog as
     // a dungeon or crafted item: a name clash with another item would

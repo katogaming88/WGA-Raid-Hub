@@ -33,7 +33,8 @@ answers to.
   to the item catalog. Season 2's 208 dungeon items are saved as the first
   list (`scripts/season-items/MID2-dungeons.txt`). Wowhead's dungeon pages
   were wrong in both directions, so the game is the source. The yearly item
-  refresh guide gains the steps.
+  refresh guide gains the steps. A second command, `/wgacrafts`, lists the
+  gear the professions craft the same way.
 
 ## [3.154.4] - 2026-09-24
 
