@@ -26,8 +26,7 @@ async function newcomer(q) {
   return uid;
 }
 
-const personOf = async (q, uid) =>
-  (await q('select id from public.people where auth_user_id = $1', [uid])).rows[0].id;
+const personOf = async (q, uid) => (await q('select id from public.people where auth_user_id = $1', [uid])).rows[0].id;
 
 // What the battlenet-characters function saves after Blizzard confirms the
 // account holds it. The blizzard id is the handle the join page passes back.
@@ -92,7 +91,9 @@ describe('team_invite_link_join()', () => {
 
       await expect(join(asUser, uid, code, theirs)).rejects.toThrow(/not on your account/);
       await expect(join(asUser, uid, code, 999999999999)).rejects.toThrow(/not on your account/);
-      expect((await q('select count(*) from public.players where name_realm = $1', ['Notyours-Stormrage'])).rows[0].count).toBe('0');
+      expect(
+        (await q('select count(*) from public.players where name_realm = $1', ['Notyours-Stormrage'])).rows[0].count
+      ).toBe('0');
     });
   });
 
@@ -110,9 +111,10 @@ describe('team_invite_link_join()', () => {
 
       await join(asUser, uid, code, await character(q, uid, { name: 'Ownchar' }));
 
-      const { rows } = await q('select name_realm, archived_at is not null as archived from public.players where id = $1', [
-        gone
-      ]);
+      const { rows } = await q(
+        'select name_realm, archived_at is not null as archived from public.players where id = $1',
+        [gone]
+      );
       expect(rows).toEqual([{ name_realm: 'Departed-Stormrage', archived: true }]);
     });
   });

@@ -4051,13 +4051,7 @@ export type Database = {
         }[]
       }
       team_invite_link_join: {
-        Args: {
-          p_class?: string
-          p_code: string
-          p_name: string
-          p_realm: string
-          p_spec?: string
-        }
+        Args: { p_blizzard_id: number; p_code: string }
         Returns: string
       }
       team_invite_link_reset: {
