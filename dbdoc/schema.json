@@ -3755,14 +3755,14 @@
         {
           "name": "item_preferences_season_fkey",
           "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
           "table": "public.item_preferences",
           "referenced_table": "public.seasons",
           "columns": [
             "season"
           ],
           "referenced_columns": [
-            "display_name"
+            "code"
           ]
         }
       ],
@@ -6565,7 +6565,7 @@
     {
       "name": "public.seasons",
       "type": "BASE TABLE",
-      "comment": "One row per raid tier (#932). code is the short form the priority, loot and scoring tables hold (MID2); display_name is what officers see and type (Midnight Season 2). Every season column references one of the two. A tier is added by a migration that closes the outgoing row and inserts the new one.",
+      "comment": "One row per raid tier (#932). code is the short form every season column references (MID2); display_name is what officers see and type (Midnight Season 2), and nothing keys to it since #936. A tier is added by a migration that closes the outgoing row and inserts the new one.",
       "columns": [
         {
           "name": "code",
@@ -8638,10 +8638,10 @@
       "cardinality": "zero_or_more",
       "parent_table": "public.seasons",
       "parent_columns": [
-        "display_name"
+        "code"
       ],
       "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (season) REFERENCES seasons(display_name)"
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
     },
     {
       "table": "public.tier_token_map",

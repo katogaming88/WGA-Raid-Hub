@@ -210,3 +210,9 @@ begin
   return jsonb_build_object('players', v_players, 'priority', v_priority, 'statusLabels', v_status_labels);
 end;
 $function$;
+
+-- The table comment said every season column references one of the two keys,
+-- which was true while this one column held a name. It references code now,
+-- and display_name has no children left at all.
+comment on table public.seasons is
+  'One row per raid tier (#932). code is the short form every season column references (MID2); display_name is what officers see and type (Midnight Season 2), and nothing keys to it since #936. A tier is added by a migration that closes the outgoing row and inserts the new one.';
