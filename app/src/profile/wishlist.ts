@@ -442,7 +442,7 @@ export function wishlistSummary(
         byId.get(p.item_id)?.is_placeholder &&
         p.slot === slot &&
         p.status === status &&
-        (!p.season || p.season === season.name)
+        (!p.season || p.season === season.code)
     );
 
   let bis = 0;

@@ -121,10 +121,10 @@ const norm = (s: string) =>
 
 // Whether a pick belongs to the season: a raid item by the raid it drops in
 // (raid_zones.season holds the code, #933), a crafted or M+ pick by the season
-// name stamped on the wishlist row. With no raids set up for the season yet,
+// code stamped on the wishlist row (#936). With no raids set up yet,
 // every raid item counts.
 function inSeason(pick: WishlistRow, item: CatalogItem, season: SeasonWindow, zones: ZoneRow[]): boolean {
-  if (item.is_placeholder) return !pick.season || pick.season === season.name;
+  if (item.is_placeholder) return !pick.season || pick.season === season.code;
   if (item.wcl_zone_id == null) return true;
   const seasonZones = zones.filter((z) => z.season === season.code).map((z) => z.wcl_zone_id);
   return seasonZones.length === 0 || seasonZones.includes(item.wcl_zone_id);

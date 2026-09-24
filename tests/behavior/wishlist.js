@@ -95,7 +95,8 @@ const pref = (id, itemId, status, slot, extra = {}) => ({
   status,
   note: null,
   slot,
-  season: 'Midnight Season 2',
+  // The code the column holds since #936, which is SEASON.code.
+  season: 'MID2',
   synced_bis: false,
   ...extra
 });
@@ -165,5 +166,5 @@ export const NEW_BIS_ROW = {
   item_id: 1009,
   slot: 'Finger 1',
   status: 'bis',
-  season: 'Midnight Season 2'
+  season: 'MID2'
 };

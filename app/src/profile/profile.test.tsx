@@ -368,7 +368,7 @@ describe('lootPriority', () => {
     { wcl_zone_id: 53, season: 'MID2' },
     { wcl_zone_id: 46, season: 'MID1' }
   ];
-  const pick = (item_id: number, slot: string, status = 'bis') => ({ item_id, status, slot, season: SEASON.name });
+  const pick = (item_id: number, slot: string, status = 'bis') => ({ item_id, status, slot, season: SEASON.code });
   const base = {
     playerId: 11,
     catalog,
@@ -463,7 +463,7 @@ describe('lootPriority', () => {
   });
 
   it('counts a pick saved without a slot by its item, a ring in the first ring slot', () => {
-    const legacy = (item_id: number, status = 'bis') => ({ item_id, status, slot: null, season: SEASON.name });
+    const legacy = (item_id: number, status = 'bis') => ({ item_id, status, slot: null, season: SEASON.code });
     expect(wishlistSummary([legacy(2), legacy(1), legacy(5, 'pass')], catalog, zones, season)).toEqual({
       bis: 2,
       pass: 1,
