@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [Unreleased]
+
+### Project
+
+- Git ignores `*.tsbuildinfo`. TypeScript leaves that file beside the config it
+  checked, as a note of what it already looked at. Nothing here asks for one,
+  and no npm script writes one, but an editor's TypeScript service does, so it
+  turned up in `app/` as an untracked file nobody put there. It is rebuilt from
+  nothing and belongs to one machine, so it is not worth keeping
+  ([#1320](https://github.com/katogaming88/WGA-Raid-Hub/issues/1320)).
+
 ## [3.153.6] - 2026-09-23
 
 ### Backend

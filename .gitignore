@@ -25,6 +25,13 @@ npm-debug.log*
 # are already matched at any depth, so bot/ needs nothing else.
 bot/dist/
 
+# TypeScript's cache of what it already checked (#1320). No tsconfig here asks
+# for one and no npm script writes one, but an editor's TypeScript service or
+# any type check run with --incremental drops it beside the config it used, in
+# app/ or bot/. It is machine-specific and rebuilt from nothing, so it is never
+# worth committing.
+*.tsbuildinfo
+
 # One-time migration data (sheet CSV exports and generated SQL, see #320)
 data/
 # ...but the new app's data layer is source code, not an export (#1101).
