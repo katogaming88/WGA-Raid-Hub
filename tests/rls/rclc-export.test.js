@@ -44,9 +44,9 @@ async function withItemsAndBisSeeded(role, uid, fn) {
     );
     // A season's M+ and crafted items (#1166): wishlist-able, never exported.
     await client.query(
-      `insert into public.items (id, wow_item_id, name, slot, is_placeholder, source, season) values
-         (902, 90003, 'Test Dungeon Cloak', 'Back', false, 'dungeon', 'export-test'),
-         (903, 90004, 'Test Crafted Belt', 'Waist', false, 'crafted', 'export-test')`
+      `insert into public.items (id, wow_item_id, name, slot, is_placeholder, source) values
+         (902, 90003, 'Test Dungeon Cloak', 'Back', false, 'dungeon'),
+         (903, 90004, 'Test Crafted Belt', 'Waist', false, 'crafted')`
     );
     // player 1: explicit slot override (Trinket 2) + a legacy row with no
     // slot override, falling back to items.slot ('Trinket' -> ambiguous ->

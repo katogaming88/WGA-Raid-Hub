@@ -100,19 +100,19 @@ The rows cannot ride in a migration: `seed.sql` inserts `items` ids 1 to 3 expli
 
 ## M+ dungeon items: `WGA_LootDump` and `dungeon-items-sql.js` (#1166)
 
-The season's M+ pool changes every season, and the older dungeons in it keep their old loot with new item levels. Wowhead's zone and boss pages get both wrong (a boss shared with a raid shows the raid's loot, and a dungeon can be missing a boss), so the list comes from the game's own Adventure Guide instead. Every item here is `items.source = 'dungeon'` with the season's code in `items.season`, so it can be wishlisted and marked received but is never ranked or exported to RCLootCouncil.
+The season's M+ pool changes every season, and the older dungeons in it keep their old loot with new item levels. Wowhead's zone and boss pages get both wrong (a boss shared with a raid shows the raid's loot, and a dungeon can be missing a boss), so the list comes from the game's own Adventure Guide instead. Every item here is `items.source = 'dungeon'` and has a row in `item_seasons` for each season it is offered in, so it can be wishlisted and marked received but is never ranked or exported to RCLootCouncil.
 
 1. Edit `DUNGEONS` at the top of `scripts/wow/WGA_LootDump/WGA_LootDump.lua` to the new season's pool (names as the Adventure Guide spells them; Raider.IO lists the pool). Copy the folder into `Interface/AddOns/`. It also works on the PTR, so the list can be ready before the season starts; run it again once the season is live, since PTR loot can change.
 2. In game, open the Adventure Guide once, then type `/wgaloot`. It waits for every item name to load, then opens a window: Ctrl+A, Ctrl+C.
 3. Save the text as `scripts/season-items/<SEASON>-dungeons.txt`, with a first line `-- season: <SEASON>` (the code from `seasons`, for example `MID3`). Check the "rows" line under each boss against the Adventure Guide: a "no slot" row is a mount, recipe or decor and is skipped.
-4. `node scripts/dungeon-items-sql.js scripts/season-items/<SEASON>-dungeons.txt` reads each gear item's icon and writes `data/sql/dungeon-items.sql` (gitignored). It is safe to run twice: an item already in the catalog is left alone.
+4. `node scripts/dungeon-items-sql.js scripts/season-items/<SEASON>-dungeons.txt` reads each gear item's icon and writes `data/sql/dungeon-items.sql` (gitignored). It is safe to run twice, and a dungeon that returns from an earlier season needs nothing extra: an item already in the catalog is kept and only gets the new season. If an item clashes with another catalog row on name, the whole run stops and is undone, naming the item.
 5. Apply it by hand at a checkpoint, then run the stats step below for the new ids:
 
 ```
 psql service=wga-admin -X -v ON_ERROR_STOP=1 -f data/sql/dungeon-items.sql
 ```
 
-The season row must exist first (`items.season` is a foreign key to `seasons`).
+The season row must exist first (`item_seasons.season` is a foreign key to `seasons`).
 
 ## Fetching secondary stats, main stats, and weapon subtype (#560, #609)
 

@@ -701,6 +701,36 @@ export type Database = {
           },
         ]
       }
+      item_seasons: {
+        Row: {
+          item_id: number
+          season: string
+        }
+        Insert: {
+          item_id: number
+          season: string
+        }
+        Update: {
+          item_id?: number
+          season?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_seasons_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_seasons_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       items: {
         Row: {
           armor_type: string | null
@@ -711,7 +741,6 @@ export type Database = {
           is_ptr: boolean
           main_stats: Json | null
           name: string
-          season: string | null
           secondary_stats: Json | null
           slot: string
           sort_id: number | null
@@ -729,7 +758,6 @@ export type Database = {
           is_ptr?: boolean
           main_stats?: Json | null
           name: string
-          season?: string | null
           secondary_stats?: Json | null
           slot: string
           sort_id?: number | null
@@ -747,7 +775,6 @@ export type Database = {
           is_ptr?: boolean
           main_stats?: Json | null
           name?: string
-          season?: string | null
           secondary_stats?: Json | null
           slot?: string
           sort_id?: number | null
@@ -756,15 +783,7 @@ export type Database = {
           weapon_subtype?: string | null
           wow_item_id?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "items_season_fkey"
-            columns: ["season"]
-            isOneToOne: false
-            referencedRelation: "seasons"
-            referencedColumns: ["code"]
-          },
-        ]
+        Relationships: []
       }
       main_swap_requests: {
         Row: {

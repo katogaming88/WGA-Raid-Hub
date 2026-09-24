@@ -1,17 +1,24 @@
--- #1166: each item says where it comes from (raid, dungeon, crafted).
+-- #1166: each item says where it comes from (raid, dungeon, crafted), and a
+-- dungeon or crafted item says which seasons it is offered in.
 --
 -- The catalog held raid loot only, so a raider who wanted an M+ or crafted
 -- piece could only wishlist the generic 'M+' or 'Crafted' stand-in. The new
--- app's wishlist offers the real items instead, and they need a marker: they
--- have no raid (wcl_zone_id is null), so nothing else says a dungeon trinket
--- is not council loot.
+-- app's wishlist offers the real items instead. They need two things:
 --
---   source  'raid' (every existing row), 'dungeon' (a season's M+ pool) or
---           'crafted'. Only raid items are ranked or exported to RCLootCouncil.
---   season  the season code a dungeon or crafted item belongs to, the way
---           raid_zones.season places a raid item. Null for raid items, whose
---           season comes from their raid. Required for the other two so last
---           season's dungeon loot does not appear in every later season.
+--   items.source   'raid' (every existing row), 'dungeon' (a season's M+ pool)
+--                  or 'crafted'. Only raid items are ranked or exported to
+--                  RCLootCouncil. A dungeon trinket has no raid (wcl_zone_id
+--                  is null), so nothing else says it is not council loot.
+--   item_seasons   the seasons a dungeon or crafted item is offered in, one
+--                  row per item and season. A raid item's season comes from
+--                  its raid (raid_zones.season) and has no row here.
+--
+-- Why a list of seasons and not a season column on the item: dungeons come
+-- back in later pools (Ruby Life Pools, Kings' Rest) and crafted gear carries
+-- over from season to season, and nobody knows in advance when. With one
+-- season per item, each return would mean editing every row of the dungeon.
+-- With a row per season, next season's import adds the new pairs and leaves
+-- the existing items alone.
 --
 -- The RCLootCouncil export and the BiS demand count already skipped the
 -- stand-in picks (is_placeholder); they now skip anything not from a raid
@@ -21,14 +28,28 @@
 
 alter table public.items
   add column source text not null default 'raid',
-  add column season text references public.seasons (code),
-  add constraint items_source_check check (source in ('raid', 'dungeon', 'crafted')),
-  add constraint items_season_by_source check ((source = 'raid') = (season is null));
+  add constraint items_source_check check (source in ('raid', 'dungeon', 'crafted'));
 
 comment on column public.items.source is
-  'Where the item comes from: raid, dungeon (a season''s M+ pool) or crafted. Only raid items are ranked or exported to RCLootCouncil (#1166).';
-comment on column public.items.season is
-  'Season code for a dungeon or crafted item; null for a raid item, whose season comes from raid_zones (#1166).';
+  'Where the item comes from: raid, dungeon (an M+ pool) or crafted. Only raid items are ranked or exported to RCLootCouncil (#1166).';
+
+create table public.item_seasons (
+  item_id integer not null references public.items (id) on delete cascade,
+  season text not null references public.seasons (code),
+  primary key (item_id, season)
+);
+
+comment on table public.item_seasons is
+  'The seasons a dungeon or crafted item is offered in (#1166). A raid item has no row: its season comes from raid_zones. Filled by scripts/dungeon-items-sql.js, never by a client.';
+create index item_seasons_season_idx on public.item_seasons (season);
+
+alter table public.item_seasons enable row level security;
+
+create policy "Claude readers read item_seasons" on public.item_seasons
+  for select to claude_readers using (true);
+-- Read with the catalog on every profile and wishlist load, as items is.
+create policy "Public read item_seasons" on public.item_seasons
+  for select using (true);
 
 CREATE OR REPLACE FUNCTION public.build_rclc_export(p_team_id integer, p_season text, p_track text)
  RETURNS jsonb

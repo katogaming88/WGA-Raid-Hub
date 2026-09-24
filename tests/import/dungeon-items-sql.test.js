@@ -66,12 +66,18 @@ describe('parseDungeonLoot', () => {
 describe('dungeonItemsSql', () => {
   const parsed = { season: 'MID2', items: [{ id: 5, name: "Slayer's Hood", slot: 'Head', armorType: 'Leather' }] };
 
-  it('doubles an apostrophe, marks the rows dungeon, stamps the season and skips items already in the catalog', () => {
+  it('doubles an apostrophe, adds the item as a dungeon item and files it under the season', () => {
     const sql = dungeonItemsSql(parsed, { 5: 'inv_helm_01' });
     expect(sql).toContain("'Slayer''s Hood'");
-    expect(sql).toContain("'dungeon', 'MID2'");
-    expect(sql).toContain('where not exists');
+    expect(sql).toContain("'dungeon' from incoming");
+    expect(sql).toContain("select i.id, 'MID2' from incoming");
     expect(sql).toContain("'inv_helm_01'");
+  });
+
+  it('keeps an item already in the catalog, and stops if one cannot be added', () => {
+    const sql = dungeonItemsSql(parsed, {});
+    expect(sql).toContain('on conflict do nothing');
+    expect(sql).toContain('raise exception');
   });
 
   it('writes null for an item whose icon lookup failed', () => {

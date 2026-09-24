@@ -1,7 +1,7 @@
 // dungeon-items-sql.js
 // Turns a season's dungeon loot file (scripts/season-items/<season>-dungeons.txt,
 // made in game by scripts/wow/WGA_LootDump) into one SQL file that adds those
-// items to the catalog as source 'dungeon' (#1166). Requires Node 18+.
+// items to the catalog as source 'dungeon' (#1166), with the season each is offered in. Requires Node 18+.
 //
 // The game already gives the item id, name, slot and armor or weapon type, so
 // the only lookup is each item's icon, from the tooltip endpoint fetch-items.js
@@ -16,7 +16,9 @@
 //   node scripts/dungeon-items-sql.js scripts/season-items/MID2-dungeons.txt
 //   psql service=wga-admin -X -v ON_ERROR_STOP=1 -f data/sql/dungeon-items.sql
 //
-// Safe to run twice: an item already in the catalog is left alone.
+// Safe to run twice, and each season: an item already in the catalog is kept
+// and only gets the season, so a dungeon that returns needs no edit. An item
+// that clashes with another catalog row on name stops the run and undoes it.
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -60,14 +62,29 @@ export function dungeonItemsSql({ season, items }, icons = {}) {
   );
   return [
     `-- Dungeon items for season ${season} (#1166): ${items.length} rows.`,
-    '-- Made by scripts/dungeon-items-sql.js. An item already in the catalog is skipped.',
+    '-- Made by scripts/dungeon-items-sql.js. Items already in the catalog are kept and only get the season.',
     'begin;',
-    'insert into public.items (wow_item_id, name, slot, armor_type, icon, source, season)',
-    `select v.wow_item_id::integer, v.name::text, v.slot::text, v.armor_type::text, v.icon::text, 'dungeon', ${sqlString(season)}`,
-    'from (values',
-    rows.join(',\n'),
-    ') as v(wow_item_id, name, slot, armor_type, icon)',
-    'where not exists (select 1 from public.items i where i.wow_item_id = v.wow_item_id::integer);',
+    'create temp table incoming (wow_item_id integer primary key, name text, slot text, armor_type text, icon text) on commit drop;',
+    'insert into incoming values',
+    rows.join(',\n') + ';',
+    // A unique index on wow_item_id and one on lower(name) both guard the
+    // catalog, so a clash on either is skipped here and caught below.
+    'insert into public.items (wow_item_id, name, slot, armor_type, icon, source)',
+    "select wow_item_id, name, slot, armor_type, icon, 'dungeon' from incoming",
+    'on conflict do nothing;',
+    // Stop, and undo everything, if any listed item is not in the catalog as
+    // a dungeon or crafted item: a name clash with another item would
+    // otherwise leave it silently unoffered.
+    'do $$',
+    'declare bad text;',
+    'begin',
+    "  select string_agg(n.wow_item_id || ' ' || n.name, '; ') into bad from incoming n",
+    "  where not exists (select 1 from public.items i where i.wow_item_id = n.wow_item_id and i.source <> 'raid');",
+    "  if bad is not null then raise exception 'Not in the catalog as a dungeon item (name clash?): %', bad; end if;",
+    'end $$;',
+    'insert into public.item_seasons (item_id, season)',
+    `select i.id, ${sqlString(season)} from incoming n join public.items i on i.wow_item_id = n.wow_item_id`,
+    'on conflict do nothing;',
     'commit;',
     ''
   ].join('\n');

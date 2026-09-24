@@ -2195,11 +2195,11 @@ First slice of #1264 (join a team, and its guild, straight from a link): the cod
 
 Shipped: 20260924112337_item_source.sql
 
-The catalog held raid loot only, so the new app's wishlist could only offer the generic `M+` and `Crafted` stand-in picks. Real M+ dungeon items and crafted gear go in the same table, told apart by two new columns on `items`.
+The catalog held raid loot only, so the new app's wishlist could only offer the generic `M+` and `Crafted` stand-in picks. Real M+ dungeon items and crafted gear go in the same table, told apart by a new `source` column on `items`, with the seasons each is offered in in a new table, `item_seasons`.
 
 **A `source` column, not a new table.** `items.source` is `raid` (every existing row), `dungeon` or `crafted`, checked by `items_source_check`. A dungeon trinket is picked, marked BiS, received and shown the same way as a raid one, so it wants the same foreign keys from `item_preferences`, `self_received_requests` and `rclc_loot`; a second table would make each of them point at two places. Only raid items are ranked or exported to RCLootCouncil.
 
-**A `season` column, required exactly when the source is not raid.** A raid item reaches its season through its raid (`items.wcl_zone_id` to `raid_zones.season`). Dungeon and crafted items have no raid, and the dungeon pool changes every season, so without their own season last season's dungeon loot would be offered in every later one. `season` references `seasons(code)`, and `items_season_by_source` refuses a raid item with a season and a dungeon or crafted item without one, so the two cannot drift apart.
+**A list of seasons per item, not a `season` on the item.** A raid item reaches its season through its raid (`items.wcl_zone_id` to `raid_zones.season`). Dungeon and crafted items have no raid, and they come back: old dungeons return to later M+ pools and crafted gear carries over, with nobody knowing in advance when. `item_seasons (item_id, season)` holds one row per pair, so a returning item gets a new pair from the same yearly import (`scripts/dungeon-items-sql.js` keeps the existing item and adds the season) and never a migration or an edit to each of a dungeon's 20 to 30 rows. A single `season` column would have made the second season's import skip the item and leave it unoffered. Public read like `items`; no write path for clients. A raid item has no row, and nothing in the database refuses one: the new app reads raid items by their zone and everything else through this table.
 
 **The stand-in rows do not change.** `M+`, `Crafted` and `Catalyst` keep `is_placeholder = true` and `source = 'raid'`. They and their special cases go at cutover (#1105) with #1032, when raiders re-mark the real item.
 

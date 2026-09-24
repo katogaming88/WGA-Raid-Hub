@@ -17,7 +17,8 @@ answers to.
 ### Backend
 
 - Each item now records where it comes from (raid, dungeon or crafted), and a
-  dungeon or crafted item records its season. Every existing item reads as a
+  dungeon or crafted item lists the seasons it is offered in, so a dungeon
+  that returns in a later season needs no edit. Every existing item reads as a
   raid item. The RCLootCouncil export and the BiS demand count leave out
   anything that is not from a raid, so M+ and crafted gear never gets a
   priority number ([#1166](https://github.com/katogaming88/WGA-Raid-Hub/issues/1166)).
