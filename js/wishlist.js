@@ -166,15 +166,34 @@ var WISHLIST_TIER_SET_SLOTS = ['Head', 'Shoulder', 'Chest', 'Hands', 'Legs'];
 // real status for them.
 var CATALYST_ELIGIBLE_SLOTS = WISHLIST_TIER_SET_SLOTS.concat(CATALYST_SOURCE_SLOTS);
 
+// The tier the page plans for, as the column holds it (#936): a season code,
+// or null when no tier resolves at all, which is what a row with no season
+// looks like and what the insert below stamps.
+function wishlistSeasonCode() {
+  return (typeof resolveSeasonViewCode === 'function' && resolveSeasonViewCode()) || null;
+}
+
+// Every query for the raider's own picks says which tier it is about, because
+// the key carries the season (#936) and the write gate reads the season on
+// the row (#1331). Without this a raider with picks in two tiers reads back
+// the other tier's rows, and an update or a delete reaches one the gate then
+// refuses.
+function wishlistScopeToSeason(query) {
+  var season = wishlistSeasonCode();
+  return season ? query.eq('season', season) : query.is('season', null);
+}
+
 // Guard on client,
 // 10s race-timeout, warn+null on any failure. RLS already scopes this to the
 // caller's own rows, but filtering client-side keeps the query cheap.
 function fetchMyItemPreferences(playerId) {
   if (!supabaseClient) return Promise.resolve(null);
-  var query = supabaseClient
-    .from('item_preferences')
-    .select('id, item_id, status, note, slot, season, synced_bis')
-    .eq('player_id', playerId)
+  var query = wishlistScopeToSeason(
+    supabaseClient
+      .from('item_preferences')
+      .select('id, item_id, status, note, slot, season, synced_bis')
+      .eq('player_id', playerId)
+  )
     .then(function (result) {
       if (result.error) {
         console.warn('Supabase item_preferences query failed.', result.error.message);
@@ -1059,6 +1078,7 @@ function wishlistUpsert(itemId, slot, patch) {
       .eq('player_id', _wishlistPlayerId)
       .eq('item_id', itemId);
     updateQuery = slot ? updateQuery.eq('slot', slot) : updateQuery.is('slot', null);
+    updateQuery = wishlistScopeToSeason(updateQuery);
     request = updateQuery.select('id, item_id, status, note, slot, season, synced_bis');
   } else {
     var row = {
@@ -1072,7 +1092,7 @@ function wishlistUpsert(itemId, slot, patch) {
       // An empty code means no tier resolved at all, which is a row with no
       // season rather than one stamped with the empty string; that value is
       // not a seasons row and would fail the foreign key.
-      season: (typeof resolveSeasonViewCode === 'function' && resolveSeasonViewCode()) || null
+      season: wishlistSeasonCode()
     };
     Object.keys(patch).forEach(function (k) {
       row[k] = patch[k];
@@ -1333,6 +1353,7 @@ function wishlistRemovePreference(itemId, slot) {
     .eq('player_id', _wishlistPlayerId)
     .eq('item_id', itemId);
   deleteQuery = slot ? deleteQuery.eq('slot', slot) : deleteQuery.is('slot', null);
+  deleteQuery = wishlistScopeToSeason(deleteQuery);
 
   deleteQuery.then(function (result) {
     delete _wishlistSaving[savingKey];
@@ -1370,11 +1391,8 @@ function clearMyWishlist(firstName) {
   var msgEl = document.getElementById('wishlistSaveMsg-' + firstName);
   if (msgEl) msgEl.textContent = 'Clearing...';
 
-  supabaseClient
-    .from('item_preferences')
-    .delete()
-    .eq('player_id', _wishlistPlayerId)
-    .then(function (result) {
+  wishlistScopeToSeason(supabaseClient.from('item_preferences').delete().eq('player_id', _wishlistPlayerId)).then(
+    function (result) {
       if (result.error) {
         var msg = document.getElementById('wishlistSaveMsg-' + firstName);
         if (msg) msg.textContent = 'Failed: ' + result.error.message;
@@ -1384,5 +1402,6 @@ function clearMyWishlist(firstName) {
       if (typeof renderProfile === 'function' && _wishlistPlayerFirstName) {
         renderProfile(_wishlistPlayerFirstName, 'landing');
       }
-    });
+    }
+  );
 }
