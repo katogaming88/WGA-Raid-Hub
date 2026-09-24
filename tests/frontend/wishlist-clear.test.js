@@ -10,6 +10,14 @@ import { fileURLToPath } from 'node:url';
 // re-render" shape as removeOwnStreamer() (js/streamers.js). Same
 // load-common.js-then-wishlist.js sandbox pattern as
 // tests/frontend/wishlist-insert.test.js.
+//
+// Since #936 it clears the tier the page plans for rather than every pick the
+// raider has ever held. It still carries no item or slot filter, so within
+// that tier it takes everything. Two reasons it cannot stay unscoped: the
+// page shows one tier, so an unscoped delete would remove picks the raider
+// cannot see, and the write gate refuses a statement reaching a closed tier's
+// rows, which would make the button do nothing at all for a raider holding a
+// past tier of picks.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
@@ -84,7 +92,7 @@ function makeSandbox({ confirmResult = true } = {}) {
 }
 
 describe('clearMyWishlist', () => {
-  it('deletes every item_preferences row for the player, with no item_id/slot filter', async () => {
+  it('deletes the season the page plans for, with no item or slot filter', async () => {
     const { sandbox, deletes } = makeSandbox();
     sandbox.clearMyWishlist('Kat');
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -92,7 +100,10 @@ describe('clearMyWishlist', () => {
     expect(deletes).toHaveLength(1);
     expect(deletes[0].table).toBe('item_preferences');
     expect(deletes[0].op).toBe('delete');
-    expect(deletes[0].eq).toEqual([['player_id', 11]]);
+    expect(deletes[0].eq).toEqual([
+      ['player_id', 11],
+      ['season', 'MID2']
+    ]);
     expect(sandbox._wishlistPrefs).toEqual([]);
   });
 
