@@ -30,7 +30,7 @@ answers to.
   says what the Raid Hub is and lists what it does, with Battle.net sign-in and
   the support Discord. A person on a team skips it and lands on their guild's
   home. A new `/new-guild` page holds the create-your-guild form (guild name,
-  region, home realm, first team's name), which shows to everyone signed in
+  region, home realm, and an optional team name that defaults to the guild's), which shows to everyone signed in
   once the switch is on, and always to a site admin, who also sees the switch
   there ([#1226](https://github.com/katogaming88/WGA-Raid-Hub/issues/1226)).
 

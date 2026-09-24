@@ -10223,7 +10223,7 @@
     {
       "name": "public.create_guild",
       "return_type": "record",
-      "arguments": "p_name text, p_region text, p_realm text, p_team_name text",
+      "arguments": "p_name text, p_region text, p_realm text, p_team_name text DEFAULT NULL::text",
       "type": "FUNCTION"
     }
   ],

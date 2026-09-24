@@ -3674,7 +3674,7 @@ export type Database = {
           p_name: string
           p_realm: string
           p_region: string
-          p_team_name: string
+          p_team_name?: string
         }
         Returns: {
           guild_key: string

@@ -65,14 +65,15 @@ revoke execute on function public.admin_set_guild_creation_open(boolean) from an
 grant execute on function public.admin_set_guild_creation_open(boolean) to authenticated;
 
 -- Creates a guild, its first team and the creator as that team's leader, in
--- one step. The addresses are the random defaults (a readable one is a site
+-- one step. The team name is optional: left blank, the team takes the guild's
+-- name, since a one-team guild does not name its team. The addresses are the random defaults (a readable one is a site
 -- admin's to give, #1114). Answers with the two keys so the caller can go
 -- straight to the new team.
 create or replace function public.create_guild(
   p_name text,
   p_region text,
   p_realm text,
-  p_team_name text
+  p_team_name text default null
 )
 returns table(guild_key text, team_key text)
 language plpgsql security definer set search_path to 'public'
@@ -82,7 +83,7 @@ declare
   v_discord_id text;
   v_name text := trim(coalesce(p_name, ''));
   v_realm text := trim(coalesce(p_realm, ''));
-  v_team_name text := trim(coalesce(p_team_name, ''));
+  v_team_name text;
   v_guild_id integer;
   v_guild_key text;
   v_team_id integer;
@@ -104,7 +105,9 @@ begin
   if v_name = '' or length(v_name) > 60 then
     raise exception 'Give the guild a name of up to 60 characters';
   end if;
-  if v_team_name = '' or length(v_team_name) > 60 then
+  -- A guild with one team does not name it: the team takes the guild's name.
+  v_team_name := coalesce(nullif(trim(coalesce(p_team_name, '')), ''), v_name);
+  if length(v_team_name) > 60 then
     raise exception 'Give the first team a name of up to 60 characters';
   end if;
   if p_region is null or p_region not in ('us', 'eu', 'kr', 'tw') then

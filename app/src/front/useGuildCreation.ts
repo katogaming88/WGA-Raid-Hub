@@ -36,7 +36,7 @@ export function useCreateGuild() {
         p_name: g.name,
         p_region: g.region,
         p_realm: g.realm,
-        p_team_name: g.teamName
+        ...(g.teamName ? { p_team_name: g.teamName } : {})
       });
       if (error) return { data: null, error };
       const row = (data as { guild_key: string; team_key: string }[] | null)?.[0];

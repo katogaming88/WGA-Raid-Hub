@@ -83,7 +83,7 @@ describe('the create-guild page', () => {
     await user.type(screen.getByLabelText('Guild name'), 'Night Watch');
     await user.selectOptions(screen.getByLabelText('Region'), 'eu');
     await user.type(screen.getByLabelText('Home realm'), 'Draenor');
-    await user.type(screen.getByLabelText('First team’s name'), 'Watchers');
+    await user.type(screen.getByLabelText('First team’s name (optional)'), 'Watchers');
     await user.click(create);
     expect(await screen.findByRole('heading', { name: 'Your guild is ready' })).toBeInTheDocument();
     expect(client.rpcs).toContainEqual([
@@ -96,6 +96,16 @@ describe('the create-guild page', () => {
     );
   });
 
+  it('does not send a team name when it is left blank', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp('/new-guild', handlers({ open: true }));
+    await user.type(await screen.findByLabelText('Guild name'), 'Night Watch');
+    await user.type(screen.getByLabelText('Home realm'), 'Draenor');
+    await user.click(screen.getByRole('button', { name: 'Create guild' }));
+    expect(await screen.findByRole('heading', { name: 'Your guild is ready' })).toBeInTheDocument();
+    expect(client.rpcs).toContainEqual(['create_guild', { p_name: 'Night Watch', p_region: 'us', p_realm: 'Draenor' }]);
+  });
+
   it('shows the error when the database refuses', async () => {
     const user = userEvent.setup();
     const h = handlers({ open: true });
@@ -105,7 +115,6 @@ describe('the create-guild page', () => {
     renderApp('/new-guild', h);
     await user.type(await screen.findByLabelText('Guild name'), 'Night Watch');
     await user.type(screen.getByLabelText('Home realm'), 'Draenor');
-    await user.type(screen.getByLabelText('First team’s name'), 'Watchers');
     await user.click(screen.getByRole('button', { name: 'Create guild' }));
     const alerts = await screen.findAllByRole('alert');
     expect(alerts.some((a) => a.textContent?.includes('already exists'))).toBe(true);

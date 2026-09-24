@@ -82,6 +82,20 @@ describe('create_guild()', () => {
     });
   });
 
+  it('names the team after the guild when no team name is given', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await open(asUser);
+      const uid = await newcomer(q);
+      const { rows } = await asUser(uid, "select team_key from public.create_guild('Solo Guild', 'us', 'Stormrage')");
+      const team = await q('select name from public.teams where slug = $1', [rows[0].team_key]);
+      expect(team.rows).toEqual([{ name: 'Solo Guild' }]);
+      const blank = await asUser(uid, "select team_key from public.create_guild('Other Guild', 'us', 'R', '  ')");
+      expect((await q('select name from public.teams where slug = $1', [blank.rows[0].team_key])).rows).toEqual([
+        { name: 'Other Guild' }
+      ]);
+    });
+  });
+
   it('refuses a missing session, no Discord, a bad region, blanks and names already taken; anon cannot call it', async () => {
     await withTxn(async ({ q, asUser, asAnon }) => {
       await open(asUser);
@@ -93,7 +107,6 @@ describe('create_guild()', () => {
       await expect(create(asUser, uid, '  ')).rejects.toThrow(/name/);
       await expect(create(asUser, uid, 'X', 'na')).rejects.toThrow(/region/);
       await expect(create(asUser, uid, 'X', 'us', ' ')).rejects.toThrow(/realm/);
-      await expect(create(asUser, uid, 'X', 'us', 'R', ' ')).rejects.toThrow(/first team/);
       await expect(create(asUser, uid, 'we go again')).rejects.toThrow(/already exists/);
       await expect(create(asUser, uid, 'X', 'us', 'R', 'team phoenix')).rejects.toThrow(/already exists/);
       await expect(asAnon("select public.create_guild('X', 'us', 'R', 'T')")).rejects.toMatchObject({

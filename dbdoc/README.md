@@ -208,7 +208,7 @@
 | public.team_invite_link_join | text | p_code text, p_name text, p_realm text, p_class text DEFAULT NULL::text, p_spec text DEFAULT NULL::text | FUNCTION |
 | public.guild_creation_open | bool |  | FUNCTION |
 | public.admin_set_guild_creation_open | void | p_open boolean | FUNCTION |
-| public.create_guild | record | p_name text, p_region text, p_realm text, p_team_name text | FUNCTION |
+| public.create_guild | record | p_name text, p_region text, p_realm text, p_team_name text DEFAULT NULL::text | FUNCTION |
 
 ## Enums
 

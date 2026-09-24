@@ -152,13 +152,16 @@ function CreateForm() {
   const [fields, setFields] = useState<NewGuild>(EMPTY);
   const [done, setDone] = useState<CreatedGuild | null>(null);
   const set = (key: keyof NewGuild, value: string) => setFields((f) => ({ ...f, [key]: value }));
-  const ready = fields.name.trim() && fields.realm.trim() && fields.teamName.trim();
+  const ready = fields.name.trim() && fields.realm.trim();
 
   if (done) {
     return (
       <section className="card front-next">
         <h2 className="section-title">Your guild is ready</h2>
-        <p>You’re the leader of {fields.teamName.trim()}. Next, make an invite link so your raiders can join.</p>
+        <p>
+          You’re the leader of {fields.teamName.trim() || fields.name.trim()}. Next, make an invite link so your raiders
+          can join.
+        </p>
         <Link className="button button-primary" to={`/g/${done.guildKey}/t/${done.teamKey}/officer/invite`}>
           Make an invite link
         </Link>
@@ -213,7 +216,7 @@ function CreateForm() {
       </div>
       <div className="field">
         <label className="field-label" htmlFor={`${id}-team`}>
-          First team’s name
+          First team’s name (optional)
         </label>
         <input
           id={`${id}-team`}
@@ -222,6 +225,9 @@ function CreateForm() {
           onChange={(e) => set('teamName', e.target.value)}
         />
       </div>
+      <p className="text-muted front-hint">
+        Only one team? Leave the team name blank and the team is named after your guild.
+      </p>
       {create.isError && (
         <p className="form-error" role="alert">
           Could not create the guild: {create.error.message}

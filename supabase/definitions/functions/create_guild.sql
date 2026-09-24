@@ -2,7 +2,7 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): authenticated
 
-CREATE OR REPLACE FUNCTION public.create_guild(p_name text, p_region text, p_realm text, p_team_name text)
+CREATE OR REPLACE FUNCTION public.create_guild(p_name text, p_region text, p_realm text, p_team_name text DEFAULT NULL::text)
  RETURNS TABLE(guild_key text, team_key text)
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -13,7 +13,7 @@ declare
   v_discord_id text;
   v_name text := trim(coalesce(p_name, ''));
   v_realm text := trim(coalesce(p_realm, ''));
-  v_team_name text := trim(coalesce(p_team_name, ''));
+  v_team_name text;
   v_guild_id integer;
   v_guild_key text;
   v_team_id integer;
@@ -35,7 +35,9 @@ begin
   if v_name = '' or length(v_name) > 60 then
     raise exception 'Give the guild a name of up to 60 characters';
   end if;
-  if v_team_name = '' or length(v_team_name) > 60 then
+  -- A guild with one team does not name it: the team takes the guild's name.
+  v_team_name := coalesce(nullif(trim(coalesce(p_team_name, '')), ''), v_name);
+  if length(v_team_name) > 60 then
     raise exception 'Give the first team a name of up to 60 characters';
   end if;
   if p_region is null or p_region not in ('us', 'eu', 'kr', 'tw') then

@@ -74,3 +74,7 @@
 .front-form .input {
   width: 100%;
 }
+
+.front-hint {
+  margin: calc(var(--space-2) * -1) 0 0;
+}
