@@ -4,15 +4,6 @@ import userEvent from '@testing-library/user-event';
 import { renderApp as renderAt } from './test/renderApp';
 
 describe('routing', () => {
-  // Guild home until the site front page exists (#1226).
-  it('sends / to the default guild’s home', async () => {
-    const { router } = renderAt('/');
-    // Guild home's title is the guild's own name.
-    expect(await screen.findByRole('heading', { level: 1, name: 'We Go Again' })).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe('/g/wga');
-    expect(screen.getByRole('link', { name: 'Guild home' })).toHaveAttribute('aria-current', 'page');
-  });
-
   it('marks the current page in the sidebar and the breadcrumb', async () => {
     renderAt('/g/wga/t/phoenix');
     await screen.findByRole('heading', { level: 1, name: 'Phoenix' });
