@@ -163,10 +163,24 @@ describe('Guild home (new app), signed out', () => {
 });
 
 describe('Guild home (new app), other states', () => {
-  // Until the site front page exists (#1226).
-  it('opens Guild home from the site address', async () => {
-    const { context, page } = await open({ path: '/' });
+  // The site front page (#1226): anyone not on a team sees it at the site
+  // address, and a raider on a team skips it.
+  it('shows the site front page at the site address to someone not on a team', async () => {
+    const { context, page, pageErrors, unexpected } = await open({ path: '/', sentinel: 'h1' });
     try {
+      await page.getByRole('heading', { level: 1, name: 'WGA Raid Hub' }).waitFor();
+      expect(new URL(page.url()).pathname).toBe('/');
+      expect(pageErrors).toEqual([]);
+      expect(unexpected).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+  it('sends a raider on a team from the site address to their guild home', async () => {
+    const { context, page } = await open({ path: '/', ...signedIn, person: onTeam(MEMBER.teamId, 'raider') });
+    try {
+      await page.waitForURL('**/g/wga');
       expect(new URL(page.url()).pathname).toBe('/g/wga');
     } finally {
       await context.close();

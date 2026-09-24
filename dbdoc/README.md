@@ -37,7 +37,7 @@
 | [public.priority_order_same_boss_conflicts](public.priority_order_same_boss_conflicts.md) | 10 |  | VIEW |
 | [public.priority_order_stale_after_heroic](public.priority_order_stale_after_heroic.md) | 7 |  | VIEW |
 | [public.item_preferences](public.item_preferences.md) | 11 |  | BASE TABLE |
-| [public.site_settings](public.site_settings.md) | 9 |  | BASE TABLE |
+| [public.site_settings](public.site_settings.md) | 10 |  | BASE TABLE |
 | [public.incoming_roster](public.incoming_roster.md) | 7 |  | VIEW |
 | [public.tier_token_map](public.tier_token_map.md) | 6 |  | BASE TABLE |
 | [public.boe_items](public.boe_items.md) | 26 |  | BASE TABLE |
@@ -206,6 +206,9 @@
 | public.team_invite_link_resolve | record | p_code text | FUNCTION |
 | public.team_invite_link_revoke | void | p_team_id integer | FUNCTION |
 | public.team_invite_link_join | text | p_code text, p_blizzard_id bigint | FUNCTION |
+| public.guild_creation_open | bool |  | FUNCTION |
+| public.admin_set_guild_creation_open | void | p_open boolean | FUNCTION |
+| public.create_guild | record | p_name text, p_region text, p_realm text, p_team_name text DEFAULT NULL::text | FUNCTION |
 
 ## Enums
 
@@ -711,6 +714,7 @@ erDiagram
   bigint boe_payout_pivot
   jsonb gear_sync_last_cron_run
   jsonb gear_sync_last_officer_run
+  boolean guild_creation_open
 }
 "public.incoming_roster" {
   integer signup_id

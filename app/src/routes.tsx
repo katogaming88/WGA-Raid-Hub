@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { Navigate, type RouteObject } from 'react-router';
+import type { RouteObject } from 'react-router';
 import { RosterPage } from './roster/RosterPage';
 import { MyProfilePage, PlayerProfilePage } from './profile/ProfilePage';
 import { AppShell } from './layout/AppShell';
@@ -17,12 +17,13 @@ import { SignUpPage } from './signup/SignUpPage';
 import { GuildOfficersPage } from './officers/GuildOfficersPage';
 import { TeamOfficersPage } from './officers/TeamOfficersPage';
 import { InviteLinkPage } from './invite/InviteLinkPage';
+import { CreateGuildPage } from './front/CreateGuildPage';
+import { FrontPage } from './front/FrontPage';
 import { JoinRoute } from './join/JoinRoute';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { RequireAbility } from './auth/RequireAbility';
 import { GUILD_PAGES, TEAM_PAGES } from './layout/nav';
-import { defaultGuildPath } from './config';
 
 export type RouteHandle = { title: string };
 
@@ -54,7 +55,8 @@ const BUILT_GUILD_PAGES: Record<string, ReactElement> = {
 // arrives with the data layer (resolve_address(), #1114), along with the
 // redirect for retired keys.
 export const routes: RouteObject[] = [
-  { path: '/', element: <Navigate to={defaultGuildPath()} replace /> },
+  { path: '/', element: <FrontPage /> },
+  { path: '/new-guild', element: <CreateGuildPage /> },
   { path: '/join/:code', element: <JoinRoute /> },
   {
     path: '/g/:guildKey',

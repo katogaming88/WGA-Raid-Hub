@@ -2398,7 +2398,8 @@
         {
           "name": "name",
           "type": "text",
-          "nullable": false
+          "nullable": false,
+          "comment": "The team's display name. Unique within its guild, ignoring case, so a guild cannot have two teams with the same name; other guilds may reuse it (#1226)."
         },
         {
           "name": "slug",
@@ -2425,14 +2426,6 @@
       ],
       "indexes": [
         {
-          "name": "teams_name_key",
-          "def": "CREATE UNIQUE INDEX teams_name_key ON public.teams USING btree (name)",
-          "table": "public.teams",
-          "columns": [
-            "name"
-          ]
-        },
-        {
           "name": "teams_pkey",
           "def": "CREATE UNIQUE INDEX teams_pkey ON public.teams USING btree (id)",
           "table": "public.teams",
@@ -2448,6 +2441,15 @@
             "guild_id",
             "slug"
           ]
+        },
+        {
+          "name": "teams_guild_id_lower_name_key",
+          "def": "CREATE UNIQUE INDEX teams_guild_id_lower_name_key ON public.teams USING btree (guild_id, lower(name))",
+          "table": "public.teams",
+          "columns": [
+            "guild_id",
+            "lower"
+          ]
         }
       ],
       "constraints": [
@@ -2459,16 +2461,6 @@
           "referenced_table": "",
           "columns": [
             "slug"
-          ]
-        },
-        {
-          "name": "teams_name_key",
-          "type": "UNIQUE",
-          "def": "UNIQUE (name)",
-          "table": "public.teams",
-          "referenced_table": "",
-          "columns": [
-            "name"
           ]
         },
         {
@@ -3845,6 +3837,13 @@
           "type": "jsonb",
           "nullable": true,
           "comment": "Outcome of the last officer-triggered whole-team blizzard-gear-sync run (Sync Gear Levels Now), same shape as gear_sync_last_cron_run. A single-raider sync is not recorded."
+        },
+        {
+          "name": "guild_creation_open",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "When true, any signed-in person with Discord connected can create a guild and its first team (create_guild()). When false, only a site admin can. Flipped by admin_set_guild_creation_open() (#1226)."
         }
       ],
       "indexes": [
@@ -6246,7 +6245,8 @@
         {
           "name": "name",
           "type": "text",
-          "nullable": false
+          "nullable": false,
+          "comment": "The guild's display name. A label only: guilds are identified by url_key and id, so two guilds may share a name (#1226)."
         },
         {
           "name": "url_key",
@@ -6280,14 +6280,6 @@
           "table": "public.guilds",
           "columns": [
             "id"
-          ]
-        },
-        {
-          "name": "guilds_name_key",
-          "def": "CREATE UNIQUE INDEX guilds_name_key ON public.guilds USING btree (name)",
-          "table": "public.guilds",
-          "columns": [
-            "name"
           ]
         },
         {
@@ -6338,16 +6330,6 @@
           "referenced_table": "",
           "columns": [
             "id"
-          ]
-        },
-        {
-          "name": "guilds_name_key",
-          "type": "UNIQUE",
-          "def": "UNIQUE (name)",
-          "table": "public.guilds",
-          "referenced_table": "",
-          "columns": [
-            "name"
           ]
         },
         {
@@ -10199,6 +10181,24 @@
       "name": "public.team_invite_link_join",
       "return_type": "text",
       "arguments": "p_code text, p_blizzard_id bigint",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.guild_creation_open",
+      "return_type": "bool",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_set_guild_creation_open",
+      "return_type": "void",
+      "arguments": "p_open boolean",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.create_guild",
+      "return_type": "record",
+      "arguments": "p_name text, p_region text, p_realm text, p_team_name text DEFAULT NULL::text",
       "type": "FUNCTION"
     }
   ],

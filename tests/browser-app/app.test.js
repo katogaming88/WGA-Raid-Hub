@@ -361,6 +361,17 @@ const STREAMS_PAGE = {
 const HELP = { path: '/g/wga/help', sentinel: 'main:has(.help-card)' };
 const ABOUT = { path: '/g/wga/about', sentinel: 'main:has(.about-card)' };
 
+// The site front page and the create-your-guild page (#1226). The form only
+// shows once guild creation is open, so that state turns the switch on.
+const FRONT = { path: '/', sentinel: 'main:has(.front-hero)' };
+const NEW_GUILD = {
+  path: '/new-guild',
+  sentinel: 'main:has(.front-form)',
+  session: OFFICER,
+  who: 'officer',
+  rpc: { guild_creation_open: true }
+};
+
 // Guild officers and Team officers (#1102): the same OFFICER_BIOS fixture
 // Guild home's compact list uses, which carries both a full card (photo,
 // pronouns, class badge, bio text) and a bare one (initials only, no extras).
@@ -444,6 +455,10 @@ const STATES = [
   { label: 'help, light', ...HELP, colorScheme: 'light' },
   { label: 'about', ...ABOUT },
   { label: 'about, light', ...ABOUT, colorScheme: 'light' },
+  { label: 'front page', ...FRONT },
+  { label: 'front page, light', ...FRONT, colorScheme: 'light' },
+  { label: 'create your guild', ...NEW_GUILD },
+  { label: 'create your guild, light', ...NEW_GUILD, colorScheme: 'light' },
   { label: 'guild officers', ...GUILD_OFFICERS },
   { label: 'guild officers, light', ...GUILD_OFFICERS, colorScheme: 'light' },
   { label: 'team officers', ...TEAM_OFFICERS },
