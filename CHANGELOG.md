@@ -22,6 +22,10 @@ answers to.
   season you are on now. Clear All clears the season the page is showing.
   Nothing changes for anyone today, since everyone's picks are all in the
   current season ([#936](https://github.com/katogaming88/WGA-Raid-Hub/issues/936)).
+- If the page cannot work out which season it is on, which happens when one of
+  its reads fails, your wishlist now shows every pick you have with editing
+  switched off, and says so. It used to look empty
+  ([#936](https://github.com/katogaming88/WGA-Raid-Hub/issues/936)).
 
 ### Backend
 
