@@ -153,7 +153,7 @@ describe('planMark', () => {
         slot: null,
         status: 'bis',
         note: null,
-        season: 'Midnight Season 2',
+        season: 'MID2',
         synced_bis: false
       }
     });

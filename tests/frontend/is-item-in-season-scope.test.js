@@ -10,7 +10,8 @@ import { fileURLToPath } from 'node:url';
 // of season, so an officer's "M+ - Head" pick made during Season 1 kept
 // showing up forever, even after the team moved on to Season 2. Placeholder
 // rows now carry their own `season` (item_preferences.season, stamped at
-// tag time), passed in as the second argument.
+// tag time), passed in as the second argument. That stamp is a season code
+// since #936; it was the tier's display name before.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
@@ -39,7 +40,7 @@ describe('isItemInSeasonScope -- placeholder rowSeason scoping', () => {
       itemPlaceholders: { 'M+': true },
       seasonView: 'MID2'
     });
-    expect(sandbox.isItemInSeasonScope('M+', 'Midnight Season 2')).toBe(true);
+    expect(sandbox.isItemInSeasonScope('M+', 'MID2')).toBe(true);
   });
 
   it('hides a placeholder tagged for a different (older) season than the one being viewed', () => {
@@ -47,7 +48,7 @@ describe('isItemInSeasonScope -- placeholder rowSeason scoping', () => {
       itemPlaceholders: { 'M+': true },
       seasonView: 'MID2'
     });
-    expect(sandbox.isItemInSeasonScope('M+', 'Midnight Season 1')).toBe(false);
+    expect(sandbox.isItemInSeasonScope('M+', 'MID1')).toBe(false);
   });
 
   it('fails open for a legacy placeholder row with no season stamped at all', () => {
@@ -67,6 +68,6 @@ describe('isItemInSeasonScope -- placeholder rowSeason scoping', () => {
       seasonView: 'MID2'
     });
     // rowSeason passed in shouldn't matter for real items -- zone-based check wins
-    expect(sandbox.isItemInSeasonScope('Helm', 'Midnight Season 2')).toBe(false);
+    expect(sandbox.isItemInSeasonScope('Helm', 'MID2')).toBe(false);
   });
 });
