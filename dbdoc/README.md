@@ -205,7 +205,7 @@
 | public.team_invite_link_reset | team_invite_links | p_team_id integer, p_expires_at timestamp with time zone DEFAULT NULL::timestamp with time zone | FUNCTION |
 | public.team_invite_link_resolve | record | p_code text | FUNCTION |
 | public.team_invite_link_revoke | void | p_team_id integer | FUNCTION |
-| public.team_invite_link_join | text | p_code text, p_name text, p_realm text, p_class text DEFAULT NULL::text, p_spec text DEFAULT NULL::text | FUNCTION |
+| public.team_invite_link_join | text | p_code text, p_blizzard_id bigint | FUNCTION |
 
 ## Enums
 
