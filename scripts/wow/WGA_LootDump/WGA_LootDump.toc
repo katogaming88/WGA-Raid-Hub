@@ -1,0 +1,7 @@
+## Interface: 120007, 120100
+## Title: WGA Loot Dump
+## Notes: Type /wgaloot to list the Mythic loot of chosen dungeons from the Adventure Guide, for pasting into the WGA Raid Hub.
+## Version: 1.0.0
+## IconTexture: Interface\Icons\INV_Misc_ScrollUnrolled03D
+
+WGA_LootDump.lua

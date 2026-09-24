@@ -1,0 +1,263 @@
+-- season: MID2
+-- Mythic loot of the Midnight Season 2 M+ dungeons, as the Adventure Guide
+-- lists it. Made in game with scripts/wow/WGA_LootDump (/wgaloot) on 2026-09-24
+-- and pasted here unedited. Each season: run /wgaloot, replace this file.
+-- Read by scripts/dungeon-items-sql.js, which keeps the gear rows only.
+-- Columns: dungeon | boss | item id | item name | slot | armor or weapon type
+Altar of Fangs | Rav'i | 273793 | Hydraspine Twinblade | One-Hand | Warglaives
+Altar of Fangs | Rav'i | 273780 | Venom-Etched Crescent | One-Hand | Axe
+Altar of Fangs | Rav'i | 273785 | Primordial Robe of Rites | Chest | Cloth
+Altar of Fangs | Rav'i | 273775 | Hydra Scale Wristguards | Wrist | Mail
+Altar of Fangs | Rav'i | 273777 | Poison-Proof Stompers | Feet | Plate
+Altar of Fangs | Rav'i | 273795 | Coiled Fangstone | Trinket |
+Altar of Fangs | Rav'i | 273796 | Vile Vial of Volatile Venom | Trinket |
+-- Altar of Fangs / Rav'i: 7 rows
+Altar of Fangs | The Writhing Coil | 273783 | Toxin-Coated Warstaff | Two-Hand | Staff
+Altar of Fangs | The Writhing Coil | 273782 | Vile Writhefang Glaive | Two-Hand | Polearm
+Altar of Fangs | The Writhing Coil | 273779 | Nocuous Focal Fang | Held In Off-hand |
+Altar of Fangs | The Writhing Coil | 273781 | Strand of Warding Fangs | Neck |
+Altar of Fangs | The Writhing Coil | 273774 | Snakeskin Spaulders | Shoulder | Leather
+Altar of Fangs | The Writhing Coil | 273787 | Aged Interwoven Scaleplate | Chest | Plate
+Altar of Fangs | The Writhing Coil | 273786 | Leggings of Entwined Serpents | Legs | Cloth
+Altar of Fangs | The Writhing Coil | 273794 | Knot of Writhing Serpents | Trinket |
+-- Altar of Fangs / The Writhing Coil: 8 rows
+Altar of Fangs | Zul'jan | 270900 | Pattern: Snakeskin Lining | (no slot: not gear) |
+Altar of Fangs | Zul'jan | 279211 | Pillar of the Fanged Altar | (no slot: not gear) |
+Altar of Fangs | Zul'jan | 276804 | The Writhing Brood | (no slot: not gear) | Mount
+Altar of Fangs | Zul'jan | 273778 | Polished Lightwood Channeler | One-Hand | Dagger
+Altar of Fangs | Zul'jan | 275070 | Sharpened Lightwood Slasher | One-Hand | Dagger
+Altar of Fangs | Zul'jan | 273784 | Ancestral Amani Recurve | Ranged | Bow
+Altar of Fangs | Zul'jan | 273791 | Spare Speaker's Hood | Head | Leather
+Altar of Fangs | Zul'jan | 273789 | Chestguard of Corroded Scales | Chest | Mail
+Altar of Fangs | Zul'jan | 273773 | Handwraps of Blasphemous Rites | Hands | Cloth
+Altar of Fangs | Zul'jan | 273776 | Ancient General's Obsidian Pillars | Legs | Plate
+Altar of Fangs | Zul'jan | 273792 | Band of the Amani Warlord | Finger |
+Altar of Fangs | Zul'jan | 273797 | Tattered Amani War Banner | Trinket |
+-- Altar of Fangs / Zul'jan: 12 rows
+Den of Nalorakk | The Hoardmonger | 251143 | Grim Harvest Gloves | One-Hand | Fist Weapon
+Den of Nalorakk | The Hoardmonger | 251146 | Scavenger's Spaulders | Shoulder | Leather
+Den of Nalorakk | The Hoardmonger | 251147 | Hoarded Harvest Wrap | Chest | Cloth
+Den of Nalorakk | The Hoardmonger | 251144 | Autumn's Boon Belt | Waist | Plate
+Den of Nalorakk | The Hoardmonger | 251145 | Forgotten Tribe Footguards | Feet | Mail
+Den of Nalorakk | The Hoardmonger | 251148 | Pilfered Precious Band | Finger |
+Den of Nalorakk | The Hoardmonger | 250248 | Mycolic Medicine | Trinket |
+-- Den of Nalorakk / The Hoardmonger: 7 rows
+Den of Nalorakk | Sentinel of Winter | 251149 | Victor's Flashfrozen Blade | Two-Hand | Polearm
+Den of Nalorakk | Sentinel of Winter | 251150 | Tempest's Shelter | Off Hand | Shield
+Den of Nalorakk | Sentinel of Winter | 271681 | Perennial Frostbound Charm | Held In Off-hand |
+Den of Nalorakk | Sentinel of Winter | 251151 | Sentinel Challenger's Prize | Chest | Plate
+Den of Nalorakk | Sentinel of Winter | 251154 | Winter's Embrace Bracers | Wrist | Cloth
+Den of Nalorakk | Sentinel of Winter | 251152 | Season's Turn Gauntlets | Hands | Mail
+Den of Nalorakk | Sentinel of Winter | 251155 | Tribal Defender's Cord | Waist | Mail
+Den of Nalorakk | Sentinel of Winter | 251153 | Arctic Explorer's Legwraps | Feet | Leather
+Den of Nalorakk | Sentinel of Winter | 250244 | Permafrost Essence | Trinket |
+-- Den of Nalorakk / Sentinel of Winter: 9 rows
+Den of Nalorakk | Nalorakk | 264332 | Amani Ritual Altar | (no slot: not gear) |
+Den of Nalorakk | Nalorakk | 256737 | Formula: Enchant Chest - Mark of Nalorakk | (no slot: not gear) |
+Den of Nalorakk | Nalorakk | 251156 | Fallen Speaker's Staff | Two-Hand | Staff
+Den of Nalorakk | Nalorakk | 251158 | Nalorakk's Nightmare | Head | Mail
+Den of Nalorakk | Nalorakk | 251173 | Yoke of the Charging Bear | Neck |
+Den of Nalorakk | Nalorakk | 251159 | War Trial Vestments | Chest | Leather
+Den of Nalorakk | Nalorakk | 251214 | Bonds of the Hash'ura | Hands | Plate
+Den of Nalorakk | Nalorakk | 251160 | Forest Dream Leg-guards | Legs | Cloth
+Den of Nalorakk | Nalorakk | 250229 | Idol of the War Loa | Trinket |
+-- Den of Nalorakk / Nalorakk: 9 rows
+Kings' Rest | The Golden Serpent | 159137 | Gilded Serpent's Tooth | One-Hand | Dagger
+Kings' Rest | The Golden Serpent | 159413 | Gauntlets of the Avian Sentinel | Hands | Plate
+Kings' Rest | The Golden Serpent | 159369 | Belt of the Consecrated Tomb | Waist | Mail
+Kings' Rest | The Golden Serpent | 159313 | Breeches of the Sacred Hall | Legs | Leather
+Kings' Rest | The Golden Serpent | 159234 | Down-Lined Breeches | Legs | Cloth
+Kings' Rest | The Golden Serpent | 159412 | Auric Puddle Stompers | Feet | Plate
+Kings' Rest | The Golden Serpent | 159304 | Goldfeather Boots | Feet | Leather
+Kings' Rest | The Golden Serpent | 159617 | Lustrous Golden Plumage | Trinket |
+-- Kings' Rest / The Golden Serpent: 8 rows
+Kings' Rest | Mchimba the Embalmer | 159642 | Royal Purifier's Spade | Two-Hand | Polearm
+Kings' Rest | Mchimba the Embalmer | 159667 | Vessel of Last Rites | Held In Off-hand |
+Kings' Rest | Mchimba the Embalmer | 159409 | Embalmer's Steadying Bracers | Wrist | Plate
+Kings' Rest | Mchimba the Embalmer | 159312 | Desiccator's Blessed Gloves | Hands | Leather
+Kings' Rest | Mchimba the Embalmer | 160213 | Sepulchral Construct's Gloves | Hands | Mail
+Kings' Rest | Mchimba the Embalmer | 159459 | Ritual Binder's Ring | Finger |
+Kings' Rest | Mchimba the Embalmer | 159618 | Mchimba's Ritual Bandages | Trinket |
+-- Kings' Rest / Mchimba the Embalmer: 7 rows
+Kings' Rest | The Council of Tribes | 160216 | Crackling Jade Kilij | One-Hand | Sword
+Kings' Rest | The Council of Tribes | 159136 | Jeweled Dagger of Subjugation | One-Hand | Dagger
+Kings' Rest | The Council of Tribes | 159643 | Crossbow of Forgotten Majesty | Ranged | Crossbow
+Kings' Rest | The Council of Tribes | 159288 | Cloak of the Restless Tribes | Back |
+Kings' Rest | The Council of Tribes | 159300 | Kula's Butchering Wristwraps | Wrist | Leather
+Kings' Rest | The Council of Tribes | 159418 | Girdle of Pestilent Purification | Waist | Plate
+Kings' Rest | The Council of Tribes | 159371 | Boots of the Headlong Conqueror | Feet | Mail
+Kings' Rest | The Council of Tribes | 159243 | Sandals of Wise Voodoo | Feet | Cloth
+-- Kings' Rest / The Council of Tribes: 8 rows
+Kings' Rest | Dazar, The First King | 159921 | Mummified Raptor Skull | (no slot: not gear) | Mount
+Kings' Rest | Dazar, The First King | 278245 | Royal Attendant's Coffin | (no slot: not gear) |
+Kings' Rest | Dazar, The First King | 159644 | Geti'ikku, Cut of Death | Two-Hand | Sword
+Kings' Rest | Dazar, The First King | 159645 | Headcracker of Supplication | One-Hand | Mace
+Kings' Rest | Dazar, The First King | 239047 | Headdress of the First Empire | Head | Cloth
+Kings' Rest | Dazar, The First King | 239050 | Helm of the Raptor King | Head | Plate
+Kings' Rest | Dazar, The First King | 239045 | Mantle of Ceremonial Ascension | Shoulder | Cloth
+Kings' Rest | Dazar, The First King | 239051 | Pauldrons of the Great Unifier | Shoulder | Plate
+Kings' Rest | Dazar, The First King | 239049 | Spaulders of Prime Emperor | Shoulder | Mail
+Kings' Rest | Dazar, The First King | 239046 | Loa-Blessed Chestguard | Chest | Mail
+Kings' Rest | Dazar, The First King | 239048 | Vest of Reverent Adoration | Chest | Leather
+Kings' Rest | Dazar, The First King | 159301 | Primal Dinomancer's Belt | Waist | Leather
+Kings' Rest | Dazar, The First King | 273649 | Stormbound Emblem of Dazar | Trinket |
+-- Kings' Rest / Dazar, The First King: 13 rows
+Murder Row | Kystia Manaheart | 251123 | Nibbles' Training Rod | Two-Hand | Staff
+Murder Row | Kystia Manaheart | 271680 | Sinseared Repeater | Ranged | Gun
+Murder Row | Kystia Manaheart | 251126 | Greathelm of Temptation | Head | Plate
+Murder Row | Kystia Manaheart | 251127 | Nibbling Armbands | Wrist | Cloth
+Murder Row | Kystia Manaheart | 251124 | Gauntlets of Fevered Defense | Hands | Leather
+Murder Row | Kystia Manaheart | 251125 | Felsoaked Soles | Feet | Mail
+Murder Row | Kystia Manaheart | 250243 | Manaheart's Binding Flame | Trinket |
+-- Murder Row / Kystia Manaheart: 7 rows
+Murder Row | Zaen Bladesorrow | 251128 | Bladesorrow | One-Hand | Dagger
+Murder Row | Zaen Bladesorrow | 251131 | Jangling Felpaulets | Shoulder | Mail
+Murder Row | Zaen Bladesorrow | 251132 | Speakeasy Shroud | Back |
+Murder Row | Zaen Bladesorrow | 251133 | Overseer's Vambraces | Wrist | Plate
+Murder Row | Zaen Bladesorrow | 251129 | Counterfeit Clutches | Hands | Cloth
+Murder Row | Zaen Bladesorrow | 251130 | Breeches of Deft Deals | Legs | Leather
+Murder Row | Zaen Bladesorrow | 250215 | Freightrunner's Flask | Trinket |
+-- Murder Row / Zaen Bladesorrow: 7 rows
+Murder Row | Xathuux the Annihilator | 251134 | Xathuux's Cleave | Two-Hand | Axe
+Murder Row | Xathuux the Annihilator | 251135 | Fury-fletched Armlets | Wrist | Leather
+Murder Row | Xathuux the Annihilator | 251137 | Tempestuous Sandals | Feet | Cloth
+Murder Row | Xathuux the Annihilator | 251136 | Signet of Snarling Servitude | Finger |
+Murder Row | Xathuux the Annihilator | 250228 | Resonant Bellowstone | Trinket |
+-- Murder Row / Xathuux the Annihilator: 5 rows
+Murder Row | Lithiel Cinderfury | 256746 | Formula: Smuggler's Enchanted Edge | (no slot: not gear) |
+Murder Row | Lithiel Cinderfury | 263238 | Illicit Long Table | (no slot: not gear) |
+Murder Row | Lithiel Cinderfury | 256640 | Pattern: Row Walker's Insurance | (no slot: not gear) |
+Murder Row | Lithiel Cinderfury | 258518 | Plans: Murder Row Fishhook | (no slot: not gear) |
+Murder Row | Lithiel Cinderfury | 258487 | Plans: Murder Row Fleet Feet | (no slot: not gear) |
+Murder Row | Lithiel Cinderfury | 258045 | Dawnblade's Glaives | One-Hand | Warglaives
+Murder Row | Lithiel Cinderfury | 251140 | Vilefiend's Guise | Head | Leather
+Murder Row | Lithiel Cinderfury | 251142 | Pendant of Malefic Fury | Neck |
+Murder Row | Lithiel Cinderfury | 251138 | Cinderfury Shoulderguards | Shoulder | Plate
+Murder Row | Lithiel Cinderfury | 251139 | Summoner's Searing Shirt | Chest | Cloth
+Murder Row | Lithiel Cinderfury | 251141 | Lithiel's Linked Leggings | Legs | Mail
+Murder Row | Lithiel Cinderfury | 250255 | Unstable Felheart Crystal | Trinket |
+-- Murder Row / Lithiel Cinderfury: 12 rows
+Ruby Life Pools | Melidrussa Chillworn | 193761 | Chillworn's Infusion Staff | Two-Hand | Staff
+Ruby Life Pools | Melidrussa Chillworn | 193758 | Subjugator's Chilling Grips | Hands | Leather
+Ruby Life Pools | Melidrussa Chillworn | 193759 | Egg Tender's Leggings | Legs | Mail
+Ruby Life Pools | Melidrussa Chillworn | 193728 | Scaleguard's Stalwart Greatboots | Feet | Plate
+Ruby Life Pools | Melidrussa Chillworn | 193757 | Ruby Whelp Shell | Trinket |
+-- Ruby Life Pools / Melidrussa Chillworn: 5 rows
+Ruby Life Pools | Kokia Blazehoof | 193767 | Havoc Crusher | One-Hand | Mace
+Ruby Life Pools | Kokia Blazehoof | 193766 | Kokia's Burnout Rod | Held In Off-hand |
+Ruby Life Pools | Kokia Blazehoof | 193765 | Blazebound Lieutenant's Helm | Head | Mail
+Ruby Life Pools | Kokia Blazehoof | 193763 | Fireproof Drape | Back |
+Ruby Life Pools | Kokia Blazehoof | 193764 | Invader's Firestorm Chestguard | Chest | Leather
+Ruby Life Pools | Kokia Blazehoof | 193762 | Blazebinder's Hoof | Trinket |
+-- Ruby Life Pools / Kokia Blazehoof: 6 rows
+Ruby Life Pools | Kyrakka and Erkhart Stormvein | 256428 | Valdrakken Hanging Lamp | (no slot: not gear) |
+Ruby Life Pools | Kyrakka and Erkhart Stormvein | 193755 | Backdraft Cleaver | Two-Hand | Axe
+Ruby Life Pools | Kyrakka and Erkhart Stormvein | 193756 | Skyferno Rondel | One-Hand | Dagger
+Ruby Life Pools | Kyrakka and Erkhart Stormvein | 193754 | Drake Rider's Stecktarge | Off Hand | Shield
+Ruby Life Pools | Kyrakka and Erkhart Stormvein | 193751 | Crown of Roaring Storms | Head | Leather
+Ruby Life Pools | Kyrakka and Erkhart Stormvein | 193753 | Breastplate of Soaring Terror | Chest | Plate
+Ruby Life Pools | Kyrakka and Erkhart Stormvein | 193752 | Galerattle Gauntlets | Hands | Mail
+Ruby Life Pools | Kyrakka and Erkhart Stormvein | 193691 | Sky Saddle Cord | Waist | Cloth
+Ruby Life Pools | Kyrakka and Erkhart Stormvein | 193750 | Wind Soarer's Breeches | Legs | Cloth
+Ruby Life Pools | Kyrakka and Erkhart Stormvein | 193748 | Kyrakka's Searing Embers | Trinket |
+-- Ruby Life Pools / Kyrakka and Erkhart Stormvein: 10 rows
+Temple of Sethraliss | Adderis and Aspix | 159636 | Staff of the Lightning Serpent | Two-Hand | Staff
+Temple of Sethraliss | Adderis and Aspix | 158370 | Twin-Strike Polearm | Two-Hand | Polearm
+Temple of Sethraliss | Adderis and Aspix | 159380 | Arc-Glass Bindings | Wrist | Mail
+Temple of Sethraliss | Adderis and Aspix | 159263 | Bindings of the Slithering Current | Wrist | Cloth
+Temple of Sethraliss | Adderis and Aspix | 159425 | Shard-Tipped Vambraces | Wrist | Plate
+Temple of Sethraliss | Adderis and Aspix | 159317 | Whirling Dervish Sash | Waist | Leather
+Temple of Sethraliss | Adderis and Aspix | 159329 | Leggings of the Galeforce Viper | Legs | Leather
+Temple of Sethraliss | Adderis and Aspix | 159435 | Legplates of Charged Duality | Legs | Plate
+Temple of Sethraliss | Adderis and Aspix | 159388 | Sabatons of Coruscating Energy | Feet | Mail
+Temple of Sethraliss | Adderis and Aspix | 159259 | Sandswept Sandals | Feet | Cloth
+-- Temple of Sethraliss / Adderis and Aspix: 10 rows
+Temple of Sethraliss | Merektha | 160832 | Viable Cobra Egg | (no slot: not gear) |
+Temple of Sethraliss | Merektha | 158714 | Swarm's Edge | One-Hand | Sword
+Temple of Sethraliss | Merektha | 159637 | Snakebite Recurve | Ranged | Bow
+Temple of Sethraliss | Merektha | 159255 | Ouroborial Sash | Waist | Cloth
+Temple of Sethraliss | Merektha | 159375 | Legguards of the Awakening Brood | Legs | Mail
+Temple of Sethraliss | Merektha | 159327 | Sand-Shined Snakeskin Sandals | Feet | Leather
+Temple of Sethraliss | Merektha | 162544 | Jade Ophidian Band | Finger |
+Temple of Sethraliss | Merektha | 158367 | Merektha's Fang | Trinket |
+-- Temple of Sethraliss / Merektha: 8 rows
+Temple of Sethraliss | Galvazzt | 158369 | Galvanized Stormcrusher | One-Hand | Mace
+Temple of Sethraliss | Galvazzt | 159664 | Bulwark of Brimming Potential | Off Hand | Shield
+Temple of Sethraliss | Galvazzt | 159247 | Handwraps of Oscillating Polarity | Hands | Cloth
+Temple of Sethraliss | Galvazzt | 159442 | Sand-Scoured Greatbelt | Waist | Plate
+Temple of Sethraliss | Galvazzt | 158366 | Charged Sandstone Band | Finger |
+Temple of Sethraliss | Galvazzt | 158374 | Tiny Electromental in a Jar | Trinket |
+-- Temple of Sethraliss / Galvazzt: 6 rows
+Temple of Sethraliss | Avatar of Sethraliss | 278982 | Hatchery of Hissing Eggs | (no slot: not gear) |
+Temple of Sethraliss | Avatar of Sethraliss | 158373 | Resonating Crystal Scimitar | One-Hand | Sword
+Temple of Sethraliss | Avatar of Sethraliss | 239033 | Hood of the Slithering Loa | Head | Leather
+Temple of Sethraliss | Avatar of Sethraliss | 239035 | Sethraliss' Fanged Helm | Head | Mail
+Temple of Sethraliss | Avatar of Sethraliss | 239031 | Brood Cleanser's Amice | Shoulder | Cloth
+Temple of Sethraliss | Avatar of Sethraliss | 239037 | C'thraxxi Binders Pauldrons | Shoulder | Plate
+Temple of Sethraliss | Avatar of Sethraliss | 239034 | Corrupted Hexxer's Vestments | Chest | Mail
+Temple of Sethraliss | Avatar of Sethraliss | 239036 | Desert Guardian's Breastplate | Chest | Plate
+Temple of Sethraliss | Avatar of Sethraliss | 239032 | Robes of the Reborn Serpent | Chest | Cloth
+Temple of Sethraliss | Avatar of Sethraliss | 159337 | Grips of Electrified Defense | Hands | Leather
+Temple of Sethraliss | Avatar of Sethraliss | 158368 | Sethraliss' Defiled Relic | Trinket |
+-- Temple of Sethraliss / Avatar of Sethraliss: 11 rows
+The Blinding Vale | Lightblossom Trinity | 251181 | Pruning Lance | Two-Hand | Polearm
+The Blinding Vale | Lightblossom Trinity | 251180 | Thornblade | One-Hand | Dagger
+The Blinding Vale | Lightblossom Trinity | 251184 | Ironroot Collar | Shoulder | Mail
+The Blinding Vale | Lightblossom Trinity | 251183 | Rootwarden Wraps | Wrist | Leather
+The Blinding Vale | Lightblossom Trinity | 251185 | Lightblossom Cinch | Waist | Cloth
+The Blinding Vale | Lightblossom Trinity | 251182 | Bedrock Breeches | Legs | Plate
+The Blinding Vale | Lightblossom Trinity | 250254 | Seed of Radiant Hope | Trinket |
+-- The Blinding Vale / Lightblossom Trinity: 7 rows
+The Blinding Vale | Ikuzz the Light Hunter | 251186 | Thorntalon Edge | One-Hand | Fist Weapon
+The Blinding Vale | Ikuzz the Light Hunter | 251187 | Amirdrassil's Reach | Ranged | Crossbow
+The Blinding Vale | Ikuzz the Light Hunter | 251188 | Doompetal | Ranged | Wand
+The Blinding Vale | Ikuzz the Light Hunter | 251190 | Bloodthorn Burnous | Back |
+The Blinding Vale | Ikuzz the Light Hunter | 251189 | Rootwalker Harness | Waist | Leather
+The Blinding Vale | Ikuzz the Light Hunter | 250238 | Seed of the Devouring Wild | Trinket |
+-- The Blinding Vale / Ikuzz the Light Hunter: 6 rows
+The Blinding Vale | Lightwarden Ruia | 251192 | Branch of Pride | Two-Hand | Staff
+The Blinding Vale | Lightwarden Ruia | 251191 | Luminescent Sprout | Held In Off-hand |
+The Blinding Vale | Lightwarden Ruia | 251193 | Taproot Ribs | Chest | Plate
+The Blinding Vale | Lightwarden Ruia | 251165 | Pulverizing Pads | Hands | Mail
+The Blinding Vale | Lightwarden Ruia | 251194 | Lightwarden's Bind | Finger |
+The Blinding Vale | Lightwarden Ruia | 250214 | Lightspire Core | Trinket |
+-- The Blinding Vale / Lightwarden Ruia: 6 rows
+The Blinding Vale | Ziekket | 256642 | Pattern: Primal Spore Binding | (no slot: not gear) |
+The Blinding Vale | Ziekket | 256652 | Pattern: World Tender's Trunkplate | (no slot: not gear) |
+The Blinding Vale | Ziekket | 268728 | Saptor Salve | (no slot: not gear) |
+The Blinding Vale | Ziekket | 253451 | Veilroot Fountain | (no slot: not gear) |
+The Blinding Vale | Ziekket | 251195 | Thorned Reply | One-Hand | Sword
+The Blinding Vale | Ziekket | 251196 | Teldrassil's Sacrifice | Off Hand | Shield
+The Blinding Vale | Ziekket | 251199 | Worldroot Canopy | Head | Cloth
+The Blinding Vale | Ziekket | 251200 | Saptorbane Guards | Wrist | Mail
+The Blinding Vale | Ziekket | 251197 | Thornspike Gauntlets | Hands | Plate
+The Blinding Vale | Ziekket | 251198 | Lightspore Leggings | Legs | Leather
+The Blinding Vale | Ziekket | 250259 | Sapling of the Dawnroot | Trinket |
+-- The Blinding Vale / Ziekket: 11 rows
+Voidscar Arena | Taz'Rah | 251218 | Taz'Rah's Cosmic Edge | One-Hand | Sword
+Voidscar Arena | Taz'Rah | 251220 | Voidscarred Crown | Head | Mail
+Voidscar Arena | Taz'Rah | 251223 | Somber Spaulders | Shoulder | Leather
+Voidscar Arena | Taz'Rah | 251221 | Despondent's Gauntlets | Hands | Plate
+Voidscar Arena | Taz'Rah | 251222 | Ethereal Netherwrap | Waist | Cloth
+Voidscar Arena | Taz'Rah | 251219 | Riftworn Stompers | Feet | Cloth
+Voidscar Arena | Taz'Rah | 250225 | Void Execution Mandate | Trinket |
+-- Voidscar Arena / Taz'Rah: 7 rows
+Voidscar Arena | Atroxus | 251225 | Fang of Contagion | One-Hand | Dagger
+Voidscar Arena | Atroxus | 251224 | Hulking Handaxe | One-Hand | Axe
+Voidscar Arena | Atroxus | 251229 | Visor of the Predator | Head | Plate
+Voidscar Arena | Atroxus | 251227 | Poisoner's Pauldrons | Shoulder | Cloth
+Voidscar Arena | Atroxus | 251226 | Hide of Pestilence | Chest | Leather
+Voidscar Arena | Atroxus | 251228 | Behemoth Waistband | Waist | Mail
+Voidscar Arena | Atroxus | 252258 | Sickening Signet of Atroxus | Finger |
+Voidscar Arena | Atroxus | 250245 | Tumor of the Swarm | Trinket |
+-- Voidscar Arena / Atroxus: 8 rows
+Voidscar Arena | Charonus | 256721 | Design: Voidstone Shielding Array | (no slot: not gear) |
+Voidscar Arena | Charonus | 264336 | Voidlight Brazier | (no slot: not gear) |
+Voidscar Arena | Charonus | 251230 | Charonic Crescent | Two-Hand | Polearm
+Voidscar Arena | Charonus | 251231 | Singularity Slicer | One-Hand | Warglaives
+Voidscar Arena | Charonus | 251232 | Overseer's Diadem | Head | Cloth
+Voidscar Arena | Charonus | 251234 | Graft of the Domanaar | Neck |
+Voidscar Arena | Charonus | 251233 | Manipulator's Vest | Chest | Mail
+Voidscar Arena | Charonus | 251235 | Gravitic Girdle | Waist | Leather
+Voidscar Arena | Charonus | 250224 | Mindpiercer's Sigil | Trinket |
+-- Voidscar Arena / Charonus: 9 rows

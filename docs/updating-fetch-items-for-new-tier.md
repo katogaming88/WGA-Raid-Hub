@@ -98,6 +98,22 @@ psql service=wga-admin -X -v ON_ERROR_STOP=1 -f data/sql/boe-catalog.sql
 
 The rows cannot ride in a migration: `seed.sql` inserts `items` ids 1 to 3 explicitly after migrations run, so sequence-assigned rows there would break every `supabase db reset` on the primary key. `buildItemMaps()` in `js/common.js` keeps flagged rows out of every existing map, which is what keeps BoEs out of the BiS grid, the wishlist and the Priority tab.
 
+## M+ dungeon items: `WGA_LootDump` and `dungeon-items-sql.js` (#1166)
+
+The season's M+ pool changes every season, and the older dungeons in it keep their old loot with new item levels. Wowhead's zone and boss pages get both wrong (a boss shared with a raid shows the raid's loot, and a dungeon can be missing a boss), so the list comes from the game's own Adventure Guide instead. Every item here is `items.source = 'dungeon'` with the season's code in `items.season`, so it can be wishlisted and marked received but is never ranked or exported to RCLootCouncil.
+
+1. Edit `DUNGEONS` at the top of `scripts/wow/WGA_LootDump/WGA_LootDump.lua` to the new season's pool (names as the Adventure Guide spells them; Raider.IO lists the pool). Copy the folder into `Interface/AddOns/`. It also works on the PTR, so the list can be ready before the season starts; run it again once the season is live, since PTR loot can change.
+2. In game, open the Adventure Guide once, then type `/wgaloot`. It waits for every item name to load, then opens a window: Ctrl+A, Ctrl+C.
+3. Save the text as `scripts/season-items/<SEASON>-dungeons.txt`, with a first line `-- season: <SEASON>` (the code from `seasons`, for example `MID3`). Check the "rows" line under each boss against the Adventure Guide: a "no slot" row is a mount, recipe or decor and is skipped.
+4. `node scripts/dungeon-items-sql.js scripts/season-items/<SEASON>-dungeons.txt` reads each gear item's icon and writes `data/sql/dungeon-items.sql` (gitignored). It is safe to run twice: an item already in the catalog is left alone.
+5. Apply it by hand at a checkpoint, then run the stats step below for the new ids:
+
+```
+psql service=wga-admin -X -v ON_ERROR_STOP=1 -f data/sql/dungeon-items.sql
+```
+
+The season row must exist first (`items.season` is a foreign key to `seasons`).
+
 ## Fetching secondary stats, main stats, and weapon subtype (#560, #609)
 
 Once the new tier's rows exist in `items`, run `scripts/fetch-item-stats.js` to backfill `secondary_stats` (which of Crit/Haste/Mastery/Vers the item rolls, used by the Priority tab), `main_stats` (which of Strength/Agility/Intellect the item scales with, used by the Wishlist/BiS-grid Trinket/Weapon/Off Hand filter), and `weapon_subtype` (e.g. 'Sword'/'Staff'/'Shield', used by the same filter's `CLASS_WEAPON_TYPES`/`CLASS_SHIELD_USERS` class-eligibility check, #609) -- all three come from the same Blizzard/Wowhead calls, no extra fetches needed:

@@ -26,6 +26,13 @@ answers to.
 
 - Tests for the new item columns and for the export leaving dungeon and
   crafted items out. The database decisions log gets the entry.
+- A small in-game addon (`scripts/wow/WGA_LootDump`, `/wgaloot`) lists the
+  Mythic loot of the season's M+ dungeons as the Adventure Guide shows it, and
+  `scripts/dungeon-items-sql.js` turns that list into the SQL that adds them
+  to the item catalog. Season 2's 208 dungeon items are saved as the first
+  list (`scripts/season-items/MID2-dungeons.txt`). Wowhead's dungeon pages
+  were wrong in both directions, so the game is the source. The yearly item
+  refresh guide gains the steps.
 
 ## [3.154.4] - 2026-09-24
 
