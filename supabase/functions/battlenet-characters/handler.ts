@@ -141,6 +141,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   );
 
   const picked = pickedFrom(shown, body.save);
+  // Saving replaces the person's whole set, so a save that names characters
+  // and matches none of them would delete every one they have. Blizzard
+  // answers 404 for a login with no WoW characters and an unexpected body
+  // reads as none, so that is what a hiccup mid-save looks like from here.
+  // Clearing on purpose still works: it sends no ids at all.
+  if (picked && picked.length === 0 && Array.isArray(body.save) && body.save.length > 0) {
+    return refuse(BLIZZARD_DOWN, 502);
+  }
   if (picked) await deps.db.saveCharacters(personId, picked);
   const saved = new Set(await deps.db.savedBlizzardIds(personId));
 

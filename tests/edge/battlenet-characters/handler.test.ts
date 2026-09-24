@@ -215,6 +215,25 @@ Deno.test("saves only picked ids that are on the raider's own max-level list", a
   );
 });
 
+Deno.test('a save that matches nothing Blizzard returned refuses instead of clearing the set (#1319)', async () => {
+  // Blizzard answers 404 for a login with no WoW characters, so a hiccup
+  // mid-save reads as "this account holds nothing". Saving that would delete
+  // every character the person has saved.
+  const r = await run({ token: TOKEN, save: [201] }, { saved: [201] }, [jsonOk({ sub: BNET_ID }), status(404)]);
+  assertEquals([r.status, r.body.error], [502, BLIZZARD_DOWN]);
+  assertEquals(
+    r.db.calls.some((c) => c.method === 'saveCharacters'),
+    false
+  );
+});
+
+Deno.test('clearing on purpose still works: no ids named, so nothing is being kept', async () => {
+  const r = await run({ token: TOKEN, save: [] }, { saved: [201] });
+  assertEquals(r.status, 200);
+  const saveCall = r.db.calls.find((c) => c.method === 'saveCharacters')!;
+  assertEquals((saveCall.args[1] as Array<{ blizzard_id: number }>).length, 0);
+});
+
 Deno.test('allLevels widens the pool to every character, but only fetches detail for max level (#1162)', async () => {
   const r = await run({ token: TOKEN, allLevels: true });
   assertEquals(r.status, 200);
