@@ -506,26 +506,51 @@ describe('a raider writes to their wishlist only in a season the team has opened
   });
 });
 
-// A tripwire, not a behaviour. The page finds a pick by item and slot in any
-// season (item_preferences_no_dupe_item_key has no season in it), and the gate
-// asks about the season on the row, so the two agree only while a raider's
-// picks are all in one season. A tier after MID2 is what lets a raider hold
-// picks in two, and from then the page would re-tag, demote a BiS pick or
-// keep a row from a closed season, and the gate would refuse it. #936's
-// season-keyed unique index and the page lookups that go with it land first;
-// that change deletes this test.
-describe('no tier after MID2 lands while the wishlist key has no season (#936)', () => {
-  it('the key has no season and no tier starts after MID2', async () => {
+// #936: the wishlist key carries the season, so the same item in the same slot
+// is a separate pick in each tier. Before this the key was (player_id,
+// item_id, coalesce(slot, '')) and a raider's second tier of picks collided
+// with their first, which is why the page and the gate had to agree that every
+// pick sat in one season. The tripwire that held that order is gone with it.
+describe('the wishlist key carries the season (#936)', () => {
+  it('the key is on the season as well as the player, item and slot', async () => {
     await withTxn(async ({ q }) => {
       const key = await q("select indexdef from pg_indexes where indexname = 'item_preferences_no_dupe_item_key'");
-      expect(key.rows[0].indexdef, 'the key carries the season now: delete this tripwire').not.toMatch(/season/);
-      const later = await q(
-        "select code from public.seasons where starts_at > (select starts_at from public.seasons where code = 'MID2')"
-      );
-      expect(
-        later.rows.map((r) => r.code),
-        "a tier after MID2 needs #936's season-keyed wishlist key first"
-      ).toEqual([]);
+      expect(key.rows[0].indexdef).toMatch(/season/);
+    });
+  });
+
+  it('a raider holds the same item and slot in two seasons', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await gatedPlayer(q);
+      const first = await tier(q, true);
+      const second = await tier(q, true);
+
+      await asUser(RAIDER_T1, PICK, [pid, first]);
+      const later = await asUser(RAIDER_T1, PICK, [pid, second]);
+      expect(later.rows.length).toBe(1);
+
+      const held = await q('select season from public.item_preferences where player_id = $1 order by season', [pid]);
+      expect(held.rows.map((r) => r.season).sort()).toEqual([first, second].sort());
+    });
+  });
+
+  it('a second pick for the same item, slot and season is still a duplicate', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await gatedPlayer(q);
+      const season = await tier(q, true);
+      await asUser(RAIDER_T1, PICK, [pid, season]);
+      await expect(asUser(RAIDER_T1, PICK, [pid, season])).rejects.toMatchObject({ code: '23505' });
+    });
+  });
+
+  // The 9 rows on production with no season belong to archived characters, and
+  // the column stays nullable until #945. Two of them for one item would be a
+  // duplicate, since the key reads a missing season as one value.
+  it('two rows with no season for the same item are still a duplicate', async () => {
+    await withTxn(async ({ q }) => {
+      const pid = await gatedPlayer(q);
+      await q(PICK, [pid, null]);
+      await expect(q(PICK, [pid, null])).rejects.toMatchObject({ code: '23505' });
     });
   });
 });
