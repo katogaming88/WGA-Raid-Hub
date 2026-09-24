@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.154.1] - 2026-09-24
+
+### Project
+
+- `npm run preflight`: runs, before a push, the CI jobs that the branch's changed
+  paths trigger (lint, frontend, RLS, schema, app, browser, page and accessibility
+  checks, Edge Functions, version stamp and the rest), one PASS or FAIL line
+  each with only a failure's last lines shown. Added after two PRs failed CI on
+  jobs that had not been run locally: a stale version stamp, and the app browser
+  tests, which need the app built first.
+
 ## [3.154.0] - 2026-09-24
 
 ### Backend
