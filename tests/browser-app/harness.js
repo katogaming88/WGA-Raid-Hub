@@ -223,6 +223,8 @@ export async function openApp(browser, port, state) {
       // state says otherwise, which reads as the tier's own start.
       if (rest === 'rpc/team_season_start' && !state.rpc?.team_season_start) return route.fulfill(json(null));
       if (rest === 'rpc/resolve_person') return route.fulfill(json(who?.person ?? null));
+      // Guild creation is off unless the state says otherwise (#1226).
+      if (rest === 'rpc/guild_creation_open' && !state.rpc?.guild_creation_open) return route.fulfill(json(false));
       // Other RPCs a state expects, like a form's submit.
       if (rest?.startsWith('rpc/') && state.rpc && rest.slice(4) in state.rpc) {
         return route.fulfill(json(state.rpc[rest.slice(4)]));
