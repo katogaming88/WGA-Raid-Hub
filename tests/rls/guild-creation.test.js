@@ -96,6 +96,19 @@ describe('create_guild()', () => {
     });
   });
 
+  it('says why when the guild name, used as the team name, is already a team', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await open(asUser);
+      const uid = await newcomer(q);
+      await expect(asUser(uid, "select * from public.create_guild('Team Phoenix', 'us', 'R')")).rejects.toThrow(
+        /give the team its own name/
+      );
+      await expect(
+        asUser(uid, "select * from public.create_guild('Fine Guild', 'us', 'R', 'team phoenix')")
+      ).rejects.toThrow(/A team called team phoenix already exists/);
+    });
+  });
+
   it('refuses a missing session, no Discord, a bad region, blanks and names already taken; anon cannot call it', async () => {
     await withTxn(async ({ q, asUser, asAnon }) => {
       await open(asUser);
