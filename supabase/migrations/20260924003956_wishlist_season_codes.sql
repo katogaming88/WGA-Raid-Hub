@@ -1,6 +1,44 @@
--- Function public.build_rclc_export: current definition, generated from the database.
--- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
--- execute (site roles): authenticated
+-- #936: item_preferences.season holds the season code. Part of #936.
+--
+-- The last season column in the schema still holding a display name. Every
+-- other one moved to seasons(code) between #932 and #1269; this one kept its
+-- foreign key on seasons(display_name), so both wishlist writers resolved a
+-- code and converted it to a name for this column alone (resolveSeasonView()
+-- in js/common.js, editorSeason() in app/src/profile/wishlist.ts). The rows
+-- convert and the key moves, and both writers stamp the code they already
+-- had.
+--
+-- The foreign key is what makes the conversion whole rather than a backfill:
+-- with it on seasons(code) a display name has nowhere to land, so no later
+-- writer can reintroduce the old format and no row can sit between the two.
+-- Null rows stay null. They predate the column and isItemInSeasonScope()
+-- fails open on them on purpose, which is unchanged here.
+--
+-- No database object filters on this column, so nothing changes what it
+-- returns: generate_priority_order() selects from the table without it,
+-- wishlist_setup_status() and bis_demand_vs_awards count every row whatever
+-- its stamp (that is #1268, next), and there is no SQL writer of the table
+-- at all. build_rclc_export() is reissued below for its comment only.
+
+alter table public.item_preferences drop constraint item_preferences_season_fkey;
+
+update public.item_preferences ip
+set season = s.code
+from public.seasons s
+where s.display_name = ip.season;
+
+alter table public.item_preferences
+  add constraint item_preferences_season_fkey foreign key (season) references public.seasons (code);
+
+-- build_rclc_export(): comment only, no behaviour change. Its wish CTE said
+-- it skipped a season filter because item_preferences.season held a display
+-- name while p_season is a code. That reason dies with the conversion above,
+-- and the sentence would have shipped false. The filter stays off for the
+-- reason that survives: generate_priority_order() does not filter by season
+-- either, so item_id + team_id is the scope the export has to match. Whether
+-- it should filter now is a behaviour question and belongs on its own issue.
+-- Body otherwise unchanged from 20260902113141, grants preserved by create or
+-- replace.
 
 CREATE OR REPLACE FUNCTION public.build_rclc_export(p_team_id integer, p_season text, p_track text)
  RETURNS jsonb
