@@ -4,6 +4,8 @@ A rough record of how long the website revamp (#1109) takes, kept as the work ha
 
 **How times are measured.** Wall-clock time in Eastern, taken from the session transcript and GitHub timestamps. It starts when Kat asks for a piece of work and ends when that piece is merged, closed or decided. Rounded to 5 minutes. Breaks between sessions are not counted. "Build" is Claude working (reading, coding, testing, opening the PR). "Kat" is the time Kat spent deciding, doing dashboard/setup steps, reviewing, and merging. When the two overlap in a back-and-forth, the whole stretch is counted once under the item.
 
+**Tokens.** From 2026-09-24 each row also has a Tokens column: the tokens the session used for that item, read from the Claude Code usage panel or the session transcript. Earlier rows were not recorded and are not back-filled. The column is for the record only and is not part of any total.
+
 Work that happened in the same sessions but isn't part of the revamp (bug fixes, lookups) is listed separately at the bottom and not counted in the totals.
 
 ## Totals
@@ -153,9 +155,9 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 
 ### 2026-09-24
 
-| Time (ET)       | Item | Phase | Elapsed | Build / Kat | Notes |
-| --------------- | ---- | ----- | ------: | ----------- | ----- |
-| 12:56-1:10 AM   | Rex's review of #1323: guild creation now needs the switch, plus front page fixes (#1226) | Revamp 4 (#1226) |    15 m | ~13 m build, ~2 m Kat deciding                   | Rex measured that a site admin creating a guild with the switch off breaks Grant Site Admin, Grant Guild Officer, Grant BoE Manager and Add Team for everyone, so the switch now governs site admins too (Kat agreed); the work behind it is #1324, filed by Rex. Also: the front page and create page join the accessibility checks (light and dark), the front page's headings run h1, h2, h3, a site admin gets the front-page link to their own switch, and the guild-home test is renamed to say what it checks. Version moves to 3.154.0 after merging main again. Time from this session's transcript, ending at the estimated push. |
+| Time (ET)       | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --------------- | ---- | ----- | ------: | ----------- | -----: | ----- |
+| 12:56-1:10 AM   | Rex's review of #1323: guild creation now needs the switch, plus front page fixes (#1226) | Revamp 4 (#1226) |    15 m | ~13 m build, ~2 m Kat deciding                   | not recorded | Rex measured that a site admin creating a guild with the switch off breaks Grant Site Admin, Grant Guild Officer, Grant BoE Manager and Add Team for everyone, so the switch now governs site admins too (Kat agreed); the work behind it is #1324, filed by Rex. Also: the front page and create page join the accessibility checks (light and dark), the front page's headings run h1, h2, h3, a site admin gets the front-page link to their own switch, and the guild-home test is renamed to say what it checks. Version moves to 3.154.0 after merging main again. Time from this session's transcript, ending at the estimated push. |
 
 ## Not counted (same sessions, not revamp)
 

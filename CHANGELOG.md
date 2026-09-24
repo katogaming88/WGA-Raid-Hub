@@ -12,6 +12,13 @@ answers to.
 
 ---
 
+## [3.154.2] - 2026-09-24
+
+### Project
+
+- Revamp time log: rows from 2026-09-24 on carry a Tokens column (tokens used
+  for the item, record only, not in any total). Earlier rows are not back-filled.
+
 ## [3.154.1] - 2026-09-24
 
 ### Project
