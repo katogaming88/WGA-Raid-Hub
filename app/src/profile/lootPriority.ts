@@ -123,8 +123,13 @@ const norm = (s: string) =>
 // (raid_zones.season holds the code, #933), a crafted or M+ pick by the season
 // code stamped on the wishlist row (#936). With no raids set up yet,
 // every raid item counts.
+//
+// A pick with no season belongs to no tier rather than to whichever one is
+// asked about. That is the question the wishlist write gate asks of such a row,
+// and picksInSeason() in wishlist.ts asks it too, so the editor and this card
+// agree about a row neither can tell apart from a current pick otherwise.
 function inSeason(pick: WishlistRow, item: CatalogItem, season: SeasonWindow, zones: ZoneRow[]): boolean {
-  if (item.is_placeholder) return !pick.season || pick.season === season.code;
+  if (item.is_placeholder) return pick.season === season.code;
   if (item.wcl_zone_id == null) return true;
   const seasonZones = zones.filter((z) => z.season === season.code).map((z) => z.wcl_zone_id);
   return seasonZones.length === 0 || seasonZones.includes(item.wcl_zone_id);
