@@ -555,4 +555,57 @@ describe('the wishlist key carries the season (#936)', () => {
   });
 });
 
+// A tripwire, not a behaviour, replacing the one this change retires. The key
+// used to be what kept every officer-side reader of item_preferences correct
+// without any of them naming a season: a raider could hold one row per item and
+// slot, so a read of "their rows for this item" could only ever be the tier in
+// play. Widening the key ends that, and two readers still take every row a
+// raider holds:
+//
+//   generate_priority_order() picks the strongest status across them, so a BiS
+//   mark left in another tier makes a raider a candidate for this one even when
+//   their row here says pass, at the top of the order.
+//   wishlist_setup_status() counts them, so a slot filled in another tier reads
+//   as filled here and the raider is not chased for it.
+//
+// Reaching that no longer needs a tier after MID2: an officer can pin Season
+// View to MID1 and open that tier's wishlist switch, which set_team_season()
+// still allows for an ended tier. The seasons check below is the coarse half of
+// the guard, kept because a new tier is how this arrives in the ordinary course.
+// #936's remaining piece puts the season on both readers, and deletes this.
+describe('the priority readers still ignore the season (#936)', () => {
+  it('generate_priority_order() reads a raider picks from every season', async () => {
+    await withTxn(async ({ q }) => {
+      const def = await q(
+        "select pg_get_functiondef(oid) as def from pg_proc where proname = 'generate_priority_order'"
+      );
+      expect(
+        def.rows[0].def,
+        'generate_priority_order() filters picks by season now: delete this tripwire'
+      ).not.toMatch(/ip\.season/);
+    });
+  });
+
+  it('wishlist_setup_status() counts picks from every season', async () => {
+    await withTxn(async ({ q }) => {
+      const def = await q("select pg_get_functiondef(oid) as def from pg_proc where proname = 'wishlist_setup_status'");
+      expect(def.rows[0].def, 'wishlist_setup_status() filters picks by season now: delete this tripwire').not.toMatch(
+        /ip\.season/
+      );
+    });
+  });
+
+  it('no tier starts after MID2 while they do', async () => {
+    await withTxn(async ({ q }) => {
+      const later = await q(
+        "select code from public.seasons where starts_at > (select starts_at from public.seasons where code = 'MID2')"
+      );
+      expect(
+        later.rows.map((r) => r.code),
+        "a tier after MID2 needs #936's season filter on the priority readers first"
+      ).toEqual([]);
+    });
+  });
+});
+
 afterAll(() => pool.end());
