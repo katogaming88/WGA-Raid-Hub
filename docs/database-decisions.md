@@ -10,6 +10,21 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-24 -- item_preferences.season holds the code, and nothing keys to display_name (#936)
+
+Shipped: 20260924003956_wishlist_season_codes.sql
+
+The last of the five name columns #932 left keyed to `seasons(display_name)`. The other four converted or went between #933 and #935; this one waited because the wishlist was to follow a team's own cycle, and decision 13 on #1189 (2026-09-20) ended that. First of #936's two parts; the write gate is the second.
+
+- **The foreign key is the conversion, not a backfill beside one.** The rows convert and the key moves to `seasons(code)` in the same migration, so a display name has nowhere to land afterwards: no later writer can reintroduce the format and no row can sit between the two. `seasons(display_name)` is unique and `code` is the primary key, so the mapping is total and unambiguous and the key addition would fail loudly on any row the update missed. Proved against data as well as the constraint, since the local stack holds no wishlist rows: a rollback-only transaction rebuilt the old shape with three named rows and one null, replayed the migration and left three codes, the null untouched and nothing holding a name.
+- **Null rows stay null.** They predate the column, and `isItemInSeasonScope()` fails open on them on purpose so a row tagged before the column existed is shown rather than disappearing.
+- **Both writers stamp the code they already had.** Each resolved a code to scope the raid catalog by zone and then converted it to a name for this column alone: `resolveSeasonView()` on the current site, the `name` half of `editorSeason()` in the app. Both conversions are gone, and the gate and the stamp are now literally the same value rather than two forms of it.
+- **An unresolved tier stamps null, not the empty string.** That is what the code resolver returns when no tier resolves at all, and it is not a `seasons` row, so writing it failed the foreign key with an error a raider could not act on. Reachable through `players.wishlist_allowed`, which opens editing for one raider without a `team_seasons` row to resolve against.
+- **`build_rclc_export()` is reissued for its comment, with no behaviour change.** Its wish CTE said it skipped a season filter because the column held a name while `p_season` is a code, and that sentence would have shipped false. The filter stays off for the reason that survives, which is that `generate_priority_order()` does not filter by season either, so `item_id` plus `team_id` is the scope the export has to match. Whether it should filter now that the formats agree is a behaviour question and belongs on its own issue.
+- **Not moved with this.** The write gate: the database still accepts a wishlist row from any signed-in raider for their own character whatever the team has open (#936, next). The demand report and the setup status still count picks from every season (#1268). Making the column `not null` and the 9 null rows belong to #945.
+
+[Full discussion -> #936](https://github.com/katogaming88/WGA-Raid-Hub/issues/936).
+
 ## 2026-09-23 -- Guild and team names are labels: guilds may share a name, a team's name is unique within its guild (#1226)
 
 Shipped: 20260923220757_names_unique_per_guild.sql

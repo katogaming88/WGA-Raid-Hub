@@ -12,6 +12,26 @@ answers to.
 
 ---
 
+## [Unreleased]
+
+### Frontend
+
+- Wishlist picks are stamped with the season's short code rather than its full
+  name, on both the current site and the new app. Nothing a raider sees
+  changes: it is the same season either way, and it was already the value the
+  page used to decide which tier's items to offer. A pick saved while no tier
+  has started yet is now saved with no season instead of failing to save at all
+  ([#936](https://github.com/katogaming88/WGA-Raid-Hub/issues/936)).
+
+### Backend
+
+- `item_preferences.season` holds the season code and points at `seasons(code)`,
+  which was the last season column in the database still keyed to the tier's
+  display name. Every one of the fourteen now points at the code, and nothing
+  points at the name. `build_rclc_export()` is reissued to correct a comment
+  that explained itself by the old format; it returns exactly what it did
+  before ([#936](https://github.com/katogaming88/WGA-Raid-Hub/issues/936)).
+
 ## [3.154.2] - 2026-09-24
 
 ### Project
@@ -62,7 +82,7 @@ answers to.
 - Revamp time log: 2026-09-23 and 2026-09-24 (the /join page, Rex's reviews of #1318 and #1323, and
   the front page and guild creation), with a Revamp 4 line in the totals.
 
-## [3.153.7] - 2026-09-24
+## [3.153.7] - 2026-09-23
 
 ### Project
 
