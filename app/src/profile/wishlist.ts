@@ -175,6 +175,20 @@ export function editorSeason(view: string | null, season: SeasonWindow): string 
   return view || season.code;
 }
 
+// Only the picks filed under the tier being planned. The wishlist key carries
+// the season since #936, so a raider holds a separate pick for the same item
+// in each tier, and the write gate refuses a row filed under any other. A pick
+// from a tier the editor is not planning is not its to read, replace or clear.
+//
+// No season at all is the editor not knowing which tier it plans, rather than
+// a tier of its own: no tier has started and no officer has pinned one. It
+// narrows nothing there and the editor is read-only, because hiding every
+// pick would show a raider an empty wishlist instead of an unavailable one.
+export function picksInSeason(picks: Pick[], seasonCode: string | null): Pick[] {
+  if (seasonCode === null) return picks;
+  return picks.filter((p) => (p.season ?? null) === seasonCode);
+}
+
 // Whether the wearer can use `item` in `row`. Anything the catalog does not
 // know (no armor type, no main stat, no weapon type) is offered.
 function usable(item: CatalogItem, row: string, wearer: Wearer): boolean {
@@ -285,7 +299,8 @@ export type EditorInput = {
 };
 
 export function editorSlots(input: EditorInput): EditorSlot[] {
-  const { picks, catalog, zones, seasonCode, tokens, wearer } = input;
+  const { catalog, zones, seasonCode, tokens, wearer } = input;
+  const picks = picksInSeason(input.picks, seasonCode);
   const byId = new Map(catalog.map((i) => [i.id, i]));
   // A tier piece is offered as its token, named for the wearer's class, since
   // the token is what drops and what priority is kept for.
@@ -308,7 +323,7 @@ export function editorSlots(input: EditorInput): EditorSlot[] {
     if (!items.length) return [];
     const notFromRaid = picks.find((p) => {
       const item = byId.get(p.item_id);
-      return item?.is_placeholder && p.slot === slot && p.status === 'bis' && (!p.season || p.season === seasonCode);
+      return item?.is_placeholder && p.slot === slot && p.status === 'bis';
     });
     return [
       {
@@ -351,7 +366,8 @@ export function planMark(
   itemId: number,
   next: Mark | null
 ): WritePlan {
-  const { picks, catalog, zones, seasonCode } = input;
+  const { catalog, zones, seasonCode } = input;
+  const picks = picksInSeason(input.picks, seasonCode);
   const byId = new Map(catalog.map((i) => [i.id, i]));
   const ctx = { picks, byId, seasonCode, zones };
   const pair = PAIR[row];
@@ -388,9 +404,7 @@ export function planMark(
     }
     for (const p of picks) {
       const item = byId.get(p.item_id);
-      if (item?.is_placeholder && p.status === 'bis' && p.slot === row && (!p.season || p.season === seasonCode)) {
-        drop(p);
-      }
+      if (item?.is_placeholder && p.status === 'bis' && p.slot === row) drop(p);
     }
   }
 
@@ -424,11 +438,10 @@ export function wishlistSummary(
   season: SeasonWindow
 ): { bis: number; pass: number; total: number } {
   const byId = new Map(catalog.map((i) => [i.id, i]));
-  const picks: Pick[] = rows.map((r, i) => ({
-    ...r,
-    id: (r as Partial<Pick>).id ?? i,
-    synced_bis: r.synced_bis ?? false
-  }));
+  const picks = picksInSeason(
+    rows.map((r, i) => ({ ...r, id: (r as Partial<Pick>).id ?? i, synced_bis: r.synced_bis ?? false })),
+    season.code
+  );
   const ctx = { picks, byId, seasonCode: season.code, zones };
   const raid = picks.filter((p) => {
     const item = byId.get(p.item_id);
@@ -437,13 +450,7 @@ export function wishlistSummary(
   const marks = (slot: string, status: string) =>
     raid.some((p) => p.status === status && picksFor(picks, byId, slot, p.item_id).includes(p));
   const notFromRaid = (slot: string, status: string) =>
-    picks.some(
-      (p) =>
-        byId.get(p.item_id)?.is_placeholder &&
-        p.slot === slot &&
-        p.status === status &&
-        (!p.season || p.season === season.code)
-    );
+    picks.some((p) => byId.get(p.item_id)?.is_placeholder && p.slot === slot && p.status === status);
 
   let bis = 0;
   let pass = 0;

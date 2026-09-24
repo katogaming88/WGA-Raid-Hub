@@ -166,15 +166,43 @@ var WISHLIST_TIER_SET_SLOTS = ['Head', 'Shoulder', 'Chest', 'Hands', 'Legs'];
 // real status for them.
 var CATALYST_ELIGIBLE_SLOTS = WISHLIST_TIER_SET_SLOTS.concat(CATALYST_SOURCE_SLOTS);
 
+// The tier the page plans for, as the column holds it (#936): a season code,
+// or null when no tier resolves at all, which is what a row with no season
+// looks like and what the insert below stamps.
+function wishlistSeasonCode() {
+  return (typeof resolveSeasonViewCode === 'function' && resolveSeasonViewCode()) || null;
+}
+
+// Every query for the raider's own picks says which tier it is about, because
+// the key carries the season (#936) and the write gate reads the season on
+// the row (#1331). Without this a raider with picks in two tiers reads back
+// the other tier's rows, and an update or a delete reaches one the gate then
+// refuses.
+//
+// With no tier resolving the page does not know which one to ask about, so it
+// narrows nothing and shows every pick the raider holds. The seasons table is
+// app-wide and filled by migration, so an empty DATA.seasons means the read
+// failed rather than that there are no tiers, and asking for the seasonless
+// picks there would show a raider an empty wishlist. Editing is off in that
+// state (wishlistEditableNow below), so nothing writes through an unnarrowed
+// filter.
+function wishlistScopeToSeason(query) {
+  var season = wishlistSeasonCode();
+  if (!season) return query;
+  return query.eq('season', season);
+}
+
 // Guard on client,
 // 10s race-timeout, warn+null on any failure. RLS already scopes this to the
 // caller's own rows, but filtering client-side keeps the query cheap.
 function fetchMyItemPreferences(playerId) {
   if (!supabaseClient) return Promise.resolve(null);
-  var query = supabaseClient
-    .from('item_preferences')
-    .select('id, item_id, status, note, slot, season, synced_bis')
-    .eq('player_id', playerId)
+  var query = wishlistScopeToSeason(
+    supabaseClient
+      .from('item_preferences')
+      .select('id, item_id, status, note, slot, season, synced_bis')
+      .eq('player_id', playerId)
+  )
     .then(function (result) {
       if (result.error) {
         console.warn('Supabase item_preferences query failed.', result.error.message);
@@ -525,6 +553,12 @@ function wishlistSlotSummaryDotsHTML(items) {
 // tab-bis.js's own wishlistOpen() calls are the team's toggle's own display
 // and deliberately stay as-is.
 function wishlistEditableNow() {
+  // Nothing is editable until the page knows which tier it is planning, since
+  // that tier is what a row is stamped with and what the write gate reads back
+  // (#936). The team switch already reads closed without one, so this is only
+  // reachable through the per-raider allowance, and their write would land in
+  // no tier at all beside the pick they already hold.
+  if (!wishlistSeasonCode()) return false;
   return wishlistOpen() || (!!_wishlistPlayerNameRealm && wishlistAllowedFor(_wishlistPlayerNameRealm));
 }
 
@@ -1059,6 +1093,7 @@ function wishlistUpsert(itemId, slot, patch) {
       .eq('player_id', _wishlistPlayerId)
       .eq('item_id', itemId);
     updateQuery = slot ? updateQuery.eq('slot', slot) : updateQuery.is('slot', null);
+    updateQuery = wishlistScopeToSeason(updateQuery);
     request = updateQuery.select('id, item_id, status, note, slot, season, synced_bis');
   } else {
     var row = {
@@ -1072,7 +1107,7 @@ function wishlistUpsert(itemId, slot, patch) {
       // An empty code means no tier resolved at all, which is a row with no
       // season rather than one stamped with the empty string; that value is
       // not a seasons row and would fail the foreign key.
-      season: (typeof resolveSeasonViewCode === 'function' && resolveSeasonViewCode()) || null
+      season: wishlistSeasonCode()
     };
     Object.keys(patch).forEach(function (k) {
       row[k] = patch[k];
@@ -1333,6 +1368,7 @@ function wishlistRemovePreference(itemId, slot) {
     .eq('player_id', _wishlistPlayerId)
     .eq('item_id', itemId);
   deleteQuery = slot ? deleteQuery.eq('slot', slot) : deleteQuery.is('slot', null);
+  deleteQuery = wishlistScopeToSeason(deleteQuery);
 
   deleteQuery.then(function (result) {
     delete _wishlistSaving[savingKey];
@@ -1354,9 +1390,10 @@ function wishlistRemovePreference(itemId, slot) {
 // "confirm(), then a direct delete, then update local state and re-render"
 // shape as removeOwnStreamer() (js/streamers.js), the existing precedent
 // for a raider deleting their own data. No item_id/slot filter, unlike
-// wishlistRemovePreference() above, so this removes every row in one call --
-// item_preferences' own "Raiders manage own item_preferences" RLS policy
-// (is_own_player(player_id)) is what actually scopes this to just their rows.
+// wishlistRemovePreference() above, so within one tier it removes every row in
+// one call -- item_preferences' own "Raiders manage own item_preferences" RLS
+// policy (is_own_player(player_id)) is what scopes it to their own rows, and
+// the season filter (#936) is what keeps it to the tier the page is showing.
 function clearMyWishlist(firstName) {
   if (!_wishlistPlayerId || !wishlistEditableNow()) return;
   if (!_wishlistPrefs || !_wishlistPrefs.length) return;
@@ -1370,11 +1407,8 @@ function clearMyWishlist(firstName) {
   var msgEl = document.getElementById('wishlistSaveMsg-' + firstName);
   if (msgEl) msgEl.textContent = 'Clearing...';
 
-  supabaseClient
-    .from('item_preferences')
-    .delete()
-    .eq('player_id', _wishlistPlayerId)
-    .then(function (result) {
+  wishlistScopeToSeason(supabaseClient.from('item_preferences').delete().eq('player_id', _wishlistPlayerId)).then(
+    function (result) {
       if (result.error) {
         var msg = document.getElementById('wishlistSaveMsg-' + firstName);
         if (msg) msg.textContent = 'Failed: ' + result.error.message;
@@ -1384,5 +1418,6 @@ function clearMyWishlist(firstName) {
       if (typeof renderProfile === 'function' && _wishlistPlayerFirstName) {
         renderProfile(_wishlistPlayerFirstName, 'landing');
       }
-    });
+    }
+  );
 }

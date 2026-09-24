@@ -109,14 +109,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.154.5';
+var VERSION = '3.154.6';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20260924033647';
+var REQUIRED_SCHEMA = '20260924145125';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -4220,8 +4220,19 @@ function currentZoneIdsForSeason(season) {
 // that season means an empty view, the honest state, not a silent fallback
 // to "show everything" (this doubles as the way to verify a new tier's
 // import actually worked).
+//
+// No season resolving at all is a third case, and both branches fail open in
+// it (#936). It means the seasons read failed, since the table is app-wide
+// and filled by migration, and the raid branch already showed everything
+// there while the placeholder branch compared every stamped pick against the
+// empty string and hid the lot. That showed a raider a different wishlist
+// rather than all of it, which is the one answer no one wants; the page is
+// read-only in that state, so showing everything costs nothing.
 function isItemInSeasonScope(name, rowSeason) {
-  if ((DATA.itemPlaceholders || {})[name]) return !rowSeason || rowSeason === resolveSeasonViewCode();
+  if ((DATA.itemPlaceholders || {})[name]) {
+    var view = resolveSeasonViewCode();
+    return !view || !rowSeason || rowSeason === view;
+  }
   var zone = (DATA.itemZones || {})[name];
   if (!zone) return true;
   var explicit = !!(DATA && DATA.seasonView);
