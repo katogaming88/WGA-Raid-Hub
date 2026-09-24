@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | id | integer | nextval('teams_id_seq'::regclass) | false | [public.attendance](public.attendance.md) [public.audit_log](public.audit_log.md) [public.bis_requests](public.bis_requests.md) [public.rclc_loot](public.rclc_loot.md) [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.players](public.players.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.self_received_requests](public.self_received_requests.md) [public.team_members](public.team_members.md) [public.team_settings](public.team_settings.md) [public.streamers](public.streamers.md) [public.notifications](public.notifications.md) [public.team_raid_progress](public.team_raid_progress.md) [public.item_preferences](public.item_preferences.md) [public.boe_items](public.boe_items.md) [public.boe_listings](public.boe_listings.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.player_equipped_gear](public.player_equipped_gear.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.raid_schedule](public.raid_schedule.md) [public.raid_schedule_exceptions](public.raid_schedule_exceptions.md) [public.raid_rsvps](public.raid_rsvps.md) [public.raid_rsvp_reminders_sent](public.raid_rsvp_reminders_sent.md) [public.raid_signup_sheets](public.raid_signup_sheets.md) [public.player_officer_notes](public.player_officer_notes.md) [public.team_discord_config](public.team_discord_config.md) [public.account_preferences](public.account_preferences.md) [public.retired_url_keys](public.retired_url_keys.md) [public.main_swap_requests](public.main_swap_requests.md) [public.boss_groups](public.boss_groups.md) [public.raid_night_bosses](public.raid_night_bosses.md) [public.team_lineup_settings](public.team_lineup_settings.md) [public.team_seasons](public.team_seasons.md) [public.team_invite_links](public.team_invite_links.md) |  |  |
-| name | text |  | false |  |  |  |
+| name | text |  | false |  |  | The team's display name. Unique within its guild, ignoring case, so a guild cannot have two teams with the same name; other guilds may reuse it (#1226). |
 | slug | text | new_url_code() | false |  |  | The team's URL key: the /t/\<key\> segment of an address, unique within its guild (#1114). The current site's ?team= parameter reads it too. |
 | archived_at | timestamp with time zone |  | true |  |  |  |
 | wcl_guild_id | integer |  | true |  |  |  |
@@ -16,7 +16,6 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | teams_slug_format | CHECK | CHECK (((slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text) AND ((length(slug) >= 2) AND (length(slug) <= 32)))) |
-| teams_name_key | UNIQUE | UNIQUE (name) |
 | teams_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | teams_guild_id_fkey | FOREIGN KEY | FOREIGN KEY (guild_id) REFERENCES guilds(id) |
 | teams_guild_id_slug_key | UNIQUE | UNIQUE (guild_id, slug) |
@@ -25,9 +24,9 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| teams_name_key | CREATE UNIQUE INDEX teams_name_key ON public.teams USING btree (name) |
 | teams_pkey | CREATE UNIQUE INDEX teams_pkey ON public.teams USING btree (id) |
 | teams_guild_id_slug_key | CREATE UNIQUE INDEX teams_guild_id_slug_key ON public.teams USING btree (guild_id, slug) |
+| teams_guild_id_lower_name_key | CREATE UNIQUE INDEX teams_guild_id_lower_name_key ON public.teams USING btree (guild_id, lower(name)) |
 
 ## Triggers
 

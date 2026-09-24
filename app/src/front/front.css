@@ -1,0 +1,80 @@
+/* Site front page (#1226): belongs to no guild, so it sits outside the app shell. */
+
+.front-page {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.front-hero h1 {
+  margin: 0 0 var(--space-3);
+}
+
+.front-hero p {
+  margin: 0 0 var(--space-4);
+  max-width: 62ch;
+  line-height: 1.6;
+}
+
+.front-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.front-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.front-feature {
+  padding: var(--space-4);
+}
+
+.front-feature h3 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-md, 1rem);
+}
+
+.front-feature p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.front-next {
+  padding: var(--space-4);
+}
+
+.front-next h2 {
+  margin: 0 0 var(--space-2);
+}
+
+.front-next p {
+  margin: 0 0 var(--space-3);
+  line-height: 1.6;
+}
+
+.front-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  max-width: 480px;
+}
+
+.front-form .field,
+.front-form .input {
+  width: 100%;
+}
+
+.front-hint {
+  margin: calc(var(--space-2) * -1) 0 0;
+}

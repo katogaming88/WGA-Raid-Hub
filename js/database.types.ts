@@ -2455,6 +2455,7 @@ export type Database = {
           boe_payout_pivot: number
           gear_sync_last_cron_run: Json | null
           gear_sync_last_officer_run: Json | null
+          guild_creation_open: boolean
           guild_officer_bios: Json
           id: number
           maintenance_message: string | null
@@ -2466,6 +2467,7 @@ export type Database = {
           boe_payout_pivot?: number
           gear_sync_last_cron_run?: Json | null
           gear_sync_last_officer_run?: Json | null
+          guild_creation_open?: boolean
           guild_officer_bios?: Json
           id?: number
           maintenance_message?: string | null
@@ -2477,6 +2479,7 @@ export type Database = {
           boe_payout_pivot?: number
           gear_sync_last_cron_run?: Json | null
           gear_sync_last_officer_run?: Json | null
+          guild_creation_open?: boolean
           guild_officer_bios?: Json
           id?: number
           maintenance_message?: string | null
@@ -3559,6 +3562,10 @@ export type Database = {
         Args: { p_discord_id: string; p_team_id: number }
         Returns: undefined
       }
+      admin_set_guild_creation_open: {
+        Args: { p_open: boolean }
+        Returns: undefined
+      }
       admin_set_maintenance_mode: {
         Args: { p_enabled: boolean; p_message?: string }
         Returns: undefined
@@ -3662,6 +3669,18 @@ export type Database = {
         Args: { p_roster_snapshot: Json; p_season: string; p_team_id: number }
         Returns: Json
       }
+      create_guild: {
+        Args: {
+          p_name: string
+          p_realm: string
+          p_region: string
+          p_team_name?: string
+        }
+        Returns: {
+          guild_key: string
+          team_key: string
+        }[]
+      }
       current_discord_id: { Args: never; Returns: string }
       current_season: { Args: { p_on?: string }; Returns: string }
       danger_clear_bis_requests: {
@@ -3755,6 +3774,7 @@ export type Database = {
           swap_spec: string
         }[]
       }
+      guild_creation_open: { Args: never; Returns: boolean }
       import_rclc_loot: {
         Args: { p_rows: Json; p_season: string; p_team_id: number }
         Returns: Json
