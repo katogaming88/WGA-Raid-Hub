@@ -71,10 +71,13 @@ function SignedInGate({
       {(a) => (
         <>
           {a.siteAdmin && <SwitchCard isOpen={isOpen} />}
-          {!isOpen && !a.siteAdmin ? (
-            <section className="card front-next">
-              <Closed />
-            </section>
+          {!isOpen ? (
+            // A site admin sees only the switch: turning it on shows the form.
+            a.siteAdmin ? null : (
+              <section className="card front-next">
+                <Closed />
+              </section>
+            )
           ) : !hasDiscord ? (
             <section className="card front-next">
               <p>Connect your Discord too: you become your team’s leader, and team roles come from Discord.</p>
@@ -105,19 +108,20 @@ function Closed() {
   );
 }
 
-// Only a site admin sees this. Second guilds are not fully supported yet
-// (#1045), so it says so before anyone opens creation to everyone.
+// Only a site admin sees this. The switch governs everyone, site admins
+// included, so a guild is never created by accident. Second guilds are not
+// fully supported yet (#1324), so it says so before anyone opens creation.
 function SwitchCard({ isOpen }: { isOpen: boolean }) {
   const { announce } = useStatus();
   const set = useSetGuildCreationOpen();
   return (
     <section className="card front-next" aria-labelledby="switch-title">
       <h2 id="switch-title" className="section-title">
-        Guild creation is {isOpen ? 'open to everyone' : 'limited to site admins'}
+        Guild creation is {isOpen ? 'open' : 'closed'}
       </h2>
       <p className="text-muted">
-        Only turn this on once second guilds are fully supported (#1045): guild grants and team names still assume a
-        single guild.
+        To create a guild, open this, create it, then close it again. Granting roles and adding teams stop working once
+        there is a second guild (#1324), for We Go Again too, so leave it closed until that is fixed.
       </p>
       {set.isError && (
         <p className="form-error" role="alert">
@@ -132,13 +136,12 @@ function SwitchCard({ isOpen }: { isOpen: boolean }) {
           set.mutate(
             { open: !isOpen },
             {
-              onSuccess: () =>
-                announce('success', isOpen ? 'Guild creation is site admins only.' : 'Guild creation is open.')
+              onSuccess: () => announce('success', isOpen ? 'Guild creation is closed.' : 'Guild creation is open.')
             }
           )
         }
       >
-        {isOpen ? 'Limit to site admins' : 'Open to everyone'}
+        {isOpen ? 'Close guild creation' : 'Open guild creation'}
       </button>
     </section>
   );

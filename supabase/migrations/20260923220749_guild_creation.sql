@@ -2,13 +2,15 @@
 -- switch a site admin flips.
 --
 -- The site front page gets a create-your-guild form, but Kat is not opening
--- guild creation yet (2026-09-23: site admins only for now, "flip the switch"
--- later). So the ability is built now and gated by site_settings.
--- guild_creation_open, which starts closed. While it is closed only a site
--- admin can create a guild; once it is open, anyone signed in with Discord can.
+-- guild creation yet (2026-09-23: "flip the switch" later). So the ability is
+-- built now and gated by site_settings.guild_creation_open, which starts
+-- closed. While it is closed nobody can create a guild, a site admin included
+-- (Rex's review of #1323): a site admin who means to create one turns the
+-- switch on first, creates it, and turns it back off, so no guild appears by
+-- accident. Once it is open, anyone signed in with Discord can.
 --
--- Not safe to open yet: a second guild is still unsupported until #1045
--- (guild grants and admin_create_team() assume one guild, and a guild officer
+-- Not safe to open yet: a second guild is still unsupported until #1324
+-- (admin_grant() and admin_create_team() assume one guild, and a guild officer
 -- is one in every guild). The switch is the place to hold that line, not a
 -- sign it is ready.
 
@@ -92,7 +94,7 @@ begin
   if v_uid is null then
     raise exception 'Not signed in';
   end if;
-  if not (public.is_site_admin() or public.guild_creation_open()) then
+  if not public.guild_creation_open() then
     raise exception 'Creating a guild is not open yet';
   end if;
 
@@ -146,7 +148,7 @@ end;
 $$;
 
 comment on function public.create_guild(text, text, text, text) is
-  'Creates a guild, its first team and the caller as that team''s leader. A site admin any time; anyone signed in with Discord once guild_creation_open() is true. Random address keys (#1226).';
+  'Creates a guild, its first team and the caller as that team''s leader. Anyone signed in with Discord, once guild_creation_open() is true; while it is false, nobody, a site admin included. Random address keys (#1226).';
 
 revoke all on function public.create_guild(text, text, text, text) from public;
 revoke execute on function public.create_guild(text, text, text, text) from anon;

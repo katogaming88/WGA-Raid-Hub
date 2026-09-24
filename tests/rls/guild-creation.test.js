@@ -47,10 +47,18 @@ describe('the guild-creation switch', () => {
 });
 
 describe('create_guild()', () => {
-  it('while closed, refuses everyone but a site admin', async () => {
+  it('while closed, refuses everyone, a site admin included', async () => {
     await withTxn(async ({ q, asUser }) => {
       await expect(create(asUser, await newcomer(q))).rejects.toThrow(/not open yet/);
       await expect(create(asUser, OFFICER_T1)).rejects.toThrow(/not open yet/);
+      await expect(create(asUser, SITE_ADMIN)).rejects.toThrow(/not open yet/);
+      expect((await q('select count(*)::int as n from public.guilds')).rows[0].n).toBe(1);
+    });
+  });
+
+  it('lets a site admin create a guild once they have turned the switch on', async () => {
+    await withTxn(async ({ asUser }) => {
+      await open(asUser);
       expect((await create(asUser, SITE_ADMIN)).rows).toHaveLength(1);
     });
   });

@@ -1,4 +1,4 @@
--- #1226 / #1045: a guild or team name is a label, not an identity.
+-- #1226 / #1324: a guild or team name is a label, not an identity.
 --
 -- A guild is identified by its url_key and a team by its slug (both random
 -- codes, #1114), and everything else by id. The names only exist to be shown,

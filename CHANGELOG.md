@@ -20,8 +20,9 @@ answers to.
   (starts off), `admin_set_guild_creation_open()` for a site admin to flip it,
   `guild_creation_open()` so the signed-out front page can read it, and
   `create_guild()`, which makes a guild, its first team and the caller as that
-  team's leader. While the switch is off only a site admin can create a guild.
-  Leave it off until second guilds are supported (#1045)
+  team's leader. While the switch is off nobody can create a guild, a site
+  admin included: turn it on, create the guild, turn it off. Leave it off until
+  second guilds are supported (#1324)
   ([#1226](https://github.com/katogaming88/WGA-Raid-Hub/issues/1226)).
 - Guild and team names are labels, not identities (#1226): two guilds may now
   share a name, and a team's name only has to be unique within its own guild
@@ -34,10 +35,13 @@ answers to.
   says what the Raid Hub is and lists what it does, with Battle.net sign-in and
   the support Discord. A person on a team skips it and lands on their guild's
   home. A new `/new-guild` page holds the create-your-guild form (guild name,
-  region, home realm, and an optional team name that defaults to the guild's), which shows to everyone signed in
-  once the switch is on, and always to a site admin, who also sees the switch
-  there ([#1226](https://github.com/katogaming88/WGA-Raid-Hub/issues/1226)).
-- Revamp time log: 2026-09-23 (the /join page, Rex's review of #1318, and
+  region, home realm, and an optional team name that defaults to the guild's),
+  which shows once the switch is on. A site admin sees the switch on that page
+  and gets the front-page link to it while creation is closed
+  ([#1226](https://github.com/katogaming88/WGA-Raid-Hub/issues/1226)).
+- The two new pages join the app's accessibility checks, in light and dark, and
+  the front page's headings now run h1, h2, h3 in order.
+- Revamp time log: 2026-09-23 and 2026-09-24 (the /join page, Rex's reviews of #1318 and #1323, and
   the front page and guild creation), with a Revamp 4 line in the totals.
 
 ## [3.153.7] - 2026-09-24

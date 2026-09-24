@@ -54,19 +54,23 @@ describe('the create-guild page', () => {
     renderApp('/new-guild', handlers());
     expect(await screen.findByText(/set up by hand for now/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Create guild' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Open to everyone' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open guild creation' })).not.toBeInTheDocument();
   });
 
-  it('shows a site admin the form and the switch even while closed, and flips the switch', async () => {
+  it('shows a site admin only the switch while creation is closed, and flips it', async () => {
     const user = userEvent.setup();
-    const h = handlers({ siteAdmin: true });
-    const { client } = renderApp('/new-guild', h);
-    expect(
-      await screen.findByRole('heading', { name: 'Guild creation is limited to site admins' })
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Create guild' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Open to everyone' }));
+    const { client } = renderApp('/new-guild', handlers({ siteAdmin: true }));
+    expect(await screen.findByRole('heading', { name: 'Guild creation is closed' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Create guild' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Open guild creation' }));
     expect(client.rpcs).toContainEqual(['admin_set_guild_creation_open', { p_open: true }]);
+  });
+
+  it('shows a site admin the switch and the form once creation is open', async () => {
+    renderApp('/new-guild', handlers({ siteAdmin: true, open: true }));
+    expect(await screen.findByRole('heading', { name: 'Guild creation is open' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Close guild creation' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create guild' })).toBeInTheDocument();
   });
 
   it('asks for Discord before showing the form', async () => {
@@ -127,9 +131,14 @@ describe('the front page and guild creation', () => {
     expect(await screen.findByRole('link', { name: 'Create your guild' })).toHaveAttribute('href', '/new-guild');
   });
 
-  it('does not show it while creation is closed', async () => {
+  it('does not show it to a visitor while creation is closed', async () => {
     renderApp('/', handlers({ signedIn: false }));
     await screen.findByRole('heading', { level: 1, name: 'WGA Raid Hub' });
     expect(screen.queryByRole('link', { name: 'Create your guild' })).not.toBeInTheDocument();
+  });
+
+  it('shows it to a site admin while creation is closed, since the switch is on that page', async () => {
+    renderApp('/', handlers({ siteAdmin: true }));
+    expect(await screen.findByRole('link', { name: 'Create your guild' })).toHaveAttribute('href', '/new-guild');
   });
 });

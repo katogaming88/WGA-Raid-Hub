@@ -22,7 +22,7 @@ begin
   if v_uid is null then
     raise exception 'Not signed in';
   end if;
-  if not (public.is_site_admin() or public.guild_creation_open()) then
+  if not public.guild_creation_open() then
     raise exception 'Creating a guild is not open yet';
   end if;
 

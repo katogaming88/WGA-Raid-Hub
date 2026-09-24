@@ -8,9 +8,9 @@ import './front.css';
 
 // The site's front address (#1226), for anyone who is not on a team: signed
 // out, or signed in but not joined anywhere. A person on a team skips it and
-// lands on their guild's home. Nobody creates a guild from here yet -- for now
-// only a site admin can (Kat, 2026-09-23), so the page says what the Hub is and
-// where to ask instead of showing a create form.
+// lands on their guild's home. The create-your-guild form is on its own page (/new-guild), behind a
+// switch that is off for now (Kat, 2026-09-23), so this page says what the Hub
+// is and where to ask, and links to the form only once it can be used.
 export function FrontPage() {
   const { user } = useSession();
   if (!user) return <FrontContent signedIn={false} />;
@@ -48,9 +48,11 @@ const FEATURES = [
 
 function FrontContent({ signedIn }: { signedIn: boolean }) {
   const { signIn } = useSession();
-  // Until it loads, or if it fails, the page shows the closed wording: nothing
-  // here depends on it.
-  const canCreate = useGuildCreationOpen().data === true;
+  // Until they load, or if they fail, the page shows the closed wording:
+  // nothing here depends on them. A site admin gets the link while creation is
+  // closed too, since the switch that opens it lives on that page.
+  const open = useGuildCreationOpen().data === true;
+  const siteAdmin = useAccess().data?.siteAdmin === true;
   return (
     <main className="content front-page">
       <section className="front-hero" aria-labelledby="front-title">
@@ -66,7 +68,7 @@ function FrontContent({ signedIn }: { signedIn: boolean }) {
               Sign in with Battle.net
             </button>
           )}
-          {canCreate && (
+          {(open || siteAdmin) && (
             <Link className="button" to="/new-guild">
               Create your guild
             </Link>
@@ -77,7 +79,10 @@ function FrontContent({ signedIn }: { signedIn: boolean }) {
         </div>
       </section>
 
-      <ul className="front-features" aria-label="What the Raid Hub does">
+      <h2 id="front-features-title" className="section-title">
+        What the Raid Hub does
+      </h2>
+      <ul className="front-features" aria-labelledby="front-features-title">
         {FEATURES.map(([title, text]) => (
           <li key={title} className="card front-feature">
             <h3>{title}</h3>
@@ -96,7 +101,7 @@ function FrontContent({ signedIn }: { signedIn: boolean }) {
             : 'Open the invite link your team leader or an officer sent you, or sign in above if you’re already on a team.'}
         </p>
         <p>
-          {canCreate
+          {open
             ? 'Want your own guild on the Raid Hub? Create it, and its first team, in a minute.'
             : 'Want your own guild on the Raid Hub? New guilds are set up by hand for now, so ask on the support Discord.'}
         </p>
