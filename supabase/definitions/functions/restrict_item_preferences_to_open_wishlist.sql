@@ -12,10 +12,12 @@ declare
 begin
   if current_user = 'authenticated' then
     -- An update is checked on both sides, so a row can neither be edited in
-    -- a closed season nor moved into one.
-    foreach v_row in array case tg_op
-        when 'INSERT' then array[new]
-        when 'DELETE' then array[old]
+    -- a closed season nor moved into one; once when neither side moves.
+    foreach v_row in array case
+        when tg_op = 'INSERT' then array[new]
+        when tg_op = 'DELETE' then array[old]
+        when (new.player_id, new.team_id, new.season) is not distinct from (old.player_id, old.team_id, old.season)
+          then array[old]
         else array[old, new]
       end
     loop

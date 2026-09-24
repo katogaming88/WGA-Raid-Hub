@@ -478,6 +478,56 @@ describe('a raider writes to their wishlist only in a season the team has opened
       ).rejects.toThrow(CLOSED);
     });
   });
+
+  // The gate asks about the season on the row, where the page asks about the
+  // season it plans for. A row from another season is held by that season's
+  // switch whatever else the team has open, and so is a row with no season.
+  it("refuses editing a row filed under another season, whatever the team's open season", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await gatedPlayer(q);
+      await tier(q, true);
+      const earlier = await tier(q, false);
+      const id = (await q(PICK, [pid, earlier])).rows[0].id;
+      await expect(
+        asUser(RAIDER_T1, "update public.item_preferences set status = 'pass' where id = $1", [id])
+      ).rejects.toThrow(CLOSED);
+    });
+  });
+
+  it('refuses editing a row with no season while a season is open, without the override', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await gatedPlayer(q);
+      await tier(q, true);
+      const id = (await q(PICK, [pid, null])).rows[0].id;
+      await expect(asUser(RAIDER_T1, 'delete from public.item_preferences where id = $1', [id])).rejects.toThrow(
+        CLOSED
+      );
+    });
+  });
+});
+
+// A tripwire, not a behaviour. The page finds a pick by item and slot in any
+// season (item_preferences_no_dupe_item_key has no season in it), and the gate
+// asks about the season on the row, so the two agree only while a raider's
+// picks are all in one season. A tier after MID2 is what lets a raider hold
+// picks in two, and from then the page would re-tag, demote a BiS pick or
+// keep a row from a closed season, and the gate would refuse it. #936's
+// season-keyed unique index and the page lookups that go with it land first;
+// that change deletes this test.
+describe('no tier after MID2 lands while the wishlist key has no season (#936)', () => {
+  it('the key has no season and no tier starts after MID2', async () => {
+    await withTxn(async ({ q }) => {
+      const key = await q("select indexdef from pg_indexes where indexname = 'item_preferences_no_dupe_item_key'");
+      expect(key.rows[0].indexdef, 'the key carries the season now: delete this tripwire').not.toMatch(/season/);
+      const later = await q(
+        "select code from public.seasons where starts_at > (select starts_at from public.seasons where code = 'MID2')"
+      );
+      expect(
+        later.rows.map((r) => r.code),
+        "a tier after MID2 needs #936's season-keyed wishlist key first"
+      ).toEqual([]);
+    });
+  });
 });
 
 afterAll(() => pool.end());

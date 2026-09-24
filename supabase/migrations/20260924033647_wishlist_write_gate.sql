@@ -2,12 +2,19 @@
 -- has not opened. The second of #936's two parts.
 --
 -- Both Wishlist pages already go read-only unless the team's team_seasons row
--- for the season has wishlist_open on, or the raider has the per-raider
--- override (players.wishlist_allowed). The database took the write anyway, so
--- the switch held only for a page that had read it since it last changed.
--- This applies the same test to the row being written: the switch for the
--- row's own season, or the override. A row with no season has no switch, so
--- only the override opens it, which is also what both pages do.
+-- for the season they plan for has wishlist_open on, or the raider has the
+-- per-raider override (players.wishlist_allowed). The database took the write
+-- anyway, so the switch held only for a page that had read it since it last
+-- changed. This asks the same question about the row being written: the
+-- switch for the season stamped on it, or the override. A row with no season
+-- has no switch, so only the override opens it.
+--
+-- The page asks about the season it plans for and finds a pick by item and
+-- slot in any season, so the two answers agree only while every row a raider
+-- holds carries that season. On production that is every row (2026-09-24).
+-- They part once a raider holds picks in two seasons, which needs a tier
+-- after MID2; #936's season-keyed unique index lands first, and a tripwire in
+-- tests/rls/item-preferences.test.js holds that order.
 --
 -- A trigger, not a change to the raiders' policy. A policy refusal on an
 -- update or a delete filters the row out and reports success with nothing
@@ -28,10 +35,12 @@ declare
 begin
   if current_user = 'authenticated' then
     -- An update is checked on both sides, so a row can neither be edited in
-    -- a closed season nor moved into one.
-    foreach v_row in array case tg_op
-        when 'INSERT' then array[new]
-        when 'DELETE' then array[old]
+    -- a closed season nor moved into one; once when neither side moves.
+    foreach v_row in array case
+        when tg_op = 'INSERT' then array[new]
+        when tg_op = 'DELETE' then array[old]
+        when (new.player_id, new.team_id, new.season) is not distinct from (old.player_id, old.team_id, old.season)
+          then array[old]
         else array[old, new]
       end
     loop
