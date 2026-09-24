@@ -167,7 +167,8 @@ end
 --
 -- Use: open each crafting profession window once (Blacksmithing, Leatherworking,
 -- Tailoring, Jewelcrafting, Engineering, Inscription ...). Each time a window
--- opens its recipes are noted. Then type /wgacrafts for the list.
+-- opens its recipes are noted, and kept between logins for every character on
+-- the account, so visit each alt in turn. Then type /wgacrafts for the list.
 --   /wgacrafts         shows what has been noted so far
 --   /wgacrafts reset   forgets it and starts again
 -- The list keeps armor, weapons and jewelry from recipes filed under
@@ -191,6 +192,9 @@ local EQUIP_SLOTS = {
 }
 local ARMOR_CLASS, WEAPON_CLASS = 4, 2
 
+-- Saved between logins and shared by every character on the account (a
+-- character has only two professions), so the list builds up as you visit
+-- each alt. Both are filled from WGA_LootDumpDB when the addon loads.
 local noted = {} -- item id -> { profession, recipe }
 local perProfession = {} -- profession -> recipes seen
 
@@ -233,8 +237,19 @@ local function NoteOpenProfession()
 end
 
 local craftEvents = CreateFrame("Frame")
+craftEvents:RegisterEvent("ADDON_LOADED")
 craftEvents:RegisterEvent("TRADE_SKILL_LIST_UPDATE")
-craftEvents:SetScript("OnEvent", function()
+craftEvents:SetScript("OnEvent", function(_, event, addonName)
+  if event == "ADDON_LOADED" then
+    if addonName == "WGA_LootDump" then
+      WGA_LootDumpDB = WGA_LootDumpDB or {}
+      WGA_LootDumpDB.noted = WGA_LootDumpDB.noted or {}
+      WGA_LootDumpDB.perProfession = WGA_LootDumpDB.perProfession or {}
+      noted = WGA_LootDumpDB.noted
+      perProfession = WGA_LootDumpDB.perProfession
+    end
+    return
+  end
   pcall(NoteOpenProfession)
 end)
 
@@ -293,7 +308,8 @@ end
 SLASH_WGACRAFTS1 = "/wgacrafts"
 SlashCmdList["WGACRAFTS"] = function(msg)
   if strtrim(msg or ""):lower() == "reset" then
-    noted, perProfession = {}, {}
+    wipe(noted)
+    wipe(perProfession)
     print("WGA Loot Dump: forgot the noted recipes.")
     return
   end

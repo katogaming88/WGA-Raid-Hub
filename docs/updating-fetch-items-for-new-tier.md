@@ -118,7 +118,7 @@ The season row must exist first (`item_seasons.season` is a foreign key to `seas
 
 Crafted armor, weapons and jewelry work the same way, with a second command in the same addon. Crafted gear carries over between seasons, so a new season mostly adds pairs for items already in the catalog.
 
-1. In game, open each crafting profession window once (Blacksmithing, Leatherworking, Tailoring, Jewelcrafting, Engineering, Inscription). Each opening notes that profession's recipes filed under the expansion.
+1. In game, open each crafting profession window once (Blacksmithing, Leatherworking, Tailoring, Jewelcrafting, Engineering, Inscription, Enchanting). Each opening notes that profession's recipes filed under the expansion. A character has only two professions, so visit each alt in turn: the notes are saved for the whole account between logins.
 2. Type `/wgacrafts`. The window ends with a count per profession, so a profession you skipped, or one that opened empty (a character without that profession's current skill line), is easy to spot. Open the missing one on a character that has it and run `/wgacrafts` again; it keeps what it has already seen until `/wgacrafts reset`.
 3. Save the text as `scripts/season-items/<SEASON>-crafted.txt` with two first lines, `-- season: <SEASON>` and `-- source: crafted`, then run the importer on it as above.
 
