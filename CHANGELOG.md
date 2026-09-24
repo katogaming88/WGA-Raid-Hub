@@ -12,7 +12,7 @@ answers to.
 
 ---
 
-## [3.153.6] - 2026-09-23
+## [3.153.7] - 2026-09-23
 
 ### Backend
 
@@ -39,6 +39,40 @@ answers to.
   there ([#1226](https://github.com/katogaming88/WGA-Raid-Hub/issues/1226)).
 - Revamp time log: 2026-09-23 (the /join page, Rex's review of #1318, and
   the front page and guild creation), with a Revamp 4 line in the totals.
+
+## [3.153.6] - 2026-09-23
+
+### Backend
+
+- Joining through an invite link now takes the character from the caller's own
+  Battle.net account instead of their word for it.
+  `team_invite_link_join(p_code, p_blizzard_id)` reads the name, realm, class
+  and spec from the characters Blizzard confirmed for that person, the way a
+  main swap request already does, so a call made anywhere other than the join
+  page is held to the same list the page offers. Before this, anyone holding a
+  live link could join as any character name they typed, including a character
+  archived when a raider left, which brought it back onto the roster under
+  them with its attendance, loot and BoE history. Two people racing to join
+  under the same new name now get the refusal rather than a database error,
+  and opening the same link in two tabs no longer fails the second one
+  ([#1319](https://github.com/katogaming88/WGA-Raid-Hub/issues/1319)).
+
+### Functions
+
+- `battlenet-characters` no longer clears your saved characters when Blizzard
+  answers with none. Saving replaces the whole set, and Blizzard returns an
+  empty list both for an account with no characters and for a request that
+  goes wrong, so a hiccup while saving could delete every character you had
+  saved. A save that names characters and matches none of them now says
+  Battle.net did not answer and changes nothing. Clearing them on purpose,
+  which names none, still works
+  ([#1319](https://github.com/katogaming88/WGA-Raid-Hub/issues/1319)).
+
+### Project
+
+- The new app's `/join/<code>` page saves the character you pick before it
+  joins, which is what confirms it with Battle.net, and says so if Battle.net
+  cannot ([#1319](https://github.com/katogaming88/WGA-Raid-Hub/issues/1319)).
 
 ## [3.153.5] - 2026-09-23
 

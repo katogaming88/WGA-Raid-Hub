@@ -1,13 +1,45 @@
--- Function public.team_invite_link_join: current definition, generated from the database.
--- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
--- execute (site roles): authenticated
+-- #1319: the invite-link join takes the character from the caller's own
+-- Battle.net account, not from what they type.
+--
+-- team_invite_link_join() (#1264, 20260923132616) took the character as plain
+-- text. The join page only offers characters it read from the person's own
+-- Battle.net account, and that read is verified against the account the token
+-- belongs to, but the database function is a public endpoint: a call made
+-- anywhere other than that page was not held to the same list. Anyone holding
+-- a live invite link could join as any character name they typed.
+--
+-- The sharpest version is a character that was archived when a raider left.
+-- Removing their membership row clears the character's link to them
+-- (players.team_member_id is ON DELETE SET NULL), so nothing records whose it
+-- was, and the join brought it back onto the roster under whoever typed the
+-- name, carrying its attendance, loot and BoE history. claim_character() and
+-- link_battlenet_roster_characters() both refuse archived rows, so this
+-- function was the only path that could do that.
+--
+-- The fix is the shape request_main_swap() already uses: the caller names a
+-- character they hold rather than describing one. public.characters is written
+-- only by save_battlenet_characters(), only from the battlenet-characters Edge
+-- Function, which holds the person's own Battle.net token, so a row there is a
+-- confirmed fact about who holds what. The join page saves the picked
+-- character before it joins, and passes its Battle.net id.
+--
+-- Both writes stop being select-then-insert. The roster row becomes one upsert
+-- on (team_id, name_realm_key) with the holder guard in the update's own
+-- condition, as add_signup_to_roster() and review_main_swap_request() do, and
+-- the membership insert arbitrates on (team_id, person_id). The old form
+-- locked nothing when no row matched, so two joins racing each other both
+-- reached the insert and the second surfaced a unique index as a raw
+-- duplicate-key error instead of the refusal or the join.
 
-CREATE OR REPLACE FUNCTION public.team_invite_link_join(p_code text, p_blizzard_id bigint)
- RETURNS text
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
+drop function if exists public.team_invite_link_join(text, text, text, text, text);
+
+create or replace function public.team_invite_link_join(
+  p_code text,
+  p_blizzard_id bigint
+)
+returns text
+language plpgsql security definer set search_path to 'public'
+as $$
 declare
   v_uid uuid := auth.uid();
   v_discord_id text;
@@ -103,4 +135,11 @@ begin
 
   return 'joined';
 end;
-$function$;
+$$;
+
+comment on function public.team_invite_link_join(text, bigint) is
+  'Joins the signed-in person to the team behind a live invite code with the character they picked, named by its Battle.net id and resolved from public.characters so it is one their own account holds (#1319). Adds their team_members row (their guild membership) and puts the character on the roster. Refuses a dead code, a person with no Discord, a character that is not on their account, and one someone else holds. Always ''joined'' until the character limit (#1259) exists (#1264).';
+
+revoke all on function public.team_invite_link_join(text, bigint) from public;
+revoke execute on function public.team_invite_link_join(text, bigint) from anon;
+grant execute on function public.team_invite_link_join(text, bigint) to authenticated;

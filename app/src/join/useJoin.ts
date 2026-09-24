@@ -16,7 +16,10 @@ export function useInviteTarget(code: string) {
   });
 }
 
-export type Chosen = { name: string; realm: string; className: string | null; specName: string | null };
+// The character is named by its Battle.net id, not described (#1319). The join
+// resolves it from the characters the person's own Battle.net account holds, so
+// the roster name never comes from what the caller sent.
+export type Chosen = { blizzardId: number };
 
 // 'joined' = on the roster; 'waiting' = in the guild and team, but the team
 // is at its active-character limit (#1259), so an officer is flagged.
@@ -29,10 +32,7 @@ export function useJoinTeam(code: string) {
     async (client, c) => {
       const { data, error } = await client.rpc('team_invite_link_join', {
         p_code: code,
-        p_name: c.name,
-        p_realm: c.realm,
-        ...(c.className ? { p_class: c.className } : {}),
-        ...(c.specName ? { p_spec: c.specName } : {})
+        p_blizzard_id: c.blizzardId
       });
       if (error) return { data: null, error };
       return { data: data as JoinOutcome, error: null };

@@ -10180,7 +10180,7 @@
     {
       "name": "public.team_invite_link_join",
       "return_type": "text",
-      "arguments": "p_code text, p_name text, p_realm text, p_class text DEFAULT NULL::text, p_spec text DEFAULT NULL::text",
+      "arguments": "p_code text, p_blizzard_id bigint",
       "type": "FUNCTION"
     },
     {
