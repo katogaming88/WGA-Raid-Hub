@@ -3,10 +3,10 @@ import { Link } from 'react-router';
 import { DataState } from '../components/DataState';
 import { BATTLENET, DISCORD, useSession } from '../auth/session';
 import { CharacterIcon } from '../characters/CharacterIcon';
-import { pickerRows, type CharactersAnswer } from '../characters/characters';
-import { useBattlenetCharacters } from '../characters/useCharacters';
+import { pickerRows, type AccountCharacter, type CharactersAnswer } from '../characters/characters';
+import { refusalStatus, useBattlenetCharacters } from '../characters/useCharacters';
 import { defaultGuildPath } from '../config';
-import { useInviteTarget, useJoinTeam, type Chosen, type InviteTarget } from './useJoin';
+import { useInviteTarget, useJoinTeam, type InviteTarget } from './useJoin';
 import '../characters/characters.css';
 import '../signup/signup.css';
 
@@ -91,10 +91,29 @@ function Picker({ code, target }: { code: string; target: InviteTarget }) {
   const list = useBattlenetCharacters();
   const join = useJoinTeam(code);
   const [answer, setAnswer] = useState<CharactersAnswer | null>(null);
-  const [picked, setPicked] = useState<Chosen | null>(null);
+  const [picked, setPicked] = useState<AccountCharacter | null>(null);
   const started = useRef<string | null>(null);
   const { mutate: read } = list;
   const load = useCallback((token: string) => read({ token, allLevels: true }, { onSuccess: setAnswer }), [read]);
+
+  // Saving the pick is what proves it: the function saves only characters
+  // Blizzard just confirmed on this account, and the join then resolves the
+  // roster name from that record (#1319). Everything already saved goes back
+  // with it, since the save replaces the whole set.
+  const onJoin = () => {
+    if (!picked || !battlenetToken || !answer) return;
+    const saved = answer.characters.filter((c) => c.saved).map((c) => c.blizzard_id);
+    const save = saved.includes(picked.blizzard_id) ? saved : [...saved, picked.blizzard_id];
+    read(
+      { token: battlenetToken, save, allLevels: true },
+      {
+        onSuccess: (result) => {
+          setAnswer(result);
+          join.mutate({ blizzardId: picked.blizzard_id });
+        }
+      }
+    );
+  };
 
   useEffect(() => {
     if (!battlenetToken || started.current === battlenetToken) return;
@@ -128,7 +147,7 @@ function Picker({ code, target }: { code: string; target: InviteTarget }) {
       </>
     );
   }
-  if (list.isError) {
+  if (list.isError && !answer) {
     return (
       <p className="form-error" role="alert">
         Could not read your characters from Battle.net: {list.error.message}
@@ -151,7 +170,7 @@ function Picker({ code, target }: { code: string; target: InviteTarget }) {
       ) : (
         <div className="signup-bnet-list" role="radiogroup" aria-label="Your characters">
           {rows.map(({ character, kind }) => {
-            const isPicked = picked?.name === character.name && picked.realm === character.realm;
+            const isPicked = picked?.blizzard_id === character.blizzard_id;
             return (
               <button
                 key={character.blizzard_id}
@@ -160,14 +179,7 @@ function Picker({ code, target }: { code: string; target: InviteTarget }) {
                 aria-checked={isPicked}
                 disabled={kind === 'claimed'}
                 className="signup-bnet-row"
-                onClick={() =>
-                  setPicked({
-                    name: character.name,
-                    realm: character.realm,
-                    className: character.class_name,
-                    specName: character.spec_name
-                  })
-                }
+                onClick={() => setPicked(character)}
               >
                 <CharacterIcon className={character.class_name} spec={character.spec_name} />
                 <span className="character-text">
@@ -189,13 +201,25 @@ function Picker({ code, target }: { code: string; target: InviteTarget }) {
           Could not join: {join.error.message}
         </p>
       )}
+      {list.isError && (
+        <>
+          <p className="form-error" role="alert">
+            Battle.net could not confirm that character: {list.error.message}
+          </p>
+          {refusalStatus(list.error) === 401 && (
+            <button type="button" className="button" onClick={() => void refreshBattlenet('signup-character')}>
+              Sign in with Battle.net again
+            </button>
+          )}
+        </>
+      )}
       <button
         type="button"
         className="button button-primary"
-        disabled={!picked || join.isPending}
-        onClick={() => picked && join.mutate(picked)}
+        disabled={!picked || join.isPending || list.isPending}
+        onClick={onJoin}
       >
-        {join.isPending ? 'Joining…' : `Join ${target.teamName}`}
+        {join.isPending || list.isPending ? 'Joining…' : `Join ${target.teamName}`}
       </button>
     </>
   );

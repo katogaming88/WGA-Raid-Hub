@@ -66,10 +66,49 @@ describe('the Join page', () => {
     await user.click(join);
     expect(await screen.findByRole('heading', { name: 'You’re on the roster' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Go to Phoenix' })).toHaveAttribute('href', '/g/wga/t/phoenix');
-    expect(client.rpcs).toContainEqual([
-      'team_invite_link_join',
-      { p_code: 'phoenix-abc', p_name: 'Katorri', p_realm: 'Stormrage', p_class: 'Priest', p_spec: 'Holy' }
+    // The pick is saved first, which is what confirms it against Battle.net,
+    // and the join then names it by its Battle.net id (#1319).
+    expect(client.authCalls).toContainEqual([
+      'invoke',
+      ['battlenet-characters', { body: { token: 'tok', save: [1], allLevels: true } }]
     ]);
+    expect(client.rpcs).toContainEqual(['team_invite_link_join', { p_code: 'phoenix-abc', p_blizzard_id: 1 }]);
+  });
+
+  it('keeps the characters already saved when it saves the pick', async () => {
+    const user = userEvent.setup();
+    const withAlt = {
+      ...handlers(),
+      invoke: () => ({
+        data: { characters: [{ ...CHARACTER, blizzard_id: 7, name: 'Altchar', saved: true }, CHARACTER], roster: [] }
+      })
+    };
+    const { client } = renderApp('/join/phoenix-abc', withAlt, { battlenetToken: 'tok' });
+    await user.click(await screen.findByRole('radio', { name: /Katorri/ }));
+    await user.click(screen.getByRole('button', { name: 'Join Phoenix' }));
+    await screen.findByRole('heading', { name: 'You’re on the roster' });
+    // A bare [pick] would delete the alt: the save replaces the whole set.
+    expect(client.authCalls).toContainEqual([
+      'invoke',
+      ['battlenet-characters', { body: { token: 'tok', save: [7, 1], allLevels: true } }]
+    ]);
+  });
+
+  it('does not join when Battle.net cannot confirm the character', async () => {
+    const user = userEvent.setup();
+    let seen = 0;
+    const refuses = {
+      ...handlers(),
+      invoke: () =>
+        seen++ === 0
+          ? { data: { characters: [CHARACTER], roster: [] } }
+          : { error: { message: 'Battle.net sign-in has expired' } }
+    };
+    const { client } = renderApp('/join/phoenix-abc', refuses, { battlenetToken: 'tok' });
+    await user.click(await screen.findByRole('radio', { name: /Katorri/ }));
+    await user.click(screen.getByRole('button', { name: 'Join Phoenix' }));
+    expect(await screen.findByText(/could not confirm that character/i)).toBeInTheDocument();
+    expect(client.rpcs.map(([name]) => name)).not.toContain('team_invite_link_join');
   });
 
   it('says so when the team is at its character limit', async () => {
