@@ -4,6 +4,7 @@ import type { SeasonWindow } from './profile';
 import {
   editorSeason,
   editorSlots,
+  picksInSeason,
   planMark,
   wishlistSummary,
   type EditorInput,
@@ -243,6 +244,25 @@ describe('picks from another season', () => {
   it('do not fill the slot for an M+ pick tagged in another season', () => {
     const slots = editorSlots(input([pick(14, 'bis', 'Head', { season: 'MID1' })]));
     expect(slots.find((s) => s.slot === 'Head')!.notFromRaid).toBeNull();
+  });
+});
+
+// A null season here is not "the seasonless tier", it is the editor not
+// knowing which tier it is planning: no tier has started and no officer has
+// pinned one. Narrowing to the seasonless picks there hides everything a
+// raider holds. The editor is read-only in that state, so showing them all
+// is a display choice, not an editing one.
+describe('when the editor cannot tell which season it is planning', () => {
+  it('keeps every pick rather than only the seasonless ones', () => {
+    const lastSeason = pick(1, 'bis', null, { season: 'MID1' });
+    const noSeason = pick(2, 'bis', null, { season: null });
+    expect(picksInSeason([lastSeason, noSeason], null)).toEqual([lastSeason, noSeason]);
+  });
+
+  it('still narrows to the season when it knows one', () => {
+    const mine = pick(1, 'bis', null);
+    const lastSeason = pick(2, 'bis', null, { season: 'MID1' });
+    expect(picksInSeason([mine, lastSeason], 'MID2')).toEqual([mine]);
   });
 });
 

@@ -122,13 +122,19 @@ describe('the page reads one season of its own picks', () => {
     expect(filterOn(read, 'season')).toEqual([['eq', 'season', 'MID2']]);
   });
 
-  it('asks for the picks with no season when no tier resolves, as the insert stamps', async () => {
+  // With no tier resolving, the page does not know which season it is
+  // planning. On production that means the seasons read failed rather than
+  // that there are no seasons, because the table is app-wide and filled by
+  // migration. Narrowing to the seasonless picks there would show a raider an
+  // empty wishlist; the page shows every pick they hold and goes read-only.
+  it('asks for every pick when it cannot tell which season it is planning', async () => {
     const { sandbox, calls } = makeSandbox();
     sandbox.DATA.seasons = [];
     await sandbox.fetchMyItemPreferences(11);
 
     const read = calls.find((c) => c.op === 'select');
-    expect(filterOn(read, 'season')).toEqual([['is', 'season', null]]);
+    expect(filterOn(read, 'season')).toEqual([]);
+    expect(filterOn(read, 'player_id')).toEqual([['eq', 'player_id', 11]]);
   });
 
   it('reads the season an officer pinned rather than the live tier', async () => {
@@ -173,18 +179,41 @@ describe('a change to an existing pick stays in the season the page plans for', 
     expect(filterOn(write, 'season')).toEqual([['eq', 'season', 'MID2']]);
   });
 
-  it('filters both on a missing season when no tier resolves', () => {
-    const { sandbox, calls } = makeSandbox();
-    sandbox.DATA.seasons = [];
-    sandbox._wishlistPlayerNameRealm = 'Kat-Stormrage';
-    sandbox.DATA.roster = [{ nameRealm: 'Kat-Stormrage', wishlistAllowed: true }];
-    sandbox.window.DATA = sandbox.DATA;
-    sandbox._wishlistPrefs = [existing(null)];
-    sandbox.wishlistSetStatus(42, null, 'bis');
+  // The one raider who can still reach a write with no season resolved is one
+  // an officer allowed, because the team switch reads closed when the tier
+  // does not resolve. Their tag used to find no pick in the seasonless rows
+  // the page had read and insert a second row beside the one they already
+  // held, which the season-keyed unique index permits. The page writes
+  // nothing instead.
+  describe('and an officer has allowed this raider', () => {
+    const allowed = (sandbox) => {
+      sandbox.DATA.seasons = [];
+      sandbox._wishlistPlayerNameRealm = 'Kat-Stormrage';
+      sandbox.DATA.roster = [{ nameRealm: 'Kat-Stormrage', wishlistAllowed: true }];
+      sandbox.window.DATA = sandbox.DATA;
+      sandbox._wishlistPrefs = [existing('MID2')];
+    };
 
-    const write = calls.find((c) => c.op === 'update');
-    expect(write).toBeTruthy();
-    expect(filterOn(write, 'season')).toEqual([['is', 'season', null]]);
+    it('tagging an item writes nothing', () => {
+      const { sandbox, calls } = makeSandbox();
+      allowed(sandbox);
+      sandbox.wishlistSetStatus(42, null, 'bis');
+      expect(calls.filter((c) => c.op === 'insert' || c.op === 'update')).toEqual([]);
+    });
+
+    it('removing a pick writes nothing', () => {
+      const { sandbox, calls } = makeSandbox();
+      allowed(sandbox);
+      sandbox.wishlistRemovePreference(42, null);
+      expect(calls.filter((c) => c.op === 'delete')).toEqual([]);
+    });
+
+    it('Clear All writes nothing', () => {
+      const { sandbox, calls } = makeSandbox();
+      allowed(sandbox);
+      sandbox.clearMyWishlist('Kat');
+      expect(calls.filter((c) => c.op === 'delete')).toEqual([]);
+    });
   });
 
   // Clear All has no item or slot filter by design, and the write gate refuses
