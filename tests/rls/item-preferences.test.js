@@ -1,12 +1,15 @@
 // RLS assertions for item_preferences (#515 Phase 1, the raider wishlist):
 // no public read (unlike bis_items), a raider manages only their own rows
-// via is_own_player(), and officers can read but not write directly. Uses the
-// shared withTxn from helpers.js.
+// via is_own_player(), and only in a season their team has opened (#936),
+// and officers can read but not write directly. Uses the shared withTxn from
+// helpers.js.
+import { randomUUID } from 'node:crypto';
 import { describe, it, expect, afterAll } from 'vitest';
 import {
   pool,
   withTxn,
   seedPlayer,
+  seedSeason,
   OFFICER_T1,
   RAIDER_T1,
   OFFICER_T2,
@@ -18,8 +21,17 @@ import {
 // Every case mints the player its rows belong to (#1123): ownPlayer is a
 // character of RAIDER_T1's (linked to team_members 3, the team 1 raider),
 // otherPlayer one nobody has claimed. The seeded players are never written.
+// ownPlayer carries the per-raider wishlist override, because every case
+// outside the gate's own block is about who may write, not when (#936); the
+// gate's cases use gatedPlayer, the same character without it.
 const RAIDER_T1_MEMBER = 3;
-const ownPlayer = (q) => seedPlayer(q, { memberId: RAIDER_T1_MEMBER });
+const OFFICER_T1_MEMBER = 1;
+const gatedPlayer = (q, memberId = RAIDER_T1_MEMBER) => seedPlayer(q, { memberId });
+const ownPlayer = async (q) => {
+  const pid = await gatedPlayer(q);
+  await q('update public.players set wishlist_allowed = true where id = $1', [pid]);
+  return pid;
+};
 const otherPlayer = (q) => seedPlayer(q);
 
 describe('anon has no read access to item_preferences', () => {
@@ -322,6 +334,148 @@ describe('item_preferences.season holds a season code', () => {
           [pid]
         )
       ).rejects.toMatchObject({ code: '23503' });
+    });
+  });
+});
+
+// #936's second half: the Wishlist page closes when the team has not opened
+// wishlist editing for the season, and the database now refuses the same
+// writes, so a closed switch holds for a stale page or a direct call too. The
+// test is the team_seasons row for the row's own season, or the raider's
+// per-raider override. Each case mints its tier so no two files share a
+// team_seasons key.
+const PICK =
+  "insert into public.item_preferences (team_id, player_id, item_id, status, note, season) values (1, $1, 1, 'bis', 'a note', $2) returning id";
+const CLOSED = /wishlist editing is not open/;
+
+async function tier(q, wishlistOpen) {
+  const code = `T${randomUUID().slice(0, 7)}`;
+  await seedSeason(q, code);
+  if (wishlistOpen !== undefined) {
+    await q('insert into public.team_seasons (team_id, season_code, wishlist_open) values (1, $1, $2)', [
+      code,
+      wishlistOpen
+    ]);
+  }
+  return code;
+}
+
+describe('a raider writes to their wishlist only in a season the team has opened', () => {
+  it('refuses an insert when the team has no row for the season', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await gatedPlayer(q);
+      const season = await tier(q);
+      await expect(asUser(RAIDER_T1, PICK, [pid, season])).rejects.toThrow(CLOSED);
+    });
+  });
+
+  it('refuses an insert when the season is there with wishlist editing off', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await gatedPlayer(q);
+      const season = await tier(q, false);
+      await expect(asUser(RAIDER_T1, PICK, [pid, season])).rejects.toThrow(CLOSED);
+    });
+  });
+
+  it('accepts an insert in an opened season, and the row keeps that code', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await gatedPlayer(q);
+      const season = await tier(q, true);
+      const inserted = await asUser(RAIDER_T1, PICK, [pid, season]);
+      const row = (await q('select season from public.item_preferences where id = $1', [inserted.rows[0].id])).rows[0];
+      expect(row.season).toBe(season);
+    });
+  });
+
+  it('refuses an insert filed under a different season from the one the team opened', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await gatedPlayer(q);
+      await tier(q, true);
+      const other = await tier(q);
+      await expect(asUser(RAIDER_T1, PICK, [pid, other])).rejects.toThrow(CLOSED);
+    });
+  });
+
+  it('refuses a row with no season unless the raider has the override', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await gatedPlayer(q);
+      await tier(q, true);
+      await expect(asUser(RAIDER_T1, PICK, [pid, null])).rejects.toThrow(CLOSED);
+    });
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await ownPlayer(q);
+      const inserted = await asUser(RAIDER_T1, PICK, [pid, null]);
+      expect(inserted.rows.length).toBe(1);
+    });
+  });
+
+  it('the per-raider override opens a closed season, as the Wishlist page does', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await ownPlayer(q);
+      const season = await tier(q, false);
+      const inserted = await asUser(RAIDER_T1, PICK, [pid, season]);
+      expect(inserted.rows.length).toBe(1);
+    });
+  });
+
+  it('refuses an update and a delete once the season closes, and reads stay open', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await gatedPlayer(q);
+      const season = await tier(q, true);
+      const id = (await asUser(RAIDER_T1, PICK, [pid, season])).rows[0].id;
+      await q('update public.team_seasons set wishlist_open = false where team_id = 1 and season_code = $1', [season]);
+
+      await expect(
+        asUser(RAIDER_T1, "update public.item_preferences set status = 'pass' where id = $1", [id])
+      ).rejects.toThrow(CLOSED);
+      await expect(asUser(RAIDER_T1, 'delete from public.item_preferences where id = $1', [id])).rejects.toThrow(
+        CLOSED
+      );
+
+      const seen = await asUser(RAIDER_T1, 'select status from public.item_preferences where id = $1', [id]);
+      expect(seen.rows).toEqual([{ status: 'bis' }]);
+    });
+  });
+
+  it('refuses moving a row from an opened season into a closed one', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await gatedPlayer(q);
+      const open = await tier(q, true);
+      const closed = await tier(q, false);
+      const id = (await asUser(RAIDER_T1, PICK, [pid, open])).rows[0].id;
+      await expect(
+        asUser(RAIDER_T1, 'update public.item_preferences set season = $2 where id = $1', [id, closed])
+      ).rejects.toThrow(CLOSED);
+    });
+  });
+
+  it("an officer still clears a raider's note while the season is closed", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await gatedPlayer(q);
+      const season = await tier(q, true);
+      const id = (await asUser(RAIDER_T1, PICK, [pid, season])).rows[0].id;
+      await q('update public.team_seasons set wishlist_open = false where team_id = 1 and season_code = $1', [season]);
+
+      await asUser(OFFICER_T1, 'update public.item_preferences set note = null where id = $1', [id]);
+      const after = (await q('select note from public.item_preferences where id = $1', [id])).rows[0];
+      expect(after.note).toBeNull();
+    });
+  });
+
+  // The officers' note-clearing policy lets an officer update any row on their
+  // team, and the note-only trigger steps aside for a row that is their own,
+  // so an officer's own character is where a gate written into the policies
+  // alone would leak.
+  it("an officer's own character is held by the switch like anyone else's", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await gatedPlayer(q, OFFICER_T1_MEMBER);
+      const season = await tier(q, true);
+      const id = (await asUser(OFFICER_T1, PICK, [pid, season])).rows[0].id;
+      await q('update public.team_seasons set wishlist_open = false where team_id = 1 and season_code = $1', [season]);
+
+      await expect(
+        asUser(OFFICER_T1, "update public.item_preferences set status = 'pass' where id = $1", [id])
+      ).rejects.toThrow(CLOSED);
     });
   });
 });
