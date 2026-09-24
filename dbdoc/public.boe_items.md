@@ -170,6 +170,8 @@ erDiagram
   jsonb main_stats
   text weapon_subtype
   boolean is_boe
+  text source
+  text season FK
 }
 "public.seasons" {
   text code

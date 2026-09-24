@@ -18,13 +18,18 @@
 | main_stats | jsonb |  | true |  |  |  |
 | weapon_subtype | text |  | true |  |  |  |
 | is_boe | boolean | false | false |  |  |  |
+| source | text | 'raid'::text | false |  |  | Where the item comes from: raid, dungeon (a season's M+ pool) or crafted. Only raid items are ranked or exported to RCLootCouncil (#1166). |
+| season | text |  | true |  | [public.seasons](public.seasons.md) | Season code for a dungeon or crafted item; null for a raid item, whose season comes from raid_zones (#1166). |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | items_armor_type_check | CHECK | CHECK ((armor_type = ANY (ARRAY['Plate'::text, 'Mail'::text, 'Leather'::text, 'Cloth'::text]))) |
+| items_season_by_source | CHECK | CHECK (((source = 'raid'::text) = (season IS NULL))) |
+| items_source_check | CHECK | CHECK ((source = ANY (ARRAY['raid'::text, 'dungeon'::text, 'crafted'::text]))) |
 | items_pkey | PRIMARY KEY | PRIMARY KEY (id) |
+| items_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(code) |
 
 ## Indexes
 
@@ -49,6 +54,7 @@ erDiagram
 "public.boe_items" }o--o| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
 "public.priority_order_confirmed_empty" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.priority_stale_dismissals" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
+"public.items" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 
 "public.items" {
   integer id
@@ -65,6 +71,8 @@ erDiagram
   jsonb main_stats
   text weapon_subtype
   boolean is_boe
+  text source
+  text season FK
 }
 "public.item_bosses" {
   integer item_id FK
@@ -171,6 +179,13 @@ erDiagram
   integer item_id FK
   uuid dismissed_by FK
   timestamp_with_time_zone dismissed_at
+}
+"public.seasons" {
+  text code
+  text display_name
+  date starts_at
+  date ends_at
+  timestamp_with_time_zone created_at
 }
 ```
 

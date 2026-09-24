@@ -8,7 +8,7 @@ One row per raid tier (#932). code is the short form every season column referen
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| code | text |  | false | [public.rclc_loot](public.rclc_loot.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.raid_zones](public.raid_zones.md) [public.item_preferences](public.item_preferences.md) [public.tier_token_map](public.tier_token_map.md) [public.boe_items](public.boe_items.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.track_bonus_ids](public.track_bonus_ids.md) [public.team_seasons](public.team_seasons.md) |  |  |
+| code | text |  | false | [public.items](public.items.md) [public.rclc_loot](public.rclc_loot.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.raid_zones](public.raid_zones.md) [public.item_preferences](public.item_preferences.md) [public.tier_token_map](public.tier_token_map.md) [public.boe_items](public.boe_items.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.track_bonus_ids](public.track_bonus_ids.md) [public.team_seasons](public.team_seasons.md) |  |  |
 | display_name | text |  | false |  |  |  |
 | starts_at | date |  | false |  |  | The day the tier launched. |
 | ends_at | date |  | true |  |  | Null while the tier is open-ended; the next tier's migration sets it. Tiers do not overlap (seasons_no_overlap), so at most one row is null. |
@@ -36,6 +36,7 @@ One row per raid tier (#932). code is the short form every season column referen
 ```mermaid
 erDiagram
 
+"public.items" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.rclc_loot" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.player_wcl_season_perf" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.priority_order" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
@@ -57,6 +58,24 @@ erDiagram
   date starts_at
   date ends_at
   timestamp_with_time_zone created_at
+}
+"public.items" {
+  integer id
+  integer wow_item_id
+  text name
+  text slot
+  text armor_type
+  integer sort_id
+  boolean is_placeholder
+  text icon
+  jsonb secondary_stats
+  integer wcl_zone_id
+  boolean is_ptr
+  jsonb main_stats
+  text weapon_subtype
+  boolean is_boe
+  text source
+  text season FK
 }
 "public.rclc_loot" {
   integer id

@@ -12,6 +12,21 @@ answers to.
 
 ---
 
+## [3.155.0] - 2026-09-24
+
+### Backend
+
+- Each item now records where it comes from (raid, dungeon or crafted), and a
+  dungeon or crafted item records its season. Every existing item reads as a
+  raid item. The RCLootCouncil export and the BiS demand count leave out
+  anything that is not from a raid, so M+ and crafted gear never gets a
+  priority number ([#1166](https://github.com/katogaming88/WGA-Raid-Hub/issues/1166)).
+
+### Project
+
+- Tests for the new item columns and for the export leaving dungeon and
+  crafted items out. The database decisions log gets the entry.
+
 ## [3.154.4] - 2026-09-24
 
 ### Project

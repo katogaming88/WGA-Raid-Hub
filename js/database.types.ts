@@ -711,9 +711,11 @@ export type Database = {
           is_ptr: boolean
           main_stats: Json | null
           name: string
+          season: string | null
           secondary_stats: Json | null
           slot: string
           sort_id: number | null
+          source: string
           wcl_zone_id: number | null
           weapon_subtype: string | null
           wow_item_id: number | null
@@ -727,9 +729,11 @@ export type Database = {
           is_ptr?: boolean
           main_stats?: Json | null
           name: string
+          season?: string | null
           secondary_stats?: Json | null
           slot: string
           sort_id?: number | null
+          source?: string
           wcl_zone_id?: number | null
           weapon_subtype?: string | null
           wow_item_id?: number | null
@@ -743,14 +747,24 @@ export type Database = {
           is_ptr?: boolean
           main_stats?: Json | null
           name?: string
+          season?: string | null
           secondary_stats?: Json | null
           slot?: string
           sort_id?: number | null
+          source?: string
           wcl_zone_id?: number | null
           weapon_subtype?: string | null
           wow_item_id?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "items_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+        ]
       }
       main_swap_requests: {
         Row: {

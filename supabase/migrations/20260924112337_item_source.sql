@@ -1,6 +1,34 @@
--- Function public.build_rclc_export: current definition, generated from the database.
--- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
--- execute (site roles): authenticated
+-- #1166: each item says where it comes from (raid, dungeon, crafted).
+--
+-- The catalog held raid loot only, so a raider who wanted an M+ or crafted
+-- piece could only wishlist the generic 'M+' or 'Crafted' stand-in. The new
+-- app's wishlist offers the real items instead, and they need a marker: they
+-- have no raid (wcl_zone_id is null), so nothing else says a dungeon trinket
+-- is not council loot.
+--
+--   source  'raid' (every existing row), 'dungeon' (a season's M+ pool) or
+--           'crafted'. Only raid items are ranked or exported to RCLootCouncil.
+--   season  the season code a dungeon or crafted item belongs to, the way
+--           raid_zones.season places a raid item. Null for raid items, whose
+--           season comes from their raid. Required for the other two so last
+--           season's dungeon loot does not appear in every later season.
+--
+-- The RCLootCouncil export and the BiS demand count already skipped the
+-- stand-in picks (is_placeholder); they now skip anything not from a raid
+-- as well. Both bodies are otherwise unchanged from their last versions
+-- (20260924003956 and 20260829235114), grants preserved by create or replace.
+-- The stand-in rows and their special cases stay until cutover (#1105).
+
+alter table public.items
+  add column source text not null default 'raid',
+  add column season text references public.seasons (code),
+  add constraint items_source_check check (source in ('raid', 'dungeon', 'crafted')),
+  add constraint items_season_by_source check ((source = 'raid') = (season is null));
+
+comment on column public.items.source is
+  'Where the item comes from: raid, dungeon (a season''s M+ pool) or crafted. Only raid items are ranked or exported to RCLootCouncil (#1166).';
+comment on column public.items.season is
+  'Season code for a dungeon or crafted item; null for a raid item, whose season comes from raid_zones (#1166).';
 
 CREATE OR REPLACE FUNCTION public.build_rclc_export(p_team_id integer, p_season text, p_track text)
  RETURNS jsonb
@@ -173,3 +201,36 @@ begin
   return jsonb_build_object('players', v_players, 'priority', v_priority, 'statusLabels', v_status_labels);
 end;
 $function$;
+
+create or replace view public.bis_demand_vs_awards
+with (security_invoker = on)
+as
+with demand as (
+  select p.team_id, ip.item_id, count(distinct ip.player_id) as demand_count
+  from public.item_preferences ip
+  join public.players p on p.id = ip.player_id
+  join public.items i on i.id = ip.item_id
+  where p.archived_at is null
+    and ip.status = 'bis'
+    and not i.is_placeholder
+    and i.source = 'raid'
+  group by p.team_id, ip.item_id
+),
+awards as (
+  select team_id, item_id, season, count(*) as awarded_count
+  from public.rclc_loot
+  where item_id is not null
+  group by team_id, item_id, season
+)
+select
+  d.team_id,
+  d.item_id,
+  i.name as item_name,
+  i.slot,
+  d.demand_count,
+  a.season,
+  coalesce(a.awarded_count, 0) as awarded_count
+from demand d
+join public.items i on i.id = d.item_id
+left join awards a on a.team_id = d.team_id and a.item_id = d.item_id
+order by d.team_id, d.demand_count desc, coalesce(a.awarded_count, 0) asc;
