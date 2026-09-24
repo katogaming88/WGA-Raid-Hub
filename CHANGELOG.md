@@ -14,6 +14,14 @@ answers to.
 
 ## [3.155.0] - 2026-09-24
 
+### Frontend
+
+- The new app’s Wishlist offers a season’s dungeon and crafted items with a
+  small “M+” or “Crafted” tag, a raider can mark one BiS, and it shows in Loot
+  Priority with no rank. Mark Received starts on M+ or Crafted for those
+  items. The current site leaves them out of every list, as it does BoEs
+  ([#1166](https://github.com/katogaming88/WGA-Raid-Hub/issues/1166)).
+
 ### Backend
 
 - Each item now records where it comes from (raid, dungeon or crafted), and a

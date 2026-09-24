@@ -1,7 +1,7 @@
 import type { UseQueryResult } from '@tanstack/react-query';
 import { DataState } from '../components/DataState';
 import { bothQueries } from '../data/query';
-import { latestSelfReceivedUpdate, lootPriority, type PriorityRow, type Standing } from './lootPriority';
+import { latestSelfReceivedUpdate, lootPriority, sourceTag, type PriorityRow, type Standing } from './lootPriority';
 import { MarkReceivedButton } from './ProfileForms';
 import { wishlistSummary } from './wishlist';
 import { timeAgoLabel, type LootRow, type SeasonWindow } from './profile';
@@ -141,7 +141,10 @@ function PriorityTable({
           {rows.map((row) => (
             <tr key={row.key} data-placeholder={row.placeholder || undefined}>
               <th scope="row">
-                <span className="priority-item">{row.item}</span>
+                <span className="priority-item">
+                  {row.item}
+                  {sourceTag(row.source) && <span className="source-tag">{sourceTag(row.source)}</span>}
+                </span>
                 <span className="priority-slot">{row.slot}</span>
               </th>
               <td className="priority-heroic">

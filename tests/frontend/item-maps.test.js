@@ -54,6 +54,21 @@ const BOE = {
   is_boe: true
 };
 
+describe('buildItemMaps and dungeon or crafted items (#1166)', () => {
+  const sandbox = loadCommonJs(quietConsole);
+  it('leaves every map exactly as it is without them', () => {
+    const extra = ['dungeon', 'crafted'].map((source, i) => ({
+      ...BOE,
+      id: 10 + i,
+      wow_item_id: 200000 + i,
+      name: 'Off Raid ' + source,
+      is_boe: false,
+      source
+    }));
+    expect(sandbox.buildItemMaps(ROWS.concat(extra))).toEqual(sandbox.buildItemMaps(ROWS));
+  });
+});
+
 describe('buildItemMaps and BoEs (#875)', () => {
   const sandbox = loadCommonJs(quietConsole);
 

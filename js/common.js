@@ -3155,7 +3155,7 @@ function fetchSupabaseItems() {
   var query = supabaseClient
     .from('items')
     .select(
-      'id, wow_item_id, name, slot, armor_type, is_placeholder, icon, wcl_zone_id, secondary_stats, main_stats, weapon_subtype, is_ptr, is_boe'
+      'id, wow_item_id, name, slot, armor_type, is_placeholder, icon, wcl_zone_id, secondary_stats, main_stats, weapon_subtype, is_ptr, is_boe, source'
     )
     .then(
       function (result) {
@@ -3355,6 +3355,9 @@ function buildItemMaps(rows) {
       });
       return;
     }
+    // A dungeon or crafted item (#1166) is not council loot: like a BoE it stays
+    // out of every map here. Only the new app offers them, tagged.
+    if (row.source && row.source !== 'raid') return;
     itemSlots[name] = row.is_placeholder ? '' : row.slot || '';
     if (row.armor_type) itemArmorTypes[name] = row.armor_type;
     if (row.is_placeholder) itemPlaceholders[name] = true;

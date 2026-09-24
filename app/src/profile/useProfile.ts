@@ -134,8 +134,15 @@ export function useCatalog() {
   return useSupabaseQuery<CatalogItem[]>(['catalog'], (client) =>
     client
       .from('items')
-      .select('id, name, slot, wcl_zone_id, is_placeholder, armor_type, main_stats, weapon_subtype')
+      .select(
+        'id, name, slot, wcl_zone_id, is_placeholder, armor_type, main_stats, weapon_subtype, source, item_seasons(season)'
+      )
       .order('id')
+      .then(({ data, error }) => ({
+        data:
+          data?.map(({ item_seasons, ...item }) => ({ ...item, seasons: item_seasons.map((s) => s.season) })) ?? null,
+        error
+      }))
   );
 }
 

@@ -450,6 +450,22 @@ describe('lootPriority', () => {
     expect([token!.item, token!.itemName]).toEqual(['Grave-Knight Deathgrips', 'Venomforged Idol']);
   });
 
+  it('lists a dungeon item in its seasons with its source, never ranked', () => {
+    const dungeon = (seasons: string[]) => ({
+      id: 6,
+      name: 'Keystone Helm',
+      slot: 'Head',
+      wcl_zone_id: null,
+      is_placeholder: false,
+      source: 'dungeon',
+      seasons
+    });
+    const wishlist = [pick(6, 'Head')];
+    const [row] = lootPriority({ ...base, catalog: [...catalog, dungeon([SEASON.code!])], wishlist });
+    expect([row!.item, row!.source, row!.ranks]).toEqual(['Keystone Helm', 'dungeon', []]);
+    expect(lootPriority({ ...base, catalog: [...catalog, dungeon(['OLD'])], wishlist })).toEqual([]);
+  });
+
   it('counts the wishlist’s slots with a BiS pick and the ones passed', () => {
     expect(
       wishlistSummary(

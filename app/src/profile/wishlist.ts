@@ -3,19 +3,26 @@
 // as the current site's My Wishlist (js/wishlist.js), recorded in
 // tests/behavior/wishlist.js, with two changes Kat made on 2026-09-14: a slot
 // is marked BiS or Pass only (#1032), and a BiS pick that is replaced is
-// unmarked rather than kept as 2nd Choice. Notes are gone, and M+ or crafted
-// picks are shown but not added here until real items exist (#1166).
+// unmarked rather than kept as 2nd Choice. Notes are gone. Dungeon and crafted
+// items are offered for the seasons item_seasons lists them in, tagged, and
+// never ranked (#1166).
 
 import type { CatalogItem, WishlistRow, ZoneRow } from './lootPriority';
 import type { SeasonWindow } from './profile';
-import { WISHLIST_SLOTS } from './lootPriority';
+import { WISHLIST_SLOTS, offRaid } from './lootPriority';
 
 export type Mark = 'bis' | 'pass';
 export type Pick = WishlistRow & { id: number; synced_bis: boolean };
 export type TokenRow = { token_item_id: number; resolved_item_id: number; class: string };
 export type Wearer = { className: string | null; spec: string | null; role: string | null };
 
-export type EditorRow = { itemId: number; name: string; mark: Mark | null; takenBy: string | null };
+export type EditorRow = {
+  itemId: number;
+  name: string;
+  source: string;
+  mark: Mark | null;
+  takenBy: string | null;
+};
 export type EditorSlot = { slot: string; items: EditorRow[]; notFromRaid: string | null };
 
 // Which class can use what, as on the current site (js/common.js). Kat
@@ -163,6 +170,8 @@ export const mainStatFor = (className: string | null, spec: string | null) =>
 // holds the season code (#933). With no raids set up for the season yet,
 // every raid item counts.
 export function inSeasonZone(item: CatalogItem, seasonCode: string | null, zones: ZoneRow[]): boolean {
+  // A dungeon or crafted item is in season where item_seasons lists it (#1166).
+  if (offRaid(item)) return !!seasonCode && !!item.seasons?.includes(seasonCode);
   if (item.wcl_zone_id == null) return true;
   const seasonZones = zones.filter((z) => z.season === seasonCode).map((z) => z.wcl_zone_id);
   return seasonZones.length === 0 || seasonZones.includes(item.wcl_zone_id);
@@ -294,12 +303,18 @@ export function editorSlots(input: EditorInput): EditorSlot[] {
     tokens.filter((t) => t.class === wearer.className).map((t) => [t.token_item_id, byId.get(t.resolved_item_id)?.name])
   );
 
-  const offered = new Map<string, { itemId: number; name: string }[]>(WISHLIST_SLOTS.map((s) => [s, []]));
+  const offered = new Map<string, { itemId: number; name: string; source: string }[]>(
+    WISHLIST_SLOTS.map((s) => [s, []])
+  );
   for (const item of catalog) {
     if (item.is_placeholder || resolvedIds.has(item.id) || !inSeasonZone(item, seasonCode, zones)) continue;
     for (const row of rowsFor(item, wearer.className)) {
       if (!usable(item, row, wearer)) continue;
-      offered.get(row)?.push({ itemId: item.id, name: tokenName.get(item.id) ?? item.name });
+      offered.get(row)?.push({
+        itemId: item.id,
+        name: tokenName.get(item.id) ?? item.name,
+        source: item.source ?? 'raid'
+      });
     }
   }
 
