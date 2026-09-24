@@ -89,6 +89,9 @@ function Join({ code, target }: { code: string; target: InviteTarget }) {
 function Picker({ code, target }: { code: string; target: InviteTarget }) {
   const { battlenetToken, refreshBattlenet } = useSession();
   const list = useBattlenetCharacters();
+  // Its own mutation, so reading the list again after a refused save does not
+  // leave the Join button reading "Joining…" while nothing is being joined.
+  const confirm = useBattlenetCharacters();
   const join = useJoinTeam(code);
   const [answer, setAnswer] = useState<CharactersAnswer | null>(null);
   const [picked, setPicked] = useState<AccountCharacter | null>(null);
@@ -104,7 +107,7 @@ function Picker({ code, target }: { code: string; target: InviteTarget }) {
     if (!picked || !battlenetToken || !answer) return;
     const saved = answer.characters.filter((c) => c.saved).map((c) => c.blizzard_id);
     const save = saved.includes(picked.blizzard_id) ? saved : [...saved, picked.blizzard_id];
-    read(
+    confirm.mutate(
       { token: battlenetToken, save, allLevels: true },
       {
         onSuccess: (result) => {
@@ -201,12 +204,12 @@ function Picker({ code, target }: { code: string; target: InviteTarget }) {
           Could not join: {join.error.message}
         </p>
       )}
-      {list.isError && (
+      {confirm.isError && (
         <>
           <p className="form-error" role="alert">
-            Battle.net could not confirm that character: {list.error.message}
+            Battle.net could not confirm that character: {confirm.error.message}
           </p>
-          {refusalStatus(list.error) === 401 && (
+          {refusalStatus(confirm.error) === 401 && (
             <button type="button" className="button" onClick={() => void refreshBattlenet('signup-character')}>
               Sign in with Battle.net again
             </button>
@@ -216,10 +219,10 @@ function Picker({ code, target }: { code: string; target: InviteTarget }) {
       <button
         type="button"
         className="button button-primary"
-        disabled={!picked || join.isPending || list.isPending}
+        disabled={!picked || join.isPending || confirm.isPending}
         onClick={onJoin}
       >
-        {join.isPending || list.isPending ? 'Joining…' : `Join ${target.teamName}`}
+        {join.isPending || confirm.isPending ? 'Joining…' : `Join ${target.teamName}`}
       </button>
     </>
   );
