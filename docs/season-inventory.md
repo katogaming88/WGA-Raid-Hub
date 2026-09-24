@@ -16,6 +16,8 @@ Every place the database and the code hold a season, read at commit `d206bea` (m
 
 **Since #936 (2026-09-24, `20260924003956_wishlist_season_codes.sql`) `item_preferences.season` holds the code and references `seasons(code)`, which was the last name column in section 2.** Nothing keys to `display_name` any more. Both writers stamp the code they already held for scoping: `wishlistUpsert()` reads `resolveSeasonViewCode()` (and stamps null rather than the empty string when no tier resolves), and the app's editor carries one value instead of a code and a name, so `resolveSeasonView()` and the app's `seasonName` in the wishlist module are both gone. No SQL reader filtered on the column before or after; #1268 is the one that will.
 
+**Since #936 (2026-09-24, `20260924145125_wishlist_season_key.sql`) a wishlist pick is one per item, slot and season.** `item_preferences_no_dupe_item_key` gained `coalesce(season, '')`, so a raider holds a separate pick for the same item in each tier. Both editors read and write one tier with it: on the site every query for a raider's own picks goes through `wishlistScopeToSeason()` (`js/wishlist.js`), which is the read, the update, the remove and Clear All, and the insert stamps through `wishlistSeasonCode()`; in the app `picksInSeason()` (`app/src/profile/wishlist.ts`) scopes the editor's slots, its write plan and the Loot priority card's count. Still no SQL reader filtering on the column.
+
 Season lives in three places today and none of them is a table.
 
 - **The guild's raid tier.** Which tier is current is `CURRENT_SEASON` in `js/common.js`, a constant edited by hand once per tier. The database holds no guild-level season: `to_regclass('public.seasons')` and `('public.team_seasons')` are both null.

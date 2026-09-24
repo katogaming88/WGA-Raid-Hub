@@ -12,6 +12,24 @@ answers to.
 
 ---
 
+## [3.154.6] - 2026-09-24
+
+### Frontend
+
+- Your wishlist is now kept per season. The Wishlist page reads and saves
+  the season it is planning for, so a pick you made for an earlier season
+  stays as you left it instead of being changed or removed by a tag in the
+  season you are on now. Clear All clears the season the page is showing.
+  Nothing changes for anyone today, since everyone's picks are all in the
+  current season ([#936](https://github.com/katogaming88/WGA-Raid-Hub/issues/936)).
+
+### Backend
+
+- A wishlist pick is now one per item, slot and season, where it used to be
+  one per item and slot for all time. Without this a pick you made last
+  season would block the same pick this season
+  ([#936](https://github.com/katogaming88/WGA-Raid-Hub/issues/936)).
+
 ## [3.154.5] - 2026-09-24
 
 ### Backend

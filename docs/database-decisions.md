@@ -10,6 +10,20 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-24 -- a wishlist pick is one per item, slot and season (#936)
+
+Shipped: 20260924145125_wishlist_season_key.sql
+
+`item_preferences_no_dupe_item_key` has been `(player_id, item_id, coalesce(slot, ''))` since #515 Phase 1, when there was one tier of picks and no season column. The column exists now, holds a code, and the write gate reads the season on the row, so the row's season already says which tier a pick belongs to everywhere except the key. The third of #936's parts gives it to the key, and both editors stop reading across tiers.
+
+- **The key only widens, so it cannot fail on existing data.** Every pair it used to separate it still separates, and no row has to be touched. A missing season reads as one value (`coalesce(season, '')`), so the two rows a raider could not tell apart, same item and slot with neither stamped, stay a duplicate. The column stays nullable; making it `not null` and the 9 rows with no season belong to #945.
+- **Both editors read and write one tier, which they did not have to before.** While a pick was unique by item and slot, finding one in whichever season it landed in gave the same answer as asking about the tier being planned. Once a raider can hold the same item in two tiers those part, and the untiered lookup is the worse one: it hands back a row the write gate refuses, part-way through a re-tag that has already deleted rows. On the current site every query for a raider's own picks now names a tier through one helper (`wishlistScopeToSeason()`), and the insert stamps through the same one, so the tier the gate reads, the tier stamped and the tier queried cannot drift apart. In the app the filter is on the three functions that already take the season: the editor's slots, its write plan and the Loot priority card's count.
+- **Clear All is scoped to the tier the page is showing.** It carries no item or slot filter by design, so unscoped it removed picks the page was not showing, and the write gate refuses a statement reaching a closed tier's rows, which would have left a raider holding a past tier of picks pressing a button that did nothing. Its confirm wording still says the whole wishlist and is unchanged here, being raider-facing copy.
+- **The tripwire is gone.** `tests/rls/item-preferences.test.js` failed if a tier started after MID2 while the key had no season. That order is kept now, and the cases that replace it assert the key carries the season and that a raider can file the same item and slot in two tiers.
+- **Not moved with this.** The rest of what decision 13 on #1189 gave #936: `generate_priority_order()` filtering picks by season, and a raider's season switcher replacing the Season View pin as the stamp. The demand report and the setup status still count picks from every season (#1268). Nothing reads the column through a filter in SQL yet, so no reader's results move.
+
+[Full discussion -> #936](https://github.com/katogaming88/WGA-Raid-Hub/issues/936).
+
 ## 2026-09-24 -- item_preferences.season holds the code, and the database holds the wishlist switch (#936)
 
 Shipped: 20260924003956_wishlist_season_codes.sql, 20260924033647_wishlist_write_gate.sql
