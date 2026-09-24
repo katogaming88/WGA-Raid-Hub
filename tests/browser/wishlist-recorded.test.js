@@ -33,7 +33,7 @@ const SEASONS = [{ code: SEASON.code, display_name: SEASON.name, starts_at: SEAS
 // tier the wishlist is stamped with, here the live season.
 const teamSeasons = (open) => [{ team_id: 1, season_code: SEASON.code, wishlist_open: open }];
 
-function openWishlist({ open = true, allowed = false } = {}) {
+function openWishlist({ open = true, allowed = false, seasons = SEASONS } = {}) {
   const viewer = VIEWERS.torbjorn;
   const own = { ...TORBJORN, wishlist_allowed: allowed };
   return openState(
@@ -49,7 +49,7 @@ function openWishlist({ open = true, allowed = false } = {}) {
       players: [own],
       team_members: [{ id: viewer.teamMember, role: viewer.role, name_realm: own.name_realm }],
       team_settings: settings(),
-      seasons: SEASONS,
+      seasons,
       team_seasons: teamSeasons(open),
       attendance: [],
       rclc_loot: [],
@@ -188,6 +188,75 @@ describe('Wishlist (current site), when editing is closed', () => {
     try {
       await showEditor(opened.page);
       expect(await buttonsEnabled(opened.page)).toBeGreaterThan(0);
+    } finally {
+      await opened.context.close();
+    }
+  });
+});
+
+// The seasons read warns and returns an empty list on failure, so a transient
+// failure leaves the page unable to say which tier it is planning. It shows
+// everything the raider holds and goes read-only rather than narrowing to the
+// picks with no season, which would look like an empty wishlist, and rather
+// than letting a raider an officer allowed write a second seasonless pick
+// beside one they already hold (#936).
+//
+// In a browser and not the sandbox on purpose: the sandbox cases assert the
+// shape of the queries, and three entries in this project’s lessons are pages
+// that did the wrong thing in a browser while every test agreed they were fine.
+describe('Wishlist (current site), when the season did not load', () => {
+  const buttonsEnabled = (page) =>
+    page.evaluate(
+      () =>
+        [...document.querySelectorAll('#profileTabWishlist [onclick^="wishlistSetStatus"]')].filter((b) => !b.disabled)
+          .length
+    );
+  const sectionLabels = (page) =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('#profileView .profile-section .section-label')].map((el) =>
+        (el.textContent || '').trim().split('\n')[0].trim()
+      )
+    );
+
+  // The marks, not the catalog. With no season resolving the raid catalog
+  // widens, because an item whose zone belongs to no known season is shown
+  // rather than hidden, and that fail-open predates this and is not what this
+  // case is about.
+  const marks = (rows) =>
+    rows.map(({ slot, bis, pass, notFromRaid, taken }) => ({ slot, bis, pass, notFromRaid, taken }));
+
+  it('shows every pick read-only, even for a raider an officer allowed', async () => {
+    const opened = await openWishlist({ open: true, allowed: true, seasons: [] });
+    try {
+      await showEditor(opened.page);
+      expect(marks(await readEditor(opened.page))).toEqual(marks(EXPECTED_EDITOR));
+      expect(await buttonsEnabled(opened.page)).toBe(0);
+      const note = await opened.page.evaluate(() => document.querySelector('#profileTabWishlist')?.textContent || '');
+      expect(note).toContain('Wishlist editing is currently closed');
+      expect(opened.pageErrors).toEqual([]);
+    } finally {
+      await opened.context.close();
+    }
+  });
+
+  // The render chain past the wishlist has to finish too: a throw inside it
+  // lands in a catch and truncates the page silently, which no assertion about
+  // the wishlist itself can see.
+  it('renders the rest of the profile, as it does with the season loaded', async () => {
+    const withSeason = await openWishlist({ open: true, allowed: true });
+    let expected;
+    try {
+      await showEditor(withSeason.page);
+      expected = await sectionLabels(withSeason.page);
+    } finally {
+      await withSeason.context.close();
+    }
+    expect(expected.length).toBeGreaterThan(1);
+
+    const opened = await openWishlist({ open: true, allowed: true, seasons: [] });
+    try {
+      await showEditor(opened.page);
+      expect(await sectionLabels(opened.page)).toEqual(expected);
     } finally {
       await opened.context.close();
     }
