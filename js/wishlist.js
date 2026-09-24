@@ -1068,7 +1068,11 @@ function wishlistUpsert(itemId, slot, patch) {
       slot: slot || null,
       status: 'good',
       note: null,
-      season: typeof resolveSeasonView === 'function' ? resolveSeasonView() : null
+      // The tier the gate above read, as the code the column holds (#936).
+      // An empty code means no tier resolved at all, which is a row with no
+      // season rather than one stamped with the empty string; that value is
+      // not a seasons row and would fail the foreign key.
+      season: (typeof resolveSeasonViewCode === 'function' && resolveSeasonViewCode()) || null
     };
     Object.keys(patch).forEach(function (k) {
       row[k] = patch[k];

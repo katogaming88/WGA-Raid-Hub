@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 // raid_zones.season -- the Bonus Roll dropdown rendered with only "-- None
 // --" in it, no bosses. Fixed by fetching every season's encounters
 // unfiltered and filtering client-side (js/bonusRoll.js) against
-// resolveSeasonView(), the same "fetch once, filter at use time" split
+// resolveSeasonViewCode(), the same "fetch once, filter at use time" split
 // isItemInSeasonScope()/currentZoneIdsForSeason() already use.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
