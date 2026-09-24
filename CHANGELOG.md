@@ -38,6 +38,18 @@ answers to.
   season's endgame crafted gear (epic, item level 240+). Season 2's 97 crafted
   items are saved as `scripts/season-items/MID2-crafted.txt`, with Engineering
   taken from Wowhead because no character had the Midnight skill.
+- The revamp time log gets the 2026-09-24 rows for this work.
+
+## [3.154.5] - 2026-09-24
+
+### Backend
+
+- The database now enforces Wishlist Editing. A wishlist pick, change or
+  removal is refused unless the team has opened wishlist editing for that
+  season, or an officer has allowed that raider. The Wishlist page already went
+  read-only in that case, so nothing changes for anyone using it; a page left
+  open since an officer closed editing now shows an error instead of saving
+  ([#936](https://github.com/katogaming88/WGA-Raid-Hub/issues/936)).
 
 ## [3.154.4] - 2026-09-24
 

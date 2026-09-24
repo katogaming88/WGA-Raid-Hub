@@ -11,7 +11,9 @@ import { pool, withTxn, seedPlayer } from './helpers.js';
 
 afterAll(() => pool.end());
 
-// The issue's query: triggers whose function names both columns.
+// The issue's query found the guard by its text, a trigger function naming
+// both columns. #936's wishlist gate on item_preferences names both as well,
+// so this keys on the guard function itself.
 const GUARDED_SQL = `
   select c.relname
   from pg_trigger t
@@ -19,7 +21,7 @@ const GUARDED_SQL = `
   join pg_namespace n on n.oid = c.relnamespace
   join pg_proc p on p.oid = t.tgfoid
   where n.nspname = 'public' and not t.tgisinternal
-    and p.prosrc like '%team_id%' and p.prosrc like '%player_id%'
+    and p.proname = 'check_team_id_matches_player'
   order by 1`;
 
 // One insert per table, the player as $1 and the team as $2. Every other
