@@ -57,6 +57,10 @@ function makeSandbox() {
   sandbox._wishlistPlayerId = 11;
   sandbox._wishlistPlayerFirstName = 'Kat';
   sandbox._wishlistPrefs = [];
+  // Every write here re-renders on success, which needs DOM and roster globals
+  // this sandbox does not set up. Stubbed out as tests/frontend/wishlist-clear
+  // does: the queries are what is under test.
+  sandbox.renderProfile = function () {};
 
   // One chainable builder per from(), recording the filters the page put on it.
   // Thenable, because the page awaits the builder itself on a read and a
