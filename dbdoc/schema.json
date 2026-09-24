@@ -10194,6 +10194,12 @@
       "return_type": "void",
       "arguments": "p_team_id integer",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_invite_link_join",
+      "return_type": "text",
+      "arguments": "p_code text, p_name text, p_realm text, p_class text DEFAULT NULL::text, p_spec text DEFAULT NULL::text",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

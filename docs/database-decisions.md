@@ -10,6 +10,20 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-23 -- team_invite_link_join() joins a team through its link (#1264)
+
+Shipped: 20260923132616_team_invite_link_join.sql
+
+The join page could resolve a code but had nothing to call once the raider picked a character. Decided on #1264 (Kat, 2026-09-19): the link is the approval, so a live link puts the person straight on the roster with no officer step.
+
+- **Guild membership is the `team_members` row.** There is no separate guild-membership table, and none was added: a person belongs to a guild through a team_members row on one of its teams, so inserting it is the "added to the guild" step. A separate table waits for guild-only links, which #1264 leaves out for now.
+- **Discord is required.** `team_members.discord_id` is not null and the person is resolved from it, as in `claim_character()`. A Battle.net-only account is refused with "Connect Discord before joining a team"; the join page asks for it first.
+- **Character handling follows `claim_character()` on the holder check and goes further on archived characters.** An unclaimed roster character is claimed and one held by another person is refused, active or archived, as in `claim_character()`. Reviving an archived, unlinked character is new: `claim_character()` and `link_battlenet_roster_characters()` both refuse archived rows, so this function is the only path that brings one back without an officer. A revived character starts a new stint like `add_signup_to_roster()` gives: on trial, a new join date, and the backup tank/healer, wishlist and BiS flags reset, since an officer granted those to whoever held it before. A new character is inserted on trial, like any new add. The character is still the caller's word, not checked against their account: #1319 tracks that, due before cutover.
+- **Always `'joined'` for now.** The active-character limit (#1259) does not exist. The join page already shows the "roster full" state; the limit check goes into this function when #1259 builds it.
+- **Writes its own `audit_log` row** ('Joined via Invite Link'), like the BoE lifecycle RPCs, because `write_audit_log()`'s officer gate would refuse the raider calling it.
+
+No issue-comment discussion beyond the decisions already on #1264.
+
 ## 2026-09-22 -- team_invite_link_revoke() turns a link off outright (#1264)
 
 Shipped: 20260922203449_team_invite_link_revoke.sql
