@@ -3778,6 +3778,10 @@
         {
           "name": "trg_item_preferences_restrict_officer_update",
           "def": "CREATE TRIGGER trg_item_preferences_restrict_officer_update BEFORE UPDATE ON public.item_preferences FOR EACH ROW EXECUTE FUNCTION restrict_item_preferences_officer_update_to_note_clear()"
+        },
+        {
+          "name": "trg_item_preferences_wishlist_open",
+          "def": "CREATE TRIGGER trg_item_preferences_wishlist_open BEFORE INSERT OR DELETE OR UPDATE ON public.item_preferences FOR EACH ROW EXECUTE FUNCTION restrict_item_preferences_to_open_wishlist()"
         }
       ]
     },
@@ -10199,6 +10203,12 @@
       "name": "public.create_guild",
       "return_type": "record",
       "arguments": "p_name text, p_region text, p_realm text, p_team_name text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.restrict_item_preferences_to_open_wishlist",
+      "return_type": "trigger",
+      "arguments": "",
       "type": "FUNCTION"
     }
   ],
