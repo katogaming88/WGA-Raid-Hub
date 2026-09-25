@@ -4223,8 +4223,19 @@ function currentZoneIdsForSeason(season) {
 // that season means an empty view, the honest state, not a silent fallback
 // to "show everything" (this doubles as the way to verify a new tier's
 // import actually worked).
+//
+// No season resolving at all is a third case, and both branches fail open in
+// it (#936). It means the seasons read failed, since the table is app-wide
+// and filled by migration, and the raid branch already showed everything
+// there while the placeholder branch compared every stamped pick against the
+// empty string and hid the lot. That showed a raider a different wishlist
+// rather than all of it, which is the one answer no one wants; the page is
+// read-only in that state, so showing everything costs nothing.
 function isItemInSeasonScope(name, rowSeason) {
-  if ((DATA.itemPlaceholders || {})[name]) return !rowSeason || rowSeason === resolveSeasonViewCode();
+  if ((DATA.itemPlaceholders || {})[name]) {
+    var view = resolveSeasonViewCode();
+    return !view || !rowSeason || rowSeason === view;
+  }
   var zone = (DATA.itemZones || {})[name];
   if (!zone) return true;
   var explicit = !!(DATA && DATA.seasonView);
