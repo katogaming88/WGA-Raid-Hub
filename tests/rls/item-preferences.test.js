@@ -506,25 +506,103 @@ describe('a raider writes to their wishlist only in a season the team has opened
   });
 });
 
-// A tripwire, not a behaviour. The page finds a pick by item and slot in any
-// season (item_preferences_no_dupe_item_key has no season in it), and the gate
-// asks about the season on the row, so the two agree only while a raider's
-// picks are all in one season. A tier after MID2 is what lets a raider hold
-// picks in two, and from then the page would re-tag, demote a BiS pick or
-// keep a row from a closed season, and the gate would refuse it. #936's
-// season-keyed unique index and the page lookups that go with it land first;
-// that change deletes this test.
-describe('no tier after MID2 lands while the wishlist key has no season (#936)', () => {
-  it('the key has no season and no tier starts after MID2', async () => {
+// #936: the wishlist key carries the season, so the same item in the same slot
+// is a separate pick in each tier. Before this the key was (player_id,
+// item_id, coalesce(slot, '')) and a raider's second tier of picks collided
+// with their first, which is why the page and the gate had to agree that every
+// pick sat in one season. The tripwire that held that order is gone with it.
+describe('the wishlist key carries the season (#936)', () => {
+  it('the key is on the season as well as the player, item and slot', async () => {
     await withTxn(async ({ q }) => {
       const key = await q("select indexdef from pg_indexes where indexname = 'item_preferences_no_dupe_item_key'");
-      expect(key.rows[0].indexdef, 'the key carries the season now: delete this tripwire').not.toMatch(/season/);
+      expect(key.rows[0].indexdef).toMatch(/season/);
+    });
+  });
+
+  it('a raider holds the same item and slot in two seasons', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await gatedPlayer(q);
+      const first = await tier(q, true);
+      const second = await tier(q, true);
+
+      await asUser(RAIDER_T1, PICK, [pid, first]);
+      const later = await asUser(RAIDER_T1, PICK, [pid, second]);
+      expect(later.rows.length).toBe(1);
+
+      const held = await q('select season from public.item_preferences where player_id = $1 order by season', [pid]);
+      expect(held.rows.map((r) => r.season).sort()).toEqual([first, second].sort());
+    });
+  });
+
+  it('a second pick for the same item, slot and season is still a duplicate', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const pid = await gatedPlayer(q);
+      const season = await tier(q, true);
+      await asUser(RAIDER_T1, PICK, [pid, season]);
+      await expect(asUser(RAIDER_T1, PICK, [pid, season])).rejects.toMatchObject({ code: '23505' });
+    });
+  });
+
+  // The 9 rows on production with no season belong to archived characters, and
+  // the column stays nullable until #945. Two of them for one item would be a
+  // duplicate, since the key reads a missing season as one value.
+  it('two rows with no season for the same item are still a duplicate', async () => {
+    await withTxn(async ({ q }) => {
+      const pid = await gatedPlayer(q);
+      await q(PICK, [pid, null]);
+      await expect(q(PICK, [pid, null])).rejects.toMatchObject({ code: '23505' });
+    });
+  });
+});
+
+// A tripwire, not a behaviour, replacing the one this change retires. The key
+// used to be what kept every officer-side reader of item_preferences correct
+// without any of them naming a season: a raider could hold one row per item and
+// slot, so a read of "their rows for this item" could only ever be the tier in
+// play. Widening the key ends that, and two readers still take every row a
+// raider holds:
+//
+//   generate_priority_order() picks the strongest status across them, so a BiS
+//   mark left in another tier makes a raider a candidate for this one even when
+//   their row here says pass, at the top of the order.
+//   wishlist_setup_status() counts them, so a slot filled in another tier reads
+//   as filled here and the raider is not chased for it.
+//
+// Reaching that no longer needs a tier after MID2: an officer can pin Season
+// View to MID1 and open that tier's wishlist switch, which set_team_season()
+// still allows for an ended tier. The seasons check below is the coarse half of
+// the guard, kept because a new tier is how this arrives in the ordinary course.
+// #936's remaining piece puts the season on both readers, and deletes this.
+describe('the priority readers still ignore the season (#936)', () => {
+  it('generate_priority_order() reads a raider picks from every season', async () => {
+    await withTxn(async ({ q }) => {
+      const def = await q(
+        "select pg_get_functiondef(oid) as def from pg_proc where proname = 'generate_priority_order'"
+      );
+      expect(
+        def.rows[0].def,
+        'generate_priority_order() filters picks by season now: delete this tripwire'
+      ).not.toMatch(/ip\.season/);
+    });
+  });
+
+  it('wishlist_setup_status() counts picks from every season', async () => {
+    await withTxn(async ({ q }) => {
+      const def = await q("select pg_get_functiondef(oid) as def from pg_proc where proname = 'wishlist_setup_status'");
+      expect(def.rows[0].def, 'wishlist_setup_status() filters picks by season now: delete this tripwire').not.toMatch(
+        /ip\.season/
+      );
+    });
+  });
+
+  it('no tier starts after MID2 while they do', async () => {
+    await withTxn(async ({ q }) => {
       const later = await q(
         "select code from public.seasons where starts_at > (select starts_at from public.seasons where code = 'MID2')"
       );
       expect(
         later.rows.map((r) => r.code),
-        "a tier after MID2 needs #936's season-keyed wishlist key first"
+        "a tier after MID2 needs #936's season filter on the priority readers first"
       ).toEqual([]);
     });
   });

@@ -32,7 +32,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | item_preferences_pkey | CREATE UNIQUE INDEX item_preferences_pkey ON public.item_preferences USING btree (id) |
-| item_preferences_no_dupe_item_key | CREATE UNIQUE INDEX item_preferences_no_dupe_item_key ON public.item_preferences USING btree (player_id, item_id, COALESCE(slot, ''::text)) |
+| item_preferences_no_dupe_item_key | CREATE UNIQUE INDEX item_preferences_no_dupe_item_key ON public.item_preferences USING btree (player_id, item_id, COALESCE(slot, ''::text), COALESCE(season, ''::text)) |
 
 ## Triggers
 

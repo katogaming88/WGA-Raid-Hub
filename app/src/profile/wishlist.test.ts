@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import type { CatalogItem } from './lootPriority';
-import { editorSeason, editorSlots, planMark, type EditorInput, type Pick, type Wearer } from './wishlist';
+import type { SeasonWindow } from './profile';
+import {
+  editorSeason,
+  editorSlots,
+  picksInSeason,
+  planMark,
+  wishlistSummary,
+  type EditorInput,
+  type Pick,
+  type Wearer
+} from './wishlist';
 
 const item = (id: number, name: string, slot: string, extra: Partial<CatalogItem> = {}): CatalogItem => ({
   id,
@@ -223,5 +233,81 @@ describe('dungeon and crafted items (#1166)', () => {
     const plan = planMark({ ...withOff(picks), teamId: 1, playerId: 2 }, 'Head', 20, 'bis');
     expect(plan.deletes).toEqual([picks[0]!.id]);
     expect(plan.insert?.item_id).toBe(20);
+  });
+});
+
+// #936: the wishlist key carries the season, so a raider holds a separate pick
+// for the same item in each tier. The editor plans one tier, and the write gate
+// refuses a row filed under any other, so a pick from a tier the editor is not
+// planning is not the editor's to read, replace or delete.
+describe('picks from another season', () => {
+  const lastSeason = (extra: Partial<Pick> = {}) => pick(1, 'bis', null, { season: 'MID1', ...extra });
+
+  it('are not read as a mark in the slot', () => {
+    const slots = editorSlots(input([lastSeason()]));
+    const head = slots.find((s) => s.slot === 'Head')!;
+    expect(head.items.find((i) => i.itemId === 1)!.mark).toBeNull();
+  });
+
+  it('are not replaced by this season’s pick for the same item', () => {
+    const old = lastSeason();
+    const result = plan([old], 'Head', 1, 'bis');
+    expect(result.deletes).toEqual([]);
+    expect(result.update).toBeNull();
+    expect(result.insert).toMatchObject({ item_id: 1, slot: null, status: 'bis', season: 'MID2' });
+  });
+
+  it('are not unmarked when another item takes the slot', () => {
+    const result = plan([lastSeason()], 'Head', 2, 'bis');
+    expect(result.deletes).toEqual([]);
+  });
+
+  it('are left alone when this season’s pick is cleared', () => {
+    const old = lastSeason();
+    const mine = pick(1, 'bis', null);
+    expect(plan([old, mine], 'Head', 1, null).deletes).toEqual([mine.id]);
+  });
+
+  // An M+ or crafted pick is the case #1330 makes ordinary: the same
+  // placeholder is offered in more than one tier, so the row's own season is
+  // what says which tier's slot it fills.
+  it('do not fill the slot for an M+ pick tagged in another season', () => {
+    const slots = editorSlots(input([pick(14, 'bis', 'Head', { season: 'MID1' })]));
+    expect(slots.find((s) => s.slot === 'Head')!.notFromRaid).toBeNull();
+  });
+});
+
+// A null season here is not "the seasonless tier", it is the editor not
+// knowing which tier it is planning: no tier has started and no officer has
+// pinned one. Narrowing to the seasonless picks there hides everything a
+// raider holds. The editor is read-only in that state, so showing them all
+// is a display choice, not an editing one.
+describe('when the editor cannot tell which season it is planning', () => {
+  it('keeps every pick rather than only the seasonless ones', () => {
+    const lastSeason = pick(1, 'bis', null, { season: 'MID1' });
+    const noSeason = pick(2, 'bis', null, { season: null });
+    expect(picksInSeason([lastSeason, noSeason], null)).toEqual([lastSeason, noSeason]);
+  });
+
+  it('still narrows to the season when it knows one', () => {
+    const mine = pick(1, 'bis', null);
+    const lastSeason = pick(2, 'bis', null, { season: 'MID1' });
+    expect(picksInSeason([mine, lastSeason], 'MID2')).toEqual([mine]);
+  });
+});
+
+describe('wishlistSummary counts one season', () => {
+  const season: SeasonWindow = { name: 'Midnight Season 2', code: 'MID2', start: null, end: null };
+  const zones = [
+    { wcl_zone_id: 53, season: 'MID2' },
+    { wcl_zone_id: 46, season: 'MID1' }
+  ];
+
+  it('counts a pick stamped with the season it is asked about', () => {
+    expect(wishlistSummary([pick(1, 'bis', null)], catalog, zones, season).bis).toBe(1);
+  });
+
+  it('does not count the same pick stamped with another season', () => {
+    expect(wishlistSummary([pick(1, 'bis', null, { season: 'MID1' })], catalog, zones, season).bis).toBe(0);
   });
 });

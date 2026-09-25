@@ -3700,12 +3700,13 @@
         },
         {
           "name": "item_preferences_no_dupe_item_key",
-          "def": "CREATE UNIQUE INDEX item_preferences_no_dupe_item_key ON public.item_preferences USING btree (player_id, item_id, COALESCE(slot, ''::text))",
+          "def": "CREATE UNIQUE INDEX item_preferences_no_dupe_item_key ON public.item_preferences USING btree (player_id, item_id, COALESCE(slot, ''::text), COALESCE(season, ''::text))",
           "table": "public.item_preferences",
           "columns": [
             "player_id",
             "item_id",
-            "coalesce"
+            "coalesce",
+            "coalesce1"
           ]
         }
       ],

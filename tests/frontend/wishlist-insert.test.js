@@ -118,12 +118,13 @@ describe('wishlistUpsert insert payload', () => {
     expect(inserts[0].row.season).toBe('MID2');
   });
 
-  // With no tier resolving, the code is the empty string. That is not a
-  // seasons row, so writing it fails the foreign key with an opaque error;
-  // null is what a row with no tier is supposed to look like. Reachable
-  // through the per-player allowance, which opens editing without a
-  // team_seasons row to resolve against.
-  it('stamps null rather than an empty string when no tier resolves', () => {
+  // This used to assert the insert stamped null rather than the empty string,
+  // which is not a seasons row and fails the foreign key with an error a raider
+  // could not act on. That insert can no longer happen: with no tier resolving
+  // the page does not know which season it is planning, so it writes nothing
+  // (#936). The raider an officer allowed is the only one who reaches a write
+  // at all here, because the team switch reads closed without a tier.
+  it('writes nothing when no tier resolves, even for a raider an officer allowed', () => {
     const { sandbox, inserts } = makeSandbox();
     sandbox.DATA.seasons = [];
     sandbox.DATA.teamSeasons = [];
@@ -132,7 +133,15 @@ describe('wishlistUpsert insert payload', () => {
     // findRosterPlayerByNameRealm() reads window.DATA, not the bare global.
     sandbox.window.DATA = sandbox.DATA;
     sandbox.wishlistSetStatus(42, null, 'bis');
-    expect(inserts).toHaveLength(1);
-    expect(inserts[0].row.season).toBeNull();
+    expect(inserts).toHaveLength(0);
+  });
+
+  // The rule the case above used to carry, kept where it now lives. Nothing
+  // writes this value today, and the day something does the empty string is
+  // still the wrong answer.
+  it('resolves a missing tier to null, never the empty string', () => {
+    const { sandbox } = makeSandbox();
+    sandbox.DATA.seasons = [];
+    expect(sandbox.wishlistSeasonCode()).toBeNull();
   });
 });

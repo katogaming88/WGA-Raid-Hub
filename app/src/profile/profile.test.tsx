@@ -466,6 +466,34 @@ describe('lootPriority', () => {
     expect(lootPriority({ ...base, catalog: [...catalog, dungeon(['OLD'])], wishlist })).toEqual([]);
   });
 
+  // With no season known, the card does not narrow either: the same state the
+  // editor goes read-only in, where hiding the picks would leave the profile
+  // looking empty rather than unavailable.
+  it('lists every pick when it cannot tell which season it is', () => {
+    const rows = lootPriority({
+      ...base,
+      season: { ...season, code: null },
+      loot: [],
+      selfReceived: [],
+      wishlist: [{ item_id: 3, status: 'bis', slot: 'Wrist', season: 'MID2' }]
+    });
+    expect(rows.map((r) => r.slot)).toEqual(['Wrist']);
+  });
+
+  // #936: the wishlist editor reads a pick with no season as belonging to no
+  // tier, so this card reads it the same way. The alternative is one profile
+  // giving two answers about one row, with the editor unable to clear what the
+  // card is showing.
+  it('leaves out a pick with no season, as the wishlist editor does', () => {
+    const rows = lootPriority({
+      ...base,
+      loot: [],
+      selfReceived: [],
+      wishlist: [{ item_id: 3, status: 'bis', slot: 'Wrist', season: null }]
+    });
+    expect(rows).toEqual([]);
+  });
+
   it('counts the wishlist’s slots with a BiS pick and the ones passed', () => {
     expect(
       wishlistSummary(

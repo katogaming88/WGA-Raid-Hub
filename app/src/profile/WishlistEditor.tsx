@@ -66,8 +66,8 @@ export function WishlistEditor({
                 }}
                 teamId={teamId}
                 playerId={player.id}
-                editable={own && (open || player.wishlist_allowed) && !touch}
-                closed={own && !open && !player.wishlist_allowed}
+                editable={own && planned != null && (open || player.wishlist_allowed) && !touch}
+                closed={own && (planned == null || (!open && !player.wishlist_allowed))}
                 touch={own && touch}
               />
             )}
