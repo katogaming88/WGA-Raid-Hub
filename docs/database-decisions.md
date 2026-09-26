@@ -2243,3 +2243,21 @@ The catalog held raid loot only, so the new app's wishlist could only offer the 
 **Crafted quality is not a column.** Mark Received keeps the Champion, Hero or Myth track for a crafted piece, read as the crest level it was crafted at. Raiders already do this (44 of 51 crafted receipts on prod say Myth), so `self_received_requests` does not change.
 
 [Full discussion -> #1166](https://github.com/katogaming88/WGA-Raid-Hub/issues/1166).
+
+## #1185 -- the app preview stays on the live database; database tests use a sandbox team
+
+Decided 2026-09-26. No migration in this entry.
+
+The preview at `wga-raid-hub-app.pages.dev` reads and writes the production database, and from Revamp 3 its officer buttons are real actions. The options were a second Supabase project (Option 1), a read-only preview (Option 2), or one project with testers told (Option 3).
+
+**Chosen: Option 3.** The preview keeps the one production database and testers are told plainly that a click on it is a real edit. Rex agreed on review.
+
+**Testing that touches the database happens on a sandbox team.** Anything we test that writes to the database (officer tools, functions) is tried on a separate team seeded from one real team's data, with tester accounts that are officers of that team only. Row Level Security checks the signed-in account, so a tester with rights on the sandbox team alone cannot write another team's rows, even if a screen has a bug. Discord notices from it go to the test channel.
+
+**What the sandbox team does not do.** It is a testing habit, not a guarantee. Rex's point on review: the old site and the new app share one database, so a bug in a new interface can still reach a live team through a shared function with a wrong access check, a table not owned by one team, or a real officer testing on their own account. Tester accounts must never be guild officers, site admins or officers of a real team.
+
+**Why not a second project.** It means a second migrate job that can fail on its own, the Battle.net and Discord providers, redirect URLs and every function secret set up again by hand, its own seed data, and a second account (the free plan allows one database each). Not worth it for a short list of invited testers.
+
+**Why not read-only.** Revamp 3 is officer tools that write. A preview that cannot write cannot be used to review them.
+
+[Full discussion -> #1185](https://github.com/katogaming88/WGA-Raid-Hub/issues/1185).

@@ -20,7 +20,12 @@ What a tester sees:
 3. After the code, they are in for **one week** before Cloudflare asks again.
 4. Inside the app, they sign in with Battle.net (or Discord) at the bottom of the sidebar.
 
-> **The preview uses the live database.** It reads and writes the same data as wgaraidhub.com. Today the app mostly reads, but once officer tools arrive (Revamp 3) an action on the preview is a real action. Tell testers that.
+> **The preview uses the live database.** It reads and writes the same data as wgaraidhub.com. Today its RSVP, wishlist, main-swap and calendar buttons are real actions, and the officer tools that follow will be too (#1185).
+
+**Test anything that writes to the database on the sandbox team, not a real one.** It holds a copy of one real team's data. Before inviting a tester:
+
+1. Make their account an officer of the sandbox team only, never a guild officer, site admin or officer of a real team.
+2. Tell them to stay in the sandbox team. Anything they do on a real team is a real edit, and a bug in the app can still reach one (#1185).
 
 ## Adding or removing a tester
 
