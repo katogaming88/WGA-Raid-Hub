@@ -54,6 +54,22 @@ export function useTeamAlts(teamId: number, enabled: boolean) {
   );
 }
 
+// The other teams a raider is also on (#486), by name and nothing else. Only a
+// team's officers, site admins and guild officers are answered; a raider gets
+// nothing back.
+export function useAlsoOnTeams(teamId: number, playerId: number, enabled: boolean) {
+  return useSupabaseQuery<string[]>(
+    ['also-on-teams', teamId, playerId],
+    async (client) => {
+      const { data, error } = await client.rpc('also_on_teams', { p_team_id: teamId });
+      if (error) return { data: null, error };
+      const rows = (data ?? []) as { player_id: number; team_name: string }[];
+      return { data: rows.filter((r) => r.player_id === playerId).map((r) => r.team_name), error: null };
+    },
+    { enabled }
+  );
+}
+
 export type EarlierLoot = {
   pairs: EarlierPair[];
   players: Map<number, EarlierPlayer>;

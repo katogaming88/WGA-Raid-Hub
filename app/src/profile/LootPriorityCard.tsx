@@ -58,11 +58,11 @@ export function LootPriorityCard({
     <section className="card profile-card" aria-labelledby="priority-title">
       <div className="card-heading">
         <h2 id="priority-title" className="card-title">
-          Loot priority
+          BIS List & Personal Loot priority
         </h2>
         <p className="text-muted card-note">Where this raider stands for each BiS pick this season.</p>
       </div>
-      <DataState query={reads} label="loot priority">
+      <DataState query={reads} label="bis list and personal loot priority">
         {([[[s, w], [c, z]], [[r, t], [l, sr]]]) => (
           <PriorityTable
             player={player}
