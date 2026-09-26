@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.156.1] - 2026-09-26
+
+### Project
+
+- Time log: rows for the 2026-09-25 evening and 2026-09-26 sessions (#486 built, reviewed and merged; the officer menu decided on #869), and a Revamp 3 line in the totals.
+
 ## [3.156.0] - 2026-09-25
 
 ### Backend

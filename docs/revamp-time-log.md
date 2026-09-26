@@ -12,11 +12,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 
 | Phase                              |   Time so far |
 | ---------------------------------- | ------------: |
-| Planning and design                |      7 h 40 m |
+| Planning and design                |      7 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     34 h 26 m |
-| Revamp 4: cutover                  |      2 h 30 m |
-| **All revamp work**                | **51 h 31 m** |
+| Revamp 2: public pages             |     35 h 06 m |
+| Revamp 3: officer dashboard        |      0 h 55 m |
+| Revamp 4: cutover                  |      2 h 35 m |
+| **All revamp work**                | **53 h 21 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -174,6 +175,17 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | ----------------- | ------------------------------------------------------------------------------------------ | ---------------- | ------: | ------------------------------- | -----------: | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | 12:03-12:45 AM    | Status check and where-we-left-off note (#1166)                                            | Revamp 2 (#1166) |     5 m | ~5 m build                      |      203,200 | Two short stretches around a gap; the tokens are mostly the conversation re-cached on resume. |
 | 9:45-10:40 PM     | Rex's findings on #1330 fixed, merge, item data and stats loaded, live check, #1166 closed | Revamp 2 (#1166) |    55 m | ~35 m build, ~20 m Kat          |      268,000 | Item list now reads a page at a time; officers see dungeon and crafted picks by name; version re-stamped. Kat ran the two item lists and the stats file in the SQL Editor and checked the Wishlist and the Loot priority card on live data. Follow-ups: #1335, #1336. |
+| 10:40-10:46 PM | Time log rows for the rest of #1166 reviewed (PR #1337) | Planning | 5 m | ~5 m build | 66,500 | Kat asked to review and log the last rows; merged 10:46 PM. |
+| 10:58-11:03 PM | #1205 moved to Revamp 3, #1286 wording, and the handoff note | Planning | 5 m | ~3 m build, ~2 m Kat deciding | 22,100 | Rex reviews the cutover migration rather than writing it. |
+| 11:17-11:24 PM | #942 closed; its step 6 filed as its own issue (#1339) | Revamp 4 (#1339) | 5 m | ~3 m build, ~2 m Kat deciding | 37,400 | Step 6 drops the old Discord id and account columns at cutover. |
+| 11:24-11:44 PM | An officer sees which other team a raider is also on (#486, PR #1340) | Revamp 2 (#486) | 20 m | ~15 m build, ~5 m Kat deciding | 152,500 | New database function and an Also on tag on the profile; opened 11:35 PM. |
+
+### 2026-09-26
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 12:56-1:15 PM | Rex's review of #1340 fixed, #486 closed, PR merged (1:13 PM) | Revamp 2 (#486) | 20 m | ~12 m build, ~8 m Kat | 96,500 | The other-teams read is cached once per team, BiS spelled one way on the loot priority card, a test for it, and the closing comment on #486. |
+| 1:16-2:09 PM | Officer menu decided on #869: groups, mockup, #1103 rewritten to the #1270 layout | Revamp 3 (#869, #1103) | 55 m | ~25 m build, ~30 m Kat deciding | 203,600 | Loot, Attendance, Reports and Settings, each opening to show its pages. Filed #1342 (signups approval), #1343 (remove officer BiS lists, Rex) and #1344 (unclaimed characters, wishlist completeness reports). #1109 and #1270 updated. |
 
 ## Not counted (same sessions, not revamp)
 
@@ -184,6 +196,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2026-09-14 | 11:15–11:28 PM    | Issue and pull request writing rules, new PR and issue templates (PR #1192)                                                  |    15 m |
 | 2026-09-18 | 10:45–11:10 PM    | Support Discord advice and logo directions (Kat picked the Go Again ring; artist brief on the design canvas)                 |    25 m |
 | 2026-09-18 | 11:50 PM–12:10 AM | Review of Rex's PR #1260 (duplicate Mark Received guard, old site): a Heroic copy on file does not block marking Mythic      |    20 m |
+| 2026-09-25 | 10:46-10:57 PM | Live-site fix: a Mythic item marked received now shows on the profile when a Heroic one shares the slot (PR #1338) | 10 m |
+| 2026-09-25 | 11:06-11:17 PM | Deleted 19 stale branches and the outdated redesign branch | 10 m |
 
 ## Remaining in Revamp 1
 
