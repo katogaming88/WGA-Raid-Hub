@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |      7 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     35 h 06 m |
-| Revamp 3: officer dashboard        |      0 h 55 m |
+| Revamp 3: officer dashboard        |      3 h 15 m |
 | Revamp 4: cutover                  |      2 h 35 m |
-| **All revamp work**                | **53 h 21 m** |
+| **All revamp work**                | **55 h 41 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -186,6 +186,10 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 12:56-1:15 PM | Rex's review of #1340 fixed, #486 closed, PR merged (1:13 PM) | Revamp 2 (#486) | 20 m | ~12 m build, ~8 m Kat | 96,500 | The other-teams read is cached once per team, BiS spelled one way on the loot priority card, a test for it, and the closing comment on #486. |
 | 1:16-2:09 PM | Officer menu decided on #869: groups, mockup, #1103 rewritten to the #1270 layout | Revamp 3 (#869, #1103) | 55 m | ~25 m build, ~30 m Kat deciding | 203,600 | Loot, Attendance, Reports and Settings, each opening to show its pages. Filed #1342 (signups approval), #1343 (remove officer BiS lists, Rex) and #1344 (unclaimed characters, wishlist completeness reports). #1109 and #1270 updated. |
+| 2:18-3:31 PM | #1185 decided: the app preview stays on the live database, database tests use a sandbox team; Rex's caveat worked through | Revamp 3 (#1185) | 75 m | ~30 m build, ~45 m Kat | 91,500 | PR #1346 merged 3:29 PM. Kat sorted out Rex's Cloudflare Pages access in the same stretch. Times and tokens read from the session transcript. |
+| 2:32-3:46 PM | Officer menu built in the new app (#869): menu code, tests, PR #1348, screenshots, red Danger zone, #1103 rewritten to rows 1-18 | Revamp 3 (#869, #1103) | 15 m | ~15 m build counted | 108,600 | Ran at the same time as the #1185 row above, so only 3:31-3:46 PM is counted here; about 65 m of build overlapped. PR #1348 merged 3:42 PM. |
+| 4:33-5:09 PM | One date helper and a check for bare date formatters in the app (#1184), zone note on BoE, invite link and calendar times | Revamp 3 (#1184) | 35 m | ~25 m build, ~10 m Kat | 146,100 | PR #1349 merged 5:09 PM. The guard turned up date formatters in ten files, not the two the issue named. Kat's questions about where the time zone comes from are inside this row. |
+| 5:10-5:25 PM | Row-cap check for the app's team-wide reads (#1183) | Revamp 3 (#1183) | 15 m | ~15 m build | 80,000 | Through opening the PR only; review and merge time goes in the next row. Three reads now page (BoE catalog, officer RSVPs, priority order); 21 others carry a reason note. |
 
 ## Not counted (same sessions, not revamp)
 
