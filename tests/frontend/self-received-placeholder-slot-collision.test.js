@@ -71,6 +71,15 @@ describe('selfReceivedEntryForRow does not collapse same-name placeholder rows',
     expect(sandbox.selfReceivedEntryForRow(selfRecItems, 'Crafted', 'Off Hand')).toBeFalsy();
   });
 
+  it('returns the Mythic request when a Heroic one sits on the same slot', () => {
+    const sandbox = loadSandbox();
+    const selfRecItems = [
+      { item: 'Catalyst', slot: 'Chest', source: 'Heroic: Catalyst' },
+      { item: 'Catalyst', slot: 'Chest', source: 'Mythic: Catalyst' }
+    ];
+    expect(sandbox.selfReceivedEntryForRow(selfRecItems, 'Catalyst', 'Chest').source).toBe('Mythic: Catalyst');
+  });
+
   // #745: a raider (real item, so dbSlot is always '' -- bisMergeWishlistPrefs
   // never sets one) accidentally double-submitted the same helm because the
   // first confirmation wasn't seen. Both submissions were approved, leaving

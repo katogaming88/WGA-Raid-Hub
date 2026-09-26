@@ -12,6 +12,14 @@ answers to.
 
 ---
 
+## [3.155.2] - 2026-09-25
+
+### Frontend
+
+- A profile row with both a Heroic and a Mythic approved Mark Received on the
+  same slot (say a Heroic then a Mythic Catalyst chest) now shows the Mythic
+  badge and drops the Mark received button, instead of stopping at the Heroic.
+
 ## [3.155.1] - 2026-09-25
 
 ### Project
