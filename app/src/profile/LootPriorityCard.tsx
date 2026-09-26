@@ -58,7 +58,7 @@ export function LootPriorityCard({
     <section className="card profile-card" aria-labelledby="priority-title">
       <div className="card-heading">
         <h2 id="priority-title" className="card-title">
-          BIS List & Personal Loot priority
+          BIS List & Loot priority
         </h2>
         <p className="text-muted card-note">Where this raider stands for each BiS pick this season.</p>
       </div>
