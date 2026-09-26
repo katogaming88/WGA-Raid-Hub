@@ -31,7 +31,7 @@ import { WishlistEditor } from './WishlistEditor';
 import { MplusRequestButton } from './ProfileForms';
 import { CharactersCard } from '../characters/CharactersCard';
 import { withEarlierLoot } from '../characters/characters';
-import { useEarlierLoot } from '../characters/useCharacters';
+import { useAlsoOnTeams, useEarlierLoot } from '../characters/useCharacters';
 import './profile.css';
 
 // A profile opens for the raider it belongs to and for the team's officers
@@ -231,6 +231,8 @@ function Profile({
   // (Kat, 2026-09-15): an old main on this team, or a team they left.
   const { teams } = useAddress();
   const earlier = useEarlierLoot(teamId, season.isSuccess ? season.data : null, true);
+  const alsoOn = useAlsoOnTeams(teamId, player.id, officerView);
+  const alsoOnNames = alsoOn.isSuccess ? alsoOn.data : [];
   const refusal = useMplusRefusal(teamId, player.id, (officerView || own) && !player.m_plus_excluded);
   const requests = useRequestSettings(teamId);
 
@@ -283,11 +285,16 @@ function Profile({
             )}
             <span className="profile-character">{player.name_realm}</span>
           </p>
-          {(tags.length > 0 || player.join_date) && (
+          {(tags.length > 0 || alsoOnNames.length > 0 || player.join_date) && (
             <p className="profile-meta">
               {tags.map((t) => (
                 <span key={t} className="status-tag profile-tag">
                   {t}
+                </span>
+              ))}
+              {alsoOnNames.map((n) => (
+                <span key={n} className="status-tag profile-tag">
+                  Also on {n}
                 </span>
               ))}
               {player.join_date && <span className="profile-joined">Joined {formatJoinDate(player.join_date)}</span>}

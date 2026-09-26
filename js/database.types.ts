@@ -3611,6 +3611,13 @@ export type Database = {
         Args: { p_name: string; p_slug: string; p_team_id: number }
         Returns: undefined
       }
+      also_on_teams: {
+        Args: { p_team_id: number }
+        Returns: {
+          player_id: number
+          team_name: string
+        }[]
+      }
       app_version: { Args: never; Returns: Json }
       archive_player: {
         Args: { p_detail: string; p_player_id: number; p_reason: string }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
@@ -272,6 +272,31 @@ describe('Profile page', () => {
     const mplus = screen.getByRole('heading', { name: 'M+ exclusion' }).closest('section')!;
     expect(await within(mplus).findByText('Rejected')).toBeInTheDocument();
     expect(within(mplus).getByText('Sockets missing')).toBeInTheDocument();
+  });
+
+  it('tells an officer which other team a raider is also on', async () => {
+    const handlers = profileHandlers(person('officer', null));
+    renderApp('/g/wga/t/phoenix/p/tb000011', {
+      ...handlers,
+      rpc: (name, args) =>
+        name === 'also_on_teams'
+          ? {
+              data: [
+                { player_id: 11, team_name: 'Hellfire Rollers' },
+                { player_id: 99, team_name: 'Wrathless' }
+              ]
+            }
+          : handlers.rpc!(name, args)
+    });
+    expect(await screen.findByText('Also on Hellfire Rollers')).toBeInTheDocument();
+    expect(screen.queryByText('Also on Wrathless')).not.toBeInTheDocument();
+  });
+
+  it('never asks for the other teams on a raider’s own profile', async () => {
+    const rpc = vi.fn(profileHandlers(person('raider', 11)).rpc!);
+    renderApp('/g/wga/t/phoenix/me', { ...profileHandlers(person('raider', 11)), rpc });
+    await screen.findByRole('heading', { level: 1, name: 'Raz' });
+    expect(rpc).not.toHaveBeenCalledWith('also_on_teams', expect.anything());
   });
 
   it('shows a failed read in its own card with a way to retry', async () => {
