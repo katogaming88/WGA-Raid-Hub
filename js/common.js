@@ -109,7 +109,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.155.1';
+var VERSION = '3.155.2';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
@@ -4826,13 +4826,30 @@ function selfReceivedEntryForRow(selfRecItems, item, dbSlot) {
     if (normalise(selfRecItems[i].item) === norm) matches.push(selfRecItems[i]);
   }
   if (!matches.length) return null;
-  for (var j = 0; j < matches.length; j++) {
-    if (matches[j].slot && matches[j].slot === dbSlot) return matches[j];
-  }
-  if (!dbSlot) {
-    for (var k = 0; k < matches.length; k++) {
-      if (!matches[k].slot) return matches[k];
+  // Several approved requests can share a row (a Heroic Catalyst chest, then a
+  // Mythic one). Return the best track, not the first, or the Mythic never shows.
+  function bestOf(list) {
+    var best = null,
+      bestRank = -1;
+    for (var b = 0; b < list.length; b++) {
+      var m = /^([A-Za-z]+):\s/.exec(list[b].source || '');
+      var r = (m && RECEIVED_DIFF_RANK[m[1]]) || 0;
+      if (r > bestRank) {
+        best = list[b];
+        bestRank = r;
+      }
     }
+    return best;
+  }
+  var slotMatches = matches.filter(function (x) {
+    return x.slot && x.slot === dbSlot;
+  });
+  if (slotMatches.length) return bestOf(slotMatches);
+  if (!dbSlot) {
+    var slotless = matches.filter(function (x) {
+      return !x.slot;
+    });
+    if (slotless.length) return bestOf(slotless);
   } else if (matches.length === 1 && !matches[0].slot) {
     return matches[0];
   }
