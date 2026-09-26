@@ -179,6 +179,42 @@
   color: var(--text);
 }
 
+/* Officer menu groups (#869): a button that opens its pages below it. */
+.nav-toggle {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+}
+
+.nav-toggle > svg:last-child {
+  margin-left: auto;
+  transition: transform var(--duration) var(--ease);
+}
+
+.nav-toggle[aria-expanded='true'] > svg:last-child {
+  transform: rotate(90deg);
+}
+
+.nav-sub {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav-sub .nav-item {
+  padding-left: 36px;
+}
+
+.nav-sub .nav-danger {
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
 /* Something new behind the item: the solid badge colour as a dot. The link's
    name says it for screen readers. */
 .nav-mark {

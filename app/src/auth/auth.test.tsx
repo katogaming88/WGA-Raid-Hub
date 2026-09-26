@@ -84,6 +84,17 @@ describe('signed in', () => {
     expect(screen.getByRole('heading', { name: 'Officer' })).toBeInTheDocument();
   });
 
+  it('shows the officer menu as groups, one open at a time (#869)', async () => {
+    renderApp('/g/wga/t/phoenix/officer/priority', signedIn(OFFICER, person('officer')));
+    const loot = await screen.findByRole('button', { name: 'Loot' });
+    expect(loot).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('link', { name: 'Reassign' })).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(loot).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('link', { name: 'Danger zone' })).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Reassign' })).not.toBeInTheDocument();
+  });
+
   it('keeps officer pages closed to a raider, naming the team', async () => {
     renderApp('/g/wga/t/phoenix/officer/priority', signedIn(OFFICER, person('raider')));
     expect(await screen.findByText('This page is for officers of Phoenix.')).toBeInTheDocument();

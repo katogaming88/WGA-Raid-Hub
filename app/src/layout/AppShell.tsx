@@ -18,7 +18,7 @@ import { AccountPanel } from '../auth/AccountPanel';
 import { ConnectPrompt } from '../auth/ConnectPrompt';
 import { AltsPickerProvider } from '../characters/AltsPicker';
 import { can, useAccess } from '../auth/access';
-import { navGroups } from './nav';
+import { navGroups, type NavItem } from './nav';
 import { TeamSwitcher } from './TeamSwitcher';
 import { StreamWidget } from '../streams/StreamWidget';
 import { hasUnread } from '../news/news';
@@ -78,6 +78,18 @@ export function AppShell() {
       liveCount: streamers.isSuccess ? liveCount(streamers.data) : 0
     }
   );
+
+  // Officer menu: one group open at a time, and the one holding the current
+  // page opens itself when the page changes (#869).
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [menuAt, setMenuAt] = useState('');
+  const holder = groups.flatMap((g) => g.items).find((i) => i.pages?.some((p) => p.to === location.pathname));
+  // The Officer group appears once access loads, so wait for a holder before
+  // marking this page as handled.
+  if (holder && menuAt !== location.pathname) {
+    setMenuAt(location.pathname);
+    setOpenMenu(holder.label);
+  }
 
   // Following a link closes the drawer.
   if (drawerOpen && location.pathname !== openedAt) {
@@ -185,27 +197,36 @@ export function AppShell() {
             <div key={group.heading} className="nav-group">
               <h2 className="nav-heading">{group.heading}</h2>
               <ul>
-                {group.items.map((item) => (
-                  <li key={item.to}>
-                    <NavLink
-                      to={item.to}
-                      end={item.end ?? false}
-                      className="nav-item"
-                      aria-label={
-                        item.mark ? `${item.label}, new` : item.live ? `${item.label}, ${item.live} live` : undefined
-                      }
-                    >
-                      <Icon name={item.icon} />
-                      <span>{item.label}</span>
-                      {item.mark && <span className="nav-mark" aria-hidden="true" />}
-                      {!!item.live && (
-                        <span className="count-badge" aria-hidden="true">
-                          {item.live}
-                        </span>
-                      )}
-                    </NavLink>
-                  </li>
-                ))}
+                {group.items.map((item) =>
+                  item.pages ? (
+                    <NavDisclosure
+                      key={item.label}
+                      item={item}
+                      open={openMenu === item.label}
+                      onToggle={() => setOpenMenu(openMenu === item.label ? null : item.label)}
+                    />
+                  ) : (
+                    <li key={item.to}>
+                      <NavLink
+                        to={item.to}
+                        end={item.end ?? false}
+                        className="nav-item"
+                        aria-label={
+                          item.mark ? `${item.label}, new` : item.live ? `${item.label}, ${item.live} live` : undefined
+                        }
+                      >
+                        <Icon name={item.icon} />
+                        <span>{item.label}</span>
+                        {item.mark && <span className="nav-mark" aria-hidden="true" />}
+                        {!!item.live && (
+                          <span className="count-badge" aria-hidden="true">
+                            {item.live}
+                          </span>
+                        )}
+                      </NavLink>
+                    </li>
+                  )
+                )}
               </ul>
             </div>
           ))}
@@ -274,5 +295,33 @@ export function AppShell() {
         </main>
       </div>
     </div>
+  );
+}
+
+function NavDisclosure({ item, open, onToggle }: { item: NavItem; open: boolean; onToggle: () => void }) {
+  const panel = `menu-${item.label}`;
+  return (
+    <li>
+      <button
+        type="button"
+        className="nav-item nav-toggle"
+        aria-expanded={open}
+        aria-controls={panel}
+        onClick={onToggle}
+      >
+        <Icon name={item.icon} />
+        <span>{item.label}</span>
+        <Icon name="chevronRight" size={14} />
+      </button>
+      <ul id={panel} className="nav-sub" hidden={!open}>
+        {item.pages?.map((page) => (
+          <li key={page.to}>
+            <NavLink to={page.to} end className={page.danger ? 'nav-item nav-danger' : 'nav-item'}>
+              <span>{page.label}</span>
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </li>
   );
 }
