@@ -14,9 +14,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |      7 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     32 h 26 m |
+| Revamp 2: public pages             |     34 h 26 m |
 | Revamp 4: cutover                  |      2 h 30 m |
-| **All revamp work**                | **49 h 31 m** |
+| **All revamp work**                | **51 h 31 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -165,6 +165,15 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 11:15-11:35 AM | Decisions for #1166: how items record their source, dungeon and crafted gear, seasons | Planning         |    20 m | ~10 m build, ~10 m Kat deciding |      422,100 | Kat chose a join table of seasons per item over a season column, and dungeon loot from the game itself. |
 | 11:35 AM-12:30 PM | Items record where they come from, the dungeon list and the in-game loot addon (#1166, PR #1330) | Revamp 2 (#1166) |    55 m | ~45 m build, ~10 m Kat deciding |      576,200 | Schema and draft PR, then the `/wgaloot` addon, importer and the 208-item Season 2 dungeon list. Kat away from the computer 12:30-1:53 PM, not counted. |
 | 1:53-2:20 PM   | Season 2 crafted gear list, `/wgacrafts` and the review page (#1166, PR #1330)            | Revamp 2 (#1166) |    27 m | ~22 m build, ~5 m Kat deciding  |    2,151,000 | The 97 crafted items and the quality and item level filter. Tokens include the earlier conversation re-cached when the session resumed. |
+| 3:40-4:25 PM      | New app and old-site work for dungeon and crafted items, merge of main and migration re-stamp (#1166, PR #1330) | Revamp 2 (#1166) |    45 m | ~45 m build                     |      174,200 | Wishlist offers them tagged M+ or Crafted, old site skips them like BoEs. The migration was re-stamped after main's newest. |
+| 8:25-8:45 PM      | PR body and screenshots (#1166, PR #1330)                                                 | Revamp 2 (#1166) |    15 m | ~10 m build, ~5 m Kat           |      187,700 | Kat pasted the screenshots into the PR. Tokens include the earlier conversation re-cached when the session resumed. |
+
+### 2026-09-25
+
+| Time (ET)         | Item                                                                                       | Phase            | Elapsed | Build / Kat                     |       Tokens | Notes                                                                                                                                        |
+| ----------------- | ------------------------------------------------------------------------------------------ | ---------------- | ------: | ------------------------------- | -----------: | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| 12:03-12:45 AM    | Status check and where-we-left-off note (#1166)                                            | Revamp 2 (#1166) |     5 m | ~5 m build                      |      203,200 | Two short stretches around a gap; the tokens are mostly the conversation re-cached on resume. |
+| 9:45-10:40 PM     | Rex's findings on #1330 fixed, merge, item data and stats loaded, live check, #1166 closed | Revamp 2 (#1166) |    55 m | ~35 m build, ~20 m Kat          |      268,000 | Item list now reads a page at a time; officers see dungeon and crafted picks by name; version re-stamped. Kat ran the two item lists and the stats file in the SQL Editor and checked the Wishlist and the Loot priority card on live data. Follow-ups: #1335, #1336. |
 
 ## Not counted (same sessions, not revamp)
 
