@@ -20,7 +20,13 @@ function makeSandbox({ itemSlots = {}, itemIds = {}, itemPlaceholders = {}, rost
   const sandbox = {
     console,
     document: { getElementById: () => null },
-    DATA: { itemSlots, itemIds, itemPlaceholders, roster },
+    DATA: {
+      itemSlots,
+      itemIds,
+      itemNamesById: Object.fromEntries(Object.entries(itemIds).map(([name, id]) => [id, name])),
+      itemPlaceholders,
+      roster
+    },
     escHtml: (s) => String(s),
     itemNameBlockHtml: (name) => '<span>' + name + '</span>',
     classBadgeStyle: () => '',
