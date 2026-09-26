@@ -22,10 +22,10 @@ What a tester sees:
 
 > **The preview uses the live database.** It reads and writes the same data as wgaraidhub.com. Today its RSVP, wishlist, main-swap and calendar buttons are real actions, and the officer tools that follow will be too (#1185).
 
-**Testers work in the sandbox team, not a real one.** It is a separate team with a copy of one real team's data, and testers are officers of it only, so a mistake there stays there. Until the sandbox team exists (its own issue, filed from #1185), do not invite anyone who is not an officer you would trust with a real edit. Before inviting a tester:
+**Test anything that writes to the database on the sandbox team, not a real one.** It holds a copy of one real team's data. Before inviting a tester:
 
-1. Make sure their account is an officer of the sandbox team only, not a guild officer, site admin or officer of a real team.
-2. Tell them to stay in the sandbox team. Anything they do on a real team is a real edit.
+1. Make their account an officer of the sandbox team only, never a guild officer, site admin or officer of a real team.
+2. Tell them to stay in the sandbox team. Anything they do on a real team is a real edit, and a bug in the app can still reach one (#1185).
 
 ## Adding or removing a tester
 

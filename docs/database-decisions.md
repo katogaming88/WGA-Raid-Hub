@@ -2244,27 +2244,20 @@ The catalog held raid loot only, so the new app's wishlist could only offer the 
 
 [Full discussion -> #1166](https://github.com/katogaming88/WGA-Raid-Hub/issues/1166).
 
-## #1185 -- the app preview stays on the live database, and testers work in a sandbox team
+## #1185 -- the app preview stays on the live database; database tests use a sandbox team
 
-Decided 2026-09-26. No migration in this entry; the sandbox team is filed as its own issue.
+Decided 2026-09-26. No migration in this entry.
 
 The preview at `wga-raid-hub-app.pages.dev` reads and writes the production database, and from Revamp 3 its officer buttons are real actions. The options were a second Supabase project (Option 1), a read-only preview (Option 2), or one project with testers told (Option 3).
 
-**Chosen: Option 3, with a sandbox team.** The preview keeps the one production database. Testers do not test on Phoenix, Hellfire Rollers, Immolation or Wrathless. They test on a separate team created for the purpose, seeded with a copy of one real team's roster, loot and calendar, and holding officer access to that team only.
+**Chosen: Option 3.** The preview keeps the one production database and testers are told plainly that a click on it is a real edit. Rex agreed on review.
 
-**Why not a second project.** A second hosted project means a second migrate job that can fail on its own, the Battle.net custom provider, Discord provider, redirect URLs and every function secret set up again by hand, and its own seed data, for a tester list of a few people Kat invited. The cost is ongoing and lands on Kat and Rex.
+**Testing that touches the database happens on a sandbox team.** Anything we test that writes to the database (officer tools, functions) is tried on a separate team seeded from one real team's data, with tester accounts that are officers of that team only. Row Level Security checks the signed-in account, so a tester with rights on the sandbox team alone cannot write another team's rows, even if a screen has a bug. Discord notices from it go to the test channel.
 
-**Why not read-only.** Revamp 3 is officer tools that write. A preview that cannot write cannot be used to review them, and raiders' RSVPs and preferences that already save there would stop.
+**What the sandbox team does not do.** It is a testing habit, not a guarantee. Rex's point on review: the old site and the new app share one database, so a bug in a new interface can still reach a live team through a shared function with a wrong access check, a table not owned by one team, or a real officer testing on their own account. Tester accounts must never be guild officers, site admins or officers of a real team.
 
-**Why the sandbox team is enough.** Every write is enforced by team-scoped Row Level Security, so an officer of the sandbox team cannot change another team's rows. The tester accounts must be officers of the sandbox team only: not guild officers (`is_guild_officer()`), not site admins, and not officers of a real team.
+**Why not a second project.** It means a second migrate job that can fail on its own, the Battle.net and Discord providers, redirect URLs and every function secret set up again by hand, its own seed data, and a second account (the free plan allows one database each). Not worth it for a short list of invited testers.
 
-**What the sandbox team has to do to be safe** (these are the acceptance points of the follow-up issue, not assumed):
-
-- Hidden from the team switcher and the guild pages, like Wrathless, so raiders never land on it.
-- Its own Discord notices go to a test channel or nowhere; nothing it does posts to a real team's channel.
-- Copied characters do not show as "also on" a second real team (#486) or double-count in guild-wide reads.
-- Its data is re-seedable, so a wrecked sandbox is reset rather than repaired.
-
-**Still true.** The preview is on the live database. Anything a tester does outside the sandbox team is a real edit, and `docs/app-preview.md` says so.
+**Why not read-only.** Revamp 3 is officer tools that write. A preview that cannot write cannot be used to review them.
 
 [Full discussion -> #1185](https://github.com/katogaming88/WGA-Raid-Hub/issues/1185).
