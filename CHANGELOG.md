@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.156.3] - 2026-09-26
+
+### Project
+
+- New app: the officer menu is now four groups (Loot, Attendance, Reports, Settings) that each open to show their pages, one open at a time, per the #869 decision. New pages are placeholders; Danger zone sits at the bottom of Settings.
+
 ## [3.156.2] - 2026-09-26
 
 ### Project

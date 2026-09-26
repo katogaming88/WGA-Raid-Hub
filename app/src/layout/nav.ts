@@ -4,7 +4,17 @@ import type { IconName } from '../components/Icon';
 // page sits below it; My profile must not have it, so its tabs keep it current.
 // `mark`: a dot saying there is something new behind the item (News).
 // `live`: a count of who is live behind the item (Streams); nothing when 0.
-export type NavItem = { label: string; icon: IconName; to: string; end?: boolean; mark?: boolean; live?: number };
+// `pages`: the item is a group that opens to show these links (the Officer menu, #869).
+export type NavPage = { label: string; to: string; danger?: boolean };
+export type NavItem = {
+  label: string;
+  icon: IconName;
+  to: string;
+  end?: boolean;
+  mark?: boolean;
+  live?: number;
+  pages?: NavPage[];
+};
 export type NavGroup = { heading: string; items: NavItem[] };
 
 // Sidebar groups from the 2026-09-13 mockups, in one order on every page so
@@ -40,15 +50,7 @@ export function navGroups(
     },
     {
       heading: 'Officer',
-      items: [
-        { label: 'Loot priority', icon: 'list', to: `${base.team}/officer/priority` },
-        { label: 'Import loot', icon: 'import', to: `${base.team}/officer/import` },
-        { label: 'Reviews', icon: 'check', to: `${base.team}/officer/reviews` },
-        { label: 'Attendance', icon: 'chart', to: `${base.team}/officer/attendance` },
-        { label: 'Boss groups', icon: 'grid', to: `${base.team}/officer/groups` },
-        { label: 'Season settings', icon: 'gear', to: `${base.team}/officer/season` },
-        { label: 'Invite link', icon: 'link', to: `${base.team}/officer/invite` }
-      ]
+      items: officerMenu(`${base.team}/officer`)
     },
     {
       heading: 'Site',
@@ -60,6 +62,57 @@ export function navGroups(
   ];
   // The Officer group is only for people who can open those pages.
   return show.officer ? groups : groups.filter((g) => g.heading !== 'Officer');
+}
+
+// The officer menu from the #869 decision: similar pages in one group, one
+// group open at a time. Anything that changes the team as a whole is a setting.
+function officerMenu(o: string): NavItem[] {
+  return [
+    {
+      label: 'Loot',
+      icon: 'loot',
+      to: `${o}/priority`,
+      pages: [
+        { label: 'Priority', to: `${o}/priority` },
+        { label: 'Import', to: `${o}/import` },
+        { label: 'Reviews', to: `${o}/reviews` },
+        { label: 'Reassign', to: `${o}/reassign` }
+      ]
+    },
+    {
+      label: 'Attendance',
+      icon: 'chart',
+      to: `${o}/attendance`,
+      pages: [
+        { label: 'Manage', to: `${o}/attendance` },
+        { label: 'Scores', to: `${o}/attendance/scores` },
+        { label: 'Boss groups', to: `${o}/groups` }
+      ]
+    },
+    {
+      label: 'Reports',
+      icon: 'news',
+      to: `${o}/reports/loot-fairness`,
+      pages: [
+        { label: 'Loot fairness', to: `${o}/reports/loot-fairness` },
+        { label: 'Bench fairness', to: `${o}/reports/bench-fairness` }
+      ]
+    },
+    {
+      label: 'Settings',
+      icon: 'gear',
+      to: `${o}/settings`,
+      pages: [
+        { label: 'General', to: `${o}/settings` },
+        { label: 'Season', to: `${o}/settings/season` },
+        { label: 'Raid progression', to: `${o}/settings/progression` },
+        { label: 'Signups', to: `${o}/settings/signups` },
+        { label: 'Invite link', to: `${o}/invite` },
+        { label: 'Audit log', to: `${o}/settings/audit-log` },
+        { label: 'Danger zone', to: `${o}/settings/danger`, danger: true }
+      ]
+    }
+  ];
 }
 
 // Every page the shell knows about, by path below its base, so the routes and
@@ -74,10 +127,19 @@ export const TEAM_PAGES: Record<string, string> = {
   'officer/priority': 'Loot priority',
   'officer/import': 'Import loot',
   'officer/reviews': 'Reviews',
-  'officer/attendance': 'Attendance',
+  'officer/reassign': 'Reassign loot',
+  'officer/attendance': 'Manage attendance',
+  'officer/attendance/scores': 'Attendance scores',
   'officer/groups': 'Boss groups',
-  'officer/season': 'Season settings',
+  'officer/reports/loot-fairness': 'Loot fairness',
+  'officer/reports/bench-fairness': 'Bench fairness',
+  'officer/settings': 'General settings',
+  'officer/settings/season': 'Season settings',
+  'officer/settings/progression': 'Raid progression',
+  'officer/settings/signups': 'Signup settings',
   'officer/invite': 'Invite link',
+  'officer/settings/audit-log': 'Audit log',
+  'officer/settings/danger': 'Danger zone',
   history: 'History',
   officers: 'Team officers'
 };
