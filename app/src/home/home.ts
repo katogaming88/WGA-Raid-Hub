@@ -1,4 +1,5 @@
 import { difficultyOf, type Difficulty, type LootRow, type SeasonWindow } from '../profile/profile';
+import { awardDate } from '../lib/dates';
 
 // The team Home page's two blocks so far (#1102): the stats row and the recent
 // loot feed. Everything here is a pure function of rows that have already been
@@ -31,15 +32,6 @@ export function isOffSpec(response: string | null | undefined): boolean {
   return /\bos\b/i.test(r) || /m\+/i.test(r);
 }
 
-// Award dates are shown on Eastern time, where the raids happen, so an award
-// late on raid night keeps that night's date wherever the reader is.
-const AWARD_DATE = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'America/New_York',
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric'
-});
-
 export type FeedLootRow = LootRow & {
   response: string | null;
   players: { name_realm: string; nickname: string | null } | null;
@@ -65,7 +57,7 @@ export function lootFeed(rows: FeedLootRow[], season: SeasonWindow): FeedRow[] {
       player: displayName(r.players),
       item: r.items?.name ?? 'Unknown Item',
       difficulty: difficultyOf(r.track),
-      date: AWARD_DATE.format(new Date(r.awarded_at)),
+      date: awardDate(r.awarded_at),
       offSpec: isOffSpec(r.response)
     }));
 }

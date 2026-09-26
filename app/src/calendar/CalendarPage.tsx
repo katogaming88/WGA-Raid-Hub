@@ -1,6 +1,7 @@
 import { useId, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { DataState } from '../components/DataState';
+import { formatInstant, monthLabel } from '../lib/dates';
 import { Dialog } from '../components/Dialog';
 import { Icon } from '../components/Icon';
 import { useStatus } from '../components/Status';
@@ -22,7 +23,6 @@ import {
   lastOfMonth,
   longDay,
   monthCounts,
-  monthLabel,
   monthParam,
   neighbours,
   nightsBetween,
@@ -634,7 +634,7 @@ function Coming({
                       </span>
                       <Pill kind={r.status.kind}>{r.status.label}</Pill>
                     </span>
-                    <time className="text-dim" dateTime={r.updatedAt!} title={new Date(r.updatedAt!).toLocaleString()}>
+                    <time className="text-dim" dateTime={r.updatedAt!} title={formatInstant(r.updatedAt)}>
                       {ago(r.updatedAt!, now)}
                     </time>
                   </li>

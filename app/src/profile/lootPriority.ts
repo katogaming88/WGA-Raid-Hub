@@ -5,6 +5,7 @@
 // tests/behavior/profile.js. Only BiS picks are listed (#1032, #1033).
 
 import type { SeasonWindow } from './profile';
+import { awardDate } from '../lib/dates';
 
 export type WishlistRow = {
   item_id: number;
@@ -116,13 +117,6 @@ const PAIRED_SLOTS = new Set(['Finger 1', 'Finger 2', 'Trinket 1', 'Trinket 2'])
 const TRACK_ORDER: Record<string, number> = { Mythic: 3, Heroic: 2, Normal: 1 };
 const trackName = (track: string | null) =>
   track === 'Myth' ? 'Mythic' : track === 'Hero' ? 'Heroic' : track === 'Champion' ? 'Normal' : null;
-
-const AWARD_DATE = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'America/New_York',
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric'
-});
 
 const norm = (s: string) =>
   s
@@ -238,7 +232,7 @@ function received(item: CatalogItem, slot: string, loot: ReceivedLoot[], self: S
   const receiptRank = receipt ? (TRACK_ORDER[receiptTrack ?? ''] ?? 0) : -1;
 
   if (bestAward && awardRank >= receiptRank) {
-    return { track: bestAward.track as Received['track'], detail: AWARD_DATE.format(new Date(bestAward.at)) };
+    return { track: bestAward.track as Received['track'], detail: awardDate(bestAward.at) };
   }
   if (receipt) return { track: receiptTrack as Received['track'], detail: receipt.source ?? 'Self-reported' };
   return null;

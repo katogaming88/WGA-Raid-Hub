@@ -6,6 +6,7 @@ import { DataState } from '../components/DataState';
 import { useStatus } from '../components/Status';
 import { useAddress, useTeam } from '../data/address';
 import { bothQueries } from '../data/query';
+import { calendarDay } from '../lib/dates';
 import { useTouchScreen } from '../lib/device';
 import { classColor, type PlayerRow } from '../roster/roster';
 import { useRosterPlayers } from '../roster/useRoster';
@@ -96,7 +97,6 @@ export function BossGroupsPage() {
 
 const plural = (n: number, word: string, many = `${word}s`) => `${n} ${n === 1 ? word : many}`;
 const toList = (set: ReadonlySet<number>) => [...set].sort((a, b) => a - b);
-const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long' });
 
 function Groups({
   today,
@@ -215,7 +215,7 @@ function Groups({
         )}
         {next && (
           <Link className="boss-groups-next" to={`/g/${guild.key}/t/${team.key}/calendar?date=${next}&view=lineup`}>
-            {weekday.format(new Date(`${next}T00:00:00`))}’s lineup ›
+            {calendarDay(new Date(`${next}T00:00:00`), 'weekday')}’s lineup ›
           </Link>
         )}
       </div>

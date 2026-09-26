@@ -3,6 +3,8 @@
 // the same way as history.ts/guild.ts; recorded against
 // tests/frontend/boe-submit.test.js's validation order and prefill rules.
 
+import { formatInstant } from '../lib/dates';
+
 export type BoeFields = {
   teamId: number | null;
   charName: string;
@@ -104,9 +106,7 @@ export function parseGoldInput(value: string): number | null {
 }
 
 export function boeDate(iso: string | null): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  return isNaN(d.getTime()) ? '' : d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  return formatInstant(iso);
 }
 
 // First come, first served (port of js/boe-manage.js's _boeOlderOpenTwin): the

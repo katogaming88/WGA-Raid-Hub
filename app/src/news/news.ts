@@ -1,3 +1,4 @@
+import { isoDateLong, isoDateShort } from '../lib/dates';
 // The News page's rules (#1102): the order entries are listed in, which start
 // open, and whether there is anything the reader has not seen. Ported from the
 // current site's js/news.js and recorded against it in tests/behavior/news.js.
@@ -48,22 +49,11 @@ export function hasUnread(entries: NewsEntry[], lastSeen: string | null): boolea
   return newest !== null && newest.version !== lastSeen;
 }
 
-const LONG_DATE = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'UTC',
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric'
-});
-const SHORT_DATE = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' });
-
-const isIsoDate = (date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date);
-
 // "Sep 7, 2026", or the date as written when it is not YYYY-MM-DD.
-export const newsDate = (date: string) => (isIsoDate(date) ? LONG_DATE.format(new Date(`${date}T00:00:00Z`)) : date);
+export const newsDate = isoDateLong;
 
 // "Sep 7", for the short list on Guild home.
-export const newsShortDate = (date: string) =>
-  isIsoDate(date) ? SHORT_DATE.format(new Date(`${date}T00:00:00Z`)) : date;
+export const newsShortDate = isoDateShort;
 
 export const categoryKind = (category: string): 'feature' | 'fix' | 'change' | 'other' =>
   category === 'Feature' ? 'feature' : category === 'Fix' ? 'fix' : category === 'Change' ? 'change' : 'other';

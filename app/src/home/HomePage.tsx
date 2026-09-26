@@ -11,6 +11,7 @@ import type { SeasonWindow } from '../profile/profile';
 import { lootFeed, mainSpecCount, raiderCount, searchFeed, type FeedRow } from './home';
 import { killDate, pullsText, raidCards, type DifficultyLine, type RaidCard } from './progression';
 import { calendarMonth, raidNights, WEEKDAYS, type CalendarMonth } from '../calendar/nights';
+import { calendarDay } from '../lib/dates';
 import { useCalendarMonth, useRaidProgression, useSeasonLoot } from './useHome';
 import './home.css';
 
@@ -218,8 +219,6 @@ function Calendar({ roster }: { roster: PlayerRow[] }) {
   );
 }
 
-const DAY_LABEL = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-
 function MonthGrid({ month, dayHref }: { month: CalendarMonth; dayHref: (date: string) => string }) {
   return (
     <div className="cal">
@@ -244,7 +243,7 @@ function MonthGrid({ month, dayHref }: { month: CalendarMonth; dayHref: (date: s
           }
           const [y, m, d] = day.date.split('-').map(Number);
           const label = [
-            DAY_LABEL.format(new Date(y!, m! - 1, d!)),
+            calendarDay(new Date(y!, m! - 1, d!), 'long'),
             day.today ? 'today' : null,
             day.raid.status,
             day.raid.count ? `${day.raid.count.replace('/', ' of ')} raiders expected` : null
