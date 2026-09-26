@@ -21,6 +21,12 @@ answers to.
   Priority with no rank. Mark Received starts on M+ or Crafted for those
   items. The current site leaves them out of every list, as it does BoEs
   ([#1166](https://github.com/katogaming88/WGA-Raid-Hub/issues/1166)).
+- An officer looking at a raider on the current site now sees that raider's
+  dungeon and crafted BiS picks by name, not only the raid ones. The pickers
+  still leave those items out.
+- Both apps now read the whole item list a page at a time. It is 323 items
+  today and would pass the database's 1000-row cut-off with next season's
+  import, which would have quietly dropped the newest items.
 
 ### Backend
 
@@ -33,6 +39,7 @@ answers to.
 
 ### Project
 
+- The read check now also requires reads of the item list to page.
 - Tests for the new item columns and for the export leaving dungeon and
   crafted items out. The database decisions log gets the entry.
 - A small in-game addon (`scripts/wow/WGA_LootDump`, `/wgaloot`) lists the

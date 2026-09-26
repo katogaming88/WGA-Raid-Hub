@@ -83,6 +83,7 @@ describe('bisItemsFromWishlistPrefs (the BiS List rows)', () => {
     const sandbox = makeSandbox();
     sandbox.DATA = {
       itemIds: { 'New Helm': 1 },
+      itemNamesById: { 1: 'New Helm' },
       itemSlots: { 'New Helm': 'Head' },
       itemPlaceholders: {}
     };
@@ -97,6 +98,7 @@ describe('bisItemsFromWishlistPrefs (the BiS List rows)', () => {
     const sandbox = makeSandbox();
     sandbox.DATA = {
       itemIds: { 'M+': 1 },
+      itemNamesById: { 1: 'M+' },
       itemSlots: {},
       itemPlaceholders: { 'M+': true }
     };
@@ -117,6 +119,7 @@ describe('bisItemsFromWishlistPrefs (the BiS List rows)', () => {
     const sandbox = makeSandbox();
     sandbox.DATA = {
       itemIds: { 'Soulcoiler Ritual Vessel': 320 },
+      itemNamesById: { 320: 'Soulcoiler Ritual Vessel' },
       itemSlots: { 'Soulcoiler Ritual Vessel': 'Trinket' },
       itemPlaceholders: {}
     };
@@ -140,6 +143,7 @@ describe('bisItemsFromWishlistPrefs (the BiS List rows)', () => {
     const sandbox = makeSandbox();
     sandbox.DATA = {
       itemIds: { "Jan'thrazet, the Soul Fang": 400 },
+      itemNamesById: { 400: "Jan'thrazet, the Soul Fang" },
       itemSlots: { "Jan'thrazet, the Soul Fang": 'One-Hand' },
       itemPlaceholders: {}
     };
@@ -155,6 +159,7 @@ describe('bisItemsFromWishlistPrefs (the BiS List rows)', () => {
     const sandbox = makeSandbox();
     sandbox.DATA = {
       itemIds: { 'M+': 1 },
+      itemNamesById: { 1: 'M+' },
       itemSlots: {},
       itemPlaceholders: { 'M+': true }
     };
@@ -172,6 +177,7 @@ describe('bisItemsFromWishlistPrefs (the BiS List rows)', () => {
     const sandbox = makeSandbox();
     sandbox.DATA = {
       itemIds: { 'New Helm': 1 },
+      itemNamesById: { 1: 'New Helm' },
       itemSlots: { 'New Helm': 'Head' },
       itemPlaceholders: {}
     };
