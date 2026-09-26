@@ -37,6 +37,16 @@ export function findBareDateFormats(src, file) {
   return findings;
 }
 
+// A page (.tsx) that shows an instant must place localTimeZoneNote() so the
+// reader knows which zone the time is in. A definition does not count.
+const INSTANT_CALL = /\b(?:formatInstant\w*|boeDate|ago)\(/;
+const NOTE_CALL = /\blocalTimeZoneNote\(\)/;
+
+export function findNotelessInstantPages(src, file) {
+  if (!file.endsWith('.tsx') || !INSTANT_CALL.test(src)) return [];
+  return NOTE_CALL.test(src) ? [] : [{ file }];
+}
+
 describe('app date-format-check (#1184)', () => {
   const files = list(SRC).map((p) => ({
     file: path.relative(ROOT, p).split(path.sep).join('/'),
@@ -53,10 +63,22 @@ describe('app date-format-check (#1184)', () => {
     ).toEqual([]);
   });
 
+  it('renders the zone note on every page that shows an instant', () => {
+    const findings = files
+      .filter(({ file }) => !file.endsWith('.test.tsx'))
+      .flatMap(({ file, src }) => findNotelessInstantPages(src, file));
+    expect(
+      findings.map((f) => f.file),
+      'an instant surface without localTimeZoneNote(); place the note at the top of the region that shows the time'
+    ).toEqual([]);
+  });
+
   it('flags the shapes it exists to catch', () => {
     expect(findBareDateFormats("new Intl.DateTimeFormat('en-US')", 'x')).toHaveLength(1);
     expect(findBareDateFormats('d.toLocaleDateString()', 'x')).toHaveLength(1);
     expect(findBareDateFormats("d.toLocaleString(undefined, { dateStyle: 'medium' })", 'x')).toHaveLength(1);
     expect(findBareDateFormats("n.toLocaleString('en-US')", 'x')).toEqual([]);
+    expect(findNotelessInstantPages('{formatInstant(x)}', 'a.tsx')).toHaveLength(1);
+    expect(findNotelessInstantPages('{formatInstant(x)}{localTimeZoneNote()}', 'a.tsx')).toEqual([]);
   });
 });

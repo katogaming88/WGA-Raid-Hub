@@ -1,7 +1,7 @@
 import { useId, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { DataState } from '../components/DataState';
-import { formatInstant, monthLabel } from '../lib/dates';
+import { formatInstant, localTimeZoneNote, monthLabel } from '../lib/dates';
 import { Dialog } from '../components/Dialog';
 import { Icon } from '../components/Icon';
 import { useStatus } from '../components/Status';
@@ -625,6 +625,7 @@ function Coming({
               <h2 id="latest-title" className="eyebrow">
                 Latest answers
               </h2>
+              <p className="text-dim">{localTimeZoneNote()}</p>
               <ul className="latest-list">
                 {view.latest.map((r) => (
                   <li key={r.player.id}>

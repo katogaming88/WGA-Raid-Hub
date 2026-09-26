@@ -1,3 +1,4 @@
+import { localTimeZoneNote } from '../lib/dates';
 import { useId, useMemo, useState } from 'react';
 import { canSettleBoe, can, useAccess, type Access } from '../auth/access';
 import { Dialog } from '../components/Dialog';
@@ -96,6 +97,8 @@ function BoeLifecycleView({ items, listings }: { items: BoeItemRow[]; listings: 
   return (
     <>
       <SummaryStrip summary={summary} isRaiderView={isRaiderView} manage={manage} teamName={teamName} />
+
+      <p className="text-dim">{localTimeZoneNote()}</p>
 
       <h2 className="boe-section-heading">Open</h2>
       {sections.open.length === 0 ? (

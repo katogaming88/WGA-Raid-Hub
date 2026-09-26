@@ -3,7 +3,7 @@ import { DataState } from '../components/DataState';
 import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
 import { useTeam } from '../data/address';
-import { formatInstantDate } from '../lib/dates';
+import { formatInstantDate, localTimeZoneNote } from '../lib/dates';
 import { useInviteLink, useResetInviteLink, useRevokeInviteLink, type InviteLink } from './useInviteLink';
 import './invite-link.css';
 
@@ -107,6 +107,7 @@ function InviteLinkCard({
               Remove link
             </button>
           </p>
+          <p className="text-dim">{localTimeZoneNote()}</p>
         </div>
       ) : (
         <p className="text-muted">{teamName} has no invite link yet.</p>
