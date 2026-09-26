@@ -12,6 +12,14 @@ answers to.
 
 ---
 
+## [3.155.1] - 2026-09-25
+
+### Project
+
+- Time log: rows for the rest of the #1166 work (the app work, the PR body
+  and screenshots, the review fixes and the data load), with the totals
+  re-summed from the rows.
+
 ## [3.155.0] - 2026-09-24
 
 ### Frontend
