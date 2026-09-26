@@ -4,6 +4,7 @@
 // site (tests/behavior/calendar.js) is checked here as well as in a browser.
 
 import { isoDate } from './nights';
+import { calendarDay, formatInstantShort } from '../lib/dates';
 import { ROLE_LABELS, ROLE_ORDER, type PlayerRow, type Role } from '../roster/roster';
 
 export type ScheduleRule = {
@@ -279,13 +280,8 @@ export function ago(instant: string, now: Date): string {
   const days = Math.round(hours / 24);
   if (days === 1) return 'Yesterday';
   if (days < 7) return `${days} days ago`;
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(instant));
+  return formatInstantShort(instant);
 }
 
-const LONG_DAY = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-const SHORT_DAY = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-const MONTH = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
-
-export const longDay = (date: string) => LONG_DAY.format(dayOf(date));
-export const shortDay = (date: string) => SHORT_DAY.format(dayOf(date));
-export const monthLabel = (year: number, month: number) => MONTH.format(new Date(year, month, 1));
+export const longDay = (date: string) => calendarDay(dayOf(date), 'long');
+export const shortDay = (date: string) => calendarDay(dayOf(date), 'short');

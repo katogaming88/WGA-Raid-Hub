@@ -1,3 +1,5 @@
+import { awardDate, easternToday } from '../lib/dates';
+
 // What a player profile shows, worked out from its reads (#868 part 1). The
 // rules match the current site's renderProfile() and its helpers, so the
 // recorded behavior in tests/behavior/profile.js holds on both.
@@ -5,12 +7,6 @@
 export type SeasonWindow = { name: string; code: string | null; start: string | null; end: string | null };
 
 export type SeasonRow = { code: string; display_name: string; starts_at: string; ends_at: string | null };
-
-// Today's date in Eastern, where the raids happen; the same calendar the
-// database's current_season() reads.
-export function easternToday(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
-}
 
 // The tier current today, by the same rule as current_season() (#933): the
 // latest seasons row whose start has passed, or null before the first tier.
@@ -108,15 +104,6 @@ export type Award = {
 export const difficultyOf = (track: string | null): Difficulty =>
   track === 'Myth' ? 'Mythic' : track === 'Hero' ? 'Heroic' : track === 'Champion' ? 'Normal' : 'Other';
 
-// Award dates are shown on Eastern time, where the raids happen, so an award
-// late on raid night keeps that night's date wherever the reader is.
-const AWARD_DATE = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'America/New_York',
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric'
-});
-
 export type SeasonLoot = { season: string; awards: Award[]; last: { date: string; awards: Award[] } | null };
 
 export function seasonLoot(rows: LootRow[], season: SeasonWindow): SeasonLoot {
@@ -126,7 +113,7 @@ export function seasonLoot(rows: LootRow[], season: SeasonWindow): SeasonLoot {
       key: r.id,
       name: r.items?.name ?? 'Unknown Item',
       difficulty: difficultyOf(r.track),
-      date: AWARD_DATE.format(new Date(r.awarded_at)),
+      date: awardDate(r.awarded_at),
       awardedAt: r.awarded_at,
       from: r.from ?? null
     }))

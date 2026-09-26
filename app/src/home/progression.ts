@@ -1,3 +1,4 @@
+import { isoDateLong } from '../lib/dates';
 // Raid progression on the team Home page (#1102), ported rule for rule from
 // the current site's buildProgression() (js/roster.js) and recorded against it
 // in tests/behavior/home.js.
@@ -150,15 +151,8 @@ function heroicLine(p: ProgressRow | null, date: string | null): DifficultyLine 
 
 // Kill dates are stored as YYYY-MM-DD, or typed by hand by an officer. A date
 // is shown as "Apr 2, 2026"; anything else is shown as typed.
-const KILL_DATE = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'UTC',
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric'
-});
-
 export function killDate(value: string): string {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? KILL_DATE.format(new Date(`${value}T00:00:00Z`)) : value;
+  return isoDateLong(value);
 }
 
 export const pullsText = (line: DifficultyLine): string =>

@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.156.4] - 2026-09-26
+
+### Project
+
+- New app: every date and time now goes through one helper (`app/src/lib/dates.ts`) that also writes down the rule: guild-calendar dates are Eastern and need no note, instants show in the viewer's own zone with a zone note. A new CI check fails any bare date formatter under `app/src` (#1184). The BoE page, the invite-link page and the calendar's Latest answers now say which time zone their times are in, and the hover text on an RSVP time reads like the rest of the app's times.
+
 ## [3.156.3] - 2026-09-26
 
 ### Project

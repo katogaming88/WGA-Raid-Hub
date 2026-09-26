@@ -3,6 +3,7 @@ import { DataState } from '../components/DataState';
 import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
 import { useTeam } from '../data/address';
+import { formatInstantDate, localTimeZoneNote } from '../lib/dates';
 import { useInviteLink, useResetInviteLink, useRevokeInviteLink, type InviteLink } from './useInviteLink';
 import './invite-link.css';
 
@@ -25,7 +26,7 @@ function joinUrl(code: string): string {
 function expiryLabel(expiresAt: string | null): string {
   if (!expiresAt) return 'No expiry';
   const date = new Date(expiresAt);
-  const formatted = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(date);
+  const formatted = formatInstantDate(date);
   return date.getTime() < Date.now() ? `Expired ${formatted}` : `Expires ${formatted}`;
 }
 
@@ -106,6 +107,7 @@ function InviteLinkCard({
               Remove link
             </button>
           </p>
+          <p className="text-dim">{localTimeZoneNote()}</p>
         </div>
       ) : (
         <p className="text-muted">{teamName} has no invite link yet.</p>

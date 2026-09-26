@@ -1,3 +1,4 @@
+import { monthLabel } from '../lib/dates';
 // Raid nights for a month (#1102), used by the Calendar page and Home's widget:
 // ported from the current site's computeRaidNights() and _renderCalGrid()
 // (js/calendar.js) and recorded against them in tests/behavior/home.js.
@@ -110,7 +111,7 @@ export function calendarMonth(
   if (counts.bench) legend.push({ label: `${counts.bench} on Bench (excluded from the count above)`, tone: null });
 
   return {
-    label: new Date(year, month, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+    label: monthLabel(year, month),
     offset: new Date(year, month, 1).getDay(),
     days,
     legend
