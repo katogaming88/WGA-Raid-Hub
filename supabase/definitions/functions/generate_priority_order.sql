@@ -43,6 +43,10 @@ begin
   end;
 
   return query
+  -- The picks filed under the tier being generated, and only those (#936).
+  -- A raider holds a separate pick for the same item in each tier since the
+  -- unique key carried the season, so the strongest status across every row
+  -- would let a BiS mark left in an earlier tier outvote this tier's pass.
   with wishlist as (
     select
       ip.player_id,
@@ -60,6 +64,7 @@ begin
     where ip.item_id = p_item_id
       and p.team_id = p_team_id
       and p.archived_at is null
+      and ip.season = p_season
     group by ip.player_id
   ),
   candidates as (

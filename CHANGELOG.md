@@ -12,6 +12,28 @@ answers to.
 
 ---
 
+## [3.156.5] - 2026-09-26
+
+### Frontend
+
+- The officer dashboard's wishlist readings are about the season on screen. The
+  status beside a ranked player, the completion badge on a profile card, the
+  Wishlists Completed count on the Roster tab, the Priority Notes tab and the
+  contested-item list all counted every pick a raider had ever made, whatever
+  season it was for. Changing Season View now also changes what they show, where
+  before it took a page reload (#936).
+
+### Backend
+
+- The suggested priority order treats a raider's picks for the season being
+  generated, and no others. A BiS pick left in an earlier season used to make
+  them a candidate for this one at the top of the list, even where their pick
+  for this season said Pass.
+- The RCLootCouncil export sends the BiS list and the wishlist labels for the
+  season it is generated for. Before this a raider with picks in two seasons had
+  both seasons' items arrive as one slot's list, and a label could come from a
+  season the ranking did not (#936).
+
 ## [3.158.0] - 2026-09-27
 
 ### Frontend
