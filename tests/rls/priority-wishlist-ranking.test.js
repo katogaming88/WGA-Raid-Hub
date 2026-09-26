@@ -13,12 +13,13 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import { pool, withTxn as withSharedTxn, OFFICER_T1, seedSeason } from './helpers.js';
 
-// The season this file stamps (#932): every season column is a foreign
-// key to seasons, so the fixture row comes first in every transaction.
+// The seasons this file stamps (#932): every season column is a foreign
+// key to seasons, so the fixture rows come first in every transaction.
 // Wraps the shared harness.
 async function withTxn(fn) {
   return withSharedTxn(async (t) => {
     await seedSeason(t.q, SEASON);
+    await seedSeason(t.q, OTHER_SEASON);
     return fn(t);
   });
 }
@@ -31,6 +32,10 @@ async function withTxn(fn) {
 // these fixtures do, so it stays a no-op and expected weighted_total math
 // stays simple (raw_score * wishlist multiplier only).
 const SEASON = 'wishlist-rank-test';
+
+// A second tier, for the cases that prove the wishlist CTE reads only the one
+// it is generating for (#936). Never generated for.
+const OTHER_SEASON = 'wishlist-rank-test-other';
 
 function generate(asUser, itemId, track = 'Hero') {
   return asUser(OFFICER_T1, 'select * from public.generate_priority_order($1, $2, $3, $4)', [1, SEASON, itemId, track]);
@@ -251,6 +256,44 @@ describe('generate_priority_order wishlist status is a hard tier, not just a sco
       const res = await generate(asUser, 2);
       const order = res.rows.map((r) => r.player_id);
       expect(order.indexOf(1)).toBeLessThan(order.indexOf(2));
+    });
+  });
+
+  // The candidate pool is one tier's picks (#936). The wishlist key carried the
+  // season from v3.154.6, so a raider holds a separate pick for the same item in
+  // each tier, and every row was reaching both the pool and the status.
+  it('a pick stamped with another tier makes nobody a candidate', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await seedScoring(q, 2, 100, 100);
+      await q(
+        "insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 2, 2, 'good', $1)",
+        [OTHER_SEASON]
+      );
+
+      const res = await generate(asUser, 2);
+      expect(res.rows).toHaveLength(0);
+    });
+  });
+
+  // The pool takes the strongest status across a raider's rows, so a BiS mark
+  // left in another tier used to outvote the pass they wrote for this one, and
+  // put them at the top of the order for an item they said they did not want.
+  it('a raider who passed this tier is not a candidate on a BiS mark left in another', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await seedScoring(q, 1, 50, 50);
+      await seedScoring(q, 2, 100, 100);
+      await q(
+        "insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 1, 2, 'good', $1)",
+        [SEASON]
+      );
+      await q(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values
+           (1, 2, 2, 'pass', $1), (1, 2, 2, 'bis', $2)`,
+        [SEASON, OTHER_SEASON]
+      );
+
+      const res = await generate(asUser, 2);
+      expect(res.rows.map((r) => r.player_id)).toEqual([1]);
     });
   });
 });
