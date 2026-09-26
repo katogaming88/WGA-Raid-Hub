@@ -65,6 +65,21 @@ export function realFetchAllPaged() {
   return sandbox.fetchAllPaged;
 }
 
+// The shipped scopeToSeasonView (#936), for suites whose subject (tab-priority's
+// fetchTeamItemPreferences) calls it as a global. Same reason as fetchAllPaged
+// above: a stand-in could answer differently from the helper on the question the
+// suite is asking, which is which tier a read narrows to. `seasons` and the
+// optional pin are set on this sandbox because the helper reads them from
+// js/common.js's own DATA rather than taking them as arguments.
+export function realScopeToSeasonView(seasons, seasonView = null) {
+  const sandbox = loadCommonJs(quietConsole);
+  sandbox.DATA = { seasons, seasonView };
+  if (typeof sandbox.scopeToSeasonView !== 'function') {
+    throw new Error('js/common.js does not define scopeToSeasonView');
+  }
+  return sandbox.scopeToSeasonView;
+}
+
 // The shipped fetchAttendanceRowsCached (#837), for suites whose subject
 // (e.g. tab-attendance.js's loadAttendanceGrid) shares it as a global instead
 // of paging the `attendance` table itself. Needs its own supabaseClient/

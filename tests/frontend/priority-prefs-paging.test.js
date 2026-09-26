@@ -3,8 +3,10 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { realFetchAllPaged } from './helpers/common-sandbox.js';
+import { realFetchAllPaged, realScopeToSeasonView } from './helpers/common-sandbox.js';
 import { keysetClient, failingClient } from './helpers/supabase-mock.js';
+
+const SEASONS = [{ code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-08-11', ends_at: null }];
 
 // fetchTeamItemPreferences pages through the shared helper (#707 item 3).
 //
@@ -33,7 +35,7 @@ function prefRows(total, startId = 1) {
   return rows;
 }
 
-function load(client) {
+function load(client, { seasons = SEASONS, seasonView = null } = {}) {
   const sandbox = {
     console: { log: () => {}, warn: () => {}, error: () => {} },
     document: { getElementById: () => null },
@@ -46,8 +48,10 @@ function load(client) {
   };
   vm.createContext(sandbox);
   vm.runInContext(PRIORITY_JS, sandbox, { filename: 'tab-priority.js' });
-  // js/common.js owns fetchAllPaged; tab-priority.js calls it as a global.
+  // js/common.js owns fetchAllPaged and scopeToSeasonView; tab-priority.js
+  // calls both as globals.
   sandbox.fetchAllPaged = realFetchAllPaged();
+  sandbox.scopeToSeasonView = realScopeToSeasonView(seasons, seasonView);
   return sandbox;
 }
 
@@ -82,6 +86,32 @@ describe('fetchTeamItemPreferences (#707)', () => {
   it('resolves null on a failed read rather than the rows it managed to collect', async () => {
     const { client } = failingClient('prefs boom');
     await expect(load(client).fetchTeamItemPreferences()).resolves.toBeNull();
+  });
+
+  // One tier's picks (#936). Every officer-side consumer of this read takes the
+  // rows as fetched -- the status beside a ranked row, the completion badge, the
+  // roster's Wishlists Completed card, the Notes sub-tab -- so the tier is
+  // settled here rather than in each of them.
+  it('asks for the tier the officer is viewing, on every page', async () => {
+    const { client, calls } = keysetClient(prefRows(2200));
+    await load(client).fetchTeamItemPreferences();
+    expect(calls.selects).toHaveLength(3);
+    for (const select of calls.selects) expect(select.eq).toContainEqual(['season', 'MID2']);
+  });
+
+  it('asks for the pinned tier over the live one', async () => {
+    const { client, calls } = keysetClient(prefRows(3));
+    const seasons = [...SEASONS, { code: 'MID1', display_name: 'Midnight Season 1', starts_at: '2026-04-01' }];
+    await load(client, { seasons, seasonView: 'Midnight Season 1' }).fetchTeamItemPreferences();
+    expect(calls.eqs).toContainEqual(['season', 'MID1']);
+    expect(calls.eqs).not.toContainEqual(['season', 'MID2']);
+  });
+
+  it('asks for every tier when no tier resolves, rather than for none', async () => {
+    const { client, calls } = keysetClient(prefRows(3));
+    const rows = await load(client, { seasons: [] }).fetchTeamItemPreferences();
+    expect(calls.eqs.map(([col]) => col)).not.toContain('season');
+    expect(rows).toHaveLength(3);
   });
 
   it('budgets each page rather than the whole read', async () => {
@@ -126,5 +156,51 @@ describe('fetchTeamItemPreferences (#707)', () => {
     sandbox.fetchAllPaged = realFetchAllPaged();
     const result = await sandbox.fetchTeamItemPreferences();
     expect(result).toHaveLength(2500);
+  });
+});
+
+// Changing the Season View pin never reloaded the page: tab-season.js sets
+// DATA.seasonView, remaps the priority data from rows it already holds, and
+// rebuilds the visible sub-tab. That was right while this read carried every
+// tier, and wrong the moment it carries one (#936), so the pin has to drop what
+// was fetched for the tier it left.
+describe('resetTeamItemPreferencesForSeasonView (#936)', () => {
+  it('drops the cached rows so the next render fetches the new tier', () => {
+    const { client } = keysetClient(prefRows(3));
+    const sandbox = load(client);
+    sandbox._setTeamItemPreferences(prefRows(3));
+    expect(sandbox._teamItemPreferences).toHaveLength(3);
+
+    sandbox.resetTeamItemPreferencesForSeasonView();
+
+    expect(sandbox._teamItemPreferences).toBeNull();
+    expect(sandbox._teamItemPreferencesUnavailable()).toBe(false);
+  });
+
+  // A failed read latches so a render cannot loop on it. The pin is a fresh
+  // ask, so it clears the latch too, or an officer who changed tier after one
+  // failure would be stuck on the error until a reload.
+  it('clears a latched read failure, so the new tier is actually asked for', () => {
+    const { client } = keysetClient([]);
+    const sandbox = load(client);
+    sandbox._setTeamItemPreferences(null);
+    expect(sandbox._teamItemPreferencesUnavailable()).toBe(true);
+
+    sandbox.resetTeamItemPreferencesForSeasonView();
+
+    expect(sandbox._teamItemPreferencesUnavailable()).toBe(false);
+  });
+
+  // The profile card has its own per-player cache in js/common.js, filled by
+  // fetchPlayerItemPreferences() and read whenever the team-wide rows are not
+  // loaded. It is scoped to a tier now too, so it goes with them.
+  it('empties the per-player profile cache js/common.js keeps', () => {
+    const { client } = keysetClient([]);
+    const sandbox = load(client);
+    sandbox._profileWishlistPrefsCache = { 7: prefRows(2) };
+
+    sandbox.resetTeamItemPreferencesForSeasonView();
+
+    expect(sandbox._profileWishlistPrefsCache).toEqual({});
   });
 });
