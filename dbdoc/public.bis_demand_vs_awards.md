@@ -14,7 +14,7 @@ CREATE VIEW bis_demand_vs_awards AS (
            FROM ((item_preferences ip
              JOIN players p ON ((p.id = ip.player_id)))
              JOIN items i_1 ON ((i_1.id = ip.item_id)))
-          WHERE ((p.archived_at IS NULL) AND (ip.status = 'bis'::text) AND (NOT i_1.is_placeholder))
+          WHERE ((p.archived_at IS NULL) AND (ip.status = 'bis'::text) AND (NOT i_1.is_placeholder) AND (i_1.source = 'raid'::text))
           GROUP BY p.team_id, ip.item_id
         ), awards AS (
          SELECT rclc_loot.team_id,
@@ -59,7 +59,7 @@ CREATE VIEW bis_demand_vs_awards AS (
 | ---- | ------- | ------- | ---- |
 | [public.item_preferences](public.item_preferences.md) | 11 |  | BASE TABLE |
 | [public.players](public.players.md) | 25 |  | BASE TABLE |
-| [public.items](public.items.md) | 14 |  | BASE TABLE |
+| [public.items](public.items.md) | 15 |  | BASE TABLE |
 | [public.rclc_loot](public.rclc_loot.md) | 11 |  | BASE TABLE |
 | [awards](awards.md) | 0 |  |  |
 

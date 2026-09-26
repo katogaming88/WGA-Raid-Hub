@@ -39,6 +39,10 @@ const TEAM_COLUMN = 'team_id';
 // A read narrowed to one player is bounded by that player's own history, not
 // by the size of the team's table, so it is not what "team-wide" means here.
 const PLAYER_COLUMNS = ['player_id', 'id'];
+// Tables that are not team-scoped but already outgrow (or will outgrow) the
+// cap: the item catalog gains a raid, a dungeon pool and a crafted list every
+// tier, so its reads page whether or not they filter by team (#1166).
+const PAGED_TABLES = ['items'];
 const HELPER = 'fetchAllPaged';
 const ANNOTATION = /team-read-guard:/;
 // How far above a read its annotation may sit. Enough for a wrapped chain or
@@ -139,7 +143,8 @@ export function findUnguardedTeamWideReads(source, filename = '<source>') {
     if (headOnly) return;
 
     const teamFiltered = methods.some((m) => m.name === 'eq' && literalValue(m.node.arguments[0]) === TEAM_COLUMN);
-    if (!teamFiltered) return;
+    const pagedTable = PAGED_TABLES.includes(literalValue(methods[0].node.arguments[0]));
+    if (!teamFiltered && !pagedTable) return;
 
     const perPlayer = methods.some(
       (m) => m.name === 'eq' && PLAYER_COLUMNS.includes(String(literalValue(m.node.arguments[0])))

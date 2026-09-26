@@ -1,0 +1,8 @@
+## Interface: 120007, 120100
+## Title: WGA Loot Dump
+## Notes: /wgaloot lists the Mythic loot of chosen dungeons, and /wgacrafts the gear the professions craft, for pasting into the WGA Raid Hub.
+## Version: 1.1.0
+## SavedVariables: WGA_LootDumpDB
+## IconTexture: Interface\Icons\INV_Misc_ScrollUnrolled03D
+
+WGA_LootDump.lua

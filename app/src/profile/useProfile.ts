@@ -1,4 +1,4 @@
-import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
+import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import type { AttendanceRow, GearRow, LootRow, SeasonWindow } from './profile';
 import { currentSeason } from './profile';
@@ -129,14 +129,27 @@ export function useWishlist(playerId: number) {
   );
 }
 
-// The item catalog, a few hundred rows, shared by every profile.
+// The item catalog, shared by every profile. Paged: it passes 1000 rows within
+// a tier or two, and a truncated read looks exactly like a complete one.
 export function useCatalog() {
-  return useSupabaseQuery<CatalogItem[]>(['catalog'], (client) =>
-    client
-      .from('items')
-      .select('id, name, slot, wcl_zone_id, is_placeholder, armor_type, main_stats, weapon_subtype')
-      .order('id')
-  );
+  return useSupabaseQuery<CatalogItem[]>(['catalog'], async (client) => {
+    const { data, error } = await readAll<Omit<CatalogItem, 'seasons'> & { item_seasons: { season: string }[] | null }>(
+      (from, to) =>
+        client
+          .from('items')
+          .select(
+            'id, name, slot, wcl_zone_id, is_placeholder, armor_type, main_stats, weapon_subtype, source, item_seasons(season)'
+          )
+          .order('id')
+          .range(from, to)
+    );
+    return {
+      data:
+        data?.map(({ item_seasons, ...item }) => ({ ...item, seasons: (item_seasons ?? []).map((s) => s.season) })) ??
+        null,
+      error
+    };
+  });
 }
 
 export function useRaidZones() {

@@ -36,6 +36,11 @@ describe('findUnguardedTeamWideReads', () => {
     expect(findUnguardedTeamWideReads(src)).toEqual([]);
   });
 
+  it('flags an unpaged read of the item catalog, which has no team filter', () => {
+    const src = `supabaseClient.from('items').select('id, name').then(handle);`;
+    expect(findUnguardedTeamWideReads(src).map((f) => f.table)).toEqual(['items']);
+  });
+
   it('ignores writes, which have no rows to truncate', () => {
     const src = `
       supabaseClient.from('attendance').update({ status: 'Present' }).eq('team_id', teamId).then(handle);

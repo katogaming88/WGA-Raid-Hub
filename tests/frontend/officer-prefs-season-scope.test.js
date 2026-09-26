@@ -17,6 +17,7 @@ function sandboxWithCatalog() {
   const sandbox = loadCommonJs(quietConsole);
   sandbox.DATA = {
     itemIds: { 'M+': 9001, Crafted: 9002, 'Old Tier Helm': 101, 'New Tier Helm': 202 },
+    itemNamesById: { 9001: 'M+', 9002: 'Crafted', 101: 'Old Tier Helm', 202: 'New Tier Helm' },
     itemSlots: { 'Old Tier Helm': 'Head', 'New Tier Helm': 'Head' },
     itemPlaceholders: { 'M+': true, Crafted: true },
     itemZones: { 'Old Tier Helm': 10, 'New Tier Helm': 20 },

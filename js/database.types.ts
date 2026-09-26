@@ -701,6 +701,36 @@ export type Database = {
           },
         ]
       }
+      item_seasons: {
+        Row: {
+          item_id: number
+          season: string
+        }
+        Insert: {
+          item_id: number
+          season: string
+        }
+        Update: {
+          item_id?: number
+          season?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_seasons_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_seasons_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       items: {
         Row: {
           armor_type: string | null
@@ -714,6 +744,7 @@ export type Database = {
           secondary_stats: Json | null
           slot: string
           sort_id: number | null
+          source: string
           wcl_zone_id: number | null
           weapon_subtype: string | null
           wow_item_id: number | null
@@ -730,6 +761,7 @@ export type Database = {
           secondary_stats?: Json | null
           slot: string
           sort_id?: number | null
+          source?: string
           wcl_zone_id?: number | null
           weapon_subtype?: string | null
           wow_item_id?: number | null
@@ -746,6 +778,7 @@ export type Database = {
           secondary_stats?: Json | null
           slot?: string
           sort_id?: number | null
+          source?: string
           wcl_zone_id?: number | null
           weapon_subtype?: string | null
           wow_item_id?: number | null

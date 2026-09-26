@@ -1,6 +1,55 @@
--- Function public.build_rclc_export: current definition, generated from the database.
--- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
--- execute (site roles): authenticated
+-- #1166: each item says where it comes from (raid, dungeon, crafted), and a
+-- dungeon or crafted item says which seasons it is offered in.
+--
+-- The catalog held raid loot only, so a raider who wanted an M+ or crafted
+-- piece could only wishlist the generic 'M+' or 'Crafted' stand-in. The new
+-- app's wishlist offers the real items instead. They need two things:
+--
+--   items.source   'raid' (every existing row), 'dungeon' (a season's M+ pool)
+--                  or 'crafted'. Only raid items are ranked or exported to
+--                  RCLootCouncil. A dungeon trinket has no raid (wcl_zone_id
+--                  is null), so nothing else says it is not council loot.
+--   item_seasons   the seasons a dungeon or crafted item is offered in, one
+--                  row per item and season. A raid item's season comes from
+--                  its raid (raid_zones.season) and has no row here.
+--
+-- Why a list of seasons and not a season column on the item: dungeons come
+-- back in later pools (Ruby Life Pools, Kings' Rest) and crafted gear carries
+-- over from season to season, and nobody knows in advance when. With one
+-- season per item, each return would mean editing every row of the dungeon.
+-- With a row per season, next season's import adds the new pairs and leaves
+-- the existing items alone.
+--
+-- The RCLootCouncil export and the BiS demand count already skipped the
+-- stand-in picks (is_placeholder); they now skip anything not from a raid
+-- as well. Both bodies are otherwise unchanged from their last versions
+-- (20260924003956 and 20260829235114), grants preserved by create or replace.
+-- The stand-in rows and their special cases stay until cutover (#1105).
+
+alter table public.items
+  add column source text not null default 'raid',
+  add constraint items_source_check check (source in ('raid', 'dungeon', 'crafted'));
+
+comment on column public.items.source is
+  'Where the item comes from: raid, dungeon (an M+ pool) or crafted. Only raid items are ranked or exported to RCLootCouncil (#1166).';
+
+create table public.item_seasons (
+  item_id integer not null references public.items (id) on delete cascade,
+  season text not null references public.seasons (code),
+  primary key (item_id, season)
+);
+
+comment on table public.item_seasons is
+  'The seasons a dungeon or crafted item is offered in (#1166). A raid item has no row: its season comes from raid_zones. Filled by scripts/dungeon-items-sql.js, never by a client.';
+create index item_seasons_season_idx on public.item_seasons (season);
+
+alter table public.item_seasons enable row level security;
+
+create policy "Claude readers read item_seasons" on public.item_seasons
+  for select to claude_readers using (true);
+-- Read with the catalog on every profile and wishlist load, as items is.
+create policy "Public read item_seasons" on public.item_seasons
+  for select using (true);
 
 CREATE OR REPLACE FUNCTION public.build_rclc_export(p_team_id integer, p_season text, p_track text)
  RETURNS jsonb
@@ -173,3 +222,36 @@ begin
   return jsonb_build_object('players', v_players, 'priority', v_priority, 'statusLabels', v_status_labels);
 end;
 $function$;
+
+create or replace view public.bis_demand_vs_awards
+with (security_invoker = on)
+as
+with demand as (
+  select p.team_id, ip.item_id, count(distinct ip.player_id) as demand_count
+  from public.item_preferences ip
+  join public.players p on p.id = ip.player_id
+  join public.items i on i.id = ip.item_id
+  where p.archived_at is null
+    and ip.status = 'bis'
+    and not i.is_placeholder
+    and i.source = 'raid'
+  group by p.team_id, ip.item_id
+),
+awards as (
+  select team_id, item_id, season, count(*) as awarded_count
+  from public.rclc_loot
+  where item_id is not null
+  group by team_id, item_id, season
+)
+select
+  d.team_id,
+  d.item_id,
+  i.name as item_name,
+  i.slot,
+  d.demand_count,
+  a.season,
+  coalesce(a.awarded_count, 0) as awarded_count
+from demand d
+join public.items i on i.id = d.item_id
+left join awards a on a.team_id = d.team_id and a.item_id = d.item_id
+order by d.team_id, d.demand_count desc, coalesce(a.awarded_count, 0) asc;

@@ -25,7 +25,17 @@ export type CatalogItem = {
   // jsonb: a list of STRENGTH, AGILITY and INTELLECT.
   main_stats?: unknown;
   weapon_subtype?: string | null;
+  // Where it comes from: raid, dungeon or crafted. A dungeon or crafted item is
+  // offered only in the seasons listed in item_seasons (#1166).
+  source?: string | null;
+  seasons?: string[];
 };
+
+// Not from a raid: never ranked, and in season only where item_seasons says.
+// The small tag a dungeon or crafted item wears; a raid item has none.
+export const sourceTag = (source: string) => (source === 'dungeon' ? 'M+' : source === 'crafted' ? 'Crafted' : null);
+
+export const offRaid = (item: CatalogItem) => !!item.source && item.source !== 'raid';
 export type ZoneRow = { wcl_zone_id: number | null; season: string | null };
 export type RankRow = { item_id: number; track: string; rank: number; player_id: number };
 export type TierTokenRow = { token_item_id: number; resolved: { name: string } | null };
@@ -62,6 +72,8 @@ export type PriorityRow = {
   // piece it shows as.
   itemName: string;
   placeholder: boolean;
+  // raid, dungeon or crafted; the last two are never ranked (#1166).
+  source: string;
   ranks: Standing[];
   received: Received | null;
 };
@@ -134,6 +146,9 @@ const norm = (s: string) =>
 // with no picks rather than one that could not be loaded.
 function inSeason(pick: WishlistRow, item: CatalogItem, season: SeasonWindow, zones: ZoneRow[]): boolean {
   if (item.is_placeholder) return season.code === null || pick.season === season.code;
+  // A dungeon or crafted pick also needs the item offered that season (#1166).
+  if (offRaid(item))
+    return season.code === null || (pick.season === season.code && !!item.seasons?.includes(season.code));
   if (item.wcl_zone_id == null) return true;
   const seasonZones = zones.filter((z) => z.season === season.code).map((z) => z.wcl_zone_id);
   return seasonZones.length === 0 || seasonZones.includes(item.wcl_zone_id);
@@ -174,8 +189,9 @@ export function lootPriority(input: {
         item: input.tierTokens.find((t) => t.token_item_id === item.id)?.resolved?.name ?? item.name,
         itemName: item.name,
         placeholder: item.is_placeholder,
+        source: item.source ?? 'raid',
         // Crafted and M+ picks are not council loot and are never ranked.
-        ranks: item.is_placeholder ? [] : standings(item.id, input.playerId, input.ranks),
+        ranks: item.is_placeholder || offRaid(item) ? [] : standings(item.id, input.playerId, input.ranks),
         received: received(item, slot, input.loot, input.selfReceived)
       }
     });

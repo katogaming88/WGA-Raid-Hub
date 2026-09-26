@@ -206,6 +206,36 @@ describe('planMark', () => {
   });
 });
 
+describe('dungeon and crafted items (#1166)', () => {
+  const off = (id: number, name: string, source: string, seasons: string[]) =>
+    item(id, name, 'Head', { armor_type: 'Plate', wcl_zone_id: null, source, seasons });
+  const withOff = (picks: Pick[]): EditorInput => ({
+    ...input(picks),
+    catalog: [
+      ...catalog,
+      off(20, 'Dungeon Helm', 'dungeon', ['MID2']),
+      off(21, 'Last Season Dungeon Helm', 'dungeon', ['MID1']),
+      off(22, 'Crafted Helm', 'crafted', ['MID1', 'MID2'])
+    ]
+  });
+
+  it('offers them only in the seasons item_seasons lists, tagged by source', () => {
+    const head = editorSlots(withOff([])).find((s) => s.slot === 'Head')!;
+    expect(head.items.map((i) => [i.name, i.source])).toEqual([
+      ['Crafted Helm', 'crafted'],
+      ['Dungeon Helm', 'dungeon'],
+      ['Plate Helm', 'raid']
+    ]);
+  });
+
+  it('lets a dungeon item replace the raid item as BiS', () => {
+    const picks = [pick(1, 'bis', null)];
+    const plan = planMark({ ...withOff(picks), teamId: 1, playerId: 2 }, 'Head', 20, 'bis');
+    expect(plan.deletes).toEqual([picks[0]!.id]);
+    expect(plan.insert?.item_id).toBe(20);
+  });
+});
+
 // #936: the wishlist key carries the season, so a raider holds a separate pick
 // for the same item in each tier. The editor plans one tier, and the write gate
 // refuses a row filed under any other, so a pick from a tier the editor is not

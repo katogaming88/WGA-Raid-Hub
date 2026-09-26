@@ -54,6 +54,33 @@ const BOE = {
   is_boe: true
 };
 
+describe('buildItemMaps and dungeon or crafted items (#1166)', () => {
+  const sandbox = loadCommonJs(quietConsole);
+  it('leaves every map exactly as it is without them', () => {
+    const extra = ['dungeon', 'crafted'].map((source, i) => ({
+      ...BOE,
+      id: 10 + i,
+      wow_item_id: 200000 + i,
+      name: 'Off Raid ' + source,
+      is_boe: false,
+      source
+    }));
+    const withExtra = sandbox.buildItemMaps(ROWS.concat(extra));
+    const without = sandbox.buildItemMaps(ROWS);
+    expect(Object.keys(withExtra.itemNamesById)).toHaveLength(4);
+    delete withExtra.itemNamesById;
+    delete without.itemNamesById;
+    expect(withExtra).toEqual(without);
+  });
+
+  it('still names them by id, for the officer views of a raider picks', () => {
+    const dungeon = { ...BOE, id: 10, name: 'Off Raid dungeon', is_boe: false, source: 'dungeon' };
+    const maps = sandbox.buildItemMaps(ROWS.concat([dungeon, BOE]));
+    expect(maps.itemNamesById).toEqual({ 1: 'Seed Test Staff', 2: 'Seed Test Robe', 10: 'Off Raid dungeon' });
+    expect(maps.itemIds).not.toHaveProperty('Off Raid dungeon');
+  });
+});
+
 describe('buildItemMaps and BoEs (#875)', () => {
   const sandbox = loadCommonJs(quietConsole);
 
@@ -82,6 +109,7 @@ describe('buildItemMaps and BoEs (#875)', () => {
       'itemIds',
       'itemIsPtr',
       'itemMainStats',
+      'itemNamesById',
       'itemNamesByWowId',
       'itemPlaceholders',
       'itemSecondaryStats',

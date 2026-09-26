@@ -13,6 +13,7 @@ import {
   useWishlistSettings,
   type ProfilePlayer
 } from './useProfile';
+import { sourceTag } from './lootPriority';
 import { editorSeason, editorSlots, planMark, type EditorInput, type EditorSlot, type Mark } from './wishlist';
 
 // The wishlist editor (#868 part 3): each slot's raid items, marked BiS or Pass.
@@ -222,7 +223,10 @@ function SlotTabs({
         <ul className="wishlist-items">
           {current.items.map((item) => (
             <li key={item.itemId} className="wishlist-item" data-mark={item.mark ?? undefined}>
-              <span className="wishlist-item-name">{item.name}</span>
+              <span className="wishlist-item-name">
+                {item.name}
+                {sourceTag(item.source) && <span className="source-tag">{sourceTag(item.source)}</span>}
+              </span>
               {item.takenBy ? (
                 <span className="wishlist-taken">Your {item.takenBy} BiS</span>
               ) : (

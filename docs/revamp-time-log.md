@@ -12,11 +12,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 
 | Phase                              |   Time so far |
 | ---------------------------------- | ------------: |
-| Planning and design                |      7 h 20 m |
+| Planning and design                |      7 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     31 h 04 m |
+| Revamp 2: public pages             |     32 h 26 m |
 | Revamp 4: cutover                  |      2 h 30 m |
-| **All revamp work**                | **47 h 49 m** |
+| **All revamp work**                | **49 h 31 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -162,6 +162,9 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 1:50-2:10 AM   | Cutover date decided, Revamp 2 to 4 milestone review, game plan, and the `/end` command   | Planning         |    20 m | ~10 m build, ~10 m Kat deciding |       50,400 | Kat picked Option A: WGA goes live on the current date and multi-guild follows. Sized #1286 (members-only reads) and agreed Rex writes database work such as #1205; triaged #1264 into Revamp 4; agreed which #1102 boxes were already done; wrote the handoff and added `/end`. Time from this session's transcript; the 1:10-1:45 AM stretch between the earlier row and this one is not logged.                                                                                                                                                                                                                                          |
 | 10:57-11:00 AM | Battle.net found-characters accessibility on #1102                                        | Revamp 2 (#1102) |     5 m | ~5 m build                      |       42,700 | Already met by the alts picker (heading, labelled table, announced errors and loading state); ticked the box with no code change. Kat asked after a break; time from this session's transcript.                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | 11:01-11:15 AM | BoE Sales port check and browser tests (#1102, PR #1329)                                  | Revamp 2 (#1102) |    15 m | ~12 m build, ~3 m Kat deciding  |      152,300 | Compared boe.html section by section with the new page: everything was already ported (#1307, #1310); only the recorded browser tests were missing. Added four states (signed out, raider, BoE manager dark and light). PR #1329, not merged yet. Time from this session's transcript.                                                                                                                                                                                                                                                                                                                                                      |
+| 11:15-11:35 AM | Decisions for #1166: how items record their source, dungeon and crafted gear, seasons | Planning         |    20 m | ~10 m build, ~10 m Kat deciding |      422,100 | Kat chose a join table of seasons per item over a season column, and dungeon loot from the game itself. |
+| 11:35 AM-12:30 PM | Items record where they come from, the dungeon list and the in-game loot addon (#1166, PR #1330) | Revamp 2 (#1166) |    55 m | ~45 m build, ~10 m Kat deciding |      576,200 | Schema and draft PR, then the `/wgaloot` addon, importer and the 208-item Season 2 dungeon list. Kat away from the computer 12:30-1:53 PM, not counted. |
+| 1:53-2:20 PM   | Season 2 crafted gear list, `/wgacrafts` and the review page (#1166, PR #1330)            | Revamp 2 (#1166) |    27 m | ~22 m build, ~5 m Kat deciding  |    2,151,000 | The 97 crafted items and the quality and item level filter. Tokens include the earlier conversation re-cached when the session resumed. |
 
 ## Not counted (same sessions, not revamp)
 

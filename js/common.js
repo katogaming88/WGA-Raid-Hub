@@ -109,14 +109,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.154.6';
+var VERSION = '3.155.0';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20260924145125';
+var REQUIRED_SCHEMA = '20260924203209';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -3152,30 +3152,24 @@ function fetchSupabaseRaidEncounters() {
 // GAS data.
 function fetchSupabaseItems() {
   if (!supabaseClient) return Promise.resolve(null);
-  var query = supabaseClient
-    .from('items')
-    .select(
-      'id, wow_item_id, name, slot, armor_type, is_placeholder, icon, wcl_zone_id, secondary_stats, main_stats, weapon_subtype, is_ptr, is_boe'
-    )
-    .then(
-      function (result) {
-        if (result.error) {
-          console.warn('Supabase items query failed.', result.error.message);
-          return null;
-        }
-        return result.data && result.data.length ? result.data : null;
-      },
-      function (err) {
-        console.warn('Supabase items query failed.', err);
-        return null;
-      }
-    );
-  var timeout = new Promise(function (resolve) {
-    setTimeout(function () {
-      resolve(null);
-    }, 10000);
+  // Paged: the catalog passes 1000 rows within a tier or two, and a truncated
+  // read looks exactly like a complete one.
+  return fetchAllPaged(
+    function (afterId, limit) {
+      var q = supabaseClient
+        .from('items')
+        .select(
+          'id, wow_item_id, name, slot, armor_type, is_placeholder, icon, wcl_zone_id, secondary_stats, main_stats, weapon_subtype, is_ptr, is_boe, source',
+          afterId === null ? { count: 'exact' } : undefined
+        )
+        .order('id', { ascending: true })
+        .limit(limit);
+      return afterId === null ? q : q.gt('id', afterId);
+    },
+    { label: 'items query' }
+  ).then(function (rows) {
+    return rows && rows.length ? rows : null;
   });
-  return Promise.race([query, timeout]);
 }
 
 // item_bosses shares the same retirement (#391): joined through items for
@@ -3330,6 +3324,7 @@ function buildItemMaps(rows) {
   var itemIds = {};
   var itemWowIds = {};
   var itemNamesByWowId = {};
+  var itemNamesById = {};
   var itemIcons = {};
   var itemZones = {};
   var itemSecondaryStats = {};
@@ -3355,6 +3350,11 @@ function buildItemMaps(rows) {
       });
       return;
     }
+    // A dungeon or crafted item (#1166) is not council loot: like a BoE it stays
+    // out of every map here except this name-only one, which the officer views
+    // use to show a raider's pick. Only the new app offers them, tagged.
+    if (row.id != null) itemNamesById[row.id] = name;
+    if (row.source && row.source !== 'raid') return;
     itemSlots[name] = row.is_placeholder ? '' : row.slot || '';
     if (row.armor_type) itemArmorTypes[name] = row.armor_type;
     if (row.is_placeholder) itemPlaceholders[name] = true;
@@ -3388,6 +3388,7 @@ function buildItemMaps(rows) {
     itemIds: itemIds,
     itemWowIds: itemWowIds,
     itemNamesByWowId: itemNamesByWowId,
+    itemNamesById: itemNamesById,
     itemIcons: itemIcons,
     itemZones: itemZones,
     itemSecondaryStats: itemSecondaryStats,
@@ -4071,6 +4072,7 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
       DATA.itemIds = itemMaps.itemIds;
       DATA.itemWowIds = itemMaps.itemWowIds;
       DATA.itemNamesByWowId = itemMaps.itemNamesByWowId;
+      DATA.itemNamesById = itemMaps.itemNamesById;
       DATA.itemIcons = itemMaps.itemIcons;
       DATA.itemZones = itemMaps.itemZones;
       DATA.itemSecondaryStats = itemMaps.itemSecondaryStats;
@@ -4292,10 +4294,7 @@ var DEDUPE_SIBLING_SLOTS = { 'Finger 1': true, 'Finger 2': true, 'Trinket 1': tr
 // wishlist.js since only index.html loads that file, and this needs to run
 // from both pages.
 function bisItemsFromWishlistPrefs(prefs, playerId) {
-  var idToName = {};
-  Object.keys((DATA && DATA.itemIds) || {}).forEach(function (name) {
-    idToName[DATA.itemIds[name]] = name;
-  });
+  var idToName = (DATA && DATA.itemNamesById) || {};
   var itemPlaceholders = (DATA && DATA.itemPlaceholders) || {};
 
   var fromWishlist = [];
@@ -4676,11 +4675,7 @@ function officerWishlistSectionHTML(player, backTo) {
     return html + '<p style="color:var(--text-muted);padding:0.5rem 0;">No wishlist tags yet.</p></div>';
   }
 
-  var itemIds = DATA.itemIds || {};
-  var idToName = {};
-  Object.keys(itemIds).forEach(function (name) {
-    idToName[itemIds[name]] = name;
-  });
+  var idToName = DATA.itemNamesById || {};
   var itemSlots = DATA.itemSlots || {};
   var itemPlaceholders = DATA.itemPlaceholders || {};
   var labelOverrides = (DATA && DATA.wishlistStatusLabels) || {};

@@ -42,6 +42,12 @@ async function withItemsAndBisSeeded(role, uid, fn) {
          (900, 90001, 'Test Trinket', 'Trinket', null, false),
          (901, 90002, 'Test Placeholder', 'Placeholder', null, true)`
     );
+    // A season's M+ and crafted items (#1166): wishlist-able, never exported.
+    await client.query(
+      `insert into public.items (id, wow_item_id, name, slot, is_placeholder, source) values
+         (902, 90003, 'Test Dungeon Cloak', 'Back', false, 'dungeon'),
+         (903, 90004, 'Test Crafted Belt', 'Waist', false, 'crafted')`
+    );
     // player 1: explicit slot override (Trinket 2) + a legacy row with no
     // slot override, falling back to items.slot ('Trinket' -> ambiguous ->
     // defaults to trinket1) + a placeholder-item row that must be excluded.
@@ -51,7 +57,9 @@ async function withItemsAndBisSeeded(role, uid, fn) {
       `insert into public.item_preferences (id, team_id, player_id, item_id, status, slot) values
          (900, 1, 1, 900, 'bis', 'Trinket 2'),
          (901, 1, 2, 900, 'bis', null),
-         (902, 1, 1, 901, 'bis', 'Trinket 1')`
+         (902, 1, 1, 901, 'bis', 'Trinket 1'),
+         (903, 1, 1, 902, 'bis', 'Back'),
+         (904, 1, 1, 903, 'bis', 'Waist')`
     );
     if (uid) {
       await client.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: uid, role })]);
@@ -177,6 +185,9 @@ describe('build_rclc_export', () => {
       // Placeholder item (id 901) must never appear in the export.
       const flatIds = JSON.stringify(payload.players);
       expect(flatIds).not.toContain('90002');
+      // Nor may a dungeon or crafted item (ids 902, 903).
+      expect(flatIds).not.toContain('90003');
+      expect(flatIds).not.toContain('90004');
     });
   });
 

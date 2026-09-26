@@ -116,6 +116,7 @@ erDiagram
   jsonb main_stats
   text weapon_subtype
   boolean is_boe
+  text source
 }
 "public.seasons" {
   text code

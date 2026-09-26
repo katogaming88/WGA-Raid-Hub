@@ -10,7 +10,7 @@ create or replace view public.bis_demand_vs_awards with (security_invoker=on) as
            FROM item_preferences ip
              JOIN players p ON p.id = ip.player_id
              JOIN items i_1 ON i_1.id = ip.item_id
-          WHERE p.archived_at IS NULL AND ip.status = 'bis'::text AND NOT i_1.is_placeholder
+          WHERE p.archived_at IS NULL AND ip.status = 'bis'::text AND NOT i_1.is_placeholder AND i_1.source = 'raid'::text
           GROUP BY p.team_id, ip.item_id
         ), awards AS (
          SELECT rclc_loot.team_id,

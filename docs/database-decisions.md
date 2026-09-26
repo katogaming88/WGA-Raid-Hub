@@ -2210,3 +2210,21 @@ First slice of #1264 (join a team, and its guild, straight from a link): the cod
 **Deferred to the next PR:** everything that turns a resolved code into guild + roster membership -- `/join/<code>`'s Battle.net sign-in and character pick, and the actual `team_members`/`players` writes. There is no `guild_members` table to write to separately: today, joining a team's roster (a `team_members` row) already is the guild membership, since every team belongs to exactly one guild (`teams.guild_id`, #1114) and #1045's multi-guild-per-person question is still open.
 
 [Full discussion -> #1264](https://github.com/katogaming88/WGA-Raid-Hub/issues/1264).
+
+## #1166 -- items say where they come from
+
+Shipped: 20260924203209_item_source.sql
+
+The catalog held raid loot only, so the new app's wishlist could only offer the generic `M+` and `Crafted` stand-in picks. Real M+ dungeon items and crafted gear go in the same table, told apart by a new `source` column on `items`, with the seasons each is offered in in a new table, `item_seasons`.
+
+**A `source` column, not a new table.** `items.source` is `raid` (every existing row), `dungeon` or `crafted`, checked by `items_source_check`. A dungeon trinket is picked, marked BiS, received and shown the same way as a raid one, so it wants the same foreign keys from `item_preferences`, `self_received_requests` and `rclc_loot`; a second table would make each of them point at two places. Only raid items are ranked or exported to RCLootCouncil.
+
+**A list of seasons per item, not a `season` on the item.** A raid item reaches its season through its raid (`items.wcl_zone_id` to `raid_zones.season`). Dungeon and crafted items have no raid, and they come back: old dungeons return to later M+ pools and crafted gear carries over, with nobody knowing in advance when. `item_seasons (item_id, season)` holds one row per pair, so a returning item gets a new pair from the same yearly import (`scripts/dungeon-items-sql.js` keeps the existing item and adds the season) and never a migration or an edit to each of a dungeon's 20 to 30 rows. A single `season` column would have made the second season's import skip the item and leave it unoffered. Public read like `items`; no write path for clients. A raid item has no row, and nothing in the database refuses one: the new app reads raid items by their zone and everything else through this table.
+
+**The stand-in rows do not change.** `M+`, `Crafted` and `Catalyst` keep `is_placeholder = true` and `source = 'raid'`. They and their special cases go at cutover (#1105) with #1032, when raiders re-mark the real item.
+
+**Where the raid-only rule is enforced.** `build_rclc_export()` and `bis_demand_vs_awards` each gained `i.source = 'raid'` next to their existing `not i.is_placeholder`. `generate_priority_order()` is only ever called for raid items and has no placeholder path, so it is untouched. The new app's own skips (`lootPriority.ts`, `wishlist.ts`) follow in the same PR.
+
+**Crafted quality is not a column.** Mark Received keeps the Champion, Hero or Myth track for a crafted piece, read as the crest level it was crafted at. Raiders already do this (44 of 51 crafted receipts on prod say Myth), so `self_received_requests` does not change.
+
+[Full discussion -> #1166](https://github.com/katogaming88/WGA-Raid-Hub/issues/1166).

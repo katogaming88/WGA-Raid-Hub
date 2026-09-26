@@ -59,8 +59,17 @@ function MarkReceivedDialog({
   const submit = useSubmitReport(team.id, player.id);
   const id = useId();
   const [track, setTrack] = useState('');
-  // A crafted or M+ pick starts on its own source.
-  const [source, setSource] = useState(row.placeholder && REPORT_SOURCES.includes(row.itemName) ? row.itemName : '');
+  // A crafted or M+ pick starts on its own source: a real item by its catalog
+  // source, a placeholder by its name.
+  const [source, setSource] = useState(
+    row.source === 'dungeon'
+      ? 'M+'
+      : row.source === 'crafted'
+        ? 'Crafted'
+        : row.placeholder && REPORT_SOURCES.includes(row.itemName)
+          ? row.itemName
+          : ''
+  );
   const [note, setNote] = useState('');
   const [missing, setMissing] = useState(false);
   // Other goes to an officer, who needs to know where it came from (Kat,

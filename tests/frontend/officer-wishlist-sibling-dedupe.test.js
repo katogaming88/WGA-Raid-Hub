@@ -47,6 +47,7 @@ describe('officerWishlistSectionHTML sibling-slot dedupe', () => {
     const sandbox = makeSandbox();
     sandbox.DATA = {
       itemIds: { 'Gebbos Bottomless Bag': 322 },
+      itemNamesById: { 322: 'Gebbos Bottomless Bag' },
       itemSlots: { 'Gebbos Bottomless Bag': 'Trinket' },
       itemPlaceholders: {},
       itemIcons: {},
@@ -70,6 +71,7 @@ describe('officerWishlistSectionHTML sibling-slot dedupe', () => {
     const sandbox = makeSandbox();
     sandbox.DATA = {
       itemIds: { 'Jans Soul Fang': 400 },
+      itemNamesById: { 400: 'Jans Soul Fang' },
       itemSlots: { 'Jans Soul Fang': 'One-Hand' },
       itemPlaceholders: {},
       itemIcons: {},
@@ -93,6 +95,7 @@ describe('officerWishlistSectionHTML sibling-slot dedupe', () => {
     const sandbox = makeSandbox();
     sandbox.DATA = {
       itemIds: { 'Gebbos Bottomless Bag': 322 },
+      itemNamesById: { 322: 'Gebbos Bottomless Bag' },
       itemSlots: { 'Gebbos Bottomless Bag': 'Trinket' },
       itemPlaceholders: {},
       itemIcons: {},

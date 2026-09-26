@@ -694,10 +694,7 @@ function buildDismissedPriorityConflictsHtml(dismissedGroups, dismissedStale, ex
         trackSafe +
         '\')">Restore</button></div>';
     });
-    var itemNameById = {};
-    Object.keys(DATA.itemIds || {}).forEach(function (name) {
-      itemNameById[DATA.itemIds[name]] = name;
-    });
+    var itemNameById = DATA.itemNamesById || {};
     dismissedStale.forEach(function (d) {
       var player = (DATA.roster || []).find(function (p) {
         return p.id === d.player_id;
@@ -1022,11 +1019,7 @@ function buildPriorityNotesTab() {
     return;
   }
 
-  var itemIds = DATA.itemIds || {};
-  var idToName = {};
-  Object.keys(itemIds).forEach(function (name) {
-    idToName[itemIds[name]] = name;
-  });
+  var idToName = DATA.itemNamesById || {};
   var itemSlots = DATA.itemSlots || {};
   var rosterById = {};
   (DATA.roster || []).forEach(function (p) {
@@ -1649,11 +1642,7 @@ function updatePriorityNotesBadge() {
   // Same placeholder-by-identity fix as buildPriorityNotesTab() above -- a
   // real item's disambiguating slot (Finger 1/2, Trinket 1/2, Weapon, Off
   // Hand) is not a placeholder signal, only DATA.itemPlaceholders is.
-  var itemIds = DATA.itemIds || {};
-  var idToName = {};
-  Object.keys(itemIds).forEach(function (name) {
-    idToName[itemIds[name]] = name;
-  });
+  var idToName = DATA.itemNamesById || {};
   var itemPlaceholders = DATA.itemPlaceholders || {};
   var rosterById = {};
   (DATA.roster || []).forEach(function (p) {

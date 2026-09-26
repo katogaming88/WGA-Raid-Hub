@@ -12,6 +12,49 @@ answers to.
 
 ---
 
+## [3.155.0] - 2026-09-24
+
+### Frontend
+
+- The new app’s Wishlist offers a season’s dungeon and crafted items with a
+  small “M+” or “Crafted” tag, a raider can mark one BiS, and it shows in Loot
+  Priority with no rank. Mark Received starts on M+ or Crafted for those
+  items. The current site leaves them out of every list, as it does BoEs
+  ([#1166](https://github.com/katogaming88/WGA-Raid-Hub/issues/1166)).
+- An officer looking at a raider on the current site now sees that raider's
+  dungeon and crafted BiS picks by name, not only the raid ones, and their
+  notes show on the Priority Notes tab. The pickers still leave those items out.
+- Both apps now read the whole item list a page at a time. It is 323 items
+  today and would pass the database's 1000-row cut-off with next season's
+  import, which would have quietly dropped the newest items.
+
+### Backend
+
+- Each item now records where it comes from (raid, dungeon or crafted), and a
+  dungeon or crafted item lists the seasons it is offered in, so a dungeon
+  that returns in a later season needs no edit. Every existing item reads as a
+  raid item. The RCLootCouncil export and the BiS demand count leave out
+  anything that is not from a raid, so M+ and crafted gear never gets a
+  priority number ([#1166](https://github.com/katogaming88/WGA-Raid-Hub/issues/1166)).
+
+### Project
+
+- The read check now also requires reads of the item list to page.
+- Tests for the new item columns and for the export leaving dungeon and
+  crafted items out. The database decisions log gets the entry.
+- A small in-game addon (`scripts/wow/WGA_LootDump`, `/wgaloot`) lists the
+  Mythic loot of the season's M+ dungeons as the Adventure Guide shows it, and
+  `scripts/dungeon-items-sql.js` turns that list into the SQL that adds them
+  to the item catalog. Season 2's 208 dungeon items are saved as the first
+  list (`scripts/season-items/MID2-dungeons.txt`). Wowhead's dungeon pages
+  were wrong in both directions, so the game is the source. The yearly item
+  refresh guide gains the steps. A second command, `/wgacrafts`, lists the
+  gear the professions craft the same way, and the importer keeps only the
+  season's endgame crafted gear (epic, item level 240+). Season 2's 97 crafted
+  items are saved as `scripts/season-items/MID2-crafted.txt`, with Engineering
+  taken from Wowhead because no character had the Midnight skill.
+- The revamp time log gets the 2026-09-24 rows for this work.
+
 ## [3.154.6] - 2026-09-24
 
 ### Frontend

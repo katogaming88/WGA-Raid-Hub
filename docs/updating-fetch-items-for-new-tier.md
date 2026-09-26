@@ -98,6 +98,40 @@ psql service=wga-admin -X -v ON_ERROR_STOP=1 -f data/sql/boe-catalog.sql
 
 The rows cannot ride in a migration: `seed.sql` inserts `items` ids 1 to 3 explicitly after migrations run, so sequence-assigned rows there would break every `supabase db reset` on the primary key. `buildItemMaps()` in `js/common.js` keeps flagged rows out of every existing map, which is what keeps BoEs out of the BiS grid, the wishlist and the Priority tab.
 
+## M+ dungeon items: `WGA_LootDump` and `dungeon-items-sql.js` (#1166)
+
+The season's M+ pool changes every season, and the older dungeons in it keep their old loot with new item levels. Wowhead's zone and boss pages get both wrong (a boss shared with a raid shows the raid's loot, and a dungeon can be missing a boss), so the list comes from the game's own Adventure Guide instead. Every item here is `items.source = 'dungeon'` and has a row in `item_seasons` for each season it is offered in, so it can be wishlisted and marked received but is never ranked or exported to RCLootCouncil.
+
+1. Edit `DUNGEONS` at the top of `scripts/wow/WGA_LootDump/WGA_LootDump.lua` to the new season's pool (names as the Adventure Guide spells them; Raider.IO lists the pool). Copy the folder into `Interface/AddOns/`. It also works on the PTR, so the list can be ready before the season starts; run it again once the season is live, since PTR loot can change.
+2. In game, open the Adventure Guide once, then type `/wgaloot`. It waits for every item name to load, then opens a window: Ctrl+A, Ctrl+C.
+3. Save the text as `scripts/season-items/<SEASON>-dungeons.txt`, with a first line `-- season: <SEASON>` (the code from `seasons`, for example `MID3`). Check the "rows" line under each boss against the Adventure Guide: a "no slot" row is a mount, recipe or decor and is skipped.
+4. `node scripts/dungeon-items-sql.js scripts/season-items/<SEASON>-dungeons.txt` reads each gear item's icon and writes `data/sql/dungeon-items.sql` (gitignored). It is safe to run twice, and a dungeon that returns from an earlier season needs nothing extra: an item already in the catalog is kept and only gets the new season. If an item clashes with another catalog row on name, the whole run stops and is undone, naming the item.
+5. Apply it by hand at a checkpoint, then run the stats step below for the new ids:
+
+```
+psql service=wga-admin -X -v ON_ERROR_STOP=1 -f data/sql/dungeon-items.sql
+```
+
+The season row must exist first (`item_seasons.season` is a foreign key to `seasons`).
+
+### Crafted gear
+
+Crafted armor, weapons and jewelry work the same way, with a second command in the same addon. Crafted gear carries over between seasons, so a new season mostly adds pairs for items already in the catalog.
+
+1. In game, open each crafting profession window once (Blacksmithing, Leatherworking, Tailoring, Jewelcrafting, Engineering, Inscription, Enchanting). Each opening notes that profession's recipes filed under the expansion. A character has only two professions, so visit each alt in turn: the notes are saved for the whole account between logins.
+2. Type `/wgacrafts`. The window ends with a count per profession, so a profession you skipped, or one that opened empty (a character without that profession's current skill line), is easy to spot. Open the missing one on a character that has it and run `/wgacrafts` again; it keeps what it has already seen until `/wgacrafts reset`.
+3. Save the text as `scripts/season-items/<SEASON>-crafted.txt` with these first lines, then run the importer on it as above:
+
+```
+-- season: <SEASON>
+-- source: crafted
+-- min quality: 4
+-- min item level: 240
+```
+
+   The profession windows also list leveling gear, cosmetic cloaks, fishing hats and the PvP sets. The two `min` lines keep the importer to epic gear at or above the season's crafted item level; raise or lower 240 to the new season's endgame crafted level (the importer prints what it left out, so check that list). The importer reads each item's quality and level from Wowhead, and stops rather than guess if it cannot.
+4. A profession nobody could open (Season 2: Engineering, no character with the Midnight skill) can be filled from Wowhead instead: its skill page (`wowhead.com/skill=202` for Engineering) has a crafted-items list. For the six professions collected in game, that list matched the game item for item in Season 2 (epic quality, item level 240+), so the same filter on it is a safe stand-in. Add those rows by hand in the same format, with a comment saying where they came from.
+
 ## Fetching secondary stats, main stats, and weapon subtype (#560, #609)
 
 Once the new tier's rows exist in `items`, run `scripts/fetch-item-stats.js` to backfill `secondary_stats` (which of Crit/Haste/Mastery/Vers the item rolls, used by the Priority tab), `main_stats` (which of Strength/Agility/Intellect the item scales with, used by the Wishlist/BiS-grid Trinket/Weapon/Off Hand filter), and `weapon_subtype` (e.g. 'Sword'/'Staff'/'Shield', used by the same filter's `CLASS_WEAPON_TYPES`/`CLASS_SHIELD_USERS` class-eligibility check, #609) -- all three come from the same Blizzard/Wowhead calls, no extra fetches needed:

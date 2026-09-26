@@ -44,6 +44,8 @@ item_preferences,Claude readers read item_preferences,claude_readers,SELECT,PERM
 item_preferences,Officers clear item_preferences note,public,UPDATE,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 item_preferences,Officers read item_preferences,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin) OR ( SELECT is_guild_officer() AS is_guild_officer)),
 item_preferences,Raiders manage own item_preferences,public,ALL,PERMISSIVE,(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])),(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))
+item_seasons,Claude readers read item_seasons,claude_readers,SELECT,PERMISSIVE,true,
+item_seasons,Public read item_seasons,public,SELECT,PERMISSIVE,true,
 items,Claude readers read items,claude_readers,SELECT,PERMISSIVE,true,
 items,Public read items,public,SELECT,PERMISSIVE,true,
 main_swap_requests,Claude readers read main swap requests,claude_readers,SELECT,PERMISSIVE,true,
