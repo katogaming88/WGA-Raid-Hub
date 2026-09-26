@@ -555,37 +555,29 @@ describe('the wishlist key carries the season (#936)', () => {
   });
 });
 
-// A tripwire, not a behaviour, replacing the one this change retires. The key
-// used to be what kept every officer-side reader of item_preferences correct
-// without any of them naming a season: a raider could hold one row per item and
-// slot, so a read of "their rows for this item" could only ever be the tier in
-// play. Widening the key ends that, and two readers still take every row a
-// raider holds:
+// A tripwire, not a behaviour. The key used to be what kept every officer-side
+// reader of item_preferences correct without any of them naming a season: a
+// raider could hold one row per item and slot, so a read of "their rows for
+// this item" could only ever be the tier in play. Widening the key ended that.
 //
-//   generate_priority_order() picks the strongest status across them, so a BiS
-//   mark left in another tier makes a raider a candidate for this one even when
-//   their row here says pass, at the top of the order.
-//   wishlist_setup_status() counts them, so a slot filled in another tier reads
-//   as filled here and the raider is not chased for it.
+// 20260926143632 put the season on the two priority readers, so what is left
+// here is the demand side:
+//
+//   wishlist_setup_status() counts every row, so a slot filled in another tier
+//   reads as filled here and the raider is not chased for it.
 //
 // Reaching that no longer needs a tier after MID2: an officer can pin Season
 // View to MID1 and open that tier's wishlist switch, which set_team_season()
 // still allows for an ended tier. The seasons check below is the coarse half of
 // the guard, kept because a new tier is how this arrives in the ordinary course.
-// #936's remaining piece puts the season on both readers, and deletes this.
-describe('the priority readers still ignore the season (#936)', () => {
-  it('generate_priority_order() reads a raider picks from every season', async () => {
-    await withTxn(async ({ q }) => {
-      const def = await q(
-        "select pg_get_functiondef(oid) as def from pg_proc where proname = 'generate_priority_order'"
-      );
-      expect(
-        def.rows[0].def,
-        'generate_priority_order() filters picks by season now: delete this tripwire'
-      ).not.toMatch(/ip\.season/);
-    });
-  });
-
+// #1268 puts the season on this reader and on bis_demand_vs_awards, and deletes
+// both cases.
+//
+// The needle is only as good as the spelling the fixed code happens to use: it
+// is matchable here because this function aliases the table, and it never could
+// have matched build_rclc_export(), which reads it unaliased and had the same
+// bug. A guard over the text of one function says nothing about its siblings.
+describe('the setup status still ignores the season (#1268)', () => {
   it('wishlist_setup_status() counts picks from every season', async () => {
     await withTxn(async ({ q }) => {
       const def = await q("select pg_get_functiondef(oid) as def from pg_proc where proname = 'wishlist_setup_status'");
@@ -602,7 +594,7 @@ describe('the priority readers still ignore the season (#936)', () => {
       );
       expect(
         later.rows.map((r) => r.code),
-        "a tier after MID2 needs #936's season filter on the priority readers first"
+        "a tier after MID2 needs #1268's season filter on the setup status first"
       ).toEqual([]);
     });
   });
