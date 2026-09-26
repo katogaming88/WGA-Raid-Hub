@@ -292,6 +292,16 @@ describe('Profile page', () => {
     expect(screen.queryByText('Also on Wrathless')).not.toBeInTheDocument();
   });
 
+  it('asks for the other teams once per team, not once per raider', async () => {
+    const rpc = vi.fn(profileHandlers(person('officer', null)).rpc!);
+    const { router } = renderApp('/g/wga/t/phoenix/p/tb000011', { ...profileHandlers(person('officer', null)), rpc });
+    await screen.findByRole('heading', { level: 1, name: 'Raz' });
+    await router.navigate('/g/wga/t/phoenix/p/tb000012');
+    await waitFor(() => expect(router.state.location.pathname).toBe('/g/wga/t/phoenix/p/tb000012'));
+    await screen.findByRole('heading', { level: 1, name: 'Raz' });
+    expect(rpc.mock.calls.filter(([name]) => name === 'also_on_teams')).toHaveLength(1);
+  });
+
   it('never asks for the other teams on a raider’s own profile', async () => {
     const rpc = vi.fn(profileHandlers(person('raider', 11)).rpc!);
     renderApp('/g/wga/t/phoenix/me', { ...profileHandlers(person('raider', 11)), rpc });

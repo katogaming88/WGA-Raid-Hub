@@ -25,7 +25,9 @@ answers to.
 - The new app's profile shows an officer an "Also on Hellfire Rollers" tag when
   the raider is also on another team, and nothing else from that team (#486).
   Raiders see no such tag. Tests, the RLS reference and the decision log are
-  updated with it.
+  updated with it. The other-teams read is cached once per team rather than once
+  per raider, so clicking through a roster makes one request. The loot priority
+  card is now titled "BiS List & Loot priority".
 
 ## [3.155.2] - 2026-09-25
 

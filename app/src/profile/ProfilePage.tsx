@@ -231,8 +231,10 @@ function Profile({
   // (Kat, 2026-09-15): an old main on this team, or a team they left.
   const { teams } = useAddress();
   const earlier = useEarlierLoot(teamId, season.isSuccess ? season.data : null, true);
-  const alsoOn = useAlsoOnTeams(teamId, player.id, officerView);
-  const alsoOnNames = alsoOn.isSuccess ? alsoOn.data : [];
+  const alsoOn = useAlsoOnTeams(teamId, officerView);
+  const alsoOnNames = alsoOn.isSuccess
+    ? alsoOn.data.filter((r) => r.player_id === player.id).map((r) => r.team_name)
+    : [];
   const refusal = useMplusRefusal(teamId, player.id, (officerView || own) && !player.m_plus_excluded);
   const requests = useRequestSettings(teamId);
 
