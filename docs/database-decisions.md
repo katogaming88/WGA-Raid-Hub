@@ -2243,3 +2243,28 @@ The catalog held raid loot only, so the new app's wishlist could only offer the 
 **Crafted quality is not a column.** Mark Received keeps the Champion, Hero or Myth track for a crafted piece, read as the crest level it was crafted at. Raiders already do this (44 of 51 crafted receipts on prod say Myth), so `self_received_requests` does not change.
 
 [Full discussion -> #1166](https://github.com/katogaming88/WGA-Raid-Hub/issues/1166).
+
+## #1185 -- the app preview stays on the live database, and testers work in a sandbox team
+
+Decided 2026-09-26. No migration in this entry; the sandbox team is filed as its own issue.
+
+The preview at `wga-raid-hub-app.pages.dev` reads and writes the production database, and from Revamp 3 its officer buttons are real actions. The options were a second Supabase project (Option 1), a read-only preview (Option 2), or one project with testers told (Option 3).
+
+**Chosen: Option 3, with a sandbox team.** The preview keeps the one production database. Testers do not test on Phoenix, Hellfire Rollers, Immolation or Wrathless. They test on a separate team created for the purpose, seeded with a copy of one real team's roster, loot and calendar, and holding officer access to that team only.
+
+**Why not a second project.** A second hosted project means a second migrate job that can fail on its own, the Battle.net custom provider, Discord provider, redirect URLs and every function secret set up again by hand, and its own seed data, for a tester list of a few people Kat invited. The cost is ongoing and lands on Kat and Rex.
+
+**Why not read-only.** Revamp 3 is officer tools that write. A preview that cannot write cannot be used to review them, and raiders' RSVPs and preferences that already save there would stop.
+
+**Why the sandbox team is enough.** Every write is enforced by team-scoped Row Level Security, so an officer of the sandbox team cannot change another team's rows. The tester accounts must be officers of the sandbox team only: not guild officers (`is_guild_officer()`), not site admins, and not officers of a real team.
+
+**What the sandbox team has to do to be safe** (these are the acceptance points of the follow-up issue, not assumed):
+
+- Hidden from the team switcher and the guild pages, like Wrathless, so raiders never land on it.
+- Its own Discord notices go to a test channel or nowhere; nothing it does posts to a real team's channel.
+- Copied characters do not show as "also on" a second real team (#486) or double-count in guild-wide reads.
+- Its data is re-seedable, so a wrecked sandbox is reset rather than repaired.
+
+**Still true.** The preview is on the live database. Anything a tester does outside the sandbox team is a real edit, and `docs/app-preview.md` says so.
+
+[Full discussion -> #1185](https://github.com/katogaming88/WGA-Raid-Hub/issues/1185).

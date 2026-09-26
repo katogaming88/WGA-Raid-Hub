@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.156.2] - 2026-09-26
+
+### Project
+
+- Decided #1185: the app preview stays on the live database and testers work in a sandbox team. Decision logged in `docs/database-decisions.md`; `docs/app-preview.md` no longer says the app "mostly reads".
+
 ## [3.156.1] - 2026-09-26
 
 ### Project
