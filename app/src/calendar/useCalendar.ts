@@ -1,4 +1,4 @@
-import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
+import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import type { Answer, ScheduleChange, ScheduleRule } from './calendar';
 import {
@@ -22,6 +22,7 @@ const orNull = (value: string | null) => value as string;
 // The team's weekly raid nights: one row per night of the week.
 export function useSchedule(teamId: number) {
   return useSupabaseQuery<ScheduleRule[]>(['calendar-schedule', teamId], (client) =>
+    // team-read-guard: one row per raid night of the week
     client
       .from('raid_schedule')
       .select('weekday, start_time, duration_minutes, is_optional')
@@ -34,6 +35,7 @@ export function useSchedule(teamId: number) {
 // One-off changes (a cancelled night, an extra one) between two dates.
 export function useScheduleChanges(teamId: number, from: string, to: string) {
   return useSupabaseQuery<ScheduleChange[]>(['calendar-changes', teamId, from, to], (client) =>
+    // team-read-guard: one-off changes inside a date window, a few a month
     client
       .from('raid_schedule_exceptions')
       .select('raid_date, exception_type, start_time, duration_minutes, is_optional, note')
@@ -55,19 +57,24 @@ export const answersKey = (teamId: number) => ['calendar-answers', teamId] as co
 async function readAnswers(client: Client, teamId: number, from: string, to: string, access: AnswerAccess) {
   if (access.kind === 'none') return { data: [] as Answer[], error: null };
   if (access.kind === 'officer') {
-    const { data, error } = await client
-      .from('raid_rsvps')
-      .select('player_id, raid_date, status, note, updated_at')
-      .eq('team_id', teamId)
-      .gte('raid_date', from)
-      .lte('raid_date', to)
-      .order('raid_date');
+    const { data, error } = await readAll<Answer>((start, end) =>
+      client
+        .from('raid_rsvps')
+        .select('player_id, raid_date, status, note, updated_at')
+        .eq('team_id', teamId)
+        .gte('raid_date', from)
+        .lte('raid_date', to)
+        .order('raid_date')
+        .order('player_id')
+        .range(start, end)
+    );
     return { data: (data ?? []) as Answer[], error };
   }
   const [team, own] = await Promise.all([
     client.rpc('team_rsvp_answers', { p_team_id: teamId, p_from: from, p_to: to }),
     access.playerIds.length
-      ? client
+      ? // team-read-guard: the signed-in user's own characters over a date window
+        client
           .from('raid_rsvps')
           .select('player_id, raid_date, note')
           .eq('team_id', teamId)
@@ -207,12 +214,14 @@ export type NightPlan = { bosses: NightBossRow[]; places: PlaceRow[] };
 export function useNightPlan(teamId: number, date: string) {
   return useSupabaseQuery<NightPlan>([...lineupKey(teamId), 'night', date], async (client) => {
     const [bosses, places] = await Promise.all([
+      // team-read-guard: one raid night, one row per boss
       client
         .from('raid_night_bosses')
         .select('raid_date, encounter_id, position, skipped, confirmed_at')
         .eq('team_id', teamId)
         .eq('raid_date', date)
         .order('position'),
+      // team-read-guard: one raid night, one row per boss and raider in the lineup, a few hundred at most
       client
         .from('raid_night_lineups')
         .select('encounter_id, player_id')
@@ -233,6 +242,7 @@ export function useNightPlan(teamId: number, date: string) {
 // groups page can name someone who left the roster but is still in a group.
 export function useBossGroups(teamId: number) {
   return useSupabaseQuery<LeaverRow[]>([...lineupKey(teamId), 'groups'], (client) =>
+    // team-read-guard: one row per boss and raider in the usual groups, a few hundred at most
     client
       .from('boss_groups')
       .select('encounter_id, player_id, player:players(name_realm, nickname)')
@@ -244,6 +254,7 @@ export function useBossGroups(teamId: number) {
 // Every boss on the team's coming raid nights, for what a group save changes.
 export function useComingNights(teamId: number, today: string) {
   return useSupabaseQuery<ComingBossRow[]>([...lineupKey(teamId), 'coming', today], (client) =>
+    // team-read-guard: coming nights that already have a boss plan, one row per boss
     client
       .from('raid_night_bosses')
       .select('raid_date, encounter_id, skipped, confirmed_at')

@@ -32,6 +32,7 @@ export function useRaidProgression(teamId: number) {
     async (client) => {
       const [settings, progress] = await Promise.all([
         client.from('team_settings').select('raids:config->raidProgression').eq('team_id', teamId).maybeSingle(),
+        // team-read-guard: one row per raid boss
         client
           .from('team_raid_progress')
           .select(
@@ -62,7 +63,9 @@ export function useCalendarMonth(teamId: number, year: number, month: number, my
     ['calendar-month', teamId, first, myPlayerIds],
     async (client) => {
       const [schedule, exceptions, mine] = await Promise.all([
+        // team-read-guard: one row per raid night of the week
         client.from('raid_schedule').select('weekday, is_optional').eq('team_id', teamId).eq('active', true),
+        // team-read-guard: one-off changes inside one month
         client
           .from('raid_schedule_exceptions')
           .select('raid_date, exception_type, is_optional')
@@ -70,7 +73,8 @@ export function useCalendarMonth(teamId: number, year: number, month: number, my
           .gte('raid_date', first)
           .lte('raid_date', last),
         myPlayerIds.length
-          ? client
+          ? // team-read-guard: the signed-in user's own characters over one month
+            client
               .from('raid_rsvps')
               .select('raid_date, status')
               .eq('team_id', teamId)

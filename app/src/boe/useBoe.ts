@@ -6,7 +6,9 @@ import type { BoeCatalogRow, BoeItemRow, BoeListingRow } from './boe';
 // missing from the catalog can't be reported until the catalog gains one.
 export function useBoeCatalog() {
   return useSupabaseQuery<BoeCatalogRow[]>(['boe-catalog'], (client) =>
-    client.from('items').select('id, name, wcl_zone_id').eq('is_boe', true)
+    readAll<BoeCatalogRow>((from, to) =>
+      client.from('items').select('id, name, wcl_zone_id').eq('is_boe', true).order('id').range(from, to)
+    )
   );
 }
 

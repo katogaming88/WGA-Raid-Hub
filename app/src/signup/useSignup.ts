@@ -52,6 +52,7 @@ export function useRoleTargets(teamId: number) {
 // Same view, same cache-friendly shape otherwise.
 export function useIncomingWithSwap(teamId: number) {
   return useSupabaseQuery<IncomingSignupRow[]>(['incoming-roster-swap', teamId], async (client) => {
+    // team-read-guard: signups not on the roster yet, dozens at most
     const { data, error } = await client
       .from('incoming_roster')
       .select('signup_name_realm, class, spec, role, swap_from_name_realm')

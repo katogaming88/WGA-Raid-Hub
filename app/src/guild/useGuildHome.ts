@@ -84,6 +84,7 @@ export function useGuildOfficers() {
 async function waiting(client: Client, teamId: number) {
   const count = { count: 'exact', head: true } as const;
   const [reviews, signups, boe] = await Promise.all([
+    // team-read-guard: three count-only reads (head: true through the shared count const)
     client.from('self_received_requests').select('id', count).eq('team_id', teamId).eq('status', 'pending'),
     client.from('season_signups').select('id', count).eq('team_id', teamId).eq('status', 'pending'),
     client.from('boe_items').select('id', count).eq('team_id', teamId).eq('status', 'found')

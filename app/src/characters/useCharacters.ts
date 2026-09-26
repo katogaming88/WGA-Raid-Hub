@@ -40,6 +40,7 @@ export function useTeamAlts(teamId: number, enabled: boolean) {
   return useSupabaseQuery<{ personByMember: Map<number, number>; characters: SavedCharacter[] }>(
     ['team-alts', teamId],
     async (client) => {
+      // team-read-guard: one row per raider on the team (80 on the largest)
       const members = await client.from('team_members').select('id, person_id').eq('team_id', teamId);
       if (members.error) return { data: null, error: members.error };
       const rows = (members.data ?? []) as { id: number; person_id: number }[];

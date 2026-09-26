@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.156.5] - 2026-09-26
+
+### Project
+
+- New app: a check (`app/src/data/teamReadGuard.test.ts`) fails any team-wide read that does not go through `readAll`, with the same exemptions as the current site's check and the same `// team-read-guard: <reason>` note for a read that stays small (#1183). The BoE item catalog, officer RSVPs on the calendar and the priority-order read now page, so none of them can silently stop at 1000 rows. The other 21 team reads each carry a note saying why they stay small. Nothing changes on screen.
+
 ## [3.156.4] - 2026-09-26
 
 ### Project

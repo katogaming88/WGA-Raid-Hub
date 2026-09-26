@@ -6,6 +6,7 @@ import type { GearRow, IncomingRow, PlayerRow } from './roster';
 // The active roster, one row per character (80 on the largest team).
 export function useRosterPlayers(teamId: number) {
   return useSupabaseQuery<PlayerRow[]>(['roster', teamId], (client) =>
+    // team-read-guard: one row per active character (80 on the largest team)
     client
       .from('players')
       .select(
@@ -36,6 +37,7 @@ export function useRosterGear(teamId: number) {
 // season that are not on the roster yet, and the name of that season.
 export function useIncomingRoster(teamId: number) {
   return useSupabaseQuery<IncomingRow[]>(['incoming-roster', teamId], (client) =>
+    // team-read-guard: signups not on the roster yet, dozens at most
     client.from('incoming_roster').select('signup_id, signup_name_realm, class, spec, role').eq('team_id', teamId)
   );
 }
@@ -44,6 +46,7 @@ export function useIncomingRoster(teamId: number) {
 // the switch on, newest first, as codes. No row means closed (#939).
 export function useSignupSeasons(teamId: number) {
   return useSupabaseQuery<string[]>(['signup-seasons', teamId], async (client) => {
+    // team-read-guard: one row per season the team has, a handful
     const { data, error } = await client
       .from('team_seasons')
       .select('season_code, seasons(starts_at)')
