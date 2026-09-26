@@ -44,7 +44,7 @@ describe('check_priority_order_drift', () => {
       await q('delete from public.self_received_requests where id = 2');
       // Both players need a wishlist tag to be candidates.
       await q(
-        "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'bis'), (1, 2, 1, 'bis')"
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 1, 1, 'bis', '${SEASON}'), (1, 2, 1, 'bis', '${SEASON}')`
       );
       await seedScoring(q, 1, 100, 100);
       await seedScoring(q, 2, 50, 50);
@@ -65,7 +65,7 @@ describe('check_priority_order_drift', () => {
       // both players need their wishlist tag to be candidates.
       await q('delete from public.self_received_requests where id = 2');
       await q(
-        "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'bis'), (1, 2, 1, 'bis')"
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 1, 1, 'bis', '${SEASON}'), (1, 2, 1, 'bis', '${SEASON}')`
       );
       await seedScoring(q, 1, 100, 100);
       await seedScoring(q, 2, 50, 50);
@@ -92,7 +92,7 @@ describe('check_priority_order_drift', () => {
         "insert into public.players (id, team_id, name_realm, class_spec_id) values (101, 1, 'Thirdrunner-Illidan', 1)"
       );
       await q(
-        "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 2, 'bis'), (1, 2, 2, 'bis'), (1, 101, 2, 'bis')"
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 1, 2, 'bis', '${SEASON}'), (1, 2, 2, 'bis', '${SEASON}'), (1, 101, 2, 'bis', '${SEASON}')`
       );
       await seedScoring(q, 1, 100, 100);
       await seedScoring(q, 2, 90, 90);

@@ -52,7 +52,9 @@ describe('generate_priority_order wishlist integration', () => {
   it('a raider who tagged an item is a candidate', async () => {
     await withTxn(async ({ q, asUser }) => {
       await seedScoring(q, 2, 100, 100);
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, 2, 'good')");
+      await q(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 2, 2, 'good', '${SEASON}')`
+      );
 
       const res = await generate(asUser, 2);
       const row = res.rows.find((r) => r.player_id === 2);
@@ -65,7 +67,9 @@ describe('generate_priority_order wishlist integration', () => {
   it('a raider tagged BiS gets the 1.0 multiplier', async () => {
     await withTxn(async ({ q, asUser }) => {
       await seedScoring(q, 2, 100, 100);
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, 2, 'bis')");
+      await q(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 2, 2, 'bis', '${SEASON}')`
+      );
       const res = await generate(asUser, 2);
       const row = res.rows.find((r) => r.player_id === 2);
       expect(row.weighted_total).toBe('100.0');
@@ -76,7 +80,9 @@ describe('generate_priority_order wishlist integration', () => {
   it('OK applies the 0.60 multiplier', async () => {
     await withTxn(async ({ q, asUser }) => {
       await seedScoring(q, 2, 100, 100);
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, 2, 'ok')");
+      await q(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 2, 2, 'ok', '${SEASON}')`
+      );
       const res = await generate(asUser, 2);
       const row = res.rows.find((r) => r.player_id === 2);
       expect(row.weighted_total).toBe('60.0');
@@ -87,7 +93,9 @@ describe('generate_priority_order wishlist integration', () => {
   it('Catalyst Only applies the 0.75 multiplier', async () => {
     await withTxn(async ({ q, asUser }) => {
       await seedScoring(q, 2, 100, 100);
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, 2, 'catalyst')");
+      await q(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 2, 2, 'catalyst', '${SEASON}')`
+      );
       const res = await generate(asUser, 2);
       const row = res.rows.find((r) => r.player_id === 2);
       expect(row.weighted_total).toBe('75.0');
@@ -102,7 +110,9 @@ describe('generate_priority_order wishlist integration', () => {
       // delete the case passes whatever the rule under test does.
       await q('delete from public.self_received_requests where id = 2');
       await seedScoring(q, 1, 100, 100);
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'pass')");
+      await q(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 1, 1, 'pass', '${SEASON}')`
+      );
       const res = await generate(asUser, 1);
       expect(res.rows.find((r) => r.player_id === 1)).toBeFalsy();
     });
@@ -129,7 +139,7 @@ describe('generate_priority_order slot-aware wishlist matching (#623/#673 follow
     await withTxn(async ({ q, asUser }) => {
       await seedScoring(q, 2, 100, 100);
       await q(
-        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 2, 2, 'good', 'Weapon')"
+        `insert into public.item_preferences (team_id, player_id, item_id, status, slot, season) values (1, 2, 2, 'good', 'Weapon', '${SEASON}')`
       );
       const res = await generate(asUser, 2);
       const row = res.rows.find((r) => r.player_id === 2);
@@ -149,7 +159,7 @@ describe('generate_priority_order slot-aware wishlist matching (#623/#673 follow
       // Pass on an explicit-slot row excludes them, same as the legacy
       // slot=null case above.
       await q(
-        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 1, 1, 'pass', 'Off Hand')"
+        `insert into public.item_preferences (team_id, player_id, item_id, status, slot, season) values (1, 1, 1, 'pass', 'Off Hand', '${SEASON}')`
       );
       const res = await generate(asUser, 1);
       expect(res.rows.find((r) => r.player_id === 1)).toBeFalsy();
@@ -160,10 +170,10 @@ describe('generate_priority_order slot-aware wishlist matching (#623/#673 follow
     await withTxn(async ({ q, asUser }) => {
       await seedScoring(q, 2, 100, 100);
       await q(
-        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 2, 2, 'bis', 'Weapon')"
+        `insert into public.item_preferences (team_id, player_id, item_id, status, slot, season) values (1, 2, 2, 'bis', 'Weapon', '${SEASON}')`
       );
       await q(
-        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 2, 2, 'pass', 'Off Hand')"
+        `insert into public.item_preferences (team_id, player_id, item_id, status, slot, season) values (1, 2, 2, 'pass', 'Off Hand', '${SEASON}')`
       );
       const res = await generate(asUser, 2);
       const row = res.rows.find((r) => r.player_id === 2);
@@ -177,10 +187,10 @@ describe('generate_priority_order slot-aware wishlist matching (#623/#673 follow
     await withTxn(async ({ q, asUser }) => {
       await seedScoring(q, 2, 100, 100);
       await q(
-        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 2, 2, 'pass', 'Weapon')"
+        `insert into public.item_preferences (team_id, player_id, item_id, status, slot, season) values (1, 2, 2, 'pass', 'Weapon', '${SEASON}')`
       );
       await q(
-        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 2, 2, 'pass', 'Off Hand')"
+        `insert into public.item_preferences (team_id, player_id, item_id, status, slot, season) values (1, 2, 2, 'pass', 'Off Hand', '${SEASON}')`
       );
       const res = await generate(asUser, 2);
       expect(res.rows.find((r) => r.player_id === 2)).toBeFalsy();
@@ -191,10 +201,10 @@ describe('generate_priority_order slot-aware wishlist matching (#623/#673 follow
     await withTxn(async ({ q, asUser }) => {
       await seedScoring(q, 2, 100, 100);
       await q(
-        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 2, 2, 'ok', 'Weapon')"
+        `insert into public.item_preferences (team_id, player_id, item_id, status, slot, season) values (1, 2, 2, 'ok', 'Weapon', '${SEASON}')`
       );
       await q(
-        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 2, 2, 'good', 'Off Hand')"
+        `insert into public.item_preferences (team_id, player_id, item_id, status, slot, season) values (1, 2, 2, 'good', 'Off Hand', '${SEASON}')`
       );
       const res = await generate(asUser, 2);
       const row = res.rows.find((r) => r.player_id === 2);
@@ -222,7 +232,7 @@ describe('generate_priority_order wishlist status is a hard tier, not just a sco
       await seedScoring(q, 1, 20, 20); // player 1: BiS, low score
       await seedScoring(q, 2, 100, 100); // player 2: Good, high score
       await q(
-        "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'bis'), (1, 2, 1, 'good')"
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 1, 1, 'bis', '${SEASON}'), (1, 2, 1, 'good', '${SEASON}')`
       );
 
       const res = await generate(asUser, 1);
@@ -237,8 +247,12 @@ describe('generate_priority_order wishlist status is a hard tier, not just a sco
     await withTxn(async ({ q, asUser }) => {
       await seedScoring(q, 1, 50, 50);
       await seedScoring(q, 2, 100, 100);
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 2, 'ok')");
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, 2, 'catalyst')");
+      await q(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 1, 2, 'ok', '${SEASON}')`
+      );
+      await q(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 2, 2, 'catalyst', '${SEASON}')`
+      );
 
       const res = await generate(asUser, 2);
       const order = res.rows.map((r) => r.player_id);
@@ -250,8 +264,12 @@ describe('generate_priority_order wishlist status is a hard tier, not just a sco
     await withTxn(async ({ q, asUser }) => {
       await seedScoring(q, 1, 10, 10);
       await seedScoring(q, 2, 100, 100);
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 2, 'good')");
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, 2, 'ok')");
+      await q(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 1, 2, 'good', '${SEASON}')`
+      );
+      await q(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 2, 2, 'ok', '${SEASON}')`
+      );
 
       const res = await generate(asUser, 2);
       const order = res.rows.map((r) => r.player_id);

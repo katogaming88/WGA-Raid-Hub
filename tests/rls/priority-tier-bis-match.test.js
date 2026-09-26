@@ -58,15 +58,17 @@ describe('generate_priority_order tier-token bis_match ranking', () => {
       // Player 201: 0/5 pieces (tier_rank 2 -- becomes 1/5, no bonus) but
       // tagged this token as actual BiS.
       await seedPlayer(q, { id: 201, tierPiecesEquipped: 0 });
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 201, $1, 'bis')", [
-        TOKEN_ITEM_ID
-      ]);
+      await q(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 201, $1, 'bis', '${SEASON}')`,
+        [TOKEN_ITEM_ID]
+      );
       // Player 202: 1/5 pieces (tier_rank 1 -- becomes 2/5, the 2pc bonus,
       // objectively the best tier_rank) but only tagged this token Good.
       await seedPlayer(q, { id: 202, tierPiecesEquipped: 1 });
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 202, $1, 'good')", [
-        TOKEN_ITEM_ID
-      ]);
+      await q(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 202, $1, 'good', '${SEASON}')`,
+        [TOKEN_ITEM_ID]
+      );
 
       const res = await generate(asUser, TOKEN_ITEM_ID);
       const idx = (id) => res.rows.findIndex((r) => r.player_id === id);
@@ -80,13 +82,15 @@ describe('generate_priority_order tier-token bis_match ranking', () => {
     await withTxn(async ({ q, asUser }) => {
       await seedTierToken(q);
       await seedPlayer(q, { id: 221, tierPiecesEquipped: 1 }); // -> 2/5, rank 1
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 221, $1, 'bis')", [
-        TOKEN_ITEM_ID
-      ]);
+      await q(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 221, $1, 'bis', '${SEASON}')`,
+        [TOKEN_ITEM_ID]
+      );
       await seedPlayer(q, { id: 222, tierPiecesEquipped: 3 }); // -> 4/5, rank 3
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 222, $1, 'bis')", [
-        TOKEN_ITEM_ID
-      ]);
+      await q(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 222, $1, 'bis', '${SEASON}')`,
+        [TOKEN_ITEM_ID]
+      );
 
       const res = await generate(asUser, TOKEN_ITEM_ID);
       const idx = (id) => res.rows.findIndex((r) => r.player_id === id);
@@ -98,9 +102,13 @@ describe('generate_priority_order tier-token bis_match ranking', () => {
     await withTxn(async ({ q, asUser }) => {
       // Seed Test Robe (item 2) has no tier_token_map row.
       await seedPlayer(q, { id: 231 });
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 231, 2, 'good')");
+      await q(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 231, 2, 'good', '${SEASON}')`
+      );
       await seedPlayer(q, { id: 232 });
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 232, 2, 'bis')");
+      await q(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 232, 2, 'bis', '${SEASON}')`
+      );
 
       const res = await generate(asUser, 2);
       // Both remain candidates; ordering here falls back to score (both

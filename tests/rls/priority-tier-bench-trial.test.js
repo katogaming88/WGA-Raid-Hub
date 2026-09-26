@@ -44,10 +44,10 @@ async function seedPlayer(
     'insert into public.players (id, team_id, name_realm, class_spec_id, is_bench, is_trial, is_rotator) values ($1, 1, $2, $3, $4, $5, $6)',
     [id, `Seedplayer${id}-Illidan`, specId.rows[0].id, isBench, isTrial, isRotator]
   );
-  await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, $1, $2, 'bis')", [
-    id,
-    ITEM_ID
-  ]);
+  await q(
+    `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, $1, $2, 'bis', '${SEASON}')`,
+    [id, ITEM_ID]
+  );
   await q(
     'insert into public.scoring (player_id, team_id, season, performance_score, attendance_score) values ($1, 1, $2, $3, $4)',
     [id, SEASON, performance, attendance]

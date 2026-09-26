@@ -68,12 +68,14 @@ async function seedScoring(q, playerId, performance, attendance) {
 }
 
 async function seedBoth1And2Bis(q, itemId) {
-  await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, $1, 'bis')", [
-    itemId
-  ]);
-  await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, $1, 'bis')", [
-    itemId
-  ]);
+  await q(
+    `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 1, $1, 'bis', '${SEASON}')`,
+    [itemId]
+  );
+  await q(
+    `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 2, $1, 'bis', '${SEASON}')`,
+    [itemId]
+  );
 }
 
 // item_id 999900+ throughout: a DIFFERENT item than the one being generated,
@@ -104,10 +106,10 @@ async function seedThirdCandidate(q, itemId) {
     spec.rows[0].id
   ]);
   await seedScoring(q, THIRD_PLAYER_ID, 100, 100);
-  await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, $1, $2, 'bis')", [
-    THIRD_PLAYER_ID,
-    itemId
-  ]);
+  await q(
+    `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, $1, $2, 'bis', '${SEASON}')`,
+    [THIRD_PLAYER_ID, itemId]
+  );
 }
 
 async function twoCandidates(q, itemId) {

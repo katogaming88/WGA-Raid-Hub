@@ -57,12 +57,14 @@ async function seedScoring(q, playerId, performance, attendance) {
 }
 
 async function seedBoth1And2Bis(q) {
-  await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, $1, 'bis')", [
-    TARGET_ITEM_ID
-  ]);
-  await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, $1, 'bis')", [
-    TARGET_ITEM_ID
-  ]);
+  await q(
+    `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 1, $1, 'bis', '${SEASON}')`,
+    [TARGET_ITEM_ID]
+  );
+  await q(
+    `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 2, $1, 'bis', '${SEASON}')`,
+    [TARGET_ITEM_ID]
+  );
 }
 
 function generate(asUser, itemId = TARGET_ITEM_ID, track = 'Hero') {
@@ -136,12 +138,14 @@ describe('generate_priority_order avg_existing_rank tiebreaker', () => {
       await seedItems(q);
       await seedScoring(q, 1, 100, 100);
       await seedScoring(q, 2, 100, 100);
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, $1, 'bis')", [
-        TARGET_ITEM_ID
-      ]);
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, $1, 'good')", [
-        TARGET_ITEM_ID
-      ]);
+      await q(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 1, $1, 'bis', '${SEASON}')`,
+        [TARGET_ITEM_ID]
+      );
+      await q(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 2, $1, 'good', '${SEASON}')`,
+        [TARGET_ITEM_ID]
+      );
       // Heavily load down the BiS holder -- should still come out first.
       await q(
         "insert into public.priority_order (team_id, season, item_id, track, rank, player_id) values (1, $1, $2, 'Hero', 1, 1)",

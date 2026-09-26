@@ -55,12 +55,12 @@ async function withItemsAndBisSeeded(role, uid, fn) {
     // Only status='bis' rows feed the export -- 'good'/'ok'/etc are wishlist
     // entries, not BiS.
     await client.query(
-      `insert into public.item_preferences (id, team_id, player_id, item_id, status, slot) values
-         (900, 1, 1, 900, 'bis', 'Trinket 2'),
-         (901, 1, 2, 900, 'bis', null),
-         (902, 1, 1, 901, 'bis', 'Trinket 1'),
-         (903, 1, 1, 902, 'bis', 'Back'),
-         (904, 1, 1, 903, 'bis', 'Waist')`
+      `insert into public.item_preferences (id, team_id, player_id, item_id, status, slot, season) values
+         (900, 1, 1, 900, 'bis', 'Trinket 2', 'export-test'),
+         (901, 1, 2, 900, 'bis', null, 'export-test'),
+         (902, 1, 1, 901, 'bis', 'Trinket 1', 'export-test'),
+         (903, 1, 1, 902, 'bis', 'Back', 'export-test'),
+         (904, 1, 1, 903, 'bis', 'Waist', 'export-test')`
     );
     // A pick the same raider holds in another tier (#936). The export is asked
     // for 'export-test', so this one is not part of the list it hands the addon.
