@@ -51,7 +51,12 @@ function fetchExportString() {
     btn.textContent = 'Loading...';
   }
 
-  var season = currentSeasonCode();
+  // The season on screen, not the live tier (#936). Everything else on this
+  // tab already asks for the pin: the ranks the export sends are saved under
+  // it by save_priority_order(), and since this change the picks it reads are
+  // filtered by it too, so asking for the live tier while an officer preps a
+  // season under a pin would hand the addon an empty BiS list and no labels.
+  var season = resolveSeasonViewCode();
   var track = _prioExportTrack === 'mythic' ? 'Myth' : 'Hero';
 
   supabaseClient
@@ -1008,8 +1013,7 @@ function buildPriorityNotesTab() {
   if (!el) return;
   if (_teamItemPreferences === null && !_teamItemPreferencesFailed) {
     el.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">Loading...</p>';
-    fetchTeamItemPreferences().then(function (rows) {
-      _setTeamItemPreferences(rows);
+    loadTeamItemPreferences().then(function () {
       buildPriorityNotesTab();
     });
     return;
@@ -1369,6 +1373,32 @@ function fetchTeamItemPreferences() {
   );
 }
 
+// The one door onto the read above. Five renders fill this cache, each on its
+// own "not loaded yet" branch, and a Season View pin change asks two of them to
+// run at once, so without this a pin change costs two full reads of a few
+// thousand rows. It also installs the rows, which every call site used to do
+// for itself.
+//
+// The generation counter is the other half. The boot read is three round trips,
+// long enough for an officer to change the pin inside it, and the rows it
+// collected are then the old season's. Whichever read resolves last used to
+// win; now a read whose generation has moved on drops what it collected and
+// leaves the cache to the read the pin started.
+var _teamItemPreferencesGeneration = 0;
+var _teamItemPreferencesInFlight = null;
+function loadTeamItemPreferences() {
+  if (_teamItemPreferencesInFlight) return _teamItemPreferencesInFlight;
+  var generation = _teamItemPreferencesGeneration;
+  var pending = fetchTeamItemPreferences().then(function (rows) {
+    if (generation !== _teamItemPreferencesGeneration) return null;
+    _teamItemPreferencesInFlight = null;
+    _setTeamItemPreferences(rows);
+    return rows;
+  });
+  _teamItemPreferencesInFlight = pending;
+  return pending;
+}
+
 // The Season View pin changes which tier the read above is about, and changing
 // it never reloads the page (tab-season.js's saveSeasonView remaps the priority
 // data from rows it already holds and rebuilds the visible sub-tab). Both
@@ -1377,6 +1407,8 @@ function fetchTeamItemPreferences() {
 // refreshVisiblePriorityTab(), which officer.js also calls once per boot, where
 // dropping a cache that has just been filled would fetch the whole table twice.
 function resetTeamItemPreferencesForSeasonView() {
+  _teamItemPreferencesGeneration++;
+  _teamItemPreferencesInFlight = null;
   _teamItemPreferences = null;
   _teamItemPreferencesFailed = false;
   if (typeof _profileWishlistPrefsCache !== 'undefined') _profileWishlistPrefsCache = {};
@@ -1624,8 +1656,7 @@ function buildWishlistIncompleteCompactHtml(data) {
 function renderWishlistIncompleteBanner() {
   var compactEl = document.getElementById('wishlistIncompleteBanner');
   if (_teamItemPreferences === null && !_teamItemPreferencesFailed) {
-    fetchTeamItemPreferences().then(function (rows) {
-      _setTeamItemPreferences(rows);
+    loadTeamItemPreferences().then(function () {
       renderWishlistIncompleteBanner();
       if (typeof buildBisListsTab === 'function' && document.getElementById('bis-lists-container')) {
         buildBisListsTab();
@@ -1942,8 +1973,7 @@ function buildPriorityTab() {
   // buildPriorityNotesTab() above.
   if (_teamItemPreferences === null && !_teamItemPreferencesFailed) {
     if (el) el.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">Loading...</p>';
-    fetchTeamItemPreferences().then(function (rows) {
-      _setTeamItemPreferences(rows);
+    loadTeamItemPreferences().then(function () {
       buildPriorityTab();
     });
     return;
@@ -2244,8 +2274,7 @@ function openPrioEditModal(item, slot, autoGenerate, difficulty) {
   // every path into this modal has already loaded it (buildPriorityNotesTab
   // is the usual trigger).
   if (_teamItemPreferences === null && !_teamItemPreferencesFailed) {
-    fetchTeamItemPreferences().then(function (rows) {
-      _setTeamItemPreferences(rows);
+    loadTeamItemPreferences().then(function () {
       if (!PRIO_EDIT.showAllRoster) prioEditRenderPool();
     });
   }

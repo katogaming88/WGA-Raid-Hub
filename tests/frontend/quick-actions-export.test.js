@@ -48,7 +48,10 @@ function makeSandbox({ rpcResult, writeText, invokeResult, teamSlug } = {}) {
     window: { DATA: {} },
     DATA: {},
     // The live tier is the seasons read (#938); stubbed as the code alone.
-    currentSeasonCode: () => 'S1',
+    // Two different answers on purpose (#936): the export asks for the season
+    // the officer is viewing, not the live tier. They differ only under a pin.
+    currentSeasonCode: () => 'LIVE',
+    resolveSeasonViewCode: () => 'PINNED',
     _teamCfg: { supabaseTeamId: 1 },
     TEAM_SLUG: teamSlug || 'phoenix',
     supabaseClient,
@@ -79,7 +82,7 @@ describe('qaExportString (#408, split by track #859)', () => {
     expect(rpcCalls).toHaveLength(1);
     expect(rpcCalls[0]).toEqual({
       name: 'build_rclc_export',
-      params: { p_team_id: 1, p_season: 'S1', p_track: 'Hero' }
+      params: { p_team_id: 1, p_season: 'PINNED', p_track: 'Hero' }
     });
     await flush();
   });

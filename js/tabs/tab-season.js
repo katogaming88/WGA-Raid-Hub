@@ -698,8 +698,8 @@ function saveSeasonView() {
       }
       if (DATA) DATA.seasonView = val || null;
       // The officer-side wishlist reads are scoped to one tier (#936), so the
-      // rows already fetched are the old tier's. Dropped before the rebuild
-      // below, which is what asks for them again.
+      // rows already fetched are the old tier's. Dropped before the rebuilds
+      // below, which are what ask for them again, and they share one read.
       if (typeof resetTeamItemPreferencesForSeasonView === 'function') resetTeamItemPreferencesForSeasonView();
       // Season View changes both what counts as unmanaged/conflicted
       // (isItemInSeasonScope) and which priority_order rows are in scope at
@@ -710,6 +710,12 @@ function saveSeasonView() {
       // stale/empty data until a full page reload.
       if (typeof remapPriorityDataForSeasonView === 'function') remapPriorityDataForSeasonView();
       if (typeof refreshVisiblePriorityTab === 'function') refreshVisiblePriorityTab();
+      // The Incomplete Wishlists banner and, through its cascade, the Roster
+      // tab's Wishlists Completed card, the onboarding signal and the BiS
+      // Lists tab (#936). Those read the same rows and are otherwise built
+      // once at boot, so without this they keep the old tier's numbers until
+      // someone reloads. It shares the read the line above started.
+      if (typeof renderWishlistIncompleteBanner === 'function') renderWishlistIncompleteBanner();
       // The Wishlist Editing toggle controls the tier Season View shows
       // (#939), so its badge and caption follow the change.
       if (typeof renderWishlistToggle === 'function') renderWishlistToggle();

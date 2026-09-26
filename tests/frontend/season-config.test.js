@@ -140,6 +140,55 @@ describe('saveSeasonView (#549)', () => {
     expect(saveTeamSettingCalls).toEqual([{ seasonView: 'MID3' }]);
     expect(renders).toEqual(['MID3']);
   });
+
+  // The officer-side wishlist reads are scoped to one season (#936), so the
+  // rows the page holds belong to the season it just left. Nothing reloads
+  // here: saving a pin re-sorts what is already in hand and rebuilds the
+  // visible sub-tab, which is why each surface has to be named.
+  it('drops the wishlist rows fetched for the season it just left (#936)', async () => {
+    const els = {
+      seasonViewInput: makeEl({ value: 'MID1' }),
+      seasonViewSaveBtn: makeEl(),
+      seasonViewStatus: makeEl()
+    };
+    const { sandbox } = makeSandbox({ els });
+    const order = [];
+    sandbox.resetTeamItemPreferencesForSeasonView = () => order.push('reset');
+    sandbox.remapPriorityDataForSeasonView = () => order.push('remap');
+    sandbox.refreshVisiblePriorityTab = () => order.push('priority tab');
+    sandbox.renderWishlistIncompleteBanner = () => order.push('incomplete banner');
+
+    sandbox.saveSeasonView();
+    await flush();
+
+    // The drop comes before anything that would read the rows again.
+    expect(order[0]).toBe('reset');
+    expect(order).toContain('priority tab');
+    expect(order).toContain('incomplete banner');
+  });
+
+  // renderWishlistIncompleteBanner() is the only thing that cascades to the
+  // Roster tab's Wishlists Completed card, the onboarding signal and the BiS
+  // Lists tab, and it is otherwise called once at boot. Without it those three
+  // keep the previous season's numbers until someone reloads.
+  it('refreshes the surfaces only the incomplete-wishlist render reaches (#936)', async () => {
+    const els = {
+      seasonViewInput: makeEl({ value: 'MID1' }),
+      seasonViewSaveBtn: makeEl(),
+      seasonViewStatus: makeEl()
+    };
+    const { sandbox } = makeSandbox({ els });
+    let banner = 0;
+    sandbox.resetTeamItemPreferencesForSeasonView = () => {};
+    sandbox.remapPriorityDataForSeasonView = () => {};
+    sandbox.refreshVisiblePriorityTab = () => {};
+    sandbox.renderWishlistIncompleteBanner = () => banner++;
+
+    sandbox.saveSeasonView();
+    await flush();
+
+    expect(banner).toBe(1);
+  });
 });
 
 describe('saveTrialThresholds (#221)', () => {

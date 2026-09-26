@@ -22,6 +22,11 @@ answers to.
   contested-item list all counted every pick a raider had ever made, whatever
   season it was for. Changing Season View now also changes what they show, where
   before it took a page reload (#936).
+- Copy Priority Export and the Quick Actions export button send the season being
+  viewed, matching the Suggest Order button beside them. While a season was
+  pinned they asked for the live season instead, which is now the difference
+  between a full export and an empty one.
+- The officer dashboard reads the wishlist table once at load instead of twice.
 
 ### Backend
 

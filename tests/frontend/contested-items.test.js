@@ -52,7 +52,7 @@ function makeSandbox({ roster = [], teamItemPreferences = null, priorityOrder = 
     escHtml: (s) => String(s),
     getSlotColor: () => 'var(--text)',
     getSeasonLootItems: () => [],
-    fetchTeamItemPreferences: () => Promise.resolve([]),
+    loadTeamItemPreferences: () => Promise.resolve([]),
     _teamItemPreferencesFailed: false,
     TEAM_PREFS_UNAVAILABLE_HTML: '<p>Wishlists could not be loaded.</p>',
     setTimeout,
@@ -65,6 +65,8 @@ function makeSandbox({ roster = [], teamItemPreferences = null, priorityOrder = 
   // globals, the same way it already reads _teamItemPreferences itself. These
   // mirror the real ones rather than no-opping: a setter that records nothing
   // leaves the cache null, and the render re-enters the fetch forever.
+  // Since #936 the read goes through loadTeamItemPreferences(), which installs
+  // the rows itself, so the stub above does what the real one does.
   sandbox._setTeamItemPreferences = (rows) => {
     if (rows === null) {
       sandbox._teamItemPreferencesFailed = true;
@@ -185,7 +187,10 @@ describe('buildConflicts', () => {
     const el = { innerHTML: '' };
     const sandbox = makeSandbox({ roster, teamItemPreferences: null });
     sandbox.document.getElementById = (id) => (id === 'conflictsContent' ? el : null);
-    sandbox.fetchTeamItemPreferences = () => Promise.resolve([]);
+    sandbox.loadTeamItemPreferences = () => {
+      sandbox._setTeamItemPreferences([]);
+      return Promise.resolve([]);
+    };
 
     sandbox.buildConflicts();
     expect(el.innerHTML).toContain('Loading');

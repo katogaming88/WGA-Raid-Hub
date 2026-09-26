@@ -204,3 +204,67 @@ describe('resetTeamItemPreferencesForSeasonView (#936)', () => {
     expect(sandbox._profileWishlistPrefsCache).toEqual({});
   });
 });
+
+// Five renders fill this cache, each on its own "not loaded yet" branch, and a
+// pin change now asks two of them to run at once. loadTeamItemPreferences() is
+// the single door: one read while one is in flight, and a read that started
+// before a pin change never installs what it collected.
+describe('loadTeamItemPreferences (#936)', () => {
+  it('serves two renders that both need the rows from one read', async () => {
+    const { client, calls } = keysetClient(prefRows(2200));
+    const sandbox = load(client);
+
+    const [a, b] = await Promise.all([sandbox.loadTeamItemPreferences(), sandbox.loadTeamItemPreferences()]);
+
+    // 2200 rows is three pages for one read, six for two.
+    expect(calls.selects).toHaveLength(3);
+    expect(a).toHaveLength(2200);
+    expect(b).toHaveLength(2200);
+    expect(sandbox._teamItemPreferences).toHaveLength(2200);
+  });
+
+  it('installs the rows, so a caller does not have to', async () => {
+    const { client } = keysetClient(prefRows(4));
+    const sandbox = load(client);
+
+    await sandbox.loadTeamItemPreferences();
+
+    expect(sandbox._teamItemPreferences).toHaveLength(4);
+  });
+
+  // The boot read is three round trips over a few thousand rows, which is long
+  // enough for an officer to change the pin inside it.
+  it('discards a read that a pin change has already superseded', async () => {
+    const { client } = keysetClient(prefRows(3));
+    const sandbox = load(client);
+
+    const pending = sandbox.loadTeamItemPreferences();
+    sandbox.resetTeamItemPreferencesForSeasonView();
+    await pending;
+
+    expect(sandbox._teamItemPreferences).toBeNull();
+  });
+
+  it('lets the next render start a fresh read after a pin change', async () => {
+    const { client, calls } = keysetClient(prefRows(3));
+    const sandbox = load(client);
+
+    await sandbox.loadTeamItemPreferences();
+    const afterFirst = calls.selects.length;
+    sandbox.resetTeamItemPreferencesForSeasonView();
+    await sandbox.loadTeamItemPreferences();
+
+    expect(calls.selects.length).toBeGreaterThan(afterFirst);
+    expect(sandbox._teamItemPreferences).toHaveLength(3);
+  });
+
+  it('leaves a failed read reported rather than installed', async () => {
+    const { client } = failingClient('prefs boom');
+    const sandbox = load(client);
+
+    await sandbox.loadTeamItemPreferences();
+
+    expect(sandbox._teamItemPreferences).toBeNull();
+    expect(sandbox._teamItemPreferencesUnavailable()).toBe(true);
+  });
+});
