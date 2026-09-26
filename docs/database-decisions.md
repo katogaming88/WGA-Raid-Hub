@@ -273,6 +273,21 @@ Settled while building it:
 
 ---
 
+## 2026-09-25 -- A raider on two teams: officers see the other team's name (#486)
+
+Shipped: `20260925232452_also_on_teams.sql`.
+
+Kat's call on 2026-09-14 (#942 re-plan): a Phoenix officer sees "also on Hellfire" on that raider's profile and nothing else from Hellfire. The character stays a roster row per team, each team's history separate, one person above both.
+
+Settled while building it:
+
+- **One function answers it, because the link between the two rows is not public.** A team's officers read only their own team's memberships, so they cannot see the Hellfire membership behind a Phoenix raider. `also_on_teams(team_id)` (security definer, authenticated only) returns pairs of roster row and the other team's name, for the team's officers, site admins and guild officers, and nothing to anyone else.
+- **A raider is not answered.** They already know their own teams, and answering them would add a second read rule to keep in step.
+- **Only teams where the person has an active character count.** A team they left (character archived) is loot history, handled by `earlier_characters()`, not a current second team.
+- **Where it shows:** a tag in the new app's profile header, for officers only. The Roster page carries no such tag yet.
+
+---
+
 ## 2026-09-15 -- Who sees alts, and loot totals that follow the raider across mains and teams (#942 step 5b)
 
 Shipped: `20260915185428_loot_from_earlier_characters.sql`.

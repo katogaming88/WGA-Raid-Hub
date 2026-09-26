@@ -211,6 +211,7 @@
 | public.admin_set_guild_creation_open | void | p_open boolean | FUNCTION |
 | public.create_guild | record | p_name text, p_region text, p_realm text, p_team_name text DEFAULT NULL::text | FUNCTION |
 | public.restrict_item_preferences_to_open_wishlist | trigger |  | FUNCTION |
+| public.also_on_teams | record | p_team_id integer | FUNCTION |
 
 ## Enums
 

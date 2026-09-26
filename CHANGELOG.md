@@ -12,6 +12,23 @@ answers to.
 
 ---
 
+## [3.156.0] - 2026-09-25
+
+### Backend
+
+- New database function `also_on_teams(team_id)`: for each active roster row,
+  the names of the other teams where the same person also has an active
+  character. Answers only the team's officers, site admins and guild officers.
+
+### Project
+
+- The new app's profile shows an officer an "Also on Hellfire Rollers" tag when
+  the raider is also on another team, and nothing else from that team (#486).
+  Raiders see no such tag. Tests, the RLS reference and the decision log are
+  updated with it. The other-teams read is cached once per team rather than once
+  per raider, so clicking through a roster makes one request. The loot priority
+  card is now titled "BiS List & Loot priority".
+
 ## [3.155.2] - 2026-09-25
 
 ### Frontend

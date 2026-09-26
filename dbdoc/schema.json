@@ -10329,6 +10329,12 @@
       "return_type": "trigger",
       "arguments": "",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.also_on_teams",
+      "return_type": "record",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
     }
   ],
   "enums": [
