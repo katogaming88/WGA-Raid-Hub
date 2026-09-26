@@ -1341,20 +1341,45 @@ function _teamItemPreferencesUnavailable() {
 // end, and it raced one 20s budget against the whole read rather than
 // against each page. A fixed budget across N sequential round trips becomes
 // a truncation mechanism as N grows.
+//
+// One tier's picks since #936, through js/common.js's scopeToSeasonView: the
+// season the officer is viewing, or every tier when none resolves. Every
+// consumer below reads the rows as fetched, so narrowing here carries the
+// status beside a ranked row, the completion badge, the roster's Wishlists
+// Completed card, the Notes sub-tab and the contested-item map together,
+// without any of them asking the question twice.
 function fetchTeamItemPreferences() {
   if (!supabaseClient) return Promise.resolve(null);
   return fetchAllPaged(
     function (afterId, limit) {
-      var q = supabaseClient
-        .from('item_preferences')
-        .select('id, player_id, item_id, status, slot, season, note', afterId === null ? { count: 'exact' } : undefined)
-        .eq('team_id', _teamCfg.supabaseTeamId)
+      var q = scopeToSeasonView(
+        supabaseClient
+          .from('item_preferences')
+          .select(
+            'id, player_id, item_id, status, slot, season, note',
+            afterId === null ? { count: 'exact' } : undefined
+          )
+          .eq('team_id', _teamCfg.supabaseTeamId)
+      )
         .order('id', { ascending: true })
         .limit(limit);
       return afterId === null ? q : q.gt('id', afterId);
     },
     { label: 'item_preferences query' }
   );
+}
+
+// The Season View pin changes which tier the read above is about, and changing
+// it never reloads the page (tab-season.js's saveSeasonView remaps the priority
+// data from rows it already holds and rebuilds the visible sub-tab). Both
+// caches therefore hold the tier that was current when they were filled, so the
+// pin drops them and the next render asks again. Not folded into
+// refreshVisiblePriorityTab(), which officer.js also calls once per boot, where
+// dropping a cache that has just been filled would fetch the whole table twice.
+function resetTeamItemPreferencesForSeasonView() {
+  _teamItemPreferences = null;
+  _teamItemPreferencesFailed = false;
+  if (typeof _profileWishlistPrefsCache !== 'undefined') _profileWishlistPrefsCache = {};
 }
 
 // Own copy of js/wishlist.js's wishlistItemRows()/wishlistCompleteness()

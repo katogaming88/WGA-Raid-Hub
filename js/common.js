@@ -4161,6 +4161,30 @@ function resolveSeasonViewCode() {
   return seasonCodeForDisplay(DATA.seasonView || '') || currentSeasonCode();
 }
 
+// Narrows an officer-side item_preferences read to the tier being viewed
+// (#936). The twin of js/wishlist.js's wishlistScopeToSeason(), which does the
+// same for the raider's own picks, and kept separate from it because that one
+// belongs to a page index.html loads and this one to reads shared by both.
+//
+// item_preferences.season carried a code from #1326 and the unique key carried
+// the season from #1333, so a raider holds a separate pick for the same item in
+// each tier. Until then a read of every tier could only return one, and every
+// officer-side consumer was correct without naming a season. The database
+// readers name it now, so these have to agree with them, or the status beside a
+// ranked row comes from a tier the rank was not generated in.
+//
+// With no tier resolving, nothing narrows. seasons is app-wide and filled by
+// migration, so an empty DATA.seasons means the read failed rather than that
+// there are no tiers, and these are read-only views with no editing to close:
+// showing every pick is what the page did before this and is the safe answer,
+// where narrowing to the empty string would read as every raider holding an
+// empty wishlist.
+function scopeToSeasonView(query) {
+  var season = resolveSeasonViewCode();
+  if (!season) return query;
+  return query.eq('season', season);
+}
+
 // Re-derives DATA.priorityOrder/priorityStaleAfterHeroic/priorityLiveFirstPrios
 // for whatever Season View is active *right now*, from the raw unfiltered
 // rows applyHeavyData() cached at load time. Needed because these three
@@ -4464,6 +4488,8 @@ var PROFILE_WISHLIST_STATUS_LABELS = [
 // Keyed by player_id -- avoids re-fetching on every profile re-render when
 // tab-priority.js's team-wide _teamItemPreferences isn't loaded (index.html
 // never loads it at all; officer.html loads it lazily on dashboard boot).
+// Holds one tier's rows since #936, so changing the Season View pin empties it
+// (tab-priority.js's resetTeamItemPreferencesForSeasonView).
 var _profileWishlistPrefsCache = {};
 
 function fetchPlayerItemPreferences(playerId) {
@@ -4472,10 +4498,12 @@ function fetchPlayerItemPreferences(playerId) {
   // -- needed for the chained .then().catch() below, since PromiseLike
   // itself has no .catch() (same reason as addAttendanceNight() above).
   var query = Promise.resolve(
-    supabaseClient
-      .from('item_preferences')
-      .select('player_id, item_id, status, slot, season, note')
-      .eq('player_id', playerId)
+    scopeToSeasonView(
+      supabaseClient
+        .from('item_preferences')
+        .select('player_id, item_id, status, slot, season, note')
+        .eq('player_id', playerId)
+    )
   )
     .then(function (result) {
       if (result.error) {

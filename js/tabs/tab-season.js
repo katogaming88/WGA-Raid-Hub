@@ -697,6 +697,10 @@ function saveSeasonView() {
         btn.textContent = 'Save';
       }
       if (DATA) DATA.seasonView = val || null;
+      // The officer-side wishlist reads are scoped to one tier (#936), so the
+      // rows already fetched are the old tier's. Dropped before the rebuild
+      // below, which is what asks for them again.
+      if (typeof resetTeamItemPreferencesForSeasonView === 'function') resetTeamItemPreferencesForSeasonView();
       // Season View changes both what counts as unmanaged/conflicted
       // (isItemInSeasonScope) and which priority_order rows are in scope at
       // all -- DATA.priorityOrder is otherwise locked to whichever season
