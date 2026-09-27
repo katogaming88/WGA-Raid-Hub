@@ -40,7 +40,8 @@ async function withItemsAndBisSeeded(role, uid, fn) {
     await client.query(
       `insert into public.items (id, wow_item_id, name, slot, armor_type, is_placeholder) values
          (900, 90001, 'Test Trinket', 'Trinket', null, false),
-         (901, 90002, 'Test Placeholder', 'Placeholder', null, true)`
+         (901, 90002, 'Test Placeholder', 'Placeholder', null, true),
+         (905, 90005, 'Test Other Tier Helm', 'Head', null, false)`
     );
     // A season's M+ and crafted items (#1166): wishlist-able, never exported.
     await client.query(
@@ -54,12 +55,18 @@ async function withItemsAndBisSeeded(role, uid, fn) {
     // Only status='bis' rows feed the export -- 'good'/'ok'/etc are wishlist
     // entries, not BiS.
     await client.query(
-      `insert into public.item_preferences (id, team_id, player_id, item_id, status, slot) values
-         (900, 1, 1, 900, 'bis', 'Trinket 2'),
-         (901, 1, 2, 900, 'bis', null),
-         (902, 1, 1, 901, 'bis', 'Trinket 1'),
-         (903, 1, 1, 902, 'bis', 'Back'),
-         (904, 1, 1, 903, 'bis', 'Waist')`
+      `insert into public.item_preferences (id, team_id, player_id, item_id, status, slot, season) values
+         (900, 1, 1, 900, 'bis', 'Trinket 2', 'export-test'),
+         (901, 1, 2, 900, 'bis', null, 'export-test'),
+         (902, 1, 1, 901, 'bis', 'Trinket 1', 'export-test'),
+         (903, 1, 1, 902, 'bis', 'Back', 'export-test'),
+         (904, 1, 1, 903, 'bis', 'Waist', 'export-test')`
+    );
+    // A pick the same raider holds in another tier (#936). The export is asked
+    // for 'export-test', so this one is not part of the list it hands the addon.
+    await client.query(
+      `insert into public.item_preferences (id, team_id, player_id, item_id, status, slot, season) values
+         (905, 1, 1, 905, 'bis', 'Head', 'some-other-season')`
     );
     if (uid) {
       await client.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: uid, role })]);
@@ -191,6 +198,19 @@ describe('build_rclc_export', () => {
     });
   });
 
+  // The BiS list is one tier's picks (#936). A raider holds a separate pick for
+  // the same slot in each tier since the key carried the season (v3.154.6), and
+  // both were reaching the addon as one slot's list.
+  it('leaves a BiS pick from another tier out of the list it hands the addon', async () => {
+    await withItemsAndBisSeeded('authenticated', OFFICER_T1, async (q) => {
+      const res = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Hero']);
+      const players = res.rows[0].payload.players;
+
+      expect(players['Seedraider-Illidan'].helm).toBeUndefined();
+      expect(JSON.stringify(players)).not.toContain('90005');
+    });
+  });
+
   it('scopes priority to the requested track only, keyed by wow_item_id and ordered by rank', async () => {
     await withSeasons('authenticated', OFFICER_T1, async (q) => {
       await seedPriority(q);
@@ -227,6 +247,23 @@ describe('build_rclc_export', () => {
           'Seedplayertwo-Illidan': 'good'
         });
         expect(myth.rows[0].payload.priority['100002'].M_status).toEqual({ 'Seedraider-Illidan': 'bis' });
+      }
+    );
+  });
+
+  // The status beside a rank comes from the tier being exported (#936), the same
+  // scope generate_priority_order() ranks in. A pick in another tier used to be
+  // eligible to supply it, so the addon could show a BiS label on a rank
+  // generated from a raider's pass.
+  it('does not take a status from a pick the raider holds in another tier', async () => {
+    await withPriorityAndWishlistSeeded(
+      'authenticated',
+      OFFICER_T1,
+      `(1, 1, 2, 'bis', 'some-other-season'), (1, 2, 2, 'good', 'export-test')`,
+      async (q) => {
+        const res = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Hero']);
+
+        expect(res.rows[0].payload.priority['100002'].H_status).toEqual({ 'Seedplayertwo-Illidan': 'good' });
       }
     );
   });

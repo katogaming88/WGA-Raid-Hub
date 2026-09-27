@@ -48,8 +48,7 @@ function buildConflicts() {
   // own comment above).
   if (_teamItemPreferences === null && !_teamItemPreferencesFailed) {
     el.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">Loading...</p>';
-    fetchTeamItemPreferences().then(function (rows) {
-      _setTeamItemPreferences(rows);
+    loadTeamItemPreferences().then(function () {
       buildConflicts();
     });
     return;

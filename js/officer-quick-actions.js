@@ -237,7 +237,12 @@ function qaExportString(track) {
     return;
   }
 
-  var season = currentSeasonCode();
+  // The season on screen, not the live tier (#936): the same answer the
+  // Priority tab's own export button gives, since both read ranks saved under
+  // the pin and, since that change, picks filtered by it. The loot import
+  // below keeps currentSeasonCode(), because an import files what was won
+  // rather than what is being planned.
+  var season = resolveSeasonViewCode();
 
   supabaseClient
     .rpc('build_rclc_export', { p_team_id: _teamCfg.supabaseTeamId, p_season: season, p_track: track })

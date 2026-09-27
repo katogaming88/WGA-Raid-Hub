@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { keysetClient, failingClient } from './helpers/supabase-mock.js';
-import { realFetchAllPaged } from './helpers/common-sandbox.js';
+import { realFetchAllPaged, realScopeToSeasonView } from './helpers/common-sandbox.js';
 
 // A failed team-wide item_preferences fetch must not read as an empty one
 // (#707 item 2).
@@ -50,6 +50,11 @@ function makeSandbox({ client, roster = [], itemSlots = {}, itemIds = {} } = {})
   vm.runInContext(PRIORITY_JS, sandbox, { filename: 'tab-priority.js' });
   // js/common.js owns fetchAllPaged; tab-priority.js calls it as a global.
   sandbox.fetchAllPaged = realFetchAllPaged();
+  // Same for scopeToSeasonView (#936). No tiers on file here, so it narrows
+  // nothing and every row this file serves still reaches the read: which tier
+  // the read asks for is priority-prefs-paging.test.js's subject, not this
+  // file's, which is what the page shows before the rows arrive.
+  sandbox.scopeToSeasonView = realScopeToSeasonView([]);
   return { sandbox, elements };
 }
 

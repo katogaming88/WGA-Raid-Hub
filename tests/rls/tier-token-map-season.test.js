@@ -44,9 +44,10 @@ async function seedCandidate(q) {
     "insert into public.players (id, team_id, name_realm, class_spec_id, tier_pieces_equipped) values (881, 1, 'Seasontest-Illidan', $1, 2)",
     [spec.rows[0].id]
   );
-  await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 881, $1, 'bis')", [
-    TOKEN
-  ]);
+  await q(
+    `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 881, $1, 'bis', '${CURRENT}')`,
+    [TOKEN]
+  );
 }
 
 const generateFor = (asUser, season) =>

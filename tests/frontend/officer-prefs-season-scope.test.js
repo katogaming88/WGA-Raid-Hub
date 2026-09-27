@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { loadCommonJs, quietConsole } from './helpers/common-sandbox.js';
+import { keysetClient } from './helpers/supabase-mock.js';
 
 // Officer-side item_preferences reads and season scope (#707 item 1).
 //
@@ -56,5 +57,71 @@ describe('officer item_preferences carry season (#707)', () => {
       { player_id: 7, item_id: 202, status: 'bis', slot: null, season: 'MID2' }
     ];
     expect(sandbox.bisItemsFromWishlistPrefs(prefs, 7).map((e) => e.item)).toEqual(['New Tier Helm']);
+  });
+});
+
+// The read itself asks for one tier (#936). bisItemsFromWishlistPrefs above is
+// one funnel of several: the ranked-row status, the completion badge, the
+// roster's Wishlists Completed card and the Notes sub-tab each read the rows as
+// fetched, so the tier has to be settled where the rows arrive rather than once
+// per consumer. scopeToSeasonView() is where that decision lives, beside
+// resolveSeasonViewCode(), and it mirrors wishlistScopeToSeason() on the
+// raider's own page.
+describe('scopeToSeasonView (#936)', () => {
+  it('narrows to the tier the officer is viewing', () => {
+    const sandbox = sandboxWithCatalog();
+    const calls = [];
+    const query = { eq: (col, val) => (calls.push([col, val]), query) };
+    expect(sandbox.scopeToSeasonView(query)).toBe(query);
+    expect(calls).toEqual([['season', 'MID2']]);
+  });
+
+  it('narrows to the pin over the live tier', () => {
+    const sandbox = sandboxWithCatalog();
+    sandbox.DATA.seasonView = 'Midnight Season 1';
+    sandbox.DATA.seasons.push({ code: 'MID1', display_name: 'Midnight Season 1', starts_at: '2026-04-01' });
+    const calls = [];
+    const query = { eq: (col, val) => (calls.push([col, val]), query) };
+    sandbox.scopeToSeasonView(query);
+    expect(calls).toEqual([['season', 'MID1']]);
+  });
+
+  // The seasons table is filled by migration and read app-wide, so no tier
+  // resolving means the read failed rather than that there are no tiers. These
+  // are read-only officer views with no editing to close, so the answer is the
+  // pre-#936 behaviour: show every pick rather than none. Narrowing to the empty
+  // string would read as every raider holding an empty wishlist.
+  it('narrows nothing when no tier resolves', () => {
+    const sandbox = sandboxWithCatalog();
+    sandbox.DATA.seasons = [];
+    const calls = [];
+    const query = { eq: (col, val) => (calls.push([col, val]), query) };
+    expect(sandbox.scopeToSeasonView(query)).toBe(query);
+    expect(calls).toEqual([]);
+  });
+});
+
+describe('fetchPlayerItemPreferences season scope (#936)', () => {
+  function sandboxWithClient(seasons) {
+    const sandbox = sandboxWithCatalog();
+    if (seasons !== undefined) sandbox.DATA.seasons = seasons;
+    const { client, calls } = keysetClient([]);
+    sandbox.supabaseClient = client;
+    return { sandbox, calls };
+  }
+
+  it('asks for the tier the officer is viewing, and for that one player', async () => {
+    const { sandbox, calls } = sandboxWithClient();
+    await sandbox.fetchPlayerItemPreferences(7);
+    expect(calls.eqs).toEqual([
+      ['player_id', 7],
+      ['season', 'MID2']
+    ]);
+  });
+
+  it('asks for every tier when no tier resolves', async () => {
+    const { sandbox, calls } = sandboxWithClient([]);
+    await sandbox.fetchPlayerItemPreferences(7);
+    expect(calls.eqs).toEqual([['player_id', 7]]);
   });
 });

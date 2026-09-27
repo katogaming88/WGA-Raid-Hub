@@ -63,6 +63,7 @@ begin
     join public.items i on i.id = ip.item_id
     where p.team_id = p_team_id
       and p.archived_at is null
+      and ip.season = p_season
       and ip.status = 'bis'
       and not i.is_placeholder
       and i.source = 'raid'
@@ -99,10 +100,10 @@ begin
   -- aren't ranking signals in that sense, so left unmatched on purpose).
   -- Not every ranked player has a row here: tier-token matching and other
   -- fallback signals in generate_priority_order() can place a player with
-  -- no item_preferences entry behind them at all. No season filter: the
-  -- column holds a code since #936, but generate_priority_order() itself
-  -- doesn't filter by season either, so item_id + team_id is the correct
-  -- scope.
+  -- no item_preferences entry behind them at all. Scoped to the tier being
+  -- exported (#936), the same scope generate_priority_order() ranks in: a
+  -- status from another tier beside a rank generated from this one is a label
+  -- the addon would show against a pick the raider did not make here.
   -- Deduped to one row per player+item -- a dual-wieldable weapon can have
   -- separate Weapon/Off Hand preference rows for the same item_id, and only
   -- the single best-tier status should ever reach the export.
@@ -119,6 +120,7 @@ begin
       ))[1] as status
     from public.item_preferences
     where team_id = p_team_id
+      and season = p_season
       and status in ('bis', 'good', 'ok')
     group by player_id, item_id
   ),

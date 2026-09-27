@@ -57,12 +57,14 @@ async function seedScoring(q, playerId, performance, attendance) {
 }
 
 async function seedBoth1And2Bis(q, itemId) {
-  await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, $1, 'bis')", [
-    itemId
-  ]);
-  await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, $1, 'bis')", [
-    itemId
-  ]);
+  await q(
+    `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 1, $1, 'bis', '${SEASON}')`,
+    [itemId]
+  );
+  await q(
+    `insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, 2, $1, 'bis', '${SEASON}')`,
+    [itemId]
+  );
 }
 
 function generate(asUser, itemId, track) {

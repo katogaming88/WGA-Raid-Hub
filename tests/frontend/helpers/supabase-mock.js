@@ -39,13 +39,21 @@ export function keysetSource(rows, { withCount = true, pageOverride = null } = {
 
 // A supabase client whose builder honours .gt('id', ...) and .limit(), for
 // suites that drive a read through the client surface rather than through
-// fetchAllPaged's makeQuery callback. Records every select/order/gt/limit so a
-// test can assert the shape of the chain the code under test built.
+// fetchAllPaged's makeQuery callback. Records every select/order/eq/gt/limit so
+// a test can assert the shape of the chain the code under test built.
+//
+// .eq() is recorded rather than applied: it is asserted on by the suites that
+// check which season a read narrows to (#936), and applying it would mean
+// teaching this mock the table's columns, which is a database rather than a
+// spec for the row cap.
 export function keysetClient(rows) {
-  const calls = { selects: [], orders: [], gts: [], limits: [] };
+  const calls = { selects: [], orders: [], eqs: [], gts: [], limits: [] };
   function builder(record) {
     const b = {
-      eq() {
+      eq(col, val) {
+        record.eq = record.eq || [];
+        record.eq.push([col, val]);
+        calls.eqs.push([col, val]);
         return b;
       },
       gt(col, val) {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { keysetClient } from './helpers/supabase-mock.js';
-import { realFetchAllPaged } from './helpers/common-sandbox.js';
+import { realFetchAllPaged, realScopeToSeasonView } from './helpers/common-sandbox.js';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
@@ -92,6 +92,11 @@ function makeSandbox({ itemSlots = {}, itemIds = {}, roster = [], prefsRows = []
   vm.createContext(sandbox);
   vm.runInContext(PRIORITY_JS, sandbox, { filename: 'tab-priority.js' });
   sandbox.fetchAllPaged = realFetchAllPaged();
+  // scopeToSeasonView (#936) with no tiers on file, so it narrows nothing and
+  // every row seeded below still reaches the read. Which tier the read asks for
+  // belongs to priority-prefs-paging.test.js; this file is about which slots
+  // count as filled once the rows are in hand.
+  sandbox.scopeToSeasonView = realScopeToSeasonView([]);
   return sandbox;
 }
 

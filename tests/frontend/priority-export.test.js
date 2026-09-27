@@ -41,8 +41,12 @@ function makeSandbox({ rpcResult, els = {} } = {}) {
     document: { getElementById: (id) => allEls[id] || null },
     window: { DATA: {} },
     DATA: {},
-    // The live tier is the seasons read (#938); stubbed as the code alone.
-    currentSeasonCode: () => 'S1',
+    // Two different answers on purpose (#936): the export asks for the season
+    // the officer is viewing, the way every other priority read does, not for
+    // the live tier. They differ only while a Season View pin is set, which is
+    // exactly when the export used to disagree with the order it exports.
+    currentSeasonCode: () => 'LIVE',
+    resolveSeasonViewCode: () => 'PINNED',
     _teamCfg: { supabaseTeamId: 1 },
     supabaseClient,
     // _utf8ToBase64() moved to js/common.js (#408) so index.html's Quick
@@ -66,13 +70,13 @@ function makeSandbox({ rpcResult, els = {} } = {}) {
 }
 
 describe('fetchExportString (#335, split by track #859)', () => {
-  it('calls build_rclc_export with the team id, current season code, and Hero track by default', async () => {
+  it('calls build_rclc_export with the team id, the season being viewed, and Hero track by default', async () => {
     const { sandbox, rpcCalls } = makeSandbox({ rpcResult: { data: { players: {}, priority: {} }, error: null } });
     sandbox.fetchExportString();
     expect(rpcCalls).toHaveLength(1);
     expect(rpcCalls[0]).toEqual({
       name: 'build_rclc_export',
-      params: { p_team_id: 1, p_season: 'S1', p_track: 'Hero' }
+      params: { p_team_id: 1, p_season: 'PINNED', p_track: 'Hero' }
     });
     await flush();
   });
@@ -81,7 +85,7 @@ describe('fetchExportString (#335, split by track #859)', () => {
     const { sandbox, rpcCalls } = makeSandbox({ rpcResult: { data: { players: {}, priority: {} }, error: null } });
     sandbox.switchPrioExportTrack('mythic');
     sandbox.fetchExportString();
-    expect(rpcCalls[0].params).toEqual({ p_team_id: 1, p_season: 'S1', p_track: 'Myth' });
+    expect(rpcCalls[0].params).toEqual({ p_team_id: 1, p_season: 'PINNED', p_track: 'Myth' });
     await flush();
   });
 
