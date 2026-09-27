@@ -57,7 +57,7 @@ export type RoleGroup = { role: Role; label: string; raiders: Raider[] };
 
 const isRole = (role: string | null | undefined): role is Role => ROLE_ORDER.includes(role as Role);
 
-const firstName = (nameRealm: string) => nameRealm.split('-')[0]!.trim();
+export const firstName = (nameRealm: string) => nameRealm.split('-')[0]!.trim();
 
 // Blizzard's equipped item level: the sixteen gear slots averaged, with a
 // two-handed weapon counted in both hands when the off hand is empty. The shirt
