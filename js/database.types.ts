@@ -1769,6 +1769,62 @@ export type Database = {
           },
         ]
       }
+      raid_night_participation: {
+        Row: {
+          created_at: string
+          encounter_id: number
+          id: number
+          player_id: number
+          raid_date: string
+          team_id: number
+        }
+        Insert: {
+          created_at?: string
+          encounter_id: number
+          id?: never
+          player_id: number
+          raid_date: string
+          team_id: number
+        }
+        Update: {
+          created_at?: string
+          encounter_id?: number
+          id?: never
+          player_id?: number
+          raid_date?: string
+          team_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raid_night_participation_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raid_night_participation_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "priority_order_gaps"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "raid_night_participation_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "rnlsi"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "raid_night_participation_team_id_raid_date_encounter_id_fkey"
+            columns: ["team_id", "raid_date", "encounter_id"]
+            isOneToOne: false
+            referencedRelation: "raid_night_bosses"
+            referencedColumns: ["team_id", "raid_date", "encounter_id"]
+          },
+        ]
+      }
       raid_rsvp_reminders_sent: {
         Row: {
           checkpoint: string
@@ -3884,6 +3940,15 @@ export type Database = {
         }[]
       }
       raid_today: { Args: never; Returns: string }
+      record_raid_night_participation: {
+        Args: {
+          p_encounter_id: number
+          p_player_ids: number[]
+          p_raid_date: string
+          p_team_id: number
+        }
+        Returns: number
+      }
       remove_player_priority_order: {
         Args: { p_player_id: number; p_season: string; p_team_id: number }
         Returns: number

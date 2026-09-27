@@ -1,7 +1,8 @@
 // boss_groups, raid_night_bosses, raid_night_lineups and their functions
 // (#1216): a standing group per boss, copied into each raid night and edited
 // there. The team's raiders read the plan; nobody writes the tables except
-// through the functions.
+// through the functions. raid_night_participation (#1242) is the same shape,
+// holding who actually showed up rather than who was planned in.
 import { describe, it, expect } from 'vitest';
 import {
   withTxn,
@@ -366,6 +367,100 @@ describe('set_raid_night_boss_skipped()', () => {
     await withTxn(async ({ q, asUser }) => {
       await seed(q);
       await expect(skip(asUser, OFFICER_T1, '2026-09-17', FIRST, true)).rejects.toThrow(/not on this night/);
+    });
+  });
+});
+
+const record = (asUser, uid, date, encounter, players, team = 1) =>
+  asUser(uid, 'select public.record_raid_night_participation($1, $2, $3, $4::int[]) as n', [
+    team,
+    date,
+    encounter,
+    players
+  ]);
+
+const participation = async (q, date, encounter, team = 1) =>
+  (
+    await q(
+      'select coalesce(array_agg(player_id order by player_id), $4) as p from public.raid_night_participation where team_id = $1 and raid_date = $2 and encounter_id = $3',
+      [team, date, encounter, '{}']
+    )
+  ).rows[0].p;
+
+describe('record_raid_night_participation()', () => {
+  it('records who was in for a boss, and replaces it on the next call', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1, p2 } = await seed(q);
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1, p2]);
+      await plan(asUser, OFFICER_T1, '2026-09-17');
+      expect((await record(asUser, OFFICER_T1, '2026-09-17', FIRST, [p1, p2])).rows[0].n).toBe(2);
+      expect(await participation(q, '2026-09-17', FIRST)).toEqual([p1, p2]);
+      expect((await record(asUser, OFFICER_T1, '2026-09-17', FIRST, [p1])).rows[0].n).toBe(1);
+      expect(await participation(q, '2026-09-17', FIRST)).toEqual([p1]);
+    });
+  });
+
+  it('is a no-op, not an error, for a boss that is not on the night', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1 } = await seed(q);
+      expect((await record(asUser, OFFICER_T1, '2026-09-17', FIRST, [p1])).rows[0].n).toBe(0);
+      expect(await participation(q, '2026-09-17', FIRST)).toEqual([]);
+    });
+  });
+
+  it('refuses archived raiders and other teams’ raiders', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1, p2 } = await seed(q);
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1, p2]);
+      await plan(asUser, OFFICER_T1, '2026-09-17');
+      await q('update public.players set archived_at = now() where id = $1', [p2]);
+      await expect(record(asUser, OFFICER_T1, '2026-09-17', FIRST, [p2])).rejects.toThrow(/must be on this team/);
+    });
+    await withTxn(async ({ q, asUser }) => {
+      const { p1, p3 } = await seed(q);
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      await plan(asUser, OFFICER_T1, '2026-09-17');
+      await expect(record(asUser, OFFICER_T1, '2026-09-17', FIRST, [p3])).rejects.toThrow(/must be on this team/);
+    });
+  });
+
+  it('lets guild officers and site admins write, and nobody else', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1 } = await seed(q);
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      await plan(asUser, OFFICER_T1, '2026-09-17');
+      for (const uid of [GUILD_OFFICER, SITE_ADMIN]) {
+        expect((await record(asUser, uid, '2026-09-17', FIRST, [p1])).rows[0].n).toBe(1);
+      }
+    });
+    for (const uid of [RAIDER_T1, OFFICER_T2]) {
+      await withTxn(async ({ q, asUser }) => {
+        const { p1 } = await seed(q);
+        await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+        await plan(asUser, OFFICER_T1, '2026-09-17');
+        await expect(record(asUser, uid, '2026-09-17', FIRST, [p1])).rejects.toThrow(/Not authorized/);
+      });
+    }
+  });
+
+  it('is read the same way as the rest of the plan, and refuses direct writes', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      const { p1 } = await seed(q);
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      await plan(asUser, OFFICER_T1, '2026-09-17');
+      await record(asUser, OFFICER_T1, '2026-09-17', FIRST, [p1]);
+      expect((await asUser(RAIDER_T1, 'select team_id from public.raid_night_participation')).rows).toEqual([
+        { team_id: 1 }
+      ]);
+      expect((await asUser(RAIDER_T2, 'select * from public.raid_night_participation')).rows).toEqual([]);
+      expect((await asAnon('select * from public.raid_night_participation')).rows).toEqual([]);
+      await expect(
+        asUser(
+          OFFICER_T1,
+          'insert into public.raid_night_participation (team_id, raid_date, encounter_id, player_id) values (1, $1, $2, $3)',
+          ['2026-09-17', FIRST, p1]
+        )
+      ).rejects.toThrow(/row-level security|permission denied/);
     });
   });
 });

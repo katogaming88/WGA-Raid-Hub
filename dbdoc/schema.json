@@ -8074,6 +8074,134 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.raid_night_participation",
+      "type": "BASE TABLE",
+      "comment": "Who was actually in for a real pull of one boss on one raid night (#1242), one row per raider present. Written only by record_raid_night_participation(), called from the attendance sync once a night has a lineup (raid_night_bosses). Compare against raid_night_lineups for planned-vs-actual.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "raid_date",
+          "type": "date",
+          "nullable": false
+        },
+        {
+          "name": "encounter_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "raid_night_participation_pkey",
+          "def": "CREATE UNIQUE INDEX raid_night_participation_pkey ON public.raid_night_participation USING btree (id)",
+          "table": "public.raid_night_participation",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_night_participation_team_id_raid_date_encounter_id_pla_key",
+          "def": "CREATE UNIQUE INDEX raid_night_participation_team_id_raid_date_encounter_id_pla_key ON public.raid_night_participation USING btree (team_id, raid_date, encounter_id, player_id)",
+          "table": "public.raid_night_participation",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "encounter_id",
+            "player_id"
+          ]
+        },
+        {
+          "name": "raid_night_participation_player_id_idx",
+          "def": "CREATE INDEX raid_night_participation_player_id_idx ON public.raid_night_participation USING btree (player_id)",
+          "table": "public.raid_night_participation",
+          "columns": [
+            "player_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "raid_night_participation_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.raid_night_participation",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_night_participation_team_id_raid_date_encounter_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE",
+          "table": "public.raid_night_participation",
+          "referenced_table": "public.raid_night_bosses",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "encounter_id"
+          ],
+          "referenced_columns": [
+            "team_id",
+            "raid_date",
+            "encounter_id"
+          ]
+        },
+        {
+          "name": "raid_night_participation_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.raid_night_participation",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_night_participation_team_id_raid_date_encounter_id_pla_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, raid_date, encounter_id, player_id)",
+          "table": "public.raid_night_participation",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "encounter_id",
+            "player_id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_raid_night_participation_team_id_check",
+          "def": "CREATE TRIGGER trg_raid_night_participation_team_id_check BEFORE INSERT OR UPDATE ON public.raid_night_participation FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        }
+      ]
     }
   ],
   "relations": [
@@ -9523,6 +9651,36 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
+    },
+    {
+      "table": "public.raid_night_participation",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_night_participation",
+      "columns": [
+        "team_id",
+        "raid_date",
+        "encounter_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.raid_night_bosses",
+      "parent_columns": [
+        "team_id",
+        "raid_date",
+        "encounter_id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -10334,6 +10492,12 @@
       "name": "public.also_on_teams",
       "return_type": "record",
       "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.record_raid_night_participation",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[]",
       "type": "FUNCTION"
     }
   ],

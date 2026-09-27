@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.157.0] - 2026-09-27
+
+### Backend
+
+- A new `raid_night_participation` table (#1242): one row per raider actually present for a real pull of one boss on a raid night, next to `raid_night_lineups`' plan for the same night. Written only by the new `record_raid_night_participation()`, called from `wcl-sync`'s attendance refresh with the officer's own session; a no-op, not an error, for a boss that isn't on the night's list.
+
+### Functions
+
+- `wcl-sync`'s attendance refresh: once a night has a per-boss lineup (#1216), "on time" is judged against a raider's own first assigned boss instead of the raid's first pull -- someone planned out of boss 1 and in from boss 2 reads Present, not `WCL (Late?)`, for showing up at boss 2. A raider assigned to no boss all night (a full night's rest in the rotation) also reads Present, the same 1.0 either way (no new status, Kat's call on #1242). A night with no lineup keeps the exact first-pull rule it always had. One WCL query now covers every boss's participation in one shot, replacing the first-pull-only fetch on a lineup night rather than adding to it. A night already synced before its lineup existed is caught up once rather than left stuck on the old classification forever; a raid night logged as two WCL reports merges both instead of the second erasing the first's real data; a WCL hiccup on the new per-boss fetch fails open (Present) instead of flagging the whole roster late; a `raid_night_participation` write failure is logged and skipped rather than discarding the whole run's attendance.
+
 ## [3.156.6] - 2026-09-27
 
 ### Project

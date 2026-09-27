@@ -2275,3 +2275,17 @@ Decided 2026-09-27. Once Phoenix plans by boss (#1216) nobody on the team is ben
 **Not Option 3 (retire both, everywhere).** Assumes every team adopts the per-boss lineup; no other team has asked for it.
 
 [Full discussion -> #1243](https://github.com/katogaming88/WGA-Raid-Hub/issues/1243). Removal tracked on [#1352](https://github.com/katogaming88/WGA-Raid-Hub/issues/1352).
+
+## #1242 -- attendance's "on time" reference moves to a raider's own first assigned boss
+
+Shipped: 20260927131404_raid_night_participation.sql
+
+Once a night has a per-boss lineup (#1216), the attendance sync's "was this raider on time" question moved off the raid's first pull and onto each raider's own first assigned boss -- someone planned out of boss 1 is not late for showing up at boss 2. `raid_night_participation` is the new table this reads and writes to answer it: one row per raider actually present for a real pull of one boss, the same shape as `raid_night_lineups` but recording what happened instead of what was planned.
+
+**A new table, not a column on `raid_night_lineups`.** The plan and the record disagree by construction (that's the whole point of comparing them later for #1247), so folding "actually there" onto the planned row would make one row mean two different, sometimes contradictory things.
+
+**No new attendance status.** A raider who came and was assigned to no boss all night (a full night's rest in a 24-on-20 rotation) reads Present, not a new "available, not assigned" status -- Kat's call on #1242, to avoid adding vocabulary for something that already scores 1.0 either way.
+
+**Written only by `record_raid_night_participation()`**, called from `wcl-sync`'s attendance refresh with the officer's own forwarded session (no service-role key, matching the rest of this function). A no-op, not an error, when the boss isn't on the night's list -- one boss with no plan (an older report, or a team not using lineups yet) shouldn't fail the whole sync run.
+
+[Full discussion -> #1242](https://github.com/katogaming88/WGA-Raid-Hub/issues/1242).
